@@ -117,8 +117,15 @@ static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
 #if defined(AWSLC_FIPS)
   uint8_t msg[16] = {16};
   uint8_t out_sig[ED25519_SIGNATURE_LEN];
-  if (ED25519_sign_no_self_test(out_sig, msg, 16, private_key) != 1 ||
-      ED25519_verify_no_self_test(msg, 16, out_sig, public_key) != 1) {
+  if (ED25519_sign_no_self_test(out_sig, msg, 16, private_key) != 1) {
+    // This should never happen and static analysis will say that ED25519_sign_no_self_test
+    // always returns 1
+    AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
+  }
+  if (boringssl_fips_break_test("EDDSA_PWCT")) {
+    msg[0] = ~msg[0];
+  }
+  if (ED25519_verify_no_self_test(msg, 16, out_sig, public_key) != 1) {
     AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
   }
 #endif

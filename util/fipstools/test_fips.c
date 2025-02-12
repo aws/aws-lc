@@ -36,6 +36,7 @@
 
 #include "../../crypto/fipsmodule/evp/internal.h"
 #include "../../crypto/fipsmodule/kem/internal.h"
+#include "../../crypto/fipsmodule/pqdsa/internal.h"
 #include "../../crypto/fipsmodule/rand/internal.h"
 #include "../../crypto/internal.h"
 
@@ -431,18 +432,33 @@ int main(int argc, char **argv) {
 
   /* ML-KEM */
   printf("About to Generate ML-KEM key\n");
-  EVP_PKEY *raw = NULL;
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
-  if (ctx == NULL || !EVP_PKEY_CTX_kem_set_params(ctx, NID_MLKEM512) ||
-    !EVP_PKEY_keygen_init(ctx) ||
-    !EVP_PKEY_keygen(ctx, &raw)) {
+  EVP_PKEY *kem_raw = NULL;
+  EVP_PKEY_CTX *kem_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
+  if (kem_ctx == NULL || !EVP_PKEY_CTX_kem_set_params(kem_ctx, NID_MLKEM512) ||
+    !EVP_PKEY_keygen_init(kem_ctx) ||
+    !EVP_PKEY_keygen(kem_ctx, &kem_raw)) {
     printf("ML-KEM keygen failed.\n");
     goto err;
   }
   printf("Generated public key: ");
-  hexdump(raw->pkey.kem_key->public_key, raw->pkey.kem_key->kem->public_key_len);
-  EVP_PKEY_free(raw);
-  EVP_PKEY_CTX_free(ctx);
+  hexdump(kem_raw->pkey.kem_key->public_key, kem_raw->pkey.kem_key->kem->public_key_len);
+  EVP_PKEY_free(kem_raw);
+  EVP_PKEY_CTX_free(kem_ctx);
+
+  /* ML-DSA */
+  printf("About to Generate ML-DSA key\n");
+  EVP_PKEY *dsa_raw = NULL;
+  EVP_PKEY_CTX *dsa_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, NULL);
+  if (dsa_ctx == NULL || !EVP_PKEY_CTX_pqdsa_set_params(dsa_ctx, NID_MLDSA44) ||
+    !EVP_PKEY_keygen_init(dsa_ctx) ||
+    !EVP_PKEY_keygen(dsa_ctx, &dsa_raw)) {
+    printf("ML-DSA keygen failed.\n");
+    goto err;
+    }
+  printf("Generated public key: ");
+  hexdump(dsa_raw->pkey.pqdsa_key->public_key, dsa_raw->pkey.pqdsa_key->pqdsa->public_key_len);
+  EVP_PKEY_free(dsa_raw);
+  EVP_PKEY_CTX_free(dsa_ctx);
 
   /* DBRG */
   CTR_DRBG_STATE drbg;
