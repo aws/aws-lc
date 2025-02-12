@@ -14,7 +14,7 @@
           src = self;
           name = "aws-lc";
           inherit system;
-          nativeBuildInputs = [ pkgs.ninja pkgs.cmake pkgs.perl pkgs.golang ];
+          nativeBuildInputs = [ pkgs.ninja pkgs.cmake pkgs.perl pkgs.go ];
           cmakeFlags = [
             "-GNinja"
             "-DBUILD_SHARED_LIBS=ON"

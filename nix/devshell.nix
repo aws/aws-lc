@@ -1,7 +1,7 @@
-{pkgs}:
+{ pkgs }:
 pkgs.mkShell rec {
   buildInputs = [ pkgs.cmake ];
-  packages = [ pkgs.gdb pkgs.nixfmt pkgs.ninja pkgs.cmake pkgs.perl pkgs.go ];
+  packages = [ pkgs.nixfmt-classic pkgs.ninja pkgs.cmake pkgs.perl pkgs.go ];
   shellHook = ''
     echo "Entering a devShell..."
     export PS1="[awslc nix] $PS1"
@@ -20,5 +20,5 @@ pkgs.mkShell rec {
     function unit {
         ninja -C build run_tests
     }
-    '';
+  '';
 }
