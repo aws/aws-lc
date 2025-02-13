@@ -274,8 +274,9 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
 }
 
 static int cert_set_chain_and_key(
-    CERT *cert, CRYPTO_BUFFER *const *certs, size_t num_certs,
-    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+    CERT *cert, UniquePtr<STACK_OF(CRYPTO_BUFFER)> *certs, size_t num_certs,
+    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method,
+    int override) {
   if (num_certs == 0 || (privkey == NULL && privkey_method == NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -286,10 +287,11 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  switch (check_leaf_cert_and_privkey(certs[0], privkey)) {
+  switch (check_leaf_cert_and_privkey(sk_CRYPTO_BUFFER_value(certs->get(), 0), privkey)) {
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
       return 0;
     case leaf_cert_and_privkey_ok:
@@ -302,7 +304,7 @@ static int cert_set_chain_and_key(
   }
 
   for (size_t i = 0; i < num_certs; i++) {
-    if (!PushToStack(certs_sk.get(), UpRef(certs[i]))) {
+    if (!PushToStack(certs_sk.get(), UpRef(sk_CRYPTO_BUFFER_value(certs->get(), i)))) {
       return 0;
     }
   }
@@ -311,12 +313,19 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  // Update certificate slot index once all checks have passed.
   // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
   int idx = ssl_get_certificate_slot_index(privkey);
-  cert->cert_private_keys[idx].privatekey = UpRef(privkey);
+  CERT_PKEY *cert_pkey = &cert->cert_private_keys[idx];
+  if (!override && (cert_pkey->privatekey != NULL ||
+      cert_pkey->x509_leaf != NULL ||
+      cert_pkey->chain != NULL)) {
+    return 0;
+  }
+
+  // Update certificate slot index once all checks have passed.
+  cert_pkey->privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
-  cert->cert_private_keys[idx].chain = std::move(certs_sk);
+  cert_pkey->chain = std::move(certs_sk);
   cert->cert_private_key_idx = idx;
   return 1;
 }
@@ -952,21 +961,100 @@ BSSL_NAMESPACE_END
 
 using namespace bssl;
 
+static int cert_array_to_stack(CRYPTO_BUFFER *const *from,
+                              UniquePtr<STACK_OF(CRYPTO_BUFFER)> *to,
+                              size_t num_certs) {
+  for (size_t i = 0; i < num_certs; i++) {
+    if (!PushToStack(to->get(), UpRef(from[i]))) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
                           size_t num_certs, EVP_PKEY *privkey,
                           const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   if (!ssl->config) {
     return 0;
   }
-  return cert_set_chain_and_key(ssl->config->cert.get(), certs, num_certs,
-                                privkey, privkey_method);
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> crypto_certs(sk_CRYPTO_BUFFER_new_null());
+  if (!cert_array_to_stack(certs, &crypto_certs, num_certs)) {
+    return 0;
+  }
+  return cert_set_chain_and_key(ssl->config->cert.get(), &crypto_certs, num_certs,
+                                privkey, privkey_method, 1);
 }
 
 int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                               size_t num_certs, EVP_PKEY *privkey,
                               const SSL_PRIVATE_KEY_METHOD *privkey_method) {
-  return cert_set_chain_and_key(ctx->cert.get(), certs, num_certs, privkey,
-                                privkey_method);
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> crypto_certs(sk_CRYPTO_BUFFER_new_null());
+  if (!cert_array_to_stack(certs, &crypto_certs, num_certs)) {
+    return 0;
+  }
+  return cert_set_chain_and_key(ctx->cert.get(), &crypto_certs, num_certs, privkey,
+                                privkey_method, 1);
+}
+
+
+int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
+                             STACK_OF(X509) *chain, int override) {
+
+  if (privatekey == nullptr || x509 == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> leaf_and_chain(sk_CRYPTO_BUFFER_new_null());
+
+  // Convert leaf certificate (x509) to CRYPTO_BUFFER
+  uint8_t *buf = nullptr;
+  int cert_len = i2d_X509(x509, &buf);
+  if (cert_len <= 0) {
+    OPENSSL_free(buf);
+    return 0;
+  }
+
+  // Add leaf cert first to the chain
+  UniquePtr<CRYPTO_BUFFER> leaf_buf(CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+  OPENSSL_free(buf);
+  if (!leaf_buf ||
+      !PushToStack(leaf_and_chain.get(), std::move(leaf_buf))) {
+    return 0;
+  }
+
+  // Convert other chain certificates to CRYPTO_BUFFER objects
+  if (chain != nullptr) {
+    for (size_t i = 0; i < sk_X509_num(chain); i++) {
+      buf = nullptr;
+      cert_len = i2d_X509(sk_X509_value(chain, i), &buf);
+      if (cert_len <= 0) {
+        OPENSSL_free(buf);
+        return 0;
+      }
+
+      UniquePtr<CRYPTO_BUFFER> chain_buf(CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+      OPENSSL_free(buf);
+      if (!chain_buf ||
+          !PushToStack(leaf_and_chain.get(), std::move(chain_buf))) {
+        return 0;
+      }
+    }
+  }
+
+  // Call SSL_CTX_set_chain_and_key to set the chain and key
+  if (!cert_set_chain_and_key(ctx->cert.get(), &leaf_and_chain,
+                              sk_CRYPTO_BUFFER_num(leaf_and_chain.get()),
+                              privatekey, nullptr, override)) {
+    return 0;
+  }
+
+  // Store a reference to the passed in |x509| leaf object
+  int idx = ssl_get_certificate_slot_index(privatekey);
+  X509_up_ref(x509);
+  ctx->cert->cert_private_keys[idx].x509_leaf = x509;
+
+  return 1;
 }
 
 void SSL_certs_clear(SSL *ssl) {
