@@ -292,6 +292,7 @@ static int cert_set_chain_and_key(
       return 0;
     case leaf_cert_and_privkey_mismatch:
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
       return 0;
     case leaf_cert_and_privkey_ok:
       break;
@@ -978,7 +979,7 @@ int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
     return 0;
   }
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> crypto_certs(sk_CRYPTO_BUFFER_new_null());
-  if (cert_array_to_stack(certs, &crypto_certs, num_certs)) {
+  if (!cert_array_to_stack(certs, &crypto_certs, num_certs)) {
     return 0;
   }
   return cert_set_chain_and_key(ssl->config->cert.get(), &crypto_certs, num_certs,
@@ -989,7 +990,7 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                               size_t num_certs, EVP_PKEY *privkey,
                               const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> crypto_certs(sk_CRYPTO_BUFFER_new_null());
-  if (cert_array_to_stack(certs, &crypto_certs, num_certs)) {
+  if (!cert_array_to_stack(certs, &crypto_certs, num_certs)) {
     return 0;
   }
   return cert_set_chain_and_key(ctx->cert.get(), &crypto_certs, num_certs, privkey,
