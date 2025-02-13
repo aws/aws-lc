@@ -17,7 +17,9 @@ static const argument_t kArguments[] = {
     {"-untrusted", kOptionalArgument,
      "A file of untrusted certificates to be used for chain building. The "
      "file should contain one or more certificates in PEM format."},
-    { "", kOptionalArgument, "" }};
+    {"-x509_strict", kBooleanArgument,
+     "This argument is a no-op. AWS-LC is always strict."},
+    {"", kOptionalArgument, ""}};
 
 // setup_verification_store sets up an X509 certificate store for verification.
 // It configures the store with file and directory lookups. It loads the
