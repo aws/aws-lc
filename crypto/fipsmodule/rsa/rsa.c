@@ -452,7 +452,6 @@ RSA_METHOD *RSA_meth_new(const char *name, int flags) {
   RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
 
   if (meth == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

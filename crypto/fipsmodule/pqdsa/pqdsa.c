@@ -133,7 +133,6 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   uint8_t *public_key = OPENSSL_malloc(pk_len);
 
   if (public_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

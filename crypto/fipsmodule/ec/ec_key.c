@@ -589,7 +589,6 @@ EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
 
   ret = OPENSSL_zalloc(sizeof(EC_KEY_METHOD));
   if(ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
