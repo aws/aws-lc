@@ -31,7 +31,8 @@
 extern "C" {
 #endif
 OPENSSL_EXPORT int ml_dsa_44_keypair(uint8_t *public_key,
-                                     uint8_t *secret_key);
+                                     uint8_t *secret_key,
+                                     uint8_t *seed);
 
 OPENSSL_EXPORT int ml_dsa_44_pack_pk_from_sk(uint8_t *public_key,
                                              const uint8_t *private_key);
@@ -96,7 +97,8 @@ OPENSSL_EXPORT int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key,
                                                    const uint8_t *pre, size_t pre_len);
 
 OPENSSL_EXPORT int ml_dsa_65_keypair(uint8_t *public_key,
-                                     uint8_t *secret_key);
+                                     uint8_t *secret_key,
+                                     uint8_t *seed);
 
 OPENSSL_EXPORT int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key,
                                              const uint8_t *private_key);
@@ -146,7 +148,8 @@ OPENSSL_EXPORT int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key,
                                                    const uint8_t *pre, size_t pre_len);
 
 OPENSSL_EXPORT int ml_dsa_87_keypair(uint8_t *public_key,
-                                     uint8_t *secret_key);
+                                     uint8_t *secret_key,
+                                     uint8_t *seed);
 
 OPENSSL_EXPORT int ml_dsa_87_pack_pk_from_sk(uint8_t *public_key,
                                              const uint8_t *private_key);

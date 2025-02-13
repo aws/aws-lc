@@ -1111,6 +1111,7 @@ struct PQDSATestVector {
   const size_t public_key_len;
   const size_t private_key_len;
   const size_t signature_len;
+  const size_t seed_len;
   const char *kat_filename;
   const uint8_t *kPublicKey;
   const uint8_t *kPublicKeySPKI;
@@ -1163,6 +1164,7 @@ static const struct PQDSATestVector parameterSet[] = {
     1312,
     2560,
     2420,
+    32,
     "ml_dsa/kat/MLDSA_44_hedged_pure.txt",
     mldsa44kPublicKey,
     mldsa44kPublicKeySPKI,
@@ -1180,6 +1182,7 @@ static const struct PQDSATestVector parameterSet[] = {
     1952,
     4032,
     3309,
+    32,
     "ml_dsa/kat/MLDSA_65_hedged_pure.txt",
     mldsa65kPublicKey,
     mldsa65kPublicKeySPKI,
@@ -1197,6 +1200,7 @@ static const struct PQDSATestVector parameterSet[] = {
     2592,
     4896,
     4627,
+    32,
     "ml_dsa/kat/MLDSA_87_hedged_pure.txt",
     mldsa87kPublicKey,
     mldsa87kPublicKeySPKI,
@@ -1462,12 +1466,27 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_NE(private_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_NE(private_pkey->pkey.pqdsa_key->private_key, nullptr);
 
-  // ---- 5. Test get_raw public/private failure modes ----
-  uint8_t *buf = nullptr;
-  size_t buf_size;
+  // ---- 5. Test get_raw private key seeds ----
+  size_t seed_len = GetParam().seed_len;
+  std::vector<uint8_t> seed(seed_len);
+
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), seed.data(), &seed_len));
+  EXPECT_EQ(seed_len, GetParam().seed_len);
+
+  // expand the seed back into a PKEY and check correctness with original pkey
+  bssl::UniquePtr<EVP_PKEY> seeded_pkey(
+    EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, seed.data(), seed.size()));
+
+  ASSERT_NE(seeded_pkey, nullptr);
+  EXPECT_NE(seeded_pkey->pkey.pqdsa_key->public_key, nullptr);
+  EXPECT_NE(seeded_pkey->pkey.pqdsa_key->private_key, nullptr);
+  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), seeded_pkey.get()));
+
+  // ---- 6. Test get_raw public/private failure modes ----
+  std::vector<uint8_t> get_sk(sk_len);
 
   // Attempting to get a private key that is not present must fail correctly
-  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(public_pkey.get(), buf, &buf_size));
+  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(public_pkey.get(), get_sk.data(), &sk_len));
   GET_ERR_AND_CHECK_REASON(EVP_R_NOT_A_PRIVATE_KEY);
 
   // Null PKEY must fail correctly.
@@ -1496,7 +1515,7 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
   GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
 
-  // ---- 6. Test new_raw public/private failure modes  ----
+  // ---- 7. Test new_raw public/private failure modes  ----
   // Invalid lengths
   pk_len = GetParam().public_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, pk.data(), pk_len));
@@ -1575,6 +1594,109 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
 
   EXPECT_EQ(Bytes(priv_pkey_from_der->pkey.pqdsa_key->public_key, GetParam().public_key_len),
             Bytes(pkey->pkey.pqdsa_key->public_key, GetParam().public_key_len));
+}
+
+// Helper function that:
+// 1. Creates a memory BIO
+// 2. Writes the provided DER data to BIO in PEM format
+// 3. Determines resulting PEM size and allocates buffer
+// 4. Reads PEM data into output buffer
+// 5. Returns the PEM string and length via out parameters
+static bool DER_to_PEM(const uint8_t* der, size_t der_len,
+                      char** out_pem, size_t* out_pem_len) {
+  // Create memory BIO for writing
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  if (!bio) {
+    return false;
+  }
+
+  // Write PEM
+  if (!PEM_write_bio(bio.get(), "PRIVATE KEY", "", der, der_len)) {
+    return false;
+  }
+
+  // Get PEM size
+  *out_pem_len = BIO_pending(bio.get());
+
+  // Allocate buffer for PEM
+  *out_pem = (char*)OPENSSL_malloc(*out_pem_len + 1);
+  if (!*out_pem) {
+    return false;
+  }
+
+  // Read PEM into buffer
+  if (BIO_read(bio.get(), *out_pem, *out_pem_len) <= 0) {
+    OPENSSL_free(*out_pem);
+    *out_pem = nullptr;
+    return false;
+  }
+  (*out_pem)[*out_pem_len] = '\0';
+
+  return true;
+}
+
+TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
+  // ---- 1. Setup phase: generate a key ----
+  int nid = GetParam().nid;
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
+
+  bssl::ScopedCBB cbb;
+  uint8_t *der;
+  size_t der_len;
+
+  // ---- 2. Test encode (marshal) of private key ----
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key_v2(cbb.get(), pkey.get()));
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+
+  // ---- 3. Test parse (unmarshal) of private key ----
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(parsed_key);
+  ASSERT_TRUE(CBS_len(&cbs) == 0);
+
+  // ---- 4. Verify the parsed key matches the original ----
+  // Compare key parameters
+  ASSERT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_id(parsed_key.get()));
+  ASSERT_EQ(1, EVP_PKEY_cmp(pkey.get(), parsed_key.get()));
+
+  // ---- 5. generate from known seed and compare wth known value ----
+
+  static const uint8_t KnownSeed[32] = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+      0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
+  };
+
+  // Create PKEY from the generated raw key
+  bssl::UniquePtr<EVP_PKEY> seeded_pkey(
+      EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, KnownSeed, sizeof(KnownSeed)));
+  ASSERT_TRUE(seeded_pkey);
+
+  //buffer for DER
+  bssl::ScopedCBB cbb1;
+  uint8_t *der1;
+  size_t der1_len;
+
+  // encode private key
+  ASSERT_TRUE(CBB_init(cbb1.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key_v2(cbb1.get(), seeded_pkey.get()));
+  ASSERT_TRUE(CBB_finish(cbb1.get(), &der1, &der1_len));
+
+  char* pem = nullptr;
+  size_t pem_len = 0;
+  DER_to_PEM(der1, der1_len, &pem, &pem_len);
+
+  // compare exact bytes between PEM encoding from standard, with PEM produced
+  // from KnownSeed
+  EXPECT_EQ(Bytes(pem, pem_len), Bytes(GetParam().private_pem_str, pem_len));
+  OPENSSL_free(der);
+  OPENSSL_free(der1);
+  OPENSSL_free(pem);
+
+  //TODO get priv_raw for seed mode (based on input size)
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
@@ -1780,7 +1902,7 @@ TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
   // ---- 3. Generate a raw public key from the raw private key ----
   ASSERT_TRUE(GetParam().pack_key(pk.data(), sk.data()));
 
-  // ---- 4. Generate a raw public key from the raw private key ----
+  // ---- 4. Test that the calculated pk is equal to original pkey ----
   CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
 }
 
