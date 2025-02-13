@@ -39,7 +39,6 @@ jobs:
         os:
           - "macos-14-large"
           - "macos-13-large"
-          - "macos-12-large"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -59,7 +58,6 @@ jobs:
         os:
           - "macos-14-large"
           - "macos-13-large"
-          - "macos-12-large"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
