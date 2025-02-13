@@ -34,6 +34,7 @@ static void PQDSA_KEY_clear(PQDSA_KEY *key) {
   key->pqdsa = NULL;
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->private_key);
+  OPENSSL_free(key->seed);
   key->public_key = NULL;
   key->private_key = NULL;
   key->seed = NULL;
@@ -104,7 +105,7 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
   }
 
   uint8_t *seed = OPENSSL_malloc(key->pqdsa->keygen_seed_len);
-  if (private_key == NULL) {
+  if (seed == NULL) {
     OPENSSL_free(seed);
     return 0;
   }

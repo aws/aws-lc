@@ -1695,8 +1695,6 @@ TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
   OPENSSL_free(der);
   OPENSSL_free(der1);
   OPENSSL_free(pem);
-
-  //TODO get priv_raw for seed mode (based on input size)
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
