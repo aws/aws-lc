@@ -6,6 +6,8 @@
 #include <openssl/rsa.h>
 #include "internal.h"
 #include <ctime>
+#include <algorithm>
+#include <string>
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
@@ -41,6 +43,14 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
   return true;
 }
 
+static bool isUpperCaseEqual(char a, char b) {
+  return std::toupper(a) ==  std::toupper(b);
+}
+
+static bool isUpperCaseStringsEqual(const std::string &a, const std::string &b) {
+  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isUpperCaseEqual);
+}
+
 bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path) {
   ScopedFILE signkey_file(fopen(signkey_path.c_str(), "rb"));
   if (!signkey_file) {
@@ -69,7 +79,9 @@ bool IsNumeric(const std::string& str) {
 // Map arguments using tool/args.cc
 bool X509Tool(const args_list_t &args) {
   args_map_t parsed_args;
-  if (!ParseKeyValueArguments(&parsed_args, args, kArguments)) {
+  args_list_t extra_args;
+  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
@@ -151,8 +163,7 @@ bool X509Tool(const args_list_t &args) {
 
   // Check -inform has a valid value
   if(!inform.empty()) {
-    if (inform != "DER" && inform != "PEM") {
-      fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
+    if (!isUpperCaseStringsEqual(inform, "DER") && !isUpperCaseStringsEqual(inform, "PEM")) {
       return false;
     }
   }
@@ -171,7 +182,7 @@ bool X509Tool(const args_list_t &args) {
 
   if (req) {
     bssl::UniquePtr<X509_REQ> csr;
-    if (!inform.empty() && inform == "DER") {
+    if (!inform.empty() && isUpperCaseStringsEqual(inform, "DER")) {
       csr.reset(d2i_X509_REQ_fp(in_file.get(), nullptr));
     } else {
       csr.reset(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
@@ -230,7 +241,7 @@ bool X509Tool(const args_list_t &args) {
   } else {
     // Parse x509 certificate from input file
     bssl::UniquePtr<X509> x509;
-    if (!inform.empty() && inform == "DER") {
+    if (!inform.empty() && isUpperCaseStringsEqual(inform, "DER")) {
       x509.reset(d2i_X509_fp(in_file.get(), nullptr));
     } else {
       x509.reset(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
