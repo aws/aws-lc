@@ -697,7 +697,7 @@ const SSL_CIPHER *ssl_choose_tls13_cipher(
     const SSL_CIPHER *client_cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
     const SSL_CIPHER *candidate = nullptr;
     if (tls13_ciphers != nullptr) {
-      // Limit to customized TLS 1.3 ciphers if configured.
+      // Limit to configured TLS 1.3 ciphers
       for (size_t j = 0; j < sk_SSL_CIPHER_num(tls13_ciphers); j++) {
         const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(tls13_ciphers, j);
         if (cipher != nullptr && cipher->id == client_cipher->id) {
@@ -705,9 +705,6 @@ const SSL_CIPHER *ssl_choose_tls13_cipher(
           break;
         }
       }
-    } else {
-      // Limit to TLS 1.3 ciphers we know about.
-      candidate = client_cipher;
     }
     if (candidate == nullptr ||
         SSL_CIPHER_get_min_version(candidate) > version ||

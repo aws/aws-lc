@@ -1690,23 +1690,27 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
 //
-// TLS 1.3 ciphers do not participate in this mechanism and instead have a
-// built-in preference order. Functions to set cipher lists do not affect TLS
-// 1.3, and functions to query the cipher list do not include TLS 1.3
-// ciphers.
+// Note: TLS 1.3 ciphersuites are only configurable via
+// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
+// no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
 #define SSL_DEFAULT_CIPHER_LIST "ALL"
 
+
 // SSL_CTX_set_strict_cipher_list configures the cipher list for |ctx|,
 // evaluating |str| as a cipher string and returning error if |str| contains
-// anything meaningless. It returns one on success and zero on failure.
+// anything meaningless. It updates |ctx->cipher_list| with any values in
+// |ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
                                                   const char *str);
 
 // SSL_CTX_set_cipher_list configures the cipher list for |ctx|, evaluating
-// |str| as a cipher string. It returns one on success and zero on failure.
+// |str| as a cipher string. It updates |ctx->cipher_list| with any values in
+// |ctx->tls13_cipher_list|. It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_CTX_set_strict_cipher_list|. This function tolerates
 // garbage inputs, unless an empty cipher list results. However, an empty
@@ -1720,24 +1724,34 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set_strict_cipher_list configures the cipher list for |ssl|, evaluating
 // |str| as a cipher string and returning error if |str| contains anything
-// meaningless. It returns one on success and zero on failure.
+// meaningless.
+// It updates the cipher list |ssl->config->cipher_list| with any configured
+// TLS 1.3 cipher suites by first checking |ssl->config->tls13_cipher_list| and
+// otherwise falling back to |ssl->ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 
-// SSL_CTX_set_ciphersuites configure the available TLSv1.3 ciphersuites for
-// |ctx|, evaluating |str| as a cipher string. It returns one on success and
+// SSL_CTX_set_ciphersuites configures the available TLSv1.3 ciphersuites on
+// |ctx|, evaluating |str| as a cipher string. It updates |ctx->cipher_list|
+// with any values in |ctx->tls13_cipher_list|. It returns one on success and
 // zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
-// SSL_set_ciphersuites sets the available TLSv1.3 ciphersuites on an |ssl|,
-// returning one on success and zero on failure. In OpenSSL, the only
-// difference between |SSL_CTX_set_ciphersuites| and |SSL_set_ciphersuites| is
-// that the latter copies the |SSL|'s |cipher_list| to its associated
-// |SSL_CONNECTION|. In AWS-LC, we track everything on the |ssl|'s |config| so
-// duplication is not necessary.
+// SSL_set_ciphersuites configures the available TLSv1.3 ciphersuites on
+// |ssl|, evaluating |str| as a cipher string. It updates
+// |ssl->config->cipher_list| with any values in
+// |ssl->config->tls13_cipher_list|. It returns one on success and zero on
+// failure.
 OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
-// a cipher string. It returns one on success and zero on failure.
+// a cipher string. It updates the cipher list |ssl->config->cipher_list| with
+// any configured TLS 1.3 cipher suites by first checking
+// |ssl->config->tls13_cipher_list| and otherwise falling back to
+// |ssl->ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_set_strict_cipher_list|. This function tolerates garbage
 // inputs, unless an empty cipher list results. However, an empty string which
@@ -1746,7 +1760,7 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
 
 // SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
-// preference.
+// preference. This includes TLS 1.3 and 1.2 and below cipher suites.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
 
 // SSL_CTX_cipher_in_group returns one if the |i|th cipher (see
@@ -1755,6 +1769,7 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i);
 
 // SSL_get_ciphers returns the cipher list for |ssl|, in order of preference.
+// This includes TLS 1.3 and 1.2 and below cipher suites.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 
