@@ -13,7 +13,8 @@ extern "C" {
 // PQDSA_METHOD structure and helper functions.
 typedef struct {
   int (*pqdsa_keygen)(uint8_t *public_key,
-                      uint8_t *private_key);
+                      uint8_t *private_key,
+                      uint8_t *keygen_seed);
 
   int (*pqdsa_keygen_internal)(uint8_t *public_key,
                              uint8_t *private_key,
@@ -70,6 +71,7 @@ struct pqdsa_key_st {
   const PQDSA *pqdsa;
   uint8_t *public_key;
   uint8_t *private_key;
+  uint8_t *seed;
 };
 
 int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa);
