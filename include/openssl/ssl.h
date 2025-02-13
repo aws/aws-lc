@@ -166,24 +166,6 @@ struct timeval;
 extern "C" {
 #endif
 
-#if defined(__cplusplus)
-// enums can be predeclared, but only in C++ and only if given an explicit type.
-// C doesn't support setting an explicit type for enums thus a #define is used
-// to do this only for C++. However, the ABI type between C and C++ need to have
-// equal sizes, which is confirmed in a unittest.
-#define BORINGSSL_ENUM_INT : int
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT;
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT;
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
-enum ssl_verify_result_t BORINGSSL_ENUM_INT;
-#else
-#define BORINGSSL_ENUM_INT
-#endif
-
 
 // SSL implementation.
 
@@ -1384,7 +1366,7 @@ OPENSSL_EXPORT void *SSL_CTX_get_default_passwd_cb_userdata(const SSL_CTX *ctx);
 
 // Custom private keys.
 
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT {
+enum ssl_private_key_result_t {
   ssl_private_key_success,
   ssl_private_key_retry,
   ssl_private_key_failure,
@@ -2563,7 +2545,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 
 // ssl_ticket_aead_result_t enumerates the possible results from decrypting a
 // ticket with an |SSL_TICKET_AEAD_METHOD|.
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT {
+enum ssl_ticket_aead_result_t {
   // ssl_ticket_aead_success indicates that the ticket was successfully
   // decrypted.
   ssl_ticket_aead_success,
@@ -2904,7 +2886,7 @@ OPENSSL_EXPORT void SSL_set_verify(SSL *ssl, int mode,
                                    int (*callback)(int ok,
                                                    X509_STORE_CTX *store_ctx));
 
-enum ssl_verify_result_t BORINGSSL_ENUM_INT {
+enum ssl_verify_result_t {
   ssl_verify_ok,
   ssl_verify_invalid,
   ssl_verify_retry,
@@ -3840,7 +3822,7 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT {
+enum ssl_encryption_level_t {
   ssl_encryption_initial = 0,
   ssl_encryption_early_data,
   ssl_encryption_handshake,
@@ -4111,7 +4093,7 @@ OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 // An ssl_early_data_reason_t describes why 0-RTT was accepted or rejected.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
+enum ssl_early_data_reason_t {
   // The handshake has not progressed far enough for the 0-RTT status to be
   // known.
   ssl_early_data_unknown = 0,
@@ -4658,7 +4640,7 @@ OPENSSL_EXPORT void SSL_CTX_set_current_time_cb(
 // such as HTTP/1.1, and not others, such as HTTP/2.
 OPENSSL_EXPORT void SSL_set_shed_handshake_config(SSL *ssl, int enable);
 
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
+enum ssl_renegotiate_mode_t {
   ssl_renegotiate_never = 0,
   ssl_renegotiate_once,
   ssl_renegotiate_freely,
@@ -4795,7 +4777,7 @@ struct ssl_early_callback_ctx {
 
 // ssl_select_cert_result_t enumerates the possible results from selecting a
 // certificate with |select_certificate_cb|.
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT {
+enum ssl_select_cert_result_t {
   // ssl_select_cert_success indicates that the certificate selection was
   // successful.
   ssl_select_cert_success = 1,
