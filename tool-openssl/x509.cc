@@ -43,12 +43,12 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
   return true;
 }
 
-static bool isUpperCaseEqual(char a, char b) {
-  return std::toupper(a) ==  std::toupper(b);
+static bool isCharUpperCaseEqual(char a, char b) {
+  return ::toupper(a) ==  ::toupper(b);
 }
 
-static bool isUpperCaseStringsEqual(const std::string &a, const std::string &b) {
-  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isUpperCaseEqual);
+static bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
+  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
 }
 
 bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path) {
@@ -163,7 +163,7 @@ bool X509Tool(const args_list_t &args) {
 
   // Check -inform has a valid value
   if(!inform.empty()) {
-    if (!isUpperCaseStringsEqual(inform, "DER") && !isUpperCaseStringsEqual(inform, "PEM")) {
+    if (!isStringUpperCaseEqual(inform, "DER") && !isStringUpperCaseEqual(inform, "PEM")) {
       return false;
     }
   }
@@ -182,7 +182,7 @@ bool X509Tool(const args_list_t &args) {
 
   if (req) {
     bssl::UniquePtr<X509_REQ> csr;
-    if (!inform.empty() && isUpperCaseStringsEqual(inform, "DER")) {
+    if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
       csr.reset(d2i_X509_REQ_fp(in_file.get(), nullptr));
     } else {
       csr.reset(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
@@ -241,7 +241,7 @@ bool X509Tool(const args_list_t &args) {
   } else {
     // Parse x509 certificate from input file
     bssl::UniquePtr<X509> x509;
-    if (!inform.empty() && isUpperCaseStringsEqual(inform, "DER")) {
+    if (!inform.empty() && isStringUpperCaseEqual(inform, "DER")) {
       x509.reset(d2i_X509_fp(in_file.get(), nullptr));
     } else {
       x509.reset(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
