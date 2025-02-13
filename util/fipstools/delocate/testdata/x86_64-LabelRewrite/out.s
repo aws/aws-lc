@@ -51,6 +51,13 @@ x25519_foo:
 	movq $0, %rax
 	ret
 
+	.type ROL64, @function
+	.globl ROL64
+.LROL64_local_target:
+ROL64:
+	movq $0, %rax
+	ret
+
 .Lbar_local_target:
 bar:
 	# References to globals must be rewritten to their local targets.
@@ -67,6 +74,10 @@ bar:
 	# matched as global symbols and rewritten to the corresponding local target.
 # WAS call x25519_foo
 	call	.Lx25519_foo_local_target
+
+	# Refernces potentially matching arm instructions e.g. arm rol, and label ROL64
+# WAS callq ROL64
+	callq	.LROL64_local_target
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 # WAS call memcpy@PLT
