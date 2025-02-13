@@ -1262,13 +1262,13 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
 // If the override argument is 0, then |x509|, |privatekey|, and |chain| are
 // set only if all were not previously set. If override is non-0, then the
 // certificate, private key and chain certs are always set. |privatekey| and
-// |x509| are not copied or duplicated, their reference count is increased
-// incremented. In OpenSSL, a shallow copy of |chain| is stored with a
-// reference count increment for all X509 objects in the chain. In AWS-LC,
-// we represent X509 chains as CRYPTO_BUFFER stack. Therefore, we create a
+// |x509| are not copied or duplicated, their reference count is incremented.
+// In OpenSSL, a shallow copy of |chain| is stored with a reference count
+// increment for all X509 objects in the chain. In AWS-LC,
+// we represent X509 chains as a CRYPTO_BUFFER stack. Therefore, we create a
 // an internal copy and leave the |chain| parameter untouched. This means,
-// changes after this function to |chain| will not update in |ctx|.
-
+// changes to |chain| after this function is called will not update in |ctx|.
+//
 // Returns one on success and zero on error.
 OPENSSL_EXPORT int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509,
                                             EVP_PKEY *privatekey,

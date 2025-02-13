@@ -117,7 +117,6 @@
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
-#include <vector>
 
 #include <utility>
 
@@ -961,6 +960,17 @@ BSSL_NAMESPACE_END
 
 using namespace bssl;
 
+static int cert_array_to_stack(CRYPTO_BUFFER *const *from,
+                              UniquePtr<STACK_OF(CRYPTO_BUFFER)> *to,
+                              size_t num_certs) {
+  for (size_t i = 0; i < num_certs; i++) {
+    if (!PushToStack(to->get(), UpRef(from[i]))) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
                           size_t num_certs, EVP_PKEY *privkey,
                           const SSL_PRIVATE_KEY_METHOD *privkey_method) {
@@ -968,8 +978,8 @@ int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
     return 0;
   }
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> crypto_certs(sk_CRYPTO_BUFFER_new_null());
-  for (size_t i = 0; i < num_certs; i++) {
-    PushToStack(crypto_certs.get(), UpRef(certs[i]));
+  if (cert_array_to_stack(certs, &crypto_certs, num_certs)) {
+    return 0;
   }
   return cert_set_chain_and_key(ssl->config->cert.get(), &crypto_certs, num_certs,
                                 privkey, privkey_method, 1);
@@ -979,8 +989,8 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                               size_t num_certs, EVP_PKEY *privkey,
                               const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> crypto_certs(sk_CRYPTO_BUFFER_new_null());
-  for (size_t i = 0; i < num_certs; i++) {
-    PushToStack(crypto_certs.get(), UpRef(certs[i]));
+  if (cert_array_to_stack(certs, &crypto_certs, num_certs)) {
+    return 0;
   }
   return cert_set_chain_and_key(ctx->cert.get(), &crypto_certs, num_certs, privkey,
                                 privkey_method, 1);
@@ -1004,16 +1014,15 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
     return 0;
   }
 
-  // Convert |x509| to type |CRYPTO_BUFFER| and add as first cert in chain
+  // Add leaf cert first to the chain
   UniquePtr<CRYPTO_BUFFER> leaf_buf(CRYPTO_BUFFER_new(buf, cert_len, nullptr));
-
   OPENSSL_free(buf);
   if (!leaf_buf ||
       !PushToStack(leaf_and_chain.get(), std::move(leaf_buf))) {
     return 0;
   }
 
-  // Convert chain certificates to CRYPTO_BUFFER objects
+  // Convert other chain certificates to CRYPTO_BUFFER objects
   if (chain != nullptr) {
     for (size_t i = 0; i < sk_X509_num(chain); i++) {
       buf = nullptr;
@@ -1032,21 +1041,20 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
     }
   }
 
-  // Call SSL_CTX_set_chain_and_key with our vector
+  // Call SSL_CTX_set_chain_and_key to set the chain and key
   if (!cert_set_chain_and_key(ctx->cert.get(), &leaf_and_chain,
                               sk_CRYPTO_BUFFER_num(leaf_and_chain.get()),
                               privatekey, nullptr, override)) {
     return 0;
   }
 
-  // Store a reference to the passed in |x509| object
+  // Store a reference to the passed in |x509| leaf object
   int idx = ssl_get_certificate_slot_index(privatekey);
   X509_up_ref(x509);
   ctx->cert->cert_private_keys[idx].x509_leaf = x509;
 
   return 1;
 }
-
 
 void SSL_certs_clear(SSL *ssl) {
   if (!ssl->config) {
