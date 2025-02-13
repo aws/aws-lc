@@ -26,8 +26,12 @@ static int ml_dsa_keypair_pct(ml_dsa_params *params,
                               uint8_t *pk,
                               uint8_t *sk) {
   uint8_t signature[MLDSA87_SIGNATURE_BYTES];
-  ml_dsa_sign(params, signature, &params->bytes, NULL, 0, NULL, 0, sk);
-  return ml_dsa_verify(params, signature, params->bytes, NULL, 0, NULL, 0, pk) == 0;
+  uint8_t empty_msg[1] = {0};
+  int ret = ml_dsa_sign(params, signature, &params->bytes, empty_msg, 0, NULL, 0, sk);
+  if (ret < 0) {
+    return 0;
+  }
+  return ml_dsa_verify(params, signature, params->bytes, empty_msg, 0, NULL, 0, pk) == 0;
 }
 #endif
 

@@ -91,11 +91,13 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
 
   //allocate buffers to store key pair
   uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
-  uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  if (public_key == NULL) {
+    return 0;
+  }
 
-  // check buffers are allocated
-  if (public_key == NULL || private_key == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+  uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  if (private_key == NULL) {
+    OPENSSL_free(public_key);
     return 0;
   }
 
@@ -131,7 +133,6 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   uint8_t *public_key = OPENSSL_malloc(pk_len);
 
   if (public_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
