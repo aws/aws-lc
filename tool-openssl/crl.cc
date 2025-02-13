@@ -17,7 +17,9 @@ static const argument_t kArguments[] = {
 
 bool CRLTool(const args_list_t &args) {
   args_map_t parsed_args;
-  if (!ParseKeyValueArguments(&parsed_args, args, kArguments)) {
+  args_list_t extra_args;
+  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }

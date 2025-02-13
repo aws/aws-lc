@@ -53,7 +53,10 @@ bool Rand(const std::vector<std::string> &args) {
     }
 
     std::map<std::string, std::string> args_map;
-    if (!ParseKeyValueArguments(&args_map, args_copy, kArguments)) {
+    args_list_t extra_args;
+    if (!ParseKeyValueArguments(args_map, extra_args, args_copy,
+                                kArguments) ||
+        extra_args.size() > 0) {
       PrintUsage(kArguments);
       return false;
     }

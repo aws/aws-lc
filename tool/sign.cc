@@ -30,7 +30,9 @@ static const argument_t kArguments[] = {
 
 bool Sign(const args_list_t &args) {
   args_map_t args_map;
-  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+  args_list_t extra_args;
+  if (!ParseKeyValueArguments(args_map, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
