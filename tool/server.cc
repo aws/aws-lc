@@ -236,8 +236,10 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   std::map<std::string, std::string> args_map;
+  args_list_t extra_args;
 
-  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+  if (!ParseKeyValueArguments(args_map, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
