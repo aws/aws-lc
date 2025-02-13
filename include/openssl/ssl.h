@@ -1258,8 +1258,7 @@ OPENSSL_EXPORT int SSL_set_chain_and_key(
     SSL *ssl, CRYPTO_BUFFER *const *certs, size_t num_certs, EVP_PKEY *privkey,
     const SSL_PRIVATE_KEY_METHOD *privkey_method);
 
-
-// SSL_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
+// SSL_CTX_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
 // |SSL_set_chain_and_key|, unless they have been discarded. Reference counts
 // are not incremented by this call. The return value may be |NULL| if no chain
 // has been set.
@@ -1338,7 +1337,7 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
-// SSL_CTX_use_certificate_chain_file configures certificates for |ssl|. It
+// SSL_use_certificate_chain_file configures certificates for |ssl|. It
 // reads the contents of |file| as a PEM-encoded leaf certificate followed
 // optionally by the certificate chain to send to the peer. It returns one on
 // success and zero on failure.
@@ -2671,23 +2670,30 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
 
+// SSL_GROUP_SECP256R1_KYBER768_DRAFT00 is defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
 #define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
 
+// SSL_GROUP_X25519_KYBER768_DRAFT00 is defined at
 // https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
+// SSL_GROUP_SECP256R1_MLKEM768 is defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
 #define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
+
+// SSL_GROUP_X25519_MLKEM768 is defined at
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
 #define SSL_GROUP_X25519_MLKEM768    0x11EC
 
-// PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
-// community consensus and are defined at
+// The following PQ and hybrid group IDs are not yet standardized. Current IDs
+// are driven by community consensus and are defined at:
 // https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
 #define SSL_GROUP_KYBER512_R3 0x023A
 #define SSL_GROUP_KYBER768_R3 0x023C
 #define SSL_GROUP_KYBER1024_R3 0x023D
 
+// The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
 #define SSL_GROUP_MLKEM768  0x0768
 #define SSL_GROUP_MLKEM1024 0x1024
