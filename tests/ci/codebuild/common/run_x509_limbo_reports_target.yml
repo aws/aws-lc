@@ -1,0 +1,23 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+version: 0.2
+
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+
+phases:
+  install:
+    commands:
+      - nohup /usr/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 &
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+  build:
+    commands:
+      - "./${AWS_LC_CI_TARGET}"
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: x509-limbo-reports
+  name: x509-limbo/${CODEBUILD_WEBHOOK_TRIGGER:-$CODEBUILD_BUILD_ID}

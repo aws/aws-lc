@@ -74,6 +74,14 @@ class SHA3TestVector {
 
     ASSERT_EQ(Bytes(digest.get(), EVP_MD_size(algorithm)),
               Bytes(digest_.data(), EVP_MD_size(algorithm)));
+
+    // Test XOF-specific Digest functions with non XOF algorithms
+    // Assert failure when |EVP_DigestSqueeze| or |EVP_DigestFinalXOF|
+    // are called with digests different from XOF digests
+    ASSERT_TRUE(EVP_DigestInit(ctx.get(), algorithm));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(), msg_.size()));
+    ASSERT_FALSE(EVP_DigestSqueeze(ctx.get(), digest.get(), digest_length));
+    ASSERT_FALSE(EVP_DigestFinalXOF(ctx.get(), digest.get(), digest_length));
   }
 
   void NISTTestVectors_SingleShot(const EVP_MD *algorithm) const {

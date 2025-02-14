@@ -73,7 +73,7 @@ index 0000000..2305b42
 +
 +.PHONY: verify-aws-lc-source
 +verify-aws-lc-source:
-+	@if [ test -z "${AWS_LC_SRC_DIR}" ]; then \
++	@if [ -z "${AWS_LC_SRC_DIR}" ]; then \
 +		echo "AWS_LC_SRC_DIR environment variable is missing and is required to specify AWS-LC source location" && false; \
 +	fi
 +

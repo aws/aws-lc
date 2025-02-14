@@ -11,7 +11,7 @@ static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
   &x25519_pkey_meth,
   &dh_pkey_meth,
   &dsa_pkey_meth,
-  &pqdsa_pkey_meth
+  &ed25519ph_pkey_meth
 };
 
 const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
@@ -24,7 +24,8 @@ const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
   &pqdsa_asn1_meth,
   &kem_asn1_meth,
   &hmac_asn1_meth,
-  &dh_asn1_meth
+  &dh_asn1_meth,
+  &ed25519ph_asn1_meth
 };
 const size_t asn1_evp_pkey_methods_size = sizeof(asn1_evp_pkey_methods)/sizeof(asn1_evp_pkey_methods[0]);
 

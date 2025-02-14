@@ -207,6 +207,8 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 
 #define EVP_PKEY_CTRL_MD 1
 #define EVP_PKEY_CTRL_GET_MD 2
+#define EVP_PKEY_CTRL_SIGNING_CONTEXT 3
+#define EVP_PKEY_CTRL_GET_SIGNING_CONTEXT 4
 
 // EVP_PKEY_CTRL_PEER_KEY is called with different values of |p1|:
 //   0: Is called from |EVP_PKEY_derive_set_peer| and |p2| contains a peer key.
@@ -381,9 +383,9 @@ typedef struct {
 void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
-#define FIPS_EVP_PKEY_METHODS 7
+#define FIPS_EVP_PKEY_METHODS 8
 #define NON_FIPS_EVP_PKEY_METHODS 4
-#define ASN1_EVP_PKEY_METHODS 10
+#define ASN1_EVP_PKEY_METHODS 11
 
 struct fips_evp_pkey_methods {
   const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];
@@ -397,6 +399,12 @@ const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ed25519_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_kem_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_pqdsa_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_ed25519ph_pkey_meth(void);
+
+struct evp_pkey_ctx_signature_context_params_st {
+  const uint8_t *context;
+  size_t context_len;
+}; // EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS
 
 #if defined(__cplusplus)
 }  // extern C
