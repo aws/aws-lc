@@ -6689,15 +6689,15 @@ TEST(SSLTest, EmptyCipherList) {
   // Initially, the cipher list is not empty.
   EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites| works
-  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
-  EXPECT_EQ(0u, sk_SSL_CIPHER_num(ctx->tls13_cipher_list->ciphers.get()));
-  EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
-
   // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
   // succeeds.
   EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
-  // The cipher list is updated to empty.
+  // The cipher list should only be populated with default TLS 1.3 ciphersuites
+  EXPECT_EQ(3u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites| works
+  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(ctx->tls13_cipher_list->ciphers.get()));
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
   // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
