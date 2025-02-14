@@ -294,6 +294,13 @@ OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
                                       size_t len);
 
+// EVP_DigestSqueeze provides byte-wise streaming XOF output generation for 
+// XOF digests, writing |len| bytes of extended output to |out|. It can be 
+// called multiple times with arbitrary length |len| output requests.
+// It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_DigestSqueeze(EVP_MD_CTX *ctx, uint8_t *out,
+                                      size_t len);
+
 // EVP_MD_meth_get_flags calls |EVP_MD_flags|.
 OPENSSL_EXPORT uint32_t EVP_MD_meth_get_flags(const EVP_MD *md);
 
@@ -339,7 +346,7 @@ struct env_md_ctx_st {
   // |digest->update|. |digest->update| operates against |md_data| above, but
   // |HMAC_CTX| maintains its own data state in |HMAC_CTX->md_ctx|.
   // |HMAC_Update| also has an additional state transition to handle.
-  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+  int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   // pctx is an opaque (at this layer) pointer to additional context that
   // EVP_PKEY functions may store in this object.
