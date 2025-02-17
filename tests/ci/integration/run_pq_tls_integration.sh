@@ -15,16 +15,21 @@ S2N_BRANCH='main'
 S2N_TLS_SRC_FOLDER="${SCRATCH_FOLDER}/s2n-tls"
 S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
 
+BSSL_URL='https://github.com/google/boringssl.git'
+BSSL_BRANCH='main'
+BSSL_SRC_FOLDER="${SCRATCH_FOLDER}/boring-ssl"
+BSSL_BUILD_FOLDER="${SCRATCH_FOLDER}/boring-ssl-build"
+
 rm -rf "${SCRATCH_FOLDER:?}"
 mkdir -p "$SCRATCH_FOLDER"
 
 echo "build and install aws-lc"
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=OFF
 
-echo "clone s2n_tls"
+echo "clone s2n-tls"
 git clone --depth 1 --branch "$S2N_BRANCH" "$S2N_URL" "$S2N_TLS_SRC_FOLDER"
 
-echo "build s2n_tls with aws-lc"
+echo "build s2n-tls with aws-lc"
 cd "$S2N_TLS_SRC_FOLDER"
 cmake . "-B$S2N_TLS_BUILD_FOLDER" -GNinja \
   -DCMAKE_BUILD_TYPE=Release \
@@ -60,6 +65,51 @@ for GROUP in X25519MLKEM768 SecP256r1MLKEM768; do
   grep "libcrypto" "$S2N_TLS_BUILD_FOLDER"/s2nd_out | grep "AWS-LC"
   grep "CONNECTED" "$S2N_TLS_BUILD_FOLDER"/s2nd_out
   grep "KEM Group" "$S2N_TLS_BUILD_FOLDER"/s2nd_out | grep "$GROUP"
+done
+
+echo "clone boring-ssl"
+git clone --depth 1 --branch "$BSSL_BRANCH" "$BSSL_URL" "$BSSL_SRC_FOLDER"
+
+echo "build boring-ssl with aws-lc"
+cd "$BSSL_SRC_FOLDER"
+cmake . "-B$BSSL_BUILD_FOLDER" -GNinja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$AWS_LC_INSTALL_FOLDER"
+ninja -C "$BSSL_BUILD_FOLDER" -j "$NUM_CPU_THREADS"
+
+# BoringSSL supports only X25519MLKEM768 but not SecP256r1MLKEM768 for key exchange
+for GROUP in X25519MLKEM768; do
+  echo "TLS Handshake: aws-lc server (bssl) with boring-ssl client (bssl) for group $GROUP"
+  "$AWS_LC_BUILD_FOLDER"/tool/bssl s_server -curves $GROUP -accept 45000 -debug \
+    &> "$AWS_LC_BUILD_FOLDER"/s_server_out &
+  sleep 2 # to allow for the server to startup in the background thread
+  S_PID=$!
+  "$BSSL_BUILD_FOLDER"/tool/bssl s_client -curves $GROUP -connect localhost:45000 -debug \
+    &> "$BSSL_BUILD_FOLDER"/s_client_out &
+  wait $S_PID || true
+  cat "$AWS_LC_BUILD_FOLDER"/s_server_out
+  cat "$BSSL_BUILD_FOLDER"/s_client_out
+  grep "Connected" "$AWS_LC_BUILD_FOLDER"/s_server_out
+  grep "ECDHE group" "$AWS_LC_BUILD_FOLDER"/s_server_out | grep "$GROUP"
+  grep "Connected" "$BSSL_BUILD_FOLDER"/s_client_out
+  grep "ECDHE group" "$BSSL_BUILD_FOLDER"/s_client_out | grep "$GROUP"
+  grep "subject" "$BSSL_BUILD_FOLDER"/s_client_out | grep "BoringSSL"
+
+  echo "TLS Handshake: boring-ssl server (bssl) with aws-lc client (bssl) for group $GROUP"
+  "$BSSL_BUILD_FOLDER"/tool/bssl s_server -curves $GROUP -accept 45000 -debug \
+    &> "$BSSL_BUILD_FOLDER"/s_server_out &
+  sleep 2 # to allow for the server to startup in the background thread
+  S_PID=$!
+  "$AWS_LC_BUILD_FOLDER"/tool/bssl s_client -curves $GROUP -connect localhost:45000 -debug \
+    &> "$AWS_LC_BUILD_FOLDER"/s_client_out &
+  wait $S_PID || true
+  cat "$BSSL_BUILD_FOLDER"/s_server_out
+  cat "$AWS_LC_BUILD_FOLDER"/s_client_out
+  grep "Connected" "$BSSL_BUILD_FOLDER"/s_server_out
+  grep "ECDHE group" "$BSSL_BUILD_FOLDER"/s_server_out | grep "$GROUP"
+  grep "Connected" "$AWS_LC_BUILD_FOLDER"/s_client_out
+  grep "ECDHE group" "$AWS_LC_BUILD_FOLDER"/s_client_out | grep "$GROUP"
+  grep "subject" "$AWS_LC_BUILD_FOLDER"/s_client_out | grep "BoringSSL"
 done
 
 rm -rf "${SCRATCH_FOLDER:?}"
