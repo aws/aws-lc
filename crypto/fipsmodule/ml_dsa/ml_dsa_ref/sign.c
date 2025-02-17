@@ -25,13 +25,16 @@
 static int ml_dsa_keypair_pct(ml_dsa_params *params,
                               uint8_t *pk,
                               uint8_t *sk) {
+  uint8_t message[1] = {0};
   uint8_t signature[MLDSA87_SIGNATURE_BYTES];
-  uint8_t empty_msg[1] = {0};
-  int ret = ml_dsa_sign(params, signature, &params->bytes, empty_msg, 0, NULL, 0, sk);
+  int ret = ml_dsa_sign(params, signature, &params->bytes, message, sizeof(message), NULL, 0, sk);
   if (ret < 0) {
     return 0;
   }
-  return ml_dsa_verify(params, signature, params->bytes, empty_msg, 0, NULL, 0, pk) == 0;
+  if (boringssl_fips_break_test("MLDSA_PWCT")) {
+    message[0] = ~message[0];
+  }
+  return ml_dsa_verify(params, signature, params->bytes, message, sizeof(message), NULL, 0, pk) == 0;
 }
 #endif
 
