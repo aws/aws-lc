@@ -693,7 +693,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
           ctx->alpn_client_proto_list) ||
       !ssl->config->verify_sigalgs.CopyFrom(ctx->verify_sigalgs)) {
     return nullptr;
-      }
+  }
 
   if (ctx->cipher_list) {
     ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
