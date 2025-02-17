@@ -10,6 +10,12 @@ x25519_foo:
 	movq $0, %rax
 	ret
 
+	.type ROL64, @function
+	.globl ROL64
+ROL64:
+	movq $0, %rax
+	ret
+
 bar:
 	# References to globals must be rewritten to their local targets.
 	call foo
@@ -20,6 +26,9 @@ bar:
 	# References potentially matching arm registers e.g. 'x[0-9][0-9]' should be
 	# matched as global symbols and rewritten to the corresponding local target.
 	call x25519_foo
+
+	# Refernces potentially matching arm instructions e.g. arm rol, and label ROL64
+	callq ROL64
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 	call memcpy@PLT
