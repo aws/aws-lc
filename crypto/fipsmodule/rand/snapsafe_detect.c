@@ -24,13 +24,13 @@ DEFINE_BSS_GET(int, snapsafety_state)
 static void do_aws_snapsafe_init(void) {
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
   *sgc_addr_bss_get() = NULL;
+  if (stat(CRYPTO_get_sysgenid_path()) < 0) {
+    return;
+  }
 
+  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
   int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
-    if (errno == EACCES) {
-      return;
-    }
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
     return;
   }
 
