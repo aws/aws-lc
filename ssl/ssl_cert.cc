@@ -145,7 +145,7 @@ CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
 
 CERT::~CERT() { x509_method->cert_free(this); }
 
-static CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
+CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
   CRYPTO_BUFFER_up_ref(const_cast<CRYPTO_BUFFER *>(buffer));
   return const_cast<CRYPTO_BUFFER *>(buffer);
 }
@@ -296,15 +296,10 @@ static int cert_set_chain_and_key(
       break;
   }
 
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs_sk(sk_CRYPTO_BUFFER_new_null());
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs_sk(sk_CRYPTO_BUFFER_deep_copy(
+      certs->get(), buffer_up_ref, CRYPTO_BUFFER_free));
   if (!certs_sk) {
     return 0;
-  }
-
-  for (size_t i = 0; i < num_certs; i++) {
-    if (!PushToStack(certs_sk.get(), UpRef(sk_CRYPTO_BUFFER_value(certs->get(), i)))) {
-      return 0;
-    }
   }
 
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
