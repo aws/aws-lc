@@ -275,8 +275,7 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
 
 static int cert_set_chain_and_key(
     CERT *cert, UniquePtr<STACK_OF(CRYPTO_BUFFER)> *certs, size_t num_certs,
-    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method,
-    int override) {
+    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   if (num_certs == 0 || (privkey == NULL && privkey_method == NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -291,7 +290,6 @@ static int cert_set_chain_and_key(
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_AND_PRIVATE_KEY_MISMATCH);
       return 0;
     case leaf_cert_and_privkey_ok:
@@ -315,12 +313,8 @@ static int cert_set_chain_and_key(
 
   // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
   int idx = ssl_get_certificate_slot_index(privkey);
+  assert(idx >= 0);
   CERT_PKEY *cert_pkey = &cert->cert_private_keys[idx];
-  if (!override && (cert_pkey->privatekey != NULL ||
-      cert_pkey->x509_leaf != NULL ||
-      cert_pkey->chain != NULL)) {
-    return 0;
-  }
 
   // Update certificate slot index once all checks have passed.
   cert_pkey->privatekey = UpRef(privkey);
@@ -983,7 +977,7 @@ int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
     return 0;
   }
   return cert_set_chain_and_key(ssl->config->cert.get(), &crypto_certs, num_certs,
-                                privkey, privkey_method, 1);
+                                privkey, privkey_method);
 }
 
 int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
@@ -994,7 +988,7 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
     return 0;
   }
   return cert_set_chain_and_key(ctx->cert.get(), &crypto_certs, num_certs, privkey,
-                                privkey_method, 1);
+                                privkey_method);
 }
 
 
@@ -1005,6 +999,21 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
+
+  // Check override value
+  CERT *cert = ctx->cert.get();
+  int idx = ssl_get_certificate_slot_index(privatekey);
+  if (idx < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return 0;
+  }
+  CERT_PKEY *cert_pkey = &cert->cert_private_keys[idx];
+  if (!override && (cert_pkey->privatekey != NULL ||
+      cert_pkey->x509_leaf != NULL ||
+      cert_pkey->chain != NULL)) {
+    return 0;
+  }
+
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> leaf_and_chain(sk_CRYPTO_BUFFER_new_null());
 
   // Convert leaf certificate (x509) to CRYPTO_BUFFER
@@ -1043,14 +1052,12 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
   }
 
   // Call SSL_CTX_set_chain_and_key to set the chain and key
-  if (!cert_set_chain_and_key(ctx->cert.get(), &leaf_and_chain,
+  if (!cert_set_chain_and_key(cert, &leaf_and_chain,
                               sk_CRYPTO_BUFFER_num(leaf_and_chain.get()),
-                              privatekey, nullptr, override)) {
+                              privatekey, nullptr)) {
     return 0;
   }
 
-  // Store a reference to the passed in |x509| leaf object
-  int idx = ssl_get_certificate_slot_index(privatekey);
   X509_up_ref(x509);
   ctx->cert->cert_private_keys[idx].x509_leaf = x509;
 
