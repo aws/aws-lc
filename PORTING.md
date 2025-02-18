@@ -307,15 +307,15 @@ OpenSSL offers the ENGINE API for implementing opaque private keys (i.e. private
 ## X.509 Certificate Auto-Chaining Disabled by Default
 TLS client or server certificates are loaded using `SSL_CTX_use_certificate_chain_file` or
 `SSL_use_certificate_chain_file`. The file must contain the leaf certificate, and may be followed by one or
-more CA certificates (chain certificates) used to establish the authentisticty of the leaf certificate.
+more CA certificates (chain certificates) used to establish the authenticity of the leaf certificate.
 
-By default AWS-LC does not perfom X.509 certificate auto-chaining when constructing the TLS client or server
+By default AWS-LC does not perform X.509 certificate auto-chaining when constructing the TLS client or server
 certificate to be sent over the TLS connection as part of a `Certificate` message frame. AWS-LC TLS
 client or server will only send the contents that were loaded by either `SSL_CTX_use_certificate_chain_file` or
-`SSL_use_certificate_chain_file`, that is to say the leaft and zero more CA chain certificates if provided.
+`SSL_use_certificate_chain_file`, that is to say the leaf and zero more CA chain certificates if provided.
 This differs from the default OpenSSL behavior, specifically when a single leaf certificate is provided without the
 accompanying chain. In such an instance OpenSSL will attempt to construct the chain of certificates from the configured
-trust store necessary to establish the authentisity of the leaf certificate, and will send that construct chain over the
+trust store necessary to establish the authenticity of the leaf certificate, and will send that construct chain over the
 wire.
 
 This behavior can be re-enabled in AWS-LC by clearing the `SSL_MODE_NO_AUTO_CHAIN` configuration flag.
