@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include "../delocate.h"
 
@@ -23,13 +22,7 @@ DEFINE_BSS_GET(volatile uint32_t *, sgc_addr)
 DEFINE_BSS_GET(int, snapsafety_state)
 
 static void do_aws_snapsafe_init(void) {
-  // *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
   *sgc_addr_bss_get() = NULL;
-  // struct stat fileData;
-  // if (stat(CRYPTO_get_sysgenid_path(), &fileData) < 0) {
-  //   return;
-  // }
-
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
   int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
