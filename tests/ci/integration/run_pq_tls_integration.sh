@@ -24,7 +24,8 @@ rm -rf "${SCRATCH_FOLDER:?}"
 mkdir -p "$SCRATCH_FOLDER"
 
 echo "build and install aws-lc"
-aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=OFF
+# Using Debug build as it uses the '-g' compiler flag with gcc without any optimization
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF
 
 echo "clone s2n-tls"
 git clone --depth 1 --branch "$S2N_BRANCH" "$S2N_URL" "$S2N_TLS_SRC_FOLDER"
@@ -32,9 +33,10 @@ git clone --depth 1 --branch "$S2N_BRANCH" "$S2N_URL" "$S2N_TLS_SRC_FOLDER"
 echo "build s2n-tls with aws-lc"
 cd "$S2N_TLS_SRC_FOLDER"
 cmake . "-B$S2N_TLS_BUILD_FOLDER" -GNinja \
-  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_BUILD_TYPE=Debug \
   -DCMAKE_PREFIX_PATH="$AWS_LC_INSTALL_FOLDER"
-ninja -C "$S2N_TLS_BUILD_FOLDER" -j "$NUM_CPU_THREADS"
+# Suppress stdout for build
+ninja -C "$S2N_TLS_BUILD_FOLDER" -j "$NUM_CPU_THREADS" > /dev/null
 
 for GROUP in X25519MLKEM768 SecP256r1MLKEM768; do
   echo "TLS Handshake: aws-lc server (bssl) with s2n-tls client (s2nc) for group $GROUP"
@@ -72,10 +74,13 @@ git clone --depth 1 --branch "$BSSL_BRANCH" "$BSSL_URL" "$BSSL_SRC_FOLDER"
 
 echo "build boring-ssl with aws-lc"
 cd "$BSSL_SRC_FOLDER"
-# BoringSSL build fails with -DCMAKE_BUILD_TYPE=Release, when built in ubuntu-22.04_gcc-12x container
-cmake . "-B$BSSL_BUILD_FOLDER" -GNinja \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo
-ninja -C "$BSSL_BUILD_FOLDER" -j "$NUM_CPU_THREADS"
+# BoringSSL build fails with -DCMAKE_BUILD_TYPE=Release, when built in x86 ubuntu-22.04_gcc-12x container.
+# Release builds use gcc optimization level 3 '-O3' which fails in the above linux container build.
+# Optimizations are not required for this test, and it increases build time as well.
+# Using Debug build that only uses the '-g' compiler flag with gcc without any optimization.
+cmake . "-B$BSSL_BUILD_FOLDER" -GNinja -DCMAKE_BUILD_TYPE=Debug
+# Suppress stdout for build
+ninja -C "$BSSL_BUILD_FOLDER" -j "$NUM_CPU_THREADS" >/dev/null
 
 # BoringSSL supports only X25519MLKEM768 but not SecP256r1MLKEM768 for key exchange
 for GROUP in X25519MLKEM768; do
