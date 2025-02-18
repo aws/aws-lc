@@ -24,7 +24,8 @@ DEFINE_BSS_GET(int, snapsafety_state)
 static void do_aws_snapsafe_init(void) {
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
   *sgc_addr_bss_get() = NULL;
-  if (stat(CRYPTO_get_sysgenid_path()) < 0) {
+  struct stat fileData;
+  if (stat(CRYPTO_get_sysgenid_path(), &fileData) < 0) {
     return;
   }
 
