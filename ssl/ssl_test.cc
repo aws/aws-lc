@@ -2853,6 +2853,8 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   STACK_OF(SSL_CIPHER) *server_ciphers = SSL_get_ciphers(server.get());
   ASSERT_TRUE(client_ciphers);
   ASSERT_TRUE(server_ciphers);
+  ASSERT_EQ(sk_SSL_CIPHER_num(client_ciphers), 2u);
+  ASSERT_EQ(sk_SSL_CIPHER_num(server_ciphers), 2u);
   const SSL_CIPHER *tls13_cipher = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
   const SSL_CIPHER *tls12_cipher = SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_128_SHA & 0xFFFF);
   ASSERT_TRUE(tls13_cipher);
