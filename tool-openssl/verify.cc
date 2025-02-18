@@ -105,14 +105,24 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
       return 0;
     }
     bssl::UniquePtr<BIO> chain_bio(BIO_new_fp(chain_file.get(), BIO_NOCLOSE));
+    size_t count = 0;
     while(1) {
       bssl::UniquePtr<X509> chain_cert(PEM_read_bio_X509(chain_bio.get(), NULL, NULL, NULL));
-      if(chain_cert.get() == nullptr) {
-        break;
+      if (chain_cert.get() == nullptr) {
+        uint32_t error = ERR_peek_last_error();
+        if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
+            ERR_GET_REASON(error) == PEM_R_NO_START_LINE && count > 0) {
+          ERR_clear_error();
+          break;
+        }
+        fprintf(stderr, "error %s: reading chain certificates failed\n",
+                chainfile);
+        return 0;
       }
       if(!sk_X509_push(chain.get(), chain_cert.release())) {
         return 0;
       }
+      count++;
     }
   }
 

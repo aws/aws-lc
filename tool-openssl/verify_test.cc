@@ -13,6 +13,7 @@ class VerifyTest : public ::testing::Test {
 protected:
     void SetUp() override {
       ASSERT_GT(createTempFILEpath(ca_path), 0u);
+      ASSERT_GT(createTempFILEpath(chain_path), 0u);
       ASSERT_GT(createTempFILEpath(in_path), 0u);
 
       bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
@@ -25,12 +26,18 @@ protected:
       ScopedFILE ca_file(fopen(ca_path, "wb"));
       ASSERT_TRUE(ca_file);
       ASSERT_TRUE(PEM_write_X509(ca_file.get(), x509.get()));
+
+      ScopedFILE chain_file(fopen(chain_path, "wb"));
+      ASSERT_TRUE(chain_file);
+      ASSERT_TRUE(PEM_write_X509(chain_file.get(), x509.get()));
     }
     void TearDown() override {
       RemoveFile(ca_path);
+      RemoveFile(chain_path);
       RemoveFile(in_path);
     }
     char ca_path[PATH_MAX];
+    char chain_path[PATH_MAX];
     char in_path[PATH_MAX];
 };
 
@@ -51,6 +58,19 @@ TEST_F(VerifyTest, VerifyTestSelfSignedCertWithoutCAfile) {
   ASSERT_FALSE(result);
 }
 
+// Test certificate with -untrusted
+TEST_F(VerifyTest, VerifyTestSelfSignedCertWithUntrustedChain) {
+  args_list_t args = {"-untrusted", chain_path, in_path};
+  bool result = VerifyTool(args);
+  ASSERT_FALSE(result);
+}
+
+// Test certificate with -untrusted and -CAfile
+TEST_F(VerifyTest, VerifyTestSelfSignedCertWithCAFileAndUntrustedChain) {
+  args_list_t args = {"-CAfile", ca_path, "-untrusted", chain_path, in_path};
+  bool result = VerifyTool(args);
+  ASSERT_TRUE(result);
+}
 
 // -------------------- Verify OpenSSL Comparison Tests --------------------------
 

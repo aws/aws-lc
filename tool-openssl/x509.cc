@@ -6,7 +6,6 @@
 #include <openssl/rsa.h>
 #include "internal.h"
 #include <ctime>
-#include <algorithm>
 #include <string>
 
 static const argument_t kArguments[] = {
@@ -164,6 +163,7 @@ bool X509Tool(const args_list_t &args) {
   // Check -inform has a valid value
   if(!inform.empty()) {
     if (!isStringUpperCaseEqual(inform, "DER") && !isStringUpperCaseEqual(inform, "PEM")) {
+      fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
       return false;
     }
   }
