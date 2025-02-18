@@ -10,36 +10,6 @@ concurrency:
 env:
   CC: gcc
 jobs:
-  nmap:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make gobject-introspection
-      - uses: actions/checkout@v3
-      - name: Run nmap build
-        run: |
-          ./tests/ci/integration/run_nmap_integration.sh
-  grpc:
-    if: github.repository_owner == 'aws'
-    env:
-      DEBIAN_FRONTEND: noninteractive
-      TZ: Etc/UTC
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:latest
-      options: --sysctl=net.ipv6.conf.all.disable_ipv6=0
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          apt-get -y --no-install-recommends install cmake gcc g++ ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev python3-six
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_grpc_integration.sh
   python-main:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -78,62 +48,6 @@ jobs:
         env:
           FIPS: ${{ matrix.fips }}
           AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
-  bind9:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-pytest autoconf pkg-config libcmocka-dev liburcu-dev libuv1-dev libnghttp2-dev libcap-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libjemalloc-dev
-      - uses: actions/checkout@v3
-      - name: Run bind9 build
-        run: |
-          ./tests/ci/integration/run_bind9_integration.sh
-  strongswan:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang make gperf bison flex autogen autoconf \
-          pkg-config libtool gettext libgmp-dev libsystemd-dev
-      - uses: actions/checkout@v4
-      - name: Run strongswan build
-        run: |
-          ./tests/ci/integration/run_strongswan_integration.sh
-  openvpn2-6:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev \
-          libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
-          python3-docutils
-      - uses: actions/checkout@v4
-      - name: Run openvpn build 2.6.x
-        run: |
-          ./tests/ci/integration/run_openvpn_integration.sh release/2.6
-  openvpnMaster:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev \
-          libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
-          python3-docutils
-      - uses: actions/checkout@v4
-      - name: Run openvpn build main
-        run: |
-          ./tests/ci/integration/run_openvpn_integration.sh master
   libevent:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
