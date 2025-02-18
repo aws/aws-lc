@@ -32,7 +32,7 @@ static void do_aws_snapsafe_init(void) {
 
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
-  int fd_gcc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
+  int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
     if (errno == ENOENT) {
       *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
