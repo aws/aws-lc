@@ -34,8 +34,10 @@ static void PQDSA_KEY_clear(PQDSA_KEY *key) {
   key->pqdsa = NULL;
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->private_key);
+  OPENSSL_free(key->seed);
   key->public_key = NULL;
   key->private_key = NULL;
+  key->seed = NULL;
 }
 
 int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
@@ -48,7 +50,8 @@ int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
   key->pqdsa = pqdsa;
   key->public_key = OPENSSL_malloc(pqdsa->public_key_len);
   key->private_key = OPENSSL_malloc(pqdsa->private_key_len);
-  if (key->public_key == NULL || key->private_key == NULL) {
+  key->seed = OPENSSL_malloc(pqdsa->keygen_seed_len);
+  if (key->public_key == NULL || key->private_key == NULL || key->seed == NULL) {
     PQDSA_KEY_clear(key);
     return 0;
   }
@@ -101,6 +104,12 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
+  uint8_t *seed = OPENSSL_malloc(key->pqdsa->keygen_seed_len);
+  if (seed == NULL) {
+    OPENSSL_free(seed);
+    return 0;
+  }
+
   // attempt to generate the key from the provided seed
   if (!key->pqdsa->method->pqdsa_keygen_internal(public_key,
                                                  private_key,
@@ -109,10 +118,13 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
+  // copy the seed data
+  OPENSSL_memcpy(seed, CBS_data(in), key->pqdsa->keygen_seed_len);
+
   // set the public and private key
   key->public_key = public_key;
   key->private_key = private_key;
-
+  key->seed = seed;
   return 1;
 }
 
@@ -145,6 +157,35 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
 
   key->public_key = public_key;
 
+  return 1;
+}
+
+int PQDSA_KEY_get_priv_raw_seed(PQDSA_KEY *key, uint8_t *out, size_t *out_len) {
+  GUARD_PTR(key);
+  GUARD_PTR(out_len);
+
+  if (key->pqdsa == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
+  if (key->seed == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  if (out == NULL) {
+    *out_len = key->pqdsa->keygen_seed_len;
+    return 1;
+  }
+
+  if (*out_len < key->pqdsa->keygen_seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  OPENSSL_memcpy(out, key->seed, key->pqdsa->keygen_seed_len);
+  *out_len = key->pqdsa->keygen_seed_len;
   return 1;
 }
 
