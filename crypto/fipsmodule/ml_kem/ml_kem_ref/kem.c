@@ -45,7 +45,7 @@ static int keygen_pct(ml_kem_params *params, const uint8_t *ek, const uint8_t *d
 *              - uint8_t *coins: pointer to input randomness
 *                (an already allocated array filled with 2*KYBER_SYMBYTES random bytes)
 **
-* Returns 0 on success, aborts on failure.
+* Returns 0 on success, abort or -1 on failure depending on FIPS mode
 **************************************************/
 int crypto_kem_keypair_derand(ml_kem_params *params,
                               uint8_t *pk,
@@ -59,9 +59,9 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
   memcpy(sk+params->secret_key_bytes-KYBER_SYMBYTES, coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
 
 #if defined(AWSLC_FIPS)
-  // Abort in case of PCT failure.
   if (keygen_pct(params, pk, sk)) {
     AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+    return -1;
   }
 #endif
   return 0;
@@ -87,7 +87,6 @@ int crypto_kem_keypair(ml_kem_params *params,
   uint8_t coins[2*KYBER_SYMBYTES];
   RAND_bytes(coins, 2*KYBER_SYMBYTES);
   int res = crypto_kem_keypair_derand(params, pk, sk, coins);
-  assert(res == 0);
 
   // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(coins, sizeof(coins));
