@@ -7,7 +7,6 @@
 #include "./verify.h"
 #include "./reduce.h"
 #include "./symmetric.h"
-#include "../../../internal.h"
 
 #include "openssl/rand.h"
 
@@ -44,8 +43,9 @@ static int keygen_pct(ml_kem_params *params, const uint8_t *ek, const uint8_t *d
 *                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
 *              - uint8_t *coins: pointer to input randomness
 *                (an already allocated array filled with 2*KYBER_SYMBYTES random bytes)
-**
-* Returns 0 on success, aborts on failure.
+*
+* Returns:     - 0 on success
+*              - -1 upon PCT failure (if AWSLC_FIPS is set)
 **************************************************/
 int crypto_kem_keypair_derand(ml_kem_params *params,
                               uint8_t *pk,
@@ -61,7 +61,7 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
 #if defined(AWSLC_FIPS)
   // Abort in case of PCT failure.
   if (keygen_pct(params, pk, sk)) {
-    AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+    return -1;
   }
 #endif
   return 0;
@@ -78,7 +78,8 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
 *              - uint8_t *sk: pointer to output private key
 *                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
 *
-* Returns 0 on success, aborts on failure.
+* Returns:     - 0 on success
+*              - -1 upon PCT failure (if AWSLC_FIPS is set)
 **************************************************/
 int crypto_kem_keypair(ml_kem_params *params,
                        uint8_t *pk,
@@ -87,7 +88,6 @@ int crypto_kem_keypair(ml_kem_params *params,
   uint8_t coins[2*KYBER_SYMBYTES];
   RAND_bytes(coins, 2*KYBER_SYMBYTES);
   int res = crypto_kem_keypair_derand(params, pk, sk, coins);
-  assert(res == 0);
 
   // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(coins, sizeof(coins));
