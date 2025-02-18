@@ -23,16 +23,20 @@ DEFINE_BSS_GET(volatile uint32_t *, sgc_addr)
 DEFINE_BSS_GET(int, snapsafety_state)
 
 static void do_aws_snapsafe_init(void) {
-  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
+  // *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
   *sgc_addr_bss_get() = NULL;
-  struct stat fileData;
-  if (stat(CRYPTO_get_sysgenid_path(), &fileData) < 0) {
-    return;
-  }
+  // struct stat fileData;
+  // if (stat(CRYPTO_get_sysgenid_path(), &fileData) < 0) {
+  //   return;
+  // }
 
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
-  int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
+
+  int fd_gcc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
+    if (errno == ENOENT) {
+      *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
+    }
     return;
   }
 
@@ -47,7 +51,6 @@ static void do_aws_snapsafe_init(void) {
   close(fd_sgc);
 
   if (addr == MAP_FAILED) {
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
     return;
   }
 
