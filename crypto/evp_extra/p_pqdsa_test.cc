@@ -1111,7 +1111,6 @@ struct PQDSATestVector {
   const size_t public_key_len;
   const size_t private_key_len;
   const size_t signature_len;
-  const size_t seed_len;
   const char *kat_filename;
   const uint8_t *kPublicKey;
   const uint8_t *kPublicKeySPKI;
@@ -1164,7 +1163,6 @@ static const struct PQDSATestVector parameterSet[] = {
     1312,
     2560,
     2420,
-    32,
     "ml_dsa/kat/MLDSA_44_hedged_pure.txt",
     mldsa44kPublicKey,
     mldsa44kPublicKeySPKI,
@@ -1182,7 +1180,6 @@ static const struct PQDSATestVector parameterSet[] = {
     1952,
     4032,
     3309,
-    32,
     "ml_dsa/kat/MLDSA_65_hedged_pure.txt",
     mldsa65kPublicKey,
     mldsa65kPublicKeySPKI,
@@ -1200,7 +1197,6 @@ static const struct PQDSATestVector parameterSet[] = {
     2592,
     4896,
     4627,
-    32,
     "ml_dsa/kat/MLDSA_87_hedged_pure.txt",
     mldsa87kPublicKey,
     mldsa87kPublicKeySPKI,
@@ -1466,23 +1462,7 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_NE(private_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_NE(private_pkey->pkey.pqdsa_key->private_key, nullptr);
 
-  // ---- 5. Test get_raw private key seeds ----
-  size_t seed_len = GetParam().seed_len;
-  std::vector<uint8_t> seed(seed_len);
-
-  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), seed.data(), &seed_len));
-  EXPECT_EQ(seed_len, GetParam().seed_len);
-
-  // expand the seed back into a PKEY and check correctness with original pkey
-  bssl::UniquePtr<EVP_PKEY> seeded_pkey(
-    EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, seed.data(), seed.size()));
-
-  ASSERT_NE(seeded_pkey, nullptr);
-  EXPECT_NE(seeded_pkey->pkey.pqdsa_key->public_key, nullptr);
-  EXPECT_NE(seeded_pkey->pkey.pqdsa_key->private_key, nullptr);
-  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), seeded_pkey.get()));
-
-  // ---- 6. Test get_raw public/private failure modes ----
+  // ---- 5. Test get_raw public/private failure modes ----
   std::vector<uint8_t> get_sk(sk_len);
 
   // Attempting to get a private key that is not present must fail correctly
@@ -1515,7 +1495,7 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
   GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
 
-  // ---- 7. Test new_raw public/private failure modes  ----
+  // ---- 6. Test new_raw public/private failure modes  ----
   // Invalid lengths
   pk_len = GetParam().public_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, pk.data(), pk_len));

@@ -18,28 +18,32 @@ static void pqdsa_free(EVP_PKEY *pkey) {
   pkey->pkey.pqdsa_key = NULL;
 }
 
-static int pqdsa_get_priv_raw_seed(PQDSA_KEY *key, const PQDSA *pqdsa,
-                                  uint8_t *out,size_t *out_len) {
-  if (key->seed == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
+                                   size_t *out_len) {
+  GUARD_PTR(pkey);
+  GUARD_PTR(out_len);
+
+  if (pkey->pkey.pqdsa_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  if (*out_len != key->pqdsa->keygen_seed_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
+  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
+  const PQDSA *pqdsa = key->pqdsa;
 
-  OPENSSL_memcpy(out, key->seed, pqdsa->keygen_seed_len);
-  *out_len = pqdsa->keygen_seed_len;
-  return 1;
-}
-
-static int pqdsa_get_priv_raw_key(PQDSA_KEY *key, const PQDSA *pqdsa,
-                                  uint8_t *out,size_t *out_len) {
   if (key->private_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
+  }
+
+  if (pqdsa == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
+
+  if (out == NULL) {
+    *out_len = key->pqdsa->private_key_len;
+    return 1;
   }
 
   if (*out_len < key->pqdsa->private_key_len) {
@@ -49,46 +53,6 @@ static int pqdsa_get_priv_raw_key(PQDSA_KEY *key, const PQDSA *pqdsa,
 
   OPENSSL_memcpy(out, key->private_key, pqdsa->private_key_len);
   *out_len = pqdsa->private_key_len;
-  return 1;
-}
-
-static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
-                                   size_t *out_len) {
-  if (pkey->pkey.pqdsa_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
-  }
-
-  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
-  const PQDSA *pqdsa = key->pqdsa;
-
-  if (pqdsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
-  }
-
-  // caller is doing size check, we have to return either the length of the
-  // full private key, or the seed. Since the private_key_len varies and
-  // keygen_seed_len is often constant (such as 32 bytes in ML-DSA) we choose
-  // to return the full private key len size.
-  if (out == NULL) {
-    *out_len = key->pqdsa->private_key_len;
-    return 1;
-  }
-
-  if (*out_len >= key->pqdsa->private_key_len) {
-    if(!pqdsa_get_priv_raw_key(key, pqdsa, out, out_len)) {
-      return 0;
-    }
-  } else if (*out_len == key->pqdsa->keygen_seed_len) {
-    if(!pqdsa_get_priv_raw_seed(key, pqdsa, out, out_len)) {
-      return 0;
-    }
-  } else {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
   return 1;
 }
 
