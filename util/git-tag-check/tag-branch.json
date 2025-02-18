@@ -1,5 +1,9 @@
 [
   {
+    "tag_pattern": "AWS-LC-FIPS-1\\..*",
+    "branch": "fips-2021-10-20"
+  },
+  {
     "tag_pattern": "AWS-LC-FIPS-2\\..*",
     "branch": "fips-2022-11-02"
   },
