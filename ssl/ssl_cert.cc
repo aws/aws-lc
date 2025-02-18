@@ -1006,6 +1006,7 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
   if (!override && (cert_pkey->privatekey != NULL ||
       cert_pkey->x509_leaf != NULL ||
       cert_pkey->chain != NULL)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NOT_REPLACING_CERTIFICATE);
     return 0;
   }
 
