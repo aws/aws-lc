@@ -1270,8 +1270,8 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #if defined(BORINGSSL_FIPS)
 
 // AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
+// fails. If the library is built in FIPS mode it prevents any further
+// cryptographic operations by the current process.
 #if defined(_MSC_VER)
 __declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
@@ -1330,17 +1330,16 @@ OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
 
+// Outside of FIPS mode AWS_LC_FIPS_failure simply logs the message to stderr
+void AWS_LC_FIPS_failure(const char* message);
+
 #endif  // FIPS
 
-// boringssl_self_test_sha256 performs a SHA-256 KAT, |call_aws_lc_fips_failure|
-// determines if error messages should be printed to |stderr| call
-// |AWS_LC_FIPS_failure| with the message.
-int boringssl_self_test_sha256(const bool call_aws_lc_fips_failure);
+// boringssl_self_test_sha256 performs a SHA-256 KAT
+int boringssl_self_test_sha256(void);
 
-  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT,
-  // |call_aws_lc_fips_failure| determines if error messages should be printed
-  // to |stderr| or call |AWS_LC_FIPS_failure| with the message.
-int boringssl_self_test_hmac_sha256(const bool call_aws_lc_fips_failure);
+  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
+int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 void boringssl_fips_inc_counter(enum fips_counter_t counter);
