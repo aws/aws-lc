@@ -1053,7 +1053,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
-  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${PROJECT_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${AWSLC_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()
@@ -1103,7 +1103,7 @@ if(BUILD_TESTING)
       # us hash anywhere from 1-8 gigabytes of memory, so running multiple at the same time cause a
       # failure on most machines due to a lack of memory.
       set(acvp_sha_test_commands)
-      file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      file(GLOB acvp_sha_tests "${AWSLC_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
       foreach(test_path ${acvp_sha_tests})
         get_filename_component(test_name ${test_path} NAME)
         list(APPEND acvp_sha_test_commands
@@ -1119,7 +1119,7 @@ if(BUILD_TESTING)
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
 
@@ -1132,7 +1132,7 @@ if(BUILD_TESTING)
                   -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                   -tests tests.json
         ${acvp_sha_test_commands}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
         DEPENDS build_acvp_tool
         ${MAYBE_USES_TERMINAL})
 
@@ -1172,7 +1172,7 @@ if(BUILD_TESTING)
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
@@ -1182,7 +1182,7 @@ if(BUILD_TESTING)
           COMMAND cd ssl/test/runner &&
           ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim> -valgrind
           ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
@@ -1195,7 +1195,7 @@ if(BUILD_TESTING)
           COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                  ${PROJECT_BINARY_DIR}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
@@ -1207,7 +1207,7 @@ if(BUILD_TESTING)
           COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR} -ssl-tests=false
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
       )
@@ -1217,7 +1217,7 @@ if(BUILD_TESTING)
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                 ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir="tests/ci"
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
 
@@ -1225,7 +1225,7 @@ if(BUILD_TESTING)
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                 ${PROJECT_BINARY_DIR} -sde=true -sde-path="$ENV{SDEROOT}/sde"
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
   else()
@@ -1235,7 +1235,7 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
@@ -1243,7 +1243,7 @@ if(BUILD_TESTING)
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )
@@ -1283,7 +1283,7 @@ join_paths(libdir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
 join_paths(includedir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
 
 foreach(in_file ${OPENSSL_PKGCONFIGS})
-  file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
+  file(RELATIVE_PATH in_file ${AWSLC_SOURCE_DIR} ${in_file})
   string(REPLACE ".in" "" pc_file ${in_file})
   configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)

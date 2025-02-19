@@ -26,7 +26,7 @@ function(msbuild_aarch64_asm)
               --target=arm64-pc-windows-msvc
               /c
               /I "${PROJECT_BINARY_DIR}/symbol_prefix_include/"
-              /I "${PROJECT_SOURCE_DIR}/include"
+              /I "${AWSLC_SOURCE_DIR}/include"
               /o "${OBJ_FILE}"
               "${ASM_FILE}"
       DEPENDS ${ASM_FILE}
@@ -152,13 +152,13 @@ if(PERL_EXECUTABLE)
       COMMAND ${PERL_COMMAND}
       DEPENDS
       ${src}
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86asm.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86gas.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86masm.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
       WORKING_DIRECTORY .
     )
   endfunction()
@@ -583,7 +583,7 @@ target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 # For the prefix build, the object files need the prefix header files to build.
 add_dependencies(crypto_objects boringssl_prefix_symbols)
 target_include_directories(crypto_objects BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-target_include_directories(crypto_objects PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(crypto_objects PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
 function(build_libcrypto name module_source)
   if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
@@ -608,7 +608,7 @@ function(build_libcrypto name module_source)
   target_include_directories(${name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
   target_include_directories(${name} PUBLIC
-          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+          $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
@@ -621,14 +621,14 @@ if(FIPS_SHARED)
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
-    target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(fips_empty_main PRIVATE ${AWSLC_SOURCE_DIR}/include)
     target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
-            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            DEPENDS fips_empty_main ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
     add_library(
       generated_fipsmodule
@@ -636,10 +636,10 @@ if(FIPS_SHARED)
       OBJECT
 
       generated_fips_shared_support.c
-      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+      ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
     add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
-    target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(generated_fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
     target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
@@ -654,9 +654,9 @@ if(FIPS_SHARED)
     add_custom_command(
       TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
-      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
 
     # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
@@ -678,7 +678,7 @@ if(FIPS_SHARED)
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND codesign -s - $<TARGET_FILE:crypto>
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
       )
     endif()
 

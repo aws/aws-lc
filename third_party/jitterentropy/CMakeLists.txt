@@ -7,14 +7,14 @@
 # the same as the source code.
 
 set(JITTER_SOURCES
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${AWSLC_SOURCE_DIR}/include)
 
 if(MSVC)
     set(JITTER_COMPILE_FLAGS "/Od /W4 /DYNAMICBASE /DAWSLC")

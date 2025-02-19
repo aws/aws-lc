@@ -50,7 +50,7 @@ target_link_libraries(ssl crypto)
 target_include_directories(ssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
 target_include_directories(ssl PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)

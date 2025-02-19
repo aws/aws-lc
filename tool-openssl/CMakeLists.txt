@@ -17,7 +17,7 @@ add_executable(
     x509.cc
 )
 
-target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(openssl PUBLIC ${AWSLC_SOURCE_DIR}/include)
 target_compile_options(openssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)
