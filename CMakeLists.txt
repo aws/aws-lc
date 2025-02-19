@@ -101,7 +101,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (NOT DEFINED CMAKE_C_STANDARD)
   try_compile(
           RESULT
-          ${PROJECT_BINARY_DIR}
+          ${AWSLC_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/c11.c"
           COMPILE_DEFINITIONS -c -std=c11)
   if(RESULT)
@@ -210,7 +210,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
-    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${AWSLC_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
   endif()
 
   add_custom_command(
@@ -244,7 +244,7 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
   else()
-    set(BORINGSSL_PREFIX_HEADERS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${AWSLC_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
   endif()
 
   file(COPY ${BORINGSSL_PREFIX_HEADERS_PATH}/openssl/boringssl_prefix_symbols.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl)
@@ -280,7 +280,7 @@ endif()
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
           RESULT
-          ${PROJECT_BINARY_DIR}
+          ${AWSLC_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
@@ -1080,11 +1080,11 @@ if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
       if(MSVC)
-        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool.exe)
-        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper.exe)
+        set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper.exe)
       else()
-        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
-        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
+        set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper)
       endif()
 
       # Read util/go_fips_tests.txt into a CMake variable.
@@ -1149,7 +1149,7 @@ if(BUILD_TESTING)
       add_custom_target(
         macho_parser_tests
         COMMAND ./util/fipstools/inject_hash/macho_parser/tests/test_macho_parser
-        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
         DEPENDS test_macho_parser
       )
       add_dependencies(fips_specific_tests_if_any macho_parser_tests)
@@ -1194,7 +1194,7 @@ if(BUILD_TESTING)
           COMMAND ${CMAKE_COMMAND} -E echo
           COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                 ${PROJECT_BINARY_DIR}
+                 ${AWSLC_BINARY_DIR}
           WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
@@ -1206,7 +1206,7 @@ if(BUILD_TESTING)
           COMMAND ${CMAKE_COMMAND} -E echo
           COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${PROJECT_BINARY_DIR} -ssl-tests=false
+                  ${AWSLC_BINARY_DIR} -ssl-tests=false
           WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
@@ -1216,7 +1216,7 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir="tests/ci"
+                ${AWSLC_BINARY_DIR} -valgrind=true -valgrind-supp-dir="tests/ci"
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
@@ -1224,7 +1224,7 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${PROJECT_BINARY_DIR} -sde=true -sde-path="$ENV{SDEROOT}/sde"
+                ${AWSLC_BINARY_DIR} -sde=true -sde-path="$ENV{SDEROOT}/sde"
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})

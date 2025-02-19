@@ -320,7 +320,7 @@ function(s2n_asm_cpreprocess dest src)
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
 
   if(BORINGSSL_PREFIX)
-    set(S2N_BIGNUM_PREFIX_INCLUDE "--include=${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+    set(S2N_BIGNUM_PREFIX_INCLUDE "--include=${AWSLC_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
   endif()
 
   add_custom_command(
@@ -424,7 +424,7 @@ if(FIPS_DELOCATE)
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset boringssl_prefix_symbols)
-  target_include_directories(bcm_hashunset BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_hashunset BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(bcm_hashunset PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -456,7 +456,7 @@ if(FIPS_DELOCATE)
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
@@ -476,7 +476,7 @@ elseif(FIPS_SHARED)
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   add_library(
@@ -492,7 +492,7 @@ elseif(FIPS_SHARED)
   target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   add_dependencies(bcm_library boringssl_prefix_symbols)
-  target_include_directories(bcm_library BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_library BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include)
   if (APPLE)
     set(BCM_NAME bcm.o)
@@ -600,7 +600,7 @@ else()
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
 endif()

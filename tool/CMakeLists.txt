@@ -41,7 +41,7 @@ else()
   endif()
 endif()
 
-target_include_directories(bssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+target_include_directories(bssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
