@@ -130,7 +130,7 @@ enum fips_counter_t {
   fips_counter_evp_aes_128_ctr = 2,
   fips_counter_evp_aes_256_ctr = 3,
 
-  fips_counter_max = 3,
+  fips_counter_max = 3
 };
 
 // FIPS_read_counter returns a counter of the number of times the specific

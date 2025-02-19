@@ -13,5 +13,5 @@ phases:
       - ./tests/check_objects_and_errors.sh
       - go run ./tests/check_licenses.go
       - ./tests/check_generated_src.sh
-      - ./tests/coding_guidelines/coding_guidelines_test.sh
+      - ./tests/coding_guidelines/style.sh
       - (cd util && go run ./doc.go)

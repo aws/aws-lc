@@ -24,8 +24,7 @@ INCLUDE_FILES=`ls $INCLUDE_DIR/openssl/*.h | grep -v $INCLUDE_DIR/openssl/arm_ar
 # some non-ISO practices, but not all — only those for which ISO C requires a
 # diagnostic, and some others for which diagnostics have been added."
 # https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
-
-${CC} -std=c99 -c -I${INCLUDE_DIR} -include ${INCLUDE_FILES} -Wpedantic -fsyntax-only -Werror
+${CC} -std=c99 -c -I${INCLUDE_DIR} $(echo ${INCLUDE_FILES} | sed 's/[^ ]* */-include &/g') -Wpedantic -fsyntax-only -Werror ./tests/compiler_features_tests/builtin_swap_check.c
 
 # AWS C SDKs conforms to C99. They set `C_STANDARD 99` which will set the
 # flag `-std=gnu99`
@@ -34,5 +33,12 @@ ${CC} -std=c99 -c -I${INCLUDE_DIR} -include ${INCLUDE_FILES} -Wpedantic -fsyntax
 # https://cmake.org/cmake/help/latest/prop_tgt/C_STANDARD.html
 #
 # the c99 and gnu99 modes are different, so let's test both.
+${CC} -std=gnu99 -c -I${INCLUDE_DIR} $(echo ${INCLUDE_FILES} | sed 's/[^ ]* */-include &/g') -Wpedantic -fsyntax-only -Werror ./tests/compiler_features_tests/builtin_swap_check.c
 
-${CC} -std=gnu99 -c -I${INCLUDE_DIR} -include ${INCLUDE_FILES} -Wpedantic -fsyntax-only -Werror
+# Our SSL headers use C++, but older compilers do not have the C++11 flag enabled by
+# default. Not all consuming applications that use older compilers have enabled the
+# C++11 feature flag. To ensure a smoother integration process for migrating
+# applications, we should ensure that the default settings of older C++ compilers
+# work with our header files.
+${CXX} -std=c++98 -c -I${INCLUDE_DIR} $(echo ${INCLUDE_FILES} | sed 's/[^ ]* */-include &/g') -Wpedantic -fsyntax-only -Werror ./tests/compiler_features_tests/builtin_swap_check.c
+${CXX} -std=gnu++98 -c -I${INCLUDE_DIR} $(echo ${INCLUDE_FILES} | sed 's/[^ ]* */-include &/g') -Wpedantic -fsyntax-only -Werror ./tests/compiler_features_tests/builtin_swap_check.c
