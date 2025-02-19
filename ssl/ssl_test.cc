@@ -2848,7 +2848,7 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
   ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
 
-  // Ensure SSL object inherits initial CTX ciphersuites
+  // Ensure SSL object inherits initial CTX cipher suites
   STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
   STACK_OF(SSL_CIPHER) *server_ciphers = SSL_get_ciphers(server.get());
   ASSERT_TRUE(client_ciphers);
@@ -2863,7 +2863,22 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls12_cipher));
   ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls13_cipher));
   ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls12_cipher));
-  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls13_cipher));  
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls13_cipher));
+
+  SSL_set_shed_handshake_config(client.get(), 1);
+  SSL_set_shed_handshake_config(server.get(), 1);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Ensure we fall back to ctx once config is shed
+  client_ciphers = SSL_get_ciphers(client.get());
+  server_ciphers = SSL_get_ciphers(server.get());
+
+  tls13_cipher = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
+  tls12_cipher = SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_256_SHA & 0xFFFF);
+
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls13_cipher));
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls12_cipher));
 }
 
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Default) {
