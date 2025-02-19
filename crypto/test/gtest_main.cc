@@ -22,6 +22,7 @@
 #include "abi_test.h"
 #include "gtest_main.h"
 #include "../internal.h"
+#include "../ube/snapsafe_detect.h"
 
 
 int main(int argc, char **argv) {
