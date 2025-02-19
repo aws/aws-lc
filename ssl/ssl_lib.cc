@@ -2168,8 +2168,12 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
     return NULL;
   }
 
-  return ssl->config && ssl->config->cipher_list ?
-         ssl->config->cipher_list->ciphers.get() : NULL;
+  if (ssl->config && ssl->config->cipher_list) {
+    return ssl->config->cipher_list->ciphers.get();
+  }
+
+  return ssl->ctx && ssl->ctx->cipher_list ?
+         ssl->ctx->cipher_list->ciphers.get() : NULL;
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
