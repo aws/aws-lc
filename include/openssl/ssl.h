@@ -1368,7 +1368,7 @@ OPENSSL_EXPORT void *SSL_CTX_get_default_passwd_cb_userdata(const SSL_CTX *ctx);
 enum ssl_private_key_result_t {
   ssl_private_key_success,
   ssl_private_key_retry,
-  ssl_private_key_failure,
+  ssl_private_key_failure
 };
 
 // ssl_private_key_method_st (aka |SSL_PRIVATE_KEY_METHOD|) describes private
@@ -2557,7 +2557,7 @@ enum ssl_ticket_aead_result_t {
   ssl_ticket_aead_ignore_ticket,
   // ssl_ticket_aead_error indicates that a fatal error occured and the
   // handshake should be terminated.
-  ssl_ticket_aead_error,
+  ssl_ticket_aead_error
 };
 
 // ssl_ticket_aead_method_st (aka |SSL_TICKET_AEAD_METHOD|) contains methods
@@ -2895,7 +2895,7 @@ OPENSSL_EXPORT void SSL_set_verify(SSL *ssl, int mode,
 enum ssl_verify_result_t {
   ssl_verify_ok,
   ssl_verify_invalid,
-  ssl_verify_retry,
+  ssl_verify_retry
 };
 
 // SSL_CTX_set_custom_verify configures certificate verification. |mode| is one
@@ -3832,7 +3832,7 @@ enum ssl_encryption_level_t {
   ssl_encryption_initial = 0,
   ssl_encryption_early_data,
   ssl_encryption_handshake,
-  ssl_encryption_application,
+  ssl_encryption_application
 };
 
 // ssl_quic_method_st (aka |SSL_QUIC_METHOD|) describes custom QUIC hooks.
@@ -4133,7 +4133,7 @@ enum ssl_early_data_reason_t {
   // The value of the largest entry.
   ssl_early_data_unsupported_with_custom_extension = 15,
   ssl_early_data_reason_max_value =
-      ssl_early_data_unsupported_with_custom_extension,
+      ssl_early_data_unsupported_with_custom_extension
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
@@ -4651,7 +4651,7 @@ enum ssl_renegotiate_mode_t {
   ssl_renegotiate_once,
   ssl_renegotiate_freely,
   ssl_renegotiate_ignore,
-  ssl_renegotiate_explicit,
+  ssl_renegotiate_explicit
 };
 
 // SSL_set_renegotiate_mode configures how |ssl|, a client, reacts to
@@ -4792,7 +4792,7 @@ enum ssl_select_cert_result_t {
   ssl_select_cert_retry = 0,
   // ssl_select_cert_error indicates that a fatal error occured and the
   // handshake should be terminated.
-  ssl_select_cert_error = -1,
+  ssl_select_cert_error = -1
 };
 
 // SSL_early_callback_ctx_extension_get searches the extensions in
