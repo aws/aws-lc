@@ -10,9 +10,6 @@ mainSteps:
     inputs:
       timeoutSeconds: '7200'
       runCommand:
-        # TODO (P131897680): Parallelize the FIPS and sanitizer tests. The instance timeout can be lowered
-        #       once we do so.
-        #
         # Fallback plan to shut down the ec2 instance in 90 minutes in case it's not terminated.
         # Codebuild just "stops" the instance calling the script, so "trap cleanup" is not executed.
         - shutdown -P +90
@@ -28,6 +25,7 @@ mainSteps:
         # install aws-cli
         - killall apt apt-get
         - apt-get update
+        - apt-get -y remove needrestart
         - apt-get -y install unzip
         - curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_CLI_PREFIX}64.zip" -o "awscliv2.zip"
         - unzip awscliv2.zip

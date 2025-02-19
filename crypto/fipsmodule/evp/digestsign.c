@@ -57,6 +57,7 @@
 
 #include <openssl/err.h>
 
+#include "../pqdsa/internal.h"
 #include "../delocate.h"
 #include "../digest/internal.h"
 #include "internal.h"
@@ -78,8 +79,19 @@ DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
 }
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
-  return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
-                          : (ctx->pctx->pmeth->verify != NULL);
+  // Pre-hash modes of ML-DSA that uses an external mu calculation differs from
+  // other signing algorithms, so we specifically check for NIDs of type NID_MLDSAXX.
+  if (ctx->pctx->pkey->type == EVP_PKEY_PQDSA &&
+      ctx->pctx->pkey->pkey.pqdsa_key != NULL) {
+    int nid = ctx->pctx->pkey->pkey.pqdsa_key->pqdsa->nid;
+
+    if (nid == NID_MLDSA44 || nid == NID_MLDSA65 || nid == NID_MLDSA87) {
+      return 0;
+    }
+  }
+
+    return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
+                            : (ctx->pctx->pmeth->verify != NULL);
 }
 
 static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -264,6 +276,7 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len) {
 
 int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
                    const uint8_t *data, size_t data_len) {
+  GUARD_PTR(ctx->pctx);
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
@@ -287,7 +300,7 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   }
 
   // This is executed when |uses_prehash| is not true, which is the case for
-  // Ed25519 and Dilithium.
+  // Ed25519 and ML-DSA when in pure mode.
   ret = ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
                                        data_len);
 end:
@@ -302,6 +315,7 @@ end:
 
 int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
                      const uint8_t *data, size_t len) {
+  GUARD_PTR(ctx->pctx);
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
@@ -320,7 +334,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   }
 
   // This is executed when |uses_prehash| is not true, which is the case for
-  // Ed25519 and Dilithium.
+  // Ed25519 and ML-DSA when in pure mode.
   ret = ctx->pctx->pmeth->verify_message(ctx->pctx, sig, sig_len, data, len);
 
 end:
@@ -348,4 +362,16 @@ void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
     // if |pctx| is null, we remove the flag.
     ctx->flags &= ~EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
   }
+}
+
+EVP_PKEY_CTX *EVP_MD_CTX_get_pkey_ctx(const EVP_MD_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
+  if(ctx == NULL) {
+    return NULL;
+  }
+  return ctx->pctx;
+}
+
+EVP_PKEY_CTX *EVP_MD_CTX_pkey_ctx(const EVP_MD_CTX *ctx) {
+  return EVP_MD_CTX_get_pkey_ctx(ctx);
 }

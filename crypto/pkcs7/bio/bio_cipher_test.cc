@@ -13,9 +13,6 @@
 // NOTE: need to keep this in sync with sizeof(ctx->buf) cipher.c
 #define ENC_BLOCK_SIZE 1024 * 4
 
-#define BIO_get_cipher_status(bio) \
-  BIO_ctrl(bio, BIO_C_GET_CIPHER_STATUS, 0, NULL)
-
 struct CipherParams {
   const char name[40];
   const EVP_CIPHER *(*cipher)(void);
@@ -29,6 +26,7 @@ static const struct CipherParams Ciphers[] = {
     {"AES_256_CTR", EVP_aes_256_ctr},
     {"AES_256_OFB", EVP_aes_256_ofb},
     {"ChaCha20Poly1305", EVP_chacha20_poly1305},
+    {"DES_EDE3_CBC", EVP_des_ede3_cbc},
 };
 
 class BIOCipherTest : public testing::TestWithParam<CipherParams> {};
@@ -68,6 +66,7 @@ TEST_P(BIOCipherTest, Basic) {
   EXPECT_FALSE(BIO_ctrl(bio_cipher.get(), BIO_C_GET_CIPHER_CTX, 0, NULL));
   EXPECT_FALSE(BIO_ctrl(bio_cipher.get(), BIO_C_SSL_MODE, 0, NULL));
   EXPECT_FALSE(BIO_set_cipher(bio_cipher.get(), EVP_rc4(), key, iv, /*enc*/ 1));
+  ASSERT_TRUE(BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 1));
 
   // Round-trip using |BIO_write| for encryption with same BIOs, reset between
   // encryption/decryption using |BIO_reset|. Fixed size IO.

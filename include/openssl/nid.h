@@ -4363,6 +4363,25 @@ extern "C" {
 #define NID_SecP256r1MLKEM768 992
 #define OBJ_SecP256r1MLKEM768 1L, 3L, 9999L, 99L, 55L
 
+#define SN_PQDSA "PQDSA"
+#define NID_PQDSA 993
+#define OBJ_PQDSA 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L
+
+#define SN_MLDSA44 "MLDSA44"
+#define NID_MLDSA44 994
+#define OBJ_MLDSA44 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 17L
+
+#define SN_MLDSA65 "MLDSA65"
+#define NID_MLDSA65 995
+#define OBJ_MLDSA65 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 18L
+
+#define SN_MLDSA87 "MLDSA87"
+#define NID_MLDSA87 996
+#define OBJ_MLDSA87 2L, 16L, 840L, 1L, 101L, 3L, 4L, 3L, 19L
+
+#define SN_ED25519ph "ED25519ph"
+#define NID_ED25519ph 997
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

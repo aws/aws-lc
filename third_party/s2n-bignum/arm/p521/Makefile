@@ -28,6 +28,7 @@ OBJ = bignum_add_p521.o \
       bignum_double_p521.o \
       bignum_fromlebytes_p521.o \
       bignum_half_p521.o \
+      bignum_inv_p521.o \
       bignum_mod_n521_9.o \
       bignum_mod_p521_9.o \
       bignum_montmul_p521.o \
@@ -53,7 +54,9 @@ OBJ = bignum_add_p521.o \
       p521_jdouble.o \
       p521_jdouble_alt.o \
       p521_jmixadd.o \
-      p521_jmixadd_alt.o
+      p521_jmixadd_alt.o \
+      p521_jscalarmul.o \
+      p521_jscalarmul_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 

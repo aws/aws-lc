@@ -188,7 +188,7 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
                         int pass_len_in, const uint8_t *salt, size_t salt_len,
                         int iterations, PKCS8_PRIV_KEY_INFO *p8inf) {
   size_t pass_len;
-  if (pass_len_in == -1 && pass != NULL) {
+  if (pass_len_in < 0 && pass != NULL) {
     pass_len = strlen(pass);
   } else {
     pass_len = (size_t)pass_len_in;
@@ -1114,6 +1114,44 @@ err:
   return ret;
 }
 
+static int pkcs12_gen_and_write_mac(CBB *out_pfx, const uint8_t *auth_safe_data,
+                                    size_t auth_safe_data_len,
+                                    const char *password, size_t password_len,
+                                    uint8_t *mac_salt, size_t salt_len,
+                                    int mac_iterations, const EVP_MD *md) {
+  int ret = 0;
+  uint8_t mac_key[EVP_MAX_MD_SIZE];
+  uint8_t mac[EVP_MAX_MD_SIZE];
+  unsigned mac_len;
+  if (!pkcs12_key_gen(password, password_len, mac_salt, salt_len, PKCS12_MAC_ID,
+                      mac_iterations, EVP_MD_size(md), mac_key, md) ||
+      !HMAC(md, mac_key, EVP_MD_size(md), auth_safe_data, auth_safe_data_len,
+            mac, &mac_len)) {
+    goto out;
+  }
+
+  CBB mac_data, digest_info, mac_cbb, mac_salt_cbb;
+  if (!CBB_add_asn1(out_pfx, &mac_data, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&mac_data, &digest_info, CBS_ASN1_SEQUENCE) ||
+      !EVP_marshal_digest_algorithm(&digest_info, md) ||
+      !CBB_add_asn1(&digest_info, &mac_cbb, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&mac_cbb, mac, mac_len) ||
+      !CBB_add_asn1(&mac_data, &mac_salt_cbb, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&mac_salt_cbb, mac_salt, salt_len) ||
+      // The iteration count has a DEFAULT of 1, but RFC 7292 says "The default
+      // is for historical reasons and its use is deprecated." Thus we
+      // explicitly encode the iteration count, though it is not valid DER.
+      !CBB_add_asn1_uint64(&mac_data, mac_iterations) ||
+      !CBB_flush(out_pfx)) {
+    goto out;
+  }
+  ret = 1;
+
+out:
+  OPENSSL_cleanse(mac_key, sizeof(mac_key));
+  return ret;
+}
+
 PKCS12 *PKCS12_create(const char *password, const char *name,
                       const EVP_PKEY *pkey, X509 *cert,
                       const STACK_OF(X509)* chain, int key_nid, int cert_nid,
@@ -1194,9 +1232,7 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   PKCS12 *ret = NULL;
   CBB cbb, pfx, auth_safe, auth_safe_oid, auth_safe_wrapper, auth_safe_data,
       content_infos;
-  uint8_t mac_key[EVP_MAX_MD_SIZE];
-  if (!CBB_init(&cbb, 0) ||
-      !CBB_add_asn1(&cbb, &pfx, CBS_ASN1_SEQUENCE) ||
+  if (!CBB_init(&cbb, 0) || !CBB_add_asn1(&cbb, &pfx, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pfx, 3) ||
       // auth_safe is a data ContentInfo.
       !CBB_add_asn1(&pfx, &auth_safe, CBS_ASN1_SEQUENCE) ||
@@ -1299,32 +1335,15 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
 
   // Compute the MAC. Match OpenSSL in using SHA-1 as the hash function. The MAC
   // covers |auth_safe_data|.
+  // TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
+  //                        OpenSSL 3.x.
   const EVP_MD *mac_md = EVP_sha1();
   uint8_t mac_salt[PKCS5_SALT_LEN];
-  uint8_t mac[EVP_MAX_MD_SIZE];
-  unsigned mac_len;
   if (!CBB_flush(&auth_safe_data) ||
       !RAND_bytes(mac_salt, sizeof(mac_salt)) ||
-      !pkcs12_key_gen(password, password_len, mac_salt, sizeof(mac_salt),
-                      PKCS12_MAC_ID, mac_iterations, EVP_MD_size(mac_md),
-                      mac_key, mac_md) ||
-      !HMAC(mac_md, mac_key, EVP_MD_size(mac_md), CBB_data(&auth_safe_data),
-            CBB_len(&auth_safe_data), mac, &mac_len)) {
-    goto err;
-  }
-
-  CBB mac_data, digest_info, mac_cbb, mac_salt_cbb;
-  if (!CBB_add_asn1(&pfx, &mac_data, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&mac_data, &digest_info, CBS_ASN1_SEQUENCE) ||
-      !EVP_marshal_digest_algorithm(&digest_info, mac_md) ||
-      !CBB_add_asn1(&digest_info, &mac_cbb, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&mac_cbb, mac, mac_len) ||
-      !CBB_add_asn1(&mac_data, &mac_salt_cbb, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&mac_salt_cbb, mac_salt, sizeof(mac_salt)) ||
-      // The iteration count has a DEFAULT of 1, but RFC 7292 says "The default
-      // is for historical reasons and its use is deprecated." Thus we
-      // explicitly encode the iteration count, though it is not valid DER.
-      !CBB_add_asn1_uint64(&mac_data, mac_iterations)) {
+      !pkcs12_gen_and_write_mac(
+          &pfx, CBB_data(&auth_safe_data), CBB_len(&auth_safe_data), password,
+          password_len, mac_salt, sizeof(mac_salt), mac_iterations, mac_md)) {
     goto err;
   }
 
@@ -1337,7 +1356,6 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   }
 
 err:
-  OPENSSL_cleanse(mac_key, sizeof(mac_key));
   CBB_cleanup(&cbb);
   return ret;
 }
@@ -1353,3 +1371,102 @@ void PKCS12_free(PKCS12 *p12) {
   OPENSSL_free(p12->ber_bytes);
   OPENSSL_free(p12);
 }
+
+int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
+                   unsigned char *salt, int salt_len, int mac_iterations,
+                   const EVP_MD *md) {
+  GUARD_PTR(p12);
+  int ret = 0;
+
+  if (mac_iterations == 0) {
+    mac_iterations = 1;
+  }
+  if (salt_len == 0) {
+    salt_len = PKCS5_SALT_LEN;
+  }
+  // Generate |mac_salt| if |salt| is NULL and copy if NULL.
+  uint8_t *mac_salt = OPENSSL_malloc(salt_len);
+  if (mac_salt == NULL) {
+    goto out;
+  }
+  if (salt == NULL) {
+    if (!RAND_bytes(mac_salt, salt_len)) {
+      goto out;
+    }
+  } else {
+    OPENSSL_memcpy(mac_salt, salt, salt_len);
+  }
+  // TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
+  //                        OpenSSL 3.x.
+  if (md == NULL) {
+    md = EVP_sha1();
+  }
+
+  uint8_t *storage = NULL;
+  CBS ber_bytes, in, pfx, authsafe, content_type, wrapped_authsafes, authsafes;
+  uint64_t version;
+  // The input may be in BER format.
+  CBS_init(&ber_bytes, p12->ber_bytes, p12->ber_len);
+  if (!CBS_asn1_ber_to_der(&ber_bytes, &in, &storage)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+    goto out;
+  }
+  // There's no use case for |storage| anymore, so we free early.
+  OPENSSL_free(storage);
+
+  if (!CBS_get_asn1(&in, &pfx, CBS_ASN1_SEQUENCE) || CBS_len(&in) != 0 ||
+      !CBS_get_asn1_uint64(&pfx, &version)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+    goto out;
+  }
+  if (version < 3) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_VERSION);
+    goto out;
+  }
+
+  if (!CBS_get_asn1(&pfx, &authsafe, CBS_ASN1_SEQUENCE)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+    goto out;
+  }
+  // Save contents of |authsafe| to write back before the CBS is advanced.
+  const uint8_t *orig_authsafe = CBS_data(&authsafe);
+  size_t orig_authsafe_len = CBS_len(&authsafe);
+
+  // Parse for |authsafes| which is the data that we should be running HMAC on.
+  if (!CBS_get_asn1(&authsafe, &content_type, CBS_ASN1_OBJECT) ||
+      !CBS_get_asn1(&authsafe, &wrapped_authsafes,
+                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
+      !CBS_get_asn1(&wrapped_authsafes, &authsafes, CBS_ASN1_OCTETSTRING)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+    goto out;
+  }
+
+  // Rewrite contents of |p12| with the original contents and updated MAC.
+  CBB cbb, out_pfx, out_auth_safe;
+  if (!CBB_init(&cbb, 0) || !CBB_add_asn1(&cbb, &out_pfx, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&out_pfx, version) ||
+      !CBB_add_asn1(&out_pfx, &out_auth_safe, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_bytes(&out_auth_safe, orig_authsafe, orig_authsafe_len) ||
+      !pkcs12_gen_and_write_mac(&out_pfx, CBS_data(&authsafes),
+                                CBS_len(&authsafes), password, password_len,
+                                mac_salt, salt_len, mac_iterations, md)) {
+    CBB_cleanup(&cbb);
+    goto out;
+  }
+
+  // Verify that the new password is consistent with the original. This is
+  // behavior specific to AWS-LC.
+  OPENSSL_free(p12->ber_bytes);
+  if (!CBB_finish(&cbb, &p12->ber_bytes, &p12->ber_len) ||
+      !PKCS12_verify_mac(p12, password, password_len)) {
+    CBB_cleanup(&cbb);
+    goto out;
+  }
+
+  ret = 1;
+
+out:
+  OPENSSL_free(mac_salt);
+  return ret;
+}
+

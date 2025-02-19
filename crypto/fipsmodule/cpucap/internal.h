@@ -9,6 +9,7 @@ extern "C" {
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
+#define HAS_OPENSSL_CPUID_SETUP
 // OPENSSL_cpuid_setup initializes the platform-specific feature cache.
 void OPENSSL_cpuid_setup(void);
 #endif
@@ -140,12 +141,8 @@ OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
 // 1100_0000_0010_0011_0000_0000_0000_0000
 #define CPU_CAP_AVX512IFMA_BITFLAGS 0xC0230000
 OPENSSL_INLINE int CRYPTO_is_AVX512IFMA_capable(void) {
-#if defined(OPENSSL_WINDOWS)
-  return 0;
-#else
   return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512IFMA_BITFLAGS) ==
          CPU_CAP_AVX512IFMA_BITFLAGS;
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
@@ -180,13 +177,9 @@ OPENSSL_INLINE int CRYPTO_cpu_perf_is_like_silvermont(void) {
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-// We do not detect any features at runtime on several 32-bit Arm platforms.
-// Apple platforms and OpenBSD require NEON and moved to 64-bit to pick up Armv8
-// extensions. Android baremetal does not aim to support 32-bit Arm at all, but
-// it simplifies things to make it build.
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    (defined(OPENSSL_APPLE) || defined(OPENSSL_OPENBSD) ||     \
-     defined(ANDROID_BAREMETAL))
+#if defined(OPENSSL_APPLE) && defined(OPENSSL_ARM)
+// We do not detect any features at runtime for Apple's 32-bit ARM platforms. On
+// 64-bit ARM, we detect some post-ARMv8.0 features.
 #define OPENSSL_STATIC_ARMCAP
 #endif
 
@@ -263,6 +256,9 @@ OPENSSL_EXPORT int CRYPTO_is_ARMv8_DIT_capable_for_testing(void);
 OPENSSL_INLINE int CRYPTO_is_ARMv8_RNDR_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_RNG) != 0;
 }
+
+// This function is used only for testing; hence, not inlined
+OPENSSL_EXPORT int CRYPTO_is_ARMv8_DIT_capable_for_testing(void);
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 

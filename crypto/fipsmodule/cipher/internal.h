@@ -175,9 +175,6 @@ struct evp_cipher_st {
   // flags contains the OR of a number of flags. See |EVP_CIPH_*|.
   uint32_t flags;
 
-  // app_data is a pointer to opaque, user data.
-  void *app_data;
-
   int (*init)(EVP_CIPHER_CTX *ctx, const uint8_t *key, const uint8_t *iv,
               int enc);
 
@@ -201,15 +198,6 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes);
 
-// AES_cfb1_encrypt calls |CRYPTO_cfb128_1_encrypt| using the block
-// |AES_encrypt|.
-void AES_cfb1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
-                      const AES_KEY *key, uint8_t *ivec, int *num, int enc);
-
-// AES_cfb8_encrypt calls |CRYPTO_cfb128_8_encrypt| using the block
-// |AES_encrypt|.
-void AES_cfb8_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                      const AES_KEY *key, uint8_t *ivec, int *num, int enc);
 
 // EXPERIMENTAL functions for use in the TLS Transfer function. See
 // |SSL_to_bytes| for more details.

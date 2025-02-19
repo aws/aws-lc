@@ -18,6 +18,10 @@
 
 #if !defined(OPENSSL_WINDOWS)
 #include <sys/select.h>
+#include <unistd.h>
+static int closesocket(int sock) {
+  return close(sock);
+}
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
@@ -245,36 +249,118 @@ static bool WaitForSession(SSL *ssl, int sock) {
   return true;
 }
 
+static void print_verify_details(SSL *s) {
+  long verify_err = SSL_get_verify_result(s);
+
+  if (verify_err == X509_V_OK) {
+    fprintf(stdout, "Verification: OK\n");
+  } else {
+    const char *reason = X509_verify_cert_error_string(verify_err);
+    fprintf(stdout, "Verification error: %s\n", reason);
+  }
+}
+
+static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
+  STACK_OF(X509) *sk;
+
+  sk = SSL_get_peer_cert_chain(ssl);
+  if (sk != NULL) {
+    fprintf(stdout, "---\nCertificate chain\n");
+    for (size_t i = 0; i < sk_X509_num(sk); i++) {
+      fprintf(stdout, "%2zu s:", i);
+      if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(sk_X509_value(sk, i)),
+                            0, XN_FLAG_ONELINE) < 0) {
+        fprintf(stderr, "Error: Printing subject name failed");
+      }
+      fprintf(stdout, "\n   i:");
+      if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(sk_X509_value(sk, i)),
+                            0, XN_FLAG_ONELINE) < 0) {
+        fprintf(stderr, "Error: Printing issuer name failed");
+      }
+      fprintf(stdout, "\n");
+      if (show_certs) {
+        PEM_write_X509(stdout, sk_X509_value(sk, i));
+      }
+    }
+  }
+
+  fprintf(stdout, "---\n");
+  bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
+  if (peer) {
+    fprintf(stdout, "Server certificate\n");
+    PEM_write_X509(stdout, peer.get());
+    fprintf(stdout, "subject=");
+    if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(peer.get()),
+                       0, XN_FLAG_ONELINE) < 0) {
+      fprintf(stderr, "Error: Printing subject name failed");
+    }
+    fprintf(stdout, "\n\nissuer=");
+    if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(peer.get()),
+                          0, XN_FLAG_ONELINE) < 0) {
+      fprintf(stderr, "Error: Printing issuer name failed");
+    }
+    fprintf(stdout, "\n\n---\n");
+  } else {
+    fprintf(stdout, "no peer certificate available\n");
+  }
+
+  // TODO (aws-lc): we are missing some functions needed to print the following data
+  //  print_ca_names(bio, s);
+  //  ssl_print_sigalgs(bio, s);
+  //  ssl_print_tmp_key(bio, s);
+
+  fprintf(stdout,
+             "---\nSSL handshake has read %d bytes "
+             "and written %d bytes\n",
+        (int)BIO_number_read(SSL_get_rbio(ssl)),
+        (int)BIO_number_written(SSL_get_wbio(ssl)));
+  print_verify_details(ssl);
+}
+
 static bool DoConnection(SSL_CTX *ctx,
                          std::map<std::string, std::string> args_map,
-                         bool (*cb)(SSL *ssl, int sock)) {
+                         bool (*cb)(SSL *ssl, int sock), bool is_openssl_s_client) {
   int sock = -1;
   if (args_map.count("-http-tunnel") != 0) {
-    if (!Connect(&sock, args_map["-http-tunnel"]) ||
-        !DoHTTPTunnel(sock, args_map["-connect"])) {
+    if (!Connect(&sock, args_map["-http-tunnel"], is_openssl_s_client)) {
       return false;
     }
-  } else if (!Connect(&sock, args_map["-connect"])) {
+    if (!DoHTTPTunnel(sock, args_map["-connect"])) {
+      closesocket(sock);
+      return false;
+    }
+  } else if (!Connect(&sock, args_map["-connect"], is_openssl_s_client)) {
     return false;
+  }
+
+  // print for openssl tool
+  if (is_openssl_s_client) {
+    fprintf(stdout, "CONNECTED(%08d)\n", sock);
   }
 
   if (args_map.count("-starttls") != 0) {
     const std::string& starttls = args_map["-starttls"];
     if (starttls == "smtp") {
       if (!DoSMTPStartTLS(sock)) {
+        closesocket(sock);
         return false;
       }
     } else {
+      closesocket(sock);
       fprintf(stderr, "Unknown value for -starttls: %s\n", starttls.c_str());
       return false;
     }
   }
 
+  // BIO takes ownership of |sock| from this point forward.
   bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
 
   if (args_map.count("-server-name") != 0) {
-    SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
+    if (!SSL_set_tlsext_host_name(ssl.get(),
+                                  args_map["-server-name"].c_str())) {
+      return false;
+    }
   }
 
   if (args_map.count("-ech-grease") != 0) {
@@ -357,9 +443,14 @@ static bool DoConnection(SSL_CTX *ctx,
     }
   }
 
-  fprintf(stderr, "Connected.\n");
-  bssl::UniquePtr<BIO> bio_stderr(BIO_new_fp(stderr, BIO_NOCLOSE));
-  PrintConnectionInfo(bio_stderr.get(), ssl.get());
+  // print for bssl
+  if (!is_openssl_s_client) {
+    fprintf(stderr, "Connected.\n");
+    bssl::UniquePtr<BIO> bio_stderr(BIO_new_fp(stderr, BIO_NOCLOSE));
+    PrintConnectionInfo(bio_stderr.get(), ssl.get());
+  } else { // print for openssl
+    PrintOpenSSLConnectionInfo(ssl.get(), args_map.count("-showcerts"));
+  }
 
   return cb(ssl.get(), sock);
 }
@@ -378,15 +469,79 @@ static void InfoCallback(const SSL *ssl, int type, int value) {
   }
 }
 
-bool Client(const std::vector<std::string> &args) {
-  if (!InitSocketLibrary()) {
-    return false;
+static int verify_cb(int ok, X509_STORE_CTX *ctx)
+{
+  X509 *err_cert = X509_STORE_CTX_get_current_cert(ctx);
+  int err = X509_STORE_CTX_get_error(ctx);
+  int depth = X509_STORE_CTX_get_error_depth(ctx);
+  bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_CLOSE));
+
+  BIO_printf(bio_err.get(), "depth=%d ", depth);
+  if (err_cert != NULL) {
+    X509_NAME_print_ex(bio_err.get(),
+                       X509_get_subject_name(err_cert),
+                       0, XN_FLAG_ONELINE);
+    BIO_puts(bio_err.get(), "\n");
+  } else {
+    BIO_puts(bio_err.get(), "<no cert>\n");
   }
 
+  if (!ok) {
+    BIO_printf(bio_err.get(), "verify error:num=%d:%s\n", err,
+               X509_verify_cert_error_string(err));
+    ok = 1;
+  }
+
+  switch (err) {
+    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+      if (err_cert != NULL) {
+        BIO_puts(bio_err.get(), "issuer= ");
+        X509_NAME_print_ex(bio_err.get(), X509_get_issuer_name(err_cert),
+                           0, XN_FLAG_ONELINE);
+        BIO_puts(bio_err.get(), "\n");
+      }
+      ok = 1;
+      break;
+    case X509_V_ERR_CERT_NOT_YET_VALID:
+    case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
+      if (err_cert != NULL) {
+        BIO_printf(bio_err.get(), "notBefore=");
+        ASN1_TIME_print(bio_err.get(), X509_get0_notBefore(err_cert));
+        BIO_printf(bio_err.get(), "\n");
+      }
+      ok = 1;
+      break;
+    case X509_V_ERR_CERT_HAS_EXPIRED:
+    case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
+      if (err_cert != NULL) {
+        BIO_printf(bio_err.get(), "notAfter=");
+        ASN1_TIME_print(bio_err.get(), X509_get0_notAfter(err_cert));
+        BIO_printf(bio_err.get(), "\n");
+      }
+      ok = 1;
+      break;
+    case X509_V_ERR_NO_EXPLICIT_POLICY:
+      ok = 1;
+      break;
+  }
+
+  BIO_printf(bio_err.get(), "verify return:%d\n", ok);
+  return ok;
+}
+
+bool Client(const std::vector<std::string> &args) {
   std::map<std::string, std::string> args_map;
 
   if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
     PrintUsage(kArguments);
+    return false;
+  }
+
+  return DoClient(args_map, false);
+}
+
+bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client) {
+  if (!InitSocketLibrary()) {
     return false;
   }
 
@@ -540,24 +695,58 @@ bool Client(const std::vector<std::string> &args) {
     SSL_CTX_set_permute_extensions(ctx.get(), 1);
   }
 
+  std::string certPathFlag;
+  int verify = SSL_VERIFY_NONE;
   if (args_map.count("-root-certs") != 0) {
+    certPathFlag = "-root-certs";
+    verify = SSL_VERIFY_PEER;
+  }
+  // For the OpenSSL tool, simply specifying -CAfile does not imply verification
+  if (args_map.count("-CAfile") != 0) {
+    certPathFlag = "-CAfile";
+  }
+  if (!certPathFlag.empty()) {
     if (!SSL_CTX_load_verify_locations(
-            ctx.get(), args_map["-root-certs"].c_str(), nullptr)) {
+            ctx.get(), args_map[certPathFlag].c_str(), nullptr)) {
       fprintf(stderr, "Failed to load root certificates.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
   }
 
+  certPathFlag = "";
   if (args_map.count("-root-cert-dir") != 0) {
+    certPathFlag = "-root-cert-dir";
+    verify = SSL_VERIFY_PEER;
+  }
+  // For the OpenSSL tool, simply specifying -CApath does not imply verification
+  if (args_map.count("-CApath") != 0) {
+    certPathFlag = "-CApath";
+  }
+
+  if (!certPathFlag.empty()) {
     if (!SSL_CTX_load_verify_locations(
-            ctx.get(), nullptr, args_map["-root-cert-dir"].c_str())) {
+            ctx.get(), nullptr, args_map[certPathFlag].c_str())) {
       fprintf(stderr, "Failed to load root certificates.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
+  }
+
+  if (args_map.count("-verify") != 0) {
+    unsigned int depth;
+    if (!GetUnsigned(&depth, "-verify", 0, args_map)) {
+      fprintf(stderr, "s_client: Can't parse \"%s\" as a number\n", args_map.find("-verify")->second.c_str());
+      return false;
+    }
+    fprintf(stdout, "verify depth is %d\n", (int)depth);
+    verify = SSL_VERIFY_PEER;
+  }
+
+  if (is_openssl_s_client) { // openssl tool
+    SSL_CTX_set_verify(ctx.get(), verify, verify_cb);
+  } else {
+    SSL_CTX_set_verify(ctx.get(), verify, nullptr);
   }
 
   if (args_map.count("-early-data") != 0) {
@@ -575,10 +764,10 @@ bool Client(const std::vector<std::string> &args) {
       return false;
     }
 
-    if (!DoConnection(ctx.get(), args_map, &WaitForSession)) {
+    if (!DoConnection(ctx.get(), args_map, &WaitForSession, is_openssl_s_client)) {
       return false;
     }
   }
 
-  return DoConnection(ctx.get(), args_map, &TransferData);
+  return DoConnection(ctx.get(), args_map, &TransferData, is_openssl_s_client);
 }

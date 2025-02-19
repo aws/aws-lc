@@ -452,7 +452,6 @@ RSA_METHOD *RSA_meth_new(const char *name, int flags) {
   RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
 
   if (meth == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -1319,8 +1318,10 @@ int RSA_check_key(const RSA *key) {
   // n was bound by |is_public_component_of_rsa_key_good|. This also implicitly
   // checks p and q are odd, which is a necessary condition for Montgomery
   // reduction.
-  if (BN_is_negative(key->p) || BN_cmp(key->p, key->n) >= 0 ||
-      BN_is_negative(key->q) || BN_cmp(key->q, key->n) >= 0) {
+  if (BN_is_negative(key->p) ||
+      constant_time_declassify_int(BN_cmp(key->p, key->n) >= 0) ||
+      BN_is_negative(key->q) ||
+      constant_time_declassify_int(BN_cmp(key->q, key->n) >= 0)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto out;
   }
@@ -1351,7 +1352,8 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
-  if (!BN_is_one(&tmp) || !BN_is_one(&de)) {
+  if (constant_time_declassify_int(!BN_is_one(&tmp)) ||
+      constant_time_declassify_int(!BN_is_one(&de))) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
     goto out;
   }

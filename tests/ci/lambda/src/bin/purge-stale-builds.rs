@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_sdk_codebuild::types::BuildBatchFilter;
 use aws_sdk_ec2::operation::describe_instances::DescribeInstancesOutput;
+use aws_sdk_ec2::primitives::DateTime;
 use aws_sdk_ec2::types::Filter;
 use aws_sdk_ssm::types::DocumentKeyValuesFilter;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
@@ -34,7 +35,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         std::env::var("GITHUB_TOKEN_SECRET_NAME")
             .map_err(|_| "failed to find github access token secret name")?,
     )
-        .await?;
+    .await?;
 
     let github = octocrab::initialise(octocrab::Octocrab::builder().personal_token(github_token))
         .map_err(|e| format!("failed to build github client: {e}"))?;
@@ -115,6 +116,22 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     let mut ec2_terminated_instances: Vec<String> = vec![];
     let mut stopped_builds: u64 = 0;
 
+    let now_as_secs = DateTime::from(SystemTime::now()).secs();
+    // Instances do not properly shut down from time to time. Gather a list of all hanging ec2
+    // instances longer than 2 hours that fall under that umbrella.
+    if let Some(ref ec2_describe_response) = ec2_describe_response_optional {
+        for reservation in ec2_describe_response.reservations() {
+            for instance in reservation.instances() {
+                let launch_elapsed_time = now_as_secs - instance.launch_time().unwrap().secs();
+                if launch_elapsed_time > 7200 {
+                    ec2_terminated_instances.push(instance.instance_id().unwrap().to_string());
+                    log::info!("Instance {:?} will be terminated.", reservation.instances());
+                }
+            }
+        }
+    }
+    log::info!("Instances {:?}", ec2_terminated_instances);
+
     for (k, v) in &pull_requests {
         if v.len() <= 1 {
             continue;
@@ -181,12 +198,13 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     }
 
     if !ssm_deleted_documents.is_empty() && is_ec2_test_framework {
-        log::info!("Query for list of documents to delete with: {:?}",ssm_deleted_documents);
+        log::info!(
+            "Query for list of documents to delete with: {:?}",
+            ssm_deleted_documents
+        );
 
-        let all_documents = get_ssm_document_list(
-            &ssm_client_optional,
-            ssm_deleted_documents.clone(),
-        ).await?;
+        let all_documents =
+            get_ssm_document_list(&ssm_client_optional, ssm_deleted_documents.clone()).await?;
 
         // Prune hanging ssm documents corresponding to commits.
         for document in all_documents {

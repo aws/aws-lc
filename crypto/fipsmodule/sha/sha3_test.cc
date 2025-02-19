@@ -165,7 +165,6 @@ TEST(SHA3Test, NISTTestVectors) {
                 });
 }
 
-
 TEST(SHA3Test, NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt",
                 [](FileTest *t) {
@@ -208,10 +207,10 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
   const size_t out_lens[] = {
       0, 1, 2, 3, 4, 5, 6, 7, 8, (1 << 5), (1 << 16) + 1};
   for (auto out_len : out_lens) {
-    EXPECT_TRUE(SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH));
+    EXPECT_TRUE(SHA3_Init(&ctx, SHA3_384_DIGEST_BITLENGTH));
     out.resize(out_len + canary.size());
     std::copy(canary.begin(), canary.end(), out.end() - canary.size());
-    SHA3_Squeeze(ctx.A, out.data(), out_len, ctx.block_size, 1);
+    Keccak1600_Squeeze(ctx.A, out.data(), out_len, ctx.block_size, 1);
     EXPECT_TRUE(std::equal(out.end() - canary.size(), out.end(),
                            canary.begin()) == true);
   }

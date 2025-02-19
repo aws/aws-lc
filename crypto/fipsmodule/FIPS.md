@@ -6,9 +6,9 @@ A submodule of AWS-LC, referred to here as the “FIPS module”, is periodicall
 
 NIST has awarded the FIPS module of AWS-LC its validation certificate as a Federal Information Processing Standards (FIPS) 140-3, level 1, cryptographic module.
 
-* AWS-LC-FIPS v1.0: certificate [#4631](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4631) - [security policy](./policydocs/140sp4631.pdf)
-* AWS-LC-FIPS v2.0 (dynamic library): certificate [#4759](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4759) - [security policy](./policydocs/140sp4759.pdf)
-* AWS-LC-FIPS v2.0 (static library): certificate [#4816](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816) - [security policy](./policydocs/140sp4816.pdf)
+* AWS-LC-FIPS v1.0: certificate [#4631](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4631) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf)
+* AWS-LC-FIPS v2.0 (dynamic library): certificate [#4759](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4759) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4759.pdf)
+* AWS-LC-FIPS v2.0 (static library): certificate [#4816](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf)
 
 NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entropy Source.
 
@@ -17,7 +17,9 @@ NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entro
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
-* AWS-LC Cryptographic Module (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
+* AWS-LC Cryptographic Module (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-NetOS-dynamic.pdf)
+* AWS-LC-FIPS v3.0 (static): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-static.pdf)
+* AWS-LC-FIPS v3.0 (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-dynamic.pdf)
 
 ## RNG design
 
@@ -43,6 +45,9 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 
 1. `RSA_PWCT`
 2. `ECDSA_PWCT`
+3. `EDDSA_PWCT`
+4. `MLKEM_PWCT`
+5. `MLDSA_PWCT`
 
 ## Running ACVP tests
 

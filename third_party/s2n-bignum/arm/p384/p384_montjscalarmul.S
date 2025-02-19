@@ -503,7 +503,7 @@ p384_montjscalarmul_p384_montjadd:
         stp	x23, x24, [sp, #-16]!
         stp	x25, x26, [sp, #-16]!
         stp	x27, xzr, [sp, #-16]!
-        sub	sp, sp, #0x150
+        sub	sp, sp, #0x180
         mov	x24, x0
         mov	x25, x1
         mov	x26, x2
@@ -1120,7 +1120,7 @@ p384_montjscalarmul_p384_montjadd:
         stp	x7, x11, [sp, #256]
         adc	x17, x14, xzr
         stp	x2, x17, [sp, #272]
-        stp	x23, x24, [sp, #-48]
+        stp	x23, x24, [sp, #0x150]
         ldr	q3, [x26, #96]
         ldr	q25, [x25, #48]
         ldp	x13, x23, [x25, #48]
@@ -6361,7 +6361,7 @@ p384_montjscalarmul_p384_montjadd:
         stp	x14, x5, [sp, #256]
         adc	x12, x15, x23
         stp	x21, x12, [sp, #272]
-        ldp	x2, x27, [sp, #-48]
+        ldp	x2, x27, [sp, #0x150]
         ldr	q3, [sp, #48]
         ldr	q25, [sp, #192]
         ldp	x13, x23, [sp, #192]
@@ -6874,7 +6874,7 @@ p384_montjscalarmul_p384_montjadd:
         stp	x12, x13, [x27, #96]
         stp	x14, x15, [x27, #112]
         stp	x16, x17, [x27, #128]
-        add	sp, sp, #0x150
+        add	sp, sp, #0x180
         ldp	x27, xzr, [sp], #16
         ldp	x25, x26, [sp], #16
         ldp	x23, x24, [sp], #16

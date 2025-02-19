@@ -110,7 +110,7 @@ S2N_BN_SYMBOL(bignum_mod_n25519):
 
         cbz     k, writeback
 
-loop:
+bignum_mod_n25519_loop:
 
 // Assume that the new 5-digit x is 2^64 * previous_x + next_digit.
 // Get the quotient estimate q = max (floor(x/2^252)) (2^64 - 1)
@@ -154,7 +154,7 @@ loop:
         adcs    m2, t2, xzr
         adc     m3, t3, m3
 
-        cbnz    k, loop
+        cbnz    k, bignum_mod_n25519_loop
 
 // Finally write back [m3;m2;m1;m0] and return
 

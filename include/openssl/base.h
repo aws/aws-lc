@@ -87,6 +87,17 @@ extern "C" {
 #define AWSLC_FIPS
 #endif
 
+#if defined(__APPLE__)
+// Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
+// targets macOS specifically.
+#if defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#define OPENSSL_MACOS
+#endif
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#define OPENSSL_IOS
+#endif
+#endif
+
 #define AWSLC_VERSION_NAME "AWS-LC"
 #define OPENSSL_IS_AWSLC
 // |OPENSSL_VERSION_NUMBER| should match the version number in opensslv.h.
@@ -103,7 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 31
+#define AWSLC_API_VERSION 32
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -111,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.37.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.45.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -186,6 +197,13 @@ extern "C" {
 #endif
 #else
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
+#endif
+
+// OPENSSL_CLANG_PRAGMA emits a pragma on clang and nothing on other compilers.
+#if defined(__clang__)
+#define OPENSSL_CLANG_PRAGMA(arg) _Pragma(arg)
+#else
+#define OPENSSL_CLANG_PRAGMA(arg)
 #endif
 
 // OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers.
@@ -334,19 +352,23 @@ typedef struct kem_key_st KEM_KEY;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
+typedef struct evp_pkey_ctx_signature_context_params_st EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
+typedef struct pqdsa_key_st PQDSA_KEY;
 typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
-typedef struct pkcs7_st PKCS7;
-typedef struct pkcs7_signed_st PKCS7_SIGNED;
-typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
-typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
 typedef struct pkcs7_digest_st PKCS7_DIGEST;
+typedef struct pkcs7_enc_content_st PKCS7_ENC_CONTENT;
 typedef struct pkcs7_encrypt_st PKCS7_ENCRYPT;
+typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
+typedef struct pkcs7_issuer_and_serial_st PKCS7_ISSUER_AND_SERIAL;
 typedef struct pkcs7_recip_info_st PKCS7_RECIP_INFO;
+typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
+typedef struct pkcs7_signed_st PKCS7_SIGNED;
 typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
+typedef struct pkcs7_st PKCS7;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
 typedef struct private_key_st X509_PKEY;

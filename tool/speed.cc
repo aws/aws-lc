@@ -85,6 +85,9 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
+#if defined(INTERNAL_TOOL)
+#include "../crypto/fipsmodule/rand/internal.h"
+#endif
 
 
 #if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED) && (AWSLC_API_VERSION > 30)
@@ -864,7 +867,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+#if AWSLC_API_VERSION > 31
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
@@ -872,8 +875,11 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
     return true;
   }
 
-  // Setup CTX for Sign/Verify Operations
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+  // Setup CTX for Sign/Verify Operations of type EVP_PKEY_PQDSA
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+
+  // Setup CTX for specific signature alg NID
+  EVP_PKEY_CTX_pqdsa_set_params(pkey_ctx.get(), nid);
 
   // Setup CTX for Keygen Operations
   if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
@@ -927,7 +933,9 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
 }
 
 static bool SpeedDigestSign(const std::string &selected) {
-  return SpeedDigestSignNID("Dilithium3", EVP_PKEY_DILITHIUM3, selected);
+  return SpeedDigestSignNID("MLDSA44", NID_MLDSA44, selected) &&
+         SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected) &&
+         SpeedDigestSignNID("MLDSA87", NID_MLDSA87, selected);
 }
 
 #endif
@@ -1040,6 +1048,10 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
   // Benchmark initialisation and encryption
   for (size_t in_len : g_chunk_lengths) {
+    if (in_len < AES_BLOCK_SIZE) {
+      // AES-XTS requires encrypting at least the block size
+      continue;
+    }
     in.resize(in_len);
     out.resize(in_len);
     std::fill(in.begin(), in.end(), 0x5a);
@@ -1072,6 +1084,10 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   results.Print(name + " decrypt init");
 
   for (size_t in_len : g_chunk_lengths) {
+    if (in_len < AES_BLOCK_SIZE) {
+      // AES-XTS requires decrypting at least the block size
+      continue;
+    }
     in.resize(in_len);
     out.resize(in_len);
     std::fill(in.begin(), in.end(), 0x5a);
@@ -1148,25 +1164,21 @@ static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
 #else
   BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
 #endif
-  uint8_t scratch[16384];
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
   const size_t key_len = EVP_MD_size(md);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
   BM_memset(key.get(), 0, key_len);
-
-  if (chunk_len > sizeof(scratch)) {
-    return false;
-  }
 
   if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
     fprintf(stderr, "Failed to create HMAC_CTX.\n");
   }
   TimeResults results;
-  if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&ctx, chunk_len, &input]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
         return HMAC_Init_ex(ctx.get(), NULL, 0, NULL, NULL) &&
-               HMAC_Update(ctx.get(), scratch, chunk_len) &&
+               HMAC_Update(ctx.get(), input.get(), chunk_len) &&
                HMAC_Final(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "HMAC_Final failed.\n");
@@ -1213,22 +1225,19 @@ static bool SpeedHmac(const EVP_MD *md, const std::string &name,
 
 static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  uint8_t scratch[16384];
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
   const size_t key_len = EVP_MD_size(md);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
   BM_memset(key.get(), 0, key_len);
 
-  if (chunk_len > sizeof(scratch)) {
-    return false;
-  }
 
   TimeResults results;
-  if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &input]() -> bool {
 
         uint8_t digest[EVP_MAX_MD_SIZE] = {0};
         unsigned int md_len = EVP_MAX_MD_SIZE;
 
-        return HMAC(md, key.get(), key_len, scratch, chunk_len, digest, &md_len) != nullptr;
+        return HMAC(md, key.get(), key_len, input.get(), chunk_len, digest, &md_len) != nullptr;
       })) {
     fprintf(stderr, "HMAC_Final failed.\n");
     ERR_print_errors_fp(stderr);
@@ -1254,16 +1263,14 @@ static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
   return true;
 }
 
-static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
-  uint8_t scratch[16384];
 
-  if (chunk_len > sizeof(scratch)) {
-    return false;
-  }
+using RandomFunction = std::function<void(uint8_t *, size_t)>;
+static bool SpeedRandomChunk(RandomFunction function, std::string name, size_t chunk_len) {
+  std::unique_ptr<uint8_t[]> output(new uint8_t[chunk_len]);
 
   TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, &scratch]() -> bool {
-        RAND_bytes(scratch, chunk_len);
+  if (!TimeFunction(&results, [chunk_len, &output, &function]() -> bool {
+        function(output.get(), chunk_len);
         return true;
       })) {
     return false;
@@ -1273,13 +1280,13 @@ static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
   return true;
 }
 
-static bool SpeedRandom(const std::string &selected) {
-  if (!selected.empty() && selected != "RNG") {
+static bool SpeedRandom(RandomFunction function, const std::string &name, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
   for (size_t chunk_len : g_chunk_lengths) {
-    if (!SpeedRandomChunk("RNG", chunk_len)) {
+    if (!SpeedRandomChunk(function, name, chunk_len)) {
       return false;
     }
   }
@@ -2348,9 +2355,8 @@ static bool SpeedSelfTest(const std::string &selected) {
   results.Print("self-test");
   return true;
 }
-#endif
 
-#if defined(INTERNAL_TOOL)
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -2359,7 +2365,7 @@ static bool SpeedJitter(size_t chunk_size) {
 
   if (!TimeFunction(&results, [&jitter_ec, &input, chunk_size]() -> bool {
         size_t bytes =
-            jent_read_entropy_safe(&jitter_ec, input.get(), chunk_size);
+            jent_read_entropy(jitter_ec, input.get(), chunk_size);
         if (bytes != chunk_size) {
           return false;
         }
@@ -2386,6 +2392,7 @@ static bool SpeedJitter(std::string selected) {
   }
   return true;
 }
+#endif
 #endif
 
 static bool SpeedDHcheck(size_t prime_bit_length) {
@@ -2824,7 +2831,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
-       !SpeedRandom(selected) ||
+       !SpeedRandom(RAND_bytes, "RNG", selected) ||
        !SpeedECDH(selected) ||
        !SpeedECDSA(selected) ||
        !SpeedECKeyGen(selected) ||
@@ -2855,7 +2862,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
 #endif
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+#if AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
@@ -2883,6 +2890,8 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedRefcount(selected) ||
 #endif
 #if defined(INTERNAL_TOOL)
+       !SpeedRandom(CRYPTO_sysrand, "CRYPTO_sysrand", selected) ||
+       !SpeedRandom(CRYPTO_sysrand_for_seed, "CRYPTO_sysrand_for_seed", selected) ||
        !SpeedHashToCurve(selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
@@ -2905,11 +2914,11 @@ bool Speed(const std::vector<std::string> &args) {
     if (!SpeedSelfTest(selected)) {
       return false;
     }
-#endif
-#if defined(INTERNAL_TOOL)
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
     if (!SpeedJitter(selected)) {
       return false;
     }
+#endif
 #endif
   }
 

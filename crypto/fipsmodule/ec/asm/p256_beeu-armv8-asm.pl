@@ -15,7 +15,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
 die "can't locate arm-xlate.pl";
 
-open OUT,"| \"$^X\" $xlate $flavour $output";
+open OUT, qq{| "$^X" "$xlate" $flavour "$output"};
 *STDOUT=*OUT;
 #############################################################################
 # extern int beeu_mod_inverse_vartime(BN_ULONG out[P256_LIMBS],
