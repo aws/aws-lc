@@ -255,6 +255,7 @@ const EVP_MD *EVP_get_digestbyname(const char *name) {
 static void blake2b256_init(EVP_MD_CTX *ctx) { BLAKE2B256_Init(ctx->md_data); }
 
 static int blake2b256_update(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  // BLAKE2B256_Update is a void function
   BLAKE2B256_Update(ctx->md_data, data, len);
   return 1;
 }

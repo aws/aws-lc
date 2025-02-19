@@ -81,8 +81,10 @@ static void md4_init(EVP_MD_CTX *ctx) {
 }
 
 static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(MD4_Update(ctx->md_data, data, count));
-  return 1;
+  // MD4_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return MD4_Update(ctx->md_data, data, count);
 }
 
 static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
@@ -108,8 +110,10 @@ static void md5_init(EVP_MD_CTX *ctx) {
 }
 
 static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(MD5_Update(ctx->md_data, data, count));
-  return 1;
+  // MD5_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return MD5_Update(ctx->md_data, data, count);
 }
 
 static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
@@ -135,8 +139,10 @@ static void ripemd160_init(EVP_MD_CTX *ctx) {
 }
 
 static int ripemd160_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(RIPEMD160_Update(ctx->md_data, data, count));
-  return 1;
+  // RIPEMD160_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return RIPEMD160_Update(ctx->md_data, data, count);
 }
 
 static void ripemd160_final(EVP_MD_CTX *ctx, uint8_t *out) {
@@ -162,8 +168,10 @@ static void sha1_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA1_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA1_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return SHA1_Update(ctx->md_data, data, count);
 }
 
 static void sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -189,8 +197,10 @@ static void sha224_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA224_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA224_Update always returns 1. Internally called function
+  // |crypto_md32_update| through |SHA256_Update| is void. For test consistency
+  // and future compatibility, the return value is propagated and returned
+  return SHA224_Update(ctx->md_data, data, count);
 }
 
 static void sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -216,8 +226,10 @@ static void sha256_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA256_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA256_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return SHA256_Update(ctx->md_data, data, count);
 }
 
 static void sha256_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -243,8 +255,10 @@ static void sha384_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA384_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA384_Update always returns 1. Internally called function
+  // |SHA512_Update| always returns 1. For test consistency
+  // and future compatibility, the return value is propagated and returned
+  return SHA384_Update(ctx->md_data, data, count);
 }
 
 static void sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -270,8 +284,9 @@ static void sha512_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA512_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA512_Update always returns 1. For test consistency
+  // and future compatibility, the return value is propagated and returned
+  return SHA512_Update(ctx->md_data, data, count);
 }
 
 static void sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -297,8 +312,10 @@ static void sha512_224_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha512_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA512_224_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA512_224_Update always returns 1. Internally called function
+  // |SHA512_Update| always returns 1. For test consistency
+  // and future compatibility, the return value is propagated and returned
+  return SHA512_224_Update(ctx->md_data, data, count);
 }
 
 static void sha512_224_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -322,8 +339,10 @@ static void sha512_256_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha512_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA512_256_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA512_256_Update always returns 1. Internally called function
+  // |SHA512_Update| always returns 1. For test consistency
+  // and future compatibility, the return value is propagated and returned
+  return SHA512_256_Update(ctx->md_data, data, count);
 }
 
 static void sha512_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -349,8 +368,8 @@ static void sha3_224_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha3_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA3_Update returns 1 on success and 0 on failure.
+  return SHA3_Update(ctx->md_data, data, count);
 }
 
 static void sha3_224_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -376,8 +395,8 @@ static void sha3_256_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA3_Update returns 1 on success and 0 on failure.
+  return SHA3_Update(ctx->md_data, data, count);
 }
 
 static void sha3_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -403,8 +422,8 @@ static void sha3_384_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha3_384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA3_Update returns 1 on success and 0 on failure.
+  return SHA3_Update(ctx->md_data, data, count);
 }
 
 static void sha3_384_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -430,8 +449,8 @@ static void sha3_512_init(EVP_MD_CTX *ctx) {
 }
 
 static int sha3_512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
-  return 1;
+  // SHA3_Update returns 1 on success and 0 on failure.
+  return SHA3_Update(ctx->md_data, data, count);
 }
 
 static void sha3_512_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -533,9 +552,12 @@ static void md5_sha1_init(EVP_MD_CTX *md_ctx) {
 static int md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
                             size_t count) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  CHECK(MD5_Update(&ctx->md5, data, count) &&
-        SHA1_Update(&ctx->sha1, data, count));
-  return 1;
+  // MD5_Update and SHA1_Update always return 1. Internally called function
+  // |crypto_md32_update| always returns 1. For test consistency
+  // and future compatibility, the return value is propagated and returned
+  int ok = MD5_Update(&ctx->md5, data, count) &&
+        SHA1_Update(&ctx->sha1, data, count);
+  return ok;
 }
 
 static void md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {

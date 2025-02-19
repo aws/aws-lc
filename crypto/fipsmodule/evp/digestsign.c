@@ -96,8 +96,8 @@ static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
 
 static int hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
-  CHECK(HMAC_Update(&hctx->ctx, data, count));
-  return 1;
+  // HMAC_Update returns 1 on success and 0 on failure.
+  return HMAC_Update(&hctx->ctx, data, count);
 }
 
 static int HMAC_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *out_sig,
