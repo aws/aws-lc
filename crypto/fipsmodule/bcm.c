@@ -34,6 +34,7 @@
 #pragma bss_seg(".fipsbs$b")
 #endif
 
+#include <openssl/chacha.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
