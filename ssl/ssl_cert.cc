@@ -296,12 +296,6 @@ static int cert_set_chain_and_key(
       break;
   }
 
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs_sk(sk_CRYPTO_BUFFER_deep_copy(
-      certs->get(), buffer_up_ref, CRYPTO_BUFFER_free));
-  if (!certs_sk) {
-    return 0;
-  }
-
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
@@ -320,7 +314,7 @@ static int cert_set_chain_and_key(
   if (cert_pkey->chain) {
     cert_pkey->chain.reset();
   }
-  cert_pkey->chain = std::move(certs_sk);
+  cert_pkey->chain = std::move(*certs);
   cert->cert_private_key_idx = idx;
   return 1;
 }
