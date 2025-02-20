@@ -174,8 +174,8 @@ static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 
   if (rem != 0) {
     OPENSSL_memcpy(ctx->buf, data_ptr_copy + len - rem, rem);
+    ctx->buf_load = rem;
   }
-  ctx->buf_load = rem;
 
   return 1;
 }
@@ -318,11 +318,12 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
 // SHAKE_Squeeze can be called multiple time for incremental XOF output
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   size_t block_bytes;
-  ctx->md_size = len;
 
   if (ctx == NULL || md == NULL) {
     return 0;
   }
+
+  ctx->md_size = len;
 
   if (ctx->md_size == 0) {
     return 1;
