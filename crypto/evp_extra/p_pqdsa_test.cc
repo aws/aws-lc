@@ -1707,9 +1707,11 @@ TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
 
   // ---- 6. test failure modes ----
   // Test case in which a parsed key does not contain a seed
-  seeded_pkey.get()->pkey.pqdsa_key->seed = nullptr;
+  void *tmp = (void*) seeded_pkey.get()->pkey.pqdsa_key->seed;
+  seeded_pkey.get()->pkey.pqdsa_key->seed =nullptr;
   ASSERT_TRUE(CBB_init(cbb1.get(), 0));
   ASSERT_FALSE(EVP_marshal_private_key_v2(cbb1.get(), seeded_pkey.get()));
+  seeded_pkey.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
