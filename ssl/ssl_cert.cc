@@ -312,8 +312,14 @@ static int cert_set_chain_and_key(
   CERT_PKEY *cert_pkey = &cert->cert_private_keys[idx];
 
   // Update certificate slot index once all checks have passed.
+  if (cert_pkey->privatekey) {
+    cert_pkey->privatekey.reset();
+  }
   cert_pkey->privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
+  if (cert_pkey->chain) {
+    cert_pkey->chain.reset();
+  }
   cert_pkey->chain = std::move(certs_sk);
   cert->cert_private_key_idx = idx;
   return 1;
