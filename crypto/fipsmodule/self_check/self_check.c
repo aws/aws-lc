@@ -2277,7 +2277,7 @@ void boringssl_ensure_ffdh_self_test(void) {
 
 static void run_self_test_ml_kem(void) {
   if (!boringssl_self_test_ml_kem()) {
-    AWS_LC_FIPS_failure("RSA self tests failed");
+    AWS_LC_FIPS_failure("ML-KEM self tests failed");
   }
 }
 
@@ -2514,7 +2514,7 @@ static int boringssl_self_test_fast(void) {
   OPENSSL_memset(nonce, 0, sizeof(nonce));
   if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm(), kAESKey,
                          sizeof(kAESKey), 0, NULL)) {
-    AWS_LC_FIPS_failure("EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
+    fprintf(stderr, "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
     goto err;
   }
 

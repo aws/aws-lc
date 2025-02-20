@@ -267,7 +267,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 static void BORINGSSL_bcm_power_on_self_test(void) {
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
   if (AWS_LC_fips_failure_callback == NULL) {
-    fprintf(stderr, "AWS_LC_fips_failure_callback callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK\n");
+    fprintf(stderr, "AWS_LC_fips_failure_callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK\n");
     fflush(stderr);
     abort();
   }
@@ -404,7 +404,7 @@ int BORINGSSL_integrity_test(void) {
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message) {
   if (AWS_LC_fips_failure_callback == NULL) {
-    fprintf(stderr, "AWSLC_FIPS_FAILURE_CALLBACK enabled but AWS_LC_fips_failure_callback is null which is invalid. FIPS failure:\n%s", message);
+    fprintf(stderr, "AWS_LC_fips_failure_callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK. FIPS failure:\n%s", message);
     fflush(stderr);
     abort();
   } else {
@@ -413,7 +413,7 @@ void AWS_LC_FIPS_failure(const char* message) {
 }
 #else
 void AWS_LC_FIPS_failure(const char* message) {
-  fprintf(stderr, "AWS-LC FIPS failure caused by %s\n", message);
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
   fflush(stderr);
   for (;;) {
     abort();
