@@ -417,8 +417,7 @@ static bool SpeedRSA(const std::string &selected) {
 }
 
 static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
-  // Don't run this by default because it's so slow.
-  if (selected != "RSAKeyGen") {
+  if (!selected.empty() && selected.find("RSAKeyGen") == std::string::npos) {
     return true;
   }
 

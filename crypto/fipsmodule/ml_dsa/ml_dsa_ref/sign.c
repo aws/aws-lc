@@ -51,7 +51,7 @@ static int ml_dsa_keypair_pct(ml_dsa_params *params,
  *                             array of CRYPTO_SECRETKEYBYTES bytes)
  *              - const uint8_t *rnd: pointer to random seed
  *
- * Returns 0 (success)
+ * Returns 0 (success) -1 on failure or abort depending on FIPS mode
  **************************************************/
 int ml_dsa_keypair_internal(ml_dsa_params *params,
                             uint8_t *pk,
@@ -114,6 +114,7 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
   // Abort in case of PCT failure.
   if (!ml_dsa_keypair_pct(params, pk, sk)) {
     AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+    return -1;
   }
 #endif
   return 0;
@@ -139,8 +140,8 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *see
   if (!RAND_bytes(seed, ML_DSA_SEEDBYTES)) {
     return -1;
   }
-  ml_dsa_keypair_internal(params, pk, sk, seed);
-  return 0;
+  int result = ml_dsa_keypair_internal(params, pk, sk, seed);
+  return result;
 }
 
 /*************************************************

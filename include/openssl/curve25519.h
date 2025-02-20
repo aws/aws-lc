@@ -178,7 +178,7 @@ OPENSSL_EXPORT void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUB
 // must be “Alice” and the other be “Bob”.
 enum spake2_role_t {
   spake2_role_alice,
-  spake2_role_bob,
+  spake2_role_bob
 };
 
 // SPAKE2_CTX_new creates a new |SPAKE2_CTX| (which can only be used for a

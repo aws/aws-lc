@@ -92,7 +92,7 @@ typedef enum {
 
   // POINT_CONVERSION_HYBRID indicates that the point is encoded as z||x||y,
   // where z specifies which solution of the quadratic equation y is.
-  POINT_CONVERSION_HYBRID = 6,
+  POINT_CONVERSION_HYBRID = 6
 } point_conversion_form_t;
 
 

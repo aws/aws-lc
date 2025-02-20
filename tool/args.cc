@@ -24,7 +24,7 @@
 #include "internal.h"
 
 bool IsFlag(const std::string& arg) {
-  return arg.length() > 1 && (arg[0] == '-' || (arg.length() > 2 && arg[0] == '-' && arg[1] == '-'));
+  return arg.length() > 1 && arg[0] == '-';
 }
 
 bool ParseKeyValueArguments(args_map_t &out_args,
