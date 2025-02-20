@@ -251,6 +251,10 @@ static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 
 #endif  // !ASAN
 
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
+#endif
+
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
 static void BORINGSSL_bcm_power_on_self_test(void);
@@ -261,6 +265,13 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+  if (AWS_LC_fips_failure_callback == NULL) {
+    fprintf(stderr, "AWS_LC_fips_failure_callback callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK\n");
+    fflush(stderr);
+    abort();
+  }
+#endif
 // TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
 // PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
 // to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
@@ -390,11 +401,18 @@ int BORINGSSL_integrity_test(void) {
 }
 #endif  // OPENSSL_ASAN
 
-WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message) {
-  if (AWS_LC_fips_failure_callback != NULL) {
+  if (AWS_LC_fips_failure_callback == NULL) {
+    fprintf(stderr, "AWSLC_FIPS_FAILURE_CALLBACK enabled but AWS_LC_fips_failure_callback is null which is invalid. FIPS failure:\n%s", message);
+    fflush(stderr);
+    abort();
+  } else {
     AWS_LC_fips_failure_callback(message);
   }
+}
+#else
+void AWS_LC_FIPS_failure(const char* message) {
   fprintf(stderr, "AWS-LC FIPS failure caused by %s\n", message);
   fflush(stderr);
   for (;;) {
@@ -402,7 +420,7 @@ void AWS_LC_FIPS_failure(const char* message) {
     exit(1);
   }
 }
-
+#endif
 #else  // BORINGSSL_FIPS
 void AWS_LC_FIPS_failure(const char* message) {
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);

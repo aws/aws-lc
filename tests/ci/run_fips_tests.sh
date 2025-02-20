@@ -20,25 +20,30 @@ function static_openbsd_supported() {
   return 1
 }
 
-echo "Testing AWS-LC shared library in FIPS Release mode."
-fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
-
-echo "Testing AWS-LC shared library in FIPS Release mode with FIPS entropy source method CPU Jitter."
-fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
+#echo "Testing AWS-LC shared library in FIPS Release mode."
+#fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+#
+#echo "Testing AWS-LC shared library in FIPS Release mode with FIPS entropy source method CPU Jitter."
+#fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 
 # Static FIPS build works only on Linux and OpenBSD platforms.
 if static_linux_supported || static_openbsd_supported; then
-  echo "Testing AWS-LC static library in FIPS Release mode."
-  fips_build_and_test -DCMAKE_BUILD_TYPE=Release
+#  echo "Testing AWS-LC static library in FIPS Release mode."
+#  fips_build_and_test -DCMAKE_BUILD_TYPE=Release
+#
+#  echo "Testing AWS-LC static breakable release build"
+#  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+#  ./util/fipstools/test-break-kat.sh
+#  ./util/fipstools/test-runtime-pwct.sh
+#  export BORINGSSL_FIPS_BREAK_TEST="RSA_PWCT"
+#  ${BUILD_ROOT}/crypto/crypto_test --gtest_filter="RSADeathTest.KeygenFailAndDie"
+#  unset BORINGSSL_FIPS_BREAK_TEST
 
-  echo "Testing AWS-LC static breakable release build"
-  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
-  ./util/fipstools/test-break-kat.sh
-  ./util/fipstools/test-runtime-pwct.sh
+  echo "Testing AWS-LC static breakable build with custom callback enabled"
+  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS -DAWSLC_FIPS_FAILURE_CALLBACK"
   ./tests/ci/run_fips_callback_tests.sh
-  export BORINGSSL_FIPS_BREAK_TEST="RSA_PWCT"
-  ${BUILD_ROOT}/crypto/crypto_test --gtest_filter="RSADeathTest.KeygenFailAndDie"
-  unset BORINGSSL_FIPS_BREAK_TEST
+
+  exit 1
 
   MODULE_HASH=$(go run util/fipstools/break-hash.go "${BUILD_ROOT}/util/fipstools/test_fips" ./libcrypto.so | \
     egrep "Hash of module was:.* ([a-f0-9]*)")

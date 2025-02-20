@@ -1272,12 +1272,15 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 // AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
 // fails. If the library is built in FIPS mode it prevents any further
 // cryptographic operations by the current process.
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+void AWS_LC_FIPS_failure(const char* message);
+#else
 #if defined(_MSC_VER)
 __declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
 void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
-
+#endif
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.
 // Call |BORINGSSL_self_test| to run every self test.
