@@ -29,15 +29,15 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
   // SHAKE_Init always returns 1 when called with correct block size value
   SHAKE_Init(ctx, SHAKE128_BLOCKSIZE);
 
-  // SHA3_Update always returns 1 on first call of sizeof(extseed) (34 bytes)
-  SHA3_Update(ctx, extseed, sizeof(extseed));
+  // SHAKE_Absorb always returns 1 on first call of sizeof(extseed) (34 bytes)
+  SHAKE_Absorb(ctx, extseed, sizeof(extseed));
 }
 
 /*************************************************
 * Name:        kyber_shake128_squeeze
 *
 * Description: Squeeze step of SHAKE128 XOF. Squeezes full blocks of
-*              SHAKE128_RATE bytes each. Can be called multiple times
+*              SHAKE128_BLOCKSIZE bytes each. Can be called multiple times
 *              to keep squeezing. Assumes new block has not yet been
 *              started.
 *
@@ -48,8 +48,9 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks)
 {
   // Return code checks can be omitted
-  // SHAKE_Final always returns 1
-  SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
+  // SHAKE_Squeeze always returns 1 when |ctx->state| flag is different 
+  // from |KECCAK1600_STATE_FINAL|
+  SHAKE_Squeeze(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
 }
 
 /*************************************************
@@ -94,12 +95,13 @@ void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], con
   // SHAKE_Init always returns 1 when called with correct block size value
   SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE);
 
-  // SHA3_Update always returns 1 on first call of KYBER_SYMBYTES (32 bytes)
-  SHA3_Update(&ctx, key, KYBER_SYMBYTES);
+  // SHAKE_Absorb always returns 1 on first call of KYBER_SYMBYTES (32 bytes)
+  SHAKE_Absorb(&ctx, key, KYBER_SYMBYTES);
 
-  // SHA3_Update always returns 1 processing all data blocks that don't need pad
-  SHA3_Update(&ctx, input, params->ciphertext_bytes);
+  // SHAKE_Absorb always returns 1 processing all data blocks that don't need pad
+  SHAKE_Absorb(&ctx, input, params->ciphertext_bytes);
 
-  // SHAKE_Final always returns 1
+  // SHAKE_Final always returns 1 when |ctx->state| flag is set to  
+  // |KECCAK1600_STATE_ABSORB| (no previous calls to SHAKE_Final)
   SHAKE_Final(out, &ctx, KYBER_SSBYTES);
 }

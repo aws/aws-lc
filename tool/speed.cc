@@ -417,8 +417,7 @@ static bool SpeedRSA(const std::string &selected) {
 }
 
 static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
-  // Don't run this by default because it's so slow.
-  if (selected != "RSAKeyGen") {
+  if (!selected.empty() && selected.find("RSAKeyGen") == std::string::npos) {
     return true;
   }
 
@@ -867,7 +866,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
+#if AWSLC_API_VERSION > 31
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
@@ -1048,6 +1047,10 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
   // Benchmark initialisation and encryption
   for (size_t in_len : g_chunk_lengths) {
+    if (in_len < AES_BLOCK_SIZE) {
+      // AES-XTS requires encrypting at least the block size
+      continue;
+    }
     in.resize(in_len);
     out.resize(in_len);
     std::fill(in.begin(), in.end(), 0x5a);
@@ -1080,6 +1083,10 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   results.Print(name + " decrypt init");
 
   for (size_t in_len : g_chunk_lengths) {
+    if (in_len < AES_BLOCK_SIZE) {
+      // AES-XTS requires decrypting at least the block size
+      continue;
+    }
     in.resize(in_len);
     out.resize(in_len);
     std::fill(in.begin(), in.end(), 0x5a);
@@ -1157,25 +1164,21 @@ static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
 #else
   BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
 #endif
-  uint8_t scratch[16384];
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
   const size_t key_len = EVP_MD_size(md);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
   BM_memset(key.get(), 0, key_len);
-
-  if (chunk_len > sizeof(scratch)) {
-    return false;
-  }
 
   if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
     fprintf(stderr, "Failed to create HMAC_CTX.\n");
   }
   TimeResults results;
-  if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&ctx, chunk_len, &input]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
         return HMAC_Init_ex(ctx.get(), NULL, 0, NULL, NULL) &&
-               HMAC_Update(ctx.get(), scratch, chunk_len) &&
+               HMAC_Update(ctx.get(), input.get(), chunk_len) &&
                HMAC_Final(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "HMAC_Final failed.\n");
@@ -1222,22 +1225,19 @@ static bool SpeedHmac(const EVP_MD *md, const std::string &name,
 
 static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
-  uint8_t scratch[16384];
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
   const size_t key_len = EVP_MD_size(md);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
   BM_memset(key.get(), 0, key_len);
 
-  if (chunk_len > sizeof(scratch)) {
-    return false;
-  }
 
   TimeResults results;
-  if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &input]() -> bool {
 
         uint8_t digest[EVP_MAX_MD_SIZE] = {0};
         unsigned int md_len = EVP_MAX_MD_SIZE;
 
-        return HMAC(md, key.get(), key_len, scratch, chunk_len, digest, &md_len) != nullptr;
+        return HMAC(md, key.get(), key_len, input.get(), chunk_len, digest, &md_len) != nullptr;
       })) {
     fprintf(stderr, "HMAC_Final failed.\n");
     ERR_print_errors_fp(stderr);
@@ -1263,19 +1263,14 @@ static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
   return true;
 }
 
-const size_t SCRATCH_SIZE = 16384;
 
 using RandomFunction = std::function<void(uint8_t *, size_t)>;
 static bool SpeedRandomChunk(RandomFunction function, std::string name, size_t chunk_len) {
-  std::unique_ptr<uint8_t[]> scratch(new uint8_t[SCRATCH_SIZE]);
-
-  if (chunk_len > SCRATCH_SIZE) {
-    return false;
-  }
+  std::unique_ptr<uint8_t[]> output(new uint8_t[chunk_len]);
 
   TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, &scratch, &function]() -> bool {
-        function(scratch.get(), chunk_len);
+  if (!TimeFunction(&results, [chunk_len, &output, &function]() -> bool {
+        function(output.get(), chunk_len);
         return true;
       })) {
     return false;
@@ -2370,7 +2365,7 @@ static bool SpeedJitter(size_t chunk_size) {
 
   if (!TimeFunction(&results, [&jitter_ec, &input, chunk_size]() -> bool {
         size_t bytes =
-            jent_read_entropy_safe(&jitter_ec, input.get(), chunk_size);
+            jent_read_entropy(jitter_ec, input.get(), chunk_size);
         if (bytes != chunk_size) {
           return false;
         }
@@ -2689,7 +2684,9 @@ bool Speed(const std::vector<std::string> &args) {
   EVP_MD_unstable_sha3_enable(true);
 #endif
   std::map<std::string, std::string> args_map;
-  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+  args_list_t extra_args;
+  if (!ParseKeyValueArguments(args_map, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
@@ -2878,7 +2875,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
 #endif
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
+#if AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||

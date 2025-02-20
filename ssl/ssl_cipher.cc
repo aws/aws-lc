@@ -1234,6 +1234,84 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
   return false;
 }
 
+int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
+                       UniquePtr<SSLCipherPreferenceList> &ciphers,
+                       UniquePtr<SSLCipherPreferenceList> &tls13_ciphers) {
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list;
+  size_t num_removed_tls13_ciphers = 0, num_added_tls13_ciphers = 0;
+  Array<bool> updated_in_group_flags;
+
+  if (ciphers && ciphers->ciphers) {
+    tmp_cipher_list.reset(sk_SSL_CIPHER_dup(ciphers->ciphers.get()));
+  } else {
+    tmp_cipher_list.reset(sk_SSL_CIPHER_new_null());
+  }
+
+  if (tmp_cipher_list == nullptr) {
+    return 0;
+  }
+
+  // Delete any existing TLSv1.3 ciphersuites. These will be first in the list
+  while (sk_SSL_CIPHER_num(tmp_cipher_list.get()) > 0 &&
+         SSL_CIPHER_get_min_version(sk_SSL_CIPHER_value(tmp_cipher_list.get(), 0))
+         == TLS1_3_VERSION) {
+    sk_SSL_CIPHER_delete(tmp_cipher_list.get(), 0);
+    num_removed_tls13_ciphers++;
+  }
+
+  size_t num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
+
+  // Add any configure tls 1.3 ciphersuites
+  if (tls13_ciphers && tls13_ciphers->ciphers) {
+    STACK_OF(SSL_CIPHER) *tls13_cipher_stack = tls13_ciphers->ciphers.get();
+    num_added_tls13_ciphers = sk_SSL_CIPHER_num(tls13_cipher_stack);
+    for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
+      const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
+      if (!sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher)) {
+        return 0;
+      }
+    }
+  }
+
+
+  if (!updated_in_group_flags.Init(num_added_tls13_ciphers +
+                                   num_updated_tls12_ciphers)) {
+    return 0;
+  }
+  std::fill(updated_in_group_flags.begin(), updated_in_group_flags.end(),
+           false);
+
+  // Copy in_group_flags from |ctx->tls13_cipher_list|
+  if (tls13_ciphers && tls13_ciphers->in_group_flags) {
+    const auto& tls13_flags = tls13_ciphers->in_group_flags;
+    // Ensure value of last element in |in_group_flags| is 0. The last cipher
+    // in a list must be the end of any group in that list.
+    if (tls13_flags[num_added_tls13_ciphers - 1] != 0) {
+      tls13_flags[num_added_tls13_ciphers - 1] = false;
+    }
+    for (size_t i = 0; i < num_added_tls13_ciphers; i++) {
+      updated_in_group_flags[i] = tls13_flags[i];
+    }
+  }
+
+  // Copy remaining in_group_flags from |ctx->cipher_list|
+  if (ciphers && ciphers->in_group_flags) {
+    for (size_t i = 0; i < num_updated_tls12_ciphers; i++) {
+      updated_in_group_flags[i + num_added_tls13_ciphers] =
+        ciphers->in_group_flags[i + num_removed_tls13_ciphers];
+    }
+  }
+
+  Span<const bool> flags_span(updated_in_group_flags.data(), updated_in_group_flags.size());
+  UniquePtr<SSLCipherPreferenceList> new_list = MakeUnique<SSLCipherPreferenceList>();
+  if (!new_list || !new_list->Init(std::move(tmp_cipher_list), flags_span)) {
+    return 0;
+  }
+
+  dst = std::move(new_list);
+  return 1;
+}
+
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13) {

@@ -738,7 +738,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
-  assert(BN_ucmp(I, n) < 0);
+  declassify_assert(BN_ucmp(I, n) < 0);
 
   if (!mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
       !mod_montgomery(r2, I, p, rsa->mont_p, q, ctx) ||
@@ -773,7 +773,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // bound the width slightly higher, so fix it. This trips constant-time checks
   // because a naive data flow analysis does not realize the excess words are
   // publicly zero.
-  assert(BN_cmp(r0, n) < 0);
+  declassify_assert(BN_cmp(r0, n) < 0);
   bn_assert_fits_in_bytes(r0, BN_num_bytes(n));
   if (!bn_resize_words(r0, n->width)) {
     goto err;
@@ -1231,7 +1231,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
   if(check_fips && !RSA_check_fips(tmp)) {
     RSA_free(tmp);
 #if defined(AWSLC_FIPS)
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("RSA keygen checks failed");
 #endif
     return ret;
   }
@@ -1278,9 +1278,11 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   }
 
   BIGNUM *e = BN_new();
+  FIPS_service_indicator_lock_state();
   int ret = e != NULL &&
             BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
+  FIPS_service_indicator_unlock_state();
   BN_free(e);
   if(ret) {
     // Approved key size check step is already done at start of function.

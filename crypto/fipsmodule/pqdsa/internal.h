@@ -15,22 +15,40 @@ typedef struct {
   int (*pqdsa_keygen)(uint8_t *public_key,
                       uint8_t *private_key);
 
+  int (*pqdsa_keygen_internal)(uint8_t *public_key,
+                             uint8_t *private_key,
+                             const uint8_t *seed);
+
+  int (*pqdsa_sign_message)(const uint8_t *private_key,
+                            uint8_t *sig,
+                            size_t *sig_len,
+                            const uint8_t *message,
+                            size_t message_len,
+                            const uint8_t *ctx_string,
+                            size_t ctx_string_len);
+
   int (*pqdsa_sign)(const uint8_t *private_key,
-                    uint8_t *sig,
-                    size_t *sig_len,
-                    const uint8_t *message,
-                    size_t message_len,
-                    const uint8_t *ctx_string,
-                    size_t ctx_string_len);
+                          uint8_t *sig,
+                          size_t *sig_len,
+                          const uint8_t *digest,
+                          size_t digest_len);
+
+  int (*pqdsa_verify_message)(const uint8_t *public_key,
+                              const uint8_t *sig,
+                              size_t sig_len,
+                              const uint8_t *message,
+                              size_t message_len,
+                              const uint8_t *ctx_string,
+                              size_t ctx_string_len);
 
   int (*pqdsa_verify)(const uint8_t *public_key,
                       const uint8_t *sig,
                       size_t sig_len,
-                      const uint8_t *message,
-                      size_t message_len,
-                      const uint8_t *ctx_string,
-                      size_t ctx_string_len);
+                      const uint8_t *digest,
+                      size_t digest_len);
 
+  int (*pqdsa_pack_pk_from_sk)(uint8_t *public_key,
+                               const uint8_t *private_key);
 } PQDSA_METHOD;
 
 // PQDSA structure and helper functions.
@@ -62,8 +80,9 @@ PQDSA_KEY *PQDSA_KEY_new(void);
 void PQDSA_KEY_free(PQDSA_KEY *key);
 int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 
-int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in);
-int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in);
+int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in);
+int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in);
+int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in);
 #if defined(__cplusplus)
 }  // extern C
 #endif

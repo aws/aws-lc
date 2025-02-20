@@ -147,6 +147,7 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <bitset>
 #include <initializer_list>
 #include <limits>
 #include <new>
@@ -721,6 +722,20 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13);
 
+// update_cipher_list creates a new |SSLCipherPreferenceList| containing ciphers
+// from both |ciphers| and |tls13_ciphers| and assigns it to |dst|. The function:
+//
+// 1. Creates a copy of |ciphers|
+// 2. Removes any stale TLS 1.3 ciphersuites from the copy
+// 3. Adds any configured TLS 1.3 ciphersuites from |tls13_ciphers| to the
+// front of the list.
+// 4. Combines |in_group_flags| from both input lists into |dst->in_group_flags|
+//
+// Returns one on success, zero on error.
+int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
+                       UniquePtr<SSLCipherPreferenceList> &ciphers,
+                       UniquePtr<SSLCipherPreferenceList> &tls13_ciphers);
+
 // ssl_get_certificate_slot_index returns the |SSL_PKEY_*| certificate slot
 // index corresponding to the private key type of |pkey|. It returns -1 if not
 // supported. This was |ssl_cert_type| in OpenSSL 1.0.2.
@@ -994,9 +1009,9 @@ class SSLAEADContext {
 // DTLS1_BITMAP maintains a sliding window of 64 sequence numbers to detect
 // replayed packets. It should be initialized by zeroing every field.
 struct DTLS1_BITMAP {
-  // map is a bit mask of the last 64 sequence numbers. Bit
-  // |1<<i| corresponds to |max_seq_num - i|.
-  uint64_t map = 0;
+  // map is a bitset of sequence numbers that have been seen. Bit i corresponds
+  // to |max_seq_num - i|.
+  std::bitset<256> map;
   // max_seq_num is the largest sequence number seen so far as a 64-bit
   // integer.
   uint64_t max_seq_num = 0;
@@ -3243,8 +3258,15 @@ struct SSL_CONFIG {
 
   X509_VERIFY_PARAM *param = nullptr;
 
-  // crypto
+  // cipher_list holds all available cipher suites for tls 1.3,
+  // and 1.2 and below. Any configured ciphersuites here take precedence
+  // over the parent |SSL_CTX| object.
   UniquePtr<SSLCipherPreferenceList> cipher_list;
+
+  // tls13_cipher_list holds the default or configured tls1.3 and above
+  // cipher suites. Any configured ciphersuites here take precedence
+  // over the parent |SSL_CTX| object.
+  UniquePtr<SSLCipherPreferenceList> tls13_cipher_list;
 
   // This is used to hold the local certificate used (i.e. the server
   // certificate for a server or the client certificate for a client).
@@ -3720,6 +3742,18 @@ struct ssl_method_st {
   const bssl::SSL_X509_METHOD *x509_method;
 };
 
+// TLS13_DEFAULT_CIPHER_LIST_AES_HW is the default TLS 1.3 cipher suite
+// configuration when AES hardware acceleration is enabled.
+#define TLS13_DEFAULT_CIPHER_LIST_AES_HW "TLS_AES_128_GCM_SHA256:" \
+                                         "TLS_AES_256_GCM_SHA384:" \
+                                         "TLS_CHACHA20_POLY1305_SHA256"
+
+// TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW is the default TLS 1.3 cipher suite
+// configuration when no AES hardware acceleration is enabled.
+#define TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW "TLS_CHACHA20_POLY1305_SHA256:" \
+                                            "TLS_AES_128_GCM_SHA256:" \
+                                            "TLS_AES_256_GCM_SHA384"
+
 #define MIN_SAFE_FRAGMENT_SIZE 512
 struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   explicit ssl_ctx_st(const SSL_METHOD *ssl_method);
@@ -3753,12 +3787,12 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
 
-  // Currently, cipher_list holds the tls1.2 and below ciphersuites.
-  // TODO: move |tls13_cipher_list| to |cipher_list| during cipher
-  // configuration.
+  // cipher_list holds all available cipher suites for tls 1.3,
+  // and 1.2 and below
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
 
-  // tls13_cipher_list holds the tls1.3 and above ciphersuites.
+  // tls13_cipher_list holds the default or configured tls1.3 and above
+  // cipher suites.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> tls13_cipher_list;
 
   X509_STORE *cert_store = nullptr;

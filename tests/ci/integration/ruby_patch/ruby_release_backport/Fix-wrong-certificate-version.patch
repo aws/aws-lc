@@ -1,0 +1,31 @@
+From 226ae828c5cc2c87245417e9a372b9403c91a54c Mon Sep 17 00:00:00 2001
+From: Jeremy Evans <code@jeremyevans.net>
+Date: Tue, 4 Jun 2024 16:35:06 -0700
+Subject: [PATCH] Fix wrong certificate version
+
+OpenSSL::X509::Certificate#version= calls X509_set_version, and
+that sets the version stored in the certificate.  However, the
+version stored in certificate is one less than the actual
+certificate version (https://www.openssl.org/docs/manmaster/man3/X509_set_version.html).
+There are no version 4 certificates, and when using recent LibreSSL,
+drb ssl tests all fail without this change.
+---
+ lib/drb/ssl.rb | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/drb/ssl.rb b/lib/drb/ssl.rb
+index 392d656..4e4d992 100644
+--- a/lib/drb/ssl.rb
++++ b/lib/drb/ssl.rb
+@@ -185,7 +185,7 @@ module DRb
+         }
+ 
+         cert = OpenSSL::X509::Certificate.new
+-        cert.version = 3
++        cert.version = 2
+         cert.serial = 0
+         name = OpenSSL::X509::Name.new(self[:SSLCertName])
+         cert.subject = name
+-- 
+2.25.1
+

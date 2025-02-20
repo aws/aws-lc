@@ -166,24 +166,6 @@ struct timeval;
 extern "C" {
 #endif
 
-#if defined(__cplusplus)
-// enums can be predeclared, but only in C++ and only if given an explicit type.
-// C doesn't support setting an explicit type for enums thus a #define is used
-// to do this only for C++. However, the ABI type between C and C++ need to have
-// equal sizes, which is confirmed in a unittest.
-#define BORINGSSL_ENUM_INT : int
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT;
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT;
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
-enum ssl_verify_result_t BORINGSSL_ENUM_INT;
-#else
-#define BORINGSSL_ENUM_INT
-#endif
-
 
 // SSL implementation.
 
@@ -1276,8 +1258,7 @@ OPENSSL_EXPORT int SSL_set_chain_and_key(
     SSL *ssl, CRYPTO_BUFFER *const *certs, size_t num_certs, EVP_PKEY *privkey,
     const SSL_PRIVATE_KEY_METHOD *privkey_method);
 
-
-// SSL_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
+// SSL_CTX_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
 // |SSL_set_chain_and_key|, unless they have been discarded. Reference counts
 // are not incremented by this call. The return value may be |NULL| if no chain
 // has been set.
@@ -1356,7 +1337,7 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
-// SSL_CTX_use_certificate_chain_file configures certificates for |ssl|. It
+// SSL_use_certificate_chain_file configures certificates for |ssl|. It
 // reads the contents of |file| as a PEM-encoded leaf certificate followed
 // optionally by the certificate chain to send to the peer. It returns one on
 // success and zero on failure.
@@ -1384,10 +1365,10 @@ OPENSSL_EXPORT void *SSL_CTX_get_default_passwd_cb_userdata(const SSL_CTX *ctx);
 
 // Custom private keys.
 
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT {
+enum ssl_private_key_result_t {
   ssl_private_key_success,
   ssl_private_key_retry,
-  ssl_private_key_failure,
+  ssl_private_key_failure
 };
 
 // ssl_private_key_method_st (aka |SSL_PRIVATE_KEY_METHOD|) describes private
@@ -1690,23 +1671,27 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
 //
-// TLS 1.3 ciphers do not participate in this mechanism and instead have a
-// built-in preference order. Functions to set cipher lists do not affect TLS
-// 1.3, and functions to query the cipher list do not include TLS 1.3
-// ciphers.
+// Note: TLS 1.3 ciphersuites are only configurable via
+// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
+// no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
 #define SSL_DEFAULT_CIPHER_LIST "ALL"
 
+
 // SSL_CTX_set_strict_cipher_list configures the cipher list for |ctx|,
 // evaluating |str| as a cipher string and returning error if |str| contains
-// anything meaningless. It returns one on success and zero on failure.
+// anything meaningless. It updates |ctx->cipher_list| with any values in
+// |ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
                                                   const char *str);
 
 // SSL_CTX_set_cipher_list configures the cipher list for |ctx|, evaluating
-// |str| as a cipher string. It returns one on success and zero on failure.
+// |str| as a cipher string. It updates |ctx->cipher_list| with any values in
+// |ctx->tls13_cipher_list|. It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_CTX_set_strict_cipher_list|. This function tolerates
 // garbage inputs, unless an empty cipher list results. However, an empty
@@ -1720,24 +1705,34 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set_strict_cipher_list configures the cipher list for |ssl|, evaluating
 // |str| as a cipher string and returning error if |str| contains anything
-// meaningless. It returns one on success and zero on failure.
+// meaningless.
+// It updates the cipher list |ssl->config->cipher_list| with any configured
+// TLS 1.3 cipher suites by first checking |ssl->config->tls13_cipher_list| and
+// otherwise falling back to |ssl->ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 
-// SSL_CTX_set_ciphersuites configure the available TLSv1.3 ciphersuites for
-// |ctx|, evaluating |str| as a cipher string. It returns one on success and
+// SSL_CTX_set_ciphersuites configures the available TLSv1.3 ciphersuites on
+// |ctx|, evaluating |str| as a cipher string. It updates |ctx->cipher_list|
+// with any values in |ctx->tls13_cipher_list|. It returns one on success and
 // zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
-// SSL_set_ciphersuites sets the available TLSv1.3 ciphersuites on an |ssl|,
-// returning one on success and zero on failure. In OpenSSL, the only
-// difference between |SSL_CTX_set_ciphersuites| and |SSL_set_ciphersuites| is
-// that the latter copies the |SSL|'s |cipher_list| to its associated
-// |SSL_CONNECTION|. In AWS-LC, we track everything on the |ssl|'s |config| so
-// duplication is not necessary.
+// SSL_set_ciphersuites configures the available TLSv1.3 ciphersuites on
+// |ssl|, evaluating |str| as a cipher string. It updates
+// |ssl->config->cipher_list| with any values in
+// |ssl->config->tls13_cipher_list|. It returns one on success and zero on
+// failure.
 OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
-// a cipher string. It returns one on success and zero on failure.
+// a cipher string. It updates the cipher list |ssl->config->cipher_list| with
+// any configured TLS 1.3 cipher suites by first checking
+// |ssl->config->tls13_cipher_list| and otherwise falling back to
+// |ssl->ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_set_strict_cipher_list|. This function tolerates garbage
 // inputs, unless an empty cipher list results. However, an empty string which
@@ -1746,7 +1741,7 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
 
 // SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
-// preference.
+// preference. This includes TLS 1.3 and 1.2 and below cipher suites.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
 
 // SSL_CTX_cipher_in_group returns one if the |i|th cipher (see
@@ -1755,6 +1750,7 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i);
 
 // SSL_get_ciphers returns the cipher list for |ssl|, in order of preference.
+// This includes TLS 1.3 and 1.2 and below cipher suites.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 
@@ -2548,7 +2544,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 
 // ssl_ticket_aead_result_t enumerates the possible results from decrypting a
 // ticket with an |SSL_TICKET_AEAD_METHOD|.
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT {
+enum ssl_ticket_aead_result_t {
   // ssl_ticket_aead_success indicates that the ticket was successfully
   // decrypted.
   ssl_ticket_aead_success,
@@ -2561,7 +2557,7 @@ enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT {
   ssl_ticket_aead_ignore_ticket,
   // ssl_ticket_aead_error indicates that a fatal error occured and the
   // handshake should be terminated.
-  ssl_ticket_aead_error,
+  ssl_ticket_aead_error
 };
 
 // ssl_ticket_aead_method_st (aka |SSL_TICKET_AEAD_METHOD|) contains methods
@@ -2674,23 +2670,30 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
 
+// SSL_GROUP_SECP256R1_KYBER768_DRAFT00 is defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
 #define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
 
+// SSL_GROUP_X25519_KYBER768_DRAFT00 is defined at
 // https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
+// SSL_GROUP_SECP256R1_MLKEM768 is defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
 #define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
+
+// SSL_GROUP_X25519_MLKEM768 is defined at
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
 #define SSL_GROUP_X25519_MLKEM768    0x11EC
 
-// PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
-// community consensus and are defined at
+// The following PQ and hybrid group IDs are not yet standardized. Current IDs
+// are driven by community consensus and are defined at:
 // https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
 #define SSL_GROUP_KYBER512_R3 0x023A
 #define SSL_GROUP_KYBER768_R3 0x023C
 #define SSL_GROUP_KYBER1024_R3 0x023D
 
+// The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
 #define SSL_GROUP_MLKEM768  0x0768
 #define SSL_GROUP_MLKEM1024 0x1024
@@ -2889,10 +2892,10 @@ OPENSSL_EXPORT void SSL_set_verify(SSL *ssl, int mode,
                                    int (*callback)(int ok,
                                                    X509_STORE_CTX *store_ctx));
 
-enum ssl_verify_result_t BORINGSSL_ENUM_INT {
+enum ssl_verify_result_t {
   ssl_verify_ok,
   ssl_verify_invalid,
-  ssl_verify_retry,
+  ssl_verify_retry
 };
 
 // SSL_CTX_set_custom_verify configures certificate verification. |mode| is one
@@ -3825,11 +3828,11 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT {
+enum ssl_encryption_level_t {
   ssl_encryption_initial = 0,
   ssl_encryption_early_data,
   ssl_encryption_handshake,
-  ssl_encryption_application,
+  ssl_encryption_application
 };
 
 // ssl_quic_method_st (aka |SSL_QUIC_METHOD|) describes custom QUIC hooks.
@@ -4096,7 +4099,7 @@ OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 // An ssl_early_data_reason_t describes why 0-RTT was accepted or rejected.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
+enum ssl_early_data_reason_t {
   // The handshake has not progressed far enough for the 0-RTT status to be
   // known.
   ssl_early_data_unknown = 0,
@@ -4130,7 +4133,7 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   // The value of the largest entry.
   ssl_early_data_unsupported_with_custom_extension = 15,
   ssl_early_data_reason_max_value =
-      ssl_early_data_unsupported_with_custom_extension,
+      ssl_early_data_unsupported_with_custom_extension
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
@@ -4643,12 +4646,12 @@ OPENSSL_EXPORT void SSL_CTX_set_current_time_cb(
 // such as HTTP/1.1, and not others, such as HTTP/2.
 OPENSSL_EXPORT void SSL_set_shed_handshake_config(SSL *ssl, int enable);
 
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
+enum ssl_renegotiate_mode_t {
   ssl_renegotiate_never = 0,
   ssl_renegotiate_once,
   ssl_renegotiate_freely,
   ssl_renegotiate_ignore,
-  ssl_renegotiate_explicit,
+  ssl_renegotiate_explicit
 };
 
 // SSL_set_renegotiate_mode configures how |ssl|, a client, reacts to
@@ -4780,7 +4783,7 @@ struct ssl_early_callback_ctx {
 
 // ssl_select_cert_result_t enumerates the possible results from selecting a
 // certificate with |select_certificate_cb|.
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT {
+enum ssl_select_cert_result_t {
   // ssl_select_cert_success indicates that the certificate selection was
   // successful.
   ssl_select_cert_success = 1,
@@ -4789,7 +4792,7 @@ enum ssl_select_cert_result_t BORINGSSL_ENUM_INT {
   ssl_select_cert_retry = 0,
   // ssl_select_cert_error indicates that a fatal error occured and the
   // handshake should be terminated.
-  ssl_select_cert_error = -1,
+  ssl_select_cert_error = -1
 };
 
 // SSL_early_callback_ctx_extension_get searches the extensions in

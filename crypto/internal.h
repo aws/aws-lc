@@ -154,6 +154,8 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
+#include <stdbool.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -551,6 +553,12 @@ static inline int constant_time_declassify_int(int v) {
   CONSTTIME_DECLASSIFY(&v, sizeof(v));
   return value_barrier_u32(v);
 }
+
+// declassify_assert behaves like |assert| but declassifies the result of
+// evaluating |expr|. This allows the assertion to branch on the (presumably
+// public) result, but still ensures that values leading up to the computation
+// were secret.
+#define declassify_assert(expr) assert(constant_time_declassify_int(expr))
 
 
 // Thread-safe initialisation.
@@ -1165,13 +1173,13 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
                                        uint32_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
   return CRYPTO_GENERIC_ADDC(x, y, carry, out_carry);
 }
 
 static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
                                        uint64_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
   return CRYPTO_GENERIC_ADDC(x, y, carry, out_carry);
 }
 
@@ -1179,7 +1187,7 @@ static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
 
 static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
                                        uint32_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
   uint64_t ret = carry;
   ret += (uint64_t)x + y;
   *out_carry = (uint32_t)(ret >> 32);
@@ -1188,7 +1196,7 @@ static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
 
 static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
                                        uint64_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
 #if defined(BORINGSSL_HAS_UINT128)
   uint128_t ret = carry;
   ret += (uint128_t)x + y;
@@ -1217,13 +1225,13 @@ static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
 
 static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
                                        uint32_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   return CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow);
 }
 
 static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
                                        uint64_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   return CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow);
 }
 
@@ -1231,7 +1239,7 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
                                        uint32_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   uint32_t ret = x - y - borrow;
   *out_borrow = (x < y) | ((x == y) & borrow);
   return ret;
@@ -1239,7 +1247,7 @@ static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
 
 static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
                                        uint64_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   uint64_t ret = x - y - borrow;
   *out_borrow = (x < y) | ((x == y) & borrow);
   return ret;
@@ -1261,13 +1269,13 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 #if defined(BORINGSSL_FIPS)
 
-// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
+// AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
+// fails. If the library is built in FIPS mode it prevents any further
+// cryptographic operations by the current process.
 #if defined(_MSC_VER)
-__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+__declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
@@ -1295,10 +1303,20 @@ void boringssl_ensure_ffdh_self_test(void);
 // address space if unsuccessful.
 void boringssl_ensure_ml_kem_self_test(void);
 
-// boringssl_ensure_eddsa_self_test checks whether the EDDSA self-test
+// boringssl_ensure_ml_dsa_self_test checks whether the ML-DSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ml_dsa_self_test(void);
+
+// boringssl_ensure_eddsa_self_test checks whether the EdDSA self-test
 // has been run in this address space. If not, it runs it and crashes the
 // address space if unsuccessful.
 void boringssl_ensure_eddsa_self_test(void);
+
+// boringssl_ensure_hasheddsa_self_test checks whether the HashEdDSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_hasheddsa_self_test(void);
 
 #else
 
@@ -1308,14 +1326,19 @@ OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ml_kem_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
+
+// Outside of FIPS mode AWS_LC_FIPS_failure simply logs the message to stderr
+void AWS_LC_FIPS_failure(const char* message);
 
 #endif  // FIPS
 
-// boringssl_self_test_sha256 performs a SHA-256 KAT.
+// boringssl_self_test_sha256 performs a SHA-256 KAT
 int boringssl_self_test_sha256(void);
 
-// boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
+  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
 int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)

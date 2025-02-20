@@ -183,7 +183,7 @@ TEST_P(BIOMessageDigestTest, Randomized) {
   };
   std::vector<size_t> v(1000);
   std::generate(v.begin(), v.end(), [] { return rand() % MESSAGE_LEN; });
-  io_patterns.push_back(v);
+  io_patterns.push_back(std::move(v));
 
   for (auto io_pattern : io_patterns) {
     message.clear();

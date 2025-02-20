@@ -549,10 +549,9 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   eckey->priv_key = NULL;
 
 #if defined(AWSLC_FIPS)
-  BORINGSSL_FIPS_abort();
-#else
-  return 0;
+  AWS_LC_FIPS_failure("EC keygen checks failed");
 #endif
+  return 0;
 }
 
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
@@ -589,7 +588,6 @@ EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
 
   ret = OPENSSL_zalloc(sizeof(EC_KEY_METHOD));
   if(ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

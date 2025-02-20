@@ -2043,3 +2043,28 @@ TEST(PKCS7Test, PKCS7PrintNoop) {
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
   EXPECT_EQ(Bytes(contents, len), Bytes("PKCS7 printing is not supported"));
 }
+
+TEST(PKCS7Test, SetDetached) {
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  // |PKCS7_set_detached| does not work on an uninitialized |PKCS7|.
+  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 0));
+  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 1));
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+
+  PKCS7 *p7_internal = PKCS7_new();
+  EXPECT_TRUE(PKCS7_set_type(p7_internal, NID_pkcs7_data));
+  EXPECT_TRUE(PKCS7_type_is_data(p7_internal));
+  EXPECT_TRUE(PKCS7_set_content(p7.get(), p7_internal));
+
+  // Access the |p7|'s internal contents to verify that |PKCS7_set_detached|
+  // has the right behavior.
+  EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
+  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 0));
+  EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
+  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 2));
+  EXPECT_TRUE(p7.get()->d.sign->contents->d.data);
+  // data is "detached" when |PKCS7_set_detached| is set with 1.
+  EXPECT_TRUE(PKCS7_set_detached(p7.get(), 1));
+  EXPECT_FALSE(p7.get()->d.sign->contents->d.data);
+}
