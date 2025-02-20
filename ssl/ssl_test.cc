@@ -6557,10 +6557,9 @@ TEST(SSLTest, SetLeafChainAndKey) {
 
   bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
   ASSERT_TRUE(key);
-  bssl::UniquePtr<X509> leaf = X509FromBuffer(GetChainTestCertificateBuffer());
+  bssl::UniquePtr<X509> leaf = GetChainTestCertificate();
   ASSERT_TRUE(leaf);
-  bssl::UniquePtr<X509> intermediate =
-      X509FromBuffer(GetChainTestIntermediateBuffer());
+  bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
   bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
   ASSERT_TRUE(chain);
   ASSERT_TRUE(PushToStack(chain.get(), std::move(intermediate)));

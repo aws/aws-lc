@@ -1054,8 +1054,12 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
     return 0;
   }
 
+  // Update the leaf certificate
+  if (cert_pkey->x509_leaf) {
+    X509_free(cert_pkey->x509_leaf);
+  }
   X509_up_ref(x509);
-  ctx->cert->cert_private_keys[idx].x509_leaf = x509;
+  cert_pkey->x509_leaf = x509;
 
   return 1;
 }
