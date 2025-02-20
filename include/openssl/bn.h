@@ -769,7 +769,7 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
 enum bn_primality_result_t {
   bn_probably_prime,
   bn_composite,
-  bn_non_prime_power_composite,
+  bn_non_prime_power_composite
 };
 
 // BN_enhanced_miller_rabin_primality_test tests whether |w| is probably a prime

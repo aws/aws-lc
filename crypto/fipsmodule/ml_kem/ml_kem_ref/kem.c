@@ -59,7 +59,6 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
   memcpy(sk+params->secret_key_bytes-KYBER_SYMBYTES, coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
 
 #if defined(AWSLC_FIPS)
-  // Abort in case of PCT failure.
   if (keygen_pct(params, pk, sk)) {
     return -1;
   }
