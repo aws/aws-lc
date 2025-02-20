@@ -118,6 +118,7 @@
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
 #include "evp/p_kem.c"
+#include "evp/p_pqdsa.c"
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
@@ -126,6 +127,7 @@
 #include "kem/kem.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
+#include "ml_dsa/ml_dsa.c"
 #include "ml_kem/ml_kem.c"
 #include "modes/cbc.c"
 #include "modes/cfb.c"
@@ -136,6 +138,7 @@
 #include "modes/xts.c"
 #include "modes/polyval.c"
 #include "pbkdf/pbkdf.c"
+#include "pqdsa/pqdsa.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
@@ -182,6 +185,12 @@ extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
+#define STRING_POINTER_LENGTH 18
+#define MAX_FUNCTION_NAME 32
+#define ASSERT_WITHIN_MSG "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n"
+#define MAX_WITHIN_MSG_LEN sizeof(ASSERT_WITHIN_MSG) + (3 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
+#define ASSERT_OUTSIDE_MSG "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n"
+#define MAX_OUTSIDE_MSG_LEN sizeof(ASSERT_OUTSIDE_MSG) + (4 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
 // assert_within is used to sanity check that certain symbols are within the
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
@@ -195,11 +204,10 @@ static void assert_within(const void *start, const void *symbol,
     return;
   }
 
-  fprintf(
-      stderr,
-      "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n",
-      symbol_name, start, symbol, end);
-  BORINGSSL_FIPS_abort();
+  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
+  char message[MAX_WITHIN_MSG_LEN] = {0};
+  snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start, symbol, end);
+  AWS_LC_FIPS_failure(message);
 }
 
 static void assert_not_within(const void *start, const void *symbol,
@@ -212,11 +220,10 @@ static void assert_not_within(const void *start, const void *symbol,
     return;
   }
 
-  fprintf(
-      stderr,
-      "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n",
-      symbol_name, symbol, start, symbol, end);
-  BORINGSSL_FIPS_abort();
+  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
+  char message[MAX_WITHIN_MSG_LEN] = {0};
+  snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol, start, symbol, end);
+  AWS_LC_FIPS_failure(message);
 }
 
 // TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
@@ -263,8 +270,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   if (jent_entropy_init()) {
-    fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
-    goto err;
+    AWS_LC_FIPS_failure("CPU Jitter entropy RNG initialization failed");
   }
 #endif
 
@@ -272,18 +278,13 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
   if (!BORINGSSL_integrity_test()) {
-    goto err;
+    AWS_LC_FIPS_failure("Integrity test failed");
   }
 #endif  // OPENSSL_ASAN
 
   if (!boringssl_self_test_startup()) {
-    goto err;
+    AWS_LC_FIPS_failure("Power on self test failed");
   }
-
-  return;
-
-err:
-  BORINGSSL_FIPS_abort();
 }
 
 #if !defined(OPENSSL_ASAN)
@@ -375,26 +376,35 @@ int BORINGSSL_integrity_test(void) {
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
-  if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
-#if !defined(BORINGSSL_FIPS_BREAK_TESTS)
-    return 0;
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+  // Check the integrity but don't call AWS_LC_FIPS_failure or return 0
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", false);
+#else
+  // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which will
+  // result in an abort
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
 #endif
-  }
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
   return 1;
 }
 #endif  // OPENSSL_ASAN
 
-void BORINGSSL_FIPS_abort(void) {
+void AWS_LC_FIPS_failure(const char* message) {
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fflush(stderr);
   for (;;) {
     abort();
     exit(1);
   }
 }
 
+#else  // BORINGSSL_FIPS
+void AWS_LC_FIPS_failure(const char* message) {
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fflush(stderr);
+}
 #endif  // BORINGSSL_FIPS
-
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // When linking with a static library, if no symbols in an object file are
 // referenced then the object file is discarded, even if it has a constructor

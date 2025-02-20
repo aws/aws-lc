@@ -71,6 +71,16 @@ extern "C" {
 // SHAKE128 has the maximum block size among the SHA3/SHAKE algorithms.
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
+// Define state flag values for Keccak-based functions
+#define KECCAK1600_STATE_ABSORB     0 
+// KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
+// It remains set while |SHAKE_Squeeze| is called repeatedly to output 
+// chunks of the XOF output.
+#define KECCAK1600_STATE_SQUEEZE    1  
+// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called 
+// so that |SHAKE_Squeeze| cannot be called anymore.
+#define KECCAK1600_STATE_FINAL      2 
+
 typedef struct keccak_st KECCAK1600_CTX;
 
 // The data buffer should have at least the maximum number of
@@ -82,7 +92,7 @@ struct keccak_st {
   size_t buf_load;                                 // used bytes in below buffer
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
   uint8_t pad;                                     // padding character
-  uint8_t padded;                                  // denotes if padding has been performed
+  uint8_t state;                                  // denotes the keccak phase (absorb, squeeze, final)
 };
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
@@ -396,32 +406,43 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
-// SHAKE_Init initializes |ctx| with specified |block_size|, returns 1 on
-// success and 0 on failure. Calls SHA3_Init under the hood.
-int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
+// SHA3_Init initialises |ctx| fields through |FIPS202_Init| and 
+// returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
-// SHAKE_Final writes |len| bytes of finalized digest to |md|, returns 1 on
-// success and 0 on failure. Calls SHA3_Final under the hood.
-int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
-
-// SHA3_Reset zeros the bitstate and the amount of processed input.
-void SHA3_Reset(KECCAK1600_CTX *ctx);
-
-// SHA3_Init initialises |ctx| fields and returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bitlen);
-
-// SHA3_Update processes all data blocks that don't need pad through
-// |Keccak1600_Absorb| and returns 1 and 0 on failure.
+ // SHA3_Update check |ctx| pointer and |len| value, calls |FIPS202_Update| 
+ // and returns 1 on success and 0 on failure.
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// SHA3_Final pads the last data block and processes it through |Keccak1600_Absorb|.
-// It processes the data through |Keccak1600_Squeeze| and returns 1 and 0 on failure.
+// SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
+// It then calls |Keccak1600_Squeeze| and returns 1 on success 
+// and 0 on failure.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// Keccak1600_Absorb processes the largest multiple of |r| out of |len| bytes and
-// returns the remaining number of bytes.
+// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and 
+// returns 1 on success and 0 on failure.
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
+
+// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs 
+// input blocks via |FIPS202_Update|.
+int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
+                               size_t len);
+
+// SHAKE_Squeeze pads the last data block and absorbs it through 
+// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental 
+// XOF output to |md| and returns 1 on success and 0 on failure. It can be 
+// called multiple times.
+int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+
+// SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
+// success and 0 on failure. It should be called once to finalize absorb and
+// squeeze phases. Incremental XOF output should be generated via |SHAKE_Squeeze|.
+int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+
+// Keccak1600_Absorb processes the largest multiple of |r| (block size) out of
+// |len| bytes and returns the remaining number of bytes.
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
-                         const uint8_t *data, size_t len, size_t r);
+                                  const uint8_t *data, size_t len, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
 // multiple times when used as eXtendable Output Function. |padded| indicates

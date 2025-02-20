@@ -23,10 +23,16 @@
 
 #include "internal.h"
 
-bool ParseKeyValueArguments(args_map_t *out_args,
+bool IsFlag(const std::string& arg) {
+  return arg.length() > 1 && arg[0] == '-';
+}
+
+bool ParseKeyValueArguments(args_map_t &out_args,
+                          args_list_t &extra_args,
                           const args_list_t &args,
                           const argument_t *templates) {
-  out_args->clear();
+  out_args.clear();
+  extra_args.clear();
 
   for (size_t i = 0; i < args.size(); i++) {
     const std::string &arg = args[i];
@@ -39,30 +45,34 @@ bool ParseKeyValueArguments(args_map_t *out_args,
     }
 
     if (templ == nullptr) {
-      fprintf(stderr, "Unknown argument: %s\n", arg.c_str());
-      return false;
+      if(IsFlag(arg)) {
+        fprintf(stderr, "Unknown flag: %s\n", arg.c_str());
+        return false;
+      }
+      extra_args.push_back(arg);
+      continue;
     }
 
-    if (out_args->find(arg) != out_args->end()) {
+    if (out_args.find(arg) != out_args.end()) {
       fprintf(stderr, "Duplicate argument: %s\n", arg.c_str());
       return false;
     }
 
     if (templ->type == kBooleanArgument) {
-      (*out_args)[arg] = "";
+      out_args[arg] = "";
     } else {
       if (i + 1 >= args.size()) {
         fprintf(stderr, "Missing argument for option: %s\n", arg.c_str());
         return false;
       }
-      (*out_args)[arg] = args[++i];
+      out_args[arg] = args[++i];
     }
   }
 
   for (size_t j = 0; templates[j].name[0] != 0; j++) {
     const argument_t *templ = &templates[j];
     if (templ->type == kRequiredArgument &&
-        out_args->find(templ->name) == out_args->end()) {
+        out_args.find(templ->name) == out_args.end()) {
       fprintf(stderr, "Missing value for required argument: %s\n", templ->name);
       return false;
     }

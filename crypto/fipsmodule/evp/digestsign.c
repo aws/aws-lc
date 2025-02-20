@@ -57,7 +57,7 @@
 
 #include <openssl/err.h>
 
-#include "../../pqdsa/internal.h"
+#include "../pqdsa/internal.h"
 #include "../delocate.h"
 #include "../digest/internal.h"
 #include "internal.h"
