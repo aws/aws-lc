@@ -1615,6 +1615,35 @@ static bool DER_to_PEM(const uint8_t* der, size_t der_len,
   return true;
 }
 
+// Helper function that:
+// 1. Creates a BIO
+// 2. Reads the provided |pem_string| into bio
+// 3. Reads the PEM into DER encoding
+// 4. Returns the DER data and length
+static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len) {
+  char *name = nullptr;
+  char *header = nullptr;
+
+  // Create BIO from memory
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
+  if (!bio) {
+    return false;
+  }
+
+  // Read PEM into DER
+  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
+    OPENSSL_free(name);
+    OPENSSL_free(header);
+    OPENSSL_free(*out_der);
+    *out_der = nullptr;
+    return false;
+  }
+
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+  return true;
+}
+
 TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
   // ---- 1. Setup phase: generate a key ----
   int nid = GetParam().nid;
@@ -1675,6 +1704,12 @@ TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
   OPENSSL_free(der);
   OPENSSL_free(der1);
   OPENSSL_free(pem);
+
+  // ---- 6. test failure modes ----
+  // Test case in which a parsed key does not contain a seed
+  seeded_pkey.get()->pkey.pqdsa_key->seed = nullptr;
+  ASSERT_TRUE(CBB_init(cbb1.get(), 0));
+  ASSERT_FALSE(EVP_marshal_private_key_v2(cbb1.get(), seeded_pkey.get()));
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
@@ -1797,35 +1832,6 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
   CBS_init(&cbs, der, der_len);
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
-}
-
-// Helper function that:
-// 1. Creates a BIO
-// 2. Reads the provided |pem_string| into bio
-// 3. Reads the PEM into DER encoding
-// 4. Returns the DER data and length
-static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len) {
-  char *name = nullptr;
-  char *header = nullptr;
-
-  // Create BIO from memory
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
-  if (!bio) {
-    return false;
-  }
-
-  // Read PEM into DER
-  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
-    OPENSSL_free(name);
-    OPENSSL_free(header);
-    OPENSSL_free(*out_der);
-    *out_der = nullptr;
-    return false;
-  }
-
-  OPENSSL_free(name);
-  OPENSSL_free(header);
-  return true;
 }
 
 TEST_P(PQDSAParameterTest, ParsePrivateKey) {
