@@ -106,7 +106,8 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
 
   uint8_t *seed = OPENSSL_malloc(key->pqdsa->keygen_seed_len);
   if (seed == NULL) {
-    OPENSSL_free(seed);
+    OPENSSL_free(private_key);
+    OPENSSL_free(public_key);
     return 0;
   }
 
@@ -114,6 +115,9 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
   if (!key->pqdsa->method->pqdsa_keygen_internal(public_key,
                                                  private_key,
                                                  CBS_data(in))) {
+    OPENSSL_free(public_key);
+    OPENSSL_free(private_key);
+    OPENSSL_free(seed);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
