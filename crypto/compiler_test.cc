@@ -262,6 +262,7 @@ typedef union union_array_type {
 // Windows doesn't like the big virtual functions produced. So, split this into
 // several test fixtures.
 
+// clang-format off
 TEST(AlignmentTest, StackBufferManualAlignmentTypes1) {
 
   CHECK_STACK_ALIGNMENT(uint8_t, 2, 1)
@@ -750,3 +751,4 @@ TEST(AlignmentTest, StackBufferManualAlignmentTypes2) {
   CHECK_STACK_ALIGNMENT(union_array_type, 64, 62)
   CHECK_STACK_ALIGNMENT(union_array_type, 64, 63)
 }
+// clang-format on
