@@ -12,7 +12,7 @@
 //     (uint64_t *z, uint64_t *table, uint64_t height, uint64_t idx);
 //
 // Initial version written by Hanno Becker
-// Standard ARM ABI: X0 = z, X1 = table, X2 = height, X4 = idx
+// Standard ARM ABI: X0 = z, X1 = table, X2 = height, X3 = idx
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 

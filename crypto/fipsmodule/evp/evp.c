@@ -264,11 +264,9 @@ void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
 }
 
 int EVP_PKEY_type(int nid) {
-  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(nid);
-  if (meth == NULL) {
-    return NID_undef;
-  }
-  return meth->pkey_id;
+  // In OpenSSL, this was used to map between type aliases. BoringSSL supports
+  // no type aliases, so this function is just the identity.
+  return nid;
 }
 
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
@@ -471,16 +469,32 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                        const uint8_t *in, size_t len) {
   SET_DIT_AUTO_RESET;
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
-    goto err;
+  // To avoid pulling in all key types, look for specifically the key types that
+  // support |set_priv_raw|.
+  const EVP_PKEY_ASN1_METHOD *method;
+  switch (type) {
+    case EVP_PKEY_X25519:
+      method = &x25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519:
+      method = &ed25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519PH:
+      method = &ed25519ph_asn1_meth;
+      break;
+    case EVP_PKEY_HMAC:
+      method = &hmac_asn1_meth;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+      return 0;
   }
 
-  if (ret->ameth->set_priv_raw == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   if (!ret->ameth->set_priv_raw(ret, in, len, NULL, 0)) {
     goto err;
@@ -495,16 +509,29 @@ err:
 
 EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
                                       const uint8_t *in, size_t len) {
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
-    goto err;
+  // To avoid pulling in all key types, look for specifically the key types that
+  // support |set_pub_raw|.
+  const EVP_PKEY_ASN1_METHOD *method;
+  switch (type) {
+    case EVP_PKEY_X25519:
+      method = &x25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519:
+      method = &ed25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519PH:
+      method = &ed25519ph_asn1_meth;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+      return 0;
   }
 
-  if (ret->ameth->set_pub_raw == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   if (!ret->ameth->set_pub_raw(ret, in, len)) {
     goto err;
@@ -567,6 +594,30 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
                            0, (void *)out_md);
 }
+
+int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                       const uint8_t *context,
+                                       size_t context_len) {
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
+  return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+}
+
+int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
+                                        const uint8_t **context,
+                                        size_t *context_len) {
+  GUARD_PTR(context);
+  GUARD_PTR(context_len);
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {NULL, 0};
+  if (!EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                         EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params)) {
+    return 0;
+  }
+  *context = params.context;
+  *context_len = params.context_len;
+  return 1;
+}
+
 
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_RESET;

@@ -240,11 +240,11 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600,.-KeccakF1600
-.globl	SHA3_Absorb_hw
-.hidden	SHA3_Absorb_hw
-.type	SHA3_Absorb_hw,%function
+.globl	Keccak1600_Absorb_hw
+.hidden	Keccak1600_Absorb_hw
+.type	Keccak1600_Absorb_hw,%function
 .align	5
-SHA3_Absorb_hw:
+Keccak1600_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -472,12 +472,12 @@ SHA3_Absorb_hw:
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb_hw,.-SHA3_Absorb_hw
-.globl	SHA3_Squeeze_hw
-.hidden	SHA3_Squeeze_hw
-.type	SHA3_Squeeze_hw,%function
+.size	Keccak1600_Absorb_hw,.-Keccak1600_Absorb_hw
+.globl	Keccak1600_Squeeze_hw
+.hidden	Keccak1600_Squeeze_hw
+.type	Keccak1600_Squeeze_hw,%function
 .align	5
-SHA3_Squeeze_hw:
+Keccak1600_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -543,7 +543,7 @@ SHA3_Squeeze_hw:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze_hw,.-SHA3_Squeeze_hw
+.size	Keccak1600_Squeeze_hw,.-Keccak1600_Squeeze_hw
 .type	KeccakF1600_ce,%function
 .align	5
 KeccakF1600_ce:
@@ -672,11 +672,11 @@ KeccakF1600_cext:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600_cext,.-KeccakF1600_cext
-.globl	SHA3_Absorb_cext
-.hidden	SHA3_Absorb_cext
-.type	SHA3_Absorb_cext,%function
+.globl	Keccak1600_Absorb_cext
+.hidden	Keccak1600_Absorb_cext
+.type	Keccak1600_Absorb_cext,%function
 .align	5
-SHA3_Absorb_cext:
+Keccak1600_Absorb_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
@@ -889,12 +889,12 @@ SHA3_Absorb_cext:
 	ldp	x29,x30,[sp],#80
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb_cext,.-SHA3_Absorb_cext
-.globl	SHA3_Squeeze_cext
-.hidden	SHA3_Squeeze_cext
-.type	SHA3_Squeeze_cext,%function
+.size	Keccak1600_Absorb_cext,.-Keccak1600_Absorb_cext
+.globl	Keccak1600_Squeeze_cext
+.hidden	Keccak1600_Squeeze_cext
+.type	Keccak1600_Squeeze_cext,%function
 .align	5
-SHA3_Squeeze_cext:
+Keccak1600_Squeeze_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
@@ -950,7 +950,7 @@ SHA3_Squeeze_cext:
 	ldr	x29,[sp],#16
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze_cext,.-SHA3_Squeeze_cext
+.size	Keccak1600_Squeeze_cext,.-Keccak1600_Squeeze_cext
 .byte	75,101,99,99,97,107,45,49,54,48,48,32,97,98,115,111,114,98,32,97,110,100,32,115,113,117,101,101,122,101,32,102,111,114,32,65,82,77,118,56,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .align	2
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(__ELF__)

@@ -16,9 +16,19 @@ static const argument_t kArguments[] = {
   { "-noout", kBooleanArgument, "Prevents output of the encoded version of the certificate" },
   { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
+  { "-subject", kBooleanArgument, "Prints the subject name"},
+  { "-subject_hash", kBooleanArgument, "Prints subject hash value"},
+  { "-subject_hash_old", kBooleanArgument, "Prints old OpenSSL style (MD5) subject hash value"},
+  { "-fingerprint", kBooleanArgument, "Prints the certificate fingerprint"},
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
   { "-text", kBooleanArgument, "Pretty print the contents of the certificate"},
+  { "-inform", kOptionalArgument, "This specifies the input format normally the command will expect an X509 "
+                                  "certificate but this can change if other options such as -req are present. "
+                                  "The DER format is the DER encoding of the certificate and PEM is the base64 "
+                                  "encoding of the DER encoding with header and footer lines added. The default "
+                                  "format is PEM."},
+  { "-enddate", kBooleanArgument, "Prints out the expiry date of the certificate, that is the notAfter date."},
   { "", kOptionalArgument, "" }
 };
 
@@ -64,8 +74,10 @@ bool X509Tool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, signkey_path, checkend_str, days_str;
-  bool noout = false, modulus = false, dates = false, req = false, help = false, text = false;
+  std::string in_path, out_path, signkey_path, checkend_str, days_str, inform;
+  bool noout = false, modulus = false, dates = false, req = false, help = false,
+  text = false, subject = false, fingerprint = false, enddate = false,
+  subject_hash = false, subject_hash_old = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -76,7 +88,13 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
+  GetBoolArgument(&subject, "-subject", parsed_args);
+  GetBoolArgument(&subject_hash, "-subject_hash", parsed_args);
+  GetBoolArgument(&subject_hash_old, "-subject_hash_old", parsed_args);
+  GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
   GetBoolArgument(&text, "-text", parsed_args);
+  GetString(&inform, "-inform", "", parsed_args);
+  GetBoolArgument(&enddate, "-enddate", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
@@ -91,11 +109,7 @@ bool X509Tool(const args_list_t &args) {
     BIO_write_filename(output_bio.get(), out_path.c_str());
   }
 
-  // Check for required option -in, and -req must include -signkey
-  if (in_path.empty()) {
-    fprintf(stderr, "Error: missing required argument '-in'\n");
-    return false;
-  }
+  // -req must include -signkey
   if (req && signkey_path.empty()) {
     fprintf(stderr, "Error: '-req' option must be used with '-signkey' option\n");
     return false;
@@ -135,14 +149,34 @@ bool X509Tool(const args_list_t &args) {
     days.reset(new unsigned(std::stoul(days_str)));
   }
 
-  ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
-  if (!in_file) {
-    fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
-    return false;
+  // Check -inform has a valid value
+  if(!inform.empty()) {
+    if (inform != "DER" && inform != "PEM") {
+      fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
+      return false;
+    }
+  }
+
+  // Read from stdin if no -in path provided
+  ScopedFILE in_file;
+  if (in_path.empty()) {
+    in_file.reset(stdin);
+  } else {
+    in_file.reset(fopen(in_path.c_str(), "rb"));
+    if (!in_file) {
+      fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
+      return false;
+    }
   }
 
   if (req) {
-    bssl::UniquePtr<X509_REQ> csr(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
+    bssl::UniquePtr<X509_REQ> csr;
+    if (!inform.empty() && inform == "DER") {
+      csr.reset(d2i_X509_REQ_fp(in_file.get(), nullptr));
+    } else {
+      csr.reset(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
+    }
+
     if (!csr) {
       fprintf(stderr, "Error: error parsing CSR from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
@@ -194,25 +228,18 @@ bool X509Tool(const args_list_t &args) {
       return false;
     }
   } else {
-    // Parse x509 certificate from input PEM file
-    bssl::UniquePtr<X509> x509(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
+    // Parse x509 certificate from input file
+    bssl::UniquePtr<X509> x509;
+    if (!inform.empty() && inform == "DER") {
+      x509.reset(d2i_X509_fp(in_file.get(), nullptr));
+    } else {
+      x509.reset(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
+    }
+
     if (!x509) {
       fprintf(stderr, "Error: error parsing certificate from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
       return false;
-    }
-    if(text) {
-      X509_print(output_bio.get(), x509.get());
-    }
-
-    if (dates) {
-      BIO_printf(output_bio.get(), "notBefore=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-
-      BIO_printf(output_bio.get(), "notAfter=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
     }
 
     if (modulus) {
@@ -248,6 +275,63 @@ bool X509Tool(const args_list_t &args) {
         fprintf(stderr, "Error: public key is not an RSA key\n");
         return false;
       }
+    }
+
+    if(text) {
+      X509_print(output_bio.get(), x509.get());
+    }
+
+    if (subject) {
+      X509_NAME *subject_name = X509_get_subject_name(x509.get());
+      if (!subject_name) {
+        fprintf(stderr, "Error: unable to obtain subject from certificate\n");
+        return false;
+      }
+
+      BIO_printf(output_bio.get(), "subject=");
+      X509_NAME_print_ex(output_bio.get(), subject_name, 0, XN_FLAG_ONELINE);
+      BIO_printf(output_bio.get(), "\n");
+    }
+
+    if (fingerprint) {
+      unsigned int out_len;
+      unsigned char md[EVP_MAX_MD_SIZE];
+      const EVP_MD *digest = EVP_sha1();
+
+      if (!X509_digest(x509.get(), digest, md, &out_len)) {
+        fprintf(stderr, "Error: unable to obtain digest\n");
+        return false;
+      }
+      BIO_printf(output_bio.get(), "%s Fingerprint=",
+                 OBJ_nid2sn(EVP_MD_type(digest)));
+      for (int j = 0; j < (int)out_len; j++) {
+        BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)out_len)
+                                                      ? '\n' : ':');
+      }
+    }
+
+    if (subject_hash) {
+      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash(x509.get()));
+    }
+
+    if(subject_hash_old) {
+      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash_old(x509.get()));
+    }
+
+    if (dates) {
+      BIO_printf(output_bio.get(), "notBefore=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
+
+      BIO_printf(output_bio.get(), "notAfter=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
+    }
+
+    if (!dates && enddate) {
+      BIO_printf(output_bio.get(), "notAfter=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
     }
 
     if (checkend) {

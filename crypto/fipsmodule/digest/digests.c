@@ -326,7 +326,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha512_256) {
 
 
 static void sha3_224_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_PAD_CHAR, SHA3_224_DIGEST_BITLENGTH));
+  CHECK(SHA3_Init(ctx->md_data, SHA3_224_DIGEST_BITLENGTH));
 }
 
 static void sha3_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -351,7 +351,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_224) {
 
 
 static void sha3_256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH));
+  CHECK(SHA3_Init(ctx->md_data, SHA3_256_DIGEST_BITLENGTH));
 }
 
 static void sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -376,7 +376,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_256) {
 
 
 static void sha3_384_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH));
+  CHECK(SHA3_Init(ctx->md_data, SHA3_384_DIGEST_BITLENGTH));
 }
 
 static void sha3_384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -401,7 +401,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_384) {
 
 
 static void sha3_512_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH));
+  CHECK(SHA3_Init(ctx->md_data, SHA3_512_DIGEST_BITLENGTH));
 }
 
 static void sha3_512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -430,7 +430,7 @@ static void shake128_init(EVP_MD_CTX *ctx) {
 }
 
 static void shake128_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
+  CHECK(SHAKE_Absorb(ctx->md_data, data, count));
 }
 
 static void shake128_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
@@ -455,7 +455,7 @@ static void shake256_init(EVP_MD_CTX *ctx) {
 }
 
 static void shake256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
+  CHECK(SHAKE_Absorb(ctx->md_data, data, count));
 }
 
 static void shake256_finalXOF(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {

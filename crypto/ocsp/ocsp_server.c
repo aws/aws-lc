@@ -172,20 +172,37 @@ static int OCSP_basic_sign_ctx(OCSP_BASICRESP *resp, X509 *signer,
   return 1;
 }
 
+const EVP_MD *OCSP_get_default_digest(const EVP_MD *dgst, EVP_PKEY *signer) {
+  if (dgst != NULL) {
+    return dgst;
+  }
+  int pkey_nid = EVP_PKEY_id(signer);
+  if (pkey_nid == EVP_PKEY_EC || pkey_nid == EVP_PKEY_RSA ||
+      pkey_nid == EVP_PKEY_DSA) {
+    return EVP_sha256();
+  }
+  return NULL;
+}
+
 int OCSP_basic_sign(OCSP_BASICRESP *resp, X509 *signer, EVP_PKEY *key,
                     const EVP_MD *dgst, STACK_OF(X509) *certs,
                     unsigned long flags) {
   GUARD_PTR(resp);
   GUARD_PTR(signer);
   GUARD_PTR(key);
-  GUARD_PTR(dgst);
+
+  const EVP_MD *init_dgst = OCSP_get_default_digest(dgst, key);
+  if (init_dgst == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, EVP_R_NO_DEFAULT_DIGEST);
+    return 0;
+  }
 
   EVP_MD_CTX *ctx = EVP_MD_CTX_new();
   if (ctx == NULL) {
     return 0;
   }
 
-  if (!EVP_DigestSignInit(ctx, NULL, dgst, NULL, key)) {
+  if (!EVP_DigestSignInit(ctx, NULL, init_dgst, NULL, key)) {
     EVP_MD_CTX_free(ctx);
     return 0;
   }

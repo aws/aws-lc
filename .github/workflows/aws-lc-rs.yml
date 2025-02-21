@@ -10,30 +10,23 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   AWS_LC_SYS_CMAKE_BUILDER: 1
-  RUST_NIGHTLY_TOOLCHAIN: nightly-2024-05-22
+  RUST_NIGHTLY_TOOLCHAIN: nightly
+  RUST_SCRIPT_NIGHTLY_TOOLCHAIN: nightly
 jobs:
-  standard:
+  aws-lc-rs-bindgen:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    name: aws-lc-rs bindgen on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-14-xlarge ]
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: awslabs/aws-lc-rs
+          repository: aws/aws-lc-rs
           path: ./aws-lc-rs
           submodules: false
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          # Our aws-lc-sys generation scripts require nightly.
-          toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
-      - run: rustup override set $RUST_NIGHTLY_TOOLCHAIN
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: rust-script
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc clang ninja-build golang
       - name: Remove aws-lc submodule from crate directory
         working-directory: ./aws-lc-rs/aws-lc-sys
         run: |
@@ -41,36 +34,96 @@ jobs:
       - uses: actions/checkout@v3
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
-      - name: Regenerate aws-lc-sys crate
-        working-directory: ./aws-lc-rs/aws-lc-sys
-        run: |
-          rm -rf symbols/*
-          rm -rf generated-include/openssl/*
-          ../scripts/generate/_collect_symbols_build.sh -c aws-lc-sys
-          ../scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
-          ../scripts/generate/_generate_bindings.sh -c aws-lc-sys
-      - name: aws-lc-sys build
-        working-directory: ./aws-lc-rs/aws-lc-sys
-        run: |
-          cargo build
-      - name: aws-lc-sys test
-        working-directory: ./aws-lc-rs/aws-lc-sys
-        run: |
-          cargo test
-      - name: aws-lc-sys packaging
-        working-directory: ./aws-lc-rs/aws-lc-sys
-        run: |
-          cargo package --allow-dirty
-      - name: aws-lc-rs build
-        working-directory: ./aws-lc-rs/aws-lc-rs
-        run: |
-          cargo build
-      - name: aws-lc-rs test
-        working-directory: ./aws-lc-rs/aws-lc-rs
-        run: |
-          cargo test
-      - name: Install cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-      - name: Cross-compile arm-linux-androideabi
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_SCRIPT_NIGHTLY_TOOLCHAIN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - name: Install current Bash on macOS
+        if: runner.os == 'macOS'
+        run: brew install bash coreutils
+      - name: No-prefix build for ${{ matrix.os }}
+        env:
+          AWS_LC_SYS_NO_PREFIX: "1"
+          # Ensure that we collect symbols unique to C99 builds
+          AWS_LC_SYS_C_STD: "99"
         working-directory: ./aws-lc-rs
-        run: cross test -p aws-lc-rs --release --features bindgen,unstable --target arm-linux-androideabi
+        run: |
+          cargo test -p aws-lc-sys --features bindgen
+      - name: Collect symbols
+        working-directory: ./aws-lc-rs
+        run: |
+          ./scripts/build/collect_symbols.sh -c aws-lc-sys
+      - name: Generate Prefix Headers
+        working-directory: ./aws-lc-rs
+        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+      - name: Update sys-crate metadata
+        working-directory: ./aws-lc-rs
+        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Generate bindings for ${{ matrix.os }}
+        env:
+          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
+        working-directory: ./aws-lc-rs
+        run: |
+          cargo test -p aws-lc-sys --features bindgen
+      - name: Collect source from ${{ matrix.os }}
+        working-directory: ./aws-lc-rs
+        run: ./scripts/build/collect_build_src.sh
+  windows-aws-lc-rs-bindgen:
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.os }}
+    name: aws-lc-rs bindgen on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest ]
+        target: [ x86_64-pc-windows-msvc ]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: false
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: |
+          rm -rf aws-lc
+      - uses: actions/checkout@v3
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_SCRIPT_NIGHTLY_TOOLCHAIN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - uses: ilammy/setup-nasm@v1
+      - name: No-prefix build for ${{ matrix.target }}
+        env:
+          AWS_LC_SYS_NO_PREFIX: "1"
+        working-directory: ./aws-lc-rs
+        run: |
+          cargo test -p aws-lc-sys --features bindgen --target  ${{ matrix.target }}
+      - name: Collect symbols
+        working-directory: ./aws-lc-rs
+        shell: bash
+        run: |
+          ./scripts/build/collect_symbols.sh -c aws-lc-sys -t ${{ matrix.target }}
+      - name: Generate Prefix Headers
+        working-directory: ./aws-lc-rs
+        shell: bash
+        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+      - name: Update sys-crate metadata
+        working-directory: ./aws-lc-rs
+        shell: bash
+        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Generate bindings for ${{ matrix.target }}
+        env:
+          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
+        working-directory: ./aws-lc-rs
+        run: |
+          cargo test -p aws-lc-sys --features bindgen --target ${{ matrix.target }}

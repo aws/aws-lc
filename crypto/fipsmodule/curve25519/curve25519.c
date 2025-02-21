@@ -23,13 +23,19 @@
 
 #include <string.h>
 
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../cpucap/internal.h"
+#include "internal.h"
+
+const uint8_t RFC8032_DOM2_PREFIX[DOM2_PREFIX_SIZE] = {
+    'S', 'i', 'g', 'E', 'd', '2', '5', '5', '1', '9', ' ',
+    'n', 'o', ' ', 'E', 'd', '2', '5', '5', '1', '9', ' ',
+    'c', 'o', 'l', 'l', 'i', 's', 'i', 'o', 'n', 's'};
 
 // X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
 // respectively. This file contains an implementation of both using two
@@ -53,16 +59,19 @@
 // For Ed25519, dom2(F,C) is the empty string and PH the identify function,
 // cf. rfc8032 5.1.
 
-void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
-  const void *input1, size_t len1, const void *input2, size_t len2,
-  const void *input3, size_t len3) {
-
+void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH], const void *input1,
+                    size_t len1, const void *input2, size_t len2,
+                    const void *input3, size_t len3, const void *input4,
+                    size_t len4) {
   SHA512_CTX hash_ctx;
   SHA512_Init(&hash_ctx);
   SHA512_Update(&hash_ctx, input1, len1);
   SHA512_Update(&hash_ctx, input2, len2);
   if (len3 != 0) {
     SHA512_Update(&hash_ctx, input3, len3);
+  }
+  if (len4 != 0) {
+    SHA512_Update(&hash_ctx, input4, len4);
   }
   SHA512_Final(out, &hash_ctx);
 }
@@ -103,8 +112,30 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
     ED25519_PUBLIC_KEY_LEN);
 }
 
+static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+#if defined(AWSLC_FIPS)
+  uint8_t msg[16] = {16};
+  uint8_t out_sig[ED25519_SIGNATURE_LEN];
+  if (ED25519_sign_no_self_test(out_sig, msg, 16, private_key) != 1) {
+    // This should never happen and static analysis will say that ED25519_sign_no_self_test
+    // always returns 1
+    AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
+  }
+  if (boringssl_fips_break_test("EDDSA_PWCT")) {
+    msg[0] = ~msg[0];
+  }
+  if (ED25519_verify_no_self_test(msg, 16, out_sig, public_key) != 1) {
+    AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
+  }
+#endif
+}
+
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  // We have to avoid the self tests and digest function in ed25519_keypair_pct
+  // from updating the service indicator.
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
   SET_DIT_AUTO_RESET;
 
@@ -118,19 +149,85 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 
+  ed25519_keypair_pct(out_public_key, out_private_key);
+
+  FIPS_service_indicator_unlock_state();
   FIPS_service_indicator_update_state();
 }
 
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                  const uint8_t *message, size_t message_len,
                  const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
-  return ED25519_sign_no_self_test(out_sig, message, message_len, private_key);
+  int res =
+      ED25519_sign_no_self_test(out_sig, message, message_len, private_key);
+  FIPS_service_indicator_unlock_state();
+  if (res) {
+    FIPS_service_indicator_update_state();
+  }
+  return res;
 }
 
-int ED25519_sign_no_self_test(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-                              const uint8_t *message, size_t message_len,
-                              const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+int ED25519_sign_no_self_test(
+    uint8_t out_sig[ED25519_SIGNATURE_LEN], const uint8_t *message,
+    size_t message_len, const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+  return ed25519_sign_internal(ED25519_ALG, out_sig, message, message_len,
+                               private_key, NULL, 0);
+}
+
+static int dom2(ed25519_algorithm_t alg, uint8_t buffer[MAX_DOM2_SIZE],
+                size_t *buffer_len, const uint8_t *context,
+                size_t context_len) {
+  GUARD_PTR(buffer_len);
+  *buffer_len = 0;
+
+  uint8_t phflag = 0;
+
+  switch (alg) {
+    case ED25519_ALG:
+      // Per rfc8032:
+      // For Ed25519, dom2(f,c) is the empty string.  The phflag value is
+      // irrelevant.  The context (if present at all) MUST be empty.
+      return context_len == 0;
+    case ED25519CTX_ALG:
+      // Per rfc8032:
+      // For Ed25519ctx, phflag=0.  The context input SHOULD NOT be empty.
+      if (context_len == 0) {
+        return 0;
+      }
+      phflag = 0;
+      break;
+    case ED25519PH_ALG:
+      // For Ed25519ph, phflag=1
+      phflag = 1;
+      break;
+    default:
+      // Should never happen unless we missed a ed25519_algorithm_t enum variant
+      // case in this switch statement
+      abort();
+  }
+
+  OPENSSL_memcpy(buffer, RFC8032_DOM2_PREFIX, DOM2_PREFIX_SIZE);
+  buffer[DOM2_F_OFFSET] = phflag;
+  buffer[DOM2_C_OFFSET] = context_len;
+  if (context_len > 0) {
+    GUARD_PTR(context);
+    if (context_len > MAX_DOM2_CONTEXT_SIZE) {
+      return 0;
+    }
+    OPENSSL_memcpy(&buffer[DOM2_CONTEXT_OFFSET], context, context_len);
+  }
+  *buffer_len = DOM2_PREFIX_SIZE + DOM2_F_SIZE + DOM2_C_SIZE + context_len;
+  return 1;
+}
+
+int ed25519_sign_internal(
+    ed25519_algorithm_t alg,
+    uint8_t out_sig[ED25519_SIGNATURE_LEN],
+    const uint8_t *message, size_t message_len,
+    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
+    const uint8_t *ctx, size_t ctx_len) {
   // NOTE: The documentation on this function says that it returns zero on
   // allocation failure. While that can't happen with the current
   // implementation, we want to reserve the ability to allocate in this
@@ -152,38 +249,72 @@ int ED25519_sign_no_self_test(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   az[31] &= 63; // 00111111_2
   az[31] |= 64; // 01000000_2
 
-  // Step: rfc8032 5.1.6.2
-  // Compute r = SHA512(prefix || message).
   uint8_t r[SHA512_DIGEST_LENGTH];
-  ed25519_sha512(r, az + ED25519_PRIVATE_KEY_SEED_LEN,
-    ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
+  uint8_t dom2_buffer[MAX_DOM2_SIZE] = {0};
+  size_t dom2_buffer_len = 0;
+
+  if (!dom2(alg, dom2_buffer, &dom2_buffer_len, ctx, ctx_len)) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    return 0;
+  }
+
+  // Step: rfc8032 5.1.6.2
+  if (dom2_buffer_len > 0) {
+    // Compute r = SHA512(dom2(phflag, context) || prefix || message).
+    ed25519_sha512(r, dom2_buffer, dom2_buffer_len,
+                   az + ED25519_PRIVATE_KEY_SEED_LEN,
+                   ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
+  } else {
+    // Compute r = SHA512(prefix || message).
+    ed25519_sha512(r, az + ED25519_PRIVATE_KEY_SEED_LEN,
+                   ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0,
+                   NULL, 0);
+  }
 
   // Step: rfc8032 5.1.6.[3,5,6,7]
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   ed25519_sign_s2n_bignum(out_sig, r, az,
-      private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
+                          private_key + ED25519_PRIVATE_KEY_SEED_LEN, message,
+                          message_len, dom2_buffer, dom2_buffer_len);
 #else
-  ed25519_sign_nohw(out_sig, r, az,
-      private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
+  ed25519_sign_nohw(out_sig, r, az, private_key + ED25519_PRIVATE_KEY_SEED_LEN,
+                    message, message_len, dom2_buffer, dom2_buffer_len);
 #endif
 
   // The signature is computed from the private key, but is public.
   CONSTTIME_DECLASSIFY(out_sig, 64);
 
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
 int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[ED25519_SIGNATURE_LEN],
                    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
-  return ED25519_verify_no_self_test(message, message_len, signature, public_key);
+  int res =
+      ED25519_verify_no_self_test(message, message_len, signature, public_key);
+  FIPS_service_indicator_unlock_state();
+  if(res) {
+    FIPS_service_indicator_update_state();
+  }
+  return res;
 }
 
-int ED25519_verify_no_self_test(const uint8_t *message, size_t message_len,
-                                const uint8_t signature[ED25519_SIGNATURE_LEN],
-                                const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+int ED25519_verify_no_self_test(
+    const uint8_t *message, size_t message_len,
+    const uint8_t signature[ED25519_SIGNATURE_LEN],
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+  return ed25519_verify_internal(ED25519_ALG, message, message_len, signature,
+                                 public_key, NULL, 0);
+}
+
+int ed25519_verify_internal(
+    ed25519_algorithm_t alg,
+    const uint8_t *message, size_t message_len,
+    const uint8_t signature[ED25519_SIGNATURE_LEN],
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+    const uint8_t *ctx, size_t ctx_len) {
   // Ed25519 verify: rfc8032 5.1.7
 
   // Step: rfc8032 5.1.7.1 (up to decoding the public key)
@@ -221,25 +352,29 @@ int ED25519_verify_no_self_test(const uint8_t *message, size_t message_len,
     }
   }
 
+  uint8_t dom2_buffer[MAX_DOM2_SIZE] = {0};
+  size_t dom2_buffer_len = 0;
+  if (!dom2(alg, dom2_buffer, &dom2_buffer_len, ctx, ctx_len)) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    return 0;
+  }
+
   // Step: rfc8032 5.1.7.[1,2,3]
   // Verification works by computing [S]B - [k]A' and comparing against R_expected.
   int res = 0;
   uint8_t R_computed_encoded[32];
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
-      message, message_len);
+                                  message, message_len, dom2_buffer,
+                                  dom2_buffer_len);
 #else
   res = ed25519_verify_nohw(R_computed_encoded, public_key, R_expected, S,
-      message, message_len);
+                            message, message_len, dom2_buffer, dom2_buffer_len);
 #endif
 
   // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
-  res = (res == 1) && CRYPTO_memcmp(R_computed_encoded, R_expected,
-                                    sizeof(R_computed_encoded)) == 0;
-  if(res) {
-    FIPS_service_indicator_update_state();
-  }
-  return res;
+  return (res == 1) && CRYPTO_memcmp(R_computed_encoded, R_expected,
+                                     sizeof(R_computed_encoded)) == 0;
 }
 
 int ED25519_check_public_key(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {

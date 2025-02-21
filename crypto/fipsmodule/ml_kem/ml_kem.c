@@ -34,16 +34,32 @@ int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */
                                                   uint8_t *secret_key  /* OUT */,
                                                   const uint8_t *seed  /* IN */) {
   ml_kem_params params;
+  int res;
   ml_kem_512_params_init(&params);
-  return ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+  res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  return res;
 }
 
 int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */) {
   boringssl_ensure_ml_kem_self_test();
+  int res;
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_keypair_ref(&params, public_key, secret_key);
+  res = ml_kem_keypair_ref(&params, public_key, secret_key);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  return res;
 }
 
 int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -94,16 +110,32 @@ int ml_kem_768_keypair_deterministic(uint8_t *public_key  /* OUT */,
                                          const uint8_t *seed  /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
+  int res;
   ml_kem_768_params_init(&params);
-  return ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+  res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  return res;
 }
 
 int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
+  int res;
   ml_kem_768_params_init(&params);
-  return ml_kem_keypair_ref(&params, public_key, secret_key);
+  res = ml_kem_keypair_ref(&params, public_key, secret_key);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  return res;
 }
 
 int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -139,16 +171,32 @@ int ml_kem_1024_keypair_deterministic(uint8_t *public_key  /* OUT */,
                                           const uint8_t *seed  /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
+  int res;
   ml_kem_1024_params_init(&params);
-  return ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+  res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  return res;
 }
 
 int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
                             uint8_t *secret_key /* OUT */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
+  int res;
   ml_kem_1024_params_init(&params);
-  return ml_kem_keypair_ref(&params, public_key, secret_key);
+  res = ml_kem_keypair_ref(&params, public_key, secret_key);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  return res;
 }
 
 int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,

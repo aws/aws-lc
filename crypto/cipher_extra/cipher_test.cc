@@ -1057,30 +1057,59 @@ TEST(CipherTest, SHA384WithSecretSuffix) {
 
 
 TEST(CipherTest, GetCipher) {
-  const EVP_CIPHER *cipher = EVP_get_cipherbynid(NID_aes_128_gcm);
-  ASSERT_TRUE(cipher);
-  EXPECT_EQ(NID_aes_128_gcm, EVP_CIPHER_nid(cipher));
+  const auto test_get_cipher = [](int nid, const char *name) {
+    EXPECT_EQ(nid, EVP_CIPHER_nid(EVP_get_cipherbynid(nid)));
+    EXPECT_EQ(nid, EVP_CIPHER_nid(EVP_get_cipherbyname(name)));
+  };
 
-  cipher = EVP_get_cipherbyname("aes-128-gcm");
-  ASSERT_TRUE(cipher);
-  EXPECT_EQ(NID_aes_128_gcm, EVP_CIPHER_nid(cipher));
+  // canonical names
+  test_get_cipher(NID_aes_128_cbc, "aes-128-cbc");
+  test_get_cipher(NID_aes_128_cfb128, "aes-128-cfb");
+  test_get_cipher(NID_aes_128_ctr, "aes-128-ctr");
+  test_get_cipher(NID_aes_128_ecb, "aes-128-ecb");
+  test_get_cipher(NID_aes_128_gcm, "aes-128-gcm");
+  test_get_cipher(NID_aes_128_ofb128, "aes-128-ofb");
+  test_get_cipher(NID_aes_192_cbc, "aes-192-cbc");
+  test_get_cipher(NID_aes_192_cfb128, "aes-192-cfb");
+  test_get_cipher(NID_aes_192_ctr, "aes-192-ctr");
+  test_get_cipher(NID_aes_192_ecb, "aes-192-ecb");
+  test_get_cipher(NID_aes_192_gcm, "aes-192-gcm");
+  test_get_cipher(NID_aes_192_ofb128, "aes-192-ofb");
+  test_get_cipher(NID_aes_256_cbc, "aes-256-cbc");
+  test_get_cipher(NID_aes_256_cfb128, "aes-256-cfb");
+  test_get_cipher(NID_aes_256_ctr, "aes-256-ctr");
+  test_get_cipher(NID_aes_256_ecb, "aes-256-ecb");
+  test_get_cipher(NID_aes_256_gcm, "aes-256-gcm");
+  test_get_cipher(NID_aes_256_ofb128, "aes-256-ofb");
+  test_get_cipher(NID_aes_256_xts, "aes-256-xts");
+  test_get_cipher(NID_chacha20_poly1305, "chacha20-poly1305");
+  test_get_cipher(NID_des_cbc, "des-cbc");
+  test_get_cipher(NID_des_ecb, "des-ecb");
+  test_get_cipher(NID_des_ede_cbc, "des-ede-cbc");
+  test_get_cipher(NID_des_ede_ecb, "des-ede");
+  test_get_cipher(NID_des_ede3_cbc, "des-ede3-cbc");
+  test_get_cipher(NID_rc2_cbc, "rc2-cbc");
+  test_get_cipher(NID_rc4, "rc4");
+  test_get_cipher(NID_bf_cbc, "bf-cbc");
+  test_get_cipher(NID_bf_cfb64, "bf-cfb");
+  test_get_cipher(NID_bf_ecb, "bf-ecb");
 
-  cipher = EVP_get_cipherbyname("AES-128-GCM");
-  ASSERT_TRUE(cipher);
-  EXPECT_EQ(NID_aes_128_gcm, EVP_CIPHER_nid(cipher));
+  // aliases
+  test_get_cipher(NID_des_ede3_cbc, "des-ede3-cbc");
+  test_get_cipher(NID_des_cbc, "DES");
+  test_get_cipher(NID_aes_256_cbc, "aes256");
+  test_get_cipher(NID_aes_128_cbc, "aes128");
+  test_get_cipher(NID_aes_128_gcm, "id-aes128-gcm");
+  test_get_cipher(NID_aes_192_gcm, "id-aes192-gcm");
+  test_get_cipher(NID_aes_256_gcm, "id-aes256-gcm");
 
-  // We support a tcpdump-specific alias for 3DES.
-  cipher = EVP_get_cipherbyname("3des");
-  ASSERT_TRUE(cipher);
-  EXPECT_EQ(NID_des_ede3_cbc, EVP_CIPHER_nid(cipher));
-
-  cipher = EVP_get_cipherbyname("aes256");
-  ASSERT_TRUE(cipher);
-  EXPECT_EQ(NID_aes_256_cbc, EVP_CIPHER_nid(cipher));
-
-  cipher = EVP_get_cipherbyname("aes128");
-  ASSERT_TRUE(cipher);
-  EXPECT_EQ(NID_aes_128_cbc, EVP_CIPHER_nid(cipher));
+  // error case
+  EXPECT_FALSE(EVP_get_cipherbyname(nullptr));
+  EXPECT_FALSE(EVP_get_cipherbyname("vigenère"));
+  EXPECT_FALSE(EVP_get_cipherbynid(-1));
+  EXPECT_FALSE(EVP_CIPHER_block_size(nullptr));
+  EXPECT_FALSE(EVP_CIPHER_key_length(nullptr));
+  EXPECT_FALSE(EVP_CIPHER_iv_length(nullptr));
 }
 
 // Test the AES-GCM EVP_CIPHER's internal IV management APIs. OpenSSH uses these

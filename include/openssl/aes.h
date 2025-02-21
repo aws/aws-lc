@@ -141,6 +141,24 @@ OPENSSL_EXPORT void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out,
                                        size_t len, const AES_KEY *key,
                                        uint8_t *ivec, int *num);
 
+// AES_cfb1_encrypt encrypts (or decrypts, if |enc| == |AES_DECRYPT|) |len|
+// bytes from |in| to |out|. The |num| parameter must be set to zero on the
+// first call. This function may be called in-place with |in| equal to |out|,
+// but otherwise the buffers may not partially overlap. A partial overlap may
+// overwrite input data before it is read.
+OPENSSL_EXPORT void AES_cfb1_encrypt(const uint8_t *in, uint8_t *out,
+                                     size_t bits, const AES_KEY *key,
+                                     uint8_t *ivec, int *num, int enc);
+
+// AES_cfb8_encrypt encrypts (or decrypts, if |enc| == |AES_DECRYPT|) |len|
+// bytes from |in| to |out|. The |num| parameter must be set to zero on the
+// first call. This function may be called in-place with |in| equal to |out|,
+// but otherwise the buffers may not partially overlap. A partial overlap may
+// overwrite input data before it is read.
+OPENSSL_EXPORT void AES_cfb8_encrypt(const uint8_t *in, uint8_t *out,
+                                     size_t len, const AES_KEY *key,
+                                     uint8_t *ivec, int *num, int enc);
+
 // AES_cfb128_encrypt encrypts (or decrypts, if |enc| == |AES_DECRYPT|) |len|
 // bytes from |in| to |out|. The |num| parameter must be set to zero on the
 // first call. This function may be called in-place with |in| equal to |out|,

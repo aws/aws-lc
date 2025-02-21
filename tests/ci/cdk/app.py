@@ -13,6 +13,7 @@ from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
+from cdk.aws_lc_github_ci_x509_stack import AwsLcGitHubX509CIStack
 from cdk.ecr_stack import EcrStack
 from util.metadata import AWS_ACCOUNT, AWS_REGION, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
 
@@ -54,5 +55,6 @@ ec2_test_framework_build_spec_file = "cdk/codebuild/ec2_test_framework_omnibus.y
 AwsLcEC2TestingCIStack(app, "aws-lc-ci-ec2-test-framework", ec2_test_framework_build_spec_file, env=env)
 android_build_spec_file = "cdk/codebuild/github_ci_android_omnibus.yaml"
 AwsLcAndroidCIStack(app, "aws-lc-ci-devicefarm-android", android_build_spec_file, env=env)
+AwsLcGitHubX509CIStack(app, "aws-lc-ci-x509")
 
 app.synth()

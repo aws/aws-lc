@@ -204,7 +204,7 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   // certificate chain the endpoint uses.
   int sock = -1;
   ASSERT_TRUE(InitSocketLibrary());
-  ASSERT_TRUE(Connect(&sock, t.url_host));
+  ASSERT_TRUE(Connect(&sock, t.url_host, false));
   ASSERT_TRUE(SSL_library_init());
   bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ssl_ctx);

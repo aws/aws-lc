@@ -428,7 +428,7 @@ aes_hw_xts_encrypt_avx512:
 	vmovdqu8	%zmm1,(%rsi)
 	vmovdqu	%xmm2,64(%rsi)
 	addq	$0x50,%rsi
-	movdqa	%xmm2,%xmm8
+	vmovdqa	%xmm2,%xmm8
 	vextracti32x4	$0x1,%zmm10,%xmm0
 	andq	$0xf,%rdx
 	je	.L_ret_hEgxyDlCngwrfFe

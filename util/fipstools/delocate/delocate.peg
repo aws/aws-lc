@@ -84,13 +84,14 @@ RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
                        ('#' '~'? '(' [0-9] WS? "<<" WS? [0-9] [0-9]? ')' ) /
                        (('#' / '$') '~'? '0x'? [[0-9A-F]]+ ) /
                        ('$(-' [0-9]+ ')') /
+                       ('#(' [0-9]+ ')') /
                        ARMRegister)
                       ![fb:(+\-]
-ARMConstantTweak <- ((([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#'? Offset)?)/
+ARMConstantTweak <- ((([us] "xt" [xwhb]) / ("lsl" / "lsr" / "ror" / "rol" / "asr" / "asl" / "msl") ![A-Za-z0-9_]) (WS '#'? Offset)?) /
                     "mul vl"  # multiply offset by the hardware's vector length
 ARMRegister <- "sp" / ([xwdqshb] [0-9] [0-9]? !(ARMRegisterBoundary)) / "xzr" / "wzr" / "NZCV" / ARMVectorRegister / SVE2PredicateRegister /
  ('{' WS? ARMVectorRegister WS? ([,\-] WS? ARMVectorRegister)* WS? '}' ('[' [0-9] [0-9]? ']')? )
-ARMVectorRegister <- [vz] [0-9] [0-9]? ('.' [0-9]* [bsdhq] ('[' [0-9] [0-9]? ']')? )?
+ARMVectorRegister <- [vz] [0-9] [0-9]? ('.' [0-9]* [bsdhqBSDHQ] ('[' [0-9] [0-9]? ']')? )?
 SVE2PredicateRegister <- "p" [0-9] [0-9]? "/" [mMzZ]
 ARMRegisterBoundary <- [a-zA-Z0-9_]
 # Compilers only output a very limited number of expression forms. Rather than
@@ -113,15 +114,19 @@ ARMPostincrement <- '!'
 BaseIndexScale <- '(' RegisterOrConstant? WS? (',' WS? RegisterOrConstant WS? (',' [0-9]+)? )? ')'
 Operator <- [+\-]
 OffsetOperator <- '+' / '-' / '*'
+# s2n-bignum code has a lot of different and complex ways to compute an offset.
+# For example, (7*72)+(3*72)*(5-1)+8+0*72. We define S2nBignumHelper in an attempt
+# to simplofy the expressions for Offset.
+S2nBignumHelper <- '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' WS? OffsetOperator? WS?
 Offset <- '+'? '-'? (("0b" [01]+) /
                      ("0x" [[0-9A-F]]+) /
                      ([0-9]+ WS OffsetOperator [0-9]+ /
                       [0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
                       [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? /
                       [0-9]+ ( OffsetOperator [0-9]+ )? /
-                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' OffsetOperator [0-9]+ OffsetOperator [0-9]+ /
-                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' OffsetOperator [0-9]+ !'x' /
-                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' /
+                      S2nBignumHelper S2nBignumHelper (S2nBignumHelper ([0-9]+ OffsetOperator)? [0-9]+ OffsetOperator)? [0-9]+ /
+                      S2nBignumHelper [0-9]+ ((WS? OffsetOperator [0-9]+ (WS? OffsetOperator [0-9]+)?) / (!'x')) /
+                      S2nBignumHelper /
                       '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ WS? OffsetOperator WS? [0-9]+')')![[A-Z]]
                     )
 Section <- [[A-Z@]]+

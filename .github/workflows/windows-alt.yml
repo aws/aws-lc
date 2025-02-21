@@ -16,6 +16,8 @@ jobs:
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: "path has spaces/aws-lc"
       - name: Setup MinGW
         uses: egor-tensin/setup-mingw@v2.2.0
         id: setup_mingw
@@ -25,6 +27,8 @@ jobs:
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build'
           c-compiler: ${{ steps.setup_mingw.outputs.gcc }}
           cxx-compiler: ${{ steps.setup_mingw.outputs.gxx }}
           options: |
@@ -37,9 +41,9 @@ jobs:
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             CMAKE_BUILD_TYPE=Release \
       - name: Build Project
-        run: cmake --build ./build --target all
+        run: cmake --build "path has spaces/build" --target all
       - name: Run tests
-        run: cmake --build ./build --target run_tests
+        run: cmake --build "path has spaces/build" --target run_tests
   clang:
     if: github.repository_owner == 'aws'
     runs-on: windows-latest

@@ -930,9 +930,7 @@ static void TestNotModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
   EXPECT_FALSE(BN_mod_sqrt(ret.get(), not_mod_square.get(), p.get(), ctx))
       << "BN_mod_sqrt unexpectedly succeeded.";
 
-  uint32_t err = ERR_peek_error();
-  EXPECT_EQ(ERR_LIB_BN, ERR_GET_LIB(err));
-  EXPECT_EQ(BN_R_NOT_A_SQUARE, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_peek_error(), ERR_LIB_BN, BN_R_NOT_A_SQUARE));
   ERR_clear_error();
 }
 
@@ -2684,7 +2682,7 @@ TEST_F(BNTest, NonMinimal) {
     EXPECT_FALSE(BN_is_pow2(ten.get()));
 
     bssl::UniquePtr<char> hex(BN_bn2hex(ten.get()));
-    EXPECT_STREQ("0a", hex.get());
+    EXPECT_STREQ("0A", hex.get());
     hex.reset(BN_bn2hex(zero.get()));
     EXPECT_STREQ("0", hex.get());
 
@@ -2697,7 +2695,7 @@ TEST_F(BNTest, NonMinimal) {
     // TODO(davidben): |BN_print| removes leading zeros within a byte, while
     // |BN_bn2hex| rounds up to a byte, except for zero which it prints as
     // "0". Fix this discrepancy?
-    EXPECT_EQ(Bytes("a"), Bytes(ptr, len));
+    EXPECT_EQ(Bytes("A"), Bytes(ptr, len));
 
     bio.reset(BIO_new(BIO_s_mem()));
     ASSERT_TRUE(bio);
@@ -3026,32 +3024,60 @@ TEST_F(BNTest, RSAZABI) {
 
 #ifdef RSAZ_512_ENABLED
   if (CRYPTO_is_AVX512IFMA_capable()) {
-    uint64_t res = 0;
+	  
+#define TWOK (40 * 2)
+#define TWOK_TABLE (2 * 20 * (1<<5))
+#define THREEK (64 * 2)
+#define THREEK_TABLE (2 * 32 * (1<<5))
+#define FOURK (80 * 2)
+#define FOURK_TABLE (2 * 40 * (1<<5))
+
+    int storage_bytes =
+      ((TWOK * 2)   + // res2 / red_y2
+       TWOK_TABLE   + // red_table2k
+      (THREEK * 2)  + // res3 / red_y3
+      THREEK_TABLE  + // red_table3k
+      (FOURK * 2)   + // res4 / red_y4
+       FOURK_TABLE) * // red_table4k
+      sizeof(uint64_t);
+
+    uint64_t *storage = (uint64_t*)OPENSSL_malloc(storage_bytes);
+
+    uint64_t *res2, *res3, *res4,
+      *red_y2, *red_y3, *red_y4,
+      *red_table2k, *red_table3k, *red_table4k;
+
+    res2 = storage;
+    red_y2 = storage + TWOK;
+    red_table2k = red_y2 + TWOK;
+    res3 = red_table2k + TWOK_TABLE;
+    red_y3 = res3 + THREEK;
+    red_table3k = red_y3 + THREEK;
+    res4 = red_table3k + THREEK_TABLE;
+    red_y4 = res4 + FOURK;
+    red_table4k = red_y4 + FOURK;
+
     uint64_t a = 0;
     uint64_t b = 0;
     uint64_t m = 0;
     uint64_t k0 = 0;
     uint64_t k2[2] = {0};
-
-    uint64_t red_Y = 0;
     int idx1 = 0;
     int idx2 = 0;
 
-    uint64_t red_table2k[2*20*(1<<5)] = {0};
-    uint64_t red_table3k[2*32*(1<<5)] = {0};
-    uint64_t red_table4k[2*40*(1<<5)] = {0};
+    CHECK_ABI(rsaz_amm52x20_x1_ifma256, res2, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x20_x2_ifma256, res2, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x20_win5, red_y2, red_table2k, idx1, idx2);
 
-    CHECK_ABI(rsaz_amm52x20_x1_ifma256, &res, &a, &b, &m, k0);
-    CHECK_ABI(rsaz_amm52x20_x2_ifma256, &res, &a, &b, &m, k2);
-    CHECK_ABI(extract_multiplier_2x20_win5, &red_Y, red_table2k, idx1, idx2);
+    CHECK_ABI(rsaz_amm52x30_x1_ifma256, res3, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x30_x2_ifma256, res3, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x30_win5, red_y3, red_table3k, idx1, idx2);
 
-    CHECK_ABI(rsaz_amm52x30_x1_ifma256, &res, &a, &b, &m, k0);
-    CHECK_ABI(rsaz_amm52x30_x2_ifma256, &res, &a, &b, &m, k2);
-    CHECK_ABI(extract_multiplier_2x30_win5, &red_Y, red_table3k, idx1, idx2);
+    CHECK_ABI(rsaz_amm52x40_x1_ifma256, res4, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x40_x2_ifma256, res4, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x40_win5, red_y4, red_table4k, idx1, idx2);
 
-    CHECK_ABI(rsaz_amm52x40_x1_ifma256, &res, &a, &b, &m, k0);
-    CHECK_ABI(rsaz_amm52x40_x2_ifma256, &res, &a, &b, &m, k2);
-    CHECK_ABI(extract_multiplier_2x40_win5, &red_Y, red_table4k, idx1, idx2);
+    OPENSSL_free(storage);
   }
 #endif // RSAZ_512_ENABLED
 }

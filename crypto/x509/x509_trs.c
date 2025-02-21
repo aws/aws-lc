@@ -66,10 +66,10 @@
 #include "internal.h"
 
 
-static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags);
-static int trust_compat(const X509_TRUST *trust, X509 *x, int flags);
+static int trust_1oidany(const X509_TRUST *trust, X509 *x);
+static int trust_compat(const X509_TRUST *trust, X509 *x);
 
-static int obj_trust(int id, X509 *x, int flags);
+static int obj_trust(int id, X509 *x);
 
 static const X509_TRUST trstandard[] = {
     {X509_TRUST_COMPAT, 0, trust_compat, (char *)"compatible", 0, NULL},
@@ -90,18 +90,18 @@ int X509_check_trust(X509 *x, int id, int flags) {
   }
   // We get this as a default value
   if (id == 0) {
-    int rv = obj_trust(NID_anyExtendedKeyUsage, x, 0);
+    int rv = obj_trust(NID_anyExtendedKeyUsage, x);
     if (rv != X509_TRUST_UNTRUSTED) {
       return rv;
     }
-    return trust_compat(NULL, x, 0);
+    return trust_compat(NULL, x);
   }
   int idx = X509_TRUST_get_by_id(id);
   if (idx == -1) {
-    return obj_trust(id, x, flags);
+    return obj_trust(id, x);
   }
   const X509_TRUST *pt = X509_TRUST_get0(idx);
-  return pt->check_trust(pt, x, flags);
+  return pt->check_trust(pt, x);
 }
 
 int X509_TRUST_get_count(void) { return OPENSSL_ARRAY_SIZE(trstandard); }
@@ -139,16 +139,16 @@ char *X509_TRUST_get0_name(const X509_TRUST *xp) { return xp->name; }
 
 int X509_TRUST_get_trust(const X509_TRUST *xp) { return xp->trust; }
 
-static int trust_1oidany(const X509_TRUST *trust, X509 *x, int flags) {
+static int trust_1oidany(const X509_TRUST *trust, X509 *x) {
   if (x->aux && (x->aux->trust || x->aux->reject)) {
-    return obj_trust(trust->arg1, x, flags);
+    return obj_trust(trust->arg1, x);
   }
   // we don't have any trust settings: for compatibility we return trusted
   // if it is self signed
-  return trust_compat(trust, x, flags);
+  return trust_compat(trust, x);
 }
 
-static int trust_compat(const X509_TRUST *trust, X509 *x, int flags) {
+static int trust_compat(const X509_TRUST *trust, X509 *x) {
   if (!x509v3_cache_extensions(x)) {
     return X509_TRUST_UNTRUSTED;
   }
@@ -159,7 +159,7 @@ static int trust_compat(const X509_TRUST *trust, X509 *x, int flags) {
   }
 }
 
-static int obj_trust(int id, X509 *x, int flags) {
+static int obj_trust(int id, X509 *x) {
   ASN1_OBJECT *obj;
   size_t i;
   X509_CERT_AUX *ax;

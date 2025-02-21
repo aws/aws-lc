@@ -22,8 +22,6 @@ extern "C" {
 #endif
 
 
-typedef struct pkcs7_issuer_and_serial_st PKCS7_ISSUER_AND_SERIAL;
-typedef struct pkcs7_enc_content_st PKCS7_ENC_CONTENT;
 
 DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNED)
@@ -34,84 +32,6 @@ DECLARE_ASN1_FUNCTIONS(PKCS7_DIGEST)
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGN_ENVELOPE)
 
 DEFINE_STACK_OF(PKCS7)
-
-// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-11.1
-//
-//   SignedAndEnvelopedData ::= SEQUENCE {
-//     version Version,
-//     recipientInfos RecipientInfos,
-//     digestAlgorithms DigestAlgorithmIdentifiers,
-//     encryptedContentInfo EncryptedContentInfo,
-//     certificates
-//        [0] IMPLICIT ExtendedCertificatesAndCertificates
-//          OPTIONAL,
-//     crls
-//       [1] IMPLICIT CertificateRevocationLists OPTIONAL,
-//     signerInfos SignerInfos }
-struct pkcs7_sign_envelope_st {
-  ASN1_INTEGER *version;
-  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-  STACK_OF(X509_ALGOR) *md_algs;
-  PKCS7_ENC_CONTENT *enc_data;
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-};
-
-// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-6.7
-//
-//   IssuerAndSerialNumber ::= SEQUENCE {
-//     issuer Name,
-//     serialNumber CertificateSerialNumber }
-struct pkcs7_issuer_and_serial_st {
-  X509_NAME *issuer;
-  ASN1_INTEGER *serial;
-};
-
-// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-9.2
-//
-//   SignerInfo ::= SEQUENCE {
-//     version Version,
-//     issuerAndSerialNumber IssuerAndSerialNumber,
-//     digestAlgorithm DigestAlgorithmIdentifier,
-//     authenticatedAttributes
-//       [0] IMPLICIT Attributes OPTIONAL,
-//     digestEncryptionAlgorithm
-//       DigestEncryptionAlgorithmIdentifier,
-//     encryptedDigest EncryptedDigest,
-//     unauthenticatedAttributes
-//       [1] IMPLICIT Attributes OPTIONAL }
-//
-//   EncryptedDigest ::= OCTET STRING
-struct pkcs7_signer_info_st {
-  ASN1_INTEGER *version;
-  PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
-  X509_ALGOR *digest_alg;
-  STACK_OF(X509_ATTRIBUTE) *auth_attr;
-  X509_ALGOR *digest_enc_alg;
-  ASN1_OCTET_STRING *enc_digest;
-  STACK_OF(X509_ATTRIBUTE) *unauth_attr;
-  EVP_PKEY *pkey;  // NOTE: |pkey| is not seriliazed.
-};
-
-// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.2
-//
-//   RecipientInfo ::= SEQUENCE {
-//     version Version,
-//     issuerAndSerialNumber IssuerAndSerialNumber,
-//     keyEncryptionAlgorithm
-//
-//       KeyEncryptionAlgorithmIdentifier,
-//     encryptedKey EncryptedKey }
-//
-//   EncryptedKey ::= OCTET STRING
-struct pkcs7_recip_info_st {
-  ASN1_INTEGER *version;
-  PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
-  X509_ALGOR *key_enc_algor;
-  ASN1_OCTET_STRING *enc_key;
-  X509 *cert;  // NOTE: |cert| is not serialized
-};
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.1
 //
@@ -128,20 +48,6 @@ struct pkcs7_enc_content_st {
   X509_ALGOR *algorithm;
   ASN1_OCTET_STRING *enc_data;
   const EVP_CIPHER *cipher;  // NOTE: |cipher| is not serialized
-};
-
-// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.1
-//
-//    EnvelopedData ::= SEQUENCE {
-//      version Version,
-//      recipientInfos RecipientInfos,
-//      encryptedContentInfo EncryptedContentInfo }
-//
-//    RecipientInfos ::= SET OF RecipientInfo
-struct pkcs7_envelope_st {
-  ASN1_INTEGER *version;
-  PKCS7_ENC_CONTENT *enc_data;
-  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-12
@@ -204,15 +110,18 @@ int pkcs7_add_signed_data(CBB *out,
 // |BIO_get_md_ctx| before it can be used.
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
 
-// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*mdcp|
-#define BIO_get_md_ctx(b, mdcp) BIO_ctrl(b, BIO_C_GET_MD_CTX, 0, mdcp)
+// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|
+OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
 
 // BIO_set_md set's |b|'s EVP_MD* to |md|
-#define BIO_set_md(b, md) BIO_ctrl(b, BIO_C_SET_MD, 0, md)
+OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
 
 // BIO_f_cipher is used internally by the pkcs7 module. It is not recommended
 // for external use.
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_cipher(void);
+
+// BIO_get_cipher_ctx writes a reference of |b|'s EVP_CIPHER_CTX* to |*ctx|
+int BIO_get_cipher_ctx(BIO *b, EVP_CIPHER_CTX **ctx);
 
 // BIO_set_cipher is used internally for testing. It is not recommended for
 // external use.
@@ -220,6 +129,15 @@ OPENSSL_EXPORT int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
                                   const unsigned char *key,
                                   const unsigned char *iv, int enc);
 
+// BIO_get_cipher_status returns 1 if the cipher is in a healthy state or 0
+// otherwise. Unhealthy state could indicate decryption failure or other
+// abnormalities. Data read from an unhealthy cipher should not be considered
+// authentic.
+OPENSSL_EXPORT int BIO_get_cipher_status(BIO *b);
+
+// pkcs7_final initializes a data BIO using |p7|, copies all of |data| into it,
+// before final finalizing |p7|. It returns 1 on success and 0 on failure.
+int pkcs7_final(PKCS7 *p7, BIO *data);
 
 #if defined(__cplusplus)
 }  // extern C

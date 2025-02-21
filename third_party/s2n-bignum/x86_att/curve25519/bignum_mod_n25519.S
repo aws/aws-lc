@@ -121,7 +121,7 @@ S2N_BN_SYMBOL(bignum_mod_n25519):
         testq   k, k
         jz      writeback
 
-loop:
+bignum_mod_n25519_loop:
 
 // Assume that the new 5-digit x is 2^64 * previous_x + next_digit.
 // Get the quotient estimate q = max (floor(x/2^252)) (2^64 - 1)
@@ -183,7 +183,7 @@ loop:
         movq    d, m0
 
         decq    k
-        jnz     loop
+        jnz     bignum_mod_n25519_loop
 
 // Write back
 

@@ -192,6 +192,9 @@ err:
 }
 
 int X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr) {
+  if (attr == NULL) {
+    return 0;
+  }
   return (int)sk_ASN1_TYPE_num(attr->set);
 }
 

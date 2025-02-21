@@ -39,7 +39,6 @@ jobs:
         os:
           - "macos-14-large"
           - "macos-13-large"
-          - "macos-12-large"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -59,7 +58,6 @@ jobs:
         os:
           - "macos-14-large"
           - "macos-13-large"
-          - "macos-12-large"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -281,18 +279,23 @@ jobs:
       - name: Build SSL
         run: cmake --build ./build --target ssl
 
-  clang-18-pedantic:
+  clang-19-pedantic:
     if: github.repository_owner == 'aws'
     needs: [ sanity-test-run ]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
+      - name: Install clang-19
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod u+x llvm.sh
+          sudo ./llvm.sh 19
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: clang-18
-          cxx-compiler: clang++-18
+          c-compiler: clang-19
+          cxx-compiler: clang++-19
           options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
       - name: Build Crypto
         run: cmake --build ./build --target crypto
@@ -392,27 +395,61 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
-  OpenBSD-x86-64:
+  clang-19-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    strategy:
+      fail-fast: false
+      matrix:
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Install clang-19
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod u+x llvm.sh
+          sudo ./llvm.sh 19
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-19
+          cxx-compiler: clang++-19
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  OpenBSD:
     needs: [sanity-test-run]
     runs-on: ubuntu-latest
+    name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
+      fail-fast: false
       matrix:
-        args: ["", "-f"]
-        version: ["7.4", "7.5"]
+        arch: ["x86-64", "arm64"]
+        version: ["7.5", "7.6"]
     steps:
       - uses: actions/checkout@v3
       - name: OpenBSD
-        uses: cross-platform-actions/action@v0.24.0
+        uses: cross-platform-actions/action@595d543e5d1aeb6d48c0a176965028afe56c7018
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
           environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT
           operating_system: openbsd
-          cpu_count: 4
-          memory: 16G
-          architecture: x86-64
-          version: '7.4'
+          cpu_count: 3
+          memory: 12G
+          architecture: ${{ matrix.arch }}
+          version: "${{ matrix.version }}"
           shell: bash
           run: |
             set -x
@@ -445,7 +482,7 @@ jobs:
             cd $(pwd)
             export PATH="${HOME}/bin:${PATH}"
             env
-            tests/ci/run_bsd_tests.sh ${{ matrix.args }}
+            tests/ci/run_bsd_tests.sh
             EOF
   gcc-4_8:
     needs: [sanity-test-run]
@@ -517,14 +554,17 @@ jobs:
 #          echo ${env:SDEROOT}
 #          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
 #
-  freebsd-13:
+  freebsd:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    name: FreeBSD ${{ matrix.version }} test
+    name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        arch:
+          - 'x86-64'
+          - 'arm64'
         version:
           - '13.3'
           - '14.1'
@@ -541,11 +581,11 @@ jobs:
         with:
           environment_variables: 'AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS'
           operating_system: freebsd
-          architecture: x86-64
+          architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}
           shell: bash
-          memory: 16G
-          cpu_count: 4
+          memory: 12G
+          cpu_count: 3
           run: |
             sudo pkg install -y git gmake cmake go ninja
             tests/ci/run_bsd_tests.sh

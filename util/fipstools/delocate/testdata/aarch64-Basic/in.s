@@ -41,6 +41,10 @@ foo:
 	adrp x10, .Llocal_data2
 	ldr q0, [x10, :lo12:.Llocal_data2]
 
+	// Load from local symbol with sign extension
+	adrp x10, .Llocal_data2
+	ldrsw x0, [x10, :lo12:.Llocal_data2]
+
 	bl local_function
 
 	bl remote_function
@@ -82,6 +86,14 @@ foo:
 	add w0, w1, b2, sxtw
 	add w0, w1, b2, sxtx
 
+	// Test other shifts
+	add x0, x1, x2, lsl #2
+	add x0, x1, x2, lsr #2
+	ldr x0, [x1, x2, asl #3]
+	add x0, x1, x2, asr #2
+	add x0, x1, x2, ror #2
+	add x0, x1, x2, rol #2
+
 	// Make sure we can parse different immediates
 	add x22, sp, #(13*32)
 	add x22, sp, #(13*32)+96
@@ -94,6 +106,11 @@ foo:
 	// Aarch64 SVE2 added these forms:
 	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
 	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
+
+	// Test msl special argument handling
+	movi v0.2d, #0xff, msl #8
+	movi v1.2d, #0x42, msl #16
+	movi v2.2d, #0x1, msl #0
 
 local_function:
 

@@ -193,8 +193,8 @@ static int enc_write(BIO *b, const char *in, int inl) {
 static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
   GUARD_PTR(b);
   long ret = 1;
-
   BIO_ENC_CTX *ctx = BIO_get_data(b);
+  EVP_CIPHER_CTX **cipher_ctx;
   BIO *next = BIO_next(b);
   if (ctx == NULL) {
     return 0;
@@ -241,6 +241,15 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_C_GET_CIPHER_STATUS:
       ret = (long)ctx->ok;
       break;
+    case BIO_C_GET_CIPHER_CTX:
+      cipher_ctx = (EVP_CIPHER_CTX **)ptr;
+      if (!cipher_ctx) {
+        ret = 0;
+        break;
+      }
+      *cipher_ctx = ctx->cipher;
+      BIO_set_init(b, 1);
+      break;
     // OpenSSL implements these, but because we don't need them and cipher BIO
     // is internal, we can fail loudly if they're called. If this case is hit,
     // it likely means you're making a change that will require implementing
@@ -249,7 +258,6 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_CTRL_GET_CALLBACK:
     case BIO_CTRL_SET_CALLBACK:
     case BIO_C_DO_STATE_MACHINE:
-    case BIO_C_GET_CIPHER_CTX:
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_BIO_LIB);
       return 0;
     default:
@@ -275,7 +283,7 @@ int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
   const EVP_CIPHER *kSupportedCiphers[] = {
       EVP_aes_128_cbc(),       EVP_aes_128_ctr(), EVP_aes_128_ofb(),
       EVP_aes_256_cbc(),       EVP_aes_256_ctr(), EVP_aes_256_ofb(),
-      EVP_chacha20_poly1305(),
+      EVP_chacha20_poly1305(), EVP_des_ede3_cbc(),
   };
   const size_t kSupportedCiphersCount =
       sizeof(kSupportedCiphers) / sizeof(EVP_CIPHER *);
@@ -313,3 +321,11 @@ static const BIO_METHOD methods_enc = {
 };
 
 const BIO_METHOD *BIO_f_cipher(void) { return &methods_enc; }
+
+int BIO_get_cipher_ctx(BIO *b, EVP_CIPHER_CTX **ctx) {
+  return BIO_ctrl(b, BIO_C_GET_CIPHER_CTX, 0, ctx);
+}
+
+int BIO_get_cipher_status(BIO *b) {
+  return BIO_ctrl(b, BIO_C_GET_CIPHER_STATUS, 0, NULL);
+}

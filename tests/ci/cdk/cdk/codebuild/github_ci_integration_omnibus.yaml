@@ -220,3 +220,104 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_librelp_integration.sh"
+
+    - identifier: haproxy_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_haproxy_integration.sh"
+
+    - identifier: trousers_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_trousers_integration.sh"
+
+    - identifier: ntp_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_ntp_integration.sh"
+          
+    - identifier: pq_tls_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_pq_tls_integration.sh"
+
+    - identifier: tpm2_tss_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_tpm2_tss_integration.sh"
+
+    - identifier: tcpdump_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_tcpdump_integration.sh"
+
+    - identifier: socat_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_socat_integration.sh"
+          LOGNAME: "postgres"
+
+    - identifier: openldap_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_openldap_integration.sh master OPENLDAP_REL_ENG_2_5"
+
+    - identifier: cyrus_sasl_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_cyrus_sasl_integration.sh"
+
+    - identifier: amazon_corretto_crypto_provider_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_accp_integration.sh"

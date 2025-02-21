@@ -78,6 +78,7 @@ if(BUILD_TESTING)
   add_executable(
     ${SSL_TEST_EXEC}
 
+    ../crypto/test/file_util.cc
     span_test.cc
     ssl_test.cc
     ssl_c_test.c

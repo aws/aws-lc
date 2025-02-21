@@ -135,6 +135,12 @@ bool GetBoolArgument(bool *out, const std::string &arg_name, const args_map_t &a
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
 bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
 
+// DoClient is a common function used to support the s_client option in both
+// bssl and openssl tools. It takes an additional parameter |tool| to indicate
+// which tool's s_client is being invoked. A value of true indicates openssl
+// and false indicates the internal bssl tool.
+bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client);
+
 bool Ciphers(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);
 bool DoPKCS12(const std::vector<std::string> &args);

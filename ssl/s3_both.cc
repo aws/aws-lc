@@ -687,7 +687,7 @@ class CipherScorer {
 
 const SSL_CIPHER *ssl_choose_tls13_cipher(
     const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw, uint16_t version,
-    uint16_t group_id, const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
+    const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
 
   const SSL_CIPHER *best = nullptr;
   CipherScorer scorer(has_aes_hw);
@@ -697,7 +697,7 @@ const SSL_CIPHER *ssl_choose_tls13_cipher(
     const SSL_CIPHER *client_cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
     const SSL_CIPHER *candidate = nullptr;
     if (tls13_ciphers != nullptr) {
-      // Limit to customized TLS 1.3 ciphers if configured.
+      // Limit to configured TLS 1.3 ciphers
       for (size_t j = 0; j < sk_SSL_CIPHER_num(tls13_ciphers); j++) {
         const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(tls13_ciphers, j);
         if (cipher != nullptr && cipher->id == client_cipher->id) {
@@ -705,9 +705,6 @@ const SSL_CIPHER *ssl_choose_tls13_cipher(
           break;
         }
       }
-    } else {
-      // Limit to TLS 1.3 ciphers we know about.
-      candidate = client_cipher;
     }
     if (candidate == nullptr ||
         SSL_CIPHER_get_min_version(candidate) > version ||

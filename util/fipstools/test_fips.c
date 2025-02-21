@@ -22,16 +22,21 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/curve25519.h>
 #include <openssl/des.h>
 #include <openssl/dh.h>
-#include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/kdf.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
+#include "../../crypto/fipsmodule/evp/internal.h"
+#include "../../crypto/fipsmodule/kem/internal.h"
+#include "../../crypto/fipsmodule/pqdsa/internal.h"
 #include "../../crypto/fipsmodule/rand/internal.h"
 #include "../../crypto/internal.h"
 
@@ -393,6 +398,67 @@ int main(int argc, char **argv) {
 
   ECDSA_SIG_free(sig);
   EC_KEY_free(ec_key);
+
+  /* Ed25519 */
+  printf("About to Ed25519 sign ");
+  hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
+  uint8_t ed_public_key[ED25519_PUBLIC_KEY_LEN];
+  uint8_t ed_private_key[ED25519_PRIVATE_KEY_LEN];
+  ED25519_keypair(ed_public_key, ed_private_key);
+  uint8_t ed_signature[ED25519_SIGNATURE_LEN];
+  if (!ED25519_sign(ed_signature,kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_private_key) ||
+    !ED25519_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature, ed_public_key)) {
+    printf("ED25519 Sign/Verify PWCT failed.\n");
+    goto err;
+  }
+  printf("got signature ");
+  hexdump(ed_signature, sizeof(ed_signature));
+
+  /* Ed25519ph */
+  printf("About to Ed25519ph sign ");
+  hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
+  uint8_t ed25519_ph_context[32] = {
+    0xfe, 0x52, 0xbb, 0xd2, 0x45, 0x54, 0x46, 0xad, 0xa5, 0x24, 0x6b, 0x5a,
+    0xf3, 0xba, 0x82, 0x93, 0x9c, 0xed, 0xa6, 0xa1, 0x8f, 0x59, 0xd3, 0x37,
+    0x48, 0xde, 0x40, 0x7a, 0xfe, 0x31, 0x48, 0xd1
+  };
+  if (!ED25519ph_sign(ed_signature, kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_private_key, ed25519_ph_context, sizeof(ed25519_ph_context)) ||
+    !ED25519ph_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature, ed_public_key, ed25519_ph_context, sizeof(ed25519_ph_context))) {
+    printf("ED25519ph Sign/Verify PWCT failed.\n");
+    goto err;
+  }
+  printf("got signature ");
+  hexdump(ed_signature, sizeof(ed_signature));
+
+  /* ML-KEM */
+  printf("About to Generate ML-KEM key\n");
+  EVP_PKEY *kem_raw = NULL;
+  EVP_PKEY_CTX *kem_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
+  if (kem_ctx == NULL || !EVP_PKEY_CTX_kem_set_params(kem_ctx, NID_MLKEM512) ||
+    !EVP_PKEY_keygen_init(kem_ctx) ||
+    !EVP_PKEY_keygen(kem_ctx, &kem_raw)) {
+    printf("ML-KEM keygen failed.\n");
+    goto err;
+  }
+  printf("Generated public key: ");
+  hexdump(kem_raw->pkey.kem_key->public_key, kem_raw->pkey.kem_key->kem->public_key_len);
+  EVP_PKEY_free(kem_raw);
+  EVP_PKEY_CTX_free(kem_ctx);
+
+  /* ML-DSA */
+  printf("About to Generate ML-DSA key\n");
+  EVP_PKEY *dsa_raw = NULL;
+  EVP_PKEY_CTX *dsa_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, NULL);
+  if (dsa_ctx == NULL || !EVP_PKEY_CTX_pqdsa_set_params(dsa_ctx, NID_MLDSA44) ||
+    !EVP_PKEY_keygen_init(dsa_ctx) ||
+    !EVP_PKEY_keygen(dsa_ctx, &dsa_raw)) {
+    printf("ML-DSA keygen failed.\n");
+    goto err;
+    }
+  printf("Generated public key: ");
+  hexdump(dsa_raw->pkey.pqdsa_key->public_key, dsa_raw->pkey.pqdsa_key->pqdsa->public_key_len);
+  EVP_PKEY_free(dsa_raw);
+  EVP_PKEY_CTX_free(dsa_ctx);
 
   /* DBRG */
   CTR_DRBG_STATE drbg;

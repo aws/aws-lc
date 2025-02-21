@@ -64,11 +64,8 @@
 #include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/rsa/internal.h"
-
-#ifdef ENABLE_DILITHIUM
-#include "../dilithium/sig_dilithium.h"
-#endif
-
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
+#include "../fipsmodule/pqdsa/internal.h"
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
   for (size_t i = 0; i < len; i++) {
@@ -311,11 +308,9 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
   return do_EC_KEY_print(bp, EVP_PKEY_get0_EC_KEY(pkey), indent, 2);
 }
 
-#ifdef ENABLE_DILITHIUM
+// MLDSA keys.
 
-// Dilithium keys.
-
-static int do_dilithium3_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) {
+static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) {
   if (pkey == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -325,21 +320,21 @@ static int do_dilithium3_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype
     return 0;
   }
 
-  const DILITHIUM3_KEY *key = pkey->pkey.ptr;
+  const PQDSA *pqdsa = pkey->pkey.pqdsa_key->pqdsa;
   int bit_len = 0;
 
   if (ptype == 2) {
-    bit_len = DILITHIUM3_PRIVATE_KEY_BYTES;
+    bit_len = pqdsa->private_key_len;
     if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
       return 0;
     }
-    print_hex(bp, key->priv, bit_len, off);
+    print_hex(bp, pkey->pkey.pqdsa_key->private_key, bit_len, off);
   } else {
-    bit_len = DILITHIUM3_PUBLIC_KEY_BYTES;
+    bit_len = pqdsa->public_key_len;
     if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {
       return 0;
     }
-    int ret = print_hex(bp, key->pub, bit_len, off);
+    int ret = print_hex(bp, pkey->pkey.pqdsa_key->public_key, bit_len, off);
     if (!ret) {
       return 0;
     }
@@ -348,15 +343,13 @@ static int do_dilithium3_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype
   return 1;
 }
 
-static int dilithium3_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dilithium3_print(bp, pkey, indent, 1);
+static int mldsa_65_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_mldsa_65_print(bp, pkey, indent, 1);
 }
 
-static int dilithium3_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dilithium3_print(bp, pkey, indent, 2);
+static int mldsa_65_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_mldsa_65_print(bp, pkey, indent, 2);
 }
-
-#endif
 
 typedef struct {
   int type;
@@ -384,14 +377,12 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
         eckey_priv_print,
         eckey_param_print,
     },
-#ifdef ENABLE_DILITHIUM
     {
-        EVP_PKEY_DILITHIUM3,
-        dilithium3_pub_print,
-        dilithium3_priv_print,
+        EVP_PKEY_PQDSA,
+        mldsa_65_pub_print,
+        mldsa_65_priv_print,
         NULL /* param_print */,
     },
-#endif
 };
 
 static size_t kPrintMethodsLen = OPENSSL_ARRAY_SIZE(kPrintMethods);

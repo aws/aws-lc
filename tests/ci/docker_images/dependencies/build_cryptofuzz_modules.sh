@@ -15,9 +15,11 @@ export CXXFLAGS="-fsanitize=address,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
 # Setup base of Cryptofuzz
 cd "$FUZZ_ROOT"
 MODULES_ROOT="${FUZZ_ROOT}/modules"
-git clone --depth 1 https://github.com/guidovranken/cryptofuzz.git
+# TODO this is not the latest (which is cryptofuzz-9461c91.tar.gz, but newer boton is not compiling so pinning)
+curl -OL https://d2yr98kym3baw0.cloudfront.net/cryptofuzz-508c384.tar.gz
+tar xvzf cryptofuzz-*.tar.gz
+rm cryptofuzz-*.tar.gz
 cd cryptofuzz
-git rev-parse HEAD
 CRYPTOFUZZ_SRC=$(pwd)
 python3 gen_repository.py
 
@@ -26,14 +28,17 @@ cd "$MODULES_ROOT"
 
 # Setup the other crypto libraries for differential fuzzing
 # Botan https://github.com/guidovranken/cryptofuzz/blob/master/docs/botan.md
-git clone --depth 1 https://github.com/randombit/botan.git
+git clone https://github.com/randombit/botan.git
 cd botan
+# TODO: Current tip of botan is not compiling for us (maybe C++20 related?)
+# reverting to the version of botan we built with cryptofuzz@508c384
+git checkout 51b06ca93d1998d19927699f78b8d67539148dde
 git rev-parse HEAD
-python3 configure.py --cc-bin=$CXX --cc-abi-flags="$CXXFLAGS" --disable-shared --disable-modules=locking_allocator,x509,tls --build-targets=static --without-documentation
+python3 configure.py --cc-bin=$CXX --cc-abi-flags="${CXXFLAGS}" --disable-shared --disable-modules=locking_allocator,x509,tls --build-targets=static --without-documentation
 make -j$(nproc)
-env LIBBOTAN_A_PATH `realpath libbotan-3.a`
-env BOTAN_INCLUDE_PATH `realpath build/include/public`
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN -I $(realpath build/include/internal)"
+env LIBBOTAN_A_PATH "$(realpath libbotan-3.a)"
+env BOTAN_INCLUDE_PATH "$(realpath build/include)"
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_BOTAN"
 cd "${CRYPTOFUZZ_SRC}/modules/botan/"
 make -j$(nproc)
 
@@ -43,9 +48,9 @@ git clone --depth 1 https://github.com/weidai11/cryptopp.git
 cd cryptopp/
 git rev-parse HEAD
 make libcryptopp.a -j$(nproc)
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_CRYPTOPP"
-env LIBCRYPTOPP_A_PATH `realpath libcryptopp.a`
-env CRYPTOPP_INCLUDE_PATH `realpath .`
+export CXXFLAGS="${CXXFLAGS} -DCRYPTOFUZZ_CRYPTOPP"
+env LIBCRYPTOPP_A_PATH "$(realpath libcryptopp.a)"
+env CRYPTOPP_INCLUDE_PATH "$(realpath .)"
 cd "${CRYPTOFUZZ_SRC}/modules/cryptopp/"
 make -j$(nproc)
 
@@ -53,8 +58,8 @@ make -j$(nproc)
 cd "$FUZZ_ROOT"
 unzip cryptofuzz_data.zip
 rm cryptofuzz_data.zip
-env CRYPTOFUZZ_SEED_CORPUS `realpath cryptofuzz_seed_corpus`
-env CRYPTOFUZZ_DICT `realpath cryptofuzz-dict.txt`
+env CRYPTOFUZZ_SEED_CORPUS "$(realpath cryptofuzz_seed_corpus)"
+env CRYPTOFUZZ_DICT "$(realpath cryptofuzz-dict.txt)"
 
 # Save final common flags
 env CFLAGS "$CFLAGS"

@@ -86,10 +86,16 @@ int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer, EVP_PKEY *key,
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
       goto err;
     }
+    const EVP_MD *init_dgst = OCSP_get_default_digest(dgst, key);
+    if (init_dgst == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, EVP_R_NO_DEFAULT_DIGEST);
+      goto err;
+    }
+
     if (!ASN1_item_sign(ASN1_ITEM_rptr(OCSP_REQINFO),
                         req->optionalSignature->signatureAlgorithm, NULL,
                         req->optionalSignature->signature, req->tbsRequest, key,
-                        dgst)) {
+                        init_dgst)) {
       goto err;
     }
   }

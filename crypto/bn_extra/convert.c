@@ -74,7 +74,7 @@ int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in) {
   return CBB_add_space(out, &ptr, len) && BN_bn2bin_padded(ptr, len, in);
 }
 
-static const char hextable[] = "0123456789abcdef";
+static const char hextable[] = "0123456789ABCDEF";
 
 char *BN_bn2hex(const BIGNUM *bn) {
   int width = bn_minimal_width(bn);
@@ -448,7 +448,14 @@ BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out) {
   }
   out->neg = ((*in) & 0x80) != 0;
   if (out->neg) {
-    BN_clear_bit(out, BN_num_bits(out) - 1);
+    unsigned num_bits = BN_num_bits(out);
+    if (num_bits >= INT_MAX) {
+      if (out_is_alloced) {
+        BN_free(out);
+      }
+      return NULL;
+    }
+    BN_clear_bit(out, (int)num_bits - 1);
   }
   return out;
 }

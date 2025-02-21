@@ -77,7 +77,7 @@ typedef uint64_t fe_limb_t;
 #define assert_fe(f)                                                    \
   do {                                                                  \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 5; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <= UINT64_C(0x8cccccccccccc));             \
+      declassify_assert(f[_assert_fe_i] <= UINT64_C(0x8cccccccccccc));  \
     }                                                                   \
   } while (0)
 
@@ -94,7 +94,7 @@ typedef uint64_t fe_limb_t;
 #define assert_fe_loose(f)                                              \
   do {                                                                  \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 5; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <= UINT64_C(0x1a666666666664));            \
+      declassify_assert(f[_assert_fe_i] <= UINT64_C(0x1a666666666664)); \
     }                                                                   \
   } while (0)
 
@@ -116,8 +116,8 @@ typedef uint32_t fe_limb_t;
 #define assert_fe(f)                                                     \
   do {                                                                   \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 10; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <=                                          \
-             ((_assert_fe_i & 1) ? 0x2333333u : 0x4666666u));            \
+      declassify_assert(f[_assert_fe_i] <=                               \
+                        ((_assert_fe_i & 1) ? 0x2333333u : 0x4666666u)); \
     }                                                                    \
   } while (0)
 
@@ -134,8 +134,8 @@ typedef uint32_t fe_limb_t;
 #define assert_fe_loose(f)                                               \
   do {                                                                   \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 10; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <=                                          \
-             ((_assert_fe_i & 1) ? 0x6999999u : 0xd333332u));            \
+      declassify_assert(f[_assert_fe_i] <=                               \
+                        ((_assert_fe_i & 1) ? 0x6999999u : 0xd333332u)); \
     }                                                                    \
   } while (0)
 
@@ -146,7 +146,7 @@ OPENSSL_STATIC_ASSERT(sizeof(fe) == sizeof(fe_limb_t) * FE_NUM_LIMBS,
 
 static void fe_frombytes_strict(fe *h, const uint8_t s[32]) {
   // |fiat_25519_from_bytes| requires the top-most bit be clear.
-  assert((s[31] & 0x80) == 0);
+  declassify_assert((s[31] & 0x80) == 0);
   fiat_25519_from_bytes(h->v, s);
   assert_fe(h->v);
 }
@@ -1983,7 +1983,7 @@ void ed25519_public_key_from_hashed_seed_nohw(
 
 void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
-  const void *message, size_t message_len) {
+  const void *message, size_t message_len, const uint8_t* dom2, size_t dom2_len) {
 
   // Reduce r modulo the order of the base-point B.
   x25519_sc_reduce(r);
@@ -1992,10 +1992,17 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   x25519_ge_scalarmult_base(&R, r);
   ge_p3_tobytes(out_sig, &R);
 
-  // Compute k = SHA512(R || A || message)
   // R is of length 32 octets
   uint8_t k[SHA512_DIGEST_LENGTH];
-  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message, message_len);
+  if (dom2_len > 0) {
+    // Compute k = SHA512(dom2(phflag, context) || R || A || message)
+    ed25519_sha512(k, dom2, dom2_len, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+                   message_len);
+  } else {
+    // Compute k = SHA512(R || A || message)
+    ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+                   message_len, NULL, 0);
+  }
 
   // Reduce k modulo the order of the base-point B.
   x25519_sc_reduce(k);
@@ -2006,7 +2013,7 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 
 int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
-  uint8_t S[32], const uint8_t *message, size_t message_len) {
+  uint8_t S[32], const uint8_t *message, size_t message_len, const uint8_t *dom2, size_t dom2_len) {
 
   // Decode public key as A'.
   ge_p3 A;
@@ -2015,10 +2022,16 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
   }
 
   // Step: rfc8032 5.1.7.2
-  // Compute k = SHA512(R_expected || public_key || message).
   uint8_t k[SHA512_DIGEST_LENGTH];
-  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
-    message_len);
+  if(dom2_len > 0) {
+    // Compute k = SHA512(dom2(phflag, context) || R_expected || public_key || message).
+    ed25519_sha512(k, dom2, dom2_len, R_expected, 32, public_key,
+                   ED25519_PUBLIC_KEY_LEN, message, message_len);
+  } else {
+    // Compute k = SHA512(R_expected || public_key || message).
+    ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN,
+                   message, message_len, NULL, 0);
+  }
 
   // Reduce k modulo the order of the base-point B. Saves compute in the
   // subsequent scalar multiplication.

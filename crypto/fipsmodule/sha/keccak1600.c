@@ -23,7 +23,7 @@
 
 #if !defined(KECCAK1600_ASM)
 
-static const uint8_t rhotates[SHA3_ROWS][SHA3_ROWS] = {
+static const uint8_t rhotates[KECCAK1600_ROWS][KECCAK1600_ROWS] = {
     {  0,  1, 62, 28, 27 },
     { 36, 44,  6, 55, 20 },
     {  3, 10, 43, 25, 39 },
@@ -103,9 +103,9 @@ static uint64_t ROL64(uint64_t val, int offset)
  // it with actual data (see round loop below). 
  // It ensures best compiler interpretation to assembly and provides best 
  // instruction per processed byte ratio at minimal round unroll factor.
-static void Round(uint64_t R[SHA3_ROWS][SHA3_ROWS], uint64_t A[SHA3_ROWS][SHA3_ROWS], size_t i)
+static void Round(uint64_t R[KECCAK1600_ROWS][KECCAK1600_ROWS], uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], size_t i)
 {
-    uint64_t C[SHA3_ROWS], D[SHA3_ROWS];
+    uint64_t C[KECCAK1600_ROWS], D[KECCAK1600_ROWS];
 
     assert(i < (sizeof(iotas) / sizeof(iotas[0])));
 
@@ -222,9 +222,9 @@ static void Round(uint64_t R[SHA3_ROWS][SHA3_ROWS], uint64_t A[SHA3_ROWS][SHA3_R
 #endif
 }
 
-static void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS])
+static void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS])
 {
-    uint64_t T[SHA3_ROWS][SHA3_ROWS];
+    uint64_t T[KECCAK1600_ROWS][KECCAK1600_ROWS];
     size_t i;
 
 #ifdef KECCAK_COMPLEMENTING_TRANSFORM
@@ -323,7 +323,7 @@ static uint64_t BitDeinterleave(uint64_t Ai)
     return Ai;
 }
 
- // SHA3_Absorb can be called multiple times; at each invocation the
+ // Keccak1600_Absorb can be called multiple times; at each invocation the
  // largest multiple of |r| out of |len| bytes are processed. The
  // remaining amount of bytes is returned. This is done to spare caller
  // trouble of calculating the largest multiple of |r|. |r| can be viewed
@@ -331,7 +331,7 @@ static uint64_t BitDeinterleave(uint64_t Ai)
  // 72, but can also be (1600 - 448)/8 = 144. All this means that message
  // padding and intermediate sub-block buffering, byte- or bitwise, is
  // caller's responsibility.
-size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t len,
+size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len,
                    size_t r)
 {
     uint64_t *A_flat = (uint64_t *)A;
@@ -356,8 +356,8 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t 
     return len;
 }
 
-void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int padded)
-// SHA3_Squeeze can be called multiple times to incrementally 
+void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int padded)
+// Keccak1600_Squeeze can be called multiple times to incrementally 
 {
     uint64_t *A_flat = (uint64_t *)A;
     size_t i, w = r / 8;
@@ -396,19 +396,19 @@ void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, si
 
 #else
 
-size_t SHA3_Absorb_hw(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t len,
+size_t Keccak1600_Absorb_hw(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len,
                        size_t r);
 
-size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t len,
+size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len,
                    size_t r) {
-    return SHA3_Absorb_hw(A, inp, len, r);
+    return Keccak1600_Absorb_hw(A, inp, len, r);
 }
 
-size_t SHA3_Squeeze_hw(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *out, size_t len,
+size_t Keccak1600_Squeeze_hw(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *out, size_t len,
                         size_t r, int padded);
 
-void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int padded) {
-    SHA3_Squeeze_hw(A, out, len, r, padded);
+void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int padded) {
+    Keccak1600_Squeeze_hw(A, out, len, r, padded);
 }
 
 #endif // !KECCAK1600_ASM

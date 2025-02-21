@@ -586,7 +586,17 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return nullptr;
   }
 
-  if (!SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
+  const bool has_aes_hw = ret->aes_hw_override ? ret->aes_hw_override_value :
+                                                 EVP_has_aes_hardware();
+  const char *cipher_rule;
+  if (has_aes_hw) {
+    cipher_rule = TLS13_DEFAULT_CIPHER_LIST_AES_HW;
+  } else {
+    cipher_rule = TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW;
+  }
+
+  if (!SSL_CTX_set_ciphersuites(ret.get(), cipher_rule) ||
+      !SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
       // Lock the SSL_CTX to the specified version, for compatibility with
       // legacy uses of SSL_METHOD.
       !SSL_CTX_set_max_proto_version(ret.get(), method->version) ||
@@ -727,7 +737,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       permute_extensions(false),
       conf_max_version_use_default(true),
       conf_min_version_use_default(true),
-      alps_use_new_codepoint(false) {
+      alps_use_new_codepoint(false),
+      check_client_certificate_type(true) {
   assert(ssl);
 }
 
@@ -1612,13 +1623,6 @@ const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
   return ssl->config->cert->sid_ctx;
 }
 
-void SSL_certs_clear(SSL *ssl) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl_cert_clear_certs(ssl->config->cert.get());
-}
-
 int SSL_get_fd(const SSL *ssl) { return SSL_get_rfd(ssl); }
 
 int SSL_get_rfd(const SSL *ssl) {
@@ -1701,8 +1705,7 @@ static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -1716,8 +1719,7 @@ size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
 }
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -2156,13 +2158,11 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
   if (ssl == NULL) {
     return NULL;
   }
-  if (ssl->config == NULL) {
-    assert(ssl->config);
-    return NULL;
+  if (ssl->config && ssl->config->cipher_list) {
+    return ssl->config->cipher_list->ciphers.get();
   }
 
-  return ssl->config->cipher_list ? ssl->config->cipher_list->ciphers.get()
-                                  : ssl->ctx->cipher_list->ciphers.get();
+  return ssl->ctx->cipher_list->ciphers.get();
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
@@ -2186,17 +2186,25 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
+  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
                                 false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
+  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
                                 true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
@@ -2206,17 +2214,29 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
+  if (!ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
                                 false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
+                                        ssl->ctx->tls13_cipher_list;
+
+  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
+
+  if (!ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
                                 false /* not strict */,
-                                true /* only configure TLSv1.3 ciphers */);
+                                true /* only configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
 }
 
 int SSL_set_ciphersuites(SSL *ssl, const char *str) {
@@ -2226,9 +2246,16 @@ int SSL_set_ciphersuites(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
-                                false /* not strict */,
-                                true /* configure TLSv1.3 ciphers */);
+  if (!ssl_create_cipher_list(&ssl->config->tls13_cipher_list,
+                                has_aes_hw, str, false /* not strict */,
+                                true /* configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &ciphers = ssl->config->cipher_list ? ssl->config->cipher_list :
+                                          ssl->ctx->cipher_list;
+
+  return update_cipher_list(ssl->config->cipher_list, ciphers, ssl->config->tls13_cipher_list);
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
@@ -2238,9 +2265,16 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
-                                true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+  if (!ssl_create_cipher_list(&ssl->config->cipher_list,
+                                has_aes_hw, str, true /* strict */,
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
+                                        ssl->ctx->tls13_cipher_list;
+
+  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {
@@ -2668,7 +2702,51 @@ const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
 
 const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
-int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
+int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
+  GUARD_PTR(ssl);
+  GUARD_PTR(ssl->s3);
+  GUARD_PTR(out_key);
+
+  SSL_SESSION *session = SSL_get_session(ssl);
+  uint16_t nid;
+  if (!session || !ssl_group_id_to_nid(&nid, session->group_id)) {
+    return 0;
+  }
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (!ret) {
+    return 0;
+  }
+
+  // Assign key type based on the session's key exchange |nid|.
+  if (nid == EVP_PKEY_X25519) {
+    if (!EVP_PKEY_set_type(ret.get(), EVP_PKEY_X25519)) {
+      return 0;
+    }
+  } else {
+    EC_KEY *key = EC_KEY_new_by_curve_name(nid);
+    if (!key) {
+      // We only support ECDHE for temporary keys, so fail if an unrecognized
+      // key exchange is used.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
+      return 0;
+    }
+    if (!EVP_PKEY_assign_EC_KEY(ret.get(), key)) {
+      return 0;
+    }
+  }
+
+  if (!EVP_PKEY_set1_tls_encodedpoint(ret.get(), ssl->s3->peer_key.data(),
+                                      ssl->s3->peer_key.size())) {
+    return 0;
+  }
+  EVP_PKEY_up_ref(ret.get());
+  *out_key = ret.get();
+  return 1;
+}
+
+int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
+  return SSL_get_peer_tmp_key(ssl, out_key);
+}
 
 void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode) {
   ctx->quiet_shutdown = (mode != 0);
@@ -3187,6 +3265,13 @@ void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
     return;
   }
   ssl->config->jdk11_workaround = !!enable;
+}
+
+void SSL_set_check_client_certificate_type(SSL *ssl, int enable) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->check_client_certificate_type = !!enable;
 }
 
 void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy) {

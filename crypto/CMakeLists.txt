@@ -44,7 +44,7 @@ function(msbuild_aarch64_asm)
 endfunction()
 
 if(NOT OPENSSL_NO_ASM)
-  if(UNIX)
+  if(NOT WIN32)
     if(ARCH STREQUAL "aarch64")
       # The "armx" Perl scripts look for "64" in the style argument
       # in order to decide whether to generate 32- or 64-bit asm.
@@ -140,10 +140,16 @@ if(PERL_EXECUTABLE)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
     endif()
 
+    set(PERL_COMMAND "${PERL_EXECUTABLE}")
+    list(APPEND PERL_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+    list(APPEND PERL_COMMAND "${PERLASM_STYLE}")
+    list(APPEND PERL_COMMAND "${dest}")
+    list(APPEND PERL_COMMAND ${PERLASM_FLAGS})
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${dest} ${PERLASM_FLAGS}
+      COMMAND ${PERL_COMMAND}
       DEPENDS
       ${src}
       ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
@@ -180,7 +186,7 @@ else()
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-arm/crypto/)
   elseif(APPLE)
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/mac-${ARCH}/crypto/)
-  elseif(UNIX)
+  elseif(NOT WIN32)
     if(${ARCH} STREQUAL "generic")
       message(STATUS "Detected generic linux platform. No assembly files will be included.")
     else()
@@ -318,17 +324,6 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
-set(DILITHIUM_SOURCES)
-if(ENABLE_DILITHIUM)
-  set(
-    DILITHIUM_SOURCES
-
-    dilithium/p_dilithium3.c
-    dilithium/p_dilithium3_asn1.c
-    dilithium/sig_dilithium3.c
-  )
-endif()
-
 set(CRYPTO_ARCH_OBJECTS "")
 if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
@@ -400,13 +395,13 @@ add_library(
   cipher_extra/e_rc4.c
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
+  curve25519_extra/curve25519_extra.c
   conf/conf.c
   crypto.c
   des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
-  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -420,11 +415,14 @@ add_library(
   evp_extra/evp_asn1.c
   evp_extra/p_dh.c
   evp_extra/p_dh_asn1.c
+  evp_extra/p_dsa.c
   evp_extra/p_dsa_asn1.c
   evp_extra/p_ec_asn1.c
+  evp_extra/p_ed25519ph.c
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
   evp_extra/p_kem_asn1.c
+  evp_extra/p_pqdsa_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
@@ -475,7 +473,6 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/getentropy.c
   rand_extra/rand_extra.c
-  rand_extra/pq_custom_randombytes.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -596,7 +593,6 @@ function(build_libcrypto name module_source)
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)
   endif()
-  SET_TARGET_PROPERTIES(${name} PROPERTIES LINKER_LANGUAGE C)
   if(WIN32)
     target_link_libraries(${name} PUBLIC ws2_32)
   endif()
@@ -656,10 +652,6 @@ if(FIPS_SHARED)
       COMMAND ${GO_EXECUTABLE} run
       ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-      # go_executable isn't used (as it doesn't get built), but we list this
-      # dependency anyway in case it starts working in some CMake version.
-      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
 
@@ -773,13 +765,13 @@ if(BUILD_TESTING)
     decrepit/ripemd/ripemd_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
     des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+    evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -831,6 +823,7 @@ if(BUILD_TESTING)
     stack/stack_test.cc
     siphash/siphash_test.cc
     spake25519/spake25519_test.cc
+    test/file_util.cc
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc

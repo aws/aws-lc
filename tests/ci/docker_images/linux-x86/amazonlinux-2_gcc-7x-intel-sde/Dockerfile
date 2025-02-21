@@ -5,8 +5,8 @@ FROM amazonlinux-2:gcc-7x
 
 SHELL ["/bin/bash", "-c"]
 
-ENV SDE_VERSION_TAG=sde-external-9.21.1-2023-04-24-lin
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-lin.tar.xz"
+ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-lin.tar.xz"
 
 # Enable the EPEL repository on Amazon Linux 2 before installing packages
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/add-repositories.html

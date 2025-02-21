@@ -44,6 +44,11 @@ enum FIPSStatus {
 // |AWSLC_NOT_APPROVED| accordingly to the approved state of the service ran.
 // It is highly recommended that users of the service indicator use this macro
 // when interacting with the service indicator.
+//
+// This macro tests before != after to handle potential uint64_t rollover in
+// long-running applications that use the release build of AWS-LC. Debug builds
+// use an assert before + 1 == after to ensure in testing the service indicator
+// is operating as expected.
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
   do {                                                              \
     (approved) = AWSLC_NOT_APPROVED;                                \
@@ -51,6 +56,7 @@ enum FIPSStatus {
     func;                                                           \
     int after = FIPS_service_indicator_after_call();                \
     if (before != after) {                                          \
+        assert(before + 1 == after);                                \
         (approved) = AWSLC_APPROVED;                                \
     }                                                               \
  }                                                                  \

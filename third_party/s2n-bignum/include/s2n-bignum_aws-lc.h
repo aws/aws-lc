@@ -56,6 +56,18 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 }
 #endif
 
+extern void p256_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]);
+extern void p256_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]);
+static inline void p256_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]) {
+  if (use_s2n_bignum_alt()) { p256_montjscalarmul_alt(res, scalar, point); }
+  else { p256_montjscalarmul(res, scalar, point); }
+}
+
+// Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
+//   z = x^-1 mod p_256.
+// The function is constant-time.
+extern void bignum_montinv_p256(uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
+
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
@@ -103,6 +115,24 @@ static inline void bignum_tomont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], 
   if (use_s2n_bignum_alt()) { bignum_tomont_p384_alt(z, x); }
   else { bignum_tomont_p384(z, x); }
 }
+extern void p384_montjdouble(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjdouble_alt(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]);
+static inline void p384_montjdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]) {
+    if (use_s2n_bignum_alt()) { p384_montjdouble_alt(p3, p1); }
+    else { p384_montjdouble(p3, p1); }
+}
+
+extern void p384_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]);
+static inline void p384_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]) {
+  if (use_s2n_bignum_alt()) { p384_montjscalarmul_alt(res, scalar, point); }
+  else { p384_montjscalarmul(res, scalar, point); }
+}
+
+// Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+//   z = x^-1 mod p_384.
+// The function is constant-time.
+extern void bignum_montinv_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
@@ -151,6 +181,24 @@ extern void bignum_fromlebytes_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint8
 
 // Convert 9-digit 528-bit bignum to little-endian bytes
 extern void bignum_tolebytes_p521(uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_t x[S2N_BIGNUM_STATIC 9]);
+
+extern void p521_jdouble(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]);
+extern void p521_jdouble_alt(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]);
+static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]) {
+    if (use_s2n_bignum_alt()) { p521_jdouble_alt(p3, p1); }
+    else { p521_jdouble(p3, p1); }
+}
+extern void p521_jscalarmul(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]);
+extern void p521_jscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]);
+static inline void p521_jscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]) {
+    if (use_s2n_bignum_alt()) { p521_jscalarmul_alt(res, scalar, point); }
+    else { p521_jscalarmul(res, scalar, point); }
+}
+
+// Modular inverse modulo p_521 =  2^521 - 1
+//   z = x^-1 mod p_521.
+// The function is constant-time.
+extern void bignum_inv_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the

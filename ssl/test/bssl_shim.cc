@@ -31,6 +31,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include <assert.h>
+#include <errno.h>
 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -60,6 +61,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <vector>
 
 #include "../../crypto/internal.h"
+#include "../../crypto/ube/snapsafe_detect.h"
 #include "../internal.h"
 #include "async_bio.h"
 #include "handshake_util.h"
@@ -986,6 +988,11 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     int ssl_err = SSL_get_error(ssl.get(), -1);
     if (ssl_err != SSL_ERROR_NONE) {
       fprintf(stderr, "SSL error: %s\n", SSL_error_description(ssl_err));
+      if (ssl_err == SSL_ERROR_SYSCALL) {
+        int err = errno;
+        fprintf(stderr, "Error occurred: errno = %d, description = %s\n", err, strerror(err));
+
+      }
     }
     return false;
   }

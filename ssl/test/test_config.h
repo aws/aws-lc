@@ -40,6 +40,7 @@ struct TestConfig {
   std::vector<int> curves;
   std::string key_file;
   std::string cert_file;
+  std::string trust_cert;
   std::string expect_server_name;
   bool enable_ech_grease = false;
   std::vector<std::string> ech_server_configs;
@@ -73,7 +74,6 @@ struct TestConfig {
   std::string host_name;
   std::string advertise_alpn;
   std::string expect_alpn;
-  std::string expect_late_alpn;
   std::string expect_advertised_alpn;
   std::string select_alpn;
   bool decline_alpn = false;
@@ -219,6 +219,7 @@ struct TestConfig {
   // When |multiple_certs_slot| is defined, the certificates defined are
   // prioritized over certs defined with |cert_file| and |key_file|.
   std::vector<std::pair<std::string, std::string>> multiple_certs_slot;
+  bool no_check_client_certificate_type = false;
 
   std::vector<const char*> handshaker_args;
 

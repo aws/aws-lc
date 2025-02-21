@@ -206,9 +206,13 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       b->init = 1;
 #if defined(OPENSSL_WINDOWS)
       // Windows differentiates between "text" and "binary" file modes, so set
-      // the file to text mode if caller specifies BIO_FP_TEXT flag.
+      // the file to text mode if caller specifies BIO_FP_TEXT flag. If
+      // |BIO_FP_TEXT| is not set, we still call |_setmode| with |_O_BINARY| to
+      // match OpenSSL's behavior. BoringSSL, on the other hand, does nothing in
+      // this case.
       //
       // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setmode?view=msvc-170#remarks
+      // https://github.com/google/boringssl/commit/5ee4e9512e9a99f97c4a3fad397034028b3457c2
       _setmode(_fileno(b->ptr), num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
 #endif
       break;
@@ -218,16 +222,16 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       const char *mode;
       if (num & BIO_FP_APPEND) {
         if (num & BIO_FP_READ) {
-          mode = "a+";
+          mode = "ab+";
         } else {
-          mode = "a";
+          mode = "ab";
         }
       } else if ((num & BIO_FP_READ) && (num & BIO_FP_WRITE)) {
-        mode = "r+";
+        mode = "rb+";
       } else if (num & BIO_FP_WRITE) {
-        mode = "w";
+        mode = "wb";
       } else if (num & BIO_FP_READ) {
-        mode = "r";
+        mode = "rb";
       } else {
         OPENSSL_PUT_ERROR(BIO, BIO_R_BAD_FOPEN_MODE);
         ret = 0;
@@ -299,8 +303,8 @@ int BIO_get_fp(BIO *bio, FILE **out_file) {
   return (int)BIO_ctrl(bio, BIO_C_GET_FILE_PTR, 0, (char *)out_file);
 }
 
-int BIO_set_fp(BIO *bio, FILE *file, int close_flag) {
-  return (int)BIO_ctrl(bio, BIO_C_SET_FILE_PTR, close_flag, (char *)file);
+int BIO_set_fp(BIO *bio, FILE *file, int flags) {
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILE_PTR, flags, (char *)file);
 }
 
 int BIO_read_filename(BIO *bio, const char *filename) {

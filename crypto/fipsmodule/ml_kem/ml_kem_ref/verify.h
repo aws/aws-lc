@@ -1,5 +1,5 @@
-#ifndef VERIFY_H
-#define VERIFY_H
+#ifndef ML_KEM_VERIFY_H
+#define ML_KEM_VERIFY_H
 
 #include <stddef.h>
 #include <stdint.h>

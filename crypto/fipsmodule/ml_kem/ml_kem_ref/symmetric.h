@@ -1,5 +1,5 @@
-#ifndef SYMMETRIC_H
-#define SYMMETRIC_H
+#ifndef ML_KEM_SYMMETRIC_H
+#define ML_KEM_SYMMETRIC_H
 
 #include <stddef.h>
 #include <stdint.h>

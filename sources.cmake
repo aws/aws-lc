@@ -50,7 +50,6 @@ set(
   crypto/cipher_extra/test/nist_cavp/aes_256_gcm.txt
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
-  crypto/dilithium/kat/mldsa65.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
@@ -74,6 +73,8 @@ set(
   crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
   crypto/fipsmodule/curve25519/ed25519_tests.txt
+  crypto/fipsmodule/curve25519/ed25519ctx_tests.txt
+  crypto/fipsmodule/curve25519/ed25519ph_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
   crypto/fipsmodule/ec/large_x_coordinate_points.txt
   crypto/fipsmodule/ec/p256-nistz_tests.txt
@@ -81,6 +82,24 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/kdf/test/kbkdf_counter.txt
   crypto/fipsmodule/kdf/test/sskdf.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_ACVP_keyGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_ACVP_sigGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_ACVP_sigVer.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_ACVP_keyGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_ACVP_sigGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_ACVP_sigVer.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_ACVP_sigGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_ACVP_sigVer.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigVer.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigVer.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigGen.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigVer.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_hedged_pure.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_hedged_pure.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_hedged_pure.txt
   crypto/fipsmodule/ml_kem/kat/mlkem512.txt
   crypto/fipsmodule/ml_kem/kat/mlkem768.txt
   crypto/fipsmodule/ml_kem/kat/mlkem1024.txt

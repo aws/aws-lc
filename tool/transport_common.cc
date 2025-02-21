@@ -137,7 +137,7 @@ static void PrintSocketError(const char *function) {
 // Connect sets |*out_sock| to be a socket connected to the destination given
 // in |hostname_and_port|, which should be of the form "www.example.com:123".
 // It returns true on success and false otherwise.
-bool Connect(int *out_sock, const std::string &hostname_and_port) {
+bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
   std::string hostname, port;
   SplitHostPort(&hostname, &port, hostname_and_port);
 
@@ -153,7 +153,7 @@ bool Connect(int *out_sock, const std::string &hostname_and_port) {
   hint.ai_socktype = SOCK_STREAM;
 
   int ret = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &result);
-  if (ret != 0) {
+  if (ret != 0 && !quiet) {
 #if defined(OPENSSL_WINDOWS)
     const char *error = gai_strerrorA(ret);
 #else
@@ -173,27 +173,30 @@ bool Connect(int *out_sock, const std::string &hostname_and_port) {
     goto out;
   }
 
-  switch (result->ai_family) {
-    case AF_INET: {
-      struct sockaddr_in *sin =
-          reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
-      fprintf(stderr, "Connecting to %s:%d\n",
-              inet_ntop(result->ai_family, &sin->sin_addr, buf, sizeof(buf)),
-              ntohs(sin->sin_port));
-      break;
-    }
-    case AF_INET6: {
-      struct sockaddr_in6 *sin6 =
-          reinterpret_cast<struct sockaddr_in6 *>(result->ai_addr);
-      fprintf(stderr, "Connecting to [%s]:%d\n",
-              inet_ntop(result->ai_family, &sin6->sin6_addr, buf, sizeof(buf)),
-              ntohs(sin6->sin6_port));
-      break;
+  if(!quiet) {
+    switch (result->ai_family) {
+      case AF_INET: {
+        struct sockaddr_in *sin =
+                reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
+        fprintf(stderr, "Connecting to %s:%d\n",
+                inet_ntop(result->ai_family, &sin->sin_addr, buf, sizeof(buf)),
+                ntohs(sin->sin_port));
+        break;
+      }
+      case AF_INET6: {
+        struct sockaddr_in6 *sin6 =
+                reinterpret_cast<struct sockaddr_in6 *>(result->ai_addr);
+        fprintf(stderr, "Connecting to [%s]:%d\n",
+                inet_ntop(result->ai_family, &sin6->sin6_addr, buf, sizeof(buf)),
+                ntohs(sin6->sin6_port));
+        break;
+      }
     }
   }
 
   if (connect(*out_sock, result->ai_addr, result->ai_addrlen) != 0) {
     PrintSocketError("connect");
+    closesocket(*out_sock);
     goto out;
   }
   ok = true;

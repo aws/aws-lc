@@ -727,7 +727,6 @@ static EVP_CIPHER cipher_chacha20_poly1305 = {
   sizeof(CIPHER_CHACHA_POLY_CTX),
   EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_CUSTOM_IV | EVP_CIPH_ALWAYS_CALL_INIT |
   EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY | EVP_CIPH_FLAG_CUSTOM_CIPHER,
-  NULL, // app_data
   cipher_chacha20_poly1305_init,
   cipher_chacha20_poly1305_do_cipher,
   cipher_chacha20_poly1305_cleanup,

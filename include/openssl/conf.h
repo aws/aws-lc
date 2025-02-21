@@ -94,6 +94,9 @@ struct conf_value_st {
 DEFINE_STACK_OF(CONF_VALUE)
 DECLARE_LHASH_OF(CONF_VALUE)
 
+struct conf_st {
+  LHASH_OF(CONF_VALUE) *data;
+};
 
 // NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
 // argument must be NULL.

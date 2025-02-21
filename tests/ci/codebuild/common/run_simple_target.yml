@@ -10,4 +10,4 @@ env:
 phases:
   build:
     commands:
-      - "./${AWS_LC_CI_TARGET}"
+      - ./${AWS_LC_CI_TARGET}

@@ -58,7 +58,6 @@ int main() {
   enable_seccomp();
 
   uint8_t buffer[10];
-
   if (RAND_bytes(buffer, 10) != 1) {
     return EXIT_FAILURE;
   }

@@ -28,6 +28,14 @@ int FIPS_mode(void) {
 #endif
 }
 
+int FIPS_is_entropy_cpu_jitter(void) {
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
 #if defined(BORINGSSL_FIPS_140_3)

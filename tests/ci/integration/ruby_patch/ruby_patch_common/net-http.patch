@@ -1,0 +1,22 @@
+diff --git a/test/net/http/test_https.rb b/test/net/http/test_https.rb
+index a24f5e0..26ab754 100644
+--- a/test/net/http/test_https.rb
++++ b/test/net/http/test_https.rb
+@@ -167,6 +167,8 @@ def test_session_reuse
+   def test_session_reuse_but_expire
+     # FIXME: The new_session_cb is known broken for clients in OpenSSL 1.1.0h.
+     omit if OpenSSL::OPENSSL_LIBRARY_VERSION.include?('OpenSSL 1.1.0h')
++    # "AWS-LC does not support internal session caching on the client".
++    omit if OpenSSL::OPENSSL_LIBRARY_VERSION.include?('AWS-LC')
+ 
+     http = Net::HTTP.new(HOST, config("port"))
+     http.use_ssl = true
+@@ -237,7 +239,7 @@ def test_certificate_verify_failure
+     ex = assert_raise(OpenSSL::SSL::SSLError){
+       http.request_get("/") {|res| }
+     }
+-    assert_match(/certificate verify failed/, ex.message)
++    assert_match(/certificate verify failed|CERTIFICATE_VERIFY_FAILED/, ex.message)
+     unless /mswin|mingw/ =~ RUBY_PLATFORM
+       # on Windows, Errno::ECONNRESET will be raised, and it'll be eaten by
+       # WEBrick

@@ -31,6 +31,11 @@
 #include "../../internal.h"
 #include "internal.h"
 #include "p256-nistz.h"
+#include "ec_nistp.h"
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#endif
 
 #if !defined(OPENSSL_NO_ASM) &&  \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
@@ -121,6 +126,11 @@ static BN_ULONG is_not_zero(BN_ULONG in) {
 // the Montgomery domain.
 static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
                                               const BN_ULONG in[P256_LIMBS]) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in_sqr[P256_LIMBS];
+  ecp_nistz256_sqr_mont(in_sqr, in);
+  bignum_montinv_p256(r, in_sqr);
+#else
   // This implements the addition chain described in
   // https://briansmith.org/ecc-inversion-addition-chains-01#p256_field_inversion
   BN_ULONG x2[P256_LIMBS], x3[P256_LIMBS], x6[P256_LIMBS], x12[P256_LIMBS],
@@ -183,6 +193,7 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
 
   ecp_nistz256_sqr_mont(ret, ret);
   ecp_nistz256_sqr_mont(r, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
+#endif
 }
 
 // r = p * p_scalar
@@ -304,6 +315,13 @@ static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
 static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                    const EC_JACOBIAN *p,
                                    const EC_SCALAR *scalar) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in[P256_LIMBS * 3];
+  ec_nistp_felem_limb out[P256_LIMBS * 3];
+  ec_nistp_coordinates_to_point(in, p->X.words, p->Y.words, p->Z.words, P256_LIMBS);
+  p256_montjscalarmul_selector(out, scalar->words, in);
+  ec_nistp_point_to_coordinates(r->X.words, r->Y.words, r->Z.words, out, P256_LIMBS);
+#else
   stack_align_type buffer_out[32 + sizeof(P256_POINT)];
   P256_POINT *aligned_out = (P256_POINT *) align_pointer(buffer_out, 32);
   ecp_nistz256_windowed_mul(group, aligned_out, p, scalar);
@@ -312,6 +330,7 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   OPENSSL_memcpy(r->X.words, aligned_out->X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, aligned_out->Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, aligned_out->Z, P256_LIMBS * sizeof(BN_ULONG));
+#endif
 }
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,

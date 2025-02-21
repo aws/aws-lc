@@ -793,11 +793,13 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  // Load |hs->local_pubkey| from the cert prematurely. The certificate could be
-  // subject to change once we negotiate signature algorithms later. If it
-  // changes to another leaf certificate the server and client has support for,
-  // we reload it.
-  if (!ssl_handshake_load_local_pubkey(hs)) {
+  // Load |hs->local_pubkey| from the cert (if present) prematurely. The
+  // certificate could be subject to change once we negotiate signature
+  // algorithms later. If it changes to another leaf certificate the server and
+  // client has support for, we reload it. The public key may only be absent if
+  // PSK is enabled on the server, as indicated by presense of a callback.
+  if (!ssl_handshake_load_local_pubkey(hs) &&
+      !(hs->local_pubkey == nullptr && hs->config->psk_server_callback)) {
     return ssl_hs_error;
   }
 
@@ -1532,7 +1534,9 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_shares[0]->Finish(&premaster_secret, &alert, peer_key)) {
+    if (!hs->key_shares[0]->Finish(&premaster_secret, &alert, peer_key) ||
+        // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+        !ssl->s3->peer_key.CopyFrom(peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }

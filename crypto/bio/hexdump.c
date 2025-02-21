@@ -98,7 +98,9 @@ static int hexdump_write(struct hexdump_ctx *ctx, const uint8_t *data,
   for (size_t i = 0; i < len; i++) {
     if (ctx->used == 0) {
       // The beginning of a line.
-      BIO_indent(ctx->bio, ctx->indent, UINT_MAX);
+      if (!BIO_indent(ctx->bio, ctx->indent, UINT_MAX)) {
+        return 0;
+      }
 
       hexbyte(&buf[0], ctx->n >> 24);
       hexbyte(&buf[2], ctx->n >> 16);

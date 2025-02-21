@@ -95,8 +95,9 @@ static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     goto err;
   }
 
-  EVP_PKEY_assign_DSA(out, dsa);
-  return 1;
+  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+    return 1;
+  }
 
 err:
   DSA_free(dsa);
@@ -168,9 +169,10 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
     goto err;
   }
 
-  BN_CTX_free(ctx);
-  EVP_PKEY_assign_DSA(out, dsa);
-  return 1;
+  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+    BN_CTX_free(ctx);
+    return 1;
+  }
 
 err:
   BN_CTX_free(ctx);
@@ -287,15 +289,3 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
 
   int_dsa_free,
 };
-
-int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx, int nbits) {
-  // BoringSSL does not support DSA in |EVP_PKEY_CTX|.
-  OPENSSL_PUT_ERROR(EVP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}
-
-int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx, int qbits) {
-  // BoringSSL does not support DSA in |EVP_PKEY_CTX|.
-  OPENSSL_PUT_ERROR(EVP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}

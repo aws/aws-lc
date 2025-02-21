@@ -304,6 +304,8 @@ int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
         if (!RAND_bytes(seed, qsize)) {
           goto err;
         }
+        // DSA parameters are public.
+        CONSTTIME_DECLASSIFY(seed, qsize);
       } else {
         // If we come back through, use random seed next time.
         seed_in = NULL;
@@ -544,6 +546,9 @@ int DSA_generate_key(DSA *dsa) {
     goto err;
   }
 
+  // The public key is computed from the private key, but is public.
+  bn_declassify(pub_key);
+
   dsa->priv_key = priv_key;
   dsa->pub_key = pub_key;
   ok = 1;
@@ -680,6 +685,10 @@ redo:
     goto err;
   }
 
+  // The signature is computed from the private key, but is public.
+  bn_declassify(r);
+  bn_declassify(s);
+
   // Redo if r or s is zero as required by FIPS 186-3: this is
   // very unlikely.
   if (BN_is_zero(r) || BN_is_zero(s)) {
@@ -712,7 +721,7 @@ err:
   return ret;
 }
 
-int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
+int DSA_do_verify(const uint8_t *digest, size_t digest_len, const DSA_SIG *sig,
                   const DSA *dsa) {
   int valid;
   if (!DSA_do_check_signature(&valid, digest, digest_len, sig, dsa)) {
@@ -722,7 +731,8 @@ int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
 }
 
 int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
-                           size_t digest_len, DSA_SIG *sig, const DSA *dsa) {
+                           size_t digest_len, const DSA_SIG *sig,
+                           const DSA *dsa) {
   *out_valid = 0;
   if (!dsa_check_key(dsa)) {
     return 0;
@@ -930,15 +940,19 @@ static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx, BIGNUM **out_kinv,
                               ctx) ||
       // Compute r = (g^k mod p) mod q
       !BN_mod_exp_mont_consttime(r, dsa->g, &k, dsa->p, ctx,
-                                 dsa->method_mont_p) ||
-      // Note |BN_mod| below is not constant-time and may leak information about
-      // |r|. |dsa->p| may be significantly larger than |dsa->q|, so this is not
-      // easily performed in constant-time with Montgomery reduction.
-      //
-      // However, |r| at this point is g^k (mod p). It is almost the value of
-      // |r| revealed in the signature anyway (g^k (mod p) (mod q)), going from
-      // it to |k| would require computing a discrete log.
-      !BN_mod(r, r, dsa->q, ctx) ||
+                                 dsa->method_mont_p)) {
+    OPENSSL_PUT_ERROR(DSA, ERR_R_BN_LIB);
+    goto err;
+  }
+  // Note |BN_mod| below is not constant-time and may leak information about
+  // |r|. |dsa->p| may be significantly larger than |dsa->q|, so this is not
+  // easily performed in constant-time with Montgomery reduction.
+  //
+  // However, |r| at this point is g^k (mod p). It is almost the value of |r|
+  // revealed in the signature anyway (g^k (mod p) (mod q)), going from it to
+  // |k| would require computing a discrete log.
+  bn_declassify(r);
+  if (!BN_mod(r, r, dsa->q, ctx) ||
       // Compute part of 's = inv(k) (m + xr) mod q' using Fermat's Little
       // Theorem.
       !bn_mod_inverse_prime(kinv, &k, dsa->q, ctx, dsa->method_mont_q)) {

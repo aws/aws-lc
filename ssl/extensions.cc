@@ -2312,6 +2312,7 @@ static bool ext_key_share_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
+                                         Array<uint8_t> *out_peer_key,
                                          uint8_t *out_alert, CBS *contents) {
   CBS peer_key;
   uint16_t group_id;
@@ -2333,7 +2334,9 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
     key_share = hs->key_shares[1].get();
   }
 
-  if (!key_share->Finish(out_secret, out_alert, peer_key)) {
+  if (!key_share->Finish(out_secret, out_alert, peer_key) ||
+      // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+      !out_peer_key->CopyFrom(peer_key)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
@@ -2782,7 +2785,6 @@ static bool ext_delegated_credential_parse_clienthello(SSL_HANDSHAKE *hs,
     return false;
   }
 
-  hs->delegated_credential_requested = true;
   return true;
 }
 
@@ -4137,7 +4139,7 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
   if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get()) ||
+    if (ssl_public_key_supports_legacy_signature_algorithm(out, hs) ||
         ssl_cert_private_keys_supports_legacy_signature_algorithm(out, hs)) {
       return true;
     }

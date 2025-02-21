@@ -207,6 +207,10 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
   set(
     S2N_BIGNUM_ASM_SOURCES
 
+    p256/p256_montjscalarmul.S
+    p256/p256_montjscalarmul_alt.S
+    p256/bignum_montinv_p256.S
+
     p384/bignum_add_p384.S
     p384/bignum_sub_p384.S
     p384/bignum_neg_p384.S
@@ -218,6 +222,11 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     p384/bignum_montsqr_p384_alt.S
     p384/bignum_nonzero_6.S
     p384/bignum_littleendian_6.S
+    p384/p384_montjdouble.S
+    p384/p384_montjdouble_alt.S
+    p384/p384_montjscalarmul.S
+    p384/p384_montjscalarmul_alt.S
+    p384/bignum_montinv_p384.S
 
     p521/bignum_add_p521.S
     p521/bignum_sub_p521.S
@@ -228,6 +237,11 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     p521/bignum_sqr_p521_alt.S
     p521/bignum_tolebytes_p521.S
     p521/bignum_fromlebytes_p521.S
+    p521/p521_jdouble.S
+    p521/p521_jdouble_alt.S
+    p521/p521_jscalarmul.S
+    p521/p521_jscalarmul_alt.S
+    p521/bignum_inv_p521.S
 
     curve25519/bignum_mod_n25519.S
     curve25519/bignum_neg_p25519.S

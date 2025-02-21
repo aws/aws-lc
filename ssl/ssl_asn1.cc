@@ -92,6 +92,7 @@
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 
+#include "../crypto/bytestring/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -841,20 +842,14 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
   if (!SSL_SESSION_to_bytes(in, &out, &len)) {
     return -1;
   }
+  bssl::UniquePtr<uint8_t> free_out(out);
 
-  if (len > INT_MAX) {
-    OPENSSL_free(out);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return -1;
+  ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 256) || !CBB_add_bytes(cbb.get(), out, len)) {
+    return 0;
   }
 
-  if (pp) {
-    OPENSSL_memcpy(*pp, out, len);
-    *pp += len;
-  }
-  OPENSSL_free(out);
-
-  return len;
+  return CBB_finish_i2d(cbb.get(), pp);
 }
 
 SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,

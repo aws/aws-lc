@@ -19,28 +19,17 @@
 package main
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-
-	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/xts"
 )
 
 var handlers = map[string]func([][]byte) error{
 	"getConfig":                getConfig,
-	"KDF-counter":              kdfCounter,
-	"AES-XTS/encrypt":          xtsEncrypt,
-	"AES-XTS/decrypt":          xtsDecrypt,
-	"HKDF/SHA2-256":            hkdfMAC,
 	"hmacDRBG-reseed/SHA2-256": hmacDRBGReseed,
 	"hmacDRBG-pr/SHA2-256":     hmacDRBGPredictionResistance,
 	"AES-CBC-CS3/encrypt":      ctsEncrypt,
@@ -53,44 +42,7 @@ func getConfig(args [][]byte) error {
 	}
 
 	return reply([]byte(`[
-	{
-		"algorithm": "KDF",
-		"revision": "1.0",
-		"capabilities": [{
-			"kdfMode": "counter",
-			"macMode": [
-				"HMAC-SHA2-256"
-			],
-			"supportedLengths": [{
-				"min": 8,
-				"max": 4096,
-				"increment": 8
-			}],
-			"fixedDataOrder": [
-				"before fixed data"
-			],
-			"counterLength": [
-				32
-			]
-		}]
-	}, {
-		"algorithm": "ACVP-AES-XTS",
-		"revision": "1.0",
-		"direction": [
-		  "encrypt",
-		  "decrypt"
-		],
-		"keyLen": [
-		  128,
-		  256
-		],
-		"payloadLen": [
-		  1024
-		],
-		"tweakMode": [
-		  "number"
-		]
-	}, {
+    {
 		"algorithm": "hmacDRBG",
 		"revision": "1.0",
 		"predResistanceEnabled": [false, true],
@@ -132,52 +84,6 @@ func getConfig(args [][]byte) error {
 ]`))
 }
 
-func kdfCounter(args [][]byte) error {
-	if len(args) != 5 {
-		return fmt.Errorf("KDF received %d args", len(args))
-	}
-
-	outputBytes32, prf, counterLocation, key, counterBits32 := args[0], args[1], args[2], args[3], args[4]
-	outputBytes := binary.LittleEndian.Uint32(outputBytes32)
-	counterBits := binary.LittleEndian.Uint32(counterBits32)
-
-	if !bytes.Equal(prf, []byte("HMAC-SHA2-256")) {
-		return fmt.Errorf("KDF received unsupported PRF %q", string(prf))
-	}
-	if !bytes.Equal(counterLocation, []byte("before fixed data")) {
-		return fmt.Errorf("KDF received unsupported counter location %q", counterLocation)
-	}
-	if counterBits != 32 {
-		return fmt.Errorf("KDF received unsupported counter length %d", counterBits)
-	}
-
-	if len(key) == 0 {
-		key = make([]byte, 32)
-		rand.Reader.Read(key)
-	}
-
-	// See https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf section 5.1
-	if outputBytes+31 < outputBytes {
-		return fmt.Errorf("KDF received excessive output length %d", outputBytes)
-	}
-
-	n := (outputBytes + 31) / 32
-	result := make([]byte, 0, 32*n)
-	mac := hmac.New(sha256.New, key)
-	var input [4 + 8]byte
-	var digest []byte
-	rand.Reader.Read(input[4:])
-	for i := uint32(1); i <= n; i++ {
-		mac.Reset()
-		binary.BigEndian.PutUint32(input[:4], i)
-		mac.Write(input[:])
-		digest = mac.Sum(digest[:0])
-		result = append(result, digest...)
-	}
-
-	return reply(key, input[4:], result[:outputBytes])
-}
-
 func reply(responses ...[]byte) error {
 	if len(responses) > maxArgs {
 		return fmt.Errorf("%d responses is too many", len(responses))
@@ -201,73 +107,6 @@ func reply(responses ...[]byte) error {
 	}
 
 	return nil
-}
-
-func xtsEncrypt(args [][]byte) error {
-	return doXTS(args, false)
-}
-
-func xtsDecrypt(args [][]byte) error {
-	return doXTS(args, true)
-}
-
-func doXTS(args [][]byte, decrypt bool) error {
-	if len(args) != 3 {
-		return fmt.Errorf("XTS received %d args, wanted 3", len(args))
-	}
-	key := args[0]
-	msg := args[1]
-	tweak := args[2]
-
-	if len(msg)%16 != 0 {
-		return fmt.Errorf("XTS received %d-byte msg, need multiple of 16", len(msg))
-	}
-	if len(tweak) != 16 {
-		return fmt.Errorf("XTS received %d-byte tweak, wanted 16", len(tweak))
-	}
-
-	var zeros [8]byte
-	if !bytes.Equal(tweak[8:], zeros[:]) {
-		return errors.New("XTS received tweak with invalid structure. Ensure that configuration specifies a 'number' tweak")
-	}
-
-	sectorNum := binary.LittleEndian.Uint64(tweak[:8])
-
-	c, err := xts.NewCipher(aes.NewCipher, key)
-	if err != nil {
-		return err
-	}
-
-	if decrypt {
-		c.Decrypt(msg, msg, sectorNum)
-	} else {
-		c.Encrypt(msg, msg, sectorNum)
-	}
-
-	return reply(msg)
-}
-
-func hkdfMAC(args [][]byte) error {
-	if len(args) != 4 {
-		return fmt.Errorf("HKDF received %d args, wanted 4", len(args))
-	}
-
-	key := args[0]
-	salt := args[1]
-	info := args[2]
-	lengthBytes := args[3]
-
-	if len(lengthBytes) != 4 {
-		return fmt.Errorf("uint32 length was %d bytes long", len(lengthBytes))
-	}
-
-	length := binary.LittleEndian.Uint32(lengthBytes)
-
-	mac := hkdf.New(sha256.New, key, salt, info)
-	ret := make([]byte, length)
-	mac.Read(ret)
-
-	return reply(ret)
 }
 
 func hmacDRBGReseed(args [][]byte) error {

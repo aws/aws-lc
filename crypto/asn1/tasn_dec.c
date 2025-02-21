@@ -681,12 +681,6 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
     cont = *in;
     len = p - cont + plen;
     p += plen;
-  } else if (cst) {
-    // This parser historically supported BER constructed strings. We no
-    // longer do and will gradually tighten this parser into a DER
-    // parser. BER types should use |CBS_asn1_ber_to_der|.
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
-    return 0;
   } else {
     cont = p;
     len = plen;
@@ -867,7 +861,7 @@ static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
   const unsigned char *p;
   p = *in;
 
-  i = ASN1_get_object(&p, &plen, &ptag, &pclass, len);
+  i = asn1_get_object_maybe_indefinite(&p, &plen, &ptag, &pclass, len, /*indefinite_ok=*/0);
   if (i & 0x80) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
     return 0;
