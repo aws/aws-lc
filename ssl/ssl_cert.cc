@@ -986,7 +986,6 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                                 privkey_method);
 }
 
-
 int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
                              STACK_OF(X509) *chain, int override) {
 
@@ -1012,7 +1011,7 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
 
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> leaf_and_chain(sk_CRYPTO_BUFFER_new_null());
 
-  // Convert leaf certificate (x509) to CRYPTO_BUFFER
+  // Convert leaf certificate |x509| to CRYPTO_BUFFER
   uint8_t *buf = nullptr;
   int cert_len = i2d_X509(x509, &buf);
   if (cert_len <= 0) {
@@ -1060,7 +1059,6 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
   }
   X509_up_ref(x509);
   cert_pkey->x509_leaf = x509;
-
   return 1;
 }
 

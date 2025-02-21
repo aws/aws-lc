@@ -6548,9 +6548,9 @@ TEST(SSLTest, SetChainAndKey) {
 }
 
 TEST(SSLTest, SetLeafChainAndKey) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(server_ctx);
 
   ASSERT_EQ(nullptr, SSL_CTX_get0_chain(server_ctx.get()));
