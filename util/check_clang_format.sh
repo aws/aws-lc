@@ -24,6 +24,7 @@ find_sources() {
         -not -path "./generated-src/*" \
         -not -path "*/CMakeFiles/*" \
         -not -name "crypto_test_data.cc" \
+        -not -name "err_data.c" \
         -type f
 }
 
