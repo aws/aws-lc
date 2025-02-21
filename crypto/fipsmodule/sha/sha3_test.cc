@@ -277,6 +277,7 @@ class SHA3TestVector {
       EXPECT_EQ(Bytes(digest.get(), digest_length),
             Bytes(digest_.data(), digest_length));
     }
+    
     // Test Squeeze with random Input
     // Assert success when |EVP_DigestSqueeze| is called on a random message
     ASSERT_TRUE(RAND_bytes(random_bytes, RAND_BYTES));
