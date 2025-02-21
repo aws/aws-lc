@@ -21,7 +21,40 @@
 static const struct {
     size_t startsz, incsz;
 } stride_tests[] = {
+    // Test Edge Cases for SHAKE128 with blocksize of 136B
     { 1, 1 },
+    { 8, 8 },
+    { 9, 9 },
+    { 10, 10 },
+    { 1, 168 },
+    { 1, 168/2 },
+    { 1, 168/2-1 },
+    { 1, 168/2+1 },
+    { 1, 168*3 },
+    { 168/2 - 1, 168 },
+    { 168/2 - 1, 168-1 },
+    { 168/2 - 1, 168+1 },
+    { 168/2, 168 },
+    { 168/2, 168-1 },
+    { 168/2, 168+1 },
+    { 168/2 + 1, 168 },
+    { 168/2 + 1, 168-1 },
+    { 168/2 + 1, 168+1 },
+    { 168, 2 },
+    { 168, 168 },
+    { 168-1, 168 },
+    { 168-1, 168-1 },
+    { 168-1, 168+1 },
+    { 168+1, 168 },
+    { 168+1, 168-1 },
+    { 168+1, 168+1 },
+    { 168*3, 168 },
+    { 168*3, 168 + 1 },
+    { 168*3, 168 - 1 },
+    { 168*3, 168/2 },
+    { 168*3, 168/2 + 1 },
+    { 168*3, 168/2 - 1 },
+    // Test Edge Cases for SHAKE256 with blocksize of 136B
     { 1, 136 },
     { 1, 136/2 },
     { 1, 136/2-1 },
@@ -215,17 +248,36 @@ class SHA3TestVector {
       ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(),  msg_.size()));
 
         while (sqd_bytes < digest_length) {
-            if ((sqd_bytes + to_sq_bytes) > digest_length) {
-                to_sq_bytes = digest_length - sqd_bytes;
-            }
-            ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, to_sq_bytes));
-            sqd_bytes += to_sq_bytes;
-            to_sq_bytes = stride_tests[cur_test].incsz;
+          if ((sqd_bytes + to_sq_bytes) > digest_length) {
+            to_sq_bytes = digest_length - sqd_bytes;
+          }
+          ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, to_sq_bytes));
+          sqd_bytes += to_sq_bytes;
+          to_sq_bytes = stride_tests[cur_test].incsz;
         }
       EXPECT_EQ(Bytes(digest.get(), digest_length),
             Bytes(digest_.data(), digest_length));
     }
 
+    // Test Squeeze Exhaustive
+    // Assert success when |EVP_DigestSqueeze| is called in all possible byte increments
+    for (to_sq_bytes = 1; to_sq_bytes < digest_length; to_sq_bytes++) {
+      OPENSSL_memset(digest.get(), 0, digest_length);
+      ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), algorithm, NULL));
+      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(),  msg_.size()));
+
+      for (sqd_bytes = 0; sqd_bytes <= digest_length - to_sq_bytes; sqd_bytes+=to_sq_bytes) {
+        ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, to_sq_bytes));
+      }
+
+      if ((digest_length - sqd_bytes) > 0) {
+        ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, digest_length - sqd_bytes));
+      }
+
+      EXPECT_EQ(Bytes(digest.get(), digest_length),
+            Bytes(digest_.data(), digest_length));
+    }
+    
     // Test Squeeze with random Input
     // Assert success when |EVP_DigestSqueeze| is called on a random message
     ASSERT_TRUE(RAND_bytes(random_bytes, RAND_BYTES));
