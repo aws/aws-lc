@@ -19,9 +19,9 @@
 
 #include <openssl/rand.h>
 
+#include "../internal.h"
 #include "abi_test.h"
 #include "gtest_main.h"
-#include "../internal.h"
 
 
 int main(int argc, char **argv) {

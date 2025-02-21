@@ -7,8 +7,8 @@
  * https://www.openssl.org/source/license.html
  */
 
-#include <string.h>
 #include <openssl/evp.h>
+#include <string.h>
 
 #include <assert.h>
 
@@ -123,14 +123,14 @@ static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *_p2) {
       return 1;
 
     case EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN:
-      if(p1 < 256) {
+      if (p1 < 256) {
         return -2;
       }
       dctx->prime_len = p1;
       return 1;
 
     case EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR:
-      if(p1 < 2) {
+      if (p1 < 2) {
         return -2;
       }
       dctx->generator = p1;
@@ -159,7 +159,8 @@ static int pkey_dh_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     evp_pkey_set_cb_translate(pkey_ctx_cb, ctx);
   }
 
-  ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator, pkey_ctx_cb);
+  ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator,
+                                  pkey_ctx_cb);
 end:
   if (ret == 1) {
     EVP_PKEY_assign_DH(pkey, dh);
@@ -180,9 +181,9 @@ static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
   // * dh_paramgen_subprime_len
   // * dh_paramgen_type
   if (strcmp(type, "dh_paramgen_prime_len") == 0) {
-    char* str_end = NULL;
+    char *str_end = NULL;
     long prime_len = strtol(value, &str_end, 10);
-    if(str_end == value || prime_len < 0 || prime_len > INT_MAX) {
+    if (str_end == value || prime_len < 0 || prime_len > INT_MAX) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
@@ -190,9 +191,9 @@ static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
   }
 
   if (strcmp(type, "dh_paramgen_generator") == 0) {
-    char* str_end = NULL;
+    char *str_end = NULL;
     long generator = strtol(value, &str_end, 10);
-    if(str_end == value || generator < 0 || generator > INT_MAX) {
+    if (str_end == value || generator < 0 || generator > INT_MAX) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
@@ -201,9 +202,9 @@ static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 
 
   if (strcmp(type, "dh_pad") == 0) {
-    char* str_end = NULL;
+    char *str_end = NULL;
     long pad = strtol(value, &str_end, 10);
-    if(str_end == value || pad < 0 || pad > INT_MAX) {
+    if (str_end == value || pad < 0 || pad > INT_MAX) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
@@ -213,17 +214,15 @@ static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 }
 
 
-const EVP_PKEY_METHOD dh_pkey_meth = {
-    .pkey_id = EVP_PKEY_DH,
-    .init = pkey_dh_init,
-    .copy = pkey_dh_copy,
-    .cleanup = pkey_dh_cleanup,
-    .keygen = pkey_dh_keygen,
-    .derive = pkey_dh_derive,
-    .paramgen = pkey_dh_paramgen,
-    .ctrl = pkey_dh_ctrl,
-    .ctrl_str = pkey_dh_ctrl_str
-};
+const EVP_PKEY_METHOD dh_pkey_meth = {.pkey_id = EVP_PKEY_DH,
+                                      .init = pkey_dh_init,
+                                      .copy = pkey_dh_copy,
+                                      .cleanup = pkey_dh_cleanup,
+                                      .keygen = pkey_dh_keygen,
+                                      .derive = pkey_dh_derive,
+                                      .paramgen = pkey_dh_paramgen,
+                                      .ctrl = pkey_dh_ctrl,
+                                      .ctrl_str = pkey_dh_ctrl_str};
 
 int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_DERIVE,
@@ -232,9 +231,9 @@ int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad) {
 
 int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx, int pbits) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
-                    EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN, pbits, NULL);
+                           EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN, pbits, NULL);
 }
 int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int gen) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
-                   EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR, gen, NULL);
+                           EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR, gen, NULL);
 }

@@ -73,8 +73,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // Most method functions in this file are designed to work with non-trivial
@@ -113,8 +113,7 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   }
 
   // group->a_is_minus3
-  if (!BN_copy(tmp, a) ||
-      !BN_add_word(tmp, 3)) {
+  if (!BN_copy(tmp, a) || !BN_add_word(tmp, 3)) {
     goto err;
   }
   group->a_is_minus3 = (0 == BN_cmp(tmp, &group->field.N));
@@ -164,8 +163,7 @@ int ec_GFp_simple_is_at_infinity(const EC_GROUP *group,
   return ec_felem_non_zero_mask(group, &point->Z) == 0;
 }
 
-int ec_GFp_simple_is_on_curve(const EC_GROUP *group,
-                              const EC_JACOBIAN *point) {
+int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_JACOBIAN *point) {
   // We have a curve defined by a Weierstrass equation
   //      y^2 = x^3 + a*x + b.
   // The point to consider is given in Jacobian projective coordinates

@@ -222,13 +222,14 @@ TEST(CompilerTest, PointerRepresentation) {
 
 static bool verify_memory_alignment(void *aligned_ptr,
                                     size_t requested_alignment) {
-  if ((((uintptr_t) aligned_ptr) % requested_alignment) == 0) {
+  if ((((uintptr_t)aligned_ptr) % requested_alignment) == 0) {
     return true;
-  }
-  else {
+  } else {
     std::cerr << "requested_alignment = " << requested_alignment << std::endl;
-    std::cerr << "aligned_ptr = " << reinterpret_cast<void *>(aligned_ptr) << std::endl;
-    std::cerr << "aligned_ptr % requested_alignment = " << ((uintptr_t) aligned_ptr) % requested_alignment << std::endl;
+    std::cerr << "aligned_ptr = " << reinterpret_cast<void *>(aligned_ptr)
+              << std::endl;
+    std::cerr << "aligned_ptr % requested_alignment = "
+              << ((uintptr_t)aligned_ptr) % requested_alignment << std::endl;
   }
 
   return false;
@@ -244,11 +245,16 @@ typedef union union_array_type {
   uint8_t buffer_uint8_t[16];
 } union_array_st;
 
-#define CHECK_STACK_ALIGNMENT(type, power_of_two, memory_size) \
-  stack_align_type buffer_##type##_##power_of_two##_##memory_size[power_of_two + memory_size]; \
-  type *aligned_##type##_##power_of_two##_##memory_size = (type *) align_pointer(buffer_##type##_##power_of_two##_##memory_size, power_of_two); \
-  ASSERT_TRUE(aligned_##type##_##power_of_two##_##memory_size); \
-  ASSERT_TRUE(verify_memory_alignment(aligned_##type##_##power_of_two##_##memory_size, power_of_two));
+#define CHECK_STACK_ALIGNMENT(type, power_of_two, memory_size)              \
+  stack_align_type                                                          \
+      buffer_##type##_##power_of_two##_##memory_size[power_of_two +         \
+                                                     memory_size];          \
+  type *aligned_##type##_##power_of_two##_##memory_size =                   \
+      (type *)align_pointer(buffer_##type##_##power_of_two##_##memory_size, \
+                            power_of_two);                                  \
+  ASSERT_TRUE(aligned_##type##_##power_of_two##_##memory_size);             \
+  ASSERT_TRUE(verify_memory_alignment(                                      \
+      aligned_##type##_##power_of_two##_##memory_size, power_of_two));
 
 // Macro lists produced with the following Python script:
 //  MACRO_NAME = 'CHECK_STACK_ALIGNMENT'
@@ -257,7 +263,8 @@ typedef union union_array_type {
 //  for type_name in type_names:
 //    for power_of_two in power_of_twos:
 //      for memory_size in range(1, power_of_two):
-//        print '{}({}, {}, {})'.format(MACRO_NAME, type_name, power_of_two, memory_size)
+//        print '{}({}, {}, {})'.format(MACRO_NAME, type_name, power_of_two,
+//        memory_size)
 
 // Windows doesn't like the big virtual functions produced. So, split this into
 // several test fixtures.

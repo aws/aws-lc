@@ -12,21 +12,21 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <memory>
 
 #include <gtest/gtest.h>
 
-#include <openssl/crypto.h>
 #include <openssl/chacha.h>
+#include <openssl/crypto.h>
 
-#include "internal.h"
 #include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
+#include "internal.h"
 
 
 static const uint8_t kKey[32] = {

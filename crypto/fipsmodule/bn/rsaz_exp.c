@@ -18,16 +18,16 @@
 
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // rsaz_one is 1 in RSAZ's representation.
 alignas(64) static const BN_ULONG rsaz_one[40] = {
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-// rsaz_two80 is 2^80 in RSAZ's representation. Note RSAZ uses base 2^29, so this is
-// 2^(29*2 + 22) = 2^80, not 2^(64*2 + 22).
+// rsaz_two80 is 2^80 in RSAZ's representation. Note RSAZ uses base 2^29, so
+// this is 2^(29*2 + 22) = 2^80, not 2^(64*2 + 22).
 alignas(64) static const BN_ULONG rsaz_two80[40] = {
     0, 0, 1 << 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0,       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

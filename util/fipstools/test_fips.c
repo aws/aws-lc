@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     goto err;
   }
   printf("Module version: %" PRIu32 "\n", module_version);
-#endif //BORINGSSL_FIPS_140_3
+#endif  // BORINGSSL_FIPS_140_3
 
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   static const uint8_t kPlaintext[64] =
@@ -146,8 +146,8 @@ int main(int argc, char **argv) {
   printf("About to AES-GCM open ");
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
-                         EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
-                         output, out_len, NULL, 0)) {
+                         EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()), output,
+                         out_len, NULL, 0)) {
     printf("AES-GCM decrypt failed\n");
     goto err;
   }
@@ -159,7 +159,8 @@ int main(int argc, char **argv) {
 
   /* AES-CCM */
   OPENSSL_memset(nonce, 0, sizeof(nonce));
-  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, sizeof(kAESKey), 0, NULL)) {
+  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey,
+                         sizeof(kAESKey), 0, NULL)) {
     fprintf(stderr, "EVP_AED_CTX_init for AES-128-CCM failed.\n");
     goto err;
   }
@@ -168,9 +169,10 @@ int main(int argc, char **argv) {
   OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
   printf("About to AES-CCM seal ");
   hexdump(kPlaintext, sizeof(kPlaintext));
-  if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
-                        EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
-                        kPlaintext, sizeof(kPlaintext), NULL, 0)) {
+  if (!EVP_AEAD_CTX_seal(
+          &aead_ctx, output, &out_len, sizeof(output), nonce,
+          EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()), kPlaintext,
+          sizeof(kPlaintext), NULL, 0)) {
     fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-CCM failed.\n");
     goto err;
   }
@@ -185,15 +187,16 @@ int main(int argc, char **argv) {
   }
   printf("About to AES-CCM open ");
   hexdump(output, out_len);
-  if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
-                        EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
-                        output, out_len, NULL, 0)) {
+  if (!EVP_AEAD_CTX_open(
+          &aead_ctx, output, &out_len, sizeof(output), nonce,
+          EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()), output,
+          out_len, NULL, 0)) {
     fprintf(stderr, "EVP_AEAD_CTX_open for AES-128-CCM failed.\n");
     goto err;
   }
   printf("  got ");
   hexdump(output, out_len);
-  
+
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
   EVP_AEAD_CTX_zero(&aead_ctx);
 
@@ -207,7 +210,8 @@ int main(int argc, char **argv) {
   printf("About to AES-ECB encrypt ");
   hexdump(kPlaintext, sizeof(kPlaintext));
   for (size_t j = 0; j < sizeof(kPlaintext) / 16; j++) {
-    AES_ecb_encrypt(&kPlaintext[j * 16], &output[j * 16], &aes_key, AES_ENCRYPT);
+    AES_ecb_encrypt(&kPlaintext[j * 16], &output[j * 16], &aes_key,
+                    AES_ENCRYPT);
   }
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
@@ -240,7 +244,8 @@ int main(int argc, char **argv) {
   }
   printf("About to AES-CTR Encrypt ");
   hexdump(kPlaintext, sizeof(kPlaintext));
-  AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
+  AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv,
+                     ecount_buf, &num);
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
 
@@ -249,7 +254,8 @@ int main(int argc, char **argv) {
   OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
   printf("About to AES-CTR Decrypt ");
   hexdump(output, sizeof(kPlaintext));
-  AES_ctr128_encrypt(output, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
+  AES_ctr128_encrypt(output, output, sizeof(kPlaintext), &aes_key, aes_iv,
+                     ecount_buf, &num);
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
 
@@ -262,7 +268,8 @@ int main(int argc, char **argv) {
   }
   printf("About to AES-KW Wrap ");
   hexdump(kPlaintext, sizeof(kPlaintext));
-  out_len = AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
+  out_len =
+      AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
   printf("  got ");
   hexdump(output, out_len);
 
@@ -298,8 +305,8 @@ int main(int argc, char **argv) {
   memcpy(&des_iv, &kDESIV, sizeof(des_iv));
   printf("About to 3DES-CBC decrypt ");
   hexdump(kPlaintext, sizeof(kPlaintext));
-  DES_ede3_cbc_encrypt(output, output, sizeof(kPlaintext), &des1,
-                       &des2, &des3, &des_iv, DES_DECRYPT);
+  DES_ede3_cbc_encrypt(output, output, sizeof(kPlaintext), &des1, &des2, &des3,
+                       &des_iv, DES_DECRYPT);
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
 
@@ -389,9 +396,8 @@ int main(int argc, char **argv) {
   hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
   ECDSA_SIG *sig =
       ECDSA_do_sign(kPlaintextSHA256, sizeof(kPlaintextSHA256), ec_key);
-  if (sig == NULL ||
-      !ECDSA_do_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), sig,
-                       ec_key)) {
+  if (sig == NULL || !ECDSA_do_verify(kPlaintextSHA256,
+                                      sizeof(kPlaintextSHA256), sig, ec_key)) {
     printf("ECDSA Sign/Verify PWCT failed.\n");
     goto err;
   }
@@ -406,8 +412,10 @@ int main(int argc, char **argv) {
   uint8_t ed_private_key[ED25519_PRIVATE_KEY_LEN];
   ED25519_keypair(ed_public_key, ed_private_key);
   uint8_t ed_signature[ED25519_SIGNATURE_LEN];
-  if (!ED25519_sign(ed_signature,kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_private_key) ||
-    !ED25519_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature, ed_public_key)) {
+  if (!ED25519_sign(ed_signature, kPlaintextSHA256, sizeof(kPlaintextSHA256),
+                    ed_private_key) ||
+      !ED25519_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature,
+                      ed_public_key)) {
     printf("ED25519 Sign/Verify PWCT failed.\n");
     goto err;
   }
@@ -418,12 +426,15 @@ int main(int argc, char **argv) {
   printf("About to Ed25519ph sign ");
   hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
   uint8_t ed25519_ph_context[32] = {
-    0xfe, 0x52, 0xbb, 0xd2, 0x45, 0x54, 0x46, 0xad, 0xa5, 0x24, 0x6b, 0x5a,
-    0xf3, 0xba, 0x82, 0x93, 0x9c, 0xed, 0xa6, 0xa1, 0x8f, 0x59, 0xd3, 0x37,
-    0x48, 0xde, 0x40, 0x7a, 0xfe, 0x31, 0x48, 0xd1
-  };
-  if (!ED25519ph_sign(ed_signature, kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_private_key, ed25519_ph_context, sizeof(ed25519_ph_context)) ||
-    !ED25519ph_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature, ed_public_key, ed25519_ph_context, sizeof(ed25519_ph_context))) {
+      0xfe, 0x52, 0xbb, 0xd2, 0x45, 0x54, 0x46, 0xad, 0xa5, 0x24, 0x6b,
+      0x5a, 0xf3, 0xba, 0x82, 0x93, 0x9c, 0xed, 0xa6, 0xa1, 0x8f, 0x59,
+      0xd3, 0x37, 0x48, 0xde, 0x40, 0x7a, 0xfe, 0x31, 0x48, 0xd1};
+  if (!ED25519ph_sign(ed_signature, kPlaintextSHA256, sizeof(kPlaintextSHA256),
+                      ed_private_key, ed25519_ph_context,
+                      sizeof(ed25519_ph_context)) ||
+      !ED25519ph_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256),
+                        ed_signature, ed_public_key, ed25519_ph_context,
+                        sizeof(ed25519_ph_context))) {
     printf("ED25519ph Sign/Verify PWCT failed.\n");
     goto err;
   }
@@ -435,13 +446,13 @@ int main(int argc, char **argv) {
   EVP_PKEY *kem_raw = NULL;
   EVP_PKEY_CTX *kem_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
   if (kem_ctx == NULL || !EVP_PKEY_CTX_kem_set_params(kem_ctx, NID_MLKEM512) ||
-    !EVP_PKEY_keygen_init(kem_ctx) ||
-    !EVP_PKEY_keygen(kem_ctx, &kem_raw)) {
+      !EVP_PKEY_keygen_init(kem_ctx) || !EVP_PKEY_keygen(kem_ctx, &kem_raw)) {
     printf("ML-KEM keygen failed.\n");
     goto err;
   }
   printf("Generated public key: ");
-  hexdump(kem_raw->pkey.kem_key->public_key, kem_raw->pkey.kem_key->kem->public_key_len);
+  hexdump(kem_raw->pkey.kem_key->public_key,
+          kem_raw->pkey.kem_key->kem->public_key_len);
   EVP_PKEY_free(kem_raw);
   EVP_PKEY_CTX_free(kem_ctx);
 
@@ -450,13 +461,13 @@ int main(int argc, char **argv) {
   EVP_PKEY *dsa_raw = NULL;
   EVP_PKEY_CTX *dsa_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, NULL);
   if (dsa_ctx == NULL || !EVP_PKEY_CTX_pqdsa_set_params(dsa_ctx, NID_MLDSA44) ||
-    !EVP_PKEY_keygen_init(dsa_ctx) ||
-    !EVP_PKEY_keygen(dsa_ctx, &dsa_raw)) {
+      !EVP_PKEY_keygen_init(dsa_ctx) || !EVP_PKEY_keygen(dsa_ctx, &dsa_raw)) {
     printf("ML-DSA keygen failed.\n");
     goto err;
-    }
+  }
   printf("Generated public key: ");
-  hexdump(dsa_raw->pkey.pqdsa_key->public_key, dsa_raw->pkey.pqdsa_key->pqdsa->public_key_len);
+  hexdump(dsa_raw->pkey.pqdsa_key->public_key,
+          dsa_raw->pkey.pqdsa_key->pqdsa->public_key_len);
   EVP_PKEY_free(dsa_raw);
   EVP_PKEY_CTX_free(dsa_ctx);
 
@@ -494,10 +505,8 @@ int main(int argc, char **argv) {
   /* FFDH */
   printf("About to compute FFDH key-agreement:\n");
   DH *dh = DH_get_rfc7919_2048();
-  uint8_t dh_result[2048/8];
-  if (!dh ||
-      !DH_generate_key(dh) ||
-      sizeof(dh_result) != DH_size(dh) ||
+  uint8_t dh_result[2048 / 8];
+  if (!dh || !DH_generate_key(dh) || sizeof(dh_result) != DH_size(dh) ||
       DH_compute_key_padded(dh_result, DH_get0_pub_key(dh), dh) !=
           sizeof(dh_result)) {
     fprintf(stderr, "FFDH failed.\n");

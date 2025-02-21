@@ -63,9 +63,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../../evp_extra/internal.h"
 #include "../../internal.h"
 #include "internal.h"
-#include "../../evp_extra/internal.h"
 
 DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[0] = EVP_PKEY_rsa_pkey_meth();
@@ -79,10 +79,10 @@ DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
-
   // First we search through the FIPS public key methods. We assume these are
   // the most popular.
-  const struct fips_evp_pkey_methods *const fips_methods = AWSLC_fips_evp_pkey_methods();
+  const struct fips_evp_pkey_methods *const fips_methods =
+      AWSLC_fips_evp_pkey_methods();
   for (size_t i = 0; i < FIPS_EVP_PKEY_METHODS; i++) {
     if (fips_methods->methods[i]->pkey_id == type) {
       return fips_methods->methods[i];
@@ -90,7 +90,8 @@ static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
   }
 
   // Can still seek non-fips validated algorithms in fips mode.
-  const EVP_PKEY_METHOD *const *non_fips_methods = AWSLC_non_fips_pkey_evp_methods();
+  const EVP_PKEY_METHOD *const *non_fips_methods =
+      AWSLC_non_fips_pkey_evp_methods();
   for (size_t i = 0; i < NON_FIPS_EVP_PKEY_METHODS; i++) {
     if (non_fips_methods[i]->pkey_id == type) {
       return non_fips_methods[i];
@@ -455,10 +456,8 @@ int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
-int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
-                                  EVP_PKEY **out_pkey,
-                                  const uint8_t *seed,
-                                  size_t *seed_len) {
+int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey,
+                                  const uint8_t *seed, size_t *seed_len) {
   int ret = 0;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen_deterministic) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -503,8 +502,8 @@ end:
 }
 
 int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
-  // We have to avoid potential underlying services updating the indicator state,
-  // so we lock the state here.
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SET_DIT_AUTO_RESET;
   int ret = 0;
@@ -538,7 +537,7 @@ int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
   ret = 1;
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret) {
+  if (ret) {
     EVP_PKEY_keygen_verify_service_indicator(*out_pkey);
   }
   return ret;
@@ -585,14 +584,13 @@ int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
   return 1;
 }
 
-int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
-                                       uint8_t *ciphertext,
+int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
                                        size_t *ciphertext_len,
                                        uint8_t *shared_secret,
                                        size_t *shared_secret_len,
-                                       const uint8_t *seed,
-                                       size_t *seed_len) {
-  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate_deterministic == NULL) {
+                                       const uint8_t *seed, size_t *seed_len) {
+  if (ctx == NULL || ctx->pmeth == NULL ||
+      ctx->pmeth->encapsulate_deterministic == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }

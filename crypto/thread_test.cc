@@ -15,8 +15,8 @@
 #include "internal.h"
 
 #include <chrono>
-#include <vector>
 #include <thread>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -107,7 +107,7 @@ static void thread_local_destructor(void *arg) {
     return;
   }
 
-  unsigned *count = reinterpret_cast<unsigned*>(arg);
+  unsigned *count = reinterpret_cast<unsigned *>(arg);
   (*count)++;
 }
 
@@ -172,7 +172,7 @@ TEST(ThreadTest, ClearState) {
   std::thread myThreads[kNumThreads];
 
   for (int i = 0; i < kNumThreads; i++) {
-    bool* myFlag = &myFlags[i];
+    bool *myFlag = &myFlags[i];
     *myFlag = false;
     myThreads[i] = std::thread(thread_task, myFlag);
   }
@@ -182,7 +182,7 @@ TEST(ThreadTest, ClearState) {
   }
 }
 
-#endif // OPENSSL_PTHREADS
+#endif  // OPENSSL_PTHREADS
 
 TEST(ThreadTest, InitThreads) {
   constexpr size_t kNumThreads = 10;

@@ -12,7 +12,7 @@
 //   5. scalar multiplication of a base and an arbitrary point.
 //
 // Matrix of what has been done so far:
-// 
+//
 // | op | P-521 | P-384 | P-256 |
 // |----------------------------|
 // | 1. |   x   |   x   |   x*  |
@@ -20,7 +20,7 @@
 // | 3. |   x   |   x   |   x*  |
 // | 4. |   x   |   x   |   x*  |
 // | 5. |   x   |   x   |   x*  |
-//  * For P-256, only the Fiat-crypto implementation in p256.c is replaced. 
+//  * For P-256, only the Fiat-crypto implementation in p256.c is replaced.
 
 #include "ec_nistp.h"
 
@@ -37,10 +37,8 @@
 typedef ec_nistp_felem_limb ec_nistp_felem[FELEM_MAX_NUM_OF_LIMBS];
 
 // Conditional copy in constant-time (out = t == 0 ? z : nz).
-static void cmovznz(ec_nistp_felem_limb *out,
-                    size_t num_limbs,
-                    ec_nistp_felem_limb t,
-                    const ec_nistp_felem_limb *z,
+static void cmovznz(ec_nistp_felem_limb *out, size_t num_limbs,
+                    ec_nistp_felem_limb t, const ec_nistp_felem_limb *z,
                     const ec_nistp_felem_limb *nz) {
   ec_nistp_felem_limb mask = constant_time_is_zero_w(t);
   for (size_t i = 0; i < num_limbs; i++) {
@@ -70,8 +68,7 @@ static void cmovznz(ec_nistp_felem_limb *out,
 //
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
-void ec_nistp_point_double(const ec_nistp_meth *ctx,
-                           ec_nistp_felem_limb *x_out,
+void ec_nistp_point_double(const ec_nistp_meth *ctx, ec_nistp_felem_limb *x_out,
                            ec_nistp_felem_limb *y_out,
                            ec_nistp_felem_limb *z_out,
                            const ec_nistp_felem_limb *x_in,
@@ -137,14 +134,11 @@ void ec_nistp_point_double(const ec_nistp_meth *ctx,
 // are equal, (while not equal to the point at infinity). This case should
 // never happen during single point multiplication, so there is no timing leak
 // for ECDH and ECDSA.
-void ec_nistp_point_add(const ec_nistp_meth *ctx,
-                        ec_nistp_felem_limb *x3,
-                        ec_nistp_felem_limb *y3,
-                        ec_nistp_felem_limb *z3,
+void ec_nistp_point_add(const ec_nistp_meth *ctx, ec_nistp_felem_limb *x3,
+                        ec_nistp_felem_limb *y3, ec_nistp_felem_limb *z3,
                         const ec_nistp_felem_limb *x1,
                         const ec_nistp_felem_limb *y1,
-                        const ec_nistp_felem_limb *z1,
-                        const int mixed,
+                        const ec_nistp_felem_limb *z1, const int mixed,
                         const ec_nistp_felem_limb *x2,
                         const ec_nistp_felem_limb *y2,
                         const ec_nistp_felem_limb *z2) {
@@ -216,9 +210,8 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
 
   // This case will never occur in the constant-time |ec_GFp_mont_mul|.
   ec_nistp_felem_limb is_nontrivial_double =
-                                     constant_time_is_zero_w(xneq | yneq) &
-                                    ~constant_time_is_zero_w(z1nz) &
-                                    ~constant_time_is_zero_w(z2nz);
+      constant_time_is_zero_w(xneq | yneq) & ~constant_time_is_zero_w(z1nz) &
+      ~constant_time_is_zero_w(z2nz);
   if (constant_time_declassify_w(is_nontrivial_double)) {
     ec_nistp_point_double(ctx, x3, y3, z3, x1, y1, z1);
     return;
@@ -260,7 +253,7 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
 }
 
 // Returns i-th bit of the scalar (zero or one).
-// The caller is responsible for making sure i is within bounds of the scalar. 
+// The caller is responsible for making sure i is within bounds of the scalar.
 static int16_t get_bit(const EC_SCALAR *in, size_t i) {
 // |in->words| is an array of BN_ULONGs which can be either 8 or 4 bytes long.
 #if defined(OPENSSL_64_BIT)
@@ -315,7 +308,7 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 // Each point in the table has 3 coordinates that are field elements,
 // and each field element has a defined maximum number of limbs.
 #define SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS \
-                (SCALAR_MUL_TABLE_NUM_POINTS * 3 * FELEM_MAX_NUM_OF_LIMBS)
+  (SCALAR_MUL_TABLE_NUM_POINTS * 3 * FELEM_MAX_NUM_OF_LIMBS)
 
 // The maximum number of bits for a scalar.
 #define SCALAR_MUL_MAX_SCALAR_BITS (521)
@@ -323,16 +316,14 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 // Maximum number of windows (digits) for a scalar encoding which is
 // determined by the maximum scalar bit size -- 521 bits in our case.
 #define SCALAR_MUL_MAX_NUM_WINDOWS \
-                DIV_AND_CEIL(SCALAR_MUL_MAX_SCALAR_BITS, SCALAR_MUL_WINDOW_SIZE)
+  DIV_AND_CEIL(SCALAR_MUL_MAX_SCALAR_BITS, SCALAR_MUL_WINDOW_SIZE)
 
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
 //  table <-- [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
-static void generate_table(const ec_nistp_meth *ctx,
-                           ec_nistp_felem_limb *table,
+static void generate_table(const ec_nistp_meth *ctx, ec_nistp_felem_limb *table,
                            const ec_nistp_felem_limb *x_in,
                            const ec_nistp_felem_limb *y_in,
-                           const ec_nistp_felem_limb *z_in)
-{
+                           const ec_nistp_felem_limb *z_in) {
   const size_t felem_num_limbs = ctx->felem_num_limbs;
   const size_t felem_num_bytes = felem_num_limbs * sizeof(ec_nistp_felem_limb);
 
@@ -348,8 +339,8 @@ static void generate_table(const ec_nistp_meth *ctx,
 
   // Compute 2P.
   ec_nistp_felem x_in_dbl, y_in_dbl, z_in_dbl;
-  ctx->point_dbl(x_in_dbl, y_in_dbl, z_in_dbl,
-                 &table[x_idx], &table[y_idx], &table[z_idx]);
+  ctx->point_dbl(x_in_dbl, y_in_dbl, z_in_dbl, &table[x_idx], &table[y_idx],
+                 &table[z_idx]);
 
   // Compute the rest of the table.
   for (size_t i = 1; i < SCALAR_MUL_TABLE_NUM_POINTS; i++) {
@@ -359,8 +350,8 @@ static void generate_table(const ec_nistp_meth *ctx,
 
     // table[i] <-- table[i - 1] + 2P
     ctx->point_add(&point_i[x_idx], &point_i[y_idx], &point_i[z_idx],
-                   &point_im1[x_idx], &point_im1[y_idx], &point_im1[z_idx],
-                   0, x_in_dbl, y_in_dbl, z_in_dbl);
+                   &point_im1[x_idx], &point_im1[y_idx], &point_im1[z_idx], 0,
+                   x_in_dbl, y_in_dbl, z_in_dbl);
   }
 }
 
@@ -378,12 +369,14 @@ static inline void select_point_from_table(const ec_nistp_meth *ctx,
   // would be best for simplicity, but unfortunatelly, on x86 systems it is
   // significantly slower than constant_..._table_w.
 #if defined(EC_NISTP_USE_64BIT_LIMB) && defined(OPENSSL_64_BIT)
-  constant_time_select_entry_from_table_w(out, (crypto_word_t*) table, idx,
-          SCALAR_MUL_TABLE_NUM_POINTS, point_num_limbs);
+  constant_time_select_entry_from_table_w(out, (crypto_word_t *)table, idx,
+                                          SCALAR_MUL_TABLE_NUM_POINTS,
+                                          point_num_limbs);
 #else
   size_t entry_size = point_num_limbs * sizeof(ec_nistp_felem_limb);
-  constant_time_select_entry_from_table_8((uint8_t*)out, (uint8_t*)table,
-          idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
+  constant_time_select_entry_from_table_8((uint8_t *)out, (uint8_t *)table, idx,
+                                          SCALAR_MUL_TABLE_NUM_POINTS,
+                                          entry_size);
 #endif
 }
 
@@ -416,10 +409,8 @@ static inline void select_point_from_table(const ec_nistp_meth *ctx,
 //     5. Subtract P from the result if the scalar is even.
 //
 // Note: this function is constant-time.
-void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
-                         ec_nistp_felem_limb *x_out,
-                         ec_nistp_felem_limb *y_out,
-                         ec_nistp_felem_limb *z_out,
+void ec_nistp_scalar_mul(const ec_nistp_meth *ctx, ec_nistp_felem_limb *x_out,
+                         ec_nistp_felem_limb *y_out, ec_nistp_felem_limb *z_out,
                          const ec_nistp_felem_limb *x_in,
                          const ec_nistp_felem_limb *y_in,
                          const ec_nistp_felem_limb *z_in,
@@ -451,7 +442,8 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 
   // The actual number of windows (digits) of the scalar (denoted by m in the
   // description above the function).
-  const size_t num_windows = DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+  const size_t num_windows =
+      DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
 
   // Step 1. Initialize the accmulator (res) with the input point multiplied by
   // the most significant digit of the scalar s_{m-1} (note that this digit
@@ -469,8 +461,8 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 
     // Step 4a. Compute abs(s_i).
     int16_t d = rwnaf[i];
-    int16_t is_neg = (d >> 15) & 1; // is_neg = (d < 0) ? 1 : 0
-    d = (d ^ -is_neg) + is_neg;     // d = abs(d)
+    int16_t is_neg = (d >> 15) & 1;  // is_neg = (d < 0) ? 1 : 0
+    d = (d ^ -is_neg) + is_neg;      // d = abs(d)
 
     // Step 4b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
@@ -483,7 +475,8 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
     cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
 
     // Step 4d. Add the point to the accumulator.
-    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 0, x_tmp, y_tmp, z_tmp);
+    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 0, x_tmp, y_tmp,
+                   z_tmp);
   }
 
   // Step 5a. Negate the input point P (we negate it in-place since we already
@@ -570,7 +563,8 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   // Regular-wNAF encoding of the scalar.
   int16_t rwnaf[SCALAR_MUL_MAX_NUM_WINDOWS];
   scalar_rwnaf(rwnaf, SCALAR_MUL_WINDOW_SIZE, scalar, ctx->felem_num_bits);
-  size_t num_windows = DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+  size_t num_windows =
+      DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
 
   // We need two point accumulators, so we define them of maximum size
   // to avoid allocation, and just take pointers to individual coordinates.
@@ -601,8 +595,8 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
       // from the table and add it to |res|. If |d| is negative, negate
       // the point before adding it to |res|.
       int16_t d = rwnaf[j];
-      int16_t is_neg = (d >> 15) & 1; // is_neg = (d < 0) ? 1 : 0
-      d = (d ^ -is_neg) + is_neg;     // d = abs(d)
+      int16_t is_neg = (d >> 15) & 1;  // is_neg = (d < 0) ? 1 : 0
+      d = (d ^ -is_neg) + is_neg;      // d = abs(d)
 
       int16_t idx = d >> 1;
 
@@ -620,19 +614,21 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
       cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
 
       // Add the point to the accumulator |res|.
-      ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1,
-                     x_tmp, y_tmp, ctx->felem_one);
+      ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1, x_tmp, y_tmp,
+                     ctx->felem_one);
     }
   }
 
   // Conditionally subtract G if the scalar is even, in constant-time.
   const ec_nistp_felem_limb *x_mp = &ctx->scalar_mul_base_table[0];
-  const ec_nistp_felem_limb *y_mp = &ctx->scalar_mul_base_table[ctx->felem_num_limbs];
+  const ec_nistp_felem_limb *y_mp =
+      &ctx->scalar_mul_base_table[ctx->felem_num_limbs];
   ec_nistp_felem ftmp;
   ctx->felem_neg(ftmp, y_mp);
 
   // Subtract P from the accumulator.
-  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 1, x_mp, ftmp, ctx->felem_one);
+  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 1, x_mp, ftmp,
+                 ctx->felem_one);
 
   // Select |res| or |res - P| based on parity of the scalar.
   ec_nistp_felem_limb t = scalar->words[0] & 1;
@@ -671,32 +667,31 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
 //          g_scalar, negate it if the digit is negative, and add it to the
 //          accumulator.
 // Note: this function is NOT constant-time.
-void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
-                                ec_nistp_felem_limb *x_out,
-                                ec_nistp_felem_limb *y_out,
-                                ec_nistp_felem_limb *z_out,
-                                const EC_SCALAR *g_scalar,
-                                const ec_nistp_felem_limb *x_p,
-                                const ec_nistp_felem_limb *y_p,
-                                const ec_nistp_felem_limb *z_p,
-                                const EC_SCALAR *p_scalar) {
-
-  const size_t felem_num_bytes = ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+void ec_nistp_scalar_mul_public(
+    const ec_nistp_meth *ctx, ec_nistp_felem_limb *x_out,
+    ec_nistp_felem_limb *y_out, ec_nistp_felem_limb *z_out,
+    const EC_SCALAR *g_scalar, const ec_nistp_felem_limb *x_p,
+    const ec_nistp_felem_limb *y_p, const ec_nistp_felem_limb *z_p,
+    const EC_SCALAR *p_scalar) {
+  const size_t felem_num_bytes =
+      ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
 
   // Table of multiples of P.
   ec_nistp_felem_limb p_table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
   generate_table(ctx, p_table, x_p, y_p, z_p);
-  const size_t p_point_num_limbs = 3 * ctx->felem_num_limbs; // Projective.
+  const size_t p_point_num_limbs = 3 * ctx->felem_num_limbs;  // Projective.
 
   // Table of multiples of G.
   const ec_nistp_felem_limb *g_table = ctx->scalar_mul_base_table;
-  const size_t g_point_num_limbs = 2 * ctx->felem_num_limbs; // Affine.
+  const size_t g_point_num_limbs = 2 * ctx->felem_num_limbs;  // Affine.
 
   // Recode the scalars.
   int8_t p_wnaf[SCALAR_MUL_MAX_SCALAR_BITS + 1] = {0};
   int8_t g_wnaf[SCALAR_MUL_MAX_SCALAR_BITS + 1] = {0};
-  ec_compute_wNAF(p_wnaf, p_scalar, ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
-  ec_compute_wNAF(g_wnaf, g_scalar, ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+  ec_compute_wNAF(p_wnaf, p_scalar, ctx->felem_num_bits,
+                  SCALAR_MUL_WINDOW_SIZE);
+  ec_compute_wNAF(g_wnaf, g_scalar, ctx->felem_num_bits,
+                  SCALAR_MUL_WINDOW_SIZE);
 
   // In the beginning res is set to point-at-infinity, so we set the flag.
   int16_t res_is_inf = 1;
@@ -704,7 +699,6 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
   ec_nistp_felem ftmp;
 
   for (int i = ctx->felem_num_bits; i >= 0; i--) {
-
     // If |res| is point-at-infinity there is no point in doubling so skip it.
     if (!res_is_inf) {
       ctx->point_dbl(x_out, y_out, z_out, x_out, y_out, z_out);
@@ -721,8 +715,10 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
         // we can simply copy it.
         const size_t table_idx = idx * p_point_num_limbs;
         OPENSSL_memcpy(x_out, &p_table[table_idx], felem_num_bytes);
-        OPENSSL_memcpy(y_out, &p_table[table_idx + ctx->felem_num_limbs], felem_num_bytes);
-        OPENSSL_memcpy(z_out, &p_table[table_idx + ctx->felem_num_limbs * 2], felem_num_bytes);
+        OPENSSL_memcpy(y_out, &p_table[table_idx + ctx->felem_num_limbs],
+                       felem_num_bytes);
+        OPENSSL_memcpy(z_out, &p_table[table_idx + ctx->felem_num_limbs * 2],
+                       felem_num_bytes);
         res_is_inf = 0;
       } else {
         // Otherwise, add to the accumulator either the point at position idx
@@ -733,10 +729,10 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
           ctx->felem_neg(ftmp, y_tmp);
           y_tmp = ftmp;
         }
-        ctx->point_add(x_out, y_out, z_out, x_out, y_out, z_out, 0,
-                       &p_table[idx * p_point_num_limbs],
-                       y_tmp,
-                       &p_table[idx * p_point_num_limbs + ctx->felem_num_limbs * 2]);
+        ctx->point_add(
+            x_out, y_out, z_out, x_out, y_out, z_out, 0,
+            &p_table[idx * p_point_num_limbs], y_tmp,
+            &p_table[idx * p_point_num_limbs + ctx->felem_num_limbs * 2]);
       }
     }
 
@@ -751,20 +747,23 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
         // we can simply copy it.
         const size_t table_idx = idx * g_point_num_limbs;
         OPENSSL_memcpy(x_out, &g_table[table_idx], felem_num_bytes);
-        OPENSSL_memcpy(y_out, &g_table[table_idx + ctx->felem_num_limbs], felem_num_bytes);
+        OPENSSL_memcpy(y_out, &g_table[table_idx + ctx->felem_num_limbs],
+                       felem_num_bytes);
         OPENSSL_memcpy(z_out, ctx->felem_one, felem_num_bytes);
         res_is_inf = 0;
       } else {
         // Otherwise, add to the accumulator either the point at position idx
         // in the table or its negation.
-        const ec_nistp_felem_limb *y_tmp ;
+        const ec_nistp_felem_limb *y_tmp;
         y_tmp = &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs];
         if (is_neg) {
-          ctx->felem_neg(ftmp, &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs]);
+          ctx->felem_neg(
+              ftmp, &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs]);
           y_tmp = ftmp;
         }
         ctx->point_add(x_out, y_out, z_out, x_out, y_out, z_out, 1,
-                       &g_table[idx * g_point_num_limbs], y_tmp, ctx->felem_one);
+                       &g_table[idx * g_point_num_limbs], y_tmp,
+                       ctx->felem_one);
       }
     }
   }
@@ -775,7 +774,8 @@ void ec_nistp_point_to_coordinates(ec_nistp_felem_limb *x_out,
                                    ec_nistp_felem_limb *z_out,
                                    const ec_nistp_felem_limb *xyz_in,
                                    size_t num_limbs_per_coord) {
-  size_t num_bytes_per_coord = num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
+  size_t num_bytes_per_coord =
+      num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
   OPENSSL_memcpy(x_out, xyz_in, num_bytes_per_coord);
   OPENSSL_memcpy(y_out, &xyz_in[num_limbs_per_coord], num_bytes_per_coord);
   OPENSSL_memcpy(z_out, &xyz_in[num_limbs_per_coord * 2], num_bytes_per_coord);
@@ -786,7 +786,8 @@ void ec_nistp_coordinates_to_point(ec_nistp_felem_limb *xyz_out,
                                    const ec_nistp_felem_limb *y_in,
                                    const ec_nistp_felem_limb *z_in,
                                    size_t num_limbs_per_coord) {
-  size_t num_bytes_per_coord = num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
+  size_t num_bytes_per_coord =
+      num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
   OPENSSL_memcpy(xyz_out, x_in, num_bytes_per_coord);
   OPENSSL_memcpy(&xyz_out[num_limbs_per_coord], y_in, num_bytes_per_coord);
   OPENSSL_memcpy(&xyz_out[num_limbs_per_coord * 2], z_in, num_bytes_per_coord);

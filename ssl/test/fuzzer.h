@@ -396,8 +396,7 @@ class TLSFuzzer {
 
     const uint8_t *bufp = kCertificateDER;
     bssl::UniquePtr<X509> cert(d2i_X509(NULL, &bufp, sizeof(kCertificateDER)));
-    if (!cert ||
-        !SSL_CTX_use_certificate(ctx_.get(), cert.get()) ||
+    if (!cert || !SSL_CTX_use_certificate(ctx_.get(), cert.get()) ||
         !SSL_CTX_set_ocsp_response(ctx_.get(), kOCSPResponse,
                                    sizeof(kOCSPResponse)) ||
         !SSL_CTX_set_signed_cert_timestamp_list(ctx_.get(), kSCT,

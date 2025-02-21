@@ -102,8 +102,7 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
   CBB contents;
   if (!CBB_add_u16(out, TLSEXT_TYPE_supported_versions) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16(&contents, hs->ssl->version) ||
-      !CBB_flush(out)) {
+      !CBB_add_u16(&contents, hs->ssl->version) || !CBB_flush(out)) {
     return 0;
   }
 
@@ -115,11 +114,13 @@ static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl) {
   // First check config, otherwise fallback to ctx preferences.
   if (ssl->config && ssl->config->tls13_cipher_list &&
       ssl->config->tls13_cipher_list.get()->ciphers &&
-      sk_SSL_CIPHER_num(ssl->config->tls13_cipher_list.get()->ciphers.get()) > 0) {
+      sk_SSL_CIPHER_num(ssl->config->tls13_cipher_list.get()->ciphers.get()) >
+          0) {
     tls13_ciphers = ssl->config->tls13_cipher_list.get()->ciphers.get();
   } else if (ssl->ctx->tls13_cipher_list &&
-      ssl->ctx->tls13_cipher_list.get()->ciphers &&
-      sk_SSL_CIPHER_num(ssl->ctx->tls13_cipher_list.get()->ciphers.get()) > 0) {
+             ssl->ctx->tls13_cipher_list.get()->ciphers &&
+             sk_SSL_CIPHER_num(
+                 ssl->ctx->tls13_cipher_list.get()->ciphers.get()) > 0) {
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
   }
 
@@ -132,8 +133,8 @@ static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl) {
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
   SSL *const ssl = hs->ssl;
-  if (// If the client doesn't accept resumption with PSK_DHE_KE, don't send a
-      // session ticket.
+  if (  // If the client doesn't accept resumption with PSK_DHE_KE, don't send a
+        // session ticket.
       !hs->accept_psk_mode ||
       // We only implement stateless resumption in TLS 1.3, so skip sending
       // tickets if disabled.
@@ -232,7 +233,8 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
                  client_hello.session_id_len);
   hs->session_id_len = client_hello.session_id_len;
 
-  if (!ssl_parse_client_cipher_list(ssl, &client_hello, &ssl->client_cipher_suites)) {
+  if (!ssl_parse_client_cipher_list(ssl, &client_hello,
+                                    &ssl->client_cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
@@ -485,7 +487,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   } else if (!found_key_share) {
     ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
   } else if (hs->custom_extensions.received) {
-    ssl->s3->early_data_reason = ssl_early_data_unsupported_with_custom_extension;
+    ssl->s3->early_data_reason =
+        ssl_early_data_unsupported_with_custom_extension;
   } else {
     // |ssl_session_is_resumable| forbids cross-cipher resumptions even if the
     // PRF hashes match.
@@ -945,8 +948,8 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
     // the wire sooner and also avoids triggering a write on |SSL_read| when
     // processing the client Finished. This requires computing the client
     // Finished early. See RFC 8446, section 4.6.1.
-    static const uint8_t kEndOfEarlyData[4] = {SSL3_MT_END_OF_EARLY_DATA, 0,
-                                               0, 0};
+    static const uint8_t kEndOfEarlyData[4] = {SSL3_MT_END_OF_EARLY_DATA, 0, 0,
+                                               0};
     if (ssl->quic_method == nullptr &&
         !hs->transcript.Update(kEndOfEarlyData)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1185,8 +1188,7 @@ static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_message;
   }
   if (!ssl_check_message_type(ssl, msg, SSL3_MT_CHANNEL_ID) ||
-      !tls1_verify_channel_id(hs, msg) ||
-      !ssl_hash_message(hs, msg)) {
+      !tls1_verify_channel_id(hs, msg) || !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
@@ -1213,8 +1215,7 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl->s3->early_data_accepted) {
-    if (!ssl_hash_message(hs, msg) ||
-        !tls13_derive_resumption_secret(hs)) {
+    if (!ssl_hash_message(hs, msg) || !tls13_derive_resumption_secret(hs)) {
       return ssl_hs_error;
     }
 

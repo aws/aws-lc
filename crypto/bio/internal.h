@@ -65,8 +65,8 @@
 // newlib uses u_short in socket.h without defining it.
 typedef unsigned short u_short;
 #endif
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>

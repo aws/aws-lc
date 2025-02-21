@@ -120,13 +120,9 @@ void ECDSA_SIG_free(ECDSA_SIG *sig) {
   OPENSSL_free(sig);
 }
 
-const BIGNUM *ECDSA_SIG_get0_r(const ECDSA_SIG *sig) {
-  return sig->r;
-}
+const BIGNUM *ECDSA_SIG_get0_r(const ECDSA_SIG *sig) { return sig->r; }
 
-const BIGNUM *ECDSA_SIG_get0_s(const ECDSA_SIG *sig) {
-  return sig->s;
-}
+const BIGNUM *ECDSA_SIG_get0_s(const ECDSA_SIG *sig) { return sig->s; }
 
 void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **out_r,
                     const BIGNUM **out_s) {
@@ -159,10 +155,8 @@ int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
   }
 
   EC_SCALAR r, s, u1, u2, s_inv_mont, m;
-  if (BN_is_zero(sig->r) ||
-      !ec_bignum_to_scalar(group, &r, sig->r) ||
-      BN_is_zero(sig->s) ||
-      !ec_bignum_to_scalar(group, &s, sig->s)) {
+  if (BN_is_zero(sig->r) || !ec_bignum_to_scalar(group, &r, sig->r) ||
+      BN_is_zero(sig->s) || !ec_bignum_to_scalar(group, &s, sig->s)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     return 0;
   }
@@ -377,9 +371,9 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, const EC_KEY *eckey) {
   if (eckey->eckey_method && eckey->eckey_method->sign) {
-    return eckey->eckey_method->sign(type, digest, (int)digest_len, sig, sig_len,
-                                     NULL, NULL,
-                                     (EC_KEY*) eckey /* cast away const */);
+    return eckey->eckey_method->sign(type, digest, (int)digest_len, sig,
+                                     sig_len, NULL, NULL,
+                                     (EC_KEY *)eckey /* cast away const */);
   }
 
   int ret = 0;
@@ -392,8 +386,7 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
   CBB cbb;
   CBB_init_fixed(&cbb, sig, ECDSA_size(eckey));
   size_t len;
-  if (!ECDSA_SIG_marshal(&cbb, s) ||
-      !CBB_finish(&cbb, NULL, &len)) {
+  if (!ECDSA_SIG_marshal(&cbb, s) || !CBB_finish(&cbb, NULL, &len)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
     *sig_len = 0;
     goto err;
@@ -423,8 +416,8 @@ int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
 
   // Defend against potential laxness in the DER parser.
   size_t der_len;
-  if (!ECDSA_SIG_to_bytes(&der, &der_len, s) ||
-      der_len != sig_len || OPENSSL_memcmp(sig, der, sig_len) != 0) {
+  if (!ECDSA_SIG_to_bytes(&der, &der_len, s) || der_len != sig_len ||
+      OPENSSL_memcmp(sig, der, sig_len) != 0) {
     // This should never happen. crypto/bytestring is strictly DER.
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -454,7 +447,7 @@ ECDSA_SIG *ecdsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
 
 int ecdsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                     size_t in_len, const ECDSA_SIG *sig,
-                                    const EC_KEY *eckey){
+                                    const EC_KEY *eckey) {
   uint8_t digest[EVP_MAX_MD_SIZE];
   unsigned int digest_len = EVP_MAX_MD_SIZE;
   if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {

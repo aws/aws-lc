@@ -40,15 +40,17 @@ class RequestBuffer {
   static std::unique_ptr<RequestBuffer> New();
 };
 
-// ParseArgsFromStream returns a span of arguments, the first of which is the name
-// of the requested function, from |stream|. The return values point into |buffer|
-// and so must not be used after |buffer| has been freed or reused for a
-// subsequent call. It returns an empty span on error, because std::optional
+// ParseArgsFromStream returns a span of arguments, the first of which is the
+// name of the requested function, from |stream|. The return values point into
+// |buffer| and so must not be used after |buffer| has been freed or reused for
+// a subsequent call. It returns an empty span on error, because std::optional
 // is still too new.
-Span<const Span<const uint8_t>> ParseArgsFromStream(std::istream *stream, RequestBuffer *buffer);
+Span<const Span<const uint8_t>> ParseArgsFromStream(std::istream *stream,
+                                                    RequestBuffer *buffer);
 
 // WriteReplyToStream writes a reply to the given stream.
-bool WriteReplyToStream(std::ostream *stream, const std::vector<Span<const uint8_t>> &spans);
+bool WriteReplyToStream(std::ostream *stream,
+                        const std::vector<Span<const uint8_t>> &spans);
 
 // ReplyCallback is the type of a callback that writes a reply to an ACVP
 // request.

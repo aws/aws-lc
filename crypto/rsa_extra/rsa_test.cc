@@ -61,13 +61,13 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/bn.h>
 #include <openssl/bio.h>
+#include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
-#include <openssl/evp.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/nid.h>
 
 #include "../fipsmodule/bn/internal.h"
@@ -605,11 +605,12 @@ TEST(RSATest, Set0Key) {
   ASSERT_TRUE(rsa);
   jcaKey.reset(RSA_new());
   ASSERT_TRUE(jcaKey);
-  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), BN_dup(rsa->e), BN_dup(rsa->d)));
-  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
-                       &sig_len, jcaKey.get()));
-  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
-                         sig_len, rsa.get()));
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), BN_dup(rsa->e),
+                           BN_dup(rsa->d)));
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig, &sig_len,
+                       jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig, sig_len,
+                         rsa.get()));
 
   // NO |e|, BLINDING => ERR
   rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
@@ -618,8 +619,8 @@ TEST(RSATest, Set0Key) {
   ASSERT_TRUE(jcaKey);
   EXPECT_EQ(1, RSA_blinding_on(jcaKey.get(), nullptr));
   EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
-  EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
-                        &sig_len, jcaKey.get()));
+  EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig, &sig_len,
+                        jcaKey.get()));
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
   EXPECT_EQ(RSA_R_NO_PUBLIC_EXPONENT, ERR_GET_REASON(err));
@@ -634,10 +635,10 @@ TEST(RSATest, Set0Key) {
   EXPECT_EQ(1, RSA_blinding_on(jcaKey.get(), nullptr));
   RSA_blinding_off_temp_for_accp_compatibility(jcaKey.get());
   EXPECT_EQ(0, RSA_blinding_on(jcaKey.get(), nullptr));
-  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
-                       &sig_len, jcaKey.get()));
-  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
-                         sig_len, rsa.get()));
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig, &sig_len,
+                       jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig, sig_len,
+                         rsa.get()));
 
   // RSA_blinding_on returns 0 for null.
   EXPECT_EQ(0, RSA_blinding_on(nullptr, nullptr));
@@ -682,8 +683,8 @@ TEST(RSATest, ASN1) {
   ERR_clear_error();
 
   // Public keys with negative moduli are invalid.
-  rsa.reset(RSA_public_key_from_bytes(kEstonianRSAKey,
-                                      sizeof(kEstonianRSAKey)));
+  rsa.reset(
+      RSA_public_key_from_bytes(kEstonianRSAKey, sizeof(kEstonianRSAKey)));
   EXPECT_FALSE(rsa);
   ERR_clear_error();
 }
@@ -969,29 +970,29 @@ TEST(RSATest, CheckKey) {
 
 static int rsa_priv_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
-  RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_enc");
+  RSA_set_ex_data(rsa, 0, (void *)"rsa_priv_enc");
   return 0;
 }
 
 static int rsa_priv_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
-  RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_dec");
+  RSA_set_ex_data(rsa, 0, (void *)"rsa_priv_dec");
   return 0;
 }
 
 static int rsa_pub_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_enc");
+                       int padding) {
+  RSA_set_ex_data(rsa, 0, (void *)"rsa_pub_enc");
   return 0;
 }
 
 static int rsa_pub_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_dec");
+                       int padding) {
+  RSA_set_ex_data(rsa, 0, (void *)"rsa_pub_dec");
   return 0;
 }
 
-static int extkey_rsa_finish (RSA *rsa) {
+static int extkey_rsa_finish(RSA *rsa) {
   const RSA_METHOD *meth = RSA_get_method(rsa);
   RSA_meth_free((RSA_METHOD *)meth);
   return 1;
@@ -1021,7 +1022,7 @@ TEST(RSATest, RSAMETHOD) {
   ASSERT_TRUE(RSA_meth_set0_app_data(rsa_meth, nullptr));
 
   ASSERT_TRUE(rsa_meth->decrypt && rsa_meth->encrypt && rsa_meth->sign_raw &&
-  rsa_meth->verify_raw);
+              rsa_meth->verify_raw);
 
   // rsa_meth will now be freed with key when rsa_meth->finish is called
   // in RSA_free
@@ -1032,7 +1033,8 @@ TEST(RSATest, RSAMETHOD) {
   ASSERT_TRUE(rsa_key.get());
   // key will now be freed with rsa_key
   EVP_PKEY_assign_RSA(rsa_key.get(), key);
-  bssl::UniquePtr<EVP_PKEY_CTX> rsa_key_ctx(EVP_PKEY_CTX_new(rsa_key.get(), NULL));
+  bssl::UniquePtr<EVP_PKEY_CTX> rsa_key_ctx(
+      EVP_PKEY_CTX_new(rsa_key.get(), NULL));
   ASSERT_TRUE(rsa_key_ctx.get());
 
   // Encrypt Decrypt Operations (pub_enc & priv_dec)
@@ -1042,8 +1044,8 @@ TEST(RSATest, RSAMETHOD) {
   ASSERT_TRUE(EVP_PKEY_encrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
   // Custom func return 0 since they don't write any data to out
   ASSERT_EQ(out_len, (size_t)0);
-  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
-  , "rsa_pub_enc");
+  ASSERT_STREQ(static_cast<const char *>(RSA_get_ex_data(key, 0)),
+               "rsa_pub_enc");
 
   // Update before passing into next operation
   out_len = EVP_PKEY_size(rsa_key.get());
@@ -1051,18 +1053,18 @@ TEST(RSATest, RSAMETHOD) {
   ASSERT_TRUE(EVP_PKEY_decrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
   // Custom func return 0 since they don't write any data to out
   ASSERT_EQ(out_len, (size_t)0);
-  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
-  , "rsa_priv_dec");
+  ASSERT_STREQ(static_cast<const char *>(RSA_get_ex_data(key, 0)),
+               "rsa_priv_dec");
 
   // Update before passing into next operation
   out_len = EVP_PKEY_size(rsa_key.get());
   ASSERT_TRUE(EVP_PKEY_verify_recover_init(rsa_key_ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len,
-                                      nullptr, 0));
+  ASSERT_TRUE(
+      EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len, nullptr, 0));
   // Custom func return 0 since they don't write any data to out
   ASSERT_EQ(out_len, (size_t)0);
-  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
-  , "rsa_pub_dec");
+  ASSERT_STREQ(static_cast<const char *>(RSA_get_ex_data(key, 0)),
+               "rsa_pub_dec");
 
   // Update before passing into next operation
   out_len = EVP_PKEY_size(rsa_key.get());
@@ -1070,8 +1072,8 @@ TEST(RSATest, RSAMETHOD) {
   ASSERT_TRUE(RSA_sign_raw(key, &out_len, &out, 0, nullptr, 0, 0));
   // Custom func return 0 since they don't write any data to out
   ASSERT_EQ(out_len, (size_t)0);
-  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
-  , "rsa_priv_enc");
+  ASSERT_STREQ(static_cast<const char *>(RSA_get_ex_data(key, 0)),
+               "rsa_priv_enc");
 }
 
 TEST(RSATest, RSAEngine) {
@@ -1094,8 +1096,8 @@ TEST(RSATest, RSAEngine) {
   // Call custom Engine implementation
   ASSERT_TRUE(RSA_decrypt(key, &out_len, &out, out_len, &in, 0, 0));
   ASSERT_EQ(out_len, (size_t)0);
-  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
-  , "rsa_priv_dec");
+  ASSERT_STREQ(static_cast<const char *>(RSA_get_ex_data(key, 0)),
+               "rsa_priv_dec");
 
   RSA_free(key);
   ENGINE_free(engine);
@@ -1111,9 +1113,9 @@ TEST(RSATest, KeygenFail) {
   // Cause RSA key generation after a prime has been generated, to test that
   // |rsa| is left alone.
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int, BN_GENCB *) -> int { return event != 3; },
-               nullptr);
+  BN_GENCB_set(
+      &cb, [](int event, int, BN_GENCB *) -> int { return event != 3; },
+      nullptr);
 
   bssl::UniquePtr<BIGNUM> e(BN_new());
   ASSERT_TRUE(e);
@@ -1172,17 +1174,18 @@ TEST(RSATest, KeygenFailOnce) {
   // Cause only the first iteration of RSA key generation to fail.
   bool failed = false;
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   ADD_FAILURE() << "Callback called multiple times.";
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 return 0;
-               },
-               &failed);
+  BN_GENCB_set(
+      &cb,
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
+        bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+        if (*failed_ptr) {
+          ADD_FAILURE() << "Callback called multiple times.";
+          return 1;
+        }
+        *failed_ptr = true;
+        return 0;
+      },
+      &failed);
 
   // Although key generation internally retries, the external behavior of
   // |BN_GENCB| is preserved.
@@ -1228,20 +1231,21 @@ TEST(RSATest, KeygenInternalRetry) {
   // Simulate one internal attempt at key generation failing.
   bool failed = false;
   BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 // This test does not test any public API behavior. It is just
-                 // a hack to exercise the retry codepath and make sure it
-                 // works.
-                 OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
-                 return 0;
-               },
-               &failed);
+  BN_GENCB_set(
+      &cb,
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
+        bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
+        if (*failed_ptr) {
+          return 1;
+        }
+        *failed_ptr = true;
+        // This test does not test any public API behavior. It is just
+        // a hack to exercise the retry codepath and make sure it
+        // works.
+        OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
+        return 0;
+      },
+      &failed);
 
   // Key generation internally retries on RSA_R_TOO_MANY_ITERATIONS.
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -1257,15 +1261,15 @@ TEST(RSATest, OldCallback) {
 
   int old_callback_call_count = 0;
   void (*old_style_callback)(int, int, void *) = [](int event, int n,
-                                                   void *ptr) -> void {
+                                                    void *ptr) -> void {
     BN_GENCB *cb_ptr = static_cast<BN_GENCB *>(ptr);
     int *count_ptr = static_cast<int *>(cb_ptr->arg);
     *count_ptr += 1;
   };
 
   int new_callback_call_count = 0;
-  int (*new_style_callback)(int, int, BN_GENCB *cb_ptr) = [](int event, int n,
-                                                    BN_GENCB *cb_ptr) -> int {
+  int (*new_style_callback)(int, int, BN_GENCB *cb_ptr) =
+      [](int event, int n, BN_GENCB *cb_ptr) -> int {
     int *count_ptr = static_cast<int *>(cb_ptr->arg);
     *count_ptr += 1;
     return 1;
@@ -1312,8 +1316,8 @@ TEST(RSATest, OverwriteKey) {
   ciphertext.resize(len);
 
   std::vector<uint8_t> plaintext(RSA_size(key1.get()));
-  ASSERT_TRUE(RSA_decrypt(key1.get(), &len, plaintext.data(),
-                          plaintext.size(), ciphertext.data(), ciphertext.size(),
+  ASSERT_TRUE(RSA_decrypt(key1.get(), &len, plaintext.data(), plaintext.size(),
+                          ciphertext.data(), ciphertext.size(),
                           RSA_PKCS1_OAEP_PADDING));
   plaintext.resize(len);
   EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext, kPlaintextLen));
@@ -1349,15 +1353,14 @@ TEST(RSATest, OverwriteKey) {
 
   auto check_rsa_compatible = [&](RSA *enc, RSA *dec) {
     ciphertext.resize(RSA_size(enc));
-    ASSERT_TRUE(RSA_encrypt(enc, &len, ciphertext.data(),
-                            ciphertext.size(), kPlaintext, kPlaintextLen,
-                            RSA_PKCS1_OAEP_PADDING));
+    ASSERT_TRUE(RSA_encrypt(enc, &len, ciphertext.data(), ciphertext.size(),
+                            kPlaintext, kPlaintextLen, RSA_PKCS1_OAEP_PADDING));
     ciphertext.resize(len);
 
     plaintext.resize(RSA_size(dec));
-    ASSERT_TRUE(RSA_decrypt(dec, &len, plaintext.data(),
-                            plaintext.size(), ciphertext.data(),
-                            ciphertext.size(), RSA_PKCS1_OAEP_PADDING));
+    ASSERT_TRUE(RSA_decrypt(dec, &len, plaintext.data(), plaintext.size(),
+                            ciphertext.data(), ciphertext.size(),
+                            RSA_PKCS1_OAEP_PADDING));
     plaintext.resize(len);
     EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext, kPlaintextLen));
   };
@@ -1395,7 +1398,8 @@ TEST(RSATest, PrintBio) {
   size_t len;
   BIO_mem_contents(bio.get(), &data, &len);
 
-  const char *expected = ""
+  const char *expected =
+      ""
       "    Private-Key: (512 bit)\n"
       "    modulus:\n"
       "        00:aa:36:ab:ce:88:ac:fd:ff:55:52:3c:7f:c4:52:\n"
@@ -1718,10 +1722,10 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
   constexpr size_t kSignaturesPerThread = 100;
   constexpr size_t kNumThreads = 2048;
 #endif
-  // On some platforms, the number of threads should be reduced because resources are limited.
-  // e.g. Travis CI MacOS has 2 cores and 4 GB memories.
+  // On some platforms, the number of threads should be reduced because
+  // resources are limited. e.g. Travis CI MacOS has 2 cores and 4 GB memories.
   size_t numOfThreads = kNumThreads;
-  const char* rsaThreadsLimit = getenv("RSA_TEST_THREADS_LIMIT");
+  const char *rsaThreadsLimit = getenv("RSA_TEST_THREADS_LIMIT");
   if (rsaThreadsLimit != nullptr) {
     numOfThreads = std::stoul(std::string(rsaThreadsLimit), nullptr);
   }

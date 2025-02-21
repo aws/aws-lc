@@ -69,9 +69,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 using socket_result_t = int;
 #else
 using socket_result_t = ssize_t;
-static int closesocket(int sock) {
-  return close(sock);
-}
+static int closesocket(int sock) { return close(sock); }
 #endif
 
 bool InitSocketLibrary() {
@@ -173,11 +171,11 @@ bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
     goto out;
   }
 
-  if(!quiet) {
+  if (!quiet) {
     switch (result->ai_family) {
       case AF_INET: {
         struct sockaddr_in *sin =
-                reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
+            reinterpret_cast<struct sockaddr_in *>(result->ai_addr);
         fprintf(stderr, "Connecting to %s:%d\n",
                 inet_ntop(result->ai_family, &sin->sin_addr, buf, sizeof(buf)),
                 ntohs(sin->sin_port));
@@ -185,10 +183,11 @@ bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
       }
       case AF_INET6: {
         struct sockaddr_in6 *sin6 =
-                reinterpret_cast<struct sockaddr_in6 *>(result->ai_addr);
-        fprintf(stderr, "Connecting to [%s]:%d\n",
-                inet_ntop(result->ai_family, &sin6->sin6_addr, buf, sizeof(buf)),
-                ntohs(sin6->sin6_port));
+            reinterpret_cast<struct sockaddr_in6 *>(result->ai_addr);
+        fprintf(
+            stderr, "Connecting to [%s]:%d\n",
+            inet_ntop(result->ai_family, &sin6->sin6_addr, buf, sizeof(buf)),
+            ntohs(sin6->sin6_port));
         break;
       }
     }
@@ -448,11 +447,11 @@ class SocketWaiter {
   }
 
  private:
-   bool stdin_open_ = true;
-   int sock_;
+  bool stdin_open_ = true;
+  int sock_;
 };
 
-#else // OPENSSL_WINDOWs
+#else  // OPENSSL_WINDOWs
 
 class ScopedWSAEVENT {
  public:
@@ -708,11 +707,11 @@ bool TransferData(SSL *ssl, int sock) {
           return false;
         }
         if (pending_write_len == 0) {
-  #if !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS)
           shutdown(sock, SHUT_WR);
-  #else
+#else
           shutdown(sock, SD_SEND);
-  #endif
+#endif
           continue;
         }
       }

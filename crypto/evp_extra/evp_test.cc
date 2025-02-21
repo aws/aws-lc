@@ -63,7 +63,7 @@
 #include "../fipsmodule/evp/internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
-OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
+OPENSSL_MSVC_PRAGMA(warning(disable : 4702))
 
 #include <map>
 #include <string>
@@ -77,8 +77,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
-#include <openssl/digest.h>
 #include <openssl/dh.h>
+#include <openssl/digest.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
@@ -195,16 +195,14 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   bssl::ScopedCBB cbb;
   uint8_t *der;
   size_t der_len;
-  if (!CBB_init(cbb.get(), 0) ||
-      !marshal_func(cbb.get(), pkey.get()) ||
+  if (!CBB_init(cbb.get(), 0) || !marshal_func(cbb.get(), pkey.get()) ||
       !CBB_finish(cbb.get(), &der, &der_len)) {
     return false;
   }
   bssl::UniquePtr<uint8_t> free_der(der);
 
   std::vector<uint8_t> output = input;
-  if (t->HasAttribute("Output") &&
-      !t->GetBytes(&output, "Output")) {
+  if (t->HasAttribute("Output") && !t->GetBytes(&output, "Output")) {
     return false;
   }
   EXPECT_EQ(Bytes(output), Bytes(der, der_len))
@@ -386,8 +384,7 @@ static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
 
 static bool TestDerive(FileTest *t, KeyMap *key_map, EVP_PKEY *key) {
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key, nullptr));
-  if (!ctx ||
-      !EVP_PKEY_derive_init(ctx.get()) ||
+  if (!ctx || !EVP_PKEY_derive_init(ctx.get()) ||
       !SetupContext(t, key_map, ctx.get())) {
     return false;
   }
@@ -450,24 +447,27 @@ static int EVP_marshal_private_key_version_two(CBB *cbb, const EVP_PKEY *key) {
 }
 
 static void VerifyEVPSignOut(std::string key_name, std::vector<uint8_t> input,
-                            std::vector<uint8_t> actual, std::vector<uint8_t> output,
-                            EVP_MD_CTX *ctx, size_t len) {
-
-  // Unless not compatible, verify EVP_DigestSign() with EVP_DigestVerify instead of comparing outputs
-  // This allows us to test the correctness of non-deterministic outputs (e.g. for ECDSA).
+                             std::vector<uint8_t> actual,
+                             std::vector<uint8_t> output, EVP_MD_CTX *ctx,
+                             size_t len) {
+  // Unless not compatible, verify EVP_DigestSign() with EVP_DigestVerify
+  // instead of comparing outputs This allows us to test the correctness of
+  // non-deterministic outputs (e.g. for ECDSA).
   if (key_name.find("Ed25519") != std::string::npos) {
     EXPECT_EQ(Bytes(output), Bytes(actual));
   } else {
-    EXPECT_TRUE(!EVP_DigestVerify(ctx, actual.data(), len, input.data(), input.size()));
+    EXPECT_TRUE(
+        !EVP_DigestVerify(ctx, actual.data(), len, input.data(), input.size()));
   }
 }
 
 static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PrivateKey") {
-    int (*marshal_func)(CBB * cbb, const EVP_PKEY *key) =
+    int (*marshal_func)(CBB *cbb, const EVP_PKEY *key) =
         EVP_marshal_private_key;
     std::string version;
-    if (t->HasAttribute("PKCS8VersionOut") && t->GetAttribute(&version, "PKCS8VersionOut")) {
+    if (t->HasAttribute("PKCS8VersionOut") &&
+        t->GetAttribute(&version, "PKCS8VersionOut")) {
       if (version == "1") {
         marshal_func = EVP_marshal_private_key_version_one;
       } else if (version == "2") {
@@ -498,7 +498,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
   int (*key_op_init)(EVP_PKEY_CTX *ctx) = nullptr;
   int (*key_op)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
                 const uint8_t *in, size_t in_len) = nullptr;
-  int (*md_op_init)(EVP_MD_CTX * ctx, EVP_PKEY_CTX * *pctx, const EVP_MD *type,
+  int (*md_op_init)(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type,
                     ENGINE *e, EVP_PKEY *pkey) = nullptr;
   bool is_verify = false;
   if (t->GetType() == "Decrypt") {
@@ -585,13 +585,12 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
     }
     actual.resize(len);
     VerifyEVPSignOut(key_name, std::move(input), std::move(actual),
-      std::move(output), ctx.get(), len);
+                     std::move(output), ctx.get(), len);
     return true;
   }
 
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key, nullptr));
-  if (!ctx ||
-      !key_op_init(ctx.get()) ||
+  if (!ctx || !key_op_init(ctx.get()) ||
       (digest != nullptr &&
        !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) ||
       !SetupContext(t, key_map, ctx.get())) {
@@ -624,8 +623,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       // Encryption is non-deterministic, so we check by decrypting.
       size_t plaintext_len;
       bssl::UniquePtr<EVP_PKEY_CTX> decrypt_ctx(EVP_PKEY_CTX_new(key, nullptr));
-      if (!decrypt_ctx ||
-          !EVP_PKEY_decrypt_init(decrypt_ctx.get()) ||
+      if (!decrypt_ctx || !EVP_PKEY_decrypt_init(decrypt_ctx.get()) ||
           (digest != nullptr &&
            !EVP_PKEY_CTX_set_signature_md(decrypt_ctx.get(), digest)) ||
           !SetupContext(t, key_map, decrypt_ctx.get()) ||
@@ -644,8 +642,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
     } else if (t->HasAttribute("CheckVerify")) {
       // Some signature schemes are non-deterministic, so we check by verifying.
       bssl::UniquePtr<EVP_PKEY_CTX> verify_ctx(EVP_PKEY_CTX_new(key, nullptr));
-      if (!verify_ctx ||
-          !EVP_PKEY_verify_init(verify_ctx.get()) ||
+      if (!verify_ctx || !EVP_PKEY_verify_init(verify_ctx.get()) ||
           (digest != nullptr &&
            !EVP_PKEY_CTX_set_signature_md(verify_ctx.get(), digest)) ||
           !SetupContext(t, key_map, verify_ctx.get())) {
@@ -1032,39 +1029,37 @@ TEST(EVPTest, WycheproofRSAPKCS1Decrypt) {
 }
 
 struct ectlsencodedpoint_test_data {
-    const uint8_t *public_key;
-    size_t public_key_size;
-    const uint8_t *private_key;
-    size_t private_key_size;
-    const uint8_t *expected_shared_secret;
-    size_t expected_shared_secret_size;
-    int key_type;
-    int curve_nid;
+  const uint8_t *public_key;
+  size_t public_key_size;
+  const uint8_t *private_key;
+  size_t private_key_size;
+  const uint8_t *expected_shared_secret;
+  size_t expected_shared_secret_size;
+  int key_type;
+  int curve_nid;
 };
 
-static EVP_PKEY * instantiate_public_key(int key_type, int curve_nid) {
-
+static EVP_PKEY *instantiate_public_key(int key_type, int curve_nid) {
   EVP_PKEY *pkey = NULL;
 
   if (NID_X25519 == curve_nid) {
     pkey = EVP_PKEY_new();
     EXPECT_TRUE(pkey);
     EXPECT_TRUE(EVP_PKEY_set_type(pkey, key_type));
-  }
-  else {
+  } else {
     EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve_nid);
     EXPECT_TRUE(ec_key);
     pkey = EVP_PKEY_new();
     EXPECT_TRUE(pkey);
-    EXPECT_TRUE(EVP_PKEY_assign(pkey, EVP_PKEY_EC, (EC_KEY *) ec_key));
+    EXPECT_TRUE(EVP_PKEY_assign(pkey, EVP_PKEY_EC, (EC_KEY *)ec_key));
   }
 
   return pkey;
 }
 
-static EVP_PKEY * instantiate_and_set_public_key(const uint8_t *public_key,
-  size_t public_key_size, int curve_nid) {
-
+static EVP_PKEY *instantiate_and_set_public_key(const uint8_t *public_key,
+                                                size_t public_key_size,
+                                                int curve_nid) {
   EVP_PKEY *pkey = NULL;
 
   if (NID_X25519 != curve_nid) {
@@ -1075,20 +1070,20 @@ static EVP_PKEY * instantiate_and_set_public_key(const uint8_t *public_key,
     EC_POINT *ec_point = EC_POINT_new(ec_key_group);
     EXPECT_TRUE(ec_point);
     EXPECT_TRUE(EC_POINT_oct2point(ec_key_group, ec_point, public_key,
-      public_key_size, NULL));
+                                   public_key_size, NULL));
     EXPECT_TRUE(EC_KEY_set_public_key(ec_key, ec_point));
     pkey = EVP_PKEY_new();
     EXPECT_TRUE(pkey);
-    EXPECT_TRUE(EVP_PKEY_assign(pkey, EVP_PKEY_EC, (EC_KEY *) ec_key));
+    EXPECT_TRUE(EVP_PKEY_assign(pkey, EVP_PKEY_EC, (EC_KEY *)ec_key));
     EC_POINT_free(ec_point);
   }
 
   return pkey;
 }
 
-static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
-  size_t private_key_size, int key_type, int curve_nid) {
-
+static EVP_PKEY *instantiate_and_set_private_key(const uint8_t *private_key,
+                                                 size_t private_key_size,
+                                                 int key_type, int curve_nid) {
   EVP_PKEY *pkey = NULL;
   OPENSSL_BEGIN_ALLOW_DEPRECATED
   EXPECT_FALSE(EVP_PKEY_get0(pkey));
@@ -1096,10 +1091,9 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
 
   if (NID_X25519 == curve_nid) {
     pkey = EVP_PKEY_new_raw_private_key(curve_nid, nullptr, private_key,
-      private_key_size);
+                                        private_key_size);
     EXPECT_TRUE(pkey);
-  }
-  else {
+  } else {
     EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve_nid);
     EXPECT_TRUE(ec_key);
     BIGNUM *private_key_bn = BN_bin2bn(private_key, private_key_size, NULL);
@@ -1110,7 +1104,7 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
     EXPECT_TRUE(pkey);
     OPENSSL_BEGIN_ALLOW_DEPRECATED
     EXPECT_FALSE(EVP_PKEY_get0(pkey));
-    EXPECT_TRUE(EVP_PKEY_assign(pkey, key_type, (EC_KEY *) ec_key));
+    EXPECT_TRUE(EVP_PKEY_assign(pkey, key_type, (EC_KEY *)ec_key));
     EXPECT_EQ(ec_key, EVP_PKEY_get0(pkey));
     OPENSSL_END_ALLOW_DEPRECATED
   }
@@ -1119,45 +1113,41 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
 }
 
 TEST(EVPTest, ECTLSEncodedPoint) {
+  // TLS wire-encoding format
+  // (https://tools.ietf.org/html/rfc8422#section-5.4)
+  // x25519: u-coordinate
+  // NIST curves: 0x04 || x-coordinate || y-coordinate
 
-    // TLS wire-encoding format
-    // (https://tools.ietf.org/html/rfc8422#section-5.4)
-    // x25519: u-coordinate
-    // NIST curves: 0x04 || x-coordinate || y-coordinate
+  // Taken from https://tools.ietf.org/html/rfc7748#section-5.2
+  static const uint8_t kX25519PublicKey[] = {
+      0xe6, 0xdb, 0x68, 0x67, 0x58, 0x30, 0x30, 0xdb, 0x35, 0x94, 0xc1,
+      0xa4, 0x24, 0xb1, 0x5f, 0x7c, 0x72, 0x66, 0x24, 0xec, 0x26, 0xb3,
+      0x35, 0x3b, 0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c};
+  static const uint8_t kX25519PrivateKey[] = {
+      0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15,
+      0x4b, 0x82, 0x46, 0x5e, 0xdd, 0x62, 0x14, 0x4c, 0x0a, 0xc1, 0xfc,
+      0x5a, 0x18, 0x50, 0x6a, 0x22, 0x44, 0xba, 0x44, 0x9a, 0xc4};
+  static const uint8_t kX25519ExpectedSharedSecret[] = {
+      0xc3, 0xda, 0x55, 0x37, 0x9d, 0xe9, 0xc6, 0x90, 0x8e, 0x94, 0xea,
+      0x4d, 0xf2, 0x8d, 0x08, 0x4f, 0x32, 0xec, 0xcf, 0x03, 0x49, 0x1c,
+      0x71, 0xf7, 0x54, 0xb4, 0x07, 0x55, 0x77, 0xa2, 0x85, 0x52};
 
-    // Taken from https://tools.ietf.org/html/rfc7748#section-5.2
-    static const uint8_t kX25519PublicKey[] = {
-      0xe6, 0xdb, 0x68, 0x67, 0x58, 0x30, 0x30, 0xdb, 0x35, 0x94, 0xc1, 0xa4,
-      0x24, 0xb1, 0x5f, 0x7c, 0x72, 0x66, 0x24, 0xec, 0x26, 0xb3, 0x35, 0x3b,
-      0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c
-    };
-    static const uint8_t kX25519PrivateKey[] = {
-      0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15, 0x4b,
-      0x82, 0x46, 0x5e, 0xdd, 0x62, 0x14, 0x4c, 0x0a, 0xc1, 0xfc, 0x5a, 0x18,
-      0x50, 0x6a, 0x22, 0x44, 0xba, 0x44, 0x9a, 0xc4
-    };
-    static const uint8_t kX25519ExpectedSharedSecret[] = {
-      0xc3, 0xda, 0x55, 0x37, 0x9d, 0xe9, 0xc6, 0x90, 0x8e, 0x94, 0xea, 0x4d,
-      0xf2, 0x8d, 0x08, 0x4f, 0x32, 0xec, 0xcf, 0x03, 0x49, 0x1c, 0x71, 0xf7,
-      0x54, 0xb4, 0x07, 0x55, 0x77, 0xa2, 0x85, 0x52
-    };
+  struct ectlsencodedpoint_test_data x25519_test_data = {
+      kX25519PublicKey,             // public_key
+      X25519_PUBLIC_VALUE_LEN,      // public_key_size
+      kX25519PrivateKey,            // private_key
+      X25519_PRIVATE_KEY_LEN,       // private_key_size
+      kX25519ExpectedSharedSecret,  // expected_shared_secret
+      X25519_SHARED_KEY_LEN,        // expected_shared_secret_size
+      EVP_PKEY_X25519,              // key_type
+      NID_X25519                    // curve_nid
+  };
 
-    struct ectlsencodedpoint_test_data x25519_test_data = {
-      kX25519PublicKey, // public_key
-      X25519_PUBLIC_VALUE_LEN, // public_key_size
-      kX25519PrivateKey, // private_key
-      X25519_PRIVATE_KEY_LEN, // private_key_size
-      kX25519ExpectedSharedSecret, // expected_shared_secret
-      X25519_SHARED_KEY_LEN, // expected_shared_secret_size
-      EVP_PKEY_X25519, // key_type
-      NID_X25519 // curve_nid
-    };
+  // P-{224,256,384,521} test vectors, taken from CAVP
+  // (CAVP 20.1 - KASValidityTest_ECCStaticUnified_KDFConcat_NOKC)
+  // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/key-management
 
-    // P-{224,256,384,521} test vectors, taken from CAVP
-    // (CAVP 20.1 - KASValidityTest_ECCStaticUnified_KDFConcat_NOKC)
-    // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/key-management
-
-    static const uint8_t kP224PublicKey[] = {
+  static const uint8_t kP224PublicKey[] = {
       /* uncompressed */
       0x04,
       /* x-coordinate */
@@ -1167,31 +1157,28 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       /* y-coordinate */
       0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
       0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
-      0xd6, 0x45, 0xa3, 0xea
-    };
-    static const uint8_t kP224PrivateKey[] = {
-      0xc7, 0x39, 0x45, 0x68, 0x8b, 0x3d, 0xbb, 0xc6, 0xc2, 0xe7, 0x54, 0x75,
-      0xdf, 0x61, 0xd1, 0x44, 0x9d, 0x05, 0xf9, 0x64, 0x49, 0x62, 0x92, 0x67,
-      0xf2, 0x19, 0x5d, 0xaf
-    };
-    static const uint8_t kP224ExpectedSharedSecret[] = {
-      0x50, 0x28, 0xd8, 0xa1, 0x62, 0xfe, 0xac, 0xbd, 0xfa, 0x5e, 0xca, 0x8c,
-      0xdf, 0x50, 0xcc, 0xb9, 0xe0, 0x7c, 0x6b, 0x7f, 0x96, 0xa8, 0xa8, 0x93,
-      0x24, 0xdd, 0xed, 0x7a
-    };
+      0xd6, 0x45, 0xa3, 0xea};
+  static const uint8_t kP224PrivateKey[] = {
+      0xc7, 0x39, 0x45, 0x68, 0x8b, 0x3d, 0xbb, 0xc6, 0xc2, 0xe7,
+      0x54, 0x75, 0xdf, 0x61, 0xd1, 0x44, 0x9d, 0x05, 0xf9, 0x64,
+      0x49, 0x62, 0x92, 0x67, 0xf2, 0x19, 0x5d, 0xaf};
+  static const uint8_t kP224ExpectedSharedSecret[] = {
+      0x50, 0x28, 0xd8, 0xa1, 0x62, 0xfe, 0xac, 0xbd, 0xfa, 0x5e,
+      0xca, 0x8c, 0xdf, 0x50, 0xcc, 0xb9, 0xe0, 0x7c, 0x6b, 0x7f,
+      0x96, 0xa8, 0xa8, 0x93, 0x24, 0xdd, 0xed, 0x7a};
 
-    struct ectlsencodedpoint_test_data p224_test_data = {
-      kP224PublicKey, // public_key
-      (1 + 28 + 28), // public_key_size
-      kP224PrivateKey, // private_key
-      28, // private_key_size
-      kP224ExpectedSharedSecret, // expected_shared_secret
-      28, // expected_shared_secret_size
-      EVP_PKEY_EC, // key_type
-      NID_secp224r1 // curve_nid
-    };
+  struct ectlsencodedpoint_test_data p224_test_data = {
+      kP224PublicKey,             // public_key
+      (1 + 28 + 28),              // public_key_size
+      kP224PrivateKey,            // private_key
+      28,                         // private_key_size
+      kP224ExpectedSharedSecret,  // expected_shared_secret
+      28,                         // expected_shared_secret_size
+      EVP_PKEY_EC,                // key_type
+      NID_secp224r1               // curve_nid
+  };
 
-    static const uint8_t kP256PublicKey[] = {
+  static const uint8_t kP256PublicKey[] = {
       /* uncompressed */
       0x04,
       /* x-coordinate */
@@ -1201,31 +1188,28 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       /* y-coordinate */
       0x36, 0xac, 0x98, 0x3e, 0x2d, 0x6f, 0xb9, 0x7a, 0x9e, 0x74, 0x09, 0x0d,
       0x26, 0xf4, 0x83, 0x34, 0xce, 0x4f, 0x4b, 0x74, 0x9f, 0x3f, 0xd7, 0xaa,
-      0x92, 0xe2, 0xc5, 0x40, 0x23, 0x2c, 0xe1, 0xbd
-    };
-    static const uint8_t kP256PrivateKey[] = {
-      0x4c, 0xab, 0xbc, 0x3f, 0xad, 0x44, 0x43, 0xcd, 0xa1, 0x36, 0x46, 0x39,
-      0x1e, 0x08, 0xbd, 0xa9, 0xd5, 0x29, 0xe1, 0x03, 0x96, 0xc0, 0xcb, 0xd2,
-      0xde, 0x9c, 0x1c, 0x73, 0xaf, 0xaa, 0x32, 0x99
-    };
-    static const uint8_t kP256ExpectedSharedSecret[] = {
-      0x89, 0x00, 0x1b, 0x34, 0x36, 0xf7, 0xe6, 0x6b, 0x00, 0x8d, 0x68, 0xa6,
-      0xc4, 0x7e, 0x01, 0x82, 0x49, 0x49, 0x4b, 0x92, 0x33, 0x92, 0x1b, 0x80,
-      0x7a, 0x75, 0x49, 0xd3, 0xad, 0xe2, 0x01, 0xa2
-    };
+      0x92, 0xe2, 0xc5, 0x40, 0x23, 0x2c, 0xe1, 0xbd};
+  static const uint8_t kP256PrivateKey[] = {
+      0x4c, 0xab, 0xbc, 0x3f, 0xad, 0x44, 0x43, 0xcd, 0xa1, 0x36, 0x46,
+      0x39, 0x1e, 0x08, 0xbd, 0xa9, 0xd5, 0x29, 0xe1, 0x03, 0x96, 0xc0,
+      0xcb, 0xd2, 0xde, 0x9c, 0x1c, 0x73, 0xaf, 0xaa, 0x32, 0x99};
+  static const uint8_t kP256ExpectedSharedSecret[] = {
+      0x89, 0x00, 0x1b, 0x34, 0x36, 0xf7, 0xe6, 0x6b, 0x00, 0x8d, 0x68,
+      0xa6, 0xc4, 0x7e, 0x01, 0x82, 0x49, 0x49, 0x4b, 0x92, 0x33, 0x92,
+      0x1b, 0x80, 0x7a, 0x75, 0x49, 0xd3, 0xad, 0xe2, 0x01, 0xa2};
 
-    struct ectlsencodedpoint_test_data p256_test_data = {
-      kP256PublicKey, // public_key
-      (1 + 32 + 32), // public_key_size
-      kP256PrivateKey, // private_key
-      32, // private_key_size
-      kP256ExpectedSharedSecret, // expected_shared_secret
-      32, // expected_shared_secret_size
-      EVP_PKEY_EC, // key_type
-      NID_X9_62_prime256v1 // curve_nid
-    };
+  struct ectlsencodedpoint_test_data p256_test_data = {
+      kP256PublicKey,             // public_key
+      (1 + 32 + 32),              // public_key_size
+      kP256PrivateKey,            // private_key
+      32,                         // private_key_size
+      kP256ExpectedSharedSecret,  // expected_shared_secret
+      32,                         // expected_shared_secret_size
+      EVP_PKEY_EC,                // key_type
+      NID_X9_62_prime256v1        // curve_nid
+  };
 
-    static const uint8_t kP384PublicKey[] = {
+  static const uint8_t kP384PublicKey[] = {
       /* uncompressed */
       0x04,
       /* x-coordinate */
@@ -1237,33 +1221,30 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       0xf9, 0x62, 0xa2, 0x73, 0x6a, 0xce, 0x52, 0x56, 0x18, 0x15, 0xd5, 0x99,
       0x53, 0xa0, 0x19, 0x1b, 0x1f, 0xb1, 0xf2, 0x88, 0xa4, 0x5f, 0x8e, 0x28,
       0x3d, 0x40, 0xa5, 0xff, 0x0e, 0x83, 0x3f, 0xf3, 0x0b, 0xd6, 0x05, 0xb1,
-      0x0c, 0xf8, 0xc2, 0x6c, 0x57, 0x4d, 0x4c, 0x2f, 0x0d, 0xcd, 0xce, 0x21
-    };
-    static const uint8_t kP384PrivateKey[] = {
+      0x0c, 0xf8, 0xc2, 0x6c, 0x57, 0x4d, 0x4c, 0x2f, 0x0d, 0xcd, 0xce, 0x21};
+  static const uint8_t kP384PrivateKey[] = {
       0x08, 0x95, 0x0a, 0xc9, 0x2e, 0x16, 0xce, 0x9e, 0x50, 0xed, 0xe3, 0x65,
       0x00, 0x3c, 0xb6, 0x2c, 0xea, 0x61, 0x03, 0xcf, 0xe5, 0x35, 0xfa, 0xb3,
       0xdc, 0x6f, 0x01, 0x45, 0xf3, 0x8e, 0xf1, 0x1c, 0x10, 0x3e, 0xf1, 0x40,
-      0x79, 0x7e, 0x4f, 0x1e, 0x5f, 0x05, 0x3f, 0x8e, 0x83, 0x0c, 0xa7, 0xd9
-    };
-    static const uint8_t kP384ExpectedSharedSecret[] = {
+      0x79, 0x7e, 0x4f, 0x1e, 0x5f, 0x05, 0x3f, 0x8e, 0x83, 0x0c, 0xa7, 0xd9};
+  static const uint8_t kP384ExpectedSharedSecret[] = {
       0x4b, 0x3c, 0xda, 0x1c, 0xef, 0xb6, 0x8d, 0x0a, 0x2e, 0xf3, 0x53, 0x04,
       0xa9, 0xb0, 0xca, 0x1d, 0x8c, 0xda, 0x8b, 0xdf, 0xc8, 0x01, 0x09, 0x8c,
       0xf7, 0x3c, 0x21, 0x8e, 0x65, 0x67, 0x22, 0xc3, 0x64, 0x96, 0x9a, 0x2a,
-      0x1f, 0x57, 0xd1, 0x93, 0x03, 0x95, 0x98, 0x22, 0x7e, 0xf2, 0xb5, 0x18
-    };
+      0x1f, 0x57, 0xd1, 0x93, 0x03, 0x95, 0x98, 0x22, 0x7e, 0xf2, 0xb5, 0x18};
 
-    struct ectlsencodedpoint_test_data p384_test_data = {
-      kP384PublicKey, // public_key
-      (1 + 48 + 48), // public_key_size
-      kP384PrivateKey, // private_key
-      48, // private_key_size
-      kP384ExpectedSharedSecret, // expected_shared_secret
-      48, // expected_shared_secret_size
-      EVP_PKEY_EC, // key_type
-      NID_secp384r1 // curve_nid
-    };
+  struct ectlsencodedpoint_test_data p384_test_data = {
+      kP384PublicKey,             // public_key
+      (1 + 48 + 48),              // public_key_size
+      kP384PrivateKey,            // private_key
+      48,                         // private_key_size
+      kP384ExpectedSharedSecret,  // expected_shared_secret
+      48,                         // expected_shared_secret_size
+      EVP_PKEY_EC,                // key_type
+      NID_secp384r1               // curve_nid
+  };
 
-    static const uint8_t kP521PublicKey[] = {
+  static const uint8_t kP521PublicKey[] = {
       /* uncompressed */
       0x04,
       /* x-coordinate */
@@ -1279,195 +1260,216 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       0x8d, 0x5d, 0xfa, 0x08, 0xb4, 0x27, 0xd3, 0xae, 0xe4, 0x76, 0x4f, 0x46,
       0x47, 0xf9, 0xf2, 0x4e, 0xcf, 0x0f, 0xee, 0x6d, 0x61, 0x9c, 0x79, 0x73,
       0xa8, 0x55, 0x4a, 0xd5, 0x51, 0x13, 0x0d, 0x1e, 0x3f, 0x6c, 0x9d, 0x2e,
-      0xe3, 0xa2, 0xa8, 0x6f, 0xf5, 0xc3
-    };
-    static const uint8_t kP521PrivateKey[] = {
-      0x01, 0xab, 0x4b, 0x1a, 0x8b, 0x60, 0xbb, 0x40, 0x23, 0xd6, 0x55, 0x05,
-      0x0f, 0x0a, 0xd5, 0xd6, 0xe1, 0xbf, 0x5b, 0xc5, 0x23, 0x90, 0x2a, 0x2f,
-      0x59, 0x69, 0x3e, 0xd0, 0xb9, 0x4f, 0x3c, 0x61, 0x06, 0xde, 0xb5, 0x92,
-      0xe0, 0xf1, 0x74, 0xa7, 0x8b, 0xbd, 0xef, 0x23, 0xec, 0xeb, 0x23, 0xfc,
-      0x97, 0x4b, 0x1c, 0xf5, 0x6a, 0x37, 0x73, 0x66, 0x6a, 0xfc, 0x76, 0x6f,
-      0x3d, 0xdc, 0xb4, 0xc2, 0x92, 0xd0
-    };
-    static const uint8_t kP521ExpectedSharedSecret[] = {
-      0x01, 0x1e, 0x28, 0x45, 0xc3, 0x2d, 0x1e, 0x49, 0xfc, 0x6a, 0x0e, 0x3c,
-      0xc8, 0x05, 0xc0, 0x98, 0x45, 0x11, 0xb0, 0x7f, 0xf6, 0xea, 0x41, 0xe1,
-      0xe1, 0x12, 0xee, 0x9c, 0x40, 0x8c, 0x74, 0xc3, 0x53, 0x5c, 0x97, 0xf2,
-      0xf1, 0x8d, 0x62, 0xf4, 0x3d, 0x27, 0x21, 0x40, 0x7b, 0x82, 0x13, 0xd0,
-      0x0b, 0xd3, 0x58, 0x86, 0x6a, 0x33, 0xc6, 0x0c, 0x67, 0x51, 0xd2, 0xdc,
-      0x23, 0x50, 0x06, 0x15, 0xb2, 0xba
-    };
+      0xe3, 0xa2, 0xa8, 0x6f, 0xf5, 0xc3};
+  static const uint8_t kP521PrivateKey[] = {
+      0x01, 0xab, 0x4b, 0x1a, 0x8b, 0x60, 0xbb, 0x40, 0x23, 0xd6, 0x55,
+      0x05, 0x0f, 0x0a, 0xd5, 0xd6, 0xe1, 0xbf, 0x5b, 0xc5, 0x23, 0x90,
+      0x2a, 0x2f, 0x59, 0x69, 0x3e, 0xd0, 0xb9, 0x4f, 0x3c, 0x61, 0x06,
+      0xde, 0xb5, 0x92, 0xe0, 0xf1, 0x74, 0xa7, 0x8b, 0xbd, 0xef, 0x23,
+      0xec, 0xeb, 0x23, 0xfc, 0x97, 0x4b, 0x1c, 0xf5, 0x6a, 0x37, 0x73,
+      0x66, 0x6a, 0xfc, 0x76, 0x6f, 0x3d, 0xdc, 0xb4, 0xc2, 0x92, 0xd0};
+  static const uint8_t kP521ExpectedSharedSecret[] = {
+      0x01, 0x1e, 0x28, 0x45, 0xc3, 0x2d, 0x1e, 0x49, 0xfc, 0x6a, 0x0e,
+      0x3c, 0xc8, 0x05, 0xc0, 0x98, 0x45, 0x11, 0xb0, 0x7f, 0xf6, 0xea,
+      0x41, 0xe1, 0xe1, 0x12, 0xee, 0x9c, 0x40, 0x8c, 0x74, 0xc3, 0x53,
+      0x5c, 0x97, 0xf2, 0xf1, 0x8d, 0x62, 0xf4, 0x3d, 0x27, 0x21, 0x40,
+      0x7b, 0x82, 0x13, 0xd0, 0x0b, 0xd3, 0x58, 0x86, 0x6a, 0x33, 0xc6,
+      0x0c, 0x67, 0x51, 0xd2, 0xdc, 0x23, 0x50, 0x06, 0x15, 0xb2, 0xba};
 
-    struct ectlsencodedpoint_test_data p521_test_data = {
-      kP521PublicKey, // public_key
-      (1 + 66 + 66), // public_key_size
-      kP521PrivateKey, // private_key
-      66, // private_key_size
-      kP521ExpectedSharedSecret, // expected_shared_secret
-      66, // expected_shared_secret_size
-      EVP_PKEY_EC, // key_type
-      NID_secp521r1 // curve_nid
-    };
+  struct ectlsencodedpoint_test_data p521_test_data = {
+      kP521PublicKey,             // public_key
+      (1 + 66 + 66),              // public_key_size
+      kP521PrivateKey,            // private_key
+      66,                         // private_key_size
+      kP521ExpectedSharedSecret,  // expected_shared_secret
+      66,                         // expected_shared_secret_size
+      EVP_PKEY_EC,                // key_type
+      NID_secp521r1               // curve_nid
+  };
 
-    ectlsencodedpoint_test_data test_data_all[] = {x25519_test_data,
-      p224_test_data, p256_test_data, p384_test_data, p521_test_data};
+  ectlsencodedpoint_test_data test_data_all[] = {
+      x25519_test_data, p224_test_data, p256_test_data, p384_test_data,
+      p521_test_data};
 
-    uint8_t *output = nullptr;
-    size_t output_size = 0;
-    uint8_t *shared_secret = nullptr;
-    size_t shared_secret_size = 0;
-    EVP_PKEY_CTX *pkey_ctx = nullptr;
-    EVP_PKEY *pkey_public = nullptr;
-    EVP_PKEY *pkey_private = nullptr;
+  uint8_t *output = nullptr;
+  size_t output_size = 0;
+  uint8_t *shared_secret = nullptr;
+  size_t shared_secret_size = 0;
+  EVP_PKEY_CTX *pkey_ctx = nullptr;
+  EVP_PKEY *pkey_public = nullptr;
+  EVP_PKEY *pkey_private = nullptr;
 
-    for (ectlsencodedpoint_test_data test_data : test_data_all) {
-
-      pkey_private = instantiate_and_set_private_key(test_data.private_key,
-        test_data.private_key_size, test_data.key_type, test_data.curve_nid);
-      ASSERT_TRUE(pkey_private);
-      pkey_public = instantiate_public_key(test_data.key_type,
+  for (ectlsencodedpoint_test_data test_data : test_data_all) {
+    pkey_private = instantiate_and_set_private_key(
+        test_data.private_key, test_data.private_key_size, test_data.key_type,
         test_data.curve_nid);
-      ASSERT_TRUE(pkey_public);
+    ASSERT_TRUE(pkey_private);
+    pkey_public =
+        instantiate_public_key(test_data.key_type, test_data.curve_nid);
+    ASSERT_TRUE(pkey_public);
 
-      // Test we can parse EC point into an EVP_PKEY object
-      ASSERT_TRUE(EVP_PKEY_set1_tls_encodedpoint(pkey_public,
-        test_data.public_key, test_data.public_key_size));
+    // Test we can parse EC point into an EVP_PKEY object
+    ASSERT_TRUE(EVP_PKEY_set1_tls_encodedpoint(
+        pkey_public, test_data.public_key, test_data.public_key_size));
 
-      // Test we can successfully perform a ECDH key derivation using the
-      // parsed public key and a corresponding private key
-      pkey_ctx = EVP_PKEY_CTX_new(pkey_private, nullptr);
-      ASSERT_TRUE(pkey_ctx);
-      ASSERT_TRUE(EVP_PKEY_derive_init(pkey_ctx));
-      ASSERT_TRUE(EVP_PKEY_derive_set_peer(pkey_ctx, pkey_public));
-      ASSERT_TRUE(EVP_PKEY_derive(pkey_ctx, nullptr, &shared_secret_size));
-      EXPECT_EQ(shared_secret_size, test_data.expected_shared_secret_size);
-      shared_secret = (uint8_t *) OPENSSL_malloc(shared_secret_size);
-      ASSERT_TRUE(shared_secret);
-      ASSERT_TRUE(EVP_PKEY_derive(pkey_ctx, shared_secret,
-        &shared_secret_size));
-      EXPECT_EQ(shared_secret_size, test_data.expected_shared_secret_size);
-      EXPECT_EQ(Bytes(shared_secret, shared_secret_size),
-        Bytes(test_data.expected_shared_secret, shared_secret_size));
+    // Test we can successfully perform a ECDH key derivation using the
+    // parsed public key and a corresponding private key
+    pkey_ctx = EVP_PKEY_CTX_new(pkey_private, nullptr);
+    ASSERT_TRUE(pkey_ctx);
+    ASSERT_TRUE(EVP_PKEY_derive_init(pkey_ctx));
+    ASSERT_TRUE(EVP_PKEY_derive_set_peer(pkey_ctx, pkey_public));
+    ASSERT_TRUE(EVP_PKEY_derive(pkey_ctx, nullptr, &shared_secret_size));
+    EXPECT_EQ(shared_secret_size, test_data.expected_shared_secret_size);
+    shared_secret = (uint8_t *)OPENSSL_malloc(shared_secret_size);
+    ASSERT_TRUE(shared_secret);
+    ASSERT_TRUE(EVP_PKEY_derive(pkey_ctx, shared_secret, &shared_secret_size));
+    EXPECT_EQ(shared_secret_size, test_data.expected_shared_secret_size);
+    EXPECT_EQ(Bytes(shared_secret, shared_secret_size),
+              Bytes(test_data.expected_shared_secret, shared_secret_size));
 
-      // Test we can write EC point from the EVP_PKEY object to wire format
-      output_size = EVP_PKEY_get1_tls_encodedpoint(pkey_public, &output);
-      EXPECT_EQ(output_size, test_data.public_key_size);
-      EXPECT_EQ(Bytes(output, output_size),
-        Bytes(test_data.public_key, output_size));
+    // Test we can write EC point from the EVP_PKEY object to wire format
+    output_size = EVP_PKEY_get1_tls_encodedpoint(pkey_public, &output);
+    EXPECT_EQ(output_size, test_data.public_key_size);
+    EXPECT_EQ(Bytes(output, output_size),
+              Bytes(test_data.public_key, output_size));
 
-      OPENSSL_free(output);
-      OPENSSL_free(shared_secret);
-      EVP_PKEY_CTX_free(pkey_ctx);
-      EVP_PKEY_free(pkey_public);
-      EVP_PKEY_free(pkey_private);
-      output_size = 0;
-      shared_secret_size = 0;
-    }
+    OPENSSL_free(output);
+    OPENSSL_free(shared_secret);
+    EVP_PKEY_CTX_free(pkey_ctx);
+    EVP_PKEY_free(pkey_public);
+    EVP_PKEY_free(pkey_private);
+    output_size = 0;
+    shared_secret_size = 0;
+  }
 
-    // Above tests explore the happy path. Now test that some invalid
-    // input parameters are handled gracefully and with no crashes.
-    for (ectlsencodedpoint_test_data test_data : test_data_all) {
+  // Above tests explore the happy path. Now test that some invalid
+  // input parameters are handled gracefully and with no crashes.
+  for (ectlsencodedpoint_test_data test_data : test_data_all) {
+    pkey_public =
+        instantiate_public_key(test_data.key_type, test_data.curve_nid);
+    ASSERT_TRUE(pkey_public);
 
-      pkey_public = instantiate_public_key(test_data.key_type,
-        test_data.curve_nid);
-      ASSERT_TRUE(pkey_public);
+    // pkey = NULL should result in |ERR_R_PASSED_NULL_PARAMETER| being passed
+    // back for both functions.
+    ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(nullptr, test_data.public_key,
+                                                test_data.public_key_size));
+    EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
+    ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(nullptr, &output));
+    EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
 
-      // pkey = NULL should result in |ERR_R_PASSED_NULL_PARAMETER| being passed
-      // back for both functions.
-      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(nullptr,
-        test_data.public_key, test_data.public_key_size));
-      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
-      ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(nullptr, &output));
-      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
+    // For |EVP_PKEY_get1_tls_encodedpoint| if out_ptr = NULL, we should also
+    // expect |ERR_R_PASSED_NULL_PARAMETER| being passed back.
+    ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(pkey_public, nullptr));
+    EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
 
-      // For |EVP_PKEY_get1_tls_encodedpoint| if out_ptr = NULL, we should also
-      // expect |ERR_R_PASSED_NULL_PARAMETER| being passed back.
-      ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(pkey_public, nullptr));
-      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
+    // For |EVP_PKEY_set1_tls_encodedpoint| if in = NULL or len < 1, we should
+    // expect |ERR_R_PASSED_NULL_PARAMETER| or |EVP_R_INVALID_PARAMETERS|,
+    // respectively.
+    ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public, nullptr,
+                                                test_data.public_key_size));
+    EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
+    ASSERT_FALSE(
+        EVP_PKEY_set1_tls_encodedpoint(pkey_public, test_data.public_key, 0));
+    EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
 
-      // For |EVP_PKEY_set1_tls_encodedpoint| if in = NULL or len < 1, we should
-      // expect |ERR_R_PASSED_NULL_PARAMETER| or |EVP_R_INVALID_PARAMETERS|,
-      // respectively.
-      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public,
-        nullptr, test_data.public_key_size));
-      EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
-      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public,
-        test_data.public_key, 0));
-      EXPECT_EQ(EVP_R_INVALID_PARAMETERS,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
+    EVP_PKEY_free(pkey_public);
+  }
 
-      EVP_PKEY_free(pkey_public);
-    }
+  // Test various unsupported key types are rejected
+  int key_types_not_supported[] = {EVP_PKEY_RSA, EVP_PKEY_DSA,
+                                   EVP_PKEY_ED25519};
+  const uint8_t not_supported[] = {'n', 'o', 't', ' ', 's', 'u', 'p',
+                                   'p', 'o', 'r', 't', 'e', 'd'};
+  size_t not_supported_size = 13;  // specific size irrelevant
+  uint8_t *not_supported_out = nullptr;
+  bssl::UniquePtr<EVP_PKEY> pkey_key_type_not_supported(EVP_PKEY_new());
 
-    // Test various unsupported key types are rejected
-    int key_types_not_supported[] = {EVP_PKEY_RSA, EVP_PKEY_DSA,
-      EVP_PKEY_ED25519};
-    const uint8_t not_supported[] = {'n','o','t',' ','s','u','p','p','o','r',
-      't','e','d'};
-    size_t not_supported_size = 13; // specific size irrelevant
-    uint8_t *not_supported_out = nullptr;
-    bssl::UniquePtr<EVP_PKEY> pkey_key_type_not_supported(EVP_PKEY_new());
+  for (int key_type : key_types_not_supported) {
+    ASSERT_TRUE(pkey_key_type_not_supported.get());
+    ASSERT_TRUE(EVP_PKEY_set_type(pkey_key_type_not_supported.get(), key_type));
 
-    for (int key_type : key_types_not_supported) {
-      ASSERT_TRUE(pkey_key_type_not_supported.get());
-      ASSERT_TRUE(EVP_PKEY_set_type(pkey_key_type_not_supported.get(),
-        key_type));
-
-      ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(
+    ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(
         pkey_key_type_not_supported.get(), not_supported, not_supported_size));
-      EXPECT_EQ(EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
+    EXPECT_EQ(EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
 
-      ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(
+    ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(
         pkey_key_type_not_supported.get(), &not_supported_out));
-      EXPECT_EQ(EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE,
-        ERR_GET_REASON(ERR_peek_last_error()));
-      ERR_clear_error();
-    }
+    EXPECT_EQ(EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE,
+              ERR_GET_REASON(ERR_peek_last_error()));
+    ERR_clear_error();
+  }
 
-    // Test compressed encoded EC point is rejected
-    static const uint8_t kP256PublicKeyCompressed[] = {
+  // Test compressed encoded EC point is rejected
+  static const uint8_t kP256PublicKeyCompressed[] = {
       /* uncompressed + parity bit */
       0x03,
       /* x-coordinate */
-      0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
-      0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
-      0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b,
-    };
+      0xe1,
+      0x5a,
+      0x44,
+      0x72,
+      0x91,
+      0xf0,
+      0x84,
+      0xfe,
+      0x88,
+      0x7a,
+      0x6c,
+      0x2c,
+      0x03,
+      0x22,
+      0x9a,
+      0xf3,
+      0x04,
+      0x8a,
+      0x5d,
+      0xfe,
+      0x84,
+      0x73,
+      0x70,
+      0xc9,
+      0x3f,
+      0x92,
+      0x72,
+      0x9b,
+      0x31,
+      0xc5,
+      0x5f,
+      0x7b,
+  };
 
-    bssl::UniquePtr<EVP_PKEY> pkey_public_compressed(instantiate_public_key(
-      EVP_PKEY_EC, NID_X9_62_prime256v1));
-    ASSERT_TRUE(pkey_public_compressed);
+  bssl::UniquePtr<EVP_PKEY> pkey_public_compressed(
+      instantiate_public_key(EVP_PKEY_EC, NID_X9_62_prime256v1));
+  ASSERT_TRUE(pkey_public_compressed);
 
-    ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(pkey_public_compressed.get(),
-      kP256PublicKeyCompressed, 1 + 32));
-    EXPECT_EQ(ERR_R_EVP_LIB,
-      ERR_GET_REASON(ERR_peek_last_error()));
-    ERR_clear_error();
+  ASSERT_FALSE(EVP_PKEY_set1_tls_encodedpoint(
+      pkey_public_compressed.get(), kP256PublicKeyCompressed, 1 + 32));
+  EXPECT_EQ(ERR_R_EVP_LIB, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
 
-    uint8_t *output_compressed = NULL;
-    bssl::UniquePtr<EVP_PKEY> pkey_public_compressed_set(
+  uint8_t *output_compressed = NULL;
+  bssl::UniquePtr<EVP_PKEY> pkey_public_compressed_set(
       instantiate_and_set_public_key(kP256PublicKeyCompressed, 1 + 32,
-        NID_X9_62_prime256v1));
-    EC_KEY_set_conv_form(EVP_PKEY_get0_EC_KEY(pkey_public_compressed_set.get()),
-      POINT_CONVERSION_COMPRESSED);
-    ASSERT_TRUE(pkey_public_compressed_set.get());
+                                     NID_X9_62_prime256v1));
+  EC_KEY_set_conv_form(EVP_PKEY_get0_EC_KEY(pkey_public_compressed_set.get()),
+                       POINT_CONVERSION_COMPRESSED);
+  ASSERT_TRUE(pkey_public_compressed_set.get());
 
-    ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(
-      pkey_public_compressed_set.get(), &output_compressed));
-    EXPECT_EQ(ERR_R_EVP_LIB,
-      ERR_GET_REASON(ERR_peek_last_error()));
-    ERR_clear_error();
+  ASSERT_FALSE(EVP_PKEY_get1_tls_encodedpoint(pkey_public_compressed_set.get(),
+                                              &output_compressed));
+  EXPECT_EQ(ERR_R_EVP_LIB, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
 }
 
 TEST(EVPTest, PKEY_asn1_find) {
@@ -1475,9 +1477,10 @@ TEST(EVPTest, PKEY_asn1_find) {
   const char *pinfo, *pem_str;
 
   /* Test case 1: Find RSA algorithm */
-  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_RSA);
+  const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_RSA);
   ASSERT_TRUE(ameth);
-  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags,
+                                      &pinfo, &pem_str, ameth));
   ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
   ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
   ASSERT_EQ(0, pkey_flags);
@@ -1487,7 +1490,8 @@ TEST(EVPTest, PKEY_asn1_find) {
   /* Test case 2: Find EC algorithm */
   ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_EC);
   ASSERT_TRUE(ameth);
-  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags,
+                                      &pinfo, &pem_str, ameth));
   ASSERT_EQ(pkey_id, EVP_PKEY_EC);
   ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
   ASSERT_EQ(0, pkey_flags);
@@ -1497,7 +1501,8 @@ TEST(EVPTest, PKEY_asn1_find) {
   /* Test case 3: Find non-existent algorithm */
   ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_NONE);
   ASSERT_FALSE(ameth);
-  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags,
+                                       &pinfo, &pem_str, ameth));
 }
 
 TEST(EVPTest, PKEY_asn1_find_str) {
@@ -1505,9 +1510,10 @@ TEST(EVPTest, PKEY_asn1_find_str) {
   const char *pinfo, *pem_str;
 
   /* Test case 1: Find RSA algorithm */
-  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find_str(NULL, "RSA", 3);
+  const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_find_str(NULL, "RSA", 3);
   ASSERT_TRUE(ameth);
-  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags,
+                                      &pinfo, &pem_str, ameth));
   ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
   ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
   ASSERT_EQ(0, pkey_flags);
@@ -1517,7 +1523,8 @@ TEST(EVPTest, PKEY_asn1_find_str) {
   /* Test case 2: Find EC algorithm */
   ameth = EVP_PKEY_asn1_find_str(NULL, "EC", 2);
   ASSERT_TRUE(ameth);
-  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags,
+                                      &pinfo, &pem_str, ameth));
   ASSERT_EQ(pkey_id, EVP_PKEY_EC);
   ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
   ASSERT_EQ(0, pkey_flags);
@@ -1527,7 +1534,8 @@ TEST(EVPTest, PKEY_asn1_find_str) {
   /* Test case 3: Find non-existent algorithm */
   ameth = EVP_PKEY_asn1_find_str(NULL, "Nonsense", 8);
   ASSERT_FALSE(ameth);
-  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags,
+                                       &pinfo, &pem_str, ameth));
 }
 
 TEST(EVPTest, ED25519PH) {
@@ -1576,9 +1584,11 @@ TEST(EVPTest, ED25519PH) {
   {
     uint8_t raw_key[ED25519_PRIVATE_KEY_SEED_LEN];
     size_t raw_key_len = sizeof(raw_key);
-    ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), raw_key, &raw_key_len));
+    ASSERT_TRUE(
+        EVP_PKEY_get_raw_private_key(pkey.get(), raw_key, &raw_key_len));
 
-    EVP_PKEY *rk = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519PH, nullptr, raw_key, raw_key_len);
+    EVP_PKEY *rk = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519PH, nullptr,
+                                                raw_key, raw_key_len);
     ASSERT_TRUE(rk);
     pkey.reset(rk);
     ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pkey.get()));
@@ -1592,8 +1602,9 @@ TEST(EVPTest, ED25519PH) {
     uint8_t raw_key[ED25519_PUBLIC_KEY_LEN];
     size_t raw_key_len = sizeof(raw_key);
     ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), raw_key, &raw_key_len));
-    
-    EVP_PKEY *rk = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519PH, nullptr, raw_key, raw_key_len);
+
+    EVP_PKEY *rk = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519PH, nullptr,
+                                               raw_key, raw_key_len);
     ASSERT_TRUE(rk);
     pubkey.reset(rk);
     ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pubkey.get()));
@@ -1623,8 +1634,7 @@ TEST(EVPTest, ED25519PH) {
     ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), &message[0], 3));
     ASSERT_TRUE(
         EVP_DigestSignUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
-    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature,
-                                    &signature_len));
+    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature, &signature_len));
     ASSERT_EQ(signature_len, (size_t)ED25519_SIGNATURE_LEN);
 
     ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
@@ -1634,8 +1644,7 @@ TEST(EVPTest, ED25519PH) {
     ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), &message[0], 3));
     ASSERT_TRUE(
         EVP_DigestVerifyUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
-    ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(),
-                                      signature, signature_len));
+    ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature, signature_len));
   }
 
   // prehash signature gen and verify w/ context using EVP_PKEY_sign and
@@ -1646,9 +1655,11 @@ TEST(EVPTest, ED25519PH) {
     ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
     ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(ctx.get(), context,
                                                    sizeof(context)));
-    ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature, &working_signature_len, message_sha512, sizeof(message_sha512)));
+    ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature,
+                              &working_signature_len, message_sha512,
+                              sizeof(message_sha512)));
     ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
-    
+
     ctx.reset(EVP_PKEY_CTX_new(pubkey.get(), nullptr));
     ASSERT_TRUE(ctx.get());
     ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
@@ -1692,12 +1703,14 @@ TEST(EVPTest, ED25519PH) {
                                       working_signature_len));
   }
 
-  // Pre-hash signature w/ context should not match Pre-hash signature w/o context
+  // Pre-hash signature w/ context should not match Pre-hash signature w/o
+  // context
   ASSERT_NE(Bytes(signature, signature_len),
             Bytes(working_signature, working_signature_len));
 
 
-  // prehash signature gen and verify with EVP_PKEY_sign and EVP_PKEY_verify directly
+  // prehash signature gen and verify with EVP_PKEY_sign and EVP_PKEY_verify
+  // directly
   {
     OPENSSL_memcpy(signature, working_signature, working_signature_len);
     signature_len = working_signature_len;
@@ -1705,19 +1718,23 @@ TEST(EVPTest, ED25519PH) {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
     ASSERT_TRUE(ctx.get());
     ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
-    ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature, &working_signature_len, message_sha512, sizeof(message_sha512)));
+    ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature,
+                              &working_signature_len, message_sha512,
+                              sizeof(message_sha512)));
     ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
 
     ctx.reset(EVP_PKEY_CTX_new(pubkey.get(), nullptr));
     ASSERT_TRUE(ctx.get());
     ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
-    ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), working_signature, working_signature_len, message_sha512, sizeof(message_sha512)));
+    ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), working_signature,
+                                working_signature_len, message_sha512,
+                                sizeof(message_sha512)));
 
     ASSERT_EQ(Bytes(signature, signature_len),
               Bytes(working_signature, working_signature_len));
   }
 
-  
+
   {
     CBS cbs;
     CBS_init(&cbs, CBB_data(marshalled_private_key.get()),
@@ -1744,13 +1761,15 @@ TEST(EVPTest, ED25519PH) {
     ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr,
                                    pkey.get()));
     ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), working_signature,
-                               &working_signature_len, message, sizeof(message)));
+                               &working_signature_len, message,
+                               sizeof(message)));
     ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
 
     ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, nullptr, nullptr,
                                      pubkey.get()));
     ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), working_signature,
-                                 working_signature_len, message, sizeof(message)));
+                                 working_signature_len, message,
+                                 sizeof(message)));
   }
 
   // pure signature shouldn't match a pre-hash signature w/o context
@@ -1759,50 +1778,55 @@ TEST(EVPTest, ED25519PH) {
 }
 
 TEST(EVPTest, Ed25519phTestVectors) {
-  FileTestGTest("crypto/fipsmodule/curve25519/ed25519ph_tests.txt", [](FileTest *t) {
-    std::vector<uint8_t> seed, q, message, context, expected_signature;
-    ASSERT_TRUE(t->GetBytes(&seed, "SEED"));
-    ASSERT_EQ(32u, seed.size());
-    ASSERT_TRUE(t->GetBytes(&q, "Q"));
-    ASSERT_EQ(32u, q.size());
-    ASSERT_TRUE(t->GetBytes(&message, "MESSAGE"));
-    ASSERT_TRUE(t->GetBytes(&expected_signature, "SIGNATURE"));
-    ASSERT_EQ(64u, expected_signature.size());
+  FileTestGTest(
+      "crypto/fipsmodule/curve25519/ed25519ph_tests.txt", [](FileTest *t) {
+        std::vector<uint8_t> seed, q, message, context, expected_signature;
+        ASSERT_TRUE(t->GetBytes(&seed, "SEED"));
+        ASSERT_EQ(32u, seed.size());
+        ASSERT_TRUE(t->GetBytes(&q, "Q"));
+        ASSERT_EQ(32u, q.size());
+        ASSERT_TRUE(t->GetBytes(&message, "MESSAGE"));
+        ASSERT_TRUE(t->GetBytes(&expected_signature, "SIGNATURE"));
+        ASSERT_EQ(64u, expected_signature.size());
 
-    if (t->HasAttribute("CONTEXT")) {
-        t->GetBytes(&context, "CONTEXT");
-    } else {
-        context = std::vector<uint8_t>();
-    }
+        if (t->HasAttribute("CONTEXT")) {
+          t->GetBytes(&context, "CONTEXT");
+        } else {
+          context = std::vector<uint8_t>();
+        }
 
-    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519PH, nullptr, seed.data(), seed.size()));
-    bssl::UniquePtr<EVP_PKEY> pubkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519PH, nullptr, q.data(), q.size()));
-    ASSERT_TRUE(pkey.get());
-    ASSERT_TRUE(pubkey.get());
-    ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pkey.get()));
-    ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pubkey.get()));
+        bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(
+            EVP_PKEY_ED25519PH, nullptr, seed.data(), seed.size()));
+        bssl::UniquePtr<EVP_PKEY> pubkey(EVP_PKEY_new_raw_public_key(
+            EVP_PKEY_ED25519PH, nullptr, q.data(), q.size()));
+        ASSERT_TRUE(pkey.get());
+        ASSERT_TRUE(pubkey.get());
+        ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pkey.get()));
+        ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pubkey.get()));
 
-    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
-    EVP_PKEY_CTX *pctx = nullptr;
-    uint8_t signature[ED25519_SIGNATURE_LEN] = {};
-    size_t signature_len = ED25519_SIGNATURE_LEN;
+        bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+        EVP_PKEY_CTX *pctx = nullptr;
+        uint8_t signature[ED25519_SIGNATURE_LEN] = {};
+        size_t signature_len = ED25519_SIGNATURE_LEN;
 
-    ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
-                                   pkey.get()));
-    ASSERT_TRUE(
-        EVP_PKEY_CTX_set_signature_context(pctx, context.data(), context.size()));
-    ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), message.data(), message.size()));
-    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature,
-                                    &signature_len));
-    ASSERT_EQ(signature_len, (size_t)ED25519_SIGNATURE_LEN);
-    ASSERT_EQ(Bytes(expected_signature), Bytes(signature, signature_len));
+        ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha512(),
+                                       nullptr, pkey.get()));
+        ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(pctx, context.data(),
+                                                       context.size()));
+        ASSERT_TRUE(
+            EVP_DigestSignUpdate(md_ctx.get(), message.data(), message.size()));
+        ASSERT_TRUE(
+            EVP_DigestSignFinal(md_ctx.get(), signature, &signature_len));
+        ASSERT_EQ(signature_len, (size_t)ED25519_SIGNATURE_LEN);
+        ASSERT_EQ(Bytes(expected_signature), Bytes(signature, signature_len));
 
-    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
-                                     pubkey.get()));
-    ASSERT_TRUE(
-        EVP_PKEY_CTX_set_signature_context(pctx, context.data(), context.size()));
-    ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), message.data(), message.size()));
-    ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature,
-                                      signature_len));
-  });
+        ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(),
+                                         nullptr, pubkey.get()));
+        ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(pctx, context.data(),
+                                                       context.size()));
+        ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), message.data(),
+                                           message.size()));
+        ASSERT_TRUE(
+            EVP_DigestVerifyFinal(md_ctx.get(), signature, signature_len));
+      });
 }

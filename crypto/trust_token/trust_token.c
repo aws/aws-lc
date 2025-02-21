@@ -183,7 +183,7 @@ int TRUST_TOKEN_derive_key_from_secret(
   }
 
   if (!method->derive_key_from_secret(&priv_cbb, &pub_cbb, secret,
-                                        secret_len)) {
+                                      secret_len)) {
     return 0;
   }
 
@@ -266,8 +266,7 @@ static int trust_token_client_begin_issuance_impl(
   int ret = 0;
   CBB request;
   STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens = NULL;
-  if (!CBB_init(&request, 0) ||
-      !CBB_add_u16(&request, count)) {
+  if (!CBB_init(&request, 0) || !CBB_add_u16(&request, count)) {
     goto err;
   }
 
@@ -306,17 +305,14 @@ int TRUST_TOKEN_CLIENT_begin_issuance_over_message(
 }
 
 
-STACK_OF(TRUST_TOKEN) *
-    TRUST_TOKEN_CLIENT_finish_issuance(TRUST_TOKEN_CLIENT *ctx,
-                                       size_t *out_key_index,
-                                       const uint8_t *response,
-                                       size_t response_len) {
+STACK_OF(TRUST_TOKEN) *TRUST_TOKEN_CLIENT_finish_issuance(
+    TRUST_TOKEN_CLIENT *ctx, size_t *out_key_index, const uint8_t *response,
+    size_t response_len) {
   CBS in;
   CBS_init(&in, response, response_len);
   uint16_t count;
   uint32_t key_id;
-  if (!CBS_get_u16(&in, &count) ||
-      !CBS_get_u32(&in, &key_id)) {
+  if (!CBS_get_u16(&in, &count) || !CBS_get_u32(&in, &key_id)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return NULL;
   }
@@ -397,8 +393,7 @@ int TRUST_TOKEN_CLIENT_finish_redemption(TRUST_TOKEN_CLIENT *ctx,
   }
 
   if (!CBS_get_u16_length_prefixed(&in, &srr) ||
-      !CBS_get_u16_length_prefixed(&in, &sig) ||
-      CBS_len(&in) != 0) {
+      !CBS_get_u16_length_prefixed(&in, &sig) || CBS_len(&in) != 0) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_ERROR);
     return 0;
   }
@@ -550,8 +545,7 @@ int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
 
   int ret = 0;
   CBB response;
-  if (!CBB_init(&response, 0) ||
-      !CBB_add_u16(&response, num_to_issue) ||
+  if (!CBB_init(&response, 0) || !CBB_add_u16(&response, num_to_issue) ||
       !CBB_add_u32(&response, public_metadata)) {
     goto err;
   }

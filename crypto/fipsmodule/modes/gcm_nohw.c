@@ -143,7 +143,7 @@ static void gcm_mul64_nohw(uint64_t *out_lo, uint64_t *out_hi, uint64_t a,
   mid = _mm_and_si128(mid, _mm_setr_epi32(0, 0xffffffff, 0xffffffff, 0));
   ret = _mm_xor_si128(ret, mid);
   memcpy(out_lo, &ret, 8);
-  memcpy(out_hi, ((char*)&ret) + 8, 8);
+  memcpy(out_hi, ((char *)&ret) + 8, 8);
 }
 
 #else  // !BORINGSSL_HAS_UINT128 && !OPENSSL_SSE2

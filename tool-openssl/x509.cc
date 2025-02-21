@@ -1,41 +1,59 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include "internal.h"
+#include <openssl/x509.h>
 #include <ctime>
 #include <string>
+#include "internal.h"
 
 static const argument_t kArguments[] = {
-  { "-help", kBooleanArgument, "Display option summary" },
-  { "-in", kOptionalArgument, "Certificate input, or CSR input file with -req" },
-  { "-req", kBooleanArgument, "Input is a CSR file (rather than a certificate)" },
-  { "-signkey", kOptionalArgument, "Causes input file to be self signed using supplied private key" },
-  { "-out", kOptionalArgument, "Filepath to write all output to, if not set write to stdout" },
-  { "-noout", kBooleanArgument, "Prevents output of the encoded version of the certificate" },
-  { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
-  { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
-  { "-subject", kBooleanArgument, "Prints the subject name"},
-  { "-subject_hash", kBooleanArgument, "Prints subject hash value"},
-  { "-subject_hash_old", kBooleanArgument, "Prints old OpenSSL style (MD5) subject hash value"},
-  { "-fingerprint", kBooleanArgument, "Prints the certificate fingerprint"},
-  { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
-  { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
-  { "-text", kBooleanArgument, "Pretty print the contents of the certificate"},
-  { "-inform", kOptionalArgument, "This specifies the input format normally the command will expect an X509 "
-                                  "certificate but this can change if other options such as -req are present. "
-                                  "The DER format is the DER encoding of the certificate and PEM is the base64 "
-                                  "encoding of the DER encoding with header and footer lines added. The default "
-                                  "format is PEM."},
-  { "-enddate", kBooleanArgument, "Prints out the expiry date of the certificate, that is the notAfter date."},
-  { "", kOptionalArgument, "" }
-};
+    {"-help", kBooleanArgument, "Display option summary"},
+    {"-in", kOptionalArgument,
+     "Certificate input, or CSR input file with -req"},
+    {"-req", kBooleanArgument,
+     "Input is a CSR file (rather than a certificate)"},
+    {"-signkey", kOptionalArgument,
+     "Causes input file to be self signed using supplied private key"},
+    {"-out", kOptionalArgument,
+     "Filepath to write all output to, if not set write to stdout"},
+    {"-noout", kBooleanArgument,
+     "Prevents output of the encoded version of the certificate"},
+    {"-dates", kBooleanArgument,
+     "Print the start and expiry dates of a certificate"},
+    {"-modulus", kBooleanArgument,
+     "Prints out value of the modulus of the public key contained in the "
+     "certificate"},
+    {"-subject", kBooleanArgument, "Prints the subject name"},
+    {"-subject_hash", kBooleanArgument, "Prints subject hash value"},
+    {"-subject_hash_old", kBooleanArgument,
+     "Prints old OpenSSL style (MD5) subject hash value"},
+    {"-fingerprint", kBooleanArgument, "Prints the certificate fingerprint"},
+    {"-checkend", kOptionalArgument,
+     "Check whether cert expires in the next arg seconds"},
+    {"-days", kOptionalArgument,
+     "Number of days until newly generated certificate expires - default 30"},
+    {"-text", kBooleanArgument, "Pretty print the contents of the certificate"},
+    {"-inform", kOptionalArgument,
+     "This specifies the input format normally the command will expect an X509 "
+     "certificate but this can change if other options such as -req are "
+     "present. "
+     "The DER format is the DER encoding of the certificate and PEM is the "
+     "base64 "
+     "encoding of the DER encoding with header and footer lines added. The "
+     "default "
+     "format is PEM."},
+    {"-enddate", kBooleanArgument,
+     "Prints out the expiry date of the certificate, that is the notAfter "
+     "date."},
+    {"", kOptionalArgument, ""}};
 
-static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio, const std::string &out_path) {
+static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
+                                   const std::string &out_path) {
   if (!PEM_write_bio_X509(output_bio.get(), x509)) {
-    fprintf(stderr, "Error: error writing certificate to '%s'\n", out_path.c_str());
+    fprintf(stderr, "Error: error writing certificate to '%s'\n",
+            out_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
   }
@@ -43,35 +61,41 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
 }
 
 static bool isCharUpperCaseEqual(char a, char b) {
-  return ::toupper(a) ==  ::toupper(b);
+  return ::toupper(a) == ::toupper(b);
 }
 
 static bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
-  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
+  return a.size() == b.size() &&
+         std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
 }
 
-bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path) {
+bool LoadPrivateKeyAndSignCertificate(X509 *x509,
+                                      const std::string &signkey_path) {
   ScopedFILE signkey_file(fopen(signkey_path.c_str(), "rb"));
   if (!signkey_file) {
-    fprintf(stderr, "Error: unable to load private key from '%s'\n", signkey_path.c_str());
+    fprintf(stderr, "Error: unable to load private key from '%s'\n",
+            signkey_path.c_str());
     return false;
   }
-  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PrivateKey(signkey_file.get(), nullptr, nullptr, nullptr));
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      PEM_read_PrivateKey(signkey_file.get(), nullptr, nullptr, nullptr));
   if (!pkey) {
-    fprintf(stderr, "Error: error reading private key from '%s'\n", signkey_path.c_str());
+    fprintf(stderr, "Error: error reading private key from '%s'\n",
+            signkey_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
   }
   // TODO: make customizable with -digest option
   if (!X509_sign(x509, pkey.get(), EVP_sha256())) {
-    fprintf(stderr, "Error: error signing certificate with key from '%s'\n", signkey_path.c_str());
+    fprintf(stderr, "Error: error signing certificate with key from '%s'\n",
+            signkey_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
   }
   return true;
 }
 
-bool IsNumeric(const std::string& str) {
+bool IsNumeric(const std::string &str) {
   return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
@@ -87,8 +111,8 @@ bool X509Tool(const args_list_t &args) {
 
   std::string in_path, out_path, signkey_path, checkend_str, days_str, inform;
   bool noout = false, modulus = false, dates = false, req = false, help = false,
-  text = false, subject = false, fingerprint = false, enddate = false,
-  subject_hash = false, subject_hash_old = false;
+       text = false, subject = false, fingerprint = false, enddate = false,
+       subject_hash = false, subject_hash_old = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -122,21 +146,28 @@ bool X509Tool(const args_list_t &args) {
 
   // -req must include -signkey
   if (req && signkey_path.empty()) {
-    fprintf(stderr, "Error: '-req' option must be used with '-signkey' option\n");
+    fprintf(stderr,
+            "Error: '-req' option must be used with '-signkey' option\n");
     return false;
   }
 
   // Check for mutually exclusive options
-  if (req && (dates || parsed_args.count("-checkend"))){
-    fprintf(stderr, "Error: '-req' option cannot be used with '-dates' and '-checkend' options\n");
+  if (req && (dates || parsed_args.count("-checkend"))) {
+    fprintf(stderr,
+            "Error: '-req' option cannot be used with '-dates' and '-checkend' "
+            "options\n");
     return false;
   }
-  if (!signkey_path.empty() && (dates || parsed_args.count("-checkend"))){
-    fprintf(stderr, "Error: '-signkey' option cannot be used with '-dates' and '-checkend' options\n");
+  if (!signkey_path.empty() && (dates || parsed_args.count("-checkend"))) {
+    fprintf(stderr,
+            "Error: '-signkey' option cannot be used with '-dates' and "
+            "'-checkend' options\n");
     return false;
   }
-  if (parsed_args.count("-days") && (dates || parsed_args.count("-checkend"))){
-    fprintf(stderr, "Error: '-days' option cannot be used with '-dates' and '-checkend' options\n");
+  if (parsed_args.count("-days") && (dates || parsed_args.count("-checkend"))) {
+    fprintf(stderr,
+            "Error: '-days' option cannot be used with '-dates' and "
+            "'-checkend' options\n");
     return false;
   }
 
@@ -144,7 +175,9 @@ bool X509Tool(const args_list_t &args) {
   if (parsed_args.count("-checkend")) {
     checkend_str = parsed_args["-checkend"];
     if (!IsNumeric(checkend_str)) {
-      fprintf(stderr, "Error: '-checkend' option must include a non-negative integer\n");
+      fprintf(
+          stderr,
+          "Error: '-checkend' option must include a non-negative integer\n");
       return false;
     }
     checkend.reset(new unsigned(std::stoul(checkend_str)));
@@ -154,16 +187,20 @@ bool X509Tool(const args_list_t &args) {
   if (parsed_args.count("-days")) {
     days_str = parsed_args["-days"];
     if (!IsNumeric(days_str) || std::stoul(days_str) == 0) {
-      fprintf(stderr, "Error: '-days' option must include a positive integer\n");
+      fprintf(stderr,
+              "Error: '-days' option must include a positive integer\n");
       return false;
     }
     days.reset(new unsigned(std::stoul(days_str)));
   }
 
   // Check -inform has a valid value
-  if(!inform.empty()) {
-    if (!isStringUpperCaseEqual(inform, "DER") && !isStringUpperCaseEqual(inform, "PEM")) {
-      fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
+  if (!inform.empty()) {
+    if (!isStringUpperCaseEqual(inform, "DER") &&
+        !isStringUpperCaseEqual(inform, "PEM")) {
+      fprintf(
+          stderr,
+          "Error: '-inform' option must specify a valid encoding DER|PEM\n");
       return false;
     }
   }
@@ -175,7 +212,8 @@ bool X509Tool(const args_list_t &args) {
   } else {
     in_file.reset(fopen(in_path.c_str(), "rb"));
     if (!in_file) {
-      fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
+      fprintf(stderr, "Error: unable to load certificate from '%s'\n",
+              in_path.c_str());
       return false;
     }
   }
@@ -202,7 +240,8 @@ bool X509Tool(const args_list_t &args) {
     }
 
     // Set the subject from CSR
-    if (!X509_set_subject_name(x509.get(), X509_REQ_get_subject_name(csr.get()))) {
+    if (!X509_set_subject_name(x509.get(),
+                               X509_REQ_get_subject_name(csr.get()))) {
       fprintf(stderr, "Error: unable to set subject name from CSR\n");
       return false;
     }
@@ -215,7 +254,8 @@ bool X509Tool(const args_list_t &args) {
     }
 
     // Set issuer name
-    if (!X509_set_issuer_name(x509.get(), X509_REQ_get_subject_name(csr.get()))) {
+    if (!X509_set_issuer_name(x509.get(),
+                              X509_REQ_get_subject_name(csr.get()))) {
       fprintf(stderr, "Error: unable to set issuer name\n");
       return false;
     }
@@ -223,7 +263,8 @@ bool X509Tool(const args_list_t &args) {
     // Set validity period, default 30 days if not specified
     unsigned valid_days = days ? *days : 30;
     if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
-        !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * valid_days)) {
+        !X509_gmtime_adj(X509_getm_notAfter(x509.get()),
+                         60 * 60 * 24 * valid_days)) {
       fprintf(stderr, "Error: unable to set validity period\n");
       return false;
     }
@@ -248,7 +289,8 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (!x509) {
-      fprintf(stderr, "Error: error parsing certificate from '%s'\n", in_path.c_str());
+      fprintf(stderr, "Error: error parsing certificate from '%s'\n",
+              in_path.c_str());
       ERR_print_errors_fp(stderr);
       return false;
     }
@@ -288,7 +330,7 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    if(text) {
+    if (text) {
       X509_print(output_bio.get(), x509.get());
     }
 
@@ -313,20 +355,22 @@ bool X509Tool(const args_list_t &args) {
         fprintf(stderr, "Error: unable to obtain digest\n");
         return false;
       }
-      BIO_printf(output_bio.get(), "%s Fingerprint=",
-                 OBJ_nid2sn(EVP_MD_type(digest)));
+      BIO_printf(output_bio.get(),
+                 "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(digest)));
       for (int j = 0; j < (int)out_len; j++) {
-        BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)out_len)
-                                                      ? '\n' : ':');
+        BIO_printf(output_bio.get(), "%02X%c", md[j],
+                   (j + 1 == (int)out_len) ? '\n' : ':');
       }
     }
 
     if (subject_hash) {
-      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash(x509.get()));
+      BIO_printf(output_bio.get(), "%08x\n",
+                 X509_subject_name_hash(x509.get()));
     }
 
-    if(subject_hash_old) {
-      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash_old(x509.get()));
+    if (subject_hash_old) {
+      BIO_printf(output_bio.get(), "%08x\n",
+                 X509_subject_name_hash_old(x509.get()));
     }
 
     if (dates) {
@@ -346,10 +390,12 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (checkend) {
-      bssl::UniquePtr<ASN1_TIME> current_time(ASN1_TIME_set(nullptr, std::time(nullptr)));
+      bssl::UniquePtr<ASN1_TIME> current_time(
+          ASN1_TIME_set(nullptr, std::time(nullptr)));
       ASN1_TIME *end_time = X509_getm_notAfter(x509.get());
       int days_left, seconds_left;
-      if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time.get(), end_time)) {
+      if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time.get(),
+                          end_time)) {
         fprintf(stderr, "Error: failed to calculate time difference\n");
         return false;
       }

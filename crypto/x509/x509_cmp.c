@@ -59,8 +59,8 @@
 #include <openssl/asn1.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/md5.h>
+#include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 #include <openssl/stack.h>
@@ -86,9 +86,7 @@ int X509_CRL_match(const X509_CRL *a, const X509_CRL *b) {
   return OPENSSL_memcmp(a->crl_hash, b->crl_hash, SHA256_DIGEST_LENGTH);
 }
 
-X509_NAME *X509_get_issuer_name(const X509 *a) {
-  return a->cert_info->issuer;
-}
+X509_NAME *X509_get_issuer_name(const X509 *a) { return a->cert_info->issuer; }
 
 uint32_t X509_issuer_name_hash(X509 *x) {
   return X509_NAME_hash(x->cert_info->issuer);

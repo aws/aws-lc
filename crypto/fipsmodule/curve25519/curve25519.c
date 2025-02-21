@@ -79,8 +79,8 @@ void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH], const void *input1,
 // Public interface functions
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN],
-  const uint8_t seed[ED25519_SEED_LEN]) {
+                               uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN],
+                               const uint8_t seed[ED25519_SEED_LEN]) {
   // ED25519_keypair already ensures this with the same check, and is also the
   // function that is approved for FIPS (sets the indicator). Ensuring it here
   // for brevity.
@@ -92,9 +92,9 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   SHA512(seed, ED25519_SEED_LEN, az);
 
   // Step: rfc8032 5.1.5.2
-  az[0] &= 248; // 11111000_2
-  az[31] &= 127; // 01111111_2
-  az[31] |= 64; // 01000000_2
+  az[0] &= 248;   // 11111000_2
+  az[31] &= 127;  // 01111111_2
+  az[31] |= 64;   // 01000000_2
 
   // Step: rfc8032 5.1.5.[3,4]
   // Compute [az]B and encode public key to a 32 byte octet.
@@ -106,20 +106,22 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
   // Encoded public key is a suffix in the private key. Avoids having to
   // generate the public key from the private key when signing.
-  OPENSSL_STATIC_ASSERT(ED25519_PRIVATE_KEY_LEN == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
+  OPENSSL_STATIC_ASSERT(
+      ED25519_PRIVATE_KEY_LEN == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN),
+      ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
-    ED25519_PUBLIC_KEY_LEN);
+                 ED25519_PUBLIC_KEY_LEN);
 }
 
 static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+                                uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
 #if defined(AWSLC_FIPS)
   uint8_t msg[16] = {16};
   uint8_t out_sig[ED25519_SIGNATURE_LEN];
   if (ED25519_sign_no_self_test(out_sig, msg, 16, private_key) != 1) {
-    // This should never happen and static analysis will say that ED25519_sign_no_self_test
-    // always returns 1
+    // This should never happen and static analysis will say that
+    // ED25519_sign_no_self_test always returns 1
     AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
   }
   if (boringssl_fips_break_test("EDDSA_PWCT")) {
@@ -132,7 +134,7 @@ static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
 }
 
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+                     uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
   // We have to avoid the self tests and digest function in ed25519_keypair_pct
   // from updating the service indicator.
   FIPS_service_indicator_lock_state();
@@ -155,8 +157,8 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   FIPS_service_indicator_update_state();
 }
 
-int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-                 const uint8_t *message, size_t message_len,
+int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN], const uint8_t *message,
+                 size_t message_len,
                  const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
@@ -222,12 +224,11 @@ static int dom2(ed25519_algorithm_t alg, uint8_t buffer[MAX_DOM2_SIZE],
   return 1;
 }
 
-int ed25519_sign_internal(
-    ed25519_algorithm_t alg,
-    uint8_t out_sig[ED25519_SIGNATURE_LEN],
-    const uint8_t *message, size_t message_len,
-    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-    const uint8_t *ctx, size_t ctx_len) {
+int ed25519_sign_internal(ed25519_algorithm_t alg,
+                          uint8_t out_sig[ED25519_SIGNATURE_LEN],
+                          const uint8_t *message, size_t message_len,
+                          const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
+                          const uint8_t *ctx, size_t ctx_len) {
   // NOTE: The documentation on this function says that it returns zero on
   // allocation failure. While that can't happen with the current
   // implementation, we want to reserve the ability to allocate in this
@@ -245,9 +246,9 @@ int ed25519_sign_internal(
   SHA512(private_key, ED25519_PRIVATE_KEY_SEED_LEN, az);
   // s = az[0:31]
   // prefix = az[32:61]
-  az[0] &= 248; // 11111000_2
-  az[31] &= 63; // 00111111_2
-  az[31] |= 64; // 01000000_2
+  az[0] &= 248;  // 11111000_2
+  az[31] &= 63;  // 00111111_2
+  az[31] |= 64;  // 01000000_2
 
   uint8_t r[SHA512_DIGEST_LENGTH];
   uint8_t dom2_buffer[MAX_DOM2_SIZE] = {0};
@@ -295,7 +296,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   int res =
       ED25519_verify_no_self_test(message, message_len, signature, public_key);
   FIPS_service_indicator_unlock_state();
-  if(res) {
+  if (res) {
     FIPS_service_indicator_update_state();
   }
   return res;
@@ -309,12 +310,11 @@ int ED25519_verify_no_self_test(
                                  public_key, NULL, 0);
 }
 
-int ed25519_verify_internal(
-    ed25519_algorithm_t alg,
-    const uint8_t *message, size_t message_len,
-    const uint8_t signature[ED25519_SIGNATURE_LEN],
-    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-    const uint8_t *ctx, size_t ctx_len) {
+int ed25519_verify_internal(ed25519_algorithm_t alg, const uint8_t *message,
+                            size_t message_len,
+                            const uint8_t signature[ED25519_SIGNATURE_LEN],
+                            const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+                            const uint8_t *ctx, size_t ctx_len) {
   // Ed25519 verify: rfc8032 5.1.7
 
   // Step: rfc8032 5.1.7.1 (up to decoding the public key)
@@ -336,10 +336,10 @@ int ed25519_verify_internal(
   // S must be in the range [0, order) in order to prevent signature
   // malleability. kOrder is the order of curve25519 in little-endian form.
   static const uint64_t kOrder[4] = {
-    UINT64_C(0x5812631a5cf5d3ed),
-    UINT64_C(0x14def9dea2f79cd6),
-    0,
-    UINT64_C(0x1000000000000000),
+      UINT64_C(0x5812631a5cf5d3ed),
+      UINT64_C(0x14def9dea2f79cd6),
+      0,
+      UINT64_C(0x1000000000000000),
   };
   for (size_t i = 3;; i--) {
     uint64_t word = CRYPTO_load_u64_le(S + i * 8);
@@ -360,7 +360,8 @@ int ed25519_verify_internal(
   }
 
   // Step: rfc8032 5.1.7.[1,2,3]
-  // Verification works by computing [S]B - [k]A' and comparing against R_expected.
+  // Verification works by computing [S]B - [k]A' and comparing against
+  // R_expected.
   int res = 0;
   uint8_t R_computed_encoded[32];
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
@@ -386,8 +387,8 @@ int ED25519_check_public_key(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
 }
 
 void X25519_public_from_private(
-  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
+    uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
   SET_DIT_AUTO_RESET;
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
@@ -395,12 +396,12 @@ void X25519_public_from_private(
 #else
   x25519_public_from_private_nohw(out_public_value, private_key);
 #endif
-    // The public key is derived from the private key, but it is public.
+  // The public key is derived from the private key, but it is public.
   CONSTTIME_DECLASSIFY(out_public_value, X25519_PUBLIC_VALUE_LEN);
 }
 
 void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
-  uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]) {
+                    uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]) {
   SET_DIT_AUTO_RESET;
 
   RAND_bytes(out_private_key, X25519_PRIVATE_KEY_LEN);
@@ -426,16 +427,17 @@ void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
 }
 
 int X25519(uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
-  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
-
+           const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+           const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
   SET_DIT_AUTO_RESET;
   static const uint8_t kZeros[X25519_SHARED_KEY_LEN] = {0};
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-  x25519_scalar_mult_generic_s2n_bignum(out_shared_key, private_key, peer_public_value);
+  x25519_scalar_mult_generic_s2n_bignum(out_shared_key, private_key,
+                                        peer_public_value);
 #else
-    x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
+  x25519_scalar_mult_generic_nohw(out_shared_key, private_key,
+                                  peer_public_value);
 #endif
 
   // The all-zero output results when the input is a point of small order.

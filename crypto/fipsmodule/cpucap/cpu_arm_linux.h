@@ -29,35 +29,35 @@ extern "C" {
 // cross-platform fuzzers without adding code to those platforms normally.
 
 #if defined(HWCAP_NEON) && HWCAP_NEON != (1 << 12)
-  #error "HWCAP_NEON is defined but has wrong value (expected (1 << 12))"
+#error "HWCAP_NEON is defined but has wrong value (expected (1 << 12))"
 #elif !defined(HWCAP_NEON)
-  #define HWCAP_NEON (1 << 12)
+#define HWCAP_NEON (1 << 12)
 #endif
 
 // See /usr/include/asm/hwcap.h on an ARM installation for the source of
 // these values.
 #if defined(HWCAP2_AES) && HWCAP2_AES != (1 << 0)
-  #error "HWCAP2_AES is defined but has wrong value (expected (1 << 0))"
+#error "HWCAP2_AES is defined but has wrong value (expected (1 << 0))"
 #elif !defined(HWCAP2_AES)
-  #define HWCAP2_AES (1 << 0)
+#define HWCAP2_AES (1 << 0)
 #endif
 
 #if defined(HWCAP2_PMULL) && HWCAP2_PMULL != (1 << 1)
-  #error "HWCAP2_PMULL is defined but has wrong value (expected (1 << 1))"
+#error "HWCAP2_PMULL is defined but has wrong value (expected (1 << 1))"
 #elif !defined(HWCAP2_PMULL)
-  #define HWCAP2_PMULL (1 << 1)
+#define HWCAP2_PMULL (1 << 1)
 #endif
 
 #if defined(HWCAP2_SHA1) && HWCAP2_SHA1 != (1 << 2)
-  #error "HWCAP2_SHA1 is defined but has wrong value (expected (1 << 2))"
+#error "HWCAP2_SHA1 is defined but has wrong value (expected (1 << 2))"
 #elif !defined(HWCAP2_SHA1)
-  #define HWCAP2_SHA1 (1 << 2)
+#define HWCAP2_SHA1 (1 << 2)
 #endif
 
 #if defined(HWCAP2_SHA2) && HWCAP2_SHA2 != (1 << 3)
-  #error "HWCAP2_SHA2 is defined but has wrong value (expected (1 << 3))"
+#error "HWCAP2_SHA2 is defined but has wrong value (expected (1 << 3))"
 #elif !defined(HWCAP2_SHA2)
-  #define HWCAP2_SHA2 (1 << 3)
+#define HWCAP2_SHA2 (1 << 3)
 #endif
 
 typedef struct {
@@ -92,7 +92,8 @@ static int STRING_PIECE_split(STRING_PIECE *out_left, STRING_PIECE *out_right,
 // to |out| and updating |s| to point beyond it. It returns one on success and
 // zero if |s| is empty. If |s| is has no copies of |sep| and is non-empty, it
 // reads the entire string to |out|.
-static int STRING_PIECE_get_delimited(STRING_PIECE *s, STRING_PIECE *out, char sep) {
+static int STRING_PIECE_get_delimited(STRING_PIECE *s, STRING_PIECE *out,
+                                      char sep) {
   if (s->len == 0) {
     return 0;
   }

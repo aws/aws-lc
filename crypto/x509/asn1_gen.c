@@ -133,8 +133,7 @@ static int cbs_str_equal(const CBS *cbs, const char *str) {
 static CBS_ASN1_TAG parse_tag(const CBS *cbs) {
   CBS copy = *cbs;
   uint64_t num;
-  if (!CBS_get_u64_decimal(&copy, &num) ||
-      num > CBS_ASN1_TAG_NUMBER_MASK) {
+  if (!CBS_get_u64_decimal(&copy, &num) || num > CBS_ASN1_TAG_NUMBER_MASK) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_NUMBER);
     return 0;
   }
@@ -400,8 +399,7 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
       uint8_t *out;
       int ok = len > 0 &&  //
                CBB_add_space(&child, &out, len) &&
-               i2c_ASN1_INTEGER(obj, &out) == len &&
-               CBB_flush(cbb);
+               i2c_ASN1_INTEGER(obj, &out) == len && CBB_flush(cbb);
       ASN1_INTEGER_free(obj);
       return ok;
     }
@@ -428,7 +426,7 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
         return 0;
       }
       CBS value_cbs;
-      CBS_init(&value_cbs, (const uint8_t*)value, strlen(value));
+      CBS_init(&value_cbs, (const uint8_t *)value, strlen(value));
       int ok = type == CBS_ASN1_UTCTIME
                    ? CBS_parse_utc_time(&value_cbs, NULL,
                                         /*allow_timezone_offset=*/0)

@@ -67,15 +67,17 @@ TEST(HRSS, Poly3Invert) {
   p.s.v[0] = 1;
   p.a.v[0] = 1;
   HRSS_poly3_invert(&inverse, &p);
-  EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t*>(&p), sizeof(p)),
-            Bytes(reinterpret_cast<const uint8_t*>(&inverse), sizeof(inverse)));
+  EXPECT_EQ(
+      Bytes(reinterpret_cast<const uint8_t *>(&p), sizeof(p)),
+      Bytes(reinterpret_cast<const uint8_t *>(&inverse), sizeof(inverse)));
 
   // The inverse of 1 is 1.
   p.s.v[0] = 0;
   p.a.v[0] = 1;
   HRSS_poly3_invert(&inverse, &p);
-  EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t*>(&p), sizeof(p)),
-            Bytes(reinterpret_cast<const uint8_t*>(&inverse), sizeof(inverse)));
+  EXPECT_EQ(
+      Bytes(reinterpret_cast<const uint8_t *>(&p), sizeof(p)),
+      Bytes(reinterpret_cast<const uint8_t *>(&inverse), sizeof(inverse)));
 
   for (size_t i = 0; i < 500; i++) {
     poly3 r;
@@ -123,10 +125,10 @@ TEST(HRSS, Poly3UnreducedInput) {
   // Check that x^700 × 1 gives -x^699 - x^698 … -1.
   poly3 x700;
   memset(&x700, 0, sizeof(x700));
-  x700.a.v[WORDS_PER_POLY-1] = UINT64_C(1) << (BITS_IN_LAST_WORD - 1);
+  x700.a.v[WORDS_PER_POLY - 1] = UINT64_C(1) << (BITS_IN_LAST_WORD - 1);
   HRSS_poly3_mul(&result, &one, &x700);
 
-  for (size_t i = 0; i < WORDS_PER_POLY-1; i++) {
+  for (size_t i = 0; i < WORDS_PER_POLY - 1; i++) {
     EXPECT_EQ(CONSTTIME_TRUE_W, result.s.v[i]);
     EXPECT_EQ(CONSTTIME_TRUE_W, result.a.v[i]);
   }
@@ -190,7 +192,7 @@ TEST(HRSS, Random) {
       EXPECT_EQ(Bytes(shared_key), Bytes(shared_key2));
 
       uint32_t offset;
-      RAND_bytes((uint8_t*) &offset, sizeof(offset));
+      RAND_bytes((uint8_t *)&offset, sizeof(offset));
       uint8_t bit;
       RAND_bytes(&bit, sizeof(bit));
       ciphertext[offset % sizeof(ciphertext)] ^= (1 << (bit & 7));
@@ -494,12 +496,13 @@ TEST(HRSS, ABI) {
   OPENSSL_STATIC_ASSERT(sizeof(kCanary) % 32 == 0, needed_for_alignment)
   memset(kCanary, 42, sizeof(kCanary));
 
-  stack_align_type buffer_scratch[32 + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
-  uint8_t *aligned_scratch = (uint8_t *) align_pointer(buffer_scratch, 32);
+  stack_align_type buffer_scratch[32 + sizeof(kCanary) +
+                                  POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
+  uint8_t *aligned_scratch = (uint8_t *)align_pointer(buffer_scratch, 32);
 
   OPENSSL_memcpy(aligned_scratch, kCanary, sizeof(kCanary));
-  OPENSSL_memcpy(aligned_scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE, kCanary,
-                 sizeof(kCanary));
+  OPENSSL_memcpy(aligned_scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE,
+                 kCanary, sizeof(kCanary));
 
   // The function should not touch more than |POLY_MUL_RQ_SCRATCH_SPACE| bytes
   // of |scratch|.

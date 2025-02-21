@@ -16,9 +16,9 @@
 
 #include <assert.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
+#include "internal.h"
 
 
 void ec_GFp_mont_mul(const EC_GROUP *group, EC_JACOBIAN *r,
@@ -40,7 +40,7 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   }
 
   // Divide bits in |scalar| into windows.
-  unsigned bits =  EC_GROUP_order_bits(group);
+  unsigned bits = EC_GROUP_order_bits(group);
   int r_is_at_infinity = 1;
   for (unsigned i = bits - 1; i < bits; i--) {
     if (!r_is_at_infinity) {
@@ -212,8 +212,7 @@ int ec_GFp_mont_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
                                      OPENSSL_ARRAY_SIZE(comb));
 }
 
-static void ec_GFp_mont_get_comb_window(const EC_GROUP *group,
-                                        EC_JACOBIAN *out,
+static void ec_GFp_mont_get_comb_window(const EC_GROUP *group, EC_JACOBIAN *out,
                                         const EC_PRECOMP *precomp,
                                         const EC_SCALAR *scalar, unsigned i) {
   const size_t width = group->order.N.width;
@@ -221,8 +220,7 @@ static void ec_GFp_mont_get_comb_window(const EC_GROUP *group,
   // Select the bits corresponding to the comb shifted up by |i|.
   unsigned window = 0;
   for (unsigned j = 0; j < EC_MONT_PRECOMP_COMB_SIZE; j++) {
-    window |= bn_is_bit_set_words(scalar->words, width, j * stride + i)
-              << j;
+    window |= bn_is_bit_set_words(scalar->words, width, j * stride + i) << j;
   }
 
   // Select precomp->comb[window - 1]. If |window| is zero, |match| will always

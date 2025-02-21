@@ -519,7 +519,7 @@ static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
     issuer = sk_X509_value(sk, i);
     if (x509_check_issued_with_callback(ctx, x, issuer)) {
       candidate = issuer;
-      if (x509_check_cert_time(ctx, candidate, /*suppress_error*/1)) {
+      if (x509_check_cert_time(ctx, candidate, /*suppress_error*/ 1)) {
         break;
       }
     }
@@ -1439,7 +1439,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     }
 
   check_cert:
-    ok = x509_check_cert_time(ctx, xs, /*suppress_error*/0);
+    ok = x509_check_cert_time(ctx, xs, /*suppress_error*/ 0);
     if (!ok) {
       goto end;
     }
@@ -1731,9 +1731,7 @@ void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx, unsigned long flags,
   X509_STORE_CTX_set_time_posix(ctx, flags, t);
 }
 
-X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx) {
-  return ctx->cert;
-}
+X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx) { return ctx->cert; }
 
 void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *ctx,
                                   int (*verify_cb)(int, X509_STORE_CTX *)) {

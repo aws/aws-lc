@@ -18,15 +18,13 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/mem.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include "../internal.h"
 
 
-void CBB_zero(CBB *cbb) {
-  OPENSSL_memset(cbb, 0, sizeof(CBB));
-}
+void CBB_zero(CBB *cbb) { OPENSSL_memset(cbb, 0, sizeof(CBB)); }
 
 static void cbb_init(CBB *cbb, uint8_t *buf, size_t cap, int can_resize) {
   cbb->is_child = 0;
@@ -200,8 +198,7 @@ int CBB_flush(CBB *cbb) {
   assert(child->base == base);
   size_t child_start = child->offset + child->pending_len_len;
 
-  if (!CBB_flush(cbb->child) ||
-      child_start < child->offset ||
+  if (!CBB_flush(cbb->child) || child_start < child->offset ||
       base->len < child_start) {
     goto err;
   }
@@ -215,7 +212,7 @@ int CBB_flush(CBB *cbb) {
     uint8_t len_len;
     uint8_t initial_length_byte;
 
-    assert (child->pending_len_len == 1);
+    assert(child->pending_len_len == 1);
 
     if (len > 0xfffffffe) {
       OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
@@ -403,8 +400,7 @@ int CBB_add_zeros(CBB *cbb, size_t len) {
 }
 
 int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len) {
-  if (!CBB_flush(cbb) ||
-      !cbb_buffer_add(cbb_get_base(cbb), out_data, len)) {
+  if (!CBB_flush(cbb) || !cbb_buffer_add(cbb_get_base(cbb), out_data, len)) {
     return 0;
   }
   return 1;
@@ -421,9 +417,7 @@ int CBB_reserve(CBB *cbb, uint8_t **out_data, size_t len) {
 int CBB_did_write(CBB *cbb, size_t len) {
   struct cbb_buffer_st *base = cbb_get_base(cbb);
   size_t newlen = base->len + len;
-  if (cbb->child != NULL ||
-      newlen < base->len ||
-      newlen > base->cap) {
+  if (cbb->child != NULL || newlen < base->len || newlen > base->cap) {
     return 0;
   }
   base->len = newlen;
@@ -450,33 +444,23 @@ static int cbb_add_u(CBB *cbb, uint64_t v, size_t len_len) {
   return 1;
 }
 
-int CBB_add_u8(CBB *cbb, uint8_t value) {
-  return cbb_add_u(cbb, value, 1);
-}
+int CBB_add_u8(CBB *cbb, uint8_t value) { return cbb_add_u(cbb, value, 1); }
 
-int CBB_add_u16(CBB *cbb, uint16_t value) {
-  return cbb_add_u(cbb, value, 2);
-}
+int CBB_add_u16(CBB *cbb, uint16_t value) { return cbb_add_u(cbb, value, 2); }
 
 int CBB_add_u16le(CBB *cbb, uint16_t value) {
   return CBB_add_u16(cbb, CRYPTO_bswap2(value));
 }
 
-int CBB_add_u24(CBB *cbb, uint32_t value) {
-  return cbb_add_u(cbb, value, 3);
-}
+int CBB_add_u24(CBB *cbb, uint32_t value) { return cbb_add_u(cbb, value, 3); }
 
-int CBB_add_u32(CBB *cbb, uint32_t value) {
-  return cbb_add_u(cbb, value, 4);
-}
+int CBB_add_u32(CBB *cbb, uint32_t value) { return cbb_add_u(cbb, value, 4); }
 
 int CBB_add_u32le(CBB *cbb, uint32_t value) {
   return CBB_add_u32(cbb, CRYPTO_bswap4(value));
 }
 
-int CBB_add_u64(CBB *cbb, uint64_t value) {
-  return cbb_add_u(cbb, value, 8);
-}
+int CBB_add_u64(CBB *cbb, uint64_t value) { return cbb_add_u(cbb, value, 8); }
 
 int CBB_add_u64le(CBB *cbb, uint64_t value) {
   return CBB_add_u64(cbb, CRYPTO_bswap8(value));
@@ -583,8 +567,7 @@ err:
 int CBB_add_asn1_octet_string(CBB *cbb, const uint8_t *data, size_t data_len) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&child, data, data_len) ||
-      !CBB_flush(cbb)) {
+      !CBB_add_bytes(&child, data, data_len) || !CBB_flush(cbb)) {
     cbb_on_error(cbb);
     return 0;
   }
@@ -595,8 +578,7 @@ int CBB_add_asn1_octet_string(CBB *cbb, const uint8_t *data, size_t data_len) {
 int CBB_add_asn1_bool(CBB *cbb, int value) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_BOOLEAN) ||
-      !CBB_add_u8(&child, value != 0 ? 0xff : 0) ||
-      !CBB_flush(cbb)) {
+      !CBB_add_u8(&child, value != 0 ? 0xff : 0) || !CBB_flush(cbb)) {
     cbb_on_error(cbb);
     return 0;
   }
@@ -630,24 +612,20 @@ int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text, size_t len) {
 
   // OIDs must have at least two components.
   uint64_t a, b;
-  if (!parse_dotted_decimal(&cbs, &a) ||
-      !parse_dotted_decimal(&cbs, &b)) {
+  if (!parse_dotted_decimal(&cbs, &a) || !parse_dotted_decimal(&cbs, &b)) {
     return 0;
   }
 
   // The first component is encoded as 40 * |a| + |b|. This assumes that |a| is
   // 0, 1, or 2 and that, when it is 0 or 1, |b| is at most 39.
-  if (a > 2 ||
-      (a < 2 && b > 39) ||
-      b > UINT64_MAX - 80 ||
+  if (a > 2 || (a < 2 && b > 39) || b > UINT64_MAX - 80 ||
       !add_base128_integer(cbb, 40u * a + b)) {
     return 0;
   }
 
   // The remaining components are encoded unmodified.
   while (CBS_len(&cbs) > 0) {
-    if (!parse_dotted_decimal(&cbs, &a) ||
-        !add_base128_integer(cbb, a)) {
+    if (!parse_dotted_decimal(&cbs, &a) || !add_base128_integer(cbb, a)) {
       return 0;
     }
   }

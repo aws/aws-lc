@@ -8,7 +8,7 @@
  * Elements of R_q = Z_q[X]/(X^n + 1). Represents polynomial
  * coeffs[0] + X*coeffs[1] + X^2*xoeffs[2] + ... + X^{n-1}*coeffs[n-1]
  */
-typedef struct{
+typedef struct {
   int16_t coeffs[KYBER_N];
 } poly;
 
@@ -28,10 +28,12 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES]);
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *r);
 
 #define poly_getnoise_eta1 KYBER_NAMESPACE(poly_getnoise_eta1)
-void poly_getnoise_eta1(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
+void poly_getnoise_eta1(poly *r, const uint8_t seed[KYBER_SYMBYTES],
+                        uint8_t nonce);
 
 #define poly_getnoise_eta2 KYBER_NAMESPACE(poly_getnoise_eta2)
-void poly_getnoise_eta2(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
+void poly_getnoise_eta2(poly *r, const uint8_t seed[KYBER_SYMBYTES],
+                        uint8_t nonce);
 
 #define poly_ntt KYBER_NAMESPACE(poly_ntt)
 void poly_ntt(poly *r);

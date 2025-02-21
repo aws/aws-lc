@@ -23,11 +23,14 @@
 
 static const argument_t kArguments[] = {
     {
-     "-bits", kOptionalArgument,
-     "The number of bits in the modulus (default: 2048)",
+        "-bits",
+        kOptionalArgument,
+        "The number of bits in the modulus (default: 2048)",
     },
     {
-     "", kOptionalArgument, "",
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 

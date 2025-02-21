@@ -4,15 +4,17 @@
 #include "openssl/rsa.h"
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
+#include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
-#include "../crypto/test/test_util.h"
 
-bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2);
+bool CheckBoundaries(const std::string &content, const std::string &begin1,
+                     const std::string &end1, const std::string &begin2,
+                     const std::string &end2);
 
-RSA* CreateRSAKey();
+RSA *CreateRSAKey();
 
-RSA* CreateRSAKey() {
+RSA *CreateRSAKey() {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
     return nullptr;
@@ -25,7 +27,7 @@ RSA* CreateRSAKey() {
 }
 
 class RSATest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path), 0u);
@@ -35,7 +37,8 @@ protected:
 
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_RSAPrivateKey(in_file.get(), rsa.get(), nullptr, nullptr, 0, nullptr, nullptr));
+    ASSERT_TRUE(PEM_write_RSAPrivateKey(in_file.get(), rsa.get(), nullptr,
+                                        nullptr, 0, nullptr, nullptr));
   }
   void TearDown() override {
     RemoveFile(in_path);
@@ -55,7 +58,8 @@ TEST_F(RSATest, RSAToolInOutTest) {
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
-    bssl::UniquePtr<RSA> parsed_rsa(PEM_read_RSAPrivateKey(out_file.get(), nullptr, nullptr, nullptr));
+    bssl::UniquePtr<RSA> parsed_rsa(
+        PEM_read_RSAPrivateKey(out_file.get(), nullptr, nullptr, nullptr));
     ASSERT_TRUE(parsed_rsa);
   }
 }
@@ -78,10 +82,10 @@ TEST_F(RSATest, RSAToolNooutTest) {
 // -------------------- RSA Option Usage Error Tests --------------------------
 
 class RSAOptionUsageErrorsTest : public RSATest {
-protected:
-  void TestOptionUsageErrors(const std::vector<std::string>& args) {
+ protected:
+  void TestOptionUsageErrors(const std::vector<std::string> &args) {
     args_list_t c_args;
-    for (const auto& arg : args) {
+    for (const auto &arg : args) {
       c_args.push_back(arg.c_str());
     }
     bool result = rsaTool(c_args);
@@ -92,10 +96,10 @@ protected:
 // Test missing -in required option
 TEST_F(RSAOptionUsageErrorsTest, RequiredOptionTests) {
   std::vector<std::vector<std::string>> testparams = {
-    {"-out", "output.pem"},
-    {"-modulus"},
+      {"-out", "output.pem"},
+      {"-modulus"},
   };
-  for (const auto& args : testparams) {
+  for (const auto &args : testparams) {
     TestOptionUsageErrors(args);
   }
 }
@@ -106,14 +110,14 @@ TEST_F(RSAOptionUsageErrorsTest, RequiredOptionTests) {
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
 
 class RSAComparisonTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
-
     // Skip gtests if env variables not set
     tool_executable_path = getenv("AWSLC_TOOL_PATH");
     openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
-      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
+      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
+                      "environment variables are not set";
     }
 
     ASSERT_GT(createTempFILEpath(in_path), 0u);
@@ -125,7 +129,8 @@ protected:
 
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_RSAPrivateKey(in_file.get(), rsa.get(), nullptr, nullptr, 0, nullptr, nullptr));
+    ASSERT_TRUE(PEM_write_RSAPrivateKey(in_file.get(), rsa.get(), nullptr,
+                                        nullptr, 0, nullptr, nullptr));
   }
 
   void TearDown() override {
@@ -140,8 +145,8 @@ protected:
   char out_path_tool[PATH_MAX];
   char out_path_openssl[PATH_MAX];
   bssl::UniquePtr<RSA> rsa;
-  const char* tool_executable_path;
-  const char* openssl_executable_path;
+  const char *tool_executable_path;
+  const char *openssl_executable_path;
   std::string tool_output_str;
   std::string openssl_output_str;
 };
@@ -154,34 +159,52 @@ const std::string BEGIN = "-----BEGIN PRIVATE KEY-----";
 const std::string END = "-----END PRIVATE KEY-----";
 const std::string MODULUS = "Modulus=";
 
-// OpenSSL versions 3.1.0 and later change PEM outputs from "BEGIN RSA PRIVATE KEY" to "BEGIN PRIVATE KEY"
-bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2) {
-  return (content.compare(0, begin1.size(), begin1) == 0 && content.compare(content.size() - end1.size(), end1.size(), end1) == 0) ||
-         (content.compare(0, begin2.size(), begin2) == 0 && content.compare(content.size() - end2.size(), end2.size(), end2) == 0);
+// OpenSSL versions 3.1.0 and later change PEM outputs from "BEGIN RSA PRIVATE
+// KEY" to "BEGIN PRIVATE KEY"
+bool CheckBoundaries(const std::string &content, const std::string &begin1,
+                     const std::string &end1, const std::string &begin2,
+                     const std::string &end2) {
+  return (content.compare(0, begin1.size(), begin1) == 0 &&
+          content.compare(content.size() - end1.size(), end1.size(), end1) ==
+              0) ||
+         (content.compare(0, begin2.size(), begin2) == 0 &&
+          content.compare(content.size() - end2.size(), end2.size(), end2) ==
+              0);
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus"
 // Rsa private key is printed to stdin
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + in_path + " > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + in_path + " > " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
+                             in_path + " > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " rsa -in " + in_path + " > " +
+                                out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
 
   trim(tool_output_str);
   ASSERT_TRUE(CheckBoundaries(tool_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
 
   trim(openssl_output_str);
-  ASSERT_TRUE(CheckBoundaries(openssl_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
+  ASSERT_TRUE(
+      CheckBoundaries(openssl_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -noout"
 // Only modulus is printed to stdin
 TEST_F(RSAComparisonTest, RSAToolCompareModulusNooutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + in_path + " -modulus -noout > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + in_path + " -modulus -noout > " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
+                             in_path + " -modulus -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " rsa -in " + in_path + " -modulus -noout > " +
+                                out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
@@ -189,10 +212,15 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusNooutOpenSSL) {
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file"
 // Modulus and rsa private key are printed to output file
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + in_path + " -modulus -out " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + in_path + " -modulus -out " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
+                             in_path + " -modulus -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " rsa -in " + in_path + " -modulus -out " +
+                                out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
 
   ScopedFILE tool_out_file(fopen(out_path_tool, "rb"));
   ASSERT_TRUE(tool_out_file);
@@ -205,16 +233,23 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
   ASSERT_TRUE(CheckBoundaries(tool_output_str, MODULUS, RSA_END, MODULUS, END));
 
   trim(openssl_output_str);
-  ASSERT_TRUE(CheckBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
+  ASSERT_TRUE(
+      CheckBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
 }
 
-// Test against OpenSSL output "openssl rsa -in file -modulus -out out_file -noout"
-// Only modulus is printed to output file
+// Test against OpenSSL output "openssl rsa -in file -modulus -out out_file
+// -noout" Only modulus is printed to output file
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOutNooutOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + in_path + " -modulus -out " + out_path_tool + " -noout";
-  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + in_path + " -modulus -out " + out_path_openssl + " -noout";
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
+                             in_path + " -modulus -out " + out_path_tool +
+                             " -noout";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " rsa -in " + in_path + " -modulus -out " +
+                                out_path_openssl + " -noout";
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
 
   ScopedFILE tool_out_file(fopen(out_path_tool, "rb"));
   ASSERT_TRUE(tool_out_file);

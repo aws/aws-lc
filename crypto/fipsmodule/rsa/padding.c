@@ -66,8 +66,8 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
@@ -249,8 +249,7 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
     emLen--;
   }
   // |sLen| may be -2 for the non-standard salt length recovery mode.
-  if (emLen < hLen + 2 ||
-      (sLen >= 0 && emLen < hLen + (size_t)sLen + 2)) {
+  if (emLen < hLen + 2 || (sLen >= 0 && emLen < hLen + (size_t)sLen + 2)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
     goto err;
   }
@@ -264,11 +263,11 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   if (!DB) {
     goto err;
   }
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS1_MGF1(DB, maskedDBLen, H, hLen, mgf1Hash)) {
     goto err;
   }
-OPENSSL_END_ALLOW_DEPRECATED
+  OPENSSL_END_ALLOW_DEPRECATED
   for (size_t i = 0; i < maskedDBLen; i++) {
     DB[i] ^= EM[i];
   }
@@ -395,12 +394,12 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   if (!digest_ok) {
     goto err;
   }
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
   // Generate dbMask in place then perform XOR on it
   if (!PKCS1_MGF1(EM, maskedDBLen, H, hLen, mgf1Hash)) {
     goto err;
   }
-OPENSSL_END_ALLOW_DEPRECATED
+  OPENSSL_END_ALLOW_DEPRECATED
   p = EM;
 
   // Initial PS XORs with all zeroes which is a NOP so just update

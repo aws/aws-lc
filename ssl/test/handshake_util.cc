@@ -273,8 +273,8 @@ static bool Proxy(BIO *socket, bool async, int control, int rfd, int wfd) {
       return false;
     }
     if (header[1] != 3) {
-       fprintf(stderr, "bad header\n");
-       return false;
+      fprintf(stderr, "bad header\n");
+      return false;
     }
     size_t remaining = (header[3] << 8) + header[4];
     while (remaining > 0) {
@@ -442,7 +442,7 @@ static bool StartHandshaker(ScopedProcess *out, ScopedFD *out_control,
       }
       temp_fds[pair.second] = next_fd;
       if (posix_spawn_file_actions_adddup2(&actions, pair.second, next_fd) !=
-          0 ||
+              0 ||
           posix_spawn_file_actions_addclose(&actions, pair.second) != 0) {
         return false;
       }
@@ -613,12 +613,9 @@ static bool PrepareHandoff(SSL *ssl, SettingsWriter *writer,
   const TestConfig *config = GetTestConfig(ssl);
   int ret = -1;
   do {
-    ret = CheckIdempotentError(
-        "SSL_do_handshake", ssl,
-        [&]() -> int { return SSL_do_handshake(ssl); });
-  } while (!HandoffReady(ssl, ret) &&
-           config->async &&
-           RetryAsync(ssl, ret));
+    ret = CheckIdempotentError("SSL_do_handshake", ssl,
+                               [&]() -> int { return SSL_do_handshake(ssl); });
+  } while (!HandoffReady(ssl, ret) && config->async && RetryAsync(ssl, ret));
   if (!HandoffReady(ssl, ret)) {
     fprintf(stderr, "Handshake failed while waiting for handoff.\n");
     return false;

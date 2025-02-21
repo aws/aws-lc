@@ -55,14 +55,14 @@
 
 #include <openssl/evp.h>
 
-#include <openssl/digest.h>
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
+#include <openssl/digest.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 
-#include "../fipsmodule/evp/internal.h"
 #include "../dsa/internal.h"
+#include "../fipsmodule/evp/internal.h"
 #include "internal.h"
 
 
@@ -89,13 +89,12 @@ static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     goto err;
   }
 
-  if (!BN_parse_asn1_unsigned(key, dsa->pub_key) ||
-      CBS_len(key) != 0) {
+  if (!BN_parse_asn1_unsigned(key, dsa->pub_key) || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
-  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+  if (1 == EVP_PKEY_assign_DSA(out, dsa)) {
     return 1;
   }
 
@@ -114,12 +113,10 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, dsa_asn1_meth.oid, dsa_asn1_meth.oid_len) ||
-      (has_params &&
-       !DSA_marshal_parameters(&algorithm, dsa)) ||
+      (has_params && !DSA_marshal_parameters(&algorithm, dsa)) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
-      !BN_marshal_asn1(&key_bitstring, dsa->pub_key) ||
-      !CBB_flush(out)) {
+      !BN_marshal_asn1(&key_bitstring, dsa->pub_key) || !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
@@ -129,7 +126,7 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
 
 static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   // See PKCS#11, v2.40, section 2.5.
-  if(pubkey) {
+  if (pubkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -146,8 +143,7 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   if (dsa->priv_key == NULL) {
     goto err;
   }
-  if (!BN_parse_asn1_unsigned(key, dsa->priv_key) ||
-      CBS_len(key) != 0) {
+  if (!BN_parse_asn1_unsigned(key, dsa->priv_key) || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
@@ -169,7 +165,7 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
     goto err;
   }
 
-  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+  if (1 == EVP_PKEY_assign_DSA(out, dsa)) {
     BN_CTX_free(ctx);
     return 1;
   }
@@ -196,8 +192,7 @@ static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
       !CBB_add_bytes(&oid, dsa_asn1_meth.oid, dsa_asn1_meth.oid_len) ||
       !DSA_marshal_parameters(&algorithm, dsa) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !BN_marshal_asn1(&private_key, dsa->priv_key) ||
-      !CBB_flush(out)) {
+      !BN_marshal_asn1(&private_key, dsa->priv_key) || !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
@@ -258,34 +253,35 @@ static int dsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 static void int_dsa_free(EVP_PKEY *pkey) { DSA_free(pkey->pkey.dsa); }
 
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
-  EVP_PKEY_DSA,
-  // 1.2.840.10040.4.1
-  {0x2a, 0x86, 0x48, 0xce, 0x38, 0x04, 0x01}, 7,
+    EVP_PKEY_DSA,
+    // 1.2.840.10040.4.1
+    {0x2a, 0x86, 0x48, 0xce, 0x38, 0x04, 0x01},
+    7,
 
-  "DSA",
-  "OpenSSL DSA method",
+    "DSA",
+    "OpenSSL DSA method",
 
-  dsa_pub_decode,
-  dsa_pub_encode,
-  dsa_pub_cmp,
+    dsa_pub_decode,
+    dsa_pub_encode,
+    dsa_pub_cmp,
 
-  dsa_priv_decode,
-  dsa_priv_encode,
-  NULL /* priv_encode_v2 */,
+    dsa_priv_decode,
+    dsa_priv_encode,
+    NULL /* priv_encode_v2 */,
 
-  NULL /* set_priv_raw */,
-  NULL /* set_pub_raw */,
-  NULL /* get_priv_raw */,
-  NULL /* get_pub_raw */,
+    NULL /* set_priv_raw */,
+    NULL /* set_pub_raw */,
+    NULL /* get_priv_raw */,
+    NULL /* get_pub_raw */,
 
-  NULL /* pkey_opaque */,
+    NULL /* pkey_opaque */,
 
-  int_dsa_size,
-  dsa_bits,
+    int_dsa_size,
+    dsa_bits,
 
-  dsa_missing_parameters,
-  dsa_copy_parameters,
-  dsa_cmp_parameters,
+    dsa_missing_parameters,
+    dsa_copy_parameters,
+    dsa_cmp_parameters,
 
-  int_dsa_free,
+    int_dsa_free,
 };

@@ -259,24 +259,24 @@ static int pkey_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hkdf_pkey_meth) {
-    out->pkey_id = EVP_PKEY_HKDF;
-    out->init = pkey_hkdf_init;
-    out->copy = pkey_hkdf_copy;
-    out->cleanup = pkey_hkdf_cleanup;
-    out->keygen = NULL; /* keygen */
-    out->sign_init = NULL; /* sign_init */
-    out->sign = NULL; /* sign */
-    out->sign_message = NULL; /* sign_message */
-    out->verify_init = NULL; /* verify_init */
-    out->verify = NULL; /* verify */
-    out->verify_message = NULL; /* verify_message */
-    out->verify_recover = NULL; /* verify_recover */
-    out->encrypt = NULL; /* encrypt */
-    out->decrypt = NULL; /* decrypt */
-    out->derive = pkey_hkdf_derive;
-    out->paramgen = NULL; /* paramgen */
-    out->ctrl = pkey_hkdf_ctrl;
-    out->ctrl_str = pkey_hkdf_ctrl_str;
+  out->pkey_id = EVP_PKEY_HKDF;
+  out->init = pkey_hkdf_init;
+  out->copy = pkey_hkdf_copy;
+  out->cleanup = pkey_hkdf_cleanup;
+  out->keygen = NULL;         /* keygen */
+  out->sign_init = NULL;      /* sign_init */
+  out->sign = NULL;           /* sign */
+  out->sign_message = NULL;   /* sign_message */
+  out->verify_init = NULL;    /* verify_init */
+  out->verify = NULL;         /* verify */
+  out->verify_message = NULL; /* verify_message */
+  out->verify_recover = NULL; /* verify_recover */
+  out->encrypt = NULL;        /* encrypt */
+  out->decrypt = NULL;        /* decrypt */
+  out->derive = pkey_hkdf_derive;
+  out->paramgen = NULL; /* paramgen */
+  out->ctrl = pkey_hkdf_ctrl;
+  out->ctrl_str = pkey_hkdf_ctrl_str;
 }
 
 int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode) {

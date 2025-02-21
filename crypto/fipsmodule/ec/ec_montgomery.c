@@ -340,7 +340,7 @@ void ec_GFp_mont_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
     // https://github.com/aws/aws-lc/issues/1185
     EC_FELEM delta = {{0}}, gamma = {{0}}, beta = {{0}}, ftmp = {{0}};
     EC_FELEM ftmp2 = {{0}}, tmptmp = {{0}}, alpha = {{0}}, fourbeta = {{0}};
-    
+
     // delta = z^2
     ec_GFp_mont_felem_sqr(group, &delta, &a->Z);
     // gamma = y^2

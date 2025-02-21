@@ -329,10 +329,8 @@ OPENSSL_EXPORT int OBJ_nid2cbb(CBB *out, int nid) {
   const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
   CBB oid;
 
-  if (obj == NULL ||
-      !CBB_add_asn1(out, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, obj->data, obj->length) ||
-      !CBB_flush(out)) {
+  if (obj == NULL || !CBB_add_asn1(out, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, obj->data, obj->length) || !CBB_flush(out)) {
     return 0;
   }
 
@@ -481,9 +479,7 @@ int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
   return ret;
 }
 
-static uint32_t hash_nid(const ASN1_OBJECT *obj) {
-  return obj->nid;
-}
+static uint32_t hash_nid(const ASN1_OBJECT *obj) { return obj->nid; }
 
 static int cmp_nid(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   return a->nid - b->nid;
@@ -527,14 +523,13 @@ static int obj_add_object(ASN1_OBJECT *obj) {
         lh_ASN1_OBJECT_new(hash_short_name, cmp_short_name);
   }
   if (global_added_by_long_name == NULL) {
-    global_added_by_long_name = lh_ASN1_OBJECT_new(hash_long_name, cmp_long_name);
+    global_added_by_long_name =
+        lh_ASN1_OBJECT_new(hash_long_name, cmp_long_name);
   }
 
   int ok = 0;
-  if (global_added_by_nid == NULL ||
-      global_added_by_data == NULL ||
-      global_added_by_short_name == NULL ||
-      global_added_by_long_name == NULL) {
+  if (global_added_by_nid == NULL || global_added_by_data == NULL ||
+      global_added_by_short_name == NULL || global_added_by_long_name == NULL) {
     goto err;
   }
 
@@ -562,8 +557,7 @@ err:
 int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
   ASN1_OBJECT *op =
       create_object_with_text_oid(obj_next_nid, oid, short_name, long_name);
-  if (op == NULL ||
-      !obj_add_object(op)) {
+  if (op == NULL || !obj_add_object(op)) {
     return NID_undef;
   }
   return op->nid;

@@ -177,5 +177,5 @@ int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx) {
 }
 
 int BIO_set_md(BIO *b, const EVP_MD *md) {
-  return BIO_ctrl(b, BIO_C_SET_MD, 0, (EVP_MD*)md);
+  return BIO_ctrl(b, BIO_C_SET_MD, 0, (EVP_MD *)md);
 }

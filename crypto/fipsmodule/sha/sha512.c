@@ -60,8 +60,8 @@
 
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // The 32-bit hash algorithms share a common byte-order neutral collector and
@@ -141,11 +141,11 @@ int SHA512_256_Init(SHA512_CTX *sha) {
   return 1;
 }
 
-OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA384_CHAINING_LENGTH,
+OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH == SHA384_CHAINING_LENGTH,
                       sha512_and_sha384_have_same_chaining_length)
-OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA512_224_CHAINING_LENGTH,
+OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH == SHA512_224_CHAINING_LENGTH,
                       sha512_and_sha512_224_have_same_chaining_length)
-OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA512_256_CHAINING_LENGTH,
+OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH == SHA512_256_CHAINING_LENGTH,
                       sha512_and_sha512_256_have_same_chaining_length)
 
 // sha512_init_from_state_impl is the implementation of
@@ -154,7 +154,7 @@ OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA512_256_CHAINING_LENGTH,
 static int sha512_init_from_state_impl(SHA512_CTX *sha, int md_len,
                                        const uint8_t h[SHA512_CHAINING_LENGTH],
                                        uint64_t n) {
-  if(n % ((uint64_t) SHA512_CBLOCK * 8) != 0) {
+  if (n % ((uint64_t)SHA512_CBLOCK * 8) != 0) {
     // n is not a multiple of the block size in bits, so it fails
     return 0;
   }
@@ -187,14 +187,14 @@ int SHA512_Init_from_state(SHA512_CTX *sha,
 }
 
 int SHA512_224_Init_from_state(SHA512_CTX *sha,
-                           const uint8_t h[SHA512_224_CHAINING_LENGTH],
-                           uint64_t n) {
+                               const uint8_t h[SHA512_224_CHAINING_LENGTH],
+                               uint64_t n) {
   return sha512_init_from_state_impl(sha, SHA512_224_DIGEST_LENGTH, h, n);
 }
 
 int SHA512_256_Init_from_state(SHA512_CTX *sha,
-                           const uint8_t h[SHA512_256_CHAINING_LENGTH],
-                           uint64_t n) {
+                               const uint8_t h[SHA512_256_CHAINING_LENGTH],
+                               uint64_t n) {
   return sha512_init_from_state_impl(sha, SHA512_256_DIGEST_LENGTH, h, n);
 }
 
@@ -204,11 +204,10 @@ uint8_t *SHA384(const uint8_t *data, size_t len,
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  const int ok = SHA384_Init(&ctx) &&
-                 SHA384_Update(&ctx, data, len) &&
+  const int ok = SHA384_Init(&ctx) && SHA384_Update(&ctx, data, len) &&
                  SHA384_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -221,11 +220,10 @@ uint8_t *SHA512(const uint8_t *data, size_t len,
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  const int ok = SHA512_Init(&ctx) &&
-                 SHA512_Update(&ctx, data, len) &&
+  const int ok = SHA512_Init(&ctx) && SHA512_Update(&ctx, data, len) &&
                  SHA512_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -238,11 +236,10 @@ uint8_t *SHA512_224(const uint8_t *data, size_t len,
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  const int ok = SHA512_224_Init(&ctx) &&
-                 SHA512_224_Update(&ctx, data, len) &&
+  const int ok = SHA512_224_Init(&ctx) && SHA512_224_Update(&ctx, data, len) &&
                  SHA512_224_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -255,11 +252,10 @@ uint8_t *SHA512_256(const uint8_t *data, size_t len,
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA512_CTX ctx;
-  const int ok = SHA512_256_Init(&ctx) &&
-                 SHA512_256_Update(&ctx, data, len) &&
+  const int ok = SHA512_256_Init(&ctx) && SHA512_256_Update(&ctx, data, len) &&
                  SHA512_256_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -448,13 +444,15 @@ int SHA512_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_CHAINING_LENGTH],
   return sha512_get_state_impl(ctx, out_h, out_n);
 }
 
-int SHA512_224_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_224_CHAINING_LENGTH],
-                     uint64_t *out_n) {
+int SHA512_224_get_state(SHA512_CTX *ctx,
+                         uint8_t out_h[SHA512_224_CHAINING_LENGTH],
+                         uint64_t *out_n) {
   return sha512_get_state_impl(ctx, out_h, out_n);
 }
 
-int SHA512_256_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
-                     uint64_t *out_n) {
+int SHA512_256_get_state(SHA512_CTX *ctx,
+                         uint8_t out_h[SHA512_256_CHAINING_LENGTH],
+                         uint64_t *out_n) {
   return sha512_get_state_impl(ctx, out_h, out_n);
 }
 
@@ -602,7 +600,6 @@ static void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *in,
   int i;
 
   while (num--) {
-
     a = state[0];
     b = state[1];
     c = state[2];

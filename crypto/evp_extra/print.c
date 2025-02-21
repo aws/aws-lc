@@ -60,12 +60,12 @@
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 
-#include "internal.h"
-#include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
-#include "../fipsmodule/rsa/internal.h"
 #include "../fipsmodule/ml_dsa/ml_dsa.h"
 #include "../fipsmodule/pqdsa/internal.h"
+#include "../fipsmodule/rsa/internal.h"
+#include "../internal.h"
+#include "internal.h"
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
   for (size_t i = 0; i < len; i++) {
@@ -108,7 +108,7 @@ static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
   }
 
   if (BIO_printf(bp, "%s%s", name,
-                  (BN_is_negative(num)) ? " (Negative)" : "") <= 0) {
+                 (BN_is_negative(num)) ? " (Negative)" : "") <= 0) {
     return 0;
   }
 
@@ -163,8 +163,7 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
     str = "Modulus:";
     s = "Exponent:";
   }
-  if (!bn_print(out, str, rsa->n, off) ||
-      !bn_print(out, s, rsa->e, off)) {
+  if (!bn_print(out, str, rsa->n, off) || !bn_print(out, s, rsa->e, off)) {
     return 0;
   }
 
@@ -310,7 +309,8 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
 
 // MLDSA keys.
 
-static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) {
+static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off,
+                             int ptype) {
   if (pkey == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;

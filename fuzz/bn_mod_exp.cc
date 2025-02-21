@@ -62,31 +62,22 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   uint8_t sign, sign1;
   CBS_init(&cbs, buf, len);
   if (!CBS_get_u16_length_prefixed(&cbs, &child0) ||
-      !CBS_get_u8(&child0, &sign) ||
-      CBS_len(&child0) == 0 ||
-      !CBS_get_u16_length_prefixed(&cbs, &child1) ||
-      CBS_len(&child1) == 0 ||
-      !CBS_get_u16_length_prefixed(&cbs, &child2) ||
-      CBS_len(&child2) == 0 ||
+      !CBS_get_u8(&child0, &sign) || CBS_len(&child0) == 0 ||
+      !CBS_get_u16_length_prefixed(&cbs, &child1) || CBS_len(&child1) == 0 ||
+      !CBS_get_u16_length_prefixed(&cbs, &child2) || CBS_len(&child2) == 0 ||
       !CBS_get_u16_length_prefixed(&cbs, &child3) ||
-      !CBS_get_u8(&child3, &sign1) ||
-      CBS_len(&child3) == 0 ||
-      !CBS_get_u16_length_prefixed(&cbs, &child4) ||
-      CBS_len(&child4) == 0 ||
-      !CBS_get_u16_length_prefixed(&cbs, &child5) ||
-      CBS_len(&child5) == 0) {
+      !CBS_get_u8(&child3, &sign1) || CBS_len(&child3) == 0 ||
+      !CBS_get_u16_length_prefixed(&cbs, &child4) || CBS_len(&child4) == 0 ||
+      !CBS_get_u16_length_prefixed(&cbs, &child5) || CBS_len(&child5) == 0) {
     return 0;
   }
 
   // Don't fuzz inputs larger than 512 bytes (4096 bits). This isn't ideal, but
   // the naive |mod_exp| above is somewhat slow, so this otherwise causes the
   // fuzzers to spend a lot of time exploring timeouts.
-  if (CBS_len(&child0) > 512 ||
-      CBS_len(&child1) > 512 ||
-      CBS_len(&child2) > 512 ||
-      CBS_len(&child3) > 512 ||
-      CBS_len(&child4) > 512 ||
-      CBS_len(&child5) > 512) {
+  if (CBS_len(&child0) > 512 || CBS_len(&child1) > 512 ||
+      CBS_len(&child2) > 512 || CBS_len(&child3) > 512 ||
+      CBS_len(&child4) > 512 || CBS_len(&child5) > 512) {
     return 0;
   }
 
@@ -154,11 +145,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
       CHECK(BN_nnmod(base1.get(), base1.get(), modulus1.get(), ctx.get()));
 
       // Run the x2 implementation and compare the results.
-      CHECK(BN_mod_exp_mont_consttime_x2(result.get(), base.get(), power.get(),
-                                         modulus.get(), mont.get(),
-                                         result1.get(), base1.get(), power1.get(),
-                                         modulus1.get(), mont1.get(),
-					 ctx.get()));
+      CHECK(BN_mod_exp_mont_consttime_x2(
+          result.get(), base.get(), power.get(), modulus.get(), mont.get(),
+          result1.get(), base1.get(), power1.get(), modulus1.get(), mont1.get(),
+          ctx.get()));
       CHECK(BN_cmp(result.get(), expected.get()) == 0);
       CHECK(BN_cmp(result1.get(), expected1.get()) == 0);
     }

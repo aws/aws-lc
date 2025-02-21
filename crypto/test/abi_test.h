@@ -62,7 +62,8 @@ struct alignas(16) Reg128 {
 
 // References:
 // SysV64: https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf
-// Win64: https://docs.microsoft.com/en-us/cpp/build/x64-software-conventions?view=vs-2017#register-usage
+// Win64:
+// https://docs.microsoft.com/en-us/cpp/build/x64-software-conventions?view=vs-2017#register-usage
 #if defined(OPENSSL_WINDOWS)
 #define LOOP_CALLER_STATE_REGISTERS()  \
   CALLER_STATE_REGISTER(uint64_t, rbx) \
@@ -97,7 +98,8 @@ struct alignas(16) Reg128 {
 
 // References:
 // SysV32: https://uclibc.org/docs/psABI-i386.pdf and
-// Win32: https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions?view=vs-2017
+// Win32:
+// https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions?view=vs-2017
 #define LOOP_CALLER_STATE_REGISTERS()  \
   CALLER_STATE_REGISTER(uint32_t, esi) \
   CALLER_STATE_REGISTER(uint32_t, edi) \
@@ -108,8 +110,10 @@ struct alignas(16) Reg128 {
 
 // References:
 // AAPCS: https://developer.arm.com/docs/ihi0042/latest
-// iOS32: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
-// Linux: http://sourcery.mentor.com/sgpp/lite/arm/portal/kbattach142/arm_gnu_linux_%20abi.pdf
+// iOS32:
+// https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
+// Linux:
+// http://sourcery.mentor.com/sgpp/lite/arm/portal/kbattach142/arm_gnu_linux_%20abi.pdf
 //
 // ARM specifies a common calling convention, except r9 is left to the platform.
 // Linux treats r9 as callee-saved, while iOS 3+ treats it as caller-saved. Most
@@ -147,36 +151,37 @@ struct alignas(16) Reg128 {
 
 // References:
 // AAPCS64: https://developer.arm.com/docs/ihi0055/latest
-// iOS64: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
+// iOS64:
+// https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
 //
 // In aarch64, r18 (accessed as w18 or x18 in a 64-bit context) is the platform
 // register. iOS says user code may not touch it. We found no clear reference
 // for Linux. The iOS behavior implies portable assembly cannot use it, and
 // aarch64 has many registers. Thus this framework ignores register's existence.
 // We test r18 violations in arm-xlate.pl.
-#define LOOP_CALLER_STATE_REGISTERS()                                \
+#define LOOP_CALLER_STATE_REGISTERS()                                 \
   /* Per AAPCS64, section 5.1.2, only the bottom 64 bits of v8-v15 */ \
-  /* are preserved. These are accessed as dN. */                     \
-  CALLER_STATE_REGISTER(uint64_t, d8)                                \
-  CALLER_STATE_REGISTER(uint64_t, d9)                                \
-  CALLER_STATE_REGISTER(uint64_t, d10)                               \
-  CALLER_STATE_REGISTER(uint64_t, d11)                               \
-  CALLER_STATE_REGISTER(uint64_t, d12)                               \
-  CALLER_STATE_REGISTER(uint64_t, d13)                               \
-  CALLER_STATE_REGISTER(uint64_t, d14)                               \
-  CALLER_STATE_REGISTER(uint64_t, d15)                               \
-  /* For consistency with dN, use the 64-bit name xN, rather than */ \
-  /* the generic rN. */                                              \
-  CALLER_STATE_REGISTER(uint64_t, x19)                               \
-  CALLER_STATE_REGISTER(uint64_t, x20)                               \
-  CALLER_STATE_REGISTER(uint64_t, x21)                               \
-  CALLER_STATE_REGISTER(uint64_t, x22)                               \
-  CALLER_STATE_REGISTER(uint64_t, x23)                               \
-  CALLER_STATE_REGISTER(uint64_t, x24)                               \
-  CALLER_STATE_REGISTER(uint64_t, x25)                               \
-  CALLER_STATE_REGISTER(uint64_t, x26)                               \
-  CALLER_STATE_REGISTER(uint64_t, x27)                               \
-  CALLER_STATE_REGISTER(uint64_t, x28)                               \
+  /* are preserved. These are accessed as dN. */                      \
+  CALLER_STATE_REGISTER(uint64_t, d8)                                 \
+  CALLER_STATE_REGISTER(uint64_t, d9)                                 \
+  CALLER_STATE_REGISTER(uint64_t, d10)                                \
+  CALLER_STATE_REGISTER(uint64_t, d11)                                \
+  CALLER_STATE_REGISTER(uint64_t, d12)                                \
+  CALLER_STATE_REGISTER(uint64_t, d13)                                \
+  CALLER_STATE_REGISTER(uint64_t, d14)                                \
+  CALLER_STATE_REGISTER(uint64_t, d15)                                \
+  /* For consistency with dN, use the 64-bit name xN, rather than */  \
+  /* the generic rN. */                                               \
+  CALLER_STATE_REGISTER(uint64_t, x19)                                \
+  CALLER_STATE_REGISTER(uint64_t, x20)                                \
+  CALLER_STATE_REGISTER(uint64_t, x21)                                \
+  CALLER_STATE_REGISTER(uint64_t, x22)                                \
+  CALLER_STATE_REGISTER(uint64_t, x23)                                \
+  CALLER_STATE_REGISTER(uint64_t, x24)                                \
+  CALLER_STATE_REGISTER(uint64_t, x25)                                \
+  CALLER_STATE_REGISTER(uint64_t, x26)                                \
+  CALLER_STATE_REGISTER(uint64_t, x27)                                \
+  CALLER_STATE_REGISTER(uint64_t, x28)                                \
   CALLER_STATE_REGISTER(uint64_t, x29)
 
 #elif defined(OPENSSL_PPC64LE)
@@ -190,7 +195,8 @@ struct CRReg {
 };
 
 // References:
-// ELFv2: http://openpowerfoundation.org/wp-content/uploads/resources/leabi/leabi-20170510.pdf
+// ELFv2:
+// http://openpowerfoundation.org/wp-content/uploads/resources/leabi/leabi-20170510.pdf
 //
 // Note vector and floating-point registers on POWER have two different names.
 // Originally, there were 32 floating-point registers and 32 vector registers,
@@ -511,8 +517,8 @@ crypto_word_t abi_test_trampoline(crypto_word_t func,
 // This symbol is not a function and should not be called.
 void abi_test_unwind_start(Uncallable);
 
-// abi_test_unwind_return points at the instruction immediately after the call in
-// |abi_test_trampoline|. When unwinding the function under test, this is the
+// abi_test_unwind_return points at the instruction immediately after the call
+// in |abi_test_trampoline|. When unwinding the function under test, this is the
 // expected address in the |abi_test_trampoline| frame. After this address, the
 // unwind tester should ignore |SIGTRAP| until |abi_test_unwind_stop|.
 //

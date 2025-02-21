@@ -118,9 +118,7 @@ int CRYPTO_get_snapsafe_supported(void) { return 0; }
 
 #endif  // defined(OPENSSL_LINUX)
 
-const char* CRYPTO_get_sysgenid_path(void) {
-  return AWSLC_SYSGENID_PATH;
-}
+const char *CRYPTO_get_sysgenid_path(void) { return AWSLC_SYSGENID_PATH; }
 
 #if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 int HAZMAT_init_sysgenid_file(void) {

@@ -14,8 +14,8 @@
 
 #include <openssl/engine.h>
 
-#include <string.h>
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
@@ -23,8 +23,8 @@
 #include <openssl/rsa.h>
 #include <openssl/thread.h>
 
-#include "../internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
+#include "../internal.h"
 
 
 struct engine_st {
@@ -40,7 +40,7 @@ int ENGINE_free(ENGINE *engine) {
 }
 
 int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method) {
-  if(!engine) {
+  if (!engine) {
     OPENSSL_PUT_ERROR(ENGINE, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -50,14 +50,15 @@ int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method) {
 }
 
 const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine) {
-  if(engine) {
-    return engine->rsa_method;;
+  if (engine) {
+    return engine->rsa_method;
+    ;
   }
   return NULL;
 }
 
 int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method) {
-  if(!engine) {
+  if (!engine) {
     OPENSSL_PUT_ERROR(ENGINE, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -67,7 +68,7 @@ int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method) {
 }
 
 const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine) {
-  if(engine) {
+  if (engine) {
     return engine->eckey_method;
   }
   return NULL;

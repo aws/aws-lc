@@ -89,7 +89,7 @@ void CAST_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                       const CAST_KEY *ks, uint8_t *iv, int enc);
 
 #if defined(__cplusplus)
-} // extern C
+}  // extern C
 #endif
 
 #endif  // OPENSSL_HEADER_CAST_INTERNAL_H

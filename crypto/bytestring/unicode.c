@@ -19,13 +19,12 @@
 
 static int is_valid_code_point(uint32_t v) {
   // References in the following are to Unicode 15.0.0.
-  if (// The Unicode space runs from zero to 0x10ffff (3.4 D9).
+  if (  // The Unicode space runs from zero to 0x10ffff (3.4 D9).
       v > 0x10ffff ||
       // Values 0x...fffe, 0x...ffff, and 0xfdd0-0xfdef are permanently reserved
       // as noncharacters (3.4 D14). See also 23.7. As our APIs are intended for
       // "open interchange", such as ASN.1, we reject them.
-      (v & 0xfffe) == 0xfffe ||
-      (v >= 0xfdd0 && v <= 0xfdef) ||
+      (v & 0xfffe) == 0xfffe || (v >= 0xfdd0 && v <= 0xfdef) ||
       // Surrogate code points are invalid (3.2 C1).
       (v >= 0xd800 && v <= 0xdfff)) {
     return 0;
@@ -66,15 +65,13 @@ int cbs_get_utf8(CBS *cbs, uint32_t *out) {
     return 0;
   }
   for (size_t i = 0; i < len; i++) {
-    if (!CBS_get_u8(cbs, &c) ||
-        (c & TOP_BITS(2)) != TOP_BITS(1)) {
+    if (!CBS_get_u8(cbs, &c) || (c & TOP_BITS(2)) != TOP_BITS(1)) {
       return 0;
     }
     v <<= 6;
     v |= c & BOTTOM_BITS(6);
   }
-  if (!is_valid_code_point(v) ||
-      v < lower_bound) {
+  if (!is_valid_code_point(v) || v < lower_bound) {
     return 0;
   }
   *out = v;
@@ -93,8 +90,7 @@ int cbs_get_latin1(CBS *cbs, uint32_t *out) {
 int cbs_get_ucs2_be(CBS *cbs, uint32_t *out) {
   // Note UCS-2 (used by BMPString) does not support surrogates.
   uint16_t c;
-  if (!CBS_get_u16(cbs, &c) ||
-      !is_valid_code_point(c)) {
+  if (!CBS_get_u16(cbs, &c) || !is_valid_code_point(c)) {
     return 0;
   }
   *out = c;

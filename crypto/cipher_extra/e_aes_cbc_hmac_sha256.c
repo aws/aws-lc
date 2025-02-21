@@ -31,7 +31,8 @@ typedef struct {
   // Used to compute(init, update and final) HMAC-SHA256.
   // head stores the initialised inner hash state.
   // tail stores the outer hash state.
-  // These storage are for using in subsequent invocations with the same MAC key.
+  // These storage are for using in subsequent invocations with the same MAC
+  // key.
   SHA256_CTX head, tail, md;
   // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required
   // TLS 1.1+). In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
@@ -55,8 +56,8 @@ typedef struct {
 } EVP_AES_HMAC_SHA256;
 
 void aesni_cbc_sha256_enc(const void *inp, void *out, size_t blocks,
-                         const AES_KEY *key, uint8_t iv[AES_BLOCK_SIZE],
-                         SHA256_CTX *ctx, const void *in0);
+                          const AES_KEY *key, uint8_t iv[AES_BLOCK_SIZE],
+                          SHA256_CTX *ctx, const void *in0);
 
 
 static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
@@ -81,25 +82,34 @@ static int aesni_cbc_hmac_sha256_init_key(EVP_CIPHER_CTX *ctx,
   return ret < 0 ? 0 : 1;
 }
 
-// aesni_cbc_hmac_sha256_cipher implements TLS-specific CBC-mode+HMAC-SHA256 cipher suite based encryption and decryption.
+// aesni_cbc_hmac_sha256_cipher implements TLS-specific CBC-mode+HMAC-SHA256
+// cipher suite based encryption and decryption.
 //
 // For encryption in TLS version 1.0
 // |in|: payload/fragment
 // |len|: (|payload| + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE
-// |out|: Must point to allocated memory of at least (|payload| + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes
-// If the function returns successfully |out| will contain AES-CBC(aes_key, IV, payload || hmac-sha256(mac_key, aad || payload) || padding || padding_length)
+// |out|: Must point to allocated memory of at least (|payload| +
+// SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes If the
+// function returns successfully |out| will contain AES-CBC(aes_key, IV, payload
+// || hmac-sha256(mac_key, aad || payload) || padding || padding_length)
 
 // For encryption in TLS version 1.1 and 1.2
 // |in|: payload/fragment
-// |len|: (|IV| + |payload| + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE
-// |out|: Must point to allocated memory of at least (|IV| + |payload| + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes
-// If the function returns successfully |out| will contain AES-CBC(aes_key, mask, IV || payload || hmac-sha256(mac_key, aad || payload) || padding || padding_length)
-// |len|: should be (eiv_len + plaintext_len + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE).
-// The mask and IV are according to method 2.b from https://datatracker.ietf.org/doc/html/rfc2246#section-6.2.3.2
+// |len|: (|IV| + |payload| + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) &
+// -AES_BLOCK_SIZE |out|: Must point to allocated memory of at least (|IV| +
+// |payload| + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes If
+// the function returns successfully |out| will contain AES-CBC(aes_key, mask,
+// IV || payload || hmac-sha256(mac_key, aad || payload) || padding ||
+// padding_length) |len|: should be (eiv_len + plaintext_len +
+// SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE). The mask and IV
+// are according to method 2.b from
+// https://datatracker.ietf.org/doc/html/rfc2246#section-6.2.3.2
 //
-// WARNING: Do not set explicit |IV| = |mask|. It will result in aes(aes_key, 0) being used at the effective IV for all records.
+// WARNING: Do not set explicit |IV| = |mask|. It will result in aes(aes_key, 0)
+// being used at the effective IV for all records.
 //
-// In decryption, this function performs decrytion, removing padding, and verifying mac value.
+// In decryption, this function performs decrytion, removing padding, and
+// verifying mac value.
 static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                         const uint8_t *in, size_t len) {
   EVP_AES_HMAC_SHA256 *key = (EVP_AES_HMAC_SHA256 *)(ctx->cipher_data);
@@ -134,15 +144,17 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     }
     if (len !=
         ((plen + SHA256_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
-      // The input should have space for plen(eiv + plaintext) + SHA256_DIGEST_LENGTH + padding.
+      // The input should have space for plen(eiv + plaintext) +
+      // SHA256_DIGEST_LENGTH + padding.
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
       iv_len = AES_BLOCK_SIZE;
     }
 
-    // Use stitch code |aesni_cbc_sha256_enc| when there are multiple of SHA_CBLOCK
-    // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
+    // Use stitch code |aesni_cbc_sha256_enc| when there are multiple of
+    // SHA_CBLOCK so |aesni_cbc_sha1_enc| can use AES and SHA on the same data
+    // block.
     //
     // Assembly stitch handles AVX-capable processors, but its
     // performance is not optimal on AMD Jaguar, ~40% worse, for
@@ -161,9 +173,8 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       // include not hashed data(partial data).
       SHA256_Update(&key->md, in + iv_len, sha_off);
 
-      aesni_cbc_sha256_enc(in, out, blocks, &key->ks,
-                                 ctx->iv, &key->md,
-                                 in + iv_len + sha_off);
+      aesni_cbc_sha256_enc(in, out, blocks, &key->ks, ctx->iv, &key->md,
+                           in + iv_len + sha_off);
       blocks *= SHA256_CBLOCK;
       aes_off += blocks;
       sha_off += blocks;
@@ -322,11 +333,11 @@ static int aesni_cbc_hmac_sha256_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
         return 0;
       }
       // p is
-      // additional_data = |seq_num + content_type + protocol_version + payload_eiv_len|.
-      // seq_num: 8 octets long.
-      // content_type: 1 octets long.
+      // additional_data = |seq_num + content_type + protocol_version +
+      // payload_eiv_len|. seq_num: 8 octets long. content_type: 1 octets long.
       // protocol_version: 2 octets long.
-      // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
+      // payload_eiv_len: 2 octets long. eiv is explicit iv required by
+      // TLS 1.1+.
       uint8_t *p = ptr;
       uint16_t len = p[arg - 2] << 8 | p[arg - 1];
 

@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -96,8 +96,7 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
     // Compute U_1.
     uint8_t digest_tmp[EVP_MAX_MD_SIZE];
     if (!HMAC_Init_ex(&hctx, NULL, 0, NULL, NULL) ||
-        !HMAC_Update(&hctx, salt, salt_len) ||
-        !HMAC_Update(&hctx, i_buf, 4) ||
+        !HMAC_Update(&hctx, salt, salt_len) || !HMAC_Update(&hctx, i_buf, 4) ||
         !HMAC_Final(&hctx, digest_tmp, NULL)) {
       goto err;
     }

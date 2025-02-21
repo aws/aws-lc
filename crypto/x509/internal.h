@@ -307,9 +307,9 @@ struct x509_store_st {
   X509_VERIFY_PARAM *param;
 
   // Callbacks for various operations
-  X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
+  X509_STORE_CTX_verify_cb verify_cb;     // error callback
+  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
+  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
 
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
@@ -318,7 +318,7 @@ struct x509_store_st {
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
   const X509_LOOKUP_METHOD *method;  // the functions
-  void *method_data;           // method data
+  void *method_data;                 // method data
 
   X509_STORE *store_ctx;  // who owns us
 } /* X509_LOOKUP */;
@@ -341,9 +341,9 @@ struct x509_store_ctx_st {
   STACK_OF(X509) *trusted_stack;
 
   // Callbacks for various operations
-  X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
+  X509_STORE_CTX_verify_cb verify_cb;     // error callback
+  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
+  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
 
   // The following is built up
 
@@ -357,7 +357,7 @@ struct x509_store_ctx_st {
   X509 *current_issuer;   // cert currently being tested as valid issuer
   X509_CRL *current_crl;  // current CRL
 
-  int current_crl_score;         // score of current CRL
+  int current_crl_score;  // score of current CRL
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;

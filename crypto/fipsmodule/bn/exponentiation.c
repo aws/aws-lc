@@ -119,9 +119,9 @@
 #include "internal.h"
 #include "rsaz_exp.h"
 
-#if !defined(OPENSSL_NO_ASM) &&                          \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) || \
-     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
+#if !defined(OPENSSL_NO_ASM) &&                               \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||      \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) && \
     defined(OPENSSL_AARCH64)
 
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
@@ -136,10 +136,10 @@ OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 0; }
 
 #endif
 
-static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width,
-                                        const BN_ULONG *table, int rowidx,
-                                        int window) {
-
+static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest,
+                                                       int width,
+                                                       const BN_ULONG *table,
+                                                       int rowidx, int window) {
 #if defined(BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE)
 
   int table_height = 1 << window;
@@ -537,9 +537,9 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
     }
   }
 
-  start = 1;  // This is used to avoid multiplication etc
-              // when there is only the value '1' in the
-              // buffer.
+  start = 1;          // This is used to avoid multiplication etc
+                      // when there is only the value '1' in the
+                      // buffer.
   wstart = bits - 1;  // The top bit of the window
 
   if (!BN_one(r)) {
@@ -548,7 +548,7 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
 
   for (;;) {
     int wvalue;  // The 'value' of the window
-    int wend;  // The bottom bit of the window
+    int wend;    // The bottom bit of the window
 
     if (!BN_is_bit_set(p, wstart)) {
       if (!start) {
@@ -687,8 +687,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
   if (window > 1) {
     BIGNUM *d = BN_CTX_get(ctx);
-    if (d == NULL ||
-        !BN_mod_mul_montgomery(d, val[0], val[0], mont, ctx)) {
+    if (d == NULL || !BN_mod_mul_montgomery(d, val[0], val[0], mont, ctx)) {
       goto err;
     }
     for (int i = 1; i < 1 << (window - 1); i++) {
@@ -1011,8 +1010,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   assert((size_t)top <= BN_MONTGOMERY_MAX_WORDS);
   OPENSSL_STATIC_ASSERT(
       BN_MONTGOMERY_MAX_WORDS <=
-          INT_MAX / sizeof(BN_ULONG) / ((1 <<
-              BN_window_bits_for_ctime_exponent_size) + 3),
+          INT_MAX / sizeof(BN_ULONG) /
+              ((1 << BN_window_bits_for_ctime_exponent_size) + 3),
       powerbuf_len_may_overflow);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
@@ -1051,16 +1050,14 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   tmp.neg = am.neg = 0;
   tmp.flags = am.flags = BN_FLG_STATIC_DATA;
 
-  if (!bn_one_to_montgomery(&tmp, mont, ctx) ||
-      !bn_resize_words(&tmp, top)) {
+  if (!bn_one_to_montgomery(&tmp, mont, ctx) || !bn_resize_words(&tmp, top)) {
     goto err;
   }
 
   // Prepare a^1 in the Montgomery domain.
   assert(!a->neg);
   declassify_assert(BN_ucmp(a, m) < 0);
-  if (!BN_to_montgomery(&am, a, mont, ctx) ||
-      !bn_resize_words(&am, top)) {
+  if (!BN_to_montgomery(&am, a, mont, ctx) || !bn_resize_words(&am, top)) {
     goto err;
   }
 
@@ -1274,39 +1271,38 @@ err:
 //
 // The width of each base, exponent, and modulus must match and the
 // contexts are expected to be initialized.
-int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
-                                 const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
-                                 BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
+int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1,
+                                 const BIGNUM *p1, const BIGNUM *m1,
+                                 const BN_MONT_CTX *in_mont1, BIGNUM *rr2,
+                                 const BIGNUM *a2, const BIGNUM *p2,
                                  const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
-                                 BN_CTX *ctx)
-{
+                                 BN_CTX *ctx) {
   int ret = 0;
 
 #ifdef RSAZ_512_ENABLED
   if (CRYPTO_is_AVX512IFMA_capable() &&
-     (((a1->width == 16) && (p1->width == 16) && (BN_num_bits(m1) == 1024) &&
-       (a2->width == 16) && (p2->width == 16) && (BN_num_bits(m2) == 1024)) ||
-      ((a1->width == 24) && (p1->width == 24) && (BN_num_bits(m1) == 1536) &&
-       (a2->width == 24) && (p2->width == 24) && (BN_num_bits(m2) == 1536)) ||
-      ((a1->width == 32) && (p1->width == 32) && (BN_num_bits(m1) == 2048) &&
-       (a2->width == 32) && (p2->width == 32) && (BN_num_bits(m2) == 2048)))) {
-
+      (((a1->width == 16) && (p1->width == 16) && (BN_num_bits(m1) == 1024) &&
+        (a2->width == 16) && (p2->width == 16) && (BN_num_bits(m2) == 1024)) ||
+       ((a1->width == 24) && (p1->width == 24) && (BN_num_bits(m1) == 1536) &&
+        (a2->width == 24) && (p2->width == 24) && (BN_num_bits(m2) == 1536)) ||
+       ((a1->width == 32) && (p1->width == 32) && (BN_num_bits(m1) == 2048) &&
+        (a2->width == 32) && (p2->width == 32) && (BN_num_bits(m2) == 2048)))) {
     int widthn = a1->width;
 
     if (!bn_wexpand(rr1, widthn)) {
-        return ret;
+      return ret;
     }
     if (!bn_wexpand(rr2, widthn)) {
-        return ret;
+      return ret;
     }
-    
+
     /*  Ensure that montgomery contexts are initialized */
     if (in_mont1 == NULL) {
-        return ret;
+      return ret;
     }
 
     if (in_mont2 == NULL) {
-	return ret;
+      return ret;
     }
 
 
@@ -1319,17 +1315,15 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
       return 0;
     }
     if ((a1->neg || BN_ucmp(a1, m1) >= 0) ||
-	(a2->neg || BN_ucmp(a2, m2) >= 0)) {
+        (a2->neg || BN_ucmp(a2, m2) >= 0)) {
       OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
       return 0;
     }
 
     int mod_bits = BN_num_bits(m1);
-    ret = RSAZ_mod_exp_avx512_x2(rr1->d, a1->d, p1->d, m1->d,
-                                 in_mont1->RR.d, in_mont1->n0[0],
-                                 rr2->d, a2->d, p2->d, m2->d,
-                                 in_mont2->RR.d, in_mont2->n0[0],
-                                 mod_bits);
+    ret = RSAZ_mod_exp_avx512_x2(rr1->d, a1->d, p1->d, m1->d, in_mont1->RR.d,
+                                 in_mont1->n0[0], rr2->d, a2->d, p2->d, m2->d,
+                                 in_mont2->RR.d, in_mont2->n0[0], mod_bits);
 
     rr1->width = widthn;
     rr1->neg = 0;

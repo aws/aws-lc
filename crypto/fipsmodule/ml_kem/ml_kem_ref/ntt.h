@@ -14,6 +14,7 @@ void ntt(int16_t poly[256]);
 void invntt(int16_t poly[256]);
 
 #define basemul KYBER_NAMESPACE(basemul)
-void basemul(int16_t r[2], const int16_t a[2], const int16_t b[2], int16_t zeta);
+void basemul(int16_t r[2], const int16_t a[2], const int16_t b[2],
+             int16_t zeta);
 
 #endif

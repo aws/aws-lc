@@ -125,7 +125,8 @@ OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
 // 1100_0000_0000_0011_0000_0000_0000_0000
 #define CPU_CAP_AVX512_BITFLAGS 0xC0030000
 OPENSSL_INLINE int CRYPTO_is_AVX512_capable(void) {
-  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512_BITFLAGS) == CPU_CAP_AVX512_BITFLAGS;
+  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512_BITFLAGS) ==
+         CPU_CAP_AVX512_BITFLAGS;
 }
 
 OPENSSL_INLINE int CRYPTO_is_VAES_capable(void) {
@@ -241,13 +242,13 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
-           (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
-           (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
+         (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
+         (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
   return (OPENSSL_armcap_P & (ARMV8_DIT | ARMV8_DIT_ALLOWED)) ==
-    (ARMV8_DIT | ARMV8_DIT_ALLOWED);
+         (ARMV8_DIT | ARMV8_DIT_ALLOWED);
 }
 
 // This function is used only for testing; hence, not inlined
@@ -278,10 +279,10 @@ OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
 // Instead of the macro, the functions above can be used.
 // An example of their usage is present in the benchmarking function
 // `Speed()` in `tool/speed.cc` when the option `-dit` is passed in.
-#define SET_DIT_AUTO_RESET                      \
-  volatile uint64_t _dit_restore_orig                \
-         __attribute__((cleanup(armv8_restore_dit))) \
-          OPENSSL_UNUSED = armv8_set_dit();
+#define SET_DIT_AUTO_RESET                                         \
+  volatile uint64_t _dit_restore_orig                              \
+      __attribute__((cleanup(armv8_restore_dit))) OPENSSL_UNUSED = \
+          armv8_set_dit();
 
 #else
 #define SET_DIT_AUTO_RESET
@@ -305,4 +306,4 @@ extern unsigned long OPENSSL_ppc64le_hwcap2;
 }
 #endif
 
-#endif // OPENSSL_HEADER_CPUCAP_INTERNAL_H
+#endif  // OPENSSL_HEADER_CPUCAP_INTERNAL_H

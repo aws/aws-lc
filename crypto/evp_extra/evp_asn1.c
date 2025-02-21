@@ -64,11 +64,11 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-#include "../fipsmodule/evp/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The OID is then searched against ASN.1 methods for a method with that OID.
@@ -103,11 +103,11 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-  const EVP_PKEY_ASN1_METHOD * ret = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  const EVP_PKEY_ASN1_METHOD *ret = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
   if (ret != NULL) {
     // if |cbs| is empty after parsing |oid| from it, we overwrite the contents
-    // with |oid| so that we can call pub_decode/priv_decode with the |algorithm|
-    // populated as |oid|.
+    // with |oid| so that we can call pub_decode/priv_decode with the
+    // |algorithm| populated as |oid|.
     if (CBS_len(cbs) == 0) {
       OPENSSL_memcpy(cbs, &oid, sizeof(oid));
       return ret;
@@ -123,8 +123,7 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   uint8_t padding;
   if (!CBS_get_asn1(cbs, &spki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1(&spki, &key, CBS_ASN1_BITSTRING) ||
-      CBS_len(&spki) != 0) {
+      !CBS_get_asn1(&spki, &key, CBS_ASN1_BITSTRING) || CBS_len(&spki) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
@@ -134,10 +133,9 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
-  if (// Every key type defined encodes the key as a byte string with the same
-      // conversion to BIT STRING.
-      !CBS_get_u8(&key, &padding) ||
-      padding != 0) {
+  if (  // Every key type defined encodes the key as a byte string with the same
+        // conversion to BIT STRING.
+      !CBS_get_u8(&key, &padding) || padding != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
@@ -176,19 +174,16 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
   return key->ameth->pub_encode(cbb, key);
 }
 
-static const unsigned kAttributesTag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const unsigned kAttributesTag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
 
-static const unsigned kPublicKeyTag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 1;
+static const unsigned kPublicKeyTag = CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
 EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // Parse the PrivateKeyInfo (RFC 5208) or OneAsymmetricKey (RFC 5958).
   CBS pkcs8, algorithm, key, public_key;
   uint64_t version;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&pkcs8, &version) ||
-      version > PKCS8_VERSION_TWO ||
+      !CBS_get_asn1_uint64(&pkcs8, &version) || version > PKCS8_VERSION_TWO ||
       !CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&pkcs8, &key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -201,8 +196,8 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     return NULL;
   }
 
-  // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of Attributes which
-  // we ignore.
+  // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of
+  // Attributes which we ignore.
   if (CBS_peek_asn1_tag(&pkcs8, kAttributesTag)) {
     if (!CBS_get_asn1(cbs, NULL, kAttributesTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -216,7 +211,8 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // divisible by 8 we leave the first octet of the bit string present, which
   // specifies the padded bit count between 0 and 7.
   if (CBS_peek_asn1_tag(&pkcs8, kPublicKeyTag)) {
-    if (version != PKCS8_VERSION_TWO || !CBS_get_asn1(&pkcs8, &public_key, kPublicKeyTag)) {
+    if (version != PKCS8_VERSION_TWO ||
+        !CBS_get_asn1(&pkcs8, &public_key, kPublicKeyTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return NULL;
     }
@@ -475,8 +471,7 @@ int i2d_PUBKEY(const EVP_PKEY *pkey, uint8_t **outp) {
   }
 
   CBB cbb;
-  if (!CBB_init(&cbb, 128) ||
-      !EVP_marshal_public_key(&cbb, pkey)) {
+  if (!CBB_init(&cbb, 128) || !EVP_marshal_public_key(&cbb, pkey)) {
     CBB_cleanup(&cbb);
     return -1;
   }
@@ -513,8 +508,7 @@ int i2d_RSA_PUBKEY(const RSA *rsa, uint8_t **outp) {
 
   int ret = -1;
   EVP_PKEY *pkey = EVP_PKEY_new();
-  if (pkey == NULL ||
-      !EVP_PKEY_set1_RSA(pkey, (RSA *)rsa)) {
+  if (pkey == NULL || !EVP_PKEY_set1_RSA(pkey, (RSA *)rsa)) {
     goto err;
   }
 
@@ -555,8 +549,7 @@ int i2d_DSA_PUBKEY(const DSA *dsa, uint8_t **outp) {
 
   int ret = -1;
   EVP_PKEY *pkey = EVP_PKEY_new();
-  if (pkey == NULL ||
-      !EVP_PKEY_set1_DSA(pkey, (DSA *)dsa)) {
+  if (pkey == NULL || !EVP_PKEY_set1_DSA(pkey, (DSA *)dsa)) {
     goto err;
   }
 
@@ -597,8 +590,7 @@ int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp) {
 
   int ret = -1;
   EVP_PKEY *pkey = EVP_PKEY_new();
-  if (pkey == NULL ||
-      !EVP_PKEY_set1_EC_KEY(pkey, (EC_KEY *)ec_key)) {
+  if (pkey == NULL || !EVP_PKEY_set1_EC_KEY(pkey, (EC_KEY *)ec_key)) {
     goto err;
   }
 

@@ -72,7 +72,7 @@
 #include <openssl/thread.h>
 
 #include "../../internal.h"
-//#include "../../rsa_extra/internal.h"
+// #include "../../rsa_extra/internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
 #include "internal.h"
@@ -221,7 +221,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   }
 
   if (rsa->meth == NULL) {
-    rsa->meth = (RSA_METHOD *) RSA_get_default_method();
+    rsa->meth = (RSA_METHOD *)RSA_get_default_method();
   }
 
   rsa->references = 1;
@@ -241,8 +241,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
 
 RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n) {
   RSA *rsa = RSA_new_method(engine);
-  if (rsa == NULL ||
-      !bn_dup_into(&rsa->n, n)) {
+  if (rsa == NULL || !bn_dup_into(&rsa->n, n)) {
     RSA_free(rsa);
     return NULL;
   }
@@ -404,8 +403,7 @@ int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
 
 int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q) {
   SET_DIT_AUTO_RESET;
-  if ((rsa->p == NULL && p == NULL) ||
-      (rsa->q == NULL && q == NULL)) {
+  if ((rsa->p == NULL && p == NULL) || (rsa->q == NULL && q == NULL)) {
     return 0;
   }
 
@@ -462,7 +460,7 @@ RSA_METHOD *RSA_meth_new(const char *name, int flags) {
 }
 
 int RSA_set_method(RSA *rsa, const RSA_METHOD *meth) {
-  if(rsa == NULL || meth == NULL) {
+  if (rsa == NULL || meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -472,7 +470,7 @@ int RSA_set_method(RSA *rsa, const RSA_METHOD *meth) {
 }
 
 const RSA_METHOD *RSA_get_method(const RSA *rsa) {
-  if(rsa == NULL) {
+  if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
@@ -480,15 +478,14 @@ const RSA_METHOD *RSA_get_method(const RSA *rsa) {
   return rsa->meth;
 }
 
-void RSA_meth_free(RSA_METHOD *meth)
-{
+void RSA_meth_free(RSA_METHOD *meth) {
   if (meth != NULL) {
     OPENSSL_free(meth);
   }
 }
 
-int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa)) {
-  if(meth == NULL) {
+int RSA_meth_set_init(RSA_METHOD *meth, int (*init)(RSA *rsa)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -497,8 +494,8 @@ int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa)) {
   return 1;
 }
 
-int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa)) {
-  if(meth == NULL) {
+int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish)(RSA *rsa)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -508,10 +505,9 @@ int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa)) {
 }
 
 int RSA_meth_set_priv_dec(RSA_METHOD *meth,
-                          int (*priv_dec) (int max_out, const uint8_t *from,
-                                           uint8_t *to, RSA *rsa,
-                                           int padding)) {
-  if(meth == NULL) {
+                          int (*priv_dec)(int max_out, const uint8_t *from,
+                                          uint8_t *to, RSA *rsa, int padding)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -521,10 +517,9 @@ int RSA_meth_set_priv_dec(RSA_METHOD *meth,
 }
 
 int RSA_meth_set_priv_enc(RSA_METHOD *meth,
-                          int (*priv_enc) (int max_out, const uint8_t *from,
-                                           uint8_t *to, RSA *rsa,
-                                           int padding)) {
-  if(meth == NULL) {
+                          int (*priv_enc)(int max_out, const uint8_t *from,
+                                          uint8_t *to, RSA *rsa, int padding)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -534,10 +529,9 @@ int RSA_meth_set_priv_enc(RSA_METHOD *meth,
 }
 
 int RSA_meth_set_pub_dec(RSA_METHOD *meth,
-                         int (*pub_dec) (int max_out, const uint8_t *from,
-                                         uint8_t *to, RSA *rsa,
-                                         int padding)) {
-  if(meth == NULL) {
+                         int (*pub_dec)(int max_out, const uint8_t *from,
+                                        uint8_t *to, RSA *rsa, int padding)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -547,10 +541,9 @@ int RSA_meth_set_pub_dec(RSA_METHOD *meth,
 }
 
 int RSA_meth_set_pub_enc(RSA_METHOD *meth,
-                         int (*pub_enc) (int max_out, const uint8_t *from,
-                                         uint8_t *to, RSA *rsa,
-                                         int padding)) {
-  if(meth == NULL) {
+                         int (*pub_enc)(int max_out, const uint8_t *from,
+                                        uint8_t *to, RSA *rsa, int padding)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -560,7 +553,7 @@ int RSA_meth_set_pub_enc(RSA_METHOD *meth,
 }
 
 int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data) {
-  if(meth == NULL) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -569,10 +562,11 @@ int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data) {
   return 1;
 }
 
-int RSA_meth_set_sign(RSA_METHOD *meth, int (*sign) (int type,
-        const unsigned char *m, unsigned int m_length, unsigned char *sigret,
-        unsigned int *siglen, const RSA *rsa)) {
-  if(meth == NULL) {
+int RSA_meth_set_sign(RSA_METHOD *meth,
+                      int (*sign)(int type, const unsigned char *m,
+                                  unsigned int m_length, unsigned char *sigret,
+                                  unsigned int *siglen, const RSA *rsa)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -594,7 +588,7 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
     // paradigm and OpenSSL, we initialize |out_len| based on the return value
     // here.
     int ret = rsa->meth->sign_raw((int)max_out, in, out, rsa, padding);
-    if(ret < 0) {
+    if (ret < 0) {
       *out_len = 0;
       return 0;
     }
@@ -616,8 +610,8 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
 unsigned RSA_size(const RSA *rsa) {
   SET_DIT_AUTO_RESET;
-  size_t ret = (rsa->meth && rsa->meth->size) ?
-          rsa->meth->size(rsa) : rsa_default_size(rsa);
+  size_t ret = (rsa->meth && rsa->meth->size) ? rsa->meth->size(rsa)
+                                              : rsa_default_size(rsa);
   // RSA modulus sizes are bounded by |BIGNUM|, which must fit in |unsigned|.
   //
   // TODO(https://crbug.com/boringssl/516): Should we make this return |size_t|?
@@ -673,91 +667,94 @@ struct pkcs1_sig_prefix {
 // https://datatracker.ietf.org/doc/html/rfc8017#section-9.2
 static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     {
-     NID_md5,
-     MD5_DIGEST_LENGTH,
-     18,
-     {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
-      0x02, 0x05, 0x05, 0x00, 0x04, 0x10},
+        NID_md5,
+        MD5_DIGEST_LENGTH,
+        18,
+        {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
+         0x02, 0x05, 0x05, 0x00, 0x04, 0x10},
     },
     {
-     NID_sha1,
-     SHA_DIGEST_LENGTH,
-     15,
-     {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05,
-      0x00, 0x04, 0x14},
+        NID_sha1,
+        SHA_DIGEST_LENGTH,
+        15,
+        {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05,
+         0x00, 0x04, 0x14},
     },
     {
-     NID_sha224,
-     SHA224_DIGEST_LENGTH,
-     19,
-     {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1c},
+        NID_sha224,
+        SHA224_DIGEST_LENGTH,
+        19,
+        {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1c},
     },
     {
-     NID_sha256,
-     SHA256_DIGEST_LENGTH,
-     19,
-     {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20},
+        NID_sha256,
+        SHA256_DIGEST_LENGTH,
+        19,
+        {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20},
     },
     {
-     NID_sha384,
-     SHA384_DIGEST_LENGTH,
-     19,
-     {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30},
+        NID_sha384,
+        SHA384_DIGEST_LENGTH,
+        19,
+        {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30},
     },
     {
-     NID_sha512,
-     SHA512_DIGEST_LENGTH,
-     19,
-     {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
+        NID_sha512,
+        SHA512_DIGEST_LENGTH,
+        19,
+        {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
     },
     {
-     NID_sha512_224,
-     SHA512_224_DIGEST_LENGTH,
-     19,
-     {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x05, 0x05, 0x00, 0x04, 0x1c},
+        NID_sha512_224,
+        SHA512_224_DIGEST_LENGTH,
+        19,
+        {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x05, 0x05, 0x00, 0x04, 0x1c},
     },
     {
-     NID_sha512_256,
-     SHA512_256_DIGEST_LENGTH,
-     19,
-     {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x06, 0x05, 0x00, 0x04, 0x20},
+        NID_sha512_256,
+        SHA512_256_DIGEST_LENGTH,
+        19,
+        {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x06, 0x05, 0x00, 0x04, 0x20},
     },
     {
-      NID_sha3_224,
-      28,
-      19,
-      {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-       0x04, 0x02, 0x07, 0x05, 0x00, 0x04, 0x1c},
+        NID_sha3_224,
+        28,
+        19,
+        {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x07, 0x05, 0x00, 0x04, 0x1c},
     },
     {
-      NID_sha3_256,
-      32,
-      19,
-      {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-       0x04, 0x02, 0x08, 0x05, 0x00, 0x04, 0x20},
+        NID_sha3_256,
+        32,
+        19,
+        {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x08, 0x05, 0x00, 0x04, 0x20},
     },
     {
-      NID_sha3_384,
-      48,
-      19,
-      {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-       0x04, 0x02, 0x09, 0x05, 0x00, 0x04, 0x30},
+        NID_sha3_384,
+        48,
+        19,
+        {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x09, 0x05, 0x00, 0x04, 0x30},
     },
     {
-      NID_sha3_512,
-      64,
-      19,
-      {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-       0x04, 0x02, 0x0a, 0x05, 0x00, 0x04, 0x40},
+        NID_sha3_512,
+        64,
+        19,
+        {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+         0x04, 0x02, 0x0a, 0x05, 0x00, 0x04, 0x40},
     },
     {
-     NID_undef, 0, 0, {0},
+        NID_undef,
+        0,
+        0,
+        {0},
     },
 };
 
@@ -783,7 +780,6 @@ static int rsa_check_digest_size(int hash_nid, size_t digest_len) {
 
   OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_ALGORITHM_TYPE);
   return 0;
-
 }
 
 int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
@@ -810,7 +806,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 
     // The length should already have been checked.
     assert(digest_len == sig_prefix->hash_len);
-    const uint8_t* prefix = sig_prefix->bytes;
+    const uint8_t *prefix = sig_prefix->bytes;
     size_t prefix_len = sig_prefix->len;
     size_t signed_msg_len = prefix_len + digest_len;
     if (signed_msg_len < prefix_len) {
@@ -960,7 +956,8 @@ int rsa_verify_no_self_test(int hash_nid, const uint8_t *digest,
     goto out;
   }
 
-  // Check that no other information follows the hash value (FIPS 186-4 Section 5.5)
+  // Check that no other information follows the hash value (FIPS 186-4
+  // Section 5.5)
   if (len != signed_msg_len) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     goto out;
@@ -1093,7 +1090,8 @@ void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa) {
   }
 }
 
-int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
+int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1,
+                      void *p2) {
   SET_DIT_AUTO_RESET;
   if (ctx != NULL && ctx->pmeth != NULL) {
     if (ctx->pmeth->pkey_id == EVP_PKEY_RSA ||
@@ -1191,52 +1189,53 @@ int is_public_component_of_rsa_key_good(const RSA *key) {
 //   - private_crt:   (n, e, d, p, q, dmp1, dmq1, iqmp),
 //   - private_strip: (n, d).
 enum rsa_key_type_for_checking {
-    RSA_KEY_TYPE_FOR_CHECKING_PUBLIC,
-    RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN,
-    RSA_KEY_TYPE_FOR_CHECKING_PRIVATE,
-    RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT,
-    RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP,
-    RSA_KEY_TYPE_FOR_CHECKING_INVALID,
+  RSA_KEY_TYPE_FOR_CHECKING_PUBLIC,
+  RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN,
+  RSA_KEY_TYPE_FOR_CHECKING_PRIVATE,
+  RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT,
+  RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP,
+  RSA_KEY_TYPE_FOR_CHECKING_INVALID,
 };
 
-static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA *key) {
-    // The key must have the modulus n.
-    SET_DIT_AUTO_RESET;
-    if (key->n == NULL) {
-      return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
-    }
-
-    // (n, e)
-    if (key->e != NULL && key->d == NULL && key->p == NULL && key->q == NULL &&
-        key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
-      return RSA_KEY_TYPE_FOR_CHECKING_PUBLIC;
-    }
-
-    // (n, e, d)
-    if (key->e != NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
-        key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
-      return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN;
-    }
-
-    // (n, e, d, p, q)
-    if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
-        key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
-      return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE;
-    }
-
-    // (n, e, d, p, q, dmp1, dmq1, iqmp)
-    if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
-        key->dmp1 != NULL && key->dmq1 != NULL && key->iqmp != NULL) {
-      return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT;
-    }
-
-    // (n, d)
-    if (key->e == NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
-        key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
-      return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP;
-    }
-
+static enum rsa_key_type_for_checking determine_key_type_for_checking(
+    const RSA *key) {
+  // The key must have the modulus n.
+  SET_DIT_AUTO_RESET;
+  if (key->n == NULL) {
     return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
+  }
+
+  // (n, e)
+  if (key->e != NULL && key->d == NULL && key->p == NULL && key->q == NULL &&
+      key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
+    return RSA_KEY_TYPE_FOR_CHECKING_PUBLIC;
+  }
+
+  // (n, e, d)
+  if (key->e != NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
+      key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
+    return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN;
+  }
+
+  // (n, e, d, p, q)
+  if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
+      key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
+    return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE;
+  }
+
+  // (n, e, d, p, q, dmp1, dmq1, iqmp)
+  if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
+      key->dmp1 != NULL && key->dmq1 != NULL && key->iqmp != NULL) {
+    return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT;
+  }
+
+  // (n, d)
+  if (key->e == NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
+      key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
+    return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP;
+  }
+
+  return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
 }
 
 // Performs certain checks on the given RSA key. The key can be a key pair
@@ -1270,7 +1269,8 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // the function can work with.
 int RSA_check_key(const RSA *key) {
   SET_DIT_AUTO_RESET;
-  enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
+  enum rsa_key_type_for_checking key_type =
+      determine_key_type_for_checking(key);
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
@@ -1424,9 +1424,9 @@ static int rsa_key_fips_pairwise_consistency_test_signing(RSA *key) {
   int ret = 0;
 
   uint8_t msg[1] = {0};
-  size_t  msg_len = 1;
+  size_t msg_len = 1;
   uint8_t *sig_der = NULL;
-  size_t  sig_len = 0;
+  size_t sig_len = 0;
 
   EVP_PKEY *evp_pkey = NULL;
   EVP_MD_CTX md_ctx;
@@ -1447,8 +1447,7 @@ static int rsa_key_fips_pairwise_consistency_test_signing(RSA *key) {
   }
 
   sig_der = OPENSSL_malloc(sig_len);
-  if (!sig_der ||
-      !EVP_DigestSign(&md_ctx, sig_der, &sig_len, msg, msg_len)) {
+  if (!sig_der || !EVP_DigestSign(&md_ctx, sig_der, &sig_len, msg, msg_len)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto end;
   }
@@ -1471,20 +1470,26 @@ end:
 
 // This is the product of the 132 smallest odd primes, from 3 to 751,
 // as defined in SP 800-89 5.3.3.
-static const BN_ULONG kSmallFactorsLimbs[] = {
-    TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
-    TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
-    TOBN(0x6b55514b, 0xbf26c483), TOBN(0x0a84d817, 0x5a144871),
-    TOBN(0x77d12fee, 0x9b82210a), TOBN(0xdb5b93c2, 0x97f050b3),
-    TOBN(0x4acad6b9, 0x4d6c026b), TOBN(0xeb7751f3, 0x54aec893),
-    TOBN(0xdba53368, 0x36bc85c4), TOBN(0xd85a1b28, 0x7f5ec78e),
-    TOBN(0x2eb072d8, 0x6b322244), TOBN(0xbba51112, 0x5e2b3aea),
-    TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
-    0x000017b1
-};
+static const BN_ULONG kSmallFactorsLimbs[] = {TOBN(0xc4309333, 0x3ef4e3e1),
+                                              TOBN(0x71161eb6, 0xcd2d655f),
+                                              TOBN(0x95e2238c, 0x0bf94862),
+                                              TOBN(0x3eb233d3, 0x24f7912b),
+                                              TOBN(0x6b55514b, 0xbf26c483),
+                                              TOBN(0x0a84d817, 0x5a144871),
+                                              TOBN(0x77d12fee, 0x9b82210a),
+                                              TOBN(0xdb5b93c2, 0x97f050b3),
+                                              TOBN(0x4acad6b9, 0x4d6c026b),
+                                              TOBN(0xeb7751f3, 0x54aec893),
+                                              TOBN(0xdba53368, 0x36bc85c4),
+                                              TOBN(0xd85a1b28, 0x7f5ec78e),
+                                              TOBN(0x2eb072d8, 0x6b322244),
+                                              TOBN(0xbba51112, 0x5e2b3aea),
+                                              TOBN(0x36ed1a6c, 0x0e2486bf),
+                                              TOBN(0x5f270460, 0xec0c5727),
+                                              0x000017b1};
 
 DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
-  out->d = (BN_ULONG *) kSmallFactorsLimbs;
+  out->d = (BN_ULONG *)kSmallFactorsLimbs;
   out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
   out->dmax = out->width;
   out->neg = 0;
@@ -1502,7 +1507,8 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
 int RSA_check_fips(RSA *key) {
   SET_DIT_AUTO_RESET;
 
-  enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
+  enum rsa_key_type_for_checking key_type =
+      determine_key_type_for_checking(key);
   // In addition to invalid key type, stripped private keys can not be checked
   // with this function because they lack the public component which is
   // necessary for both FIPS checks performed here.
@@ -1526,7 +1532,7 @@ int RSA_check_fips(RSA *key) {
   BN_init(&small_gcd);
 
   int ret = 0;
-  uint8_t *sig = NULL; // used later in the pair-wise consistency test.
+  uint8_t *sig = NULL;  // used later in the pair-wise consistency test.
 
   // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
   // Although this is not for primality testing, SP 800-89 cites an RSA
@@ -1535,10 +1541,8 @@ int RSA_check_fips(RSA *key) {
   // composite, so too few iterations will cause us to reject the key, not use
   // an implausible one.
   enum bn_primality_result_t primality_result;
-  if (BN_num_bits(key->e) <= 16 ||
-      BN_num_bits(key->e) > 256 ||
-      !BN_is_odd(key->n) ||
-      !BN_is_odd(key->e) ||
+  if (BN_num_bits(key->e) <= 16 || BN_num_bits(key->e) > 256 ||
+      !BN_is_odd(key->n) || !BN_is_odd(key->e) ||
       !BN_gcd(&small_gcd, key->n, g_small_factors(), ctx) ||
       !BN_is_one(&small_gcd) ||
       !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
@@ -1562,7 +1566,7 @@ int RSA_check_fips(RSA *key) {
   if (key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN &&
       key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE &&
       key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT) {
-      goto end;
+    goto end;
   }
 
   // FIPS pair-wise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,

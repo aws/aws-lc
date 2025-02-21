@@ -193,7 +193,7 @@ static inline vec_t vec_broadcast_bit(vec_t a) {
 // boundary. But, I can't find any information about |uint16x8_t| should
 // necessarily be aligned to a 16-byte boundary. We verify 16-byte alignment in
 // |poly_mul_vec()|, so try to force alignment here.
-typedef uint16x8_t vec_t __attribute__ ((aligned (16)));
+typedef uint16x8_t vec_t __attribute__((aligned(16)));
 
 // These functions perform the same actions as the SSE2 function of the same
 // name, above.
@@ -229,9 +229,7 @@ static inline vec_t vec_merge_3_5(vec_t left, vec_t right) {
   return vextq_u16(left, right, 5);
 }
 
-static inline uint16_t vec_get_word(vec_t v, unsigned i) {
-  return v[i];
-}
+static inline uint16_t vec_get_word(vec_t v, unsigned i) { return v[i]; }
 
 #if !defined(OPENSSL_AARCH64)
 
@@ -317,20 +315,13 @@ static void poly2_zero(struct poly2 *p) {
 static crypto_word_t word_reverse(crypto_word_t in) {
 #if defined(OPENSSL_64_BIT)
   static const crypto_word_t kMasks[6] = {
-    UINT64_C(0x5555555555555555),
-    UINT64_C(0x3333333333333333),
-    UINT64_C(0x0f0f0f0f0f0f0f0f),
-    UINT64_C(0x00ff00ff00ff00ff),
-    UINT64_C(0x0000ffff0000ffff),
-    UINT64_C(0x00000000ffffffff),
+      UINT64_C(0x5555555555555555), UINT64_C(0x3333333333333333),
+      UINT64_C(0x0f0f0f0f0f0f0f0f), UINT64_C(0x00ff00ff00ff00ff),
+      UINT64_C(0x0000ffff0000ffff), UINT64_C(0x00000000ffffffff),
   };
 #else
   static const crypto_word_t kMasks[5] = {
-    0x55555555,
-    0x33333333,
-    0x0f0f0f0f,
-    0x00ff00ff,
-    0x0000ffff,
+      0x55555555, 0x33333333, 0x0f0f0f0f, 0x00ff00ff, 0x0000ffff,
   };
 #endif
 
@@ -365,12 +356,12 @@ static void poly2_reverse_700(struct poly2 *out, const struct poly2 *in) {
     t.v[i] = word_reverse(in->v[i]);
   }
 
-  static const size_t shift = BITS_PER_WORD - ((N-1) % BITS_PER_WORD);
-  for (size_t i = 0; i < WORDS_PER_POLY-1; i++) {
-    out->v[i] = t.v[WORDS_PER_POLY-1-i] >> shift;
-    out->v[i] |= t.v[WORDS_PER_POLY-2-i] << (BITS_PER_WORD - shift);
+  static const size_t shift = BITS_PER_WORD - ((N - 1) % BITS_PER_WORD);
+  for (size_t i = 0; i < WORDS_PER_POLY - 1; i++) {
+    out->v[i] = t.v[WORDS_PER_POLY - 1 - i] >> shift;
+    out->v[i] |= t.v[WORDS_PER_POLY - 2 - i] << (BITS_PER_WORD - shift);
   }
-  out->v[WORDS_PER_POLY-1] = t.v[0] >> shift;
+  out->v[WORDS_PER_POLY - 1] = t.v[0] >> shift;
 }
 
 // poly2_cswap exchanges the values of |a| and |b| if |swap| is all ones.
@@ -805,15 +796,14 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
 
   int delta = 1;
 
-  for (size_t i = 0; i < (2*(N-1)) - 1; i++) {
+  for (size_t i = 0; i < (2 * (N - 1)) - 1; i++) {
     poly3_vec_lshift1(v_s, v_a);
 
     const crypto_word_t delta_sign_bit = (delta >> (sizeof(delta) * 8 - 1)) & 1;
     const crypto_word_t delta_is_non_negative = delta_sign_bit - 1;
     const crypto_word_t delta_is_non_zero = ~constant_time_is_zero_w(delta);
     const vec_t g_has_constant_term = vec_broadcast_bit(g_a[0]);
-    const vec_t mask_w =
-        {delta_is_non_negative & delta_is_non_zero};
+    const vec_t mask_w = {delta_is_non_negative & delta_is_non_zero};
     const vec_t mask = vec_broadcast_bit(mask_w) & g_has_constant_term;
 
     const vec_t c_a = vec_broadcast_bit(f_a[0] & g_a[0]);
@@ -825,7 +815,7 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
     // This is necessary because older versions of GCC, such as version 4.1.2,
     // do not support accessing individual elements of the __m128i type
     alignas(16) uint64_t mask_tmp[2];
-    _mm_store_si128((void*) mask_tmp, mask);
+    _mm_store_si128((void *)mask_tmp, mask);
     delta = constant_time_select_int(lsb_to_all(mask_tmp[0]), -delta, delta);
 #else
     delta = constant_time_select_int(lsb_to_all(mask[0]), -delta, delta);
@@ -876,7 +866,7 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
   poly3_reverse_700(&g, in);
   int delta = 1;
 
-  for (size_t i = 0; i < (2*(N-1)) - 1; i++) {
+  for (size_t i = 0; i < (2 * (N - 1)) - 1; i++) {
     poly3_lshift1(&v);
 
     const crypto_word_t delta_sign_bit = (delta >> (sizeof(delta) * 8 - 1)) & 1;
@@ -925,7 +915,7 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
 // Coefficients are ordered little-endian, thus the coefficient of x^0 is the
 // first element of the array.
 struct poly {
-  alignas(16) uint16_t v[N+3];
+  alignas(16) uint16_t v[N + 3];
 };
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
@@ -935,12 +925,10 @@ struct poly_vec {
   vec_t vectors[VECS_PER_POLY];
 };
 
-static void poly_vec2poly(struct poly *p, const struct poly_vec *pv)
-{
+static void poly_vec2poly(struct poly *p, const struct poly_vec *pv) {
   OPENSSL_memcpy(p, pv, sizeof(*p));
 }
-static void poly2poly_vec(struct poly_vec *pv, const struct poly *p)
-{
+static void poly2poly_vec(struct poly_vec *pv, const struct poly *p) {
   OPENSSL_memcpy(pv, p, sizeof(*p));
 }
 #endif
@@ -1260,7 +1248,8 @@ static void poly_mul_vec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
 
   vec_t *const prod = scratch->u.vec.prod;
   vec_t *const aux_scratch = scratch->u.vec.scratch;
-  poly_mul_vec_aux(prod, aux_scratch, x_vec.vectors, y_vec.vectors, VECS_PER_POLY);
+  poly_mul_vec_aux(prod, aux_scratch, x_vec.vectors, y_vec.vectors,
+                   VECS_PER_POLY);
 
   // |prod| needs to be reduced mod (𝑥^n - 1), which just involves adding the
   // upper-half to the lower-half. However, N is 701, which isn't a multiple of
@@ -1292,7 +1281,7 @@ static void poly_mul_novec_aux(uint16_t *out, uint16_t *scratch,
     OPENSSL_memset(out, 0, sizeof(uint16_t) * n * 2);
     for (size_t i = 0; i < n; i++) {
       for (size_t j = 0; j < n; j++) {
-        out[i + j] += (unsigned) a[i] * b[j];
+        out[i + j] += (unsigned)a[i] * b[j];
       }
     }
 
@@ -1360,7 +1349,7 @@ static void poly_mul(struct POLY_MUL_SCRATCH *scratch, struct poly *r,
 #endif
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
-  if (vec_capable()) {
+      if (vec_capable()) {
     poly_mul_vec(scratch, r, a, b);
   } else
 #endif
@@ -1589,7 +1578,7 @@ static void poly_invert_mod2(struct poly *out, const struct poly *in) {
   poly2_reverse_700(&g, &g);
   int delta = 1;
 
-  for (size_t i = 0; i < (2*(N-1)) - 1; i++) {
+  for (size_t i = 0; i < (2 * (N - 1)) - 1; i++) {
     poly2_lshift1(&v);
 
     const crypto_word_t delta_sign_bit = (delta >> (sizeof(delta) * 8 - 1)) & 1;
@@ -1754,7 +1743,7 @@ static void poly_marshal_mod3(uint8_t out[HRSS_POLY3_BYTES],
   const uint16_t *coeffs = in->v;
 
   // Only 700 coefficients are marshaled because in[700] must be zero.
-  assert(coeffs[N-1] == 0);
+  assert(coeffs[N - 1] == 0);
 
   for (size_t i = 0; i < HRSS_POLY3_BYTES; i++) {
     const uint16_t coeffs0 = mod3_from_modQ(coeffs[0]);
@@ -1777,8 +1766,7 @@ static void poly_marshal_mod3(uint8_t out[HRSS_POLY3_BYTES],
 // function uses that freedom to implement a flatter distribution of values.
 static void poly_short_sample(struct poly *out,
                               const uint8_t in[HRSS_SAMPLE_BYTES]) {
-  OPENSSL_STATIC_ASSERT(HRSS_SAMPLE_BYTES == N - 1,
-                        HRSS_SAMPLE_BYTES_incorrect)
+  OPENSSL_STATIC_ASSERT(HRSS_SAMPLE_BYTES == N - 1, HRSS_SAMPLE_BYTES_incorrect)
   for (size_t i = 0; i < N - 1; i++) {
     uint16_t v = mod3(in[i]);
     // Map {0, 1, 2} -> {0, 1, 0xffff}
@@ -1799,15 +1787,15 @@ static void poly_short_sample_plus(struct poly *out,
   // because |sum| is bound by +/- (N-2), and N < 2^15 so it works out.
   uint16_t sum = 0;
   for (unsigned i = 0; i < N - 2; i++) {
-    sum += (unsigned) out->v[i] * out->v[i + 1];
+    sum += (unsigned)out->v[i] * out->v[i + 1];
   }
 
   // If the sum is negative, flip the sign of even-positioned coefficients. (See
   // page 8 of [HRSS].)
-  sum = ((int16_t) sum) >> 15;
+  sum = ((int16_t)sum) >> 15;
   const uint16_t scale = sum | (~sum & 1);
   for (unsigned i = 0; i < N; i += 2) {
-    out->v[i] = (unsigned) out->v[i] * scale;
+    out->v[i] = (unsigned)out->v[i] * scale;
   }
   poly_assert_normalized(out);
 }
@@ -1904,7 +1892,7 @@ static void poly_lift(struct poly *out, const struct poly *a) {
 
   // Note that s0 + s1 + s2 = 0.
   out->v[0] += s0;
-  out->v[1] -= (s0 + s2); // = s1
+  out->v[1] -= (s0 + s2);  // = s1
   out->v[2] += s2;
 
   // Calculate the remaining inner products by taking advantage of the
@@ -2001,7 +1989,7 @@ int HRSS_generate_key(
     // The private key output is randomised in case it's later passed to
     // |HRSS_encap|.
     memset(out_pub, 0, sizeof(struct HRSS_public_key));
-    RAND_bytes((uint8_t*) out_priv, sizeof(struct HRSS_private_key));
+    RAND_bytes((uint8_t *)out_priv, sizeof(struct HRSS_private_key));
     return 0;
   }
 
@@ -2098,8 +2086,8 @@ int HRSS_encap(uint8_t out_ciphertext[POLY_BYTES], uint8_t out_shared_key[32],
 }
 
 int HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
-                const struct HRSS_private_key *in_priv,
-                const uint8_t *ciphertext, size_t ciphertext_len) {
+               const struct HRSS_private_key *in_priv,
+               const uint8_t *ciphertext, size_t ciphertext_len) {
   const struct private_key *priv =
       private_key_from_external((struct HRSS_private_key *)in_priv);
 

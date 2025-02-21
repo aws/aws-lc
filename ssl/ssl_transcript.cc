@@ -168,13 +168,9 @@ bool SSLTranscript::InitHash(uint16_t version, const SSL_CIPHER *cipher) {
          EVP_DigestUpdate(hash_.get(), buffer_->data, buffer_->length);
 }
 
-void SSLTranscript::FreeBuffer() {
-  buffer_.reset();
-}
+void SSLTranscript::FreeBuffer() { buffer_.reset(); }
 
-size_t SSLTranscript::DigestLen() const {
-  return EVP_MD_size(Digest());
-}
+size_t SSLTranscript::DigestLen() const { return EVP_MD_size(Digest()); }
 
 const EVP_MD *SSLTranscript::Digest() const {
   return EVP_MD_CTX_md(hash_.get());
@@ -192,8 +188,7 @@ bool SSLTranscript::UpdateForHelloRetryRequest() {
   }
   const uint8_t header[4] = {SSL3_MT_MESSAGE_HASH, 0, 0,
                              static_cast<uint8_t>(hash_len)};
-  if (!EVP_DigestInit_ex(hash_.get(), Digest(), nullptr) ||
-      !Update(header) ||
+  if (!EVP_DigestInit_ex(hash_.get(), Digest(), nullptr) || !Update(header) ||
       !Update(MakeConstSpan(old_hash, hash_len))) {
     return false;
   }
@@ -220,8 +215,7 @@ bool SSLTranscript::CopyToHashContext(EVP_MD_CTX *ctx,
 bool SSLTranscript::Update(Span<const uint8_t> in) {
   // Depending on the state of the handshake, either the handshake buffer may be
   // active, the rolling hash, or both.
-  if (buffer_ &&
-      !BUF_MEM_append(buffer_.get(), in.data(), in.size())) {
+  if (buffer_ && !BUF_MEM_append(buffer_.get(), in.data(), in.size())) {
     return false;
   }
 

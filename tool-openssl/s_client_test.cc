@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <gtest/gtest.h>
-#include "internal.h"
 #include <openssl/ssl.h>
+#include "internal.h"
 
 // Test -connect
 TEST(SClientTest, SClientConnect) {
@@ -32,4 +32,3 @@ TEST(SClientTest, SClientConnectVerifyShowcerts) {
   bool result = SClientTool(args);
   ASSERT_TRUE(result);
 }
-

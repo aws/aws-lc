@@ -45,7 +45,7 @@ EVP_AEAD_CTX *EVP_AEAD_CTX_new(const EVP_AEAD *aead, const uint8_t *key,
     return NULL;
   }
   // NO-OP: struct already zeroed
-  //EVP_AEAD_CTX_zero(ctx);
+  // EVP_AEAD_CTX_zero(ctx);
 
   if (EVP_AEAD_CTX_init(ctx, aead, key, key_len, tag_len, NULL)) {
     return ctx;
@@ -164,7 +164,7 @@ int EVP_AEAD_CTX_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                               size_t in_len, const uint8_t *extra_in,
                               size_t extra_in_len, const uint8_t *ad,
                               size_t ad_len) {
-  SET_DIT_AUTO_RESET; //check that it was preserved
+  SET_DIT_AUTO_RESET;  // check that it was preserved
   // |in| and |out| may alias exactly, |out_tag| may not alias.
   if (!check_alias(in, in_len, out, in_len) ||
       buffers_alias(out, in_len, out_tag, max_out_tag_len) ||

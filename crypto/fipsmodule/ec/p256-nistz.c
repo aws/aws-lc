@@ -26,27 +26,29 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#include "../../internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
-#include "../../internal.h"
+#include "ec_nistp.h"
 #include "internal.h"
 #include "p256-nistz.h"
-#include "ec_nistp.h"
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #endif
 
-#if !defined(OPENSSL_NO_ASM) &&  \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
+#if !defined(OPENSSL_NO_ASM) &&                              \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(OPENSSL_SMALL)
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 // One converted into the Montgomery domain
 static const BN_ULONG ONE[P256_LIMBS] = {
-    TOBN(0x00000000, 0x00000001), TOBN(0xffffffff, 0x00000000),
-    TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
+    TOBN(0x00000000, 0x00000001),
+    TOBN(0xffffffff, 0x00000000),
+    TOBN(0xffffffff, 0xffffffff),
+    TOBN(0x00000000, 0xfffffffe),
 };
 
 // Precomputed tables for the default generator
@@ -109,11 +111,11 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
 //
 // (declare-fun x () (_ BitVec 64))
 //
-// (assert (and (= x #x0000000000000000) (= (is_not_zero x) #x0000000000000001)))
-// (check-sat)
+// (assert (and (= x #x0000000000000000) (= (is_not_zero x)
+// #x0000000000000001))) (check-sat)
 //
-// (assert (and (not (= x #x0000000000000000)) (= (is_not_zero x) #x0000000000000000)))
-// (check-sat)
+// (assert (and (not (= x #x0000000000000000)) (= (is_not_zero x)
+// #x0000000000000000))) (check-sat)
 //
 static BN_ULONG is_not_zero(BN_ULONG in) {
   in |= (0 - in);
@@ -144,25 +146,25 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
   ecp_nistz256_sqr_mont(x6, x3);
   for (int i = 1; i < 3; i++) {
     ecp_nistz256_sqr_mont(x6, x6);
-  }                                   // 2^6 - 2^3
+  }  // 2^6 - 2^3
   ecp_nistz256_mul_mont(x6, x6, x3);  // 2^6 - 2^0
 
   ecp_nistz256_sqr_mont(x12, x6);
   for (int i = 1; i < 6; i++) {
     ecp_nistz256_sqr_mont(x12, x12);
-  }                                     // 2^12 - 2^6
+  }  // 2^12 - 2^6
   ecp_nistz256_mul_mont(x12, x12, x6);  // 2^12 - 2^0
 
   ecp_nistz256_sqr_mont(x15, x12);
   for (int i = 1; i < 3; i++) {
     ecp_nistz256_sqr_mont(x15, x15);
-  }                                     // 2^15 - 2^3
+  }  // 2^15 - 2^3
   ecp_nistz256_mul_mont(x15, x15, x3);  // 2^15 - 2^0
 
   ecp_nistz256_sqr_mont(x30, x15);
   for (int i = 1; i < 15; i++) {
     ecp_nistz256_sqr_mont(x30, x30);
-  }                                      // 2^30 - 2^15
+  }  // 2^30 - 2^15
   ecp_nistz256_mul_mont(x30, x30, x15);  // 2^30 - 2^0
 
   ecp_nistz256_sqr_mont(x32, x30);
@@ -173,22 +175,22 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
   ecp_nistz256_sqr_mont(ret, x32);
   for (int i = 1; i < 31 + 1; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }                                     // 2^64 - 2^32
+  }  // 2^64 - 2^32
   ecp_nistz256_mul_mont(ret, ret, in);  // 2^64 - 2^32 + 2^0
 
   for (int i = 0; i < 96 + 32; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }                                      // 2^192 - 2^160 + 2^128
+  }  // 2^192 - 2^160 + 2^128
   ecp_nistz256_mul_mont(ret, ret, x32);  // 2^192 - 2^160 + 2^128 + 2^32 - 2^0
 
   for (int i = 0; i < 32; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }                                      // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
+  }  // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
   ecp_nistz256_mul_mont(ret, ret, x32);  // 2^224 - 2^192 + 2^160 + 2^64 - 2^0
 
   for (int i = 0; i < 30; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }                                      // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
+  }  // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
   ecp_nistz256_mul_mont(ret, ret, x30);  // 2^254 - 2^222 + 2^190 + 2^94 - 2^0
 
   ecp_nistz256_sqr_mont(ret, ret);
@@ -211,7 +213,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   // add no more than 63 bytes of overhead. Thus, |table| should require
   // ~1599 ((96 * 16) + 63) bytes of stack space.
   stack_align_type table_buffer[64 + (sizeof(P256_POINT) * 16)];
-  P256_POINT *aligned_table = (P256_POINT *) align_pointer(table_buffer, 64);
+  P256_POINT *aligned_table = (P256_POINT *)align_pointer(table_buffer, 64);
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, p_scalar->words, 32);
   p_str[32] = 0;
@@ -243,7 +245,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   BN_ULONG tmp[P256_LIMBS];
   stack_align_type buffer_h[32 + sizeof(P256_POINT)];
-  P256_POINT *aligned_h = (P256_POINT *) align_pointer(buffer_h, 32);
+  P256_POINT *aligned_h = (P256_POINT *)align_pointer(buffer_h, 32);
   size_t index = 255;
   crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
@@ -318,12 +320,14 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
   ec_nistp_felem_limb in[P256_LIMBS * 3];
   ec_nistp_felem_limb out[P256_LIMBS * 3];
-  ec_nistp_coordinates_to_point(in, p->X.words, p->Y.words, p->Z.words, P256_LIMBS);
+  ec_nistp_coordinates_to_point(in, p->X.words, p->Y.words, p->Z.words,
+                                P256_LIMBS);
   p256_montjscalarmul_selector(out, scalar->words, in);
-  ec_nistp_point_to_coordinates(r->X.words, r->Y.words, r->Z.words, out, P256_LIMBS);
+  ec_nistp_point_to_coordinates(r->X.words, r->Y.words, r->Z.words, out,
+                                P256_LIMBS);
 #else
   stack_align_type buffer_out[32 + sizeof(P256_POINT)];
-  P256_POINT *aligned_out = (P256_POINT *) align_pointer(buffer_out, 32);
+  P256_POINT *aligned_out = (P256_POINT *)align_pointer(buffer_out, 32);
   ecp_nistz256_windowed_mul(group, aligned_out, p, scalar);
 
   assert(group->field.N.width == P256_LIMBS);
@@ -335,11 +339,11 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
                                         const EC_SCALAR *scalar) {
-
   stack_align_type buffer_t[32 + sizeof(P256_POINT_AFFINE)];
-  P256_POINT_AFFINE *aligned_t = (P256_POINT_AFFINE *) align_pointer(buffer_t, 32);
+  P256_POINT_AFFINE *aligned_t =
+      (P256_POINT_AFFINE *)align_pointer(buffer_t, 32);
   stack_align_type buffer_p[32 + sizeof(P256_POINT)];
-  P256_POINT *aligned_p = (P256_POINT *) align_pointer(buffer_p, 32);
+  P256_POINT *aligned_p = (P256_POINT *)align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, scalar->words, 32);
@@ -367,7 +371,7 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
     ecp_nistz256_select_w7(aligned_t, ecp_nistz256_precomputed[i], wvalue >> 1);
 
     stack_align_type buffer_neg_y[32 + (sizeof(BN_ULONG) * P256_LIMBS)];
-    BN_ULONG *aligned_neg_y = (BN_ULONG *) align_pointer(buffer_neg_y, 32);
+    BN_ULONG *aligned_neg_y = (BN_ULONG *)align_pointer(buffer_neg_y, 32);
     ecp_nistz256_neg(aligned_neg_y, aligned_t->Y);
     copy_conditional(aligned_t->Y, aligned_neg_y, wvalue & 1);
 
@@ -390,7 +394,7 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   assert(p_ != NULL && p_scalar != NULL && g_scalar != NULL);
 
   stack_align_type buffer_p[32 + sizeof(P256_POINT)];
-  P256_POINT *aligned_p = (P256_POINT *) align_pointer(buffer_p, 32);
+  P256_POINT *aligned_p = (P256_POINT *)align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, g_scalar->words, 32);
@@ -404,9 +408,11 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   // is infinity and |ONE| otherwise. |p| was computed from the table, so it
   // is infinity iff |wvalue >> 1| is zero.
   if ((wvalue >> 1) != 0) {
-    OPENSSL_memcpy(aligned_p->X, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].X,
+    OPENSSL_memcpy(aligned_p->X,
+                   &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].X,
                    sizeof(aligned_p->X));
-    OPENSSL_memcpy(aligned_p->Y, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].Y,
+    OPENSSL_memcpy(aligned_p->Y,
+                   &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].Y,
                    sizeof(aligned_p->Y));
     OPENSSL_memcpy(aligned_p->Z, ONE, sizeof(aligned_p->Z));
   } else {
@@ -426,7 +432,8 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
     }
 
     stack_align_type buffer_t[32 + sizeof(P256_POINT_AFFINE)];
-    P256_POINT_AFFINE *aligned_t = (P256_POINT_AFFINE *) align_pointer(buffer_t, 32);
+    P256_POINT_AFFINE *aligned_t =
+        (P256_POINT_AFFINE *)align_pointer(buffer_t, 32);
 
     OPENSSL_memcpy(aligned_t, &ecp_nistz256_precomputed[i][(wvalue >> 1) - 1],
                    sizeof(*aligned_t));
@@ -442,7 +449,7 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   }
 
   stack_align_type buffer_tmp[32 + sizeof(P256_POINT)];
-  P256_POINT *aligned_tmp = (P256_POINT *) align_pointer(buffer_tmp, 32);
+  P256_POINT *aligned_tmp = (P256_POINT *)align_pointer(buffer_tmp, 32);
 
   ecp_nistz256_windowed_mul(group, aligned_tmp, p_, p_scalar);
   ecp_nistz256_point_add(aligned_p, aligned_p, aligned_tmp);
@@ -588,11 +595,10 @@ static void ecp_nistz256_inv0_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
 }
 
 static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
-                                                 EC_SCALAR *out,
-                                                 const EC_SCALAR *in) {
-
+                                                         EC_SCALAR *out,
+                                                         const EC_SCALAR *in) {
 #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
-    return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
+  return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
 #else
 
 #if defined(OPENSSL_X86_64)
@@ -673,6 +679,6 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->cmp_x_coordinate = ecp_nistz256_cmp_x_coordinate;
 }
 
-#endif /* !defined(OPENSSL_NO_ASM) && \
-          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
+#endif /* !defined(OPENSSL_NO_ASM) &&                              \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
           !defined(OPENSSL_SMALL) */

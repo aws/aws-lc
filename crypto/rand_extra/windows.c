@@ -57,7 +57,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 #else
 
 // See: https://learn.microsoft.com/en-us/windows/win32/seccng/processprng
-typedef BOOL (WINAPI *ProcessPrngFunction)(PBYTE pbData, SIZE_T cbData);
+typedef BOOL(WINAPI *ProcessPrngFunction)(PBYTE pbData, SIZE_T cbData);
 static ProcessPrngFunction g_processprng_fn = NULL;
 
 static void init_processprng(void) {
@@ -65,7 +65,8 @@ static void init_processprng(void) {
   if (hmod == NULL) {
     abort();
   }
-  g_processprng_fn = (ProcessPrngFunction)(void(*)(void))GetProcAddress(hmod, "ProcessPrng");
+  g_processprng_fn =
+      (ProcessPrngFunction)(void (*)(void))GetProcAddress(hmod, "ProcessPrng");
   if (g_processprng_fn == NULL) {
     abort();
   }

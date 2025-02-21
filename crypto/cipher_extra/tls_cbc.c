@@ -57,9 +57,9 @@
 #include <openssl/nid.h>
 #include <openssl/sha.h>
 
+#include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../fipsmodule/cipher/internal.h"
 
 // The length of the additional data field in AES-CBC-HMAC based AEADs.
 #define AEAD_TLS_AES_CBC_HMAC_AD_LENGTH (13)
@@ -184,8 +184,7 @@ int EVP_final_with_secret_suffix_sha1(SHA_CTX *ctx,
   // redundant with TLS record size limits. This also ensures |input_idx| below
   // does not overflow.
   size_t max_len_bits = max_len << 3;
-  if (ctx->Nh != 0 ||
-      (max_len_bits >> 3) != max_len ||  // Overflow
+  if (ctx->Nh != 0 || (max_len_bits >> 3) != max_len ||  // Overflow
       ctx->Nl + max_len_bits < max_len_bits ||
       ctx->Nl + max_len_bits > UINT32_MAX) {
     return 0;
@@ -212,7 +211,7 @@ int EVP_final_with_secret_suffix_sha1(SHA_CTX *ctx,
 
   // We now construct and process each expected block in constant-time.
   uint8_t block[SHA_CBLOCK] = {0};
-  uint32_t result[5] = {0}; // The size of SHA1 state = 160 bits = 5*32 bits.
+  uint32_t result[5] = {0};  // The size of SHA1 state = 160 bits = 5*32 bits.
   // input_idx is the index into |in| corresponding to the current block.
   // However, we allow this index to overflow beyond |max_len|, to simplify the
   // 0x80 byte.
@@ -334,8 +333,7 @@ int EVP_final_with_secret_suffix_sha256(SHA256_CTX *ctx,
   // redundant with TLS record size limits. This also ensures |input_idx| below
   // does not overflow.
   size_t max_len_bits = max_len << 3;
-  if (ctx->Nh != 0 ||
-      (max_len_bits >> 3) != max_len ||  // Overflow
+  if (ctx->Nh != 0 || (max_len_bits >> 3) != max_len ||  // Overflow
       ctx->Nl + max_len_bits < max_len_bits ||
       ctx->Nl + max_len_bits > UINT32_MAX) {
     return 0;
@@ -362,7 +360,7 @@ int EVP_final_with_secret_suffix_sha256(SHA256_CTX *ctx,
 
   // We now construct and process each expected block in constant-time.
   uint8_t block[SHA256_CBLOCK] = {0};
-  uint32_t result[8] = {0}; // The size of SHA256 state = 256 bits = 8*32 bits.
+  uint32_t result[8] = {0};  // The size of SHA256 state = 256 bits = 8*32 bits.
   // input_idx is the index into |in| corresponding to the current block.
   // However, we allow this index to overflow beyond |max_len|, to simplify the
   // 0x80 byte.
@@ -448,7 +446,8 @@ static int EVP_tls_cbc_digest_record_sha256(
   // minimum length for |data_size|.
   size_t min_data_size = 0;
   if (data_plus_mac_plus_padding_size > SHA256_DIGEST_LENGTH + 256) {
-    min_data_size = data_plus_mac_plus_padding_size - SHA256_DIGEST_LENGTH - 256;
+    min_data_size =
+        data_plus_mac_plus_padding_size - SHA256_DIGEST_LENGTH - 256;
   }
 
   // Hash the public minimum length directly. This reduces the number of blocks
@@ -487,8 +486,7 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
   // redundant with TLS record size limits. This also ensures |input_idx| below
   // does not overflow.
   size_t max_len_bits = max_len << 3;
-  if (ctx->Nh != 0 ||
-      (max_len_bits >> 3) != max_len ||  // Overflow
+  if (ctx->Nh != 0 || (max_len_bits >> 3) != max_len ||  // Overflow
       ctx->Nl + max_len_bits < max_len_bits ||
       ctx->Nl + max_len_bits > UINT32_MAX) {
     return 0;
@@ -538,7 +536,7 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
       block_start = ctx->num;
     }
     if (input_idx < max_len) {
-      size_t to_copy = SHA384_CBLOCK- block_start;
+      size_t to_copy = SHA384_CBLOCK - block_start;
       if (to_copy > max_len - input_idx) {
         to_copy = max_len - input_idx;
       }
@@ -584,8 +582,8 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
     }
   }
 
-  // Write the output. For SHA384 the resulting hash is truncated to the left-most
-  // 384-bits (6 64-bit words).
+  // Write the output. For SHA384 the resulting hash is truncated to the
+  // left-most 384-bits (6 64-bit words).
   for (size_t i = 0; i < 6; i++) {
     CRYPTO_store_u64_be(out + 8 * i, result[i]);
   }
@@ -655,14 +653,11 @@ int EVP_tls_cbc_record_digest_supported(const EVP_MD *md) {
          (EVP_MD_type(md) == NID_sha384);
 }
 
-int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
-                              size_t *md_out_size,
-                              const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],
-                              const uint8_t *data, size_t data_size,
-                              size_t data_plus_mac_plus_padding_size,
-                              const uint8_t *mac_secret,
-                              unsigned mac_secret_length) {
-
+int EVP_tls_cbc_digest_record(
+    const EVP_MD *md, uint8_t *md_out, size_t *md_out_size,
+    const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH], const uint8_t *data,
+    size_t data_size, size_t data_plus_mac_plus_padding_size,
+    const uint8_t *mac_secret, unsigned mac_secret_length) {
   // The specific hash algorithm is public knowledge.
   if (EVP_MD_type(md) == NID_sha1) {
     return EVP_tls_cbc_digest_record_sha1(

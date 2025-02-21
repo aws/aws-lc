@@ -220,9 +220,11 @@ static void ssl_get_client_disabled(const SSL_HANDSHAKE *hs,
 // are used to filter the |ciphers|. |any_enabled| will be true if not all
 // ciphers are filtered out.
 // It returns true when success. It returns false otherwise.
-static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
-  CBB *cbb, uint32_t mask_k, uint32_t mask_a, uint16_t max_version,
-  uint16_t min_version, bool *any_enabled) {
+static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers, CBB *cbb,
+                                        uint32_t mask_k, uint32_t mask_a,
+                                        uint16_t max_version,
+                                        uint16_t min_version,
+                                        bool *any_enabled) {
   *any_enabled = false;
 
   for (const SSL_CIPHER *cipher : ciphers) {
@@ -264,7 +266,8 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
   if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
     bool any_enabled = false;
     if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
-      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+                                     mask_a, hs->max_version, hs->min_version,
+                                     &any_enabled)) {
       return false;
     }
 
@@ -275,13 +278,16 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     }
   } else if (hs->max_version >= TLS1_3_VERSION) {
     // Only TLS 1.3 ciphers
-    STACK_OF(SSL_CIPHER) *ciphers = (ssl->config && ssl->config->tls13_cipher_list) ?
-      ssl->config->tls13_cipher_list->ciphers.get() : ssl->ctx->tls13_cipher_list->ciphers.get();
+    STACK_OF(SSL_CIPHER) *ciphers =
+        (ssl->config && ssl->config->tls13_cipher_list)
+            ? ssl->config->tls13_cipher_list->ciphers.get()
+            : ssl->ctx->tls13_cipher_list->ciphers.get();
 
     bool any_enabled = false;
 
-    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
-      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k, mask_a,
+                                     hs->max_version, hs->min_version,
+                                     &any_enabled)) {
       return false;
     }
 
@@ -317,8 +323,7 @@ bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
   }
 
   // Do not send a session ID on renegotiation.
-  if (!ssl->s3->initial_handshake_complete &&
-      !empty_session_id &&
+  if (!ssl->s3->initial_handshake_complete && !empty_session_id &&
       !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
     return false;
   }
@@ -395,7 +400,7 @@ static bool parse_server_version(const SSL_HANDSHAKE *hs, uint16_t *out_version,
   }
 
   if (!CBS_get_u16(&supported_versions.data, out_version) ||
-       CBS_len(&supported_versions.data) != 0) {
+      CBS_len(&supported_versions.data) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
@@ -584,7 +589,8 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_early_reverify_server_certificate(
+    SSL_HANDSHAKE *hs) {
   if (hs->ssl->ctx->reverify_on_resume) {
     // Don't send an alert on error. The alert be in early data, which the
     // server may not accept anyway. It would also be a mismatch between QUIC
@@ -792,8 +798,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(server_hello.cipher_suite);
   uint32_t mask_a, mask_k;
   ssl_get_client_disabled(hs, &mask_a, &mask_k);
-  if (cipher == nullptr ||
-      (cipher->algorithm_mkey & mask_k) ||
+  if (cipher == nullptr || (cipher->algorithm_mkey & mask_k) ||
       (cipher->algorithm_auth & mask_a) ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl) ||
@@ -1003,8 +1008,7 @@ static enum ssl_hs_wait_t do_read_certificate_status(SSL_HANDSHAKE *hs) {
   if (!CBS_get_u8(&certificate_status, &status_type) ||
       status_type != TLSEXT_STATUSTYPE_ocsp ||
       !CBS_get_u24_length_prefixed(&certificate_status, &ocsp_response) ||
-      CBS_len(&ocsp_response) == 0 ||
-      CBS_len(&certificate_status) != 0) {
+      CBS_len(&ocsp_response) == 0 || CBS_len(&certificate_status) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
@@ -1503,8 +1507,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
         !CBB_reserve(&enc_pms, &ptr, RSA_size(rsa)) ||
         !RSA_encrypt(rsa, &enc_pms_len, ptr, RSA_size(rsa), pms.data(),
                      pms.size(), RSA_PKCS1_PADDING) ||
-        !CBB_did_write(&enc_pms, enc_pms_len) ||
-        !CBB_flush(&body)) {
+        !CBB_did_write(&enc_pms, enc_pms_len) || !CBB_flush(&body)) {
       return ssl_hs_error;
     }
   } else if (alg_k & SSL_kECDHE) {
@@ -1622,8 +1625,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
       return ssl_hs_private_key_operation;
   }
 
-  if (!CBB_did_write(&child, sig_len) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
+  if (!CBB_did_write(&child, sig_len) || !ssl_add_message_cbb(ssl, cbb.get())) {
     return ssl_hs_error;
   }
 
@@ -1692,8 +1694,7 @@ static bool can_false_start(const SSL_HANDSHAKE *hs) {
   // TLS 1.2 and TLS 1.3, but there are too many TLS 1.2 deployments to
   // sacrifice False Start on them. Instead, we rely on the ServerHello.random
   // downgrade signal, which we unconditionally enforce.
-  if (SSL_is_dtls(ssl) ||
-      SSL_version(ssl) != TLS1_2_VERSION ||
+  if (SSL_is_dtls(ssl) || SSL_version(ssl) != TLS1_2_VERSION ||
       hs->new_cipher->algorithm_mkey != SSL_kECDHE ||
       hs->new_cipher->algorithm_mac != SSL_AEAD) {
     return false;

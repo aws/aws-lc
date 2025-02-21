@@ -51,8 +51,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // NOTE: the IV/counter CTR mode is big-endian.  The code itself
@@ -65,7 +65,7 @@ static void ctr128_inc(uint8_t *counter) {
   do {
     --n;
     c += counter[n];
-    counter[n] = (uint8_t) c;
+    counter[n] = (uint8_t)c;
     c >>= 8;
   } while (n);
 }
@@ -127,7 +127,7 @@ static void ctr96_inc(uint8_t *counter) {
   do {
     --n;
     c += counter[n];
-    counter[n] = (uint8_t) c;
+    counter[n] = (uint8_t)c;
     c >>= 8;
   } while (n);
 }

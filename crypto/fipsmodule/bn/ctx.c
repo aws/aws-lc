@@ -7,7 +7,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -199,9 +199,7 @@ static void BN_STACK_init(BN_STACK *st) {
   st->depth = st->size = 0;
 }
 
-static void BN_STACK_cleanup(BN_STACK *st) {
-  OPENSSL_free(st->indexes);
-}
+static void BN_STACK_cleanup(BN_STACK *st) { OPENSSL_free(st->indexes); }
 
 static int BN_STACK_push(BN_STACK *st, size_t idx) {
   if (st->depth == st->size) {

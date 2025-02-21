@@ -111,8 +111,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // kPrimes contains the first 1024 primes.
@@ -364,15 +364,14 @@ BN_GENCB *BN_GENCB_new(void) { return OPENSSL_zalloc(sizeof(BN_GENCB)); }
 void BN_GENCB_free(BN_GENCB *callback) { OPENSSL_free(callback); }
 
 void BN_GENCB_set(BN_GENCB *callback,
-                  int (*f)(int event, int n, struct bn_gencb_st *),
-                  void *arg) {
+                  int (*f)(int event, int n, struct bn_gencb_st *), void *arg) {
   callback->type = BN_GENCB_NEW_STYLE;
   callback->callback.new_style = f;
   callback->arg = arg;
 }
 
-void BN_GENCB_set_old(BN_GENCB *callback,
-                      void (*f)(int, int, void *), void *arg) {
+void BN_GENCB_set_old(BN_GENCB *callback, void (*f)(int, int, void *),
+                      void *arg) {
   callback->type = BN_GENCB_OLD_STYLE;
   callback->callback.old_style = f;
   callback->arg = arg;
@@ -528,10 +527,8 @@ int bn_miller_rabin_init(BN_MILLER_RABIN *miller_rabin, const BN_MONT_CTX *mont,
   miller_rabin->m = BN_CTX_get(ctx);
   miller_rabin->one_mont = BN_CTX_get(ctx);
   miller_rabin->w1_mont = BN_CTX_get(ctx);
-  if (miller_rabin->w1 == NULL ||
-      miller_rabin->m == NULL ||
-      miller_rabin->one_mont == NULL ||
-      miller_rabin->w1_mont == NULL) {
+  if (miller_rabin->w1 == NULL || miller_rabin->m == NULL ||
+      miller_rabin->one_mont == NULL || miller_rabin->w1_mont == NULL) {
     return 0;
   }
 
@@ -764,7 +761,7 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w, int checks,
     // Step 4.1-4.2
     int is_uniform;
     if (!bn_rand_secret_range(b, &is_uniform, 2, miller_rabin.w1)) {
-        goto err;
+      goto err;
     }
     uniform_iterations += is_uniform;
 
@@ -833,9 +830,7 @@ int BN_enhanced_miller_rabin_primality_test(
   BN_CTX_start(ctx);
 
   BIGNUM *w1 = BN_CTX_get(ctx);
-  if (w1 == NULL ||
-      !BN_copy(w1, w) ||
-      !BN_sub_word(w1, 1)) {
+  if (w1 == NULL || !BN_copy(w1, w) || !BN_sub_word(w1, 1)) {
     goto err;
   }
 
@@ -845,8 +840,7 @@ int BN_enhanced_miller_rabin_primality_test(
     a++;
   }
   BIGNUM *m = BN_CTX_get(ctx);
-  if (m == NULL ||
-      !BN_rshift(m, w1, a)) {
+  if (m == NULL || !BN_rshift(m, w1, a)) {
     goto err;
   }
 
@@ -855,11 +849,7 @@ int BN_enhanced_miller_rabin_primality_test(
   BIGNUM *z = BN_CTX_get(ctx);
   BIGNUM *x = BN_CTX_get(ctx);
   BIGNUM *x1 = BN_CTX_get(ctx);
-  if (b == NULL ||
-      g == NULL ||
-      z == NULL ||
-      x == NULL ||
-      x1 == NULL) {
+  if (b == NULL || g == NULL || z == NULL || x == NULL || x1 == NULL) {
     goto err;
   }
 
@@ -920,11 +910,9 @@ int BN_enhanced_miller_rabin_primality_test(
       goto err;
     }
 
- composite:
+  composite:
     // Step 4.12-4.14
-    if (!BN_copy(x1, x) ||
-        !BN_sub_word(x1, 1) ||
-        !BN_gcd(g, x1, w, ctx)) {
+    if (!BN_copy(x1, x) || !BN_sub_word(x1, 1) || !BN_gcd(g, x1, w, ctx)) {
       goto err;
     }
     if (BN_cmp_word(g, 1) > 0) {
@@ -936,7 +924,7 @@ int BN_enhanced_miller_rabin_primality_test(
     ret = 1;
     goto err;
 
- loop:
+  loop:
     // Step 4.15
     if (!BN_GENCB_call(cb, BN_GENCB_PRIME_TEST, i - 1)) {
       goto err;

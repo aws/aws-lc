@@ -37,8 +37,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
-#include <io.h>
 #include <fcntl.h>
+#include <io.h>
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -875,7 +875,7 @@ TEST(BIOTest, FileMode) {
   bio.reset(BIO_new_file(temp.path().c_str(), "r"));
   ASSERT_TRUE(bio);
   // NOTE: Our behavior here aligns with OpenSSL which is to |_setmode| the file
-  // to binary. BoringSSL would |expect_text_mode| below because it respects 
+  // to binary. BoringSSL would |expect_text_mode| below because it respects
   // default mode on Windows which is text and doesn't call |_setmode| (unless
   // |BIO_FP_TEXT| is set, which is not the case here).
   expect_binary_mode(bio.get());
@@ -1215,19 +1215,16 @@ TEST(BIOTest, TestPutsAsWrite) {
 
 namespace {
 // Define custom BIO and BIO_METHODS to test BIO_puts without write
-static int customPuts(BIO *b, const char *in) {
-  return 0;
-}
+static int customPuts(BIO *b, const char *in) { return 0; }
 static int customNew(BIO *b) {
-  b->init=1;
+  b->init = 1;
   return 1;
 }
 static const BIO_METHOD custom_method = {
-  BIO_TYPE_NONE, "CustomBioMethod", NULL /* write */,
-  NULL,          customPuts,        NULL,
-  NULL,          customNew,         NULL,
-  NULL
-};
+    BIO_TYPE_NONE, "CustomBioMethod", NULL /* write */,
+    NULL,          customPuts,        NULL,
+    NULL,          customNew,         NULL,
+    NULL};
 
 static const BIO_METHOD *BIO_cust(void) { return &custom_method; }
 
@@ -1240,16 +1237,12 @@ TEST(BIOTest, TestCustomPuts) {
   // Test setting new puts method by creating a new BIO
   bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
   ASSERT_TRUE(method);
-  ASSERT_TRUE(BIO_meth_set_create(
-    method.get(), [](BIO *b) -> int {
-      BIO_set_init(b, 1);
-      return 1;
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
   }));
   ASSERT_TRUE(BIO_meth_set_puts(
-    method.get(), [](BIO *b, const char *in) -> int {
-      return 100;
-    }
-  ));
+      method.get(), [](BIO *b, const char *in) -> int { return 100; }));
   bssl::UniquePtr<BIO> bio1(BIO_new(method.get()));
   ASSERT_TRUE(bio1);
   ASSERT_TRUE(bio1.get()->method->bputs);
@@ -1262,10 +1255,9 @@ TEST(BIOTest, TestPutsNullMethod) {
   // Create new BIO to test when neither puts nor write is set
   bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
   ASSERT_TRUE(method);
-  ASSERT_TRUE(BIO_meth_set_create(
-    method.get(), [](BIO *b) -> int {
-      BIO_set_init(b, 1);
-      return 1;
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
   }));
   bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
   ASSERT_TRUE(bio);
@@ -1274,11 +1266,11 @@ TEST(BIOTest, TestPutsNullMethod) {
   ASSERT_FALSE(bio.get()->method->bwrite);
   ASSERT_EQ(-2, BIO_puts(bio.get(), "hello world"));
 }
-} //namespace
+}  // namespace
 
 TEST(BIOTest, TestPutsCallbacks) {
   bio_callback_cleanup();
-  BIO* bio = BIO_new(BIO_s_mem());
+  BIO *bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
 
   BIO_set_callback_ex(bio, bio_cb_ex);
@@ -1314,7 +1306,7 @@ TEST(BIOTest, TestPutsCallbacks) {
 TEST(BIOTest, TestGetsCallback) {
   bio_callback_cleanup();
 
-  BIO* bio = BIO_new(BIO_s_mem());
+  BIO *bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
   // write data to BIO, then set callback
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
@@ -1350,7 +1342,7 @@ TEST(BIOTest, TestGetsCallback) {
 TEST(BIOTest, TestCtrlCallback) {
   bio_callback_cleanup();
 
-  BIO* bio = BIO_new(BIO_s_mem());
+  BIO *bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
   BIO_set_callback_ex(bio, bio_cb_ex);
 

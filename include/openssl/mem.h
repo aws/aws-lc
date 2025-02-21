@@ -59,8 +59,8 @@
 
 #include <openssl/base.h>
 
-#include <stdlib.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -97,7 +97,7 @@ OPENSSL_EXPORT void *OPENSSL_calloc(size_t num, size_t size);
 // allocated with |OPENSSL_malloc| and must be freed with |OPENSSL_free|.
 // If |ptr| is null |OPENSSL_malloc| is called instead.
 OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
-#endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
+#endif  // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 
 // OPENSSL_free does nothing if |ptr| is NULL. Otherwise it zeros out the
 // memory allocated at |ptr| and frees it along with the private data.
@@ -174,7 +174,7 @@ OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
 
 // DECIMAL_SIZE returns an upper bound for the length of the decimal
 // representation of the given type.
-#define DECIMAL_SIZE(type)	((sizeof(type)*8+2)/3+1)
+#define DECIMAL_SIZE(type) ((sizeof(type) * 8 + 2) / 3 + 1)
 
 // BIO_snprintf has the same behavior as snprintf(3).
 OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)
@@ -230,28 +230,35 @@ OPENSSL_EXPORT void CRYPTO_free(void *ptr, const char *file, int line);
 // allocations on free, but we define |OPENSSL_clear_free| for compatibility.
 OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 
-// CRYPTO_set_mem_functions is used to override the implementation of |OPENSSL_malloc/free/realloc|.
+// CRYPTO_set_mem_functions is used to override the implementation of
+// |OPENSSL_malloc/free/realloc|.
 //
-// |OPENSSL_malloc/free/realloc| can be customized by implementing |OPENSSL_memory_alloc/free/realloc| or calling
-// CRYPTO_set_mem_functions. If  |OPENSSL_memory_alloc/free/realloc| is defined CRYPTO_set_mem_functions will fail.
-// All of the warnings for |OPENSSL_malloc/free/realloc| apply to CRYPTO_set_mem_functions:
-// -- https://github.com/aws/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
+// |OPENSSL_malloc/free/realloc| can be customized by implementing
+// |OPENSSL_memory_alloc/free/realloc| or calling CRYPTO_set_mem_functions. If
+// |OPENSSL_memory_alloc/free/realloc| is defined CRYPTO_set_mem_functions will
+// fail. All of the warnings for |OPENSSL_malloc/free/realloc| apply to
+// CRYPTO_set_mem_functions:
+// --
+// https://github.com/aws/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
 // This function is only recommended for debug purpose(e.g. track mem usage).
-// AWS-LC differs from OpenSSL's  CRYPTO_set_mem_functions in that __FILE__ and __LINE__ are not supplied.
+// AWS-LC differs from OpenSSL's  CRYPTO_set_mem_functions in that __FILE__ and
+// __LINE__ are not supplied.
 //
 // It returns one on success and zero otherwise.
 OPENSSL_EXPORT int CRYPTO_set_mem_functions(
-  void *(*m)(size_t, const char *, int),
-  void *(*r)(void *, size_t, const char *, int),
-  void (*f)(void *, const char *, int));
+    void *(*m)(size_t, const char *, int),
+    void *(*r)(void *, size_t, const char *, int),
+    void (*f)(void *, const char *, int));
 
-// OPENSSL supports the concept of secure heaps to help protect applications from pointer overruns or underruns that
-// could return arbitrary data from the program's dynamic memory area where sensitive information may be stored.
-// AWS-LC does not support secure heaps. The initialization functions intentionally return zero to indicate that secure
-// heaps aren't supported. We return the regular malloc and zalloc versions when the secure_* counterparts are called,
-// which is what OPENSSL does when secure heap is not enabled.
-// If there is any interest in utilizing "secure heaps" with AWS-LC, cut us an issue at
-// https://github.com/aws/aws-lc/issues/new/choose
+// OPENSSL supports the concept of secure heaps to help protect applications
+// from pointer overruns or underruns that could return arbitrary data from the
+// program's dynamic memory area where sensitive information may be stored.
+// AWS-LC does not support secure heaps. The initialization functions
+// intentionally return zero to indicate that secure heaps aren't supported. We
+// return the regular malloc and zalloc versions when the secure_* counterparts
+// are called, which is what OPENSSL does when secure heap is not enabled. If
+// there is any interest in utilizing "secure heaps" with AWS-LC, cut us an
+// issue at https://github.com/aws/aws-lc/issues/new/choose
 
 // CRYPTO_secure_malloc_init returns zero.
 OPENSSL_EXPORT int CRYPTO_secure_malloc_init(size_t size, size_t min_size);

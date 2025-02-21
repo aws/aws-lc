@@ -255,8 +255,8 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in,
   }
   uint8_t *data = NULL;
   size_t data_len;
-  if (// OpenSSL historically NUL-terminated this value with a single byte,
-      // even for |MBSTRING_BMP| and |MBSTRING_UNIV|.
+  if (  // OpenSSL historically NUL-terminated this value with a single byte,
+        // even for |MBSTRING_BMP| and |MBSTRING_UNIV|.
       !CBB_add_u8(&cbb, 0) || !CBB_finish(&cbb, &data, &data_len) ||
       data_len < 1 || data_len > INT_MAX) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_INTERNAL_ERROR);
@@ -280,7 +280,7 @@ int asn1_is_printable(uint32_t value) {
   if (value > 0x7f) {
     return 0;
   }
-  return OPENSSL_isalnum(value) || //
+  return OPENSSL_isalnum(value) ||  //
          value == ' ' || value == '\'' || value == '(' || value == ')' ||
          value == '+' || value == ',' || value == '-' || value == '.' ||
          value == '/' || value == ':' || value == '=' || value == '?';

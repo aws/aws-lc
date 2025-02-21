@@ -115,9 +115,9 @@
 #include <openssl/rand.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../rand/internal.h"
+#include "internal.h"
 
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
@@ -226,8 +226,7 @@ static int bn_range_to_mask(size_t *out_words, BN_ULONG *out_mask,
   while (words > 0 && max_exclusive[words - 1] == 0) {
     words--;
   }
-  if (words == 0 ||
-      (words == 1 && max_exclusive[0] <= min_inclusive)) {
+  if (words == 0 || (words == 1 && max_exclusive[0] <= min_inclusive)) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
   }

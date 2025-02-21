@@ -16,8 +16,8 @@ extern "C" {
 #define ML_DSA_N 256
 #define ML_DSA_Q 8380417
 #define ML_DSA_D 13
-#define ML_DSA_POLYT1_PACKEDBYTES  320
-#define ML_DSA_POLYT0_PACKEDBYTES  416
+#define ML_DSA_POLYT1_PACKEDBYTES 320
+#define ML_DSA_POLYT0_PACKEDBYTES 416
 
 // Structure for ML-DSA parameters that depend on the parameter set.
 typedef struct {
@@ -45,7 +45,8 @@ typedef struct {
 #define ML_DSA_L_MAX (7)
 #define ML_DSA_C_TILDE_BYTES_MAX (64)
 #define ML_DSA_POLYW1_PACKEDBYTES_MAX (192)
-#define ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX ((227 + SHAKE256_BLOCKSIZE - 1)/SHAKE256_BLOCKSIZE)
+#define ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX \
+  ((227 + SHAKE256_BLOCKSIZE - 1) / SHAKE256_BLOCKSIZE)
 #define ML_DSA_POLYZ_PACKEDBYTES_MAX (576)
 
 OPENSSL_EXPORT void ml_dsa_44_params_init(ml_dsa_params *params);

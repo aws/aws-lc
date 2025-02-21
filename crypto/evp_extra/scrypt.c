@@ -29,7 +29,9 @@
 
 // A block_t is a Salsa20 block.
 #define SCRYPT_BLOCK_WORD_CNT 16
-typedef struct { uint32_t words[SCRYPT_BLOCK_WORD_CNT]; } block_t;
+typedef struct {
+  uint32_t words[SCRYPT_BLOCK_WORD_CNT];
+} block_t;
 
 OPENSSL_STATIC_ASSERT(sizeof(block_t) == 64, block_t_has_padding)
 
@@ -113,7 +115,7 @@ static void scryptROMix(block_t *B, uint64_t r, uint64_t N, block_t *T,
                         block_t *V) {
   // Steps 1 and 2.
 #ifdef OPENSSL_BIG_ENDIAN
-  for(size_t i = 0; i < (2 * r * SCRYPT_BLOCK_WORD_CNT); i++) {
+  for (size_t i = 0; i < (2 * r * SCRYPT_BLOCK_WORD_CNT); i++) {
     CRYPTO_store_u32_le(&V->words[i], B->words[i]);
   }
 #else
@@ -135,7 +137,7 @@ static void scryptROMix(block_t *B, uint64_t r, uint64_t N, block_t *T,
     scryptBlockMix(B, T, r);
   }
 #ifdef OPENSSL_BIG_ENDIAN
-  for(size_t i = 0; i < (2 * r * SCRYPT_BLOCK_WORD_CNT); i++) {
+  for (size_t i = 0; i < (2 * r * SCRYPT_BLOCK_WORD_CNT); i++) {
     CRYPTO_store_u32_le(&B->words[i], B->words[i]);
   }
 #endif
@@ -175,8 +177,7 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
   }
 
   size_t max_scrypt_blocks = max_mem / (2 * r * sizeof(block_t));
-  if (max_scrypt_blocks < p + 1 ||
-      max_scrypt_blocks - p - 1 < N) {
+  if (max_scrypt_blocks < p + 1 || max_scrypt_blocks - p - 1 < N) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MEMORY_LIMIT_EXCEEDED);
     return 0;
   }
@@ -188,7 +189,8 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
   size_t B_bytes = B_blocks * sizeof(block_t);
   size_t T_blocks = 2 * r;
   size_t V_blocks = N * 2 * r;
-  block_t *B = OPENSSL_calloc((B_blocks + T_blocks + V_blocks), sizeof(block_t));
+  block_t *B =
+      OPENSSL_calloc((B_blocks + T_blocks + V_blocks), sizeof(block_t));
   if (B == NULL) {
     return 0;
   }

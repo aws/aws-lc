@@ -75,9 +75,9 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
+#include "internal.h"
 
 
 // This file implements the wNAF-based interleaving multi-exponentiation method
@@ -139,7 +139,8 @@ void ec_compute_wNAF(int8_t *out, const EC_SCALAR *scalar, size_t bits, int w) {
     window_val >>= 1;
     const size_t bits_per_word = sizeof(scalar->words[0]) * 8;
     const size_t num_words = (bits + bits_per_word - 1) / bits_per_word;
-    window_val += bit * bn_is_bit_set_words(scalar->words, num_words, j + w + 1);
+    window_val +=
+        bit * bn_is_bit_set_words(scalar->words, num_words, j + w + 1);
     assert(window_val <= next_bit);
   }
 
@@ -188,11 +189,11 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
 
   int ret = 0;
   int8_t wNAF_stack[EC_WNAF_STACK][EC_MAX_BYTES * 8 + 1];
-  int8_t (*wNAF_alloc)[EC_MAX_BYTES * 8 + 1] = NULL;
-  int8_t (*wNAF)[EC_MAX_BYTES * 8 + 1];
+  int8_t(*wNAF_alloc)[EC_MAX_BYTES * 8 + 1] = NULL;
+  int8_t(*wNAF)[EC_MAX_BYTES * 8 + 1];
   EC_JACOBIAN precomp_stack[EC_WNAF_STACK][EC_WNAF_TABLE_SIZE];
-  EC_JACOBIAN (*precomp_alloc)[EC_WNAF_TABLE_SIZE] = NULL;
-  EC_JACOBIAN (*precomp)[EC_WNAF_TABLE_SIZE];
+  EC_JACOBIAN(*precomp_alloc)[EC_WNAF_TABLE_SIZE] = NULL;
+  EC_JACOBIAN(*precomp)[EC_WNAF_TABLE_SIZE];
   if (num <= EC_WNAF_STACK) {
     wNAF = wNAF_stack;
     precomp = precomp_stack;

@@ -17,9 +17,9 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/sha.h>
 
-#include "internal.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
+#include "internal.h"
 
 
 TEST(CTRDRBGTest, Basic) {
@@ -66,7 +66,7 @@ TEST(CTRDRBGTest, Allocated) {
   bssl::UniquePtr<CTR_DRBG_STATE> allocated(CTR_DRBG_new(kSeed, nullptr, 0));
   ASSERT_TRUE(allocated);
 
-  allocated.reset(CTR_DRBG_new(kSeed, nullptr, 1<<20));
+  allocated.reset(CTR_DRBG_new(kSeed, nullptr, 1 << 20));
   ASSERT_FALSE(allocated);
 }
 

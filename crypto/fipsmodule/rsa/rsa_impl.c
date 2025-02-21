@@ -66,19 +66,18 @@
 #include <openssl/thread.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
 #include "../delocate.h"
 #include "../rand/fork_detect.h"
+#include "internal.h"
 
 static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
   if (*out != NULL) {
     return 1;
   }
   BIGNUM *copy = BN_dup(in);
-  if (copy == NULL ||
-      !bn_resize_words(copy, width)) {
+  if (copy == NULL || !bn_resize_words(copy, width)) {
     BN_free(copy);
     return 0;
   }
@@ -156,9 +155,8 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
       // Key generation relies on this function to compute |iqmp|.
       if (rsa->iqmp == NULL) {
         BIGNUM *iqmp = BN_new();
-        if (iqmp == NULL ||
-            !bn_mod_inverse_secret_prime(iqmp, rsa->q, rsa->p, ctx,
-                                         rsa->mont_p)) {
+        if (iqmp == NULL || !bn_mod_inverse_secret_prime(iqmp, rsa->q, rsa->p,
+                                                         ctx, rsa->mont_p)) {
           BN_free(iqmp);
           goto err;
         }
@@ -225,9 +223,7 @@ void rsa_invalidate_key(RSA *rsa) {
   rsa->blinding_fork_generation = 0;
 }
 
-size_t rsa_default_size(const RSA *rsa) {
-  return BN_num_bytes(rsa->n);
-}
+size_t rsa_default_size(const RSA *rsa) { return BN_num_bytes(rsa->n); }
 
 // MAX_BLINDINGS_PER_RSA defines the maximum number of cached BN_BLINDINGs per
 // RSA*. Then this limit is exceeded, BN_BLINDING objects will be created and
@@ -412,7 +408,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
-  if(rsa->meth && rsa->meth->verify_raw) {
+  if (rsa->meth && rsa->meth->verify_raw) {
     // In OpenSSL, the RSA_METHOD |verify_raw| or |pub_dec| operation does
     // not directly take and initialize an |out_len| parameter. Instead, it
     // returns the size of the recovered plaintext or negative number for error.
@@ -421,7 +417,7 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
     // paradigm and OpenSSL, we initialize |out_len| based on the return value
     // here.
     int ret = rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
-    if(ret < 0) {
+    if (ret < 0) {
       *out_len = 0;
       return 0;
     }
@@ -523,9 +519,8 @@ err:
   return ret;
 }
 
-int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
-                                size_t max_out, const uint8_t *in,
-                                size_t in_len, int padding) {
+int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                   const uint8_t *in, size_t in_len, int padding) {
   boringssl_ensure_rsa_self_test();
   return rsa_verify_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
                                      padding);
@@ -638,8 +633,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     }
   }
 
-  if (do_blinding &&
-      !BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
+  if (do_blinding && !BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
     goto err;
   }
 
@@ -682,7 +676,7 @@ static int mod_montgomery(BIGNUM *r, const BIGNUM *I, const BIGNUM *p,
     return 0;
   }
 
-  if (// Reduce mod p with Montgomery reduction. This computes I * R^-1 mod p.
+  if (  // Reduce mod p with Montgomery reduction. This computes I * R^-1 mod p.
       !BN_from_montgomery(r, I, mont_p, ctx) ||
       // Multiply by R^2 and do another Montgomery reduction to compute
       // I * R^-1 * R^2 * R^-1 = I mod p.
@@ -719,9 +713,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   r1 = BN_CTX_get(ctx);
   r2 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
-  if (r1 == NULL ||
-      r2 == NULL ||
-      m1 == NULL) {
+  if (r1 == NULL || r2 == NULL || m1 == NULL) {
     goto err;
   }
 
@@ -744,9 +736,8 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
       !mod_montgomery(r2, I, p, rsa->mont_p, q, ctx) ||
       // |m1| is the result modulo |q|.
       // |r0| is the result modulo |p|.
-      !BN_mod_exp_mont_consttime_x2(m1, r1, rsa->dmq1_fixed, q, rsa->mont_q,
-                                    r0, r2, rsa->dmp1_fixed, p, rsa->mont_p,
-				    ctx) ||
+      !BN_mod_exp_mont_consttime_x2(m1, r1, rsa->dmq1_fixed, q, rsa->mont_q, r0,
+                                    r2, rsa->dmp1_fixed, p, rsa->mont_p, ctx) ||
       // Compute r0 = r0 - m1 mod p. |m1| is reduced mod |q|, not |p|, so we
       // just run |mod_montgomery| again for simplicity. This could be more
       // efficient with more cases: if |p > q|, |m1| is already reduced. If
@@ -825,10 +816,12 @@ static int ensure_bignum(BIGNUM **out) {
 //     then []
 //     else let (high, low) = divrem 64 x in low : bnWords high
 //
-// showWord x = let (high, low) = divrem 32 x in printf "TOBN(0x%08x, 0x%08x)" high low
+// showWord x = let (high, low) = divrem 32 x in printf "TOBN(0x%08x, 0x%08x)"
+// high low
 //
 // output :: String
-// output = intercalate ", " $ map showWord $ bnWords $ converge (2 ^ (pow2 `div` 2))
+// output = intercalate ", " $ map showWord $ bnWords $ converge (2 ^ (pow2
+// `div` 2))
 //
 // To verify this number, check that n² < 2⁴⁰⁹⁵ < (n+1)², where n is value
 // represented here. Note the components are listed in little-endian order. Here
@@ -906,7 +899,7 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
   // 22.21518251065506
   // >>> f(2048, 3, 8*2048)
   // 22.211701985875937
-  if (bits >= INT_MAX/32) {
+  if (bits >= INT_MAX / 32) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
@@ -1048,12 +1041,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   }
 
   // We need the RSA components non-NULL.
-  if (!ensure_bignum(&rsa->n) ||
-      !ensure_bignum(&rsa->d) ||
-      !ensure_bignum(&rsa->e) ||
-      !ensure_bignum(&rsa->p) ||
-      !ensure_bignum(&rsa->q) ||
-      !ensure_bignum(&rsa->dmp1) ||
+  if (!ensure_bignum(&rsa->n) || !ensure_bignum(&rsa->d) ||
+      !ensure_bignum(&rsa->e) || !ensure_bignum(&rsa->p) ||
+      !ensure_bignum(&rsa->q) || !ensure_bignum(&rsa->dmp1) ||
       !ensure_bignum(&rsa->dmq1)) {
     goto bn_err;
   }
@@ -1127,7 +1117,7 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
 
   assert(BN_num_bits(pm1) == (unsigned)prime_bits);
   assert(BN_num_bits(qm1) == (unsigned)prime_bits);
-  if (// Calculate n.
+  if (  // Calculate n.
       !bn_mul_consttime(rsa->n, rsa->p, rsa->q, ctx) ||
       // Calculate d mod (p-1).
       !bn_div_consttime(NULL, rsa->dmp1, rsa->d, pm1, prime_bits, ctx) ||
@@ -1222,13 +1212,13 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
     // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
     // failure in |BN_GENCB_call| is still fatal.
   } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
-            ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
+           ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
   if (tmp == NULL) {
     goto out;
   }
 
   // Perform PCT test in the case of FIPS
-  if(check_fips && !RSA_check_fips(tmp)) {
+  if (check_fips && !RSA_check_fips(tmp)) {
     RSA_free(tmp);
 #if defined(AWSLC_FIPS)
     AWS_LC_FIPS_failure("RSA keygen checks failed");
@@ -1279,12 +1269,11 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
 
   BIGNUM *e = BN_new();
   FIPS_service_indicator_lock_state();
-  int ret = e != NULL &&
-            BN_set_word(e, RSA_F4) &&
+  int ret = e != NULL && BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
   FIPS_service_indicator_unlock_state();
   BN_free(e);
-  if(ret) {
+  if (ret) {
     // Approved key size check step is already done at start of function.
     FIPS_service_indicator_update_state();
   }

@@ -9,8 +9,8 @@
 
 #if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 #include <fcntl.h>
-#include <cstring>
 #include <sys/mman.h>
+#include <cstring>
 
 #define NUMBER_OF_TEST_VALUES 5
 
@@ -18,8 +18,8 @@ typedef struct sgn_test_s {
   void *addr;
 } sgn_test_s;
 
-static int init_sgn_file(void** addr);
-static int init_sgn_file(void** addr) {
+static int init_sgn_file(void **addr);
+static int init_sgn_file(void **addr) {
   *addr = nullptr;
 
   // This file should've been created during test initialization
@@ -33,7 +33,8 @@ static int init_sgn_file(void** addr) {
     return 0;
   }
 
-  void* my_addr = mmap(nullptr, sizeof(uint32_t), PROT_WRITE, MAP_SHARED, fd_sgn, 0);
+  void *my_addr =
+      mmap(nullptr, sizeof(uint32_t), PROT_WRITE, MAP_SHARED, fd_sgn, 0);
   if (my_addr == MAP_FAILED) {
     close(fd_sgn);
     return 0;
@@ -46,15 +47,15 @@ static int init_sgn_file(void** addr) {
   return 1;
 }
 
-static int init_sgn_test(sgn_test_s* sgn_test);
-static int init_sgn_test(sgn_test_s* sgn_test) {
+static int init_sgn_test(sgn_test_s *sgn_test);
+static int init_sgn_test(sgn_test_s *sgn_test) {
   return init_sgn_file(&sgn_test->addr);
 }
 
-static int set_sgn(const sgn_test_s* sgn_test, uint32_t val);
-static int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
+static int set_sgn(const sgn_test_s *sgn_test, uint32_t val);
+static int set_sgn(const sgn_test_s *sgn_test, uint32_t val) {
   memcpy(sgn_test->addr, &val, sizeof(uint32_t));
-  if(0 != msync(sgn_test->addr, sizeof(uint32_t), MS_SYNC)) {
+  if (0 != msync(sgn_test->addr, sizeof(uint32_t), MS_SYNC)) {
     return 0;
   }
   return 1;
@@ -72,14 +73,14 @@ TEST(SnapsafeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
   uint32_t current_snapsafe_gen_num = 0;
   ASSERT_TRUE(set_sgn(&sgn_test, 7));
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-  ASSERT_EQ((uint32_t) 7, current_snapsafe_gen_num);
+  ASSERT_EQ((uint32_t)7, current_snapsafe_gen_num);
 
   uint32_t test_sysgenid_values[NUMBER_OF_TEST_VALUES] = {
-    0x03, // 2^0 + 2
-    0x103, // 2^8 + 3
-    0x10004, // 2^16 + 4
-    0x1000005, // 2^24 + 5
-    0xFFFFFFFF // 2^32 - 1
+      0x03,       // 2^0 + 2
+      0x103,      // 2^8 + 3
+      0x10004,    // 2^16 + 4
+      0x1000005,  // 2^24 + 5
+      0xFFFFFFFF  // 2^32 - 1
   };
 
   for (size_t i = 0; i < NUMBER_OF_TEST_VALUES; i++) {
@@ -101,7 +102,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalLinux) {
     ASSERT_NE(0xffffffff, current_snapsafe_gen_num);
   } else {
     ASSERT_FALSE(CRYPTO_get_snapsafe_active());
-    ASSERT_EQ((uint32_t) 0, current_snapsafe_gen_num);
+    ASSERT_EQ((uint32_t)0, current_snapsafe_gen_num);
   }
 }
 #else
@@ -110,6 +111,6 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalNonLinux) {
   ASSERT_FALSE(CRYPTO_get_snapsafe_active());
   uint32_t current_snapsafe_gen_num = 0xffffffff;
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-  ASSERT_EQ((uint32_t) 0, current_snapsafe_gen_num);
+  ASSERT_EQ((uint32_t)0, current_snapsafe_gen_num);
 }
-#endif // defined(OPENSSL_LINUX)
+#endif  // defined(OPENSSL_LINUX)

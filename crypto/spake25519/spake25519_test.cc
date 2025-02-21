@@ -71,7 +71,7 @@ struct SPAKE2Run {
 
     if (alice_corrupt_msg_bit >= 0 &&
         static_cast<size_t>(alice_corrupt_msg_bit) < 8 * alice_msg_len) {
-      alice_msg[alice_corrupt_msg_bit/8] ^= 1 << (alice_corrupt_msg_bit & 7);
+      alice_msg[alice_corrupt_msg_bit / 8] ^= 1 << (alice_corrupt_msg_bit & 7);
     }
 
     uint8_t alice_key[64], bob_key[64];
@@ -90,9 +90,7 @@ struct SPAKE2Run {
     return true;
   }
 
-  bool key_matches() const {
-    return key_matches_;
-  }
+  bool key_matches() const { return key_matches_; }
 
   std::string alice_password = "password";
   std::string bob_password = "password";

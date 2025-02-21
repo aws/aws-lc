@@ -95,8 +95,7 @@ static int cbs_find_ber(const CBS *orig_in, int *ber_found, uint32_t depth) {
 // cbs_get_eoc returns one if |cbs| begins with an "end of contents" (EOC) value
 // and zero otherwise. If an EOC was found, it advances |cbs| past it.
 static int cbs_get_eoc(CBS *cbs) {
-  if (CBS_len(cbs) >= 2 &&
-      CBS_data(cbs)[0] == 0 && CBS_data(cbs)[1] == 0) {
+  if (CBS_len(cbs) >= 2 && CBS_data(cbs)[0] == 0 && CBS_data(cbs)[1] == 0) {
     return CBS_skip(cbs, 2);
   }
   return 0;
@@ -208,8 +207,7 @@ int CBS_asn1_ber_to_der(CBS *in, CBS *out, uint8_t **out_storage) {
   }
 
   size_t len;
-  if (!CBB_init(&cbb, CBS_len(in)) ||
-      !cbs_convert_ber(in, &cbb, 0, 0, 0) ||
+  if (!CBB_init(&cbb, CBS_len(in)) || !cbs_convert_ber(in, &cbb, 0, 0, 0) ||
       !CBB_finish(&cbb, out_storage, &len)) {
     CBB_cleanup(&cbb);
     return 0;

@@ -172,8 +172,7 @@ template <typename... Args>
     WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
   }
 #else
-  OPENSSL_UNUSED ssize_t unused_ret =
-          write(STDERR_FILENO, buf, strlen(buf));
+  OPENSSL_UNUSED ssize_t unused_ret = write(STDERR_FILENO, buf, strlen(buf));
 #endif
   abort();
 }
@@ -190,7 +189,7 @@ class UnwindStatus {
   const char *err_;
 };
 
-template<typename T>
+template <typename T>
 class UnwindStatusOr {
  public:
   UnwindStatusOr(UnwindStatus status) : status_(status) {
@@ -472,8 +471,8 @@ static void AddUnwindError(UnwindCursor *cursor, Args... args) {
   g_unwind_errors[g_num_unwind_errors].ip = cursor->starting_ip();
   StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors].str, args...);
 #else
-  StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors].str,
-                   "unwinding at ", cursor->ToString(), ": ", args...);
+  StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors].str, "unwinding at ",
+                   cursor->ToString(), ": ", args...);
 #endif
   g_num_unwind_errors++;
 }
@@ -587,8 +586,8 @@ static void ReadUnwindResult(Result *out) {
                symbol.info.Name, displacement, WordToHex(ip).data(),
                g_unwind_errors[i].str);
     } else {
-      snprintf(buf, sizeof(buf), "unwinding at 0x%s: %s",
-               WordToHex(ip).data(), g_unwind_errors[i].str);
+      snprintf(buf, sizeof(buf), "unwinding at 0x%s: %s", WordToHex(ip).data(),
+               g_unwind_errors[i].str);
     }
     out->errors.emplace_back(buf);
 #else
@@ -621,8 +620,8 @@ static long ExceptionHandler(EXCEPTION_POINTERS *info) {
 
 static void EnableUnwindTestsImpl() {
   if (IsDebuggerPresent()) {
-    // Unwind tests drive logic via |EXCEPTION_SINGLE_STEP|, which conflicts with
-    // debuggers.
+    // Unwind tests drive logic via |EXCEPTION_SINGLE_STEP|, which conflicts
+    // with debuggers.
     fprintf(stderr, "Debugger detected. Disabling unwind tests.\n");
     return;
   }
@@ -641,7 +640,7 @@ static void EnableUnwindTestsImpl() {
 
   g_unwind_tests_enabled = true;
 }
-#else  // !OPENSSL_WINDOWS
+#else   // !OPENSSL_WINDOWS
 // HandleEINTR runs |func| and returns the result, retrying the operation on
 // |EINTR|.
 template <typename Func>

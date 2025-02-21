@@ -270,7 +270,7 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return leaf_cert_and_privkey_error;
   }
-   return do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(), privkey);
+  return do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(), privkey);
 }
 
 static int cert_set_chain_and_key(

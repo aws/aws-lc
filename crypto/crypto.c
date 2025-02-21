@@ -22,11 +22,11 @@
 
 
 OPENSSL_STATIC_ASSERT(sizeof(ossl_ssize_t) == sizeof(size_t),
-              ossl_ssize_t_should_be_the_same_size_as_size_t)
+                      ossl_ssize_t_should_be_the_same_size_as_size_t)
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) ||            \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) ||           \
      defined(OPENSSL_PPC64LE))
 // x86, x86_64, the ARMs and ppc64le need to record the result of a
 // cpuid/getauxval call for the asm to work correctly, unless compiled without
@@ -61,19 +61,19 @@ static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
 #elif defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
 static void __cdecl do_library_init(void);
-__declspec(allocate(".CRT$XCU")) void(*library_init_constructor)(void) =
+__declspec(allocate(".CRT$XCU")) void (*library_init_constructor)(void) =
     do_library_init;
 #else
-static void do_library_init(void) __attribute__ ((constructor));
+static void do_library_init(void) __attribute__((constructor));
 #endif
 
 // do_library_init is the actual initialization function. If
 // BORINGSSL_NO_STATIC_INITIALIZER isn't defined, this is set as a static
 // initializer. Otherwise, it is called by CRYPTO_library_init.
 static void OPENSSL_CDECL do_library_init(void) {
- // WARNING: this function may only configure the capability variables. See the
- // note above about the linker bug.
- // In the FIPS build the module itself has to call |OPENSSL_cpuid_setup|.
+  // WARNING: this function may only configure the capability variables. See the
+  // note above about the linker bug.
+  // In the FIPS build the module itself has to call |OPENSSL_cpuid_setup|.
 #if defined(NEED_CPUID) && !defined(BORINGSSL_FIPS)
   OPENSSL_cpuid_setup();
 #endif

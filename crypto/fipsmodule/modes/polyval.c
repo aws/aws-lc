@@ -17,8 +17,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // byte_reverse reverses the order of the bytes in |b->c|.
@@ -39,7 +39,7 @@ static void reverse_and_mulX_ghash(uint8_t b[16]) {
   hi >>= 1;
   hi |= lo << 63;
   lo >>= 1;
-  lo ^= ((uint64_t) constant_time_select_w(carry, 0xe1, 0)) << 56;
+  lo ^= ((uint64_t)constant_time_select_w(carry, 0xe1, 0)) << 56;
 
   CRYPTO_store_u64_le(b, CRYPTO_bswap8(lo));
   CRYPTO_store_u64_le(b + 8, CRYPTO_bswap8(hi));

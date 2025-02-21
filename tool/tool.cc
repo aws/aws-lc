@@ -48,28 +48,28 @@ struct Tool {
 };
 
 static const Tool kTools[] = {
-  { "ciphers", Ciphers },
-  { "client", Client },
-  { "isfips", IsFIPS },
-  { "generate-ech", GenerateECH},
-  { "generate-ed25519", GenerateEd25519Key },
-  { "genrsa", GenerateRSAKey },
-  { "md5sum", MD5Sum },
-  { "pkcs12", DoPKCS12 },
-  { "rand", Rand },
-  { "s_client", Client },
-  { "s_server", Server },
-  { "server", Server },
-  { "sha1sum", SHA1Sum },
-  { "sha224sum", SHA224Sum },
-  { "sha256sum", SHA256Sum },
-  { "sha384sum", SHA384Sum },
-  { "sha512sum", SHA512Sum },
-  { "sha512256sum", SHA512256Sum },
-  { "sign", Sign },
-  { "speed", Speed },
-  { "version", version },
-  { "", nullptr },
+    {"ciphers", Ciphers},
+    {"client", Client},
+    {"isfips", IsFIPS},
+    {"generate-ech", GenerateECH},
+    {"generate-ed25519", GenerateEd25519Key},
+    {"genrsa", GenerateRSAKey},
+    {"md5sum", MD5Sum},
+    {"pkcs12", DoPKCS12},
+    {"rand", Rand},
+    {"s_client", Client},
+    {"s_server", Server},
+    {"server", Server},
+    {"sha1sum", SHA1Sum},
+    {"sha224sum", SHA224Sum},
+    {"sha256sum", SHA256Sum},
+    {"sha384sum", SHA384Sum},
+    {"sha512sum", SHA512Sum},
+    {"sha512256sum", SHA512256Sum},
+    {"sign", Sign},
+    {"speed", Speed},
+    {"version", version},
+    {"", nullptr},
 };
 
 static void usage(const char *name) {
@@ -99,7 +99,10 @@ int main(int argc, char **argv) {
   unsigned long build_version = OPENSSL_VERSION_NUMBER;
   unsigned long runtime_version = OpenSSL_version_num();
   if (build_version != runtime_version) {
-    fprintf(stderr, "Incorrect version number detected, built with 0x%lx, loaded 0x%lx at runtime.", build_version, runtime_version);
+    fprintf(stderr,
+            "Incorrect version number detected, built with 0x%lx, loaded 0x%lx "
+            "at runtime.",
+            build_version, runtime_version);
     return 1;
   }
 #if defined(OPENSSL_WINDOWS)

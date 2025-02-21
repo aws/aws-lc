@@ -183,7 +183,8 @@ static int is_md_fips_approved_for_signing(int md_type, int pkey_type) {
       return 1;
 
       // [TODO] SHAKE is only approved for signing with RSA PSS
-      // if (pkey_type == EVP_PKEY_RSA_PSS) // This will be needed when SHAKE is added
+      // if (pkey_type == EVP_PKEY_RSA_PSS) // This will be needed when SHAKE is
+      // added
       //  return 1;
       //}
     default:
@@ -209,7 +210,8 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
       return 1;
 
       // [TODO] SHAKE is only approved for signing with RSA PSS
-      // if (pkey_type == EVP_PKEY_RSA_PSS) // This will be needed when SHAKE is added
+      // if (pkey_type == EVP_PKEY_RSA_PSS) // This will be needed when SHAKE is
+      // added
       //  return 1;
       //}
     default:
@@ -232,7 +234,7 @@ static int custom_meth_invoked(const EVP_PKEY_CTX *ctx) {
       if (ctx->operation == EVP_PKEY_OP_VERIFY) {
         return meth->verify_raw ? 1 : 0;
       }
-      if(ctx->operation == EVP_PKEY_OP_SIGN) {
+      if (ctx->operation == EVP_PKEY_OP_SIGN) {
         // There are cases where custom |sign| functionality may be set but
         // not |sign_raw|. This check is more conservative and fails if
         // custom functionality is provided for either function pointer.
@@ -260,14 +262,15 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
                                                 int (*md_ok)(int md_type,
                                                              int pkey_type)) {
   if (EVP_MD_CTX_md(ctx) == NULL) {
-    if(ctx->pctx->pkey->type == EVP_PKEY_ED25519) {
+    if (ctx->pctx->pkey->type == EVP_PKEY_ED25519) {
       // FIPS 186-5:
       //. 7.6 EdDSA Signature Generation
       //  7.7 EdDSA Signature Verification
       FIPS_service_indicator_update_state();
       return;
     }
-    // All other signature schemes without a prehash are currently never FIPS approved.
+    // All other signature schemes without a prehash are currently never FIPS
+    // approved.
     goto err;
   }
 
@@ -305,14 +308,16 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
       }
     }
 
-    // The approved RSA key sizes for signing are key sizes >= 2048 bits and bits % 2 == 0.
+    // The approved RSA key sizes for signing are key sizes >= 2048 bits and
+    // bits % 2 == 0.
     size_t n_bits = RSA_bits(ctx->pctx->pkey->pkey.rsa);
 
     // Check if the MD type and the RSA key size are approved. Also checking if
     // custom operations from |pkey.rsa->meth| were invoked.
     if (md_ok(md_type, pkey_type) &&
-        ((rsa_1024_ok && n_bits == 1024) || (n_bits >= 2048 && n_bits % 2 == 0))
-        && !custom_meth_invoked(pctx)) {
+        ((rsa_1024_ok && n_bits == 1024) ||
+         (n_bits >= 2048 && n_bits % 2 == 0)) &&
+        !custom_meth_invoked(pctx)) {
       FIPS_service_indicator_update_state();
     }
   } else if (pkey_type == EVP_PKEY_EC) {
@@ -553,14 +558,15 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
   }
 }
 
-// "Whenever a hash function is employed (including as the primitive used by HMAC), an
-// approved hash function shall be used. FIPS 180 and FIPS 202 specify approved hash
-// functions"
+// "Whenever a hash function is employed (including as the primitive used by
+// HMAC), an approved hash function shall be used. FIPS 180 and FIPS 202 specify
+// approved hash functions"
 //
 // * FIPS 180 covers the SHA-1 and SHA-2* family of algorithms
 // * FIPS 202 covers the SHA3-* family of algorithms
 //
-// Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC Algorithms
+// Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC
+// Algorithms
 // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
 void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst) {
   switch (dgst->type) {
@@ -582,14 +588,16 @@ void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst) {
   }
 }
 
-// "Whenever a hash function is employed (including as the primitive used by HMAC), an
-// approved hash function shall be used. FIPS 180 and FIPS 202 specify approved hash
-// functions"
+// "Whenever a hash function is employed (including as the primitive used by
+// HMAC), an approved hash function shall be used. FIPS 180 and FIPS 202 specify
+// approved hash functions"
 //
 // * FIPS 180 covers the SHA-1 and SHA-2* family of algorithms
-// * FIPS 202 covers the SHA3-* family of algorithms (Note: AWS-LC does not currently support SHA-3 with HMAC)
+// * FIPS 202 covers the SHA3-* family of algorithms (Note: AWS-LC does not
+// currently support SHA-3 with HMAC)
 //
-// Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC Algorithms
+// Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC
+// Algorithms
 // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
 void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst) {
   switch (dgst->type) {
@@ -607,15 +615,18 @@ void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst) {
   }
 }
 
-// "For key derivation, this Recommendation approves the use of the keyed-Hash Message
-// Authentication Code (HMAC) specified in FIPS 198-1".
+// "For key derivation, this Recommendation approves the use of the keyed-Hash
+// Message Authentication Code (HMAC) specified in FIPS 198-1".
 
-// * FIPS 198-1 references FIPS 180-3 which covers the SHA-1 and SHA-2* family of algorithms
-// * NIST also provides ACVP vectors for SHA3-* family of algorithms but our HMAC does not support this
+// * FIPS 198-1 references FIPS 180-3 which covers the SHA-1 and SHA-2* family
+// of algorithms
+// * NIST also provides ACVP vectors for SHA3-* family of algorithms but our
+// HMAC does not support this
 //
 // Sourced from NIST SP 800-108r1-upd1 Section 3:  Pseudorandom Function (PRF)
 // https://doi.org/10.6028/NIST.SP.800-108r1-upd1
-void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst, size_t secret_len) {
+void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst,
+                                             size_t secret_len) {
   switch (dgst->type) {
     case NID_sha1:
     case NID_sha224:
@@ -624,7 +635,8 @@ void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst, size_t secret_l
     case NID_sha512:
     case NID_sha512_224:
     case NID_sha512_256:
-      // SP 800-131Ar1, Section 8: "The length of the key-derivation key shall be at least 112 bits.” 
+      // SP 800-131Ar1, Section 8: "The length of the key-derivation key shall
+      // be at least 112 bits.”
       if (secret_len >= 14) {
         FIPS_service_indicator_update_state();
       }
@@ -634,7 +646,7 @@ void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst, size_t secret_l
   }
 }
 
-void EVP_PKEY_encapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx) {
+void EVP_PKEY_encapsulate_verify_service_indicator(const EVP_PKEY_CTX *ctx) {
   if (ctx->pkey->type == EVP_PKEY_KEM) {
     const KEM *kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
     switch (kem->nid) {
@@ -649,7 +661,7 @@ void EVP_PKEY_encapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx) {
   }
 }
 
-void EVP_PKEY_decapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx) {
+void EVP_PKEY_decapsulate_verify_service_indicator(const EVP_PKEY_CTX *ctx) {
   if (ctx->pkey->type == EVP_PKEY_KEM) {
     const KEM *kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
     switch (kem->nid) {

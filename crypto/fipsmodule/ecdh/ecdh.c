@@ -79,7 +79,8 @@
 #include "../service_indicator/internal.h"
 
 
-int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
+int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen,
+                               const EC_POINT *pub_key,
                                const EC_KEY *priv_key) {
   boringssl_ensure_ecc_self_test();
   if (priv_key->priv_key == NULL) {
@@ -167,7 +168,7 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
 
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret) {
+  if (ret) {
     ECDH_verify_service_indicator(priv_key);
   }
   return ret;

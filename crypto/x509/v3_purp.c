@@ -171,10 +171,10 @@ int X509_PURPOSE_get_by_sname(const char *sname) {
 }
 
 int X509_PURPOSE_get_by_id(int purpose) {
-  for (size_t i = 0; i <OPENSSL_ARRAY_SIZE(xstandard); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(xstandard); i++) {
     if (xstandard[i].purpose == purpose) {
       OPENSSL_STATIC_ASSERT(OPENSSL_ARRAY_SIZE(xstandard) <= INT_MAX,
-                    indices_must_fit_in_int);
+                            indices_must_fit_in_int);
       return (int)i;
     }
   }

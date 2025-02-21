@@ -127,4 +127,4 @@ TEST(SHATest, SHA512ABI) {
   }
 }
 
-#endif // defined(SUPPORTS_ABI_TEST) && !defined(SHA1_ALTIVEC)
+#endif  // defined(SUPPORTS_ABI_TEST) && !defined(SHA1_ALTIVEC)

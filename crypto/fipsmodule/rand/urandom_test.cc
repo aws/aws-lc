@@ -23,7 +23,7 @@
 #include "snapsafe_detect.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) &&                 \
     defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING)
 
 #include <linux/types.h>
@@ -36,10 +36,10 @@
 #include "fork_detect.h"
 #include "getrandom_fillin.h"
 
-#include <cstdlib>
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <unistd.h>
+#include <cstdlib>
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -409,15 +409,12 @@ static void TestFunction() {
   RAND_bytes(&byte, sizeof(byte));
 }
 
-static bool have_fork_detection() {
-  return CRYPTO_get_fork_generation() != 0;
-}
+static bool have_fork_detection() { return CRYPTO_get_fork_generation() != 0; }
 
 // TestFunctionPRNGModel is a model of how the urandom.c code will behave when
 // |TestFunction| is run. It should return the same trace of events that
 // |GetTrace| will observe the real code making.
 static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
-
   std::vector<Event> ret;
   bool urandom_probed = false;
   bool getrandom_ready = false;
@@ -531,12 +528,12 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       // source or a system source. The former is not modeled.
       if (!kHaveRdrand) {
         if (!sysrand(true, kPassiveEntropyWithWhitenFactor)) {
-                return ret;
+          return ret;
         }
       } else {
         // If using the CPU source, also drawing additional data for diversity.
         if (!sysrand(false, kPersonalizationStringLength)) {
-                return ret;
+          return ret;
         }
       }
     } else {
@@ -569,7 +566,8 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 // |TestFunctionPRNGModel| creates the entropy function call model, for
 // various configs. |GetTrace| records the actual entropy function calls for
 // each config and compares it against the model.
-// Only system entropy function calls are modeled e.g. /dev/random and getrandom.
+// Only system entropy function calls are modeled e.g. /dev/random and
+// getrandom.
 TEST(URandomTest, Test) {
   char buf[256];
 
@@ -585,7 +583,7 @@ TEST(URandomTest, Test) {
 
   for (unsigned flags = 0; flags < NEXT_FLAG; flags++) {
     if (!has_getrandom && !(flags & NO_GETRANDOM)) {
-        continue;
+      continue;
     }
 
     TRACE_FLAG(NO_GETRANDOM);

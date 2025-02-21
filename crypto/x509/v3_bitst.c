@@ -129,11 +129,21 @@ static void *v2i_ASN1_BIT_STRING(const X509V3_EXT_METHOD *method,
   return bs;
 }
 
-#define EXT_BITSTRING(nid, table)                                             \
-  {                                                                           \
-    nid, 0, ASN1_ITEM_ref(ASN1_BIT_STRING), 0, 0, 0, 0, 0, 0,                 \
-        i2v_ASN1_BIT_STRING, v2i_ASN1_BIT_STRING, NULL, NULL, (void *)(table) \
-  }
+#define EXT_BITSTRING(nid, table)  \
+  {nid,                            \
+   0,                              \
+   ASN1_ITEM_ref(ASN1_BIT_STRING), \
+   0,                              \
+   0,                              \
+   0,                              \
+   0,                              \
+   0,                              \
+   0,                              \
+   i2v_ASN1_BIT_STRING,            \
+   v2i_ASN1_BIT_STRING,            \
+   NULL,                           \
+   NULL,                           \
+   (void *)(table)}
 
 const X509V3_EXT_METHOD v3_nscert =
     EXT_BITSTRING(NID_netscape_cert_type, ns_cert_type_table);

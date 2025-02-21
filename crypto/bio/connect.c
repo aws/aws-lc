@@ -63,9 +63,9 @@
 #include <string.h>
 
 #if !defined(OPENSSL_WINDOWS)
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
@@ -77,8 +77,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 enum {
@@ -109,9 +109,7 @@ typedef struct bio_connect_st {
 } BIO_CONNECT;
 
 #if !defined(OPENSSL_WINDOWS)
-static int closesocket(int sock) {
-  return close(sock);
-}
+static int closesocket(int sock) { return close(sock); }
 #endif
 
 // split_host_and_port sets |*out_host| and |*out_port| to the host and port
@@ -231,7 +229,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         }
 
         BIO_clear_retry_flags(bio);
-        ret = connect(bio->num, (struct sockaddr*) &c->them, c->them_length);
+        ret = connect(bio->num, (struct sockaddr *)&c->them, c->them_length);
         if (ret < 0) {
           if (bio_socket_should_retry(ret)) {
             BIO_set_flags(bio, (BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY));
@@ -261,7 +259,8 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             BIO_clear_retry_flags(bio);
             OPENSSL_PUT_SYSTEM_ERROR();
             OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
-            ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
+            ERR_add_error_data(4, "host=", c->param_hostname, ":",
+                               c->param_port);
             ret = 0;
           }
           goto exit_loop;
@@ -323,7 +322,7 @@ static int conn_new(BIO *bio) {
 }
 
 static void conn_close_socket(BIO *bio) {
-  BIO_CONNECT *c = (BIO_CONNECT *) bio->ptr;
+  BIO_CONNECT *c = (BIO_CONNECT *)bio->ptr;
 
   if (bio->num == -1) {
     return;
@@ -342,7 +341,7 @@ static int conn_free(BIO *bio) {
     conn_close_socket(bio);
   }
 
-  BIO_CONNECT_free((BIO_CONNECT*) bio->ptr);
+  BIO_CONNECT_free((BIO_CONNECT *)bio->ptr);
 
   return 1;
 }
@@ -514,11 +513,11 @@ static const BIO_METHOD methods_connectp = {
 const BIO_METHOD *BIO_s_connect(void) { return &methods_connectp; }
 
 int BIO_set_conn_hostname(BIO *bio, const char *name) {
-  return (int)BIO_ctrl(bio, BIO_C_SET_CONNECT, 0, (void*) name);
+  return (int)BIO_ctrl(bio, BIO_C_SET_CONNECT, 0, (void *)name);
 }
 
 int BIO_set_conn_port(BIO *bio, const char *port_str) {
-  return (int)BIO_ctrl(bio, BIO_C_SET_CONNECT, 1, (void*) port_str);
+  return (int)BIO_ctrl(bio, BIO_C_SET_CONNECT, 1, (void *)port_str);
 }
 
 int BIO_set_conn_int_port(BIO *bio, const int *port) {

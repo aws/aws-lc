@@ -9,14 +9,14 @@
 #include <stdlib.h>
 
 int main(int argc, char **argv) {
-    uint16_t test16 = 0;
-    test16 = __builtin_bswap16(test16);
+  uint16_t test16 = 0;
+  test16 = __builtin_bswap16(test16);
 
-    uint32_t test32 = 0;
-    test32 = __builtin_bswap32(test32);
+  uint32_t test32 = 0;
+  test32 = __builtin_bswap32(test32);
 
-    uint64_t test64 = 0;
-    test64 = __builtin_bswap64(test64);
+  uint64_t test64 = 0;
+  test64 = __builtin_bswap64(test64);
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

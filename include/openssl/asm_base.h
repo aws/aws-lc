@@ -43,8 +43,8 @@
 #if defined(__ELF__)
 // Every ELF object file, even empty ones, should disable executable stacks. See
 // https://www.airs.com/blog/archives/518.
-.pushsection .note.GNU-stack, "", %progbits
-.popsection
+.pushsection.note.GNU - stack, "", % progbits
+                                           .popsection
 #endif
 
 #if defined(__CET__) && defined(OPENSSL_X86_64)
@@ -184,7 +184,8 @@
 #endif
 
 #if GNU_PROPERTY_AARCH64_POINTER_AUTH != 0 || GNU_PROPERTY_AARCH64_BTI != 0
-.pushsection .note.gnu.property, "a";
+                                           .pushsection.note.gnu.property,
+    "a";
 .balign 8;
 .long 4;
 .long 0x10;
@@ -192,7 +193,7 @@
 .asciz "GNU";
 .long 0xc0000000; /* GNU_PROPERTY_AARCH64_FEATURE_1_AND */
 .long 4;
-.long (GNU_PROPERTY_AARCH64_POINTER_AUTH | GNU_PROPERTY_AARCH64_BTI);
+.long(GNU_PROPERTY_AARCH64_POINTER_AUTH | GNU_PROPERTY_AARCH64_BTI);
 .long 0;
 .popsection;
 #endif

@@ -58,12 +58,12 @@
 
 #include <limits.h>
 
-#include <openssl/err.h>
-#include <openssl/rsa.h>
 #include <openssl/bn.h>
-#include <openssl/rand.h>
-#include <openssl/mem.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/mem.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
 
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/rsa/internal.h"
@@ -385,7 +385,7 @@ int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
-  if(rsa->meth && rsa->meth->encrypt) {
+  if (rsa->meth && rsa->meth->encrypt) {
     // In OpenSSL, the RSA_METHOD |encrypt| or |pub_enc| operation does not
     // directly take and initialize an |out_len| parameter. Instead, it returns
     // the number of bytes written to |out| or a negative number for error.
@@ -394,7 +394,7 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // paradigm and OpenSSL, we initialize |out_len| based on the return value
     // here.
     int ret = rsa->meth->encrypt((int)max_out, in, out, rsa, padding);
-    if(ret < 0) {
+    if (ret < 0) {
       *out_len = 0;
       return 0;
     }
@@ -566,7 +566,7 @@ int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // an |out_len| parameter. To remain compatible with this new paradigm and
     // OpenSSL, we initialize |out_len| based on the return value here.
     int ret = rsa->meth->decrypt((int)max_out, in, out, rsa, padding);
-    if(ret < 0) {
+    if (ret < 0) {
       *out_len = 0;
       return 0;
     }

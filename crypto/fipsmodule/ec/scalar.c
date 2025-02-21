@@ -16,9 +16,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
+#include "internal.h"
 
 
 int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,

@@ -133,7 +133,7 @@ static const struct KnownAEAD kAEADs[] = {
      "aes_128_cbc_sha256_tls_implicit_iv_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
 
-  {"AES_256_CBC_SHA384_TLS", EVP_aead_aes_256_cbc_sha384_tls,
+    {"AES_256_CBC_SHA384_TLS", EVP_aead_aes_256_cbc_sha384_tls,
      "aes_256_cbc_sha384_tls_tests.txt",
      kLimitedImplementation | RequiresADLength(11)},
 
@@ -835,11 +835,12 @@ TEST_P(PerAEADTest, AliasedBuffers) {
 #define UNALIGNED_TEST_ALIGNMENT __BIGGEST_ALIGNMENT__
 #else
 #define UNALIGNED_TEST_ALIGNMENT 8
-#endif // defined(__BIGGEST_ALIGNMENT__)
+#endif  // defined(__BIGGEST_ALIGNMENT__)
 
 TEST_P(PerAEADTest, UnalignedInput) {
   alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH + 1];
-  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
+  alignas(UNALIGNED_TEST_ALIGNMENT)
+      uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
   alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t plaintext[32 + 1];
   alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t ad[32 + 1];
   OPENSSL_memset(key, 'K', sizeof(key));
@@ -860,7 +861,8 @@ TEST_P(PerAEADTest, UnalignedInput) {
   ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
       ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
       evp_aead_seal));
-  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
+  alignas(UNALIGNED_TEST_ALIGNMENT)
+      uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
   size_t ciphertext_len;
   ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext + 1, &ciphertext_len,
                                 sizeof(ciphertext) - 1, nonce + 1, nonce_len,
@@ -1371,16 +1373,17 @@ TEST(AEADTest, TestGCMSIV256Change16Alignment) {
 }
 
 TEST(AEADTest, TestMonotonicityCheck) {
-
   static const uint8_t kEvpAeadCtxKey[32] = {0};
 
   // Only the tls13() ciphers have monotonicity checks
-  const EVP_AEAD *aeads_to_test[] = {  EVP_aead_aes_128_gcm_tls13(), EVP_aead_aes_256_gcm_tls13() };
+  const EVP_AEAD *aeads_to_test[] = {EVP_aead_aes_128_gcm_tls13(),
+                                     EVP_aead_aes_256_gcm_tls13()};
 
   for (const EVP_AEAD *cipher : aeads_to_test) {
     bssl::ScopedEVP_AEAD_CTX encrypt_ctx;
 
-    ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx.get(), cipher, kEvpAeadCtxKey, cipher->key_len, 16, NULL))
+    ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx.get(), cipher, kEvpAeadCtxKey,
+                                  cipher->key_len, 16, NULL))
         << ERR_error_string(ERR_get_error(), NULL);
 
     uint8_t nonce[12] = {0};
@@ -1393,18 +1396,19 @@ TEST(AEADTest, TestMonotonicityCheck) {
     // as long as monotonicity is preserved. Here the implicit IV is presumed
     // to be a zero-filled array. That lets us update the nonce value directly
     // with an increasing sequence number.
-    for (size_t sequence_num = 0; sequence_num <= 255; sequence_num+=10) {
+    for (size_t sequence_num = 0; sequence_num <= 255; sequence_num += 10) {
       nonce[last_byte] = sequence_num;
-      ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
-                                    sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
-                                    sizeof(plaintext), nullptr /* ad */, 0));
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(
+          encrypt_ctx.get(), ciphertext, &out_len, sizeof(ciphertext), nonce,
+          sizeof(nonce), plaintext, sizeof(plaintext), nullptr /* ad */, 0));
     }
 
-    // Attempting to encrypt with a decreased sequence number causes the monotonicity check to fail.
+    // Attempting to encrypt with a decreased sequence number causes the
+    // monotonicity check to fail.
     nonce[last_byte] = 0;
-    ASSERT_FALSE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
-                               sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
-                               sizeof(plaintext), nullptr /* ad */, 0));
+    ASSERT_FALSE(EVP_AEAD_CTX_seal(
+        encrypt_ctx.get(), ciphertext, &out_len, sizeof(ciphertext), nonce,
+        sizeof(nonce), plaintext, sizeof(plaintext), nullptr /* ad */, 0));
   }
 }
 
@@ -1427,8 +1431,7 @@ static const uint8_t kEvpAeadCtxKey[80] = {
     0xb0, 0x3f, 0x35, 0xe6, 0xb5, 0x2f, 0x3b, 0xee, 0xbc, 0xf9, 0x11, 0xb1,
     0x9e, 0x58, 0xf6, 0xb7, 0xf3, 0x3e, 0x5b, 0x66, 0x28, 0x85, 0x0c, 0x66,
     0x2b, 0x75, 0xb7, 0x86, 0xfd, 0xa4, 0x2d, 0x4b, 0x8c, 0xe0, 0x9a, 0x58,
-    0xbf, 0xc6, 0x22, 0x4c, 0x39, 0x25, 0x66, 0xfd
-};
+    0xbf, 0xc6, 0x22, 0x4c, 0x39, 0x25, 0x66, 0xfd};
 
 static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
     {"EVP_aead_aes_128_gcm", EVP_aead_aes_128_gcm(), kEvpAeadCtxKey, 16, 16,

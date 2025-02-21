@@ -23,14 +23,13 @@
 
 #include "internal.h"
 
-bool IsFlag(const std::string& arg) {
+bool IsFlag(const std::string &arg) {
   return arg.length() > 1 && arg[0] == '-';
 }
 
-bool ParseKeyValueArguments(args_map_t &out_args,
-                          args_list_t &extra_args,
-                          const args_list_t &args,
-                          const argument_t *templates) {
+bool ParseKeyValueArguments(args_map_t &out_args, args_list_t &extra_args,
+                            const args_list_t &args,
+                            const argument_t *templates) {
   out_args.clear();
   extra_args.clear();
 
@@ -45,7 +44,7 @@ bool ParseKeyValueArguments(args_map_t &out_args,
     }
 
     if (templ == nullptr) {
-      if(IsFlag(arg)) {
+      if (IsFlag(arg)) {
         fprintf(stderr, "Unknown flag: %s\n", arg.c_str());
         return false;
       }
@@ -89,8 +88,7 @@ void PrintUsage(const argument_t *templates) {
 }
 
 bool GetUnsigned(unsigned *out, const std::string &arg_name,
-                 unsigned default_value,
-                 const args_map_t &args) {
+                 unsigned default_value, const args_map_t &args) {
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     *out = default_value;
@@ -118,7 +116,6 @@ bool GetUnsigned(unsigned *out, const std::string &arg_name,
 
 bool GetString(std::string *out, const std::string &arg_name,
                std::string default_value, const args_map_t &args) {
-
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     *out = default_value;
@@ -133,7 +130,6 @@ bool GetString(std::string *out, const std::string &arg_name,
 
 bool GetBoolArgument(bool *out, const std::string &arg_name,
                      const args_map_t &args) {
-
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     // Boolean argument not found
@@ -144,4 +140,3 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
 
   return true;
 }
-

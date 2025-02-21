@@ -62,7 +62,7 @@ struct wrapped_callback {
 // callback_wrapper converts an “old” style generation callback to the newer
 // |BN_GENCB| form.
 static int callback_wrapper(int event, int n, BN_GENCB *gencb) {
-  struct wrapped_callback *wrapped = (struct wrapped_callback *) gencb->arg;
+  struct wrapped_callback *wrapped = (struct wrapped_callback *)gencb->arg;
   wrapped->callback(event, n, wrapped->arg);
   return 1;
 }
@@ -70,12 +70,12 @@ static int callback_wrapper(int event, int n, BN_GENCB *gencb) {
 DH *DH_generate_parameters(int prime_len, int generator,
                            void (*callback)(int, int, void *), void *cb_arg) {
   if (prime_len < 0 || generator < 0) {
-      return NULL;
+    return NULL;
   }
 
   DH *ret = DH_new();
   if (ret == NULL) {
-      return NULL;
+    return NULL;
   }
 
   BN_GENCB gencb_storage;

@@ -75,10 +75,10 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../bn/internal.h"
 #include "../delocate.h"
+#include "internal.h"
 
 #include "builtin_curves.h"
 
@@ -259,16 +259,21 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_secp256k1) {
   out->oid_len = sizeof(kOIDP256K1);
 
   ec_group_init_static_mont(&out->field, OPENSSL_ARRAY_SIZE(ksecp256k1Field),
-                            ksecp256k1Field, ksecp256k1FieldRR, ksecp256k1FieldN0);
+                            ksecp256k1Field, ksecp256k1FieldRR,
+                            ksecp256k1FieldN0);
   ec_group_init_static_mont(&out->order, OPENSSL_ARRAY_SIZE(ksecp256k1Order),
-                            ksecp256k1Order, ksecp256k1OrderRR, ksecp256k1OrderN0);
+                            ksecp256k1Order, ksecp256k1OrderRR,
+                            ksecp256k1OrderN0);
 
 
   out->meth = EC_GFp_mont_method();
   out->generator.group = out;
-  OPENSSL_memcpy(out->generator.raw.X.words, ksecp256k1MontGX, sizeof(ksecp256k1MontGX));
-  OPENSSL_memcpy(out->generator.raw.Y.words, ksecp256k1MontGY, sizeof(ksecp256k1MontGY));
-  OPENSSL_memcpy(out->generator.raw.Z.words, ksecp256k1FieldR, sizeof(ksecp256k1FieldR));
+  OPENSSL_memcpy(out->generator.raw.X.words, ksecp256k1MontGX,
+                 sizeof(ksecp256k1MontGX));
+  OPENSSL_memcpy(out->generator.raw.Y.words, ksecp256k1MontGY,
+                 sizeof(ksecp256k1MontGY));
+  OPENSSL_memcpy(out->generator.raw.Z.words, ksecp256k1FieldR,
+                 sizeof(ksecp256k1FieldR));
   OPENSSL_memcpy(out->b.words, ksecp256k1MontB, sizeof(ksecp256k1MontB));
 
   ec_group_set_a_zero(out);
@@ -300,8 +305,7 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
   BIGNUM *a_reduced = BN_CTX_get(ctx);
   BIGNUM *b_reduced = BN_CTX_get(ctx);
   if (a_reduced == NULL || b_reduced == NULL ||
-      !BN_nnmod(a_reduced, a, p, ctx) ||
-      !BN_nnmod(b_reduced, b, p, ctx)) {
+      !BN_nnmod(a_reduced, a, p, ctx) || !BN_nnmod(b_reduced, b, p, ctx)) {
     goto err;
   }
 
@@ -356,8 +360,7 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   // the ECDSA implementation.
   int ret = 0;
   BIGNUM *tmp = BN_new();
-  if (tmp == NULL ||
-      !BN_lshift1(tmp, order)) {
+  if (tmp == NULL || !BN_lshift1(tmp, order)) {
     goto err;
   }
   if (BN_cmp(tmp, &group->field.N) <= 0) {
@@ -394,7 +397,7 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
     case NID_secp521r1:
       return (EC_GROUP *)EC_group_p521();
     case NID_secp256k1:
-	  return (EC_GROUP *)EC_group_secp256k1();
+      return (EC_GROUP *)EC_group_secp256k1();
     default:
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return NULL;
@@ -831,8 +834,7 @@ static int arbitrary_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   // This is an unusual input, so we do not guarantee constant-time processing.
   BN_CTX_start(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  int ok = tmp != NULL &&
-           BN_nnmod(tmp, in, EC_GROUP_get0_order(group), ctx) &&
+  int ok = tmp != NULL && BN_nnmod(tmp, in, EC_GROUP_get0_order(group), ctx) &&
            ec_bignum_to_scalar(group, out, tmp);
   BN_CTX_end(ctx);
   return ok;
@@ -845,7 +847,7 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
   // nothing to multiply. But, nobody should be calling this function with
   // nothing to multiply in the first place.
   if ((g_scalar == NULL && p_scalar == NULL) ||
-      (p == NULL) != (p_scalar == NULL))  {
+      (p == NULL) != (p_scalar == NULL)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -989,8 +991,7 @@ int ec_point_mul_scalar_base(const EC_GROUP *group, EC_JACOBIAN *r,
 int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_JACOBIAN *r,
                               const EC_JACOBIAN *p0, const EC_SCALAR *scalar0,
                               const EC_JACOBIAN *p1, const EC_SCALAR *scalar1,
-                              const EC_JACOBIAN *p2,
-                              const EC_SCALAR *scalar2) {
+                              const EC_JACOBIAN *p2, const EC_SCALAR *scalar2) {
   if (group->meth->mul_batch == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -1041,7 +1042,7 @@ int ec_point_mul_scalar_precomp(const EC_GROUP *group, EC_JACOBIAN *r,
 }
 
 void ec_point_select(const EC_GROUP *group, EC_JACOBIAN *out, BN_ULONG mask,
-                      const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
+                     const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
   ec_felem_select(group, &out->X, mask, &a->X, &b->X);
   ec_felem_select(group, &out->Y, mask, &a->Y, &b->Y);
   ec_felem_select(group, &out->Z, mask, &a->Z, &b->Z);

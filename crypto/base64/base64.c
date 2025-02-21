@@ -126,9 +126,7 @@ EVP_ENCODE_CTX *EVP_ENCODE_CTX_new(void) {
   return OPENSSL_zalloc(sizeof(EVP_ENCODE_CTX));
 }
 
-void EVP_ENCODE_CTX_free(EVP_ENCODE_CTX *ctx) {
-  OPENSSL_free(ctx);
-}
+void EVP_ENCODE_CTX_free(EVP_ENCODE_CTX *ctx) { OPENSSL_free(ctx); }
 
 void EVP_EncodeInit(EVP_ENCODE_CTX *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(EVP_ENCODE_CTX));
@@ -307,10 +305,8 @@ static int base64_decode_quad(uint8_t *out, size_t *out_num_bytes,
   const uint32_t v = ((uint32_t)a) << 18 | ((uint32_t)b) << 12 |
                      ((uint32_t)c) << 6 | (uint32_t)d;
 
-  const unsigned padding_pattern = (in[0] == '=') << 3 |
-                                   (in[1] == '=') << 2 |
-                                   (in[2] == '=') << 1 |
-                                   (in[3] == '=');
+  const unsigned padding_pattern = (in[0] == '=') << 3 | (in[1] == '=') << 2 |
+                                   (in[2] == '=') << 1 | (in[3] == '=');
 
   switch (padding_pattern) {
     case 0:
@@ -413,8 +409,7 @@ int EVP_DecodeBase64(uint8_t *out, size_t *out_len, size_t max_out,
   }
 
   size_t max_len;
-  if (!EVP_DecodedLength(&max_len, in_len) ||
-      max_out < max_len) {
+  if (!EVP_DecodedLength(&max_len, in_len) || max_out < max_len) {
     return 0;
   }
 
@@ -450,7 +445,7 @@ int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
 
   // Trim newlines, spaces and tabs from the end of the line.
   while (src_len > 0) {
-    switch (src[src_len-1]) {
+    switch (src[src_len - 1]) {
       case ' ':
       case '\t':
       case '\r':
@@ -463,8 +458,7 @@ int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
   }
 
   size_t dst_len;
-  if (!EVP_DecodedLength(&dst_len, src_len) ||
-      dst_len > INT_MAX ||
+  if (!EVP_DecodedLength(&dst_len, src_len) || dst_len > INT_MAX ||
       !EVP_DecodeBase64(dst, &dst_len, dst_len, src, src_len)) {
     return -1;
   }

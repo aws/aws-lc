@@ -46,14 +46,15 @@ e3IOOq2ruXmq1jykxpmi82IcTRUE8TZBfL/yz0nxpHKAYC1VwMezrkgZDGz4npxf
 )";
 
 class SharedData {
-public:
+ public:
   X509_STORE *store = nullptr;
   STACK_OF(X509) *certs = nullptr;
 
   SharedData() {
     X509 *cert = nullptr;
     {
-      BIO *cert_bio = BIO_new_mem_buf(const_cast<char *>(kCert), sizeof(kCert) - 1);
+      BIO *cert_bio =
+          BIO_new_mem_buf(const_cast<char *>(kCert), sizeof(kCert) - 1);
       cert = PEM_read_bio_X509(cert_bio, nullptr, nullptr, nullptr);
       BIO_free(cert_bio);
     }
@@ -81,7 +82,7 @@ static SharedData sharedData;
 
 OPENSSL_BEGIN_ALLOW_DEPRECATED
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
-  BIO* data_bio = nullptr;
+  BIO *data_bio = nullptr;
 
   PKCS7 *pkcs7 = d2i_PKCS7(nullptr, &buf, len);
   if (!pkcs7) {

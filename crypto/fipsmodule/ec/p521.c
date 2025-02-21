@@ -16,19 +16,19 @@
 #include "../bn/internal.h"
 #include "../cpucap/internal.h"
 #include "../delocate.h"
-#include "internal.h"
 #include "ec_nistp.h"
+#include "internal.h"
 
 #if !defined(OPENSSL_SMALL)
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #else
-#  if defined(EC_NISTP_USE_64BIT_LIMB)
-#    include "../../../third_party/fiat/p521_64.h"
-#  else
-#    include "../../../third_party/fiat/p521_32.h"
-#  endif
+#if defined(EC_NISTP_USE_64BIT_LIMB)
+#include "../../../third_party/fiat/p521_64.h"
+#else
+#include "../../../third_party/fiat/p521_32.h"
+#endif
 #endif
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
@@ -36,57 +36,49 @@
 #define P521_NLIMBS (9)
 
 typedef uint64_t p521_limb_t;
-typedef uint64_t p521_felem[P521_NLIMBS]; // field element
+typedef uint64_t p521_felem[P521_NLIMBS];  // field element
 
 static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
-    0x0000000000000001, 0x0000000000000000,
-    0x0000000000000000, 0x0000000000000000,
-    0x0000000000000000, 0x0000000000000000,
-    0x0000000000000000, 0x0000000000000000,
-    0x0000000000000000};
+    0x0000000000000001, 0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000, 0x0000000000000000};
 
 // The field characteristic p.
 static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
-    0xffffffffffffffff, 0xffffffffffffffff,
-    0xffffffffffffffff, 0xffffffffffffffff,
-    0xffffffffffffffff, 0xffffffffffffffff,
-    0xffffffffffffffff, 0xffffffffffffffff,
-    0x1ff};
+    0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+    0xffffffffffffffff, 0xffffffffffffffff, 0x1ff};
 
 // s2n-bignum implementation of field arithmetic
-#define p521_felem_add(out, in0, in1)   bignum_add_p521(out, in0, in1)
-#define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, in0, in1)
-#define p521_felem_opp(out, in0)        bignum_neg_p521(out, in0)
-#define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, in0)
+#define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
+#define p521_felem_sub(out, in0, in1) bignum_sub_p521(out, in0, in1)
+#define p521_felem_opp(out, in0) bignum_neg_p521(out, in0)
+#define p521_felem_to_bytes(out, in0) bignum_tolebytes_p521(out, in0)
 #define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, in0)
-#define p521_felem_mul(out, in0, in1)   bignum_mul_p521_selector(out, in0, in1)
-#define p521_felem_sqr(out, in0)        bignum_sqr_p521_selector(out, in0)
+#define p521_felem_mul(out, in0, in1) bignum_mul_p521_selector(out, in0, in1)
+#define p521_felem_sqr(out, in0) bignum_sqr_p521_selector(out, in0)
 
-#else // EC_NISTP_USE_S2N_BIGNUM
+#else  // EC_NISTP_USE_S2N_BIGNUM
 
 #if defined(EC_NISTP_USE_64BIT_LIMB)
 
 // In the 64-bit case Fiat-crypto represents a field element by 9 58-bit digits.
 #define P521_NLIMBS (9)
 
-typedef uint64_t p521_felem[P521_NLIMBS]; // field element
+typedef uint64_t p521_felem[P521_NLIMBS];  // field element
 typedef uint64_t p521_limb_t;
 
 // One in Fiat-crypto's representation (58-bit digits).
 static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
-    0x0000000000000001, 0x0000000000000000,
-    0x0000000000000000, 0x0000000000000000,
-    0x0000000000000000, 0x0000000000000000,
-    0x0000000000000000, 0x0000000000000000,
-    0x0000000000000000};
+    0x0000000000000001, 0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+    0x0000000000000000, 0x0000000000000000, 0x0000000000000000};
 
 // The field characteristic p in Fiat-crypto's representation (58-bit digits).
 static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
-    0x03ffffffffffffff, 0x03ffffffffffffff,
-    0x03ffffffffffffff, 0x03ffffffffffffff,
-    0x03ffffffffffffff, 0x03ffffffffffffff,
-    0x03ffffffffffffff, 0x03ffffffffffffff,
-    0x01ffffffffffffff};
+    0x03ffffffffffffff, 0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff, 0x03ffffffffffffff,
+    0x03ffffffffffffff, 0x03ffffffffffffff, 0x01ffffffffffffff};
 
 #else  // 64BIT; else 32BIT
 
@@ -95,36 +87,32 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 // [28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27].
 #define P521_NLIMBS (19)
 
-typedef uint32_t p521_felem[P521_NLIMBS]; // field element
+typedef uint32_t p521_felem[P521_NLIMBS];  // field element
 typedef uint32_t p521_limb_t;
 
 // One in Fiat-crypto's representation.
 static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
-    0x0000001, 0x0000000, 0x0000000, 0x0000000,
-    0x0000000, 0x0000000, 0x0000000, 0x0000000,
-    0x0000000, 0x0000000, 0x0000000, 0x0000000,
-    0x0000000, 0x0000000, 0x0000000, 0x0000000,
-    0x0000000, 0x0000000, 0x0000000};
+    0x0000001, 0x0000000, 0x0000000, 0x0000000, 0x0000000, 0x0000000, 0x0000000,
+    0x0000000, 0x0000000, 0x0000000, 0x0000000, 0x0000000, 0x0000000, 0x0000000,
+    0x0000000, 0x0000000, 0x0000000, 0x0000000, 0x0000000};
 
 // The field characteristic p in Fiat-crypto's representation.
 static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
-    0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff,
-    0xfffffff, 0x7ffffff, 0x7ffffff, 0xfffffff,
-    0x7ffffff, 0xfffffff, 0x7ffffff, 0xfffffff,
-    0x7ffffff, 0x7ffffff, 0xfffffff, 0x7ffffff,
-    0xfffffff, 0x7ffffff, 0x7ffffff};
+    0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff, 0x7ffffff,
+    0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff, 0x7ffffff,
+    0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff, 0x7ffffff};
 #endif  // 64BIT
 
 // Fiat-crypto implementation of field arithmetic
-#define p521_felem_add(out, in0, in1)   fiat_secp521r1_carry_add(out, in0, in1)
-#define p521_felem_sub(out, in0, in1)   fiat_secp521r1_carry_sub(out, in0, in1)
-#define p521_felem_opp(out, in0)        fiat_secp521r1_carry_opp(out, in0)
-#define p521_felem_mul(out, in0, in1)   fiat_secp521r1_carry_mul(out, in0, in1)
-#define p521_felem_sqr(out, in0)        fiat_secp521r1_carry_square(out, in0)
-#define p521_felem_to_bytes(out, in0)   fiat_secp521r1_to_bytes(out, in0)
+#define p521_felem_add(out, in0, in1) fiat_secp521r1_carry_add(out, in0, in1)
+#define p521_felem_sub(out, in0, in1) fiat_secp521r1_carry_sub(out, in0, in1)
+#define p521_felem_opp(out, in0) fiat_secp521r1_carry_opp(out, in0)
+#define p521_felem_mul(out, in0, in1) fiat_secp521r1_carry_mul(out, in0, in1)
+#define p521_felem_sqr(out, in0) fiat_secp521r1_carry_square(out, in0)
+#define p521_felem_to_bytes(out, in0) fiat_secp521r1_to_bytes(out, in0)
 #define p521_felem_from_bytes(out, in0) fiat_secp521r1_from_bytes(out, in0)
 
-#endif // EC_NISTP_USE_S2N_BIGNUM
+#endif  // EC_NISTP_USE_S2N_BIGNUM
 
 // The wrapper functions are needed for FIPS static build.
 // Otherwise, initializing ec_nistp_meth with pointers to s2n-bignum
@@ -172,7 +160,8 @@ static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P521_EC_FELEM_BYTES];
-  bn_words_to_little_endian(tmp, P521_EC_FELEM_BYTES, in->words, P521_EC_FELEM_WORDS);
+  bn_words_to_little_endian(tmp, P521_EC_FELEM_BYTES, in->words,
+                            P521_EC_FELEM_WORDS);
   p521_felem_from_bytes(out, tmp);
 #else
   p521_felem_from_bytes(out, (const uint8_t *)in->words);
@@ -192,9 +181,10 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P521_EC_FELEM_BYTES];
   p521_felem_to_bytes(tmp, in);
-  bn_little_endian_to_words(out->words, P521_EC_FELEM_WORDS, tmp, P521_EC_FELEM_BYTES);
+  bn_little_endian_to_words(out->words, P521_EC_FELEM_WORDS, tmp,
+                            P521_EC_FELEM_BYTES);
 #else
-  OPENSSL_memset((uint8_t*)out->words, 0, sizeof(out->words));
+  OPENSSL_memset((uint8_t *)out->words, 0, sizeof(out->words));
   // Convert the element to bytes.
   p521_felem_to_bytes((uint8_t *)out->words, in);
 #endif
@@ -205,74 +195,71 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
 //   https://arxiv.org/abs/2007.11481
 static void p521_felem_inv(p521_felem output, const p521_felem t1) {
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-    bignum_inv_p521(output, t1);
+  bignum_inv_p521(output, t1);
 #else
-    /* temporary variables */
-    p521_felem acc, t2, t4, t8, t16, t32, t64;
-    p521_felem t128, t256, t512, t516, t518, t519;
+  /* temporary variables */
+  p521_felem acc, t2, t4, t8, t16, t32, t64;
+  p521_felem t128, t256, t512, t516, t518, t519;
 
-    p521_felem_sqr(acc, t1);
-    p521_felem_mul(t2, acc, t1);
-    p521_felem_sqr(acc, t2);
+  p521_felem_sqr(acc, t1);
+  p521_felem_mul(t2, acc, t1);
+  p521_felem_sqr(acc, t2);
+  p521_felem_sqr(acc, acc);
+  p521_felem_mul(t4, acc, t2);
+  p521_felem_sqr(acc, t4);
+  for (int i = 0; i < 3; i++) {
     p521_felem_sqr(acc, acc);
-    p521_felem_mul(t4, acc, t2);
-    p521_felem_sqr(acc, t4);
-    for (int i = 0; i < 3; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t8, acc, t4);
-    p521_felem_sqr(acc, t8);
-    for (int i = 0; i < 7; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t16, acc, t8);
-    p521_felem_sqr(acc, t16);
-    for (int i = 0; i < 15; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t32, acc, t16);
-    p521_felem_sqr(acc, t32);
-    for (int i = 0; i < 31; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t64, acc, t32);
-    p521_felem_sqr(acc, t64);
-    for (int i = 0; i < 63; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t128, acc, t64);
-    p521_felem_sqr(acc, t128);
-    for (int i = 0; i < 127; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t256, acc, t128);
-    p521_felem_sqr(acc, t256);
-    for (int i = 0; i < 255; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t512, acc, t256);
-    p521_felem_sqr(acc, t512);
-    for (int i = 0; i < 3; i++) {
-      p521_felem_sqr(acc, acc);
-    }
-    p521_felem_mul(t516, acc, t4);
-    p521_felem_sqr(acc, t516);
+  }
+  p521_felem_mul(t8, acc, t4);
+  p521_felem_sqr(acc, t8);
+  for (int i = 0; i < 7; i++) {
     p521_felem_sqr(acc, acc);
-    p521_felem_mul(t518, acc, t2);
-    p521_felem_sqr(acc, t518);
-    p521_felem_mul(t519, acc, t1);
-    p521_felem_sqr(acc, t519);
+  }
+  p521_felem_mul(t16, acc, t8);
+  p521_felem_sqr(acc, t16);
+  for (int i = 0; i < 15; i++) {
     p521_felem_sqr(acc, acc);
-    p521_felem_mul(output, acc, t1);
+  }
+  p521_felem_mul(t32, acc, t16);
+  p521_felem_sqr(acc, t32);
+  for (int i = 0; i < 31; i++) {
+    p521_felem_sqr(acc, acc);
+  }
+  p521_felem_mul(t64, acc, t32);
+  p521_felem_sqr(acc, t64);
+  for (int i = 0; i < 63; i++) {
+    p521_felem_sqr(acc, acc);
+  }
+  p521_felem_mul(t128, acc, t64);
+  p521_felem_sqr(acc, t128);
+  for (int i = 0; i < 127; i++) {
+    p521_felem_sqr(acc, acc);
+  }
+  p521_felem_mul(t256, acc, t128);
+  p521_felem_sqr(acc, t256);
+  for (int i = 0; i < 255; i++) {
+    p521_felem_sqr(acc, acc);
+  }
+  p521_felem_mul(t512, acc, t256);
+  p521_felem_sqr(acc, t512);
+  for (int i = 0; i < 3; i++) {
+    p521_felem_sqr(acc, acc);
+  }
+  p521_felem_mul(t516, acc, t4);
+  p521_felem_sqr(acc, t516);
+  p521_felem_sqr(acc, acc);
+  p521_felem_mul(t518, acc, t2);
+  p521_felem_sqr(acc, t518);
+  p521_felem_mul(t519, acc, t1);
+  p521_felem_sqr(acc, t519);
+  p521_felem_sqr(acc, acc);
+  p521_felem_mul(output, acc, t1);
 #endif
 }
 
-static void p521_point_double(p521_felem x_out,
-                              p521_felem y_out,
-                              p521_felem z_out,
-                              const p521_felem x_in,
-                              const p521_felem y_in,
-                              const p521_felem z_in) {
+static void p521_point_double(p521_felem x_out, p521_felem y_out,
+                              p521_felem z_out, const p521_felem x_in,
+                              const p521_felem y_in, const p521_felem z_in) {
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
   ec_nistp_felem_limb in[P521_NLIMBS * 3];
   ec_nistp_felem_limb out[P521_NLIMBS * 3];
@@ -294,12 +281,9 @@ static void p521_point_double(p521_felem x_out,
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L467>
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L544>
 static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
-                           const p521_felem x1,
-                           const p521_felem y1,
-                           const p521_felem z1,
-                           const int mixed,
-                           const p521_felem x2,
-                           const p521_felem y2,
+                           const p521_felem x1, const p521_felem y1,
+                           const p521_felem z1, const int mixed,
+                           const p521_felem x2, const p521_felem y2,
                            const p521_felem z2) {
   ec_nistp_point_add(p521_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
@@ -308,33 +292,33 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
-    out->felem_num_limbs = P521_NLIMBS;
-    out->felem_num_bits = 521;
-    out->felem_add = p521_felem_add_wrapper;
-    out->felem_sub = p521_felem_sub_wrapper;
-    out->felem_mul = bignum_mul_p521_selector;
-    out->felem_sqr = bignum_sqr_p521_selector;
-    out->felem_neg = p521_felem_neg_wrapper;
-    out->felem_nz  = p521_felem_nz;
-    out->felem_one = p521_felem_one;
-    out->point_dbl = p521_point_double;
-    out->point_add = p521_point_add;
-    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p521_g_pre_comp;
+  out->felem_num_limbs = P521_NLIMBS;
+  out->felem_num_bits = 521;
+  out->felem_add = p521_felem_add_wrapper;
+  out->felem_sub = p521_felem_sub_wrapper;
+  out->felem_mul = bignum_mul_p521_selector;
+  out->felem_sqr = bignum_sqr_p521_selector;
+  out->felem_neg = p521_felem_neg_wrapper;
+  out->felem_nz = p521_felem_nz;
+  out->felem_one = p521_felem_one;
+  out->point_dbl = p521_point_double;
+  out->point_add = p521_point_add;
+  out->scalar_mul_base_table = (const ec_nistp_felem_limb *)p521_g_pre_comp;
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
-    out->felem_num_limbs = P521_NLIMBS;
-    out->felem_num_bits = 521;
-    out->felem_add = fiat_secp521r1_carry_add;
-    out->felem_sub = fiat_secp521r1_carry_sub;
-    out->felem_mul = fiat_secp521r1_carry_mul;
-    out->felem_sqr = fiat_secp521r1_carry_square;
-    out->felem_neg = fiat_secp521r1_carry_opp;
-    out->felem_nz  = p521_felem_nz;
-    out->felem_one = p521_felem_one;
-    out->point_dbl = p521_point_double;
-    out->point_add = p521_point_add;
-    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p521_g_pre_comp;
+  out->felem_num_limbs = P521_NLIMBS;
+  out->felem_num_bits = 521;
+  out->felem_add = fiat_secp521r1_carry_add;
+  out->felem_sub = fiat_secp521r1_carry_sub;
+  out->felem_mul = fiat_secp521r1_carry_mul;
+  out->felem_sqr = fiat_secp521r1_carry_square;
+  out->felem_neg = fiat_secp521r1_carry_opp;
+  out->felem_nz = p521_felem_nz;
+  out->felem_one = p521_felem_one;
+  out->point_dbl = p521_point_double;
+  out->point_add = p521_point_add;
+  out->scalar_mul_base_table = (const ec_nistp_felem_limb *)p521_g_pre_comp;
 }
 #endif
 
@@ -343,9 +327,8 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns:
 //   (X', Y') = (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp521_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_JACOBIAN *point,
-    EC_FELEM *x_out, EC_FELEM *y_out) {
-
+    const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x_out,
+    EC_FELEM *y_out) {
   if (constant_time_declassify_w(ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -366,9 +349,9 @@ static int ec_GFp_nistp521_point_get_affine_coordinates(
   if (y_out != NULL) {
     p521_felem y;
     p521_from_generic(y, &point->Y);
-    p521_felem_sqr(z2, z2);  // z^-4
-    p521_felem_mul(y, y, z1);   // y * z
-    p521_felem_mul(y, y, z2);   // y * z^-3
+    p521_felem_sqr(z2, z2);    // z^-4
+    p521_felem_mul(y, y, z1);  // y * z
+    p521_felem_mul(y, y, z2);  // y * z^-3
     p521_to_generic(y_out, y);
   }
 
@@ -406,7 +389,6 @@ static void ec_GFp_nistp521_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
 static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
-
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
   p521_from_generic(tmp[0], &p->X);
@@ -414,9 +396,10 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p521_from_generic(tmp[2], &p->Z);
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-  p521_jscalarmul_selector((uint64_t*)res, scalar->words, (uint64_t*)tmp);
+  p521_jscalarmul_selector((uint64_t *)res, scalar->words, (uint64_t *)tmp);
 #else
-  ec_nistp_scalar_mul(p521_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
+  ec_nistp_scalar_mul(p521_methods(), res[0], res[1], res[2], tmp[0], tmp[1],
+                      tmp[2], scalar);
 #endif
 
   p521_to_generic(&r->X, res[0]);
@@ -445,14 +428,14 @@ static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
                                              const EC_SCALAR *g_scalar,
                                              const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
-
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
   p521_from_generic(tmp[0], &p->X);
   p521_from_generic(tmp[1], &p->Y);
   p521_from_generic(tmp[2], &p->Z);
 
-  ec_nistp_scalar_mul_public(p521_methods(), res[0], res[1], res[2], g_scalar, tmp[0], tmp[1], tmp[2], p_scalar);
+  ec_nistp_scalar_mul_public(p521_methods(), res[0], res[1], res[2], g_scalar,
+                             tmp[0], tmp[1], tmp[2], p_scalar);
 
   // Copy the result to the output.
   p521_to_generic(&r->X, res[0]);
@@ -498,4 +481,4 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp521_method) {
 // ----------------------------------------------------------------------------
 //  Analysis of the doubling case occurrence in the Joye-Tunstall recoding:
 //  see the analysis at the bottom of the |p384.c| file.
-#endif // !defined(OPENSSL_SMALL)
+#endif  // !defined(OPENSSL_SMALL)

@@ -333,7 +333,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
       [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get0_certificate(ctx); },
       [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get0_privatekey(ctx); },
       [](SSL_CTX *ctx, CBS *cbs) {
-        STACK_OF(X509) * chains;
+        STACK_OF(X509) *chains;
         SSL_CTX_get0_chain_certs(ctx, &chains);
       },
       [](SSL_CTX *ctx, CBS *cbs) {

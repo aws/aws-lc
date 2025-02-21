@@ -104,7 +104,8 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_set(ASN1_GENERALIZEDTIME *s,
 }
 
 ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
-                                               int64_t posix_time, int offset_day,
+                                               int64_t posix_time,
+                                               int offset_day,
                                                long offset_sec) {
   struct tm data;
   if (!OPENSSL_posix_to_tm(posix_time, &data)) {

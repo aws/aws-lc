@@ -56,8 +56,8 @@
 
 #include <openssl/conf.h>
 
-#include <string.h>
 #include <ctype.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/buf.h>
@@ -65,9 +65,9 @@
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 
+#include "../internal.h"
 #include "conf_def.h"
 #include "internal.h"
-#include "../internal.h"
 
 
 static const char kDefaultSectionName[] = "default";
@@ -258,7 +258,7 @@ static CONF_VALUE *get_section(const CONF *conf, const char *section) {
   CONF_VALUE template;
 
   OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
+  template.section = (char *)section;
   return lh_CONF_VALUE_retrieve(conf->data, &template);
 }
 
@@ -268,7 +268,7 @@ const STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
   if (section_value == NULL) {
     return NULL;
   }
-  return (STACK_OF(CONF_VALUE)*) section_value->value;
+  return (STACK_OF(CONF_VALUE) *)section_value->value;
 }
 
 const char *NCONF_get_string(const CONF *conf, const char *section,
@@ -280,8 +280,8 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
   }
 
   OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
-  template.name = (char *) name;
+  template.section = (char *)section;
+  template.name = (char *)name;
   value = lh_CONF_VALUE_retrieve(conf->data, &template);
   if (value == NULL) {
     return NULL;
@@ -291,7 +291,7 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
 
 static int add_string(const CONF *conf, CONF_VALUE *section,
                       CONF_VALUE *value) {
-  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE)*) section->value;
+  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE) *)section->value;
   CONF_VALUE *old_value;
 
   value->section = OPENSSL_strdup(section->section);

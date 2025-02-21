@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "params.h"
 
-#define ML_DSA_QINV 58728449 // q^(-1) mod 2^32
+#define ML_DSA_QINV 58728449  // q^(-1) mod 2^32
 
 int64_t ml_dsa_fqmul(int32_t a, int32_t b);
 

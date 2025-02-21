@@ -70,8 +70,8 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
+#include "../internal.h"
 
 
 #define MIN_LENGTH 4
@@ -476,8 +476,7 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher) {
   p = header;
   for (;;) {
     c = *header;
-    if (!((c >= 'A' && c <= 'Z') || c == '-' ||
-          OPENSSL_isdigit(c))) {
+    if (!((c >= 'A' && c <= 'Z') || c == '-' || OPENSSL_isdigit(c))) {
       break;
     }
     header++;
@@ -570,7 +569,7 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
   i = j = 0;
   while (len > 0) {
     n = (int)((len > (PEM_BUFSIZE * 5)) ? (PEM_BUFSIZE * 5) : len);
-    if(!EVP_EncodeUpdate(&ctx, buf, &outl, &(data[j]), n)) {
+    if (!EVP_EncodeUpdate(&ctx, buf, &outl, &(data[j]), n)) {
       goto err;
     }
     if ((outl) && (BIO_write(bp, (char *)buf, outl) != outl)) {

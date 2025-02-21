@@ -78,9 +78,9 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
-#include "internal.h"
-#include "../delocate.h"
 #include "../../internal.h"
+#include "../delocate.h"
+#include "internal.h"
 
 
 DEFINE_STATIC_EX_DATA_CLASS(g_ec_ex_data_class)
@@ -112,10 +112,10 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   if (engine) {
     // Cast away const
-    ret->eckey_method = (EC_KEY_METHOD *) ENGINE_get_EC(engine);
+    ret->eckey_method = (EC_KEY_METHOD *)ENGINE_get_EC(engine);
   }
 
-  if(ret->eckey_method == NULL) {
+  if (ret->eckey_method == NULL) {
     ret->eckey_method = EC_KEY_get_default_method();
   }
 
@@ -124,7 +124,8 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   CRYPTO_new_ex_data(&ret->ex_data);
 
-  if (ret->eckey_method && ret->eckey_method->init && !ret->eckey_method->init(ret)) {
+  if (ret->eckey_method && ret->eckey_method->init &&
+      !ret->eckey_method->init(ret)) {
     CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), ret, &ret->ex_data);
     OPENSSL_free(ret);
     return NULL;
@@ -179,10 +180,8 @@ EC_KEY *EC_KEY_dup(const EC_KEY *src) {
     return NULL;
   }
 
-  if ((src->group != NULL &&
-       !EC_KEY_set_group(ret, src->group)) ||
-      (src->pub_key != NULL &&
-       !EC_KEY_set_public_key(ret, src->pub_key)) ||
+  if ((src->group != NULL && !EC_KEY_set_group(ret, src->group)) ||
+      (src->pub_key != NULL && !EC_KEY_set_public_key(ret, src->pub_key)) ||
       (src->priv_key != NULL &&
        !EC_KEY_set_private_key(ret, EC_KEY_get0_private_key(src)))) {
     EC_KEY_free(ret);
@@ -336,21 +335,19 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key) {
   uint8_t msg[16] = {0};
   size_t msg_len = 16;
   int ret = 0;
-  uint8_t* sig_der = NULL;
+  uint8_t *sig_der = NULL;
   EVP_PKEY *evp_pkey = EVP_PKEY_new();
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
   const EVP_MD *hash = EVP_sha256();
   size_t sign_len;
-  if (!evp_pkey ||
-      !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
+  if (!evp_pkey || !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
       !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
       !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
     goto err;
   }
   sig_der = OPENSSL_malloc(sign_len);
-  if (!sig_der ||
-      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
+  if (!sig_der || !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
     goto err;
   }
   if (boringssl_fips_break_test("ECDSA_PWCT")) {
@@ -392,7 +389,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
   EC_POINT *pub_key = key->pub_key;
   EC_GROUP *group = key->pub_key->group;
-  if(ec_felem_equal(group, ec_felem_one(group), &pub_key->raw.Z)) {
+  if (ec_felem_equal(group, ec_felem_one(group), &pub_key->raw.Z)) {
     BIGNUM *x = BN_new();
     BIGNUM *y = BN_new();
     int check_ret = 1;
@@ -417,7 +414,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   }
 
   if (key->priv_key) {
-    if (!EVP_EC_KEY_check_fips((EC_KEY*)key)) {
+    if (!EVP_EC_KEY_check_fips((EC_KEY *)key)) {
       OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       goto end;
     }
@@ -426,8 +423,8 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   ret = 1;
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret){
-    EC_KEY_keygen_verify_service_indicator((EC_KEY*)key);
+  if (ret) {
+    EC_KEY_keygen_verify_service_indicator((EC_KEY *)key);
   }
   return ret;
 }
@@ -445,8 +442,7 @@ int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, const BIGNUM *x,
   point = EC_POINT_new(key->group);
   if (point == NULL ||
       !EC_POINT_set_affine_coordinates_GFp(key->group, point, x, y, NULL) ||
-      !EC_KEY_set_public_key(key, point) ||
-      !EC_KEY_check_key(key)) {
+      !EC_KEY_set_public_key(key, point) || !EC_KEY_check_key(key)) {
     goto err;
   }
 
@@ -587,24 +583,24 @@ EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
   EC_KEY_METHOD *ret;
 
   ret = OPENSSL_zalloc(sizeof(EC_KEY_METHOD));
-  if(ret == NULL) {
+  if (ret == NULL) {
     return NULL;
   }
 
-  if(eckey_meth) {
+  if (eckey_meth) {
     *ret = *eckey_meth;
   }
   return ret;
 }
 
 void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth) {
-  if(eckey_meth != NULL) {
+  if (eckey_meth != NULL) {
     OPENSSL_free(eckey_meth);
   }
 }
 
 int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth) {
-  if(ec == NULL || meth == NULL) {
+  if (ec == NULL || meth == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -614,7 +610,7 @@ int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth) {
 }
 
 const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec) {
-  if(ec == NULL) {
+  if (ec == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
@@ -624,7 +620,7 @@ const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec) {
 
 void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth, int (*init)(EC_KEY *key),
                                   void (*finish)(EC_KEY *key)) {
-  if(meth == NULL) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return;
   }
@@ -633,17 +629,15 @@ void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth, int (*init)(EC_KEY *key),
   meth->finish = finish;
 }
 
-void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
-                            int (*sign)(int type, const uint8_t *digest,
-                                    int digest_len, uint8_t *sig,
-                                    unsigned int *siglen, const BIGNUM *k_inv,
-                                    const BIGNUM *r, EC_KEY *eckey),
-                            ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
-                                    int digest_len,
-                                    const BIGNUM *in_kinv, const BIGNUM *in_r,
-                                    EC_KEY *eckey)) {
-
-  if(meth == NULL) {
+void EC_KEY_METHOD_set_sign_awslc(
+    EC_KEY_METHOD *meth,
+    int (*sign)(int type, const uint8_t *digest, int digest_len, uint8_t *sig,
+                unsigned int *siglen, const BIGNUM *k_inv, const BIGNUM *r,
+                EC_KEY *eckey),
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey)) {
+  if (meth == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return;
   }
@@ -653,7 +647,7 @@ void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
 }
 
 int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags) {
-  if(!meth || flags != ECDSA_FLAG_OPAQUE) {
+  if (!meth || flags != ECDSA_FLAG_OPAQUE) {
     return 0;
   }
 

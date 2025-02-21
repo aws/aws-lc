@@ -67,9 +67,9 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
 #include "../bytestring/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 static int pkcs12_encode_password(const char *in, size_t in_len, uint8_t **out,
@@ -85,16 +85,14 @@ static int pkcs12_encode_password(const char *in, size_t in_len, uint8_t **out,
   CBS_init(&cbs, (const uint8_t *)in, in_len);
   while (CBS_len(&cbs) != 0) {
     uint32_t c;
-    if (!cbs_get_utf8(&cbs, &c) ||
-        !cbb_add_ucs2_be(&cbb, c)) {
+    if (!cbs_get_utf8(&cbs, &c) || !cbb_add_ucs2_be(&cbb, c)) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INVALID_CHARACTERS);
       goto err;
     }
   }
 
   // Terminate the result with a UCS-2 NUL.
-  if (!cbb_add_ucs2_be(&cbb, 0) ||
-      !CBB_finish(&cbb, out, out_len)) {
+  if (!cbb_add_ucs2_be(&cbb, 0) || !CBB_finish(&cbb, out, out_len)) {
     goto err;
   }
 
@@ -168,7 +166,7 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
     I[i] = salt[i % salt_len];
   }
   // P_len would be 0 in this case, but static analyzers don't always see that
-  if(pass_raw_len > 0) {
+  if (pass_raw_len > 0) {
     for (size_t i = 0; i < P_len; i++) {
       I[i + S_len] = pass_raw[i % pass_raw_len];
     }
@@ -263,8 +261,7 @@ static int pkcs12_pbe_decrypt_init(const struct pbe_suite *suite,
   if (!CBS_get_asn1(param, &pbe_param, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&pbe_param, &salt, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1_uint64(&pbe_param, &iterations) ||
-      CBS_len(&pbe_param) != 0 ||
-      CBS_len(param) != 0) {
+      CBS_len(&pbe_param) != 0 || CBS_len(param) != 0) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
     return 0;
   }
@@ -322,8 +319,7 @@ static const struct pbe_suite *get_pkcs12_pbe_suite(int pbe_nid) {
   for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kBuiltinPBE); i++) {
     if (kBuiltinPBE[i].pbe_nid == pbe_nid &&
         // If |cipher_func| or |md_func| are missing, this is a PBES2 scheme.
-        kBuiltinPBE[i].cipher_func != NULL &&
-        kBuiltinPBE[i].md_func != NULL) {
+        kBuiltinPBE[i].cipher_func != NULL && kBuiltinPBE[i].md_func != NULL) {
       return &kBuiltinPBE[i];
     }
   }
@@ -349,8 +345,7 @@ int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
       !CBB_add_asn1(&algorithm, &param, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&param, &salt_cbb, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&salt_cbb, salt, salt_len) ||
-      !CBB_add_asn1_uint64(&param, iterations) ||
-      !CBB_flush(out)) {
+      !CBB_add_asn1_uint64(&param, iterations) || !CBB_flush(out)) {
     return 0;
   }
 
@@ -362,7 +357,8 @@ int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
                       const char *pass, size_t pass_len, const uint8_t *in,
                       size_t in_len) {
   int ret = 0;
-  uint8_t *buf = NULL;;
+  uint8_t *buf = NULL;
+  ;
   EVP_CIPHER_CTX ctx;
   EVP_CIPHER_CTX_init(&ctx);
 
@@ -460,8 +456,7 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
     }
 
     salt_buf = OPENSSL_malloc(salt_len);
-    if (salt_buf == NULL ||
-        !RAND_bytes(salt_buf, salt_len)) {
+    if (salt_buf == NULL || !RAND_bytes(salt_buf, salt_len)) {
       goto err;
     }
 
@@ -515,8 +510,7 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
       !CBB_reserve(&ciphertext, &ptr, max_out) ||
       !EVP_CipherUpdate(&ctx, ptr, &n1, plaintext, plaintext_len) ||
       !EVP_CipherFinal_ex(&ctx, ptr + n1, &n2) ||
-      !CBB_did_write(&ciphertext, n1 + n2) ||
-      !CBB_flush(out)) {
+      !CBB_did_write(&ciphertext, n1 + n2) || !CBB_flush(out)) {
     goto err;
   }
 

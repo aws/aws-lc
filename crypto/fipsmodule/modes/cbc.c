@@ -51,8 +51,8 @@
 
 #include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
@@ -101,8 +101,8 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
   assert(in != NULL && out != NULL);
 
-  const uintptr_t inptr = (uintptr_t) in;
-  const uintptr_t outptr = (uintptr_t) out;
+  const uintptr_t inptr = (uintptr_t)in;
+  const uintptr_t outptr = (uintptr_t)out;
   // If |in| and |out| alias, |in| must be ahead.
   assert(inptr >= outptr || inptr + len <= outptr);
 

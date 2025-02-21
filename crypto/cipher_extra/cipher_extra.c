@@ -63,8 +63,8 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 static const struct {
@@ -105,17 +105,13 @@ static const struct {
 };
 
 static const struct {
-  const char* alias;
-  const char* name;
+  const char *alias;
+  const char *name;
 } kCipherAliases[] = {
-    {"3des", "des-ede3-cbc"},
-    {"DES", "des-cbc"},
-    {"aes256", "aes-256-cbc"},
-    {"aes128", "aes-128-cbc"},
-    {"id-aes128-gcm", "aes-128-gcm"},
-    {"id-aes192-gcm", "aes-192-gcm"},
-    {"id-aes256-gcm", "aes-256-gcm"}
-};
+    {"3des", "des-ede3-cbc"},         {"DES", "des-cbc"},
+    {"aes256", "aes-256-cbc"},        {"aes128", "aes-128-cbc"},
+    {"id-aes128-gcm", "aes-128-gcm"}, {"id-aes192-gcm", "aes-192-gcm"},
+    {"id-aes256-gcm", "aes-256-gcm"}};
 
 const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCiphers); i++) {
@@ -126,7 +122,7 @@ const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
   return NULL;
 }
 
-static const EVP_CIPHER *get_cipherbyname(const char* name) {
+static const EVP_CIPHER *get_cipherbyname(const char *name) {
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCiphers); i++) {
     if (OPENSSL_strcasecmp(kCiphers[i].name, name) == 0) {
       return kCiphers[i].func();
@@ -141,7 +137,7 @@ const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
     return NULL;
   }
 
-  const EVP_CIPHER * ec = get_cipherbyname(name);
+  const EVP_CIPHER *ec = get_cipherbyname(name);
   if (ec != NULL) {
     return ec;
   }
@@ -149,10 +145,10 @@ const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
   // These are not names used by OpenSSL, but tcpdump registers it with
   // |EVP_add_cipher_alias|. Our |EVP_add_cipher_alias| is a no-op, so we
   // support the name here.
-  for(size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCipherAliases); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCipherAliases); i++) {
     if (OPENSSL_strcasecmp(name, kCipherAliases[i].alias) == 0) {
       name = kCipherAliases[i].name;
-      const EVP_CIPHER * cipher = get_cipherbyname(name);
+      const EVP_CIPHER *cipher = get_cipherbyname(name);
       assert(cipher != NULL);
       return cipher;
     }

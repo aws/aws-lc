@@ -73,9 +73,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
 #if !defined(OPENSSL_WINDOWS)
-static int closesocket(int sock) {
-  return close(sock);
-}
+static int closesocket(int sock) { return close(sock); }
 #endif
 
 static int sock_free(BIO *bio) {

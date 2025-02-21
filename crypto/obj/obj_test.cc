@@ -64,8 +64,8 @@ TEST(ObjTest, TestBasic) {
 
 TEST(ObjTest, TestSignatureAlgorithms) {
   int digest_nid, pkey_nid;
-  ASSERT_TRUE(OBJ_find_sigid_algs(NID_sha256WithRSAEncryption, &digest_nid,
-                                  &pkey_nid));
+  ASSERT_TRUE(
+      OBJ_find_sigid_algs(NID_sha256WithRSAEncryption, &digest_nid, &pkey_nid));
   ASSERT_EQ(digest_nid, NID_sha256);
   ASSERT_EQ(pkey_nid, NID_rsaEncryption);
 
@@ -142,7 +142,9 @@ TEST(ObjTest, TestObj2Txt) {
   // kBasicConstraints is the DER representation of 2.5.29.19,
   // id-basicConstraints.
   static const uint8_t kBasicConstraints[] = {
-      0x55, 0x1d, 0x13,
+      0x55,
+      0x1d,
+      0x13,
   };
 
   // kTestOID is the DER representation of 1.2.840.113554.4.1.72585.0,

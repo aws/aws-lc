@@ -11,9 +11,9 @@ int size_count = 0;
 int realloc_count = 0;
 
 extern "C" {
-  void *new_malloc_impl(size_t size, const char *file, int line);
-  void new_free_impl(void *ptr, const char *file, int line);
-  void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
+void *new_malloc_impl(size_t size, const char *file, int line);
+void new_free_impl(void *ptr, const char *file, int line);
+void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
 }
 
 void *new_malloc_impl(size_t size, const char *file, int line) {
@@ -33,12 +33,13 @@ void *new_realloc_impl(void *ptr, size_t size, const char *file, int line) {
 }
 
 // This test is copy of |MemTest.BasicOverrides| in mem_test.cc.
-// |MemTest.BasicOverrides| changed the |OPENSSL_malloc/free/realloc| by overriding related weak symbols.
-// This test achieved the mem behavior change by calling |CRYPTO_set_mem_functions|.
+// |MemTest.BasicOverrides| changed the |OPENSSL_malloc/free/realloc| by
+// overriding related weak symbols. This test achieved the mem behavior change
+// by calling |CRYPTO_set_mem_functions|.
 TEST(MemTest, BasicMemSet) {
-  // The FIPS build which runs the power on self tests can call a lot of functions
-  // before this test. Therefore, all the expected counts are relative to the
-  // starting point
+  // The FIPS build which runs the power on self tests can call a lot of
+  // functions before this test. Therefore, all the expected counts are relative
+  // to the starting point
   int starting_alloc = alloc_count;
   int starting_free = free_count;
   int starting_realloc = realloc_count;
@@ -52,7 +53,8 @@ TEST(MemTest, BasicMemSet) {
   ASSERT_EQ(malloc_ptr, nullptr);
 
   // Call |CRYPTO_set_mem_functions| to override |OPENSSL_malloc/realloc/free|.
-  ASSERT_EQ(1, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl, new_free_impl));
+  ASSERT_EQ(1, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl,
+                                        new_free_impl));
 
   // Verify malloc calls |new_malloc_impl| and doesn't do anything else
   test_size = 10;

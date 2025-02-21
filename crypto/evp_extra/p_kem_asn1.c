@@ -115,29 +115,29 @@ static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
-  EVP_PKEY_KEM,
-  // TODO(awslc): this is a placeholder OID. Do we need OID for KEM at all?
-  {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-  11,
+    EVP_PKEY_KEM,
+    // TODO(awslc): this is a placeholder OID. Do we need OID for KEM at all?
+    {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+    11,
 
-  "KEM",
-  "AWS-LC KEM method",
+    "KEM",
+    "AWS-LC KEM method",
 
-  NULL, // pub_decode
-  NULL, // pub_encode
-  kem_pub_cmp,
-  NULL, // priv_decode
-  NULL, // priv_encode
-  NULL, // priv_encode_v2
-  NULL, // set_priv_raw
-  NULL, // set_pub_raw,
-  kem_get_priv_raw,
-  kem_get_pub_raw,
-  NULL, // pkey_opaque
-  NULL, // kem_size
-  NULL, // kem_bits
-  NULL, // missing_parameters
-  NULL, // param_copy
-  kem_cmp_parameters,
-  kem_free,
+    NULL,  // pub_decode
+    NULL,  // pub_encode
+    kem_pub_cmp,
+    NULL,  // priv_decode
+    NULL,  // priv_encode
+    NULL,  // priv_encode_v2
+    NULL,  // set_priv_raw
+    NULL,  // set_pub_raw,
+    kem_get_priv_raw,
+    kem_get_pub_raw,
+    NULL,  // pkey_opaque
+    NULL,  // kem_size
+    NULL,  // kem_bits
+    NULL,  // missing_parameters
+    NULL,  // param_copy
+    kem_cmp_parameters,
+    kem_free,
 };

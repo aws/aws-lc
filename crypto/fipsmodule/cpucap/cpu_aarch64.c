@@ -8,8 +8,8 @@
 void handle_cpu_env(uint32_t *out, const char *in) {
   const int invert = in[0] == '~';
   const int or = in[0] == '|';
-  const int skip_first_byte = invert || or;
-  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte+1] == 'x';
+  const int skip_first_byte = invert || or ;
+  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte + 1] == 'x';
   uint32_t armcap = out[0];
 
   int sscanf_result;
@@ -32,10 +32,10 @@ void handle_cpu_env(uint32_t *out, const char *in) {
   // abort instead of crashing later.
   // The case of invert cannot enable an unexisting capability;
   // it can only disable an existing one.
-  if (!invert && armcap && (~armcap & v))
-  {
+  if (!invert && armcap && (~armcap & v)) {
     fprintf(stderr,
-            "Fatal Error: HW capability found: 0x%02X, but HW capability requested: 0x%02X.\n",
+            "Fatal Error: HW capability found: 0x%02X, but HW capability "
+            "requested: 0x%02X.\n",
             armcap, v);
     abort();
   }
@@ -59,22 +59,22 @@ DEFINE_STATIC_MUTEX(OPENSSL_armcap_P_lock)
 uint64_t armv8_get_dit(void) {
   if (CRYPTO_is_ARMv8_DIT_capable()) {
     uint64_t val = 0;
-    __asm__ volatile("mrs %0, s3_3_c4_c2_5" : "=r" (val));
+    __asm__ volatile("mrs %0, s3_3_c4_c2_5" : "=r"(val));
     return (val >> 24) & 1;
   } else {
     return 0;
   }
 }
 
-// See https://github.com/torvalds/linux/blob/53eaeb7fbe2702520125ae7d72742362c071a1f2/arch/arm64/include/asm/sysreg.h#L82
+// See
+// https://github.com/torvalds/linux/blob/53eaeb7fbe2702520125ae7d72742362c071a1f2/arch/arm64/include/asm/sysreg.h#L82
 // As per Arm ARM for v8-A, Section "C.5.1.3 op0 == 0b00, architectural hints,
 // barriers and CLREX, and PSTATE access", ARM DDI 0487 J.a, system instructions
 // for accessing PSTATE fields have the following encoding
 // and C5.2.4 DIT, Data Independent Timing:
 //	Op0 = 0, CRn = 4
-//	Op1 (3 for DIT) , Op2 (5 for DIT) encodes the PSTATE field modified and defines the constraints.
-//	CRm = Imm4 (#0 or #1 below)
-//	Rt = 0x1f
+//	Op1 (3 for DIT) , Op2 (5 for DIT) encodes the PSTATE field modified and
+// defines the constraints. 	CRm = Imm4 (#0 or #1 below) 	Rt = 0x1f
 uint64_t armv8_set_dit(void) {
   if (CRYPTO_is_ARMv8_DIT_capable()) {
     uint64_t original_dit = armv8_get_dit();
@@ -111,4 +111,4 @@ int CRYPTO_is_ARMv8_DIT_capable_for_testing(void) {
 
 #endif  // AARCH64_DIT_SUPPORTED
 
-#endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP
+#endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP

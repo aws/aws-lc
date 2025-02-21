@@ -16,8 +16,8 @@
 
 #include <assert.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 static uint64_t bn_neg_inv_mod_r_u64(uint64_t n);
@@ -205,8 +205,8 @@ int bn_mont_ctx_set_RR_consttime(BN_MONT_CTX *mont, BN_CTX *ctx) {
   // first n_bits - 1 doubles can be skipped because we don't need to reduce.
   if (!BN_set_bit(&mont->RR, n_bits - 1) ||
       !bn_mod_lshift_consttime(&mont->RR, &mont->RR,
-                               threshold + (lgBigR - (n_bits - 1)),
-                               &mont->N, ctx)) {
+                               threshold + (lgBigR - (n_bits - 1)), &mont->N,
+                               ctx)) {
     return 0;
   }
 

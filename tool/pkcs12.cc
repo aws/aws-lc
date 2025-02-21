@@ -42,11 +42,14 @@
 
 static const argument_t kArguments[] = {
     {
-     "-dump", kOptionalArgument,
-     "Dump the key and contents of the given file to stdout",
+        "-dump",
+        kOptionalArgument,
+        "Dump the key and contents of the given file to stdout",
     },
     {
-     "", kOptionalArgument, "",
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 

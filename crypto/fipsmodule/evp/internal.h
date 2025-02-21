@@ -59,9 +59,9 @@
 
 #include <openssl/base.h>
 
-#include <openssl/rsa.h>
-#include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/rsa.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -117,7 +117,9 @@ struct evp_pkey_asn1_method_st {
   // the result to |out|. It returns one on success and zero on error.
   int (*priv_encode_v2)(CBB *out, const EVP_PKEY *key);
 
-  int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *privkey, size_t privkey_len, const uint8_t *pubkey, size_t pubkey_len);
+  int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *privkey,
+                      size_t privkey_len, const uint8_t *pubkey,
+                      size_t pubkey_len);
   int (*set_pub_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
   int (*get_priv_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
   int (*get_pub_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
@@ -134,7 +136,7 @@ struct evp_pkey_asn1_method_st {
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
   void (*pkey_free)(EVP_PKEY *pkey);
-}; // EVP_PKEY_ASN1_METHOD
+};  // EVP_PKEY_ASN1_METHOD
 
 struct evp_pkey_st {
   CRYPTO_refcount_t references;
@@ -150,7 +152,7 @@ struct evp_pkey_st {
     DH *dh;
     EC_KEY *ec;
     KEM_KEY *kem_key;
-    PQDSA_KEY * pqdsa_key;
+    PQDSA_KEY *pqdsa_key;
   } pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1
@@ -193,17 +195,19 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
 // This function is deprecated and should not be used in new code.
 //
 // |ctx| is the context to operate on.
-// |optype| is the operation type (e.g., EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_OP_KEYGEN).
-// |cmd| is the specific command (e.g., EVP_PKEY_CTRL_MD).
+// |optype| is the operation type (e.g., EVP_PKEY_OP_TYPE_SIG,
+// EVP_PKEY_OP_KEYGEN). |cmd| is the specific command (e.g., EVP_PKEY_CTRL_MD).
 // |md| is the name of the message digest algorithm to use.
 //
 // It returns 1 for success and 0 or a negative value for failure.
-OPENSSL_EXPORT int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd, const char *md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd,
+                                   const char *md);
 
 // EVP_RSA_PKEY_CTX_ctrl is a wrapper of |EVP_PKEY_CTX_ctrl|.
 // Before calling |EVP_PKEY_CTX_ctrl|, a check is added to make sure
 // the |ctx->pmeth->pkey_id| is either |EVP_PKEY_RSA| or |EVP_PKEY_RSA_PSS|.
-int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2);
+int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1,
+                          void *p2);
 
 #define EVP_PKEY_CTRL_MD 1
 #define EVP_PKEY_CTRL_GET_MD 2
@@ -281,7 +285,7 @@ struct evp_pkey_ctx_st {
   // See |EVP_PKEY_CTX_get_keygen_info| for more details.
   EVP_PKEY_gen_cb *pkey_gencb;
   int keygen_info[EVP_PKEY_CTX_KEYGEN_INFO_COUNT];
-}; // EVP_PKEY_CTX
+};  // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
   int pkey_id;
@@ -320,31 +324,27 @@ struct evp_pkey_method_st {
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 
-  int (*ctrl_str) (EVP_PKEY_CTX *ctx, const char *type, const char *value);
+  int (*ctrl_str)(EVP_PKEY_CTX *ctx, const char *type, const char *value);
 
   // Encapsulate, encapsulate_deterministic, keygen_deterministic, and
   // decapsulate are operations defined for a Key Encapsulation Mechanism (KEM).
-  int (*keygen_deterministic)(EVP_PKEY_CTX *ctx,
-                              EVP_PKEY *pkey,
-                              const uint8_t *seed,
-                              size_t *seed_len);
+  int (*keygen_deterministic)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey,
+                              const uint8_t *seed, size_t *seed_len);
 
-  int (*encapsulate_deterministic)(EVP_PKEY_CTX *ctx,
-                                   uint8_t *ciphertext,
+  int (*encapsulate_deterministic)(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
                                    size_t *ciphertext_len,
                                    uint8_t *shared_secret,
                                    size_t *shared_secret_len,
-                                   const uint8_t *seed,
-                                   size_t *seed_len);
+                                   const uint8_t *seed, size_t *seed_len);
 
-  int (*encapsulate)(EVP_PKEY_CTX *ctx,
-                     uint8_t *ciphertext, size_t *ciphertext_len,
-                     uint8_t *shared_secret, size_t *shared_secret_len);
+  int (*encapsulate)(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
+                     size_t *ciphertext_len, uint8_t *shared_secret,
+                     size_t *shared_secret_len);
 
-  int (*decapsulate)(EVP_PKEY_CTX *ctx,
-                     uint8_t *shared_secret, size_t *shared_secret_len,
-                     const uint8_t *ciphertext, size_t ciphertext_len);
-}; // EVP_PKEY_METHOD
+  int (*decapsulate)(EVP_PKEY_CTX *ctx, uint8_t *shared_secret,
+                     size_t *shared_secret_len, const uint8_t *ciphertext,
+                     size_t ciphertext_len);
+};  // EVP_PKEY_METHOD
 
 // used_for_hmac indicates if |ctx| is used specifically for the |EVP_PKEY_HMAC|
 // operation.
@@ -356,16 +356,17 @@ typedef struct {
 } HMAC_KEY;
 
 typedef struct {
-  const EVP_MD *md; // MD for HMAC use.
+  const EVP_MD *md;  // MD for HMAC use.
   HMAC_CTX ctx;
   HMAC_KEY ktmp;
 } HMAC_PKEY_CTX;
 
 // HMAC_KEY_set copies provided key into hmac_key. It frees any existing key
 // on hmac_key. It returns 1 on success, and 0 otherwise.
-int HMAC_KEY_set(HMAC_KEY* hmac_key, const uint8_t* key, const size_t key_len);
-// HMAC_KEY_copy allocates and a new |HMAC_KEY| with identical contents (internal use).
-int HMAC_KEY_copy(HMAC_KEY* dest, HMAC_KEY* src);
+int HMAC_KEY_set(HMAC_KEY *hmac_key, const uint8_t *key, const size_t key_len);
+// HMAC_KEY_copy allocates and a new |HMAC_KEY| with identical contents
+// (internal use).
+int HMAC_KEY_copy(HMAC_KEY *dest, HMAC_KEY *src);
 // HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
 HMAC_KEY *HMAC_KEY_new(void);
 
@@ -388,7 +389,7 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 #define ASN1_EVP_PKEY_METHODS 11
 
 struct fips_evp_pkey_methods {
-  const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];
+  const EVP_PKEY_METHOD *methods[FIPS_EVP_PKEY_METHODS];
 };
 
 const EVP_PKEY_METHOD *EVP_PKEY_rsa_pkey_meth(void);
@@ -404,7 +405,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_ed25519ph_pkey_meth(void);
 struct evp_pkey_ctx_signature_context_params_st {
   const uint8_t *context;
   size_t context_len;
-}; // EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS
+};  // EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS
 
 #if defined(__cplusplus)
 }  // extern C

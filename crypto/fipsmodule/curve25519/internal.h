@@ -40,24 +40,21 @@ typedef enum {
 #define MAX_DOM2_SIZE \
   (DOM2_PREFIX_SIZE + DOM2_F_SIZE + DOM2_C_SIZE + MAX_DOM2_CONTEXT_SIZE)
 
-int ed25519_sign_internal(
-    ed25519_algorithm_t alg,
-    uint8_t out_sig[ED25519_SIGNATURE_LEN],
-    const uint8_t *message, size_t message_len,
-    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-    const uint8_t *ctx, size_t ctx_len);
+int ed25519_sign_internal(ed25519_algorithm_t alg,
+                          uint8_t out_sig[ED25519_SIGNATURE_LEN],
+                          const uint8_t *message, size_t message_len,
+                          const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
+                          const uint8_t *ctx, size_t ctx_len);
 
-int ed25519_verify_internal(
-    ed25519_algorithm_t alg,
-    const uint8_t *message, size_t message_len,
-    const uint8_t signature[ED25519_SIGNATURE_LEN],
-    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-    const uint8_t *ctx, size_t ctx_len);
+int ed25519_verify_internal(ed25519_algorithm_t alg, const uint8_t *message,
+                            size_t message_len,
+                            const uint8_t signature[ED25519_SIGNATURE_LEN],
+                            const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+                            const uint8_t *ctx, size_t ctx_len);
 
 int ED25519_sign_no_self_test(
-    uint8_t out_sig[ED25519_SIGNATURE_LEN],
-    const uint8_t *message, size_t message_len,
-    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]);
+    uint8_t out_sig[ED25519_SIGNATURE_LEN], const uint8_t *message,
+    size_t message_len, const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]);
 
 int ED25519_verify_no_self_test(
     const uint8_t *message, size_t message_len,
@@ -66,10 +63,11 @@ int ED25519_verify_no_self_test(
 
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
-#if ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) || \
-     defined(OPENSSL_AARCH64)) &&                                              \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
-     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                  \
+#if ((defined(OPENSSL_X86_64) &&                              \
+      !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) ||        \
+     defined(OPENSSL_AARCH64)) &&                             \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||      \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) && \
     !defined(OPENSSL_NO_ASM)
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
@@ -84,22 +82,31 @@ int ED25519_verify_no_self_test(
 // t[3]+2^204 t[4].
 // fe limbs are bounded by 1.125*2^51.
 // Multiplication and carrying produce fe from fe_loose.
-typedef struct fe { uint64_t v[5]; } fe;
+typedef struct fe {
+  uint64_t v[5];
+} fe;
 
 // fe_loose limbs are bounded by 3.375*2^51.
 // Addition and subtraction produce fe_loose from (fe, fe).
-typedef struct fe_loose { uint64_t v[5]; } fe_loose;
+typedef struct fe_loose {
+  uint64_t v[5];
+} fe_loose;
 #else
 // fe means field element. Here the field is \Z/(2^255-19). An element t,
 // entries t[0]...t[9], represents the integer t[0]+2^26 t[1]+2^51 t[2]+2^77
 // t[3]+2^102 t[4]+...+2^230 t[9].
 // fe limbs are bounded by 1.125*2^26,1.125*2^25,1.125*2^26,1.125*2^25,etc.
 // Multiplication and carrying produce fe from fe_loose.
-typedef struct fe { uint32_t v[10]; } fe;
+typedef struct fe {
+  uint32_t v[10];
+} fe;
 
-// fe_loose limbs are bounded by 3.375*2^26,3.375*2^25,3.375*2^26,3.375*2^25,etc.
-// Addition and subtraction produce fe_loose from (fe, fe).
-typedef struct fe_loose { uint32_t v[10]; } fe_loose;
+// fe_loose limbs are bounded
+// by 3.375*2^26,3.375*2^25,3.375*2^26,3.375*2^25,etc. Addition and subtraction
+// produce fe_loose from (fe, fe).
+typedef struct fe_loose {
+  uint32_t v[10];
+} fe_loose;
 #endif
 
 // ge means group element.
@@ -165,34 +172,34 @@ void x25519_sc_reduce(uint8_t s[64]);
 // |peer_public_value| and the scalar is |private_key|. The resulting shared key
 // is returned in |out_shared_key|.
 void x25519_scalar_mult_generic_s2n_bignum(
-  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
-  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
+    uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
 void x25519_scalar_mult_generic_nohw(
-  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
-  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
+    uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
 
 // x25519_public_from_private_[s2n_bignum,nohw] computes the x25519 function
 // from rfc7748 6.1 using the base-coordinate 9 and scalar |private_key|. The
 // resulting (encoded) public key coordinate (either K_A or K_B) is returned in
 // |out_public_value|.
 void x25519_public_from_private_s2n_bignum(
-  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
+    uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
 void x25519_public_from_private_nohw(
-  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
+    uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
 
 // ed25519_public_key_from_hashed_seed_[s2n_bignum,nohw] handles steps
 // rfc8032 5.1.5.[3,4]. Computes [az]B and encodes the public key to a 32-byte
 // octet string returning it in |out_public_key|.
 void ed25519_public_key_from_hashed_seed_s2n_bignum(
-  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t az[SHA512_DIGEST_LENGTH]);
+    uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+    uint8_t az[SHA512_DIGEST_LENGTH]);
 void ed25519_public_key_from_hashed_seed_nohw(
-  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t az[SHA512_DIGEST_LENGTH]);
+    uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+    uint8_t az[SHA512_DIGEST_LENGTH]);
 
 // ed25519_sign_[s2n_bignum,nohw] handles steps rfc8032 5.1.6.[3,5,6,7].
 // Computes the signature S = r + k * s modulo the order of the base-point B.
@@ -201,14 +208,14 @@ void ed25519_public_key_from_hashed_seed_nohw(
 // |ED25519_PUBLIC_KEY_LEN|.
 void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                              uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s,
-                             const uint8_t *A,
-                             const void *message, size_t message_len,
-                             const uint8_t *dom2, size_t dom2_len);
+                             const uint8_t *A, const void *message,
+                             size_t message_len, const uint8_t *dom2,
+                             size_t dom2_len);
 void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                        uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s,
-                       const uint8_t *A,
-                       const void *message, size_t message_len,
-                       const uint8_t *dom2, size_t dom2_len);
+                       const uint8_t *A, const void *message,
+                       size_t message_len, const uint8_t *dom2,
+                       size_t dom2_len);
 
 // ed25519_verify_[s2n_bignum,nohw] handles steps rfc8032 5.1.7.[1,2,3].
 // Computes [S]B - [k]A' and returns the result in |R_computed_encoded|. Returns
@@ -230,14 +237,18 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
 // hash is computed over the concatenation: |input1| || |input2| || |input3| ||
 // |input4|. The final two pairs may have |len3| == 0 or |len4| == 0, meaning
 // those input values will be ignored. The result is written to |out|.
-void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
-  const void *input1, size_t len1, const void *input2, size_t len2,
-  const void *input3, size_t len3, const void *input4, size_t len4);
+void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH], const void *input1,
+                    size_t len1, const void *input2, size_t len2,
+                    const void *input3, size_t len3, const void *input4,
+                    size_t len4);
 
 
-int ed25519_check_public_key_s2n_bignum(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
-int ed25519_check_public_key_nohw(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
-OPENSSL_EXPORT int ED25519_check_public_key(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+int ed25519_check_public_key_s2n_bignum(
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+int ed25519_check_public_key_nohw(
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+OPENSSL_EXPORT int ED25519_check_public_key(
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
 
 #if defined(__cplusplus)
 }  // extern C

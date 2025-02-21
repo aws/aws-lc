@@ -19,7 +19,7 @@ static void pqdsa_free(EVP_PKEY *pkey) {
 }
 
 static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
-                                   size_t *out_len) {
+                              size_t *out_len) {
   if (pkey->pkey.pqdsa_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
@@ -54,7 +54,7 @@ static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 static int pqdsa_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
-                                  size_t *out_len) {
+                             size_t *out_len) {
   if (pkey->pkey.pqdsa_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
@@ -89,7 +89,8 @@ static int pqdsa_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 static int pqdsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // See
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
   // section 4. the only parameter that can be included is the OID which has
   // length 9
   if (CBS_len(params) != 9) {
@@ -112,7 +113,9 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
     return 0;
   }
 
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
+  // See
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // section 4.
   CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
@@ -124,7 +127,7 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
-      }
+  }
 
   return 1;
 }
@@ -133,13 +136,14 @@ static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   PQDSA_KEY *a_key = a->pkey.pqdsa_key;
   PQDSA_KEY *b_key = b->pkey.pqdsa_key;
 
-  return OPENSSL_memcmp(a_key->public_key,
-                        b_key->public_key,
+  return OPENSSL_memcmp(a_key->public_key, b_key->public_key,
                         a->pkey.pqdsa_key->pqdsa->public_key_len) == 0;
 }
 
-static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key,
+                             CBS *pubkey) {
+  // See
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
   // section 6. the only parameter that can be included is the OID which has
   // length 9.
   if (CBS_len(params) != 9) {
@@ -160,11 +164,11 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     return 0;
   }
 
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // See
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
   // The caller can either provide the full key of size |private_key_len| or
   // |keygen_seed_len|.
   if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->private_key_len) {
-
     // Set the private key
     if (!PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, key)) {
       // PQDSA_KEY_set_raw_private_key sets the appropriate error.
@@ -187,7 +191,9 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
+  // See
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // section 6.
   CBB pkcs8, algorithm, oid, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
@@ -199,7 +205,7 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
-      }
+  }
 
   return 1;
 }
@@ -221,30 +227,30 @@ static int pqdsa_bits(const EVP_PKEY *pkey) {
 }
 
 const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth = {
-  //2.16.840.1.101.3.4.3
-  EVP_PKEY_PQDSA,
+    // 2.16.840.1.101.3.4.3
+    EVP_PKEY_PQDSA,
 
-  {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03},
-  8,
+    {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03},
+    8,
 
-  "PQ DSA",
-  "AWS-LC PQ DSA method",
+    "PQ DSA",
+    "AWS-LC PQ DSA method",
 
-  pqdsa_pub_decode,
-  pqdsa_pub_encode,
-  pqdsa_pub_cmp,
-  pqdsa_priv_decode,
-  pqdsa_priv_encode,
-  NULL /*priv_encode_v2*/,
-  NULL /* pqdsa_set_priv_raw */,
-  NULL /*pqdsa_set_pub_raw */ ,
-  pqdsa_get_priv_raw,
-  pqdsa_get_pub_raw,
-  NULL /* pkey_opaque */,
-  pqdsa_size,
-  pqdsa_bits,
-  NULL /* param_missing */,
-  NULL /* param_copy */,
-  NULL /* param_cmp */,
-  pqdsa_free,
+    pqdsa_pub_decode,
+    pqdsa_pub_encode,
+    pqdsa_pub_cmp,
+    pqdsa_priv_decode,
+    pqdsa_priv_encode,
+    NULL /*priv_encode_v2*/,
+    NULL /* pqdsa_set_priv_raw */,
+    NULL /*pqdsa_set_pub_raw */,
+    pqdsa_get_priv_raw,
+    pqdsa_get_pub_raw,
+    NULL /* pkey_opaque */,
+    pqdsa_size,
+    pqdsa_bits,
+    NULL /* param_missing */,
+    NULL /* param_copy */,
+    NULL /* param_cmp */,
+    pqdsa_free,
 };

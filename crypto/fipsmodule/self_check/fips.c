@@ -42,39 +42,17 @@ int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
 const char *FIPS_module_name(void) { return "AWSLCCrypto"; }
 
-uint32_t FIPS_version(void) {
-  return 0;
-}
+uint32_t FIPS_version(void) { return 0; }
 
 int FIPS_query_algorithm_status(const char *algorithm) {
 #if defined(BORINGSSL_FIPS)
   static const char kApprovedAlgorithms[][13] = {
-    "AES-CBC",
-    "AES-CCM",
-    "AES-CTR",
-    "AES-ECB",
-    "AES-GCM",
-    "AES-KW",
-    "AES-KWP",
-    "ctrDRBG",
-    "ECC-SSC",
-    "ECDSA-sign",
-    "ECDSA-verify",
-    "FFC-SSC",
-    "HMAC",
-    "RSA-sign",
-    "RSA-verify",
-    "SHA-1",
-    "SHA2-224",
-    "SHA2-256",
-    "SHA2-384",
-    "SHA2-512",
-    "SHA2-512/256",
-    "SHA3-256",
-    "SHA3-384",
-    "SHA3-512",
-    "SHAKE128",
-    "SHAKE256",
+      "AES-CBC",      "AES-CCM",  "AES-CTR",  "AES-ECB",  "AES-GCM",
+      "AES-KW",       "AES-KWP",  "ctrDRBG",  "ECC-SSC",  "ECDSA-sign",
+      "ECDSA-verify", "FFC-SSC",  "HMAC",     "RSA-sign", "RSA-verify",
+      "SHA-1",        "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512",
+      "SHA2-512/256", "SHA3-256", "SHA3-384", "SHA3-512", "SHAKE128",
+      "SHAKE256",
   };
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kApprovedAlgorithms); i++) {
     if (strcmp(algorithm, kApprovedAlgorithms[i]) == 0) {
@@ -85,7 +63,7 @@ int FIPS_query_algorithm_status(const char *algorithm) {
 
   return 0;
 }
-#endif // BORINGSSL_FIPS_140_3
+#endif  // BORINGSSL_FIPS_140_3
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 
@@ -108,8 +86,7 @@ void boringssl_fips_inc_counter(enum fips_counter_t counter) {
     abort();
   }
 
-  size_t *array =
-      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_FIPS_COUNTERS);
+  size_t *array = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_FIPS_COUNTERS);
   if (!array) {
     const size_t num_bytes = sizeof(size_t) * (fips_counter_max + 1);
     array = OPENSSL_zalloc(num_bytes);

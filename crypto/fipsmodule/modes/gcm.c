@@ -53,13 +53,13 @@
 
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // kSizeTWithoutLower4Bits is a mask that can be used to zero the lower four
 // bits of a |size_t|.
-static const size_t kSizeTWithoutLower4Bits = (size_t) -16;
+static const size_t kSizeTWithoutLower4Bits = (size_t)-16;
 
 
 #define GCM_MUL(ctx, Xi) gcm_gmult_nohw((ctx)->Xi, (ctx)->gcm_key.Htable)
@@ -116,9 +116,9 @@ void gcm_init_ssse3(u128 Htable[16], const uint64_t H[2]) {
   uint8_t *Hbytes = (uint8_t *)Htable;
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < i; j++) {
-      uint8_t tmp = Hbytes[16*i + j];
-      Hbytes[16*i + j] = Hbytes[16*j + i];
-      Hbytes[16*j + i] = tmp;
+      uint8_t tmp = Hbytes[16 * i + j];
+      Hbytes[16 * i + j] = Hbytes[16 * j + i];
+      Hbytes[16 * j + i] = tmp;
     }
   }
 }
@@ -162,21 +162,21 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   // In the case of the AEAD API, it can be used for all input lengths
   // but we are not identifying which API calls the code below.
   if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
-    switch(key->rounds) {
-    case 10:
-      aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
-    case 12:
-      aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
-    case 14:
-      aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
-    default:
-      // The subsequent logic after returning can process
-      // the input or return an error.
-      return 0;
-      break;
+    switch (key->rounds) {
+      case 10:
+        aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+        break;
+      case 12:
+        aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+        break;
+      case 14:
+        aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+        break;
+      default:
+        // The subsequent logic after returning can process
+        // the input or return an error.
+        return 0;
+        break;
     }
   } else {
     aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
@@ -199,21 +199,21 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   // In the case of the AEAD API, it can be used for all input lengths
   // but we are not identifying which API calls the code below.
   if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
-    switch(key->rounds) {
-    case 10:
-      aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
-    case 12:
-      aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
-    case 14:
-      aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
-      break;
-    default:
-      // The subsequent logic after returning can process
-      // the input or return an error.
-      return 0;
-      break;
+    switch (key->rounds) {
+      case 10:
+        aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+        break;
+      case 12:
+        aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+        break;
+      case 14:
+        aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key, Htable);
+        break;
+      default:
+        // The subsequent logic after returning can process
+        // the input or return an error.
+        return 0;
+        break;
     }
   } else {
     aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key, Htable);
@@ -424,9 +424,9 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   // Process the remainder.
   if (len != 0) {
     // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
-    // .../aws-lc/crypto/fipsmodule/modes/gcm.c:428:18: error: writing 1 byte into
-    // a region of size 0 [-Werror=stringop-overflow=]
-    // 428 | ctx->Xi[i] ^= aad[i];
+    // .../aws-lc/crypto/fipsmodule/modes/gcm.c:428:18: error: writing 1 byte
+    // into a region of size 0 [-Werror=stringop-overflow=] 428 | ctx->Xi[i] ^=
+    // aad[i];
     //     | ~~~~~~~~~~~^~~~~~~~~
     if (len > 16) {
       abort();
@@ -453,8 +453,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 
   uint64_t mlen = ctx->len.msg + len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((UINT64_C(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.msg = mlen;
@@ -535,8 +534,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 
   uint64_t mlen = ctx->len.msg + len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((UINT64_C(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.msg = mlen;
@@ -620,8 +618,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 
   uint64_t mlen = ctx->len.msg + len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((UINT64_C(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.msg = mlen;
@@ -694,8 +691,9 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ++ctr;
     CRYPTO_store_u32_be(ctx->Yi + 12, ctr);
     // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
-    // .../aws-lc/crypto/fipsmodule/modes/gcm.c:688:18: error: writing 1 byte into a region of size 0 [-Werror=stringop-overflow=]
-    // 688 |       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
+    // .../aws-lc/crypto/fipsmodule/modes/gcm.c:688:18: error: writing 1 byte
+    // into a region of size 0 [-Werror=stringop-overflow=] 688 | ctx->Xi[n] ^=
+    // out[n] = in[n] ^ ctx->EKi[n];
     //     |                  ^~
     if ((n + len) > 16) {
       abort();
@@ -722,8 +720,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
 
   uint64_t mlen = ctx->len.msg + len;
-  if (mlen > ((UINT64_C(1) << 36) - 32) ||
-      (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((UINT64_C(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.msg = mlen;
@@ -858,12 +855,10 @@ int crypto_gcm_clmul_enabled(void) {
 
 int crypto_gcm_avx512_enabled(void) {
   // This must align with ImplDispatchTest.AEAD_AES_GCM
-#if defined(GHASH_ASM_X86_64) && \
-    !defined(OPENSSL_WINDOWS) && \
+#if defined(GHASH_ASM_X86_64) && !defined(OPENSSL_WINDOWS) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-    // TODO(awslc): remove the Windows guard once CryptoAlg-1701 is resolved.
-  return (CRYPTO_is_VAES_capable() &&
-          CRYPTO_is_AVX512_capable() &&
+  // TODO(awslc): remove the Windows guard once CryptoAlg-1701 is resolved.
+  return (CRYPTO_is_VAES_capable() && CRYPTO_is_AVX512_capable() &&
           CRYPTO_is_VPCLMULQDQ_capable());
 #else
   return 0;

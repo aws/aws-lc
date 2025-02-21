@@ -20,7 +20,8 @@
 
 
 // The following functions use a Barrett reduction variant to avoid leaking the
-// numerator. See http://ridiculousfish.com/blog/posts/labor-of-division-episode-i.html
+// numerator. See
+// http://ridiculousfish.com/blog/posts/labor-of-division-episode-i.html
 //
 // We use 32-bit numerator and 16-bit divisor for simplicity. This allows
 // computing |m| and |q| without architecture-specific code.

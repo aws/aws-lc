@@ -99,7 +99,7 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
   // We have to verify that all the CMAC services actually succeed before
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  
+
   size_t scratch_out_len;
   CMAC_CTX ctx;
   CMAC_CTX_init(&ctx);
@@ -109,7 +109,7 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
                  CMAC_Final(&ctx, out, &scratch_out_len);
 
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     AES_CMAC_verify_service_indicator(&ctx);
   }
   CMAC_CTX_cleanup(&ctx);
@@ -120,7 +120,7 @@ CMAC_CTX *CMAC_CTX_new(void) {
   CMAC_CTX *ctx = OPENSSL_zalloc(sizeof(*ctx));
   if (ctx != NULL) {
     // NO-OP: struct already zeroed
-    //CMAC_CTX_init(ctx);
+    // CMAC_CTX_init(ctx);
   }
   return ctx;
 }
@@ -154,7 +154,7 @@ static void binary_field_mul_x_128(uint8_t out[16], const uint8_t in[16]) {
 
   // Shift |in| to left, including carry.
   for (i = 0; i < 15; i++) {
-    out[i] = (in[i] << 1) | (in[i+1] >> 7);
+    out[i] = (in[i] << 1) | (in[i + 1] >> 7);
   }
 
   // If MSB set fixup with R.
@@ -171,7 +171,7 @@ static void binary_field_mul_x_64(uint8_t out[8], const uint8_t in[8]) {
 
   // Shift |in| to left, including carry.
   for (i = 0; i < 7; i++) {
-    out[i] = (in[i] << 1) | (in[i+1] >> 7);
+    out[i] = (in[i] << 1) | (in[i + 1] >> 7);
   }
 
   // If MSB set fixup with R.
@@ -269,7 +269,7 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
   OPENSSL_memcpy(ctx->block, in, in_len);
   // |in_len| is bounded by |block_size|, which fits in |unsigned|.
   OPENSSL_STATIC_ASSERT(EVP_MAX_BLOCK_LENGTH < UINT_MAX,
-                EVP_MAX_BLOCK_LENGTH_is_too_large);
+                        EVP_MAX_BLOCK_LENGTH_is_too_large);
   ctx->block_used = (unsigned)in_len;
   ret = 1;
 
@@ -311,7 +311,7 @@ int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
 
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret) {
+  if (ret) {
     AES_CMAC_verify_service_indicator(ctx);
   }
   return ret;

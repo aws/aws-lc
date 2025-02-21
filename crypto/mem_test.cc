@@ -16,14 +16,14 @@ int size_count = 0;
 int realloc_count = 0;
 
 extern "C" {
-  OPENSSL_EXPORT void *OPENSSL_memory_alloc(size_t size);
-  OPENSSL_EXPORT void OPENSSL_memory_free(void *ptr);
-  OPENSSL_EXPORT size_t OPENSSL_memory_get_size(void *ptr);
-  OPENSSL_EXPORT void *OPENSSL_memory_realloc(void *ptr, size_t size);
+OPENSSL_EXPORT void *OPENSSL_memory_alloc(size_t size);
+OPENSSL_EXPORT void OPENSSL_memory_free(void *ptr);
+OPENSSL_EXPORT size_t OPENSSL_memory_get_size(void *ptr);
+OPENSSL_EXPORT void *OPENSSL_memory_realloc(void *ptr, size_t size);
 
-  void *new_malloc_impl(size_t size, const char *file, int line);
-  void new_free_impl(void *ptr, const char *file, int line);
-  void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
+void *new_malloc_impl(size_t size, const char *file, int line);
+void new_free_impl(void *ptr, const char *file, int line);
+void *new_realloc_impl(void *ptr, size_t size, const char *file, int line);
 }
 
 void *OPENSSL_memory_alloc(size_t size) {
@@ -48,9 +48,9 @@ void *OPENSSL_memory_realloc(void *ptr, size_t size) {
 }
 
 TEST(MemTest, BasicOverrides) {
-  // The FIPS build which runs the power on self tests can call a lot of functions
-  // before this test. Therefore, all the expected counts are relative to the
-  // starting point
+  // The FIPS build which runs the power on self tests can call a lot of
+  // functions before this test. Therefore, all the expected counts are relative
+  // to the starting point
   int starting_alloc = alloc_count;
   int starting_free = free_count;
   int starting_realloc = realloc_count;
@@ -101,20 +101,18 @@ TEST(MemTest, BasicOverrides) {
   OPENSSL_free(realloc_ptr_2);
 }
 
-void *new_malloc_impl(size_t size, const char *file, int line) {
-  return NULL;
-}
+void *new_malloc_impl(size_t size, const char *file, int line) { return NULL; }
 
 void *new_realloc_impl(void *ptr, size_t size, const char *file, int line) {
   return NULL;
 }
 
-void new_free_impl(void *ptr, const char *file, int line) {
-  return;
-}
+void new_free_impl(void *ptr, const char *file, int line) { return; }
 
 TEST(MemTest, MemSetFailWhenWeakSymbolsOverrided) {
-  // CRYPTO_set_mem_functions returns 0 when |OPENSSL_malloc/free/realloc| are customized by overriding the symbols.
-  ASSERT_EQ(0, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl, new_free_impl));
+  // CRYPTO_set_mem_functions returns 0 when |OPENSSL_malloc/free/realloc| are
+  // customized by overriding the symbols.
+  ASSERT_EQ(0, CRYPTO_set_mem_functions(new_malloc_impl, new_realloc_impl,
+                                        new_free_impl));
 }
 #endif

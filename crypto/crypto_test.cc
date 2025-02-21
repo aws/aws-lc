@@ -17,10 +17,10 @@
 
 #include <string>
 
-#include <openssl/base.h>
 #include <openssl/aead.h>
-#include <openssl/crypto.h>
+#include <openssl/base.h>
 #include <openssl/cipher.h>
+#include <openssl/crypto.h>
 #include <openssl/mem.h>
 #include <openssl/service_indicator.h>
 
@@ -212,7 +212,7 @@ TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
   ASSERT_TRUE(0);
 #endif
 }
-#endif // defined(BORINGSSL_FIPS)
+#endif  // defined(BORINGSSL_FIPS)
 
 #if defined(BORINGSSL_FIPS_140_3)
 TEST(Crypto, QueryAlgorithmStatus) {
@@ -228,12 +228,10 @@ TEST(Crypto, QueryAlgorithmStatus) {
   EXPECT_FALSE(FIPS_query_algorithm_status("FakeEncrypt"));
   EXPECT_FALSE(FIPS_query_algorithm_status(""));
 }
-#endif //BORINGSSL_FIPS_140_3
+#endif  // BORINGSSL_FIPS_140_3
 
 #if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
-TEST(Crypto, OnDemandIntegrityTest) {
-  BORINGSSL_integrity_test();
-}
+TEST(Crypto, OnDemandIntegrityTest) { BORINGSSL_integrity_test(); }
 #endif
 
 OPENSSL_DEPRECATED static void DeprecatedFunction() {}

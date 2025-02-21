@@ -33,7 +33,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   if (!SSL_to_bytes(ssl.get(), &encoded, &encoded_len)) {
     uint32_t e = ERR_get_error();
     if (e == 0) {
-      fprintf(stderr, "In Fuzz, SSL_to_bytes failed without giving a error code.\n");
+      fprintf(stderr,
+              "In Fuzz, SSL_to_bytes failed without giving a error code.\n");
       return 1;
     }
     uint32_t e_lib = ERR_GET_LIB(e);
@@ -41,8 +42,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     if (e_reason == SSL_R_SERIALIZATION_UNSUPPORTED) {
       return 0;
     }
-    fprintf(stderr, "In Fuzz, SSL_to_bytes failed with error: lib %u, reason %u, str %s\n", 
-      e_lib, e_reason, ERR_reason_error_string(e));
+    fprintf(
+        stderr,
+        "In Fuzz, SSL_to_bytes failed with error: lib %u, reason %u, str %s\n",
+        e_lib, e_reason, ERR_reason_error_string(e));
     return 1;
   }
 

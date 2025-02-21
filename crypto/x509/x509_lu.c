@@ -67,8 +67,8 @@
 
 static int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
                                       X509_NAME *name);
-static X509_OBJECT *X509_OBJECT_retrieve_by_subject(
-      STACK_OF(X509_OBJECT) *h, int type, X509_NAME *name);
+static X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
+                                                    int type, X509_NAME *name);
 static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                                X509_OBJECT *x);
 static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
@@ -164,8 +164,7 @@ X509_STORE *X509_STORE_new(void) {
   ret->objs = sk_X509_OBJECT_new(x509_object_cmp_sk);
   ret->get_cert_methods = sk_X509_LOOKUP_new_null();
   ret->param = X509_VERIFY_PARAM_new();
-  if (ret->objs == NULL ||
-      ret->get_cert_methods == NULL ||
+  if (ret->objs == NULL || ret->get_cert_methods == NULL ||
       ret->param == NULL) {
     X509_STORE_free(ret);
     return NULL;
@@ -175,19 +174,19 @@ X509_STORE *X509_STORE_new(void) {
 }
 
 int X509_STORE_lock(X509_STORE *v) {
-    if (v == NULL) {
-      return 0;
-    }
-    CRYPTO_MUTEX_lock_write(&v->objs_lock);
-    return 1;
+  if (v == NULL) {
+    return 0;
+  }
+  CRYPTO_MUTEX_lock_write(&v->objs_lock);
+  return 1;
 }
 
 int X509_STORE_unlock(X509_STORE *v) {
-    if (v == NULL) {
-      return 0;
-    }
-    CRYPTO_MUTEX_unlock_write(&v->objs_lock);
-    return 1;
+  if (v == NULL) {
+    return 0;
+  }
+  CRYPTO_MUTEX_unlock_write(&v->objs_lock);
+  return 1;
 }
 
 int X509_STORE_up_ref(X509_STORE *store) {
@@ -360,25 +359,25 @@ X509_CRL *X509_OBJECT_get0_X509_CRL(const X509_OBJECT *a) {
 }
 
 int X509_OBJECT_set1_X509(X509_OBJECT *a, X509 *obj) {
-    if (a == NULL || !X509_up_ref(obj)) {
-      return 0;
-    }
+  if (a == NULL || !X509_up_ref(obj)) {
+    return 0;
+  }
 
-    X509_OBJECT_free_contents(a);
-    a->type = X509_LU_X509;
-    a->data.x509 = obj;
-    return 1;
+  X509_OBJECT_free_contents(a);
+  a->type = X509_LU_X509;
+  a->data.x509 = obj;
+  return 1;
 }
 
 int X509_OBJECT_set1_X509_CRL(X509_OBJECT *a, X509_CRL *obj) {
-    if (a == NULL || !X509_CRL_up_ref(obj)) {
-      return 0;
-    }
+  if (a == NULL || !X509_CRL_up_ref(obj)) {
+    return 0;
+  }
 
-    X509_OBJECT_free_contents(a);
-    a->type = X509_LU_CRL;
-    a->data.crl = obj;
-    return 1;
+  X509_OBJECT_free_contents(a);
+  a->type = X509_LU_CRL;
+  a->data.crl = obj;
+  return 1;
 }
 
 static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
@@ -431,8 +430,8 @@ static int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
   return x509_object_idx_cnt(h, type, name, NULL);
 }
 
-X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
-                                                    int type, X509_NAME *name) {
+X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h, int type,
+                                             X509_NAME *name) {
   int idx;
   idx = X509_OBJECT_idx_by_subject(h, type, name);
   if (idx == -1) {
@@ -570,7 +569,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   }
   // If certificate matches all OK
   if (x509_check_issued_with_callback(ctx, x, obj.data.x509)) {
-    if (x509_check_cert_time(ctx, obj.data.x509, /*suppress_error*/1)) {
+    if (x509_check_cert_time(ctx, obj.data.x509, /*suppress_error*/ 1)) {
       *issuer = obj.data.x509;
       return 1;
     }
@@ -601,14 +600,14 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
         // we continue searching. We leave the last tested issuer certificate in
         // |issuer| on purpose. This returns the closest match if none of the
         // candidate issuer certificates' timestamps were valid.
-        if (x509_check_cert_time(ctx, *issuer, /*suppress_error*/1)) {
+        if (x509_check_cert_time(ctx, *issuer, /*suppress_error*/ 1)) {
           break;
         }
       }
     }
   }
   CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
-  if(*issuer) {
+  if (*issuer) {
     X509_up_ref(*issuer);
   }
   return ret;

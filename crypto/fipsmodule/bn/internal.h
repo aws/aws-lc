@@ -209,11 +209,9 @@ extern "C" {
 #define MOD_EXP_CTIME_STORAGE_LEN \
   (((320u * 3u) + (32u * 9u * 16u)) / sizeof(BN_ULONG))
 
-#define STATIC_BIGNUM(x)                                    \
-  {                                                         \
-    (BN_ULONG *)(x), sizeof(x) / sizeof(BN_ULONG),          \
-        sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
-  }
+#define STATIC_BIGNUM(x)                          \
+  {(BN_ULONG *)(x), sizeof(x) / sizeof(BN_ULONG), \
+   sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA}
 
 #if defined(BN_ULLONG)
 #define Lw(t) ((BN_ULONG)(t))
@@ -429,16 +427,16 @@ OPENSSL_INLINE int bn_sqr8x_mont_capable(size_t num) {
 }
 int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, BN_ULONG mulx_adx_capable,
                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#endif  // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 #elif defined(OPENSSL_ARM)
-  OPENSSL_INLINE int bn_mul8x_mont_neon_capable(size_t num) {
-    return (num & 7) == 0 && CRYPTO_is_NEON_capable();
-  }
-  int bn_mul8x_mont_neon(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                         const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-  int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+OPENSSL_INLINE int bn_mul8x_mont_neon_capable(size_t num) {
+  return (num & 7) == 0 && CRYPTO_is_NEON_capable();
+}
+int bn_mul8x_mont_neon(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                        const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-#endif // defined(OPENSSL_X86_64)
+int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                     const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+#endif  // defined(OPENSSL_X86_64)
 
 #endif
 
@@ -747,7 +745,7 @@ int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
 // bn_mul_small sets |r| to |a|*|b|. |num_r| must be |num_a| + |num_b|. |r| may
 // not alias with |a| or |b|.
 void bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
-                 const BN_ULONG *b, size_t num_b);
+                  const BN_ULONG *b, size_t num_b);
 
 // bn_sqr_small sets |r| to |a|^2. |num_a| must be at most |BN_SMALL_MAX_WORDS|.
 // |num_r| must be |num_a|*2. |r| and |a| may not alias.
@@ -807,10 +805,10 @@ void bn_mod_inverse0_prime_mont_small(BN_ULONG *r, const BN_ULONG *a,
 // Word-based byte conversion functions.
 
 // bn_big_endian_to_words interprets |in_len| bytes from |in| as a big-endian,
-// unsigned integer and writes the result to |out_len| words in |out|. The output
-// is in little-endian word order with |out[0]| being the least-significant word.
-// |out_len| must be large enough to represent any |in_len|-byte value. That is,
-// |in_len| must be at most |BN_BYTES * out_len|.
+// unsigned integer and writes the result to |out_len| words in |out|. The
+// output is in little-endian word order with |out[0]| being the
+// least-significant word. |out_len| must be large enough to represent any
+// |in_len|-byte value. That is, |in_len| must be at most |BN_BYTES * out_len|.
 void bn_big_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
                             size_t in_len);
 
@@ -824,21 +822,23 @@ void bn_big_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
 void bn_words_to_big_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
                             size_t in_len);
 
-// bn_little_endian_to_words interprets |in_len| bytes from |in| as a little-endian,
-// unsigned integer and writes the result to |out_len| words in |out|.  The output
-// is in little-endian word order with |out[0]| being the least-significant word.
-// |out_len| must be large enough to represent any |in_len|-byte value. That is,
-// |out_len| must be at least |BN_BYTES * in_len|.
-void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in, const size_t in_len);
+// bn_little_endian_to_words interprets |in_len| bytes from |in| as a
+// little-endian, unsigned integer and writes the result to |out_len| words in
+// |out|.  The output is in little-endian word order with |out[0]| being the
+// least-significant word. |out_len| must be large enough to represent any
+// |in_len|-byte value. That is, |out_len| must be at least |BN_BYTES * in_len|.
+void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
+                               const size_t in_len);
 
-// bn_words_to_little_endian represents |in_len| words from |in| (in little-endian
-// word order) as a little-endian, unsigned integer in |out_len| bytes. It
-// writes the result to |out|. |out_len| must be large enough to represent |in|
-// without truncation.
+// bn_words_to_little_endian represents |in_len| words from |in| (in
+// little-endian word order) as a little-endian, unsigned integer in |out_len|
+// bytes. It writes the result to |out|. |out_len| must be large enough to
+// represent |in| without truncation.
 //
 // Note |out_len| may be less than |BN_BYTES * in_len| if |in| is known to have
 // leading zeros.
-void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, const size_t in_len);
+void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
+                               const size_t in_len);
 
 #if defined(__cplusplus)
 }  // extern C

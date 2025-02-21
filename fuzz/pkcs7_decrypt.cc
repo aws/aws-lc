@@ -5,10 +5,10 @@
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/pkcs7.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
-#include <openssl/pem.h>
 
 // The corpus was created using the following key.
 // If you change the key, the corpus should be augmented with inputs
@@ -100,18 +100,20 @@ jbgtnMeOs3SWELGeAG2TXsKmNOb0OwzGeL5jJpe6tsEUiQQQxhfarBIlxoTPizI=
 )";
 
 class SharedData {
-public:
+ public:
   EVP_PKEY *key = nullptr;
   X509 *cert = nullptr;
 
   SharedData() {
     {
-      BIO *key_bio = BIO_new_mem_buf(const_cast<char *>(kKey), sizeof(kKey) - 1);
+      BIO *key_bio =
+          BIO_new_mem_buf(const_cast<char *>(kKey), sizeof(kKey) - 1);
       key = PEM_read_bio_PrivateKey(key_bio, nullptr, nullptr, nullptr);
       BIO_free(key_bio);
     }
     {
-      BIO *cert_bio = BIO_new_mem_buf(const_cast<char *>(kCert), sizeof(kCert) - 1);
+      BIO *cert_bio =
+          BIO_new_mem_buf(const_cast<char *>(kCert), sizeof(kCert) - 1);
       cert = PEM_read_bio_X509(cert_bio, nullptr, nullptr, nullptr);
       BIO_free(cert_bio);
     }
@@ -136,17 +138,17 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
 
   {
     BIO *data_bio = BIO_new(BIO_s_mem());
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     PKCS7_decrypt(pkcs7, sharedData.key, NULL, data_bio, 0);
-OPENSSL_END_ALLOW_DEPRECATED
+    OPENSSL_END_ALLOW_DEPRECATED
     BIO_free(data_bio);
   }
 
   {
     BIO *data_bio = BIO_new(BIO_s_mem());
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     PKCS7_decrypt(pkcs7, sharedData.key, sharedData.cert, data_bio, 0);
-OPENSSL_END_ALLOW_DEPRECATED
+    OPENSSL_END_ALLOW_DEPRECATED
     BIO_free(data_bio);
   }
 

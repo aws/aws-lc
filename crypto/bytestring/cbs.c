@@ -317,8 +317,9 @@ static int parse_asn1_tag(CBS *cbs, CBS_ASN1_TAG *out, int universal_tag_ok) {
 }
 
 int cbs_get_any_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
-                                    size_t *out_header_len, int *out_ber_found,
-                                    int *out_indefinite, int ber_ok, int universal_tag_ok) {
+                             size_t *out_header_len, int *out_ber_found,
+                             int *out_indefinite, int ber_ok,
+                             int universal_tag_ok) {
   CBS header = *cbs;
   CBS throwaway;
 
@@ -481,7 +482,8 @@ int CBS_get_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value) {
 int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value) {
   CBS copy = *cbs;
   CBS_ASN1_TAG actual_tag;
-  return parse_asn1_tag(&copy, &actual_tag, /*universal_tag_ok=*/0) && tag_value == actual_tag;
+  return parse_asn1_tag(&copy, &actual_tag, /*universal_tag_ok=*/0) &&
+         tag_value == actual_tag;
 }
 
 int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {

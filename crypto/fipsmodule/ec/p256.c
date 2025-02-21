@@ -102,25 +102,25 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(x6, x3);
   for (int i = 1; i < 3; i++) {
     fiat_p256_square(x6, x6);
-  }                           // 2^6 - 2^3
+  }  // 2^6 - 2^3
   fiat_p256_mul(x6, x6, x3);  // 2^6 - 2^0
 
   fiat_p256_square(x12, x6);
   for (int i = 1; i < 6; i++) {
     fiat_p256_square(x12, x12);
-  }                             // 2^12 - 2^6
+  }  // 2^12 - 2^6
   fiat_p256_mul(x12, x12, x6);  // 2^12 - 2^0
 
   fiat_p256_square(x15, x12);
   for (int i = 1; i < 3; i++) {
     fiat_p256_square(x15, x15);
-  }                             // 2^15 - 2^3
+  }  // 2^15 - 2^3
   fiat_p256_mul(x15, x15, x3);  // 2^15 - 2^0
 
   fiat_p256_square(x30, x15);
   for (int i = 1; i < 15; i++) {
     fiat_p256_square(x30, x30);
-  }                              // 2^30 - 2^15
+  }  // 2^30 - 2^15
   fiat_p256_mul(x30, x30, x15);  // 2^30 - 2^0
 
   fiat_p256_square(x32, x30);
@@ -131,30 +131,29 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(ret, x32);
   for (int i = 1; i < 31 + 1; i++) {
     fiat_p256_square(ret, ret);
-  }                             // 2^64 - 2^32
+  }  // 2^64 - 2^32
   fiat_p256_mul(ret, ret, in);  // 2^64 - 2^32 + 2^0
 
   for (int i = 0; i < 96 + 32; i++) {
     fiat_p256_square(ret, ret);
-  }                              // 2^192 - 2^160 + 2^128
+  }  // 2^192 - 2^160 + 2^128
   fiat_p256_mul(ret, ret, x32);  // 2^192 - 2^160 + 2^128 + 2^32 - 2^0
 
   for (int i = 0; i < 32; i++) {
     fiat_p256_square(ret, ret);
-  }                              // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
+  }  // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
   fiat_p256_mul(ret, ret, x32);  // 2^224 - 2^192 + 2^160 + 2^64 - 2^0
 
   for (int i = 0; i < 30; i++) {
     fiat_p256_square(ret, ret);
-  }                              // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
+  }  // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
   fiat_p256_mul(ret, ret, x30);  // 2^254 - 2^222 + 2^190 + 2^94 - 2^0
 
   fiat_p256_square(ret, ret);
   fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
-static void fiat_p256_point_double(fiat_p256_felem x_out,
-                                   fiat_p256_felem y_out,
+static void fiat_p256_point_double(fiat_p256_felem x_out, fiat_p256_felem y_out,
                                    fiat_p256_felem z_out,
                                    const fiat_p256_felem x_in,
                                    const fiat_p256_felem y_in,
@@ -175,18 +174,19 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
 #include "./p256_table.h"
 
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
-    out->felem_num_limbs = FIAT_P256_NLIMBS;
-    out->felem_num_bits = 256;
-    out->felem_add = fiat_p256_add;
-    out->felem_sub = fiat_p256_sub;
-    out->felem_mul = fiat_p256_mul;
-    out->felem_sqr = fiat_p256_square;
-    out->felem_neg = fiat_p256_opp;
-    out->felem_nz  = fiat_p256_nz;
-    out->felem_one = fiat_p256_one;
-    out->point_dbl = fiat_p256_point_double;
-    out->point_add = fiat_p256_point_add;
-    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) fiat_p256_g_pre_comp;
+  out->felem_num_limbs = FIAT_P256_NLIMBS;
+  out->felem_num_bits = 256;
+  out->felem_add = fiat_p256_add;
+  out->felem_sub = fiat_p256_sub;
+  out->felem_mul = fiat_p256_mul;
+  out->felem_sqr = fiat_p256_square;
+  out->felem_neg = fiat_p256_opp;
+  out->felem_nz = fiat_p256_nz;
+  out->felem_one = fiat_p256_one;
+  out->point_dbl = fiat_p256_point_double;
+  out->point_add = fiat_p256_point_add;
+  out->scalar_mul_base_table =
+      (const ec_nistp_felem_limb *)fiat_p256_g_pre_comp;
 }
 
 // OPENSSL EC_METHOD FUNCTIONS
@@ -261,7 +261,8 @@ static void ec_GFp_nistp256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   fiat_p256_from_generic(tmp[1], &p->Y);
   fiat_p256_from_generic(tmp[2], &p->Z);
 
-  ec_nistp_scalar_mul(p256_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
+  ec_nistp_scalar_mul(p256_methods(), res[0], res[1], res[2], tmp[0], tmp[1],
+                      tmp[2], scalar);
 
   fiat_p256_to_generic(&r->X, res[0]);
   fiat_p256_to_generic(&r->Y, res[1]);
@@ -290,7 +291,8 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
   fiat_p256_from_generic(tmp[1], &p->Y);
   fiat_p256_from_generic(tmp[2], &p->Z);
 
-  ec_nistp_scalar_mul_public(p256_methods(), res[0], res[1], res[2], g_scalar, tmp[0], tmp[1], tmp[2], p_scalar);
+  ec_nistp_scalar_mul_public(p256_methods(), res[0], res[1], res[2], g_scalar,
+                             tmp[0], tmp[1], tmp[2], p_scalar);
 
   fiat_p256_to_generic(&r->X, res[0]);
   fiat_p256_to_generic(&r->Y, res[1]);

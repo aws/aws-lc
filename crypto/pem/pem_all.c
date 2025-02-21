@@ -266,7 +266,7 @@ int PEM_write_bio_ECPKParameters(BIO *out, const EC_GROUP *group) {
   unsigned char *data = NULL;
 
   int buf_len = i2d_ECPKParameters(group, &data);
-  if(data == NULL || buf_len < 0) {
+  if (data == NULL || buf_len < 0) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
     goto err;
   }

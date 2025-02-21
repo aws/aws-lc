@@ -117,8 +117,8 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -194,8 +194,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
   uint16_t version;
   uint8_t sequence[8];
   CBS body;
-  if (!CBS_get_u8(&cbs, &type) ||
-      !CBS_get_u16(&cbs, &version) ||
+  if (!CBS_get_u8(&cbs, &type) || !CBS_get_u16(&cbs, &version) ||
       !CBS_copy_bytes(&cbs, sequence, 8) ||
       !CBS_get_u16_length_prefixed(&cbs, &body) ||
       CBS_len(&body) > SSL3_RT_MAX_ENCRYPTED_LENGTH) {

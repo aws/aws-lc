@@ -41,7 +41,8 @@ struct WycheproofResult {
   bool IsValid(const std::vector<std::string> &acceptable_flags = {}) const;
 };
 
-// GetWycheproofResult sets |*out| to the parsed "result" and "flags" keys of |t|.
+// GetWycheproofResult sets |*out| to the parsed "result" and "flags" keys of
+// |t|.
 bool GetWycheproofResult(FileTest *t, WycheproofResult *out);
 
 // GetWycheproofDigest returns a digest function using the Wycheproof name, or

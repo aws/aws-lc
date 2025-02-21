@@ -62,6 +62,6 @@ constexpr char kControlMsgError = 'E';           // Handshaker hit an error
 constexpr int kFdControl = 3;            // Bi-directional dgram socket.
 constexpr int kFdProxyToHandshaker = 4;  // Uni-directional pipe.
 constexpr int kFdHandshakerToProxy = 5;  // Uni-directional pipe.
-#endif  // HANDSHAKER_SUPPORTED
+#endif                                   // HANDSHAKER_SUPPORTED
 
 #endif  // HEADER_TEST_HANDSHAKE

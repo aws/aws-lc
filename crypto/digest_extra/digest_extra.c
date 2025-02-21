@@ -60,17 +60,17 @@
 
 #include <openssl/blake2.h>
 #include <openssl/bytestring.h>
-#include <openssl/obj.h>
 #include <openssl/nid.h>
+#include <openssl/obj.h>
 
 #include "../asn1/internal.h"
-#include "../internal.h"
 #include "../fipsmodule/digest/internal.h"
+#include "../internal.h"
 
 
 struct nid_to_digest {
   int nid;
-  const EVP_MD* (*md_func)(void);
+  const EVP_MD *(*md_func)(void);
   const char *short_name;
   const char *long_name;
 };
@@ -113,7 +113,7 @@ static const struct nid_to_digest nid_to_digest_mapping[] = {
      LN_sha512WithRSAEncryption},
 };
 
-const EVP_MD* EVP_get_digestbynid(int nid) {
+const EVP_MD *EVP_get_digestbynid(int nid) {
   if (nid == NID_undef) {
     // Skip the |NID_undef| entries in |nid_to_digest_mapping|.
     return NULL;
@@ -133,22 +133,22 @@ static const struct {
   uint8_t oid_len;
   int nid;
 } kMDOIDs[] = {
-  // 1.2.840.113549.2.4
-  { {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x04}, 8, NID_md4 },
-  // 1.2.840.113549.2.5
-  { {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05}, 8, NID_md5 },
-  // 1.3.36.3.2.1
-  { {0x2b, 0x24, 0x03, 0x02, 0x01}, 5, NID_ripemd160 },
-  // 1.3.14.3.2.26
-  { {0x2b, 0x0e, 0x03, 0x02, 0x1a}, 5, NID_sha1 },
-  // 2.16.840.1.101.3.4.2.1
-  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01}, 9, NID_sha256 },
-  // 2.16.840.1.101.3.4.2.2
-  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02}, 9, NID_sha384 },
-  // 2.16.840.1.101.3.4.2.3
-  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03}, 9, NID_sha512 },
-  // 2.16.840.1.101.3.4.2.4
-  { {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04}, 9, NID_sha224 },
+    // 1.2.840.113549.2.4
+    {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x04}, 8, NID_md4},
+    // 1.2.840.113549.2.5
+    {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05}, 8, NID_md5},
+    // 1.3.36.3.2.1
+    {{0x2b, 0x24, 0x03, 0x02, 0x01}, 5, NID_ripemd160},
+    // 1.3.14.3.2.26
+    {{0x2b, 0x0e, 0x03, 0x02, 0x1a}, 5, NID_sha1},
+    // 2.16.840.1.101.3.4.2.1
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01}, 9, NID_sha256},
+    // 2.16.840.1.101.3.4.2.2
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02}, 9, NID_sha384},
+    // 2.16.840.1.101.3.4.2.3
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03}, 9, NID_sha512},
+    // 2.16.840.1.101.3.4.2.4
+    {{0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04}, 9, NID_sha224},
 };
 
 static const EVP_MD *cbs_to_md(const CBS *cbs) {
@@ -196,8 +196,7 @@ const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs) {
   if (CBS_len(&algorithm) > 0) {
     CBS param;
     if (!CBS_get_asn1(&algorithm, &param, CBS_ASN1_NULL) ||
-        CBS_len(&param) != 0 ||
-        CBS_len(&algorithm) != 0) {
+        CBS_len(&param) != 0 || CBS_len(&algorithm) != 0) {
       OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_DECODE_ERROR);
       return NULL;
     }
@@ -231,8 +230,7 @@ int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md) {
   }
 
   // TODO(crbug.com/boringssl/710): Is this correct? See RFC 4055, section 2.1.
-  if (!CBB_add_asn1(&algorithm, &null, CBS_ASN1_NULL) ||
-      !CBB_flush(cbb)) {
+  if (!CBB_add_asn1(&algorithm, &null, CBS_ASN1_NULL) || !CBB_flush(cbb)) {
     return 0;
   }
 
@@ -263,15 +261,10 @@ static void blake2b256_final(EVP_MD_CTX *ctx, uint8_t *md) {
 }
 
 static const EVP_MD evp_md_blake2b256 = {
-  NID_undef,
-  BLAKE2B256_DIGEST_LENGTH,
-  0,
-  blake2b256_init,
-  blake2b256_update,
-  blake2b256_final,
-  BLAKE2B_CBLOCK,
-  sizeof(BLAKE2B_CTX),
-  /*finalXOf*/ NULL,
+    NID_undef,         BLAKE2B256_DIGEST_LENGTH, 0,
+    blake2b256_init,   blake2b256_update,        blake2b256_final,
+    BLAKE2B_CBLOCK,    sizeof(BLAKE2B_CTX),
+    /*finalXOf*/ NULL,
 };
 
 const EVP_MD *EVP_blake2b256(void) { return &evp_md_blake2b256; }
@@ -283,15 +276,8 @@ static void null_update(EVP_MD_CTX *ctx, const void *data, size_t count) {}
 static void null_final(EVP_MD_CTX *ctx, unsigned char *md) {}
 
 static const EVP_MD evp_md_null = {
-  NID_undef,
-  0,
-  0,
-  null_init,
-  null_update,
-  null_final,
-  0,
-  sizeof(EVP_MD_CTX),
-  NULL,
+    NID_undef,          0,    0, null_init, null_update, null_final, 0,
+    sizeof(EVP_MD_CTX), NULL,
 };
 
 const EVP_MD *EVP_md_null(void) { return &evp_md_null; }

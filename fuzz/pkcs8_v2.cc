@@ -18,8 +18,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   uint8_t *der;
   size_t der_len;
   CBB cbb;
-  if (CBB_init(&cbb, 0) &&
-      EVP_marshal_private_key_v2(&cbb, pkey) &&
+  if (CBB_init(&cbb, 0) && EVP_marshal_private_key_v2(&cbb, pkey) &&
       CBB_finish(&cbb, &der, &der_len)) {
     OPENSSL_free(der);
   }

@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 
-#if !defined(OPENSSL_NO_ASM) && \
+#if !defined(OPENSSL_NO_ASM) &&                              \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(OPENSSL_SMALL)
 
@@ -60,7 +60,7 @@ void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
 // by multiplying with 1.
 static inline void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
                                           const BN_ULONG in[P256_LIMBS]) {
-  static const BN_ULONG ONE[P256_LIMBS] = { 1 };
+  static const BN_ULONG ONE[P256_LIMBS] = {1};
   ecp_nistz256_mul_mont(res, in, ONE);
 }
 
@@ -133,8 +133,8 @@ void ecp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
 void ecp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
 
-#endif /* !defined(OPENSSL_NO_ASM) && \
-          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&   \
+#endif /* !defined(OPENSSL_NO_ASM) &&                              \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
           !defined(OPENSSL_SMALL) */
 
 

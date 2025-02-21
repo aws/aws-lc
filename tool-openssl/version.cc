@@ -4,9 +4,7 @@
 #include <openssl/base.h>
 #include "internal.h"
 
-static const argument_t kArguments[] = {
-    { "", kOptionalArgument, "" }
-};
+static const argument_t kArguments[] = {{"", kOptionalArgument, ""}};
 
 bool VersionTool(const args_list_t &args) {
   args_map_t parsed_args;

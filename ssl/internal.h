@@ -723,7 +723,8 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             bool strict, bool config_tls13);
 
 // update_cipher_list creates a new |SSLCipherPreferenceList| containing ciphers
-// from both |ciphers| and |tls13_ciphers| and assigns it to |dst|. The function:
+// from both |ciphers| and |tls13_ciphers| and assigns it to |dst|. The
+// function:
 //
 // 1. Creates a copy of |ciphers|
 // 2. Removes any stale TLS 1.3 ciphersuites from the copy
@@ -767,8 +768,8 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 // cipher. |has_aes_hw| indicates if the choice should be made as if support for
 // AES in hardware is available.
 const SSL_CIPHER *ssl_choose_tls13_cipher(
-    const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw, uint16_t version,
-    const STACK_OF(SSL_CIPHER) *tls13_ciphers);
+    const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw,
+    uint16_t version, const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
 // Transcript layer.
@@ -1287,8 +1288,8 @@ OPENSSL_EXPORT Span<const HybridGroup> HybridGroups();
 
 // PQGroups returns all supported post-quantum groups. A post-quantum
 // group may be a hybrid group containing at least one PQ
-// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ group
-// (e.g. KYBER768_R3).
+// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ
+// group (e.g. KYBER768_R3).
 Span<const uint16_t> PQGroups();
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
@@ -2518,10 +2519,12 @@ bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
 
 // ssl_parse_client_cipher_list returns the ciphers offered by the client
-// during handshake that are supported by this library, or null if the handshake hasn't
-// occurred or there was an error. It also stores the unparsed raw bytes of cipher suites offered in
-// the client hello into |ssl->all_client_cipher_suites|.
-bool ssl_parse_client_cipher_list(SSL *ssl, const SSL_CLIENT_HELLO *client_hello,
+// during handshake that are supported by this library, or null if the handshake
+// hasn't occurred or there was an error. It also stores the unparsed raw bytes
+// of cipher suites offered in the client hello into
+// |ssl->all_client_cipher_suites|.
+bool ssl_parse_client_cipher_list(SSL *ssl,
+                                  const SSL_CLIENT_HELLO *client_hello,
                                   UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out);
 
 
@@ -3385,18 +3388,18 @@ struct SSL_CONFIG {
   // true.
   bool aes_hw_override_value : 1;
 
-  // conf_max_version_use_default indicates whether the |SSL_CONFIG| is configured
-  // to use the default maximum protocol version for the relevant protocol
-  // method. By default, |SSL_new| will set this to true and connections will use
-  // the default max version. callers can change the max version used by calling
-  // |SSL_set_max_proto_version| with a non-zero value.
+  // conf_max_version_use_default indicates whether the |SSL_CONFIG| is
+  // configured to use the default maximum protocol version for the relevant
+  // protocol method. By default, |SSL_new| will set this to true and
+  // connections will use the default max version. callers can change the max
+  // version used by calling |SSL_set_max_proto_version| with a non-zero value.
   bool conf_max_version_use_default : 1;
 
-  // conf_min_version_use_default indicates whether the |SSL_CONFIG| is configured
-  // to use the default minimum protocol version for the relevant protocol
-  // method. By default, |SSL_new| will set this to true and connections will use
-  // the default min version. callers can change the min version used by calling
-  // |SSL_set_min_proto_version| with a non-zero value.
+  // conf_min_version_use_default indicates whether the |SSL_CONFIG| is
+  // configured to use the default minimum protocol version for the relevant
+  // protocol method. By default, |SSL_new| will set this to true and
+  // connections will use the default min version. callers can change the min
+  // version used by calling |SSL_set_min_proto_version| with a non-zero value.
   bool conf_min_version_use_default : 1;
 
   // alps_use_new_codepoint if set indicates we use new ALPS extension codepoint
@@ -3744,15 +3747,17 @@ struct ssl_method_st {
 
 // TLS13_DEFAULT_CIPHER_LIST_AES_HW is the default TLS 1.3 cipher suite
 // configuration when AES hardware acceleration is enabled.
-#define TLS13_DEFAULT_CIPHER_LIST_AES_HW "TLS_AES_128_GCM_SHA256:" \
-                                         "TLS_AES_256_GCM_SHA384:" \
-                                         "TLS_CHACHA20_POLY1305_SHA256"
+#define TLS13_DEFAULT_CIPHER_LIST_AES_HW \
+  "TLS_AES_128_GCM_SHA256:"              \
+  "TLS_AES_256_GCM_SHA384:"              \
+  "TLS_CHACHA20_POLY1305_SHA256"
 
 // TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW is the default TLS 1.3 cipher suite
 // configuration when no AES hardware acceleration is enabled.
-#define TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW "TLS_CHACHA20_POLY1305_SHA256:" \
-                                            "TLS_AES_128_GCM_SHA256:" \
-                                            "TLS_AES_256_GCM_SHA384"
+#define TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW \
+  "TLS_CHACHA20_POLY1305_SHA256:"           \
+  "TLS_AES_128_GCM_SHA256:"                 \
+  "TLS_AES_256_GCM_SHA384"
 
 #define MIN_SAFE_FRAGMENT_SIZE 512
 struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
@@ -3781,8 +3786,10 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   /// in case the client makes several connections before getting a renewal.
   uint8_t num_tickets = 2;
 
-  // read_ahead_buffer_size is the amount of data to read if |enable_read_ahead| is true
-  size_t read_ahead_buffer_size = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
+  // read_ahead_buffer_size is the amount of data to read if |enable_read_ahead|
+  // is true
+  size_t read_ahead_buffer_size =
+      SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
 
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
@@ -4079,9 +4086,9 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
 
-  // enable_read_ahead indicates whether the |SSL_CTX| is configured to read as much
-  // as will fit in the SSLBuffer from the BIO, or just enough to read the record
-  // header and then the length of the body
+  // enable_read_ahead indicates whether the |SSL_CTX| is configured to read as
+  // much as will fit in the SSLBuffer from the BIO, or just enough to read the
+  // record header and then the length of the body
   bool enable_read_ahead : 1;
 
   // aes_hw_override if set indicates we should override checking for AES
@@ -4095,16 +4102,16 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
 
   // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
   // to use the default maximum protocol version for the relevant protocol
-  // method. By default, |SSL_CTX_new| will set this to true and connections will
-  // use the default max version. callers can change the max version used by calling
-  // |SSL_CTX_set_max_proto_version| with a non-zero value.
+  // method. By default, |SSL_CTX_new| will set this to true and connections
+  // will use the default max version. callers can change the max version used
+  // by calling |SSL_CTX_set_max_proto_version| with a non-zero value.
   bool conf_max_version_use_default : 1;
 
   // conf_min_version_use_default indicates whether the |SSL_CTX| is configured
   // to use the default minimum protocol version for the relevant protocol
-  // method. By default, |SSL_CTX_new| will set this to true and connections will
-  // use the default min version. callers can change the min version used by calling
-  // |SSL_CTX_set_min_proto_version| with a non-zero value.
+  // method. By default, |SSL_CTX_new| will set this to true and connections
+  // will use the default min version. callers can change the min version used
+  // by calling |SSL_CTX_set_min_proto_version| with a non-zero value.
   bool conf_min_version_use_default : 1;
 
  private:
@@ -4133,7 +4140,8 @@ struct ssl_st {
 
   uint16_t max_send_fragment = 0;
 
-  size_t read_ahead_buffer_size = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
+  size_t read_ahead_buffer_size =
+      SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
 
   // There are 2 BIO's even though they are normally both the same. This is so
   // data can be read and written to different handlers
@@ -4218,8 +4226,8 @@ struct ssl_st {
   bool enable_early_data : 1;
 
   // enable_read_ahead indicates whether the |SSL| is configured to read as much
-  // as will fit in the SSLBuffer from the BIO, or just enough to read the record
-  // header and then the length of the body
+  // as will fit in the SSLBuffer from the BIO, or just enough to read the
+  // record header and then the length of the body
   bool enable_read_ahead : 1;
 };
 

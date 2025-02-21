@@ -13,9 +13,9 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <algorithm>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 #include <openssl/bio.h>
 #include <openssl/conf.h>
@@ -385,7 +385,7 @@ TEST(ConfTest, ParseList) {
        /*remove_whitespace=*/1,
        {"ab cd", "", "ef gh"}},
   };
-  for (const auto& t : kTests) {
+  for (const auto &t : kTests) {
     SCOPED_TRACE(t.list);
     SCOPED_TRACE(t.sep);
     SCOPED_TRACE(t.remove_whitespace);

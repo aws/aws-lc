@@ -62,8 +62,8 @@
 #include <openssl/evp.h>
 #include <openssl/obj.h>
 
-#include "../fipsmodule/pqdsa/internal.h"
 #include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 #include "internal.h"
 
 // Restrict the digests that are allowed in X509 certificates
@@ -99,7 +99,8 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   }
 
   if (EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) {
-    return X509_ALGOR_set0(algor, OBJ_nid2obj(pkey->pkey.pqdsa_key->pqdsa->nid), V_ASN1_UNDEF, NULL);
+    return X509_ALGOR_set0(algor, OBJ_nid2obj(pkey->pkey.pqdsa_key->pqdsa->nid),
+                           V_ASN1_UNDEF, NULL);
   }
 
   // Default behavior: look up the OID for the algorithm/hash pair and encode
@@ -142,7 +143,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
   if (pkey_nid != EVP_PKEY_id(pkey) &&
       !(sigalg_nid == NID_rsassaPss && pkey_nid == NID_rsaEncryption &&
         EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) &&
-       !(sigalg_nid == NID_MLDSA65 && pkey_nid == NID_MLDSA65 &&
+      !(sigalg_nid == NID_MLDSA65 && pkey_nid == NID_MLDSA65 &&
         EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA)) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;

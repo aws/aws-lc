@@ -44,7 +44,5 @@ int rand_fork_unsafe_buffering_enabled(void) {
   return ret;
 }
 #else
-int rand_fork_unsafe_buffering_enabled(void) {
-  return 0;
-}
+int rand_fork_unsafe_buffering_enabled(void) { return 0; }
 #endif

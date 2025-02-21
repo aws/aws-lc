@@ -317,10 +317,13 @@ std::vector<Flag> SortedFlags() {
       BoolFlag("-use-ticket-callback", &TestConfig::use_ticket_callback),
       BoolFlag("-renew-ticket", &TestConfig::renew_ticket),
       BoolFlag("-enable-early-data", &TestConfig::enable_early_data),
-      BoolFlag("-enable-client-custom-extension", &TestConfig::enable_client_custom_extension),
-      BoolFlag("-enable-server-custom-extension", &TestConfig::enable_server_custom_extension),
+      BoolFlag("-enable-client-custom-extension",
+               &TestConfig::enable_client_custom_extension),
+      BoolFlag("-enable-server-custom-extension",
+               &TestConfig::enable_server_custom_extension),
       BoolFlag("-custom-extension-skip", &TestConfig::custom_extension_skip),
-      BoolFlag("-custom-extension-fail-add", &TestConfig::custom_extension_fail_add),
+      BoolFlag("-custom-extension-fail-add",
+               &TestConfig::custom_extension_fail_add),
       Base64Flag("-ocsp-response", &TestConfig::ocsp_response),
       Base64Flag("-expect-ocsp-response", &TestConfig::expect_ocsp_response),
       BoolFlag("-check-close-notify", &TestConfig::check_close_notify),
@@ -422,11 +425,12 @@ std::vector<Flag> SortedFlags() {
               &TestConfig::early_write_after_message),
       BoolFlag("-check-ssl-transfer", &TestConfig::check_ssl_transfer),
       BoolFlag("-do-ssl-transfer", &TestConfig::do_ssl_transfer),
-      IntFlag("-read-ahead-buffer-size",
-          &TestConfig::read_ahead_buffer_size),
-      StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
+      IntFlag("-read-ahead-buffer-size", &TestConfig::read_ahead_buffer_size),
+      StringFlag("-ssl-fuzz-seed-path-prefix",
+                 &TestConfig::ssl_fuzz_seed_path_prefix),
       StringFlag("-tls13-ciphersuites", &TestConfig::tls13_ciphersuites),
-      StringPairVectorFlag("-multiple-certs-slot", &TestConfig::multiple_certs_slot),
+      StringPairVectorFlag("-multiple-certs-slot",
+                           &TestConfig::multiple_certs_slot),
       BoolFlag("-no-check-client-certificate-type",
                &TestConfig::no_check_client_certificate_type),
   };
@@ -462,10 +466,8 @@ bool RemovePrefix(const char **str, const char *prefix) {
 
 }  // namespace
 
-bool ParseConfig(int argc, char **argv, bool is_shim,
-                 TestConfig *out_initial,
-                 TestConfig *out_resume,
-                 TestConfig *out_retry) {
+bool ParseConfig(int argc, char **argv, bool is_shim, TestConfig *out_initial,
+                 TestConfig *out_resume, TestConfig *out_retry) {
   for (int i = 0; i < argc; i++) {
     bool skip = false;
     const char *arg = argv[i];
@@ -878,8 +880,7 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
 
   if (!config->expect_advertised_alpn.empty() &&
       (config->expect_advertised_alpn.size() != inlen ||
-       OPENSSL_memcmp(config->expect_advertised_alpn.data(), in, inlen) !=
-           0)) {
+       OPENSSL_memcmp(config->expect_advertised_alpn.data(), in, inlen) != 0)) {
     fprintf(stderr, "bad ALPN select callback inputs.\n");
     exit(1);
   }
@@ -1438,8 +1439,7 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
     return ssl_select_cert_error;
   }
 
-  if (config->use_early_callback &&
-      !InstallMultipleCertificates(ssl) &&
+  if (config->use_early_callback && !InstallMultipleCertificates(ssl) &&
       !InstallCertificate(ssl)) {
     return ssl_select_cert_error;
   }
@@ -1499,11 +1499,8 @@ static int SendQuicAlert(SSL *ssl, enum ssl_encryption_level_t level,
 }
 
 static const SSL_QUIC_METHOD g_quic_method = {
-    SetQuicReadSecret,
-    SetQuicWriteSecret,
-    AddQuicHandshakeData,
-    FlushQuicFlight,
-    SendQuicAlert,
+    SetQuicReadSecret, SetQuicWriteSecret, AddQuicHandshakeData,
+    FlushQuicFlight,   SendQuicAlert,
 };
 
 static bool MaybeInstallCertCompressionAlg(
@@ -1535,8 +1532,8 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   if (!SSL_CTX_set_strict_cipher_list(ssl_ctx.get(), cipher_list.c_str())) {
     return nullptr;
   }
-  if (!tls13_ciphersuites.empty()
-     && !SSL_CTX_set_ciphersuites(ssl_ctx.get(), tls13_ciphersuites.c_str())) {
+  if (!tls13_ciphersuites.empty() &&
+      !SSL_CTX_set_ciphersuites(ssl_ctx.get(), tls13_ciphersuites.c_str())) {
     return nullptr;
   }
 
@@ -1656,8 +1653,8 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   if (use_ocsp_callback) {
     SSL_CTX_set_tlsext_status_cb(ssl_ctx.get(), LegacyOCSPCallback);
     int (*cb)(SSL *, void *) = nullptr;
-    if(!SSL_CTX_get_tlsext_status_cb(ssl_ctx.get(), &cb) ||
-        cb != LegacyOCSPCallback){
+    if (!SSL_CTX_get_tlsext_status_cb(ssl_ctx.get(), &cb) ||
+        cb != LegacyOCSPCallback) {
       return nullptr;
     }
   }
@@ -2014,12 +2011,10 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (enable_signed_cert_timestamps) {
     SSL_enable_signed_cert_timestamps(ssl.get());
   }
-  if (min_version != 0 &&
-      !SSL_set_min_proto_version(ssl.get(), min_version)) {
+  if (min_version != 0 && !SSL_set_min_proto_version(ssl.get(), min_version)) {
     return nullptr;
   }
-  if (max_version != 0 &&
-      !SSL_set_max_proto_version(ssl.get(), max_version)) {
+  if (max_version != 0 && !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return nullptr;
   }
   if (mtu != 0) {
@@ -2147,8 +2142,8 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
 
     bssl::UniquePtr<CRYPTO_BUFFER> dc_buf(
         CRYPTO_BUFFER_new_from_CBS(&dc_cbs, nullptr));
-    if (!SSL_set1_delegated_credential(ssl.get(), dc_buf.get(),
-                                      priv.get(), nullptr)) {
+    if (!SSL_set1_delegated_credential(ssl.get(), dc_buf.get(), priv.get(),
+                                       nullptr)) {
       fprintf(stderr, "SSL_set1_delegated_credential failed.\n");
       return nullptr;
     }

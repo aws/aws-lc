@@ -13,24 +13,17 @@ extern "C" {
 
 // KEM_METHOD structure and helper functions.
 typedef struct {
-  int (*keygen_deterministic)(uint8_t *ctx,
-                              uint8_t *pkey,
-                              const uint8_t *seed);
+  int (*keygen_deterministic)(uint8_t *ctx, uint8_t *pkey, const uint8_t *seed);
 
-  int (*keygen)(uint8_t *public_key,
-                uint8_t *secret_key);
+  int (*keygen)(uint8_t *public_key, uint8_t *secret_key);
 
-  int (*encaps_deterministic)(uint8_t *ciphertext,
-                              uint8_t *shared_secret,
-                              const uint8_t *public_key,
-                              const uint8_t *seed);
+  int (*encaps_deterministic)(uint8_t *ciphertext, uint8_t *shared_secret,
+                              const uint8_t *public_key, const uint8_t *seed);
 
-  int (*encaps)(uint8_t *ciphertext,
-                uint8_t *shared_secret,
+  int (*encaps)(uint8_t *ciphertext, uint8_t *shared_secret,
                 const uint8_t *public_key);
 
-  int (*decaps)(uint8_t *shared_secret,
-                const uint8_t *ciphertext,
+  int (*decaps)(uint8_t *shared_secret, const uint8_t *ciphertext,
                 const uint8_t *secret_key);
 } KEM_METHOD;
 
@@ -61,7 +54,7 @@ const KEM *KEM_find_kem_by_nid(int nid);
 KEM_KEY *KEM_KEY_new(void);
 int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
 void KEM_KEY_free(KEM_KEY *key);
-const KEM *KEM_KEY_get0_kem(KEM_KEY* key);
+const KEM *KEM_KEY_get0_kem(KEM_KEY *key);
 
 // KEM_KEY_set_raw_public_key function allocates the public key buffer
 // within the given |key| and copies the contents of |in| to it.
@@ -85,10 +78,10 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in);
 //       that the pointers are valid and |in_public| and |in_secret|
 //       have the correct size.
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
-                                      const uint8_t *in_secret);
+                        const uint8_t *in_secret);
 
 #if defined(__cplusplus)
 }  // extern C
 #endif
 
-#endif // AWSLC_HEADER_KEM_TEST_INTERNAL_H
+#endif  // AWSLC_HEADER_KEM_TEST_INTERNAL_H

@@ -46,23 +46,23 @@ void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
 }
 
 void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
-  InitializeSRWLock((SRWLOCK *) lock);
+  InitializeSRWLock((SRWLOCK *)lock);
 }
 
 void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
-  AcquireSRWLockShared((SRWLOCK *) lock);
+  AcquireSRWLockShared((SRWLOCK *)lock);
 }
 
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
-  AcquireSRWLockExclusive((SRWLOCK *) lock);
+  AcquireSRWLockExclusive((SRWLOCK *)lock);
 }
 
 void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock) {
-  ReleaseSRWLockShared((SRWLOCK *) lock);
+  ReleaseSRWLockShared((SRWLOCK *)lock);
 }
 
 void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock) {
-  ReleaseSRWLockExclusive((SRWLOCK *) lock);
+  ReleaseSRWLockExclusive((SRWLOCK *)lock);
 }
 
 void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
@@ -113,7 +113,7 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
     return;
   }
 
-  void **pointers = (void**) TlsGetValue(g_thread_local_key);
+  void **pointers = (void **)TlsGetValue(g_thread_local_key);
   if (pointers == NULL) {
     return;
   }
@@ -149,12 +149,10 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
 #define STRINGIFY(x) #x
 #define EXPAND_AND_STRINGIFY(x) STRINGIFY(x)
 #ifdef _WIN64
-__pragma(comment(linker, "/INCLUDE:_tls_used"))
-__pragma(comment(
+__pragma(comment(linker, "/INCLUDE:_tls_used")) __pragma(comment(
     linker, "/INCLUDE:" EXPAND_AND_STRINGIFY(p_thread_callback_boringssl)))
 #else
-__pragma(comment(linker, "/INCLUDE:__tls_used"))
-__pragma(comment(
+__pragma(comment(linker, "/INCLUDE:__tls_used")) __pragma(comment(
     linker, "/INCLUDE:_" EXPAND_AND_STRINGIFY(p_thread_callback_boringssl)))
 #endif
 
@@ -178,9 +176,9 @@ __pragma(comment(
 
 // .CRT section is merged with .rdata on x64 so it must be constant data.
 #pragma const_seg(".CRT$XLC")
-// When defining a const variable, it must have external linkage to be sure the
-// linker doesn't discard it.
-extern const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl;
+    // When defining a const variable, it must have external linkage to be sure
+    // the linker doesn't discard it.
+    extern const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl;
 const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 // Reset the default section.
 #pragma const_seg()
@@ -188,7 +186,7 @@ const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 #else
 
 #pragma data_seg(".CRT$XLC")
-PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
+    PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 // Reset the default section.
 #pragma data_seg()
 

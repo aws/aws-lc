@@ -88,12 +88,13 @@ OPENSSL_EXPORT int cbb_add_latin1(CBB *cbb, uint32_t u);
 OPENSSL_EXPORT int cbb_add_ucs2_be(CBB *cbb, uint32_t u);
 OPENSSL_EXPORT int cbb_add_utf32_be(CBB *cbb, uint32_t u);
 
-// cbs_get_any_asn1_element parses an ASN.1 element from |cbs|. |*out_indefinite|
-// is set to one if the length was indefinite and zero otherwise. On success,
-// if the length is indefinite |out| will only contain the ASN.1 header,
-// otherwise is will contain both the header and the content. If |out_tag| is
-// not NULL, |*out_tag| is set to the element's tag number. If |out_header_len|
-// is not NULL, |*out_header_len| is set to the length of the header.
+// cbs_get_any_asn1_element parses an ASN.1 element from |cbs|.
+// |*out_indefinite| is set to one if the length was indefinite and zero
+// otherwise. On success, if the length is indefinite |out| will only contain
+// the ASN.1 header, otherwise is will contain both the header and the content.
+// If |out_tag| is not NULL, |*out_tag| is set to the element's tag number. If
+// |out_header_len| is not NULL, |*out_header_len| is set to the length of the
+// header.
 //
 // If |ber_ok| is one, BER encoding is permitted. In this case, if
 // |out_ber_found| is not NULL and BER-specific encoding was found,
@@ -106,8 +107,9 @@ OPENSSL_EXPORT int cbb_add_utf32_be(CBB *cbb, uint32_t u);
 //
 // It returns one on success and zero on failure.
 int cbs_get_any_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
-                                      size_t *out_header_len, int *out_ber_found,
-                                      int *out_indefinite, int ber_ok, int universal_tag_ok);
+                             size_t *out_header_len, int *out_ber_found,
+                             int *out_indefinite, int ber_ok,
+                             int universal_tag_ok);
 
 #if defined(__cplusplus)
 }  // extern C

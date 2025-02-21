@@ -133,8 +133,8 @@
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
 #elif !defined(AWS_LC_STDALIGN_AVAILABLE)
-#define alignas(x) __attribute__ ((aligned (x)))
-#define alignof(x) __alignof__ (x)
+#define alignas(x) __attribute__((aligned(x)))
+#define alignof(x) __alignof__(x)
 #else
 #include <stdalign.h>
 #endif
@@ -185,18 +185,18 @@ typedef __uint128_t uint128_t;
 #elif defined(__cplusplus) && __cplusplus >= 201103L && defined(__GNUC__) && \
     __GNUC__ >= 7
 #define OPENSSL_FALLTHROUGH [[gnu::fallthrough]]
-#elif defined(__GNUC__) && __GNUC__ >= 7 // gcc 7
-#define OPENSSL_FALLTHROUGH __attribute__ ((fallthrough))
+#elif defined(__GNUC__) && __GNUC__ >= 7  // gcc 7
+#define OPENSSL_FALLTHROUGH __attribute__((fallthrough))
 #elif defined(__clang__)
 #if __has_attribute(fallthrough) && __clang_major__ >= 5
 // Clang 3.5, at least, complains about "error: declaration does not declare
 // anything", possibily because we put a semicolon after this macro in
 // practice. Thus limit it to >= Clang 5, which does work.
-#define OPENSSL_FALLTHROUGH __attribute__ ((fallthrough))
-#else // clang versions that do not support fallthrough.
+#define OPENSSL_FALLTHROUGH __attribute__((fallthrough))
+#else  // clang versions that do not support fallthrough.
 #define OPENSSL_FALLTHROUGH
 #endif
-#else // C++11 on gcc 6, and all other cases
+#else  // C++11 on gcc 6, and all other cases
 #define OPENSSL_FALLTHROUGH
 #endif
 
@@ -378,7 +378,7 @@ static inline crypto_word_t constant_time_lt_w(crypto_word_t a,
   // (assert (not (= (= #x00000001 (bvlshr (lt a b) #x0000001f)) (bvult a b))))
   // (check-sat)
   // (get-model)
-  return constant_time_msb_w(a^((a^b)|((a-b)^a)));
+  return constant_time_msb_w(a ^ ((a ^ b) | ((a - b) ^ a)));
 }
 
 // constant_time_lt_8 acts like |constant_time_lt_w| but returns an 8-bit
@@ -409,9 +409,8 @@ static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   //
   // (declare-fun a () (_ BitVec 32))
   //
-  // (assert (not (= (= #x00000001 (bvlshr (is_zero a) #x0000001f)) (= a #x00000000))))
-  // (check-sat)
-  // (get-model)
+  // (assert (not (= (= #x00000001 (bvlshr (is_zero a) #x0000001f)) (= a
+  // #x00000000)))) (check-sat) (get-model)
   return constant_time_msb_w(~a & (a - 1));
 }
 
@@ -476,37 +475,46 @@ static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
 
 // constant_time_select_array_w applies |constant_time_select_w| on each
 // corresponding pair of elements of a and b.
-static inline void constant_time_select_array_w(
-        crypto_word_t *c, crypto_word_t *a, crypto_word_t *b,
-        crypto_word_t mask, size_t len) {
+static inline void constant_time_select_array_w(crypto_word_t *c,
+                                                crypto_word_t *a,
+                                                crypto_word_t *b,
+                                                crypto_word_t mask,
+                                                size_t len) {
   for (size_t i = 0; i < len; i++) {
     c[i] = constant_time_select_w(mask, a[i], b[i]);
   }
 }
 
-static inline void constant_time_select_array_8(
-        uint8_t *c, uint8_t *a, uint8_t *b, uint8_t mask, size_t len) {
+static inline void constant_time_select_array_8(uint8_t *c, uint8_t *a,
+                                                uint8_t *b, uint8_t mask,
+                                                size_t len) {
   for (size_t i = 0; i < len; i++) {
     c[i] = constant_time_select_8(mask, a[i], b[i]);
   }
 }
 
 // constant_time_select_entry_from_table_w selects the idx-th entry from table.
-static inline void constant_time_select_entry_from_table_w(
-        crypto_word_t *out, crypto_word_t *table,
-        size_t idx, size_t num_entries, size_t entry_size) {
+static inline void constant_time_select_entry_from_table_w(crypto_word_t *out,
+                                                           crypto_word_t *table,
+                                                           size_t idx,
+                                                           size_t num_entries,
+                                                           size_t entry_size) {
   for (size_t i = 0; i < num_entries; i++) {
     crypto_word_t mask = constant_time_eq_w(i, idx);
-    constant_time_select_array_w(out, &table[i * entry_size], out, mask, entry_size);
+    constant_time_select_array_w(out, &table[i * entry_size], out, mask,
+                                 entry_size);
   }
 }
 
-static inline void constant_time_select_entry_from_table_8(
-        uint8_t *out, uint8_t *table, size_t idx,
-        size_t num_entries, size_t entry_size) {
+static inline void constant_time_select_entry_from_table_8(uint8_t *out,
+                                                           uint8_t *table,
+                                                           size_t idx,
+                                                           size_t num_entries,
+                                                           size_t entry_size) {
   for (size_t i = 0; i < num_entries; i++) {
     uint8_t mask = (uint8_t)(constant_time_eq_w(i, idx));
-    constant_time_select_array_8(out, &table[i * entry_size], out, mask, entry_size);
+    constant_time_select_array_8(out, &table[i * entry_size], out, mask,
+                                 entry_size);
   }
 }
 
@@ -548,7 +556,7 @@ static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
 
 static inline int constant_time_declassify_int(int v) {
   OPENSSL_STATIC_ASSERT(sizeof(uint32_t) == sizeof(int),
-                int_is_not_the_same_size_as_uint32_t);
+                        int_is_not_the_same_size_as_uint32_t);
   // See comment above.
   CONSTTIME_DECLASSIFY(&v, sizeof(v));
   return value_barrier_u32(v);
@@ -646,17 +654,17 @@ OPENSSL_EXPORT int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count);
 struct CRYPTO_STATIC_MUTEX {
   char padding;  // Empty structs have different sizes in C and C++.
 };
-#define CRYPTO_STATIC_MUTEX_INIT { 0 }
+#define CRYPTO_STATIC_MUTEX_INIT {0}
 #elif defined(OPENSSL_WINDOWS_THREADS)
 struct CRYPTO_STATIC_MUTEX {
   SRWLOCK lock;
 };
-#define CRYPTO_STATIC_MUTEX_INIT { SRWLOCK_INIT }
+#define CRYPTO_STATIC_MUTEX_INIT {SRWLOCK_INIT}
 #elif defined(OPENSSL_PTHREADS)
 struct CRYPTO_STATIC_MUTEX {
   pthread_rwlock_t lock;
 };
-#define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
+#define CRYPTO_STATIC_MUTEX_INIT {PTHREAD_RWLOCK_INITIALIZER}
 #else
 #error "Unknown threading library"
 #endif
@@ -800,7 +808,7 @@ typedef struct {
 
 #define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, 0}
 #define CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA \
-    {CRYPTO_STATIC_MUTEX_INIT, NULL, 1}
+  {CRYPTO_STATIC_MUTEX_INIT, NULL, 1}
 
 // CRYPTO_get_ex_new_index allocates a new index for |ex_data_class| and writes
 // it to |*out_index|. Each class of object should provide a wrapper function
@@ -857,21 +865,13 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <stdlib.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #pragma intrinsic(_byteswap_uint64, _byteswap_ulong, _byteswap_ushort)
-static inline uint16_t CRYPTO_bswap2(uint16_t x) {
-  return _byteswap_ushort(x);
-}
+static inline uint16_t CRYPTO_bswap2(uint16_t x) { return _byteswap_ushort(x); }
 
-static inline uint32_t CRYPTO_bswap4(uint32_t x) {
-  return _byteswap_ulong(x);
-}
+static inline uint32_t CRYPTO_bswap4(uint32_t x) { return _byteswap_ulong(x); }
 
-static inline uint64_t CRYPTO_bswap8(uint64_t x) {
-  return _byteswap_uint64(x);
-}
+static inline uint64_t CRYPTO_bswap8(uint64_t x) { return _byteswap_uint64(x); }
 #else
-static inline uint16_t CRYPTO_bswap2(uint16_t x) {
-  return (x >> 8) | (x << 8);
-}
+static inline uint16_t CRYPTO_bswap2(uint16_t x) { return (x >> 8) | (x << 8); }
 
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   x = (x >> 16) | (x << 16);
@@ -1019,7 +1019,6 @@ static inline void CRYPTO_store_u32_le(void *out, uint32_t v) {
   v = CRYPTO_bswap4(v);
 #endif
   OPENSSL_memcpy(out, &v, sizeof(v));
-
 }
 
 static inline uint32_t CRYPTO_load_u32_be(const void *in) {
@@ -1033,12 +1032,10 @@ static inline uint32_t CRYPTO_load_u32_be(const void *in) {
 }
 
 static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
-
 #if !defined(OPENSSL_BIG_ENDIAN)
   v = CRYPTO_bswap4(v);
 #endif
   OPENSSL_memcpy(out, &v, sizeof(v));
-
 }
 
 static inline uint64_t CRYPTO_load_u64_le(const void *in) {
@@ -1056,7 +1053,6 @@ static inline void CRYPTO_store_u64_le(void *out, uint64_t v) {
   v = CRYPTO_bswap8(v);
 #endif
   OPENSSL_memcpy(out, &v, sizeof(v));
-
 }
 
 static inline uint64_t CRYPTO_load_u64_be(const void *ptr) {
@@ -1075,11 +1071,9 @@ static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
   v = CRYPTO_bswap8(v);
 #endif
   OPENSSL_memcpy(out, &v, sizeof(v));
-
 }
 
 static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
-
   crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
 #if defined(OPENSSL_BIG_ENDIAN)
@@ -1090,13 +1084,10 @@ static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
 }
 
 static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
-
-
 #if defined(OPENSSL_BIG_ENDIAN)
   v = CRYPTO_bswap_word(v);
 #endif
   OPENSSL_memcpy(out, &v, sizeof(v));
-
 }
 
 static inline crypto_word_t CRYPTO_load_word_be(const void *in) {
@@ -1273,9 +1264,9 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 // fails. If the library is built in FIPS mode it prevents any further
 // cryptographic operations by the current process.
 #if defined(_MSC_VER)
-__declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
+__declspec(noreturn) void AWS_LC_FIPS_failure(const char *message);
 #else
-void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
+void AWS_LC_FIPS_failure(const char *message) __attribute__((noreturn));
 #endif
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
@@ -1331,14 +1322,14 @@ OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
 
 // Outside of FIPS mode AWS_LC_FIPS_failure simply logs the message to stderr
-void AWS_LC_FIPS_failure(const char* message);
+void AWS_LC_FIPS_failure(const char *message);
 
 #endif  // FIPS
 
 // boringssl_self_test_sha256 performs a SHA-256 KAT
 int boringssl_self_test_sha256(void);
 
-  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
+// boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
 int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
@@ -1353,9 +1344,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
   return value != NULL && strcmp(value, test) == 0;
 }
 #else
-OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
-  return 0;
-}
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) { return 0; }
 #endif  // BORINGSSL_FIPS_BREAK_TESTS
 
 #if defined(BORINGSSL_DISPATCH_TEST)
@@ -1403,11 +1392,11 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 
 // If |cond| is false |action| is invoked, otherwise nothing happens.
 #define __AWS_LC_ENSURE(cond, action) \
-    do {                           \
-        if (!(cond)) {             \
-            action;                \
-        }                          \
-    } while (0)
+  do {                                \
+    if (!(cond)) {                    \
+      action;                         \
+    }                                 \
+  } while (0)
 
 #define AWS_LC_ERROR 0
 #define AWS_LC_SUCCESS 1
@@ -1417,8 +1406,10 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 //
 // NOTE: this macro should only be used with functions that return 0 (for error)
 // and 1 (for success).
-#define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
-                                       return AWS_LC_ERROR)
+#define GUARD_PTR(ptr)                                                    \
+  __AWS_LC_ENSURE((ptr) != NULL,                                          \
+                  OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
+                  return AWS_LC_ERROR)
 
 #if defined(__cplusplus)
 }  // extern C

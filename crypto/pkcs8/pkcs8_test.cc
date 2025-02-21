@@ -55,7 +55,8 @@ static const uint8_t kEncryptedPBES2WithDESAndSHA1[] = {
 };
 
 // kEncryptedPBES2WithAESAndSHA256 is a PKCS#8 encrypted private key using PBES2
-// with AES-128-CBC and HMAC-SHA-256 and a password of "testing". It was generated with:
+// with AES-128-CBC and HMAC-SHA-256 and a password of "testing". It was
+// generated with:
 //
 // clang-format off
 //
@@ -270,41 +271,41 @@ TEST(PKCS8Test, DecryptExplicitHMACWithSHA1) {
 
 TEST(PKCS8Test, RoundTripPBEWithrSHA1And3KeyTripleDES) {
   // Test with different salts.
-  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                "password", nullptr, 0, 10);
-  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                "password", nullptr, 4, 10);
-  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                "password", (const uint8_t *)"salt", 4, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "password",
+                nullptr, 0, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "password",
+                nullptr, 4, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "password",
+                (const uint8_t *)"salt", 4, 10);
   // Test with a different iteration count.
-  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                "password", nullptr, 0, 1);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "password",
+                nullptr, 0, 1);
 }
 
 // Test that both "" (empty password, encoded as "\0\0") and nullptr (no
 // password, encoded as "") work.
 TEST(PKCS8Test, RoundTripPBEWithSHA1And3KeyTripleDESEmptyPassword) {
-  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "",
-                nullptr, 0, 1);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "", nullptr, 0,
+                1);
   TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, nullptr,
                 nullptr, 0, 1);
 }
 
 TEST(PKCS8Test, RoundTripPBEWithSHA1And40BitRC2CBC) {
-  TestRoundTrip(NID_pbe_WithSHA1And40BitRC2_CBC, nullptr, "password",
-                nullptr, 0, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And40BitRC2_CBC, nullptr, "password", nullptr,
+                0, 10);
 }
 
 TEST(PKCS8Test, RoundTripPBEWithSHA1And128BitRC4) {
-  TestRoundTrip(NID_pbe_WithSHA1And128BitRC4, nullptr, "password",
-                nullptr, 0, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And128BitRC4, nullptr, "password", nullptr, 0,
+                10);
 }
 
 TEST(PKCS8Test, RoundTripPBES2) {
   TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 10);
   TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 4, 10);
-  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", (const uint8_t *)"salt",
-                4, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", (const uint8_t *)"salt", 4,
+                10);
   TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 1);
   TestRoundTrip(-1, EVP_rc2_cbc(), "password", nullptr, 0, 10);
 }

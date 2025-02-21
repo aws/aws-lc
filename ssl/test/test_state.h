@@ -66,7 +66,7 @@ struct TestState {
   // completion. This tests that the callback is not called again after this.
   bool cert_verified = false;
   int explicit_renegotiates = 0;
-  std::function<bool(const SSL_CLIENT_HELLO*)> get_handshake_hints_cb;
+  std::function<bool(const SSL_CLIENT_HELLO *)> get_handshake_hints_cb;
   int last_message_received = -1;
 };
 

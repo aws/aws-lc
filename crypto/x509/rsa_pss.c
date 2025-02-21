@@ -250,7 +250,8 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
     goto err;
   }
 
-  if (!X509_ALGOR_set0(algor, OBJ_nid2obj(NID_rsassaPss), V_ASN1_SEQUENCE, os)) {
+  if (!X509_ALGOR_set0(algor, OBJ_nid2obj(NID_rsassaPss), V_ASN1_SEQUENCE,
+                       os)) {
     goto err;
   }
   os = NULL;

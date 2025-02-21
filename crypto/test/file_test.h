@@ -113,7 +113,7 @@ class FileTest {
     // successful runs.
     bool silent = false;
     // comment_callback is called after each comment in the input is parsed.
-    std::function<void(const std::string&)> comment_callback;
+    std::function<void(const std::string &)> comment_callback;
     // is_kas_test is true if a NIST “KAS” test is being parsed. These tests
     // are inconsistent with the other NIST files to such a degree that they
     // need their own boolean.
@@ -243,7 +243,7 @@ class FileTest {
 
   // comment_callback_, if set, is a callback function that is called with the
   // contents of each comment as they are parsed.
-  std::function<void(const std::string&)> comment_callback_;
+  std::function<void(const std::string &)> comment_callback_;
 
   FileTest(const FileTest &) = delete;
   FileTest &operator=(const FileTest &) = delete;

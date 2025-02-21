@@ -57,13 +57,13 @@
 
 #include <openssl/err.h>
 
-#include "../pqdsa/internal.h"
 #include "../delocate.h"
 #include "../digest/internal.h"
+#include "../pqdsa/internal.h"
 #include "internal.h"
 
 #if defined(NDEBUG)
-#define CHECK(x) (void) (x)
+#define CHECK(x) (void)(x)
 #else
 #define CHECK(x) assert(x)
 #endif
@@ -80,7 +80,8 @@ DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
   // Pre-hash modes of ML-DSA that uses an external mu calculation differs from
-  // other signing algorithms, so we specifically check for NIDs of type NID_MLDSAXX.
+  // other signing algorithms, so we specifically check for NIDs of type
+  // NID_MLDSAXX.
   if (ctx->pctx->pkey->type == EVP_PKEY_PQDSA &&
       ctx->pctx->pkey->pkey.pqdsa_key != NULL) {
     int nid = ctx->pctx->pkey->pkey.pqdsa_key->pqdsa->nid;
@@ -90,8 +91,8 @@ static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
     }
   }
 
-    return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
-                            : (ctx->pctx->pmeth->verify != NULL);
+  return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
+                          : (ctx->pctx->pmeth->verify != NULL);
 }
 
 static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -366,7 +367,7 @@ void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
 
 EVP_PKEY_CTX *EVP_MD_CTX_get_pkey_ctx(const EVP_MD_CTX *ctx) {
   SET_DIT_AUTO_RESET;
-  if(ctx == NULL) {
+  if (ctx == NULL) {
     return NULL;
   }
   return ctx->pctx;

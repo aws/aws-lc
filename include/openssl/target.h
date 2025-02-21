@@ -104,9 +104,8 @@
 //
 // TODO(b/291101350): Remove this workaround once Android baremetal no longer
 // defines it.
-#if defined(__linux__) && \
-    !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC) && \
-    !defined(CROS_EC) && !defined(CROS_ZEPHYR)
+#if defined(__linux__) && !defined(ANDROID_BAREMETAL) && \
+    !defined(OPENSSL_NANOLIBC) && !defined(CROS_EC) && !defined(CROS_ZEPHYR)
 #define OPENSSL_LINUX
 #endif
 

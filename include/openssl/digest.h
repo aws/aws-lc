@@ -177,7 +177,8 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 // length of the hash in bytes, before any truncation (e.g., 32 for SHA-224 and
 // SHA-256, 64 for SHA-384 and SHA-512).
 // This constant is only used internally by HMAC.
-#define EVP_MAX_MD_CHAINING_LENGTH 64  // SHA-512 has the longest chaining length so far
+#define EVP_MAX_MD_CHAINING_LENGTH \
+  64  // SHA-512 has the longest chaining length so far
 
 // EVP_MAX_MD_BLOCK_SIZE is the largest digest block size supported, in
 // bytes.

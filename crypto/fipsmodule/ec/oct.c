@@ -150,7 +150,7 @@ int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
 }
 
 static int ec_point_from_hybrid(const EC_GROUP *group, EC_AFFINE *out,
-                               const uint8_t *in, size_t len) {
+                                const uint8_t *in, size_t len) {
   const size_t field_len = BN_num_bytes(&group->field.N);
   // |POINT_CONVERSION_HYBRID| has the solution of y encoded in the first byte
   // as well.
@@ -277,7 +277,7 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
 
   // OpenSSL encodes infinity to a single 0 octet.
   if (ec_GFp_simple_is_at_infinity(group, &point->raw)) {
-    if(buf != NULL) {
+    if (buf != NULL) {
       if (len < 1) {
         OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
         return 0;
@@ -333,8 +333,7 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
   BIGNUM *a = BN_CTX_get(ctx);
   BIGNUM *b = BN_CTX_get(ctx);
   BIGNUM *y = BN_CTX_get(ctx);
-  if (y == NULL ||
-      !EC_GROUP_get_curve_GFp(group, NULL, a, b, ctx)) {
+  if (y == NULL || !EC_GROUP_get_curve_GFp(group, NULL, a, b, ctx)) {
     goto err;
   }
 

@@ -33,8 +33,7 @@ const uint8_t kOpcodeTimeout = 'T';
 const uint8_t kOpcodeTimeoutAck = 't';
 
 struct PacketedBio {
-  explicit PacketedBio(timeval *clock_arg)
-      : clock(clock_arg) {
+  explicit PacketedBio(timeval *clock_arg) : clock(clock_arg) {
     OPENSSL_memset(&timeout, 0, sizeof(timeout));
   }
 
@@ -223,16 +222,9 @@ static long PacketedCallbackCtrl(BIO *bio, int cmd, bio_info_cb fp) {
 }
 
 const BIO_METHOD g_packeted_bio_method = {
-  BIO_TYPE_FILTER,
-  "packeted bio",
-  PacketedWrite,
-  PacketedRead,
-  NULL /* puts */,
-  NULL /* gets */,
-  PacketedCtrl,
-  PacketedNew,
-  PacketedFree,
-  PacketedCallbackCtrl,
+    BIO_TYPE_FILTER, "packeted bio",       PacketedWrite, PacketedRead,
+    NULL /* puts */, NULL /* gets */,      PacketedCtrl,  PacketedNew,
+    PacketedFree,    PacketedCallbackCtrl,
 };
 
 }  // namespace

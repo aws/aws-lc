@@ -17,9 +17,9 @@
 
 #include <openssl/bn.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../cpucap/internal.h"
+#include "internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -41,9 +41,7 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result[16], const BN_ULONG base_norm[16],
                             BN_ULONG k0,
                             BN_ULONG storage_words[MOD_EXP_CTIME_STORAGE_LEN]);
 
-OPENSSL_INLINE int rsaz_avx2_capable(void) {
-  return CRYPTO_is_AVX2_capable();
-}
+OPENSSL_INLINE int rsaz_avx2_capable(void) { return CRYPTO_is_AVX2_capable(); }
 
 OPENSSL_INLINE int rsaz_avx2_preferred(void) {
   if (CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable() &&
@@ -136,19 +134,12 @@ void rsaz_1024_red2norm_avx2(BN_ULONG norm[16], const BN_ULONG red[40]);
 // NB: This function does not do any checks on its arguments, its
 // caller, `BN_mod_exp_mont_consttime_x2`, checks args. It should be
 // the function used directly.
-int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
-                           const uint64_t *base1,
-                           const uint64_t *exponent1,
-                           const uint64_t *m1,
-                           const uint64_t *RR1,
-                           uint64_t k0_1,
-                           uint64_t *res2,
-                           const uint64_t *base2,
-                           const uint64_t *exponent2,
-                           const uint64_t *m2,
-                           const uint64_t *RR2,
-                           uint64_t k0_2,
-                           int modlen);
+int RSAZ_mod_exp_avx512_x2(uint64_t *res1, const uint64_t *base1,
+                           const uint64_t *exponent1, const uint64_t *m1,
+                           const uint64_t *RR1, uint64_t k0_1, uint64_t *res2,
+                           const uint64_t *base2, const uint64_t *exponent2,
+                           const uint64_t *m2, const uint64_t *RR2,
+                           uint64_t k0_2, int modlen);
 
 // Naming convention for the following functions:
 //
@@ -207,8 +198,7 @@ void rsaz_amm52x20_x2_ifma256(uint64_t *out, const uint64_t *a,
 // Extracted value (output) is 2 20 digit numbers in 2^52 radix.
 //
 // EXP_WIN_SIZE = 5
-void extract_multiplier_2x20_win5(uint64_t *red_Y,
-                                  const uint64_t *red_table,
+void extract_multiplier_2x20_win5(uint64_t *red_Y, const uint64_t *red_table,
                                   int red_table_idx1, int red_table_idx2);
 
 // Almost Montgomery Multiplication (AMM) for 30-digit number in radix
@@ -264,8 +254,7 @@ void rsaz_amm52x30_x2_ifma256(uint64_t *out, const uint64_t *a,
 // radix.  (2 high QW is zero padding)
 //
 // EXP_WIN_SIZE = 5
-void extract_multiplier_2x30_win5(uint64_t *red_Y,
-                                  const uint64_t *red_table,
+void extract_multiplier_2x30_win5(uint64_t *red_Y, const uint64_t *red_table,
                                   int red_table_idx1, int red_table_idx2);
 
 // Almost Montgomery Multiplication (AMM) for 40-digit number in radix
@@ -309,16 +298,16 @@ void rsaz_amm52x40_x2_ifma256(uint64_t *out, const uint64_t *a,
 // Constant time extraction from the precomputed table of powers base^i, where
 //    i = 0..2^EXP_WIN_SIZE-1
 //
-// The input |red_table| contains precomputations for two independent base values.
-// |red_table_idx1| and |red_table_idx2| are corresponding power indexes.
+// The input |red_table| contains precomputations for two independent base
+// values. |red_table_idx1| and |red_table_idx2| are corresponding power
+// indexes.
 //
 // Extracted value (output) is 2 40 digits numbers in 2^52 radix.
 //
 // EXP_WIN_SIZE = 5
-void extract_multiplier_2x40_win5(uint64_t *red_Y,
-                                  const uint64_t *red_table,
+void extract_multiplier_2x40_win5(uint64_t *red_Y, const uint64_t *red_table,
                                   int red_table_idx1, int red_table_idx2);
-#endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 #endif  // !OPENSSL_NO_ASM && OPENSSL_X86_64
 

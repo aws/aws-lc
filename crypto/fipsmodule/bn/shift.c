@@ -174,9 +174,7 @@ int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a, unsigned n,
   int ret = 0;
   BN_CTX_start(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  if (tmp == NULL ||
-      !BN_copy(r, a) ||
-      !bn_wexpand(tmp, r->width)) {
+  if (tmp == NULL || !BN_copy(r, a) || !bn_wexpand(tmp, r->width)) {
     goto err;
   }
 

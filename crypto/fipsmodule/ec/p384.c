@@ -13,19 +13,19 @@
 #include "../bn/internal.h"
 #include "../cpucap/internal.h"
 #include "../delocate.h"
-#include "internal.h"
 #include "ec_nistp.h"
+#include "internal.h"
 
 #if !defined(OPENSSL_SMALL)
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #else
-#  if defined(EC_NISTP_USE_64BIT_LIMB)
-#    include "../../../third_party/fiat/p384_64.h"
-#  else
-#    include "../../../third_party/fiat/p384_32.h"
-#  endif
+#if defined(EC_NISTP_USE_64BIT_LIMB)
+#include "../../../third_party/fiat/p384_64.h"
+#else
+#include "../../../third_party/fiat/p384_32.h"
+#endif
 #endif
 
 #if defined(EC_NISTP_USE_64BIT_LIMB)
@@ -48,31 +48,32 @@ static const p384_felem p384_felem_one = {
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 
-#define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
-#define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
-#define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
-#define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
+#define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
+#define p384_felem_sub(out, in0, in1) bignum_sub_p384(out, in0, in1)
+#define p384_felem_opp(out, in0) bignum_neg_p384(out, in0)
+#define p384_felem_to_bytes(out, in0) bignum_tolebytes_6(out, in0)
 #define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
-#define p384_felem_to_mont(out, in0)    bignum_tomont_p384_selector(out, in0)
-#define p384_felem_from_mont(out, in0)  bignum_deamont_p384_selector(out, in0)
-#define p384_felem_mul(out, in0, in1)   bignum_montmul_p384_selector(out, in0, in1)
-#define p384_felem_sqr(out, in0)        bignum_montsqr_p384_selector(out, in0)
+#define p384_felem_to_mont(out, in0) bignum_tomont_p384_selector(out, in0)
+#define p384_felem_from_mont(out, in0) bignum_deamont_p384_selector(out, in0)
+#define p384_felem_mul(out, in0, in1) \
+  bignum_montmul_p384_selector(out, in0, in1)
+#define p384_felem_sqr(out, in0) bignum_montsqr_p384_selector(out, in0)
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);
 }
 
-#else // EC_NISTP_USE_S2N_BIGNUM
+#else  // EC_NISTP_USE_S2N_BIGNUM
 
 // Fiat-crypto implementation of field arithmetic
-#define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
-#define p384_felem_sub(out, in0, in1)   fiat_p384_sub(out, in0, in1)
-#define p384_felem_opp(out, in0)        fiat_p384_opp(out, in0)
-#define p384_felem_mul(out, in0, in1)   fiat_p384_mul(out, in0, in1)
-#define p384_felem_sqr(out, in0)        fiat_p384_square(out, in0)
-#define p384_felem_to_mont(out, in0)    fiat_p384_to_montgomery(out, in0)
-#define p384_felem_from_mont(out, in0)  fiat_p384_from_montgomery(out, in0)
-#define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
+#define p384_felem_add(out, in0, in1) fiat_p384_add(out, in0, in1)
+#define p384_felem_sub(out, in0, in1) fiat_p384_sub(out, in0, in1)
+#define p384_felem_opp(out, in0) fiat_p384_opp(out, in0)
+#define p384_felem_mul(out, in0, in1) fiat_p384_mul(out, in0, in1)
+#define p384_felem_sqr(out, in0) fiat_p384_square(out, in0)
+#define p384_felem_to_mont(out, in0) fiat_p384_to_montgomery(out, in0)
+#define p384_felem_from_mont(out, in0) fiat_p384_from_montgomery(out, in0)
+#define p384_felem_to_bytes(out, in0) fiat_p384_to_bytes(out, in0)
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
@@ -81,7 +82,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return ret;
 }
 
-#endif // EC_NISTP_USE_S2N_BIGNUM
+#endif  // EC_NISTP_USE_S2N_BIGNUM
 
 // The wrapper functions are needed for FIPS static build.
 // Otherwise, initializing ec_nistp_meth with pointers to s2n-bignum
@@ -107,7 +108,8 @@ static inline void p384_felem_neg_wrapper(ec_nistp_felem_limb *c,
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P384_EC_FELEM_BYTES];
-  bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words, P384_EC_FELEM_WORDS);
+  bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words,
+                            P384_EC_FELEM_WORDS);
   p384_felem_from_bytes(out, tmp);
 #else
   p384_felem_from_bytes(out, (const uint8_t *)in->words);
@@ -123,7 +125,8 @@ static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P384_EC_FELEM_BYTES];
   p384_felem_to_bytes(tmp, in);
-  bn_little_endian_to_words(out->words, P384_EC_FELEM_WORDS, tmp, P384_EC_FELEM_BYTES);
+  bn_little_endian_to_words(out->words, P384_EC_FELEM_WORDS, tmp,
+                            P384_EC_FELEM_BYTES);
 #else
   p384_felem_to_bytes((uint8_t *)out->words, in);
 #endif
@@ -132,7 +135,8 @@ static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
 static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P384_EC_FELEM_BYTES];
-  bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words, P384_EC_FELEM_WORDS);
+  bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words,
+                            P384_EC_FELEM_WORDS);
   p384_felem_from_bytes(out, tmp);
 #else
   p384_felem_from_bytes(out, (const uint8_t *)in->words);
@@ -149,8 +153,7 @@ static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
 // Hexadecimal representation of p − 3:
 // p-3 = ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe
 //       ffffffff 00000000 00000000 fffffffc
-static void p384_inv_square(p384_felem out,
-                            const p384_felem in) {
+static void p384_inv_square(p384_felem out, const p384_felem in) {
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
   ec_nistp_felem_limb in_sqr[P384_NLIMBS];
   p384_felem_sqr(in_sqr, in);
@@ -160,61 +163,62 @@ static void p384_inv_square(p384_felem out,
   // https://briansmith.org/ecc-inversion-addition-chains-01#p384_field_inversion
   // The side comments show the value of the exponent:
   // squaring the element => doubling the exponent
-  // multiplying by an element => adding to the exponent the power of that element
+  // multiplying by an element => adding to the exponent the power of that
+  // element
   p384_felem x2, x3, x6, x12, x15, x30, x60, x120;
-  p384_felem_sqr(x2, in);   // 2^2 - 2^1
+  p384_felem_sqr(x2, in);      // 2^2 - 2^1
   p384_felem_mul(x2, x2, in);  // 2^2 - 2^0
 
-  p384_felem_sqr(x3, x2);   // 2^3 - 2^1
+  p384_felem_sqr(x3, x2);      // 2^3 - 2^1
   p384_felem_mul(x3, x3, in);  // 2^3 - 2^0
 
   p384_felem_sqr(x6, x3);
   for (int i = 1; i < 3; i++) {
     p384_felem_sqr(x6, x6);
-  }                           // 2^6 - 2^3
+  }  // 2^6 - 2^3
   p384_felem_mul(x6, x6, x3);  // 2^6 - 2^0
 
   p384_felem_sqr(x12, x6);
   for (int i = 1; i < 6; i++) {
     p384_felem_sqr(x12, x12);
-  }                             // 2^12 - 2^6
+  }  // 2^12 - 2^6
   p384_felem_mul(x12, x12, x6);  // 2^12 - 2^0
 
   p384_felem_sqr(x15, x12);
   for (int i = 1; i < 3; i++) {
     p384_felem_sqr(x15, x15);
-  }                             // 2^15 - 2^3
+  }  // 2^15 - 2^3
   p384_felem_mul(x15, x15, x3);  // 2^15 - 2^0
 
   p384_felem_sqr(x30, x15);
   for (int i = 1; i < 15; i++) {
     p384_felem_sqr(x30, x30);
-  }                              // 2^30 - 2^15
+  }  // 2^30 - 2^15
   p384_felem_mul(x30, x30, x15);  // 2^30 - 2^0
 
   p384_felem_sqr(x60, x30);
   for (int i = 1; i < 30; i++) {
     p384_felem_sqr(x60, x60);
-  }                              // 2^60 - 2^30
+  }  // 2^60 - 2^30
   p384_felem_mul(x60, x60, x30);  // 2^60 - 2^0
 
   p384_felem_sqr(x120, x60);
   for (int i = 1; i < 60; i++) {
     p384_felem_sqr(x120, x120);
-  }                                // 2^120 - 2^60
+  }  // 2^120 - 2^60
   p384_felem_mul(x120, x120, x60);  // 2^120 - 2^0
 
   p384_felem ret;
   p384_felem_sqr(ret, x120);
   for (int i = 1; i < 120; i++) {
     p384_felem_sqr(ret, ret);
-  }                                // 2^240 - 2^120
-  p384_felem_mul(ret, ret, x120);   // 2^240 - 2^0
+  }  // 2^240 - 2^120
+  p384_felem_mul(ret, ret, x120);  // 2^240 - 2^0
 
   for (int i = 0; i < 15; i++) {
     p384_felem_sqr(ret, ret);
-  }                                // 2^255 - 2^15
-  p384_felem_mul(ret, ret, x15);    // 2^255 - 2^0
+  }  // 2^255 - 2^15
+  p384_felem_mul(ret, ret, x15);  // 2^255 - 2^0
 
   // Why (1 + 30) in the loop?
   // This is as expressed in:
@@ -223,16 +227,17 @@ static void p384_inv_square(p384_felem out,
   // won't add x31 to make all the new bits 1s, as was done in previous steps,
   // but we're going to add x30 so there will be 255 1s, then a 0, then 30 1s
   // to form this pattern:
-  //   ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe ffffffff
+  //   ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe
+  //   ffffffff
   // (the last 2 1s are appended in the following step).
   for (int i = 0; i < (1 + 30); i++) {
     p384_felem_sqr(ret, ret);
-  }                                // 2^286 - 2^31
-  p384_felem_mul(ret, ret, x30);    // 2^286 - 2^30 - 2^0
+  }  // 2^286 - 2^31
+  p384_felem_mul(ret, ret, x30);  // 2^286 - 2^30 - 2^0
 
   p384_felem_sqr(ret, ret);
   p384_felem_sqr(ret, ret);      // 2^288 - 2^32 - 2^2
-  p384_felem_mul(ret, ret, x2);     // 2^288 - 2^32 - 2^0
+  p384_felem_mul(ret, ret, x2);  // 2^288 - 2^32 - 2^0
 
   // Why not 94 instead of (64 + 30) in the loop?
   // Similarly to the comment above, there is a shift of 94 bits
@@ -242,20 +247,17 @@ static void p384_inv_square(p384_felem out,
   // (the last 2 0s are appended by the last 2 shifts).
   for (int i = 0; i < (64 + 30); i++) {
     p384_felem_sqr(ret, ret);
-  }                                // 2^382 - 2^126 - 2^94
-  p384_felem_mul(ret, ret, x30);    // 2^382 - 2^126 - 2^94 + 2^30 - 2^0
+  }  // 2^382 - 2^126 - 2^94
+  p384_felem_mul(ret, ret, x30);  // 2^382 - 2^126 - 2^94 + 2^30 - 2^0
 
   p384_felem_sqr(ret, ret);
-  p384_felem_sqr(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
+  p384_felem_sqr(out, ret);  // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
 #endif
 }
 
-static void p384_point_double(p384_felem x_out,
-                              p384_felem y_out,
-                              p384_felem z_out,
-                              const p384_felem x_in,
-                              const p384_felem y_in,
-                              const p384_felem z_in) {
+static void p384_point_double(p384_felem x_out, p384_felem y_out,
+                              p384_felem z_out, const p384_felem x_in,
+                              const p384_felem y_in, const p384_felem z_in) {
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
   ec_nistp_felem_limb in[P384_NLIMBS * 3];
   ec_nistp_felem_limb out[P384_NLIMBS * 3];
@@ -277,12 +279,9 @@ static void p384_point_double(p384_felem x_out,
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L467>
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L544>
 static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
-                           const p384_felem x1,
-                           const p384_felem y1,
-                           const p384_felem z1,
-                           const int mixed,
-                           const p384_felem x2,
-                           const p384_felem y2,
+                           const p384_felem x1, const p384_felem y1,
+                           const p384_felem z1, const int mixed,
+                           const p384_felem x2, const p384_felem y2,
                            const p384_felem z2) {
   ec_nistp_point_add(p384_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
@@ -291,33 +290,33 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
-    out->felem_num_limbs = P384_NLIMBS;
-    out->felem_num_bits = 384;
-    out->felem_add = p384_felem_add_wrapper;
-    out->felem_sub = p384_felem_sub_wrapper;
-    out->felem_mul = bignum_montmul_p384_selector;
-    out->felem_sqr = bignum_montsqr_p384_selector;
-    out->felem_neg = p384_felem_neg_wrapper;
-    out->felem_nz  = p384_felem_nz;
-    out->felem_one = p384_felem_one;
-    out->point_dbl = p384_point_double;
-    out->point_add = p384_point_add;
-    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p384_g_pre_comp;
+  out->felem_num_limbs = P384_NLIMBS;
+  out->felem_num_bits = 384;
+  out->felem_add = p384_felem_add_wrapper;
+  out->felem_sub = p384_felem_sub_wrapper;
+  out->felem_mul = bignum_montmul_p384_selector;
+  out->felem_sqr = bignum_montsqr_p384_selector;
+  out->felem_neg = p384_felem_neg_wrapper;
+  out->felem_nz = p384_felem_nz;
+  out->felem_one = p384_felem_one;
+  out->point_dbl = p384_point_double;
+  out->point_add = p384_point_add;
+  out->scalar_mul_base_table = (const ec_nistp_felem_limb *)p384_g_pre_comp;
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
-    out->felem_num_limbs = P384_NLIMBS;
-    out->felem_num_bits = 384;
-    out->felem_add = fiat_p384_add;
-    out->felem_sub = fiat_p384_sub;
-    out->felem_mul = fiat_p384_mul;
-    out->felem_sqr = fiat_p384_square;
-    out->felem_neg = fiat_p384_opp;
-    out->felem_nz  = p384_felem_nz;
-    out->felem_one = p384_felem_one;
-    out->point_dbl = p384_point_double;
-    out->point_add = p384_point_add;
-    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p384_g_pre_comp;
+  out->felem_num_limbs = P384_NLIMBS;
+  out->felem_num_bits = 384;
+  out->felem_add = fiat_p384_add;
+  out->felem_sub = fiat_p384_sub;
+  out->felem_mul = fiat_p384_mul;
+  out->felem_sqr = fiat_p384_square;
+  out->felem_neg = fiat_p384_opp;
+  out->felem_nz = p384_felem_nz;
+  out->felem_one = p384_felem_one;
+  out->point_dbl = p384_point_double;
+  out->point_add = p384_point_add;
+  out->scalar_mul_base_table = (const ec_nistp_felem_limb *)p384_g_pre_comp;
 }
 #endif
 
@@ -326,9 +325,8 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns:
 //   (X', Y') = (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp384_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_JACOBIAN *point,
-    EC_FELEM *x_out, EC_FELEM *y_out) {
-
+    const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x_out,
+    EC_FELEM *y_out) {
   if (constant_time_declassify_w(ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -348,9 +346,9 @@ static int ec_GFp_nistp384_point_get_affine_coordinates(
   if (y_out != NULL) {
     p384_felem y;
     p384_from_generic(y, &point->Y);
-    p384_felem_sqr(z2, z2);  // z^-4
-    p384_felem_mul(y, y, z1);   // y * z
-    p384_felem_mul(y, y, z2);   // y * z^-3
+    p384_felem_sqr(z2, z2);    // z^-4
+    p384_felem_mul(y, y, z1);  // y * z
+    p384_felem_mul(y, y, z2);  // y * z^-3
     p384_to_generic(y_out, y);
   }
 
@@ -387,9 +385,9 @@ static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
 // The calls to from/to_generic are needed for the case
 // when BORINGSSL_HAS_UINT128 is undefined, i.e. p384_32.h fiat code is used;
 // while OPENSSL_64_BIT is defined, i.e. BN_ULONG is uint64_t
-static void ec_GFp_nistp384_mont_felem_to_bytes(
-  const EC_GROUP *group, uint8_t *out, size_t *out_len, const EC_FELEM *in) {
-
+static void ec_GFp_nistp384_mont_felem_to_bytes(const EC_GROUP *group,
+                                                uint8_t *out, size_t *out_len,
+                                                const EC_FELEM *in) {
   size_t len = BN_num_bytes(&group->field.N);
   EC_FELEM felem_tmp;
   p384_felem tmp;
@@ -402,9 +400,10 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(
   *out_len = len;
 }
 
-static int ec_GFp_nistp384_mont_felem_from_bytes(
-  const EC_GROUP *group, EC_FELEM *out, const uint8_t *in, size_t len) {
-
+static int ec_GFp_nistp384_mont_felem_from_bytes(const EC_GROUP *group,
+                                                 EC_FELEM *out,
+                                                 const uint8_t *in,
+                                                 size_t len) {
   EC_FELEM felem_tmp;
   p384_felem tmp;
   // This function calls bn_cmp_words_consttime
@@ -468,7 +467,6 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
-
   p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
   p384_from_generic(tmp[0], &p->X);
@@ -476,9 +474,10 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p384_from_generic(tmp[2], &p->Z);
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-  p384_montjscalarmul_selector((uint64_t*)res, scalar->words, (uint64_t*)tmp);
+  p384_montjscalarmul_selector((uint64_t *)res, scalar->words, (uint64_t *)tmp);
 #else
-  ec_nistp_scalar_mul(p384_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
+  ec_nistp_scalar_mul(p384_methods(), res[0], res[1], res[2], tmp[0], tmp[1],
+                      tmp[2], scalar);
 #endif
 
   p384_to_generic(&r->X, res[0]);
@@ -507,14 +506,14 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
                                              const EC_SCALAR *g_scalar,
                                              const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
-
   p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
   p384_from_generic(tmp[0], &p->X);
   p384_from_generic(tmp[1], &p->Y);
   p384_from_generic(tmp[2], &p->Z);
 
-  ec_nistp_scalar_mul_public(p384_methods(), res[0], res[1], res[2], g_scalar, tmp[0], tmp[1], tmp[2], p_scalar);
+  ec_nistp_scalar_mul_public(p384_methods(), res[0], res[1], res[2], g_scalar,
+                             tmp[0], tmp[1], tmp[2], p_scalar);
 
   p384_to_generic(&r->X, res[0]);
   p384_to_generic(&r->Y, res[1]);
@@ -525,22 +524,23 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
   out->point_get_affine_coordinates =
       ec_GFp_nistp384_point_get_affine_coordinates;
   out->jacobian_to_affine_batch =
-      ec_GFp_mont_jacobian_to_affine_batch;     // needed for TrustToken tests
+      ec_GFp_mont_jacobian_to_affine_batch;  // needed for TrustToken tests
   out->add = ec_GFp_nistp384_add;
   out->dbl = ec_GFp_nistp384_dbl;
   out->mul = ec_GFp_nistp384_point_mul;
   out->mul_base = ec_GFp_nistp384_point_mul_base;
   out->mul_public = ec_GFp_nistp384_point_mul_public;
-  out->mul_batch = ec_GFp_mont_mul_batch;       // needed for TrustToken tests
+  out->mul_batch = ec_GFp_mont_mul_batch;  // needed for TrustToken tests
   out->mul_public_batch = ec_GFp_mont_mul_public_batch;
-  out->init_precomp = ec_GFp_mont_init_precomp; // needed for TrustToken tests
-  out->mul_precomp = ec_GFp_mont_mul_precomp;   // needed for TrustToken tests
+  out->init_precomp = ec_GFp_mont_init_precomp;  // needed for TrustToken tests
+  out->mul_precomp = ec_GFp_mont_mul_precomp;    // needed for TrustToken tests
   out->felem_mul = ec_GFp_mont_felem_mul;
   out->felem_sqr = ec_GFp_mont_felem_sqr;
   out->felem_to_bytes = ec_GFp_nistp384_mont_felem_to_bytes;
   out->felem_from_bytes = ec_GFp_nistp384_mont_felem_from_bytes;
-  out->felem_reduce = ec_GFp_mont_felem_reduce; // needed for ECTest.HashToCurve
-  out->felem_exp = ec_GFp_mont_felem_exp;       // needed for ECTest.HashToCurve
+  out->felem_reduce =
+      ec_GFp_mont_felem_reduce;            // needed for ECTest.HashToCurve
+  out->felem_exp = ec_GFp_mont_felem_exp;  // needed for ECTest.HashToCurve
   out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
   out->scalar_to_montgomery_inv_vartime =
       ec_simple_scalar_to_montgomery_inv_vartime;
@@ -552,8 +552,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 //  p384_felem_mul_scalar_rwnaf()
 // ----------------------------------------------------------------------------
 //
-// The JT scalar recoding is Algorithm 6: (Odd) Signed-Digit Recoding Algorithm in
-// Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
+// The JT scalar recoding is Algorithm 6: (Odd) Signed-Digit Recoding Algorithm
+// in Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
 // AfricaCrypt 2009, available from
 // https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.477.1245&rep=rep1&type=pdf
 //
@@ -776,12 +776,15 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 // from array import *
 //
 // # P-384 group order
-// n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7634D81F4372DDF581A0DB248B0A77AECEC196ACCC52973
+// n =
+// 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7634D81F4372DDF581A0DB248B0A77AECEC196ACCC52973
 //
 // # k value that causes a doubling case in left-to-right reconstruction
-// k = 0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc5294d
+// k =
+// 0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc5294d
 // # k value that causes a doubling case in right-to-left reconstruction
-// k_r2l = 0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
+// k_r2l =
+// 0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
 //
 //
 // def recode(k, w):
@@ -864,19 +867,33 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 // '''
 // Output:
 // -------
-// k =  0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc5294d
+// k =
+// 0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc5294d
 // Digits of the recoded scalar:
-// -0x13, -0x15, -0x15, -0x15, -0x13, 0x7, 0xb, 0xd, -0x7, 0x1, 0x1b, -0x7, 0xf, 0x1d, -0x3, -0xb, 0x11, -0x1b, -0xd, 0x5, -0x5, -0x19, 0x9, -0x1d, -0x7, 0x1b, 0x17, -0x5, 0x13, -0x5, -0xf, 0x1f, -0x1f, 0xd, -0xd, -0x19, 0x17, 0x3, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xf,
+// -0x13, -0x15, -0x15, -0x15, -0x13, 0x7, 0xb, 0xd, -0x7, 0x1, 0x1b, -0x7, 0xf,
+// 0x1d, -0x3, -0xb, 0x11, -0x1b, -0xd, 0x5, -0x5, -0x19, 0x9, -0x1d, -0x7,
+// 0x1b, 0x17, -0x5, 0x13, -0x5, -0xf, 0x1f, -0x1f, 0xd, -0xd, -0x19, 0x17, 0x3,
+// 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f,
+// 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f,
+// 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0x1f, 0xf,
 // L2R Doubling case:
 //     i = 0  digit = -0x13
-//     a = 0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52960
+//     a =
+//     0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52960
 //
-// k =  0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
+// k =
+// 0xe00000000000000000000000000000000000000000000000389cb27e0bc8d220a7e5f24db74f58851313e695333ad68d
 // Digits of the recoded scalar:
-// -0x13, 0x15, 0x15, 0x15, 0x13, -0x7, -0xb, -0xd, 0x7, -0x1, -0x1b, 0x7, -0xf, -0x1d, 0x3, 0xb, -0x11, 0x1b, 0xd, -0x5, 0x5, 0x19, -0x9, 0x1d, 0x7, -0x1b, -0x17, 0x5, -0x13, 0x5, 0xf, -0x1f, 0x1f, -0xd, 0xd, 0x19, -0x17, -0x3, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, 0xf,
-// R2L Doubling case:
+// -0x13, 0x15, 0x15, 0x15, 0x13, -0x7, -0xb, -0xd, 0x7, -0x1, -0x1b, 0x7, -0xf,
+// -0x1d, 0x3, 0xb, -0x11, 0x1b, 0xd, -0x5, 0x5, 0x19, -0x9, 0x1d, 0x7, -0x1b,
+// -0x17, 0x5, -0x13, 0x5, 0xf, -0x1f, 0x1f, -0xd, 0xd, 0x19, -0x17, -0x3,
+// -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f,
+// -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f,
+// -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, -0x1f,
+// -0x1f, -0x1f, -0x1f, -0x1f, -0x1f, 0xf, R2L Doubling case:
 //     i = 76  digit = 0xf
-//     a = -0xfffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973
+//     a =
+//     -0xfffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973
 // '''
 //
-#endif // !defined(OPENSSL_SMALL)
+#endif  // !defined(OPENSSL_SMALL)

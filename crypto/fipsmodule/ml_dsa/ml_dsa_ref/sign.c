@@ -10,7 +10,8 @@
 #if defined(AWSLC_FIPS)
 
 /*************************************************
- * [FIPS 140-3 IG](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
+ * [FIPS 140-3
+ *IG](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
  *
  * VE10.35.02: Pair-wise Consistency Test (PCT) for DSA keypairs
  *
@@ -21,20 +22,20 @@
  *
  * Note: FIPS 204 requires that public/private key pairs are to be used only for
  * the calculation and/of verification of digital signatures.
-**************************************************/
-static int ml_dsa_keypair_pct(ml_dsa_params *params,
-                              uint8_t *pk,
-                              uint8_t *sk) {
+ **************************************************/
+static int ml_dsa_keypair_pct(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   uint8_t message[1] = {0};
   uint8_t signature[MLDSA87_SIGNATURE_BYTES];
-  int ret = ml_dsa_sign(params, signature, &params->bytes, message, sizeof(message), NULL, 0, sk);
+  int ret = ml_dsa_sign(params, signature, &params->bytes, message,
+                        sizeof(message), NULL, 0, sk);
   if (ret < 0) {
     return 0;
   }
   if (boringssl_fips_break_test("MLDSA_PWCT")) {
     message[0] = ~message[0];
   }
-  return ml_dsa_verify(params, signature, params->bytes, message, sizeof(message), NULL, 0, pk) == 0;
+  return ml_dsa_verify(params, signature, params->bytes, message,
+                       sizeof(message), NULL, 0, pk) == 0;
 }
 #endif
 
@@ -53,9 +54,7 @@ static int ml_dsa_keypair_pct(ml_dsa_params *params,
  *
  * Returns 0 (success) -1 on failure or abort depending on FIPS mode
  **************************************************/
-int ml_dsa_keypair_internal(ml_dsa_params *params,
-                            uint8_t *pk,
-                            uint8_t *sk,
+int ml_dsa_keypair_internal(ml_dsa_params *params, uint8_t *pk, uint8_t *sk,
                             const uint8_t *seed) {
   uint8_t seedbuf[2 * ML_DSA_SEEDBYTES + ML_DSA_CRHBYTES];
   uint8_t tr[ML_DSA_TRBYTES];
@@ -68,7 +67,8 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
   OPENSSL_memcpy(seedbuf, seed, ML_DSA_SEEDBYTES);
   seedbuf[ML_DSA_SEEDBYTES + 0] = params->k;
   seedbuf[ML_DSA_SEEDBYTES + 1] = params->l;
-  SHAKE256(seedbuf, ML_DSA_SEEDBYTES + 2, seedbuf, 2 * ML_DSA_SEEDBYTES + ML_DSA_CRHBYTES);
+  SHAKE256(seedbuf, ML_DSA_SEEDBYTES + 2, seedbuf,
+           2 * ML_DSA_SEEDBYTES + ML_DSA_CRHBYTES);
   rho = seedbuf;
   rhoprime = rho + ML_DSA_SEEDBYTES;
   key = rhoprime + ML_DSA_CRHBYTES;
@@ -121,19 +121,19 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        ml_dsa_keypair
-*
-* Description: FIPS 204: Algorithm 1 ML-DSA.KeyGen
-*              Generates public and private key.
-*
-* Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *pk: pointer to output public key (allocated
-*                             array of CRYPTO_PUBLICKEYBYTES bytes)
-*              - uint8_t *sk: pointer to output private key (allocated
-*                             array of CRYPTO_SECRETKEYBYTES bytes)
-*
-* Returns 0 (success) -1 on failure
-**************************************************/
+ * Name:        ml_dsa_keypair
+ *
+ * Description: FIPS 204: Algorithm 1 ML-DSA.KeyGen
+ *              Generates public and private key.
+ *
+ * Arguments:   - ml_dsa_params: parameter struct
+ *              - uint8_t *pk: pointer to output public key (allocated
+ *                             array of CRYPTO_PUBLICKEYBYTES bytes)
+ *              - uint8_t *sk: pointer to output private key (allocated
+ *                             array of CRYPTO_SECRETKEYBYTES bytes)
+ *
+ * Returns 0 (success) -1 on failure
+ **************************************************/
 int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   uint8_t seed[ML_DSA_SEEDBYTES];
   if (!RAND_bytes(seed, ML_DSA_SEEDBYTES)) {
@@ -145,37 +145,32 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 }
 
 /*************************************************
-* Name:        ml_dsa_sign_internal
-*
-* Description: FIPS 204: Algorithm 7 ML-DSA.Sign_internal.
-*              Computes signature. Internal API.
-*
-* Arguments:   - ml_dsa_params:   parameter struct
-*              - uint8_t *sig:    pointer to output signature (of length CRYPTO_BYTES)
-*              - size_t *siglen:  pointer to output length of signature
-*              - uint8_t *m:      pointer to message to be signed
-*              - size_t mlen:     length of message
-*              - uint8_t *pre:    pointer to prefix string
-*              - size_t prelen:   length of prefix string
-*              - uint8_t *rnd:    pointer to random seed
-*              - uint8_t *sk:     pointer to bit-packed secret key
-*              - int external_mu: indicates input message m is to be processed as mu
-*
-* Returns 0 (success) or -1 (context string too long)
-**************************************************/
-int ml_dsa_sign_internal(ml_dsa_params *params,
-                         uint8_t *sig,
-                         size_t *siglen,
-                         const uint8_t *m,
-                         size_t mlen,
-                         const uint8_t *pre,
-                         size_t prelen,
-                         const uint8_t *rnd,
-                         const uint8_t *sk,
-                         int external_mu)
-{
+ * Name:        ml_dsa_sign_internal
+ *
+ * Description: FIPS 204: Algorithm 7 ML-DSA.Sign_internal.
+ *              Computes signature. Internal API.
+ *
+ * Arguments:   - ml_dsa_params:   parameter struct
+ *              - uint8_t *sig:    pointer to output signature (of length
+ *CRYPTO_BYTES)
+ *              - size_t *siglen:  pointer to output length of signature
+ *              - uint8_t *m:      pointer to message to be signed
+ *              - size_t mlen:     length of message
+ *              - uint8_t *pre:    pointer to prefix string
+ *              - size_t prelen:   length of prefix string
+ *              - uint8_t *rnd:    pointer to random seed
+ *              - uint8_t *sk:     pointer to bit-packed secret key
+ *              - int external_mu: indicates input message m is to be processed
+ *as mu
+ *
+ * Returns 0 (success) or -1 (context string too long)
+ **************************************************/
+int ml_dsa_sign_internal(ml_dsa_params *params, uint8_t *sig, size_t *siglen,
+                         const uint8_t *m, size_t mlen, const uint8_t *pre,
+                         size_t prelen, const uint8_t *rnd, const uint8_t *sk,
+                         int external_mu) {
   unsigned int n;
-  uint8_t seedbuf[2*ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2*ML_DSA_CRHBYTES];
+  uint8_t seedbuf[2 * ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2 * ML_DSA_CRHBYTES];
   uint8_t *rho, *tr, *key, *mu, *rhoprime;
   uint16_t nonce = 0;
   polyvecl mat[ML_DSA_K_MAX], s1, y, z;
@@ -196,14 +191,13 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   // processing of M' in the external function. However, as M' = (pre, msg),
   // mu = CRH(tr, M') = CRH(tr, pre, msg).
   if (!external_mu) {
-    //constuct mu = h(tr | m') when not in prehash mode
+    // constuct mu = h(tr | m') when not in prehash mode
     SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
     SHA3_Update(&state, tr, ML_DSA_TRBYTES);
     SHA3_Update(&state, pre, prelen);
     SHA3_Update(&state, m, mlen);
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
-  }
-  else {
+  } else {
     OPENSSL_memcpy(mu, m, mlen);
   }
 
@@ -248,17 +242,17 @@ rej:
   ml_dsa_polyvecl_invntt_tomont(params, &z);
   ml_dsa_polyvecl_add(params, &z, &z, &y);
   ml_dsa_polyvecl_reduce(params, &z);
-  if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
+  if (ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     goto rej;
   }
 
-  /* FIPS 204: line 21 Check that subtracting cs2 does not change high bits of w and low bits
-   * do not reveal secret information */
+  /* FIPS 204: line 21 Check that subtracting cs2 does not change high bits of w
+   * and low bits do not reveal secret information */
   ml_dsa_polyveck_pointwise_poly_montgomery(params, &h, &cp, &s2);
   ml_dsa_polyveck_invntt_tomont(params, &h);
   ml_dsa_polyveck_sub(params, &w0, &w0, &h);
   ml_dsa_polyveck_reduce(params, &w0);
-  if(ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
+  if (ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
     goto rej;
   }
 
@@ -266,14 +260,14 @@ rej:
   ml_dsa_polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
   ml_dsa_polyveck_invntt_tomont(params, &h);
   ml_dsa_polyveck_reduce(params, &h);
-  if(ml_dsa_polyveck_chknorm(params, &h, params->gamma2)) {
+  if (ml_dsa_polyveck_chknorm(params, &h, params->gamma2)) {
     goto rej;
   }
 
   /* FIPS 204: line 26 Compute signer's hint */
   ml_dsa_polyveck_add(params, &w0, &w0, &h);
   n = ml_dsa_polyveck_make_hint(params, &h, &w0, &w1);
-  if(n > params->omega) {
+  if (n > params->omega) {
     goto rej;
   }
 
@@ -299,45 +293,41 @@ rej:
 }
 
 /*************************************************
-* Name:        ml_dsa_sign
-*
-* Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
-*              Computes signature in hedged mode.
-*
-* Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
-*              - size_t *siglen: pointer to output length of signature
-*              - uint8_t *m:     pointer to message to be signed
-*              - size_t mlen:    length of message
-*              - uint8_t *ctx:   pointer to contex string
-*              - size_t ctxlen:  length of contex string
-*              - uint8_t *sk:    pointer to bit-packed secret key
-*
-* Returns 0 (success) or -1 (context string too long)
-**************************************************/
-int ml_dsa_sign(ml_dsa_params *params,
-                uint8_t *sig,
-                size_t *siglen,
-                const uint8_t *m,
-                size_t mlen,
-                const uint8_t *ctx,
-                size_t ctxlen,
-                const uint8_t *sk)
-{
+ * Name:        ml_dsa_sign
+ *
+ * Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
+ *              Computes signature in hedged mode.
+ *
+ * Arguments:   - uint8_t *sig:   pointer to output signature (of length
+ *CRYPTO_BYTES)
+ *              - size_t *siglen: pointer to output length of signature
+ *              - uint8_t *m:     pointer to message to be signed
+ *              - size_t mlen:    length of message
+ *              - uint8_t *ctx:   pointer to contex string
+ *              - size_t ctxlen:  length of contex string
+ *              - uint8_t *sk:    pointer to bit-packed secret key
+ *
+ * Returns 0 (success) or -1 (context string too long)
+ **************************************************/
+int ml_dsa_sign(ml_dsa_params *params, uint8_t *sig, size_t *siglen,
+                const uint8_t *m, size_t mlen, const uint8_t *ctx,
+                size_t ctxlen, const uint8_t *sk) {
   uint8_t pre[257];
   uint8_t rnd[ML_DSA_RNDBYTES];
 
-  if(ctxlen > 255) {
+  if (ctxlen > 255) {
     return -1;
   }
   /* Prepare pre = (0, ctxlen, ctx) */
   pre[0] = 0;
   pre[1] = ctxlen;
-  OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
+  OPENSSL_memcpy(pre + 2, ctx, ctxlen);
 
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
-  ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk, 0);
+  ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk,
+                       0);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(pre, sizeof(pre));
@@ -346,26 +336,22 @@ int ml_dsa_sign(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        ml_dsa_extmu_sign
-*
-* Description: FIPS 204: Algorithm 2 ML-DSA.Sign external mu variant.
-*              Computes signature in hedged mode.
-*
-* Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
-*              - size_t *siglen: pointer to output length of signature
-*              - uint8_t *mu:    pointer to input mu to be signed
-*              - size_t mulen:   length of mu
-*              - uint8_t *sk:    pointer to bit-packed secret key
-*
-* Returns 0 (success) or -1 (context string too long)
-**************************************************/
-int ml_dsa_extmu_sign(ml_dsa_params *params,
-                      uint8_t *sig,
-                      size_t *siglen,
-                      const uint8_t *mu,
-                      size_t mulen,
-                      const uint8_t *sk)
-{
+ * Name:        ml_dsa_extmu_sign
+ *
+ * Description: FIPS 204: Algorithm 2 ML-DSA.Sign external mu variant.
+ *              Computes signature in hedged mode.
+ *
+ * Arguments:   - uint8_t *sig:   pointer to output signature (of length
+ *CRYPTO_BYTES)
+ *              - size_t *siglen: pointer to output length of signature
+ *              - uint8_t *mu:    pointer to input mu to be signed
+ *              - size_t mulen:   length of mu
+ *              - uint8_t *sk:    pointer to bit-packed secret key
+ *
+ * Returns 0 (success) or -1 (context string too long)
+ **************************************************/
+int ml_dsa_extmu_sign(ml_dsa_params *params, uint8_t *sig, size_t *siglen,
+                      const uint8_t *mu, size_t mulen, const uint8_t *sk) {
   uint8_t rnd[ML_DSA_RNDBYTES];
 
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
@@ -379,74 +365,64 @@ int ml_dsa_extmu_sign(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        ml_dsa_sign_message
-*
-* Description: Compute signed message.
-*
-* Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *sm: pointer to output signed message (allocated
-*                             array with CRYPTO_BYTES + mlen bytes),
-*                             can be equal to m
-*              - size_t *smlen: pointer to output length of signed
-*                               message
-*              - const uint8_t *m: pointer to message to be signed
-*              - size_t mlen: length of message
-*              - const uint8_t *ctx: pointer to context string
-*              - size_t ctxlen: length of context string
-*              - const uint8_t *sk: pointer to bit-packed secret key
-*
-* Returns 0 (success) or -1 (context string too long)
-**************************************************/
-int ml_dsa_sign_message(ml_dsa_params *params,
-                        uint8_t *sm,
-                        size_t *smlen,
-                        const uint8_t *m,
-                        size_t mlen,
-                        const uint8_t *ctx,
-                        size_t ctxlen,
-                        const uint8_t *sk)
-{
+ * Name:        ml_dsa_sign_message
+ *
+ * Description: Compute signed message.
+ *
+ * Arguments:   - ml_dsa_params: parameter struct
+ *              - uint8_t *sm: pointer to output signed message (allocated
+ *                             array with CRYPTO_BYTES + mlen bytes),
+ *                             can be equal to m
+ *              - size_t *smlen: pointer to output length of signed
+ *                               message
+ *              - const uint8_t *m: pointer to message to be signed
+ *              - size_t mlen: length of message
+ *              - const uint8_t *ctx: pointer to context string
+ *              - size_t ctxlen: length of context string
+ *              - const uint8_t *sk: pointer to bit-packed secret key
+ *
+ * Returns 0 (success) or -1 (context string too long)
+ **************************************************/
+int ml_dsa_sign_message(ml_dsa_params *params, uint8_t *sm, size_t *smlen,
+                        const uint8_t *m, size_t mlen, const uint8_t *ctx,
+                        size_t ctxlen, const uint8_t *sk) {
   int ret;
   size_t i;
 
-  for(i = 0; i < mlen; ++i) {
+  for (i = 0; i < mlen; ++i) {
     sm[params->bytes + mlen - 1 - i] = m[mlen - 1 - i];
   }
-  ret = ml_dsa_sign(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
+  ret =
+      ml_dsa_sign(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
   *smlen += mlen;
   return ret;
 }
 
 /*************************************************
-* Name:        ml_dsa_verify_internal
-*
-* Description: FIPS 204: Algorithm 8 ML-DSA.Verify_internal.
-*              Verifies signature. Internal API.
-*
-* Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *m: pointer to input signature
-*              - size_t siglen: length of signature
-*              - const uint8_t *m: pointer to message
-*              - size_t mlen: length of message
-*              - const uint8_t *pre: pointer to prefix string
-*              - size_t prelen: length of prefix string
-*              - const uint8_t *pk: pointer to bit-packed public key
-*              - int external_mu: indicates input message m is to be processed as mu
-*
-* Returns 0 if signature could be verified correctly and -1 otherwise
-**************************************************/
-int ml_dsa_verify_internal(ml_dsa_params *params,
-                           const uint8_t *sig,
-                           size_t siglen,
-                           const uint8_t *m,
-                           size_t mlen,
-                           const uint8_t *pre,
-                           size_t prelen,
-                           const uint8_t *pk,
-                           int external_mu)
-{
+ * Name:        ml_dsa_verify_internal
+ *
+ * Description: FIPS 204: Algorithm 8 ML-DSA.Verify_internal.
+ *              Verifies signature. Internal API.
+ *
+ * Arguments:   - ml_dsa_params: parameter struct
+ *              - uint8_t *m: pointer to input signature
+ *              - size_t siglen: length of signature
+ *              - const uint8_t *m: pointer to message
+ *              - size_t mlen: length of message
+ *              - const uint8_t *pre: pointer to prefix string
+ *              - size_t prelen: length of prefix string
+ *              - const uint8_t *pk: pointer to bit-packed public key
+ *              - int external_mu: indicates input message m is to be processed
+ *as mu
+ *
+ * Returns 0 if signature could be verified correctly and -1 otherwise
+ **************************************************/
+int ml_dsa_verify_internal(ml_dsa_params *params, const uint8_t *sig,
+                           size_t siglen, const uint8_t *m, size_t mlen,
+                           const uint8_t *pre, size_t prelen, const uint8_t *pk,
+                           int external_mu) {
   unsigned int i;
-  uint8_t buf[ML_DSA_K_MAX*ML_DSA_POLYW1_PACKEDBYTES_MAX];
+  uint8_t buf[ML_DSA_K_MAX * ML_DSA_POLYW1_PACKEDBYTES_MAX];
   uint8_t rho[ML_DSA_SEEDBYTES];
   uint8_t mu[ML_DSA_CRHBYTES];
   uint8_t tr[ML_DSA_TRBYTES];
@@ -457,20 +433,20 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   polyveck t1, w1, h;
   KECCAK1600_CTX state;
 
-  if(siglen != params->bytes) {
+  if (siglen != params->bytes) {
     return -1;
   }
   /* FIPS 204: line 1 */
   ml_dsa_unpack_pk(params, rho, &t1, pk);
   /* FIPS 204: line 2 */
-  if(ml_dsa_unpack_sig(params, c, &z, &h, sig)) {
+  if (ml_dsa_unpack_sig(params, c, &z, &h, sig)) {
     return -1;
   }
-  if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
+  if (ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     return -1;
   }
 
-  if(!external_mu) {
+  if (!external_mu) {
     /* FIPS 204: line 6 Compute tr */
     SHAKE256(pk, params->public_key_bytes, tr, ML_DSA_TRBYTES);
     /* FIPS 204: line 7 Compute mu = H(BytesToBits(tr) || M', 64) */
@@ -481,8 +457,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
     SHA3_Update(&state, pre, prelen);
     SHA3_Update(&state, m, mlen);
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
-  }
-  else {
+  } else {
     OPENSSL_memcpy(mu, m, mlen);
   }
 
@@ -513,8 +488,8 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   SHAKE_Absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
   SHAKE_Final(c2, &state, params->c_tilde_bytes);
 
-  for(i = 0; i < params->c_tilde_bytes; ++i) {
-    if(c[i] != c2[i]) {
+  for (i = 0; i < params->c_tilde_bytes; ++i) {
+    if (c[i] != c2[i]) {
       return -1;
     }
   }
@@ -536,81 +511,69 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        ml_dsa_verify
-*
-* Description: FIPS 204: Algorithm 3 ML-DSA.Verify.
-*              Verifies signature.
-*
-* Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *m: pointer to input signature
-*              - size_t siglen: length of signature
-*              - const uint8_t *m: pointer to message
-*              - size_t mlen: length of message
-*              - const uint8_t *ctx: pointer to context string
-*              - size_t ctxlen: length of context string
-*              - const uint8_t *pk: pointer to bit-packed public key
-*
-* Returns 0 if signature could be verified correctly and -1 otherwise
-**************************************************/
-int ml_dsa_verify(ml_dsa_params *params,
-                  const uint8_t *sig,
-                  size_t siglen,
-                  const uint8_t *m,
-                  size_t mlen,
-                  const uint8_t *ctx,
-                  size_t ctxlen,
-                  const uint8_t *pk)
-{
+ * Name:        ml_dsa_verify
+ *
+ * Description: FIPS 204: Algorithm 3 ML-DSA.Verify.
+ *              Verifies signature.
+ *
+ * Arguments:   - ml_dsa_params: parameter struct
+ *              - uint8_t *m: pointer to input signature
+ *              - size_t siglen: length of signature
+ *              - const uint8_t *m: pointer to message
+ *              - size_t mlen: length of message
+ *              - const uint8_t *ctx: pointer to context string
+ *              - size_t ctxlen: length of context string
+ *              - const uint8_t *pk: pointer to bit-packed public key
+ *
+ * Returns 0 if signature could be verified correctly and -1 otherwise
+ **************************************************/
+int ml_dsa_verify(ml_dsa_params *params, const uint8_t *sig, size_t siglen,
+                  const uint8_t *m, size_t mlen, const uint8_t *ctx,
+                  size_t ctxlen, const uint8_t *pk) {
   uint8_t pre[257];
 
-  if(ctxlen > 255) {
+  if (ctxlen > 255) {
     return -1;
   }
 
   pre[0] = 0;
   pre[1] = ctxlen;
-  OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
-  return ml_dsa_verify_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, pk, 0);
+  OPENSSL_memcpy(pre + 2, ctx, ctxlen);
+  return ml_dsa_verify_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen,
+                                pk, 0);
 }
 
 /*************************************************
-* Name:        ml_dsa_verify_message
-*
-* Description: Verify signed message.
-*
-* Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *m: pointer to output message (allocated
-*                            array with smlen bytes), can be equal to sm
-*              - size_t *mlen: pointer to output length of message
-*              - const uint8_t *sm: pointer to signed message
-*              - size_t smlen: length of signed message
-*              - const uint8_t *ctx: pointer to context tring
-*              - size_t ctxlen: length of context string
-*              - const uint8_t *pk: pointer to bit-packed public key
-*
-* Returns 0 if signed message could be verified correctly and -1 otherwise
-**************************************************/
-int ml_dsa_verify_message(ml_dsa_params *params,
-                          uint8_t *m,
-                          size_t *mlen,
-                          const uint8_t *sm,
-                          size_t smlen,
-                          const uint8_t *ctx,
-                          size_t ctxlen,
-                          const uint8_t *pk)
-{
-
-  if(smlen < params->bytes) {
+ * Name:        ml_dsa_verify_message
+ *
+ * Description: Verify signed message.
+ *
+ * Arguments:   - ml_dsa_params: parameter struct
+ *              - uint8_t *m: pointer to output message (allocated
+ *                            array with smlen bytes), can be equal to sm
+ *              - size_t *mlen: pointer to output length of message
+ *              - const uint8_t *sm: pointer to signed message
+ *              - size_t smlen: length of signed message
+ *              - const uint8_t *ctx: pointer to context tring
+ *              - size_t ctxlen: length of context string
+ *              - const uint8_t *pk: pointer to bit-packed public key
+ *
+ * Returns 0 if signed message could be verified correctly and -1 otherwise
+ **************************************************/
+int ml_dsa_verify_message(ml_dsa_params *params, uint8_t *m, size_t *mlen,
+                          const uint8_t *sm, size_t smlen, const uint8_t *ctx,
+                          size_t ctxlen, const uint8_t *pk) {
+  if (smlen < params->bytes) {
     goto badsig;
   }
 
   *mlen = smlen - params->bytes;
-  if(ml_dsa_verify(params,sm, params->bytes, sm + params->bytes, *mlen, ctx, ctxlen, pk)) {
+  if (ml_dsa_verify(params, sm, params->bytes, sm + params->bytes, *mlen, ctx,
+                    ctxlen, pk)) {
     goto badsig;
-  }
-  else {
+  } else {
     /* All good, copy msg, return 0 */
-    for(size_t i = 0; i < *mlen; ++i) {
+    for (size_t i = 0; i < *mlen; ++i) {
       m[i] = sm[params->bytes + i];
     }
     return 0;
@@ -619,7 +582,7 @@ int ml_dsa_verify_message(ml_dsa_params *params,
 badsig:
   /* Signature verification failed */
   *mlen = 0;
-  for(size_t i = 0; i < smlen; ++i) {
+  for (size_t i = 0; i < smlen; ++i) {
     m[i] = 0;
   }
 

@@ -271,8 +271,7 @@ static hm_fragment *dtls1_get_incoming_message(
     assert(frag->seq == msg_hdr->seq);
     // The new fragment must be compatible with the previous fragments from this
     // message.
-    if (frag->type != msg_hdr->type ||
-        frag->msg_len != msg_hdr->msg_len) {
+    if (frag->type != msg_hdr->type || frag->msg_len != msg_hdr->msg_len) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_FRAGMENT_MISMATCH);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return NULL;
@@ -498,8 +497,7 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
 
 bool dtls1_init_message(const SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   // Pick a modest size hint to save most of the |realloc| calls.
-  if (!CBB_init(cbb, 64) ||
-      !CBB_add_u8(cbb, type) ||
+  if (!CBB_init(cbb, 64) || !CBB_add_u8(cbb, type) ||
       !CBB_add_u24(cbb, 0 /* length (filled in later) */) ||
       !CBB_add_u16(cbb, ssl->d1->handshake_write_seq) ||
       !CBB_add_u24(cbb, 0 /* offset */) ||
@@ -561,8 +559,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
   if (!is_ccs) {
     // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript
     // on hs.
-    if (ssl->s3->hs != NULL &&
-        !ssl->s3->hs->transcript.Update(data)) {
+    if (ssl->s3->hs != NULL && !ssl->s3->hs->transcript.Update(data)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -657,12 +654,9 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
   CBS cbs, body;
   struct hm_header_st hdr;
   CBS_init(&cbs, msg->data.data(), msg->data.size());
-  if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||
-      hdr.frag_off != 0 ||
-      hdr.frag_len != CBS_len(&body) ||
-      hdr.msg_len != CBS_len(&body) ||
-      !CBS_skip(&body, ssl->d1->outgoing_offset) ||
-      CBS_len(&cbs) != 0) {
+  if (!dtls1_parse_fragment(&cbs, &hdr, &body) || hdr.frag_off != 0 ||
+      hdr.frag_len != CBS_len(&body) || hdr.msg_len != CBS_len(&body) ||
+      !CBS_skip(&body, ssl->d1->outgoing_offset) || CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return seal_error;
   }
@@ -820,8 +814,6 @@ int dtls1_retransmit_outgoing_messages(SSL *ssl) {
   return send_flight(ssl);
 }
 
-unsigned int dtls1_min_mtu(void) {
-  return kMinMTU;
-}
+unsigned int dtls1_min_mtu(void) { return kMinMTU; }
 
 BSSL_NAMESPACE_END

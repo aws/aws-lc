@@ -81,7 +81,7 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   sctx = src->data;
   dctx = dst->data;
   dctx->md = sctx->md;
-  if(sctx->ktmp.key != NULL && !HMAC_KEY_copy(&sctx->ktmp, &dctx->ktmp)) {
+  if (sctx->ktmp.key != NULL && !HMAC_KEY_copy(&sctx->ktmp, &dctx->ktmp)) {
     OPENSSL_free(dctx);
     return 0;
   }
@@ -133,7 +133,7 @@ static int hmac_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     // What if the key contains a 0-byte?
     const size_t keylen = OPENSSL_strnlen(value, INT16_MAX);
     return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_HMAC, EVP_PKEY_OP_KEYGEN,
-                             EVP_PKEY_CTRL_SET_MAC_KEY, keylen, (void*)value);
+                             EVP_PKEY_CTRL_SET_MAC_KEY, keylen, (void *)value);
   }
   if (strcmp(type, "hexkey") == 0) {
     size_t hex_keylen = 0;
@@ -141,9 +141,8 @@ static int hmac_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     if (key == NULL) {
       return 0;
     }
-    int result =
-        EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_HMAC, EVP_PKEY_OP_KEYGEN,
-                          EVP_PKEY_CTRL_SET_MAC_KEY, hex_keylen, key);
+    int result = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_HMAC, EVP_PKEY_OP_KEYGEN,
+                                   EVP_PKEY_CTRL_SET_MAC_KEY, hex_keylen, key);
     OPENSSL_free(key);
     return result;
   }
@@ -154,13 +153,13 @@ static int hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   GUARD_PTR(pkey);
   HMAC_KEY *hmac = NULL;
   HMAC_PKEY_CTX *hctx = ctx->data;
-  if(hctx == NULL) {
+  if (hctx == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
   }
 
   if (!(hmac = HMAC_KEY_new())) {
-      return 0;
+    return 0;
   }
 
   if (!HMAC_KEY_copy(hmac, &hctx->ktmp) ||
@@ -195,8 +194,8 @@ HMAC_KEY *HMAC_KEY_new(void) {
   return key;
 }
 
-int HMAC_KEY_set(HMAC_KEY* hmac_key, const uint8_t* key, const size_t key_len) {
-  if(hmac_key == NULL ) {
+int HMAC_KEY_set(HMAC_KEY *hmac_key, const uint8_t *key, const size_t key_len) {
+  if (hmac_key == NULL) {
     return 0;
   }
   if (key == NULL || key_len == 0) {
@@ -205,8 +204,8 @@ int HMAC_KEY_set(HMAC_KEY* hmac_key, const uint8_t* key, const size_t key_len) {
     return 1;
   }
 
-  uint8_t* new_key = OPENSSL_memdup(key, key_len);
-  if(new_key == NULL) {
+  uint8_t *new_key = OPENSSL_memdup(key, key_len);
+  if (new_key == NULL) {
     return 0;
   }
   OPENSSL_free(hmac_key->key);
@@ -215,7 +214,7 @@ int HMAC_KEY_set(HMAC_KEY* hmac_key, const uint8_t* key, const size_t key_len) {
   return 1;
 }
 
-int HMAC_KEY_copy(HMAC_KEY* dest, HMAC_KEY* src) {
+int HMAC_KEY_copy(HMAC_KEY *dest, HMAC_KEY *src) {
   GUARD_PTR(dest);
   GUARD_PTR(src);
 

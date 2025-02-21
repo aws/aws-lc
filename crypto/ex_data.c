@@ -156,7 +156,7 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
 
   // The index must fit in |int|.
   if (sk_CRYPTO_EX_DATA_FUNCS_num(ex_data_class->meth) >
-          (size_t)(INT_MAX - ex_data_class->num_reserved)) {
+      (size_t)(INT_MAX - ex_data_class->num_reserved)) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
     goto err;
   }
@@ -236,9 +236,7 @@ static int get_func_pointers(STACK_OF(CRYPTO_EX_DATA_FUNCS) **out,
   return 1;
 }
 
-void CRYPTO_new_ex_data(CRYPTO_EX_DATA *ad) {
-  ad->sk = NULL;
-}
+void CRYPTO_new_ex_data(CRYPTO_EX_DATA *ad) { ad->sk = NULL; }
 
 void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
                          CRYPTO_EX_DATA *ad) {

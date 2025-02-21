@@ -8,10 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LOG_ERROR(...) do { \
+#define LOG_ERROR(...)                                           \
+  do {                                                           \
     fprintf(stderr, "File: %s, Line: %d, ", __FILE__, __LINE__); \
-    fprintf(stderr, __VA_ARGS__); \
-    fprintf(stderr, "\n"); \
-} while(0)
+    fprintf(stderr, __VA_ARGS__);                                \
+    fprintf(stderr, "\n");                                       \
+  } while (0)
 
 #endif

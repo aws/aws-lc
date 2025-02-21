@@ -1,25 +1,29 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
+#include <openssl/base.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
-#include <openssl/base.h>
 
-#include "../delocate.h"
 #include "../../evp_extra/internal.h"
+#include "../delocate.h"
 #include "../ml_dsa/ml_dsa.h"
 #include "internal.h"
 
 // ML-DSA OIDs as defined within:
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
-//2.16.840.1.101.3.4.3.17
-static const uint8_t kOIDMLDSA44[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x11};
-//2.16.840.1.101.3.4.3.18
-static const uint8_t kOIDMLDSA65[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x12};
-//2.16.840.1.101.3.4.3.19
-static const uint8_t kOIDMLDSA87[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x13};
+// 2.16.840.1.101.3.4.3.17
+static const uint8_t kOIDMLDSA44[] = {0x60, 0x86, 0x48, 0x01, 0x65,
+                                      0x03, 0x04, 0x03, 0x11};
+// 2.16.840.1.101.3.4.3.18
+static const uint8_t kOIDMLDSA65[] = {0x60, 0x86, 0x48, 0x01, 0x65,
+                                      0x03, 0x04, 0x03, 0x12};
+// 2.16.840.1.101.3.4.3.19
+static const uint8_t kOIDMLDSA87[] = {0x60, 0x86, 0x48, 0x01, 0x65,
+                                      0x03, 0x04, 0x03, 0x13};
 
-// PQDSA functions: these are init/new/clear/free/get_sig functions for PQDSA_KEY
-// These are analagous to the ec_key functions in crypto/fipsmodule/ec/ec_key.c
+// PQDSA functions: these are init/new/clear/free/get_sig functions for
+// PQDSA_KEY These are analagous to the ec_key functions in
+// crypto/fipsmodule/ec/ec_key.c
 
 PQDSA_KEY *PQDSA_KEY_new(void) {
   PQDSA_KEY *ret = OPENSSL_zalloc(sizeof(PQDSA_KEY));
@@ -63,9 +67,7 @@ void PQDSA_KEY_free(PQDSA_KEY *key) {
   OPENSSL_free(key);
 }
 
-const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key) {
-  return key->pqdsa;
-}
+const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY *key) { return key->pqdsa; }
 
 int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in) {
   // Check if the parsed length corresponds with the expected length.
@@ -89,7 +91,7 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
-  //allocate buffers to store key pair
+  // allocate buffers to store key pair
   uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
   if (public_key == NULL) {
     return 0;
@@ -102,8 +104,7 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
   }
 
   // attempt to generate the key from the provided seed
-  if (!key->pqdsa->method->pqdsa_keygen_internal(public_key,
-                                                 private_key,
+  if (!key->pqdsa->method->pqdsa_keygen_internal(public_key, private_key,
                                                  CBS_data(in))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -137,7 +138,8 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   }
 
   // Construct the public key from the private key
-  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, key->private_key)) {
+  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key,
+                                                 key->private_key)) {
     OPENSSL_free(public_key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;

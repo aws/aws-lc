@@ -214,7 +214,7 @@ TEST(GCMTest, ABI) {
         }
       }
     }
-#endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64
@@ -239,7 +239,7 @@ TEST(GCMTest, ABI) {
 
 #if defined(OPENSSL_AARCH64) && defined(HW_GCM)
   if (hwaes_capable() && gcm_pmull_capable()) {
-    static const uint8_t kKey[256/8] = {0};
+    static const uint8_t kKey[256 / 8] = {0};
     uint8_t iv[16] = {0};
 
     for (size_t key_bits = 128; key_bits <= 256; key_bits += 64) {
@@ -263,4 +263,5 @@ TEST(GCMTest, ABI) {
   }
 #endif  // GHASH_ASM_PPC64LE
 }
-#endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM && !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
+#endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM &&
+        // !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX

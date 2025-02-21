@@ -33,8 +33,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     if (!CBB_init(cbb.get(), consumed) ||
         !CBB_add_asn1(cbb.get(), &body_cbb, tag) ||
         !CBB_add_bytes(&body_cbb, CBS_data(&body), CBS_len(&body)) ||
-        !CBB_flush(cbb.get()) ||
-        CBB_len(cbb.get()) != consumed ||
+        !CBB_flush(cbb.get()) || CBB_len(cbb.get()) != consumed ||
         memcmp(CBB_data(cbb.get()), buf, consumed) != 0) {
       abort();
     }
@@ -44,8 +43,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   if (sig != NULL) {
     uint8_t *enc;
     size_t enc_len;
-    if (!ECDSA_SIG_to_bytes(&enc, &enc_len, sig) ||
-        enc_len != len ||
+    if (!ECDSA_SIG_to_bytes(&enc, &enc_len, sig) || enc_len != len ||
         memcmp(buf, enc, len) != 0) {
       abort();
     }

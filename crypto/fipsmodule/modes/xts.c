@@ -54,25 +54,27 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
-size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
-                             const uint8_t iv[16], const uint8_t *inp,
-                             uint8_t *out, size_t len, int enc) {
+size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx, const uint8_t iv[16],
+                             const uint8_t *inp, uint8_t *out, size_t len,
+                             int enc) {
   union {
     uint64_t u[2];
     uint8_t c[16];
   } tweak, scratch;
   unsigned int i;
 
-  if (len < 16) return 0;
+  if (len < 16)
+    return 0;
 
   OPENSSL_memcpy(tweak.c, iv, 16);
 
   (*ctx->block2)(tweak.c, tweak.c, ctx->key2);
 
-  if (!enc && (len % 16)) len -= 16;
+  if (!enc && (len % 16))
+    len -= 16;
 
   while (len >= 16) {
     OPENSSL_memcpy(scratch.c, inp, 16);
@@ -86,7 +88,8 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
     out += 16;
     len -= 16;
 
-    if (len == 0) return 1;
+    if (len == 0)
+      return 1;
 
     unsigned int carry, res;
 
@@ -97,7 +100,7 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
     res = 0x87 & (((int64_t)tweak_u1) >> 63);
     carry = (unsigned int)(tweak_u0 >> 63);
     tweak_u0 = (tweak_u0 << 1) ^ res;
-    tweak_u1 = (tweak_u1 << 1) | carry;    
+    tweak_u1 = (tweak_u1 << 1) | carry;
     CRYPTO_store_u64_le(&tweak.u[0], tweak_u0);
     CRYPTO_store_u64_le(&tweak.u[1], tweak_u1);
 #else
@@ -134,7 +137,7 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
     res = 0x87 & (((int64_t)tweak_u1) >> 63);
     carry = (unsigned int)(tweak_u0 >> 63);
     tweak_u0 = (tweak_u0 << 1) ^ res;
-    tweak_u1 = (tweak_u1 << 1) | carry;    
+    tweak_u1 = (tweak_u1 << 1) | carry;
     CRYPTO_store_u64_le(&tweak1.u[0], tweak_u0);
     CRYPTO_store_u64_le(&tweak1.u[1], tweak_u1);
 #else

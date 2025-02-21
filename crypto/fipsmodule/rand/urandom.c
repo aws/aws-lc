@@ -33,9 +33,9 @@
 #if defined(OPENSSL_LINUX)
 #if defined(BORINGSSL_FIPS)
 #if !defined(AWS_LC_URANDOM_U32)
-  // On old Linux OS: unknown type name '__u32' when include <linux/random.h>.
-  // If '__u32' is predefined, redefine will cause compiler error.
-  typedef unsigned int __u32;
+// On old Linux OS: unknown type name '__u32' when include <linux/random.h>.
+// If '__u32' is predefined, redefine will cause compiler error.
+typedef unsigned int __u32;
 #endif
 #include <linux/random.h>
 #include <sys/ioctl.h>
@@ -83,17 +83,17 @@
 #include <stdlib.h>
 #endif
 
-#include <openssl/thread.h>
 #include <openssl/mem.h>
+#include <openssl/thread.h>
 
-#include "getrandom_fillin.h"
-#include "../delocate.h"
 #include "../../internal.h"
+#include "../delocate.h"
+#include "getrandom_fillin.h"
 
 #ifndef MIN
-#define AWSLC_MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
+#define AWSLC_MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #else
-#define AWSLC_MIN(X,Y) MIN(X,Y)
+#define AWSLC_MIN(X, Y) MIN(X, Y)
 #endif
 
 // One second in nanoseconds.
@@ -107,7 +107,6 @@
 // This function will be called so rarely (if ever), that we keep it as a
 // function call and don't care about attempting to inline it.
 static void handle_rare_urandom_error(long *backoff) {
-
   // Exponential backoff.
   //
   // iteration          delay
@@ -123,7 +122,7 @@ static void handle_rare_urandom_error(long *backoff) {
   //    9         99,999,999  nsec
   //    ...
 
-  struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
+  struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0};
 
   // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
   // field in |timespec| can hold.
@@ -141,7 +140,6 @@ void __msan_unpoison(void *, size_t);
 #endif
 
 static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
-
   ssize_t ret;
   long backoff = INITIAL_BACKOFF_DELAY;
   size_t retry_counter = 0;
@@ -350,7 +348,9 @@ static void wait_for_entropy(void) {
   }
 
 #if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY) && \
-    !(defined(OPENSSL_APPLE) || defined(OPENSSL_OPENBSD)) // On MacOS, iOS, and OpenBSD we don't use /dev/urandom.
+    !(defined(OPENSSL_APPLE) ||                                        \
+      defined(OPENSSL_OPENBSD))  // On MacOS, iOS, and OpenBSD we don't use
+                                 // /dev/urandom.
 
   // In FIPS mode on platforms where urandom doesn't block at startup, we ensure
   // that the kernel has sufficient entropy before continuing. This is
@@ -371,7 +371,7 @@ static void wait_for_entropy(void) {
       break;
     }
 
-    struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250 };
+    struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250};
     nanosleep(&sleep_time, &sleep_time);
   }
 #endif  // BORINGSSL_FIPS && !URANDOM_BLOCKS_FOR_ENTROPY
@@ -412,7 +412,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   }
 #endif
 
-#if defined (USE_NR_getrandom)
+#if defined(USE_NR_getrandom)
   if (seed) {
     getrandom_flags |= *extra_getrandom_flags_for_seed_bss_get();
   }
@@ -467,9 +467,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   return 1;
 }
 
-void CRYPTO_init_sysrand(void) {
-  CRYPTO_once(rand_once_bss_get(), init_once);
-}
+void CRYPTO_init_sysrand(void) { CRYPTO_once(rand_once_bss_get(), init_once); }
 
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {

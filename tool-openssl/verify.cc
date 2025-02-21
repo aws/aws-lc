@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/base.h>
-#include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <openssl/x509.h>
 #include "internal.h"
 
 // TO-DO: We do not support using a default trust store, therefore -CAfile must
@@ -34,7 +34,8 @@ static X509_STORE *setup_verification_store(std::string CAfile) {
 
   if (!CAfile.empty()) {
     lookup = X509_STORE_add_lookup(store.get(), X509_LOOKUP_file());
-    if (!lookup || !X509_LOOKUP_load_file(lookup, CAfile.c_str(), X509_FILETYPE_PEM)) {
+    if (!lookup ||
+        !X509_LOOKUP_load_file(lookup, CAfile.c_str(), X509_FILETYPE_PEM)) {
       fprintf(stderr, "Error loading file %s\n", CAfile.c_str());
       return nullptr;
     }
@@ -55,16 +56,14 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
     X509 *current_cert = X509_STORE_CTX_get_current_cert(ctx);
 
     if (current_cert != NULL) {
-      X509_NAME_print_ex_fp(stderr,
-                         X509_get_subject_name(current_cert),
-                         0, XN_FLAG_ONELINE);
+      X509_NAME_print_ex_fp(stderr, X509_get_subject_name(current_cert), 0,
+                            XN_FLAG_ONELINE);
       fprintf(stderr, "\n");
     }
     fprintf(stderr, "%serror %d at %d depth lookup: %s\n",
-               X509_STORE_CTX_get0_parent_ctx(ctx) ? "[CRL path] " : "",
-               cert_error,
-               X509_STORE_CTX_get_error_depth(ctx),
-               X509_verify_cert_error_string(cert_error));
+            X509_STORE_CTX_get0_parent_ctx(ctx) ? "[CRL path] " : "",
+            cert_error, X509_STORE_CTX_get_error_depth(ctx),
+            X509_verify_cert_error_string(cert_error));
 
     /*
      * Pretend that some errors are ok, so they don't stop further
@@ -93,7 +92,7 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
   return ok;
 }
 
-static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
+static int check(X509_STORE *ctx, const char *chainfile, const char *certfile) {
   bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
   bssl::UniquePtr<X509> cert;
   int i = 0, ret = 0;
@@ -106,8 +105,9 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
     }
     bssl::UniquePtr<BIO> chain_bio(BIO_new_fp(chain_file.get(), BIO_NOCLOSE));
     size_t count = 0;
-    while(1) {
-      bssl::UniquePtr<X509> chain_cert(PEM_read_bio_X509(chain_bio.get(), NULL, NULL, NULL));
+    while (1) {
+      bssl::UniquePtr<X509> chain_cert(
+          PEM_read_bio_X509(chain_bio.get(), NULL, NULL, NULL));
       if (chain_cert.get() == nullptr) {
         uint32_t error = ERR_peek_last_error();
         if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
@@ -119,7 +119,7 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
                 chainfile);
         return 0;
       }
-      if(!sk_X509_push(chain.get(), chain_cert.release())) {
+      if (!sk_X509_push(chain.get(), chain_cert.release())) {
         return 0;
       }
       count++;
@@ -146,14 +146,13 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
   bssl::UniquePtr<X509_STORE_CTX> store_ctx(X509_STORE_CTX_new());
   if (store_ctx == nullptr || store_ctx.get() == nullptr) {
     fprintf(stderr, "error %s: X.509 store context allocation failed\n",
-               (certfile == nullptr) ? "stdin" : certfile);
+            (certfile == nullptr) ? "stdin" : certfile);
     return 0;
   }
 
   if (!X509_STORE_CTX_init(store_ctx.get(), ctx, cert.get(), chain.get())) {
-    fprintf(stderr,
-               "error %s: X.509 store context initialization failed\n",
-               (certfile == nullptr) ? "stdin" : certfile);
+    fprintf(stderr, "error %s: X.509 store context initialization failed\n",
+            (certfile == nullptr) ? "stdin" : certfile);
     return 0;
   }
 
@@ -162,9 +161,8 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
     fprintf(stdout, "%s: OK\n", (certfile == nullptr) ? "stdin" : certfile);
     ret = 1;
   } else {
-    fprintf(stderr,
-               "error %s: verification failed\n",
-               (certfile == nullptr) ? "stdin" : certfile);
+    fprintf(stderr, "error %s: verification failed\n",
+            (certfile == nullptr) ? "stdin" : certfile);
   }
 
   return ret;
@@ -181,7 +179,8 @@ bool VerifyTool(const args_list_t &args) {
   if (parsed_args.count("-help") || parsed_args.size() == 0) {
     fprintf(stderr,
             "Usage: verify [options] [cert.pem...]\n"
-            "Certificates must be in PEM format. They can be specified in one or more files.\n"
+            "Certificates must be in PEM format. They can be specified in one "
+            "or more files.\n"
             "If no files are specified, the tool will read from stdin.\n\n"
             "Valid options are:\n");
     PrintUsage(kArguments);
@@ -202,7 +201,9 @@ bool VerifyTool(const args_list_t &args) {
 
   int ret = 1;
 
-  const char *chain = parsed_args.count("-untrusted") ? parsed_args["-untrusted"].c_str() : NULL;
+  const char *chain = parsed_args.count("-untrusted")
+                          ? parsed_args["-untrusted"].c_str()
+                          : NULL;
 
   // No additional file or certs provided, read from stdin
   if (extra_args.size() == 0) {

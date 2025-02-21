@@ -21,12 +21,12 @@
 
 // See comment above the typedef of CRYPTO_refcount_t about these tests.
 OPENSSL_STATIC_ASSERT(alignof(CRYPTO_refcount_t) == alignof(LONG),
-              CRYPTO_refcount_t_does_not_match_LONG_alignment);
+                      CRYPTO_refcount_t_does_not_match_LONG_alignment);
 OPENSSL_STATIC_ASSERT(sizeof(CRYPTO_refcount_t) == sizeof(LONG),
-              CRYPTO_refcount_t_does_not_match_LONG_size);
+                      CRYPTO_refcount_t_does_not_match_LONG_size);
 
 OPENSSL_STATIC_ASSERT((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
-              CRYPTO_REFCOUNT_MAX_is_incorrect);
+                      CRYPTO_REFCOUNT_MAX_is_incorrect);
 
 static uint32_t atomic_load_u32(volatile LONG *ptr) {
   // This is not ideal because it still writes to a cacheline. MSVC is not able
@@ -43,8 +43,10 @@ static uint32_t atomic_load_u32(volatile LONG *ptr) {
   // preferable a global mutex, and eventually this code will be replaced by
   // [2]. Additionally, on clang-cl, we'll use the |OPENSSL_C11_ATOMIC| path.
   //
-  // [1] https://learn.microsoft.com/en-us/windows/win32/sync/interlocked-variable-access
-  // [2] https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
+  // [1]
+  // https://learn.microsoft.com/en-us/windows/win32/sync/interlocked-variable-access
+  // [2]
+  // https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
   return (uint32_t)InterlockedCompareExchange(ptr, 0, 0);
 }
 
