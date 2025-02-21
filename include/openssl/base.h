@@ -242,10 +242,19 @@ extern "C" {
 #if defined(__cplusplus)
 #define OPENSSL_INLINE inline
 #else
+
+#if defined(__STDC__) && !defined(__STDC_VERSION__)
+// C90 standard detected
+#define AWS_LC_C90_COMPAT_REQUIRED
+#define OPENSSL_INLINE static OPENSSL_UNUSED
+#else
+// C99 (or later) standard detected
 // Add OPENSSL_UNUSED so that, should an inline function be emitted via macro
 // (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
 // clang's -Wunused-function.
 #define OPENSSL_INLINE static inline OPENSSL_UNUSED
+#endif  // defined(__STDC__) && !defined(__STDC_VERSION__)
+
 #endif
 
 // ossl_ssize_t is a signed type which is large enough to fit the size of any

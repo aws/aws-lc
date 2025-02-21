@@ -57,7 +57,9 @@
 #ifndef OPENSSL_HEADER_DIGEST_H
 #define OPENSSL_HEADER_DIGEST_H
 
+#ifndef AWS_LC_C90_COMPAT_REQUIRED
 #include <stdbool.h>
+#endif
 
 #include <openssl/base.h>
 
@@ -360,12 +362,14 @@ struct env_md_ctx_st {
 
 // General No-op Functions [Deprecated].
 
+#ifndef AWS_LC_C90_COMPAT_REQUIRED
 // EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_unstable_sha3_enable(bool enable);
 
 // EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always
 // enabled.
 OPENSSL_EXPORT OPENSSL_DEPRECATED bool EVP_MD_unstable_sha3_is_enabled(void);
+#endif
 
 // EVP_MD_CTX_set_flags does nothing. We strongly discourage doing any
 // additional configurations when consuming |EVP_MD_CTX|.
