@@ -47,10 +47,10 @@ target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 
 target_link_libraries(ssl crypto)
 
-target_include_directories(ssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+target_include_directories(ssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
 target_include_directories(ssl PUBLIC
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
@@ -71,7 +71,7 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${INTEGRATION_TEST_EXEC}
           boringssl_gtest_main ssl )
-  target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
   set_test_location(${INTEGRATION_TEST_EXEC})
 
@@ -87,7 +87,7 @@ if(BUILD_TESTING)
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
   set_test_location(${SSL_TEST_EXEC})
 
-  target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   if(WIN32)
     target_link_libraries(${SSL_TEST_EXEC} ws2_32)
