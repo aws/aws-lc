@@ -29,7 +29,7 @@
 // Number of registers required to hold |digits_num| amount of qword
 // digits
 #define NUMBER_OF_REGISTERS(digits_num, register_size) \
-  (((digits_num) * 64 + (register_size) - 1) / (register_size))
+  (((digits_num) * 64 + (register_size)-1) / (register_size))
 
 OPENSSL_INLINE uint64_t get_digit(const uint8_t *in, int in_len);
 OPENSSL_INLINE void put_digit(uint8_t *out, int out_len, uint64_t digit);

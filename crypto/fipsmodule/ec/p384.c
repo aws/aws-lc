@@ -175,49 +175,49 @@ static void p384_inv_square(p384_felem out, const p384_felem in) {
   p384_felem_sqr(x6, x3);
   for (int i = 1; i < 3; i++) {
     p384_felem_sqr(x6, x6);
-  }  // 2^6 - 2^3
+  }                            // 2^6 - 2^3
   p384_felem_mul(x6, x6, x3);  // 2^6 - 2^0
 
   p384_felem_sqr(x12, x6);
   for (int i = 1; i < 6; i++) {
     p384_felem_sqr(x12, x12);
-  }  // 2^12 - 2^6
+  }                              // 2^12 - 2^6
   p384_felem_mul(x12, x12, x6);  // 2^12 - 2^0
 
   p384_felem_sqr(x15, x12);
   for (int i = 1; i < 3; i++) {
     p384_felem_sqr(x15, x15);
-  }  // 2^15 - 2^3
+  }                              // 2^15 - 2^3
   p384_felem_mul(x15, x15, x3);  // 2^15 - 2^0
 
   p384_felem_sqr(x30, x15);
   for (int i = 1; i < 15; i++) {
     p384_felem_sqr(x30, x30);
-  }  // 2^30 - 2^15
+  }                               // 2^30 - 2^15
   p384_felem_mul(x30, x30, x15);  // 2^30 - 2^0
 
   p384_felem_sqr(x60, x30);
   for (int i = 1; i < 30; i++) {
     p384_felem_sqr(x60, x60);
-  }  // 2^60 - 2^30
+  }                               // 2^60 - 2^30
   p384_felem_mul(x60, x60, x30);  // 2^60 - 2^0
 
   p384_felem_sqr(x120, x60);
   for (int i = 1; i < 60; i++) {
     p384_felem_sqr(x120, x120);
-  }  // 2^120 - 2^60
+  }                                 // 2^120 - 2^60
   p384_felem_mul(x120, x120, x60);  // 2^120 - 2^0
 
   p384_felem ret;
   p384_felem_sqr(ret, x120);
   for (int i = 1; i < 120; i++) {
     p384_felem_sqr(ret, ret);
-  }  // 2^240 - 2^120
+  }                                // 2^240 - 2^120
   p384_felem_mul(ret, ret, x120);  // 2^240 - 2^0
 
   for (int i = 0; i < 15; i++) {
     p384_felem_sqr(ret, ret);
-  }  // 2^255 - 2^15
+  }                               // 2^255 - 2^15
   p384_felem_mul(ret, ret, x15);  // 2^255 - 2^0
 
   // Why (1 + 30) in the loop?
@@ -232,7 +232,7 @@ static void p384_inv_square(p384_felem out, const p384_felem in) {
   // (the last 2 1s are appended in the following step).
   for (int i = 0; i < (1 + 30); i++) {
     p384_felem_sqr(ret, ret);
-  }  // 2^286 - 2^31
+  }                               // 2^286 - 2^31
   p384_felem_mul(ret, ret, x30);  // 2^286 - 2^30 - 2^0
 
   p384_felem_sqr(ret, ret);
@@ -247,7 +247,7 @@ static void p384_inv_square(p384_felem out, const p384_felem in) {
   // (the last 2 0s are appended by the last 2 shifts).
   for (int i = 0; i < (64 + 30); i++) {
     p384_felem_sqr(ret, ret);
-  }  // 2^382 - 2^126 - 2^94
+  }                               // 2^382 - 2^126 - 2^94
   p384_felem_mul(ret, ret, x30);  // 2^382 - 2^126 - 2^94 + 2^30 - 2^0
 
   p384_felem_sqr(ret, ret);

@@ -102,23 +102,14 @@ err:
   return NULL;
 }
 
-#define EXT_IA5STRING(nid)        \
-  {nid,                           \
-   0,                             \
-   ASN1_ITEM_ref(ASN1_IA5STRING), \
-   0,                             \
-   0,                             \
-   0,                             \
-   0,                             \
-   i2s_ASN1_IA5STRING,            \
-   s2i_ASN1_IA5STRING,            \
-   0,                             \
-   0,                             \
-   0,                             \
-   0,                             \
-   NULL}
+#define EXT_IA5STRING(nid)                                                 \
+  {                                                                        \
+    nid, 0, ASN1_ITEM_ref(ASN1_IA5STRING), 0, 0, 0, 0, i2s_ASN1_IA5STRING, \
+        s2i_ASN1_IA5STRING, 0, 0, 0, 0, NULL                               \
+  }
 
-#define EXT_END {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define EXT_END \
+  { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 const X509V3_EXT_METHOD v3_ns_ia5_list[] = {
     EXT_IA5STRING(NID_netscape_base_url),

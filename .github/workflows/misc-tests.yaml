@@ -127,7 +127,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install clang-format
-        run: sudo apt-get install -y clang-format-17
+        run: |
+          sudo apt-get install -y clang-format-17
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
       - name: Check formatting
         run: |
           clang-format --version

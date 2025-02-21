@@ -152,24 +152,27 @@ constexpr size_t kFlag_sha512_hw = 8;
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_encrypt, aes_hw_},
-          {kFlag_aes_hw_set_encrypt_key, aes_hw_},
-          {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
-          {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
+        {kFlag_aes_hw_encrypt, aes_hw_},
+            {kFlag_aes_hw_set_encrypt_key, aes_hw_},
+            {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
+            {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-          {kFlag_aes_hw_ctr32_encrypt_blocks,
-           aes_hw_ && (is_assembler_too_old || !vaes_vpclmulqdq_)},
-          {kFlag_aesni_gcm_encrypt, is_x86_64_ && aes_hw_ && avx_movbe_ &&
-                                        !is_assembler_too_old &&
-                                        !vaes_vpclmulqdq_},
-          {kFlag_aes_gcm_encrypt_avx512, is_x86_64_ && aes_hw_ &&
-                                             !is_assembler_too_old_avx512 &&
-                                             vaes_vpclmulqdq_},
+            {kFlag_aes_hw_ctr32_encrypt_blocks,
+             aes_hw_ && (is_assembler_too_old || !vaes_vpclmulqdq_)},
+            {kFlag_aesni_gcm_encrypt, is_x86_64_ && aes_hw_ && avx_movbe_ &&
+                                          !is_assembler_too_old &&
+                                          !vaes_vpclmulqdq_},
+            {kFlag_aes_gcm_encrypt_avx512, is_x86_64_ && aes_hw_ &&
+                                               !is_assembler_too_old_avx512 &&
+                                               vaes_vpclmulqdq_},
 #else  // AARCH64
-          {kFlag_aes_hw_ctr32_encrypt_blocks,
-           aes_hw_ && !aes_gcm_pmull_ && !aes_gcm_8x_},
-          {kFlag_aes_gcm_enc_kernel, aes_hw_ && aes_gcm_pmull_ && !aes_gcm_8x_},
-          {kFlag_aesv8_gcm_8x_enc_128, aes_hw_ && aes_gcm_pmull_ && aes_gcm_8x_}
+            {kFlag_aes_hw_ctr32_encrypt_blocks,
+             aes_hw_ && !aes_gcm_pmull_ && !aes_gcm_8x_},
+            {kFlag_aes_gcm_enc_kernel,
+             aes_hw_ && aes_gcm_pmull_ && !aes_gcm_8x_},
+        {
+          kFlag_aesv8_gcm_8x_enc_128, aes_hw_ &&aes_gcm_pmull_ &&aes_gcm_8x_
+        }
 #endif
       },
       [] {

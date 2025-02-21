@@ -209,9 +209,11 @@ extern "C" {
 #define MOD_EXP_CTIME_STORAGE_LEN \
   (((320u * 3u) + (32u * 9u * 16u)) / sizeof(BN_ULONG))
 
-#define STATIC_BIGNUM(x)                          \
-  {(BN_ULONG *)(x), sizeof(x) / sizeof(BN_ULONG), \
-   sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA}
+#define STATIC_BIGNUM(x)                                    \
+  {                                                         \
+    (BN_ULONG *)(x), sizeof(x) / sizeof(BN_ULONG),          \
+        sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
+  }
 
 #if defined(BN_ULLONG)
 #define Lw(t) ((BN_ULONG)(t))

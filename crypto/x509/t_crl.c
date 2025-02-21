@@ -137,7 +137,8 @@ int X509_CRL_print(BIO *out, X509_CRL *x) {
         !ASN1_TIME_print(out, X509_REVOKED_get0_revocationDate(r)) ||
         BIO_printf(out, "\n") <= 0 ||
         !X509V3_extensions_print(out, "CRL entry extensions",
-                                 X509_REVOKED_get0_extensions(r), 0, 8)) {}
+                                 X509_REVOKED_get0_extensions(r), 0, 8)) {
+    }
   }
 
   return X509_signature_print(out, sig_alg, signature);

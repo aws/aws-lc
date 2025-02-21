@@ -102,25 +102,25 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(x6, x3);
   for (int i = 1; i < 3; i++) {
     fiat_p256_square(x6, x6);
-  }  // 2^6 - 2^3
+  }                           // 2^6 - 2^3
   fiat_p256_mul(x6, x6, x3);  // 2^6 - 2^0
 
   fiat_p256_square(x12, x6);
   for (int i = 1; i < 6; i++) {
     fiat_p256_square(x12, x12);
-  }  // 2^12 - 2^6
+  }                             // 2^12 - 2^6
   fiat_p256_mul(x12, x12, x6);  // 2^12 - 2^0
 
   fiat_p256_square(x15, x12);
   for (int i = 1; i < 3; i++) {
     fiat_p256_square(x15, x15);
-  }  // 2^15 - 2^3
+  }                             // 2^15 - 2^3
   fiat_p256_mul(x15, x15, x3);  // 2^15 - 2^0
 
   fiat_p256_square(x30, x15);
   for (int i = 1; i < 15; i++) {
     fiat_p256_square(x30, x30);
-  }  // 2^30 - 2^15
+  }                              // 2^30 - 2^15
   fiat_p256_mul(x30, x30, x15);  // 2^30 - 2^0
 
   fiat_p256_square(x32, x30);
@@ -131,22 +131,22 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(ret, x32);
   for (int i = 1; i < 31 + 1; i++) {
     fiat_p256_square(ret, ret);
-  }  // 2^64 - 2^32
+  }                             // 2^64 - 2^32
   fiat_p256_mul(ret, ret, in);  // 2^64 - 2^32 + 2^0
 
   for (int i = 0; i < 96 + 32; i++) {
     fiat_p256_square(ret, ret);
-  }  // 2^192 - 2^160 + 2^128
+  }                              // 2^192 - 2^160 + 2^128
   fiat_p256_mul(ret, ret, x32);  // 2^192 - 2^160 + 2^128 + 2^32 - 2^0
 
   for (int i = 0; i < 32; i++) {
     fiat_p256_square(ret, ret);
-  }  // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
+  }                              // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
   fiat_p256_mul(ret, ret, x32);  // 2^224 - 2^192 + 2^160 + 2^64 - 2^0
 
   for (int i = 0; i < 30; i++) {
     fiat_p256_square(ret, ret);
-  }  // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
+  }                              // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
   fiat_p256_mul(ret, ret, x30);  // 2^254 - 2^222 + 2^190 + 2^94 - 2^0
 
   fiat_p256_square(ret, ret);

@@ -146,25 +146,25 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
   ecp_nistz256_sqr_mont(x6, x3);
   for (int i = 1; i < 3; i++) {
     ecp_nistz256_sqr_mont(x6, x6);
-  }  // 2^6 - 2^3
+  }                                   // 2^6 - 2^3
   ecp_nistz256_mul_mont(x6, x6, x3);  // 2^6 - 2^0
 
   ecp_nistz256_sqr_mont(x12, x6);
   for (int i = 1; i < 6; i++) {
     ecp_nistz256_sqr_mont(x12, x12);
-  }  // 2^12 - 2^6
+  }                                     // 2^12 - 2^6
   ecp_nistz256_mul_mont(x12, x12, x6);  // 2^12 - 2^0
 
   ecp_nistz256_sqr_mont(x15, x12);
   for (int i = 1; i < 3; i++) {
     ecp_nistz256_sqr_mont(x15, x15);
-  }  // 2^15 - 2^3
+  }                                     // 2^15 - 2^3
   ecp_nistz256_mul_mont(x15, x15, x3);  // 2^15 - 2^0
 
   ecp_nistz256_sqr_mont(x30, x15);
   for (int i = 1; i < 15; i++) {
     ecp_nistz256_sqr_mont(x30, x30);
-  }  // 2^30 - 2^15
+  }                                      // 2^30 - 2^15
   ecp_nistz256_mul_mont(x30, x30, x15);  // 2^30 - 2^0
 
   ecp_nistz256_sqr_mont(x32, x30);
@@ -175,22 +175,22 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
   ecp_nistz256_sqr_mont(ret, x32);
   for (int i = 1; i < 31 + 1; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }  // 2^64 - 2^32
+  }                                     // 2^64 - 2^32
   ecp_nistz256_mul_mont(ret, ret, in);  // 2^64 - 2^32 + 2^0
 
   for (int i = 0; i < 96 + 32; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }  // 2^192 - 2^160 + 2^128
+  }                                      // 2^192 - 2^160 + 2^128
   ecp_nistz256_mul_mont(ret, ret, x32);  // 2^192 - 2^160 + 2^128 + 2^32 - 2^0
 
   for (int i = 0; i < 32; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }  // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
+  }                                      // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
   ecp_nistz256_mul_mont(ret, ret, x32);  // 2^224 - 2^192 + 2^160 + 2^64 - 2^0
 
   for (int i = 0; i < 30; i++) {
     ecp_nistz256_sqr_mont(ret, ret);
-  }  // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
+  }                                      // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
   ecp_nistz256_mul_mont(ret, ret, x30);  // 2^254 - 2^222 + 2^190 + 2^94 - 2^0
 
   ecp_nistz256_sqr_mont(ret, ret);

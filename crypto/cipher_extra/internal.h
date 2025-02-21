@@ -77,7 +77,7 @@ OPENSSL_EXPORT int x86_64_assembly_implementation_FOR_TESTING(void);
 #define AES_CBC_HMAC_SHA_STITCH
 // TLS1_1_VERSION is also defined in ssl.h.
 #define TLS1_1_VERSION 0x0302
-#define NO_PAYLOAD_LENGTH ((size_t) - 1)
+#define NO_PAYLOAD_LENGTH ((size_t)-1)
 #define HMAC_KEY_SIZE 64
 #endif
 
