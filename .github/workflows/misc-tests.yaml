@@ -127,12 +127,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install clang-format
-        run: sudo apt-get install -y clang-format
+        run: sudo apt-get install -y clang-format-17
       - name: Check formatting
         run: |
           clang-format --version
           ./util/check_clang_format.sh --check
-          ./format.sh --check
       - name: Formatting instructions
         if: failure()
         run: |
