@@ -80,10 +80,9 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
     if (level == ssl_encryption_initial) {
       bssl::UniquePtr<SSLAEADContext> null_ctx =
           SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-      if (!null_ctx ||
-          !ssl->method->set_write_state(ssl, ssl_encryption_initial,
-                                        std::move(null_ctx),
-                                        /*secret_for_quic=*/{})) {
+      if (!null_ctx || !ssl->method->set_write_state(
+                           ssl, ssl_encryption_initial, std::move(null_ctx),
+                           /*secret_for_quic=*/{})) {
         return false;
       }
       ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
@@ -109,8 +108,7 @@ static bool parse_server_hello_tls13(const SSL_HANDSHAKE *hs,
   }
   // The RFC8446 version of the structure fixes some legacy values.
   // Additionally, the session ID must echo the original one.
-  if (out->legacy_version != TLS1_2_VERSION ||
-      out->compression_method != 0 ||
+  if (out->legacy_version != TLS1_2_VERSION || out->compression_method != 0 ||
       !CBS_mem_equal(&out->session_id, hs->session_id, hs->session_id_len) ||
       CBS_len(&out->extensions) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -179,8 +177,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   // Queue up a ChangeCipherSpec for whenever we next send something. This
   // will be before the second ClientHello. If we offered early data, this was
   // already done.
-  if (!hs->early_data_offered &&
-      !ssl->method->add_change_cipher_spec(ssl)) {
+  if (!hs->early_data_offered && !ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }
 
@@ -256,8 +253,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   if (cookie.present) {
     CBS cookie_value;
     if (!CBS_get_u16_length_prefixed(&cookie.data, &cookie_value) ||
-        CBS_len(&cookie_value) == 0 ||
-        CBS_len(&cookie.data) != 0) {
+        CBS_len(&cookie_value) == 0 || CBS_len(&cookie.data) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
@@ -541,8 +537,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   }
 
   CBS body = msg.body, extensions;
-  if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
-      CBS_len(&body) != 0) {
+  if (!CBS_get_u16_length_prefixed(&body, &extensions) || CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
@@ -858,8 +853,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_on_certificate_selected(hs) ||
-      !tls13_add_certificate(hs)) {
+  if (!ssl_on_certificate_selected(hs) || !tls13_add_certificate(hs)) {
     return ssl_hs_error;
   }
 
@@ -1075,8 +1069,7 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
       !CBS_get_u8_length_prefixed(body, &ticket_nonce) ||
       !CBS_get_u16_length_prefixed(body, &ticket) ||
       !session->ticket.CopyFrom(ticket) ||
-      !CBS_get_u16_length_prefixed(body, &extensions) ||
-      CBS_len(body) != 0) {
+      !CBS_get_u16_length_prefixed(body, &extensions) || CBS_len(body) != 0) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return nullptr;

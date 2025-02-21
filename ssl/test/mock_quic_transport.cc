@@ -95,8 +95,7 @@ bool MockQuicTransport::ReadHeader(uint8_t *out_type,
     uint16_t cipher_suite;
     uint32_t remaining_bytes;
     CBS_init(&cbs, header, sizeof(header));
-    if (!CBS_get_u8(&cbs, out_type) ||
-        !CBS_get_u8(&cbs, &level_id) ||
+    if (!CBS_get_u8(&cbs, out_type) || !CBS_get_u8(&cbs, &level_id) ||
         !CBS_get_u16(&cbs, &cipher_suite) ||
         !CBS_get_u32(&cbs, &remaining_bytes) ||
         level_id >= read_levels_.size()) {
@@ -117,8 +116,7 @@ bool MockQuicTransport::ReadHeader(uint8_t *out_type,
         }
         continue;
       }
-      fprintf(stderr,
-              "Got record at level %s, but keys were not configured.\n",
+      fprintf(stderr, "Got record at level %s, but keys were not configured.\n",
               LevelToString(level));
       return false;
     }

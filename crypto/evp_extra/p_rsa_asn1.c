@@ -61,9 +61,9 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-#include "../rsa_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/rsa/internal.h"
+#include "../rsa_extra/internal.h"
 #include "internal.h"
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
@@ -119,8 +119,7 @@ static int rsa_pss_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     RSASSA_PSS_PARAMS_free(pss);
     return 0;
   }
-  if (rsa == NULL ||
-      CBS_len(key) != 0 ||
+  if (rsa == NULL || CBS_len(key) != 0 ||
       !EVP_PKEY_assign(out, EVP_PKEY_RSA_PSS, rsa)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     RSA_free(rsa);
@@ -153,15 +152,14 @@ static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
 }
 
 static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
-  if(pubkey) {
+  if (pubkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
   // Per RFC 3447, A.1, the parameters have type NULL.
   CBS null;
-  if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) ||
-      CBS_len(&null) != 0 ||
+  if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) || CBS_len(&null) != 0 ||
       CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -178,7 +176,8 @@ static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   return 1;
 }
 
-static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key,
+                               CBS *pubkey) {
   RSASSA_PSS_PARAMS *pss = NULL;
   if (!RSASSA_PSS_parse_params(params, &pss)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -192,8 +191,7 @@ static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey
     RSASSA_PSS_PARAMS_free(pss);
     return 0;
   }
-  if (rsa == NULL ||
-      CBS_len(key) != 0 ||
+  if (rsa == NULL || CBS_len(key) != 0 ||
       !EVP_PKEY_assign(out, EVP_PKEY_RSA_PSS, rsa)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     RSA_free(rsa);
@@ -210,70 +208,74 @@ static int int_rsa_size(const EVP_PKEY *pkey) {
   return RSA_size(pkey->pkey.rsa);
 }
 
-static int rsa_bits(const EVP_PKEY *pkey) {
-  return RSA_bits(pkey->pkey.rsa);
-}
+static int rsa_bits(const EVP_PKEY *pkey) { return RSA_bits(pkey->pkey.rsa); }
 
 static void int_rsa_free(EVP_PKEY *pkey) { RSA_free(pkey->pkey.rsa); }
 
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
-  EVP_PKEY_RSA,
-  // 1.2.840.113549.1.1.1
-  {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, 9,
+    EVP_PKEY_RSA,
+    // 1.2.840.113549.1.1.1
+    {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01},
+    9,
 
-  "RSA",
-  "OpenSSL RSA method",
+    "RSA",
+    "OpenSSL RSA method",
 
-  rsa_pub_decode,
-  rsa_pub_encode,
-  rsa_pub_cmp,
+    rsa_pub_decode,
+    rsa_pub_encode,
+    rsa_pub_cmp,
 
-  rsa_priv_decode,
-  rsa_priv_encode,
-  NULL /* priv_encode_v2 */,
+    rsa_priv_decode,
+    rsa_priv_encode,
+    NULL /* priv_encode_v2 */,
 
-  NULL /* set_priv_raw */,
-  NULL /* set_pub_raw */,
-  NULL /* get_priv_raw */,
-  NULL /* get_pub_raw */,
+    NULL /* set_priv_raw */,
+    NULL /* set_pub_raw */,
+    NULL /* get_priv_raw */,
+    NULL /* get_pub_raw */,
 
-  rsa_opaque,
+    rsa_opaque,
 
-  int_rsa_size,
-  rsa_bits,
+    int_rsa_size,
+    rsa_bits,
 
-  0,0,0,
+    0,
+    0,
+    0,
 
-  int_rsa_free,
+    int_rsa_free,
 };
 
 const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
-  EVP_PKEY_RSA_PSS,
-  // 1.2.840.113549.1.1.10
-  {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a}, 9,
+    EVP_PKEY_RSA_PSS,
+    // 1.2.840.113549.1.1.10
+    {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a},
+    9,
 
-  "RSA-PSS",
-  "OpenSSL RSA-PSS method",
+    "RSA-PSS",
+    "OpenSSL RSA-PSS method",
 
-  rsa_pss_pub_decode,
-  NULL /* pub_encode */,
-  rsa_pub_cmp,
+    rsa_pss_pub_decode,
+    NULL /* pub_encode */,
+    rsa_pub_cmp,
 
-  rsa_pss_priv_decode,
-  NULL /* priv_encode */,
-  NULL /* priv_encode_v2 */,
+    rsa_pss_priv_decode,
+    NULL /* priv_encode */,
+    NULL /* priv_encode_v2 */,
 
-  NULL /* set_priv_raw */,
-  NULL /* set_pub_raw */,
-  NULL /* get_priv_raw */,
-  NULL /* get_pub_raw */,
+    NULL /* set_priv_raw */,
+    NULL /* set_pub_raw */,
+    NULL /* get_priv_raw */,
+    NULL /* get_pub_raw */,
 
-  rsa_opaque,
+    rsa_opaque,
 
-  int_rsa_size,
-  rsa_bits,
+    int_rsa_size,
+    rsa_bits,
 
-  0,0,0,
+    0,
+    0,
+    0,
 
-  int_rsa_free,
+    int_rsa_free,
 };

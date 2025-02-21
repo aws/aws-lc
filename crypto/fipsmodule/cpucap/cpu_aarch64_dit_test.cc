@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <openssl/crypto.h>
 #include <gtest/gtest.h>
+#include <openssl/crypto.h>
 
 #include "internal.h"
 
@@ -19,13 +19,13 @@ static void NestedMacroInvocation(uint64_t one) {
   uint64_t current_dit = armv8_get_dit();
   EXPECT_EQ(current_dit, one);
 }
-#endif // ENABLE_AUTO_SET_RESET_DIT
+#endif  // ENABLE_AUTO_SET_RESET_DIT
 
 TEST(DITTest, SetReset) {
-  uint64_t one = CRYPTO_is_ARMv8_DIT_capable_for_testing()? (uint64_t)1 : (uint64_t)0;
+  uint64_t one =
+      CRYPTO_is_ARMv8_DIT_capable_for_testing() ? (uint64_t)1 : (uint64_t)0;
 
-  uint64_t original_dit = 0, original_dit_2 = 0,
-    current_dit = 0;
+  uint64_t original_dit = 0, original_dit_2 = 0, current_dit = 0;
   original_dit = armv8_set_dit();
   EXPECT_EQ(original_dit, (uint64_t)0);
 
@@ -41,7 +41,7 @@ TEST(DITTest, SetReset) {
   EXPECT_EQ(current_dit, (uint64_t)0);
 
 #if defined(ENABLE_AUTO_SET_RESET_DIT)
-  { // invoke the macro within a scope
+  {  // invoke the macro within a scope
     // to test that it restores the CPU DIT flag at the end
     SET_DIT_AUTO_RESET;
     current_dit = armv8_get_dit();
@@ -53,13 +53,14 @@ TEST(DITTest, SetReset) {
   }
   current_dit = armv8_get_dit();
   EXPECT_EQ(current_dit, (uint64_t)0);
-#endif // ENABLE_AUTO_SET_RESET_DIT
+#endif  // ENABLE_AUTO_SET_RESET_DIT
 }
 
 #if defined(OPENSSL_THREADS)
 
 TEST(DITTest, Threads) {
-  uint64_t one = CRYPTO_is_ARMv8_DIT_capable_for_testing()? (uint64_t)1 : (uint64_t)0;
+  uint64_t one =
+      CRYPTO_is_ARMv8_DIT_capable_for_testing() ? (uint64_t)1 : (uint64_t)0;
 
   {
     // Test that the CPU DIT flag (bit in PSTATE register) is
@@ -121,7 +122,7 @@ TEST(DITTest, Threads) {
       current_dit = armv8_get_dit();
       EXPECT_EQ(current_dit, (uint64_t)0);
 
-      armv8_disable_dit(); // disable DIT capability at run-time
+      armv8_disable_dit();  // disable DIT capability at run-time
     });
 
     thread1.join();
@@ -141,7 +142,6 @@ TEST(DITTest, Threads) {
       armv8_restore_dit(&original_dit);
       current_dit = armv8_get_dit();
       EXPECT_EQ(current_dit, (uint64_t)0);
-
     });
 
     thread2.join();
@@ -168,9 +168,8 @@ TEST(DITTest, Threads) {
     });
 
     thread4.join();
-
   }
 }
-#endif // OPENSSL_THREADS
+#endif  // OPENSSL_THREADS
 
 #endif  // AARCH64_DIT_SUPPORTED && !OPENSSL_STATIC_ARMCAP

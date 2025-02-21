@@ -138,16 +138,8 @@ static long AsyncCallbackCtrl(BIO *bio, int cmd, bio_info_cb fp) {
 }
 
 const BIO_METHOD g_async_bio_method = {
-  BIO_TYPE_FILTER,
-  "async bio",
-  AsyncWrite,
-  AsyncRead,
-  NULL /* puts */,
-  NULL /* gets */,
-  AsyncCtrl,
-  AsyncNew,
-  AsyncFree,
-  AsyncCallbackCtrl,
+    BIO_TYPE_FILTER, "async bio", AsyncWrite, AsyncRead, NULL /* puts */,
+    NULL /* gets */, AsyncCtrl,   AsyncNew,   AsyncFree, AsyncCallbackCtrl,
 };
 
 }  // namespace

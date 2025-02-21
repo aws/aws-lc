@@ -143,7 +143,7 @@ typedef struct {
     double align;
     AES_KEY ks;
   } ks;
-  const uint8_t *iv; // Indicates if an IV has been set.
+  const uint8_t *iv;  // Indicates if an IV has been set.
 } EVP_AES_WRAP_CTX;
 
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
@@ -711,7 +711,7 @@ static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 }
 
 static int aes_wrap_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                            const uint8_t *iv, int enc) {
+                             const uint8_t *iv, int enc) {
   EVP_AES_WRAP_CTX *wctx = ctx->cipher_data;
   if (iv == NULL && key == NULL) {
     return 1;

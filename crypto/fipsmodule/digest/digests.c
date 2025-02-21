@@ -70,15 +70,13 @@
 #include "internal.h"
 
 #if defined(NDEBUG)
-#define CHECK(x) (void) (x)
+#define CHECK(x) (void)(x)
 #else
 #define CHECK(x) assert(x)
 #endif
 
 
-static void md4_init(EVP_MD_CTX *ctx) {
-  CHECK(MD4_Init(ctx->md_data));
-}
+static void md4_init(EVP_MD_CTX *ctx) { CHECK(MD4_Init(ctx->md_data)); }
 
 static void md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(MD4_Update(ctx->md_data, data, count));
@@ -101,9 +99,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md4) {
 }
 
 
-static void md5_init(EVP_MD_CTX *ctx) {
-  CHECK(MD5_Init(ctx->md_data));
-}
+static void md5_init(EVP_MD_CTX *ctx) { CHECK(MD5_Init(ctx->md_data)); }
 
 static void md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(MD5_Update(ctx->md_data, data, count));
@@ -151,9 +147,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_ripemd160) {
 }
 
 
-static void sha1_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA1_Init(ctx->md_data));
-}
+static void sha1_init(EVP_MD_CTX *ctx) { CHECK(SHA1_Init(ctx->md_data)); }
 
 static void sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA1_Update(ctx->md_data, data, count));
@@ -176,9 +170,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1) {
 }
 
 
-static void sha224_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA224_Init(ctx->md_data));
-}
+static void sha224_init(EVP_MD_CTX *ctx) { CHECK(SHA224_Init(ctx->md_data)); }
 
 static void sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA224_Update(ctx->md_data, data, count));
@@ -201,9 +193,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224) {
 }
 
 
-static void sha256_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA256_Init(ctx->md_data));
-}
+static void sha256_init(EVP_MD_CTX *ctx) { CHECK(SHA256_Init(ctx->md_data)); }
 
 static void sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA256_Update(ctx->md_data, data, count));
@@ -226,9 +216,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256) {
 }
 
 
-static void sha384_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA384_Init(ctx->md_data));
-}
+static void sha384_init(EVP_MD_CTX *ctx) { CHECK(SHA384_Init(ctx->md_data)); }
 
 static void sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA384_Update(ctx->md_data, data, count));
@@ -251,9 +239,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
 }
 
 
-static void sha512_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA512_Init(ctx->md_data));
-}
+static void sha512_init(EVP_MD_CTX *ctx) { CHECK(SHA512_Init(ctx->md_data)); }
 
 static void sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA512_Update(ctx->md_data, data, count));

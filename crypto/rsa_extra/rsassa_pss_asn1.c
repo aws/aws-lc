@@ -96,7 +96,8 @@ static int parse_oid(CBS *oid,
 
 // For One-way Hash Functions:
 // All implementations MUST accept both NULL and absent parameters as legal and
-// equivalent encodings. See 2.1. https://tools.ietf.org/html/rfc4055#section-2.1
+// equivalent encodings. See 2.1.
+// https://tools.ietf.org/html/rfc4055#section-2.1
 static int is_absent_or_null(CBS *params) {
   CBS null;
   return (CBS_len(params) == 0) ||
@@ -108,10 +109,8 @@ static int is_absent_or_null(CBS *params) {
 // See 2.1. https://tools.ietf.org/html/rfc4055#page-5
 static int decode_one_way_hash(CBS *cbs, RSA_ALGOR_IDENTIFIER **hash_algor) {
   CBS seq, oid;
-  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) &&
-      (CBS_len(cbs) == 0) &&
-      CBS_get_asn1(&seq, &oid, CBS_ASN1_OBJECT) &&
-      is_absent_or_null(&seq) &&
+  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(cbs) == 0) &&
+      CBS_get_asn1(&seq, &oid, CBS_ASN1_OBJECT) && is_absent_or_null(&seq) &&
       parse_oid(&oid, rsa_pss_hash_functions,
                 OPENSSL_ARRAY_SIZE(rsa_pss_hash_functions), hash_algor)) {
     return 1;
@@ -126,8 +125,7 @@ static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
   CBS seq, mgf1_oid, hash_seq, hash_oid;
   RSA_ALGOR_IDENTIFIER *mgf1 = NULL;
   RSA_ALGOR_IDENTIFIER *hash_algor = NULL;
-  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) &&
-      (CBS_len(cbs) == 0) &&
+  if (CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(cbs) == 0) &&
       CBS_get_asn1(&seq, &mgf1_oid, CBS_ASN1_OBJECT) &&
       parse_oid(&mgf1_oid, rsa_pss_mg_functions,
                 OPENSSL_ARRAY_SIZE(rsa_pss_mg_functions), &mgf1) &&
@@ -155,7 +153,8 @@ static int decode_mask_gen(CBS *cbs, RSA_MGA_IDENTIFIER **mga) {
 // When the tag value does not exist, |seq| gets recovered.
 // It returns one when the element exists.
 static int get_context_specific_value(CBS *seq, CBS *out, int index) {
-  unsigned int tag_value = CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | index;
+  unsigned int tag_value =
+      CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | index;
   CBS seq_cp = {seq->data, seq->len};
   if (CBS_get_asn1(seq, out, tag_value)) {
     return 1;
@@ -184,7 +183,8 @@ static int decode_pss_hash(CBS *seq, RSA_ALGOR_IDENTIFIER **hash_algor) {
 static int decode_pss_mask_gen(CBS *seq, RSA_MGA_IDENTIFIER **mga) {
   CBS cs;
   if (!get_context_specific_value(seq, &cs, TAG_VALUE_INDEX_1)) {
-    // MaskGenAlgorithm field can be absent, which means default(mgf1) is encoded.
+    // MaskGenAlgorithm field can be absent, which means default(mgf1) is
+    // encoded.
     return 1;
   }
   return decode_mask_gen(&cs, mga);
@@ -263,13 +263,11 @@ int RSASSA_PSS_parse_params(CBS *params, RSASSA_PSS_PARAMS **pss_params) {
   RSA_INTEGER *salt_len = NULL;
   RSA_INTEGER *trailer_field = NULL;
   CBS seq;
-  if (CBS_get_asn1(params, &seq, CBS_ASN1_SEQUENCE) &&
-      (CBS_len(params) == 0) &&
+  if (CBS_get_asn1(params, &seq, CBS_ASN1_SEQUENCE) && (CBS_len(params) == 0) &&
       decode_pss_hash(&seq, &hash_algor) &&
       decode_pss_mask_gen(&seq, &mask_gen_algor) &&
       decode_pss_salt_len(&seq, &salt_len) &&
-      decode_pss_trailer_field(&seq, &trailer_field) &&
-      (CBS_len(&seq) == 0)) {
+      decode_pss_trailer_field(&seq, &trailer_field) && (CBS_len(&seq) == 0)) {
     *pss_params = RSASSA_PSS_PARAMS_new();
     if ((*pss_params) != NULL) {
       (*pss_params)->hash_algor = hash_algor;
@@ -341,9 +339,7 @@ RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void) {
   return ret;
 }
 
-void RSA_INTEGER_free(RSA_INTEGER *ptr) {
-  OPENSSL_free(ptr);
-}
+void RSA_INTEGER_free(RSA_INTEGER *ptr) { OPENSSL_free(ptr); }
 
 void RSA_ALGOR_IDENTIFIER_free(RSA_ALGOR_IDENTIFIER *algor) {
   OPENSSL_free(algor);
@@ -472,7 +468,7 @@ static int hash_algor_to_EVP_MD(RSA_ALGOR_IDENTIFIER *hash_algor,
 }
 
 int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss, const EVP_MD **md,
-                      const EVP_MD **mgf1md, int *saltlen) {
+                          const EVP_MD **mgf1md, int *saltlen) {
   if (pss == NULL || md == NULL || mgf1md == NULL || saltlen == NULL) {
     return 0;
   }

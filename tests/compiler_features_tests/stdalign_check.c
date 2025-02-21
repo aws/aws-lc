@@ -5,20 +5,20 @@
 // for stdalign.h, try to compile this instead.
 
 #include <stdalign.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 int main(int argc, char **argv) {
-    alignas(8) uint8_t test[16];
-    size_t alignment = alignof(uint8_t);
+  alignas(8) uint8_t test[16];
+  size_t alignment = alignof(uint8_t);
 
-    test[0] = 0;
+  test[0] = 0;
 
-    // Try to eliminate dead store optimisation and similar
-    if (alignment == 1000 && test[0] != 0) {
-        return EXIT_FAILURE;
-    }
+  // Try to eliminate dead store optimisation and similar
+  if (alignment == 1000 && test[0] != 0) {
+    return EXIT_FAILURE;
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

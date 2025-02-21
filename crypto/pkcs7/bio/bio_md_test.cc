@@ -118,7 +118,8 @@ TEST_P(BIOMessageDigestTest, Basic) {
   ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), md, NULL));
   ASSERT_TRUE(
       EVP_DigestUpdate(ctx.get(), message_vec.data(), message_vec.size()));
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), buf, reinterpret_cast<unsigned int*>(&digest_len)));
+  ASSERT_TRUE(EVP_DigestFinal_ex(
+      ctx.get(), buf, reinterpret_cast<unsigned int *>(&digest_len)));
   EXPECT_EQ(Bytes(buf_vec.data(), buf_vec.size()), Bytes(buf, digest_len));
   bio_md.release();   // |bio| took ownership
   bio_mem.release();  // |bio| took ownership
@@ -146,7 +147,8 @@ TEST_P(BIOMessageDigestTest, Basic) {
   ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), md, NULL));
   ASSERT_TRUE(
       EVP_DigestUpdate(ctx.get(), message_vec.data(), message_vec.size()));
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), buf, reinterpret_cast<unsigned int*>(&digest_len)));
+  ASSERT_TRUE(EVP_DigestFinal_ex(
+      ctx.get(), buf, reinterpret_cast<unsigned int *>(&digest_len)));
   EXPECT_EQ(Bytes(buf, digest_len), Bytes(buf_vec.data(), buf_vec.size()));
   EXPECT_EQ(Bytes(buf_vec.data(), buf_vec.size()), Bytes(buf, digest_len));
   // Resetting |bio_md| should reset digest state, elicit different digest
@@ -199,7 +201,8 @@ TEST_P(BIOMessageDigestTest, Randomized) {
     }
     EVP_DigestUpdate(ctx.get(), message.data(), message.size());
     int digest_size;
-    EVP_DigestFinal_ex(ctx.get(), digest_buf, reinterpret_cast<unsigned int*>(&digest_size));
+    EVP_DigestFinal_ex(ctx.get(), digest_buf,
+                       reinterpret_cast<unsigned int *>(&digest_size));
     ASSERT_EQ(EVP_MD_CTX_size(ctx.get()), (unsigned int)digest_size);
     expected_digest.insert(expected_digest.begin(), &digest_buf[0],
                            &digest_buf[digest_size]);

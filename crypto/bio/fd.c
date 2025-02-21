@@ -70,20 +70,20 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 #if defined(OPENSSL_WINDOWS)
-  #define BORINGSSL_CLOSE _close
-  #define BORINGSSL_LSEEK _lseek
-  #define BORINGSSL_READ _read
-  #define BORINGSSL_WRITE _write
+#define BORINGSSL_CLOSE _close
+#define BORINGSSL_LSEEK _lseek
+#define BORINGSSL_READ _read
+#define BORINGSSL_WRITE _write
 #else
-  #define BORINGSSL_CLOSE close
-  #define BORINGSSL_LSEEK lseek
-  #define BORINGSSL_READ read
-  #define BORINGSSL_WRITE write
+#define BORINGSSL_CLOSE close
+#define BORINGSSL_LSEEK lseek
+#define BORINGSSL_READ read
+#define BORINGSSL_WRITE write
 #endif
 
 BIO *BIO_new_fd(int fd, int close_flag) {
@@ -231,5 +231,5 @@ int BIO_set_fd(BIO *bio, int fd, int close_flag) {
 }
 
 int BIO_get_fd(BIO *bio, int *out_fd) {
-  return (int)BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *) out_fd);
+  return (int)BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *)out_fd);
 }

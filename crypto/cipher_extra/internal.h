@@ -63,8 +63,8 @@
 #include <openssl/cipher.h>
 #include <openssl/type_check.h>
 
-#include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
+#include "../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -225,19 +225,15 @@ extern void chacha20_poly1305_seal(uint8_t *out_ciphertext,
 
 OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) { return 0; }
 
-OPENSSL_INLINE void chacha20_poly1305_open(uint8_t *out_plaintext,
-                                   const uint8_t *ciphertext,
-                                   size_t plaintext_len, const uint8_t *ad,
-                                   size_t ad_len,
-                                   union chacha20_poly1305_open_data *data) {
+OPENSSL_INLINE void chacha20_poly1305_open(
+    uint8_t *out_plaintext, const uint8_t *ciphertext, size_t plaintext_len,
+    const uint8_t *ad, size_t ad_len, union chacha20_poly1305_open_data *data) {
   abort();
 }
 
-OPENSSL_INLINE void chacha20_poly1305_seal(uint8_t *out_ciphertext,
-                                   const uint8_t *plaintext,
-                                   size_t plaintext_len, const uint8_t *ad,
-                                   size_t ad_len,
-                                   union chacha20_poly1305_seal_data *data) {
+OPENSSL_INLINE void chacha20_poly1305_seal(
+    uint8_t *out_ciphertext, const uint8_t *plaintext, size_t plaintext_len,
+    const uint8_t *ad, size_t ad_len, union chacha20_poly1305_seal_data *data) {
   abort();
 }
 #endif

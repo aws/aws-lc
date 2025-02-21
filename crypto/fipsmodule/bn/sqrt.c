@@ -76,8 +76,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       if (ret == NULL) {
         ret = BN_new();
       }
-      if (ret == NULL ||
-          !BN_set_word(ret, BN_is_bit_set(a, 0))) {
+      if (ret == NULL || !BN_set_word(ret, BN_is_bit_set(a, 0))) {
         if (ret != in) {
           BN_free(ret);
         }
@@ -94,8 +93,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     if (ret == NULL) {
       ret = BN_new();
     }
-    if (ret == NULL ||
-        !BN_set_word(ret, BN_is_one(a))) {
+    if (ret == NULL || !BN_set_word(ret, BN_is_one(a))) {
       if (ret != in) {
         BN_free(ret);
       }
@@ -145,8 +143,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       goto end;
     }
     q->neg = 0;
-    if (!BN_add_word(q, 1) ||
-        !BN_mod_exp_mont(ret, A, q, p, ctx, NULL)) {
+    if (!BN_add_word(q, 1) || !BN_mod_exp_mont(ret, A, q, p, ctx, NULL)) {
       goto end;
     }
     err = 0;
@@ -177,7 +174,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     //
     // (This is due to A.O.L. Atkin,
     // <URL:
-    //http://listserv.nodak.edu/scripts/wa.exe?A2=ind9211&L=nmbrthry&O=T&P=562>,
+    // http://listserv.nodak.edu/scripts/wa.exe?A2=ind9211&L=nmbrthry&O=T&P=562>,
     // November 1992.)
 
     // t := 2*a
@@ -200,14 +197,12 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     }
 
     // t := (2*a)*b^2 - 1
-    if (!BN_mod_mul(t, t, y, p, ctx) ||
-        !BN_sub_word(t, 1)) {
+    if (!BN_mod_mul(t, t, y, p, ctx) || !BN_sub_word(t, 1)) {
       goto end;
     }
 
     // x = a*b*t
-    if (!BN_mod_mul(x, A, b, p, ctx) ||
-        !BN_mod_mul(x, x, t, p, ctx)) {
+    if (!BN_mod_mul(x, A, b, p, ctx) || !BN_mod_mul(x, x, t, p, ctx)) {
       goto end;
     }
 
@@ -332,8 +327,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   }
 
   // b := a*x^2  (= a^q)
-  if (!BN_mod_sqr(b, x, p, ctx) ||
-      !BN_mod_mul(b, b, A, p, ctx)) {
+  if (!BN_mod_sqr(b, x, p, ctx) || !BN_mod_mul(b, b, A, p, ctx)) {
     goto end;
   }
 
@@ -388,8 +382,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
         goto end;
       }
     }
-    if (!BN_mod_mul(y, t, t, p, ctx) ||
-        !BN_mod_mul(x, x, t, p, ctx) ||
+    if (!BN_mod_mul(y, t, t, p, ctx) || !BN_mod_mul(x, x, t, p, ctx) ||
         !BN_mod_mul(b, b, y, p, ctx)) {
       goto end;
     }
@@ -450,7 +443,7 @@ int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx) {
   }
 
   // We estimate that the square root of an n-bit number is 2^{n/2}.
-  if (!BN_lshift(estimate, BN_value_one(), BN_num_bits(in)/2)) {
+  if (!BN_lshift(estimate, BN_value_one(), BN_num_bits(in) / 2)) {
     goto err;
   }
 
@@ -458,8 +451,7 @@ int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx) {
   // |in| = 0.
   for (;;) {
     // |estimate| = 1/2 * (|estimate| + |in|/|estimate|)
-    if (!BN_div(tmp, NULL, in, estimate, ctx) ||
-        !BN_add(tmp, tmp, estimate) ||
+    if (!BN_div(tmp, NULL, in, estimate, ctx) || !BN_add(tmp, tmp, estimate) ||
         !BN_rshift1(estimate, tmp) ||
         // |tmp| = |estimate|^2
         !BN_sqr(tmp, estimate, ctx) ||

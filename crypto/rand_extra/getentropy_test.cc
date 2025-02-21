@@ -50,7 +50,8 @@ TEST(GetEntropyTest, NotObviouslyBroken) {
   EXPECT_NE(Bytes(buf1), Bytes(kZeros));
   EXPECT_NE(Bytes(buf2), Bytes(kZeros));
   uint8_t buf3[256];
-  // Ensure that the implementation is not simply returning the memory unchanged.
+  // Ensure that the implementation is not simply returning the memory
+  // unchanged.
   memcpy(buf3, buf1, sizeof(buf3));
   EXPECT_EQ(getentropy(buf1, sizeof(buf1)), 0);
   EXPECT_NE(Bytes(buf1), Bytes(buf3));

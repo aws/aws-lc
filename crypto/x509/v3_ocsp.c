@@ -50,22 +50,20 @@ const X509V3_EXT_METHOD v3_crl_invdate = {
     NULL,
 };
 
-const X509V3_EXT_METHOD v3_ocsp_nonce = {
-    NID_id_pkix_OCSP_Nonce,
-    0,
-    NULL,
-    ocsp_nonce_new,
-    ocsp_nonce_free,
-    d2i_ocsp_nonce,
-    i2d_ocsp_nonce,
-    0,
-    0,
-    0,
-    0,
-    i2r_ocsp_nonce,
-    0,
-    NULL
-};
+const X509V3_EXT_METHOD v3_ocsp_nonce = {NID_id_pkix_OCSP_Nonce,
+                                         0,
+                                         NULL,
+                                         ocsp_nonce_new,
+                                         ocsp_nonce_free,
+                                         d2i_ocsp_nonce,
+                                         i2d_ocsp_nonce,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         i2r_ocsp_nonce,
+                                         0,
+                                         NULL};
 
 const X509V3_EXT_METHOD v3_ocsp_nocheck = {
     NID_id_pkix_OCSP_noCheck,

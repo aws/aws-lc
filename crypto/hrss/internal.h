@@ -16,8 +16,8 @@
 #define OPENSSL_HEADER_HRSS_INTERNAL_H
 
 #include <openssl/base.h>
-#include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
+#include "../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -46,7 +46,7 @@ OPENSSL_EXPORT void HRSS_poly3_invert(struct poly3 *out,
 // explicit permission for this and signed a CLA.) However it's 57KB of object
 // code, so it's not used if |OPENSSL_SMALL| is defined.
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
-    defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX) && \
+    defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX) &&   \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define POLY_RQ_MUL_ASM
 // POLY_MUL_RQ_SCRATCH_SPACE is the number of bytes of scratch space needed

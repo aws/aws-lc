@@ -225,9 +225,9 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   }
   // CCM needs tag length (M) set via EVP_CTRL_AEAD_SET_TAG during encryption.
   if ((is_aead && !encrypt) || is_ccm) {
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
-                                    tag.size(), encrypt ? nullptr
-                                                        : const_cast<uint8_t *>(tag.data())));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(
+        ctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(),
+        encrypt ? nullptr : const_cast<uint8_t *>(tag.data())));
   }
   ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), /*cipher=*/nullptr,
                                 /*engine=*/nullptr,
@@ -239,10 +239,10 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
     if (use_evp_cipher) {
       len = EVP_Cipher(ctx.get(), nullptr, nullptr, in.size());
     } else {
-      ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), nullptr, &len, nullptr,
-                                   in.size()));
+      ASSERT_TRUE(
+          EVP_CipherUpdate(ctx.get(), nullptr, &len, nullptr, in.size()));
     }
-    ASSERT_EQ(len, (int) in.size());
+    ASSERT_EQ(len, (int)in.size());
   }
 
   // Note: the deprecated |EVP_CIPHER|-based AEAD API is sensitive to whether
@@ -308,9 +308,9 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
       }
     } else {
       int expected_ret = is_invalid_ccm ? 0 : 1;
-      ASSERT_EQ(expected_ret, EVP_CipherUpdate(ctx.get(), result.data() + total,
-                                               &len, in.data(),
-                                               static_cast<int>(todo)));
+      ASSERT_EQ(expected_ret,
+                EVP_CipherUpdate(ctx.get(), result.data() + total, &len,
+                                 in.data(), static_cast<int>(todo)));
     }
     ASSERT_GE(len, 0);
     total += static_cast<size_t>(len);
@@ -323,14 +323,14 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
       // Passing all nulls should act like |EVP_CipherFinal_ex|.
       ASSERT_TRUE(is_custom_cipher);
       int expected_ret = is_ccm ? 0 : -1;
-      EXPECT_EQ(expected_ret, EVP_Cipher(ctx.get(), result.data() + total,
-                                         nullptr, 0));
+      EXPECT_EQ(expected_ret,
+                EVP_Cipher(ctx.get(), result.data() + total, nullptr, 0));
     } else {
       // Invalid padding and invalid tags all appear as a failed
       // |EVP_CipherFinal_ex|. In CCM, this happens in |EVP_CipherUpdate|.
       int expected_ret = is_ccm ? 1 : 0;
-      EXPECT_EQ(expected_ret, EVP_CipherFinal_ex(ctx.get(),
-                                                 result.data() + total, &len));
+      EXPECT_EQ(expected_ret,
+                EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
     }
   } else {
     if (use_evp_cipher) {
@@ -359,10 +359,12 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   }
 }
 
-static void TestLowLevelAPI(
-    const EVP_CIPHER *cipher, Operation op, bool in_place, size_t chunk_size,
-    bssl::Span<const uint8_t> key, bssl::Span<const uint8_t> iv,
-    bssl::Span<const uint8_t> plaintext, bssl::Span<const uint8_t> ciphertext) {
+static void TestLowLevelAPI(const EVP_CIPHER *cipher, Operation op,
+                            bool in_place, size_t chunk_size,
+                            bssl::Span<const uint8_t> key,
+                            bssl::Span<const uint8_t> iv,
+                            bssl::Span<const uint8_t> plaintext,
+                            bssl::Span<const uint8_t> ciphertext) {
   bool encrypt = op == Operation::kEncrypt;
   bssl::Span<const uint8_t> in = encrypt ? plaintext : ciphertext;
   bssl::Span<const uint8_t> expected = encrypt ? ciphertext : plaintext;
@@ -595,23 +597,24 @@ struct AeadCipherParams {
 };
 
 static const struct AeadCipherParams AeadCiphers[] = {
-  {"ChaCha20Poly1305", EVP_chacha20_poly1305, "chacha20_poly1305_tests.txt"},
-  {"AES_128_CCM_BLUETOOTH", EVP_aes_128_ccm, "aes_128_ccm_bluetooth_tests.txt"},
-  {"AES_128_CCM_BLUETOOTH_8", EVP_aes_128_ccm,
-   "aes_128_ccm_bluetooth_8_tests.txt"},
-  {"AES_128_CCM_Matter", EVP_aes_128_ccm, "aes_128_ccm_matter_tests.txt"},
+    {"ChaCha20Poly1305", EVP_chacha20_poly1305, "chacha20_poly1305_tests.txt"},
+    {"AES_128_CCM_BLUETOOTH", EVP_aes_128_ccm,
+     "aes_128_ccm_bluetooth_tests.txt"},
+    {"AES_128_CCM_BLUETOOTH_8", EVP_aes_128_ccm,
+     "aes_128_ccm_bluetooth_8_tests.txt"},
+    {"AES_128_CCM_Matter", EVP_aes_128_ccm, "aes_128_ccm_matter_tests.txt"},
 };
 
 class AeadCipherTest : public testing::TestWithParam<AeadCipherParams> {
-public:
-  const EVP_CIPHER *getTestCipher() {
-    return GetParam().func();
-  }
+ public:
+  const EVP_CIPHER *getTestCipher() { return GetParam().func(); }
 };
 
-INSTANTIATE_TEST_SUITE_P(All, AeadCipherTest, testing::ValuesIn(AeadCiphers),
-                         [](const testing::TestParamInfo<AeadCipherParams> &params)
-                         -> std::string { return params.param.name; });
+INSTANTIATE_TEST_SUITE_P(
+    All, AeadCipherTest, testing::ValuesIn(AeadCiphers),
+    [](const testing::TestParamInfo<AeadCipherParams> &params) -> std::string {
+      return params.param.name;
+    });
 
 TEST_P(AeadCipherTest, TestVector) {
   std::string test_vectors = "crypto/cipher_extra/test/";
@@ -640,14 +643,15 @@ TEST_P(AeadCipherTest, TestVector) {
 // Given a size_t, return true if it's valid. These hardcoded validators are
 // necessary because the Wychefproof test vectors are not consistent about
 // setting the right validity flags.
-typedef bool(*validate_f)(size_t);
+typedef bool (*validate_f)(size_t);
 
-static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
-  std::vector<uint8_t> iv, std::vector<uint8_t> msg, std::vector<uint8_t> ct,
-  std::vector<uint8_t> aad, std::vector<uint8_t> tag, WycheproofResult result,
-  const EVP_CIPHER *cipher, validate_f iv_validate, validate_f tag_validate) {
+static void WycheproofFileTest(
+    FileTest *t, std::vector<uint8_t> key, std::vector<uint8_t> iv,
+    std::vector<uint8_t> msg, std::vector<uint8_t> ct, std::vector<uint8_t> aad,
+    std::vector<uint8_t> tag, WycheproofResult result, const EVP_CIPHER *cipher,
+    validate_f iv_validate, validate_f tag_validate) {
   std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> uctx(
-          EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
+      EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
   EVP_CIPHER_CTX *ctx = uctx.get();
   ASSERT_TRUE(ctx);
 
@@ -674,8 +678,7 @@ static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
 
   // Set the tag size for CCM
   if (is_ccm) {
-    res = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag.size(),
-                              nullptr);
+    res = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag.size(), nullptr);
     if (!valid_tag && !result.IsValid()) {
       ASSERT_FALSE(res);
       t->SkipCurrent();
@@ -692,14 +695,15 @@ static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
   int out_len = 0;
   if (is_ccm) {
     ASSERT_TRUE(EVP_CipherUpdate(ctx, nullptr, &out_len, nullptr, msg.size()));
-    ASSERT_EQ(out_len, (int) msg.size());
+    ASSERT_EQ(out_len, (int)msg.size());
   }
 
   // Insert AAD
   uint8_t junk_buf[1];
   uint8_t *in = aad.empty() ? junk_buf : aad.data();
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx, /*out*/ nullptr, &out_len, in, aad.size()));
-  ASSERT_EQ(out_len, (int) aad.size());
+  ASSERT_TRUE(
+      EVP_EncryptUpdate(ctx, /*out*/ nullptr, &out_len, in, aad.size()));
+  ASSERT_EQ(out_len, (int)aad.size());
 
   // Insert plaintext
   std::vector<uint8_t> computed_ct(ct.size());
@@ -708,32 +712,32 @@ static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
   uint8_t *out = computed_ct.empty() ? junk_buf : computed_ct.data();
   out_len = 0;
   ASSERT_TRUE(EVP_EncryptUpdate(ctx, out, &out_len, in, msg.size()));
-  ASSERT_EQ(out_len, (int) msg.size());
+  ASSERT_EQ(out_len, (int)msg.size());
 
   // Finish the cipher
   out_len = 0;
-  out = computed_ct.empty() ?
-          junk_buf : computed_ct.data() + computed_ct.size();
+  out =
+      computed_ct.empty() ? junk_buf : computed_ct.data() + computed_ct.size();
   ASSERT_TRUE(EVP_EncryptFinal(ctx, out, &out_len));
   ASSERT_EQ(out_len, 0);
 
   // Get the tag
   std::vector<uint8_t> computed_tag(tag.size());
   ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag.size(),
-                            computed_tag.data()));
+                                  computed_tag.data()));
 
   // Initialize the decrypt context
   std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> udctx(
-          EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
+      EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
   EVP_CIPHER_CTX *dctx = udctx.get();
   ASSERT_TRUE(dctx);
   ASSERT_TRUE(EVP_DecryptInit_ex(dctx, cipher, nullptr, nullptr, nullptr));
 
   // Set the CTRL parameters
-  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_IVLEN, iv.size(),
-                                  nullptr));
-  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_TAG, tag.size(),
-                                  tag.data()));
+  ASSERT_TRUE(
+      EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_IVLEN, iv.size(), nullptr));
+  ASSERT_TRUE(
+      EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
 
   // Initialize with the key/iv
   ASSERT_TRUE(EVP_DecryptInit_ex(dctx, NULL, NULL, key.data(), iv.data()));
@@ -741,14 +745,14 @@ static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
   // Set the message length for CCM
   if (is_ccm) {
     ASSERT_TRUE(EVP_CipherUpdate(dctx, nullptr, &out_len, nullptr, msg.size()));
-    ASSERT_EQ(out_len, (int) msg.size());
+    ASSERT_EQ(out_len, (int)msg.size());
   }
 
   // Insert AAD
   out_len = 0;
   in = aad.empty() ? junk_buf : aad.data();
   ASSERT_TRUE(EVP_DecryptUpdate(dctx, NULL, &out_len, in, aad.size()));
-  ASSERT_EQ(out_len, (int) aad.size());
+  ASSERT_EQ(out_len, (int)aad.size());
 
   // Insert ciphertext
   std::vector<uint8_t> computed_pt(msg.size());
@@ -759,13 +763,13 @@ static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
   res = EVP_DecryptUpdate(dctx, computed_pt.data(), &out_len, in, ct.size());
   ASSERT_EQ(expected_res, res);
   if (!is_invalid_ccm) {
-    ASSERT_EQ((int) msg.size(), out_len);
+    ASSERT_EQ((int)msg.size(), out_len);
   }
 
   // Finish decryption
   out_len = 0;
-  out = computed_pt.empty() ?
-          junk_buf : computed_pt.data() + computed_pt.size();
+  out =
+      computed_pt.empty() ? junk_buf : computed_pt.data() + computed_pt.size();
   expected_res = is_invalid_ccm ? 1 : result.IsValid() ? 1 : 0;
   res = EVP_DecryptFinal(dctx, out, &out_len);
 
@@ -784,9 +788,7 @@ static void WycheproofFileTest(FileTest *t, std::vector<uint8_t> key,
   }
 }
 
-static bool ChaCha20Poly1305IvValidate(size_t iv_size) {
-  return iv_size == 12;
-}
+static bool ChaCha20Poly1305IvValidate(size_t iv_size) { return iv_size == 12; }
 
 static bool ChaCha20Poly1305TagValidate(size_t tag_size) {
   return tag_size <= 16;
@@ -794,7 +796,7 @@ static bool ChaCha20Poly1305TagValidate(size_t tag_size) {
 
 TEST(CipherTest, WycheproofChaCha20Poly1305) {
   std::string test_vectors =
-          "third_party/wycheproof_testvectors/chacha20_poly1305_test.txt";
+      "third_party/wycheproof_testvectors/chacha20_poly1305_test.txt";
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     t->IgnoreInstruction("type");
     t->IgnoreInstruction("tagSize");
@@ -836,7 +838,7 @@ static bool AesCcmTagValidate(size_t tag_size) {
 
 TEST(CipherTest, WycheproofAesCcm) {
   std::string test_vectors =
-          "third_party/wycheproof_testvectors/aes_ccm_test.txt";
+      "third_party/wycheproof_testvectors/aes_ccm_test.txt";
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     t->IgnoreInstruction("type");
     t->IgnoreInstruction("tagSize");
@@ -1436,9 +1438,9 @@ TEST(CipherTest, GCMIncrementingIV) {
 }
 
 #define CHECK_ERROR(function, err) \
-    ERR_clear_error();                 \
-    EXPECT_FALSE(function);                          \
-    EXPECT_EQ(err, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();               \
+  EXPECT_FALSE(function);          \
+  EXPECT_EQ(err, ERR_GET_REASON(ERR_peek_last_error()));
 
 TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
   int in_len = 10;
@@ -1446,11 +1448,19 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
   int out_len = in_len + 256;
   std::vector<uint8_t> out_vec(out_len);
 
-  CHECK_ERROR(EVP_EncryptUpdate(nullptr, out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_PASSED_NULL_PARAMETER);
+  CHECK_ERROR(EVP_EncryptUpdate(nullptr, out_vec.data(), &out_len,
+                                in_vec.data(), in_len),
+              ERR_R_PASSED_NULL_PARAMETER);
 
   bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
-  CHECK_ERROR(EVP_EncryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  CHECK_ERROR(EVP_EncryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_EncryptUpdate(ctx.get(), out_vec.data(), &out_len,
+                                in_vec.data(), in_len),
+              ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_EncryptFinal(ctx.get(), out_vec.data(), &out_len),
+              ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len,
+                                in_vec.data(), in_len),
+              ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len),
+              ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 }

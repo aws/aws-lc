@@ -20,27 +20,32 @@
 
 #include <openssl/ssl.h>
 
-#include "internal.h"
 #include "../ssl/internal.h"
+#include "internal.h"
 
 static const argument_t kArguments[] = {
     {
-        "-openssl-name", kBooleanArgument,
+        "-openssl-name",
+        kBooleanArgument,
         "Print OpenSSL-style cipher names instead of IETF cipher names.",
     },
     {
-        "-cipher-query", kOptionalArgument,
+        "-cipher-query",
+        kOptionalArgument,
         "An OpenSSL-style cipher suite string that is matched against "
         "supported ciphers. Defaults to \"ALL\".",
     },
     {
-        "-print-all", kBooleanArgument,
+        "-print-all",
+        kBooleanArgument,
         "Prints all supported AWS-LC libssl ciphers for all TLS versions. "
         "If this option is used, all other options are ignored, except for "
         "-openssl-name.",
     },
     {
-        "", kOptionalArgument, "",
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 
@@ -73,7 +78,8 @@ bool Ciphers(const std::vector<std::string> &args) {
   // Use a lambda to conditionally initialise const.
   const std::string ciphers_string = [&] {
     std::string non_const_ciphers_string;
-    if (!GetString(&non_const_ciphers_string, "-cipher-query", "ALL", args_map)) {
+    if (!GetString(&non_const_ciphers_string, "-cipher-query", "ALL",
+                   args_map)) {
       // Return an empty string from lambda as error. This also captures the
       // case where the argument of |-cipher-query| is empty, which we can
       // regard as an error.
@@ -83,7 +89,8 @@ bool Ciphers(const std::vector<std::string> &args) {
   }();
 
   if (ciphers_string.empty()) {
-    fprintf(stderr, "Error parsing -cipher-query: Query cipher string is empty\n");
+    fprintf(stderr,
+            "Error parsing -cipher-query: Query cipher string is empty\n");
     return false;
   }
 

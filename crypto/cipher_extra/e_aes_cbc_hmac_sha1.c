@@ -31,7 +31,8 @@ typedef struct {
   // Used to compute(init, update and final) HMAC-SHA1.
   // head stores the initialised inner hash state.
   // tail stores the outer hash state.
-  // These storage are for using in subsequent invocations with the same MAC key.
+  // These storage are for using in subsequent invocations with the same MAC
+  // key.
   SHA_CTX head, tail, md;
   // In encrypt case, it's eiv_len + plaintext_len. eiv is explicit iv(required
   // TLS 1.1+). In decrypt case, it's |EVP_AEAD_TLS1_AAD_LEN(13)|.
@@ -55,12 +56,12 @@ typedef struct {
 } EVP_AES_HMAC_SHA1;
 
 void aesni_cbc_sha1_enc(const void *inp, void *out, size_t blocks,
-                        const AES_KEY *key, uint8_t iv[AES_BLOCK_SIZE], SHA_CTX *ctx,
-                        const void *in0);
+                        const AES_KEY *key, uint8_t iv[AES_BLOCK_SIZE],
+                        SHA_CTX *ctx, const void *in0);
 
 static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
-                                        const uint8_t *inkey,
-                                        const uint8_t *iv, int enc) {
+                                        const uint8_t *inkey, const uint8_t *iv,
+                                        int enc) {
   EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
   int ret;
 
@@ -83,25 +84,33 @@ static int aesni_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
   return 1;
 }
 
-// aesni_cbc_hmac_sha1_cipher implements TLS-specific CBC-mode+HMAC-SHA1 cipher suite based encryption and decryption.
+// aesni_cbc_hmac_sha1_cipher implements TLS-specific CBC-mode+HMAC-SHA1 cipher
+// suite based encryption and decryption.
 //
 // For encryption in TLS version 1.0
 // |in|: payload/fragment
 // |len|: (|payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE
-// |out|: Must point to allocated memory of at least (|payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes
-// If the function returns successfully |out| will contain AES-CBC(aes_key, IV, payload || hmac-sha1(mac_key, aad || payload) || padding || padding_length)
+// |out|: Must point to allocated memory of at least (|payload| +
+// SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes If the function
+// returns successfully |out| will contain AES-CBC(aes_key, IV, payload ||
+// hmac-sha1(mac_key, aad || payload) || padding || padding_length)
 
 // For encryption in TLS version 1.1 and 1.2
 // |in|: payload/fragment
-// |len|: (|IV| + |payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE
-// |out|: Must point to allocated memory of at least (|IV| + |payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes
-// If the function returns successfully |out| will contain AES-CBC(aes_key, mask, IV || payload || hmac-sha1(mac_key, aad || payload) || padding || padding_length)
-// |len|: should be (eiv_len + plaintext_len + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE).
-// The mask and IV are according to method 2.b from https://datatracker.ietf.org/doc/html/rfc2246#section-6.2.3.2
+// |len|: (|IV| + |payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) &
+// -AES_BLOCK_SIZE |out|: Must point to allocated memory of at least (|IV| +
+// |payload| + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE bytes If
+// the function returns successfully |out| will contain AES-CBC(aes_key, mask,
+// IV || payload || hmac-sha1(mac_key, aad || payload) || padding ||
+// padding_length) |len|: should be (eiv_len + plaintext_len + SHA_DIGEST_LENGTH
+// + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE). The mask and IV are according to
+// method 2.b from https://datatracker.ietf.org/doc/html/rfc2246#section-6.2.3.2
 //
-// WARNING: Do not set explicit |IV| = |mask|. It will result in aes(aes_key, 0) being used at the effective IV for all records.
+// WARNING: Do not set explicit |IV| = |mask|. It will result in aes(aes_key, 0)
+// being used at the effective IV for all records.
 //
-// In decryption, this function performs decrytion, removing padding, and verifying mac value.
+// In decryption, this function performs decrytion, removing padding, and
+// verifying mac value.
 static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                       const uint8_t *in, size_t len) {
   EVP_AES_HMAC_SHA1 *key = (EVP_AES_HMAC_SHA1 *)(ctx->cipher_data);
@@ -132,7 +141,8 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     }
     if (len !=
         ((plen + SHA_DIGEST_LENGTH + AES_BLOCK_SIZE) & -AES_BLOCK_SIZE)) {
-      // The input should have space for plen(eiv + plaintext) + SHA_DIGEST_LENGTH + padding.
+      // The input should have space for plen(eiv + plaintext) +
+      // SHA_DIGEST_LENGTH + padding.
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
       return 0;
     } else if (key->aux.tls_ver >= TLS1_1_VERSION) {
@@ -143,8 +153,9 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     size_t sha_off = SHA_CBLOCK - key->md.num;
     size_t blocks;
 
-    // Use stitch code |aesni_cbc_sha1_enc| when there are multiple of SHA_CBLOCK
-    // so |aesni_cbc_sha1_enc| can use AES and SHA on the same data block.
+    // Use stitch code |aesni_cbc_sha1_enc| when there are multiple of
+    // SHA_CBLOCK so |aesni_cbc_sha1_enc| can use AES and SHA on the same data
+    // block.
     //
     // Assembly stitch handles AVX-capable processors, but its
     // performance is not optimal on AMD Jaguar, ~40% worse, for
@@ -155,16 +166,15 @@ static int aesni_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     // either even XOP-capable Bulldozer-based or GenuineIntel one.
     // But SHAEXT-capable go ahead...
     if ((CRYPTO_is_SHAEXT_capable() ||
-        (CRYPTO_is_AVX_capable() &&
-        (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
+         (CRYPTO_is_AVX_capable() &&
+          (CRYPTO_is_AMD_XOP_support() | CRYPTO_is_intel_cpu()))) &&
         plen > (sha_off + iv_len) &&
         (blocks = (plen - (sha_off + iv_len)) / SHA_CBLOCK)) {
       // Before calling |aesni_cbc_sha1_enc|, |key->md| should not
       // include not hashed data(partial data).
       SHA1_Update(&key->md, in + iv_len, sha_off);
 
-      aesni_cbc_sha1_enc(in, out, blocks, &key->ks,
-                         ctx->iv, &key->md,
+      aesni_cbc_sha1_enc(in, out, blocks, &key->ks, ctx->iv, &key->md,
                          in + iv_len + sha_off);
       // Update the offset to record and skip the part processed
       // (encrypted and hashed) by |aesni_cbc_sha1_enc|.
@@ -322,11 +332,11 @@ static int aesni_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     }
     case EVP_CTRL_AEAD_TLS1_AAD: {
       // p is
-      // additional_data = |seq_num + content_type + protocol_version + payload_eiv_len|.
-      // seq_num: 8 octets long.
-      // content_type: 1 octets long.
+      // additional_data = |seq_num + content_type + protocol_version +
+      // payload_eiv_len|. seq_num: 8 octets long. content_type: 1 octets long.
       // protocol_version: 2 octets long.
-      // payload_eiv_len: 2 octets long. eiv is explicit iv required by TLS 1.1+.
+      // payload_eiv_len: 2 octets long. eiv is explicit iv required by
+      // TLS 1.1+.
       uint8_t *p = ptr;
       if (arg != EVP_AEAD_TLS1_AAD_LEN) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_AD_SIZE);

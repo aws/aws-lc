@@ -67,9 +67,9 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "internal.h"
-#include "../ec/internal.h"
 #include "../../internal.h"
+#include "../ec/internal.h"
+#include "internal.h"
 
 
 typedef struct {
@@ -137,8 +137,7 @@ static int pkey_ec_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
   return ECDSA_verify(0, tbs, tbslen, sig, siglen, ctx->pkey->pkey.ec);
 }
 
-static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
-                          size_t *keylen) {
+static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen) {
   const EC_POINT *pubkey = NULL;
   EC_KEY *eckey;
   uint8_t buf[EC_MAX_BYTES];
@@ -166,11 +165,11 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   // Note: This is an internal function which will not update
   // the service indicator.
   if (!ECDH_compute_shared_secret(buf, &buflen, pubkey, eckey)) {
-      return 0;
+    return 0;
   }
 
   if (buflen < *keylen) {
-      *keylen = buflen;
+    *keylen = buflen;
   }
   OPENSSL_memcpy(key, buf, *keylen);
 
@@ -193,8 +192,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
           md_type != NID_sha512 && md_type != NID_sha512_224 &&
           md_type != NID_sha512_256 && md_type != NID_sha3_224 &&
           md_type != NID_sha3_256 && md_type != NID_sha3_384 &&
-          md_type != NID_sha3_512
-      ) {
+          md_type != NID_sha3_512) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
         return 0;
       }
@@ -270,12 +268,12 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     group = EC_KEY_get0_group(ctx->pkey->pkey.ec);
   }
   EC_KEY *ec = EC_KEY_new();
-  // In FIPS build, |EC_KEY_generate_key_fips| updates the service indicator so lock it here
+  // In FIPS build, |EC_KEY_generate_key_fips| updates the service indicator so
+  // lock it here
   FIPS_service_indicator_lock_state();
-  if (ec == NULL ||
-      !EC_KEY_set_group(ec, group) ||
+  if (ec == NULL || !EC_KEY_set_group(ec, group) ||
       (!is_fips_build() && !EC_KEY_generate_key(ec)) ||
-      ( is_fips_build() && !EC_KEY_generate_key_fips(ec))) {
+      (is_fips_build() && !EC_KEY_generate_key_fips(ec))) {
     EC_KEY_free(ec);
     goto end;
   }
@@ -294,8 +292,7 @@ static int pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
   EC_KEY *ec = EC_KEY_new();
-  if (ec == NULL ||
-      !EC_KEY_set_group(ec, dctx->gen_group)) {
+  if (ec == NULL || !EC_KEY_set_group(ec, dctx->gen_group)) {
     EC_KEY_free(ec);
     return 0;
   }
@@ -304,24 +301,24 @@ static int pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_ec_pkey_meth) {
-    out->pkey_id = EVP_PKEY_EC;
-    out->init = pkey_ec_init;
-    out->copy = pkey_ec_copy;
-    out->cleanup = pkey_ec_cleanup;
-    out->keygen = pkey_ec_keygen;
-    out->sign_init = NULL; /* sign_init */
-    out->sign = pkey_ec_sign;
-    out->sign_message = NULL; /* sign_message */
-    out->verify_init = NULL; /* verify_init */
-    out->verify = pkey_ec_verify;
-    out->verify_message = NULL; /* verify_message */
-    out->verify_recover = NULL; /* verify_recover */
-    out->encrypt = NULL; /* encrypt */
-    out->decrypt = NULL; /* decrypt */
-    out->derive = pkey_ec_derive;
-    out->paramgen = pkey_ec_paramgen;
-    out->ctrl = pkey_ec_ctrl;
-    out->ctrl_str = pkey_ec_ctrl_str;
+  out->pkey_id = EVP_PKEY_EC;
+  out->init = pkey_ec_init;
+  out->copy = pkey_ec_copy;
+  out->cleanup = pkey_ec_cleanup;
+  out->keygen = pkey_ec_keygen;
+  out->sign_init = NULL; /* sign_init */
+  out->sign = pkey_ec_sign;
+  out->sign_message = NULL; /* sign_message */
+  out->verify_init = NULL;  /* verify_init */
+  out->verify = pkey_ec_verify;
+  out->verify_message = NULL; /* verify_message */
+  out->verify_recover = NULL; /* verify_recover */
+  out->encrypt = NULL;        /* encrypt */
+  out->decrypt = NULL;        /* decrypt */
+  out->derive = pkey_ec_derive;
+  out->paramgen = pkey_ec_paramgen;
+  out->ctrl = pkey_ec_ctrl;
+  out->ctrl_str = pkey_ec_ctrl_str;
 }
 
 int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {

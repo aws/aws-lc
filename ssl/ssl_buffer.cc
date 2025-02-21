@@ -31,7 +31,8 @@ BSSL_NAMESPACE_BEGIN
 
 // BIO uses int instead of size_t. No lengths will exceed SSLBUFFER_MAX_CAPACITY
 // (uint16_t), so this will not overflow.
-static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX, "uint16_t does not fit in int");
+static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX,
+              "uint16_t does not fit in int");
 
 static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
               "SSL3_ALIGN_PAYLOAD must be a power of 2");
@@ -126,12 +127,9 @@ void SSLBuffer::DiscardConsumed() {
 // An SSLBuffer is serialized as the following ASN.1 structure:
 //
 // SSLBuffer ::= SEQUENCE {
-//    version                           INTEGER (1),  -- SSLBuffer structure version
-//    bufAllocated                      BOOLEAN,
-//    offset                            INTEGER,
-//    size                              INTEGER,
-//    cap                               INTEGER,
-//    buf                               OCTET STRING,
+//    version                           INTEGER (1),  -- SSLBuffer structure
+//    version bufAllocated                      BOOLEAN, offset INTEGER, size
+//    INTEGER, cap                               INTEGER, buf OCTET STRING,
 // }
 static const unsigned kSSLBufferVersion = 1;
 
@@ -144,10 +142,10 @@ bool SSLBuffer::DoSerialization(CBB *cbb) {
       !CBB_add_asn1_uint64(&seq, kSSLBufferVersion) ||
       !CBB_add_asn1_bool(&seq, (buf_allocated_ ? 1 : 0)) ||
       !CBB_add_asn1_uint64(&seq, offset_) ||
-      !CBB_add_asn1_uint64(&seq, size_) ||
-      !CBB_add_asn1_uint64(&seq, cap_) ||
+      !CBB_add_asn1_uint64(&seq, size_) || !CBB_add_asn1_uint64(&seq, cap_) ||
       (buf_allocated_ && !CBB_add_asn1_octet_string(&seq, buf_, buf_size_)) ||
-      (!buf_allocated_ && !CBB_add_asn1_octet_string(&seq, inline_buf_, SSL3_RT_HEADER_LENGTH))) {
+      (!buf_allocated_ &&
+       !CBB_add_asn1_octet_string(&seq, inline_buf_, SSL3_RT_HEADER_LENGTH))) {
     return false;
   }
   return CBB_flush(cbb) == 1;
@@ -162,14 +160,11 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
   int buf_allocated_int;
   uint64_t version, offset, size, cap;
   if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&seq, &version) ||
-      version != kSSLBufferVersion ||
+      !CBS_get_asn1_uint64(&seq, &version) || version != kSSLBufferVersion ||
       !CBS_get_asn1_bool(&seq, &buf_allocated_int) ||
       !CBS_get_asn1_uint64(&seq, &offset) ||
-      !CBS_get_asn1_uint64(&seq, &size) ||
-      !CBS_get_asn1_uint64(&seq, &cap) ||
-      !CBS_get_asn1(&seq, &buf, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&seq) != 0) {
+      !CBS_get_asn1_uint64(&seq, &size) || !CBS_get_asn1_uint64(&seq, &cap) ||
+      !CBS_get_asn1(&seq, &buf, CBS_ASN1_OCTETSTRING) || CBS_len(&seq) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
@@ -241,8 +236,8 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     // of data. If not enable_read_ahead, only read as much to get to len bytes,
     // at this point we know len is less than the overall size of the buffer.
     assert(buf->cap() >= buf->size());
-    size_t read_amount = ssl->enable_read_ahead ? buf->cap() - buf->size() :
-                                                     len - buf->size();
+    size_t read_amount =
+        ssl->enable_read_ahead ? buf->cap() - buf->size() : len - buf->size();
     assert(read_amount <= buf->cap() - buf->size());
     int ret = BIO_read(ssl->rbio.get(), buf->data() + buf->size(),
                        static_cast<int>(read_amount));
@@ -261,9 +256,9 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
   ssl->s3->read_buffer.DiscardConsumed();
   size_t buffer_size = len;
   if (SSL_is_dtls(ssl)) {
-    static_assert(
-        DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <= SSLBUFFER_MAX_CAPACITY,
-        "DTLS read buffer is too large");
+    static_assert(DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <=
+                      SSLBUFFER_MAX_CAPACITY,
+                  "DTLS read buffer is too large");
 
     // The |len| parameter is ignored in DTLS.
     len = DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
@@ -276,7 +271,8 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
     }
   }
 
-  if (!ssl->s3->read_buffer.EnsureCap(ssl_record_prefix_len(ssl), buffer_size)) {
+  if (!ssl->s3->read_buffer.EnsureCap(ssl_record_prefix_len(ssl),
+                                      buffer_size)) {
     return -1;
   }
 

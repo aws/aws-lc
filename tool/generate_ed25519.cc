@@ -23,14 +23,19 @@
 
 static const argument_t kArguments[] = {
     {
-        "-out-public", kRequiredArgument, "The file to write the public key to",
+        "-out-public",
+        kRequiredArgument,
+        "The file to write the public key to",
     },
     {
-        "-out-private", kRequiredArgument,
+        "-out-private",
+        kRequiredArgument,
         "The file to write the private key to",
     },
     {
-        "", kOptionalArgument, "",
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 

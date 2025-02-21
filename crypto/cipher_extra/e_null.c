@@ -69,8 +69,8 @@ static int null_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   return 1;
 }
 
-static int null_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                       const uint8_t *in, size_t in_len) {
+static int null_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                       size_t in_len) {
   if (in != out) {
     OPENSSL_memcpy(out, in, in_len);
   }

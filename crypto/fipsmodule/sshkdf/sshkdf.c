@@ -11,16 +11,13 @@
 #include <openssl/mem.h>
 #include <openssl/sshkdf.h>
 
-#include "../service_indicator/internal.h"
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
-int SSHKDF(const EVP_MD *evp_md,
-           const uint8_t *key, size_t key_len,
+int SSHKDF(const EVP_MD *evp_md, const uint8_t *key, size_t key_len,
            const uint8_t *xcghash, size_t xcghash_len,
-           const uint8_t *session_id, size_t session_id_len,
-           char type,
-           uint8_t *out, size_t out_len)
-{
+           const uint8_t *session_id, size_t session_id_len, char type,
+           uint8_t *out, size_t out_len) {
   SET_DIT_AUTO_RESET;
   EVP_MD_CTX *md = NULL;
   uint8_t digest[EVP_MAX_MD_SIZE];

@@ -89,25 +89,22 @@ TEST(CMACTest, RFC4493TestVectors) {
       0xf7, 0x9b, 0xdd, 0x9d, 0xd0, 0x4a, 0x28, 0x7c,
   };
   static const uint8_t kMsg3[] = {
-      0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
-      0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
-      0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
-      0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
-      0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
+      0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d,
+      0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d, 0x8a, 0x57,
+      0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
+      0x8e, 0x51, 0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
   };
   static const uint8_t kOut3[16] = {
       0xdf, 0xa6, 0x67, 0x47, 0xde, 0x9a, 0xe6, 0x30,
       0x30, 0xca, 0x32, 0x61, 0x14, 0x97, 0xc8, 0x27,
   };
   static const uint8_t kMsg4[] = {
-      0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
-      0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
-      0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
-      0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51,
-      0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11,
-      0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef,
-      0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17,
-      0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10,
+      0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e,
+      0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03,
+      0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51, 0x30,
+      0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19,
+      0x1a, 0x0a, 0x52, 0xef, 0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b,
+      0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10,
   };
   static const uint8_t kOut4[16] = {
       0x51, 0xf0, 0xbe, 0xbf, 0x7e, 0x3b, 0x9d, 0x92,
@@ -121,67 +118,68 @@ TEST(CMACTest, RFC4493TestVectors) {
 }
 
 TEST(CMACTest, Wycheproof) {
-  FileTestGTest("third_party/wycheproof_testvectors/aes_cmac_test.txt",
-                [](FileTest *t) {
-    std::string key_size, tag_size;
-    ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
-    ASSERT_TRUE(t->GetInstruction(&tag_size, "tagSize"));
-    WycheproofResult result;
-    ASSERT_TRUE(GetWycheproofResult(t, &result));
-    std::vector<uint8_t> key, msg, tag;
-    ASSERT_TRUE(t->GetBytes(&key, "key"));
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
-    ASSERT_TRUE(t->GetBytes(&tag, "tag"));
+  FileTestGTest(
+      "third_party/wycheproof_testvectors/aes_cmac_test.txt", [](FileTest *t) {
+        std::string key_size, tag_size;
+        ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
+        ASSERT_TRUE(t->GetInstruction(&tag_size, "tagSize"));
+        WycheproofResult result;
+        ASSERT_TRUE(GetWycheproofResult(t, &result));
+        std::vector<uint8_t> key, msg, tag;
+        ASSERT_TRUE(t->GetBytes(&key, "key"));
+        ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+        ASSERT_TRUE(t->GetBytes(&tag, "tag"));
 
-    const EVP_CIPHER *cipher;
-    switch (atoi(key_size.c_str())) {
-      case 128:
-        cipher = EVP_aes_128_cbc();
-        break;
-      case 192:
-        cipher = EVP_aes_192_cbc();
-        break;
-      case 256:
-        cipher = EVP_aes_256_cbc();
-        break;
-      default:
-        // Some test vectors intentionally give the wrong key size. Our API
-        // requires the caller pick the sized CBC primitive, so these tests
-        // aren't useful for us.
-        EXPECT_FALSE(result.IsValid());
-        return;
-    }
+        const EVP_CIPHER *cipher;
+        switch (atoi(key_size.c_str())) {
+          case 128:
+            cipher = EVP_aes_128_cbc();
+            break;
+          case 192:
+            cipher = EVP_aes_192_cbc();
+            break;
+          case 256:
+            cipher = EVP_aes_256_cbc();
+            break;
+          default:
+            // Some test vectors intentionally give the wrong key size. Our API
+            // requires the caller pick the sized CBC primitive, so these tests
+            // aren't useful for us.
+            EXPECT_FALSE(result.IsValid());
+            return;
+        }
 
-    size_t tag_len = static_cast<size_t>(atoi(tag_size.c_str())) / 8;
+        size_t tag_len = static_cast<size_t>(atoi(tag_size.c_str())) / 8;
 
-    uint8_t out[16];
-    bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
-    ASSERT_TRUE(ctx);
-    ASSERT_TRUE(CMAC_Init(ctx.get(), key.data(), key.size(), cipher, NULL));
-    ASSERT_TRUE(CMAC_Update(ctx.get(), msg.data(), msg.size()));
-    size_t out_len;
-    ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
-    // Truncate the tag, if requested.
-    out_len = std::min(out_len, tag_len);
+        uint8_t out[16];
+        bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+        ASSERT_TRUE(ctx);
+        ASSERT_TRUE(CMAC_Init(ctx.get(), key.data(), key.size(), cipher, NULL));
+        ASSERT_TRUE(CMAC_Update(ctx.get(), msg.data(), msg.size()));
+        size_t out_len;
+        ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
+        // Truncate the tag, if requested.
+        out_len = std::min(out_len, tag_len);
 
-    if (result.IsValid()) {
-      EXPECT_EQ(Bytes(tag), Bytes(out, out_len));
+        if (result.IsValid()) {
+          EXPECT_EQ(Bytes(tag), Bytes(out, out_len));
 
-      // Test the streaming API as well.
-      ASSERT_TRUE(CMAC_Reset(ctx.get()));
-      for (uint8_t b : msg) {
-        ASSERT_TRUE(CMAC_Update(ctx.get(), &b, 1));
-      }
-      ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
-      out_len = std::min(out_len, tag_len);
-      EXPECT_EQ(Bytes(tag), Bytes(out, out_len));
-    } else {
-      // Wycheproof's invalid tests assume the implementation internally does
-      // the comparison, whereas our API only computes the tag. Check that
-      // they're not equal, but these tests are mostly not useful for us.
-      EXPECT_NE(Bytes(tag), Bytes(out, out_len));
-    }
-  });
+          // Test the streaming API as well.
+          ASSERT_TRUE(CMAC_Reset(ctx.get()));
+          for (uint8_t b : msg) {
+            ASSERT_TRUE(CMAC_Update(ctx.get(), &b, 1));
+          }
+          ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
+          out_len = std::min(out_len, tag_len);
+          EXPECT_EQ(Bytes(tag), Bytes(out, out_len));
+        } else {
+          // Wycheproof's invalid tests assume the implementation internally
+          // does the comparison, whereas our API only computes the tag. Check
+          // that they're not equal, but these tests are mostly not useful for
+          // us.
+          EXPECT_NE(Bytes(tag), Bytes(out, out_len));
+        }
+      });
 }
 
 static void RunCAVPTest(const char *path, const EVP_CIPHER *cipher,
@@ -248,20 +246,21 @@ static void RunCAVPTest(const char *path, const EVP_CIPHER *cipher,
 }
 
 TEST(CMACTest, CAVPAES128) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt", EVP_aes_128_cbc(),
-              false);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt",
+              EVP_aes_128_cbc(), false);
 }
 
 TEST(CMACTest, CAVPAES192) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt", EVP_aes_192_cbc(),
-              false);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt",
+              EVP_aes_192_cbc(), false);
 }
 
 TEST(CMACTest, CAVPAES256) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt", EVP_aes_256_cbc(),
-              false);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt",
+              EVP_aes_256_cbc(), false);
 }
 
 TEST(CMACTest, CAVP3DES) {
-  RunCAVPTest("crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt", EVP_des_ede3_cbc(), true);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt",
+              EVP_des_ede3_cbc(), true);
 }

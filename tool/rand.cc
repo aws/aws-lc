@@ -25,12 +25,11 @@
 
 
 static const argument_t kArguments[] = {
+    {"-hex", kBooleanArgument, "Hex encoded output."},
     {
-     "-hex", kBooleanArgument,
-     "Hex encoded output."
-    },
-    {
-     "", kOptionalArgument, "",
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 
@@ -54,8 +53,7 @@ bool Rand(const std::vector<std::string> &args) {
 
     std::map<std::string, std::string> args_map;
     args_list_t extra_args;
-    if (!ParseKeyValueArguments(args_map, extra_args, args_copy,
-                                kArguments) ||
+    if (!ParseKeyValueArguments(args_map, extra_args, args_copy, kArguments) ||
         extra_args.size() > 0) {
       PrintUsage(kArguments);
       return false;
@@ -77,10 +75,10 @@ bool Rand(const std::vector<std::string> &args) {
     if (hex) {
       static const char hextable[16 + 1] = "0123456789abcdef";
       for (unsigned i = 0; i < todo; i++) {
-        hex_buf[i*2] = hextable[buf[i] >> 4];
-        hex_buf[i*2 + 1] = hextable[buf[i] & 0xf];
+        hex_buf[i * 2] = hextable[buf[i] >> 4];
+        hex_buf[i * 2 + 1] = hextable[buf[i] & 0xf];
       }
-      if (fwrite(hex_buf, todo*2, 1, stdout) != 1) {
+      if (fwrite(hex_buf, todo * 2, 1, stdout) != 1) {
         return false;
       }
     } else {

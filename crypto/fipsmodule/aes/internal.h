@@ -18,9 +18,9 @@
 #include <stdlib.h>
 
 #include <openssl/cpu.h>
-#include "../service_indicator/internal.h"
-#include "../cpucap/internal.h"
 #include "../../internal.h"
+#include "../cpucap/internal.h"
+#include "../service_indicator/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -31,10 +31,8 @@ extern "C" {
 
 #if defined(OPENSSL_X86_64)
 OPENSSL_INLINE int avx512_xts_available(void) {
-  return (CRYPTO_is_VAES_capable() &&
-          CRYPTO_is_VBMI2_capable() &&
-          CRYPTO_is_AVX512_capable() &&
-          CRYPTO_is_VPCLMULQDQ_capable());
+  return (CRYPTO_is_VAES_capable() && CRYPTO_is_VBMI2_capable() &&
+          CRYPTO_is_AVX512_capable() && CRYPTO_is_VPCLMULQDQ_capable());
 }
 #endif
 
@@ -152,16 +150,18 @@ void aes_hw_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 
 #if defined(HWAES_XTS)
 void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                  const AES_KEY *key1, const AES_KEY *key2,
-                  const uint8_t iv[16]);
+                        const AES_KEY *key1, const AES_KEY *key2,
+                        const uint8_t iv[16]);
 void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
-                  const AES_KEY *key1, const AES_KEY *key2,
-                  const uint8_t iv[16]);
-OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
-                                      const AES_KEY *key1, const AES_KEY *key2,
-                                      const uint8_t iv[16], int enc);
+                        const AES_KEY *key1, const AES_KEY *key2,
+                        const uint8_t iv[16]);
+OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out,
+                                     size_t length, const AES_KEY *key1,
+                                     const AES_KEY *key2, const uint8_t iv[16],
+                                     int enc);
 
-#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) && !defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) && \
+    !defined(OPENSSL_WINDOWS)
 #define AES_XTS_X86_64_AVX512
 void aes_hw_xts_encrypt_avx512(const uint8_t *in, uint8_t *out, size_t length,
                                const AES_KEY *key1, const AES_KEY *key2,
@@ -171,24 +171,27 @@ void aes_hw_xts_decrypt_avx512(const uint8_t *in, uint8_t *out, size_t length,
                                const uint8_t iv[16]);
 int crypto_xts_avx512_enabled(void);
 
-#endif //AES_XTS_X86_64_AVX512
+#endif  // AES_XTS_X86_64_AVX512
 
 
 #else
 OPENSSL_INLINE int hwaes_xts_available(void) { return 0; }
-OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                  const AES_KEY *key1, const AES_KEY *key2,
+OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out,
+                                       size_t length, const AES_KEY *key1,
+                                       const AES_KEY *key2,
                                        const uint8_t iv[16]) {
   abort();
 }
-OPENSSL_INLINE void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
-                  const AES_KEY *key1, const AES_KEY *key2,
-                  const uint8_t iv[16]) {
+OPENSSL_INLINE void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out,
+                                       size_t length, const AES_KEY *key1,
+                                       const AES_KEY *key2,
+                                       const uint8_t iv[16]) {
   abort();
 }
-OPENSSL_INLINE int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
-                                      const AES_KEY *key1, const AES_KEY *key2,
-                                      const uint8_t iv[16], int enc) {
+OPENSSL_INLINE int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out,
+                                     size_t length, const AES_KEY *key1,
+                                     const AES_KEY *key2, const uint8_t iv[16],
+                                     int enc) {
   abort();
 }
 #endif  // HWAES_XTS

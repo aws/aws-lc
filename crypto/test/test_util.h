@@ -90,9 +90,8 @@ static const int64_t kReferenceTime = 1474934400;
 // MakeTestCert creates an X509 certificate for use in testing. It is configured
 // to be valid from 1 day prior |kReferenceTime| until 1 day after
 // |kReferenceTime|.
-bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
-                                          const char *subject, EVP_PKEY *key,
-                                          bool is_ca);
+bssl::UniquePtr<X509> MakeTestCert(const char *issuer, const char *subject,
+                                   EVP_PKEY *key, bool is_ca);
 
 // unique_ptr will automatically call fclose on the file descriptior when the
 // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
@@ -113,7 +112,7 @@ using TempFILE = std::unique_ptr<FILE, TempFileCloser>;
 #endif
 
 size_t createTempFILEpath(char buffer[PATH_MAX]);
-FILE* createRawTempFILE();
+FILE *createRawTempFILE();
 TempFILE createTempFILE();
 
 // CustomData is for testing new structs that we add support for |ex_data|.
@@ -121,8 +120,8 @@ typedef struct {
   int custom_data;
 } CustomData;
 
-void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
-                           int index, long argl, void *argp);
+void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int index,
+                    long argl, void *argp);
 // ErrorEquals asserts that |err| is an error with library |lib| and reason
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);

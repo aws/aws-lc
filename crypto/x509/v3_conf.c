@@ -418,9 +418,7 @@ const STACK_OF(CONF_VALUE) *X509V3_get_section(const X509V3_CTX *ctx,
   return NCONF_get_section(ctx->db, section);
 }
 
-void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf) {
-  ctx->db = conf;
-}
+void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf) { ctx->db = conf; }
 
 void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer, const X509 *subj,
                     const X509_REQ *req, const X509_CRL *crl, int flags) {

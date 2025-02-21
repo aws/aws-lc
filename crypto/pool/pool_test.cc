@@ -16,8 +16,8 @@
 
 #include <openssl/pool.h>
 
-#include "internal.h"
 #include "../test/test_util.h"
+#include "internal.h"
 
 #if defined(OPENSSL_THREADS)
 #include <chrono>
@@ -38,7 +38,7 @@ TEST(PoolTest, Unpooled) {
   bssl::UniquePtr<CRYPTO_BUFFER> buf2 = bssl::UpRef(buf);
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf_static(
-    CRYPTO_BUFFER_new_from_static_data_unsafe(kData, sizeof(kData), nullptr));
+      CRYPTO_BUFFER_new_from_static_data_unsafe(kData, sizeof(kData), nullptr));
   ASSERT_TRUE(buf_static);
   EXPECT_EQ(kData, CRYPTO_BUFFER_data(buf_static.get()));
   EXPECT_EQ(sizeof(kData), CRYPTO_BUFFER_len(buf_static.get()));
@@ -167,8 +167,8 @@ TEST(PoolTest, Threads) {
   }
 
   // |buf|'s data is still valid.
-  EXPECT_EQ(Bytes(kData), Bytes(CRYPTO_BUFFER_data(buf.get()),
-                                CRYPTO_BUFFER_len(buf.get())));
+  EXPECT_EQ(Bytes(kData),
+            Bytes(CRYPTO_BUFFER_data(buf.get()), CRYPTO_BUFFER_len(buf.get())));
 
   // Race a thread re-creating the |CRYPTO_BUFFER| with another thread freeing
   // it. Do this twice with sleeps so ThreadSanitizer can observe two different

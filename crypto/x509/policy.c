@@ -672,8 +672,7 @@ int X509_policy_check(const STACK_OF(X509) *certs,
       (flags & X509_V_FLAG_EXPLICIT_POLICY) ? 0 : num_certs + 1;
   size_t inhibit_any_policy =
       (flags & X509_V_FLAG_INHIBIT_ANY) ? 0 : num_certs + 1;
-  size_t policy_mapping =
-      (flags & X509_V_FLAG_INHIBIT_MAP) ? 0 : num_certs + 1;
+  size_t policy_mapping = (flags & X509_V_FLAG_INHIBIT_MAP) ? 0 : num_certs + 1;
 
   levels = sk_X509_POLICY_LEVEL_new_null();
   if (levels == NULL) {

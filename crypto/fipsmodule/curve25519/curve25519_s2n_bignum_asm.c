@@ -1,45 +1,44 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "internal.h"
 #include "../cpucap/internal.h"
+#include "internal.h"
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
 void x25519_scalar_mult_generic_s2n_bignum(
-  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
-  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
-
+    uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
   uint8_t private_key_internal_demask[X25519_PRIVATE_KEY_LEN];
-  OPENSSL_memcpy(private_key_internal_demask, private_key, X25519_PRIVATE_KEY_LEN);
+  OPENSSL_memcpy(private_key_internal_demask, private_key,
+                 X25519_PRIVATE_KEY_LEN);
   private_key_internal_demask[0] &= 248;
   private_key_internal_demask[31] &= 127;
   private_key_internal_demask[31] |= 64;
 
-  curve25519_x25519_byte_selector(out_shared_key,
-                                  private_key_internal_demask,
+  curve25519_x25519_byte_selector(out_shared_key, private_key_internal_demask,
                                   peer_public_value);
 }
 
 void x25519_public_from_private_s2n_bignum(
-  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
-	const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
-
+    uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
   uint8_t private_key_internal_demask[X25519_PRIVATE_KEY_LEN];
-  OPENSSL_memcpy(private_key_internal_demask, private_key, X25519_PRIVATE_KEY_LEN);
+  OPENSSL_memcpy(private_key_internal_demask, private_key,
+                 X25519_PRIVATE_KEY_LEN);
   private_key_internal_demask[0] &= 248;
   private_key_internal_demask[31] &= 127;
   private_key_internal_demask[31] |= 64;
 
-  curve25519_x25519base_byte_selector(out_public_value, private_key_internal_demask);
+  curve25519_x25519base_byte_selector(out_public_value,
+                                      private_key_internal_demask);
 }
 
 void ed25519_public_key_from_hashed_seed_s2n_bignum(
-  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t az[SHA512_DIGEST_LENGTH]) {
-
+    uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+    uint8_t az[SHA512_DIGEST_LENGTH]) {
   uint64_t uint64_point[8] = {0};
   uint64_t uint64_hashed_seed[4] = {0};
   OPENSSL_memcpy(uint64_hashed_seed, az, 32);
@@ -50,9 +49,10 @@ void ed25519_public_key_from_hashed_seed_s2n_bignum(
 }
 
 void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
-  const void *message, size_t message_len, const uint8_t *dom2, size_t dom2_len) {
-
+                             uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s,
+                             const uint8_t *A, const void *message,
+                             size_t message_len, const uint8_t *dom2,
+                             size_t dom2_len) {
   uint8_t k[SHA512_DIGEST_LENGTH] = {0};
   uint64_t R[8] = {0};
   uint64_t S[4] = {0};
@@ -72,8 +72,8 @@ void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   // R is of length 32 octets
   if (dom2_len > 0) {
     // Compute k = SHA512(dom2(phflag, context) || R || A || message)
-    ed25519_sha512(k, dom2, dom2_len, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
-                   message_len);
+    ed25519_sha512(k, dom2, dom2_len, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN,
+                   message, message_len);
   } else {
     // Compute k = SHA512(R || A || message)
     ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
@@ -89,9 +89,10 @@ void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 }
 
 int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
-  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
-  uint8_t S[32], const uint8_t *message, size_t message_len, const uint8_t *dom2, size_t dom2_len) {
-
+                              const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+                              uint8_t R_expected[32], uint8_t S[32],
+                              const uint8_t *message, size_t message_len,
+                              const uint8_t *dom2, size_t dom2_len) {
   uint8_t k[SHA512_DIGEST_LENGTH] = {0};
   uint64_t uint64_k[8] = {0};
   uint64_t uint64_R[8] = {0};
@@ -104,8 +105,9 @@ int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   }
 
   // Step: rfc8032 5.1.7.2
-  if(dom2_len > 0) {
-    // Compute k = SHA512(dom2(phflag, context) || R_expected || public_key || message).
+  if (dom2_len > 0) {
+    // Compute k = SHA512(dom2(phflag, context) || R_expected || public_key ||
+    // message).
     ed25519_sha512(k, dom2, dom2_len, R_expected, 32, public_key,
                    ED25519_PUBLIC_KEY_LEN, message, message_len);
   } else {
@@ -132,7 +134,8 @@ int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   return 1;
 }
 
-int ed25519_check_public_key_s2n_bignum(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+int ed25519_check_public_key_s2n_bignum(
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
   uint64_t A[8] = {0};
   if (edwards25519_decode_selector(A, public_key) != 0) {
     return 0;

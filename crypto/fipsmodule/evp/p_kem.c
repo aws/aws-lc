@@ -6,10 +6,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
+#include "../../internal.h"
 #include "../delocate.h"
 #include "../kem/internal.h"
-#include "../../internal.h"
 #include "internal.h"
 
 typedef struct {
@@ -28,12 +27,9 @@ static int pkey_kem_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
-static void pkey_kem_cleanup(EVP_PKEY_CTX *ctx) {
-  OPENSSL_free(ctx->data);
-}
+static void pkey_kem_cleanup(EVP_PKEY_CTX *ctx) { OPENSSL_free(ctx->data); }
 
-static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
-                                         EVP_PKEY *pkey,
+static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey,
                                          const uint8_t *seed,
                                          size_t *seed_len) {
   GUARD_PTR(ctx);
@@ -67,9 +63,9 @@ static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
   }
 
   KEM_KEY *key = KEM_KEY_new();
-  if (key == NULL ||
-      !KEM_KEY_init(key, kem) ||
-      !kem->method->keygen_deterministic(key->public_key, key->secret_key, seed) ||
+  if (key == NULL || !KEM_KEY_init(key, kem) ||
+      !kem->method->keygen_deterministic(key->public_key, key->secret_key,
+                                         seed) ||
       !EVP_PKEY_assign(pkey, EVP_PKEY_KEM, key)) {
     KEM_KEY_free(key);
     return 0;
@@ -92,8 +88,7 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   }
 
   KEM_KEY *key = KEM_KEY_new();
-  if (key == NULL ||
-      !KEM_KEY_init(key, kem) ||
+  if (key == NULL || !KEM_KEY_init(key, kem) ||
       !kem->method->keygen(key->public_key, key->secret_key) ||
       !EVP_PKEY_set_type(pkey, EVP_PKEY_KEM)) {
     KEM_KEY_free(key);
@@ -104,13 +99,10 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return 1;
 }
 
-static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
-                                              uint8_t *ciphertext,
-                                              size_t  *ciphertext_len,
-                                              uint8_t *shared_secret,
-                                              size_t  *shared_secret_len,
-                                              const uint8_t *seed,
-                                              size_t *seed_len) {
+static int pkey_kem_encapsulate_deterministic(
+    EVP_PKEY_CTX *ctx, uint8_t *ciphertext, size_t *ciphertext_len,
+    uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *seed,
+    size_t *seed_len) {
   GUARD_PTR(ctx);
   KEM_PKEY_CTX *dctx = ctx->data;
   GUARD_PTR(dctx);
@@ -124,7 +116,7 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
   }
 
   // Check that size buffers can be written to.
-  if (ciphertext_len == NULL || shared_secret_len == NULL || seed_len == NULL ) {
+  if (ciphertext_len == NULL || shared_secret_len == NULL || seed_len == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -158,8 +150,7 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
   }
 
   // Check that the context is properly configured.
-  if (ctx->pkey == NULL ||
-      ctx->pkey->pkey.kem_key == NULL ||
+  if (ctx->pkey == NULL || ctx->pkey->pkey.kem_key == NULL ||
       ctx->pkey->type != EVP_PKEY_KEM) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
@@ -172,7 +163,8 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->encaps_deterministic(ciphertext, shared_secret, key->public_key, seed)) {
+  if (!kem->method->encaps_deterministic(ciphertext, shared_secret,
+                                         key->public_key, seed)) {
     return 0;
   }
 
@@ -184,11 +176,9 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
   return 1;
 }
 
-static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
-                                uint8_t *ciphertext,
-                                size_t  *ciphertext_len,
-                                uint8_t *shared_secret,
-                                size_t  *shared_secret_len) {
+static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
+                                size_t *ciphertext_len, uint8_t *shared_secret,
+                                size_t *shared_secret_len) {
   KEM_PKEY_CTX *dctx = ctx->data;
   const KEM *kem = dctx->kem;
   if (kem == NULL) {
@@ -216,16 +206,15 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
   // The output buffers need to be large enough.
   if (*ciphertext_len < kem->ciphertext_len ||
       *shared_secret_len < kem->shared_secret_len) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
   }
 
   // Check that the context is properly configured.
-  if (ctx->pkey == NULL ||
-      ctx->pkey->pkey.kem_key == NULL ||
+  if (ctx->pkey == NULL || ctx->pkey->pkey.kem_key == NULL ||
       ctx->pkey->type != EVP_PKEY_KEM) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
   }
 
   // Check that the key has a public key set.
@@ -247,9 +236,8 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
   return 1;
 }
 
-static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
-                                uint8_t *shared_secret,
-                                size_t  *shared_secret_len,
+static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx, uint8_t *shared_secret,
+                                size_t *shared_secret_len,
                                 const uint8_t *ciphertext,
                                 size_t ciphertext_len) {
   KEM_PKEY_CTX *dctx = ctx->data;
@@ -271,16 +259,15 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
   // The input and output buffers need to be large enough.
   if (ciphertext_len != kem->ciphertext_len ||
       *shared_secret_len < kem->shared_secret_len) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
   }
 
   // Check that the context is properly configured.
-  if (ctx->pkey == NULL ||
-      ctx->pkey->pkey.kem_key == NULL ||
+  if (ctx->pkey == NULL || ctx->pkey->pkey.kem_key == NULL ||
       ctx->pkey->type != EVP_PKEY_KEM) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
   }
 
   // Check that the key has a secret key set.
@@ -387,7 +374,8 @@ static EVP_PKEY *EVP_PKEY_kem_new(int nid) {
   return ret;
 }
 
-EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(int nid, const uint8_t *in, size_t len) {
+EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(int nid, const uint8_t *in,
+                                          size_t len) {
   if (in == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -417,7 +405,8 @@ err:
   return NULL;
 }
 
-EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(int nid, const uint8_t *in, size_t len) {
+EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(int nid, const uint8_t *in,
+                                          size_t len) {
   if (in == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -447,9 +436,9 @@ err:
   return NULL;
 }
 
-EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
-                                   const uint8_t *in_public, size_t len_public,
-                                   const uint8_t *in_secret, size_t len_secret) {
+EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid, const uint8_t *in_public,
+                                   size_t len_public, const uint8_t *in_secret,
+                                   size_t len_secret) {
   if (in_public == NULL || in_secret == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -466,7 +455,7 @@ EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     goto err;
   }
-  
+
   if (!KEM_KEY_set_raw_key(ret->pkey.kem_key, in_public, in_secret)) {
     // KEM_KEY_set_raw_key sets the appropriate error.
     goto err;

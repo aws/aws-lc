@@ -9,8 +9,8 @@
 
 #include <openssl/ssl.h>
 
-#include "test_config.h"
 #include "../internal.h"
+#include "test_config.h"
 
 SSLTransfer::SSLTransfer() {}
 
@@ -40,14 +40,14 @@ static bool WriteData(std::string prefix, const uint8_t *input, size_t len) {
 // by using |SSL_to/from_bytes|. When success, |in| is freed and |out| holds
 // the transferred SSL.
 static bool EncodeAndDecodeSSL(const TestConfig *config, SSL *in, SSL_CTX *ctx,
-  bssl::UniquePtr<SSL> *out) {
+                               bssl::UniquePtr<SSL> *out) {
   // Encoding SSL to bytes.
   size_t encoded_len;
   bssl::UniquePtr<uint8_t> encoded;
   uint8_t *encoded_raw;
   if (!SSL_to_bytes(in, &encoded_raw, &encoded_len)) {
     fprintf(stderr, "SSL_to_bytes failed. Error code: %s\n",
-      ERR_reason_error_string(ERR_peek_last_error()));
+            ERR_reason_error_string(ERR_peek_last_error()));
     return false;
   }
   encoded.reset(encoded_raw);
@@ -60,7 +60,8 @@ static bool EncodeAndDecodeSSL(const TestConfig *config, SSL *in, SSL_CTX *ctx,
   const uint8_t *ptr2 = encoded.get();
   SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
   if (server2_ == nullptr) {
-    fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n", ERR_reason_error_string(ERR_peek_last_error()));
+    fprintf(stderr, "SSL_from_bytes failed. Error code: %s\n",
+            ERR_reason_error_string(ERR_peek_last_error()));
     return false;
   }
   out->reset(server2_);
@@ -82,7 +83,8 @@ static void MoveBIOs(SSL *dest, SSL *src) {
 }
 
 // TransferSSL transfers |in| to |out|.
-static bool TransferSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in, bssl::UniquePtr<SSL> *out) {
+static bool TransferSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in,
+                        bssl::UniquePtr<SSL> *out) {
   if (!in || !in->get()) {
     return false;
   }
@@ -90,7 +92,7 @@ static bool TransferSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in, bssl
   // Encode the SSL |in| into bytes.
   // Decode the bytes into a new SSL.
   bssl::UniquePtr<SSL> decoded_ssl;
-  if (!EncodeAndDecodeSSL(config, in->get(), in_ctx, &decoded_ssl)){
+  if (!EncodeAndDecodeSSL(config, in->get(), in_ctx, &decoded_ssl)) {
     return false;
   }
   // Move the bio.
@@ -105,7 +107,8 @@ static bool TransferSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in, bssl
   }
   // Unset the test state of |in|.
   std::unique_ptr<TestState> tmp1;
-  if (!SetTestState(in->get(), std::move(tmp1)) || !SetTestConfig(in->get(), nullptr)) {
+  if (!SetTestState(in->get(), std::move(tmp1)) ||
+      !SetTestConfig(in->get(), nullptr)) {
     return false;
   }
   // Free the SSL of |in|.
@@ -133,7 +136,7 @@ void SSLTransfer::MarkTest(const TestConfig *config, const SSL *ssl) {
 
 bool SSLTransfer::ResetSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in) {
   if (config->do_ssl_transfer && IsSupported(in->get())) {
-    // Below message is to inform runner.go that this test case 
+    // Below message is to inform runner.go that this test case
     // is going to test SSL transfer.
     fprintf(stderr, "SSL transfer is going to be tested.\n");
     if (!TransferSSL(config, in, nullptr)) {
@@ -157,7 +160,8 @@ bool SSLTransfer::IsSupported(const SSL *in) {
   return ret;
 }
 
-bool SSLTransfer::MarkOrReset(const TestConfig *config, bssl::UniquePtr<SSL> *in) {
+bool SSLTransfer::MarkOrReset(const TestConfig *config,
+                              bssl::UniquePtr<SSL> *in) {
   if (!config || !in) {
     return false;
   }

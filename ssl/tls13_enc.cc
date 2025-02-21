@@ -455,8 +455,7 @@ static bool tls13_psk_binder(uint8_t *out, size_t *out_len,
   unsigned context_len;
   ScopedEVP_MD_CTX ctx;
   if (!transcript.CopyToHashContext(ctx.get(), digest) ||
-      !EVP_DigestUpdate(ctx.get(), truncated.data(),
-                        truncated.size()) ||
+      !EVP_DigestUpdate(ctx.get(), truncated.data(), truncated.size()) ||
       !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
     return false;
   }

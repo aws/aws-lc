@@ -57,7 +57,8 @@
 #include <openssl/base.h>
 #include "internal.h"
 
-#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -90,21 +91,19 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
 #elif defined(__pic__) && defined(OPENSSL_32_BIT)
   // Inline assembly may not clobber the PIC register. For 32-bit, this is EBX.
   // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47602.
-  __asm__ volatile (
-    "xor %%ecx, %%ecx\n"
-    "mov %%ebx, %%edi\n"
-    "cpuid\n"
-    "xchg %%edi, %%ebx\n"
-    : "=a"(*out_eax), "=D"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
-    : "a"(leaf)
-  );
+  __asm__ volatile(
+      "xor %%ecx, %%ecx\n"
+      "mov %%ebx, %%edi\n"
+      "cpuid\n"
+      "xchg %%edi, %%ebx\n"
+      : "=a"(*out_eax), "=D"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
+      : "a"(leaf));
 #else
-  __asm__ volatile (
-    "xor %%ecx, %%ecx\n"
-    "cpuid\n"
-    : "=a"(*out_eax), "=b"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
-    : "a"(leaf)
-  );
+  __asm__ volatile(
+      "xor %%ecx, %%ecx\n"
+      "cpuid\n"
+      : "=a"(*out_eax), "=b"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
+      : "a"(leaf));
 #endif
 }
 
@@ -118,9 +117,9 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   // Some old assemblers don't support the xgetbv instruction so we emit
   // the opcode of xgetbv directly.
-  __asm__ volatile (".byte 0x0f, 0x01, 0xd0" : "=a"(eax), "=d"(edx) : "c"(xcr));
+  __asm__ volatile(".byte 0x0f, 0x01, 0xd0" : "=a"(eax), "=d"(edx) : "c"(xcr));
 #else
-  __asm__ volatile ("xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
+  __asm__ volatile("xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
 #endif
   return (((uint64_t)edx) << 32) | eax;
 #endif
@@ -131,8 +130,8 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 static void handle_cpu_env(uint32_t *out, const char *in) {
   const int invert = in[0] == '~';
   const int or = in[0] == '|';
-  const int skip_first_byte = invert || or;
-  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte+1] == 'x';
+  const int skip_first_byte = invert || or ;
+  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte + 1] == 'x';
   uint32_t intelcap0 = out[0];
   uint32_t intelcap1 = out[1];
 
@@ -157,9 +156,10 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   // it can only disable an existing one.
   if (!invert && (intelcap0 || intelcap1)) {
     // Allow Intel indicator bit to be set for testing
-    if((~(1u << 30 | intelcap0) & reqcap0) || (~intelcap1 & reqcap1)) {
+    if ((~(1u << 30 | intelcap0) & reqcap0) || (~intelcap1 & reqcap1)) {
       fprintf(stderr,
-              "Fatal Error: HW capability found: 0x%02X 0x%02X, but HW capability requested: 0x%02X 0x%02X.\n",
+              "Fatal Error: HW capability found: 0x%02X 0x%02X, but HW "
+              "capability requested: 0x%02X 0x%02X.\n",
               intelcap0, intelcap1, reqcap0, reqcap1);
       abort();
     }
@@ -186,11 +186,9 @@ void OPENSSL_cpuid_setup(void) {
 
   uint32_t num_ids = eax;
 
-  int is_intel = ebx == 0x756e6547 /* Genu */ &&
-                 edx == 0x49656e69 /* ineI */ &&
+  int is_intel = ebx == 0x756e6547 /* Genu */ && edx == 0x49656e69 /* ineI */ &&
                  ecx == 0x6c65746e /* ntel */;
-  int is_amd = ebx == 0x68747541 /* Auth */ &&
-               edx == 0x69746e65 /* enti */ &&
+  int is_amd = ebx == 0x68747541 /* Auth */ && edx == 0x69746e65 /* enti */ &&
                ecx == 0x444d4163 /* cAMD */;
 
   uint32_t extended_features[2] = {0};

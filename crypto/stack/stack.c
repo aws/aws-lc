@@ -117,7 +117,7 @@ void OPENSSL_sk_zero(OPENSSL_STACK *sk) {
   if (sk == NULL || sk->num == 0) {
     return;
   }
-  OPENSSL_memset(sk->data, 0, sizeof(void*) * sk->num);
+  OPENSSL_memset(sk->data, 0, sizeof(void *) * sk->num);
   sk->num = 0;
   sk->sorted = 0;
 }
@@ -339,7 +339,7 @@ int OPENSSL_sk_find(const OPENSSL_STACK *sk, size_t *out_index, const void *p,
 }
 
 int OPENSSL_sk_unshift(OPENSSL_STACK *sk, void *data) {
-    return (int)OPENSSL_sk_insert(sk, data, 0);
+  return (int)OPENSSL_sk_insert(sk, data, 0);
 }
 
 void *OPENSSL_sk_shift(OPENSSL_STACK *sk) {

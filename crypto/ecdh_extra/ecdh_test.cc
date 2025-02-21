@@ -69,7 +69,8 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
     return nullptr;
   }
 
-  return bssl::UniquePtr<BIGNUM>(BN_bin2bn(bytes.data(), bytes.size(), nullptr));
+  return bssl::UniquePtr<BIGNUM>(
+      BN_bin2bn(bytes.data(), bytes.size(), nullptr));
 }
 
 TEST(ECDHTest, TestVectors) {
@@ -150,91 +151,88 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
   ASSERT_TRUE(ctx);
 
-  FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
-                [&](FileTest *t) {
-    int ret;
-	const EC_GROUP *group = GetCurve(t, "Curve");
-    ASSERT_TRUE(group);
-    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
-    ASSERT_TRUE(x);
-    bssl::UniquePtr<BIGNUM> xpp = GetBIGNUM(t, "XplusP");
-    ASSERT_TRUE(xpp);
-    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
-    ASSERT_TRUE(y);
-    bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
-    ASSERT_TRUE(peer_key);
-    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group));
-    ASSERT_TRUE(pub_key);
-    bssl::UniquePtr<EC_KEY> priv_key(EC_KEY_new());
-    // Own private key
-    ASSERT_TRUE(priv_key);
-    ASSERT_TRUE(EC_KEY_set_group(priv_key.get(), group));
-    // Generate a generic ec key.
-    EC_KEY_generate_key(priv_key.get());
+  FileTestGTest(
+      "crypto/fipsmodule/ec/large_x_coordinate_points.txt", [&](FileTest *t) {
+        int ret;
+        const EC_GROUP *group = GetCurve(t, "Curve");
+        ASSERT_TRUE(group);
+        bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+        ASSERT_TRUE(x);
+        bssl::UniquePtr<BIGNUM> xpp = GetBIGNUM(t, "XplusP");
+        ASSERT_TRUE(xpp);
+        bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+        ASSERT_TRUE(y);
+        bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
+        ASSERT_TRUE(peer_key);
+        bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group));
+        ASSERT_TRUE(pub_key);
+        bssl::UniquePtr<EC_KEY> priv_key(EC_KEY_new());
+        // Own private key
+        ASSERT_TRUE(priv_key);
+        ASSERT_TRUE(EC_KEY_set_group(priv_key.get(), group));
+        // Generate a generic ec key.
+        EC_KEY_generate_key(priv_key.get());
 
-    size_t len = BN_num_bytes(&group->field.N); // Modulus byte-length
-    std::vector<uint8_t> shared_key((group->curve_name == NID_secp521r1) ?
-                                    SHA512_DIGEST_LENGTH : len);
+        size_t len = BN_num_bytes(&group->field.N);  // Modulus byte-length
+        std::vector<uint8_t> shared_key(
+            (group->curve_name == NID_secp521r1) ? SHA512_DIGEST_LENGTH : len);
 
-    ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group));
+        ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group));
 
-    // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to the
-    // form the curve is using. If the curve is using Montgomery form, |x| and
-    // |y| will be converted to Montgomery form.
-    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-                  group, pub_key.get(), x.get(), y.get(), nullptr));
-    ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
-    ASSERT_TRUE(ECDH_compute_key_fips(
-          shared_key.data(), shared_key.size(),
-          EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
+        // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to
+        // the form the curve is using. If the curve is using Montgomery form,
+        // |x| and |y| will be converted to Montgomery form.
+        ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+            group, pub_key.get(), x.get(), y.get(), nullptr));
+        ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
+        ASSERT_TRUE(ECDH_compute_key_fips(
+            shared_key.data(), shared_key.size(),
+            EC_KEY_get0_public_key(peer_key.get()), priv_key.get()));
 
-    // Ensure the pointers were not affected.
-    ASSERT_TRUE(peer_key.get());
-    ASSERT_TRUE(pub_key.get());
+        // Ensure the pointers were not affected.
+        ASSERT_TRUE(peer_key.get());
+        ASSERT_TRUE(pub_key.get());
 
-    // Set the raw point directly with the BIGNUM coordinates.
-    // Note that both are in little-endian byte order.
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.words,
-                   x.get()->d, len);
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.words,
-                   y.get()->d, len);
-    OPENSSL_memset(peer_key.get()->pub_key->raw.Z.words, 0, len);
-    peer_key.get()->pub_key->raw.Z.words[0] = 1;
+        // Set the raw point directly with the BIGNUM coordinates.
+        // Note that both are in little-endian byte order.
+        OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.words, x.get()->d, len);
+        OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.words, y.get()->d, len);
+        OPENSSL_memset(peer_key.get()->pub_key->raw.Z.words, 0, len);
+        peer_key.get()->pub_key->raw.Z.words[0] = 1;
 
-    // |ECDH_compute_key_fips| calls |EC_KEY_check_fips| that calls
-    // |EC_KEY_check_key| function which checks if the computed key point is on
-    // the curve (among other checks). If the curve uses Montgomery form then
-    // the point-on-curve check will fail because we set the raw point
-    // coordinates in regular form above.
-    ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                EC_KEY_get0_public_key(peer_key.get()),
-                                priv_key.get());
+        // |ECDH_compute_key_fips| calls |EC_KEY_check_fips| that calls
+        // |EC_KEY_check_key| function which checks if the computed key point is
+        // on the curve (among other checks). If the curve uses Montgomery form
+        // then the point-on-curve check will fail because we set the raw point
+        // coordinates in regular form above.
+        ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                    EC_KEY_get0_public_key(peer_key.get()),
+                                    priv_key.get());
 
-    int curve_nid = group->curve_name;
-    if (!is_curve_using_mont_felem_impl(curve_nid)) {
-      ASSERT_TRUE(ret);
-    } else {
-      ASSERT_FALSE(ret);
-      // Fails in |EC_KEY_check_fips|.
-      EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-                ERR_GET_REASON(ERR_peek_last_error()));
-    }
-    ASSERT_TRUE(peer_key.get());
-    ASSERT_TRUE(pub_key.get());
+        int curve_nid = group->curve_name;
+        if (!is_curve_using_mont_felem_impl(curve_nid)) {
+          ASSERT_TRUE(ret);
+        } else {
+          ASSERT_FALSE(ret);
+          // Fails in |EC_KEY_check_fips|.
+          EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                    ERR_GET_REASON(ERR_peek_last_error()));
+        }
+        ASSERT_TRUE(peer_key.get());
+        ASSERT_TRUE(pub_key.get());
 
-    // Now replace the x-coordinate with the larger one, x+p;
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.words,
-                   xpp.get()->d, len);
-    ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
-                                EC_KEY_get0_public_key(peer_key.get()),
-                                priv_key.get());
-    ASSERT_FALSE(ret);
-    EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
-              ERR_GET_REASON(ERR_peek_last_error()));
+        // Now replace the x-coordinate with the larger one, x+p;
+        OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.words, xpp.get()->d, len);
+        ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
+                                    EC_KEY_get0_public_key(peer_key.get()),
+                                    priv_key.get());
+        ASSERT_FALSE(ret);
+        EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+                  ERR_GET_REASON(ERR_peek_last_error()));
 
-    ASSERT_TRUE(peer_key.get());
-    ASSERT_TRUE(pub_key.get());
-  });
+        ASSERT_TRUE(peer_key.get());
+        ASSERT_TRUE(pub_key.get());
+      });
 }
 
 static void RunWycheproofTest(FileTest *t) {

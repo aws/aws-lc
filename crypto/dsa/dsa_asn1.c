@@ -61,9 +61,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../bytestring/internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 #define OPENSSL_DSA_MAX_MODULUS_BITS 10000
@@ -156,8 +156,7 @@ DSA_SIG *DSA_SIG_parse(CBS *cbs) {
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !parse_integer(&child, &ret->r) ||
-      !parse_integer(&child, &ret->s) ||
+      !parse_integer(&child, &ret->r) || !parse_integer(&child, &ret->s) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
     DSA_SIG_free(ret);
@@ -169,8 +168,7 @@ DSA_SIG *DSA_SIG_parse(CBS *cbs) {
 int DSA_SIG_marshal(CBB *cbb, const DSA_SIG *sig) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
-      !marshal_integer(&child, sig->r) ||
-      !marshal_integer(&child, sig->s) ||
+      !marshal_integer(&child, sig->r) || !marshal_integer(&child, sig->s) ||
       !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_ENCODE_ERROR);
     return 0;
@@ -186,10 +184,8 @@ DSA *DSA_parse_public_key(CBS *cbs) {
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
       !parse_integer(&child, &ret->pub_key) ||
-      !parse_integer(&child, &ret->p) ||
-      !parse_integer(&child, &ret->q) ||
-      !parse_integer(&child, &ret->g) ||
-      CBS_len(&child) != 0) {
+      !parse_integer(&child, &ret->p) || !parse_integer(&child, &ret->q) ||
+      !parse_integer(&child, &ret->g) || CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
     goto err;
   }
@@ -207,10 +203,8 @@ int DSA_marshal_public_key(CBB *cbb, const DSA *dsa) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
       !marshal_integer(&child, dsa->pub_key) ||
-      !marshal_integer(&child, dsa->p) ||
-      !marshal_integer(&child, dsa->q) ||
-      !marshal_integer(&child, dsa->g) ||
-      !CBB_flush(cbb)) {
+      !marshal_integer(&child, dsa->p) || !marshal_integer(&child, dsa->q) ||
+      !marshal_integer(&child, dsa->g) || !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_ENCODE_ERROR);
     return 0;
   }
@@ -224,10 +218,8 @@ DSA *DSA_parse_parameters(CBS *cbs) {
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !parse_integer(&child, &ret->p) ||
-      !parse_integer(&child, &ret->q) ||
-      !parse_integer(&child, &ret->g) ||
-      CBS_len(&child) != 0) {
+      !parse_integer(&child, &ret->p) || !parse_integer(&child, &ret->q) ||
+      !parse_integer(&child, &ret->g) || CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
     goto err;
   }
@@ -244,10 +236,8 @@ err:
 int DSA_marshal_parameters(CBB *cbb, const DSA *dsa) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
-      !marshal_integer(&child, dsa->p) ||
-      !marshal_integer(&child, dsa->q) ||
-      !marshal_integer(&child, dsa->g) ||
-      !CBB_flush(cbb)) {
+      !marshal_integer(&child, dsa->p) || !marshal_integer(&child, dsa->q) ||
+      !marshal_integer(&child, dsa->g) || !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_ENCODE_ERROR);
     return 0;
   }
@@ -273,12 +263,10 @@ DSA *DSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
-  if (!parse_integer(&child, &ret->p) ||
-      !parse_integer(&child, &ret->q) ||
+  if (!parse_integer(&child, &ret->p) || !parse_integer(&child, &ret->q) ||
       !parse_integer(&child, &ret->g) ||
       !parse_integer(&child, &ret->pub_key) ||
-      !parse_integer(&child, &ret->priv_key) ||
-      CBS_len(&child) != 0) {
+      !parse_integer(&child, &ret->priv_key) || CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
     goto err;
   }
@@ -297,12 +285,10 @@ int DSA_marshal_private_key(CBB *cbb, const DSA *dsa) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&child, 0 /* version */) ||
-      !marshal_integer(&child, dsa->p) ||
-      !marshal_integer(&child, dsa->q) ||
+      !marshal_integer(&child, dsa->p) || !marshal_integer(&child, dsa->q) ||
       !marshal_integer(&child, dsa->g) ||
       !marshal_integer(&child, dsa->pub_key) ||
-      !marshal_integer(&child, dsa->priv_key) ||
-      !CBB_flush(cbb)) {
+      !marshal_integer(&child, dsa->priv_key) || !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_ENCODE_ERROR);
     return 0;
   }
@@ -329,8 +315,7 @@ DSA_SIG *d2i_DSA_SIG(DSA_SIG **out_sig, const uint8_t **inp, long len) {
 
 int i2d_DSA_SIG(const DSA_SIG *in, uint8_t **outp) {
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
-      !DSA_SIG_marshal(&cbb, in)) {
+  if (!CBB_init(&cbb, 0) || !DSA_SIG_marshal(&cbb, in)) {
     CBB_cleanup(&cbb);
     return -1;
   }
@@ -357,8 +342,7 @@ DSA *d2i_DSAPublicKey(DSA **out, const uint8_t **inp, long len) {
 
 int i2d_DSAPublicKey(const DSA *in, uint8_t **outp) {
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
-      !DSA_marshal_public_key(&cbb, in)) {
+  if (!CBB_init(&cbb, 0) || !DSA_marshal_public_key(&cbb, in)) {
     CBB_cleanup(&cbb);
     return -1;
   }
@@ -385,8 +369,7 @@ DSA *d2i_DSAPrivateKey(DSA **out, const uint8_t **inp, long len) {
 
 int i2d_DSAPrivateKey(const DSA *in, uint8_t **outp) {
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
-      !DSA_marshal_private_key(&cbb, in)) {
+  if (!CBB_init(&cbb, 0) || !DSA_marshal_private_key(&cbb, in)) {
     CBB_cleanup(&cbb);
     return -1;
   }
@@ -413,8 +396,7 @@ DSA *d2i_DSAparams(DSA **out, const uint8_t **inp, long len) {
 
 int i2d_DSAparams(const DSA *in, uint8_t **outp) {
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
-      !DSA_marshal_parameters(&cbb, in)) {
+  if (!CBB_init(&cbb, 0) || !DSA_marshal_parameters(&cbb, in)) {
     CBB_cleanup(&cbb);
     return -1;
   }

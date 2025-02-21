@@ -51,8 +51,8 @@
 #include <assert.h>
 
 #include "../aes/internal.h"
-#include "../modes/internal.h"
 #include "../cipher/internal.h"
+#include "../modes/internal.h"
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
@@ -115,24 +115,21 @@ void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 }
 
 void AES_cfb1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
-                        const AES_KEY *key, uint8_t *ivec, int *num,
-                        int enc) {
+                      const AES_KEY *key, uint8_t *ivec, int *num, int enc) {
   unsigned num_u = (unsigned)(*num);
   CRYPTO_cfb128_1_encrypt(in, out, bits, key, ivec, &num_u, enc, AES_encrypt);
   *num = (int)num_u;
 }
 
 void AES_cfb8_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, int *num,
-                        int enc) {
+                      const AES_KEY *key, uint8_t *ivec, int *num, int enc) {
   unsigned num_u = (unsigned)(*num);
   CRYPTO_cfb128_8_encrypt(in, out, length, key, ivec, &num_u, enc, AES_encrypt);
   *num = (int)num_u;
 }
 
 void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, int *num,
-                        int enc) {
+                        const AES_KEY *key, uint8_t *ivec, int *num, int enc) {
   unsigned num_u = (unsigned)(*num);
   CRYPTO_cfb128_encrypt(in, out, length, key, ivec, &num_u, enc, AES_encrypt);
   *num = (int)num_u;
@@ -140,12 +137,13 @@ void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 
 #if defined(HWAES_XTS)
 int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key1, const AES_KEY *key2,
-                       const uint8_t iv[16], int enc) {
+                      const AES_KEY *key1, const AES_KEY *key2,
+                      const uint8_t iv[16], int enc) {
   // The assembly functions abort on the following condition.
   // They can be modified to return 0/1 instead of void, but
   // this is the easy way out for now.
-  if (length < 16) return 0;
+  if (length < 16)
+    return 0;
 
   if (enc) {
 #if defined(AES_XTS_X86_64_AVX512)
@@ -167,4 +165,4 @@ int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
   return 1;
 }
 
-#endif // HWAES_XTS
+#endif  // HWAES_XTS

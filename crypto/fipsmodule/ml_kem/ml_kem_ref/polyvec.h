@@ -5,7 +5,7 @@
 #include "params.h"
 #include "poly.h"
 
-typedef struct{
+typedef struct {
   poly vec[KYBER_K_MAX];
 } polyvec;
 
@@ -24,13 +24,16 @@ void polyvec_ntt(ml_kem_params *params, polyvec *r);
 #define polyvec_invntt_tomont KYBER_NAMESPACE(polyvec_invntt_tomont)
 void polyvec_invntt_tomont(ml_kem_params *params, polyvec *r);
 
-#define polyvec_basemul_acc_montgomery KYBER_NAMESPACE(polyvec_basemul_acc_montgomery)
-void polyvec_basemul_acc_montgomery(ml_kem_params *params, poly *r, const polyvec *a, const polyvec *b);
+#define polyvec_basemul_acc_montgomery \
+  KYBER_NAMESPACE(polyvec_basemul_acc_montgomery)
+void polyvec_basemul_acc_montgomery(ml_kem_params *params, poly *r,
+                                    const polyvec *a, const polyvec *b);
 
 #define polyvec_reduce KYBER_NAMESPACE(polyvec_reduce)
 void polyvec_reduce(ml_kem_params *params, polyvec *r);
 
 #define polyvec_add KYBER_NAMESPACE(polyvec_add)
-void polyvec_add(ml_kem_params *params, polyvec *r, const polyvec *a, const polyvec *b);
+void polyvec_add(ml_kem_params *params, polyvec *r, const polyvec *a,
+                 const polyvec *b);
 
 #endif

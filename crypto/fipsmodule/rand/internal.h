@@ -95,9 +95,7 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
-OPENSSL_INLINE int have_rdrand(void) {
-  return CRYPTO_is_RDRAND_capable();
-}
+OPENSSL_INLINE int have_rdrand(void) { return CRYPTO_is_RDRAND_capable(); }
 
 // have_fast_rdrand returns true if RDRAND is supported and it's reasonably
 // fast. Concretely the latter is defined by whether the chip is Intel (fast) or
@@ -117,13 +115,9 @@ int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
 
 #else  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
 
-OPENSSL_INLINE int have_rdrand(void) {
-  return 0;
-}
+OPENSSL_INLINE int have_rdrand(void) { return 0; }
 
-OPENSSL_INLINE int have_fast_rdrand(void) {
-  return 0;
-}
+OPENSSL_INLINE int have_fast_rdrand(void) { return 0; }
 
 #endif  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
 
@@ -147,16 +141,17 @@ OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
 #elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
 
-OPENSSL_EXPORT void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                                  int *out_want_additional_input);
+OPENSSL_EXPORT void RAND_module_entropy_depleted(
+    uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN], int *out_want_additional_input);
 void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
                              int *out_want_additional_input);
-OPENSSL_EXPORT void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                       uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]);
+OPENSSL_EXPORT void RAND_load_entropy(
+    uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
+    uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]);
 
 #endif
 
-#endif // defined(BORINGSSL_FIPS)
+#endif  // defined(BORINGSSL_FIPS)
 
 #if defined(__cplusplus)
 }  // extern C

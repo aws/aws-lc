@@ -78,7 +78,7 @@ typedef struct cipher_aes_ccm_ctx {
   union {
     uint64_t align;
     AES_KEY ks;
-  } ks; // AES key schedule to use
+  } ks;  // AES key schedule to use
 
   CCM128_CTX ccm;
   CCM128_STATE ccm_state;
@@ -91,8 +91,8 @@ typedef struct cipher_aes_ccm_ctx {
   uint8_t ccm_set;
 
   // L and M parameters from RFC3610
-  uint32_t L; // Number of octets in length field
-  uint32_t M; // Number of octets in authentication field
+  uint32_t L;  // Number of octets in length field
+  uint32_t M;  // Number of octets in authentication field
 
   size_t message_len;
   uint8_t tag[EVP_AEAD_AES_CCM_MAX_TAG_LEN];
@@ -109,8 +109,8 @@ typedef struct cipher_aes_ccm_ctx {
 
 static int CRYPTO_ccm128_init(struct ccm128_context *ctx, block128_f block,
                               ctr128_f ctr, unsigned M, unsigned L) {
-  if (M < EVP_AEAD_AES_CCM_MIN_TAG_LEN || M > EVP_AEAD_AES_CCM_MAX_TAG_LEN
-      || (M & 1) != 0 || L < 2 || L > 8) {
+  if (M < EVP_AEAD_AES_CCM_MIN_TAG_LEN || M > EVP_AEAD_AES_CCM_MAX_TAG_LEN ||
+      (M & 1) != 0 || L < 2 || L > 8) {
     return 0;
   }
   if (block) {
@@ -209,7 +209,7 @@ static int ccm128_init_state(const struct ccm128_context *ctx,
   size_t remaining_blocks = 2 * ((plaintext_len + 15) / 16) + 1;
   if (plaintext_len + 15 < plaintext_len ||
       remaining_blocks + blocks < blocks ||
-      (uint64_t) remaining_blocks + blocks > UINT64_C(1) << 61) {
+      (uint64_t)remaining_blocks + blocks > UINT64_C(1) << 61) {
     return 0;
   }
 
@@ -521,24 +521,24 @@ static CIPHER_AES_CCM_CTX *aes_ccm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 }
 
 static int cipher_aes_ccm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                        const uint8_t *iv, int enc) {
+                               const uint8_t *iv, int enc) {
   CIPHER_AES_CCM_CTX *cipher_ctx = aes_ccm_from_cipher_ctx(ctx);
   if (!iv && !key) {
     return 1;
   }
   if (key) {
     block128_f block;
-    ctr128_f ctr = aes_ctr_set_key(&cipher_ctx->ks.ks, NULL, &block, key,
-                                   ctx->key_len);
+    ctr128_f ctr =
+        aes_ctr_set_key(&cipher_ctx->ks.ks, NULL, &block, key, ctx->key_len);
     if (!CRYPTO_ccm128_init(&cipher_ctx->ccm, block, ctr, cipher_ctx->M,
-                       cipher_ctx->L)) {
+                            cipher_ctx->L)) {
       return 0;
     }
     cipher_ctx->key_set = 1;
   }
   if (iv) {
     if (!CRYPTO_ccm128_init(&cipher_ctx->ccm, NULL, NULL, cipher_ctx->M,
-                       cipher_ctx->L)) {
+                            cipher_ctx->L)) {
       return 0;
     }
     OPENSSL_memcpy(cipher_ctx->nonce, iv, CCM_L_TO_NONCE_LEN(cipher_ctx->L));
@@ -577,8 +577,8 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
         return -1;
       }
       // We now have everything we need to initialize the CBC-MAC state
-      if (ccm128_init_state(ccm_ctx, ccm_state,
-                            &cipher_ctx->ks.ks, cipher_ctx->nonce,
+      if (ccm128_init_state(ccm_ctx, ccm_state, &cipher_ctx->ks.ks,
+                            cipher_ctx->nonce,
                             CCM_L_TO_NONCE_LEN(cipher_ctx->L), in, len,
                             cipher_ctx->message_len)) {
         cipher_ctx->ccm_set = 1;
@@ -638,7 +638,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     cipher_ctx->len_set = 0;
     cipher_ctx->ccm_set = 0;
   }
-  return (int) len;
+  return (int)len;
 }
 
 static int cipher_aes_ccm_ctrl_set_L(CIPHER_AES_CCM_CTX *ctx, int L) {
@@ -675,8 +675,8 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       return cipher_aes_ccm_ctrl_set_L(cipher_ctx, arg);
     case EVP_CTRL_AEAD_SET_TAG:
       // |arg| is the tag length in bytes.
-      if ((arg & 1) || arg < EVP_AEAD_AES_CCM_MIN_TAG_LEN
-          || arg > EVP_AEAD_AES_CCM_MAX_TAG_LEN) {
+      if ((arg & 1) || arg < EVP_AEAD_AES_CCM_MIN_TAG_LEN ||
+          arg > EVP_AEAD_AES_CCM_MAX_TAG_LEN) {
         return 0;
       }
 
@@ -698,7 +698,7 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       if (!ctx->encrypt || !cipher_ctx->tag_set) {
         return 0;
       }
-      if ((size_t) arg != cipher_ctx->M) {
+      if ((size_t)arg != cipher_ctx->M) {
         return 0;
       }
       OPENSSL_memcpy(ptr, cipher_ctx->tag, cipher_ctx->M);
@@ -726,7 +726,7 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
   out->nid = NID_aes_128_ccm;
-  out->block_size = 1; // stream cipher
+  out->block_size = 1;  // stream cipher
   out->key_len = 16;
   out->iv_len = 13;
   out->ctx_size = sizeof(CIPHER_AES_CCM_CTX) + CIPHER_AES_CCM_CTX_PADDING;
@@ -742,7 +742,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ccm) {
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
   out->nid = NID_aes_128_ccm;
-  out->block_size = 1; // stream cipher
+  out->block_size = 1;  // stream cipher
   out->key_len = 24;
   out->iv_len = 13;
   out->ctx_size = sizeof(CIPHER_AES_CCM_CTX) + CIPHER_AES_CCM_CTX_PADDING;
@@ -758,7 +758,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
   out->nid = NID_aes_128_ccm;
-  out->block_size = 1; // stream cipher
+  out->block_size = 1;  // stream cipher
   out->key_len = 32;
   out->iv_len = 13;
   out->ctx_size = sizeof(CIPHER_AES_CCM_CTX) + CIPHER_AES_CCM_CTX_PADDING;

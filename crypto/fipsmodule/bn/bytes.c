@@ -150,16 +150,17 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   return ret;
 }
 
-void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in, const size_t in_len) {
+void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
+                               const size_t in_len) {
   assert(out_len > 0);
 #ifdef OPENSSL_BIG_ENDIAN
   size_t in_index = 0;
   for (size_t i = 0; i < out_len; i++) {
-    if ((in_len-in_index) < sizeof(BN_ULONG)) {
+    if ((in_len - in_index) < sizeof(BN_ULONG)) {
       // Load the last partial word.
       BN_ULONG word = 0;
       // size_t is unsigned, so j >= 0 is always true.
-      for (size_t j = in_len-1; j >= in_index && j < in_len; j--) {
+      for (size_t j = in_len - 1; j >= in_index && j < in_len; j--) {
         word = (word << 8) | in[j];
       }
       in_index = in_len;
@@ -179,7 +180,8 @@ void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
 #else
   OPENSSL_memcpy(out, in, in_len);
   // Fill the remainder with zeros.
-  OPENSSL_memset( ((uint8_t*)out) + in_len, 0, sizeof(BN_ULONG)*out_len - in_len);
+  OPENSSL_memset(((uint8_t *)out) + in_len, 0,
+                 sizeof(BN_ULONG) * out_len - in_len);
 #endif
 }
 
@@ -194,7 +196,7 @@ static int fits_in_bytes(const BN_ULONG *words, size_t num_words,
     for (size_t j = 0; j < BN_BYTES; j++) {
       if ((i * BN_BYTES) + j < num_bytes) {
         // For the first word we don't need to check any bytes shorter than len
-        continue ;
+        continue;
       } else {
         mask |= (word >> (j * 8)) & 0xff;
       }
@@ -211,7 +213,8 @@ static int fits_in_bytes(const BN_ULONG *words, size_t num_words,
 }
 
 // Asserts that the BIGNUM can be represented within |num| bytes.
-// The logic is consistent with `fits_in_bytes` but assertions will fail when false.
+// The logic is consistent with `fits_in_bytes` but assertions will fail when
+// false.
 void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num) {
   const uint8_t *bytes = (const uint8_t *)bn->d;
   size_t tot_bytes = bn->width * sizeof(BN_ULONG);
@@ -225,7 +228,8 @@ void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num) {
       BN_ULONG word = bn->d[i];
       for (size_t j = 0; j < BN_BYTES; j++) {
         if ((i * BN_BYTES) + j < num) {
-          // For the first word we don't need to check any bytes shorter than len
+          // For the first word we don't need to check any bytes shorter than
+          // len
           continue;
         } else {
           uint8_t byte = (word >> (j * 8)) & 0xff;
@@ -273,7 +277,8 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   return n;
 }
 
-void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, const size_t in_len) {
+void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
+                               const size_t in_len) {
   // The caller should have selected an output length without truncation.
   assert(fits_in_bytes(in, in_len, out_len));
   size_t num_bytes = in_len * sizeof(BN_ULONG);
@@ -284,7 +289,7 @@ void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
   size_t byte_idx = 0;
   for (size_t word_idx = 0; word_idx < in_len; word_idx++) {
     BN_ULONG l = in[word_idx];
-    for(size_t j = 0; j < BN_BYTES && byte_idx < num_bytes; j++) {
+    for (size_t j = 0; j < BN_BYTES && byte_idx < num_bytes; j++) {
       out[byte_idx] = (uint8_t)(l & 0xff);
       l >>= 8;
       byte_idx++;
@@ -336,7 +341,7 @@ int BN_get_u64(const BIGNUM *bn, uint64_t *out) {
       return 1;
 #if defined(OPENSSL_32_BIT)
     case 2:
-      *out = (uint64_t) bn->d[0] | (((uint64_t) bn->d[1]) << 32);
+      *out = (uint64_t)bn->d[0] | (((uint64_t)bn->d[1]) << 32);
       return 1;
 #endif
     default:

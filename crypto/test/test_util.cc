@@ -111,9 +111,8 @@ bssl::UniquePtr<RSA> RSAFromPEM(const char *pem) {
       PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
-                                          const char *subject, EVP_PKEY *key,
-                                          bool is_ca) {
+bssl::UniquePtr<X509> MakeTestCert(const char *issuer, const char *subject,
+                                   EVP_PKEY *key, bool is_ca) {
   bssl::UniquePtr<X509> cert(X509_new());
   if (!cert ||  //
       !X509_set_version(cert.get(), X509_VERSION_3) ||
@@ -140,8 +139,7 @@ bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
   return cert;
 }
 
-bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
-    const std::vector<X509 *> &certs) {
+bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs) {
   bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
   if (!stack) {
     return nullptr;
@@ -156,24 +154,25 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
 
 #if defined(OPENSSL_WINDOWS)
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
-  // On Windows, tmpfile() may attempt to create temp files in the root directory
-  // of the drive, which requires Admin privileges, resulting in test failure.
+  // On Windows, tmpfile() may attempt to create temp files in the root
+  // directory of the drive, which requires Admin privileges, resulting in test
+  // failure.
   char pathname[PATH_MAX];
-  if(0 == GetTempPathA(PATH_MAX, pathname)) {
+  if (0 == GetTempPathA(PATH_MAX, pathname)) {
     return 0;
   }
   return GetTempFileNameA(pathname, "awslctest", 0, buffer);
 }
-FILE* createRawTempFILE() {
+FILE *createRawTempFILE() {
   char filename[PATH_MAX];
-  if(createTempFILEpath(filename) == 0) {
+  if (createTempFILEpath(filename) == 0) {
     return nullptr;
   }
   return fopen(filename, "w+b");
 }
 #else
-#include <cstdlib>
 #include <unistd.h>
+#include <cstdlib>
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
   snprintf(buffer, PATH_MAX, "awslcTestTmpFileXXXXXX");
 
@@ -185,18 +184,13 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   close(fd);
   return strnlen(buffer, PATH_MAX);
 }
-FILE* createRawTempFILE() {
-  return tmpfile();
-}
+FILE *createRawTempFILE() { return tmpfile(); }
 #endif
 
 
-TempFILE createTempFILE() {
-  return TempFILE(createRawTempFILE());
-}
+TempFILE createTempFILE() { return TempFILE(createRawTempFILE()); }
 
-void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
-                           int index, long argl, void *argp) {
+void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int index,
+                    long argl, void *argp) {
   free(ptr);
 }
-

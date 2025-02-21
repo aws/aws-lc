@@ -12,8 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <gtest/gtest.h>
 #include <gtest/gtest-spi.h>
+#include <gtest/gtest.h>
 
 #include <openssl/rand.h>
 
@@ -187,7 +187,7 @@ TEST(ABITest, X86_64) {
   EXPECT_EQ(0, abi_test_get_and_clear_direction_flag())
       << "CHECK_ABI did not insulate the caller from direction flag errors";
 }
-#endif   // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
 
 #if defined(OPENSSL_X86) && defined(SUPPORTS_ABI_TEST)
 extern "C" {
@@ -243,7 +243,7 @@ TEST(ABITest, X86) {
   EXPECT_EQ(0, abi_test_get_and_clear_direction_flag())
       << "CHECK_ABI did not insulate the caller from direction flag errors";
 }
-#endif   // OPENSSL_X86 && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_X86 && SUPPORTS_ABI_TEST
 
 #if defined(OPENSSL_ARM) && defined(SUPPORTS_ABI_TEST)
 extern "C" {
@@ -340,7 +340,7 @@ TEST(ABITest, ARM) {
   EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d15),
                           "d15 was not restored after return");
 }
-#endif   // OPENSSL_ARM && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_ARM && SUPPORTS_ABI_TEST
 
 #if defined(OPENSSL_AARCH64) && defined(SUPPORTS_ABI_TEST)
 extern "C" {
@@ -520,7 +520,7 @@ TEST(ABITest, AArch64) {
   CHECK_ABI_NO_UNWIND(abi_test_clobber_v14_upper);
   CHECK_ABI_NO_UNWIND(abi_test_clobber_v15_upper);
 }
-#endif   // OPENSSL_AARCH64 && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_AARCH64 && SUPPORTS_ABI_TEST
 
 #if defined(OPENSSL_PPC64LE) && defined(SUPPORTS_ABI_TEST)
 extern "C" {
@@ -806,4 +806,4 @@ TEST(ABITest, PPC64LE) {
   CHECK_ABI_NO_UNWIND(abi_test_clobber_ctr);
   CHECK_ABI_NO_UNWIND(abi_test_clobber_lr);
 }
-#endif   // OPENSSL_PPC64LE && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_PPC64LE && SUPPORTS_ABI_TEST

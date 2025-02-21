@@ -46,7 +46,7 @@ void EVP_DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx);
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey);
 void HMAC_verify_service_indicator(const EVP_MD *evp_md);
 void HKDF_verify_service_indicator(const EVP_MD *evp_md, const uint8_t *salt,
-    size_t salt_len, size_t info_len);
+                                   size_t salt_len, size_t info_len);
 void HKDFExpand_verify_service_indicator(const EVP_MD *evp_md);
 void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
                                      size_t salt_len, unsigned iterations);
@@ -55,17 +55,18 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
                                      size_t label_len);
 void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst);
 void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst);
-void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst, size_t secret_len);
-void EVP_PKEY_encapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx);
-void EVP_PKEY_decapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx);
+void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst,
+                                             size_t secret_len);
+void EVP_PKEY_encapsulate_verify_service_indicator(const EVP_PKEY_CTX *ctx);
+void EVP_PKEY_decapsulate_verify_service_indicator(const EVP_PKEY_CTX *ctx);
 
 #else
 
 // Service indicator functions are no-ops in non-FIPS builds.
 
-OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
-OPENSSL_INLINE void FIPS_service_indicator_lock_state(void) { }
-OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
+OPENSSL_INLINE void FIPS_service_indicator_update_state(void) {}
+OPENSSL_INLINE void FIPS_service_indicator_lock_state(void) {}
+OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) {}
 
 // Service indicator check functions listed below are optimized to not do extra
 // checks, when not in FIPS mode. Arguments are cast with |OPENSSL_UNUSED| in an
@@ -101,10 +102,8 @@ OPENSSL_INLINE void HMAC_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
 OPENSSL_INLINE void HKDF_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD *evp_md,
-    OPENSSL_UNUSED const uint8_t *salt,
-    OPENSSL_UNUSED size_t salt_len,
-    OPENSSL_UNUSED size_t info_len) {}
+    OPENSSL_UNUSED const EVP_MD *evp_md, OPENSSL_UNUSED const uint8_t *salt,
+    OPENSSL_UNUSED size_t salt_len, OPENSSL_UNUSED size_t info_len) {}
 
 OPENSSL_INLINE void HKDFExpand_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
@@ -117,8 +116,7 @@ OPENSSL_INLINE void SSHKDF_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
 OPENSSL_INLINE void TLSKDF_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD *dgst,
-    OPENSSL_UNUSED const char *label,
+    OPENSSL_UNUSED const EVP_MD *dgst, OPENSSL_UNUSED const char *label,
     OPENSSL_UNUSED size_t label_len) {}
 
 OPENSSL_INLINE void SSKDF_digest_verify_service_indicator(
@@ -127,13 +125,16 @@ OPENSSL_INLINE void SSKDF_digest_verify_service_indicator(
 OPENSSL_INLINE void SSKDF_hmac_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *dgst) {}
 
-OPENSSL_INLINE void KBKDF_ctr_hmac_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst, size_t secret_len) {}
+OPENSSL_INLINE void KBKDF_ctr_hmac_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *dgst, size_t secret_len) {}
 
-OPENSSL_INLINE void EVP_PKEY_encapsulate_verify_service_indicator(OPENSSL_UNUSED const EVP_PKEY_CTX* ctx) {}
+OPENSSL_INLINE void EVP_PKEY_encapsulate_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_PKEY_CTX *ctx) {}
 
-OPENSSL_INLINE void EVP_PKEY_decapsulate_verify_service_indicator(OPENSSL_UNUSED const EVP_PKEY_CTX* ctx) {}
+OPENSSL_INLINE void EVP_PKEY_decapsulate_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_PKEY_CTX *ctx) {}
 
-#endif // AWSLC_FIPS
+#endif  // AWSLC_FIPS
 
 // is_fips_build is similar to |FIPS_mode| but returns 1 including in the case
 // of #if defined(OPENSSL_ASAN)

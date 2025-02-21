@@ -717,8 +717,8 @@ static void aes_nohw_inv_sub_bytes(AES_NOHW_BATCH *batch) {
 // to the right by |n|. This is a macro because |aes_nohw_shift_*| require
 // constant shift counts in the SSE2 implementation.
 #define aes_nohw_rotate_cols_right(/* aes_word_t */ v, /* const */ n) \
-  (aes_nohw_or(aes_nohw_shift_right((v), (n)*4),                      \
-               aes_nohw_shift_left((v), 16 - (n)*4)))
+  (aes_nohw_or(aes_nohw_shift_right((v), (n) * 4),                    \
+               aes_nohw_shift_left((v), 16 - (n) * 4)))
 
 static void aes_nohw_shift_rows(AES_NOHW_BATCH *batch) {
   for (size_t i = 0; i < 8; i++) {

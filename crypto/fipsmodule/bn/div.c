@@ -335,12 +335,11 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
         }
         t2 -= d1;
       }
-#else  // !BN_ULLONG
+#else   // !BN_ULLONG
       BN_ULONG t2l, t2h;
       BN_UMULT_LOHI(t2l, t2h, d1, q);
       for (;;) {
-        if (t2h < rm ||
-            (t2h == rm && t2l <= wnump[-2])) {
+        if (t2h < rm || (t2h == rm && t2l <= wnump[-2])) {
           break;
         }
         q--;
@@ -481,8 +480,7 @@ int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
   }
   BIGNUM *tmp = BN_CTX_get(ctx);
   if (q == NULL || r == NULL || tmp == NULL ||
-      !bn_wexpand(q, numerator->width) ||
-      !bn_wexpand(r, divisor->width) ||
+      !bn_wexpand(q, numerator->width) || !bn_wexpand(r, divisor->width) ||
       !bn_wexpand(tmp, divisor->width)) {
     goto err;
   }
@@ -547,8 +545,7 @@ err:
 
 static BIGNUM *bn_scratch_space_from_ctx(size_t width, BN_CTX *ctx) {
   BIGNUM *ret = BN_CTX_get(ctx);
-  if (ret == NULL ||
-      !bn_wexpand(ret, width)) {
+  if (ret == NULL || !bn_wexpand(ret, width)) {
     return NULL;
   }
   ret->neg = 0;
@@ -569,9 +566,7 @@ static const BIGNUM *bn_resized_from_ctx(const BIGNUM *bn, size_t width,
     return bn;
   }
   BIGNUM *ret = bn_scratch_space_from_ctx(width, ctx);
-  if (ret == NULL ||
-      !BN_copy(ret, bn) ||
-      !bn_resize_words(ret, width)) {
+  if (ret == NULL || !BN_copy(ret, bn) || !bn_resize_words(ret, width)) {
     return NULL;
   }
   return ret;
@@ -588,8 +583,7 @@ int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
 int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
-  int ok = ctx != NULL &&
-           bn_mod_add_consttime(r, a, b, m, ctx);
+  int ok = ctx != NULL && bn_mod_add_consttime(r, a, b, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
@@ -600,8 +594,7 @@ int bn_mod_add_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   a = bn_resized_from_ctx(a, m->width, ctx);
   b = bn_resized_from_ctx(b, m->width, ctx);
   BIGNUM *tmp = bn_scratch_space_from_ctx(m->width, ctx);
-  int ok = a != NULL && b != NULL && tmp != NULL &&
-           bn_wexpand(r, m->width);
+  int ok = a != NULL && b != NULL && tmp != NULL && bn_wexpand(r, m->width);
   if (ok) {
     bn_mod_add_words(r->d, a->d, b->d, m->d, tmp->d, m->width);
     r->width = m->width;
@@ -625,8 +618,7 @@ int bn_mod_sub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   a = bn_resized_from_ctx(a, m->width, ctx);
   b = bn_resized_from_ctx(b, m->width, ctx);
   BIGNUM *tmp = bn_scratch_space_from_ctx(m->width, ctx);
-  int ok = a != NULL && b != NULL && tmp != NULL &&
-           bn_wexpand(r, m->width);
+  int ok = a != NULL && b != NULL && tmp != NULL && bn_wexpand(r, m->width);
   if (ok) {
     bn_mod_sub_words(r->d, a->d, b->d, m->d, tmp->d, m->width);
     r->width = m->width;
@@ -639,8 +631,7 @@ int bn_mod_sub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
-  int ok = ctx != NULL &&
-           bn_mod_sub_consttime(r, a, b, m, ctx);
+  int ok = ctx != NULL && bn_mod_sub_consttime(r, a, b, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
@@ -711,8 +702,7 @@ int BN_mod_lshift(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
 
 int bn_mod_lshift_consttime(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
                             BN_CTX *ctx) {
-  if (!BN_copy(r, a) ||
-      !bn_resize_words(r, m->width)) {
+  if (!BN_copy(r, a) || !bn_resize_words(r, m->width)) {
     return 0;
   }
 
@@ -731,8 +721,7 @@ int bn_mod_lshift_consttime(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
 
 int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
-  int ok = ctx != NULL &&
-           bn_mod_lshift_consttime(r, a, n, m, ctx);
+  int ok = ctx != NULL && bn_mod_lshift_consttime(r, a, n, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
@@ -752,8 +741,7 @@ int bn_mod_lshift1_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
 
 int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
-  int ok = ctx != NULL &&
-           bn_mod_lshift1_consttime(r, a, m, ctx);
+  int ok = ctx != NULL && bn_mod_lshift1_consttime(r, a, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
@@ -764,7 +752,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
 
   if (!w) {
     // actually this an error (division by zero)
-    return (BN_ULONG) - 1;
+    return (BN_ULONG)-1;
   }
 
   if (a->width == 0) {
@@ -775,7 +763,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
   j = BN_BITS2 - BN_num_bits_word(w);
   w <<= j;
   if (!BN_lshift(a, a, j)) {
-    return (BN_ULONG) - 1;
+    return (BN_ULONG)-1;
   }
 
   for (i = a->width - 1; i >= 0; i--) {
@@ -801,7 +789,7 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
   int i;
 
   if (w == 0) {
-    return (BN_ULONG) -1;
+    return (BN_ULONG)-1;
   }
 
 #ifndef BN_CAN_DIVIDE_ULLONG
@@ -838,7 +826,7 @@ int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   size_t num_words = 1 + ((e - 1) / BN_BITS2);
 
   // If |a| definitely has less than |e| bits, just BN_copy.
-  if ((size_t) a->width < num_words) {
+  if ((size_t)a->width < num_words) {
     return BN_copy(r, a) != NULL;
   }
 
@@ -854,12 +842,12 @@ int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   // If |e| isn't word-aligned, we have to mask off some of our bits.
   size_t top_word_exponent = e % (sizeof(BN_ULONG) * 8);
   if (top_word_exponent != 0) {
-    r->d[num_words - 1] &= (((BN_ULONG) 1) << top_word_exponent) - 1;
+    r->d[num_words - 1] &= (((BN_ULONG)1) << top_word_exponent) - 1;
   }
 
   // Fill in the remaining fields of |r|.
   r->neg = a->neg;
-  r->width = (int) num_words;
+  r->width = (int)num_words;
   bn_set_minimal_width(r);
   return 1;
 }
@@ -886,7 +874,7 @@ int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
 
   // Set parameters of |r|.
   r->neg = 0;
-  r->width = (int) num_words;
+  r->width = (int)num_words;
 
   // Now, invert every word. The idea here is that we want to compute 2^e-|x|,
   // which is actually equivalent to the twos-complement representation of |x|
@@ -898,7 +886,7 @@ int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   // If our exponent doesn't span the top word, we have to mask the rest.
   size_t top_word_exponent = e % BN_BITS2;
   if (top_word_exponent != 0) {
-    r->d[r->width - 1] &= (((BN_ULONG) 1) << top_word_exponent) - 1;
+    r->d[r->width - 1] &= (((BN_ULONG)1) << top_word_exponent) - 1;
   }
 
   // Keep the minimal-width invariant for |BIGNUM|.

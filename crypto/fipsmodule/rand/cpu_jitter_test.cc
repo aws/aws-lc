@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../test/test_util.h"
 #include "../../../third_party/jitterentropy/jitterentropy.h"
+#include "../../test/test_util.h"
 
 // Struct for Jitter entropy collector instance with constructor/desctructor.
 struct JitterEC {
@@ -24,7 +24,6 @@ struct JitterEC {
 };
 
 TEST(CPUJitterEntropyTest, Basic) {
-
   // Allocate Jitter instance with default oversampling rate.
   JitterEC jitter_ec(0, JENT_FORCE_FIPS);
 
@@ -39,10 +38,10 @@ TEST(CPUJitterEntropyTest, Basic) {
   uint8_t data0[data_len], data1[data_len];
 
   // Draw some entropy to check if it works.
-  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
-                              (char*) data0, data_len), data_len);
-  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
-                              (char*) data1, data_len), data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance, (char *)data0, data_len),
+            data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance, (char *)data1, data_len),
+            data_len);
 
   // Basic check that the random data is not equal.
   EXPECT_NE(Bytes(data0), Bytes(data1));
@@ -56,10 +55,10 @@ TEST(CPUJitterEntropyTest, Basic) {
   EXPECT_EQ(jitter_ec.instance->osr, osr);
 
   // Test drawing entropy from the Jitter object that was reset.
-  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
-                              (char*) data0, data_len), data_len);
-  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
-                              (char*) data1, data_len), data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance, (char *)data0, data_len),
+            data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance, (char *)data1, data_len),
+            data_len);
 
   // Verify that the Jitter library version is v3.4.0.
   unsigned int jitter_version = 3040000;

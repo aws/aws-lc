@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #if !defined(AWSLC_SYSGENID_PATH)
-  #define AWSLC_SYSGENID_PATH "/dev/sysgenid"
+#define AWSLC_SYSGENID_PATH "/dev/sysgenid"
 #endif
 
 // Snapsafe-type uniqueness breaking event (ube detection).
@@ -31,7 +31,7 @@ extern "C" {
 // presents SysGenID interface (default is `/dev/sysgenid`) but we are
 // is unable to initialize its use. Otherwise, it returns 1.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(
-                                          uint32_t *snapsafe_generation_number);
+    uint32_t *snapsafe_generation_number);
 
 // CRYPTO_get_snapsafe_active returns 1 if the file system presents the SysGenID
 // interface and the libraruy has successfully initialized its use. Otherwise,

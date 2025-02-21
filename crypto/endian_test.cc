@@ -56,8 +56,8 @@ TEST(EndianTest, wordOperations) {
   size_t val = 0x123456789abcdef0;
   uint8_t expected_le[8] = {0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12};
 #else
-size_t val = 0x12345678;
-uint8_t expected_le[4] = {0x78, 0x56, 0x34, 0x12};
+  size_t val = 0x12345678;
+  uint8_t expected_le[4] = {0x78, 0x56, 0x34, 0x12};
 #endif
 
   CRYPTO_store_word_le(buffer, val);
@@ -82,7 +82,8 @@ TEST(EndianTest, TestRotate32) {
 
 TEST(EndianTest, TestRotate64) {
   uint64_t value = 0b0000001000000000000000000000000000010000000000000000000000;
-  uint64_t expected = 0b0010000000000000000000000000000100000000000000000000000000;
+  uint64_t expected =
+      0b0010000000000000000000000000000100000000000000000000000000;
 
   uint64_t rotl_by = 4;
   uint64_t rotr_by = 64 - rotl_by;
@@ -147,12 +148,13 @@ TEST(EndianTest, BN_bin2bn) {
   input[255] = 0x02;
   ASSERT_NE(nullptr, BN_bin2bn(input, sizeof(input), x.get()));
   EXPECT_FALSE(BN_is_zero(x.get()));
-  for (size_t i = 1; i < (sizeof(input)*8/BN_BITS2) - 1; i++) {
+  for (size_t i = 1; i < (sizeof(input) * 8 / BN_BITS2) - 1; i++) {
     SCOPED_TRACE(i);
     EXPECT_EQ((uint64_t)0, x.get()->d[i]);
   }
   EXPECT_EQ((uint64_t)0x0102, x.get()->d[0]);
-  EXPECT_EQ((uint64_t)0xaa01 << (BN_BITS2-16), x.get()->d[(256*8/BN_BITS2)-1]);
+  EXPECT_EQ((uint64_t)0xaa01 << (BN_BITS2 - 16),
+            x.get()->d[(256 * 8 / BN_BITS2) - 1]);
 }
 
 TEST(EndianTest, BN_le2bn) {
@@ -165,12 +167,13 @@ TEST(EndianTest, BN_le2bn) {
   input[255] = 0x02;
   ASSERT_NE(nullptr, BN_le2bn(input, sizeof(input), x.get()));
   EXPECT_FALSE(BN_is_zero(x.get()));
-  for (int i = 1; i < (256*8/BN_BITS2) - 1; i++) {
+  for (int i = 1; i < (256 * 8 / BN_BITS2) - 1; i++) {
     SCOPED_TRACE(i);
     EXPECT_EQ((uint64_t)0, x.get()->d[i]);
   }
   EXPECT_EQ((uint64_t)0x01aa, x.get()->d[0]);
-  EXPECT_EQ((uint64_t)0x0201 << (BN_BITS2-16), x.get()->d[(256*8/BN_BITS2)-1]);
+  EXPECT_EQ((uint64_t)0x0201 << (BN_BITS2 - 16),
+            x.get()->d[(256 * 8 / BN_BITS2) - 1]);
 }
 
 // This test creates a BIGNUM, where 255 bytes are significant.
@@ -186,11 +189,12 @@ TEST(EndianTest, BN_le2bn_255) {
   input[254] = 0x01;
   ASSERT_TRUE(BN_le2bn(input, sizeof(input), x.get()));
   EXPECT_FALSE(BN_is_zero(x.get()));
-  for (size_t i = 1; i <= (255/sizeof(BN_ULONG)) - 1; i++) {
+  for (size_t i = 1; i <= (255 / sizeof(BN_ULONG)) - 1; i++) {
     EXPECT_EQ((BN_ULONG)0, x.get()->d[i]);
   }
   EXPECT_EQ((BN_ULONG)0x01aa, x.get()->d[0]);
-  EXPECT_EQ((BN_ULONG)0x01 << (BN_BITS2-16), x.get()->d[255/sizeof(BN_ULONG)]);
+  EXPECT_EQ((BN_ULONG)0x01 << (BN_BITS2 - 16),
+            x.get()->d[255 / sizeof(BN_ULONG)]);
 }
 
 TEST(EndianTest, BN_bn2bin) {
@@ -283,10 +287,11 @@ TEST(EndianTest, BN_bn2bin_padded) {
 
 TEST(EndianTest, AES) {
   // Initialize the key and message buffers with zeros
-  uint8_t key[16] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11, 0x22, 0x33,
-	0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x50};
-  uint8_t message[AES_BLOCK_SIZE] = {0x50, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
-	0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99};
+  uint8_t key[16] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11, 0x22,
+                     0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x50};
+  uint8_t message[AES_BLOCK_SIZE] = {0x50, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+                                     0xff, 0x11, 0x22, 0x33, 0x44, 0x55,
+                                     0x66, 0x77, 0x88, 0x99};
 
   // Allocate buffer to store the encrypted message
   uint8_t encrypted_message[AES_BLOCK_SIZE];
@@ -298,8 +303,8 @@ TEST(EndianTest, AES) {
   AES_encrypt(message, encrypted_message, &aes_key);
 
   const uint8_t known_value_bytes[AES_BLOCK_SIZE] = {
-	0x5e, 0x3e, 0x8e, 0x76, 0xf4, 0xf2, 0x7d, 0x41, 0x35, 0x86, 0x96, 0xb5, 0x57, 0x2d, 0xd5, 0xc6
-  };
+      0x5e, 0x3e, 0x8e, 0x76, 0xf4, 0xf2, 0x7d, 0x41,
+      0x35, 0x86, 0x96, 0xb5, 0x57, 0x2d, 0xd5, 0xc6};
   EXPECT_EQ(Bytes(known_value_bytes), Bytes(encrypted_message));
 }
 

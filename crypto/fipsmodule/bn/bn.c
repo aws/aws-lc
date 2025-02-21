@@ -62,8 +62,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../delocate.h"
+#include "internal.h"
 
 
 // BN_MAX_WORDS is the maximum number of words allowed in a |BIGNUM|. It is
@@ -85,9 +85,7 @@ BIGNUM *BN_new(void) {
 
 BIGNUM *BN_secure_new(void) { return BN_new(); }
 
-void BN_init(BIGNUM *bn) {
-  OPENSSL_memset(bn, 0, sizeof(BIGNUM));
-}
+void BN_init(BIGNUM *bn) { OPENSSL_memset(bn, 0, sizeof(BIGNUM)); }
 
 void BN_free(BIGNUM *bn) {
   if (bn == NULL) {
@@ -105,9 +103,7 @@ void BN_free(BIGNUM *bn) {
   }
 }
 
-void BN_clear_free(BIGNUM *bn) {
-  BN_free(bn);
-}
+void BN_clear_free(BIGNUM *bn) { BN_free(bn); }
 
 BIGNUM *BN_dup(const BIGNUM *src) {
   BIGNUM *copy;
@@ -155,8 +151,8 @@ void BN_clear(BIGNUM *bn) {
 }
 
 DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
-  static const BN_ULONG kOneLimbs[1] = { 1 };
-  out->d = (BN_ULONG*) kOneLimbs;
+  static const BN_ULONG kOneLimbs[1] = {1};
+  out->d = (BN_ULONG *)kOneLimbs;
   out->width = 1;
   out->dmax = 1;
   out->neg = 0;
@@ -227,17 +223,11 @@ unsigned BN_num_bits(const BIGNUM *bn) {
   return (width - 1) * BN_BITS2 + BN_num_bits_word(bn->d[width - 1]);
 }
 
-unsigned BN_num_bytes(const BIGNUM *bn) {
-  return (BN_num_bits(bn) + 7) / 8;
-}
+unsigned BN_num_bytes(const BIGNUM *bn) { return (BN_num_bits(bn) + 7) / 8; }
 
-void BN_zero(BIGNUM *bn) {
-  bn->width = bn->neg = 0;
-}
+void BN_zero(BIGNUM *bn) { bn->width = bn->neg = 0; }
 
-int BN_one(BIGNUM *bn) {
-  return BN_set_word(bn, 1);
-}
+int BN_one(BIGNUM *bn) { return BN_set_word(bn, 1); }
 
 int BN_set_word(BIGNUM *bn, BN_ULONG value) {
   if (value == 0) {
@@ -330,9 +320,7 @@ int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn) {
   return 1;
 }
 
-int BN_is_negative(const BIGNUM *bn) {
-  return bn->neg != 0;
-}
+int BN_is_negative(const BIGNUM *bn) { return bn->neg != 0; }
 
 void BN_set_negative(BIGNUM *bn, int sign) {
   if (sign && !BN_is_zero(bn)) {
@@ -378,7 +366,7 @@ int bn_expand(BIGNUM *bn, size_t bits) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return 0;
   }
-  return bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
+  return bn_wexpand(bn, (bits + BN_BITS2 - 1) / BN_BITS2);
 }
 
 int bn_resize_words(BIGNUM *bn, size_t words) {
@@ -442,8 +430,6 @@ void bn_set_minimal_width(BIGNUM *bn) {
   }
 }
 
-int BN_get_flags(const BIGNUM *bn, int flags) {
-  return bn->flags & flags;
-}
+int BN_get_flags(const BIGNUM *bn, int flags) { return bn->flags & flags; }
 
-void BN_set_flags(BIGNUM *b, int n) { }
+void BN_set_flags(BIGNUM *b, int n) {}

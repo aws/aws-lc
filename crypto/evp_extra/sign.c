@@ -142,8 +142,7 @@ int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   EVP_MD_CTX_cleanup(&tmp_ctx);
 
   pkctx = EVP_PKEY_CTX_new(pkey, NULL);
-  if (!pkctx ||
-      !EVP_PKEY_verify_init(pkctx) ||
+  if (!pkctx || !EVP_PKEY_verify_init(pkctx) ||
       !EVP_PKEY_CTX_set_signature_md(pkctx, ctx->digest)) {
     goto out;
   }

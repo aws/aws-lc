@@ -101,11 +101,10 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA_CTX ctx;
-  const int ok = SHA1_Init(&ctx) &&
-                 SHA1_Update(&ctx, data, len) &&
-                 SHA1_Final(out, &ctx);
+  const int ok =
+      SHA1_Init(&ctx) && SHA1_Update(&ctx, data, len) && SHA1_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -227,13 +226,13 @@ int SHA1_get_state(SHA_CTX *ctx, uint8_t out_h[SHA1_CHAINING_LENGTH],
 #endif
 
 /* Originally X was an array. As it's automatic it's natural
-* to expect RISC compiler to accomodate at least part of it in
-* the register bank, isn't it? Unfortunately not all compilers
-* "find" this expectation reasonable:-( On order to make such
-* compilers generate better code I replace X[] with a bunch of
-* X0, X1, etc. See the function body below...
-*         <appro@fy.chalmers.se> */
-#define X(i)  XX##i
+ * to expect RISC compiler to accomodate at least part of it in
+ * the register bank, isn't it? Unfortunately not all compilers
+ * "find" this expectation reasonable:-( On order to make such
+ * compilers generate better code I replace X[] with a bunch of
+ * X0, X1, etc. See the function body below...
+ *         <appro@fy.chalmers.se> */
+#define X(i) XX##i
 
 #if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
 
@@ -241,8 +240,8 @@ int SHA1_get_state(SHA_CTX *ctx, uint8_t out_h[SHA1_CHAINING_LENGTH],
 static void sha1_block_data_order_nohw(uint32_t state[5], const uint8_t *data,
                                        size_t num) {
   register uint32_t A, B, C, D, E, T;
-  uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
-      XX11, XX12, XX13, XX14, XX15;
+  uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10, XX11, XX12,
+      XX13, XX14, XX15;
 
   A = state[0];
   B = state[1];

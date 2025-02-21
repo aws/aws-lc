@@ -70,7 +70,7 @@ TEST(X509V3Test, TabTest) {
   EXPECT_EQ(OPENSSL_ARRAY_SIZE(standard_exts), STANDARD_EXTENSION_COUNT);
   for (size_t i = 1; i < OPENSSL_ARRAY_SIZE(standard_exts); i++) {
     SCOPED_TRACE(i);
-    EXPECT_LT(standard_exts[i-1]->ext_nid, standard_exts[i]->ext_nid);
+    EXPECT_LT(standard_exts[i - 1]->ext_nid, standard_exts[i]->ext_nid);
   }
 }
 

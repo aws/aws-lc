@@ -26,10 +26,10 @@
 // sigma contains the ChaCha constants, which happen to be an ASCII string.
 // "expand 32-byte k"
 static const uint32_t sigma_words[4] = {
-        0x61707865, // 'e' 0x65, 'x' 0x78, 'p' 0x70, 'a' 0x61,
-        0x3320646e, // 'n' 0x6E, 'd' 0x64, ' ' 0x20, '3' 0x33,
-        0x79622d32, // '2' 0x32, '-' 0x2D, 'b' 0x62, 'y' 0x79,
-        0x6b206574  // 't' 0x74, 'e' 0x65, ' ' 0x20, 'k' 0x6B
+    0x61707865,  // 'e' 0x65, 'x' 0x78, 'p' 0x70, 'a' 0x61,
+    0x3320646e,  // 'n' 0x6E, 'd' 0x64, ' ' 0x20, '3' 0x33,
+    0x79622d32,  // '2' 0x32, '-' 0x2D, 'b' 0x62, 'y' 0x79,
+    0x6b206574   // 't' 0x74, 'e' 0x65, ' ' 0x20, 'k' 0x6B
 };
 
 // QUARTERROUND updates a, b, c, d with a ChaCha "quarter" round.
@@ -48,11 +48,11 @@ void CRYPTO_hchacha20(uint8_t out[32], const uint8_t key[32],
   uint32_t x[16];
   OPENSSL_memcpy(x, sigma_words, sizeof(sigma_words));
 #ifdef OPENSSL_BIG_ENDIAN
-  for(size_t i = 4; i < 12; i++) {
-    x[i] = CRYPTO_load_u32_le(key + (i-4) * sizeof(uint32_t));
+  for (size_t i = 4; i < 12; i++) {
+    x[i] = CRYPTO_load_u32_le(key + (i - 4) * sizeof(uint32_t));
   }
-  for(size_t i = 12; i < 16; i++) {
-    x[i] = CRYPTO_load_u32_le(nonce + (i-12) * sizeof(uint32_t));
+  for (size_t i = 12; i < 16; i++) {
+    x[i] = CRYPTO_load_u32_le(nonce + (i - 12) * sizeof(uint32_t));
   }
 #else
   OPENSSL_memcpy(&x[4], key, 32);
@@ -71,11 +71,11 @@ void CRYPTO_hchacha20(uint8_t out[32], const uint8_t key[32],
   }
 
 #ifdef OPENSSL_BIG_ENDIAN
-  for(size_t i = 0; i < 4; i++) {
+  for (size_t i = 0; i < 4; i++) {
     CRYPTO_store_u32_le(out + i * sizeof(uint32_t), x[i]);
   }
-  for(size_t i = 12; i < 16; i++) {
-    CRYPTO_store_u32_le(out + (i-8) * sizeof(uint32_t), x[i]);
+  for (size_t i = 12; i < 16; i++) {
+    CRYPTO_store_u32_le(out + (i - 8) * sizeof(uint32_t), x[i]);
   }
 #else
   OPENSSL_memcpy(out, &x[0], sizeof(uint32_t) * 4);

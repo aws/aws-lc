@@ -72,14 +72,14 @@ extern "C" {
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
 // Define state flag values for Keccak-based functions
-#define KECCAK1600_STATE_ABSORB     0 
+#define KECCAK1600_STATE_ABSORB 0
 // KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
-// It remains set while |SHAKE_Squeeze| is called repeatedly to output 
+// It remains set while |SHAKE_Squeeze| is called repeatedly to output
 // chunks of the XOF output.
-#define KECCAK1600_STATE_SQUEEZE    1  
-// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called 
+#define KECCAK1600_STATE_SQUEEZE 1
+// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called
 // so that |SHAKE_Squeeze| cannot be called anymore.
-#define KECCAK1600_STATE_FINAL      2 
+#define KECCAK1600_STATE_FINAL 2
 
 typedef struct keccak_st KECCAK1600_CTX;
 
@@ -87,12 +87,13 @@ typedef struct keccak_st KECCAK1600_CTX;
 // block size bytes to fit any SHA3/SHAKE block length.
 struct keccak_st {
   uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS];
-  size_t block_size;                               // cached ctx->digest->block_size
-  size_t md_size;                                  // output length, variable in XOF (SHAKE)
-  size_t buf_load;                                 // used bytes in below buffer
-  uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
-  uint8_t pad;                                     // padding character
-  uint8_t state;                                  // denotes the keccak phase (absorb, squeeze, final)
+  size_t block_size;                // cached ctx->digest->block_size
+  size_t md_size;                   // output length, variable in XOF (SHAKE)
+  size_t buf_load;                  // used bytes in below buffer
+  uint8_t buf[SHA3_MAX_BLOCKSIZE];  // should have at least the max data block
+                                    // size bytes
+  uint8_t pad;                      // padding character
+  uint8_t state;  // denotes the keccak phase (absorb, squeeze, final)
 };
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
@@ -102,7 +103,7 @@ struct keccak_st {
 #define SHA1_ALTIVEC
 
 void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                             size_t num_blocks);
+                           size_t num_blocks);
 
 #elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
 
@@ -331,8 +332,9 @@ void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *data,
 // SHAy=SHA512 otherwise.
 // This function returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
-OPENSSL_EXPORT int SHA1_Init_from_state(
-    SHA_CTX *sha, const uint8_t h[SHA1_CHAINING_LENGTH], uint64_t n);
+OPENSSL_EXPORT int SHA1_Init_from_state(SHA_CTX *sha,
+                                        const uint8_t h[SHA1_CHAINING_LENGTH],
+                                        uint64_t n);
 OPENSSL_EXPORT int SHA224_Init_from_state(
     SHA256_CTX *sha, const uint8_t h[SHA224_CHAINING_LENGTH], uint64_t n);
 OPENSSL_EXPORT int SHA256_Init_from_state(
@@ -355,16 +357,21 @@ OPENSSL_EXPORT int SHA512_256_Init_from_state(
 // |SHAx_Init_from_state| for the definition of SHAy.
 // This function returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
-OPENSSL_EXPORT int SHA1_get_state(
-    SHA_CTX *ctx, uint8_t out_h[SHA1_CHAINING_LENGTH], uint64_t *out_n);
-OPENSSL_EXPORT int SHA224_get_state(
-    SHA256_CTX *ctx, uint8_t out_h[SHA224_CHAINING_LENGTH], uint64_t *out_n);
-OPENSSL_EXPORT int SHA256_get_state(
-    SHA256_CTX *ctx, uint8_t out_h[SHA256_CHAINING_LENGTH], uint64_t *out_n);
-OPENSSL_EXPORT int SHA384_get_state(
-    SHA512_CTX *ctx, uint8_t out_h[SHA384_CHAINING_LENGTH], uint64_t *out_n);
-OPENSSL_EXPORT int SHA512_get_state(
-    SHA512_CTX *ctx, uint8_t out_h[SHA512_CHAINING_LENGTH], uint64_t *out_n);
+OPENSSL_EXPORT int SHA1_get_state(SHA_CTX *ctx,
+                                  uint8_t out_h[SHA1_CHAINING_LENGTH],
+                                  uint64_t *out_n);
+OPENSSL_EXPORT int SHA224_get_state(SHA256_CTX *ctx,
+                                    uint8_t out_h[SHA224_CHAINING_LENGTH],
+                                    uint64_t *out_n);
+OPENSSL_EXPORT int SHA256_get_state(SHA256_CTX *ctx,
+                                    uint8_t out_h[SHA256_CHAINING_LENGTH],
+                                    uint64_t *out_n);
+OPENSSL_EXPORT int SHA384_get_state(SHA512_CTX *ctx,
+                                    uint8_t out_h[SHA384_CHAINING_LENGTH],
+                                    uint64_t *out_n);
+OPENSSL_EXPORT int SHA512_get_state(SHA512_CTX *ctx,
+                                    uint8_t out_h[SHA512_CHAINING_LENGTH],
+                                    uint64_t *out_n);
 OPENSSL_EXPORT int SHA512_224_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_224_CHAINING_LENGTH],
     uint64_t *out_n);
@@ -372,29 +379,29 @@ OPENSSL_EXPORT int SHA512_256_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
     uint64_t *out_n);
 
-// SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|.
-// There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
-// On failure |SHA3_224| returns NULL.
+// SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns
+// |out|. There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in
+// |out|. On failure |SHA3_224| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_224_DIGEST_LENGTH]);
 
-// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|.
-// There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
-// On failure |SHA3_256| returns NULL.
+// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns
+// |out|. There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in
+// |out|. On failure |SHA3_256| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);
 
-// SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|.
-// There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in |out|.
-// On failure |SHA3_384| returns NULL.
+// SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns
+// |out|. There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in
+// |out|. On failure |SHA3_384| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_384_DIGEST_LENGTH]);
 
-// SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|.
-// There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
-// On failure |SHA3_512| returns NULL.
+// SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns
+// |out|. There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in
+// |out|. On failure |SHA3_512| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
-                  uint8_t out[SHA3_512_DIGEST_LENGTH]);
+                                 uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
 // SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data|
 // to |out| and returns |out| on success and NULL on failure.
@@ -406,53 +413,55 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
-// SHA3_Init initialises |ctx| fields through |FIPS202_Init| and 
+// SHA3_Init initialises |ctx| fields through |FIPS202_Init| and
 // returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
- // SHA3_Update check |ctx| pointer and |len| value, calls |FIPS202_Update| 
- // and returns 1 on success and 0 on failure.
+// SHA3_Update check |ctx| pointer and |len| value, calls |FIPS202_Update|
+// and returns 1 on success and 0 on failure.
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
-// It then calls |Keccak1600_Squeeze| and returns 1 on success 
-// and 0 on failure.
+// SHA3_Final pads the last data block and absorbs it through
+// |FIPS202_Finalize|. It then calls |Keccak1600_Squeeze| and returns 1 on
+// success and 0 on failure.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and 
+// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and
 // returns 1 on success and 0 on failure.
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
-// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs 
+// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs
 // input blocks via |FIPS202_Update|.
-int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
-                               size_t len);
+int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// SHAKE_Squeeze pads the last data block and absorbs it through 
-// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental 
-// XOF output to |md| and returns 1 on success and 0 on failure. It can be 
+// SHAKE_Squeeze pads the last data block and absorbs it through
+// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental
+// XOF output to |md| and returns 1 on success and 0 on failure. It can be
 // called multiple times.
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
-// SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
-// success and 0 on failure. It should be called once to finalize absorb and
-// squeeze phases. Incremental XOF output should be generated via |SHAKE_Squeeze|.
+// SHAKE_Final writes |len| bytes of finalized extendible output to |md|,
+// returns 1 on success and 0 on failure. It should be called once to finalize
+// absorb and squeeze phases. Incremental XOF output should be generated via
+// |SHAKE_Squeeze|.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // Keccak1600_Absorb processes the largest multiple of |r| (block size) out of
 // |len| bytes and returns the remaining number of bytes.
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
-                                  const uint8_t *data, size_t len, size_t r);
+                         const uint8_t *data, size_t len, size_t r);
 
-// Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
-// multiple times when used as eXtendable Output Function. |padded| indicates
-// whether it is the first call to Keccak1600_Squeeze; i.e., if the current block has
-// been already processed and padded right after the last call to Keccak1600_Absorb.
-// Squeezes full blocks of |r| bytes each. When performing multiple squeezes, any
-// left over bytes from previous squeezes are not consumed, and |len| must be a
-// multiple of the block size (except on the final squeeze).
-OPENSSL_EXPORT void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
-                                 uint8_t *out, size_t len, size_t r, int padded);
+// Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be
+// called multiple times when used as eXtendable Output Function. |padded|
+// indicates whether it is the first call to Keccak1600_Squeeze; i.e., if the
+// current block has been already processed and padded right after the last call
+// to Keccak1600_Absorb. Squeezes full blocks of |r| bytes each. When performing
+// multiple squeezes, any left over bytes from previous squeezes are not
+// consumed, and |len| must be a multiple of the block size (except on the final
+// squeeze).
+OPENSSL_EXPORT void Keccak1600_Squeeze(
+    uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len,
+    size_t r, int padded);
 
 #if defined(__cplusplus)
 }  // extern "C"

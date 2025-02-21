@@ -45,8 +45,9 @@ OPENSSL_EXPORT int MD5_get_state(MD5_CTX *ctx,
                                  uint8_t out_h[MD5_CHAINING_LENGTH],
                                  uint64_t *out_n);
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64))
+#if !defined(OPENSSL_NO_ASM) &&                         \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || \
+     defined(OPENSSL_AARCH64))
 #define MD5_ASM
 extern void md5_block_asm_data_order(uint32_t *state, const uint8_t *data,
                                      size_t num);

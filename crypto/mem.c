@@ -75,8 +75,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
 #define OPENSSL_MALLOC_PREFIX 8
-OPENSSL_STATIC_ASSERT(OPENSSL_MALLOC_PREFIX >= sizeof(size_t),
-                      size_t_too_large)
+OPENSSL_STATIC_ASSERT(OPENSSL_MALLOC_PREFIX >= sizeof(size_t), size_t_too_large)
 
 #if defined(OPENSSL_ASAN)
 void __asan_poison_memory_region(const volatile void *addr, size_t size);
@@ -137,10 +136,9 @@ static void *(*malloc_impl)(size_t, const char *, int) = NULL;
 static void *(*realloc_impl)(void *, size_t, const char *, int) = NULL;
 static void (*free_impl)(void *, const char *, int) = NULL;
 
-int CRYPTO_set_mem_functions(
-  void *(*m)(size_t, const char *, int),
-  void *(*r)(void *, size_t, const char *, int),
-  void (*f)(void *, const char *, int)) {
+int CRYPTO_set_mem_functions(void *(*m)(size_t, const char *, int),
+                             void *(*r)(void *, size_t, const char *, int),
+                             void (*f)(void *, const char *, int)) {
   if (m == NULL || r == NULL || f == NULL) {
     return 0;
   }
@@ -148,10 +146,8 @@ int CRYPTO_set_mem_functions(
   if (malloc_impl != NULL || realloc_impl != NULL || free_impl != NULL) {
     return 0;
   }
-  if (OPENSSL_memory_alloc != NULL ||
-      OPENSSL_memory_free != NULL ||
-      OPENSSL_memory_get_size != NULL ||
-      OPENSSL_memory_realloc != NULL) {
+  if (OPENSSL_memory_alloc != NULL || OPENSSL_memory_free != NULL ||
+      OPENSSL_memory_get_size != NULL || OPENSSL_memory_realloc != NULL) {
     // |OPENSSL_malloc/free/realloc| are customized by overriding the symbols.
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -196,7 +192,7 @@ void *OPENSSL_malloc(size_t size) {
   __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
   return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
 
- err:
+err:
   // This only works because ERR does not call OPENSSL_malloc.
   OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
   return NULL;
@@ -249,7 +245,7 @@ void OPENSSL_free(void *orig_ptr) {
 #if defined(OPENSSL_ASAN)
   (void)sdallocx;
   free(ptr);
-  (void) sdallocx;
+  (void)sdallocx;
 #else
   if (sdallocx) {
     sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
@@ -534,7 +530,7 @@ int OPENSSL_vasprintf_internal(char **str, const char *format, va_list args,
   *str = candidate;
   return ret;
 
- err:
+err:
   deallocate(candidate);
   *str = NULL;
   errno = ENOMEM;

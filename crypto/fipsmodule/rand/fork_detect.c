@@ -21,14 +21,14 @@
 #include "fork_detect.h"
 
 #if defined(OPENSSL_LINUX)
+#include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 #include <openssl/type_check.h>
 
-#include "../delocate.h"
 #include "../../internal.h"
+#include "../delocate.h"
 
 
 #if defined(MADV_WIPEONFORK)
@@ -44,7 +44,6 @@ DEFINE_BSS_GET(uint64_t, g_fork_generation)
 DEFINE_BSS_GET(int, g_ignore_madv_wipeonfork)
 
 static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
-
   // Some versions of qemu (up to at least 5.0.0-rc4, see linux-user/syscall.c)
   // ignore |madvise| calls and just return zero (i.e. success). But we need to
   // know whether MADV_WIPEONFORK actually took effect. Therefore try an invalid
@@ -60,7 +59,6 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
 }
 
 static void init_fork_detect(void) {
-
   int res = 0;
   void *addr = MAP_FAILED;
   long page_size = 0;
@@ -77,7 +75,7 @@ static void init_fork_detect(void) {
   }
 
   addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+              MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (addr == MAP_FAILED) {
     goto cleanup;
   }
@@ -87,7 +85,7 @@ static void init_fork_detect(void) {
     goto cleanup;
   }
 
-  *((volatile char *) addr) = 1;
+  *((volatile char *)addr) = 1;
   *g_fork_detect_addr_bss_get() = addr;
   *g_fork_generation_bss_get() = 1;
 

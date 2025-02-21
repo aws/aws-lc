@@ -62,8 +62,8 @@
 
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 // kMinNumBuckets is the minimum size of the buckets array in an |_LHASH|.
@@ -208,7 +208,7 @@ static void lh_rebucket(_LHASH *lh, const size_t new_num_buckets) {
   size_t i, alloc_size;
 
   alloc_size = sizeof(LHASH_ITEM *) * new_num_buckets;
-  if (alloc_size / sizeof(LHASH_ITEM*) != new_num_buckets) {
+  if (alloc_size / sizeof(LHASH_ITEM *) != new_num_buckets) {
     return;
   }
 

@@ -227,9 +227,7 @@ int EVP_MD_get_pkey_type(const EVP_MD *md) {
   return 0;
 }
 
-int EVP_MD_pkey_type(const EVP_MD *md){
-  return EVP_MD_get_pkey_type(md);
-}
+int EVP_MD_pkey_type(const EVP_MD *md) { return EVP_MD_get_pkey_type(md); }
 
 const char *EVP_MD_get0_name(const EVP_MD *md) {
   if (md != NULL) {
@@ -238,16 +236,14 @@ const char *EVP_MD_get0_name(const EVP_MD *md) {
   return NULL;
 }
 
-const char *EVP_MD_name(const EVP_MD *md) {
-  return EVP_MD_get0_name(md);
-}
+const char *EVP_MD_name(const EVP_MD *md) { return EVP_MD_get0_name(md); }
 
 // evp_pkey_asn1_find returns the ASN.1 method table for the given |nid|, which
 // should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
 // unknown.
 static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
-
-  const EVP_PKEY_ASN1_METHOD *const *methods = AWSLC_non_fips_pkey_evp_asn1_methods();
+  const EVP_PKEY_ASN1_METHOD *const *methods =
+      AWSLC_non_fips_pkey_evp_asn1_methods();
   for (size_t i = 0; i < ASN1_EVP_PKEY_METHODS; i++) {
     if (methods[i]->pkey_id == nid) {
       return methods[i];
@@ -290,7 +286,7 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
   }
 
   HMAC_KEY *key = HMAC_KEY_new();
-  if(key == NULL) {
+  if (key == NULL) {
     goto err;
   }
   key->key = OPENSSL_memdup(mac_key, mac_key_len);
@@ -300,7 +296,7 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
   }
   key->key_len = mac_key_len;
 
-  if(!EVP_PKEY_assign(ret, EVP_PKEY_HMAC, key)) {
+  if (!EVP_PKEY_assign(ret, EVP_PKEY_HMAC, key)) {
     OPENSSL_free(key);
     goto err;
   }
@@ -547,8 +543,7 @@ err:
 int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
                                  size_t *out_len) {
   SET_DIT_AUTO_RESET;
-  if (pkey == NULL ||
-      pkey->ameth == NULL ||
+  if (pkey == NULL || pkey->ameth == NULL ||
       pkey->ameth->get_priv_raw == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -560,9 +555,7 @@ int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
 int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
                                 size_t *out_len) {
   SET_DIT_AUTO_RESET;
-  if (pkey == NULL ||
-      pkey->ameth == NULL ||
-      pkey->ameth->get_pub_raw == NULL) {
+  if (pkey == NULL || pkey->ameth == NULL || pkey->ameth->get_pub_raw == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
@@ -653,7 +646,6 @@ int EVP_PKEY_base_id(const EVP_PKEY *pkey) {
 }
 
 static int evp_pkey_tls_encodedpoint_ec_curve_supported(const EC_KEY *ec_key) {
-
   int ret = 0;
   int curve_nid = 0;
   const EC_GROUP *ec_key_group = NULL;
@@ -670,10 +662,8 @@ static int evp_pkey_tls_encodedpoint_ec_curve_supported(const EC_KEY *ec_key) {
   }
 
   curve_nid = EC_GROUP_get_curve_name(ec_key_group);
-  if ((NID_secp224r1 != curve_nid) &&
-      (NID_X9_62_prime256v1 != curve_nid) &&
-      (NID_secp384r1 != curve_nid) &&
-      (NID_secp521r1 != curve_nid)) {
+  if ((NID_secp224r1 != curve_nid) && (NID_X9_62_prime256v1 != curve_nid) &&
+      (NID_secp384r1 != curve_nid) && (NID_secp521r1 != curve_nid)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
     goto err;
   }
@@ -685,8 +675,8 @@ err:
 }
 
 static int evp_pkey_set1_tls_encodedpoint_ec_key(EVP_PKEY *pkey,
-                                                  const uint8_t *in,
-                                                  size_t len) {
+                                                 const uint8_t *in,
+                                                 size_t len) {
   int ret = 0;
   EC_KEY *ec_key = NULL;
   const EC_GROUP *ec_key_group = NULL;
@@ -748,7 +738,7 @@ static int evp_pkey_set1_tls_encodedpoint_ec_key(EVP_PKEY *pkey,
     goto err;
   }
 
-  if (0 == EC_KEY_set_public_key(ec_key, (const EC_POINT *) ec_point)) {
+  if (0 == EC_KEY_set_public_key(ec_key, (const EC_POINT *)ec_point)) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
     goto err;
   }
@@ -761,8 +751,8 @@ err:
 }
 
 static int evp_pkey_set1_tls_encodedpoint_x25519(EVP_PKEY *pkey,
-                                                    const uint8_t *in,
-                                                    size_t len) {
+                                                 const uint8_t *in,
+                                                 size_t len) {
   int ret = 0;
 
   if ((NULL == pkey) || (NULL == in)) {
@@ -797,7 +787,7 @@ err:
 }
 
 int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
-                                    size_t len) {
+                                   size_t len) {
   SET_DIT_AUTO_RESET;
   if (NULL == pkey) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
@@ -819,8 +809,7 @@ err:
 }
 
 static size_t evp_pkey_get1_tls_encodedpoint_ec_key(const EVP_PKEY *pkey,
-                                                      uint8_t **out_ptr) {
-
+                                                    uint8_t **out_ptr) {
   size_t ret = 0;
   const EC_KEY *ec_key = NULL;
 
@@ -865,8 +854,7 @@ err:
 }
 
 static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
-                                                      uint8_t **out_ptr) {
-
+                                                    uint8_t **out_ptr) {
   size_t ret = 0;
   size_t out_len = 0;
 
@@ -926,7 +914,7 @@ size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
       goto err;
-    }
+  }
 
 err:
   return 0;

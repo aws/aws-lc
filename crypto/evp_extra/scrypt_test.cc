@@ -90,7 +90,7 @@ TEST(ScryptTest, InvalidParameters) {
   EXPECT_FALSE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 1023 /* N */, 8 /* r */,
                               1 /* p */, 0 /* max_mem */, key, sizeof(key)));
   EXPECT_TRUE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 1024 /* N */, 8 /* r */,
-                              1 /* p */, 0 /* max_mem */, key, sizeof(key)));
+                             1 /* p */, 0 /* max_mem */, key, sizeof(key)));
   EXPECT_FALSE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 1025 /* N */, 8 /* r */,
                               1 /* p */, 0 /* max_mem */, key, sizeof(key)));
 

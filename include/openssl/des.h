@@ -101,13 +101,17 @@ OPENSSL_EXPORT int DES_is_weak_key(const DES_cblock *key);
 // 0: key is not weak and has odd parity
 // -1: key is not odd
 // -2: key is a weak key, the parity might also be even
-OPENSSL_EXPORT int DES_set_key(const DES_cblock *key, DES_key_schedule *schedule);
+OPENSSL_EXPORT int DES_set_key(const DES_cblock *key,
+                               DES_key_schedule *schedule);
 
-// DES_set_key_unchecked performs a key schedule and initialises |schedule| with |key|.
-OPENSSL_EXPORT void DES_set_key_unchecked(const DES_cblock *key, DES_key_schedule *schedule);
+// DES_set_key_unchecked performs a key schedule and initialises |schedule| with
+// |key|.
+OPENSSL_EXPORT void DES_set_key_unchecked(const DES_cblock *key,
+                                          DES_key_schedule *schedule);
 
 // DES_key_sched calls |DES_set_key|.
-OPENSSL_EXPORT int DES_key_sched(const DES_cblock *key, DES_key_schedule *schedule);
+OPENSSL_EXPORT int DES_key_sched(const DES_cblock *key,
+                                 DES_key_schedule *schedule);
 
 // DES_set_odd_parity sets the parity bits (the least-significant bits in each
 // byte) of |key| given the other bits in each byte.
@@ -133,8 +137,7 @@ OPENSSL_EXPORT void DES_ecb3_encrypt(const DES_cblock *input,
                                      DES_cblock *output,
                                      const DES_key_schedule *ks1,
                                      const DES_key_schedule *ks2,
-                                     const DES_key_schedule *ks3,
-                                     int enc);
+                                     const DES_key_schedule *ks3, int enc);
 
 // DES_ede3_cbc_encrypt encrypts (or decrypts, if |enc| is |DES_DECRYPT|) |len|
 // bytes from |in| to |out| with 3DES in CBC mode. 3DES uses three keys, thus

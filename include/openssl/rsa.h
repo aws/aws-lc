@@ -59,7 +59,8 @@
 
 #include <openssl/base.h>
 #include <openssl/crypto.h>
-// OpenSSL includes BN in this header: https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/include/openssl/rsa.h#L21
+// OpenSSL includes BN in this header:
+// https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/include/openssl/rsa.h#L21
 #include <openssl/bn.h>
 
 #include <openssl/engine.h>
@@ -243,49 +244,45 @@ OPENSSL_EXPORT void RSA_meth_free(RSA_METHOD *meth);
 
 // RSA_meth_set_init sets |init| on |meth|. |init| should return one on
 // success and zero on failure.
-OPENSSL_EXPORT int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
+OPENSSL_EXPORT int RSA_meth_set_init(RSA_METHOD *meth, int (*init)(RSA *rsa));
 
 // RSA_meth_set_finish sets |finish| on |meth|. The |finish| function
 // is called in |RSA_free| before freeing the key. |finish| should return
 // one on success and zero on failure.
 OPENSSL_EXPORT int RSA_meth_set_finish(RSA_METHOD *meth,
-                                       int (*finish) (RSA *rsa));
+                                       int (*finish)(RSA *rsa));
 
 // RSA_meth_set_priv_dec sets |priv_dec| on |meth|. |priv_dec| should decrypt
 // |max_out| bytes at |from| using the private key |rsa| and store the plaintext
 // in |to|. |priv_dec| should return the size of the recovered plaintext or a
 // negative number on error.
-OPENSSL_EXPORT int RSA_meth_set_priv_dec(RSA_METHOD *meth,
-                          int (*priv_dec) (int max_out, const uint8_t *from,
-                                           uint8_t *to, RSA *rsa,
-                                           int padding));
+OPENSSL_EXPORT int RSA_meth_set_priv_dec(
+    RSA_METHOD *meth, int (*priv_dec)(int max_out, const uint8_t *from,
+                                      uint8_t *to, RSA *rsa, int padding));
 
 // RSA_meth_set_priv_enc sets |priv_enc| on |meth|. |priv_enc| should sign
 // |max_out| bytes at |from| using the private key |rsa| and store the
 // signature in |to|. |priv_enc| should return the size of the signature or a
 // negative number for error.
-OPENSSL_EXPORT int RSA_meth_set_priv_enc(RSA_METHOD *meth,
-                          int (*priv_enc) (int max_out, const uint8_t *from,
-                                           uint8_t *to, RSA *rsa,
-                                           int padding));
+OPENSSL_EXPORT int RSA_meth_set_priv_enc(
+    RSA_METHOD *meth, int (*priv_enc)(int max_out, const uint8_t *from,
+                                      uint8_t *to, RSA *rsa, int padding));
 
 // RSA_meth_set_pub_dec sets |pub_dec| on |meth|. |pub_dec| should recover the
 // |max_out| bytes of the message digest at |from| using the signer's public
 // key |rsa| and store it in |to|. |pub_dec| should return the size of the
 // recovered message digest or a negative number on error.
-OPENSSL_EXPORT int RSA_meth_set_pub_dec(RSA_METHOD *meth,
-                         int (*pub_dec) (int max_out, const uint8_t *from,
-                                         uint8_t *to, RSA *rsa,
-                                         int padding));
+OPENSSL_EXPORT int RSA_meth_set_pub_dec(
+    RSA_METHOD *meth, int (*pub_dec)(int max_out, const uint8_t *from,
+                                     uint8_t *to, RSA *rsa, int padding));
 
 // RSA_meth_set_pub_enc sets |pub_enc| on |meth|. |pub_enc| should encrypt
 // |max_out| bytes at |from| using the public key |rsa| and stores the
 // ciphertext in |to|. |pub_enc| should return the size of the encrypted data
 // or a negative number on error.
-OPENSSL_EXPORT int RSA_meth_set_pub_enc(RSA_METHOD *meth,
-                         int (*pub_enc) (int max_out, const uint8_t *from,
-                                         uint8_t *to, RSA *rsa,
-                                         int padding));
+OPENSSL_EXPORT int RSA_meth_set_pub_enc(
+    RSA_METHOD *meth, int (*pub_enc)(int max_out, const uint8_t *from,
+                                     uint8_t *to, RSA *rsa, int padding));
 
 // RSA_meth_set0_app_data sets |app_data| on |meth|. Although set0 functions
 // generally take ownership in AWS-LC, to maintain OpenSSL compatibility,
@@ -296,12 +293,10 @@ OPENSSL_EXPORT int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data);
 
 // RSA_meth_set_sign sets |sign| on |meth|. The function |sign| should return
 // one on success and zero on failure.
-OPENSSL_EXPORT int RSA_meth_set_sign(RSA_METHOD *meth,
-                                     int (*sign) (int type,
-                                     const unsigned char *m,
-                                     unsigned int m_length,
-                                     unsigned char *sigret,
-                                     unsigned int *siglen, const RSA *rsa));
+OPENSSL_EXPORT int RSA_meth_set_sign(
+    RSA_METHOD *meth,
+    int (*sign)(int type, const unsigned char *m, unsigned int m_length,
+                unsigned char *sigret, unsigned int *siglen, const RSA *rsa));
 
 
 // Key generation.
@@ -607,7 +602,7 @@ OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 // is available on the error queue.
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
-// RSA_check_fips performs two FIPS related checks in addition to basic 
+// RSA_check_fips performs two FIPS related checks in addition to basic
 // validity tests from RSA_check_key:
 //   - partial public key validation (SP 800-89),
 //   - pair-wise consistency test.
@@ -619,9 +614,9 @@ OPENSSL_EXPORT int RSA_check_fips(RSA *key);
 // |mHash|, where |mHash| is a digest produced by |Hash|. |EM| must point to
 // exactly |RSA_size(rsa)| bytes of data. The |mgf1Hash| argument specifies the
 // hash function for generating the mask. If NULL, |Hash| is used. The |sLen|
-// argument specifies the expected salt length in bytes. If |sLen| is RSA_PSS_SALTLEN_DIGEST then
-// the salt length is the same as the hash length. If -2, then the salt length
-// is recovered and all values accepted.
+// argument specifies the expected salt length in bytes. If |sLen| is
+// RSA_PSS_SALTLEN_DIGEST then the salt length is the same as the hash length.
+// If -2, then the salt length is recovered and all values accepted.
 //
 // If unsure, use RSA_PSS_SALTLEN_DIGEST.
 //
@@ -641,7 +636,8 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa,
 // function for generating the mask. If NULL, |Hash| is used. The |sLen|
 // argument specifies the expected salt length in bytes.
 // If |sLen| is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as
-// the hash length. If -2, then the salt length is maximal given the space in |EM|.
+// the hash length. If -2, then the salt length is maximal given the space in
+// |EM|.
 //
 // It returns one on success or zero on error.
 //
@@ -670,7 +666,9 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP_mgf1(
 //
 // It returns one on success and zero on error.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS1_MGF1(uint8_t *out, size_t len,
-    const uint8_t *seed, size_t seed_len, const EVP_MD *md);
+                                                 const uint8_t *seed,
+                                                 size_t seed_len,
+                                                 const EVP_MD *md);
 
 // RSA_add_pkcs1_prefix builds a version of |digest| prefixed with the
 // DigestInfo header for the given hash function and sets |out_msg| to point to
@@ -825,7 +823,7 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 // |r|. This macro is added in for OpenSSL compatibility. To avoid exposing
 // internals, we ignore the |f| parameter. The |r| parameter is passed into
 // |OPENSSL_PUT_ERROR|.
-#define RSAerr(f,r) OPENSSL_PUT_ERROR(RSA, r);
+#define RSAerr(f, r) OPENSSL_PUT_ERROR(RSA, r);
 
 // RSA_flags returns the flags for |rsa|. These are a bitwise OR of |RSA_FLAG_*|
 // constants.
@@ -842,15 +840,18 @@ OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
 // RSA_blinding_on returns one in case blinding is on, otherwise 0.
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 
-// RSA_blinding_off_temp_for_accp_compatibility sets |rsa|'s RSA_FLAG_NO_BLINDING.
+// RSA_blinding_off_temp_for_accp_compatibility sets |rsa|'s
+// RSA_FLAG_NO_BLINDING.
 //
 // Private keys missing |e| are often used by the JCA. In order to use such keys
-// for signing/decryption, one can use RSA_blinding_off_temp_for_accp_compatibility
-// to disable blinding. In general, we strongly advise against disabling blinding.
-// This method is temporarily provided to support ACCP. It will be replaced
-// by a method that would allow creating an RSA private key from a modulus and
-// a private exponent having blinding disabled.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa);
+// for signing/decryption, one can use
+// RSA_blinding_off_temp_for_accp_compatibility to disable blinding. In general,
+// we strongly advise against disabling blinding. This method is temporarily
+// provided to support ACCP. It will be replaced by a method that would allow
+// creating an RSA private key from a modulus and a private exponent having
+// blinding disabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void
+RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa);
 
 // RSA_pkey_ctx_ctrl is a vestigial OpenSSL function that has been obsoleted by
 // the EVP interface. External callers should not use this. Internal callers
@@ -859,7 +860,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void RSA_blinding_off_temp_for_accp_compatibil
 // This function directly calls |EVP_PKEY_CTX_ctrl| with some guards around the
 // key's type. The key type must either be RSA or RSA-PSS, otherwise -1 is
 // returned.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd,
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx,
+                                                        int optype, int cmd,
                                                         int p1, void *p2);
 
 // RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you

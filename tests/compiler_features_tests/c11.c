@@ -4,8 +4,8 @@
 // Simple program that should also be able to compiler, udeful to test different
 // compiler flags
 
-#include <stdlib.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 
 // Some platforms define ATOMIC_LONG_LOCK_FREE as an expression like:
 //  (__atomic_always_lock_free (sizeof (atomic_long), (void *) 0) ? 2 :
@@ -19,6 +19,4 @@
 #error "Should not get here, the above line should be false or invalid"
 #endif
 
-int main(int argc, char **argv) {
-    return EXIT_SUCCESS;
-}
+int main(int argc, char **argv) { return EXIT_SUCCESS; }

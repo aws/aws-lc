@@ -1262,8 +1262,8 @@ static int ipv6_from_asc(unsigned char v6[16], const char *in) {
     // This condition is to suppress gcc-12 warning.
     // https://github.com/aws/aws-lc/issues/487
     if (v6stat.zero_pos >= v6stat.total) {
-        // This should not happen.
-        return 0;
+      // This should not happen.
+      return 0;
     }
     OPENSSL_memset(v6 + v6stat.zero_pos, 0, 16 - v6stat.total);
     // Copy final part

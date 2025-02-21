@@ -21,8 +21,8 @@
 #include <openssl/hmac.h>
 
 #include "../../internal.h"
-#include "../service_indicator/internal.h"
 #include "../cpucap/internal.h"
+#include "../service_indicator/internal.h"
 
 // TODO(CryptoAlg-1281): We need to get our FIPS testing partner's opinion on
 // which API level(s) we need to check at. HKDF_extract() originally had checks
@@ -119,8 +119,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                    !HMAC_Update(&hmac, previous, digest_len))) {
       goto out;
     }
-    if (!HMAC_Update(&hmac, info, info_len) ||
-        !HMAC_Update(&hmac, &ctr, 1) ||
+    if (!HMAC_Update(&hmac, info, info_len) || !HMAC_Update(&hmac, &ctr, 1) ||
         !HMAC_Final(&hmac, previous, NULL)) {
       goto out;
     }

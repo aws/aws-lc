@@ -138,7 +138,9 @@
     }                                               \
   } while (0)
 
-typedef struct rc2_key_st { uint16_t data[64]; } RC2_KEY;
+typedef struct rc2_key_st {
+  uint16_t data[64];
+} RC2_KEY;
 
 static void RC2_encrypt(uint32_t *d, RC2_KEY *key) {
   int i, n;

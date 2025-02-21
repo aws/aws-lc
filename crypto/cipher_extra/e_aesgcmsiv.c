@@ -55,7 +55,7 @@ static struct aead_aes_gcm_siv_asm_ctx *asm_ctx_from_ctx(
   // ctx->state must already be 8-byte aligned. Thus, at most, we may need to
   // add eight to align it to 16 bytes.
   const uintptr_t actual_offset = ((uintptr_t)&ctx->state) & 8;
-  if(ctx->state_offset != actual_offset) {
+  if (ctx->state_offset != actual_offset) {
     return NULL;
   }
   return (struct aead_aes_gcm_siv_asm_ctx *)(&ctx->state.opaque[actual_offset]);
@@ -91,7 +91,7 @@ static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 
   ctx->state_offset = ((uintptr_t)&ctx->state) & 8;
   struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
-  if(gcm_siv_ctx == NULL) {
+  if (gcm_siv_ctx == NULL) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
     return 0;
   }
@@ -341,7 +341,7 @@ static int aead_aes_gcm_siv_asm_seal_scatter(
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
-  if(gcm_siv_ctx == NULL) {
+  if (gcm_siv_ctx == NULL) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_ALIGNMENT_CHANGED);
     return 0;
   }
@@ -428,7 +428,7 @@ static int aead_aes_gcm_siv_asm_open_gather(
   }
 
   const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
-  if(gcm_siv_ctx == NULL) {
+  if (gcm_siv_ctx == NULL) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_ALIGNMENT_CHANGED);
     return 0;
   }
@@ -657,8 +657,8 @@ static void gcm_siv_polyval(
   }
 
   uint8_t length_block[16];
-  CRYPTO_store_u64_le(length_block, ((uint64_t) ad_len) * 8);
-  CRYPTO_store_u64_le(length_block + 8, ((uint64_t) in_len) * 8);
+  CRYPTO_store_u64_le(length_block, ((uint64_t)ad_len) * 8);
+  CRYPTO_store_u64_le(length_block + 8, ((uint64_t)in_len) * 8);
   CRYPTO_POLYVAL_update_blocks(&polyval_ctx, length_block,
                                sizeof(length_block));
 
@@ -867,8 +867,6 @@ const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void) { return &aead_aes_128_gcm_siv; }
 
 const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void) { return &aead_aes_256_gcm_siv; }
 
-int x86_64_assembly_implementation_FOR_TESTING(void) {
-  return 0;
-}
+int x86_64_assembly_implementation_FOR_TESTING(void) { return 0; }
 
 #endif  // AES_GCM_SIV_ASM

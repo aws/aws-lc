@@ -354,7 +354,7 @@ static long bio_ctrl(BIO *bio, int cmd, long num, void *ptr) {
   assert(b != NULL);
 
   switch (cmd) {
-    // specific CTRL codes
+      // specific CTRL codes
 
     case BIO_C_GET_WRITE_BUF_SIZE:
       ret = (long)b->size;
@@ -392,7 +392,7 @@ static long bio_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       ret = 1;
       break;
 
-    // standard CTRL codes follow
+      // standard CTRL codes follow
 
     case BIO_CTRL_GET_CLOSE:
       ret = bio->shutdown;
@@ -449,8 +449,8 @@ static const BIO_METHOD methods_biop = {
 
 static const BIO_METHOD *bio_s_bio(void) { return &methods_biop; }
 
-int BIO_new_bio_pair(BIO** bio1_p, size_t writebuf1_len,
-                     BIO** bio2_p, size_t writebuf2_len) {
+int BIO_new_bio_pair(BIO **bio1_p, size_t writebuf1_len, BIO **bio2_p,
+                     size_t writebuf2_len) {
   BIO *bio1 = BIO_new(bio_s_bio());
   BIO *bio2 = BIO_new(bio_s_bio());
   if (bio1 == NULL || bio2 == NULL ||

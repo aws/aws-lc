@@ -292,9 +292,9 @@ static int pkey_dsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     return EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx, (int)nbits);
-OPENSSL_END_ALLOW_DEPRECATED
+    OPENSSL_END_ALLOW_DEPRECATED
   }
   if (strcmp(type, "dsa_paramgen_q_bits") == 0) {
     char *str_end = NULL;
@@ -303,9 +303,9 @@ OPENSSL_END_ALLOW_DEPRECATED
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     return EVP_PKEY_CTX_set_dsa_paramgen_q_bits(ctx, (int)qbits);
-OPENSSL_END_ALLOW_DEPRECATED
+    OPENSSL_END_ALLOW_DEPRECATED
   }
   if (strcmp(type, "dsa_paramgen_md") == 0) {
     const EVP_MD *md = EVP_get_digestbyname(value);
@@ -314,9 +314,9 @@ OPENSSL_END_ALLOW_DEPRECATED
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
       return 0;
     }
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     return EVP_PKEY_CTX_set_dsa_paramgen_md(ctx, md);
-OPENSSL_END_ALLOW_DEPRECATED
+    OPENSSL_END_ALLOW_DEPRECATED
   }
   return -2;
 }

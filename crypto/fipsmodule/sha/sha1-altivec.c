@@ -104,8 +104,8 @@ static const vec_uint32_t K_60_79_x_4 = {K_60_79, K_60_79, K_60_79, K_60_79};
 static vec_uint32_t sched_00_15(vec_uint32_t *pre_added, const void *data,
                                 vec_uint32_t k) {
   const vector unsigned char unaligned_data =
-    vec_vsx_ld(0, (const unsigned char*) data);
-  const vec_uint32_t v = (vec_uint32_t) unaligned_data;
+      vec_vsx_ld(0, (const unsigned char *)data);
+  const vec_uint32_t v = (vec_uint32_t)unaligned_data;
   const vec_uint32_t w = vec_perm(v, v, k_swap_endianness);
   vec_st(w + k, 0, pre_added);
   return w;

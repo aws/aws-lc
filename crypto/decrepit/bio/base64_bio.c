@@ -73,7 +73,7 @@
 #define B64_NONE 0
 #define B64_ENCODE 1
 #define B64_DECODE 2
-#define EVP_ENCODE_LENGTH(l) (((l+2)/3*4)+(l/48+1)*2+80)
+#define EVP_ENCODE_LENGTH(l) (((l + 2) / 3 * 4) + (l / 48 + 1) * 2 + 80)
 
 typedef struct b64_struct {
   int buf_len;
@@ -123,7 +123,7 @@ static int b64_read(BIO *b, char *out, int outl) {
   if (out == NULL) {
     return 0;
   }
-  ctx = (BIO_B64_CTX *) b->ptr;
+  ctx = (BIO_B64_CTX *)b->ptr;
 
   if (ctx == NULL || b->next_bio == NULL) {
     return 0;
@@ -283,8 +283,8 @@ static int b64_read(BIO *b, char *out, int outl) {
       }
       i = z;
     } else {
-      i = EVP_DecodeUpdate(&(ctx->base64), (uint8_t *)ctx->buf,
-                           &ctx->buf_len, (uint8_t *)ctx->tmp, i);
+      i = EVP_DecodeUpdate(&(ctx->base64), (uint8_t *)ctx->buf, &ctx->buf_len,
+                           (uint8_t *)ctx->tmp, i);
       ctx->tmp_len = 0;
     }
     ctx->buf_off = 0;
@@ -396,8 +396,8 @@ static int b64_write(BIO *b, const char *in, int inl) {
         ret += n;
       }
     } else {
-      if(!EVP_EncodeUpdate(&(ctx->base64), (uint8_t *)ctx->buf, &ctx->buf_len,
-                       (uint8_t *)in, n)) {
+      if (!EVP_EncodeUpdate(&(ctx->base64), (uint8_t *)ctx->buf, &ctx->buf_len,
+                            (uint8_t *)in, n)) {
         return ((ret == 0) ? -1 : ret);
       }
       assert(ctx->buf_len <= (int)sizeof(ctx->buf));
@@ -454,7 +454,8 @@ static long b64_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_CTRL_WPENDING:  // More to write in buffer
       assert(ctx->buf_len >= ctx->buf_off);
       ret = ctx->buf_len - ctx->buf_off;
-      if ((ret == 0) && (ctx->encode != B64_NONE) && (ctx->base64.data_used != 0)) {
+      if ((ret == 0) && (ctx->encode != B64_NONE) &&
+          (ctx->base64.data_used != 0)) {
         ret = 1;
       } else if (ret <= 0) {
         ret = BIO_ctrl(b->next_bio, cmd, num, ptr);

@@ -68,7 +68,8 @@ static std::string StripSpace(const char *str, size_t len) {
   return std::string(str, len);
 }
 
-static std::pair<std::string, std::string> ParseKeyValue(const char *str, const size_t len) {
+static std::pair<std::string, std::string> ParseKeyValue(const char *str,
+                                                         const size_t len) {
   const char *delimiter = FindDelimiter(str);
   std::string key, value;
   if (delimiter == nullptr) {
@@ -288,9 +289,7 @@ bool FileTest::GetInstruction(std::string *out_value, const std::string &key) {
   return true;
 }
 
-void FileTest::IgnoreAllUnusedInstructions() {
-  unused_instructions_.clear();
-}
+void FileTest::IgnoreAllUnusedInstructions() { unused_instructions_.clear(); }
 
 const std::string &FileTest::GetInstructionOrDie(const std::string &key) {
   if (!HasInstruction(key)) {
@@ -409,8 +408,7 @@ int FileTestMain(FileTestFunc run_test, void *arg, const char *path) {
 }
 
 int FileTestMain(const FileTest::Options &opts) {
-  std::unique_ptr<FileLineReader> reader(
-      new FileLineReader(opts.path));
+  std::unique_ptr<FileLineReader> reader(new FileLineReader(opts.path));
   if (!reader->is_open()) {
     fprintf(stderr, "Could not open file %s: %s.\n", opts.path,
             strerror(errno));
@@ -462,6 +460,4 @@ int FileTestMain(const FileTest::Options &opts) {
   return failed ? 1 : 0;
 }
 
-void FileTest::SkipCurrent() {
-  ClearTest();
-}
+void FileTest::SkipCurrent() { ClearTest(); }

@@ -203,11 +203,11 @@ int OPENSSL_gmtime_adj(struct tm *tm, int offset_day, int64_t offset_sec) {
     return 0;
   }
   OPENSSL_STATIC_ASSERT(INT_MAX <= INT64_MAX / SECS_PER_DAY,
-                day_offset_in_seconds_cannot_overflow)
+                        day_offset_in_seconds_cannot_overflow)
   OPENSSL_STATIC_ASSERT(MAX_POSIX_TIME <= INT64_MAX - INT_MAX * SECS_PER_DAY,
-                addition_cannot_overflow)
+                        addition_cannot_overflow)
   OPENSSL_STATIC_ASSERT(MIN_POSIX_TIME >= INT64_MIN - INT_MIN * SECS_PER_DAY,
-                addition_cannot_underflow)
+                        addition_cannot_underflow)
   posix_time += offset_day * SECS_PER_DAY;
   if (posix_time > 0 && offset_sec > INT64_MAX - posix_time) {
     return 0;
@@ -232,9 +232,11 @@ int OPENSSL_gmtime_diff(int *out_days, int *out_secs, const struct tm *from,
     return 0;
   }
   // Times are in range, so these calculations can not overflow.
-  OPENSSL_STATIC_ASSERT(SECS_PER_DAY <= INT_MAX, seconds_per_day_does_not_fit_in_int)
-  OPENSSL_STATIC_ASSERT((MAX_POSIX_TIME - MIN_POSIX_TIME) / SECS_PER_DAY <= INT_MAX,
-                range_of_valid_POSIX_times_in_days_does_not_fit_in_int)
+  OPENSSL_STATIC_ASSERT(SECS_PER_DAY <= INT_MAX,
+                        seconds_per_day_does_not_fit_in_int)
+  OPENSSL_STATIC_ASSERT(
+      (MAX_POSIX_TIME - MIN_POSIX_TIME) / SECS_PER_DAY <= INT_MAX,
+      range_of_valid_POSIX_times_in_days_does_not_fit_in_int)
   int64_t timediff = time_to - time_from;
   int64_t daydiff = timediff / SECS_PER_DAY;
   timediff %= SECS_PER_DAY;

@@ -178,7 +178,7 @@ next_io:
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_WRITE_INIT:
-      if(!BIO_mem_contents(rctx->mem, NULL, &data_len)) {
+      if (!BIO_mem_contents(rctx->mem, NULL, &data_len)) {
         rctx->state = OHS_ERROR;
         return 0;
       }
@@ -187,7 +187,7 @@ next_io:
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_WRITE:
-      if(!BIO_mem_contents(rctx->mem, &data, &data_len)) {
+      if (!BIO_mem_contents(rctx->mem, &data, &data_len)) {
         rctx->state = OHS_ERROR;
         return 0;
       }
@@ -207,7 +207,7 @@ next_io:
         goto next_io;
       }
       rctx->state = OHS_ASN1_FLUSH;
-      if(!BIO_reset(rctx->mem)) {
+      if (!BIO_reset(rctx->mem)) {
         return 0;
       }
 
@@ -236,7 +236,7 @@ next_io:
       // Due to strange memory BIO behaviour with BIO_gets we have to
       // check there's a complete line in there before calling BIO_gets
       // or we'll just get a partial read.
-      if(!BIO_mem_contents(rctx->mem, &data, &data_len)) {
+      if (!BIO_mem_contents(rctx->mem, &data, &data_len)) {
         rctx->state = OHS_ERROR;
         return 0;
       }
@@ -292,7 +292,7 @@ next_io:
       // Now reading ASN1 header: can read at least 2 bytes which is
       // enough for ASN1 SEQUENCE header and either length field or at
       // least the length of the length field.
-      if(!BIO_mem_contents(rctx->mem, &data, &data_len)) {
+      if (!BIO_mem_contents(rctx->mem, &data, &data_len)) {
         rctx->state = OHS_ERROR;
         return 0;
       }
@@ -340,7 +340,7 @@ next_io:
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_CONTENT:
-      if(!BIO_mem_contents(rctx->mem, NULL, &data_len)) {
+      if (!BIO_mem_contents(rctx->mem, NULL, &data_len)) {
         rctx->state = OHS_ERROR;
         return 0;
       }

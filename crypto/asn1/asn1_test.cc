@@ -108,8 +108,7 @@ void TestSerialize(T obj, int (*i2d_func)(U a, uint8_t **pp),
 
 static bssl::UniquePtr<BIGNUM> BIGNUMPow2(unsigned bit) {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn ||
-      !BN_set_bit(bn.get(), bit)) {
+  if (!bn || !BN_set_bit(bn.get(), bit)) {
     return nullptr;
   }
   return bn;
@@ -387,8 +386,8 @@ TEST(ASN1Test, Integer) {
       SCOPED_TRACE(pair.first);
       const ASN1_INTEGER *obj = pair.second.get();
       EXPECT_EQ(t.type, ASN1_STRING_type(obj));
-      EXPECT_EQ(Bytes(t.data), Bytes(ASN1_STRING_get0_data(obj),
-                                     ASN1_STRING_length(obj)));
+      EXPECT_EQ(Bytes(t.data),
+                Bytes(ASN1_STRING_get0_data(obj), ASN1_STRING_length(obj)));
 
       // The object should encode correctly.
       TestSerialize(obj, i2d_ASN1_INTEGER, t.der);
@@ -883,7 +882,8 @@ TEST(ASN1Test, StringToUTF8) {
       {{0, 0, 0xfe, 0xff, 0, 0, 0, 88}, V_ASN1_UNIVERSALSTRING, nullptr},
       // Otherwise, BOMs should pass through.
       {{0, 88, 0xfe, 0xff}, V_ASN1_BMPSTRING, "X\xef\xbb\xbf"},
-      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff}, V_ASN1_UNIVERSALSTRING,
+      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff},
+       V_ASN1_UNIVERSALSTRING,
        "X\xef\xbb\xbf"},
       // The maximum code-point should pass though.
       {{0, 16, 0xff, 0xfd}, V_ASN1_UNIVERSALSTRING, "\xf4\x8f\xbf\xbd"},
@@ -947,7 +947,7 @@ static bool ASN1Time_check_posix(const ASN1_TIME *s, int64_t t) {
       !OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
     return false;
   }
-  return day == 0 && sec ==0;
+  return day == 0 && sec == 0;
 }
 
 static std::string PrintStringToBIO(const ASN1_STRING *str,
@@ -968,7 +968,9 @@ static std::string PrintStringToBIO(const ASN1_STRING *str,
 // MSVC 2015 does not support compound literals e.g. using (struct tm){0,0,...}}
 // in the list of test vectors below. Note: this returns  a copy of the stack
 // allocated value t.
-static struct tm make_tm(int sec, int min, int hour, int mday, int mon, int year, int wday, int yday, int isdst, long gmtoff, char* zone) {
+static struct tm make_tm(int sec, int min, int hour, int mday, int mon,
+                         int year, int wday, int yday, int isdst, long gmtoff,
+                         char *zone) {
   struct tm t;
   t.tm_sec = sec;
   t.tm_min = min;
@@ -994,25 +996,31 @@ TEST(ASN1Test, SetTime) {
     const char *printed;
     const struct tm expected_tm;
     // struct tm years are deltas from 1900 and months start at 0
-    // AWS-LC does not calculate or set year day, weekday, timezone, or daylight savings
+    // AWS-LC does not calculate or set year day, weekday, timezone, or daylight
+    // savings
   } kTests[] = {
       {-631152001, "19491231235959Z", nullptr, "Dec 31 23:59:59 1949 GMT",
        make_tm(59, 59, 23, 31, 11, 49, 0, 0, 0, 0, nullptr)},
-      {-631152000, "19500101000000Z", "500101000000Z", "Jan  1 00:00:00 1950 GMT",
+      {-631152000, "19500101000000Z", "500101000000Z",
+       "Jan  1 00:00:00 1950 GMT",
        make_tm(0, 0, 0, 1, 0, 50, 0, 0, 0, 0, nullptr)},
       {0, "19700101000000Z", "700101000000Z", "Jan  1 00:00:00 1970 GMT",
        make_tm(0, 0, 0, 1, 0, 70, 0, 0, 0, 0, nullptr)},
-      {981173106, "20010203040506Z", "010203040506Z", "Feb  3 04:05:06 2001 GMT",
+      {981173106, "20010203040506Z", "010203040506Z",
+       "Feb  3 04:05:06 2001 GMT",
        make_tm(6, 5, 4, 3, 1, 101, 0, 0, 0, 0, nullptr)},
-      {951804000, "20000229060000Z", "000229060000Z", "Feb 29 06:00:00 2000 GMT",
+      {951804000, "20000229060000Z", "000229060000Z",
+       "Feb 29 06:00:00 2000 GMT",
        make_tm(0, 0, 6, 29, 1, 100, 0, 0, 0, 0, nullptr)},
       // NASA says this is the correct time for posterity.
-      {-16751025, "19690621025615Z", "690621025615Z", "Jun 21 02:56:15 1969 GMT",
+      {-16751025, "19690621025615Z", "690621025615Z",
+       "Jun 21 02:56:15 1969 GMT",
        make_tm(15, 56, 2, 21, 5, 69, 0, 0, 0, 0, nullptr)},
       // -1 is sometimes used as an error value. Ensure we correctly handle it.
       {-1, "19691231235959Z", "691231235959Z", "Dec 31 23:59:59 1969 GMT",
        make_tm(59, 59, 23, 31, 11, 69, 0, 0, 0, 0, nullptr)},
-      {2524607999, "20491231235959Z", "491231235959Z", "Dec 31 23:59:59 2049 GMT",
+      {2524607999, "20491231235959Z", "491231235959Z",
+       "Dec 31 23:59:59 2049 GMT",
        make_tm(59, 59, 23, 31, 11, 149, 0, 0, 0, 0, nullptr)},
       {2524608000, "20500101000000Z", nullptr, "Jan  1 00:00:00 2050 GMT",
        make_tm(0, 0, 0, 1, 0, 150, 0, 0, 0, 0, nullptr)},
@@ -1044,7 +1052,9 @@ TEST(ASN1Test, SetTime) {
       EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_UTCTIME_print), t.printed);
       EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_TIME_print), t.printed);
       EXPECT_EQ(ASN1_TIME_to_tm(utc.get(), &actual_time_t), 1);
-      EXPECT_EQ(OPENSSL_memcmp(&t.expected_tm, &actual_time_t, sizeof(actual_time_t)), 0);
+      EXPECT_EQ(
+          OPENSSL_memcmp(&t.expected_tm, &actual_time_t, sizeof(actual_time_t)),
+          0);
     } else {
       EXPECT_FALSE(utc);
     }
@@ -1064,7 +1074,9 @@ TEST(ASN1Test, SetTime) {
       EXPECT_EQ(PrintStringToBIO(generalized.get(), &ASN1_TIME_print),
                 t.printed);
       EXPECT_EQ(ASN1_TIME_to_tm(generalized.get(), &actual_time_t), 1);
-      EXPECT_EQ(OPENSSL_memcmp(&t.expected_tm, &actual_time_t, sizeof(actual_time_t)), 0);
+      EXPECT_EQ(
+          OPENSSL_memcmp(&t.expected_tm, &actual_time_t, sizeof(actual_time_t)),
+          0);
     } else {
       EXPECT_FALSE(generalized);
     }
@@ -1083,7 +1095,9 @@ TEST(ASN1Test, SetTime) {
       EXPECT_EQ(ASN1_TIME_to_posix(choice.get(), &tt), 1);
       EXPECT_EQ(tt, t.time);
       EXPECT_EQ(ASN1_TIME_to_tm(choice.get(), &actual_time_t), 1);
-      EXPECT_EQ(OPENSSL_memcmp(&t.expected_tm, &actual_time_t, sizeof(actual_time_t)), 0);
+      EXPECT_EQ(
+          OPENSSL_memcmp(&t.expected_tm, &actual_time_t, sizeof(actual_time_t)),
+          0);
     } else {
       EXPECT_FALSE(choice);
     }
@@ -1717,8 +1731,8 @@ TEST(ASN1Test, MBString) {
     ERR_clear_error();
 
     ASN1_STRING *str = nullptr;
-    EXPECT_EQ(-1, ASN1_mbstring_copy(&str, t.in.data(), t.in.size(),
-                                     t.format, t.mask));
+    EXPECT_EQ(-1, ASN1_mbstring_copy(&str, t.in.data(), t.in.size(), t.format,
+                                     t.mask));
     ERR_clear_error();
     EXPECT_EQ(nullptr, str);
   }
@@ -1866,9 +1880,9 @@ TEST(ASN1Test, StringByCustomNID) {
                                   ASN1_STRING_length(str.get())));
 
   // Minimum and maximum lengths are enforced.
-  str.reset(ASN1_STRING_set_by_NID(
-      nullptr, reinterpret_cast<const uint8_t *>("1234"), 4, MBSTRING_UTF8,
-      nid1));
+  str.reset(ASN1_STRING_set_by_NID(nullptr,
+                                   reinterpret_cast<const uint8_t *>("1234"), 4,
+                                   MBSTRING_UTF8, nid1));
   EXPECT_FALSE(str);
   ERR_clear_error();
   str.reset(ASN1_STRING_set_by_NID(
@@ -2001,7 +2015,7 @@ TEST(ASN1Test, StringTableSorted) {
   size_t table_len;
   asn1_get_string_table_for_testing(&table, &table_len);
   for (size_t i = 1; i < table_len; i++) {
-    EXPECT_LT(table[i-1].nid, table[i].nid);
+    EXPECT_LT(table[i - 1].nid, table[i].nid);
   }
 }
 
@@ -2078,8 +2092,7 @@ TEST(ASN1Test, Unpack) {
   ASSERT_TRUE(str);
 
   static const uint8_t kValid[] = {0x30, 0x00};
-  ASSERT_TRUE(
-      ASN1_STRING_set(str.get(), kValid, sizeof(kValid)));
+  ASSERT_TRUE(ASN1_STRING_set(str.get(), kValid, sizeof(kValid)));
   bssl::UniquePtr<BASIC_CONSTRAINTS> val(static_cast<BASIC_CONSTRAINTS *>(
       ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
   ASSERT_TRUE(val);
@@ -2308,14 +2321,15 @@ const struct GetObjectTestData {
     {{0x81, 0x00}, 0x00, 0x01, 0x80, 0},
     {{0xC1, 0x00}, 0x00, 0x01, 0xC0, 0},
     {{0x1F, 0x20, 0x00}, 0x00, 0x20, 0x00, 0},
-      // Rejected to avoid ambiguity with V_ASN1_NEG. Ruby has a test case expecting this to succeed.
+    // Rejected to avoid ambiguity with V_ASN1_NEG. Ruby has a test case
+    // expecting this to succeed.
     {{0x1F, 0xC0, 0x20, 0x00}, 0x80, 0x00, 0x00, 0},
     {{0x41, 0x02, 0xAB, 0xCD}, 0x00, 0x01, 0x40, 2},
     {{0x61, 0x00}, 0x20, 0x01, 0x40, 0},
     {{0x61, 0x80, 0xC2, 0x02, 0xAB, 0xCD, 0x00, 0x00}, 0x21, 0x01, 0x40, 0},
 };
 
-static void verifyGetObject(const GetObjectTestData& t) {
+static void verifyGetObject(const GetObjectTestData &t) {
   long length;
   int tag;
   int tag_class;
@@ -2337,8 +2351,8 @@ TEST(ASN1Test, GetObject) {
   }
 
   {
-    GetObjectTestData test_case{ {0x41, 0x81, 0x80}, 0x00, 0x01, 0x40, 128 };
-    for(int i = 0; i < 64; i++) {
+    GetObjectTestData test_case{{0x41, 0x81, 0x80}, 0x00, 0x01, 0x40, 128};
+    for (int i = 0; i < 64; i++) {
       test_case.in.push_back(0xAB);
       test_case.in.push_back(0xCD);
     }
@@ -2346,14 +2360,14 @@ TEST(ASN1Test, GetObject) {
   }
 
   {
-    GetObjectTestData test_case{ {0x41, 0x82, 0x01, 0x00}, 0x00, 0x01, 0x40, 256 };
-    for(int i = 0; i < 128; i++) {
+    GetObjectTestData test_case{
+        {0x41, 0x82, 0x01, 0x00}, 0x00, 0x01, 0x40, 256};
+    for (int i = 0; i < 128; i++) {
       test_case.in.push_back(0xAB);
       test_case.in.push_back(0xCD);
     }
     verifyGetObject(test_case);
   }
-
 }
 
 template <typename T>
@@ -2472,13 +2486,15 @@ static void *d2i_ASN1_TYPE_void(void **a, const unsigned char **in, long len) {
 static int i2d_ECPrivateKey_void(const void *a, unsigned char **out) {
   return i2d_ECPrivateKey((EC_KEY *)a, out);
 }
-static void *d2i_ECPrivateKey_void(void **a, const unsigned char **in, long len) {
+static void *d2i_ECPrivateKey_void(void **a, const unsigned char **in,
+                                   long len) {
   return d2i_ECPrivateKey((EC_KEY **)a, in, len);
 }
 static int i2d_X509_PUBKEY_void(const void *a, unsigned char **out) {
   return i2d_X509_PUBKEY((X509_PUBKEY *)a, out);
 }
-static void *d2i_X509_PUBKEY_void(void **a, const unsigned char **in, long len) {
+static void *d2i_X509_PUBKEY_void(void **a, const unsigned char **in,
+                                  long len) {
   return d2i_X509_PUBKEY((X509_PUBKEY **)a, in, len);
 }
 

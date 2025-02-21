@@ -63,9 +63,9 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../bytestring/internal.h"
 
 
 // Cross-module errors from crypto/x509/i2d_pr.c.
@@ -170,8 +170,9 @@ int asn1_get_object_maybe_indefinite(const unsigned char **inp, long *out_len,
 
 int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
                     int *out_class, long in_len) {
-  return asn1_get_object_maybe_indefinite(inp, out_len, out_tag, out_class, in_len,
-    /*indefinite_ok=*/1);
+  return asn1_get_object_maybe_indefinite(inp, out_len, out_tag, out_class,
+                                          in_len,
+                                          /*indefinite_ok=*/1);
 }
 
 // class 0 is constructed constructed == 2 for indefinite length constructed
@@ -367,9 +368,7 @@ void ASN1_STRING_free(ASN1_STRING *str) {
   OPENSSL_free(str);
 }
 
-void ASN1_STRING_clear_free(ASN1_STRING *str) {
-  ASN1_STRING_free(str);
-}
+void ASN1_STRING_clear_free(ASN1_STRING *str) { ASN1_STRING_free(str); }
 
 int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b) {
   // Capture padding bits and implicit truncation in BIT STRINGs.

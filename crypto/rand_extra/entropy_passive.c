@@ -7,7 +7,6 @@
 
 void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
                                   int *out_want_additional_input) {
-
   uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH] = {0};
   CRYPTO_get_seed_entropy(entropy, out_want_additional_input);
   RAND_load_entropy(out_entropy, entropy);

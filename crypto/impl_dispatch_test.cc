@@ -22,15 +22,15 @@
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
-#include <openssl/sha.h>
 #include <openssl/mem.h>
+#include <openssl/sha.h>
 
 #include <gtest/gtest.h>
 
-#include "internal.h"
+#include "fipsmodule/bn/rsaz_exp.h"
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
-#include "fipsmodule/bn/rsaz_exp.h"
+#include "internal.h"
 
 #include "test/file_test.h"
 
@@ -43,19 +43,18 @@ class ImplDispatchTest : public ::testing::Test {
     aes_vpaes_ = CRYPTO_is_SSSE3_capable();
     ifma_avx512 = CRYPTO_is_AVX512IFMA_capable();
     sha_ext_ =
-// TODO(CryptoAlg-2137): sha_ext_ isn't enabled on Windows Debug Builds with newer
-// 32-bit Intel processors.
+// TODO(CryptoAlg-2137): sha_ext_ isn't enabled on Windows Debug Builds with
+// newer 32-bit Intel processors.
 #if !(defined(OPENSSL_WINDOWS) && defined(OPENSSL_X86) && !defined(NDEBUG))
-    CRYPTO_is_SHAEXT_capable();
+        CRYPTO_is_SHAEXT_capable();
 #else
-    false;
+        false;
 #endif
 
     vaes_vpclmulqdq_ =
 #if !defined(OPENSSL_WINDOWS)
-  // crypto_gcm_avx512_enabled excludes Windows
-        CRYPTO_is_AVX512_capable() &&
-        CRYPTO_is_VAES_capable() &&
+        // crypto_gcm_avx512_enabled excludes Windows
+        CRYPTO_is_AVX512_capable() && CRYPTO_is_VAES_capable() &&
         CRYPTO_is_VPCLMULQDQ_capable();
 #else
         false;
@@ -72,13 +71,13 @@ class ImplDispatchTest : public ::testing::Test {
         true;
 #else
         false;
-#endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
+#endif  // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
     is_assembler_too_old_avx512 =
 #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
         true;
 #else
         false;
-#endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+#endif  // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 #elif defined(OPENSSL_AARCH64)
     aes_hw_ = CRYPTO_is_ARMv8_AES_capable();
     aes_vpaes_ = CRYPTO_is_NEON_capable();
@@ -100,7 +99,7 @@ class ImplDispatchTest : public ::testing::Test {
 
     f();
 
-    for (const auto& flag : flags) {
+    for (const auto &flag : flags) {
       SCOPED_TRACE(flag.first);
       ASSERT_LT(flag.first, sizeof(BORINGSSL_function_hit));
       EXPECT_EQ(flag.second, BORINGSSL_function_hit[flag.first] == 1);
@@ -123,16 +122,16 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
   bool ifma_avx512 = false;
-#else // AARCH64
+#else  // AARCH64
   bool aes_gcm_pmull_ = false;
   bool aes_gcm_8x_ = false;
   bool sha_512_ext_ = false;
 #endif
-
 };
 
-#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || \
-    defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
+#if !defined(OPENSSL_NO_ASM) &&                         \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+     defined(OPENSSL_AARCH64))
 
 constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0;
 constexpr size_t kFlag_aes_hw_encrypt = 1;
@@ -144,7 +143,7 @@ constexpr size_t kFlag_sha256_hw = 6;
 constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
 constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
-#else // AARCH64
+#else  // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
 constexpr size_t kFlag_sha512_hw = 8;
@@ -153,27 +152,27 @@ constexpr size_t kFlag_sha512_hw = 8;
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_encrypt, aes_hw_},
-          {kFlag_aes_hw_set_encrypt_key, aes_hw_},
-          {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
-          {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
+        {kFlag_aes_hw_encrypt, aes_hw_},
+            {kFlag_aes_hw_set_encrypt_key, aes_hw_},
+            {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
+            {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
-           (is_assembler_too_old || !vaes_vpclmulqdq_)},
-          {kFlag_aesni_gcm_encrypt,
-           is_x86_64_ && aes_hw_ && avx_movbe_ &&
-           !is_assembler_too_old && !vaes_vpclmulqdq_},
-          {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aes_hw_ &&
-           !is_assembler_too_old_avx512 &&
-           vaes_vpclmulqdq_},
-#else // AARCH64
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
-           !aes_gcm_pmull_ && !aes_gcm_8x_},
-          {kFlag_aes_gcm_enc_kernel, aes_hw_ &&
-           aes_gcm_pmull_ && !aes_gcm_8x_},
-          {kFlag_aesv8_gcm_8x_enc_128, aes_hw_ &&
-           aes_gcm_pmull_ && aes_gcm_8x_}
+            {kFlag_aes_hw_ctr32_encrypt_blocks,
+             aes_hw_ && (is_assembler_too_old || !vaes_vpclmulqdq_)},
+            {kFlag_aesni_gcm_encrypt, is_x86_64_ && aes_hw_ && avx_movbe_ &&
+                                          !is_assembler_too_old &&
+                                          !vaes_vpclmulqdq_},
+            {kFlag_aes_gcm_encrypt_avx512, is_x86_64_ && aes_hw_ &&
+                                               !is_assembler_too_old_avx512 &&
+                                               vaes_vpclmulqdq_},
+#else  // AARCH64
+            {kFlag_aes_hw_ctr32_encrypt_blocks,
+             aes_hw_ && !aes_gcm_pmull_ && !aes_gcm_8x_},
+            {kFlag_aes_gcm_enc_kernel,
+             aes_hw_ && aes_gcm_pmull_ && !aes_gcm_8x_},
+        {
+          kFlag_aesv8_gcm_8x_enc_128, aes_hw_ &&aes_gcm_pmull_ &&aes_gcm_8x_
+        }
 #endif
       },
       [] {
@@ -246,7 +245,7 @@ TEST_F(ImplDispatchTest, SHA512) {
         SHA512(in, 32, out);
       });
 }
-#endif // OPENSSL_AARCH64
+#endif  // OPENSSL_AARCH64
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -272,66 +271,63 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr) {
 
 TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
   FileTestGTest(
-    "crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt",
-    [&](FileTest *t) {
-    AssertFunctionsHit(
-      {
-        {kFlag_RSAZ_mod_exp_avx512_x2,
-         is_x86_64_ &&
-         !is_assembler_too_old_avx512 &&
-         ifma_avx512},
-      },
-      [&]() {
-        BN_CTX *ctx = BN_CTX_new();
-        BN_CTX_start(ctx);
-        bssl::UniquePtr<BIGNUM> a1 = GetBIGNUM(t, "A1");
-        bssl::UniquePtr<BIGNUM> e1 = GetBIGNUM(t, "E1");
-        bssl::UniquePtr<BIGNUM> m1 = GetBIGNUM(t, "M1");
-        bssl::UniquePtr<BIGNUM> mod_exp1 = GetBIGNUM(t, "ModExp1");
-        ASSERT_TRUE(a1);
-        ASSERT_TRUE(e1);
-        ASSERT_TRUE(m1);
-        ASSERT_TRUE(mod_exp1);
+      "crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt", [&](FileTest *t) {
+        AssertFunctionsHit(
+            {
+                {kFlag_RSAZ_mod_exp_avx512_x2,
+                 is_x86_64_ && !is_assembler_too_old_avx512 && ifma_avx512},
+            },
+            [&]() {
+              BN_CTX *ctx = BN_CTX_new();
+              BN_CTX_start(ctx);
+              bssl::UniquePtr<BIGNUM> a1 = GetBIGNUM(t, "A1");
+              bssl::UniquePtr<BIGNUM> e1 = GetBIGNUM(t, "E1");
+              bssl::UniquePtr<BIGNUM> m1 = GetBIGNUM(t, "M1");
+              bssl::UniquePtr<BIGNUM> mod_exp1 = GetBIGNUM(t, "ModExp1");
+              ASSERT_TRUE(a1);
+              ASSERT_TRUE(e1);
+              ASSERT_TRUE(m1);
+              ASSERT_TRUE(mod_exp1);
 
-        bssl::UniquePtr<BIGNUM> a2 = GetBIGNUM(t, "A2");
-        bssl::UniquePtr<BIGNUM> e2 = GetBIGNUM(t, "E2");
-        bssl::UniquePtr<BIGNUM> m2 = GetBIGNUM(t, "M2");
-        bssl::UniquePtr<BIGNUM> mod_exp2 = GetBIGNUM(t, "ModExp2");
-        ASSERT_TRUE(a2);
-        ASSERT_TRUE(e2);
-        ASSERT_TRUE(m2);
-        ASSERT_TRUE(mod_exp2);
+              bssl::UniquePtr<BIGNUM> a2 = GetBIGNUM(t, "A2");
+              bssl::UniquePtr<BIGNUM> e2 = GetBIGNUM(t, "E2");
+              bssl::UniquePtr<BIGNUM> m2 = GetBIGNUM(t, "M2");
+              bssl::UniquePtr<BIGNUM> mod_exp2 = GetBIGNUM(t, "ModExp2");
+              ASSERT_TRUE(a2);
+              ASSERT_TRUE(e2);
+              ASSERT_TRUE(m2);
+              ASSERT_TRUE(mod_exp2);
 
-        bssl::UniquePtr<BIGNUM> ret1(BN_new());
-        ASSERT_TRUE(ret1);
+              bssl::UniquePtr<BIGNUM> ret1(BN_new());
+              ASSERT_TRUE(ret1);
 
-        bssl::UniquePtr<BIGNUM> ret2(BN_new());
-        ASSERT_TRUE(ret2);
+              bssl::UniquePtr<BIGNUM> ret2(BN_new());
+              ASSERT_TRUE(ret2);
 
-        ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
-        ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
+              ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
+              ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
 
-        BN_MONT_CTX *mont1 = NULL;
-        BN_MONT_CTX *mont2 = NULL;
+              BN_MONT_CTX *mont1 = NULL;
+              BN_MONT_CTX *mont2 = NULL;
 
-        ASSERT_TRUE(mont1 = BN_MONT_CTX_new());
-        ASSERT_TRUE(BN_MONT_CTX_set(mont1, m1.get(), ctx));
-        ASSERT_TRUE(mont2 = BN_MONT_CTX_new());
-        ASSERT_TRUE(BN_MONT_CTX_set(mont2, m2.get(), ctx));
+              ASSERT_TRUE(mont1 = BN_MONT_CTX_new());
+              ASSERT_TRUE(BN_MONT_CTX_set(mont1, m1.get(), ctx));
+              ASSERT_TRUE(mont2 = BN_MONT_CTX_new());
+              ASSERT_TRUE(BN_MONT_CTX_set(mont2, m2.get(), ctx));
 
-        BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), mont1,
-                                     ret2.get(), a2.get(), e2.get(), m2.get(), mont2,
-                                     ctx);
+              BN_mod_exp_mont_consttime_x2(
+                  ret1.get(), a1.get(), e1.get(), m1.get(), mont1, ret2.get(),
+                  a2.get(), e2.get(), m2.get(), mont2, ctx);
 
-        BN_MONT_CTX_free(mont1);
-        BN_MONT_CTX_free(mont2);
-        BN_CTX_end(ctx);
-        BN_CTX_free(ctx);
+              BN_MONT_CTX_free(mont1);
+              BN_MONT_CTX_free(mont2);
+              BN_CTX_end(ctx);
+              BN_CTX_free(ctx);
+            });
       });
-    });
 }
 
-#endif // x86[_64]
+#endif  // x86[_64]
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 || OPENSSL_AARCH64)
 

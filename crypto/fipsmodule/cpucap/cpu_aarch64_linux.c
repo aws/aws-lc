@@ -29,7 +29,7 @@
 
 static uint64_t armv8_cpuid_probe(void) {
   uint64_t val;
-  __asm__ volatile("mrs %0, MIDR_EL1" : "=r" (val));
+  __asm__ volatile("mrs %0, MIDR_EL1" : "=r"(val));
   return val;
 }
 

@@ -37,7 +37,7 @@ static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey,
     return 0;
   }
 
-  if(pubkey && pubkey_len != ED25519_PUBLIC_KEY_LEN) {
+  if (pubkey && pubkey_len != ED25519_PUBLIC_KEY_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -54,7 +54,7 @@ static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey,
   key->has_private = 1;
 
   // If a public key was provided, validate that it matches the computed value.
-  if(pubkey && OPENSSL_memcmp(pubkey_computed, pubkey, pubkey_len) != 0) {
+  if (pubkey && OPENSSL_memcmp(pubkey_computed, pubkey, pubkey_len) != 0) {
     OPENSSL_free(key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -76,7 +76,8 @@ static int ed25519_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
     return 0;
   }
 
-  OPENSSL_memcpy(key->key + ED25519_PUBLIC_KEY_OFFSET, in, ED25519_PUBLIC_KEY_LEN);
+  OPENSSL_memcpy(key->key + ED25519_PUBLIC_KEY_OFFSET, in,
+                 ED25519_PUBLIC_KEY_LEN);
   key->has_private = 0;
 
   ed25519_free(pkey);
@@ -121,7 +122,8 @@ static int ed25519_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  OPENSSL_memcpy(out, key->key + ED25519_PUBLIC_KEY_OFFSET, ED25519_PUBLIC_KEY_LEN);
+  OPENSSL_memcpy(out, key->key + ED25519_PUBLIC_KEY_OFFSET,
+                 ED25519_PUBLIC_KEY_LEN);
   *out_len = 32;
   return 1;
 }
@@ -163,23 +165,24 @@ static int ed25519_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   const ED25519_KEY *a_key = a->pkey.ptr;
   const ED25519_KEY *b_key = b->pkey.ptr;
   return OPENSSL_memcmp(a_key->key + ED25519_PUBLIC_KEY_OFFSET,
-                        b_key->key + ED25519_PUBLIC_KEY_OFFSET, ED25519_PUBLIC_KEY_LEN) == 0;
+                        b_key->key + ED25519_PUBLIC_KEY_OFFSET,
+                        ED25519_PUBLIC_KEY_LEN) == 0;
 }
 
-static int ed25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int ed25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key,
+                               CBS *pubkey) {
   // See RFC 8410, section 7.
 
   // Parameters must be empty. The key is a 32-byte value wrapped in an extra
   // OCTET STRING layer.
   CBS inner;
   if (CBS_len(params) != 0 ||
-      !CBS_get_asn1(key, &inner, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(key) != 0) {
+      !CBS_get_asn1(key, &inner, CBS_ASN1_OCTETSTRING) || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  const uint8_t *public= NULL;
+  const uint8_t *public = NULL;
   size_t public_len = 0;
   if (pubkey) {
     // pubkey is encoded as an ASN.1 BIT STRING, so we handle the padding here
@@ -193,7 +196,8 @@ static int ed25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey
     public_len = CBS_len(pubkey);
   }
 
-  return ed25519_set_priv_raw(out, CBS_data(&inner), CBS_len(&inner), public, public_len);
+  return ed25519_set_priv_raw(out, CBS_data(&inner), CBS_len(&inner), public,
+                              public_len);
 }
 
 static int ed25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
@@ -214,8 +218,7 @@ static int ed25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&private_key, &inner, CBS_ASN1_OCTETSTRING) ||
       // The PKCS#8 encoding stores only the 32-byte seed which is the first 32
       // bytes of the private key.
-      !CBB_add_bytes(&inner, key->key, 32) ||
-      !CBB_flush(out)) {
+      !CBB_add_bytes(&inner, key->key, 32) || !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
@@ -245,7 +248,8 @@ static int ed25519_priv_encode_v2(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&pkcs8, &public_key, CBS_ASN1_CONTEXT_SPECIFIC | 1) ||
       !CBB_add_u8(&public_key, 0 /*no padding required*/) ||
       // The last 32-bytes of the key is the public key
-      !CBB_add_bytes(&public_key, &key->key[32], ED25519_PUBLIC_KEY_LEN) || !CBB_flush(out)) {
+      !CBB_add_bytes(&public_key, &key->key[32], ED25519_PUBLIC_KEY_LEN) ||
+      !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
@@ -284,16 +288,16 @@ const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth = {
 
 const EVP_PKEY_ASN1_METHOD ed25519ph_asn1_meth = {
     EVP_PKEY_ED25519PH,
-    {0xFF}, /* oid */
-    0, /* oid_len */
-    "ED25519ph", /* pem_str */
+    {0xFF},                        /* oid */
+    0,                             /* oid_len */
+    "ED25519ph",                   /* pem_str */
     "OpenSSL ED25519ph algorithm", /* info */
-    NULL, /* pub_decode */
-    NULL, /* pub_encode */
-    NULL, /* pub_cmp */
-    NULL, /* priv_decode */
-    NULL, /* priv_encode */
-    NULL, /* priv_encode_v2 */
+    NULL,                          /* pub_decode */
+    NULL,                          /* pub_encode */
+    NULL,                          /* pub_cmp */
+    NULL,                          /* priv_decode */
+    NULL,                          /* priv_encode */
+    NULL,                          /* priv_encode_v2 */
     ed25519_set_priv_raw,
     ed25519_set_pub_raw,
     ed25519_get_priv_raw,

@@ -94,7 +94,8 @@ static const uint8_t pss_sha256_salt_30[] = {
 // Java uses NULL to encode parameters of Hash func.
 // ```JDK11
 // Signature signatureSHA256Java = Signature.getInstance("RSASSA-PSS")
-// PSSParameterSpec pssParameterSpec = new PSSParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 0, 1);
+// PSSParameterSpec pssParameterSpec = new PSSParameterSpec("SHA-256", "MGF1",
+// MGF1ParameterSpec.SHA256, 0, 1);
 // signatureSHA256Java.setParameter(pssParameterSpec);
 // byte[] bytes = signatureSHA256Java.getParameters().getEncoded();
 // ```
@@ -212,8 +213,8 @@ static const uint8_t jdk_pss_sha256_mgf1_sha1[] = {
 //    Mask Algorithm: mgf1 with sha1 (absent)
 //    Minimum Salt Length: 0x1e (30)
 //    Trailer Field: 0x01 (absent)
-static const uint8_t jdk_pss_sha1_mgf1_sha1_salt_30[] = {
-    0x30, 0x05, 0xA2, 0x03, 0x02, 0x01, 0x1E};
+static const uint8_t jdk_pss_sha1_mgf1_sha1_salt_30[] = {0x30, 0x05, 0xA2, 0x03,
+                                                         0x02, 0x01, 0x1E};
 
 // These bytes are manually created for test purpose.
 // pss_with_trailer_field_1 is a DER-encoded RSASSA-PSS-params:
@@ -221,8 +222,8 @@ static const uint8_t jdk_pss_sha1_mgf1_sha1_salt_30[] = {
 //    Mask Algorithm: mgf1 with sha1 (absent)
 //    Minimum Salt Length: 0x14 (absent)
 //    Trailer Field: 0x01 (default, not absent)
-static const uint8_t pss_with_trailer_field_1[] = {
-    0x30, 0x05, 0xA3, 0x03, 0x02, 0x01, 0x01};
+static const uint8_t pss_with_trailer_field_1[] = {0x30, 0x05, 0xA3, 0x03,
+                                                   0x02, 0x01, 0x01};
 
 // Invalid test inputs:
 
@@ -259,12 +260,11 @@ static const uint8_t pss_with_tag2_before_tag0[] = {
     0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
     0x05, 0x00, 0xA1, 0x1C, 0x30, 0x1A, 0x06, 0x09, 0x2A, 0x86, 0x48,
     0x86, 0xF7, 0x0D, 0x01, 0x01, 0x08, 0x30, 0x0D, 0x06, 0x09, 0x60,
-    0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00
-};
+    0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00};
 
 // pss_with_tag4 has tag [4].
-static const uint8_t pss_with_tag4[] = {
-    0x30, 0x05, 0xA4, 0x03, 0x02, 0x01, 0x1E};
+static const uint8_t pss_with_tag4[] = {0x30, 0x05, 0xA4, 0x03,
+                                        0x02, 0x01, 0x1E};
 
 // pss_with_double_salt_30 has two tag[2].
 static const uint8_t pss_with_double_salt_30[] = {
@@ -280,23 +280,25 @@ static const uint8_t pss_with_sequence_length_too_short[] = {
 static const uint8_t pss_with_sequence_length_too_long[] = {
     0x30, 0x06, 0xA2, 0x03, 0x02, 0x01, 0x1E};
 
-// pss_with_tag2_length_too_short should use 0x03 as tag2 length instead of 0x02.
-// This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
-static const uint8_t pss_with_tag2_length_too_short[] = {
-    0x30, 0x05, 0xA2, 0x02, 0x02, 0x01, 0x1E};
+// pss_with_tag2_length_too_short should use 0x03 as tag2 length instead of
+// 0x02. This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_tag2_length_too_short[] = {0x30, 0x05, 0xA2, 0x02,
+                                                         0x02, 0x01, 0x1E};
 
 // pss_with_tag2_length_too_long should use 0x03 as tag2 length instead of 0x04.
 // This invalid bytes are modified from jdk_pss_sha1_mgf1_sha1_salt_30.
-static const uint8_t pss_with_tag2_length_too_long[] = {
-    0x30, 0x05, 0xA2, 0x04, 0x02, 0x01, 0x1E};
+static const uint8_t pss_with_tag2_length_too_long[] = {0x30, 0x05, 0xA2, 0x04,
+                                                        0x02, 0x01, 0x1E};
 
-// pss_with_negative_salt_length is modified from jdk_pss_sha1_mgf1_sha1_salt_30.
-static const uint8_t pss_with_negative_salt_length[] = {
-    0x30, 0x05, 0xA2, 0x03, 0x02, 0x01, 0xFF};
+// pss_with_negative_salt_length is modified from
+// jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_negative_salt_length[] = {0x30, 0x05, 0xA2, 0x03,
+                                                        0x02, 0x01, 0xFF};
 
-// pss_with_negative_salt_length is modified from jdk_pss_sha1_mgf1_sha1_salt_30.
-static const uint8_t pss_with_trailer_field_not_1[] = {
-    0x30, 0x05, 0xA3, 0x03, 0x02, 0x01, 0x02};
+// pss_with_negative_salt_length is modified from
+// jdk_pss_sha1_mgf1_sha1_salt_30.
+static const uint8_t pss_with_trailer_field_not_1[] = {0x30, 0x05, 0xA3, 0x03,
+                                                       0x02, 0x01, 0x02};
 
 static const int omit_salt_len = -1;
 
@@ -340,8 +342,8 @@ struct PssParseTestInput {
      NID_mgf1, NID_sha256, omit_salt_len},
     {jdk_pss_sha256_mgf1_sha1, sizeof(jdk_pss_sha256_mgf1_sha1), NID_sha256,
      NID_undef, NID_undef, omit_salt_len},
-    {jdk_pss_sha1_mgf1_sha1_salt_30, sizeof(jdk_pss_sha1_mgf1_sha1_salt_30), NID_undef,
-     NID_undef, NID_undef, 30},
+    {jdk_pss_sha1_mgf1_sha1_salt_30, sizeof(jdk_pss_sha1_mgf1_sha1_salt_30),
+     NID_undef, NID_undef, NID_undef, 30},
 };
 
 class PssParseTest : public testing::TestWithParam<PssParseTestInput> {};
@@ -409,8 +411,10 @@ struct InvalidPssParseInput {
     {pss_with_tag2_before_tag0, sizeof(pss_with_tag2_before_tag0)},
     {pss_with_tag4, sizeof(pss_with_tag4)},
     {pss_with_double_salt_30, sizeof(pss_with_double_salt_30)},
-    {pss_with_sequence_length_too_short, sizeof(pss_with_sequence_length_too_short)},
-    {pss_with_sequence_length_too_long, sizeof(pss_with_sequence_length_too_long)},
+    {pss_with_sequence_length_too_short,
+     sizeof(pss_with_sequence_length_too_short)},
+    {pss_with_sequence_length_too_long,
+     sizeof(pss_with_sequence_length_too_long)},
     {pss_with_tag2_length_too_short, sizeof(pss_with_tag2_length_too_short)},
     {pss_with_tag2_length_too_long, sizeof(pss_with_tag2_length_too_long)},
     {pss_with_negative_salt_length, sizeof(pss_with_negative_salt_length)},
@@ -461,7 +465,8 @@ static void test_RSASSA_PSS_PARAMS_get(RSASSA_PSS_PARAMS *pss,
   EXPECT_EQ(saltlen, expect_saltlen);
 }
 
-class PssConversionTest : public testing::TestWithParam<PssConversionTestInput> {};
+class PssConversionTest
+    : public testing::TestWithParam<PssConversionTestInput> {};
 
 // This test is to check the conversion between |RSASSA_PSS_PARAMS| and
 // (|*sigmd|, |*mgf1md| and |saltlen|), which are fields of |RSA_PKEY_CTX|.

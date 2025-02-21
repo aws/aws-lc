@@ -22,10 +22,10 @@
 
 #if !defined(OPENSSL_NO_SOCK)
 
-#include <time.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 
 #if !defined(OPENSSL_WINDOWS)
 #include <netdb.h>
@@ -37,8 +37,8 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 int bio_ip_and_port_to_socket_and_addr(int *out_sock,
@@ -69,7 +69,7 @@ int bio_ip_and_port_to_socket_and_addr(int *out_sock,
   ret = 0;
 
   for (cur = result; cur; cur = cur->ai_next) {
-    if ((size_t) cur->ai_addrlen > sizeof(struct sockaddr_storage)) {
+    if ((size_t)cur->ai_addrlen > sizeof(struct sockaddr_storage)) {
       continue;
     }
     OPENSSL_memset(out_addr, 0, sizeof(struct sockaddr_storage));

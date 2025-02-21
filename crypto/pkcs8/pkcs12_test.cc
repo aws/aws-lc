@@ -19,8 +19,8 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/pkcs8.h>
 #include <openssl/mem.h>
+#include <openssl/pkcs8.h>
 #include <openssl/span.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
@@ -42,8 +42,7 @@ static bssl::Span<const uint8_t> StringToBytes(const std::string &str) {
 }
 
 static void TestImpl(const char *name, bssl::Span<const uint8_t> der,
-                     const char *password,
-                     const char *friendly_name) {
+                     const char *password, const char *friendly_name) {
   SCOPED_TRACE(name);
   bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
   ASSERT_TRUE(certs);
@@ -146,7 +145,8 @@ TEST(PKCS12Test, TestNoEncryption) {
   // no_encryption.p12 is a PKCS#12 file with neither the key or certificate is
   // encrypted. It was generated with:
   //
-  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem -keypbe NONE -certpbe NONE -password pass:foo
+  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem
+  //   -keypbe NONE -certpbe NONE -password pass:foo
   std::string data = GetTestData("crypto/pkcs8/test/no_encryption.p12");
   TestImpl("kNoEncryption", StringToBytes(data), kPassword, nullptr);
 }
@@ -169,7 +169,8 @@ TEST(PKCS12Test, TestNULLContentInfoRoot) {
 
 TEST(PKCS12Test, TestNULLContentInfoChild) {
   // Content in ContentInfo from sequence contained in AuthSafe can't be NULL.
-  std::string data = GetTestData("crypto/pkcs8/test/null_contentinfo_child.p12");
+  std::string data =
+      GetTestData("crypto/pkcs8/test/null_contentinfo_child.p12");
   TestImplParseFail("kNoEncryption", StringToBytes(data), nullptr);
 }
 
@@ -179,7 +180,8 @@ TEST(PKCS12Test, TestEmptyPassword) {
 #endif
 
   // Generated with
-  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem -password pass:  
+  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem
+  //   -password pass:
   std::string data = GetTestData("crypto/pkcs8/test/empty_password.p12");
   TestImpl("EmptyPassword (empty password)", StringToBytes(data), "", nullptr);
   TestImpl("EmptyPassword (null password)", StringToBytes(data), nullptr,
@@ -207,7 +209,8 @@ TEST(PKCS12Test, TestNullPassword) {
 #endif
 
   // Generated with
-  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem -password pass:
+  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem
+  //   -password pass:
   // But with OpenSSL patched to pass NULL into PKCS12_create and
   // PKCS12_set_mac.
   std::string data = GetTestData("crypto/pkcs8/test/null_password.p12");
@@ -218,7 +221,8 @@ TEST(PKCS12Test, TestNullPassword) {
 
 TEST(PKCS12Test, TestUnicode) {
   // Generated with
-  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem -password pass:"Hello, 世界"
+  //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem
+  //   -password pass:"Hello, 世界"
   std::string data = GetTestData("crypto/pkcs8/test/unicode_password.p12");
   TestImpl("Unicode", StringToBytes(data), kUnicodePassword, nullptr);
 }
@@ -457,8 +461,7 @@ TEST(PKCS12Test, RoundTrip) {
                 {bssl::Span<const uint8_t>(kTestCert2)}, 0, 0, 0, 0);
 
   // Test some Unicode.
-  TestRoundTrip(kPassword, "Hello, 世界!",
-                bssl::Span<const uint8_t>(kTestKey),
+  TestRoundTrip(kPassword, "Hello, 世界!", bssl::Span<const uint8_t>(kTestKey),
                 bssl::Span<const uint8_t>(kTestCert),
                 {bssl::Span<const uint8_t>(kTestCert2)}, 0, 0, 0, 0);
   TestRoundTrip(kUnicodePassword, nullptr /* no name */,
@@ -520,13 +523,11 @@ TEST(PKCS12Test, RoundTrip) {
 static bssl::UniquePtr<EVP_PKEY> MakeTestKey() {
   bssl::UniquePtr<EC_KEY> ec_key(
       EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
-  if (!ec_key ||
-      !EC_KEY_generate_key(ec_key.get())) {
+  if (!ec_key || !EC_KEY_generate_key(ec_key.get())) {
     return nullptr;
   }
   bssl::UniquePtr<EVP_PKEY> evp_pkey(EVP_PKEY_new());
-  if (!evp_pkey ||
-      !EVP_PKEY_assign_EC_KEY(evp_pkey.get(), ec_key.release())) {
+  if (!evp_pkey || !EVP_PKEY_assign_EC_KEY(evp_pkey.get(), ec_key.release())) {
     return nullptr;
   }
   return evp_pkey;
@@ -537,7 +538,7 @@ static bssl::UniquePtr<X509> MakeTestCert(EVP_PKEY *key) {
   if (!x509) {
     return nullptr;
   }
-  X509_NAME* subject = X509_get_subject_name(x509.get());
+  X509_NAME *subject = X509_get_subject_name(x509.get());
   if (!X509_gmtime_adj(X509_get_notBefore(x509.get()), 0) ||
       !X509_gmtime_adj(X509_get_notAfter(x509.get()), 60 * 60 * 24) ||
       !X509_NAME_add_entry_by_txt(subject, "CN", MBSTRING_ASC,
@@ -565,7 +566,7 @@ static bool PKCS12CreateVector(bssl::UniquePtr<PKCS12> &p12, EVP_PKEY *pkey,
   }
 
   p12.reset(PKCS12_create(kPassword, nullptr /* name */, pkey,
-                           nullptr /* cert */, chain.get(), 0, 0, 0, 0, 0));
+                          nullptr /* cert */, chain.get(), 0, 0, 0, 0, 0));
   if (!p12) {
     return false;
   }
@@ -737,4 +738,3 @@ TEST(PKCS12Test, SetMac) {
                               strlen(kUnicodePassword), nullptr, 0, 0,
                               nullptr));
 }
-

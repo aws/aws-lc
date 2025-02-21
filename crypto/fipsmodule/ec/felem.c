@@ -18,9 +18,9 @@
 
 #include <assert.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
+#include "internal.h"
 
 
 const EC_FELEM *ec_felem_one(const EC_GROUP *group) {

@@ -22,10 +22,10 @@
 
 #ifdef LIBCRYPTO_PATH
 
-#include <stdint.h>
-#include <stdlib.h>
 #include <dlfcn.h>
 #include <pthread.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 typedef void (*fp_lc_clear_error_t)(void);
 typedef int (*fp_lc_tl_func_t)(void);
@@ -57,7 +57,7 @@ static void *cycle_thread_local_setup(void *lc_so) {
 }
 
 static void *load_unload(void *ctx) {
-  const char* path = ctx;
+  const char *path = ctx;
   void *lc_so = dlopen(path, RTLD_NOW);
   fp_lc_tl_func_t lc_tl_shutdown = dlsym(lc_so, "AWSLC_thread_local_shutdown");
 
@@ -96,7 +96,8 @@ static void *load_unload(void *ctx) {
 
 int main(int argc, char *argv[]) {
   pthread_t thread_id;
-  if (pthread_create(&thread_id, NULL, load_unload, (void*)DYNAMIC_LIBRARY_PATH)) {
+  if (pthread_create(&thread_id, NULL, load_unload,
+                     (void *)DYNAMIC_LIBRARY_PATH)) {
     fprintf(stderr, "Call to pthread_create in main failed.");
     exit(1);
   }
@@ -118,4 +119,4 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-#endif // LIBCRYPTO_PATH
+#endif  // LIBCRYPTO_PATH

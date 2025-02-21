@@ -74,10 +74,10 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
-#include "internal.h"
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/dh/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 // Primality test according to FIPS PUB 186[-1], Appendix 2.1: 50 rounds of
@@ -125,8 +125,7 @@ void DSA_free(DSA *dsa) {
 
 int DSA_print(BIO *bio, const DSA *dsa, int indent) {
   EVP_PKEY *pkey = EVP_PKEY_new();
-  int ret = pkey != NULL &&
-            EVP_PKEY_set1_DSA(pkey, (DSA *)dsa) &&
+  int ret = pkey != NULL && EVP_PKEY_set1_DSA(pkey, (DSA *)dsa) &&
             EVP_PKEY_print_private(bio, pkey, indent, NULL);
   EVP_PKEY_free(pkey);
   return ret;
@@ -203,8 +202,7 @@ int DSA_set0_key(DSA *dsa, BIGNUM *pub_key, BIGNUM *priv_key) {
 }
 
 int DSA_set0_pqg(DSA *dsa, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
-  if ((dsa->p == NULL && p == NULL) ||
-      (dsa->q == NULL && q == NULL) ||
+  if ((dsa->p == NULL && p == NULL) || (dsa->q == NULL && q == NULL) ||
       (dsa->g == NULL && g == NULL)) {
     return 0;
   }
@@ -233,14 +231,14 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
                                size_t seed_len, int *out_counter,
                                unsigned long *out_h, BN_GENCB *cb) {
   const EVP_MD *evpmd = (bits >= 2048) ? EVP_sha256() : EVP_sha1();
-  return dsa_internal_paramgen(dsa, bits, evpmd, seed_in, seed_len, out_counter, out_h, cb);
+  return dsa_internal_paramgen(dsa, bits, evpmd, seed_in, seed_len, out_counter,
+                               out_h, cb);
 }
 
 int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
                           const unsigned char *seed_in, size_t seed_len,
                           int *out_counter, unsigned long *out_h,
-                          BN_GENCB *cb)
-{
+                          BN_GENCB *cb) {
   int ok = 0;
   unsigned char seed[SHA256_DIGEST_LENGTH];
   unsigned char md[SHA256_DIGEST_LENGTH];
@@ -337,7 +335,8 @@ int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
       }
 
       // step 4
-      r = BN_is_prime_fasttest_ex(q, DSS_prime_checks, ctx, use_random_seed, cb);
+      r = BN_is_prime_fasttest_ex(q, DSS_prime_checks, ctx, use_random_seed,
+                                  cb);
       if (r > 0) {
         break;
       }
@@ -381,25 +380,20 @@ int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
         }
 
         // step 8
-        if (!BN_bin2bn(md, qsize, r0) ||
-            !BN_lshift(r0, r0, (qsize << 3) * k) ||
+        if (!BN_bin2bn(md, qsize, r0) || !BN_lshift(r0, r0, (qsize << 3) * k) ||
             !BN_add(W, W, r0)) {
           goto err;
         }
       }
 
       // more of step 8
-      if (!BN_mask_bits(W, bits - 1) ||
-          !BN_copy(X, W) ||
-          !BN_add(X, X, test)) {
+      if (!BN_mask_bits(W, bits - 1) || !BN_copy(X, W) || !BN_add(X, X, test)) {
         goto err;
       }
 
       // step 9
-      if (!BN_lshift1(r0, q) ||
-          !BN_mod(c, X, r0, ctx) ||
-          !BN_sub(r0, c, BN_value_one()) ||
-          !BN_sub(p, X, r0)) {
+      if (!BN_lshift1(r0, q) || !BN_mod(c, X, r0, ctx) ||
+          !BN_sub(r0, c, BN_value_one()) || !BN_sub(p, X, r0)) {
         goto err;
       }
 
@@ -432,14 +426,12 @@ end:
 
   // We now need to generate g
   // Set r0=(p-1)/q
-  if (!BN_sub(test, p, BN_value_one()) ||
-      !BN_div(r0, NULL, test, q, ctx)) {
+  if (!BN_sub(test, p, BN_value_one()) || !BN_div(r0, NULL, test, q, ctx)) {
     goto err;
   }
 
   mont = BN_MONT_CTX_new_for_modulus(p, ctx);
-  if (mont == NULL ||
-      !BN_set_word(test, h)) {
+  if (mont == NULL || !BN_set_word(test, h)) {
     goto err;
   }
 
@@ -607,8 +599,7 @@ static int mod_mul_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   BIGNUM *tmp = BN_CTX_get(ctx);
   // |BN_mod_mul_montgomery| removes a factor of R, so we cancel it with a
   // single |BN_to_montgomery| which adds one factor of R.
-  int ok = tmp != NULL &&
-           BN_to_montgomery(tmp, a, mont, ctx) &&
+  int ok = tmp != NULL && BN_to_montgomery(tmp, a, mont, ctx) &&
            BN_mod_mul_montgomery(r, tmp, b, mont, ctx);
   BN_CTX_end(ctx);
   return ok;
@@ -670,8 +661,7 @@ redo:
   // (The underlying algorithms could accept looser bounds, but we reduce for
   // simplicity.)
   size_t q_width = bn_minimal_width(dsa->q);
-  if (!bn_resize_words(&m, q_width) ||
-      !bn_resize_words(&xr, q_width)) {
+  if (!bn_resize_words(&m, q_width) || !bn_resize_words(&xr, q_width)) {
     goto err;
   }
   bn_reduce_once_in_place(m.d, 0 /* no carry word */, dsa->q->d,

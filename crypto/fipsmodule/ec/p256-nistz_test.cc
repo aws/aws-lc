@@ -24,28 +24,29 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "internal.h"
-#include "../bn/internal.h"
-#include "../cpucap/internal.h"
 #include "../../internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
+#include "../bn/internal.h"
+#include "../cpucap/internal.h"
+#include "internal.h"
 #include "p256-nistz.h"
 
 // Disable tests if BORINGSSL_SHARED_LIBRARY is defined. These tests need access
 // to internal functions.
 #if !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))                 && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&                 \
     !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
 
 TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.
   stack_align_type buffer_table[64 + (sizeof(P256_POINT) * 16)];
-  P256_POINT *aligned_table = (P256_POINT *) align_pointer(buffer_table, 64);
+  P256_POINT *aligned_table = (P256_POINT *)align_pointer(buffer_table, 64);
 
   for (size_t i = 0; i < 16; i++) {
-    OPENSSL_memset(aligned_table[i].X, static_cast<uint8_t>(3 * i), sizeof(aligned_table[i].X));
+    OPENSSL_memset(aligned_table[i].X, static_cast<uint8_t>(3 * i),
+                   sizeof(aligned_table[i].X));
     OPENSSL_memset(aligned_table[i].Y, static_cast<uint8_t>(3 * i + 1),
                    sizeof(aligned_table[i].Y));
     OPENSSL_memset(aligned_table[i].Z, static_cast<uint8_t>(3 * i + 2),
@@ -60,11 +61,12 @@ TEST(P256_NistzTest, SelectW5) {
     if (i == 0) {
       OPENSSL_memset(&expected, 0, sizeof(expected));
     } else {
-      expected = aligned_table[i-1];
+      expected = aligned_table[i - 1];
     }
 
-    EXPECT_EQ(Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
-              Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
+    EXPECT_EQ(
+        Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
+        Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
   }
 
   // This is a constant-time function, so it is only necessary to instrument one
@@ -76,10 +78,12 @@ TEST(P256_NistzTest, SelectW5) {
 TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
   stack_align_type buffer_table[64 + (sizeof(P256_POINT_AFFINE) * 64)];
-  P256_POINT_AFFINE *aligned_table = (P256_POINT_AFFINE *) align_pointer(buffer_table, 64);
+  P256_POINT_AFFINE *aligned_table =
+      (P256_POINT_AFFINE *)align_pointer(buffer_table, 64);
 
   for (size_t i = 0; i < 64; i++) {
-    OPENSSL_memset(aligned_table[i].X, static_cast<uint8_t>(2 * i), sizeof(aligned_table[i].X));
+    OPENSSL_memset(aligned_table[i].X, static_cast<uint8_t>(2 * i),
+                   sizeof(aligned_table[i].X));
     OPENSSL_memset(aligned_table[i].Y, static_cast<uint8_t>(2 * i + 1),
                    sizeof(aligned_table[i].Y));
   }
@@ -92,11 +96,12 @@ TEST(P256_NistzTest, SelectW7) {
     if (i == 0) {
       OPENSSL_memset(&expected, 0, sizeof(expected));
     } else {
-      expected = aligned_table[i-1];
+      expected = aligned_table[i - 1];
     }
 
-    EXPECT_EQ(Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
-              Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
+    EXPECT_EQ(
+        Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
+        Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
   }
 
   // This is a constant-time function, so it is only necessary to instrument one
@@ -196,7 +201,7 @@ static bool GetFieldElement(FileTest *t, BN_ULONG out[P256_LIMBS],
 
 static std::string FieldElementToString(const BN_ULONG a[P256_LIMBS]) {
   std::string ret;
-  for (size_t i = P256_LIMBS-1; i < P256_LIMBS; i--) {
+  for (size_t i = P256_LIMBS - 1; i < P256_LIMBS; i--) {
     char buf[2 * BN_BYTES + 1];
     snprintf(buf, sizeof(buf), BN_HEX_FMT2, a[i]);
     ret += buf;
@@ -230,16 +235,14 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
 
   bssl::UniquePtr<BIGNUM> x(BN_new()), y(BN_new()), z(BN_new());
   bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
-  if (!x || !y || !z || !p ||
-      !bn_set_words(x.get(), in->X, P256_LIMBS) ||
+  if (!x || !y || !z || !p || !bn_set_words(x.get(), in->X, P256_LIMBS) ||
       !bn_set_words(y.get(), in->Y, P256_LIMBS) ||
       !bn_set_words(z.get(), in->Z, P256_LIMBS)) {
     return false;
   }
 
   // Coordinates must be fully-reduced.
-  if (BN_cmp(x.get(), p.get()) >= 0 ||
-      BN_cmp(y.get(), p.get()) >= 0 ||
+  if (BN_cmp(x.get(), p.get()) >= 0 || BN_cmp(y.get(), p.get()) >= 0 ||
       BN_cmp(z.get(), p.get()) >= 0) {
     return false;
   }
@@ -493,20 +496,20 @@ static void TestOrdMulMont(FileTest *t) {
 TEST(P256_NistzTest, TestVectors) {
   return FileTestGTest("crypto/fipsmodule/ec/p256-nistz_tests.txt",
                        [](FileTest *t) {
-    if (t->GetParameter() == "Negate") {
-      TestNegate(t);
-    } else if (t->GetParameter() == "MulMont") {
-      TestMulMont(t);
-    } else if (t->GetParameter() == "FromMont") {
-      TestFromMont(t);
-    } else if (t->GetParameter() == "PointAdd") {
-      TestPointAdd(t);
-    } else if (t->GetParameter() == "OrdMulMont") {
-      TestOrdMulMont(t);
-    } else {
-      FAIL() << "Unknown test type:" << t->GetParameter();
-    }
-  });
+                         if (t->GetParameter() == "Negate") {
+                           TestNegate(t);
+                         } else if (t->GetParameter() == "MulMont") {
+                           TestMulMont(t);
+                         } else if (t->GetParameter() == "FromMont") {
+                           TestFromMont(t);
+                         } else if (t->GetParameter() == "PointAdd") {
+                           TestPointAdd(t);
+                         } else if (t->GetParameter() == "OrdMulMont") {
+                           TestOrdMulMont(t);
+                         } else {
+                           FAIL() << "Unknown test type:" << t->GetParameter();
+                         }
+                       });
 }
 
 // Instrument the functions covered in TestVectors for ABI checking.
@@ -570,8 +573,8 @@ TEST(P256_NistzTest, ABI) {
   };
   // This file represents affine infinity as (0, 0).
   static const P256_POINT_AFFINE kInfinityAffine = {
-    {TOBN(0, 0), TOBN(0, 0), TOBN(0, 0), TOBN(0, 0)},
-    {TOBN(0, 0), TOBN(0, 0), TOBN(0, 0), TOBN(0, 0)},
+      {TOBN(0, 0), TOBN(0, 0), TOBN(0, 0), TOBN(0, 0)},
+      {TOBN(0, 0), TOBN(0, 0), TOBN(0, 0), TOBN(0, 0)},
   };
 
   CHECK_ABI(ecp_nistz256_point_add_affine, &p, &kA, &kC);
@@ -580,6 +583,7 @@ TEST(P256_NistzTest, ABI) {
   CHECK_ABI(ecp_nistz256_point_add_affine, &p, &kInfinity, &kC);
 }
 
-#endif /* !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && \
-          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
+#endif /* !defined(OPENSSL_NO_ASM) &&                              \
+          !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) &&             \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
           !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY) */

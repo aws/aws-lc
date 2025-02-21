@@ -59,9 +59,10 @@ static uint64_t blake2b_load(const uint8_t block[BLAKE2B_CBLOCK], size_t i) {
   return CRYPTO_load_u64_le(block + 8 * i);
 }
 
-static void copy_digest_words_to_dest(uint8_t* dest, uint64_t* src, size_t word_count) {
+static void copy_digest_words_to_dest(uint8_t *dest, uint64_t *src,
+                                      size_t word_count) {
 #ifdef OPENSSL_BIG_ENDIAN
-  for(size_t i = 0; i < word_count; i++) {
+  for (size_t i = 0; i < word_count; i++) {
     CRYPTO_store_u64_le(&dest[i * sizeof(uint64_t)], src[i]);
   }
 #else

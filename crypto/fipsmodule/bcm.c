@@ -24,9 +24,9 @@
 #include <unistd.h>
 #endif
 
-// On Windows place the bcm code in a specific section that uses Grouped Sections
-// to control the order. $b section will place bcm in between the start/end markers
-// which are in $a and $z.
+// On Windows place the bcm code in a specific section that uses Grouped
+// Sections to control the order. $b section will place bcm in between the
+// start/end markers which are in $a and $z.
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
@@ -71,18 +71,18 @@
 #include "cipher/e_aes.c"
 #include "cipher/e_aesccm.c"
 
-#include "cpucap/internal.h"
 #include "cpucap/cpu_aarch64.c"
-#include "cpucap/cpu_aarch64_sysreg.c"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_linux.c"
 #include "cpucap/cpu_aarch64_openbsd.c"
+#include "cpucap/cpu_aarch64_sysreg.c"
 #include "cpucap/cpu_aarch64_win.c"
 #include "cpucap/cpu_arm_freebsd.c"
 #include "cpucap/cpu_arm_linux.c"
 #include "cpucap/cpu_intel.c"
 #include "cpucap/cpu_ppc64le.c"
+#include "cpucap/internal.h"
 
 #include "cmac/cmac.c"
 #include "curve25519/curve25519.c"
@@ -92,8 +92,6 @@
 #include "dh/dh.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
-#include "ecdh/ecdh.c"
-#include "ecdsa/ecdsa.c"
 #include "ec/ec.c"
 #include "ec/ec_key.c"
 #include "ec/ec_montgomery.c"
@@ -101,8 +99,8 @@
 #include "ec/felem.c"
 #include "ec/oct.c"
 #include "ec/p224-64.c"
-#include "ec/p256.c"
 #include "ec/p256-nistz.c"
+#include "ec/p256.c"
 #include "ec/p384.c"
 #include "ec/p521.c"
 #include "ec/scalar.c"
@@ -110,6 +108,8 @@
 #include "ec/simple_mul.c"
 #include "ec/util.c"
 #include "ec/wnaf.c"
+#include "ecdh/ecdh.c"
+#include "ecdsa/ecdsa.c"
 #include "evp/digestsign.c"
 #include "evp/evp.c"
 #include "evp/evp_ctx.c"
@@ -135,8 +135,8 @@
 #include "modes/gcm.c"
 #include "modes/gcm_nohw.c"
 #include "modes/ofb.c"
-#include "modes/xts.c"
 #include "modes/polyval.c"
+#include "modes/xts.c"
 #include "pbkdf/pbkdf.c"
 #include "pqdsa/pqdsa.c"
 #include "rand/ctrdrbg.c"
@@ -164,13 +164,13 @@
 
 #if !defined(OPENSSL_ASAN)
 
-static const void* function_entry_ptr(const void* func_sym) {
+static const void *function_entry_ptr(const void *func_sym) {
 #if defined(OPENSSL_PPC64BE)
   // Function pointers on ppc64 point to a function descriptor.
   // https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-ADDRESS
-  return (const void*)(((uint64_t *)func_sym)[0]);
+  return (const void *)(((uint64_t *)func_sym)[0]);
 #else
-  return (const void*)func_sym;
+  return (const void *)func_sym;
 #endif
 }
 
@@ -187,18 +187,22 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 
 #define STRING_POINTER_LENGTH 18
 #define MAX_FUNCTION_NAME 32
-#define ASSERT_WITHIN_MSG "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n"
-#define MAX_WITHIN_MSG_LEN sizeof(ASSERT_WITHIN_MSG) + (3 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
-#define ASSERT_OUTSIDE_MSG "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n"
-#define MAX_OUTSIDE_MSG_LEN sizeof(ASSERT_OUTSIDE_MSG) + (4 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
+#define ASSERT_WITHIN_MSG \
+  "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n"
+#define MAX_WITHIN_MSG_LEN \
+  sizeof(ASSERT_WITHIN_MSG) + (3 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
+#define ASSERT_OUTSIDE_MSG \
+  "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n"
+#define MAX_OUTSIDE_MSG_LEN \
+  sizeof(ASSERT_OUTSIDE_MSG) + (4 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
 // assert_within is used to sanity check that certain symbols are within the
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
 static void assert_within(const void *start, const void *symbol,
                           const char *symbol_name, const void *end) {
-  const uintptr_t start_val = (uintptr_t) start;
-  const uintptr_t symbol_val = (uintptr_t) symbol;
-  const uintptr_t end_val = (uintptr_t) end;
+  const uintptr_t start_val = (uintptr_t)start;
+  const uintptr_t symbol_val = (uintptr_t)symbol;
+  const uintptr_t end_val = (uintptr_t)end;
 
   if (start_val <= symbol_val && symbol_val < end_val) {
     return;
@@ -206,15 +210,16 @@ static void assert_within(const void *start, const void *symbol,
 
   assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
   char message[MAX_WITHIN_MSG_LEN] = {0};
-  snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start, symbol, end);
+  snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start,
+           symbol, end);
   AWS_LC_FIPS_failure(message);
 }
 
 static void assert_not_within(const void *start, const void *symbol,
-                          const char *symbol_name, const void *end) {
-  const uintptr_t start_val = (uintptr_t) start;
-  const uintptr_t symbol_val = (uintptr_t) symbol;
-  const uintptr_t end_val = (uintptr_t) end;
+                              const char *symbol_name, const void *end) {
+  const uintptr_t start_val = (uintptr_t)start;
+  const uintptr_t symbol_val = (uintptr_t)symbol;
+  const uintptr_t end_val = (uintptr_t)end;
 
   if (start_val >= symbol_val || symbol_val > end_val) {
     return;
@@ -222,11 +227,13 @@ static void assert_not_within(const void *start, const void *symbol,
 
   assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
   char message[MAX_WITHIN_MSG_LEN] = {0};
-  snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol, start, symbol, end);
+  snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol,
+           start, symbol, end);
   AWS_LC_FIPS_failure(message);
 }
 
-// TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
+// TODO: Re-enable once all data has been moved out of .text segments
+// CryptoAlg-2360
 #if 0
 //#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
@@ -254,16 +261,17 @@ static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
 static void BORINGSSL_bcm_power_on_self_test(void);
-__declspec(allocate(".CRT$XCU")) void(*fips_library_init_constructor)(void) =
+__declspec(allocate(".CRT$XCU")) void (*fips_library_init_constructor)(void) =
     BORINGSSL_bcm_power_on_self_test;
 #else
-static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor));
+static void BORINGSSL_bcm_power_on_self_test(void) __attribute__((constructor));
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-// TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
-// PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
-// to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
+// TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to
+// support PPC64BE that has VCRYPTO capability. In that case, add `||
+// defined(OPENSSL_PPC64BE)` to `#if defined(OPENSSL_PPC64LE)` wherever it
+// occurs.
 #if defined(HAS_OPENSSL_CPUID_SETUP) && !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
 #endif
@@ -297,10 +305,14 @@ int BORINGSSL_integrity_test(void) {
   assert_within(start, function_entry_ptr(RAND_bytes), "RAND_bytes", end);
   assert_within(start, function_entry_ptr(EC_GROUP_cmp), "EC_GROUP_cmp", end);
   assert_within(start, function_entry_ptr(SHA256_Update), "SHA256_Update", end);
-  assert_within(start, function_entry_ptr(ECDSA_do_verify), "ECDSA_do_verify", end);
-  assert_within(start, function_entry_ptr(EVP_AEAD_CTX_seal), "EVP_AEAD_CTX_seal", end);
-  assert_not_within(start, function_entry_ptr(OPENSSL_cleanse), "OPENSSL_cleanse", end);
-  assert_not_within(start, function_entry_ptr(CRYPTO_chacha_20), "CRYPTO_chacha_20", end);
+  assert_within(start, function_entry_ptr(ECDSA_do_verify), "ECDSA_do_verify",
+                end);
+  assert_within(start, function_entry_ptr(EVP_AEAD_CTX_seal),
+                "EVP_AEAD_CTX_seal", end);
+  assert_not_within(start, function_entry_ptr(OPENSSL_cleanse),
+                    "OPENSSL_cleanse", end);
+  assert_not_within(start, function_entry_ptr(CRYPTO_chacha_20),
+                    "CRYPTO_chacha_20", end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   assert_not_within(start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", end);
 #elif defined(OPENSSL_AARCH64)
@@ -318,11 +330,14 @@ int BORINGSSL_integrity_test(void) {
 
   assert_within(rodata_start, kPrimes, "kPrimes", rodata_end);
   assert_within(rodata_start, kP256Field, "kP256Field", rodata_end);
-  assert_within(rodata_start, kPKCS1SigPrefixes, "kPKCS1SigPrefixes", rodata_end);
+  assert_within(rodata_start, kPKCS1SigPrefixes, "kPKCS1SigPrefixes",
+                rodata_end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  assert_not_within(rodata_start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", rodata_end);
+  assert_not_within(rodata_start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P",
+                    rodata_end);
 #elif defined(OPENSSL_AARCH64)
-  assert_not_within(rodata_start, &OPENSSL_armcap_P, "OPENSSL_armcap_P", rodata_end);
+  assert_not_within(rodata_start, &OPENSSL_armcap_P, "OPENSSL_armcap_P",
+                    rodata_end);
 #endif
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
@@ -332,8 +347,7 @@ int BORINGSSL_integrity_test(void) {
 
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
-  if (!boringssl_self_test_sha256() ||
-      !boringssl_self_test_hmac_sha256()) {
+  if (!boringssl_self_test_sha256() || !boringssl_self_test_hmac_sha256()) {
     return 0;
   }
 
@@ -372,25 +386,27 @@ int BORINGSSL_integrity_test(void) {
     fprintf(stderr, "HMAC failed.\n");
     return 0;
   }
-  HMAC_CTX_cleanse(&hmac_ctx); // FIPS 140-3, AS05.10.
+  HMAC_CTX_cleanse(&hmac_ctx);  // FIPS 140-3, AS05.10.
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
   // Check the integrity but don't call AWS_LC_FIPS_failure or return 0
-  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", false);
+  check_test_optional_abort(expected, result, sizeof(result),
+                            "FIPS integrity test", false);
 #else
-  // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which will
-  // result in an abort
-  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
+  // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which
+  // will result in an abort
+  check_test_optional_abort(expected, result, sizeof(result),
+                            "FIPS integrity test", true);
 #endif
 
-  OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
+  OPENSSL_cleanse(result, sizeof(result));  // FIPS 140-3, AS05.10.
   return 1;
 }
 #endif  // OPENSSL_ASAN
 
-void AWS_LC_FIPS_failure(const char* message) {
+void AWS_LC_FIPS_failure(const char *message) {
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
   fflush(stderr);
   for (;;) {
@@ -399,8 +415,8 @@ void AWS_LC_FIPS_failure(const char* message) {
   }
 }
 
-#else  // BORINGSSL_FIPS
-void AWS_LC_FIPS_failure(const char* message) {
+#else   // BORINGSSL_FIPS
+void AWS_LC_FIPS_failure(const char *message) {
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
   fflush(stderr);
 }
@@ -428,7 +444,5 @@ void AWS_LC_FIPS_failure(const char* message) {
 // don't expect to happen with significant probability. In case it happens, the
 // application would have to call the |CRYPTO_library_init| function itself to
 // ensure the initialization is done.
-void dummy_func_for_constructor(void) {
-    CRYPTO_library_init();
-}
+void dummy_func_for_constructor(void) { CRYPTO_library_init(); }
 #endif

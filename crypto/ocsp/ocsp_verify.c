@@ -434,7 +434,8 @@ int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
     return 0;
   }
 
-  // Find |signer| from |certs| or |req->optionalSignature->certs| against criteria.
+  // Find |signer| from |certs| or |req->optionalSignature->certs| against
+  // criteria.
   X509 *signer = NULL;
   int signer_status =
       ocsp_req_find_signer(&signer, req, gen->d.directoryName, certs, flags);

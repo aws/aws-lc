@@ -118,13 +118,13 @@
 #include <openssl/thread.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
-#include "../cpucap/internal.h"
 #include "../../internal.h"
+#include "../cpucap/internal.h"
+#include "internal.h"
 
-#if !defined(OPENSSL_NO_ASM) &&                          \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) || \
-     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
+#if !defined(OPENSSL_NO_ASM) &&                               \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||      \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) && \
     defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
 
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
@@ -146,9 +146,7 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
 
 #else
 
-OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
-  return 0;
-}
+OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) { return 0; }
 
 #endif
 
@@ -187,8 +185,7 @@ BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, const BN_MONT_CTX *from) {
     return to;
   }
 
-  if (!BN_copy(&to->RR, &from->RR) ||
-      !BN_copy(&to->N, &from->N)) {
+  if (!BN_copy(&to->RR, &from->RR) || !BN_copy(&to->N, &from->N)) {
     return NULL;
   }
   to->n0[0] = from->n0[0];
@@ -275,8 +272,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
 
 BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod, BN_CTX *ctx) {
   BN_MONT_CTX *mont = BN_MONT_CTX_new();
-  if (mont == NULL ||
-      !BN_MONT_CTX_set(mont, mod, ctx)) {
+  if (mont == NULL || !BN_MONT_CTX_set(mont, mod, ctx)) {
     BN_MONT_CTX_free(mont);
     return NULL;
   }
@@ -285,8 +281,7 @@ BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod, BN_CTX *ctx) {
 
 BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod, BN_CTX *ctx) {
   BN_MONT_CTX *mont = BN_MONT_CTX_new();
-  if (mont == NULL ||
-      !bn_mont_ctx_set_N_and_n0(mont, mod) ||
+  if (mont == NULL || !bn_mont_ctx_set_N_and_n0(mont, mod) ||
       !bn_mont_ctx_set_RR_consttime(mont, ctx)) {
     BN_MONT_CTX_free(mont);
     return NULL;
@@ -363,8 +358,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   }
 
   int max = 2 * n->width;  // carry is stored separately
-  if (!bn_resize_words(r, max) ||
-      !bn_wexpand(ret, n->width)) {
+  if (!bn_resize_words(r, max) || !bn_wexpand(ret, n->width)) {
     return 0;
   }
 
@@ -380,8 +374,7 @@ int BN_from_montgomery(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont,
 
   BN_CTX_start(ctx);
   t = BN_CTX_get(ctx);
-  if (t == NULL ||
-      !BN_copy(t, a)) {
+  if (t == NULL || !BN_copy(t, a)) {
     goto err;
   }
 
@@ -462,7 +455,6 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
                                            const BN_ULONG *bp,
                                            const BN_ULONG *np,
                                            const BN_ULONG *n0, size_t num) {
-
 #if defined(BN_MONTGOMERY_S2N_BIGNUM_CAPABLE)
 
   // t is a temporary buffer used by Karatsuba multiplication.
@@ -516,12 +508,13 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   // 2. Optionally subtract the result if the (result of step 1) >= m.
   //    The comparison is true if either A or B holds:
   //    A. The result of step 1 >= 2^(64*num), meaning that bignum_emontredc_8n
-  //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m holds.
+  //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m
+  //       holds.
   //    B. The result of step 1 fits in 2^(64*num), and the result >= m.
-  uint64_t c = CRYPTO_is_NEON_capable() ? 
-               bignum_emontredc_8n_neon(num, mulres, np, w) :
-               bignum_emontredc_8n(num, mulres, np, w); // c: case A
-  c |= bignum_ge(num, mulres + num, num, np);  // c: case B
+  uint64_t c = CRYPTO_is_NEON_capable()
+                   ? bignum_emontredc_8n_neon(num, mulres, np, w)
+                   : bignum_emontredc_8n(num, mulres, np, w);  // c: case A
+  c |= bignum_ge(num, mulres + num, num, np);                  // c: case B
   // Optionally subtract and store the result at rp
   bignum_optsub(num, rp, mulres + num, c, np);
 
@@ -546,9 +539,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 #if defined(OPENSSL_BN_ASM_MONT)
   // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
   int num = mont->N.width;
-  if (num >= (128 / BN_BITS2) &&
-      a->width == num &&
-      b->width == num) {
+  if (num >= (128 / BN_BITS2) && a->width == num && b->width == num) {
     if (!bn_wexpand(r, num)) {
       return 0;
     }
@@ -578,8 +569,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 }
 
 int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont) {
-  return !BN_is_negative(bn) &&
-         bn_fits_in_words(bn, mont->N.width);
+  return !BN_is_negative(bn) && bn_fits_in_words(bn, mont->N.width);
 }
 
 void bn_to_montgomery_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
@@ -635,8 +625,7 @@ void bn_mod_mul_montgomery_small(BN_ULONG *r, const BN_ULONG *a,
 
 #if defined(OPENSSL_BN_ASM_MONT) && defined(OPENSSL_X86_64)
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                const BN_ULONG *np, const BN_ULONG *n0, size_t num)
-{
+                const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
 #if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ap == bp && bn_sqr8x_mont_capable(num)) {
     return bn_sqr8x_mont(rp, ap, bn_mulx_adx_capable(), np, n0, num);
@@ -644,7 +633,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   if (bn_mulx4x_mont_capable(num)) {
     return bn_mulx4x_mont(rp, ap, bp, np, n0, num);
   }
-#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#endif  // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (bn_mul4x_mont_capable(num)) {
     return bn_mul4x_mont(rp, ap, bp, np, n0, num);
   }

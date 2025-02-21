@@ -62,9 +62,9 @@
 #include <openssl/digest.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
+#include "internal.h"
 
 #include "../md5/internal.h"
 #include "../sha/internal.h"
@@ -76,7 +76,7 @@ typedef int (*HashInitFromState)(void *, const uint8_t *, uint64_t);
 typedef int (*HashGetState)(void *, uint8_t *, uint64_t *);
 
 struct hmac_methods_st {
-  const EVP_MD* evp_md;
+  const EVP_MD *evp_md;
   size_t chaining_length;  // chaining length in bytes
   HashInit init;
   HashUpdate update;
@@ -85,10 +85,12 @@ struct hmac_methods_st {
   HashGetState get_state;
 };
 
-// We need trampolines from the generic void* methods we use to the properly typed underlying methods.
-// Without these methods some control flow integrity checks will fail because the function pointer types
-// do not exactly match the destination functions. (Namely function pointers use void* pointers for the contexts)
-// while the destination functions have specific pointer types for the relevant contexts.
+// We need trampolines from the generic void* methods we use to the properly
+// typed underlying methods. Without these methods some control flow integrity
+// checks will fail because the function pointer types do not exactly match the
+// destination functions. (Namely function pointers use void* pointers for the
+// contexts) while the destination functions have specific pointer types for the
+// relevant contexts.
 //
 // This also includes hash-specific static assertions as they can be added.
 #define MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_CTX, HASH_CBLOCK)             \
@@ -147,7 +149,8 @@ struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
 };
 
-#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)  {                        \
+#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)                           \
+  {                                                                          \
     out->methods[idx].evp_md = EVP_MD;                                       \
     out->methods[idx].chaining_length = HASH_NAME##_CHAINING_LENGTH;         \
     out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;           \
@@ -161,10 +164,11 @@ struct hmac_method_array_st {
   }
 
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
-  OPENSSL_memset((void*) out->methods, 0, sizeof(out->methods));
+  OPENSSL_memset((void *)out->methods, 0, sizeof(out->methods));
   int idx = 0;
-  // Since we search these linearly it helps (just a bit) to put the most common ones first.
-  // This isn't based on hard metrics and will not make a significant different on performance.
+  // Since we search these linearly it helps (just a bit) to put the most common
+  // ones first. This isn't based on hard metrics and will not make a
+  // significant different on performance.
   // FIXME: all hashes but SHA256 have been disabled to check first SHA256
   DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
   DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
@@ -177,9 +181,12 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
 }
 
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
-  const struct hmac_method_array_st *method_array = AWSLC_hmac_in_place_methods();
+  const struct hmac_method_array_st *method_array =
+      AWSLC_hmac_in_place_methods();
   const HmacMethods *methods = method_array->methods;
-  for (size_t idx = 0; idx < sizeof(method_array->methods) / sizeof(struct hmac_methods_st); idx++) {
+  for (size_t idx = 0;
+       idx < sizeof(method_array->methods) / sizeof(struct hmac_methods_st);
+       idx++) {
     if (methods[idx].evp_md == evp_md) {
       return &methods[idx];
     }
@@ -191,37 +198,47 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
 // (Pre/Post conditions):
 // HMAC_STATE_UNINITIALIZED: Uninitialized.
 // HMAC_STATE_INIT_NO_DATA: Initialized with an md and key. No data processed.
-//    This means that if init is called but nothing changes, we don't need to reset our state.
+//    This means that if init is called but nothing changes, we don't need to
+//    reset our state.
 // HMAC_STATE_IN_PROGRESS: Initialized with an md and key. Data processed.
 //    This means that if init is called we do need to reset state.
-// HMAC_STATE_READY_NEEDS_INIT: Identical to state HMAC_STATE_INIT_NO_DATA but API contract requires that Init be called prior to use.
-//    This is an optimization because we can leave the context in a state ready for use after completion.
-// HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY: Identical to state HMAC_STATE_READY_NEEDS_INIT but marked to allow precompute key export
+// HMAC_STATE_READY_NEEDS_INIT: Identical to state HMAC_STATE_INIT_NO_DATA but
+// API contract requires that Init be called prior to use.
+//    This is an optimization because we can leave the context in a state ready
+//    for use after completion.
+// HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY: Identical to state
+// HMAC_STATE_READY_NEEDS_INIT but marked to allow precompute key export
 //    This state is treated as HMAC_STATE_READY_NEEDS_INIT by Init/Update/Final.
-//    This state is the only state that in which a precompute key can be exported.
-//    This state is set by HMAC_set_precomputed_key_export.
-// other: Invalid state and likely a result of using unitialized memory. Treated the same as 0.
+//    This state is the only state that in which a precompute key can be
+//    exported. This state is set by HMAC_set_precomputed_key_export.
+// other: Invalid state and likely a result of using unitialized memory. Treated
+// the same as 0.
 //
-// While we are within HMAC methods we allow for the state value and actual state of the context to diverge.
+// While we are within HMAC methods we allow for the state value and actual
+// state of the context to diverge.
 
-// HMAC_STATE_UNINITIALIZED *MUST* remain `0` so that callers can do `HMAC_CTX ctx = {0};` to get a usable context.
+// HMAC_STATE_UNINITIALIZED *MUST* remain `0` so that callers can do `HMAC_CTX
+// ctx = {0};` to get a usable context.
 #define HMAC_STATE_UNINITIALIZED 0
 #define HMAC_STATE_INIT_NO_DATA 1
 #define HMAC_STATE_IN_PROGRESS 2
 #define HMAC_STATE_READY_NEEDS_INIT 3
 #define HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY 4
 
-// Static assertion to ensure that no one has changed the value of HMAC_STATE_UNINITIALIZED.
-// This really must stay with a zero value.
-OPENSSL_STATIC_ASSERT(HMAC_STATE_UNINITIALIZED == 0, HMAC_STATE_UNINITIALIZED_is_not_zero_t)
+// Static assertion to ensure that no one has changed the value of
+// HMAC_STATE_UNINITIALIZED. This really must stay with a zero value.
+OPENSSL_STATIC_ASSERT(HMAC_STATE_UNINITIALIZED == 0,
+                      HMAC_STATE_UNINITIALIZED_is_not_zero_t)
 
-// Indicates that a context has the md and methods configured and is ready to use
-#define hmac_ctx_is_initialized(ctx) ((HMAC_STATE_INIT_NO_DATA == (ctx)->state || HMAC_STATE_IN_PROGRESS == (ctx)->state))
+// Indicates that a context has the md and methods configured and is ready to
+// use
+#define hmac_ctx_is_initialized(ctx)           \
+  ((HMAC_STATE_INIT_NO_DATA == (ctx)->state || \
+    HMAC_STATE_IN_PROGRESS == (ctx)->state))
 
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
-  
   if (out == NULL) {
     // Prevent further work from being done
     return NULL;
@@ -236,8 +253,7 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
   FIPS_service_indicator_lock_state();
 
   result = HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) &&
-           HMAC_Update(&ctx, data, data_len) &&
-           HMAC_Final(&ctx, out, out_len);
+           HMAC_Update(&ctx, data, data_len) && HMAC_Final(&ctx, out, out_len);
 
   FIPS_service_indicator_unlock_state();
 
@@ -273,8 +289,7 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
       HMAC_get_precomputed_key(&ctx, precomputed_key, &precomputed_key_len) &&
       HMAC_Init_from_precomputed_key(&ctx, precomputed_key, precomputed_key_len,
                                      evp_md) &&
-      HMAC_Update(&ctx, data, data_len) &&
-      HMAC_Final(&ctx, out, out_len);
+      HMAC_Update(&ctx, data, data_len) && HMAC_Final(&ctx, out, out_len);
 
   FIPS_service_indicator_unlock_state();
 
@@ -294,15 +309,13 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
   }
 }
 
-void HMAC_CTX_init(HMAC_CTX *ctx) {
-  OPENSSL_memset(ctx, 0, sizeof(HMAC_CTX));
-}
+void HMAC_CTX_init(HMAC_CTX *ctx) { OPENSSL_memset(ctx, 0, sizeof(HMAC_CTX)); }
 
 HMAC_CTX *HMAC_CTX_new(void) {
   HMAC_CTX *ctx = OPENSSL_zalloc(sizeof(HMAC_CTX));
   if (ctx != NULL) {
     // NO-OP: struct already zeroed
-    //HMAC_CTX_init(ctx);
+    // HMAC_CTX_init(ctx);
   }
   return ctx;
 }
@@ -312,9 +325,7 @@ void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
   OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
 }
 
-void HMAC_CTX_cleanse(HMAC_CTX *ctx) {
-  HMAC_CTX_cleanup(ctx);
-}
+void HMAC_CTX_cleanse(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
 
 void HMAC_CTX_free(HMAC_CTX *ctx) {
   if (ctx == NULL) {
@@ -361,14 +372,16 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     // exist callers which intend the latter, but the former is an awkward edge
     // case. Fix to API to avoid this.
     if (key == NULL && (md == NULL || md == ctx->md)) {
-      // If nothing is changing then we can return without doing any further work.
+      // If nothing is changing then we can return without doing any further
+      // work.
       return 1;
     }
   }
 
-  // At this point we *know* we need to change things and rekey because either the key has changed
-  // or the md and they key has changed.
-  // (It is a misuse to just change the md so we also assume that the key changes when the md changes.)
+  // At this point we *know* we need to change things and rekey because either
+  // the key has changed or the md and they key has changed. (It is a misuse to
+  // just change the md so we also assume that the key changes when the md
+  // changes.)
 
   if (!hmac_ctx_set_md_methods(ctx, md)) {
     return 0;
@@ -391,7 +404,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     // Long keys are hashed.
     if (!methods->init(&ctx->md_ctx) ||
         !methods->update(&ctx->md_ctx, key, key_len) ||
-        !methods->finalize((uint8_t *) key_block, &ctx->md_ctx)) {
+        !methods->finalize((uint8_t *)key_block, &ctx->md_ctx)) {
       goto end;
     }
   } else {
@@ -422,7 +435,8 @@ end:
   OPENSSL_cleanse(key_block, EVP_MAX_MD_BLOCK_SIZE);
   FIPS_service_indicator_unlock_state();
   if (result != 1) {
-    // We're in some error state, so return our context to a known and well defined zero state.
+    // We're in some error state, so return our context to a known and well
+    // defined zero state.
     HMAC_CTX_cleanup(ctx);
   }
   return result;
@@ -462,7 +476,9 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   result = methods->finalize(out, &ctx->md_ctx);
   // Wipe out working state by initializing for next use
   OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
-  ctx->state = HMAC_STATE_READY_NEEDS_INIT; // Mark that we are ready for use but still need HMAC_Init_ex called.
+  ctx->state =
+      HMAC_STATE_READY_NEEDS_INIT;  // Mark that we are ready for use but still
+                                    // need HMAC_Init_ex called.
 end:
   FIPS_service_indicator_unlock_state();
   if (result) {
@@ -538,19 +554,20 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   // is false". Note this should not be necessary because get_state cannot fail.
   uint64_t o_ctx_n = 0;
 
-  const int ok = ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
+  const int ok =
+      ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
       ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n);
 
   // ok should always be true as in our setting: get_state should always be
   // successful since i_ctx/o_ctx have processed exactly one block
   assert(ok);
-  (void)ok; // avoid unused variable warning when asserts disabled
+  (void)ok;  // avoid unused variable warning when asserts disabled
 
   // Sanity check: we must have processed a single block at this time
   size_t block_size = EVP_MD_block_size(ctx->md);
   assert(8 * block_size == i_ctx_n);
   assert(8 * block_size == o_ctx_n);
-  (void)block_size; // avoid unused variable warning when asserts disabled
+  (void)block_size;  // avoid unused variable warning when asserts disabled
 
   // The context is ready to be used to compute HMAC values at this point.
   ctx->state = HMAC_STATE_INIT_NO_DATA;

@@ -272,8 +272,7 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   if (!FileTestReadInt(t, &mode, "mode") ||
       !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
       !FileTestReadInt(t, &aead_id_, "aead_id") ||
-      !t->GetBytes(&info_, "info") ||
-      !t->GetBytes(&secret_key_r_, "skRm") ||
+      !t->GetBytes(&info_, "info") || !t->GetBytes(&secret_key_r_, "skRm") ||
       !t->GetBytes(&public_key_r_, "pkRm") ||
       !t->GetBytes(&secret_key_e_, "skEm") ||
       !t->GetBytes(&public_key_e_, "pkEm")) {
@@ -351,8 +350,7 @@ TEST(HPKETest, RoundTrip) {
 
   // Generate the sender's keypair, for auth modes.
   ScopedEVP_HPKE_KEY sender_key;
-  ASSERT_TRUE(
-      EVP_HPKE_KEY_generate(sender_key.get(), kem));
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(sender_key.get(), kem));
   uint8_t public_key_s[X25519_PUBLIC_VALUE_LEN];
   size_t public_key_s_len;
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(sender_key.get(), public_key_s,

@@ -475,8 +475,9 @@ end:
 // Read a file that contains our certificate in "PEM" format, possibly followed
 // by a sequence of CA certificates that should be sent to the peer in the
 // Certificate message.
-static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl, const char *file) {
-  if(ctx == nullptr && ssl == nullptr) {
+static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl,
+                                      const char *file) {
+  if (ctx == nullptr && ssl == nullptr) {
     return 0;
   }
 

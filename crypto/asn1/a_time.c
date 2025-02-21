@@ -177,7 +177,7 @@ int ASN1_TIME_set_string(ASN1_TIME *s, const char *str) {
 
 int ASN1_TIME_set_string_X509(ASN1_TIME *s, const char *str) {
   CBS cbs;
-  CBS_init(&cbs, (const uint8_t*)str, strlen(str));
+  CBS_init(&cbs, (const uint8_t *)str, strlen(str));
   int type;
   struct tm tm;
   if (CBS_parse_utc_time(&cbs, /*out_tm=*/NULL,

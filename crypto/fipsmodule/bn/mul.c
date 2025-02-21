@@ -64,8 +64,8 @@
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 #define BN_MUL_RECURSIVE_SIZE_NORMAL 16
@@ -182,9 +182,7 @@ int bn_abs_sub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   int r_len = a->width < b->width ? b->width : a->width;
   BN_CTX_start(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  int ok = tmp != NULL &&
-           bn_wexpand(r, r_len) &&
-           bn_wexpand(tmp, r_len);
+  int ok = tmp != NULL && bn_wexpand(r, r_len) && bn_wexpand(tmp, r_len);
   if (ok) {
     bn_abs_sub_part_words(r->d, a->d, b->d, cl, dl, tmp->d);
     r->width = r_len;
@@ -209,8 +207,8 @@ static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   // |n2| is a power of two.
   assert(n2 != 0 && (n2 & (n2 - 1)) == 0);
   // Check |dna| and |dnb| are in range.
-  assert(-BN_MUL_RECURSIVE_SIZE_NORMAL/2 <= dna && dna <= 0);
-  assert(-BN_MUL_RECURSIVE_SIZE_NORMAL/2 <= dnb && dnb <= 0);
+  assert(-BN_MUL_RECURSIVE_SIZE_NORMAL / 2 <= dna && dna <= 0);
+  assert(-BN_MUL_RECURSIVE_SIZE_NORMAL / 2 <= dnb && dnb <= 0);
 
   // Only call bn_mul_comba 8 if n2 == 8 and the
   // two arrays are complete [steve]
@@ -472,8 +470,7 @@ static int bn_mul_impl(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
         // algorithms. Is this optimization necessary? See notes in
         // https://boringssl-review.googlesource.com/q/I0bd604e2cd6a75c266f64476c23a730ca1721ea6
         assert(al >= j && bl >= j);
-        if (!bn_wexpand(t, j * 8) ||
-            !bn_wexpand(rr, j * 4)) {
+        if (!bn_wexpand(t, j * 8) || !bn_wexpand(rr, j * 4)) {
           goto err;
         }
         bn_mul_part_recursive(rr->d, a->d, b->d, j, al - j, bl - j, t->d);
@@ -481,8 +478,7 @@ static int bn_mul_impl(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
         // al <= j && bl <= j. Additionally, we know j <= al or j <= bl, so one
         // of al - j or bl - j is zero. The other, by the bound on |i| above, is
         // zero or -1. Thus, we can use |bn_mul_recursive|.
-        if (!bn_wexpand(t, j * 4) ||
-            !bn_wexpand(rr, j * 2)) {
+        if (!bn_wexpand(t, j * 4) || !bn_wexpand(rr, j * 2)) {
           goto err;
         }
         bn_mul_recursive(rr->d, a->d, b->d, j, al - j, bl - j, t->d);

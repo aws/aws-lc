@@ -19,9 +19,7 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <sys/select.h>
 #include <unistd.h>
-static int closesocket(int sock) {
-  return close(sock);
-}
+static int closesocket(int sock) { return close(sock); }
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
@@ -39,92 +37,119 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 static const argument_t kArguments[] = {
     {
-        "-connect", kRequiredArgument,
+        "-connect",
+        kRequiredArgument,
         "The hostname and port of the server to connect to, e.g. foo.com:443",
     },
     {
-        "-cipher", kOptionalArgument,
+        "-cipher",
+        kOptionalArgument,
         "An OpenSSL-style cipher suite string that configures the offered "
         "ciphers",
     },
     {
-        "-curves", kOptionalArgument,
+        "-curves",
+        kOptionalArgument,
         "An OpenSSL-style ECDH curves list that configures the offered curves",
     },
     {
-        "-sigalgs", kOptionalArgument,
+        "-sigalgs",
+        kOptionalArgument,
         "An OpenSSL-style signature algorithms list that configures the "
         "signature algorithm preferences",
     },
     {
-        "-max-version", kOptionalArgument,
+        "-max-version",
+        kOptionalArgument,
         "The maximum acceptable protocol version",
     },
     {
-        "-min-version", kOptionalArgument,
+        "-min-version",
+        kOptionalArgument,
         "The minimum acceptable protocol version",
     },
     {
-        "-server-name", kOptionalArgument, "The server name to advertise",
+        "-server-name",
+        kOptionalArgument,
+        "The server name to advertise",
     },
     {
-        "-ech-grease", kBooleanArgument, "Enable ECH GREASE",
+        "-ech-grease",
+        kBooleanArgument,
+        "Enable ECH GREASE",
     },
     {
-        "-ech-config-list", kOptionalArgument,
+        "-ech-config-list",
+        kOptionalArgument,
         "Path to file containing serialized ECHConfigs",
     },
     {
-        "-select-next-proto", kOptionalArgument,
+        "-select-next-proto",
+        kOptionalArgument,
         "An NPN protocol to select if the server supports NPN",
     },
     {
-        "-alpn-protos", kOptionalArgument,
+        "-alpn-protos",
+        kOptionalArgument,
         "A comma-separated list of ALPN protocols to advertise",
     },
     {
-        "-fallback-scsv", kBooleanArgument, "Enable FALLBACK_SCSV",
+        "-fallback-scsv",
+        kBooleanArgument,
+        "Enable FALLBACK_SCSV",
     },
     {
-        "-ocsp-stapling", kBooleanArgument,
+        "-ocsp-stapling",
+        kBooleanArgument,
         "Advertise support for OCSP stabling",
     },
     {
-        "-signed-certificate-timestamps", kBooleanArgument,
+        "-signed-certificate-timestamps",
+        kBooleanArgument,
         "Advertise support for signed certificate timestamps",
     },
     {
-        "-channel-id-key", kOptionalArgument,
+        "-channel-id-key",
+        kOptionalArgument,
         "The key to use for signing a channel ID",
     },
     {
-        "-false-start", kBooleanArgument, "Enable False Start",
+        "-false-start",
+        kBooleanArgument,
+        "Enable False Start",
     },
     {
-        "-session-in", kOptionalArgument,
+        "-session-in",
+        kOptionalArgument,
         "A file containing a session to resume.",
     },
     {
-        "-session-out", kOptionalArgument,
+        "-session-out",
+        kOptionalArgument,
         "A file to write the negotiated session to.",
     },
     {
-        "-key", kOptionalArgument,
+        "-key",
+        kOptionalArgument,
         "PEM-encoded file containing the private key.",
     },
     {
-        "-cert", kOptionalArgument,
+        "-cert",
+        kOptionalArgument,
         "PEM-encoded file containing the leaf certificate and optional "
         "certificate chain. This is taken from the -key argument if this "
         "argument is not provided.",
     },
     {
-        "-starttls", kOptionalArgument,
+        "-starttls",
+        kOptionalArgument,
         "A STARTTLS mini-protocol to run before the TLS handshake. Supported"
         " values: 'smtp'",
     },
     {
-        "-grease", kBooleanArgument, "Enable GREASE",
+        "-grease",
+        kBooleanArgument,
+        "Enable GREASE",
     },
     {
         "-permute-extensions",
@@ -132,40 +157,50 @@ static const argument_t kArguments[] = {
         "Permute extensions in handshake messages",
     },
     {
-        "-test-resumption", kBooleanArgument,
+        "-test-resumption",
+        kBooleanArgument,
         "Connect to the server twice. The first connection is closed once a "
         "session is established. The second connection offers it.",
     },
     {
-        "-root-certs", kOptionalArgument,
+        "-root-certs",
+        kOptionalArgument,
         "A filename containing one or more PEM root certificates. Implies that "
         "verification is required.",
     },
     {
-        "-root-cert-dir", kOptionalArgument,
+        "-root-cert-dir",
+        kOptionalArgument,
         "A directory containing one or more root certificate PEM files in "
         "OpenSSL's hashed-directory format. Implies that verification is "
         "required.",
     },
     {
-        "-early-data", kOptionalArgument, "Enable early data. The argument to "
+        "-early-data",
+        kOptionalArgument,
+        "Enable early data. The argument to "
         "this flag is the early data to send or if it starts with '@', the "
         "file to read from for early data.",
     },
     {
-        "-http-tunnel", kOptionalArgument,
+        "-http-tunnel",
+        kOptionalArgument,
         "An HTTP proxy server to tunnel the TCP connection through",
     },
     {
-        "-renegotiate-freely", kBooleanArgument,
+        "-renegotiate-freely",
+        kBooleanArgument,
         "Allow renegotiations from the peer.",
     },
     {
-        "-debug", kBooleanArgument,
+        "-debug",
+        kBooleanArgument,
         "Print debug information about the handshake",
     },
     {
-        "", kOptionalArgument, "",
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 
@@ -174,13 +209,14 @@ static bssl::UniquePtr<EVP_PKEY> LoadPrivateKey(const std::string &file) {
   if (!bio || !BIO_read_filename(bio.get(), file.c_str())) {
     return nullptr;
   }
-  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr,
-                                 nullptr, nullptr));
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
   return pkey;
 }
 
-static int NextProtoSelectCallback(SSL* ssl, uint8_t** out, uint8_t* outlen,
-                                   const uint8_t* in, unsigned inlen, void* arg) {
+static int NextProtoSelectCallback(SSL *ssl, uint8_t **out, uint8_t *outlen,
+                                   const uint8_t *in, unsigned inlen,
+                                   void *arg) {
   *out = reinterpret_cast<uint8_t *>(arg);
   *outlen = strlen(reinterpret_cast<const char *>(arg));
   return SSL_TLSEXT_ERR_OK;
@@ -268,13 +304,15 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
     fprintf(stdout, "---\nCertificate chain\n");
     for (size_t i = 0; i < sk_X509_num(sk); i++) {
       fprintf(stdout, "%2zu s:", i);
-      if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(sk_X509_value(sk, i)),
-                            0, XN_FLAG_ONELINE) < 0) {
+      if (X509_NAME_print_ex_fp(stdout,
+                                X509_get_subject_name(sk_X509_value(sk, i)), 0,
+                                XN_FLAG_ONELINE) < 0) {
         fprintf(stderr, "Error: Printing subject name failed");
       }
       fprintf(stdout, "\n   i:");
-      if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(sk_X509_value(sk, i)),
-                            0, XN_FLAG_ONELINE) < 0) {
+      if (X509_NAME_print_ex_fp(stdout,
+                                X509_get_issuer_name(sk_X509_value(sk, i)), 0,
+                                XN_FLAG_ONELINE) < 0) {
         fprintf(stderr, "Error: Printing issuer name failed");
       }
       fprintf(stdout, "\n");
@@ -290,13 +328,13 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
     fprintf(stdout, "Server certificate\n");
     PEM_write_X509(stdout, peer.get());
     fprintf(stdout, "subject=");
-    if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(peer.get()),
-                       0, XN_FLAG_ONELINE) < 0) {
+    if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(peer.get()), 0,
+                              XN_FLAG_ONELINE) < 0) {
       fprintf(stderr, "Error: Printing subject name failed");
     }
     fprintf(stdout, "\n\nissuer=");
-    if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(peer.get()),
-                          0, XN_FLAG_ONELINE) < 0) {
+    if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(peer.get()), 0,
+                              XN_FLAG_ONELINE) < 0) {
       fprintf(stderr, "Error: Printing issuer name failed");
     }
     fprintf(stdout, "\n\n---\n");
@@ -304,22 +342,24 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
     fprintf(stdout, "no peer certificate available\n");
   }
 
-  // TODO (aws-lc): we are missing some functions needed to print the following data
+  // TODO (aws-lc): we are missing some functions needed to print the following
+  // data
   //  print_ca_names(bio, s);
   //  ssl_print_sigalgs(bio, s);
   //  ssl_print_tmp_key(bio, s);
 
   fprintf(stdout,
-             "---\nSSL handshake has read %d bytes "
-             "and written %d bytes\n",
-        (int)BIO_number_read(SSL_get_rbio(ssl)),
-        (int)BIO_number_written(SSL_get_wbio(ssl)));
+          "---\nSSL handshake has read %d bytes "
+          "and written %d bytes\n",
+          (int)BIO_number_read(SSL_get_rbio(ssl)),
+          (int)BIO_number_written(SSL_get_wbio(ssl)));
   print_verify_details(ssl);
 }
 
 static bool DoConnection(SSL_CTX *ctx,
                          std::map<std::string, std::string> args_map,
-                         bool (*cb)(SSL *ssl, int sock), bool is_openssl_s_client) {
+                         bool (*cb)(SSL *ssl, int sock),
+                         bool is_openssl_s_client) {
   int sock = -1;
   if (args_map.count("-http-tunnel") != 0) {
     if (!Connect(&sock, args_map["-http-tunnel"], is_openssl_s_client)) {
@@ -339,7 +379,7 @@ static bool DoConnection(SSL_CTX *ctx,
   }
 
   if (args_map.count("-starttls") != 0) {
-    const std::string& starttls = args_map["-starttls"];
+    const std::string &starttls = args_map["-starttls"];
     if (starttls == "smtp") {
       if (!DoSMTPStartTLS(sock)) {
         closesocket(sock);
@@ -382,15 +422,15 @@ static bool DoConnection(SSL_CTX *ctx,
   }
 
   if (args_map.count("-session-in") != 0) {
-    bssl::UniquePtr<BIO> in(BIO_new_file(args_map["-session-in"].c_str(),
-                                         "rb"));
+    bssl::UniquePtr<BIO> in(
+        BIO_new_file(args_map["-session-in"].c_str(), "rb"));
     if (!in) {
       fprintf(stderr, "Error reading session\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    bssl::UniquePtr<SSL_SESSION> session(PEM_read_bio_SSL_SESSION(in.get(),
-                                         nullptr, nullptr, nullptr));
+    bssl::UniquePtr<SSL_SESSION> session(
+        PEM_read_bio_SSL_SESSION(in.get(), nullptr, nullptr, nullptr));
     if (!session) {
       fprintf(stderr, "Error reading session\n");
       ERR_print_errors_fp(stderr);
@@ -448,7 +488,7 @@ static bool DoConnection(SSL_CTX *ctx,
     fprintf(stderr, "Connected.\n");
     bssl::UniquePtr<BIO> bio_stderr(BIO_new_fp(stderr, BIO_NOCLOSE));
     PrintConnectionInfo(bio_stderr.get(), ssl.get());
-  } else { // print for openssl
+  } else {  // print for openssl
     PrintOpenSSLConnectionInfo(ssl.get(), args_map.count("-showcerts"));
   }
 
@@ -469,8 +509,7 @@ static void InfoCallback(const SSL *ssl, int type, int value) {
   }
 }
 
-static int verify_cb(int ok, X509_STORE_CTX *ctx)
-{
+static int verify_cb(int ok, X509_STORE_CTX *ctx) {
   X509 *err_cert = X509_STORE_CTX_get_current_cert(ctx);
   int err = X509_STORE_CTX_get_error(ctx);
   int depth = X509_STORE_CTX_get_error_depth(ctx);
@@ -478,9 +517,8 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
 
   BIO_printf(bio_err.get(), "depth=%d ", depth);
   if (err_cert != NULL) {
-    X509_NAME_print_ex(bio_err.get(),
-                       X509_get_subject_name(err_cert),
-                       0, XN_FLAG_ONELINE);
+    X509_NAME_print_ex(bio_err.get(), X509_get_subject_name(err_cert), 0,
+                       XN_FLAG_ONELINE);
     BIO_puts(bio_err.get(), "\n");
   } else {
     BIO_puts(bio_err.get(), "<no cert>\n");
@@ -496,8 +534,8 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
     case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
       if (err_cert != NULL) {
         BIO_puts(bio_err.get(), "issuer= ");
-        X509_NAME_print_ex(bio_err.get(), X509_get_issuer_name(err_cert),
-                           0, XN_FLAG_ONELINE);
+        X509_NAME_print_ex(bio_err.get(), X509_get_issuer_name(err_cert), 0,
+                           XN_FLAG_ONELINE);
         BIO_puts(bio_err.get(), "\n");
       }
       ok = 1;
@@ -542,7 +580,8 @@ bool Client(const std::vector<std::string> &args) {
   return DoClient(args_map, false);
 }
 
-bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client) {
+bool DoClient(std::map<std::string, std::string> args_map,
+              bool is_openssl_s_client) {
   if (!InitSocketLibrary()) {
     return false;
   }
@@ -727,8 +766,8 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
   }
 
   if (!certPathFlag.empty()) {
-    if (!SSL_CTX_load_verify_locations(
-            ctx.get(), nullptr, args_map[certPathFlag].c_str())) {
+    if (!SSL_CTX_load_verify_locations(ctx.get(), nullptr,
+                                       args_map[certPathFlag].c_str())) {
       fprintf(stderr, "Failed to load root certificates.\n");
       ERR_print_errors_fp(stderr);
       return false;
@@ -738,14 +777,15 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
   if (args_map.count("-verify") != 0) {
     unsigned int depth;
     if (!GetUnsigned(&depth, "-verify", 0, args_map)) {
-      fprintf(stderr, "s_client: Can't parse \"%s\" as a number\n", args_map.find("-verify")->second.c_str());
+      fprintf(stderr, "s_client: Can't parse \"%s\" as a number\n",
+              args_map.find("-verify")->second.c_str());
       return false;
     }
     fprintf(stdout, "verify depth is %d\n", (int)depth);
     verify = SSL_VERIFY_PEER;
   }
 
-  if (is_openssl_s_client) { // openssl tool
+  if (is_openssl_s_client) {  // openssl tool
     SSL_CTX_set_verify(ctx.get(), verify, verify_cb);
   } else {
     SSL_CTX_set_verify(ctx.get(), verify, nullptr);
@@ -766,7 +806,8 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
       return false;
     }
 
-    if (!DoConnection(ctx.get(), args_map, &WaitForSession, is_openssl_s_client)) {
+    if (!DoConnection(ctx.get(), args_map, &WaitForSession,
+                      is_openssl_s_client)) {
       return false;
     }
   }

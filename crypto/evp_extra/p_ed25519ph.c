@@ -44,7 +44,7 @@ static void pkey_ed25519ph_cleanup(EVP_PKEY_CTX *ctx) {
   OPENSSL_free(dctx);
 }
 
-static int pkey_ed25519ph_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) { 
+static int pkey_ed25519ph_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   if (!pkey_ed25519ph_init(dst)) {
     return 0;
   }
@@ -78,7 +78,7 @@ static int pkey_ed25519ph_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
     return 0;
   }
 
-  if(tbslen < SHA512_DIGEST_LENGTH) {
+  if (tbslen < SHA512_DIGEST_LENGTH) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -86,7 +86,8 @@ static int pkey_ed25519ph_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
   ED25519PH_PKEY_CTX *dctx = ctx->data;
   GUARD_PTR(dctx);
 
-  if (!ED25519ph_sign_digest(sig, tbs, key->key, dctx->context, dctx->context_len)) {
+  if (!ED25519ph_sign_digest(sig, tbs, key->key, dctx->context,
+                             dctx->context_len)) {
     return 0;
   }
 
@@ -102,8 +103,8 @@ static int pkey_ed25519ph_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   GUARD_PTR(dctx);
 
   if (siglen != ED25519_SIGNATURE_LEN || tbslen < SHA512_DIGEST_LENGTH ||
-      !ED25519ph_verify_digest(tbs, sig,
-                               key->key + ED25519_PUBLIC_KEY_OFFSET, dctx->context, dctx->context_len)) {
+      !ED25519ph_verify_digest(tbs, sig, key->key + ED25519_PUBLIC_KEY_OFFSET,
+                               dctx->context, dctx->context_len)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }
@@ -139,7 +140,7 @@ static int pkey_ed25519ph_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       if (!params || !dctx) {
         return 0;
       }
-      if(dctx->context_len == 0) {
+      if (dctx->context_len == 0) {
         params->context = NULL;
         params->context_len = 0;
       } else {
@@ -155,12 +156,10 @@ static int pkey_ed25519ph_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   return 1;
 }
 
-const EVP_PKEY_METHOD ed25519ph_pkey_meth = {
-  .pkey_id = EVP_PKEY_ED25519PH,
-  .init = pkey_ed25519ph_init,
-  .cleanup = pkey_ed25519ph_cleanup,
-  .copy = pkey_ed25519ph_copy,
-  .sign = pkey_ed25519ph_sign,
-  .verify = pkey_ed25519ph_verify,
-  .ctrl = pkey_ed25519ph_ctrl
-};
+const EVP_PKEY_METHOD ed25519ph_pkey_meth = {.pkey_id = EVP_PKEY_ED25519PH,
+                                             .init = pkey_ed25519ph_init,
+                                             .cleanup = pkey_ed25519ph_cleanup,
+                                             .copy = pkey_ed25519ph_copy,
+                                             .sign = pkey_ed25519ph_sign,
+                                             .verify = pkey_ed25519ph_verify,
+                                             .ctrl = pkey_ed25519ph_ctrl};

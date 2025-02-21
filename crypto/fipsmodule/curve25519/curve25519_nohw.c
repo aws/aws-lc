@@ -24,8 +24,8 @@
 #include <openssl/curve25519.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
@@ -164,13 +164,9 @@ static void fe_tobytes(uint8_t s[32], const fe *f) {
 }
 
 // h = 0
-static void fe_0(fe *h) {
-  OPENSSL_memset(h, 0, sizeof(fe));
-}
+static void fe_0(fe *h) { OPENSSL_memset(h, 0, sizeof(fe)); }
 
-static void fe_loose_0(fe_loose *h) {
-  OPENSSL_memset(h, 0, sizeof(fe_loose));
-}
+static void fe_loose_0(fe_loose *h) { OPENSSL_memset(h, 0, sizeof(fe_loose)); }
 
 // h = 1
 static void fe_1(fe *h) {
@@ -201,7 +197,7 @@ static void fe_sub(fe_loose *h, const fe *f, const fe *g) {
   assert_fe_loose(h->v);
 }
 
-static void fe_carry(fe *h, const fe_loose* f) {
+static void fe_carry(fe *h, const fe_loose *f) {
   assert_fe_loose(f->v);
   fiat_25519_carry(h->v, f->v);
   assert_fe(h->v);
@@ -257,7 +253,7 @@ static void fe_sq_tt(fe *h, const fe *f) {
 //
 // Preconditions: b in {0,1}.
 static void fe_cswap(fe *f, fe *g, fe_limb_t b) {
-  b = 0-b;
+  b = 0 - b;
   for (unsigned i = 0; i < FE_NUM_LIMBS; i++) {
     fe_limb_t x = f->v[i] ^ g->v[i];
     x &= b;
@@ -291,7 +287,7 @@ static void fe_cmov(fe_loose *f, const fe_loose *g, fe_limb_t b) {
   // different one.
   (void)fiat_25519_selectznz;
 
-  b = 0-b;
+  b = 0 - b;
   for (unsigned i = 0; i < FE_NUM_LIMBS; i++) {
     fe_limb_t x = f->v[i] ^ g->v[i];
     x &= b;
@@ -300,9 +296,7 @@ static void fe_cmov(fe_loose *f, const fe_loose *g, fe_limb_t b) {
 }
 
 // h = f
-static void fe_copy(fe *h, const fe *f) {
-  OPENSSL_memmove(h, f, sizeof(fe));
-}
+static void fe_copy(fe *h, const fe *f) { OPENSSL_memmove(h, f, sizeof(fe)); }
 
 static void fe_copy_lt(fe_loose *h, const fe *f) {
   OPENSSL_STATIC_ASSERT(sizeof(fe_loose) == sizeof(fe),
@@ -313,7 +307,7 @@ static void fe_copy_lt(fe_loose *h, const fe *f) {
 static void fe_copy_ll(fe_loose *h, const fe_loose *f) {
   OPENSSL_memmove(h, f, sizeof(fe_loose));
 }
-#endif // !defined(OPENSSL_SMALL)
+#endif  // !defined(OPENSSL_SMALL)
 
 static void fe_loose_invert(fe *out, const fe_loose *z) {
   fe t0;
@@ -508,8 +502,8 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe_carry(&u, &v);
   fe_add(&v, &vxx, &h->Z);  // v = dy^2+1
 
-  fe_mul_ttl(&w, &u, &v);  // w = u*v
-  fe_pow22523(&h->X, &w);  // x = w^((q-5)/8)
+  fe_mul_ttl(&w, &u, &v);        // w = u*v
+  fe_pow22523(&h->X, &w);        // x = w^((q-5)/8)
   fe_mul_ttt(&h->X, &h->X, &u);  // x = u*w^((q-5)/8)
 
   fe_sq_tt(&vxx, &h->X);
@@ -718,7 +712,7 @@ void x25519_ge_scalarmult_small_precomp(
   for (i = 0; i < 15; i++) {
     // The precomputed table is assumed to already clear the top bit, so
     // |fe_frombytes_strict| may be used directly.
-    const uint8_t *bytes = &precomp_table[i*(2 * 32)];
+    const uint8_t *bytes = &precomp_table[i * (2 * 32)];
     fe x, y;
     fe_frombytes_strict(&x, bytes);
     fe_frombytes_strict(&y, bytes + 32);
@@ -748,7 +742,7 @@ void x25519_ge_scalarmult_small_precomp(
     ge_precomp_0(&e);
 
     for (j = 1; j < 16; j++) {
-      cmov(&e, &multiples[j-1], equal(index, j));
+      cmov(&e, &multiples[j - 1], equal(index, j));
     }
 
     ge_cached cached;
@@ -902,7 +896,7 @@ void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A) {
     ge_p2_dbl(&t, r);
     x25519_ge_p1p1_to_p3(&u, &t);
 
-    uint8_t index = scalar[31 - i/8];
+    uint8_t index = scalar[31 - i / 8];
     index >>= 4 - (i & 4);
     index &= 0xf;
 
@@ -1864,10 +1858,9 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 }
 
 void x25519_scalar_mult_generic_nohw(
-  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
-  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
-
+    uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+    const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
@@ -1917,8 +1910,10 @@ void x25519_scalar_mult_generic_nohw(
     // Coq transcription of ladderstep formula (called from transcribed loop):
     // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L89>
     // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L131>
-    // x1 != 0 <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L217>
-    // x1  = 0 <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L147>
+    // x1 != 0
+    // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L217>
+    // x1  = 0
+    // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L147>
     fe_sub(&tmp0l, &x3, &z3);
     fe_sub(&tmp1l, &x2, &z2);
     fe_add(&x2l, &x2, &z2);
@@ -1948,9 +1943,8 @@ void x25519_scalar_mult_generic_nohw(
 }
 
 void x25519_public_from_private_nohw(
-  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
-  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
-
+    uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+    const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
   uint8_t e[X25519_PRIVATE_KEY_LEN];
   OPENSSL_memcpy(e, private_key, X25519_PRIVATE_KEY_LEN);
   e[0] &= 248;
@@ -1973,18 +1967,18 @@ void x25519_public_from_private_nohw(
 }
 
 void ed25519_public_key_from_hashed_seed_nohw(
-  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t az[SHA512_DIGEST_LENGTH]) {
-
+    uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+    uint8_t az[SHA512_DIGEST_LENGTH]) {
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
 }
 
 void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
-  const void *message, size_t message_len, const uint8_t* dom2, size_t dom2_len) {
-
+                       uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s,
+                       const uint8_t *A, const void *message,
+                       size_t message_len, const uint8_t *dom2,
+                       size_t dom2_len) {
   // Reduce r modulo the order of the base-point B.
   x25519_sc_reduce(r);
   ge_p3 R;
@@ -1996,8 +1990,8 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t k[SHA512_DIGEST_LENGTH];
   if (dom2_len > 0) {
     // Compute k = SHA512(dom2(phflag, context) || R || A || message)
-    ed25519_sha512(k, dom2, dom2_len, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
-                   message_len);
+    ed25519_sha512(k, dom2, dom2_len, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN,
+                   message, message_len);
   } else {
     // Compute k = SHA512(R || A || message)
     ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
@@ -2012,9 +2006,10 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 }
 
 int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
-  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
-  uint8_t S[32], const uint8_t *message, size_t message_len, const uint8_t *dom2, size_t dom2_len) {
-
+                        const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+                        uint8_t R_expected[32], uint8_t S[32],
+                        const uint8_t *message, size_t message_len,
+                        const uint8_t *dom2, size_t dom2_len) {
   // Decode public key as A'.
   ge_p3 A;
   if (!x25519_ge_frombytes_vartime(&A, public_key)) {
@@ -2023,8 +2018,9 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
 
   // Step: rfc8032 5.1.7.2
   uint8_t k[SHA512_DIGEST_LENGTH];
-  if(dom2_len > 0) {
-    // Compute k = SHA512(dom2(phflag, context) || R_expected || public_key || message).
+  if (dom2_len > 0) {
+    // Compute k = SHA512(dom2(phflag, context) || R_expected || public_key ||
+    // message).
     ed25519_sha512(k, dom2, dom2_len, R_expected, 32, public_key,
                    ED25519_PUBLIC_KEY_LEN, message, message_len);
   } else {
@@ -2057,7 +2053,8 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
   return 1;
 }
 
-int ed25519_check_public_key_nohw(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+int ed25519_check_public_key_nohw(
+    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
   ge_p3 A;
   if (!x25519_ge_frombytes_vartime(&A, public_key)) {
     return 0;

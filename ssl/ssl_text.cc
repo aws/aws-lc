@@ -124,4 +124,3 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *sess) {
 
   return 1;
 }
-

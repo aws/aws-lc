@@ -106,9 +106,7 @@ int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
 
   // Check |pub_key| is less than |dh->p| - 1.
   BIGNUM *tmp = BN_CTX_get(ctx);
-  if (tmp == NULL ||
-      !BN_copy(tmp, dh->p) ||
-      !BN_sub_word(tmp, 1)) {
+  if (tmp == NULL || !BN_copy(tmp, dh->p) || !BN_sub_word(tmp, 1)) {
     goto err;
   }
   if (BN_cmp(pub_key, tmp) >= 0) {

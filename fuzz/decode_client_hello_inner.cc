@@ -13,8 +13,8 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/bytestring.h>
-#include <openssl/ssl.h>
 #include <openssl/span.h>
+#include <openssl/ssl.h>
 
 #include "../ssl/internal.h"
 

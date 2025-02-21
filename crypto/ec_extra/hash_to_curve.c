@@ -21,10 +21,10 @@
 
 #include <assert.h>
 
-#include "internal.h"
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 // This file implements hash-to-curve, as described in RFC 9380.
@@ -145,8 +145,7 @@ static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   // |felem_reduce| and |ec_scalar_reduce|. All defined hash-to-curve suites
   // define |k| to be well under this bound. (|k| is usually around half of
   // |p_bits|.)
-  if (L * 8 >= 2 * bits - 2 ||
-      L > 2 * EC_MAX_BYTES) {
+  if (L * 8 >= 2 * bits - 2 || L > 2 * EC_MAX_BYTES) {
     assert(0);
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     return 0;
@@ -450,9 +449,9 @@ int EC_hash_to_curve_p384_xmd_sha384_sswu(const EC_GROUP *group, EC_POINT *out,
                                                msg, msg_len);
 }
 
-int ec_hash_to_scalar_p384_xmd_sha384(
-    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
-    const uint8_t *msg, size_t msg_len) {
+int ec_hash_to_scalar_p384_xmd_sha384(const EC_GROUP *group, EC_SCALAR *out,
+                                      const uint8_t *dst, size_t dst_len,
+                                      const uint8_t *msg, size_t msg_len) {
   if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;
@@ -463,8 +462,8 @@ int ec_hash_to_scalar_p384_xmd_sha384(
 }
 
 int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
-    const EC_GROUP *group, EC_JACOBIAN *out, const uint8_t *dst,
-    size_t dst_len, const uint8_t *msg, size_t msg_len) {
+    const EC_GROUP *group, EC_JACOBIAN *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len) {
   // See section 8.3 of draft-irtf-cfrg-hash-to-curve-07.
   if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);

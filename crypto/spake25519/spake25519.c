@@ -32,13 +32,17 @@
 // points used in the SPAKE2 protocol.
 //
 // N:
-//   x: 49918732221787544735331783592030787422991506689877079631459872391322455579424
-//   y: 54629554431565467720832445949441049581317094546788069926228343916274969994000
+//   x:
+//   49918732221787544735331783592030787422991506689877079631459872391322455579424
+//   y:
+//   54629554431565467720832445949441049581317094546788069926228343916274969994000
 //   encoded: 10e3df0ae37d8e7a99b5fe74b44672103dbddcbd06af680d71329a11693bc778
 //
 // M:
-//   x: 31406539342727633121250288103050113562375374900226415211311216773867585644232
-//   y: 21177308356423958466833845032658859666296341766942662650232962324899758529114
+//   x:
+//   31406539342727633121250288103050113562375374900226415211311216773867585644232
+//   y:
+//   21177308356423958466833845032658859666296341766942662650232962324899758529114
 //   encoded: 5ada7e4bf6ddd9adb6626d32131c6b5c51a1e347a3478f53cfcf441b88eed12e
 //
 // These points and their precomputation tables are generated with the
@@ -270,9 +274,9 @@ static const uint8_t kSpakeMSmallPrecomp[15 * 2 * 32] = {
     0xa6, 0x76, 0x81, 0x28, 0xb2, 0x65, 0xe8, 0x47, 0x14, 0xc6, 0x39, 0x06,
 };
 
-SPAKE2_CTX *SPAKE2_CTX_new(enum spake2_role_t my_role,
-                           const uint8_t *my_name, size_t my_name_len,
-                           const uint8_t *their_name, size_t their_name_len) {
+SPAKE2_CTX *SPAKE2_CTX_new(enum spake2_role_t my_role, const uint8_t *my_name,
+                           size_t my_name_len, const uint8_t *their_name,
+                           size_t their_name_len) {
   SPAKE2_CTX *ctx = OPENSSL_zalloc(sizeof(SPAKE2_CTX));
   if (ctx == NULL) {
     return NULL;
@@ -342,8 +346,8 @@ static void scalar_add(scalar *dest, const scalar *src) {
 }
 
 int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
-                         size_t max_out_len, const uint8_t *password,
-                         size_t password_len) {
+                        size_t max_out_len, const uint8_t *password,
+                        size_t password_len) {
   if (ctx->state != spake2_state_init) {
     return 0;
   }
@@ -384,8 +388,9 @@ int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
   // bit and so one for all the bottom three bits.
 
   scalar password_scalar;
-  bn_little_endian_to_words(password_scalar.words, sizeof(password_scalar) / BN_BYTES,
-                            password_tmp, sizeof(password_scalar));
+  bn_little_endian_to_words(password_scalar.words,
+                            sizeof(password_scalar) / BN_BYTES, password_tmp,
+                            sizeof(password_scalar));
 
   // |password_scalar| is the result of |x25519_sc_reduce| and thus is, at
   // most, $l-1$ (where $l$ is |kOrder|, the order of the prime-order subgroup
@@ -416,7 +421,8 @@ int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
     assert((password_scalar.words[0] & 7) == 0);
   }
   bn_words_to_little_endian(ctx->password_scalar, sizeof(ctx->password_scalar),
-                            password_scalar.words, sizeof(password_scalar) / BN_BYTES);
+                            password_scalar.words,
+                            sizeof(password_scalar) / BN_BYTES);
 
   ge_p3 mask;
   x25519_ge_scalarmult_small_precomp(&mask, ctx->password_scalar,
@@ -462,8 +468,7 @@ static void update_with_length_prefix(SHA512_CTX *sha, const uint8_t *data,
 int SPAKE2_process_msg(SPAKE2_CTX *ctx, uint8_t *out_key, size_t *out_key_len,
                        size_t max_out_key_len, const uint8_t *their_msg,
                        size_t their_msg_len) {
-  if (ctx->state != spake2_state_msg_generated ||
-      their_msg_len != 32) {
+  if (ctx->state != spake2_state_msg_generated || their_msg_len != 32) {
     return 0;
   }
 
@@ -476,9 +481,9 @@ int SPAKE2_process_msg(SPAKE2_CTX *ctx, uint8_t *out_key, size_t *out_key_len,
   // Unmask peer's value.
   ge_p3 peers_mask;
   x25519_ge_scalarmult_small_precomp(&peers_mask, ctx->password_scalar,
-                                    ctx->my_role == spake2_role_alice
-                                        ? kSpakeNSmallPrecomp
-                                        : kSpakeMSmallPrecomp);
+                                     ctx->my_role == spake2_role_alice
+                                         ? kSpakeNSmallPrecomp
+                                         : kSpakeMSmallPrecomp);
 
   ge_cached peers_mask_cached;
   x25519_ge_p3_to_cached(&peers_mask_cached, &peers_mask);

@@ -46,7 +46,7 @@ static bool serialize_features(CBB *out) {
     return false;
   }
   Span<const SSL_CIPHER> all_ciphers = AllCiphers();
-  for (const SSL_CIPHER& cipher : all_ciphers) {
+  for (const SSL_CIPHER &cipher : all_ciphers) {
     if (!CBB_add_u16(&ciphers, static_cast<uint16_t>(cipher.id))) {
       return false;
     }
@@ -55,7 +55,7 @@ static bool serialize_features(CBB *out) {
   if (!CBB_add_asn1(out, &groups, CBS_ASN1_OCTETSTRING)) {
     return false;
   }
-  for (const NamedGroup& g : NamedGroups()) {
+  for (const NamedGroup &g : NamedGroups()) {
     if (!CBB_add_u16(&groups, g.group_id)) {
       return false;
     }
@@ -77,9 +77,7 @@ static bool serialize_features(CBB *out) {
 bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
                            SSL_CLIENT_HELLO *out_hello) {
   const SSL3_STATE *const s3 = ssl->s3;
-  if (!ssl->server ||
-      s3->hs == nullptr ||
-      s3->rwstate != SSL_ERROR_HANDOFF) {
+  if (!ssl->server || s3->hs == nullptr || s3->rwstate != SSL_ERROR_HANDOFF) {
     return false;
   }
 
@@ -93,8 +91,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
       !CBB_add_asn1_octet_string(&seq,
                                  reinterpret_cast<uint8_t *>(s3->hs_buf->data),
                                  s3->hs_buf->length) ||
-      !serialize_features(&seq) ||
-      !CBB_flush(out) ||
+      !serialize_features(&seq) || !CBB_flush(out) ||
       !ssl->method->get_message(ssl, &msg) ||
       !ssl_client_hello_init(ssl, out_hello, msg.body)) {
     return false;
@@ -105,9 +102,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
 
 bool SSL_decline_handoff(SSL *ssl) {
   const SSL3_STATE *const s3 = ssl->s3;
-  if (!ssl->server ||
-      s3->hs == nullptr ||
-      s3->rwstate != SSL_ERROR_HANDOFF) {
+  if (!ssl->server || s3->hs == nullptr || s3->rwstate != SSL_ERROR_HANDOFF) {
     return false;
   }
 
@@ -335,11 +330,10 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
   }
   size_t read_iv_len = 0;
   const uint8_t *read_iv = nullptr;
-  if (type == handback_after_handshake &&
-      ssl->version == TLS1_VERSION &&
+  if (type == handback_after_handshake && ssl->version == TLS1_VERSION &&
       SSL_CIPHER_is_block_cipher(s3->aead_read_ctx->cipher()) &&
       !s3->aead_read_ctx->GetIV(&read_iv, &read_iv_len)) {
-      return false;
+    return false;
   }
 
   // TODO(mab): make sure everything is serialized.
@@ -378,8 +372,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
                                  sizeof(kUnusedChannelID)) ||
       // These two fields were historically |token_binding_negotiated| and
       // |negotiated_token_binding_param|.
-      !CBB_add_asn1_bool(&seq, 0) ||
-      !CBB_add_asn1_uint64(&seq, 0) ||
+      !CBB_add_asn1_bool(&seq, 0) || !CBB_add_asn1_uint64(&seq, 0) ||
       !CBB_add_asn1_bool(&seq, s3->hs->next_proto_neg_seen) ||
       !CBB_add_asn1_bool(&seq, s3->hs->cert_request) ||
       !CBB_add_asn1_bool(&seq, s3->hs->extended_master_secret) ||
@@ -467,14 +460,13 @@ static bool CopyExact(Span<uint8_t> out, const CBS *in) {
 }
 
 bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
-  if (ssl->do_handshake != nullptr ||
-      ssl->method->is_dtls) {
+  if (ssl->do_handshake != nullptr || ssl->method->is_dtls) {
     return false;
   }
 
   SSL3_STATE *const s3 = ssl->s3;
   uint64_t handback_version, unused_token_binding_param, cipher, type_u64,
-           alps_codepoint;
+      alps_codepoint;
 
   CBS seq, read_seq, write_seq, server_rand, client_rand, read_iv, write_iv,
       next_proto, alpn, hostname, unused_channel_id, transcript, key_share;
@@ -487,8 +479,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   if (!CBS_get_asn1(&handback_cbs, &seq, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&seq, &handback_version) ||
       handback_version != kHandbackVersion ||
-      !CBS_get_asn1_uint64(&seq, &type_u64) ||
-      type_u64 > handback_max_value) {
+      !CBS_get_asn1_uint64(&seq, &type_u64) || type_u64 > handback_max_value) {
     return false;
   }
 
@@ -796,8 +787,7 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
   CBS cbs, seq;
   CBS_init(&cbs, capabilities, capabilities_len);
   UniquePtr<SSL_HANDSHAKE_HINTS> hints = MakeUnique<SSL_HANDSHAKE_HINTS>();
-  if (hints == nullptr ||
-      !CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
+  if (hints == nullptr || !CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       !apply_remote_features(ssl, &seq)) {
     return 0;
   }
@@ -881,8 +871,7 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 // }
 
 // HandshakeHints tags.
-static const CBS_ASN1_TAG kServerRandomTLS13Tag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const CBS_ASN1_TAG kServerRandomTLS13Tag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
 static const CBS_ASN1_TAG kKeyShareHintTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 static const CBS_ASN1_TAG kSignatureHintTag =
@@ -891,8 +880,7 @@ static const CBS_ASN1_TAG kDecryptedPSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 3;
 static const CBS_ASN1_TAG kIgnorePSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const CBS_ASN1_TAG kCompressCertificateTag =
     CBS_ASN1_CONTEXT_SPECIFIC | 5;
-static const CBS_ASN1_TAG kServerRandomTLS12Tag =
-    CBS_ASN1_CONTEXT_SPECIFIC | 6;
+static const CBS_ASN1_TAG kServerRandomTLS12Tag = CBS_ASN1_CONTEXT_SPECIFIC | 6;
 static const CBS_ASN1_TAG kECDHEHintTag = CBS_ASN1_CONSTRUCTED | 7;
 static const CBS_ASN1_TAG kDecryptedTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 8;
 static const CBS_ASN1_TAG kRenewTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 9;

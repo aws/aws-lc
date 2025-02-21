@@ -290,7 +290,7 @@ int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
   if (out_contents != NULL) {
     *out_contents = (uint8_t *)b->data;
   }
-  if(out_len) {
+  if (out_len) {
     *out_len = b->length;
   }
   return 1;
@@ -308,6 +308,4 @@ int BIO_set_mem_eof_return(BIO *bio, int eof_value) {
   return (int)BIO_ctrl(bio, BIO_C_SET_BUF_MEM_EOF_RETURN, eof_value, NULL);
 }
 
-const BIO_METHOD *BIO_s_secmem(void) {
-    return BIO_s_mem();
-}
+const BIO_METHOD *BIO_s_secmem(void) { return BIO_s_mem(); }

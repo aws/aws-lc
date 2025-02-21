@@ -194,7 +194,7 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     return 0;
   }
 
-  __asm__ volatile (
+  __asm__ volatile(
       "	subq	%0,%0		\n"  // clear carry
       "	jmp	1f		\n"
       ".p2align 4			\n"
@@ -222,7 +222,7 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     return 0;
   }
 
-  __asm__ volatile (
+  __asm__ volatile(
       "	subq	%0,%0		\n"  // clear borrow
       "	jmp	1f		\n"
       ".p2align 4			\n"

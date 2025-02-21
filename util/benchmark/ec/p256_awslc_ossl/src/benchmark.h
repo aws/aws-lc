@@ -1,15 +1,15 @@
-#include <sys/types.h>
-#include <stdint.h>
-#include <openssl/err.h>
 #include <openssl/bio.h>
+#include <openssl/err.h>
+#include <stdint.h>
+#include <sys/types.h>
 
 #if defined(__aarch64__) && defined(COUNTER_REGISTER)
-#define AARCH64_COUNTER_TIMER   1
+#define AARCH64_COUNTER_TIMER 1
 #endif
 
-#define NUM_ELEM(x)    (sizeof(x)/sizeof((x)[0]))
-#define WARM_UP_NUM_ITER    60
-#define DEFAULT_USEC_RUN    100000  /* 100 ms */
+#define NUM_ELEM(x) (sizeof(x) / sizeof((x)[0]))
+#define WARM_UP_NUM_ITER 60
+#define DEFAULT_USEC_RUN 100000 /* 100 ms */
 
 /*
 ------------------------------------------------------------------------------------
@@ -32,13 +32,15 @@ void open_test_streams(void);
 void close_test_streams(void);
 
 /*
- * Get the current time, or the current timer counter if available on this platform
+ * Get the current time, or the current timer counter if available on this
+ * platform
  */
 uint64_t time_now(void);
 
 /*
  * Calculate the number of iterations to be run
- * based on the time taken to run iterations_run and the desired number of microseconds to run
+ * based on the time taken to run iterations_run and the desired number of
+ * microseconds to run
  */
 uint64_t calculate_iterations(uint64_t start, uint64_t end,
                               uint64_t iterations_run, uint64_t usec_desired);
@@ -46,8 +48,8 @@ uint64_t calculate_iterations(uint64_t start, uint64_t end,
 /*
  * Output the benchmark results
  */
-void report_results(uint64_t start, uint64_t end,
-                    uint64_t iterations, const char *benchmark);
+void report_results(uint64_t start, uint64_t end, uint64_t iterations,
+                    const char *benchmark);
 /*
  * Benchmark ECDH P-256
  */

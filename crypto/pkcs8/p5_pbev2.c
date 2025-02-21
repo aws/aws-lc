@@ -65,8 +65,8 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 // 1.2.840.113549.1.5.12
@@ -291,8 +291,7 @@ int PKCS5_pbe2_decrypt_init(const struct pbe_suite *suite, EVP_CIPHER_CTX *ctx,
 
     // All supported PRFs use a NULL parameter.
     CBS null;
-    if (!CBS_get_asn1(&alg_id, &null, CBS_ASN1_NULL) ||
-        CBS_len(&null) != 0 ||
+    if (!CBS_get_asn1(&alg_id, &null, CBS_ASN1_NULL) || CBS_len(&null) != 0 ||
         CBS_len(&alg_id) != 0) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
       return 0;

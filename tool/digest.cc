@@ -46,7 +46,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "internal.h"
 
 
-// Source is an awkward expression of a union type in C++: Stdin | File filename.
+// Source is an awkward expression of a union type in C++: Stdin | File
+// filename.
 struct Source {
   enum Type {
     STDIN,
@@ -253,13 +254,12 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
     const bool overlong = line[len - 1] != '\n' && !feof(file);
 
     if (len < hex_size + 2 /* spaces */ + 1 /* filename */ ||
-        line[hex_size] != ' ' ||
-        line[hex_size + 1] != ' ' ||
-        overlong) {
+        line[hex_size] != ' ' || line[hex_size + 1] != ' ' || overlong) {
       bad_lines++;
       if (args.warn) {
         fprintf(stderr, "%s: %u: improperly formatted line\n",
-                source.is_stdin() ? kStdinName : source.filename().c_str(), line_no);
+                source.is_stdin() ? kStdinName : source.filename().c_str(),
+                line_no);
       }
       if (args.strict) {
         ok = false;
@@ -330,8 +330,7 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
 
 // DigestSum acts like the coreutils *sum utilites, with the given hash
 // function.
-static bool DigestSum(const EVP_MD *md,
-                      const args_list_t &args) {
+static bool DigestSum(const EVP_MD *md, const args_list_t &args) {
   bool check_mode = false;
   CheckModeArguments check_args;
   bool check_mode_args_given = false;

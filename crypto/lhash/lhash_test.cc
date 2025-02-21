@@ -19,8 +19,8 @@
 #include <string.h>
 
 #include <algorithm>
-#include <memory>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -86,12 +86,13 @@ TEST(LHashTest, Basic) {
       }
       std::sort(expected.begin(), expected.end());
 
-      lh_char_doall_arg(lh.get(),
-                        [](char *ptr, void *arg) {
-                          ValueList *out = reinterpret_cast<ValueList *>(arg);
-                          out->push_back(ptr);
-                        },
-                        &actual);
+      lh_char_doall_arg(
+          lh.get(),
+          [](char *ptr, void *arg) {
+            ValueList *out = reinterpret_cast<ValueList *>(arg);
+            out->push_back(ptr);
+          },
+          &actual);
       std::sort(actual.begin(), actual.end());
       EXPECT_EQ(expected, actual);
     }

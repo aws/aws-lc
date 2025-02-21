@@ -33,8 +33,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
 TEST(ErrTest, Overflow) {
-  for (unsigned i = 0; i < ERR_NUM_ERRORS*2; i++) {
-    ERR_put_error(1, 0 /* unused */, i+1, "test", 1);
+  for (unsigned i = 0; i < ERR_NUM_ERRORS * 2; i++) {
+    ERR_put_error(1, 0 /* unused */, i + 1, "test", 1);
   }
 
   for (unsigned i = 0; i < ERR_NUM_ERRORS - 1; i++) {
@@ -59,9 +59,8 @@ TEST(ErrTest, PutError) {
 
   int peeked_line, line, peeked_flags, flags;
   const char *peeked_file, *file, *peeked_data, *data;
-  uint32_t peeked_packed_error =
-      ERR_peek_error_line_data(&peeked_file, &peeked_line, &peeked_data,
-                               &peeked_flags);
+  uint32_t peeked_packed_error = ERR_peek_error_line_data(
+      &peeked_file, &peeked_line, &peeked_data, &peeked_flags);
   uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
 
   EXPECT_EQ(peeked_packed_error, packed_error);
@@ -277,12 +276,9 @@ TEST(ErrTest, String) {
                ERR_error_string_n(err, buf, 57));
   EXPECT_STREQ("error:0e000044:common libcryp::",
                ERR_error_string_n(err, buf, 32));
-  EXPECT_STREQ("error:0e0000:::",
-               ERR_error_string_n(err, buf, 16));
-  EXPECT_STREQ("err::::",
-               ERR_error_string_n(err, buf, 8));
-  EXPECT_STREQ("::::",
-               ERR_error_string_n(err, buf, 5));
+  EXPECT_STREQ("error:0e0000:::", ERR_error_string_n(err, buf, 16));
+  EXPECT_STREQ("err::::", ERR_error_string_n(err, buf, 8));
+  EXPECT_STREQ("::::", ERR_error_string_n(err, buf, 5));
 
   // If the buffer is too short for even four colons, |ERR_error_string_n| does
   // not bother trying to preserve the format.

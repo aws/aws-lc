@@ -10,14 +10,14 @@
 #define KYBER_N 256
 #define KYBER_Q 3329
 
-#define KYBER_SYMBYTES 32   /* size in bytes of hashes, and seeds */
-#define KYBER_SSBYTES  32   /* size in bytes of shared key */
+#define KYBER_SYMBYTES 32 /* size in bytes of hashes, and seeds */
+#define KYBER_SSBYTES 32  /* size in bytes of shared key */
 
-#define KYBER_POLYBYTES		384
+#define KYBER_POLYBYTES 384
 
 #define KYBER_ETA2 2
 
-#define KYBER_INDCPA_MSGBYTES       (KYBER_SYMBYTES)
+#define KYBER_INDCPA_MSGBYTES (KYBER_SYMBYTES)
 
 // Structure for ML-KEM parameters that depend on the parameter set.
 typedef struct {
@@ -38,10 +38,11 @@ typedef struct {
 // for static allocation.
 #define KYBER_K_MAX (4)
 #define KYBER_ETA1_MAX (3)
-#define KYBER_POLYCOMPRESSEDBYTES_MAX    (160)
+#define KYBER_POLYCOMPRESSEDBYTES_MAX (160)
 #define KYBER_POLYVECCOMPRESSEDBYTES_MAX (4 * 352)
 
-#define KYBER_INDCPA_BYTES_MAX    (KYBER_POLYVECCOMPRESSEDBYTES_MAX + KYBER_POLYCOMPRESSEDBYTES_MAX)
+#define KYBER_INDCPA_BYTES_MAX \
+  (KYBER_POLYVECCOMPRESSEDBYTES_MAX + KYBER_POLYCOMPRESSEDBYTES_MAX)
 #define KYBER_CIPHERTEXTBYTES_MAX (KYBER_INDCPA_BYTES_MAX)
 
 #define KYBER_NAMESPACE(s) ml_kem_##s##_ref

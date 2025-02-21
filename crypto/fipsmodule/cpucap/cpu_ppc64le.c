@@ -25,12 +25,13 @@
 #endif
 
 static void handle_cpu_env(unsigned long *out, const char *in) {
-  OPENSSL_STATIC_ASSERT(sizeof(unsigned long) == 8, PPC64LE_UNSIGNED_LONG_NOT_8_BYTES);
+  OPENSSL_STATIC_ASSERT(sizeof(unsigned long) == 8,
+                        PPC64LE_UNSIGNED_LONG_NOT_8_BYTES);
 
   const int invert = in[0] == '~';
   const int or = in[0] == '|';
   const int skip_first_byte = (invert || or) ? 1 : 0;
-  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte+1] == 'x';
+  const int hex = in[skip_first_byte] == '0' && in[skip_first_byte + 1] == 'x';
   unsigned long ppccap = *out;
 
   int sscanf_result;
@@ -51,7 +52,8 @@ static void handle_cpu_env(unsigned long *out, const char *in) {
   // it can only disable an existing one.
   if (!invert && ppccap && (~ppccap & reqcap)) {
     fprintf(stderr,
-            "Fatal Error: HW capability found: 0x%02lX, but HW capability requested: 0x%02lX.\n",
+            "Fatal Error: HW capability found: 0x%02lX, but HW capability "
+            "requested: 0x%02lX.\n",
             ppccap, reqcap);
     abort();
   }
@@ -89,7 +91,6 @@ void OPENSSL_cpuid_setup(void) {
   if (env != NULL) {
     handle_cpu_env(&OPENSSL_ppc64le_hwcap2, env);
   }
-
 }
 
 int CRYPTO_is_PPC64LE_vcrypto_capable(void) {

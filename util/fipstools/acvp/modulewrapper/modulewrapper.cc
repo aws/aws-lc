@@ -14,10 +14,10 @@
 
 #include <signal.h>
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <string>
 #include <vector>
-#include <cstring>
 
 #include <sstream>
 
@@ -53,12 +53,12 @@
 #include <openssl/span.h>
 #include <openssl/sshkdf.h>
 
+#include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/hmac/internal.h"
-#include "../../../../crypto/fipsmodule/rand/internal.h"
-#include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa_ref/params.h"
+#include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "modulewrapper.h"
 
 
@@ -3172,15 +3172,13 @@ static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   const Span<const uint8_t> seed = args[0];
 
-  //init params of the correct size based on provided nid
+  // init params of the correct size based on provided nid
   ml_dsa_params params;
   if (nid == NID_MLDSA44) {
     ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
+  } else if (nid == NID_MLDSA65) {
     ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
+  } else if (nid == NID_MLDSA87) {
     ml_dsa_87_params_init(&params);
   }
 
@@ -3190,27 +3188,29 @@ static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
 
   // generate the keys
   if (nid == NID_MLDSA44) {
-    if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+    if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(),
+                                    seed.data())) {
+      return false;
+    }
+  } else if (nid == NID_MLDSA65) {
+    if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(),
+                                    seed.data())) {
+      return false;
+    }
+  } else if (nid == NID_MLDSA87) {
+    if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(),
+                                    seed.data())) {
       return false;
     }
   }
-  else if (nid == NID_MLDSA65) {
-    if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
-      return false;
-    }
-  }
-  else if (nid == NID_MLDSA87) {
-    if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
-      return false;
-    }
-  }
-  return write_reply({Span<const uint8_t>(public_key.data(), public_key.size()),
-                      Span<const uint8_t>(private_key.data(), private_key.size())});
+  return write_reply(
+      {Span<const uint8_t>(public_key.data(), public_key.size()),
+       Span<const uint8_t>(private_key.data(), private_key.size())});
 }
 
 template <int nid>
 static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
-                         ReplyCallback write_reply) {
+                          ReplyCallback write_reply) {
   const Span<const uint8_t> sk = args[0];
   const Span<const uint8_t> msg = args[1];
   const Span<const uint8_t> mu = args[2];
@@ -3220,11 +3220,9 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   ml_dsa_params params;
   if (nid == NID_MLDSA44) {
     ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
+  } else if (nid == NID_MLDSA65) {
     ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
+  } else if (nid == NID_MLDSA87) {
     ml_dsa_87_params_init(&params);
   }
 
@@ -3235,19 +3233,20 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   if (extmu.data()[0] == 0) {
     if (nid == NID_MLDSA44) {
       if (!ml_dsa_44_sign_internal(sk.data(), signature.data(), &signature_len,
-                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+                                   msg.data(), msg.size(), nullptr, 0,
+                                   rnd.data())) {
         return false;
       }
-    }
-    else if (nid == NID_MLDSA65) {
+    } else if (nid == NID_MLDSA65) {
       if (!ml_dsa_65_sign_internal(sk.data(), signature.data(), &signature_len,
-                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+                                   msg.data(), msg.size(), nullptr, 0,
+                                   rnd.data())) {
         return false;
       }
-    }
-    else if (nid == NID_MLDSA87) {
+    } else if (nid == NID_MLDSA87) {
       if (!ml_dsa_87_sign_internal(sk.data(), signature.data(), &signature_len,
-                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+                                   msg.data(), msg.size(), nullptr, 0,
+                                   rnd.data())) {
         return false;
       }
     }
@@ -3255,20 +3254,21 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   // generate the signatures digest sign mode (externalmu)
   else {
     if (nid == NID_MLDSA44) {
-      if (!ml_dsa_extmu_44_sign_internal(sk.data(), signature.data(), &signature_len,
-                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
+      if (!ml_dsa_extmu_44_sign_internal(sk.data(), signature.data(),
+                                         &signature_len, mu.data(), mu.size(),
+                                         nullptr, 0, rnd.data())) {
         return false;
       }
-    }
-    else if (nid == NID_MLDSA65) {
-      if (!ml_dsa_extmu_65_sign_internal(sk.data(), signature.data(), &signature_len,
-                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
+    } else if (nid == NID_MLDSA65) {
+      if (!ml_dsa_extmu_65_sign_internal(sk.data(), signature.data(),
+                                         &signature_len, mu.data(), mu.size(),
+                                         nullptr, 0, rnd.data())) {
         return false;
       }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (!ml_dsa_extmu_87_sign_internal(sk.data(), signature.data(), &signature_len,
-                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
+    } else if (nid == NID_MLDSA87) {
+      if (!ml_dsa_extmu_87_sign_internal(sk.data(), signature.data(),
+                                         &signature_len, mu.data(), mu.size(),
+                                         nullptr, 0, rnd.data())) {
         return false;
       }
     }
@@ -3278,7 +3278,8 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
 }
 
 template <int nid>
-static bool ML_DSA_SIGVER(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+static bool ML_DSA_SIGVER(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
   const Span<const uint8_t> sig = args[0];
   const Span<const uint8_t> pk = args[1];
   const Span<const uint8_t> msg = args[2];
@@ -3290,43 +3291,39 @@ static bool ML_DSA_SIGVER(const Span<const uint8_t> args[], ReplyCallback write_
   // verify the signatures raw sign mode
   if (extmu.data()[0] == 0) {
     if (nid == NID_MLDSA44) {
-      if (ml_dsa_44_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
-                                    msg.size(), nullptr, 0)) {
+      if (ml_dsa_44_verify_internal(pk.data(), sig.data(), sig.size(),
+                                    msg.data(), msg.size(), nullptr, 0)) {
         reply[0] = 1;
       }
-    }
-    else if (nid == NID_MLDSA65) {
-      if (ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
-                                    msg.size(), nullptr, 0)) {
+    } else if (nid == NID_MLDSA65) {
+      if (ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(),
+                                    msg.data(), msg.size(), nullptr, 0)) {
         reply[0] = 1;
       }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
-                                    msg.size(), nullptr, 0)) {
+    } else if (nid == NID_MLDSA87) {
+      if (ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(),
+                                    msg.data(), msg.size(), nullptr, 0)) {
         reply[0] = 1;
       }
     }
   }
   // verify the signatures digest sign mode (externalmu)
-  else{
+  else {
     if (nid == NID_MLDSA44) {
-      if (ml_dsa_extmu_44_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
-                                          mu.size(), nullptr, 0)) {
+      if (ml_dsa_extmu_44_verify_internal(pk.data(), sig.data(), sig.size(),
+                                          mu.data(), mu.size(), nullptr, 0)) {
         reply[0] = 1;
       }
-    }
-    else if (nid == NID_MLDSA65) {
-      if (ml_dsa_extmu_65_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
-                                          mu.size(), nullptr, 0)) {
+    } else if (nid == NID_MLDSA65) {
+      if (ml_dsa_extmu_65_verify_internal(pk.data(), sig.data(), sig.size(),
+                                          mu.data(), mu.size(), nullptr, 0)) {
         reply[0] = 1;
       }
-    }
-    else if (nid == NID_MLDSA87) {
-      if (ml_dsa_extmu_87_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
-                                          mu.size(), nullptr, 0)) {
+    } else if (nid == NID_MLDSA87) {
+      if (ml_dsa_extmu_87_verify_internal(pk.data(), sig.data(), sig.size(),
+                                          mu.data(), mu.size(), nullptr, 0)) {
         reply[0] = 1;
-       }
+      }
     }
   }
   return write_reply({Span<const uint8_t>(reply)});

@@ -27,9 +27,9 @@
 
 #include <string.h>
 
-#include "internal.h"
-#include "../delocate.h"
 #include "../../internal.h"
+#include "../delocate.h"
+#include "internal.h"
 
 
 #if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
@@ -473,12 +473,12 @@ static p224_limb p224_felem_is_zero(const p224_felem in) {
   zero = (((int64_t)(zero)-1) >> 63) & 1;
 
   p224_limb two224m96p1 = (in[0] ^ 1) | (in[1] ^ 0x00ffff0000000000) |
-                     (in[2] ^ 0x00ffffffffffffff) |
-                     (in[3] ^ 0x00ffffffffffffff);
+                          (in[2] ^ 0x00ffffffffffffff) |
+                          (in[3] ^ 0x00ffffffffffffff);
   two224m96p1 = (((int64_t)(two224m96p1)-1) >> 63) & 1;
   p224_limb two225m97p2 = (in[0] ^ 2) | (in[1] ^ 0x00fffe0000000000) |
-                     (in[2] ^ 0x00ffffffffffffff) |
-                     (in[3] ^ 0x01ffffffffffffff);
+                          (in[2] ^ 0x00ffffffffffffff) |
+                          (in[3] ^ 0x01ffffffffffffff);
   two225m97p2 = (((int64_t)(two225m97p2)-1) >> 63) & 1;
   return (zero | two224m96p1 | two225m97p2);
 }
@@ -506,7 +506,7 @@ static void p224_felem_inv(p224_felem out, const p224_felem in) {
   p224_felem_mul(tmp, ftmp2, ftmp);
   p224_felem_reduce(ftmp, tmp);  // 2^6 - 1
   p224_felem_square(tmp, ftmp);
-  p224_felem_reduce(ftmp2, tmp);  // 2^7 - 2
+  p224_felem_reduce(ftmp2, tmp);    // 2^7 - 2
   for (size_t i = 0; i < 5; ++i) {  // 2^12 - 2^6
     p224_felem_square(tmp, ftmp2);
     p224_felem_reduce(ftmp2, tmp);
@@ -514,7 +514,7 @@ static void p224_felem_inv(p224_felem out, const p224_felem in) {
   p224_felem_mul(tmp, ftmp2, ftmp);
   p224_felem_reduce(ftmp2, tmp);  // 2^12 - 1
   p224_felem_square(tmp, ftmp2);
-  p224_felem_reduce(ftmp3, tmp);  // 2^13 - 2
+  p224_felem_reduce(ftmp3, tmp);     // 2^13 - 2
   for (size_t i = 0; i < 11; ++i) {  // 2^24 - 2^12
     p224_felem_square(tmp, ftmp3);
     p224_felem_reduce(ftmp3, tmp);
@@ -522,7 +522,7 @@ static void p224_felem_inv(p224_felem out, const p224_felem in) {
   p224_felem_mul(tmp, ftmp3, ftmp2);
   p224_felem_reduce(ftmp2, tmp);  // 2^24 - 1
   p224_felem_square(tmp, ftmp2);
-  p224_felem_reduce(ftmp3, tmp);  // 2^25 - 2
+  p224_felem_reduce(ftmp3, tmp);     // 2^25 - 2
   for (size_t i = 0; i < 23; ++i) {  // 2^48 - 2^24
     p224_felem_square(tmp, ftmp3);
     p224_felem_reduce(ftmp3, tmp);
@@ -530,7 +530,7 @@ static void p224_felem_inv(p224_felem out, const p224_felem in) {
   p224_felem_mul(tmp, ftmp3, ftmp2);
   p224_felem_reduce(ftmp3, tmp);  // 2^48 - 1
   p224_felem_square(tmp, ftmp3);
-  p224_felem_reduce(ftmp4, tmp);  // 2^49 - 2
+  p224_felem_reduce(ftmp4, tmp);     // 2^49 - 2
   for (size_t i = 0; i < 47; ++i) {  // 2^96 - 2^48
     p224_felem_square(tmp, ftmp4);
     p224_felem_reduce(ftmp4, tmp);
@@ -538,13 +538,13 @@ static void p224_felem_inv(p224_felem out, const p224_felem in) {
   p224_felem_mul(tmp, ftmp3, ftmp4);
   p224_felem_reduce(ftmp3, tmp);  // 2^96 - 1
   p224_felem_square(tmp, ftmp3);
-  p224_felem_reduce(ftmp4, tmp);  // 2^97 - 2
+  p224_felem_reduce(ftmp4, tmp);     // 2^97 - 2
   for (size_t i = 0; i < 23; ++i) {  // 2^120 - 2^24
     p224_felem_square(tmp, ftmp4);
     p224_felem_reduce(ftmp4, tmp);
   }
   p224_felem_mul(tmp, ftmp2, ftmp4);
-  p224_felem_reduce(ftmp2, tmp);  // 2^120 - 1
+  p224_felem_reduce(ftmp2, tmp);    // 2^120 - 1
   for (size_t i = 0; i < 6; ++i) {  // 2^126 - 2^6
     p224_felem_square(tmp, ftmp2);
     p224_felem_reduce(ftmp2, tmp);
@@ -554,7 +554,7 @@ static void p224_felem_inv(p224_felem out, const p224_felem in) {
   p224_felem_square(tmp, ftmp);
   p224_felem_reduce(ftmp, tmp);  // 2^127 - 2
   p224_felem_mul(tmp, ftmp, in);
-  p224_felem_reduce(ftmp, tmp);  // 2^127 - 1
+  p224_felem_reduce(ftmp, tmp);      // 2^127 - 1
   for (size_t i = 0; i < 97; ++i) {  // 2^224 - 2^97
     p224_felem_square(tmp, ftmp);
     p224_felem_reduce(ftmp, tmp);
@@ -838,9 +838,9 @@ static void p224_select_point(const uint64_t idx, size_t size,
   for (size_t i = 0; i < size; i++) {
     const p224_limb *inlimbs = &pre_comp[i][0][0];
     OPENSSL_STATIC_ASSERT(sizeof(uint64_t) <= sizeof(crypto_word_t),
-                  crypto_word_t_is_too_small);
+                          crypto_word_t_is_too_small);
     OPENSSL_STATIC_ASSERT(sizeof(size_t) <= sizeof(crypto_word_t),
-                  crypto_word_t_is_too_small);
+                          crypto_word_t_is_too_small);
     // Without a value barrier, Clang adds a branch here.
     uint64_t mask = value_barrier_w(constant_time_eq_w(i, idx));
     for (size_t j = 0; j < 4 * 3; j++) {
@@ -861,8 +861,7 @@ static crypto_word_t p224_get_bit(const EC_SCALAR *in, size_t i) {
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns
 // (X', Y') = (X/Z^2, Y/Z^3)
 static int ec_GFp_nistp224_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x,
-    EC_FELEM *y) {
+    const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x, EC_FELEM *y) {
   if (constant_time_declassify_int(
           ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);

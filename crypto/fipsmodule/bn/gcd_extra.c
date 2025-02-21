@@ -35,7 +35,7 @@ static void maybe_rshift1_words_carry(BN_ULONG *a, BN_ULONG carry,
   maybe_rshift1_words(a, mask, tmp, num);
   if (num != 0) {
     carry &= mask;
-    a[num - 1] |= carry << (BN_BITS2-1);
+    a[num - 1] |= carry << (BN_BITS2 - 1);
   }
 }
 
@@ -61,12 +61,9 @@ static int bn_gcd_consttime(BIGNUM *r, unsigned *out_shift, const BIGNUM *x,
   BIGNUM *u = BN_CTX_get(ctx);
   BIGNUM *v = BN_CTX_get(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  if (u == NULL || v == NULL || tmp == NULL ||
-      !BN_copy(u, x) ||
-      !BN_copy(v, y) ||
-      !bn_resize_words(u, width) ||
-      !bn_resize_words(v, width) ||
-      !bn_resize_words(tmp, width)) {
+  if (u == NULL || v == NULL || tmp == NULL || !BN_copy(u, x) ||
+      !BN_copy(v, y) || !bn_resize_words(u, width) ||
+      !bn_resize_words(v, width) || !bn_resize_words(tmp, width)) {
     goto err;
   }
 
@@ -121,8 +118,7 @@ err:
 
 int BN_gcd(BIGNUM *r, const BIGNUM *x, const BIGNUM *y, BN_CTX *ctx) {
   unsigned shift;
-  return bn_gcd_consttime(r, &shift, x, y, ctx) &&
-         BN_lshift(r, r, shift);
+  return bn_gcd_consttime(r, &shift, x, y, ctx) && BN_lshift(r, r, shift);
 }
 
 int bn_is_relatively_prime(int *out_relatively_prime, const BIGNUM *x,
@@ -131,8 +127,7 @@ int bn_is_relatively_prime(int *out_relatively_prime, const BIGNUM *x,
   BN_CTX_start(ctx);
   unsigned shift;
   BIGNUM *gcd = BN_CTX_get(ctx);
-  if (gcd == NULL ||
-      !bn_gcd_consttime(gcd, &shift, x, y, ctx)) {
+  if (gcd == NULL || !bn_gcd_consttime(gcd, &shift, x, y, ctx)) {
     goto err;
   }
 
@@ -218,23 +213,16 @@ int bn_mod_inverse_consttime(BIGNUM *r, int *out_no_inverse, const BIGNUM *a,
   BIGNUM *tmp = BN_CTX_get(ctx);
   BIGNUM *tmp2 = BN_CTX_get(ctx);
   if (u == NULL || v == NULL || A == NULL || B == NULL || C == NULL ||
-      D == NULL || tmp == NULL || tmp2 == NULL ||
-      !BN_copy(u, a) ||
-      !BN_copy(v, n) ||
-      !BN_one(A) ||
-      !BN_one(D) ||
+      D == NULL || tmp == NULL || tmp2 == NULL || !BN_copy(u, a) ||
+      !BN_copy(v, n) || !BN_one(A) || !BN_one(D) ||
       // For convenience, size |u| and |v| equivalently.
-      !bn_resize_words(u, n_width) ||
-      !bn_resize_words(v, n_width) ||
+      !bn_resize_words(u, n_width) || !bn_resize_words(v, n_width) ||
       // |A| and |C| are bounded by |m|.
-      !bn_resize_words(A, n_width) ||
-      !bn_resize_words(C, n_width) ||
+      !bn_resize_words(A, n_width) || !bn_resize_words(C, n_width) ||
       // |B| and |D| are bounded by |a|.
-      !bn_resize_words(B, a_width) ||
-      !bn_resize_words(D, a_width) ||
+      !bn_resize_words(B, a_width) || !bn_resize_words(D, a_width) ||
       // |tmp| and |tmp2| may be used at either size.
-      !bn_resize_words(tmp, n_width) ||
-      !bn_resize_words(tmp2, n_width)) {
+      !bn_resize_words(tmp, n_width) || !bn_resize_words(tmp2, n_width)) {
     goto err;
   }
 

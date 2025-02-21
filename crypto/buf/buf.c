@@ -58,8 +58,8 @@
 
 #include <string.h>
 
-#include <openssl/mem.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include "../internal.h"
 

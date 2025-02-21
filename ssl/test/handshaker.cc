@@ -24,10 +24,10 @@
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
+#include "../crypto/internal.h"
 #include "handshake_util.h"
 #include "test_config.h"
 #include "test_state.h"
-#include "../crypto/internal.h"
 
 using namespace bssl;
 
@@ -82,17 +82,16 @@ bool Handshaker(const TestConfig *config, int rfd, int wfd,
   if (!CBS_get_asn1_element(&cbs, &handoff, CBS_ASN1_SEQUENCE) ||
       !DeserializeContextState(&cbs, ctx.get()) ||
       !SetTestState(ssl.get(), TestState::Deserialize(&cbs, ctx.get())) ||
-      !GetTestState(ssl.get()) ||
-      !SSL_apply_handoff(ssl.get(), handoff)) {
+      !GetTestState(ssl.get()) || !SSL_apply_handoff(ssl.get(), handoff)) {
     fprintf(stderr, "Handoff application failed.\n");
     return false;
   }
 
   int ret = 0;
   for (;;) {
-    ret = CheckIdempotentError(
-        "SSL_do_handshake", ssl.get(),
-        [&]() -> int { return SSL_do_handshake(ssl.get()); });
+    ret = CheckIdempotentError("SSL_do_handshake", ssl.get(), [&]() -> int {
+      return SSL_do_handshake(ssl.get());
+    });
     if (SSL_get_error(ssl.get(), ret) == SSL_ERROR_WANT_READ) {
       // Synchronize with the proxy, i.e. don't let the handshake continue until
       // the proxy has sent more data.
@@ -268,8 +267,8 @@ int main(int argc, char **argv) {
       return SignalError();
     }
   } else {
-    if (!Handshaker(config, kFdProxyToHandshaker, kFdHandshakerToProxy,
-                    request, kFdControl)) {
+    if (!Handshaker(config, kFdProxyToHandshaker, kFdHandshakerToProxy, request,
+                    kFdControl)) {
       return SignalError();
     }
   }

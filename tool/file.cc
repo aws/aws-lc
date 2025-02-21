@@ -53,8 +53,7 @@ bool ReadAll(std::vector<uint8_t> *out, FILE *file) {
   }
 }
 
-bool WriteToFile(const std::string &path, const uint8_t *in,
-                        size_t in_len) {
+bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len) {
   ScopedFILE file(fopen(path.c_str(), "wb"));
   if (!file) {
     fprintf(stderr, "Failed to open '%s': %s\n", path.c_str(), strerror(errno));

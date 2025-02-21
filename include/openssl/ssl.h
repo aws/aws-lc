@@ -392,10 +392,10 @@ OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
 // been decrypted. If |ssl| has neither, this function returns zero.
 //
 // If read-ahead has been enabled with |SSL_CTX_set_read_ahead| or
-// |SSL_set_read_ahead|, the behavior of |SSL_pending| will change, it may return
-// 1 and a call to |SSL_read| to return no data. This can happen when a partial
-// record has been read but can not be decrypted without more data from the read
-// BIO.
+// |SSL_set_read_ahead|, the behavior of |SSL_pending| will change, it may
+// return 1 and a call to |SSL_read| to return no data. This can happen when a
+// partial record has been read but can not be decrypted without more data from
+// the read BIO.
 //
 // In DTLS, it is possible for this function to return one while |SSL_pending|
 // returns zero. For example, |SSL_read| may read a datagram with two records,
@@ -1462,11 +1462,13 @@ DEFINE_CONST_STACK_OF(SSL_CIPHER)
 // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
 
-// SSL_CIPHER_find returns a SSL_CIPHER structure which has the cipher ID stored in ptr or
-// NULL if unknown. The ptr parameter is a two element array of char, which stores the
-// two-byte TLS cipher ID (as allocated by IANA) in network byte order. SSL_CIPHER_find re-casts
-// |ptr| to uint16_t and calls |SSL_get_cipher_by_value| to get the SSL_CIPHER structure.
-OPENSSL_EXPORT const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr);
+// SSL_CIPHER_find returns a SSL_CIPHER structure which has the cipher ID stored
+// in ptr or NULL if unknown. The ptr parameter is a two element array of char,
+// which stores the two-byte TLS cipher ID (as allocated by IANA) in network
+// byte order. SSL_CIPHER_find re-casts |ptr| to uint16_t and calls
+// |SSL_get_cipher_by_value| to get the SSL_CIPHER structure.
+OPENSSL_EXPORT const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl,
+                                                 const unsigned char *ptr);
 
 // SSL_CIPHER_get_id returns |cipher|'s non-IANA id. This is not its
 // IANA-assigned number, which is called the "value" here, although it may be
@@ -1672,8 +1674,8 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
 //
 // Note: TLS 1.3 ciphersuites are only configurable via
-// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
-// no impact on TLS 1.3 ciphersuites.
+// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions
+// have no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -1872,12 +1874,13 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
 // or transported |ssl|'s that haven't yet performed a new handshake.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
 
-// SSL_client_hello_get0_ciphers provides access to the client ciphers field from the
-// Client Hello, optionally writing the result to an out pointer. It returns the field
-// length if successful, or 0 if |ssl| is a client or the handshake hasn't occurred yet.
-// |out| points to the raw bytes from the client hello message so it may contain invalid
-// or unsupported Cipher IDs.
-OPENSSL_EXPORT size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out);
+// SSL_client_hello_get0_ciphers provides access to the client ciphers field
+// from the Client Hello, optionally writing the result to an out pointer. It
+// returns the field length if successful, or 0 if |ssl| is a client or the
+// handshake hasn't occurred yet. |out| points to the raw bytes from the client
+// hello message so it may contain invalid or unsupported Cipher IDs.
+OPENSSL_EXPORT size_t SSL_client_hello_get0_ciphers(SSL *ssl,
+                                                    const unsigned char **out);
 
 // SSL_session_reused returns one if |ssl| performed an abbreviated handshake
 // and zero otherwise.
@@ -2684,7 +2687,7 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
 // SSL_GROUP_X25519_MLKEM768 is defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
-#define SSL_GROUP_X25519_MLKEM768    0x11EC
+#define SSL_GROUP_X25519_MLKEM768 0x11EC
 
 // The following PQ and hybrid group IDs are not yet standardized. Current IDs
 // are driven by community consensus and are defined at:
@@ -2695,7 +2698,7 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
 // The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
-#define SSL_GROUP_MLKEM768  0x0768
+#define SSL_GROUP_MLKEM768 0x0768
 #define SSL_GROUP_MLKEM1024 0x1024
 
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
@@ -3656,8 +3659,7 @@ OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
 #define PSK_MAX_PSK_LEN 256
 
 // SSL_psk_client_cb_func defines a function signature for the client callback.
-typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl,
-                                               const char *hint,
+typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl, const char *hint,
                                                char *identity,
                                                unsigned int max_identity_len,
                                                uint8_t *psk,
@@ -3674,20 +3676,18 @@ typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl,
 // at most |max_identity_len|. The PSK's length must be at most |max_psk_len|.
 // The callback returns the length of the PSK or 0 if no suitable identity was
 // found.
-OPENSSL_EXPORT void SSL_CTX_set_psk_client_callback(
-    SSL_CTX *ctx, SSL_psk_client_cb_func cb);
+OPENSSL_EXPORT void SSL_CTX_set_psk_client_callback(SSL_CTX *ctx,
+                                                    SSL_psk_client_cb_func cb);
 
 // SSL_set_psk_client_callback sets the callback to be called when PSK is
 // negotiated on the client. This callback must be set to enable PSK cipher
 // suites on the client. See also |SSL_CTX_set_psk_client_callback|.
-OPENSSL_EXPORT void SSL_set_psk_client_callback(
-    SSL *ssl, SSL_psk_client_cb_func cb);
+OPENSSL_EXPORT void SSL_set_psk_client_callback(SSL *ssl,
+                                                SSL_psk_client_cb_func cb);
 
 // SSL_psk_server_cb_func defines a function signature for the server callback.
-typedef unsigned (*SSL_psk_server_cb_func)(SSL *ssl,
-                                           const char *identity,
-                                           uint8_t *psk,
-                                           unsigned max_psk_len);
+typedef unsigned (*SSL_psk_server_cb_func)(SSL *ssl, const char *identity,
+                                           uint8_t *psk, unsigned max_psk_len);
 
 // SSL_CTX_set_psk_server_callback sets the callback to be called when PSK is
 // negotiated on the server. This callback must be set to enable PSK cipher
@@ -3696,14 +3696,14 @@ typedef unsigned (*SSL_psk_server_cb_func)(SSL *ssl,
 // The callback is passed the identity in |identity|. It should write a PSK of
 // length at most |max_psk_len| to |psk| and return the number of bytes written
 // or zero if the PSK identity is unknown.
-OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(
-    SSL_CTX *ctx, SSL_psk_server_cb_func cb);
+OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(SSL_CTX *ctx,
+                                                    SSL_psk_server_cb_func cb);
 
 // SSL_set_psk_server_callback sets the callback to be called when PSK is
 // negotiated on the server. This callback must be set to enable PSK cipher
 // suites on the server. See also |SSL_CTX_set_psk_server_callback|.
-OPENSSL_EXPORT void SSL_set_psk_server_callback(
-    SSL *ssl, SSL_psk_server_cb_func cb);
+OPENSSL_EXPORT void SSL_set_psk_server_callback(SSL *ssl,
+                                                SSL_psk_server_cb_func cb);
 
 // SSL_CTX_use_psk_identity_hint configures server connections to advertise an
 // identity hint of |identity_hint|. It returns one on success and zero on
@@ -5168,14 +5168,16 @@ OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 // if |yes| is 0 it disables read ahead and returns 1,
 // if |yes| is any other value nothing is changed and 0 is returned.
 //
-// When read ahead is enabled all future reads will be up to the buffer size configured
-// with |SSL_CTX_set_default_read_buffer_len|, the default buffer size is
-// |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704 bytes.
+// When read ahead is enabled all future reads will be up to the buffer size
+// configured with |SSL_CTX_set_default_read_buffer_len|, the default buffer
+// size is |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704
+// bytes.
 //
-// Read ahead should only be enabled on non-blocking IO sources configured with |SSL_set_bio|.
-// When read ahead is enabled AWS-LC will make reads for potentially more data than is
-// avaliable in the BIO with the assumption a partial read will be returned. If
-// a blocking BIO is used and never returns the read could get stuck forever.
+// Read ahead should only be enabled on non-blocking IO sources configured with
+// |SSL_set_bio|. When read ahead is enabled AWS-LC will make reads for
+// potentially more data than is avaliable in the BIO with the assumption a
+// partial read will be returned. If a blocking BIO is used and never returns
+// the read could get stuck forever.
 OPENSSL_EXPORT int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
 // SSL_get_read_ahead returns 1 if |ssl| is not null and read ahead is enabled
@@ -5187,25 +5189,27 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 // if |yes| is 0 it disables read ahead and returns 1,
 // if |yes| is any other value nothing is changed and 0 is returned.
 //
-// When read ahead is enabled all future reads will be for up to the buffer size configured
-// with |SSL_CTX_set_default_read_buffer_len|. The default buffer size  is
-// |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704 bytes
+// When read ahead is enabled all future reads will be for up to the buffer size
+// configured with |SSL_CTX_set_default_read_buffer_len|. The default buffer
+// size  is |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| =
+// 16704 bytes
 //
-// Read ahead should only be enabled on non-blocking IO sources configured with |SSL_set_bio|,
-// when read ahead is enabled AWS-LC will make reads for potentially more data than is
-// available in the BIO.
+// Read ahead should only be enabled on non-blocking IO sources configured with
+// |SSL_set_bio|, when read ahead is enabled AWS-LC will make reads for
+// potentially more data than is available in the BIO.
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
 
-// SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
-// A |len| of 0 is the same behavior as read ahead turned off: each call to
-// |SSL_read| reads the amount specified in the TLS Record Header.
-OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
+// SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will
+// use on |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is
+// the maximum. A |len| of 0 is the same behavior as read ahead turned off: each
+// call to |SSL_read| reads the amount specified in the TLS Record Header.
+OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx,
+                                                       size_t len);
 
 // SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
-// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
-// A |len| of 0 is the same behavior as read ahead turned off: each call to
-// |SSL_read| reads the amount specified in the TLS Record Header.
+// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the
+// maximum. A |len| of 0 is the same behavior as read ahead turned off: each
+// call to |SSL_read| reads the amount specified in the TLS Record Header.
 OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);
 
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.

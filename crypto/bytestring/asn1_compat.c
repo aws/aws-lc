@@ -21,8 +21,8 @@
 
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 int CBB_finish_i2d(CBB *cbb, uint8_t **outp) {

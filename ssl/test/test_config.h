@@ -221,7 +221,7 @@ struct TestConfig {
   std::vector<std::pair<std::string, std::string>> multiple_certs_slot;
   bool no_check_client_certificate_type = false;
 
-  std::vector<const char*> handshaker_args;
+  std::vector<const char *> handshaker_args;
 
   bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx) const;
 

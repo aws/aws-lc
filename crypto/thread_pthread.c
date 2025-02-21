@@ -33,44 +33,45 @@ OPENSSL_STATIC_ASSERT(alignof(CRYPTO_MUTEX) >= alignof(pthread_rwlock_t),
                       CRYPTO_MUTEX_has_insufficient_alignment)
 
 void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
-  if (pthread_rwlock_init((pthread_rwlock_t *) lock, NULL) != 0) {
+  if (pthread_rwlock_init((pthread_rwlock_t *)lock, NULL) != 0) {
     abort();
   }
 }
 
 void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
-  if (pthread_rwlock_rdlock((pthread_rwlock_t *) lock) != 0) {
+  if (pthread_rwlock_rdlock((pthread_rwlock_t *)lock) != 0) {
     abort();
   }
 }
 
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
-  if (pthread_rwlock_wrlock((pthread_rwlock_t *) lock) != 0) {
+  if (pthread_rwlock_wrlock((pthread_rwlock_t *)lock) != 0) {
     abort();
   }
 }
 
 void CRYPTO_MUTEX_unlock_read(CRYPTO_MUTEX *lock) {
-  if (pthread_rwlock_unlock((pthread_rwlock_t *) lock) != 0) {
+  if (pthread_rwlock_unlock((pthread_rwlock_t *)lock) != 0) {
     abort();
   }
 }
 
 void CRYPTO_MUTEX_unlock_write(CRYPTO_MUTEX *lock) {
-  if (pthread_rwlock_unlock((pthread_rwlock_t *) lock) != 0) {
+  if (pthread_rwlock_unlock((pthread_rwlock_t *)lock) != 0) {
     abort();
   }
 }
 
 void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
-  pthread_rwlock_destroy((pthread_rwlock_t *) lock);
+  pthread_rwlock_destroy((pthread_rwlock_t *)lock);
 }
 
 // Some MinGW pthreads implementations might fail on first use of
 // locks initialized using PTHREAD_RWLOCK_INITIALIZER.
 // See: https://sourceforge.net/p/mingw-w64/bugs/883/
 typedef int (*pthread_rwlock_func_ptr)(pthread_rwlock_t *);
-static int rwlock_EINVAL_fallback_retry(const pthread_rwlock_func_ptr func_ptr, pthread_rwlock_t* lock) {
+static int rwlock_EINVAL_fallback_retry(const pthread_rwlock_func_ptr func_ptr,
+                                        pthread_rwlock_t *lock) {
   int result = EINVAL;
 #ifdef __MINGW32__
   const int MAX_ATTEMPTS = 10;
@@ -79,7 +80,7 @@ static int rwlock_EINVAL_fallback_retry(const pthread_rwlock_func_ptr func_ptr, 
     sched_yield();
     attempt_num += 1;
     result = func_ptr(lock);
-  } while(result == EINVAL && attempt_num < MAX_ATTEMPTS);
+  } while (result == EINVAL && attempt_num < MAX_ATTEMPTS);
 #endif
   return result;
 }

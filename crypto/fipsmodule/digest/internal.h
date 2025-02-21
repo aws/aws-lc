@@ -90,8 +90,8 @@ struct env_md_st {
   // ctx_size contains the size, in bytes, of the state of the hash function.
   unsigned ctx_size;
 
-  // finalXOF completes the hash and writes |len| bytes of digest extended output
-  // to |out|.
+  // finalXOF completes the hash and writes |len| bytes of digest extended
+  // output to |out|.
   void (*finalXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
 };
 
@@ -101,11 +101,11 @@ struct env_md_st {
 struct evp_md_pctx_ops {
   // free is called when an |EVP_MD_CTX| is being freed and the |pctx| also
   // needs to be freed.
-  void (*free) (EVP_PKEY_CTX *pctx);
+  void (*free)(EVP_PKEY_CTX *pctx);
 
   // dup is called when an |EVP_MD_CTX| is copied and so the |pctx| also needs
   // to be copied.
-  EVP_PKEY_CTX* (*dup) (EVP_PKEY_CTX *pctx);
+  EVP_PKEY_CTX *(*dup)(EVP_PKEY_CTX *pctx);
 };
 
 

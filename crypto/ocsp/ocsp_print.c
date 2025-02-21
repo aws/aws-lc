@@ -80,7 +80,7 @@ const char *OCSP_crl_reason_str(long s) {
 }
 
 int OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST *req, unsigned long flags) {
-  if(bp == NULL|| req ==NULL) {
+  if (bp == NULL || req == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -131,7 +131,7 @@ int OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST *req, unsigned long flags) {
 }
 
 int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp, unsigned long flags) {
-  if(bp == NULL|| resp ==NULL) {
+  if (bp == NULL || resp == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }

@@ -346,7 +346,7 @@ int SSKDF_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 end:
   sskdf_variant_hmac_ctx_cleanup(&ctx);
   FIPS_service_indicator_unlock_state();
-  if(ret) {
+  if (ret) {
     SSKDF_hmac_verify_service_indicator(digest);
   }
   return ret;

@@ -4,9 +4,9 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#include "../tool/internal.h"
 #include <string>
 #include <vector>
+#include "../tool/internal.h"
 
 #if !defined(O_BINARY)
 #define O_BINARY 0
@@ -19,11 +19,12 @@ struct Tool {
   tool_func_t func;
 };
 
-bool IsNumeric(const std::string& str);
+bool IsNumeric(const std::string &str);
 
-X509* CreateAndSignX509Certificate();
+X509 *CreateAndSignX509Certificate();
 
-bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path);
+bool LoadPrivateKeyAndSignCertificate(X509 *x509,
+                                      const std::string &signkey_path);
 
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
@@ -37,4 +38,4 @@ bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
 
-#endif //INTERNAL_H
+#endif  // INTERNAL_H

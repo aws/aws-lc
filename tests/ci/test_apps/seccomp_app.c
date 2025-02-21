@@ -10,7 +10,6 @@
 #include <openssl/rand.h>
 
 static void enable_seccomp(void) {
-
   // Kill on all system calls by default.
   scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL);
   if (ctx == NULL) {
@@ -32,12 +31,13 @@ static void enable_seccomp(void) {
 }
 
 int main() {
-
   const char notice[] = "\nTesting AWS-LC pre-sandbox.\n";
 #if defined(USE_AWS_LC_PRE_SANDBOX)
-  const char status[] = "Pre-sandbox configuration is ENABLED, expect success.\n\n";
+  const char status[] =
+      "Pre-sandbox configuration is ENABLED, expect success.\n\n";
 #else
-  const char status[] = "Pre-sandbox configuration is DISABLED, expect failure.\n\n";
+  const char status[] =
+      "Pre-sandbox configuration is DISABLED, expect failure.\n\n";
 #endif
 
   write(STDOUT_FILENO, notice, sizeof(notice));

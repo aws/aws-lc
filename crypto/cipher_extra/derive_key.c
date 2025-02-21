@@ -59,8 +59,8 @@
 #include <assert.h>
 
 #include <openssl/digest.h>
-#include <openssl/mem.h>
 #include <openssl/evp.h>
+#include <openssl/mem.h>
 
 
 int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,

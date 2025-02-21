@@ -66,7 +66,7 @@ extern "C" {
 
 // The maximum permitted number of cipher blocks per data unit in XTS mode.
 // Reference IEEE Std 1619-2018.
-#define XTS_MAX_BLOCKS_PER_DATA_UNIT            (1<<20)
+#define XTS_MAX_BLOCKS_PER_DATA_UNIT (1 << 20)
 
 // block128_f is the type of an AES block cipher implementation.
 //
@@ -130,7 +130,9 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
 // can be safely copied. Additionally, |gcm_key| is split into a separate
 // struct.
 
-typedef struct { uint64_t hi,lo; } u128;
+typedef struct {
+  uint64_t hi, lo;
+} u128;
 
 // gmult_func multiplies |Xi| by the GCM key and writes the result back to
 // |Xi|.
@@ -155,7 +157,7 @@ typedef struct gcm128_key_st {
 
   // use_hw_gcm_crypt is true if this context should use platform-specific
   // assembly to process GCM data.
-  unsigned use_hw_gcm_crypt:1;
+  unsigned use_hw_gcm_crypt : 1;
 } GCM128_KEY;
 
 // GCM128_CONTEXT contains state for a single GCM operation. The structure
@@ -299,7 +301,7 @@ void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                    size_t len);
-#if  !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 void gcm_init_avx512(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx512(uint8_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx512(uint8_t Xi[2], const u128 Htable[16], const uint8_t *in,
@@ -388,8 +390,8 @@ size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
 #define GCM_FUNCREF
 void gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_p8(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_p8(uint8_t Xi[16], const u128 Htable[16],
-                  const uint8_t *inp, size_t len);
+void gcm_ghash_p8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
+                  size_t len);
 #endif
 #endif  // OPENSSL_NO_ASM
 
@@ -462,9 +464,9 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
 // CRYPTO_xts128_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
 // from |in| to |out| using the given IV in XTS mode. There's no requirement
 // that |len| be a multiple of any value.
-size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
-                             const uint8_t iv[16], const uint8_t *inp,
-                             uint8_t *out, size_t len, int enc);
+size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx, const uint8_t iv[16],
+                             const uint8_t *inp, uint8_t *out, size_t len,
+                             int enc);
 
 // POLYVAL.
 //

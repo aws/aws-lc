@@ -93,7 +93,7 @@ int SHA256_Init(SHA256_CTX *sha) {
   return 1;
 }
 
-OPENSSL_STATIC_ASSERT(SHA256_CHAINING_LENGTH==SHA224_CHAINING_LENGTH,
+OPENSSL_STATIC_ASSERT(SHA256_CHAINING_LENGTH == SHA224_CHAINING_LENGTH,
                       sha256_and_sha224_have_same_chaining_length)
 
 // sha256_init_from_state_impl is the implementation of
@@ -102,7 +102,7 @@ OPENSSL_STATIC_ASSERT(SHA256_CHAINING_LENGTH==SHA224_CHAINING_LENGTH,
 static int sha256_init_from_state_impl(SHA256_CTX *sha, int md_len,
                                        const uint8_t h[SHA256_CHAINING_LENGTH],
                                        uint64_t n) {
-  if(n % ((uint64_t) SHA256_CBLOCK * 8) != 0) {
+  if (n % ((uint64_t)SHA256_CBLOCK * 8) != 0) {
     // n is not a multiple of the block size in bits, so it fails
     return 0;
   }
@@ -140,11 +140,10 @@ uint8_t *SHA224(const uint8_t *data, size_t len,
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA256_CTX ctx;
-  const int ok = SHA224_Init(&ctx) &&
-                 SHA224_Update(&ctx, data, len) &&
+  const int ok = SHA224_Init(&ctx) && SHA224_Update(&ctx, data, len) &&
                  SHA224_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -157,11 +156,10 @@ uint8_t *SHA256(const uint8_t *data, size_t len,
   // updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
   SHA256_CTX ctx;
-  const int ok = SHA256_Init(&ctx) &&
-                 SHA256_Update(&ctx, data, len) &&
+  const int ok = SHA256_Init(&ctx) && SHA256_Update(&ctx, data, len) &&
                  SHA256_Final(out, &ctx);
   FIPS_service_indicator_unlock_state();
-  if(ok) {
+  if (ok) {
     FIPS_service_indicator_update_state();
   }
   OPENSSL_cleanse(&ctx, sizeof(ctx));

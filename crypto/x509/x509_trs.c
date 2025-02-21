@@ -117,7 +117,7 @@ int X509_TRUST_get_by_id(int id) {
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(trstandard); i++) {
     if (trstandard[i].trust == id) {
       OPENSSL_STATIC_ASSERT(OPENSSL_ARRAY_SIZE(trstandard) <= INT_MAX,
-                    indices_must_fit_in_int);
+                            indices_must_fit_in_int);
       return (int)i;
     }
   }

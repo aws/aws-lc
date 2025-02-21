@@ -41,7 +41,7 @@ static int CRYPTO_BUFFER_cmp(const CRYPTO_BUFFER *a, const CRYPTO_BUFFER *b) {
   return OPENSSL_memcmp(a->data, b->data, a->len);
 }
 
-CRYPTO_BUFFER_POOL* CRYPTO_BUFFER_POOL_new(void) {
+CRYPTO_BUFFER_POOL *CRYPTO_BUFFER_POOL_new(void) {
   CRYPTO_BUFFER_POOL *pool = OPENSSL_zalloc(sizeof(CRYPTO_BUFFER_POOL));
   if (pool == NULL) {
     return NULL;
@@ -87,7 +87,7 @@ static CRYPTO_BUFFER *crypto_buffer_new(const uint8_t *data, size_t len,
                                         CRYPTO_BUFFER_POOL *pool) {
   if (pool != NULL) {
     CRYPTO_BUFFER tmp;
-    tmp.data = (uint8_t *) data;
+    tmp.data = (uint8_t *)data;
     tmp.len = len;
     tmp.pool = pool;
 
@@ -252,9 +252,7 @@ const uint8_t *CRYPTO_BUFFER_data(const CRYPTO_BUFFER *buf) {
   return buf->data;
 }
 
-size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf) {
-  return buf->len;
-}
+size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf) { return buf->len; }
 
 void CRYPTO_BUFFER_init_CBS(const CRYPTO_BUFFER *buf, CBS *out) {
   CBS_init(out, buf->data, buf->len);

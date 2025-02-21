@@ -111,8 +111,7 @@ static int hpke_labeled_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
                                const uint8_t *info, size_t info_len) {
   // labeledInfo = concat(I2OSP(L, 2), "HPKE-v1", suite_id, label, info)
   CBB labeled_info;
-  int ok = CBB_init(&labeled_info, 0) &&
-           CBB_add_u16(&labeled_info, out_len) &&
+  int ok = CBB_init(&labeled_info, 0) && CBB_add_u16(&labeled_info, out_len) &&
            add_label_string(&labeled_info, kHpkeVersionId) &&
            CBB_add_bytes(&labeled_info, suite_id, suite_id_len) &&
            add_label_string(&labeled_info, label) &&
@@ -396,7 +395,7 @@ int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key, uint8_t *out,
 }
 
 int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key, uint8_t *out,
-                            size_t *out_len, size_t max_out) {
+                             size_t *out_len, size_t max_out) {
   if (max_out < key->kem->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
@@ -559,7 +558,7 @@ EVP_HPKE_CTX *EVP_HPKE_CTX_new(void) {
     return NULL;
   }
   // NO-OP: struct already zeroed
-  //EVP_HPKE_CTX_zero(ctx);
+  // EVP_HPKE_CTX_zero(ctx);
   return ctx;
 }
 

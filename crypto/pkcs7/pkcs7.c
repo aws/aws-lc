@@ -866,9 +866,7 @@ int PKCS7_set_detached(PKCS7 *p7, int detach) {
   }
 }
 
-int PKCS7_get_detached(PKCS7 *p7) {
-  return PKCS7_is_detached(p7);
-}
+int PKCS7_get_detached(PKCS7 *p7) { return PKCS7_is_detached(p7); }
 
 
 static BIO *pkcs7_find_digest(EVP_MD_CTX **pmd, BIO *bio, int nid) {
@@ -1399,7 +1397,8 @@ PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509) {
   return ri;
 }
 
-int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int _flags) {
+int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data,
+                  int _flags) {
   GUARD_PTR(p7);
   GUARD_PTR(pkey);
   GUARD_PTR(data);

@@ -14,11 +14,11 @@
 
 #include <openssl/ctrdrbg.h>
 
-#include <openssl/type_check.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../cipher/internal.h"
+#include "internal.h"
 
 
 // Section references in this file refer to SP 800-90Ar1:
@@ -182,7 +182,7 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
       todo = out_len;
     }
 
-    todo &= ~(AES_BLOCK_SIZE-1);
+    todo &= ~(AES_BLOCK_SIZE - 1);
     const size_t num_blocks = todo / AES_BLOCK_SIZE;
 
     if (drbg->ctr) {

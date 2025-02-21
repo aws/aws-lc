@@ -111,17 +111,17 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/mem.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 #define BN_BLINDING_COUNTER 32
 
 struct bn_blinding_st {
-  BIGNUM *A;  // The base blinding factor, Montgomery-encoded.
+  BIGNUM *A;   // The base blinding factor, Montgomery-encoded.
   BIGNUM *Ai;  // The inverse of the blinding factor, Montgomery-encoded.
   unsigned counter;
 };

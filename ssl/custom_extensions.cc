@@ -32,8 +32,8 @@ void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension) {
 }
 
 static const SSL_CUSTOM_EXTENSION *custom_ext_find(
-    STACK_OF(SSL_CUSTOM_EXTENSION) *stack,
-    unsigned *out_index, uint16_t value) {
+    STACK_OF(SSL_CUSTOM_EXTENSION) *stack, unsigned *out_index,
+    uint16_t value) {
   for (size_t i = 0; i < sk_SSL_CUSTOM_EXTENSION_num(stack); i++) {
     const SSL_CUSTOM_EXTENSION *ext = sk_SSL_CUSTOM_EXTENSION_value(stack, i);
     if (ext->value == value) {
@@ -74,8 +74,7 @@ static int custom_ext_add_hello(SSL_HANDSHAKE *hs, CBB *extensions) {
   for (size_t i = 0; i < sk_SSL_CUSTOM_EXTENSION_num(stack); i++) {
     const SSL_CUSTOM_EXTENSION *ext = sk_SSL_CUSTOM_EXTENSION_value(stack, i);
 
-    if (ssl->server &&
-        !(hs->custom_extensions.received & (1u << i))) {
+    if (ssl->server && !(hs->custom_extensions.received & (1u << i))) {
       // Servers cannot echo extensions that the client didn't send.
       continue;
     }
@@ -93,7 +92,7 @@ static int custom_ext_add_hello(SSL_HANDSHAKE *hs, CBB *extensions) {
             !CBB_add_bytes(&contents_cbb, contents, contents_len) ||
             !CBB_flush(extensions)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          ERR_add_error_dataf("extension %u", (unsigned) ext->value);
+          ERR_add_error_dataf("extension %u", (unsigned)ext->value);
           if (ext->free_callback && 0 < contents_len) {
             ext->free_callback(ssl, ext->value, contents, ext->add_arg);
           }
@@ -116,7 +115,7 @@ static int custom_ext_add_hello(SSL_HANDSHAKE *hs, CBB *extensions) {
       default:
         ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
         OPENSSL_PUT_ERROR(SSL, SSL_R_CUSTOM_EXTENSION_ERROR);
-        ERR_add_error_dataf("extension %u", (unsigned) ext->value);
+        ERR_add_error_dataf("extension %u", (unsigned)ext->value);
         return 0;
     }
   }
@@ -135,7 +134,7 @@ int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
   const SSL_CUSTOM_EXTENSION *ext =
       custom_ext_find(ssl->ctx->client_custom_extensions, &index, value);
 
-  if (// Unknown extensions are not allowed in a ServerHello.
+  if (  // Unknown extensions are not allowed in a ServerHello.
       ext == NULL ||
       // Also, if we didn't send the extension, that's also unacceptable.
       !(hs->custom_extensions.sent & (1u << index))) {
@@ -197,8 +196,7 @@ static int custom_ext_append(STACK_OF(SSL_CUSTOM_EXTENSION) **stack,
                              SSL_custom_ext_free_cb free_cb, void *add_arg,
                              SSL_custom_ext_parse_cb parse_cb,
                              void *parse_arg) {
-  if (add_cb == NULL ||
-      0xffff < extension_value ||
+  if (add_cb == NULL || 0xffff < extension_value ||
       SSL_extension_supported(extension_value) ||
       // Specifying a free callback without an add callback is nonsensical
       // and an error.
