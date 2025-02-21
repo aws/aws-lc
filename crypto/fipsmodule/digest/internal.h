@@ -79,10 +79,11 @@ struct env_md_st {
   void (*init)(EVP_MD_CTX *ctx);
 
   // update hashes |len| bytes of |data| into the state in |ctx->md_data|.
-  // Digest update functions always return 1. update calls after |final| are 
-  // restricted via |ctx| check (|final| cleanses the |ctx|). Returns 1
-  // on success and 0 on failure. Failures can only occur on a
-  // digest XOF update if called after |squeezeXOF| or |finalXOF|.
+  // Digest update functions propagate the internal functions return value.
+  // update calls after |final| are restricted via |ctx| check (|final|
+  // cleanses the |ctx|). Digest XOF update returns 1 on success and 0 on
+  // failure. Failures can only occur on a digest XOF update if called after
+  // |squeezeXOF| or |finalXOF|.
   int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   // final completes the hash and writes |md_size| bytes of digest to |out|.
