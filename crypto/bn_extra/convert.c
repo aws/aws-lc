@@ -191,8 +191,7 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode,
     in++;
   }
 
-  for (i = 0; want_char((unsigned char)in[i]) && i + neg < INT_MAX; i++) {
-  }
+  for (i = 0; want_char((unsigned char)in[i]) && i + neg < INT_MAX; i++) {}
 
   if (i == 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INVALID_INPUT);

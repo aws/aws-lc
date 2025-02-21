@@ -209,8 +209,7 @@ char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *method,
     return NULL;
   }
   if (!(bntmp = ASN1_ENUMERATED_to_BN(a, NULL)) ||
-      !(strtmp = bignum_to_string(bntmp))) {
-  }
+      !(strtmp = bignum_to_string(bntmp))) {}
   BN_free(bntmp);
   return strtmp;
 }
@@ -222,8 +221,7 @@ char *i2s_ASN1_INTEGER(const X509V3_EXT_METHOD *method, const ASN1_INTEGER *a) {
     return NULL;
   }
   if (!(bntmp = ASN1_INTEGER_to_BN(a, NULL)) ||
-      !(strtmp = bignum_to_string(bntmp))) {
-  }
+      !(strtmp = bignum_to_string(bntmp))) {}
   BN_free(bntmp);
   return strtmp;
 }
