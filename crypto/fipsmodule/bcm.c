@@ -115,6 +115,7 @@
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
 #include "evp/p_ed25519.c"
+#include "evp/p_ed25519ph.c"
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
 #include "evp/p_kem.c"
