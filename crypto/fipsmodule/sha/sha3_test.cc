@@ -21,7 +21,7 @@
 static const struct {
     size_t startsz, incsz;
 } stride_tests[] = {
-    // Test Edge Cases for SHAKE128 with blocksize of 136B
+    // Test Edge Cases for SHAKE128 with blocksize of 168B
     { 1, 1 },
     { 8, 8 },
     { 9, 9 },
