@@ -248,12 +248,12 @@ class SHA3TestVector {
       ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(),  msg_.size()));
 
         while (sqd_bytes < digest_length) {
-            if ((sqd_bytes + to_sq_bytes) > digest_length) {
-                to_sq_bytes = digest_length - sqd_bytes;
-            }
-            ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, to_sq_bytes));
-            sqd_bytes += to_sq_bytes;
-            to_sq_bytes = stride_tests[cur_test].incsz;
+          if ((sqd_bytes + to_sq_bytes) > digest_length) {
+            to_sq_bytes = digest_length - sqd_bytes;
+          }
+          ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, to_sq_bytes));
+          sqd_bytes += to_sq_bytes;
+          to_sq_bytes = stride_tests[cur_test].incsz;
         }
       EXPECT_EQ(Bytes(digest.get(), digest_length),
             Bytes(digest_.data(), digest_length));
