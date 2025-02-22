@@ -4,11 +4,12 @@ set -ex
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 source tests/ci/common_posix_setup.sh
 
-original_test="${BUILD_ROOT}/crypto/fips_callback_test"
-broken_test="${BUILD_ROOT}/crypto/fips_callback_test_broken"
+original_test="${BUILD_ROOT}/crypto/crypto_test"
+broken_test="${BUILD_ROOT}/crypto/crypto_test_broken"
 
 # By default the test should pass
-$original_test
+$original_test --gtest_filter=FIPSCallback.PowerOnSelfTests
+$original_test --gtest_filter=FIPSCallback.PWCT
 
 # Break the tests
 KATS=$(go run "${SRC_ROOT}/util/fipstools/break-kat.go" --list-tests)

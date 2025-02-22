@@ -992,6 +992,7 @@ if(BUILD_TESTING)
 
   # sets tests to compile an so executable file for testing in our Android app CI.
   if(ANDROIDTESTRUNNER)
+    set(TEST_EXECUTABLE_EXT ".so")
   endif()
 
   set(CRYPTO_TEST_EXEC crypto_test${TEST_EXECUTABLE_EXT})
@@ -1002,7 +1003,6 @@ if(BUILD_TESTING)
   set(INTEGRATION_TEST_EXEC integration_test${TEST_EXECUTABLE_EXT})
   set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test${TEST_EXECUTABLE_EXT})
   set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init${TEST_EXECUTABLE_EXT})
-  set(FIPS_CALLBACK_TEST_EXEC fips_callback_test${TEST_EXECUTABLE_EXT})
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
 

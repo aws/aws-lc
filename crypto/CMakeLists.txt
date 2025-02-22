@@ -738,9 +738,6 @@ if(BUILD_TESTING)
   )
   set_test_location(${RANDOM_TEST_EXEC})
 
-  # fips_callback_test tests that setting the callback overrides the default abort behavior
-  add_test_executable(${FIPS_CALLBACK_TEST_EXEC} fips_callback_test.cc)
-
   add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
   target_include_directories(${RANDOM_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
@@ -775,6 +772,7 @@ if(BUILD_TESTING)
     evp_extra/evp_test.cc
     evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
+    fips_callback_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
     fipsmodule/bn/bn_assert_test.cc

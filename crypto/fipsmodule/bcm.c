@@ -401,8 +401,8 @@ int BORINGSSL_integrity_test(void) {
 }
 #endif  // OPENSSL_ASAN
 
-#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message) {
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
   if (AWS_LC_fips_failure_callback == NULL) {
     fprintf(stderr, "AWS_LC_fips_failure_callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK. FIPS failure:\n%s", message);
     fflush(stderr);
@@ -410,17 +410,15 @@ void AWS_LC_FIPS_failure(const char* message) {
   } else {
     AWS_LC_fips_failure_callback(message);
   }
-}
 #else
-void AWS_LC_FIPS_failure(const char* message) {
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
   fflush(stderr);
   for (;;) {
     abort();
     exit(1);
   }
-}
 #endif
+}
 #else  // BORINGSSL_FIPS
 void AWS_LC_FIPS_failure(const char* message) {
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
