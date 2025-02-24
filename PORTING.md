@@ -310,7 +310,7 @@ more CA certificates (chain certificates) used to establish the authenticity of 
 done through several avenues such as `SSL_use_certificate_chain_file`/`SSL_CTX_use_certificate_chain_file` or through a
 a more verbose setup using `SSL_use_certificate_file`/`SSL_CTX_use_certificate_file` followed by
 `SSL_add0_chain_cert`/`SSL_CTX_add0_chain_cert` as just one example. **Note:** there are other certificate loading
-function variants then those listed that have been listed here.
+functions that have not been listed here.
 
 By default AWS-LC does not perform X.509 certificate auto-chaining when constructing the TLS client or server
 certificate to be sent over the TLS connection as part of a `Certificate` message frame. AWS-LC TLS
