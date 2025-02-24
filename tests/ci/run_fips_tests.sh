@@ -31,6 +31,10 @@ if static_linux_supported || static_openbsd_supported; then
   echo "Testing AWS-LC static library in FIPS Release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
+  echo "Testing AWS-LC static breakable build with custom callback enabled"
+  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS -DAWSLC_FIPS_FAILURE_CALLBACK"
+  ./tests/ci/run_fips_callback_tests.sh
+
   echo "Testing AWS-LC static breakable release build"
   run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
   ./util/fipstools/test-break-kat.sh
