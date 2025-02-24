@@ -4,12 +4,17 @@ add_executable(
     ../tool/args.cc
     ../tool/file.cc
     ../tool/fd.cc
+    ../tool/client.cc
+    ../tool/transport_common.cc
 
+    crl.cc
     dgst.cc
     rsa.cc
+    s_client.cc
     tool.cc
-    x509.cc
+    verify.cc
     version.cc
+    x509.cc
 )
 
 target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
@@ -52,11 +57,18 @@ if(BUILD_TESTING)
         ../tool/file.cc
         ../tool/fd.cc
         ../crypto/test/test_util.cc
+        ../tool/client.cc
+        ../tool/transport_common.cc
 
+        crl.cc
+        crl_test.cc
         dgst.cc
         dgst_test.cc
         rsa.cc
         rsa_test.cc
+        s_client.cc
+        verify.cc
+        verify_test.cc
         x509.cc
         x509_test.cc
     )

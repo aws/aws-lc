@@ -63,6 +63,7 @@
 
 #include "internal.h"
 #include "../bytestring/internal.h"
+#include "../crypto/internal.h"
 
 
 #define OPENSSL_DSA_MAX_MODULUS_BITS 10000
@@ -119,8 +120,9 @@ int dsa_check_key(const DSA *dsa) {
   if (dsa->priv_key != NULL) {
     // The private key is a non-zero element of the scalar field, determined by
     // |q|.
-    if (BN_is_negative(dsa->priv_key) || BN_is_zero(dsa->priv_key) ||
-        BN_cmp(dsa->priv_key, dsa->q) >= 0) {
+    if (BN_is_negative(dsa->priv_key) ||
+        constant_time_declassify_int(BN_is_zero(dsa->priv_key)) ||
+        constant_time_declassify_int(BN_cmp(dsa->priv_key, dsa->q) >= 0)) {
       OPENSSL_PUT_ERROR(DSA, DSA_R_INVALID_PARAMETERS);
       return 0;
     }

@@ -10,7 +10,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.other, ASN1_ANY, 0);
+ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.data, ASN1_ANY, 0);
 
 ASN1_ADB(PKCS7) = {
     ADB_ENTRY(NID_pkcs7_data,
@@ -172,7 +172,7 @@ IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENCRYPT)
 
 ASN1_SEQUENCE(PKCS7_DIGEST) = {
     ASN1_SIMPLE(PKCS7_DIGEST, version, ASN1_INTEGER),
-    ASN1_SIMPLE(PKCS7_DIGEST, md, X509_ALGOR),
+    ASN1_SIMPLE(PKCS7_DIGEST, digest_alg, X509_ALGOR),
     ASN1_SIMPLE(PKCS7_DIGEST, contents, PKCS7),
     ASN1_SIMPLE(PKCS7_DIGEST, digest,
                 ASN1_OCTET_STRING)} ASN1_SEQUENCE_END(PKCS7_DIGEST)
@@ -186,3 +186,13 @@ ASN1_SEQUENCE(PKCS7_ENVELOPE) = {
                 PKCS7_ENC_CONTENT)} ASN1_SEQUENCE_END(PKCS7_ENVELOPE)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENVELOPE)
+
+int PKCS7_print_ctx(BIO *bio, PKCS7 *pkcs7, int indent, const ASN1_PCTX *pctx) {
+  GUARD_PTR(bio);
+  GUARD_PTR(pkcs7);
+
+  if (BIO_printf(bio, "PKCS7 printing is not supported") <= 0) {
+    return 0;
+  }
+  return 1;
+}

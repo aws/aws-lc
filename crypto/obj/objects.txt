@@ -922,9 +922,9 @@ nist_hashalgs 5		: SHA512-224		: sha512-224
 nist_hashalgs 6		: SHA512-256		: sha512-256
 
 # OIDs for dsa-with-sha224 and dsa-with-sha256
-!Alias dsa_with_sha2 nistAlgorithms 3
-dsa_with_sha2 1		: dsa_with_SHA224
-dsa_with_sha2 2		: dsa_with_SHA256
+!Alias nist_dsa nistAlgorithms 3
+nist_dsa 1		: dsa_with_SHA224
+nist_dsa 2		: dsa_with_SHA256
 
 # Hold instruction CRL entry extension
 !Cname hold-instruction-code
@@ -1353,6 +1353,7 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
 1 3 101 111 : X448
 1 3 101 112 : ED25519
 1 3 101 113 : ED448
+ : ED25519ph
 
  : ChaCha20-Poly1305 : chacha20-poly1305
 
@@ -1401,3 +1402,11 @@ nist_kem 3 : MLKEM1024
 # https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md
 # as we await NIST to release official OIDs.
 1 3 6 1 4 1 2 267 7 6 5 : DILITHIUM3_R3
+
+# OIDs for ML-DSA-44, ML-DSA-65, and ML-DSA-87 according to
+# https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+# https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
+nist_dsa : PQDSA
+nist_dsa 17 : MLDSA44
+nist_dsa 18 : MLDSA65
+nist_dsa 19 : MLDSA87

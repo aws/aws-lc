@@ -17,9 +17,9 @@
 // |----------------------------|
 // | 1. |   x   |   x   |   x*  |
 // | 2. |   x   |   x   |   x*  |
-// | 3. |       |       |       |
+// | 3. |   x   |   x   |   x*  |
 // | 4. |   x   |   x   |   x*  |
-// | 5. |       |       |       |
+// | 5. |   x   |   x   |   x*  |
 //  * For P-256, only the Fiat-crypto implementation in p256.c is replaced. 
 
 #include "ec_nistp.h"
@@ -317,9 +317,13 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 #define SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS \
                 (SCALAR_MUL_TABLE_NUM_POINTS * 3 * FELEM_MAX_NUM_OF_LIMBS)
 
+// The maximum number of bits for a scalar.
+#define SCALAR_MUL_MAX_SCALAR_BITS (521)
+
 // Maximum number of windows (digits) for a scalar encoding which is
 // determined by the maximum scalar bit size -- 521 bits in our case.
-#define SCALAR_MUL_MAX_NUM_WINDOWS DIV_AND_CEIL(521, SCALAR_MUL_WINDOW_SIZE)
+#define SCALAR_MUL_MAX_NUM_WINDOWS \
+                DIV_AND_CEIL(SCALAR_MUL_MAX_SCALAR_BITS, SCALAR_MUL_WINDOW_SIZE)
 
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
 //  table <-- [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
@@ -497,4 +501,293 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
+}
+
+// Multiplication of the base point G of the curve with the given scalar.
+// The product is computed with the Comb method using a precomputed table
+// and the regular-wNAF scalar encoding.
+//
+// While the algorithm is generic and works for different curves, window sizes,
+// and scalar sizes, for clarity, we describe it by using the example of P-521.
+//
+// The precomputed table has 27 sub-tables each holding 16 points:
+//
+//      0 :       [1]G,       [3]G,  ...,       [31]G
+//      1 :  [1*2^20]G,  [3*2^20]G,  ...,  [31*2^20]G
+//                         ...
+//      i : [1*2^20i]G, [3*2^20i]G,  ..., [31*2^20i]G
+//                         ...
+//     26 :   [2^520]G, [3*2^520]G,  ..., [31*2^520]G
+// Computing the negation of a point P = (x, y) is relatively easy:
+//     -P = (x, -y).
+// So we may assume that for each sub-table we have 32 points instead of 16:
+//     [\pm 1*2^20i]G, [\pm 3*2^20i]G, ..., [\pm 31*2^20i]G.
+//
+// The 521-bit |scalar| is recoded (regular-wNAF encoding) into 105 signed
+// digits, each of length 5 bits, as explained in the
+// |p521_felem_mul_scalar_rwnaf| function. Namely,
+//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_104*2^520,
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
+// scalar we have that scalar = scalar', while in the case of an even
+// scalar we have that scalar = scalar' - 1.
+//
+// To compute the required product, [scalar]G, we may do the following.
+// Group the recoded digits of the scalar in 4 groups:
+//                                            |   corresponding multiples in
+//                  digits                    |   the recoded representation
+//   -------------------------------------------------------------------------
+//   (0): {s_0, s_4,  s_8, ..., s_100, s_104} |  { 2^0, 2^20, ..., 2^500, 2^520}
+//   (1): {s_1, s_5,  s_9, ..., s_101}        |  { 2^5, 2^25, ..., 2^505}
+//   (2): {s_2, s_6, s_10, ..., s_102}        |  {2^10, 2^30, ..., 2^510}
+//   (3): {s_3, s_7, s_11, ..., s_103}        |  {2^15, 2^35, ..., 2^515}
+//        corresponding sub-table lookup      |  {  T0,   T1, ...,   T25,   T26}
+//
+// The group (0) digits correspond precisely to the multiples of G that are
+// held in the 27 precomputed sub-tables, so we may simply read the appropriate
+// points from the sub-tables and sum them all up (negating if needed, i.e., if
+// a digit s_i is negative, we read the point corresponding to the abs(s_i) and
+// negate it before adding it to the sum).
+// The remaining three groups (1), (2), and (3), correspond to the multiples
+// of G from the sub-tables multiplied additionally by 2^5, 2^10, and 2^15,
+// respectively. Therefore, for these groups we may read the appropriate points
+// from the table, double them 5, 10, or 15 times, respectively, and add them
+// to the final result.
+//
+// To minimize the number of required doubling operations we process the digits
+// of the scalar from left to right. In other words, the algorithm is:
+//   1. For group (i) in this order (3, 2, 1, 0):
+//   2.   Double the accumulator 5 times except in the first iteration.
+//   3.   Read the points corresponding to the group (i) digits from the tables
+//        and add them to an accumulator.
+//   4. If the scalar is even subtract G from the accumulator.
+//
+// Note: this function is designed to be constant-time.
+void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
+                              ec_nistp_felem_limb *x_out,
+                              ec_nistp_felem_limb *y_out,
+                              ec_nistp_felem_limb *z_out,
+                              const EC_SCALAR *scalar) {
+  // Regular-wNAF encoding of the scalar.
+  int16_t rwnaf[SCALAR_MUL_MAX_NUM_WINDOWS];
+  scalar_rwnaf(rwnaf, SCALAR_MUL_WINDOW_SIZE, scalar, ctx->felem_num_bits);
+  size_t num_windows = DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+
+  // We need two point accumulators, so we define them of maximum size
+  // to avoid allocation, and just take pointers to individual coordinates.
+  // (This cruft will disapear when we refactor point_add/dbl to work with
+  // whole points instead of individual coordinates).
+  ec_nistp_felem_limb res[3 * FELEM_MAX_NUM_OF_LIMBS] = {0};
+  ec_nistp_felem_limb tmp[3 * FELEM_MAX_NUM_OF_LIMBS] = {0};
+  ec_nistp_felem_limb *x_res = &res[0];
+  ec_nistp_felem_limb *y_res = &res[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_res = &res[ctx->felem_num_limbs * 2];
+  ec_nistp_felem_limb *x_tmp = &tmp[0];
+  ec_nistp_felem_limb *y_tmp = &tmp[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_tmp = &tmp[ctx->felem_num_limbs * 2];
+
+  // Process the 4 groups of digits starting from group (3) down to group (0).
+  for (int i = 3; i >= 0; i--) {
+    // Double |res| 5 times in each iteration, except in the first one.
+    for (size_t j = 0; i != 3 && j < SCALAR_MUL_WINDOW_SIZE; j++) {
+      ctx->point_dbl(x_res, y_res, z_res, x_res, y_res, z_res);
+    }
+
+    // Process the digits in the current group from the most to the least
+    // significant one.
+    size_t start_idx = ((num_windows - i - 1) / 4) * 4 + i;
+
+    for (int j = start_idx; j >= 0; j -= 4) {
+      // For each digit |d| in the current group read the corresponding point
+      // from the table and add it to |res|. If |d| is negative, negate
+      // the point before adding it to |res|.
+      int16_t d = rwnaf[j];
+      int16_t is_neg = (d >> 15) & 1; // is_neg = (d < 0) ? 1 : 0
+      d = (d ^ -is_neg) + is_neg;     // d = abs(d)
+
+      int16_t idx = d >> 1;
+
+      // Select the point to add, in constant time.
+      size_t point_num_limbs = 2 * ctx->felem_num_limbs;  // Affine points.
+      size_t subtable_num_limbs = SCALAR_MUL_TABLE_NUM_POINTS * point_num_limbs;
+      size_t table_idx = (j / 4) * subtable_num_limbs;
+      const ec_nistp_felem_limb *table = &ctx->scalar_mul_base_table[table_idx];
+      select_point_from_table(ctx, tmp, table, idx, 0);
+
+      // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
+      ec_nistp_felem ftmp;
+      ctx->felem_neg(ftmp, y_tmp);
+
+      cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
+
+      // Add the point to the accumulator |res|.
+      ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1,
+                     x_tmp, y_tmp, ctx->felem_one);
+    }
+  }
+
+  // Conditionally subtract G if the scalar is even, in constant-time.
+  const ec_nistp_felem_limb *x_mp = &ctx->scalar_mul_base_table[0];
+  const ec_nistp_felem_limb *y_mp = &ctx->scalar_mul_base_table[ctx->felem_num_limbs];
+  ec_nistp_felem ftmp;
+  ctx->felem_neg(ftmp, y_mp);
+
+  // Subtract P from the accumulator.
+  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 1, x_mp, ftmp, ctx->felem_one);
+
+  // Select |res| or |res - P| based on parity of the scalar.
+  ec_nistp_felem_limb t = scalar->words[0] & 1;
+  cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
+  cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
+  cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
+}
+
+// Computes [g_scalar]G + [p_scalar]P, where G is the base point of the curve
+// curve, and P is the given point (x_p, y_p, z_p).
+//
+// Both scalar products are computed by the same "textbook" wNAF method,
+// with w = 5 for g_scalar and w = 5 for p_scalar.
+// For the base point G product we use the first sub-table of the precomputed
+// table, while for P we generate the table on-the-fly. The tables hold the
+// first 16 odd multiples of G or P:
+//     g_pre_comp = {[1]G, [3]G, ..., [31]G},
+//     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
+// Computing the negation of a point P = (x, y) is relatively easy:
+//     -P = (x, -y).
+// So we may assume that we also have the negatives of the points in the tables.
+//
+// The scalars are recoded by the textbook wNAF method to digits, where a digit
+// is either a zero or an odd integer in [-31, 31]. The method guarantees that
+// each non-zero digit is followed by at least four zeroes.
+//
+// The result [g_scalar]G + [p_scalar]P is computed by the following algorithm:
+//     1. Initialize the accumulator with the point-at-infinity.
+//     2. For i starting from 521 down to 0:
+//     3.   Double the accumulator (doubling can be skipped while the
+//          accumulator is equal to the point-at-infinity).
+//     4.   Read from |p_pre_comp| the point corresponding to the i-th digit of
+//          p_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+//     5.   Read from |g_pre_comp| the point corresponding to the i-th digit of
+//          g_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+// Note: this function is NOT constant-time.
+void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
+                                ec_nistp_felem_limb *x_out,
+                                ec_nistp_felem_limb *y_out,
+                                ec_nistp_felem_limb *z_out,
+                                const EC_SCALAR *g_scalar,
+                                const ec_nistp_felem_limb *x_p,
+                                const ec_nistp_felem_limb *y_p,
+                                const ec_nistp_felem_limb *z_p,
+                                const EC_SCALAR *p_scalar) {
+
+  const size_t felem_num_bytes = ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+
+  // Table of multiples of P.
+  ec_nistp_felem_limb p_table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
+  generate_table(ctx, p_table, x_p, y_p, z_p);
+  const size_t p_point_num_limbs = 3 * ctx->felem_num_limbs; // Projective.
+
+  // Table of multiples of G.
+  const ec_nistp_felem_limb *g_table = ctx->scalar_mul_base_table;
+  const size_t g_point_num_limbs = 2 * ctx->felem_num_limbs; // Affine.
+
+  // Recode the scalars.
+  int8_t p_wnaf[SCALAR_MUL_MAX_SCALAR_BITS + 1] = {0};
+  int8_t g_wnaf[SCALAR_MUL_MAX_SCALAR_BITS + 1] = {0};
+  ec_compute_wNAF(p_wnaf, p_scalar, ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+  ec_compute_wNAF(g_wnaf, g_scalar, ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+
+  // In the beginning res is set to point-at-infinity, so we set the flag.
+  int16_t res_is_inf = 1;
+  int16_t d, is_neg, idx;
+  ec_nistp_felem ftmp;
+
+  for (int i = ctx->felem_num_bits; i >= 0; i--) {
+
+    // If |res| is point-at-infinity there is no point in doubling so skip it.
+    if (!res_is_inf) {
+      ctx->point_dbl(x_out, y_out, z_out, x_out, y_out, z_out);
+    }
+
+    // Process the p_scalar digit.
+    d = p_wnaf[i];
+    if (d != 0) {
+      is_neg = d < 0 ? 1 : 0;
+      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
+
+      if (res_is_inf) {
+        // If |res| is point-at-infinity there is no need to add the new point,
+        // we can simply copy it.
+        const size_t table_idx = idx * p_point_num_limbs;
+        OPENSSL_memcpy(x_out, &p_table[table_idx], felem_num_bytes);
+        OPENSSL_memcpy(y_out, &p_table[table_idx + ctx->felem_num_limbs], felem_num_bytes);
+        OPENSSL_memcpy(z_out, &p_table[table_idx + ctx->felem_num_limbs * 2], felem_num_bytes);
+        res_is_inf = 0;
+      } else {
+        // Otherwise, add to the accumulator either the point at position idx
+        // in the table or its negation.
+        const ec_nistp_felem_limb *y_tmp;
+        y_tmp = &p_table[idx * p_point_num_limbs + ctx->felem_num_limbs];
+        if (is_neg) {
+          ctx->felem_neg(ftmp, y_tmp);
+          y_tmp = ftmp;
+        }
+        ctx->point_add(x_out, y_out, z_out, x_out, y_out, z_out, 0,
+                       &p_table[idx * p_point_num_limbs],
+                       y_tmp,
+                       &p_table[idx * p_point_num_limbs + ctx->felem_num_limbs * 2]);
+      }
+    }
+
+    /* // Process the g_scalar digit. */
+    d = g_wnaf[i];
+    if (d != 0) {
+      is_neg = d < 0 ? 1 : 0;
+      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
+
+      if (res_is_inf) {
+        // If |res| is point-at-infinity there is no need to add the new point,
+        // we can simply copy it.
+        const size_t table_idx = idx * g_point_num_limbs;
+        OPENSSL_memcpy(x_out, &g_table[table_idx], felem_num_bytes);
+        OPENSSL_memcpy(y_out, &g_table[table_idx + ctx->felem_num_limbs], felem_num_bytes);
+        OPENSSL_memcpy(z_out, ctx->felem_one, felem_num_bytes);
+        res_is_inf = 0;
+      } else {
+        // Otherwise, add to the accumulator either the point at position idx
+        // in the table or its negation.
+        const ec_nistp_felem_limb *y_tmp ;
+        y_tmp = &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs];
+        if (is_neg) {
+          ctx->felem_neg(ftmp, &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs]);
+          y_tmp = ftmp;
+        }
+        ctx->point_add(x_out, y_out, z_out, x_out, y_out, z_out, 1,
+                       &g_table[idx * g_point_num_limbs], y_tmp, ctx->felem_one);
+      }
+    }
+  }
+}
+
+void ec_nistp_point_to_coordinates(ec_nistp_felem_limb *x_out,
+                                   ec_nistp_felem_limb *y_out,
+                                   ec_nistp_felem_limb *z_out,
+                                   const ec_nistp_felem_limb *xyz_in,
+                                   size_t num_limbs_per_coord) {
+  size_t num_bytes_per_coord = num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
+  OPENSSL_memcpy(x_out, xyz_in, num_bytes_per_coord);
+  OPENSSL_memcpy(y_out, &xyz_in[num_limbs_per_coord], num_bytes_per_coord);
+  OPENSSL_memcpy(z_out, &xyz_in[num_limbs_per_coord * 2], num_bytes_per_coord);
+}
+
+void ec_nistp_coordinates_to_point(ec_nistp_felem_limb *xyz_out,
+                                   const ec_nistp_felem_limb *x_in,
+                                   const ec_nistp_felem_limb *y_in,
+                                   const ec_nistp_felem_limb *z_in,
+                                   size_t num_limbs_per_coord) {
+  size_t num_bytes_per_coord = num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
+  OPENSSL_memcpy(xyz_out, x_in, num_bytes_per_coord);
+  OPENSSL_memcpy(&xyz_out[num_limbs_per_coord], y_in, num_bytes_per_coord);
+  OPENSSL_memcpy(&xyz_out[num_limbs_per_coord * 2], z_in, num_bytes_per_coord);
 }

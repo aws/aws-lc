@@ -24,6 +24,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "../test/file_util.h"
 #include "../test/test_util.h"
 
 #if !defined(OPENSSL_WINDOWS)
@@ -37,6 +38,7 @@
 #include <unistd.h>
 #else
 #include <io.h>
+#include <fcntl.h>
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -48,6 +50,8 @@ using Socket = int;
 #define INVALID_SOCKET (-1)
 static int closesocket(int sock) { return close(sock); }
 static std::string LastSocketError() { return strerror(errno); }
+static const int kOpenReadOnlyBinary = O_RDONLY;
+static const int kOpenReadOnlyText = O_RDONLY;
 #else
 using Socket = SOCKET;
 static std::string LastSocketError() {
@@ -55,6 +59,8 @@ static std::string LastSocketError() {
   snprintf(buf, sizeof(buf), "%d", WSAGetLastError());
   return buf;
 }
+static const int kOpenReadOnlyBinary = _O_RDONLY | _O_BINARY;
+static const int kOpenReadOnlyText = O_RDONLY | _O_TEXT;
 #endif
 
 class OwnedSocket {
@@ -737,46 +743,65 @@ TEST(BIOTest, Gets) {
       check_bio_gets(bio.get());
     }
 
-    TempFILE file = createTempFILE();
-#if defined(OPENSSL_ANDROID)
-    // On Android, when running from an APK, |tmpfile| does not work. See
-    // b/36991167#comment8.
-    if (!file) {
-      fprintf(stderr, "tmpfile failed: %s (%d). Skipping file-based tests.\n",
-              strerror(errno), errno);
-      continue;
-    }
-#else
-    ASSERT_TRUE(file);
-#endif
+    if (!SkipTempFileTests()) {
+      TemporaryFile file;
+      ASSERT_TRUE(file.Init(t.bio));
 
-    if (!t.bio.empty()) {
-      ASSERT_EQ(1u,
-                fwrite(t.bio.data(), t.bio.size(), /*nitems=*/1, file.get()));
-      ASSERT_EQ(0, fseek(file.get(), 0, SEEK_SET));
-    }
+      // TODO(crbug.com/boringssl/585): If the line has an embedded NUL, file
+      // BIOs do not currently report the answer correctly.
+      if (t.bio.find('\0') == std::string::npos) {
+        SCOPED_TRACE("file");
 
-    // TODO(crbug.com/boringssl/585): If the line has an embedded NUL, file
-    // BIOs do not currently report the answer correctly.
-    if (t.bio.find('\0') == std::string::npos) {
-      SCOPED_TRACE("file");
-      bssl::UniquePtr<BIO> bio(BIO_new_fp(file.get(), BIO_NOCLOSE));
-      ASSERT_TRUE(bio);
-      check_bio_gets(bio.get());
-    }
+        // Test |BIO_new_file|.
+        bssl::UniquePtr<BIO> bio(BIO_new_file(file.path().c_str(), "rb"));
+        ASSERT_TRUE(bio);
+        check_bio_gets(bio.get());
 
-    ASSERT_EQ(0, fseek(file.get(), 0, SEEK_SET));
+        // Test |BIO_read_filename|.
+        bio.reset(BIO_new(BIO_s_file()));
+        ASSERT_TRUE(bio);
+        ASSERT_TRUE(BIO_read_filename(bio.get(), file.path().c_str()));
+        check_bio_gets(bio.get());
 
-    {
-      SCOPED_TRACE("fd");
+        // Test |BIO_NOCLOSE|.
+        ScopedFILE file_obj = file.Open("rb");
+        ASSERT_TRUE(file_obj);
+        bio.reset(BIO_new_fp(file_obj.get(), BIO_NOCLOSE));
+        ASSERT_TRUE(bio);
+        check_bio_gets(bio.get());
+
+        // Test |BIO_CLOSE|.
+        file_obj = file.Open("rb");
+        ASSERT_TRUE(file_obj);
+        bio.reset(BIO_new_fp(file_obj.get(), BIO_CLOSE));
+        ASSERT_TRUE(bio);
+        file_obj.release();  // |BIO_new_fp| took ownership on success.
+        check_bio_gets(bio.get());
+      }
+
+      {
+        SCOPED_TRACE("fd");
 #if defined(OPENSSL_WINDOWS)
-      int fd = _fileno(file.get());
+        int open_flags = _O_RDONLY | _O_BINARY;
 #else
-      int fd = fileno(file.get());
+        int open_flags = O_RDONLY;
 #endif
-      bssl::UniquePtr<BIO> bio(BIO_new_fd(fd, BIO_NOCLOSE));
-      ASSERT_TRUE(bio);
-      check_bio_gets(bio.get());
+
+        // Test |BIO_NOCLOSE|.
+        ScopedFD fd = file.OpenFD(open_flags);
+        ASSERT_TRUE(fd.is_valid());
+        bssl::UniquePtr<BIO> bio(BIO_new_fd(fd.get(), BIO_NOCLOSE));
+        ASSERT_TRUE(bio);
+        check_bio_gets(bio.get());
+
+        // Test |BIO_CLOSE|.
+        fd = file.OpenFD(open_flags);
+        ASSERT_TRUE(fd.is_valid());
+        bio.reset(BIO_new_fd(fd.get(), BIO_CLOSE));
+        ASSERT_TRUE(bio);
+        fd.release();  // |BIO_new_fd| took ownership on success.
+        check_bio_gets(bio.get());
+      }
     }
   }
 
@@ -808,6 +833,90 @@ TEST(BIOTest, ExternalData) {
       static_cast<CustomData *>(BIO_get_ex_data(bio.get(), bio_index));
   ASSERT_TRUE(retrieved_data);
   EXPECT_EQ(retrieved_data->custom_data, 123);
+}
+
+// Test that, on Windows, |BIO_read_filename| opens files in binary mode.
+TEST(BIOTest, FileMode) {
+  if (SkipTempFileTests()) {
+    GTEST_SKIP();
+  }
+
+  TemporaryFile temp;
+  ASSERT_TRUE(temp.Init("hello\r\nworld"));
+
+  auto expect_file_contents = [](BIO *bio, const std::string &str) {
+    // Read more than expected, to make sure we've reached the end of the file.
+    std::vector<char> buf(str.size() + 100);
+    int len = BIO_read(bio, buf.data(), static_cast<int>(buf.size()));
+    ASSERT_GT(len, 0);
+    EXPECT_EQ(Bytes(buf.data(), len), Bytes(str));
+  };
+  auto expect_binary_mode = [&](BIO *bio) {
+    expect_file_contents(bio, "hello\r\nworld");
+  };
+  auto expect_text_mode = [&](BIO *bio) {
+#if defined(OPENSSL_WINDOWS)
+    expect_file_contents(bio, "hello\nworld");
+#else
+    expect_file_contents(bio, "hello\r\nworld");
+#endif
+  };
+
+  // |BIO_read_filename| should open in binary mode.
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_file()));
+  ASSERT_TRUE(bio);
+  ASSERT_TRUE(BIO_read_filename(bio.get(), temp.path().c_str()));
+  expect_binary_mode(bio.get());
+  // |BIO_new_file| does not set |BIO_FP_TEXT|, so expect it to set the file's
+  // mode to binary in all cases. This odd behavior, but it's what OpenSSL does.
+  bio.reset(BIO_new_file(temp.path().c_str(), "rb"));
+  ASSERT_TRUE(bio);
+  expect_binary_mode(bio.get());
+  bio.reset(BIO_new_file(temp.path().c_str(), "r"));
+  ASSERT_TRUE(bio);
+  // NOTE: Our behavior here aligns with OpenSSL which is to |_setmode| the file
+  // to binary. BoringSSL would |expect_text_mode| below because it respects 
+  // default mode on Windows which is text and doesn't call |_setmode| (unless
+  // |BIO_FP_TEXT| is set, which is not the case here).
+  expect_binary_mode(bio.get());
+  // |BIO_new_fp| will always set |_O_BINARY| if |BIO_FP_TEXT| is not set in the
+  // call to |BIO_new_fp|.
+  ScopedFILE file = temp.Open("rb");
+  ASSERT_TRUE(file);
+  bio.reset(BIO_new_fp(file.get(), BIO_NOCLOSE));
+  ASSERT_TRUE(bio);
+  expect_binary_mode(bio.get());
+  file = temp.Open("r");
+  ASSERT_TRUE(file);
+  bio.reset(BIO_new_fp(file.get(), BIO_NOCLOSE));
+  ASSERT_TRUE(bio);
+  // NOTE: Our behavior here aligns with OpenSSL. BoringSSL would
+  // |expect_text_mode| below because they don't call |_setmode| unless
+  // |BIO_FP_TEXT| is set.
+  expect_binary_mode(bio.get());
+  // However, |BIO_FP_TEXT| changes the file to be text mode, no matter how it
+  // was opened.
+  file = temp.Open("rb");
+  ASSERT_TRUE(file);
+  bio.reset(BIO_new_fp(file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
+  ASSERT_TRUE(bio);
+  expect_text_mode(bio.get());
+  file = temp.Open("r");
+  ASSERT_TRUE(file);
+  bio.reset(BIO_new_fp(file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
+  ASSERT_TRUE(bio);
+  expect_text_mode(bio.get());
+  // |BIO_new_fd| inherits the FD's existing mode.
+  ScopedFD fd = temp.OpenFD(kOpenReadOnlyBinary);
+  ASSERT_TRUE(fd.is_valid());
+  bio.reset(BIO_new_fd(fd.get(), BIO_NOCLOSE));
+  ASSERT_TRUE(bio);
+  expect_binary_mode(bio.get());
+  fd = temp.OpenFD(kOpenReadOnlyText);
+  ASSERT_TRUE(fd.is_valid());
+  bio.reset(BIO_new_fd(fd.get(), BIO_NOCLOSE));
+  ASSERT_TRUE(bio);
+  expect_text_mode(bio.get());
 }
 
 // Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.
@@ -899,10 +1008,7 @@ TEST_P(BIOPairTest, TestPair) {
   // A closed write end may not be written to.
   EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1));
   EXPECT_EQ(-1, BIO_write(bio1, "_____", 5));
-
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_BIO, ERR_GET_LIB(err));
-  EXPECT_EQ(BIO_R_BROKEN_PIPE, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_BIO, BIO_R_BROKEN_PIPE));
 
   // The other end is still functional.
   EXPECT_EQ(5, BIO_write(bio2, "12345", 5));
@@ -1101,7 +1207,7 @@ TEST(BIOTest, TestPutsAsWrite) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
 
-  // Test basic puts and read  
+  // Test basic puts and read
   uint8_t buf[32];
   EXPECT_EQ(12, BIO_puts(bio.get(), "hello world\n"));
   EXPECT_EQ(12, BIO_read(bio.get(), buf, sizeof(buf)));
@@ -1168,7 +1274,7 @@ TEST(BIOTest, TestPutsNullMethod) {
   ASSERT_FALSE(bio.get()->method->bwrite);
   ASSERT_EQ(-2, BIO_puts(bio.get(), "hello world"));
 }
-} //namespace 
+} //namespace
 
 TEST(BIOTest, TestPutsCallbacks) {
   bio_callback_cleanup();
@@ -1210,7 +1316,7 @@ TEST(BIOTest, TestGetsCallback) {
 
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
-  // write data to BIO, then set callback 
+  // write data to BIO, then set callback
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
   char buf[TEST_BUF_LEN];
   BIO_set_callback_ex(bio, bio_cb_ex);
@@ -1241,13 +1347,13 @@ TEST(BIOTest, TestGetsCallback) {
   ASSERT_EQ(BIO_free(bio), 1);
 }
 
-TEST(BIOTest, TestCtrlCallback) { 
+TEST(BIOTest, TestCtrlCallback) {
   bio_callback_cleanup();
 
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
   BIO_set_callback_ex(bio, bio_cb_ex);
-  
+
   char buf[TEST_BUF_LEN];
   // Test BIO_ctrl. This is not normally called directly so we can use one of
   // the macros such as BIO_reset to test it
@@ -1255,7 +1361,7 @@ TEST(BIOTest, TestCtrlCallback) {
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_CTRL);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_CTRL | BIO_CB_RETURN);
-  
+
   // argi in this case in the cmd sent to the ctrl method
   ASSERT_EQ(param_argi_ex[0], BIO_CTRL_RESET);
   ASSERT_EQ(param_argi_ex[1], BIO_CTRL_RESET);
@@ -1264,7 +1370,7 @@ TEST(BIOTest, TestCtrlCallback) {
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_ret_ex[1], 1);
 
-  // processed is unused in ctrl 
+  // processed is unused in ctrl
   ASSERT_EQ(param_processed_ex[0], 0u);
   ASSERT_EQ(param_processed_ex[1], 0u);
 

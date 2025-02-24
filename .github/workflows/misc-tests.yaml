@@ -32,12 +32,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install jq
+    - if: ${{ github.event.pull_request != null }}
+      name: Install jq
       run: |
         sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
         sudo apt-get install -y jq
 
-    - name: Check PR description
+    - if: ${{ github.event.pull_request != null }}
+      name: Check PR description
       run: |
         # License statement we want present.
         LICENSE_STATEMENT="By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license and the ISC license."
@@ -77,3 +79,45 @@ jobs:
           echo "Error: PR description does not contain the required license statement."
           exit 1
         fi
+  path-has-spaces:
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-14-xlarge ]
+    steps:
+      - if: ${{ matrix.os == 'windows-latest' }}
+        name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: "path has spaces/aws-lc"
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build'
+          generator: Ninja
+      - name: Build Project
+        run: cmake --build "path has spaces/build" --target all
+      - name: Run tests
+        run: cmake --build "path has spaces/build" --target run_tests
+      - name: Setup CMake FIPS
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build-fips'
+          generator: Ninja
+          options: CMAKE_BUILD_TYPE=Release FIPS=1 BUILD_SHARED_LIBS=${{ (matrix.os == 'ubuntu-latest' && '0') || '1' }}
+      - name: Build Project
+        run: cmake --build "path has spaces/build-fips" --target all
+        # TODO: Fix the FIPS ACVP tests on Windows to handle spaces in the path
+      - if: ${{ matrix.os != 'windows-latest' }}
+        name: Run tests
+        run: cmake --build "path has spaces/build-fips" --target run_tests

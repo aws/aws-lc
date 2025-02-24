@@ -782,7 +782,8 @@ TEST_P(AEADServiceIndicatorTest, EVP_AEAD) {
                           encrypt_output.size(), nonce.data(), nonce.size(),
                           kPlaintext, sizeof(kPlaintext), nullptr, 0)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
-    EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_INVALID_NONCE);
+    EXPECT_TRUE(
+        ErrorEquals(ERR_get_error(), ERR_LIB_CIPHER, CIPHER_R_INVALID_NONCE));
   }
 }
 
@@ -5199,6 +5200,15 @@ TEST(ServiceIndicatorTest, ED25519KeyGen) {
 TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
   const uint8_t MESSAGE[15] = {'E', 'D', '2', '5', '5', '1', '9', ' ',
                                'M', 'E', 'S', 'S', 'A', 'G', 'E'};
+  const uint8_t CONTEXT[6] = {'A', 'W', 'S', '-', 'L', 'C'};
+  uint8_t digest[SHA512_DIGEST_LENGTH] = {
+      0xcf, 0x83, 0xe1, 0x35, 0x7e, 0xef, 0xb8, 0xbd, 0xf1, 0x54, 0x28,
+      0x50, 0xd6, 0x6d, 0x80, 0x07, 0xd6, 0x20, 0xe4, 0x05, 0x0b, 0x57,
+      0x15, 0xdc, 0x83, 0xf4, 0xa9, 0x21, 0xd3, 0x6c, 0xe9, 0xce, 0x47,
+      0xd0, 0xd1, 0x3c, 0x5d, 0x85, 0xf2, 0xb0, 0xff, 0x83, 0x18, 0xd2,
+      0x87, 0x7e, 0xec, 0x2f, 0x63, 0xb9, 0x31, 0xbd, 0x47, 0x41, 0x7a,
+      0x81, 0xa5, 0x38, 0x32, 0x7a, 0xf9, 0x27, 0xda, 0x3e};  // sha512 of empty
+                                                              // string
   uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
   uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
   uint8_t signature[ED25519_SIGNATURE_LEN] = {0};
@@ -5214,6 +5224,47 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(ED25519_verify(&MESSAGE[0], sizeof(MESSAGE),
                                            signature, public_key)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(ED25519ctx_sign(&signature[0], &MESSAGE[0], sizeof(MESSAGE),
+                                  private_key, &CONTEXT[0], sizeof(CONTEXT))));
+  ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(ED25519ctx_verify(&MESSAGE[0], sizeof(MESSAGE), signature,
+                                    public_key, &CONTEXT[0], sizeof(CONTEXT))));
+  ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(ED25519ph_sign(&signature[0], &MESSAGE[0], sizeof(MESSAGE),
+                                 private_key, &CONTEXT[0], sizeof(CONTEXT))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(ED25519ph_verify(&MESSAGE[0], sizeof(MESSAGE), signature,
+                                   public_key, &CONTEXT[0], sizeof(CONTEXT))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(ED25519ph_sign_digest(&signature[0], digest,
+                                 private_key, &CONTEXT[0], sizeof(CONTEXT))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(ED25519ph_verify_digest(
+                                                digest, signature, public_key,
+                                                &CONTEXT[0], sizeof(CONTEXT))));
   ASSERT_EQ(AWSLC_APPROVED, approved);
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(
@@ -5245,7 +5296,7 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.37.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.45.0");
 }
 
 #else
@@ -5288,6 +5339,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.37.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.45.0");
 }
 #endif // AWSLC_FIPS

@@ -10,29 +10,18 @@ concurrency:
 env:
   CC: gcc
 jobs:
-  haproxy:
+  nmap:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make gobject-introspection
       - uses: actions/checkout@v3
-      - name: Run integration build
+      - name: Run nmap build
         run: |
-          ./tests/ci/integration/run_haproxy_integration.sh
-  tpm2-tss:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libglib2.0-dev pandoc
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_tpm2_tss_integration.sh
+          ./tests/ci/integration/run_nmap_integration.sh
   grpc:
     if: github.repository_owner == 'aws'
     env:
@@ -51,65 +40,6 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_grpc_integration.sh
-  tcpdump:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_tcpdump_integration.sh
-  trousers:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Run trousers build
-        run: |
-          ./tests/ci/integration/run_trousers_integration.sh
-  ntp:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Run ntp build
-        run: |
-          ./tests/ci/integration/run_ntp_integration.sh
-  socat:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf pkg-config openssl
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_socat_integration.sh
-  nmap:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make gobject-introspection
-      - uses: actions/checkout@v3
-      - name: Run nmap build
-        run: |
-          ./tests/ci/integration/run_nmap_integration.sh
   python-main:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -148,19 +78,6 @@ jobs:
         env:
           FIPS: ${{ matrix.fips }}
           AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
-  openldap:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    name: OpenLDAP
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build openldap, run tests
-        run: |
-          ./tests/ci/integration/run_openldap_integration.sh master OPENLDAP_REL_ENG_2_5
   bind9:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -230,17 +147,39 @@ jobs:
       - name: Run libevent build
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
-  amazon-corretto-crypto-provider:
+  ruby-main:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
+    name: Ruby main
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          curl gnupg build-essential lcov wget python3-pip cmake gcc ninja-build golang
-          sudo pip3 install gcovr
-      - uses: actions/checkout@v4
-      - name: Run accp build
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build ruby, run tests
         run: |
-          ./tests/ci/integration/run_accp_integration.sh
+          ./tests/ci/integration/run_ruby_integration.sh master
+        env:
+          FIPS: 1
+  ruby-releases:
+    if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-latest
+    name: Ruby releases (FIPS=${{ matrix.fips}})
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build ruby, run tests
+        run: |
+          ./tests/ci/integration/run_ruby_integration.sh ruby_3_3 ruby_3_2 ruby_3_1
+        env:
+          FIPS: ${{ matrix.fips }}

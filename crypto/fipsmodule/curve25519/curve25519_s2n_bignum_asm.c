@@ -51,7 +51,7 @@ void ed25519_public_key_from_hashed_seed_s2n_bignum(
 
 void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
-  const void *message, size_t message_len) {
+  const void *message, size_t message_len, const uint8_t *dom2, size_t dom2_len) {
 
   uint8_t k[SHA512_DIGEST_LENGTH] = {0};
   uint64_t R[8] = {0};
@@ -69,10 +69,16 @@ void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   edwards25519_scalarmulbase_selector(R, uint64_r);
   edwards25519_encode(out_sig, R);
 
-  // Compute k = SHA512(R || A || message)
   // R is of length 32 octets
-  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
-    message_len);
+  if (dom2_len > 0) {
+    // Compute k = SHA512(dom2(phflag, context) || R || A || message)
+    ed25519_sha512(k, dom2, dom2_len, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+                   message_len);
+  } else {
+    // Compute k = SHA512(R || A || message)
+    ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+                   message_len, NULL, 0);
+  }
   OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
   bignum_mod_n25519(uint64_k, 8, uint64_k);
 
@@ -84,7 +90,7 @@ void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 
 int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
-  uint8_t S[32], const uint8_t *message, size_t message_len) {
+  uint8_t S[32], const uint8_t *message, size_t message_len, const uint8_t *dom2, size_t dom2_len) {
 
   uint8_t k[SHA512_DIGEST_LENGTH] = {0};
   uint64_t uint64_k[8] = {0};
@@ -98,9 +104,15 @@ int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   }
 
   // Step: rfc8032 5.1.7.2
-  // Compute k = SHA512(R_expected || public_key || message).
-  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
-    message_len);
+  if(dom2_len > 0) {
+    // Compute k = SHA512(dom2(phflag, context) || R_expected || public_key || message).
+    ed25519_sha512(k, dom2, dom2_len, R_expected, 32, public_key,
+                   ED25519_PUBLIC_KEY_LEN, message, message_len);
+  } else {
+    // Compute k = SHA512(R_expected || public_key || message).
+    ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN,
+                   message, message_len, NULL, 0);
+  }
   OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
   bignum_mod_n25519(uint64_k, 8, uint64_k);
 

@@ -1,6 +1,41 @@
 .text
 .file 1 "inserted_by_delocate.c"
 .loc 1 1 0
+.type BORINGSSL_bcm_text_hash, @object
+.size BORINGSSL_bcm_text_hash, 32
+BORINGSSL_bcm_text_hash:
+.byte 0xae
+.byte 0x2c
+.byte 0xea
+.byte 0x2a
+.byte 0xbd
+.byte 0xa6
+.byte 0xf3
+.byte 0xec
+.byte 0x97
+.byte 0x7f
+.byte 0x9b
+.byte 0xf6
+.byte 0x94
+.byte 0x9a
+.byte 0xfc
+.byte 0x83
+.byte 0x68
+.byte 0x27
+.byte 0xcb
+.byte 0xa0
+.byte 0xa0
+.byte 0x9f
+.byte 0x6b
+.byte 0x6f
+.byte 0xde
+.byte 0x52
+.byte 0xcd
+.byte 0xe2
+.byte 0xcd
+.byte 0xff
+.byte 0x31
+.byte 0x80
 BORINGSSL_bcm_text_start:
 	.type foo, @function
 	.globl foo
@@ -13,6 +48,13 @@ foo:
 	.globl x25519_foo
 .Lx25519_foo_local_target:
 x25519_foo:
+	movq $0, %rax
+	ret
+
+	.type ROL64, @function
+	.globl ROL64
+.LROL64_local_target:
+ROL64:
 	movq $0, %rax
 	ret
 
@@ -32,6 +74,10 @@ bar:
 	# matched as global symbols and rewritten to the corresponding local target.
 # WAS call x25519_foo
 	call	.Lx25519_foo_local_target
+
+	# Refernces potentially matching arm instructions e.g. arm rol, and label ROL64
+# WAS callq ROL64
+	callq	.LROL64_local_target
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 # WAS call memcpy@PLT
@@ -119,38 +165,3 @@ BORINGSSL_bcm_text_end:
 OPENSSL_ia32cap_get:
 	leaq OPENSSL_ia32cap_P(%rip), %rax
 	ret
-.type BORINGSSL_bcm_text_hash, @object
-.size BORINGSSL_bcm_text_hash, 32
-BORINGSSL_bcm_text_hash:
-.byte 0xae
-.byte 0x2c
-.byte 0xea
-.byte 0x2a
-.byte 0xbd
-.byte 0xa6
-.byte 0xf3
-.byte 0xec
-.byte 0x97
-.byte 0x7f
-.byte 0x9b
-.byte 0xf6
-.byte 0x94
-.byte 0x9a
-.byte 0xfc
-.byte 0x83
-.byte 0x68
-.byte 0x27
-.byte 0xcb
-.byte 0xa0
-.byte 0xa0
-.byte 0x9f
-.byte 0x6b
-.byte 0x6f
-.byte 0xde
-.byte 0x52
-.byte 0xcd
-.byte 0xe2
-.byte 0xcd
-.byte 0xff
-.byte 0x31
-.byte 0x80

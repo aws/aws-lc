@@ -472,6 +472,10 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
     return;
   }
 
+  // Lock state here because CTR-DRBG-generate can be invoked multiple times
+  // and every successful invocation increments updates service indicator.
+  FIPS_service_indicator_lock_state();
+
   struct rand_thread_local_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
 
@@ -489,6 +493,9 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
 
   RAND_bytes_core(state, out, out_len, user_pred_resistance,
     use_user_pred_resistance);
+
+  FIPS_service_indicator_unlock_state();
+  FIPS_service_indicator_update_state();
 }
 
 int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,

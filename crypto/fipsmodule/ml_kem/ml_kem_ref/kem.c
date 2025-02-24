@@ -1,13 +1,35 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include "params.h"
-#include "kem.h"
-#include "indcpa.h"
-#include "verify.h"
-#include "reduce.h"
-#include "symmetric.h"
+#include "./params.h"
+#include "./kem.h"
+#include "./indcpa.h"
+#include "./verify.h"
+#include "./reduce.h"
+#include "./symmetric.h"
+
 #include "openssl/rand.h"
+
+#if defined(AWSLC_FIPS)
+// FIPS 203. Pair-wise Consistency Test (PCT) required per [FIPS 140-3 IG](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf):
+// The PCT consists of applying the encapsulation key to encapsulate a shared
+// secret leading to ciphertext, and then applying decapsulation key to
+// retrieve the same shared secret. Returns 0 if the PCT passes, 1 otherwise.
+static int keygen_pct(ml_kem_params *params, const uint8_t *ek, const uint8_t *dk) {
+  uint8_t ct[KYBER_CIPHERTEXTBYTES_MAX];
+  uint8_t ss_enc[KYBER_SSBYTES];
+  uint8_t ss_dec[KYBER_SSBYTES];
+
+  crypto_kem_enc(params, ct, ss_enc, ek);
+  crypto_kem_dec(params, ss_dec, ct, dk);
+
+  if (boringssl_fips_break_test("MLKEM_PWCT")) {
+    ss_enc[0] = ~ss_enc[0];
+  }
+
+  return verify(ss_enc, ss_dec, KYBER_SSBYTES);
+}
+#endif
 
 /*************************************************
 * Name:        crypto_kem_keypair_derand
@@ -21,8 +43,9 @@
 *                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
 *              - uint8_t *coins: pointer to input randomness
 *                (an already allocated array filled with 2*KYBER_SYMBYTES random bytes)
-**
-* Returns 0 (success)
+*
+* Returns:     - 0 on success
+*              - -1 upon PCT failure (if AWSLC_FIPS is set)
 **************************************************/
 int crypto_kem_keypair_derand(ml_kem_params *params,
                               uint8_t *pk,
@@ -34,6 +57,13 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
   hash_h(sk+params->secret_key_bytes-2*KYBER_SYMBYTES, pk, params->public_key_bytes);
   /* Value z for pseudo-random output on reject */
   memcpy(sk+params->secret_key_bytes-KYBER_SYMBYTES, coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
+
+#if defined(AWSLC_FIPS)
+  // Abort in case of PCT failure.
+  if (keygen_pct(params, pk, sk)) {
+    return -1;
+  }
+#endif
   return 0;
 }
 
@@ -48,7 +78,8 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
 *              - uint8_t *sk: pointer to output private key
 *                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
 *
-* Returns 0 (success)
+* Returns:     - 0 on success
+*              - -1 upon PCT failure (if AWSLC_FIPS is set)
 **************************************************/
 int crypto_kem_keypair(ml_kem_params *params,
                        uint8_t *pk,
@@ -56,11 +87,12 @@ int crypto_kem_keypair(ml_kem_params *params,
 {
   uint8_t coins[2*KYBER_SYMBYTES];
   RAND_bytes(coins, 2*KYBER_SYMBYTES);
-  crypto_kem_keypair_derand(params, pk, sk, coins);
+  int res = crypto_kem_keypair_derand(params, pk, sk, coins);
 
   // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(coins, sizeof(coins));
-  return 0;
+
+  return res;
 }
 
 // Converts a centered representative |in| which is an integer in

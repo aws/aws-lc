@@ -558,18 +558,18 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       return 1;
 
     case EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP:
-#if defined(AWSLC_FIPS)
-      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
-      return 0;
-#else
       if (!p2) {
         return 0;
       }
+#if defined(AWSLC_FIPS)
+      if (BN_get_word(p2) != RSA_F4) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+        return 0;
+      }
+#endif
       BN_free(rctx->pub_exp);
       rctx->pub_exp = p2;
       return 1;
-#endif
-
     case EVP_PKEY_CTRL_RSA_OAEP_MD:
     case EVP_PKEY_CTRL_GET_RSA_OAEP_MD:
       if (rctx->pad_mode != RSA_PKCS1_OAEP_PADDING) {

@@ -143,10 +143,7 @@ CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
   }
 }
 
-CERT::~CERT() {
-  ssl_cert_clear_certs(this);
-  x509_method->cert_free(this);
-}
+CERT::~CERT() { x509_method->cert_free(this); }
 
 static CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
   CRYPTO_BUFFER_up_ref(const_cast<CRYPTO_BUFFER *>(buffer));
@@ -216,26 +213,6 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
   ret->dc_key_method = cert->dc_key_method;
 
   return ret;
-}
-
-// Free up and clear all certificates and chains
-void ssl_cert_clear_certs(CERT *cert) {
-  if (cert == nullptr) {
-    return;
-  }
-
-  cert->x509_method->cert_clear(cert);
-
-  cert->cert_private_key_idx = -1;
-  for (auto &cert_private_key : cert->cert_private_keys) {
-    cert_private_key.chain.reset();
-    cert_private_key.privatekey.reset();
-  }
-  cert->key_method = nullptr;
-
-  cert->dc.reset();
-  cert->dc_privatekey.reset();
-  cert->dc_key_method = nullptr;
 }
 
 static void ssl_cert_set_cert_cb(CERT *cert, int (*cb)(SSL *ssl, void *arg),
@@ -882,6 +859,16 @@ UniquePtr<DC> DC::Parse(CRYPTO_BUFFER *in, uint8_t *out_alert) {
     return nullptr;
   }
 
+  // RFC 9345 forbids algorithms that use the rsaEncryption OID. As the
+  // RSASSA-PSS OID is unusably complicated, this effectively means we will not
+  // support RSA delegated credentials.
+  if (SSL_get_signature_algorithm_key_type(dc->dc_cert_verify_algorithm) ==
+      EVP_PKEY_RSA) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SIGNATURE_ALGORITHM);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return nullptr;
+  }
+
   return dc;
 }
 
@@ -915,9 +902,7 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
 
 bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs) {
   // We only support delegated credentials as a server.
-  return hs->ssl->server &&
-         hs->delegated_credential_requested &&
-         ssl_can_serve_dc(hs);
+  return hs->ssl->server && ssl_can_serve_dc(hs);
 }
 
 static int cert_set_dc(CERT *cert, CRYPTO_BUFFER *const raw, EVP_PKEY *privkey,
@@ -982,6 +967,26 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                               const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   return cert_set_chain_and_key(ctx->cert.get(), certs, num_certs, privkey,
                                 privkey_method);
+}
+
+void SSL_certs_clear(SSL *ssl) {
+  if (!ssl->config) {
+    return;
+  }
+
+  CERT *cert = ssl->config->cert.get();
+  cert->x509_method->cert_clear(cert);
+
+  cert->cert_private_key_idx = -1;
+  for (auto &cert_private_key : cert->cert_private_keys) {
+    cert_private_key.chain.reset();
+    cert_private_key.privatekey.reset();
+  }
+  cert->key_method = nullptr;
+
+  cert->dc.reset();
+  cert->dc_privatekey.reset();
+  cert->dc_key_method = nullptr;
 }
 
 const STACK_OF(CRYPTO_BUFFER) *SSL_CTX_get0_chain(const SSL_CTX *ctx) {
