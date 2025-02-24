@@ -252,7 +252,11 @@ static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #endif  // !ASAN
 
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+#if defined(__ELF__) && defined(__GNUC__)
 WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
+#else
+#error AWSLC_FIPS_FAILURE_CALLBACK not supported on this platform
+#endif
 #endif
 
 #if defined(_MSC_VER)
