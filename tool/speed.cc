@@ -34,6 +34,8 @@
 #include "internal.h"
 
 #include <openssl/crypto.h>
+
+#include "openssl/cmac.h"
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
@@ -1262,6 +1264,70 @@ static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
   return true;
 }
 
+#if !defined(OPENSSL_1_0_BENCHMARK)
+static bool SpeedCmacChunk(const EVP_CIPHER *cipher, std::string name,
+                           size_t chunk_len) {
+  BM_NAMESPACE::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (!CMAC_Init(ctx.get(), key.get(), key_len, cipher, NULL /* ENGINE */)) {
+    fprintf(stderr, "Failed to create CMAC_CTX.\n");
+  }
+  TimeResults results;
+  if (!TimeFunction(&results, [&ctx, chunk_len, &input]() -> bool {
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        size_t out_len;
+
+        return
+#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
+               CMAC_Reset(ctx.get()) &&
+#else
+               CMAC_Init(ctx.get(), nullptr, 0, nullptr, nullptr /* ENGINE */)
+#endif
+               CMAC_Update(ctx.get(), input.get(), chunk_len) &&
+               CMAC_Final(ctx.get(), digest, &out_len);
+      })) {
+    fprintf(stderr, "CMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedCmac(const EVP_CIPHER *cipher, const std::string &name, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  TimeResults results;
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+  BM_NAMESPACE::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+  if (!TimeFunction(&results, [&]() -> bool {
+        return CMAC_Init(ctx.get(), key.get(), key_len, cipher,
+                         nullptr /* ENGINE */);
+      })) {
+    fprintf(stderr, "CMAC_Init failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+      }
+  results.Print(name + " init");
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedCmacChunk(cipher, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+#endif
 
 using RandomFunction = std::function<void(uint8_t *, size_t)>;
 static bool SpeedRandomChunk(RandomFunction function, std::string name, size_t chunk_len) {
@@ -2832,6 +2898,10 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+#if !defined(OPENSSL_1_0_BENCHMARK)
+       !SpeedCmac(EVP_aes_128_cbc(), "CMAC-AES-128-CBC", selected) ||
+       !SpeedCmac(EVP_aes_256_cbc(), "CMAC-AES-256-CBC", selected) ||
+#endif
        !SpeedRandom(RAND_bytes, "RNG", selected) ||
        !SpeedECDH(selected) ||
        !SpeedECDSA(selected) ||
