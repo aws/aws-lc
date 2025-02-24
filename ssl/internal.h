@@ -3427,6 +3427,8 @@ bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                         const EVP_PKEY *privkey);
 bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 
+CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer);
+
 // ssl_cert_check_cert_private_keys_usage returns true if |cert_private_keys|
 // in |cert| has a valid index and a sufficient amount of slots.
 bool ssl_cert_check_cert_private_keys_usage(const CERT *cert);

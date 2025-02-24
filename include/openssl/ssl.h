@@ -1239,6 +1239,24 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
                                                    const uint16_t *prefs,
                                                    size_t num_prefs);
 
+// SSL_CTX_use_cert_and_key sets |x509|, |privatekey|, and |chain| on |ctx|.
+// The |privatekey| argument must be the private key of the certificate |x509|.
+// If the override argument is 0, then |x509|, |privatekey|, and |chain| are
+// set only if all were not previously set. If override is non-0, then the
+// certificate, private key and chain certs are always set. |privatekey| and
+// |x509| are not copied or duplicated, their reference counts are incremented.
+// In OpenSSL, a shallow copy of |chain| is stored with a reference count
+// increment for all |X509| objects in the chain. In AWS-LC,
+// we represent X509 chains as a CRYPTO_BUFFER stack. Therefore, we create a
+// an internal copy and leave the |chain| parameter untouched. This means,
+// changes to |chain| after this function is called will not update in |ctx|.
+// This is different from OpenSSL which stores a reference to the X509
+// certificates in the |chain| object.
+//
+// Returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509,
+                                            EVP_PKEY *privatekey,
+                                            STACK_OF(X509) *chain, int override);
 
 // Certificate and private key convenience functions.
 
@@ -6477,6 +6495,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_OUTER_EXTENSION 320
 #define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
 #define SSL_R_INVALID_ALPS_CODEPOINT 322
+#define SSL_R_NOT_REPLACING_CERTIFICATE 323
 #define SSL_R_SERIALIZATION_UNSUPPORTED 500
 #define SSL_R_SERIALIZATION_INVALID_SSL 501
 #define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502
