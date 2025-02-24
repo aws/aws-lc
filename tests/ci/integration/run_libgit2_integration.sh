@@ -34,13 +34,22 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 
 pushd "${SCRATCH_FOLDER}"
 
-function libgit2_build() {
+function libgit2_build_dynamic() {
   # No patch currently needed.
   # The CRYPT_OPENSSL_DYNAMIC is needed so that `const_DES_cblock` is defined.
   # See: https://github.com/libgit2/libgit2/blob/5158b0b70ade89268b22b7c388802b5f5b6debce/deps/ntlmclient/crypt_openssl.h#L22-L61
-  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_HTTPS=openssl -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DCMAKE_C_FLAGS="-DCRYPT_OPENSSL_DYNAMIC=1"
+  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=ON -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_HTTPS=openssl -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DCMAKE_C_FLAGS="-DCRYPT_OPENSSL_DYNAMIC=1"
   cmake --build "${LIBGIT2_BUILD_FOLDER}" --target install
   ldd "${LIBGIT2_INSTALL_FOLDER}/bin/git2" | grep "${AWS_LC_INSTALL_FOLDER}/lib" | grep "libcrypto.so" || exit 1
+}
+
+function libgit2_build_static() {
+  # No patch currently needed.
+  # The CRYPT_OPENSSL_DYNAMIC is needed so that `const_DES_cblock` is defined.
+  # See: https://github.com/libgit2/libgit2/blob/5158b0b70ade89268b22b7c388802b5f5b6debce/deps/ntlmclient/crypt_openssl.h#L22-L61
+  cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=OFF -DLINK_WITH_STATIC_LIBRARIES=1 -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_HTTPS=openssl -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DCMAKE_C_FLAGS="-DCRYPT_OPENSSL_DYNAMIC=1"
+  cmake --build "${LIBGIT2_BUILD_FOLDER}" --target install
+  nm --defined-only /home/justsmth/repos/LIBGIT2_SCRATCH/libgit2-install/bin/git2 | grep awslc_version_string || exit 1
 }
 
 function libgit2_run_tests() {
@@ -53,10 +62,21 @@ mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBGIT2_BUILD_FO
 ls
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
 export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${AWS_LC_INSTALL_FOLDER}/lib64/:${LD_LIBRARY_PATH:-}"
 
 pushd "${LIBGIT2_SRC_FOLDER}"
-libgit2_build
+libgit2_build_dynamic
+popd
+
+pushd "${LIBGIT2_BUILD_FOLDER}"
+libgit2_run_tests
+popd
+
+rm -rf "${LIBGIT2_BUILD_FOLDER}"/* "${LIBGIT2_INSTALL_FOLDER}"/*
+
+pushd "${LIBGIT2_SRC_FOLDER}"
+libgit2_build_static
 popd
 
 pushd "${LIBGIT2_BUILD_FOLDER}"
