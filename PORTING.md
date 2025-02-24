@@ -324,6 +324,6 @@ will send that construct chain over the wire.
 This behavior can be re-enabled in AWS-LC by clearing the `SSL_MODE_NO_AUTO_CHAIN` configuration flag.
 See [configuration-differences](docs/porting/configuration-differences.md).
 
-### Affect on Integrations
+### Effect on Integrations
 The default behavior of not performing auto-chaining can have impact to higher-level integrations like CPython or Ruby
 if using software builds that utilize AWS-LC for the underlying TLS implementation.
