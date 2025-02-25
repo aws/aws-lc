@@ -1285,7 +1285,7 @@ static bool SpeedCmacChunk(const EVP_CIPHER *cipher, std::string name,
 #if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
                CMAC_Reset(ctx.get()) &&
 #else
-               CMAC_Init(ctx.get(), nullptr, 0, nullptr, nullptr /* ENGINE */)
+               CMAC_Init(ctx.get(), nullptr, 0, nullptr, nullptr /* ENGINE */) &&
 #endif
                CMAC_Update(ctx.get(), input.get(), chunk_len) &&
                CMAC_Final(ctx.get(), digest, &out_len);
