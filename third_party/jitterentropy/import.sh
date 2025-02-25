@@ -56,8 +56,7 @@ rm "${SRC}/CMakeLists.txt"
 rm "${SRC}/Makefile"
 
 # submodule path might be cached
-git rm --cached third_party/jitterentropy/jitterentropy-library/t
-ests/raw-entropy/recording_userspace/jitterentrop | true
+git rm --cached third_party/jitterentropy/jitterentropy-library/tests/raw-entropy/recording_userspace/jitterentrop | true
 
 echo "Generating META.yml file ..."
 cat <<EOF > META.yml
