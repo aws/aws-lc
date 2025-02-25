@@ -34,8 +34,13 @@ else()
     endif()
 endif()
 
+if(BORINGSSL_PREFIX)
+  set(JITTER_ENETROPY_PREFIX_INCLUDE "--include=${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+endif()
+
+set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} ${JITTER_ENETROPY_PREFIX_INCLUDE}")
+
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
 add_dependencies(jitterentropy boringssl_prefix_symbols)
 target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library)
-target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
