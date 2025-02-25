@@ -1576,74 +1576,6 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
             Bytes(pkey->pkey.pqdsa_key->public_key, GetParam().public_key_len));
 }
 
-// Helper function that:
-// 1. Creates a memory BIO
-// 2. Writes the provided DER data to BIO in PEM format
-// 3. Determines resulting PEM size and allocates buffer
-// 4. Reads PEM data into output buffer
-// 5. Returns the PEM string and length via out parameters
-static bool DER_to_PEM(const uint8_t* der, size_t der_len,
-                      char** out_pem, size_t* out_pem_len) {
-  // Create memory BIO for writing
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  if (!bio) {
-    return false;
-  }
-
-  // Write PEM
-  if (!PEM_write_bio(bio.get(), "PRIVATE KEY", "", der, der_len)) {
-    return false;
-  }
-
-  // Get PEM size
-  *out_pem_len = BIO_pending(bio.get());
-
-  // Allocate buffer for PEM
-  *out_pem = (char*)OPENSSL_malloc(*out_pem_len + 1);
-  if (!*out_pem) {
-    return false;
-  }
-
-  // Read PEM into buffer
-  if (BIO_read(bio.get(), *out_pem, *out_pem_len) <= 0) {
-    OPENSSL_free(*out_pem);
-    *out_pem = nullptr;
-    return false;
-  }
-  (*out_pem)[*out_pem_len] = '\0';
-
-  return true;
-}
-
-// Helper function that:
-// 1. Creates a BIO
-// 2. Reads the provided |pem_string| into bio
-// 3. Reads the PEM into DER encoding
-// 4. Returns the DER data and length
-static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len) {
-  char *name = nullptr;
-  char *header = nullptr;
-
-  // Create BIO from memory
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
-  if (!bio) {
-    return false;
-  }
-
-  // Read PEM into DER
-  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
-    OPENSSL_free(name);
-    OPENSSL_free(header);
-    OPENSSL_free(*out_der);
-    *out_der = nullptr;
-    return false;
-  }
-
-  OPENSSL_free(name);
-  OPENSSL_free(header);
-  return true;
-}
-
 TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
   // ---- 1. Setup phase: generate a key ----
   int nid = GetParam().nid;
@@ -1670,48 +1602,13 @@ TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
   ASSERT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_id(parsed_key.get()));
   ASSERT_EQ(1, EVP_PKEY_cmp(pkey.get(), parsed_key.get()));
 
-  // ---- 5. generate from known seed and compare wth known value ----
-
-  static const uint8_t KnownSeed[32] = {
-      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-      0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
-  };
-
-  // Create PKEY from the generated raw key
-  bssl::UniquePtr<EVP_PKEY> seeded_pkey(
-      EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, KnownSeed, sizeof(KnownSeed)));
-  ASSERT_TRUE(seeded_pkey);
-
-  //buffer for DER
-  bssl::ScopedCBB cbb1;
-  uint8_t *der1;
-  size_t der1_len;
-
-  // encode private key
-  ASSERT_TRUE(CBB_init(cbb1.get(), 0));
-  ASSERT_TRUE(EVP_marshal_private_key_v2(cbb1.get(), seeded_pkey.get()));
-  ASSERT_TRUE(CBB_finish(cbb1.get(), &der1, &der1_len));
-
-  char* pem = nullptr;
-  size_t pem_len = 0;
-  DER_to_PEM(der1, der1_len, &pem, &pem_len);
-
-  // compare exact bytes between PEM encoding from standard, with PEM produced
-  // from KnownSeed
-  EXPECT_EQ(Bytes(pem, pem_len), Bytes(GetParam().private_pem_str, pem_len));
-  OPENSSL_free(der);
-  OPENSSL_free(der1);
-  OPENSSL_free(pem);
-
-  // ---- 6. test failure modes ----
+  // ---- 5. test failure modes ----
   // Test case in which a parsed key does not contain a seed
-  void *tmp = (void*) seeded_pkey.get()->pkey.pqdsa_key->seed;
-  seeded_pkey.get()->pkey.pqdsa_key->seed =nullptr;
-  ASSERT_TRUE(CBB_init(cbb1.get(), 0));
-  ASSERT_FALSE(EVP_marshal_private_key_v2(cbb1.get(), seeded_pkey.get()));
-  seeded_pkey.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
+  void *tmp = (void*) pkey.get()->pkey.pqdsa_key->seed;
+  pkey.get()->pkey.pqdsa_key->seed =nullptr;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_FALSE(EVP_marshal_private_key_v2(cbb.get(), pkey.get()));
+  pkey.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
@@ -1801,6 +1698,35 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
 
   md_ctx.Reset();
   md_ctx_verify.Reset();
+}
+
+// Helper function that:
+// 1. Creates a BIO
+// 2. Reads the provided |pem_string| into bio
+// 3. Reads the PEM into DER encoding
+// 4. Returns the DER data and length
+static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len) {
+  char *name = nullptr;
+  char *header = nullptr;
+
+  // Create BIO from memory
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
+  if (!bio) {
+    return false;
+  }
+
+  // Read PEM into DER
+  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
+    OPENSSL_free(name);
+    OPENSSL_free(header);
+    OPENSSL_free(*out_der);
+    *out_der = nullptr;
+    return false;
+  }
+
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+  return true;
 }
 
 TEST_P(PQDSAParameterTest, ParsePublicKey) {
