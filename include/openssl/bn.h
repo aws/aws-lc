@@ -639,13 +639,13 @@ OPENSSL_EXPORT BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p,
 // Random and prime number generation.
 
 // The following are values for the |top| parameter of |BN_rand|.
-#define BN_RAND_TOP_ANY    (-1)
-#define BN_RAND_TOP_ONE     0
-#define BN_RAND_TOP_TWO     1
+#define BN_RAND_TOP_ANY (-1)
+#define BN_RAND_TOP_ONE 0
+#define BN_RAND_TOP_TWO 1
 
 // The following are values for the |bottom| parameter of |BN_rand|.
-#define BN_RAND_BOTTOM_ANY  0
-#define BN_RAND_BOTTOM_ODD  1
+#define BN_RAND_BOTTOM_ANY 0
+#define BN_RAND_BOTTOM_ODD 1
 
 // BN_rand sets |rnd| to a random number of length |bits|. It returns one on
 // success and zero otherwise.
@@ -700,7 +700,7 @@ OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 // BN_GENCB argument and may call the function with other argument values.
 struct bn_gencb_st {
   uint8_t type;
-  void *arg;        // callback-specific data
+  void *arg;  // callback-specific data
   union {
     int (*new_style)(int event, int n, struct bn_gencb_st *);
     void (*old_style)(int, int, void *);
@@ -716,11 +716,11 @@ OPENSSL_EXPORT BN_GENCB *BN_GENCB_new(void);
 OPENSSL_EXPORT void BN_GENCB_free(BN_GENCB *callback);
 
 // BN_GENCB_set configures |callback| to call |f| and sets |callback->arg| to
-// |arg|. |BN_GENCB_set| is recommended over |BN_GENCB_set_old| as |BN_GENCB_set|
-// accepts callbacks that return a result and have a strong type for the
-// |BN_GENCB|. Only one callback can be configured in a |BN_GENCB|, calling
-// |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite the
-// callback.
+// |arg|. |BN_GENCB_set| is recommended over |BN_GENCB_set_old| as
+// |BN_GENCB_set| accepts callbacks that return a result and have a strong type
+// for the |BN_GENCB|. Only one callback can be configured in a |BN_GENCB|,
+// calling |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite
+// the callback.
 OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
                                  int (*f)(int event, int n, BN_GENCB *),
                                  void *arg);
@@ -1027,11 +1027,11 @@ OPENSSL_EXPORT BN_CTX *BN_CTX_secure_new(void);
 // multiplications at once using AVX-512 SIMD. If AVX-512 is not
 // available, it falls back to two calls of
 // `BN_mod_exp_mont_consttime`.
-OPENSSL_EXPORT int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
-                                                const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
-                                                BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
-                                                const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
-                                                BN_CTX *ctx);
+OPENSSL_EXPORT int BN_mod_exp_mont_consttime_x2(
+    BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1, const BIGNUM *m1,
+    const BN_MONT_CTX *in_mont1, BIGNUM *rr2, const BIGNUM *a2,
+    const BIGNUM *p2, const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
+    BN_CTX *ctx);
 
 // BN_set_flags does nothing. See comments regarding |BN_FLG_CONSTTIME| being
 // intentionally omitted for more details.

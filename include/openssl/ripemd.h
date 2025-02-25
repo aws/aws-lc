@@ -59,14 +59,14 @@
 
 #include <openssl/base.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 
-# define RIPEMD160_CBLOCK        64
-# define RIPEMD160_LBLOCK        (RIPEMD160_CBLOCK/4)
-# define RIPEMD160_DIGEST_LENGTH 20
+#define RIPEMD160_CBLOCK 64
+#define RIPEMD160_LBLOCK (RIPEMD160_CBLOCK / 4)
+#define RIPEMD160_DIGEST_LENGTH 20
 
 struct RIPEMD160state_st {
   uint32_t h[5];
@@ -80,7 +80,7 @@ OPENSSL_EXPORT int RIPEMD160_Init(RIPEMD160_CTX *ctx);
 
 // RIPEMD160_Update adds |len| bytes from |data| to |ctx| and returns one.
 OPENSSL_EXPORT int RIPEMD160_Update(RIPEMD160_CTX *ctx, const void *data,
-                                   size_t len);
+                                    size_t len);
 
 // RIPEMD160_Final adds the final padding to |ctx| and writes the resulting
 // digest to |out|, which must have at least |RIPEMD160_DIGEST_LENGTH| bytes of

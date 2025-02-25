@@ -80,7 +80,7 @@
 #define ARMV8_SHA512 (1 << 6)
 
 // ARMV8_SHA3 indicates support for hardware SHA-3 instructions including EOR3.
-#define ARMV8_SHA3  (1 << 11)
+#define ARMV8_SHA3 (1 << 11)
 
 // The Neoverse V1, V2, and Apple M1 micro-architectures are detected to enable
 // high unrolling factor of AES-GCM and other algorithms that leverage a
@@ -108,40 +108,36 @@
 // |____ _ _____|_____ _ _____|_________|_______ _|____ _ ___|________|
 //
 
-# define ARM_CPU_IMP_ARM           0x41
+#define ARM_CPU_IMP_ARM 0x41
 
-# define ARM_CPU_PART_CORTEX_A72   0xD08
-# define ARM_CPU_PART_N1           0xD0C
-# define ARM_CPU_PART_V1           0xD40
-# define ARM_CPU_PART_V2           0xD4F
+#define ARM_CPU_PART_CORTEX_A72 0xD08
+#define ARM_CPU_PART_N1 0xD0C
+#define ARM_CPU_PART_V1 0xD40
+#define ARM_CPU_PART_V2 0xD4F
 
-# define MIDR_PARTNUM_SHIFT       4
-# define MIDR_PARTNUM_MASK        (0xfffUL << MIDR_PARTNUM_SHIFT)
-# define MIDR_PARTNUM(midr)       \
-           (((midr) & MIDR_PARTNUM_MASK) >> MIDR_PARTNUM_SHIFT)
+#define MIDR_PARTNUM_SHIFT 4
+#define MIDR_PARTNUM_MASK (0xfffUL << MIDR_PARTNUM_SHIFT)
+#define MIDR_PARTNUM(midr) (((midr) & MIDR_PARTNUM_MASK) >> MIDR_PARTNUM_SHIFT)
 
-# define MIDR_IMPLEMENTER_SHIFT   24
-# define MIDR_IMPLEMENTER_MASK    (0xffUL << MIDR_IMPLEMENTER_SHIFT)
-# define MIDR_IMPLEMENTER(midr)   \
-           (((midr) & MIDR_IMPLEMENTER_MASK) >> MIDR_IMPLEMENTER_SHIFT)
+#define MIDR_IMPLEMENTER_SHIFT 24
+#define MIDR_IMPLEMENTER_MASK (0xffUL << MIDR_IMPLEMENTER_SHIFT)
+#define MIDR_IMPLEMENTER(midr) \
+  (((midr) & MIDR_IMPLEMENTER_MASK) >> MIDR_IMPLEMENTER_SHIFT)
 
-# define MIDR_ARCHITECTURE_SHIFT  16
-# define MIDR_ARCHITECTURE_MASK   (0xfUL << MIDR_ARCHITECTURE_SHIFT)
-# define MIDR_ARCHITECTURE(midr)  \
-           (((midr) & MIDR_ARCHITECTURE_MASK) >> MIDR_ARCHITECTURE_SHIFT)
+#define MIDR_ARCHITECTURE_SHIFT 16
+#define MIDR_ARCHITECTURE_MASK (0xfUL << MIDR_ARCHITECTURE_SHIFT)
+#define MIDR_ARCHITECTURE(midr) \
+  (((midr) & MIDR_ARCHITECTURE_MASK) >> MIDR_ARCHITECTURE_SHIFT)
 
-# define MIDR_CPU_MODEL_MASK \
-           (MIDR_IMPLEMENTER_MASK | \
-            MIDR_PARTNUM_MASK     | \
-            MIDR_ARCHITECTURE_MASK)
+#define MIDR_CPU_MODEL_MASK \
+  (MIDR_IMPLEMENTER_MASK | MIDR_PARTNUM_MASK | MIDR_ARCHITECTURE_MASK)
 
-# define MIDR_CPU_MODEL(imp, partnum) \
-           (((imp)     << MIDR_IMPLEMENTER_SHIFT)  | \
-            (0xfUL       << MIDR_ARCHITECTURE_SHIFT) | \
-            ((partnum) << MIDR_PARTNUM_SHIFT))
+#define MIDR_CPU_MODEL(imp, partnum)                                        \
+  (((imp) << MIDR_IMPLEMENTER_SHIFT) | (0xfUL << MIDR_ARCHITECTURE_SHIFT) | \
+   ((partnum) << MIDR_PARTNUM_SHIFT))
 
-# define MIDR_IS_CPU_MODEL(midr, imp, partnum) \
-           (((midr) & MIDR_CPU_MODEL_MASK) == MIDR_CPU_MODEL(imp, partnum))
+#define MIDR_IS_CPU_MODEL(midr, imp, partnum) \
+  (((midr) & MIDR_CPU_MODEL_MASK) == MIDR_CPU_MODEL(imp, partnum))
 
 #endif  // ARM || AARCH64
 

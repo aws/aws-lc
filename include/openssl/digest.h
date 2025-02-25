@@ -177,7 +177,8 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 // length of the hash in bytes, before any truncation (e.g., 32 for SHA-224 and
 // SHA-256, 64 for SHA-384 and SHA-512).
 // This constant is only used internally by HMAC.
-#define EVP_MAX_MD_CHAINING_LENGTH 64  // SHA-512 has the longest chaining length so far
+#define EVP_MAX_MD_CHAINING_LENGTH \
+  64  // SHA-512 has the longest chaining length so far
 
 // EVP_MAX_MD_BLOCK_SIZE is the largest digest block size supported, in
 // bytes.
@@ -294,12 +295,11 @@ OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
                                       size_t len);
 
-// EVP_DigestSqueeze provides byte-wise streaming XOF output generation for 
-// XOF digests, writing |len| bytes of extended output to |out|. It can be 
+// EVP_DigestSqueeze provides byte-wise streaming XOF output generation for
+// XOF digests, writing |len| bytes of extended output to |out|. It can be
 // called multiple times with arbitrary length |len| output requests.
 // It returns one on success and zero on error.
-OPENSSL_EXPORT int EVP_DigestSqueeze(EVP_MD_CTX *ctx, uint8_t *out,
-                                      size_t len);
+OPENSSL_EXPORT int EVP_DigestSqueeze(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
 
 // EVP_MD_meth_get_flags calls |EVP_MD_flags|.
 OPENSSL_EXPORT uint32_t EVP_MD_meth_get_flags(const EVP_MD *md);
