@@ -274,7 +274,7 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
 }
 
 static int cert_set_chain_and_key(
-    CERT *cert, UniquePtr<STACK_OF(CRYPTO_BUFFER)> *certs, size_t num_certs,
+    CERT *cert, UniquePtr<STACK_OF(CRYPTO_BUFFER)> &certs, size_t num_certs,
     EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   if (num_certs == 0 || (privkey == NULL && privkey_method == NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
@@ -286,7 +286,7 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  switch (check_leaf_cert_and_privkey(sk_CRYPTO_BUFFER_value(certs->get(), 0), privkey)) {
+  switch (check_leaf_cert_and_privkey(sk_CRYPTO_BUFFER_value(certs.get(), 0), privkey)) {
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
@@ -314,7 +314,7 @@ static int cert_set_chain_and_key(
   if (cert_pkey->chain) {
     cert_pkey->chain.reset();
   }
-  cert_pkey->chain = std::move(*certs);
+  cert_pkey->chain = std::move(certs);
   cert->cert_private_key_idx = idx;
   return 1;
 }
@@ -971,7 +971,7 @@ int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
   if (!cert_array_to_stack(certs, &crypto_certs, num_certs)) {
     return 0;
   }
-  return cert_set_chain_and_key(ssl->config->cert.get(), &crypto_certs, num_certs,
+  return cert_set_chain_and_key(ssl->config->cert.get(), crypto_certs, num_certs,
                                 privkey, privkey_method);
 }
 
@@ -982,7 +982,7 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
   if (!cert_array_to_stack(certs, &crypto_certs, num_certs)) {
     return 0;
   }
-  return cert_set_chain_and_key(ctx->cert.get(), &crypto_certs, num_certs, privkey,
+  return cert_set_chain_and_key(ctx->cert.get(), crypto_certs, num_certs, privkey,
                                 privkey_method);
 }
 
@@ -1047,7 +1047,7 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
   }
 
   // Call SSL_CTX_set_chain_and_key to set the chain and key
-  if (!cert_set_chain_and_key(cert, &leaf_and_chain,
+  if (!cert_set_chain_and_key(cert, leaf_and_chain,
                               sk_CRYPTO_BUFFER_num(leaf_and_chain.get()),
                               privatekey, nullptr)) {
     return 0;
