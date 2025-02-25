@@ -85,7 +85,8 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #endif  // OPENSSL_ARM && OPENSSL_LINUX && !OPENSSL_STATIC_ARMCAP
 
 // Data-Independent Timing (DIT) on AArch64
-#if defined(OPENSSL_AARCH64) && (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
+#if defined(OPENSSL_AARCH64) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
 // (TODO): See if we can detect the DIT capability in Windows environment
 #define AARCH64_DIT_SUPPORTED
 #endif
@@ -117,8 +118,8 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 // which case it returns one.
 OPENSSL_EXPORT int FIPS_mode(void);
 
-// FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy source
-// for AWS-LC. Otherwise, returns 0;
+// FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy
+// source for AWS-LC. Otherwise, returns 0;
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
 // fips_counter_t denotes specific APIs/algorithms. A counter is maintained for
@@ -143,7 +144,8 @@ OPENSSL_EXPORT size_t FIPS_read_counter(enum fips_counter_t counter);
 
 // OPENSSL_VERSION_TEXT contains a string the identifies the version of
 // “OpenSSL”. node.js requires a version number in this text.
-#define OPENSSL_VERSION_TEXT "OpenSSL 1.1.1 (compatible; AWS-LC " AWSLC_VERSION_NUMBER_STRING ")"
+#define OPENSSL_VERSION_TEXT \
+  "OpenSSL 1.1.1 (compatible; AWS-LC " AWSLC_VERSION_NUMBER_STRING ")"
 
 #define OPENSSL_VERSION 0
 #define OPENSSL_CFLAGS 1
@@ -233,7 +235,7 @@ OPENSSL_EXPORT uint32_t FIPS_version(void);
 // FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
 // the current BoringSSL and zero otherwise.
 OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
-#endif //BORINGSSL_FIPS_140_3
+#endif  // BORINGSSL_FIPS_140_3
 
 
 #if defined(__cplusplus)

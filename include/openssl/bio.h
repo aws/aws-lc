@@ -153,12 +153,12 @@ OPENSSL_EXPORT int BIO_write_ex(BIO *bio, const void *data, size_t data_len,
 // It returns one if all bytes were successfully written and zero on error.
 OPENSSL_EXPORT int BIO_write_all(BIO *bio, const void *data, size_t len);
 
-// BIO_puts calls the |bio| |callback_ex| if set with |BIO_CB_PUTS|, attempts 
+// BIO_puts calls the |bio| |callback_ex| if set with |BIO_CB_PUTS|, attempts
 // to write a NUL terminated string from |buf| to |bio|, then calls
 // |callback_ex| with |BIO_CB_PUTS|+|BIO_CB_RETURN|. If |callback_ex| is set
 // BIO_puts returns the value from calling the |callback_ex|, otherwise
-// |BIO_puts| returns the number of bytes written, or a negative number on 
-// error. Unless the application defines a custom bputs method, this will 
+// |BIO_puts| returns the number of bytes written, or a negative number on
+// error. Unless the application defines a custom bputs method, this will
 // delegate to using bwrite.
 OPENSSL_EXPORT int BIO_puts(BIO *bio, const char *buf);
 
@@ -172,8 +172,8 @@ OPENSSL_EXPORT int BIO_flush(BIO *bio);
 // These are generic functions for sending control requests to a BIO. In
 // general one should use the wrapper functions like |BIO_get_close|.
 
-// BIO_ctrl call the |bio| |callback_ex| if set with |BIO_CB_CTRL|, sends the 
-// control request |cmd| to |bio|, then calls |callback_ex| with |BIO_CB_CTRL| 
+// BIO_ctrl call the |bio| |callback_ex| if set with |BIO_CB_CTRL|, sends the
+// control request |cmd| to |bio|, then calls |callback_ex| with |BIO_CB_CTRL|
 // + |BIO_CB_RETURN|. The |cmd| argument should be one of the |BIO_C_*| values.
 OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg);
 
@@ -326,7 +326,8 @@ OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
 OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
-OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
+OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio,
+                                        BIO_callback_fn_ex callback_ex);
 
 // BIO_set_callback_arg sets the callback |arg| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
@@ -454,8 +455,8 @@ OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
 // WARNING: don't use this, use |BIO_mem_contents|. A negative return value
 // or zero from this function can mean either that it failed or that the
 // memory buffer is empty.
-#define BIO_get_mem_data(bio, contents) BIO_ctrl(bio, BIO_CTRL_INFO, 0, \
-                                                (char *)(contents))
+#define BIO_get_mem_data(bio, contents) \
+  BIO_ctrl(bio, BIO_CTRL_INFO, 0, (char *)(contents))
 // BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of
 // |bio|. It returns one on success or zero on error.
 OPENSSL_EXPORT int BIO_get_mem_ptr(BIO *bio, BUF_MEM **out);
@@ -683,18 +684,20 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 #define BIO_CTRL_DGRAM_QUERY_MTU 40  // as kernel for current MTU
 
-#define BIO_CTRL_DGRAM_SET_MTU 42 /* set cached value for  MTU. want to use
-                                     this if asking the kernel fails */
+#define BIO_CTRL_DGRAM_SET_MTU                 \
+  42 /* set cached value for  MTU. want to use \
+        this if asking the kernel fails */
 
-#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
-                                          the previous write operation. */
+#define BIO_CTRL_DGRAM_MTU_EXCEEDED         \
+  43 /* check whether the MTU was exceed in \
+        the previous write operation. */
 
 // BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
 // and depends on |timeval|, which is not 2038-clean on all platforms.
 
-#define BIO_CTRL_DGRAM_GET_PEER           46
+#define BIO_CTRL_DGRAM_GET_PEER 46
 
-#define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
+#define BIO_CTRL_DGRAM_GET_FALLBACK_MTU 47
 
 
 // BIO Pairs.
@@ -760,7 +763,7 @@ OPENSSL_EXPORT int BIO_meth_set_create(BIO_METHOD *method,
                                        int (*create)(BIO *));
 
 // BIO_meth_get_create returns |create| function of |method|.
-OPENSSL_EXPORT int (*BIO_meth_get_create(const BIO_METHOD *method)) (BIO *);
+OPENSSL_EXPORT int (*BIO_meth_get_create(const BIO_METHOD *method))(BIO *);
 
 // BIO_meth_set_destroy sets a function to release data associated with a |BIO|
 // and returns one. The function's return value is ignored.
@@ -768,7 +771,7 @@ OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
                                         int (*destroy)(BIO *));
 
 // BIO_meth_get_destroy returns |destroy| function of |method|.
-OPENSSL_EXPORT int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *);
+OPENSSL_EXPORT int (*BIO_meth_get_destroy(const BIO_METHOD *method))(BIO *);
 
 // BIO_meth_set_write sets the implementation of |BIO_write| for |method| and
 // returns one. |BIO_METHOD|s which implement |BIO_write| should also implement
@@ -787,7 +790,8 @@ OPENSSL_EXPORT int BIO_meth_set_gets(BIO_METHOD *method,
                                      int (*gets)(BIO *, char *, int));
 
 // BIO_meth_get_gets returns |gets| function of |method|.
-OPENSSL_EXPORT int (*BIO_meth_get_gets(const BIO_METHOD *method)) (BIO *, char *, int);
+OPENSSL_EXPORT int (*BIO_meth_get_gets(const BIO_METHOD *method))(BIO *, char *,
+                                                                  int);
 
 // BIO_meth_set_ctrl sets the implementation of |BIO_ctrl| for |method| and
 // returns one.
@@ -795,15 +799,18 @@ OPENSSL_EXPORT int BIO_meth_set_ctrl(BIO_METHOD *method,
                                      long (*ctrl)(BIO *, int, long, void *));
 
 // BIO_meth_get_ctrl returns |ctrl| function of |method|.
-OPENSSL_EXPORT long (*BIO_meth_get_ctrl(const BIO_METHOD *method)) (BIO *, int, long, void *);
+OPENSSL_EXPORT long (*BIO_meth_get_ctrl(const BIO_METHOD *method))(BIO *, int,
+                                                                   long,
+                                                                   void *);
 
 // BIO_meth_set_callback_ctrl sets the implementation of |callback_ctrl| for
 // |method| and returns one.
-OPENSSL_EXPORT int BIO_meth_set_callback_ctrl(BIO_METHOD *method,
-                                             long (*callback_ctrl)(BIO *, int, bio_info_cb));
+OPENSSL_EXPORT int BIO_meth_set_callback_ctrl(
+    BIO_METHOD *method, long (*callback_ctrl)(BIO *, int, bio_info_cb));
 
 // BIO_meth_get_callback_ctrl returns |callback_ctrl| function of |method|.
-OPENSSL_EXPORT long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method)) (BIO *, int, bio_info_cb);
+OPENSSL_EXPORT long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method))(
+    BIO *, int, bio_info_cb);
 
 // BIO_set_data sets custom data on |bio|. It may be retried with
 // |BIO_get_data|.
@@ -907,16 +914,17 @@ OPENSSL_EXPORT void BIO_set_shutdown(BIO *bio, int shutdown);
 // BIO_get_shutdown returns the method-specific "shutdown" bit.
 OPENSSL_EXPORT int BIO_get_shutdown(BIO *bio);
 
-// BIO_meth_set_puts sets the implementation of |BIO_puts| for |method| and 
+// BIO_meth_set_puts sets the implementation of |BIO_puts| for |method| and
 // returns 1.
 OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
                                      int (*puts)(BIO *, const char *));
 
 // BIO_meth_get_puts returns |puts| function of |method|.
-OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *);
+OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method))(BIO *,
+                                                                  const char *);
 
-// BIO_s_secmem returns the normal BIO_METHOD |BIO_s_mem|. Deprecated since AWS-LC
-// does not support secure heaps.
+// BIO_s_secmem returns the normal BIO_METHOD |BIO_s_mem|. Deprecated since
+// AWS-LC does not support secure heaps.
 OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
 
 
@@ -999,7 +1007,7 @@ struct bio_st {
   // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
   // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
   // |BIO_CB_PUTS|+|BIO_CB_RETURN|, |BIO_CB_GETS|,
-  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|, 
+  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|,
   // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
   // Optional callback argument, only intended for applications use.

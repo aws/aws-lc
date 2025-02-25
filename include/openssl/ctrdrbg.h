@@ -46,7 +46,7 @@ OPENSSL_EXPORT CTR_DRBG_STATE *CTR_DRBG_new(
     size_t personalization_len);
 
 // CTR_DRBG_free frees |state| if non-NULL, or else does nothing.
-OPENSSL_EXPORT void CTR_DRBG_free(CTR_DRBG_STATE* state);
+OPENSSL_EXPORT void CTR_DRBG_free(CTR_DRBG_STATE *state);
 
 // CTR_DRBG_reseed reseeds |drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of entropy
 // in |entropy| and, optionally, up to |CTR_DRBG_ENTROPY_LEN| bytes of

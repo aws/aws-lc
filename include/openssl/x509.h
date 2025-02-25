@@ -2784,7 +2784,8 @@ OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get0_untrusted returns the stack of untrusted intermediates
 // used by |ctx| for certificate verification.
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(
+    X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_set0_trusted_stack configures |ctx| to trust the certificates
 // in |sk|. |sk| must remain valid for the duration of |ctx|. Calling this
@@ -5003,17 +5004,17 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
 #define NS_OBJSIGN_CA 0x01
 #define NS_ANY_CA (NS_SSL_CA | NS_SMIME_CA | NS_OBJSIGN_CA)
 
-    typedef struct x509_purpose_st {
-        int purpose;
-        int trust;  // Default trust ID
-        int flags;
-        int (*check_purpose)(const struct x509_purpose_st *, const X509 *, int);
-        char *name;
-        char *sname;
-        void *usr_data;
-    } X509_PURPOSE;
+typedef struct x509_purpose_st {
+  int purpose;
+  int trust;  // Default trust ID
+  int flags;
+  int (*check_purpose)(const struct x509_purpose_st *, const X509 *, int);
+  char *name;
+  char *sname;
+  void *usr_data;
+} X509_PURPOSE;
 
-    DEFINE_STACK_OF(X509_PURPOSE)
+DEFINE_STACK_OF(X509_PURPOSE)
 
 // X509_STORE_get0_objects returns a non-owning pointer of |store|'s internal
 // object list. Although this function is not const, callers must not modify
@@ -5073,12 +5074,12 @@ DECLARE_STACK_OF(DIST_POINT)
 // This is used for a table of trust checking functions
 
 struct x509_trust_st {
-int trust;
-int flags;
-int (*check_trust)(const X509_TRUST *, X509 *);
-char *name;
-int arg1;
-void *arg2;
+  int trust;
+  int flags;
+  int (*check_trust)(const X509_TRUST *, X509 *);
+  char *name;
+  int arg1;
+  void *arg2;
 } /* X509_TRUST */;
 
 DEFINE_STACK_OF(X509_TRUST)

@@ -104,12 +104,13 @@ extern "C" {
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
-// BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users interpreting AWSLC as BoringSSL.
-// Below are BoringSSL's comments on BORINGSSL_API_VERSION.
-// BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL
-// changes over time. The value itself is not meaningful. It will be incremented
-// whenever is convenient to coordinate an API change with consumers. This will
-// not denote any special point in development.
+// BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users
+// interpreting AWSLC as BoringSSL. Below are BoringSSL's comments on
+// BORINGSSL_API_VERSION. BORINGSSL_API_VERSION is a positive integer that
+// increments as BoringSSL changes over time. The value itself is not
+// meaningful. It will be incremented whenever is convenient to coordinate an
+// API change with consumers. This will not denote any special point in
+// development.
 //
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
@@ -165,7 +166,8 @@ extern "C" {
   __pragma(warning(push)) __pragma(warning(disable : 4996))
 #define OPENSSL_END_ALLOW_DEPRECATED __pragma(warning(pop))
 
-#elif (defined(__GNUC__) && ((__GNUC__ > 4) ||  (__GNUC_MINOR__ >= 6))) || defined(__clang__)
+#elif (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC_MINOR__ >= 6))) || \
+    defined(__clang__)
 // `_Pragma("GCC diagnostic push")` was added in GCC 4.6
 // http://gcc.gnu.org/gcc-4.6/changes.html
 #define OPENSSL_DEPRECATED __attribute__((__deprecated__))
@@ -189,8 +191,8 @@ extern "C" {
 // https://sourceforge.net/p/mingw-w64/wiki2/gnu%20printf/.
 #if defined(__MINGW_PRINTF_FORMAT)
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
-  __attribute__(                                                 \
-      (__format__(__MINGW_PRINTF_FORMAT, string_index, first_to_check)))
+  __attribute__((                                                \
+      __format__(__MINGW_PRINTF_FORMAT, string_index, first_to_check)))
 #else
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
   __attribute__((__format__(__printf__, string_index, first_to_check)))
@@ -352,7 +354,8 @@ typedef struct kem_key_st KEM_KEY;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
-typedef struct evp_pkey_ctx_signature_context_params_st EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS;
+typedef struct evp_pkey_ctx_signature_context_params_st
+    EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
@@ -500,7 +503,7 @@ class StackAllocated {
   ~StackAllocated() { cleanup(&ctx_); }
 
   StackAllocated(const StackAllocated &) = delete;
-  StackAllocated& operator=(const StackAllocated &) = delete;
+  StackAllocated &operator=(const StackAllocated &) = delete;
 
   T *get() { return &ctx_; }
   const T *get() const { return &ctx_; }

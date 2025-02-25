@@ -435,10 +435,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_tls13(void);
 // Obscure functions.
 
 // evp_aead_direction_t denotes the direction of an AEAD operation.
-enum evp_aead_direction_t {
-  evp_aead_open,
-  evp_aead_seal
-};
+enum evp_aead_direction_t { evp_aead_open, evp_aead_seal };
 
 // EVP_AEAD_CTX_init_with_direction calls |EVP_AEAD_CTX_init| for normal
 // AEADs. For TLS-specific and SSL3-specific AEADs, it initializes |ctx| for a

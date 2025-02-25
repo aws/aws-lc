@@ -28,10 +28,10 @@ extern "C" {
 // is non-NULL, it overwrites |*out_pkey| with the resulting key. Otherwise, it
 // sets |*out_pkey| to a newly-allocated |EVP_PKEY| containing the result.
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx   /* IN  */,
+OPENSSL_EXPORT int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx /* IN  */,
                                                  EVP_PKEY **out_pkey /* OUT */,
                                                  const uint8_t *seed /* IN  */,
-                                                 size_t *seed_len    /* IN  */);
+                                                 size_t *seed_len /* IN  */);
 
 // EVP_PKEY_encapsulate_deterministic is an operation defined for a KEM (Key
 // Encapsulation Mechanism). The function performs the same encapsulation
@@ -53,13 +53,11 @@ OPENSSL_EXPORT int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx   /* IN  */,
 // seed is not required.
 //
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx          /* IN  */,
-                                                      uint8_t *ciphertext        /* OUT */,
-                                                      size_t  *ciphertext_len    /* OUT */,
-                                                      uint8_t *shared_secret     /* OUT */,
-                                                      size_t  *shared_secret_len /* OUT */,
-                                                      const uint8_t *seed        /* IN  */,
-                                                      size_t *seed_len           /* IN  */);
+OPENSSL_EXPORT int EVP_PKEY_encapsulate_deterministic(
+    EVP_PKEY_CTX *ctx /* IN  */, uint8_t *ciphertext /* OUT */,
+    size_t *ciphertext_len /* OUT */, uint8_t *shared_secret /* OUT */,
+    size_t *shared_secret_len /* OUT */, const uint8_t *seed /* IN  */,
+    size_t *seed_len /* IN  */);
 
 
 #if defined(__cplusplus)

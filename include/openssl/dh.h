@@ -376,7 +376,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void DH_clear_flags(DH *dh, int flags);
 // cache the montgomery form of the prime to speed up multiplication at the cost
 // of increasing memory storage. AWS-LC always does this and does not support
 // turning this option off.
-// 
+//
 // NOTE: This is also on by default in OpenSSL.
 #define DH_FLAG_CACHE_MONT_P 0
 

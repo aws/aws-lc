@@ -111,9 +111,9 @@
 
 #include <stdio.h>
 
+#include <errno.h>
 #include <openssl/base.h>
 #include <openssl/crypto.h>
-#include <errno.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -266,7 +266,8 @@ typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
 // The string will have the following format (which differs from
 // |ERR_error_string|):
 //
-//   [thread id]:error:[error code]:[library name]:OPENSSL_internal:[reason string]:[file]:[line number]:[optional string data]
+//   [thread id]:error:[error code]:[library name]:OPENSSL_internal:[reason
+//   string]:[file]:[line number]:[optional string data]
 //
 // The callback can return one to continue the iteration or zero to stop it.
 // The |ctx| argument is an opaque value that is passed through to the
@@ -306,50 +307,50 @@ OPENSSL_EXPORT int ERR_get_next_error_library(void);
 // Built-in library and reason codes.
 
 // The following values are built-in library codes.
-#define ERR_LIB_NONE            1
-#define ERR_LIB_SYS             2
-#define ERR_LIB_BN              3
-#define ERR_LIB_RSA             4
-#define ERR_LIB_DH              5
-#define ERR_LIB_EVP             6
-#define ERR_LIB_BUF             7
-#define ERR_LIB_OBJ             8
-#define ERR_LIB_PEM             9
-#define ERR_LIB_DSA             10
-#define ERR_LIB_X509            11
-#define ERR_LIB_ASN1            12
-#define ERR_LIB_CONF            13
-#define ERR_LIB_CRYPTO          14
-#define ERR_LIB_EC              15
-#define ERR_LIB_SSL             16
-#define ERR_LIB_BIO             17
-#define ERR_LIB_PKCS7           18
-#define ERR_LIB_PKCS8           19
-#define ERR_LIB_X509V3          20
-#define ERR_LIB_RAND            21
-#define ERR_LIB_ENGINE          22
-#define ERR_LIB_OCSP            23
-#define ERR_LIB_UI              24
-#define ERR_LIB_COMP            25
-#define ERR_LIB_ECDSA           26
-#define ERR_LIB_ECDH            27
-#define ERR_LIB_HMAC            28
-#define ERR_LIB_DIGEST          29
-#define ERR_LIB_CIPHER          30
-#define ERR_LIB_HKDF            31
-#define ERR_LIB_TRUST_TOKEN     32
-#define ERR_LIB_USER            33
-#define ERR_NUM_LIBS            34
-#define ERR_LIB_PKCS12          35
-#define ERR_LIB_DSO             36
-#define ERR_LIB_OSSL_STORE      37
-#define ERR_LIB_FIPS            38
-#define ERR_LIB_CMS             39
-#define ERR_LIB_TS              40
-#define ERR_LIB_CT              41
-#define ERR_LIB_ASYNC           42
-#define ERR_LIB_KDF             43
-#define ERR_LIB_SM2             44
+#define ERR_LIB_NONE 1
+#define ERR_LIB_SYS 2
+#define ERR_LIB_BN 3
+#define ERR_LIB_RSA 4
+#define ERR_LIB_DH 5
+#define ERR_LIB_EVP 6
+#define ERR_LIB_BUF 7
+#define ERR_LIB_OBJ 8
+#define ERR_LIB_PEM 9
+#define ERR_LIB_DSA 10
+#define ERR_LIB_X509 11
+#define ERR_LIB_ASN1 12
+#define ERR_LIB_CONF 13
+#define ERR_LIB_CRYPTO 14
+#define ERR_LIB_EC 15
+#define ERR_LIB_SSL 16
+#define ERR_LIB_BIO 17
+#define ERR_LIB_PKCS7 18
+#define ERR_LIB_PKCS8 19
+#define ERR_LIB_X509V3 20
+#define ERR_LIB_RAND 21
+#define ERR_LIB_ENGINE 22
+#define ERR_LIB_OCSP 23
+#define ERR_LIB_UI 24
+#define ERR_LIB_COMP 25
+#define ERR_LIB_ECDSA 26
+#define ERR_LIB_ECDH 27
+#define ERR_LIB_HMAC 28
+#define ERR_LIB_DIGEST 29
+#define ERR_LIB_CIPHER 30
+#define ERR_LIB_HKDF 31
+#define ERR_LIB_TRUST_TOKEN 32
+#define ERR_LIB_USER 33
+#define ERR_NUM_LIBS 34
+#define ERR_LIB_PKCS12 35
+#define ERR_LIB_DSO 36
+#define ERR_LIB_OSSL_STORE 37
+#define ERR_LIB_FIPS 38
+#define ERR_LIB_CMS 39
+#define ERR_LIB_TS 40
+#define ERR_LIB_CT 41
+#define ERR_LIB_ASYNC 42
+#define ERR_LIB_KDF 43
+#define ERR_LIB_SM2 44
 
 // The following reason codes used to denote an error occuring in another
 // library. They are sometimes used for a stack trace.
@@ -489,7 +490,7 @@ OPENSSL_EXPORT void ERR_set_error_data(char *data, int flags);
 // queue.
 #define ERR_NUM_ERRORS 16
 
-#define ERR_PACK(lib, reason)                                              \
+#define ERR_PACK(lib, reason) \
   (((((uint32_t)(lib)) & 0xff) << 24) | ((((uint32_t)(reason)) & 0xfff)))
 
 // OPENSSL_DECLARE_ERROR_REASON is used by util/make_errors.h (which generates

@@ -167,11 +167,9 @@ OPENSSL_EXPORT int TRUST_TOKEN_CLIENT_begin_issuance_over_message(
 // arrives without the specified key present. The caller takes ownership of the
 // list and must call |sk_TRUST_TOKEN_pop_free| when done. The list is empty if
 // issuance fails.
-OPENSSL_EXPORT STACK_OF(TRUST_TOKEN) *
-    TRUST_TOKEN_CLIENT_finish_issuance(TRUST_TOKEN_CLIENT *ctx,
-                                       size_t *out_key_index,
-                                       const uint8_t *response,
-                                       size_t response_len);
+OPENSSL_EXPORT STACK_OF(TRUST_TOKEN) *TRUST_TOKEN_CLIENT_finish_issuance(
+    TRUST_TOKEN_CLIENT *ctx, size_t *out_key_index, const uint8_t *response,
+    size_t response_len);
 
 
 // TRUST_TOKEN_CLIENT_begin_redemption produces a request to redeem a token

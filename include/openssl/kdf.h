@@ -25,12 +25,12 @@ extern "C" {
 // and writes them to |out|. It returns one on success and zero on error.
 // TLS 1.2: https://datatracker.ietf.org/doc/html/rfc5246#section-5
 // TLS 1.{0,1}: https://datatracker.ietf.org/doc/html/rfc4346#section-5
-OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
-                                   uint8_t *out, size_t out_len,
-                                   const uint8_t *secret, size_t secret_len,
-                                   const char *label, size_t label_len,
-                                   const uint8_t *seed1, size_t seed1_len,
-                                   const uint8_t *seed2, size_t seed2_len);
+OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest, uint8_t *out,
+                                   size_t out_len, const uint8_t *secret,
+                                   size_t secret_len, const char *label,
+                                   size_t label_len, const uint8_t *seed1,
+                                   size_t seed1_len, const uint8_t *seed2,
+                                   size_t seed2_len);
 
 // SSKDF_digest computes the One-step key derivation using the
 // provided digest algorithm as the backing PRF. This algorithm
@@ -52,9 +52,9 @@ OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
 //
 // Specification is available at https://doi.org/10.6028/NIST.SP.800-56Cr2
 OPENSSL_EXPORT int SSKDF_digest(uint8_t *out_key, size_t out_len,
-                                const EVP_MD *digest,
-                                const uint8_t *secret, size_t secret_len,
-                                const uint8_t *info, size_t info_len);
+                                const EVP_MD *digest, const uint8_t *secret,
+                                size_t secret_len, const uint8_t *info,
+                                size_t info_len);
 
 // SSKDF_hmac computes the One-step key derivation using the
 // provided digest algorithm with HMAC as the backing PRF. This algorithm
@@ -80,10 +80,10 @@ OPENSSL_EXPORT int SSKDF_digest(uint8_t *out_key, size_t out_len,
 //   is equal to the length of the specified |digest| input block length in
 //   bytes.
 OPENSSL_EXPORT int SSKDF_hmac(uint8_t *out_key, size_t out_len,
-                              const EVP_MD *digest,
-                              const uint8_t *secret, size_t secret_len,
-                              const uint8_t *info, size_t info_len,
-                              const uint8_t *salt, size_t salt_len);
+                              const EVP_MD *digest, const uint8_t *secret,
+                              size_t secret_len, const uint8_t *info,
+                              size_t info_len, const uint8_t *salt,
+                              size_t salt_len);
 
 // KBKDF_ctr_hmac derives keying material using the KDF counter mode algorithm,
 // using the provided key derivation key |secret| and fixed info |info|.

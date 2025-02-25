@@ -152,7 +152,7 @@
 
 #include <openssl/base.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -291,14 +291,14 @@ extern "C" {
 #define TLSEXT_MAXLEN_host_name 255
 
 // PSK ciphersuites from 4279
-#define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A
-#define TLS1_CK_PSK_WITH_3DES_EDE_CBC_SHA               0x0300008B
-#define TLS1_CK_PSK_WITH_AES_128_CBC_SHA                0x0300008C
-#define TLS1_CK_PSK_WITH_AES_256_CBC_SHA                0x0300008D
+#define TLS1_CK_PSK_WITH_RC4_128_SHA 0x0300008A
+#define TLS1_CK_PSK_WITH_3DES_EDE_CBC_SHA 0x0300008B
+#define TLS1_CK_PSK_WITH_AES_128_CBC_SHA 0x0300008C
+#define TLS1_CK_PSK_WITH_AES_256_CBC_SHA 0x0300008D
 
 // PSK ciphersuites from RFC 5489
-#define TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA          0x0300C035
-#define TLS1_CK_ECDHE_PSK_WITH_AES_256_CBC_SHA          0x0300C036
+#define TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA 0x0300C035
+#define TLS1_CK_ECDHE_PSK_WITH_AES_256_CBC_SHA 0x0300C036
 
 // Additional TLS ciphersuites from expired Internet Draft
 // draft-ietf-tls-56-bit-ciphersuites-01.txt
@@ -652,7 +652,7 @@ extern "C" {
 #define TLS_MD_MAX_CONST_SIZE 20
 
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }  // extern C
 #endif
 

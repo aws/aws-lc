@@ -60,8 +60,8 @@
 #include <openssl/base.h>
 
 #include <openssl/digest.h>
-#include <openssl/sha.h>
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -157,17 +157,23 @@ OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);
 #define HMAC_MD5_PRECOMPUTED_KEY_SIZE 32
 // HMAC_SHA1_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA1, in bytes
 #define HMAC_SHA1_PRECOMPUTED_KEY_SIZE 40
-// HMAC_SHA224_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA224, in bytes
+// HMAC_SHA224_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA224, in
+// bytes
 #define HMAC_SHA224_PRECOMPUTED_KEY_SIZE 64
-// HMAC_SHA256_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA256, in bytes
+// HMAC_SHA256_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA256, in
+// bytes
 #define HMAC_SHA256_PRECOMPUTED_KEY_SIZE 64
-// HMAC_SHA384_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA384, in bytes
+// HMAC_SHA384_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA384, in
+// bytes
 #define HMAC_SHA384_PRECOMPUTED_KEY_SIZE 128
-// HMAC_SHA512_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512, in bytes
+// HMAC_SHA512_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512, in
+// bytes
 #define HMAC_SHA512_PRECOMPUTED_KEY_SIZE 128
-// HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512_224, in bytes
+// HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE is the precomputed key size for
+// SHA512_224, in bytes
 #define HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE 128
-// HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512_256, in bytes
+// HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE is the precomputed key size for
+// SHA512_256, in bytes
 #define HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE 128
 
 // HMAC_MAX_PRECOMPUTED_KEY_SIZE is the largest precomputed key size, in bytes.
@@ -216,7 +222,7 @@ OPENSSL_EXPORT int HMAC_set_precomputed_key_export(HMAC_CTX *ctx);
 // precomputed key instead of the key reduces by 2 the number of hash
 // compression function calls (or more if key is larger than the block length)
 OPENSSL_EXPORT int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out,
-                                           size_t *out_len);
+                                            size_t *out_len);
 
 // HMAC_Init_from_precomputed_key sets up an initialised |HMAC_CTX| to use
 // |md| as the hash function and |precomputed_key| as the precomputed key
@@ -229,11 +235,11 @@ OPENSSL_EXPORT int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out,
 //
 // Note: Contrary to input keys to |HMAC_Init_ex|, which can be the empty key,
 //   an input precomputed key cannot be empty in an initial call to
-//   |HMAC_Init_from_precomputed_key|. Otherwise, the call fails and returns zero.
-OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
-                                                 const uint8_t *precomputed_key,
-                                                 size_t precompute_key_len,
-                                                 const EVP_MD *md);
+//   |HMAC_Init_from_precomputed_key|. Otherwise, the call fails and returns
+//   zero.
+OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(
+    HMAC_CTX *ctx, const uint8_t *precomputed_key, size_t precompute_key_len,
+    const EVP_MD *md);
 
 
 // Deprecated functions.
@@ -250,7 +256,8 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 // Private functions
 typedef struct hmac_methods_st HmacMethods;
 
-// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+// We use a union to ensure that enough space is allocated and never actually
+// bother with the named members.
 union md_ctx_union {
   MD5_CTX md5;
   SHA_CTX sha1;

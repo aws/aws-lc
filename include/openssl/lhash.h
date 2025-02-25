@@ -80,10 +80,11 @@ OPENSSL_EXPORT void lh_doall_arg(_LHASH *lh, void (*func)(void *, void *),
 // These two macros are the bare minimum of |LHASH| macros downstream consumers
 // use.
 #define IMPLEMENT_LHASH_DOALL_ARG_FN(name, o_type, a_type) \
-	void name##_LHASH_DOALL_ARG(void *arg1, void *arg2) { \
-		o_type *a = arg1; \
-		a_type *b = arg2; \
-		name##_doall_arg(a, b); }
+  void name##_LHASH_DOALL_ARG(void *arg1, void *arg2) {    \
+    o_type *a = arg1;                                      \
+    a_type *b = arg2;                                      \
+    name##_doall_arg(a, b);                                \
+  }
 #define LHASH_DOALL_ARG_FN(name) name##_LHASH_DOALL_ARG
 
 

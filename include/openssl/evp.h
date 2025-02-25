@@ -181,13 +181,15 @@ OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 // parameter p for DH parameter generation. If this function is not called,
 // the default length of 2048 is used. |pbits| must be greater than or equal
 // to 256. Returns 1 on success, otherwise returns a non-positive value.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx, int pbits);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx,
+                                                          int pbits);
 
 // EVP_PKEY_CTX_set_dh_paramgen_generator sets the DH generator for DH parameter
 // generation. If this function is not called, the default value of 2 is used.
 // |gen| must be greater than 1. Returns 1 on success, otherwise returns a
 // non-positive value.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int gen);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx,
+                                                          int gen);
 
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
@@ -759,11 +761,11 @@ OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 // provide large enough |ciphertext| and |shared_secret| buffers.
 //
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
-                                        uint8_t *ciphertext        /* OUT */,
-                                        size_t  *ciphertext_len    /* OUT */,
-                                        uint8_t *shared_secret     /* OUT */,
-                                        size_t  *shared_secret_len /* OUT */);
+OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx /* IN  */,
+                                        uint8_t *ciphertext /* OUT */,
+                                        size_t *ciphertext_len /* OUT */,
+                                        uint8_t *shared_secret /* OUT */,
+                                        size_t *shared_secret_len /* OUT */);
 
 // EVP_PKEY_decapsulate is an operation defined for a KEM (Key Encapsulation
 // Mechanism). For the KEM specified in |ctx|, the function:
@@ -783,11 +785,11 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 // provide large enough |shared_secret| buffer.
 //
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
-                                        uint8_t *shared_secret     /* OUT */,
-                                        size_t  *shared_secret_len /* OUT */,
-                                        const uint8_t *ciphertext  /* IN  */,
-                                        size_t   ciphertext_len    /* IN  */);
+OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx /* IN  */,
+                                        uint8_t *shared_secret /* OUT */,
+                                        size_t *shared_secret_len /* OUT */,
+                                        const uint8_t *ciphertext /* IN  */,
+                                        size_t ciphertext_len /* IN  */);
 
 // EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter
 // generation operation. It should be called before |EVP_PKEY_paramgen|.
@@ -951,15 +953,17 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid);
 // EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
 // public key part of the KEM key with the contents of |in|. It returns the
 // pointer to the allocated PKEY on sucess and NULL on error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
-                                    int nid, const uint8_t *in, size_t len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(int nid,
+                                                         const uint8_t *in,
+                                                         size_t len);
 
 // EVP_PKEY_kem_new_raw_secret_key generates a new EVP_PKEY object of type
 // EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
 // secret key part of the KEM key with the contents of |in|. It returns the
 // pointer to the allocated PKEY on sucess and NULL on error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
-                                    int nid, const uint8_t *in, size_t len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(int nid,
+                                                         const uint8_t *in,
+                                                         size_t len);
 
 // EVP_PKEY_kem_new_raw_key generates a new EVP_PKEY object of type
 // EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
@@ -987,15 +991,20 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
 // public key part of the PQDSA key with the contents of |in|. It returns the
 // pointer to the allocated PKEY on sucess and NULL on error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid,
+                                                           const uint8_t *in,
+                                                           size_t len);
 
 // EVP_PKEY_pqdsa_new_raw_private_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
 // secret key part of the PQDSA key with the contents of |in|. If the contents
 // of |in| is the private key seed, then this function will generate the
-// corresponding key pair and populate both public and private parts of the PKEY.
-// It returns the pointer to the allocated PKEY on sucess and NULL on error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t len);
+// corresponding key pair and populate both public and private parts of the
+// PKEY. It returns the pointer to the allocated PKEY on sucess and NULL on
+// error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid,
+                                                            const uint8_t *in,
+                                                            size_t len);
 
 // Diffie-Hellman-specific control functions.
 
@@ -1129,7 +1138,7 @@ OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
                                                    const char *name,
                                                    const char *unused,
                                                    void *arg),
-                                         void *arg);
+                                  void *arg);
 
 
 // i2d_PrivateKey marshals a private key from |key| to type-specific format, as
@@ -1287,9 +1296,9 @@ OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp,
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. If successful, it returns one. If the |type| argument
 // is one of |EVP_PKEY_RSA|, |EVP_PKEY_DSA|, or |EVP_PKEY_EC| values it calls
-// the corresponding |EVP_PKEY_assign_*| functions (which should be used instead).
-// Otherwise, if |type| cannot be set via |EVP_PKEY_set_type| or if the key
-// is NULL, it returns zero.
+// the corresponding |EVP_PKEY_assign_*| functions (which should be used
+// instead). Otherwise, if |type| cannot be set via |EVP_PKEY_set_type| or if
+// the key is NULL, it returns zero.
 OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 
 // EVP_PKEY_type returns |nid|.
@@ -1357,7 +1366,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
 // EVP_PKEY_CTX_set_dsa_paramgen_md sets the digest function used for DSA
 // parameter generation. If not specified, one of SHA-1 (160), SHA-224 (224),
 // or SHA-256 (256) is selected based on the number of bits in |q|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_md(EVP_PKEY_CTX *ctx, const EVP_MD* md);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_md(
+    EVP_PKEY_CTX *ctx, const EVP_MD *md);
 
 // EVP_PKEY_CTX_set_dsa_paramgen_q_bits sets the number of bits in q to use for
 // DSA parameter generation. If not specified, the default is 256. If a digest
@@ -1381,8 +1391,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
 // |value| is the value to set.
 //
 // It returns 1 for success and 0 or a negative value for failure.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
-                              const char *value);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx,
+                                                            const char *type,
+                                                            const char *value);
 
 
 // Preprocessor compatibility section (hidden).
