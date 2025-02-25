@@ -11,7 +11,7 @@
 #include "../../../internal.h"
 #include "../../../ube/internal.h"
 
-#include "../../../../third_party/jitterentropy/jitterentropy.h"
+#include "../../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 
 // Randomness generation implements thread-local "frontend" DRBGs that serve
 // requests for randomness from consumers through exported functions such as

@@ -1,0 +1,14 @@
+See comments in Android.mk
+
+When compiling an APK, follow roughly these steps
+
+1. create dir <NDK>/jitterentropy
+2. copy AndroidManifest.xml to <NDK>/jitterentropy
+3. copy code and Android.mk to <NDK>/jitterentropy/jni
+4. cd <NDK>/jitterentropy
+5. open eclipse and import project
+6. on console android update project -p . -s
+7. ../ndk-build
+8. in eclipse: open manifest and compile
+
+am start -n de.chronox.jitterentropy/android.app.NativeActivity

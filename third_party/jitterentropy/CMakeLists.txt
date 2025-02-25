@@ -7,12 +7,12 @@
 # the same as the source code.
 
 set(JITTER_SOURCES
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library/src/jitterentropy-base.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library/src/jitterentropy-gcd.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library/src/jitterentropy-health.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library/src/jitterentropy-noise.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library/src/jitterentropy-sha3.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library/src/jitterentropy-timer.c)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -37,4 +37,5 @@ endif()
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
 add_dependencies(jitterentropy boringssl_prefix_symbols)
+target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library)
 target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
