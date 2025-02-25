@@ -1609,6 +1609,8 @@ TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   ASSERT_FALSE(EVP_marshal_private_key_v2(cbb.get(), pkey.get()));
   pkey.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
+
+  OPENSSL_free(der);
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
