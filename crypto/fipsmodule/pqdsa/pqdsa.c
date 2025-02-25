@@ -121,9 +121,15 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-
+  
   // copy the seed data
-  OPENSSL_memcpy(seed, CBS_data(in), key->pqdsa->keygen_seed_len);
+  if (!CBS_copy_bytes(in, seed, key->pqdsa->keygen_seed_len)) {
+    OPENSSL_free(public_key);
+    OPENSSL_free(private_key);
+    OPENSSL_free(seed);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
 
   // set the public and private key
   key->public_key = public_key;
