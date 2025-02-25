@@ -121,3 +121,29 @@ jobs:
       - if: ${{ matrix.os != 'windows-latest' }}
         name: Run tests
         run: cmake --build "path has spaces/build-fips" --target run_tests
+  clang-format:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-17
+          sudo update-alternatives --display clang-format
+          # Register alternatives
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-18 50
+          # Set preferred version
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
+          # Verify the version
+          clang-format --version
+      - name: Check formatting
+        run: |
+          clang-format --version
+          ./util/check_clang_format.sh --check
+      - name: Formatting instructions
+        if: failure()
+        run: |
+          echo "Formatting issues found. To fix locally, run:"
+          echo "  ./util/check_clang_format.sh --fix"
