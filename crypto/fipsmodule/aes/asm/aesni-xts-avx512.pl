@@ -63,33 +63,18 @@ if ($avx512vaes) {
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   my ($key2, $key1, $tweak, $length, $input, $output);
 
-  if ($win64) {
-    $input    = "%rcx";
-    $output   = "%rdx";
-    $length   = "%r8";
-    $key1     = "%r9";
-    $key2     = "%r10";
-    $tweak    = "%r11";
-  } else {
     $input    = "%rdi";
     $output   = "%rsi";
     $length   = "%rdx";
     $key1     = "%rcx";
     $key2     = "%r8";
     $tweak    = "%r9";
-  }
 
   # arguments for temp parameters
   my ($tmp1, $gf_poly_8b, $gf_poly_8b_temp);
-  if ($win64) {
-    $tmp1                = "%r10";
-    $gf_poly_8b       = "%rdi";
-    $gf_poly_8b_temp  = "%rsi";
-  } else {
     $tmp1                = "%r8";
     $gf_poly_8b       = "%r10";
     $gf_poly_8b_temp  = "%r11";
-  }
 
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   # ;;; Helper functions
@@ -1469,7 +1454,7 @@ ___
   $code.=<<___;
   .globl	aes_hw_xts_encrypt_avx512
   .hidden	aes_hw_xts_encrypt_avx512
-  .type	aes_hw_xts_encrypt_avx512,\@abi-omnipotent
+  .type	aes_hw_xts_encrypt_avx512,\@function,6
   .align	32
   aes_hw_xts_encrypt_avx512:
   .cfi_startproc
@@ -1860,7 +1845,7 @@ ___
     vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
 
     # Zero the 64 bytes we just restored to the xmm registers.
-    vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+    vmovdqu64 %zmm0,$XMM_STORAGE($TW)
 
     vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
     vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
@@ -1868,14 +1853,14 @@ ___
     vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
 
     # And again.
-    vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+    vmovdqu64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
 
     vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
     vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
 
     # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
     # source operand.
-    vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+    vmovdqu %ymm0,$XMM_STORAGE + 16 * 8($TW)
 ___
   }
 
@@ -2113,7 +2098,7 @@ ___
   $code.=<<___;
   .globl	aes_hw_xts_decrypt_avx512
   .hidden	aes_hw_xts_decrypt_avx512
-  .type	aes_hw_xts_decrypt_avx512,\@abi-omnipotent
+  .type	aes_hw_xts_decrypt_avx512,\@function,6
   .align	32
   aes_hw_xts_decrypt_avx512:
   .cfi_startproc
@@ -2635,7 +2620,7 @@ ___
     vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
 
     # Zero the 64 bytes we just restored to the xmm registers.
-    vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+    vmovdqu64 %zmm0,$XMM_STORAGE($TW)
 
     vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
     vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
@@ -2643,14 +2628,14 @@ ___
     vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
 
     # And again.
-    vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+    vmovdqu64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
 
     vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
     vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
 
     # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
     # source operand.
-    vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+    vmovdqu %ymm0,$XMM_STORAGE + 16 * 8($TW)
 ___
   }
 
