@@ -999,14 +999,18 @@ static const XTSTestCase kXTSTestCases[] = {
 
 #if defined(OPENSSL_LINUX)
 static uint8_t *get_buffer(int pagesize, int len) {
-  uint8_t *two_pages = (uint8_t *)mmap(NULL, 2*pagesize, PROT_READ|PROT_WRITE,
+  uint8_t *two_pages_p = (uint8_t *)mmap(NULL, 2*pagesize, PROT_READ|PROT_WRITE,
                                       MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-  EXPECT_TRUE(two_pages != NULL) << "mmap returned NULL.";
+  EXPECT_TRUE(two_pages_p != NULL) << "mmap returned NULL.";
 
-  int ret = mprotect(two_pages + pagesize, pagesize, PROT_NONE);
+  int ret = mprotect(two_pages_p + pagesize, pagesize, PROT_NONE);
   EXPECT_TRUE(ret == 0) << "mprotect failed.";
 
-  return two_pages + pagesize - len;
+  return two_pages_p + pagesize - len;
+}
+
+static void free_buffer(uint8_t *addr, int pagesize, int len) {
+  munmap(addr + len - pagesize, 2 * pagesize);
 }
 #endif
 
@@ -1038,14 +1042,15 @@ TEST(XTSTest, TestVectors) {
 
     #if defined(OPENSSL_LINUX)
       int pagesize = sysconf(_SC_PAGE_SIZE);
+      ASSERT_GE(pagesize, (int)plaintext.size());
       in_p = get_buffer(pagesize, plaintext.size());
       out_p = get_buffer(pagesize, plaintext.size());
     #else
       // Use newly-allocated buffers so ASan will catch out-of-bounds reads/writes.
       // (However, I believe this only poisons prefices not suffices)
       // ASAN doesn't catch assembly overreads.
-      std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()+64]);
-      std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()+64]);
+      std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
+      std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
       in_p = in.get();
       out_p = out.get();
     #endif
@@ -1075,6 +1080,11 @@ TEST(XTSTest, TestVectors) {
       ASSERT_TRUE(
           EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, ciphertext.size()));
       EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
+
+      #if defined(OPENSSL_LINUX)
+      free_buffer(in_p, pagesize, len);
+      free_buffer(out_p, pagesize, len);
+      #endif
     }
   }
 }
