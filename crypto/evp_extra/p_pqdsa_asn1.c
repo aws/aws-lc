@@ -132,34 +132,6 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   return 1;
 }
 
-static int pqdsa_priv_encode_seed(CBB *out, const EVP_PKEY *pkey) {
-  PQDSA_KEY *key = pkey->pkey.pqdsa_key;
-  const PQDSA *pqdsa = key->pqdsa;
-  if (key->seed == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
-    return 0;
-  }
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
-  CBB pkcs8, algorithm, oid, seed, pub_key_wrapper, pub_key;
-  if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_TWO /* version */) ||
-      !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
-      !CBB_add_asn1(&pkcs8, &seed, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&seed, key->seed, pqdsa->keygen_seed_len) ||
-      !CBB_add_asn1(&pkcs8, &pub_key_wrapper, CBS_ASN1_CONTEXT_SPECIFIC | 1) ||
-      !CBB_add_asn1(&pub_key_wrapper, &pub_key, CBS_ASN1_BITSTRING) ||
-      !CBB_add_u8(&pub_key, 0 /* padding */) ||
-      !CBB_add_bytes(&pub_key, key->public_key, pqdsa->public_key_len) ||
-      !CBB_flush(out)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
-    return 0;
-      }
-
-  return 1;
-}
-
 static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   PQDSA_KEY *a_key = a->pkey.pqdsa_key;
   PQDSA_KEY *b_key = b->pkey.pqdsa_key;
@@ -214,19 +186,19 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
 static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   PQDSA_KEY *key = pkey->pkey.pqdsa_key;
   const PQDSA *pqdsa = key->pqdsa;
-  if (key->private_key == NULL) {
+  if (key->seed == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
-  CBB pkcs8, algorithm, oid, private_key;
+  CBB pkcs8, algorithm, oid, seed;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_TWO /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
-      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&private_key, key->private_key, pqdsa->private_key_len) ||
+      !CBB_add_asn1(&pkcs8, &seed, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&seed, key->seed, pqdsa->keygen_seed_len) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
@@ -266,7 +238,7 @@ const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth = {
   pqdsa_pub_cmp,
   pqdsa_priv_decode,
   pqdsa_priv_encode,
-  pqdsa_priv_encode_seed,
+  NULL,
   NULL /* pqdsa_set_priv_raw */,
   NULL /*pqdsa_set_pub_raw */ ,
   pqdsa_get_priv_raw,

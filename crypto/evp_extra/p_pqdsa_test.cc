@@ -1576,43 +1576,6 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
             Bytes(pkey->pkey.pqdsa_key->public_key, GetParam().public_key_len));
 }
 
-TEST_P(PQDSAParameterTest, Marshalv2ParseSeed) {
-  // ---- 1. Setup phase: generate a key ----
-  int nid = GetParam().nid;
-  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
-
-  bssl::ScopedCBB cbb;
-  uint8_t *der;
-  size_t der_len;
-
-  // ---- 2. Test encode (marshal) of private key ----
-  ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(EVP_marshal_private_key_v2(cbb.get(), pkey.get()));
-  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
-
-  // ---- 3. Test parse (unmarshal) of private key ----
-  CBS cbs;
-  CBS_init(&cbs, der, der_len);
-  bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_parse_private_key(&cbs));
-  ASSERT_TRUE(parsed_key);
-  ASSERT_TRUE(CBS_len(&cbs) == 0);
-
-  // ---- 4. Verify the parsed key matches the original ----
-  // Compare key parameters
-  ASSERT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_id(parsed_key.get()));
-  ASSERT_EQ(1, EVP_PKEY_cmp(pkey.get(), parsed_key.get()));
-
-  // ---- 5. test failure modes ----
-  // Test case in which a parsed key does not contain a seed
-  void *tmp = (void*) pkey.get()->pkey.pqdsa_key->seed;
-  pkey.get()->pkey.pqdsa_key->seed =nullptr;
-  ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_FALSE(EVP_marshal_private_key_v2(cbb.get(), pkey.get()));
-  pkey.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
-
-  OPENSSL_free(der);
-}
-
 TEST_P(PQDSAParameterTest, SIGOperations) {
   // ---- 1. Setup phase: generate PQDSA EVP KEY and sign/verify contexts ----
   bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
@@ -1789,6 +1752,15 @@ TEST_P(PQDSAParameterTest, ParsePrivateKey) {
   // that the public key calculated by EVP_parse_private_key is equivalent to
   // the public key that was parsed from PEM.
   ASSERT_EQ(1, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
+
+  // ---- 5. test failure modes ----
+  // Test case in which a parsed key does not contain a seed
+  bssl::ScopedCBB cbb;
+  void *tmp = (void*) pkey1.get()->pkey.pqdsa_key->seed;
+  pkey1.get()->pkey.pqdsa_key->seed =nullptr;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_FALSE(EVP_marshal_private_key(cbb.get(), pkey1.get()));
+  pkey1.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
 
   // Clean up
   OPENSSL_free(der_pub);
