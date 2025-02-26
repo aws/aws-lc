@@ -238,7 +238,7 @@ const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth = {
   pqdsa_pub_cmp,
   pqdsa_priv_decode,
   pqdsa_priv_encode,
-  NULL,
+  NULL /*priv_encode_v2*/,
   NULL /* pqdsa_set_priv_raw */,
   NULL /*pqdsa_set_pub_raw */ ,
   pqdsa_get_priv_raw,
