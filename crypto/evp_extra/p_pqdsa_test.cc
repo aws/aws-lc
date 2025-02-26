@@ -1089,20 +1089,20 @@ const char *mldsa_87_pub_pem_str =
 // C.1.  Example Private Key
 const char *mldsa_44_priv_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
-"MDICAQAwCwYJYIZIAWUDBAMRBCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRob\n"
-"HB0eHw==\n"
+"MDQCAQAwCwYJYIZIAWUDBAMRBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+"GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
 const char *mldsa_65_priv_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
-"MDICAQAwCwYJYIZIAWUDBAMSBCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRob\n"
-"HB0eHw==\n"
+"MDQCAQAwCwYJYIZIAWUDBAMSBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+"GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
 const char *mldsa_87_priv_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
-"MDICAQAwCwYJYIZIAWUDBAMTBCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRob\n"
-"HB0eHw==\n"
+"MDQCAQAwCwYJYIZIAWUDBAMTBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+"GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
 struct PQDSATestVector {
