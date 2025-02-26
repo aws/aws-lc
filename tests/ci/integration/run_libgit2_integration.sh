@@ -37,7 +37,7 @@ pushd "${SCRATCH_FOLDER}"
 
 function libgit2_patch_build() {
   pushd "${LIBGIT2_SRC_FOLDER}"
-  for patchfile in $(find -L "${LIBGIT2_PATCH_FOLDER}" -type f -name '*.patch'); do
+  for patchfile in $(find -L "${LIBGIT2_PATCH_FOLDER}" -type f -name '*.patch' | sort); do
     echo "Apply patch $patchfile..."
     patch -p1 --quiet -i "$patchfile"
   done
@@ -79,7 +79,7 @@ pushd "${LIBGIT2_BUILD_FOLDER}"
 libgit2_run_tests
 popd
 
-rm -rf "${LIBGIT2_BUILD_FOLDER}"/* "${LIBGIT2_INSTALL_FOLDER}"/*
+rm -rf "${LIBGIT2_BUILD_FOLDER:?}"/* "${LIBGIT2_INSTALL_FOLDER:?}"/*
 
 pushd "${LIBGIT2_SRC_FOLDER}"
 libgit2_build_static
