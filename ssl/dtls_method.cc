@@ -89,7 +89,7 @@ static bool dtls1_set_read_state(SSL *ssl, ssl_encryption_level_t level,
   }
 
   ssl->d1->r_epoch++;
-  OPENSSL_memset(&ssl->d1->bitmap, 0, sizeof(ssl->d1->bitmap));
+  ssl->d1->bitmap = DTLS1_BITMAP();
   OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
   ssl->s3->aead_read_ctx = std::move(aead_ctx);
