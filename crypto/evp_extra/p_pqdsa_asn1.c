@@ -193,7 +193,7 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     }
 
     return PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, &expanded_key);
-  }else {
+  } else {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -216,8 +216,6 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
       !CBB_add_bytes(&seed_choice, key->seed, pqdsa->keygen_seed_len) ||
-      //!CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_OCTETSTRING) ||
-      //!CBB_add_bytes(&seed_choice, key->private_key, pqdsa->private_key_len) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
