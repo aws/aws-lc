@@ -170,35 +170,6 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   return 1;
 }
 
-int PQDSA_KEY_get_priv_raw_seed(PQDSA_KEY *key, uint8_t *out, size_t *out_len) {
-  GUARD_PTR(key);
-  GUARD_PTR(out_len);
-
-  if (key->pqdsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
-  }
-
-  if (key->seed == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
-    return 0;
-  }
-
-  if (out == NULL) {
-    *out_len = key->pqdsa->keygen_seed_len;
-    return 1;
-  }
-
-  if (*out_len < key->pqdsa->keygen_seed_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  OPENSSL_memcpy(out, key->seed, key->pqdsa->keygen_seed_len);
-  *out_len = key->pqdsa->keygen_seed_len;
-  return 1;
-}
-
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_44_method) {
   out->pqdsa_keygen = ml_dsa_44_keypair;
   out->pqdsa_keygen_internal = ml_dsa_44_keypair_internal;

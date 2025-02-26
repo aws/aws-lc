@@ -85,7 +85,6 @@ int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in);
 int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in);
 int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in);
-int PQDSA_KEY_get_priv_raw_seed(PQDSA_KEY *key, uint8_t *out, size_t *out_len);
 #if defined(__cplusplus)
 }  // extern C
 #endif
