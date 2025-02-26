@@ -177,9 +177,7 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     }
 
     return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, &seed);
-  }
-
-  else {
+  } else {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
