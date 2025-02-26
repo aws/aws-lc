@@ -1,6 +1,6 @@
-#!/bin/bash -u
+#!/usr/bin/env bash
 
-set -o pipefail
+set -euo pipefail
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
@@ -33,6 +33,12 @@ GITHUB_TARGET=${GITHUB_TARGET:=master}
 SRC="jitterentropy-library"
 TMP="TEMP_CAN_DELETE"
 
+# Check if TMP directory already exists
+if [ -d "${TMP}" ]; then
+    echo "Source directory or symlink ${TMP} does already exist -- please remove it before re-running the importer"
+    exit 1
+fi
+
 # Check if source directory already exists
 if [ -d "${SRC}" ]; then
     echo "Source directory or symlink ${SRC} does already exist -- please remove it before re-running the importer"
@@ -47,12 +53,12 @@ GITHUB_COMMIT=$(cd ${TMP} >/dev/null; git rev-parse HEAD)
 
 echo "Copy source code ..."
 mkdir ${SRC}
-cp -r ${TMP}/* ${SRC}
+cp -rH ${TMP}/* ${SRC}
 
 echo "Remove temporary artifacts ..."
 rm -rf ${TMP}
 
-# Remove upstream repo build scripts from being invoked.
+echo "Remove upstream repository build scripts to avoid them being invoked ..."
 rm "${SRC}/CMakeLists.txt"
 rm "${SRC}/Makefile"
 
@@ -62,7 +68,7 @@ name: ${SRC}
 source: ${GITHUB_REPOSITORY}
 commit: ${GITHUB_COMMIT}
 target: ${GITHUB_TARGET}
-imported-at: $(date "+%Y-%m-%dT%H:%M:%S%z")
+imported-at: $(env TZ=UTC date "+%Y-%m-%dT%H:%M:%S%z")
 EOF
 
 # Submodule path might be cached.
