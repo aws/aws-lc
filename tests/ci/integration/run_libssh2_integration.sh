@@ -24,7 +24,6 @@ source tests/ci/common_posix_setup.sh
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER=${SYS_ROOT}/"LIBSSH2_SCRATCH"
 LIBSSH2_SRC_FOLDER="${SCRATCH_FOLDER}/libssh2"
-LIBSSH2_PATCH_FOLDER="${SCRIPT_DIR}"/libssh2_patch
 LIBSSH2_BUILD_FOLDER="${SCRATCH_FOLDER}/libssh2-build"
 LIBSSH2_INSTALL_FOLDER="${SCRATCH_FOLDER}/libssh2-install"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
