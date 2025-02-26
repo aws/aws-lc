@@ -142,7 +142,7 @@ static inline void jent_get_nstime(uint64_t *out)
 	 * This is MVS+STCK code! Enable it with -S in the compiler.
 	 *
 	 * uint64_t clk;
-	 * __asm__ volatile("stck %0" : "=m" (clk) : : "cc");
+	 * __asm__ __volatile__("stck %0" : "=m" (clk) : : "cc");
 	 * *out = (uint64_t)(clk);
 	 */
 
