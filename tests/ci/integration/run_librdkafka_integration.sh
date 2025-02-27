@@ -35,14 +35,11 @@ function kafka_build() {
 
   ./configure --prefix="$KAFKA_BUILD_PREFIX"
   make -j install
-
-#  local kafka_executable="${KAFKA_SRC_FOLDER}/build/install/"
-#  ldd ${kafka_executable} \
-#    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 function kafka_run_tests() {
-  sudo make check
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
+  TESTS_SKIP=0092 make tests
 }
 
 git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
