@@ -168,10 +168,10 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
   if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
     // Case 1: seed OCTET STRING
     return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, key);
-  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 1)) {
-    // Case 2: expandedKey [1] OCTET STRING
+  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+    // Case 2: expandedKey [0] OCTET STRING
     CBS expanded_key;
-    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_CONTEXT_SPECIFIC | 1)) {
+    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
