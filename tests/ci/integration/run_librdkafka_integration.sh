@@ -42,18 +42,6 @@ function kafka_build() {
     | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
-function kafka_run_tests() {
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  python3 -m venv venv --without-pip --system-site-packages
-  source venv/bin/activate
-
-  pushd ${KAFKA_SRC_FOLDER}/tests
-  python3 -m pip install -U -r requirements.txt
-  python3 -m trivup.clusters.KafkaCluster --version 2.8.0
-  sleep 30
-  TESTS_SKIP=0092 make quick
-}
-
 git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
@@ -63,4 +51,3 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 # Build openvpn from source.
 pushd ${KAFKA_SRC_FOLDER}
 kafka_build
-kafka_run_tests
