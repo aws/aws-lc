@@ -1009,9 +1009,13 @@ static uint8_t *get_buffer(int pagesize, int len) {
   return two_pages_p + pagesize - len;
 }
 
+// Debug builds return ACCESS_INVALID_ADDRESS in the Intel SDE runs
+// of some processors when munmap is used (or after it's called).
+#if defined(NDEBUG)
 static void free_buffer(uint8_t *addr, int pagesize, int len) {
   munmap(addr + len - pagesize, 2 * pagesize);
 }
+#endif
 #endif
 
 TEST(XTSTest, TestVectors) {
@@ -1032,28 +1036,28 @@ TEST(XTSTest, TestVectors) {
     ASSERT_EQ(EVP_CIPHER_iv_length(cipher), iv.size());
     ASSERT_EQ(plaintext.size(), ciphertext.size());
 
+    int len;
+    uint8_t *in_p, *out_p;
+  #if defined(OPENSSL_LINUX)
+    int pagesize = sysconf(_SC_PAGE_SIZE);
+    ASSERT_GE(pagesize, (int)plaintext.size());
+    in_p = get_buffer(pagesize, plaintext.size());
+    out_p = get_buffer(pagesize, plaintext.size());
+  #else
+    // Use newly-allocated buffers so ASan will catch out-of-bounds reads/writes.
+    // (However, I believe this only poisons prefices not suffices)
+    // ASAN doesn't catch assembly overreads.
+    std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
+    std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
+    in_p = in.get();
+    out_p = out.get();
+  #endif
+
     // Note XTS doesn't support streaming, so we only test single-shot inputs.
     for (bool in_place : {false, true}) {
       SCOPED_TRACE(in_place);
 
-      uint8_t *in_p, *out_p;
-
       // Test encryption.
-
-    #if defined(OPENSSL_LINUX)
-      int pagesize = sysconf(_SC_PAGE_SIZE);
-      ASSERT_GE(pagesize, (int)plaintext.size());
-      in_p = get_buffer(pagesize, plaintext.size());
-      out_p = get_buffer(pagesize, plaintext.size());
-    #else
-      // Use newly-allocated buffers so ASan will catch out-of-bounds reads/writes.
-      // (However, I believe this only poisons prefices not suffices)
-      // ASAN doesn't catch assembly overreads.
-      std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
-      std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
-      in_p = in.get();
-      out_p = out.get();
-    #endif
 
       OPENSSL_memcpy(in_p, plaintext.data(), plaintext.size());
       if (in_place) {
@@ -1063,7 +1067,6 @@ TEST(XTSTest, TestVectors) {
       bssl::ScopedEVP_CIPHER_CTX ctx;
       ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
                                      iv.data()));
-      int len;
       ASSERT_TRUE(
           EVP_EncryptUpdate(ctx.get(), out_p, &len, in_p, plaintext.size()));
       EXPECT_EQ(Bytes(ciphertext), Bytes(out_p, static_cast<size_t>(len)));
@@ -1080,12 +1083,12 @@ TEST(XTSTest, TestVectors) {
       ASSERT_TRUE(
           EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, ciphertext.size()));
       EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
-
-      #if defined(OPENSSL_LINUX)
-      free_buffer(in_p, pagesize, len);
-      free_buffer(out_p, pagesize, len);
-      #endif
+      //std::cout << "HERE HERE!";
     }
+  #if defined(OPENSSL_LINUX) && defined(NDEBUG)
+    free_buffer(in_p, pagesize, len);
+    free_buffer(out_p, pagesize, len);
+  #endif
   }
 }
 
