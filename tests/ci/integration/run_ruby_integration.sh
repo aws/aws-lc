@@ -62,7 +62,7 @@ function ruby_patch() {
     local branch=${1}
     local src_dir="${RUBY_SRC_FOLDER}/${branch}"
     local patch_dirs=("${RUBY_PATCH_FOLDER}/${branch}" "${RUBY_COMMON_FOLDER}")
-    if [[ ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
+    if [[ "${branch}" != "master" && ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
         echo "No patch for ${branch}!"
         exit 1
     fi
