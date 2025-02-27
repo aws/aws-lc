@@ -206,14 +206,15 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
     return 0;
   }
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
-  CBB pkcs8, algorithm, oid, private_key;
+  CBB pkcs8, algorithm, oid, private_key, seed_choice;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&private_key, key->seed, pqdsa->keygen_seed_len) ||
+      !CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&seed_choice, key->seed, pqdsa->keygen_seed_len) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
