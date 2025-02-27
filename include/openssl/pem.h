@@ -380,6 +380,13 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
 // |d2i_X509_AUX| for details.
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
     BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
+
+// PEM_X509_INFO_write_bio writes the contents of the |X509_INFO| structure |xi|
+// to the |BIO| object |bp| in PEM format. If the X509_INFO contains a
+// certificate (x509), it will be written after the private key (if any). Other
+// fields in X509_INFO (such as CRLs) are currently ignored.
+//
+// It returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi,
                                            EVP_CIPHER *enc, unsigned char *kstr,
                                            int klen, pem_password_cb *cd,
@@ -411,6 +418,13 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
 OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
                                     void *userdata);
 
+// PEM_proc_type appends a Proc-Type header to |buf|, determined by |type|.
+void PEM_proc_type(char buf[PEM_BUFSIZE], int type);
+
+// PEM_dek_info appends a DEK-Info header to |buf|, with an algorithm of |type|
+// and a single parameter, specified by hex-encoding |len| bytes from |str|.
+void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
+                  char *str);
 
 DECLARE_PEM_rw(X509, X509)
 
