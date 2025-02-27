@@ -380,6 +380,10 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
 // |d2i_X509_AUX| for details.
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
     BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
+OPENSSL_EXPORT int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi,
+                                           EVP_CIPHER *enc, unsigned char *kstr,
+                                           int klen, pem_password_cb *cd,
+                                           void *u);
 
 // PEM_X509_INFO_read behaves like |PEM_X509_INFO_read_bio| but reads from a
 // |FILE|.
