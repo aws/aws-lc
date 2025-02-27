@@ -159,15 +159,26 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
   // Try to parse as one of the three ASN.1 formats defined in ML-DSA-XX-PrivateKey
   // Currently only the following cases are supported:
   // Case 1: seed OCTET STRING
-  // Case 2: expandedKey [1] OCTET STRING
+  // Case 2: expandedKey [0] OCTET STRING
 
   // Once https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
   // is stable we will implement:
   // Case 3: both SEQUENCE { seed, expandedKey }
 
-  if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
+  if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
     // Case 1: seed OCTET STRING
-    return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, key);
+    CBS seed;
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_OCTETSTRING)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (CBS_len(&seed) != out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
+
+    return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, &seed);
   } else if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
     // Case 2: expandedKey [0] OCTET STRING
     CBS expanded_key;
