@@ -191,7 +191,11 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
       return 0;
     }
+
     return PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, &expanded_key);
+  } else if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
+    // support previous encodings that handle the seed directly
+    return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, key);
   } else {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
