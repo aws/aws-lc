@@ -1009,44 +1009,17 @@ static uint8_t *get_buffer_end(int pagesize) {
   return two_pages_p + pagesize;
 }
 
-// Debug builds return ACCESS_INVALID_ADDRESS in the Intel SDE runs
-// of some processors when munmap is used (or after it's called).
-#if defined(NDEBUG)
 static void free_memory(uint8_t *addr, int pagesize) {
   munmap(addr - pagesize, 2 * pagesize);
 }
-#endif
-#endif
-
-#if 0
-static uint8_t *get_buffer(int pagesize, int len) {
-  uint8_t *two_pages_p = (uint8_t *)mmap(NULL, 2*pagesize, PROT_READ|PROT_WRITE,
-                                      MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-  EXPECT_TRUE(two_pages_p != NULL) << "mmap returned NULL.";
-
-  int ret = mprotect(two_pages_p + pagesize, pagesize, PROT_NONE);
-  EXPECT_TRUE(ret == 0) << "mprotect failed.";
-
-  return two_pages_p + pagesize - len;
-}
-
-// Debug builds return ACCESS_INVALID_ADDRESS in the Intel SDE runs
-// of some processors when munmap is used (or after it's called).
-#if defined(NDEBUG)
-static void free_buffer(uint8_t *addr, int pagesize, int len) {
-  munmap(addr + len - pagesize, 2 * pagesize);
-}
-#endif
 #endif
 
 TEST(XTSTest, TestVectors) {
   unsigned test_num = 0;
 #if defined(OPENSSL_LINUX)
-  //int prev_len = 0;
   int pagesize = sysconf(_SC_PAGE_SIZE);
   uint8_t *in_buffer_end = get_buffer_end(pagesize);
   uint8_t *out_buffer_end = get_buffer_end(pagesize);
-  //printf("in_end: 0x%016llx\nout_end: 0x%016llx\n", (unsigned long long)in_buffer_end, (unsigned long long)out_buffer_end);
 #endif
   for (const auto &test : kXTSTestCases) {
     test_num++;
@@ -1067,24 +1040,12 @@ TEST(XTSTest, TestVectors) {
     int len;
     uint8_t *in_p, *out_p;
   #if defined(OPENSSL_LINUX)
-    //int pagesize = sysconf(_SC_PAGE_SIZE);
     ASSERT_GE(pagesize, (int)plaintext.size());
-    //in_p = get_buffer(pagesize, plaintext.size());
-    //out_p = get_buffer(pagesize, plaintext.size());
     in_p = in_buffer_end - plaintext.size();
     out_p = out_buffer_end - plaintext.size();
-    //printf("src: 0x%016llx\ndst: 0x%016llx\n", (unsigned long long)in_p, (unsigned long long)out_p);
-    //printf("size: %zu, diff in: %ld, diff out: %ld\n", plaintext.size(), in_buffer_end - in_p, out_buffer_end - out_p);
-    //printf("prev_len: %d\n", prev_len);
-    //fflush(stdout);
     OPENSSL_memset(in_p, 0x00, plaintext.size());
     OPENSSL_memset(out_p, 0x00, plaintext.size());
-    //prev_len = plaintext.size();
-    //printf("prev_len after: %d\n", prev_len);
   #else
-    // Use newly-allocated buffers so ASan will catch out-of-bounds reads/writes.
-    // (However, I believe this only poisons prefices not suffices)
-    // ASAN doesn't catch assembly overreads.
     std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
     std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
     in_p = in.get();
@@ -1122,12 +1083,8 @@ TEST(XTSTest, TestVectors) {
           EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, ciphertext.size()));
       EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
     }
-  #if 0//defined(OPENSSL_LINUX) && defined(NDEBUG)
-    free_buffer(in_p, pagesize, len);
-    free_buffer(out_p, pagesize, len);
-  #endif
   }
-#if defined(OPENSSL_LINUX) && defined(NDEBUG)
+#if defined(OPENSSL_LINUX)
   free_memory(in_buffer_end, pagesize);
   free_memory(out_buffer_end, pagesize);
 #endif
