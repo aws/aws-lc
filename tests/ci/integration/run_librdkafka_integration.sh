@@ -19,9 +19,9 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER="${SRC_ROOT}/KAFKA_BUILD_ROOT"
 KAFKA_SRC_FOLDER="${SCRATCH_FOLDER}/librdkafka"
 KAFKA_BUILD_PREFIX="${KAFKA_SRC_FOLDER}/build/install"
-
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+AWS_LC_LIBRARY_FOLDER="lib"
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
@@ -49,7 +49,7 @@ function kafka_build() {
 }
 
 function kafka_run_tests() {
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib ${AWS_LC_INSTALL_FOLDER}/lib64"
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
   python3 -m venv venv
   source venv/bin/activate
 
