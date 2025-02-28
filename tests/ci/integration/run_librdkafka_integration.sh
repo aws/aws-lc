@@ -55,9 +55,10 @@ function kafka_run_tests() {
 
   pushd ${KAFKA_SRC_FOLDER}/tests
   python3 -m pip install -U -r requirements.txt
-  python3 -m trivup.clusters.KafkaCluster --version 2.8.0
-  sleep 30
+  python3 -m trivup.clusters.KafkaCluster --version 2.8.0 << EOF
   TESTS_SKIP=0092 make quick
+  exit
+EOF
 }
 
 git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
