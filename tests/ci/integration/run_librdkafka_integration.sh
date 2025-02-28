@@ -30,8 +30,14 @@ cd ${SCRATCH_FOLDER}
 function kafka_build() {
   export CFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include ${CFLAGS}"
   export CXXFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include ${CXXFLAGS}"
-  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/lib -L${AWS_LC_INSTALL_FOLDER}/lib64 ${LDFLAGS}"
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib ${AWS_LC_INSTALL_FOLDER}/lib64"
+  # Check which AWS-LC library folder name we must use.
+  if [ -d ${AWS_LC_INSTALL_FOLDER}/lib64 ]; then
+    AWS_LC_LIBRARY_FOLDER="lib64"
+  else
+    AWS_LC_LIBRARY_FOLDER="lib"
+  fi
+  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER} ${LDFLAGS}"
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
 
   ./configure --prefix="$KAFKA_BUILD_PREFIX"
   make -j install
@@ -39,7 +45,7 @@ function kafka_build() {
 
   local kafka_executable="${KAFKA_BUILD_PREFIX}/lib/librdkafka.so"
   ldd ${kafka_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}" | grep "libcrypto.so" || exit 1
+    | grep "${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}/libcrypto.so" || exit 1
 }
 
 function kafka_run_tests() {
