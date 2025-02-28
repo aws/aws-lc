@@ -30,8 +30,8 @@ cd ${SCRATCH_FOLDER}
 function kafka_build() {
   export CFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include ${CFLAGS}"
   export CXXFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include ${CXXFLAGS}"
-  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/lib ${LDFLAGS}"
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
+  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/lib -L${AWS_LC_INSTALL_FOLDER}/lib64 ${LDFLAGS}"
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib ${AWS_LC_INSTALL_FOLDER}/lib64"
 
   ./configure --prefix="$KAFKA_BUILD_PREFIX"
   make -j install
@@ -39,7 +39,7 @@ function kafka_build() {
 
   local kafka_executable="${KAFKA_BUILD_PREFIX}/lib/librdkafka.so"
   ldd ${kafka_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+    | grep "${AWS_LC_INSTALL_FOLDER}" | grep "libcrypto.so" || exit 1
 }
 
 git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
@@ -51,3 +51,4 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 # Build openvpn from source.
 pushd ${KAFKA_SRC_FOLDER}
 kafka_build
+popd
