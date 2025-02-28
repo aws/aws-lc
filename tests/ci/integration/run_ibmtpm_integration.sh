@@ -38,10 +38,11 @@ function ibmtpm_build() {
 
   export CXXFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include $CXXFLAGS"
   export CFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include $CFLAGS"
-  export LDFLAGS="-Wl,-rpath=/${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
+  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER} $LDFLAGS"
 
-
+  pushd src
   make -j
+  popd
 
 #  local ibmtpm_executable="${IBMTPM_SRC_FOLDER}/build/exec-install/sbin/ibmtpm"
 #  ldd ${ibmtpm_executable} \
@@ -66,3 +67,4 @@ pushd ${IBMTPM_SRC_FOLDER}
 ibmtpm_patch_build
 ibmtpm_build
 ibmtpm_run_tests
+popd
