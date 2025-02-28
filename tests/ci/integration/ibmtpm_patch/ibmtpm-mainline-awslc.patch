@@ -1,7 +1,7 @@
-diff --git a/third-party-src/src/BnToOsslMath.c b/third-party-src/src/BnToOsslMath.c
+diff --git a/src/BnToOsslMath.c b/src/BnToOsslMath.c
 index a185a70..26fba5e 100644
---- a/third-party-src/src/BnToOsslMath.c
-+++ b/third-party-src/src/BnToOsslMath.c
+--- a/src/BnToOsslMath.c
++++ b/src/BnToOsslMath.c
 @@ -86,6 +86,12 @@
  #ifdef MATH_LIB_OSSL
  #  include "BnToOsslMath_fp.h"
@@ -78,10 +78,10 @@ index a185a70..26fba5e 100644
  	}
      PointFromOssl(R, pR, E);
      EC_POINT_free(pR);
-diff --git a/third-party-src/src/BnToOsslMath.h b/third-party-src/src/BnToOsslMath.h
+diff --git a/src/BnToOsslMath.h b/src/BnToOsslMath.h
 index 165304d..78f295b 100644
---- a/third-party-src/src/BnToOsslMath.h
-+++ b/third-party-src/src/BnToOsslMath.h
+--- a/src/BnToOsslMath.h
++++ b/src/BnToOsslMath.h
 @@ -81,7 +81,7 @@
  // Check the bignum_st definition against the one below and either update the
  // version check or provide the new definition for this version.
@@ -91,10 +91,10 @@ index 165304d..78f295b 100644
  // from crypto/bn/bn_lcl.h (OpenSSL 1.x) or crypto/bn/bn_local.h (OpenSSL 3.0)
  struct bignum_st
  {
-diff --git a/third-party-src/src/TpmProfile_Common.h b/third-party-src/src/TpmProfile_Common.h
+diff --git a/src/TpmProfile_Common.h b/src/TpmProfile_Common.h
 index 13dfc0d..3c87c3e 100644
---- a/third-party-src/src/TpmProfile_Common.h
-+++ b/third-party-src/src/TpmProfile_Common.h
+--- a/src/TpmProfile_Common.h
++++ b/src/TpmProfile_Common.h
 @@ -65,6 +65,8 @@
  // Requires basic YES/NO defines are already set (by TpmBuildSwitches.h)
  // Less frequently changed items are in other TpmProfile Headers.

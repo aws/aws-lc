@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -exu
+set -ex
 
 source tests/ci/common_posix_setup.sh
 
@@ -41,7 +41,7 @@ function ibmtpm_build() {
   export LDFLAGS="-Wl,-rpath=/${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
 
 
-  make -j install
+  make -j
 
 #  local ibmtpm_executable="${IBMTPM_SRC_FOLDER}/build/exec-install/sbin/ibmtpm"
 #  ldd ${ibmtpm_executable} \
@@ -49,7 +49,7 @@ function ibmtpm_build() {
 }
 
 function ibmtpm_patch_build() {
-  patchfile="${IBMTPM_PATCH_BUILD_FOLDER}/ibmtpm-master-awslc.patch"
+  patchfile="${IBMTPM_PATCH_BUILD_FOLDER}/ibmtpm-mainline-awslc.patch"
   echo "Apply patch $patchfile..."
   patch -p1 --quiet -i "$patchfile"
 }
