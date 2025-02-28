@@ -3271,7 +3271,7 @@ L$_main_loop_run_16_amivrujEyduiFoi:
 	vmovdqu8	64(%rdi),%zmm2
 	vmovdqu8	128(%rdi),%zmm3
 	vmovdqu8	192(%rdi),%zmm4
-	vmovdqu8	240(%rdi),%zmm5
+	vmovdqu8	240(%rdi),%xmm5
 	addq	$0x100,%rdi
 	vpxorq	%zmm9,%zmm1,%zmm1
 	vpxorq	%zmm10,%zmm2,%zmm2
