@@ -314,6 +314,10 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
     }
   }
 
+  if (xi == NULL) {
+    goto err;
+  }
+
   // now for the fun part ... if we have a private key then we have to be
   // able to handle a not-yet-decrypted key being written out correctly ...
   // if it is decrypted or it is non-encrypted then we use the base code
@@ -338,7 +342,11 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
         goto err;
       }
 
-      // create the right magic header stuff
+      // Check if there is enough space for the header:
+      // - strlen(objstr) for the cipher name
+      // - 23 bytes for fixed PEM header components from |PEM_proc_type|
+      // - 2*iv_len as IV bytes are encoded in hex (each byte needs two characters)
+      // - 13 bytes for DEK-Info header formatting
       assert(strlen(objstr) + 23 + 2 * iv_len + 13 <= sizeof buf);
       buf[0] = '\0';
       PEM_proc_type(buf, PEM_TYPE_ENCRYPTED);
@@ -349,11 +357,12 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
       if (i <= 0) {
         goto err;
       }
-    } else {
+    } else if (xi->x_pkey->dec_pkey) {
       // Add DSA/DH
       // normal optionally encrypted stuff
-      if (PEM_write_bio_RSAPrivateKey(bp, xi->x_pkey->dec_pkey->pkey.rsa, enc,
-                                      kstr, klen, cb, u) <= 0) {
+      if (PEM_write_bio_RSAPrivateKey(bp,
+                                    EVP_PKEY_get0_RSA(xi->x_pkey->dec_pkey),
+                                      enc, kstr, klen, cb, u) <= 0) {
         goto err;
       }
     }
