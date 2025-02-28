@@ -156,17 +156,17 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
 
   // Try to parse as one of the three ASN.1 formats defined in ML-DSA-XX-PrivateKey
   // Currently only the following cases are supported:
-  // Case 1: seed OCTET STRING
-  // Case 2: expandedKey [0] OCTET STRING
+  // Case 1: seed [0] OCTET STRING
+  // Case 2: expandedKey OCTET STRING
 
   // Once https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
   // is stable we will implement:
   // Case 3: both SEQUENCE { seed, expandedKey }
 
-  if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
-    // Case 1: seed OCTET STRING
+  if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+    // Case 1: seed [0] OCTET STRING
     CBS seed;
-    if (!CBS_get_asn1(key, &seed, CBS_ASN1_OCTETSTRING)) {
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
@@ -177,10 +177,10 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
     }
 
     return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, &seed);
-  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
-    // Case 2: expandedKey [0] OCTET STRING
+  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
+    // Case 2: expandedKey OCTET STRING
     CBS expanded_key;
-    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }
@@ -212,7 +212,7 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
       !CBB_add_bytes(&seed_choice, key->seed, pqdsa->keygen_seed_len) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
