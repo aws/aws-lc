@@ -10,6 +10,18 @@ concurrency:
 env:
   CC: gcc
 jobs:
+  libssh2:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v4
+      - name: Run libssh2 integration tests
+        run: |
+          ./tests/ci/integration/run_libssh2_integration.sh
   python-main:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
