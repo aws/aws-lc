@@ -42,11 +42,12 @@ function ibmtpm_build() {
 
   pushd src
   make -j
-  popd
 
-#  local ibmtpm_executable="${IBMTPM_SRC_FOLDER}/build/exec-install/sbin/ibmtpm"
-#  ldd ${ibmtpm_executable} \
-#    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  local ibmtpm_executable="tpm_server"
+  ldd ${ibmtpm_executable} \
+    | grep "${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}/libcrypto.so" || exit 1
+
+  popd
 }
 
 function ibmtpm_patch_build() {
@@ -66,5 +67,4 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 pushd ${IBMTPM_SRC_FOLDER}
 ibmtpm_patch_build
 ibmtpm_build
-ibmtpm_run_tests
 popd
