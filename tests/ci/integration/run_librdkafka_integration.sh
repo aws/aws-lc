@@ -19,6 +19,7 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER="${SRC_ROOT}/KAFKA_BUILD_ROOT"
 KAFKA_SRC_FOLDER="${SCRATCH_FOLDER}/librdkafka"
 KAFKA_BUILD_PREFIX="${KAFKA_SRC_FOLDER}/build/install"
+KAFKA_TEST_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/librdkafka_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 AWS_LC_LIBRARY_FOLDER="lib"
@@ -61,6 +62,14 @@ function kafka_run_tests() {
 EOF
 }
 
+# This patch is only needed to execute the tests. A run_test executable is not
+# available with the make quick target, this patch allows us to build that executable first.
+function kafka_patch_test() {
+  patchfile="${KAFKA_TEST_PATCH_FOLDER}/librdkafka-testing.patch"
+  echo "Apply patch $patchfile..."
+  patch -p1 --quiet -i "$patchfile"
+}
+
 git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
@@ -69,6 +78,7 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 
 # Build openvpn from source.
 pushd ${KAFKA_SRC_FOLDER}
+kafka_patch_test
 kafka_build
 kafka_run_tests
 popd
