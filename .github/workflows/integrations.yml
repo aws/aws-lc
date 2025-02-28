@@ -109,3 +109,16 @@ jobs:
           ./tests/ci/integration/run_ruby_integration.sh ruby_3_3 ruby_3_2 ruby_3_1
         env:
           FIPS: ${{ matrix.fips }}
+  librdkafka:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang
+      - uses: actions/checkout@v4
+      - name: Run librdkafka build
+        run: |
+          ./tests/ci/integration/run_librdkafka_integration.sh
