@@ -42,7 +42,8 @@ function ibmtpm_build() {
 
   pushd src
   make -j
-
+  
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
   local ibmtpm_executable="tpm_server"
   ldd ${ibmtpm_executable} \
     | grep "${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}/libcrypto.so" || exit 1
