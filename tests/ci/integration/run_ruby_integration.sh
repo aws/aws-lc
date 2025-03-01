@@ -88,6 +88,10 @@ if [[ "$#" -eq "0" ]]; then
     exit 1
 fi
 
+if [[ "${FIPS}" -eq "1" ]]; then
+    export TEST_RUBY_OPENSSL_FIPS_ENABLED="true"
+fi
+
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
