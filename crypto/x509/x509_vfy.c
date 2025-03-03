@@ -568,8 +568,9 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
   int ok = 0, plen = 0;
   int purpose = ctx->param->purpose;
 
-  // Check all untrusted certificates
-  for (int i = 0; i < ctx->last_untrusted; i++) {
+  int num = (int)sk_X509_num(ctx->chain);
+
+  for (int i = 0; i < num; i++) {
     X509 *x = sk_X509_value(ctx->chain, i);
     if (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
         (x->ex_flags & EXFLAG_CRITICAL)) {
