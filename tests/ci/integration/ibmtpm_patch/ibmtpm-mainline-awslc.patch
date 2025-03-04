@@ -1,11 +1,11 @@
 diff --git a/src/BnToOsslMath.c b/src/BnToOsslMath.c
-index a185a70..26fba5e 100644
+index a185a70..4d13267 100644
 --- a/src/BnToOsslMath.c
 +++ b/src/BnToOsslMath.c
 @@ -86,6 +86,12 @@
  #ifdef MATH_LIB_OSSL
  #  include "BnToOsslMath_fp.h"
- 
+
 +#ifdef OPENSSL_IS_AWSLC
 +    #define BN_FIELD_SIZE(a) ((a)->width)
 +#else
@@ -13,7 +13,7 @@ index a185a70..26fba5e 100644
 +#endif
 +
  //** Functions
- 
+
  //*** OsslToTpmBn()
 @@ -105,10 +111,10 @@ BOOL OsslToTpmBn(bigNum bn, BIGNUM* osslBn)
  	{
@@ -56,25 +56,30 @@ index a185a70..26fba5e 100644
      for(i = 0; i < tpmTemp->size; i++)
  	GOTO_ERROR_UNLESS(osslTemp->d[i] == tpmTemp->d[i]);
      OSSL_LEAVE();
-@@ -558,6 +564,13 @@ LIB_EXPORT BOOL BnEccModMult2(bigPoint            R,  // OUT: computed point
+@@ -558,6 +564,18 @@ LIB_EXPORT BOOL BnEccModMult2(bigPoint            R,  // OUT: computed point
  	EC_POINT_mul(E->G, pR, bnD, pQ, bnU, E->CTX);
      else
  	{
-+        #ifdef OPENSSL_IS_AWSLC
-+        EC_POINT * R1 = EC_POINT_new(E->G);
-+        EC_POINT_mul(E->G, R1, NULL, pS, bnD, E->CTX);
-+        EC_POINT * R2 = EC_POINT_new(E->G);
-+        EC_POINT_mul(E->G, R2, NULL, pQ, bnU, E->CTX);
-+        EC_POINT_add(E->G, pR, R1, R2, E->CTX);  
-+        #else
++#ifdef OPENSSL_IS_AWSLC
++        EC_POINT *pR1 = EC_POINT_new(E->G);
++        EC_POINT *pR2 = EC_POINT_new(E->G);
++        int OK;
++
++        OK = EC_POINT_mul(E->G, pR1, NULL, pS, bnD, E->CTX);
++        OK &= EC_POINT_mul(E->G, pR2, NULL, pQ, bnU, E->CTX);
++        OK &= EC_POINT_add(E->G, pR, pR1, pR2, E->CTX);
++
++        EC_POINT_free(pR1);
++        EC_POINT_free(pR2);
++#else
  	    const EC_POINT* points[2];
  	    const BIGNUM*   scalars[2];
  	    points[0]  = pS;
-@@ -565,6 +578,7 @@ LIB_EXPORT BOOL BnEccModMult2(bigPoint            R,  // OUT: computed point
+@@ -565,6 +583,7 @@ LIB_EXPORT BOOL BnEccModMult2(bigPoint            R,  // OUT: computed point
  	    scalars[0] = bnD;
  	    scalars[1] = bnU;
  	    EC_POINTs_mul(E->G, pR, NULL, 2, points, scalars, E->CTX);
-+        #endif
++#endif
  	}
      PointFromOssl(R, pR, E);
      EC_POINT_free(pR);
@@ -98,7 +103,7 @@ index 13dfc0d..3c87c3e 100644
 @@ -65,6 +65,8 @@
  // Requires basic YES/NO defines are already set (by TpmBuildSwitches.h)
  // Less frequently changed items are in other TpmProfile Headers.
- 
+
 +#include <openssl/base.h>
 +
  #ifndef _TPM_PROFILE_COMMON_H_
@@ -106,34 +111,12 @@ index 13dfc0d..3c87c3e 100644
  // YES & NO defined by TpmBuildSwitches.h
 @@ -107,6 +109,10 @@
  #define     SM4_128                     (NO  * ALG_SM4)
- 
+
  #define ALG_CAMELLIA                ALG_YES
 +#ifdef OPENSSL_NO_CAMELLIA
 +#undef ALG_CAMELLIA
 +#define ALG_CAMELLIA                ALG_NO
 +#endif
- 
+
  #define     CAMELLIA_128                (YES * ALG_CAMELLIA)
  #define     CAMELLIA_192                (NO  * ALG_CAMELLIA)
-diff --git a/src/makefile b/src/makefile
-index 407dc9c..b2b50a9 100644
---- a/src/makefile
-+++ b/src/makefile
-@@ -47,7 +47,7 @@ CCFLAGS = -Wall  			\
- 	 -c -ggdb -O0 			\
- 	-DTPM_POSIX			\
- 	-D_POSIX_			\
--	-DTPM_NUVOTON
-+	-DTPM_NUVOTON $(CFLAGS)
- 
- # add this line for big endian platforms
- #	-DBIG_ENDIAN_TPM=YES
-@@ -59,7 +59,7 @@ LNFLAGS = -ggdb 			\
- 	-lcrypto			\
- 	-lpthread			\
- 	-lrt				\
--	-I.
-+	-I. $(LDFLAGS)
- 
- #	--coverage -lgcov
- 
