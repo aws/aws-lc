@@ -290,6 +290,7 @@ static int cert_set_chain_and_key(
   if (leaf_buf == nullptr) {
     return 0;
   }
+
   switch (check_leaf_cert_and_privkey(leaf_buf, privkey)) {
     case leaf_cert_and_privkey_error:
       return 0;
