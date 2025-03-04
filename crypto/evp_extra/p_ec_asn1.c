@@ -90,7 +90,7 @@ static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int eckey_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int eckey_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // See RFC 5480, section 2.
 
   // The parameters are a named curve.
@@ -139,7 +139,7 @@ static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   }
 }
 
-static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   // See RFC 5915.
   if(pubkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
