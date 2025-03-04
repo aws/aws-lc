@@ -122,3 +122,4 @@ jobs:
       - name: Run librdkafka build
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh
+          
