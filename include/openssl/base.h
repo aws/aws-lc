@@ -147,7 +147,7 @@ extern "C" {
 #else  // defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)
-#define OPENSSL_EXPORT __declspec(dllexport)
+#define OPENSSL_EXPORT
 #else
 #define OPENSSL_EXPORT __attribute__((visibility("default")))
 #endif
