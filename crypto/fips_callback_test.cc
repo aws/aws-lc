@@ -13,12 +13,12 @@
 #include "internal.h"
 
 extern "C" {
-  OPENSSL_EXPORT void AWS_LC_fips_failure_callback(const char* message);
+  void AWS_LC_fips_failure_callback(const char* message);
 }
 
 int callback_call_count = 0;
 
-OPENSSL_EXPORT void AWS_LC_fips_failure_callback(const char* message) {
+void AWS_LC_fips_failure_callback(const char* message) {
   SCOPED_TRACE(callback_call_count);
   SCOPED_TRACE(message);
   const std::map<std::string, std::vector<std::string>> kat_failure_messages = {

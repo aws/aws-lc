@@ -32,10 +32,10 @@
 
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 extern "C" {
-  OPENSSL_EXPORT void AWS_LC_fips_failure_callback(const char* message);
+  void AWS_LC_fips_failure_callback(const char* message);
 }
 
-OPENSSL_EXPORT void AWS_LC_fips_failure_callback(const char* message) {
+void AWS_LC_fips_failure_callback(const char* message) {
     fprintf(stderr, "FIPS failure:\n%s", message);
 }
 #endif
