@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#if defined(__ELF__) && defined(__GNUC__)
-
 #include <gtest/gtest.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
@@ -164,5 +162,3 @@ TEST(FIPSCallback, PWCT) {
   }
   EVP_PKEY_free(dsa_raw);
 }
-
-#endif
