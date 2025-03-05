@@ -31,15 +31,15 @@ cd ${SCRATCH_FOLDER}
 function ibmtpm_build() {
   export CXXFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include $CXXFLAGS"
   export CFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include $CFLAGS"
-  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER} $LDFLAGS"
+  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/lib $LDFLAGS"
 
   pushd src
   make -j
   
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
   local ibmtpm_executable="tpm_server"
   ldd ${ibmtpm_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}/libcrypto.so" || exit 1
+    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 
   popd
 }
