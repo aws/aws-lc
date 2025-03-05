@@ -384,7 +384,7 @@ BSSL_NAMESPACE_BEGIN
 namespace internal {
 template <typename T>
 struct StackTraits {};
-}
+}  // namespace internal
 BSSL_NAMESPACE_END
 }
 
@@ -417,8 +417,10 @@ BSSL_NAMESPACE_END
   OPENSSL_MSVC_PRAGMA(warning(push))                                           \
   OPENSSL_MSVC_PRAGMA(warning(disable : 4191))                                 \
   OPENSSL_CLANG_PRAGMA("clang diagnostic push")                                \
-  OPENSSL_CLANG_PRAGMA("clang diagnostic ignored \"-Wunknown-warning-option\"") \
-  OPENSSL_CLANG_PRAGMA("clang diagnostic ignored \"-Wcast-function-type-strict\"") \
+  OPENSSL_CLANG_PRAGMA(                                                        \
+      "clang diagnostic ignored \"-Wunknown-warning-option\"")                 \
+  OPENSSL_CLANG_PRAGMA(                                                        \
+      "clang diagnostic ignored \"-Wcast-function-type-strict\"")              \
                                                                                \
   DECLARE_STACK_OF(name)                                                       \
                                                                                \
@@ -510,8 +512,8 @@ BSSL_NAMESPACE_END
   }                                                                            \
                                                                                \
   /* use 3-arg sk_*_find_awslc when size_t-sized |out_index| needed */         \
-  OPENSSL_INLINE int sk_##name##_find_awslc(const STACK_OF(name) *sk,          \
-                                      size_t *out_index, constptrtype p) {     \
+  OPENSSL_INLINE int sk_##name##_find_awslc(                                   \
+      const STACK_OF(name) *sk, size_t *out_index, constptrtype p) {           \
     return OPENSSL_sk_find((const OPENSSL_STACK *)sk, out_index,               \
                            (const void *)p, sk_##name##_call_cmp_func);        \
   }                                                                            \
@@ -526,7 +528,7 @@ BSSL_NAMESPACE_END
     if (ok == 0 || out_index > INT_MAX) {                                      \
       return -1;                                                               \
     }                                                                          \
-    return (int) out_index;                                                    \
+    return (int)out_index;                                                     \
   }                                                                            \
                                                                                \
   OPENSSL_INLINE int sk_##name##_unshift(STACK_OF(name) *sk, ptrtype p) {      \
@@ -601,7 +603,9 @@ namespace internal {
 template <typename Stack>
 struct DeleterImpl<
     Stack, typename std::enable_if<StackTraits<Stack>::kIsConst>::type> {
-  static void Free(Stack *sk) { OPENSSL_sk_free(reinterpret_cast<OPENSSL_STACK *>(sk)); }
+  static void Free(Stack *sk) {
+    OPENSSL_sk_free(reinterpret_cast<OPENSSL_STACK *>(sk));
+  }
 };
 
 // Stacks defined with |DEFINE_STACK_OF| are freed with |sk_pop_free| and the
@@ -633,9 +637,7 @@ class StackIteratorImpl {
   bool operator==(StackIteratorImpl other) const {
     return sk_ == other.sk_ && idx_ == other.idx_;
   }
-  bool operator!=(StackIteratorImpl other) const {
-    return !(*this == other);
-  }
+  bool operator!=(StackIteratorImpl other) const { return !(*this == other); }
 
   Type *operator*() const {
     return reinterpret_cast<Type *>(

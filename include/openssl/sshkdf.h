@@ -26,12 +26,12 @@ extern "C" {
 
 // The following defines are the valid |type| values for SSHKDF().
 
-#define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV     65
-#define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI     66
+#define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV 65
+#define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI 66
 #define EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV 67
 #define EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI 68
-#define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV  69
-#define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI  70
+#define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV 69
+#define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI 70
 
 // SSHKDF is a key derivation function used in the SSH Transport Layer Protocol
 // defined in Section 7.2 of RFC 4253. It calculates a derived key |out| of
@@ -42,12 +42,11 @@ extern "C" {
 // |xcghash| is produced during the SSH Diffie-Hellman exchange.
 //
 // SSHKDF is only FIPS 140-3 Approved for use in SSH.
-OPENSSL_EXPORT int SSHKDF(const EVP_MD *evp_md,
-                          const uint8_t *key, size_t key_len,
-                          const uint8_t *xcghash, size_t xcghash_len,
-                          const uint8_t *session_id, size_t session_id_len,
-                          char type,
-                          uint8_t *out, size_t out_len);
+OPENSSL_EXPORT int SSHKDF(const EVP_MD *evp_md, const uint8_t *key,
+                          size_t key_len, const uint8_t *xcghash,
+                          size_t xcghash_len, const uint8_t *session_id,
+                          size_t session_id_len, char type, uint8_t *out,
+                          size_t out_len);
 
 
 #if defined(__cplusplus)

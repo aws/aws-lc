@@ -119,7 +119,7 @@
 #include <openssl/aead.h>
 #include <openssl/type_check.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -248,7 +248,7 @@ extern "C" {
 // record. This does not include the record header. Some ciphers use explicit
 // nonces, so it includes both the AEAD overhead as well as the nonce.
 #define SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD \
-    (EVP_AEAD_MAX_OVERHEAD + EVP_AEAD_MAX_NONCE_LENGTH)
+  (EVP_AEAD_MAX_OVERHEAD + EVP_AEAD_MAX_NONCE_LENGTH)
 
 OPENSSL_STATIC_ASSERT(SSL3_RT_MAX_ENCRYPTED_OVERHEAD >=
                           SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD,
@@ -326,7 +326,7 @@ OPENSSL_STATIC_ASSERT(SSL3_RT_MAX_ENCRYPTED_OVERHEAD >=
 #define SSL3_MT_CCS 1
 
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }  // extern C
 #endif
 
