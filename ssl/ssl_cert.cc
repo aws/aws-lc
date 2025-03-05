@@ -286,7 +286,12 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  switch (check_leaf_cert_and_privkey(sk_CRYPTO_BUFFER_value(certs.get(), 0), privkey)) {
+  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(certs.get(), 0);
+  if (leaf_buf == nullptr) {
+    return 0;
+  }
+
+  switch (check_leaf_cert_and_privkey(leaf_buf, privkey)) {
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
