@@ -22,7 +22,6 @@ KAFKA_BUILD_PREFIX="${KAFKA_SRC_FOLDER}/build/install"
 KAFKA_TEST_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/librdkafka_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
-AWS_LC_LIBRARY_FOLDER="lib"
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
@@ -31,14 +30,8 @@ cd ${SCRATCH_FOLDER}
 function kafka_build() {
   export CFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include ${CFLAGS}"
   export CXXFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include ${CXXFLAGS}"
-  # Check which AWS-LC library folder name we must use.
-  if [ -d ${AWS_LC_INSTALL_FOLDER}/lib64 ]; then
-    AWS_LC_LIBRARY_FOLDER="lib64"
-  else
-    AWS_LC_LIBRARY_FOLDER="lib"
-  fi
-  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER} ${LDFLAGS}"
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
+  export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/lib ${LDFLAGS}"
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
   ./configure --prefix="$KAFKA_BUILD_PREFIX"
   make -j install
@@ -46,11 +39,11 @@ function kafka_build() {
 
   local kafka_executable="${KAFKA_BUILD_PREFIX}/lib/librdkafka.so"
   ldd ${kafka_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}/libcrypto.so" || exit 1
+    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 function kafka_run_tests() {
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/${AWS_LC_LIBRARY_FOLDER}"
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
   python3 -m venv venv
   source venv/bin/activate
 
@@ -74,7 +67,7 @@ git clone https://github.com/confluentinc/librdkafka.git ${KAFKA_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 
-aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1
 
 # Build openvpn from source.
 pushd ${KAFKA_SRC_FOLDER}
