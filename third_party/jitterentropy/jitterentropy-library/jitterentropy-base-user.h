@@ -113,7 +113,7 @@ static inline void jent_get_nstime(uint64_t *out)
 #ifdef __sun__
 	__asm("rdtsc" : EAX_EDX_RET(val, low, high));
 #else
-	asm volatile("rdtsc" : EAX_EDX_RET(val, low, high));
+	__asm__ __volatile__("rdtsc" : EAX_EDX_RET(val, low, high));
 #endif
 	*out = EAX_EDX_VAL(val, low, high);
 }
@@ -130,7 +130,7 @@ static inline void jent_get_nstime(uint64_t *out)
         /*
          * Use the system counter for aarch64 (64 bit ARM).
          */
-        asm volatile("mrs %0, " AARCH64_NSTIME_REGISTER : "=r" (ctr_val));
+        __asm__ __volatile__("mrs %0, " AARCH64_NSTIME_REGISTER : "=r" (ctr_val));
         *out = ctr_val;
 }
 
@@ -142,7 +142,7 @@ static inline void jent_get_nstime(uint64_t *out)
 	 * This is MVS+STCK code! Enable it with -S in the compiler.
 	 *
 	 * uint64_t clk;
-	 * __asm__ volatile("stck %0" : "=m" (clk) : : "cc");
+	 * __asm__ __volatile__("stck %0" : "=m" (clk) : : "cc");
 	 * *out = (uint64_t)(clk);
 	 */
 
@@ -174,7 +174,7 @@ static inline void jent_get_nstime(uint64_t *out)
 
 	uint8_t clk[16];
 
-	asm volatile("stcke %0" : "=Q" (clk) : : "cc");
+	__asm__ __volatile__("stcke %0" : "=Q" (clk) : : "cc");
 
 	/* s390x is big-endian, so just perfom a byte-by-byte copy */
 	*out = *(uint64_t *)(clk + 1);
@@ -199,12 +199,12 @@ static inline void jent_get_nstime(uint64_t *out)
 	unsigned long newhigh;
 	uint64_t result;
 #ifdef POWER_PC_USE_NEW_INSTRUCTIONS /* Newer PPC CPUs do not support mftbu/mftb */
-    asm volatile(
+    __asm__ __volatile__(
         "Lcpucycles:mfspr %0, 269;mfspr %1, 268;mfspr %2, 269;cmpw %0,%2;bne Lcpucycles"
 		: "=r" (high), "=r" (low), "=r" (newhigh)
 		);
 #else
-    asm volatile(
+    __asm__ __volatile__(
 		"Lcpucycles:mftbu %0;mftb %1;mftbu %2;cmpw %0,%2;bne Lcpucycles"
 		: "=r" (high), "=r" (low), "=r" (newhigh)
 		);
