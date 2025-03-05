@@ -1018,6 +1018,7 @@ TEST(XTSTest, TestVectors) {
   unsigned test_num = 0;
 #if defined(OPENSSL_LINUX)
   int pagesize = sysconf(_SC_PAGE_SIZE);
+  ASSERT_GE(pagesize, 0);
   uint8_t *in_buffer_end = get_buffer_end(pagesize);
   uint8_t *out_buffer_end = get_buffer_end(pagesize);
 #endif
