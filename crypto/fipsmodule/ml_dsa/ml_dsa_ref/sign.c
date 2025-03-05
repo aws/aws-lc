@@ -127,20 +127,20 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
 *              Generates public and private key.
 *
 * Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *pk: pointer to output public key (allocated
-*                             array of CRYPTO_PUBLICKEYBYTES bytes)
-*              - uint8_t *sk: pointer to output private key (allocated
-*                             array of CRYPTO_SECRETKEYBYTES bytes)
+*              - uint8_t *pk:   pointer to output public key (allocated
+*                               array of CRYPTO_PUBLICKEYBYTES bytes)
+*              - uint8_t *sk:   pointer to output private key (allocated
+*                               array of CRYPTO_SECRETKEYBYTES bytes)
+*              - uint8_t *seed: pointer to output keygen seed (allocated
+*                               array of ML_DSA_SEEDBYTES bytes)
 *
 * Returns 0 (success) -1 on failure
 **************************************************/
-int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
-  uint8_t seed[ML_DSA_SEEDBYTES];
+int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *seed) {
   if (!RAND_bytes(seed, ML_DSA_SEEDBYTES)) {
     return -1;
   }
   int result = ml_dsa_keypair_internal(params, pk, sk, seed);
-  OPENSSL_cleanse(seed, sizeof(seed));
   return result;
 }
 
