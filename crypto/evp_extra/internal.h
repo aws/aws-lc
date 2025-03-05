@@ -7,7 +7,7 @@
 #include <openssl/base.h>
 #include "../fipsmodule/evp/internal.h"
 
-#include "../ml_dsa/ml_dsa.h"
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 
 #define PKCS8_VERSION_ONE 0
 #define PKCS8_VERSION_TWO 1
@@ -38,7 +38,6 @@ extern const EVP_PKEY_METHOD hmac_pkey_meth;
 extern const EVP_PKEY_METHOD dh_pkey_meth;
 extern const EVP_PKEY_METHOD dsa_pkey_meth;
 extern const EVP_PKEY_METHOD pqdsa_pkey_meth;
-extern const EVP_PKEY_METHOD ed25519ph_pkey_meth;
 
 // evp_pkey_set_method behaves like |EVP_PKEY_set_type|, but takes a pointer to
 // a method table. This avoids depending on every |EVP_PKEY_ASN1_METHOD|.

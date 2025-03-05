@@ -45,6 +45,9 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 
 1. `RSA_PWCT`
 2. `ECDSA_PWCT`
+3. `EDDSA_PWCT`
+4. `MLKEM_PWCT`
+5. `MLDSA_PWCT`
 
 ## Running ACVP tests
 

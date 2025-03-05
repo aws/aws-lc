@@ -417,8 +417,7 @@ static bool SpeedRSA(const std::string &selected) {
 }
 
 static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
-  // Don't run this by default because it's so slow.
-  if (selected != "RSAKeyGen") {
+  if (!selected.empty() && selected.find("RSAKeyGen") == std::string::npos) {
     return true;
   }
 
@@ -2684,7 +2683,9 @@ bool Speed(const std::vector<std::string> &args) {
   EVP_MD_unstable_sha3_enable(true);
 #endif
   std::map<std::string, std::string> args_map;
-  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+  args_list_t extra_args;
+  if (!ParseKeyValueArguments(args_map, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }

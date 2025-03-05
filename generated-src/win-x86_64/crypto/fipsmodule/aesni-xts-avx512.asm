@@ -3330,7 +3330,7 @@ $L$_main_loop_run_16_amivrujEyduiFoi:
 	vmovdqu8	zmm2,ZMMWORD[64+rcx]
 	vmovdqu8	zmm3,ZMMWORD[128+rcx]
 	vmovdqu8	zmm4,ZMMWORD[192+rcx]
-	vmovdqu8	zmm5,ZMMWORD[240+rcx]
+	vmovdqu8	xmm5,XMMWORD[240+rcx]
 	add	rcx,0x100
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10

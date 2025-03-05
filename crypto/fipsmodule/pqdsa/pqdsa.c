@@ -6,7 +6,7 @@
 
 #include "../delocate.h"
 #include "../../evp_extra/internal.h"
-#include "../crypto/ml_dsa/ml_dsa.h"
+#include "../ml_dsa/ml_dsa.h"
 #include "internal.h"
 
 // ML-DSA OIDs as defined within:
@@ -34,8 +34,10 @@ static void PQDSA_KEY_clear(PQDSA_KEY *key) {
   key->pqdsa = NULL;
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->private_key);
+  OPENSSL_free(key->seed);
   key->public_key = NULL;
   key->private_key = NULL;
+  key->seed = NULL;
 }
 
 int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
@@ -48,7 +50,8 @@ int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
   key->pqdsa = pqdsa;
   key->public_key = OPENSSL_malloc(pqdsa->public_key_len);
   key->private_key = OPENSSL_malloc(pqdsa->private_key_len);
-  if (key->public_key == NULL || key->private_key == NULL) {
+  key->seed = OPENSSL_malloc(pqdsa->keygen_seed_len);
+  if (key->public_key == NULL || key->private_key == NULL || key->seed == NULL) {
     PQDSA_KEY_clear(key);
     return 0;
   }
@@ -91,11 +94,20 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
 
   //allocate buffers to store key pair
   uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
-  uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  if (public_key == NULL) {
+    return 0;
+  }
 
-  // check buffers are allocated
-  if (public_key == NULL || private_key == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+  uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  if (private_key == NULL) {
+    OPENSSL_free(public_key);
+    return 0;
+  }
+
+  uint8_t *seed = OPENSSL_malloc(key->pqdsa->keygen_seed_len);
+  if (seed == NULL) {
+    OPENSSL_free(private_key);
+    OPENSSL_free(public_key);
     return 0;
   }
 
@@ -103,14 +115,26 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
   if (!key->pqdsa->method->pqdsa_keygen_internal(public_key,
                                                  private_key,
                                                  CBS_data(in))) {
+    OPENSSL_free(public_key);
+    OPENSSL_free(private_key);
+    OPENSSL_free(seed);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  // set the public and private key
+  // copy the seed data
+  if (!CBS_copy_bytes(in, seed, key->pqdsa->keygen_seed_len)) {
+    OPENSSL_free(public_key);
+    OPENSSL_free(private_key);
+    OPENSSL_free(seed);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // set the public key, private key, and seed
   key->public_key = public_key;
   key->private_key = private_key;
-
+  key->seed = seed;
   return 1;
 }
 
@@ -131,7 +155,6 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   uint8_t *public_key = OPENSSL_malloc(pk_len);
 
   if (public_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

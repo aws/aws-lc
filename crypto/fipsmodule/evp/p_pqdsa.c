@@ -7,7 +7,7 @@
 
 #include "../crypto/evp_extra/internal.h"
 #include "../delocate.h"
-#include "../../ml_dsa/ml_dsa.h"
+#include "../ml_dsa/ml_dsa.h"
 #include "../crypto/internal.h"
 #include "../pqdsa/internal.h"
 
@@ -49,7 +49,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   PQDSA_KEY *key = PQDSA_KEY_new();
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
-      !pqdsa->method->pqdsa_keygen(key->public_key, key->private_key) ||
+      !pqdsa->method->pqdsa_keygen(key->public_key, key->private_key, key->seed) ||
       !EVP_PKEY_assign(pkey, EVP_PKEY_PQDSA, key)) {
     PQDSA_KEY_free(key);
     return 0;
@@ -143,6 +143,11 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
                                      size_t message_len, int verify_digest) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
+
+  if (sig == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
 
   if (pqdsa == NULL) {
     if (ctx->pkey == NULL) {

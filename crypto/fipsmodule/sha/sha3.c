@@ -292,8 +292,8 @@ int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 // SHAKE_Final is to be called once to finalize absorb and squeeze phases
-// |ctx->state| restricts consecutive calls to FIPS202_Finalize
-// Function SHAKE_Squeeze should be used for incremental XOF output
+// |ctx->state| restricts consecutive calls to |FIPS202_Finalize|.
+// Function |SHAKE_Squeeze| should be used for incremental XOF output.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   if (ctx == NULL || md == NULL) {
     return 0;
@@ -312,12 +312,13 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   ctx->state = KECCAK1600_STATE_FINAL;
 
   FIPS_service_indicator_update_state();
-
   return 1;
 }
 
 // SHAKE_Squeeze can be called multiple time for incremental XOF output
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
+  size_t block_bytes;
+
   if (ctx == NULL || md == NULL) {
     return 0;
   }
@@ -339,9 +340,39 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
       return 0;
     }
   }
+  // Process previous data from output buffer if any
+  if (ctx->buf_load != 0) {
+    if (len <= ctx->buf_load) {
+      OPENSSL_memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, len);
+      ctx->buf_load -= len;
+      return 1;
+    } else {
+      OPENSSL_memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, ctx->buf_load);
+      md += ctx->buf_load;
+      len -= ctx->buf_load;
+      ctx->buf_load = 0;
+    }
+  }
 
-  Keccak1600_Squeeze(ctx->A, md, len, ctx->block_size, ctx->state);
-  ctx->state = KECCAK1600_STATE_SQUEEZE;
+  // Process all full size output requested blocks
+  if (len > ctx->block_size) {
+    block_bytes = ctx->block_size * (len / ctx->block_size);
+    Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size, ctx->state);
+    md += block_bytes;
+    len -= block_bytes;
+    ctx->state = KECCAK1600_STATE_SQUEEZE;
+  }
+
+  if (len > 0) {
+    // Process an additional block if output length is not a multiple of block size. 
+    // Generated output is store in |ctx->buf|. Only requested bytes are transfered
+    // to the output. The 'unused' output data is kept for processing in a sequenctual
+    // call to SHAKE_Squeeze (incremental byte-wise SHAKE_Squeeze)
+    Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size, ctx->state);
+    OPENSSL_memcpy(md, ctx->buf, len);
+    ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed    
+    ctx->state = KECCAK1600_STATE_SQUEEZE;
+  }
 
   //FIPS_service_indicator_update_state();
   return 1;
