@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#if defined(__ELF__) && defined(__GNUC__)
-
 #include <gtest/gtest.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
@@ -15,7 +13,7 @@
 #include "internal.h"
 
 extern "C" {
-  OPENSSL_EXPORT void AWS_LC_fips_failure_callback(const char* message);
+  void AWS_LC_fips_failure_callback(const char* message);
 }
 
 int callback_call_count = 0;
@@ -164,5 +162,3 @@ TEST(FIPSCallback, PWCT) {
   }
   EVP_PKEY_free(dsa_raw);
 }
-
-#endif
