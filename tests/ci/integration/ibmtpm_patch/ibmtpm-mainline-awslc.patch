@@ -97,7 +97,7 @@ index 165304d..78f295b 100644
  struct bignum_st
  {
 diff --git a/src/TpmProfile_Common.h b/src/TpmProfile_Common.h
-index 13dfc0d..3c87c3e 100644
+index 13dfc0d..abc0509 100644
 --- a/src/TpmProfile_Common.h
 +++ b/src/TpmProfile_Common.h
 @@ -65,6 +65,8 @@
@@ -120,3 +120,24 @@ index 13dfc0d..3c87c3e 100644
 
  #define     CAMELLIA_128                (YES * ALG_CAMELLIA)
  #define     CAMELLIA_192                (NO  * ALG_CAMELLIA)
+diff --git a/src/makefile b/src/makefile
+index 407dc9c..b2b50a9 100644
+--- a/src/makefile
++++ b/src/makefile
+@@ -47,7 +47,7 @@ CCFLAGS = -Wall  			\
+ 	 -c -ggdb -O0 			\
+ 	-DTPM_POSIX			\
+ 	-D_POSIX_			\
+-	-DTPM_NUVOTON
++	-DTPM_NUVOTON $(CFLAGS)
+
+ # add this line for big endian platforms
+ #	-DBIG_ENDIAN_TPM=YES
+@@ -59,7 +59,7 @@ LNFLAGS = -ggdb 			\
+ 	-lcrypto			\
+ 	-lpthread			\
+ 	-lrt				\
+-	-I.
++	-I. $(LDFLAGS)
+
+ #	--coverage -lgcov
