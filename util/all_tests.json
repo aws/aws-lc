@@ -87,7 +87,8 @@
   },
   {
     "comment": "Run RAND test suite without fork detection",
-    "cmd": ["crypto/crypto_test", "BORINGSSL_IGNORE_FORK_DETECTION=1", "--gtest_filter=RandTest.*:-RandTest.Fork"],
+    "cmd": ["crypto/crypto_test", "--gtest_filter=RandTest.*:-RandTest.Fork"],
+    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
     "skip_valgrind": true
   },
   {
