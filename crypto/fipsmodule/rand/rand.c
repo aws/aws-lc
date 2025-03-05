@@ -26,7 +26,7 @@
 #else
 #include <io.h>
 #endif
-#include "../../../third_party/jitterentropy/jitterentropy.h"
+#include "../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 #endif
 
 #include <openssl/chacha.h>

@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "../../test/test_util.h"
-#include "../../../third_party/jitterentropy/jitterentropy.h"
+#include "../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 
 // Struct for Jitter entropy collector instance with constructor/desctructor.
 struct JitterEC {
