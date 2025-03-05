@@ -357,7 +357,7 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 // |RAND_USE_USER_PRED_RESISTANCE| or |RAND_NO_USER_PRED_RESISTANCE|. The former
 // cause the content of |user_pred_resistance| to be mixed in as prediction
 // resistance. The latter ensures that |user_pred_resistance| is not used.
-static void RAND_bytes_core(
+static void rand_bytes_core(
   struct rand_thread_local_state *state,
   uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
@@ -464,7 +464,7 @@ static void RAND_bytes_core(
   CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
 }
 
-static void RAND_bytes_private(uint8_t *out, size_t out_len,
+static void rand_bytes_private(uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
   int use_user_pred_resistance) {
 
@@ -491,7 +491,7 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
     thread_local_list_add_node(state);
   }
 
-  RAND_bytes_core(state, out, out_len, user_pred_resistance,
+  rand_bytes_core(state, out, out_len, user_pred_resistance,
     use_user_pred_resistance);
 
   FIPS_service_indicator_unlock_state();
@@ -501,7 +501,7 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
 int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
   
-  RAND_bytes_private(out, out_len, user_pred_resistance,
+  rand_bytes_private(out, out_len, user_pred_resistance,
     RAND_USE_USER_PRED_RESISTANCE);
   return 1;
 }
@@ -509,7 +509,7 @@ int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
 int RAND_bytes(uint8_t *out, size_t out_len) {
 
   static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  RAND_bytes_private(out, out_len, kZeroPredResistance,
+  rand_bytes_private(out, out_len, kZeroPredResistance,
     RAND_NO_USER_PRED_RESISTANCE);
   return 1;
 }
