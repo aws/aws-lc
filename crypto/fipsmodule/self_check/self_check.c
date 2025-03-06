@@ -2088,7 +2088,8 @@ static int boringssl_self_test_ml_dsa(void) {
 
   // Verify
   if (!ml_dsa_44_verify_internal_no_self_test(public_key, kMLDSASignSignature, sig_len, kMLDSASignPlaintext,
-                                              mlen_int, NULL, 0)) {
+                                              mlen_int, NULL, 0) ||
+      !check_test(kMLDSASignSignature, signature, sizeof(signature), "ML-DSA-verify")) {
     AWS_LC_FIPS_failure("ML-DSA-verify KAT failed.");
     goto err;
   }
