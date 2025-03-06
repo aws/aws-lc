@@ -738,12 +738,17 @@ if(FIPS)
   endif()
 
   if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
-    message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
+    message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
   if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
     message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
   endif()
+
+  string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
+  if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
+    message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
+  endif ()
 
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
