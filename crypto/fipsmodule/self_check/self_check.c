@@ -2082,7 +2082,7 @@ static int boringssl_self_test_ml_dsa(void) {
   if (!ml_dsa_44_sign_internal_no_self_test(private_key, signature, &sig_len, kMLDSASignPlaintext,
                                             mlen_int, NULL, 0, kMLDSASigGenSeed) ||
       !check_test(kMLDSASignSignature, signature, sizeof(signature), "ML-DSA-sign")) {
-    AWS_LC_FIPS_failure("ML-DSA-sign KAT failed.");
+    AWS_LC_FIPS_failure("ML-DSA-sign failed.");
     goto err;
   }
 
@@ -2090,7 +2090,7 @@ static int boringssl_self_test_ml_dsa(void) {
   if (!ml_dsa_44_verify_internal_no_self_test(public_key, kMLDSASignSignature, sig_len, kMLDSASignPlaintext,
                                               mlen_int, NULL, 0) ||
       !check_test(kMLDSASignSignature, signature, sizeof(signature), "ML-DSA-verify")) {
-    AWS_LC_FIPS_failure("ML-DSA-verify KAT failed.");
+    AWS_LC_FIPS_failure("ML-DSA-verify failed.");
     goto err;
   }
 
