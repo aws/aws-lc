@@ -66,7 +66,7 @@
 #include "internal.h"
 
 
-static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int dsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // See RFC 3279, section 2.3.2.
 
   // Parameters may or may not be present.
@@ -127,7 +127,7 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int dsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   // See PKCS#11, v2.40, section 2.5.
   if(pubkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);

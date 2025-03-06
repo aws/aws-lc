@@ -56,7 +56,7 @@ jobs:
         uses: KyleMayes/install-llvm-action@v2
         id: clang
         with:
-          version: 17
+          version: 18
           env: true
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
