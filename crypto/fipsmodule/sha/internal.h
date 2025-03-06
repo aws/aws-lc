@@ -95,6 +95,9 @@ struct keccak_st {
   uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
 };
 
+// KECCAK1600 x4 batched context structure
+typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];
+
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
 
@@ -438,6 +441,32 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 // success and 0 on failure. It should be called once to finalize absorb and
 // squeeze phases. Incremental XOF output should be generated via |SHAKE_Squeeze|.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+
+// SHAKE128_Init_x4 is a batched API that operates on four independent
+// Keccak bitstates. It initialises all four |ctx| fields through four
+// consecutive calls to |SHAKE_Init| and returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
+
+// SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
+// Keccak bitstates. It absorbs all four inputs through four
+// consecutive calls to |SHAKE_Absorb| and returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
+                                  const void *data2, const void *data3, size_t len);
+
+// SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent
+// Keccak bitstates. It squeezes all four XOF digests through four consecutive
+// calls to |SHAKE_Squeeze| and returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
+                                  KECCAK1600_CTX_x4 *ctx, size_t len);
+
+// SHAKE256_x4 is a batched API that operates on four independent
+// Keccak bitstates. It writes all four |out_len|-byte outputs from
+// |in_len|-byte inputs to |out0|, |out1|, |out2|, |out3| and returns
+// 1 on success and 0 on failure.
+OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
+                                  const uint8_t *data2, const uint8_t *data3,
+                                  const size_t in_len, uint8_t *out0, uint8_t *out1,
+                                  uint8_t *out2, uint8_t *out3, size_t out_len);
 
 // Keccak1600_Absorb processes the largest multiple of |r| (block size) out of
 // |len| bytes and returns the remaining number of bytes.
