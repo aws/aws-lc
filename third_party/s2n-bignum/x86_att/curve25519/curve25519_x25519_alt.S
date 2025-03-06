@@ -756,6 +756,7 @@
 
 S2N_BN_SYMBOL(curve25519_x25519_alt):
 S2N_BN_SYMBOL(curve25519_x25519_byte_alt):
+        _CET_ENDBR
 
 #if WINDOWS_ABI
         pushq   %rdi
