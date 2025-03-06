@@ -333,6 +333,7 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
 }
 
 static int EVP_EC_KEY_check_fips(EC_KEY *key) {
+
   uint8_t msg[16] = {0};
   size_t msg_len = 16;
   int ret = 0;
