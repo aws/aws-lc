@@ -31,7 +31,6 @@ class randConcurrencyTest : public::testing::Test {
   protected:
     static int overrideInitialize(struct entropy_source_t *entropy_source) {
       initializeCount++;
-      fprintf(stderr, "overrideInitialize\n");
       return 1;
     }
 
@@ -41,7 +40,6 @@ class randConcurrencyTest : public::testing::Test {
 
     static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {
       zeroizeThreadCount++;
-      fprintf(stderr, "overrideZeroizeThread\n");
     }
 
     static size_t getZeroizeThreadCount(void) {
@@ -50,7 +48,6 @@ class randConcurrencyTest : public::testing::Test {
 
     static void overrideFreeThread(struct entropy_source_t *entropy_source) {
       freeThreadCount++;
-      fprintf(stderr, "overrideFreeThread\n");
     }
 
     static size_t getFreeThreadCount(void) {
@@ -60,7 +57,6 @@ class randConcurrencyTest : public::testing::Test {
     static int overrideGetSeed(const struct entropy_source_t *entropy_source,
       uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
       getSeedCount++;
-      fprintf(stderr, "overrideGetSeed\n");
       return 1;
     }
 
@@ -71,7 +67,6 @@ class randConcurrencyTest : public::testing::Test {
     static int overrideGetExtraEntropy(const struct entropy_source_t *entropy_source,
       uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
       getExtraEntropyCount++;
-      fprintf(stderr, "overrideGetExtraEntropy\n");
       return 1;
     }
 
@@ -83,7 +78,6 @@ class randConcurrencyTest : public::testing::Test {
       const struct entropy_source_t *entropy_source,
       uint8_t seed[RAND_PRED_RESISTANCE_LEN]) {
       getPredictionResistanceCount++;
-      fprintf(stderr, "overrideGetPredictionResistance\n");
       return 1;
     }
 
