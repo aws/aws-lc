@@ -62,7 +62,7 @@ function ruby_patch() {
     local branch=${1}
     local src_dir="${RUBY_SRC_FOLDER}/${branch}"
     local patch_dirs=("${RUBY_PATCH_FOLDER}/${branch}" "${RUBY_COMMON_FOLDER}")
-    if [[ ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
+    if [[ "${branch}" != "master" && ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
         echo "No patch for ${branch}!"
         exit 1
     fi
@@ -86,6 +86,10 @@ function ruby_patch() {
 if [[ "$#" -eq "0" ]]; then
     echo "No ruby branches provided for testing"
     exit 1
+fi
+
+if [[ "${FIPS}" -eq "1" ]]; then
+    export TEST_RUBY_OPENSSL_FIPS_ENABLED="true"
 fi
 
 mkdir -p ${SCRATCH_FOLDER}
