@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.47.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.48.1"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -147,7 +147,7 @@ extern "C" {
 #else  // defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)
-#define OPENSSL_EXPORT __declspec(dllexport)
+#define OPENSSL_EXPORT
 #else
 #define OPENSSL_EXPORT __attribute__((visibility("default")))
 #endif
