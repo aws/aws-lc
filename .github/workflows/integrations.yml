@@ -22,44 +22,6 @@ jobs:
       - name: Run libssh2 integration tests
         run: |
           ./tests/ci/integration/run_libssh2_integration.sh
-  python-main:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    name: Python main
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build python, run tests
-        run: |
-          ./tests/ci/integration/run_python_integration.sh main
-  python-releases:
-    if: github.repository_owner == 'aws'
-    strategy:
-      fail-fast: false
-      matrix:
-        openssl_in_crt:
-          - "0"
-          - "1"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-latest
-    name: Python releases (FIPS=${{ matrix.fips}} OPENSSL_IN_CRT=${{ matrix.openssl_in_crt }})
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build python, run tests
-        run: |
-          ./tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13
-        env:
-          FIPS: ${{ matrix.fips }}
-          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
   libevent:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -73,39 +35,3 @@ jobs:
       - name: Run libevent build
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
-  ruby-main:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    name: Ruby main
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build ruby, run tests
-        run: |
-          ./tests/ci/integration/run_ruby_integration.sh master
-        env:
-          FIPS: 1
-  ruby-releases:
-    if: github.repository_owner == 'aws'
-    strategy:
-      fail-fast: false
-      matrix:
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-latest
-    name: Ruby releases (FIPS=${{ matrix.fips}})
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build ruby, run tests
-        run: |
-          ./tests/ci/integration/run_ruby_integration.sh ruby_3_3 ruby_3_2 ruby_3_1
-        env:
-          FIPS: ${{ matrix.fips }}
