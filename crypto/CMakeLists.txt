@@ -725,6 +725,9 @@ if(BUILD_TESTING)
   # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
 
+  # Test randomness generation
+  add_test_executable(${RANDOM_CONCURRENCY_EXEC} fipsmodule/rand/rand_concurrency_test.cc)
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.

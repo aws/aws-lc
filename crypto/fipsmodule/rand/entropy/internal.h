@@ -50,6 +50,9 @@ OPENSSL_EXPORT int rndr_multiple8(uint8_t *buf, const size_t len);
 // in testing.
 OPENSSL_EXPORT int have_hw_rng_aarch64_for_testing(void);
 
+OPENSSL_EXPORT void override_entropy_source_method_FOR_TESTING(
+  const struct entropy_source_methods *override_entropy_source_methods);
+
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
 // CRYPTO_rndr_multiple8 writes |len| number of bytes to |buf| generated using
