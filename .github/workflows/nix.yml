@@ -1,0 +1,37 @@
+---
+name: "Nix checks"
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+jobs:
+  nixflake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v29
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - run: nix build
+      - run: nix flake check
+  nixfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nixbuild/nix-quick-install-action@v29
+      - name: nix fmt
+        run: nix fmt $(find . -name \*nix -type f -not -path "./.git/*")
+      - name: Changed files
+        id: dirty
+        run: |
+          echo "Checking nix files with: nix fmt ..."
+          git diff --exit-code
+        continue-on-error: true
+      - name: Failure case
+        if: steps.dirty.outcome != 'success'
+        run: |
+          echo "Please fix formatting with nix fmt (file)"
+          exit 1
+      - name: Success
+        run: echo "All nix files passed format check"
