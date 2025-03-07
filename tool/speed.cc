@@ -68,7 +68,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
-#if !defined(OPENSSL_IS_AWSLC)
+#if !defined(OPENSSL_IS_AWSLC) || !defined(INTERNAL_TOOL)
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
 // power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
 // space.
@@ -2522,7 +2522,7 @@ static bool SpeedPKCS8(const std::string &selected) {
 }
 #endif
 
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_AWSLC) && defined(INTERNAL_TOOL)
 static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
   CRYPTO_refcount_t refcount = 0;
   size_t iterations_per_thread = 1000;
