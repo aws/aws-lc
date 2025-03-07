@@ -27,7 +27,14 @@ static thread_local size_t get_prediction_resistance_count = 0;
 static thread_local size_t cached_get_seed_count = 0;
 static thread_local size_t cached_get_extra_entropy_count = 0;
 
-static entropy_source_methods entropy_methods = {0};
+static entropy_source_methods entropy_methods{
+  nullptr,  // initialize
+  nullptr,  // zeroize_thread
+  nullptr,  // free_thread
+  nullptr,  // get_seed
+  nullptr,  // get_extra_entropy
+  nullptr   // get_prediction_resistance
+};
 
 static int overrideInitialize(struct entropy_source_t *entropy_source) {
   initialize_count++;
