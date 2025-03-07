@@ -2696,13 +2696,11 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 // https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
-// SSL_GROUP_SECP256R1_MLKEM768 is defined at
+// The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
 #define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
-
-// SSL_GROUP_X25519_MLKEM768 is defined at
-// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
-#define SSL_GROUP_X25519_MLKEM768    0x11EC
+#define SSL_GROUP_X25519_MLKEM768 0x11EC
+#define SSL_GROUP_SECP384R1_MLKEM1024 0x11ED
 
 // The following PQ and hybrid group IDs are not yet standardized. Current IDs
 // are driven by community consensus and are defined at:
@@ -2713,8 +2711,9 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
 // The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
-#define SSL_GROUP_MLKEM768  0x0768
-#define SSL_GROUP_MLKEM1024 0x1024
+#define SSL_GROUP_MLKEM512  0x0200
+#define SSL_GROUP_MLKEM768  0x0201
+#define SSL_GROUP_MLKEM1024 0x0202
 
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
 // completed handshake, or 0 if not applicable.
