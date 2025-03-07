@@ -36,7 +36,9 @@
 #include <openssl/crypto.h>
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
+#if defined(INTERNAL_TOOL)
 #include "../crypto/internal.h"
+#endif
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
