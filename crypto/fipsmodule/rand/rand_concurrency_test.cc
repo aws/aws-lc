@@ -158,6 +158,7 @@ TEST_F(randConcurrencyTest, BasicThread) {
       if (UbeIsSupported()) {
         expect_reseed = 0;
       }
+
       bool test2 = assertReseed(expect_reseed, []() {
         return generateRandomness(request_len);
       });
