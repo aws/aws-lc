@@ -249,7 +249,7 @@ OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);
 
 // EVP_marshal_private_key marshals |key| as a DER-encoded PrivateKeyInfo
 // structure (RFC 5208) and appends the result to |cbb|. It returns one on
-// success and zero on error.
+// success and zero on error. For ML-DSA, the private seed is encoded.
 OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 
 // EVP_marshal_private_key_v2 marshals |key| as a DER-encoded
