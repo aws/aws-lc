@@ -18,7 +18,27 @@
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
 
-class newRandTest : public ubeTest {};
+class newRandTest : public::testing::Test {
+  private:
+    UbeBase ube_base_;
+
+  protected:
+    void SetUp() override {
+      ube_base_.SetUp();
+    }
+
+    void TearDown() override {
+      ube_base_.TearDown();
+    }
+
+    bool UbeIsSupported() const {
+      return ube_base_.UbeIsSupported();
+    }
+
+    void allowMockedUbe() const {
+      return ube_base_.allowMockedUbe();
+    }
+};
 
 static void randBasicTests(bool *returnFlag) {
   // Do not use stack arrays for these. For example, Alpine OS has too low

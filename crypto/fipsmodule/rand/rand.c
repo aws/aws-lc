@@ -357,11 +357,15 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 // |RAND_USE_USER_PRED_RESISTANCE| or |RAND_NO_USER_PRED_RESISTANCE|. The former
 // cause the content of |user_pred_resistance| to be mixed in as prediction
 // resistance. The latter ensures that |user_pred_resistance| is not used.
+//
+// If the state has just been initialized, then |state_is_fresh| is 1. If the
+// state is fresh then uniqueness is guaranteed.
 static void rand_bytes_core(
   struct rand_thread_local_state *state,
   uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
-  int use_user_pred_resistance) {
+  int use_user_pred_resistance,
+  int state_is_fresh) {
 
   GUARD_PTR_ABORT(state);
   GUARD_PTR_ABORT(out);
@@ -371,7 +375,8 @@ static void rand_bytes_core(
   int must_reseed_before_generate = 0;
 
   // Ensure that the CTR-DRBG state is unique.
-  if (rand_check_ctr_drbg_uniqueness(state) != 1) {
+  if (rand_check_ctr_drbg_uniqueness(state) != 1 &&
+      state_is_fresh != 1) {
     must_reseed_before_generate = 1;
   }
 
@@ -479,6 +484,8 @@ static void rand_bytes_private(uint8_t *out, size_t out_len,
   struct rand_thread_local_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
 
+  int state_is_fresh = 0;
+
   if (state == NULL) {
     state = OPENSSL_zalloc(sizeof(struct rand_thread_local_state));
     if (state == NULL ||
@@ -489,10 +496,12 @@ static void rand_bytes_private(uint8_t *out, size_t out_len,
 
     rand_state_initialize(state);
     thread_local_list_add_node(state);
+
+    state_is_fresh = 1;
   }
 
   rand_bytes_core(state, out, out_len, user_pred_resistance,
-    use_user_pred_resistance);
+    use_user_pred_resistance, state_is_fresh);
 
   FIPS_service_indicator_unlock_state();
   FIPS_service_indicator_update_state();
