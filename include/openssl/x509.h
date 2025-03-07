@@ -5094,7 +5094,6 @@ OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
 // This function is maintained only for compatibility with applications
 // that consume OpenSSL APIs. AWS-LC does not support the related
 // static trust settings functions which were also deprecated in OpenSSL 1.1.0.
-// Trust settings in AWS-LC are managed dynamically per SSL context.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void X509_TRUST_cleanup(void);
 
 #define X509_LU_NONE 0
