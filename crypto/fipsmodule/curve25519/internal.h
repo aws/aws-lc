@@ -40,6 +40,10 @@ typedef enum {
 #define MAX_DOM2_SIZE \
   (DOM2_PREFIX_SIZE + DOM2_F_SIZE + DOM2_C_SIZE + MAX_DOM2_CONTEXT_SIZE)
 
+int ED25519_keypair_internal(
+    uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+    uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]);
+
 int ed25519_sign_internal(
     ed25519_algorithm_t alg,
     uint8_t out_sig[ED25519_SIGNATURE_LEN],

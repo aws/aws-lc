@@ -106,7 +106,7 @@ TEST(FIPSCallback, PowerOnSelfTests) {
   uint8_t message[2];
   uint8_t context[2];
   uint8_t signature[ED25519_SIGNATURE_LEN];
-  ED25519ph_sign(signature, message, sizeof(message), private_key, context, sizeof(context));
+  EXPECT_TRUE(ED25519ph_sign(signature, message, sizeof(message), private_key, context, sizeof(context)));
 
   if (broken_kat == nullptr) {
     EXPECT_EQ(0, callback_call_count);
@@ -133,12 +133,20 @@ TEST(FIPSCallback, PWCT) {
     EXPECT_TRUE(EC_KEY_generate_key_fips(key.get()));
   }
 
-  uint8_t public_key[ED25519_PUBLIC_KEY_LEN];
-  uint8_t private_key[ED25519_PRIVATE_KEY_LEN];
-  ED25519_keypair(public_key, private_key);
+  bssl::UniquePtr<EVP_PKEY_CTX> ed_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr));
+  ASSERT_TRUE(ed_ctx);
+  EXPECT_TRUE(EVP_PKEY_keygen_init(ed_ctx.get()));
+  EVP_PKEY *ed_key = nullptr;
+  EXPECT_TRUE(EVP_PKEY_keygen(ed_ctx.get(), &ed_key));
+  if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "EDDSA_PWCT" ) == 0) {
+    EXPECT_FALSE(EVP_PKEY_keygen(ed_ctx.get(), &ed_key));
+  } else {
+    EXPECT_TRUE(EVP_PKEY_keygen(ed_ctx.get(), &ed_key));
+  }
+  EVP_PKEY_free(ed_key);
 
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
-  EXPECT_TRUE(ctx);
+  ASSERT_TRUE(ctx);
   EXPECT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), NID_MLKEM512));
   EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
@@ -153,8 +161,8 @@ TEST(FIPSCallback, PWCT) {
   bssl::UniquePtr<EVP_PKEY_CTX> dsa_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
 
   ASSERT_TRUE(dsa_ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(dsa_ctx.get(), NID_MLDSA44));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(dsa_ctx.get()));
+  EXPECT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(dsa_ctx.get(), NID_MLDSA44));
+  EXPECT_TRUE(EVP_PKEY_keygen_init(dsa_ctx.get()));
   if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "MLDSA_PWCT" ) == 0) {
     EXPECT_FALSE(EVP_PKEY_keygen(dsa_ctx.get(), &dsa_raw));
   } else {
