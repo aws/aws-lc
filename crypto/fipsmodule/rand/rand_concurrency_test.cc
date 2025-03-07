@@ -137,14 +137,6 @@ static bool generateRandomness(size_t req_Len, const char *error_text = "Failed"
   return true;
 }
 
-static bool generateRandomnessChild(void) {
-  return generateRandomness(request_len, "Failed in child");
-}
-
-static bool generateRandomnessParent(void) {
-  return generateRandomness(request_len, "Failed in parent");
-}
-
 TEST_F(randConcurrencyTest, BasicThread) {
 
   // Test reseeds are observed when spawning new threads.
@@ -181,6 +173,15 @@ TEST_F(randConcurrencyTest, BasicThread) {
 }
 
 #if !defined(OPENSSL_WINDOWS)
+
+static bool generateRandomnessChild(void) {
+  return generateRandomness(request_len, "Failed in child");
+}
+
+static bool generateRandomnessParent(void) {
+  return generateRandomness(request_len, "Failed in parent");
+}
+
 TEST_F(randConcurrencyTest, BasicFork) {
 
   // Test reseed is observed when forking.
