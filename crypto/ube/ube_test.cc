@@ -9,7 +9,27 @@
 #include "../test/ube_test.h"
 #include "../test/test_util.h"
 
-class ubeGenerationNumberTest : public ubeTest {} ;
+class ubeGenerationNumberTest : public::testing::Test {
+  private:
+    UbeBase ube_base_;
+
+  protected:
+    void SetUp() override {
+      ube_base_.SetUp();
+    }
+
+    void TearDown() override {
+      ube_base_.TearDown();
+    }
+
+    bool UbeIsSupported() const {
+      return ube_base_.UbeIsSupported();
+    }
+
+    void allowMockedUbe() const {
+      return ube_base_.allowMockedUbe();
+    }
+};
 
 TEST_F(ubeGenerationNumberTest, BasicTests) {
   uint64_t generation_number = 0;
