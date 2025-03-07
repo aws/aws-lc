@@ -32,6 +32,12 @@
 #include "../cpucap/internal.h"
 #include "internal.h"
 
+#if defined(NDEBUG)
+#define CHECK(x) (void) (x)
+#else
+#define CHECK(x) assert(x)
+#endif
+
 const uint8_t RFC8032_DOM2_PREFIX[DOM2_PREFIX_SIZE] = {
     'S', 'i', 'g', 'E', 'd', '2', '5', '5', '1', '9', ' ',
     'n', 'o', ' ', 'E', 'd', '2', '5', '5', '1', '9', ' ',
@@ -112,7 +118,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
     ED25519_PUBLIC_KEY_LEN);
 }
 
-static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
+static int ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
 #if defined(AWSLC_FIPS)
   uint8_t msg[16] = {16};
@@ -121,17 +127,20 @@ static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
     // This should never happen and static analysis will say that ED25519_sign_no_self_test
     // always returns 1
     AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
+    return 0;
   }
   if (boringssl_fips_break_test("EDDSA_PWCT")) {
     msg[0] = ~msg[0];
   }
   if (ED25519_verify_no_self_test(msg, 16, out_sig, public_key) != 1) {
     AWS_LC_FIPS_failure("Ed25519 keygen PCT failed");
+    return 0;
   }
 #endif
+  return 1;
 }
 
-void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+int ED25519_keypair_internal(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
   // We have to avoid the self tests and digest function in ed25519_keypair_pct
   // from updating the service indicator.
@@ -149,10 +158,21 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 
-  ed25519_keypair_pct(out_public_key, out_private_key);
+  int result = ed25519_keypair_pct(out_public_key, out_private_key);
 
   FIPS_service_indicator_unlock_state();
-  FIPS_service_indicator_update_state();
+  if (result) {
+    FIPS_service_indicator_update_state();
+  }
+  return result;
+}
+
+void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  // The existing public function is void, ED25519_keypair_internal can only
+  // fail if the PWCT fails and we're in a callback build where AWS_LC_FIPS_failure
+  // doesn't abort on FIPS failure.
+  CHECK(ED25519_keypair_internal(out_public_key, out_private_key));
 }
 
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],

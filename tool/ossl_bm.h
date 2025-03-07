@@ -64,6 +64,7 @@ OSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 OSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
 OSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
 OSSL_MAKE_DELETER(EVP_PKEY, EVP_PKEY_free)
+OSSL_MAKE_DELETER(CMAC_CTX, CMAC_CTX_free)
 
 // OpenSSL 1.0.x has different APIs for EVP_MD_CTX and HMAC
 // We need to add more custom logic to HMAC to let it properly delete the
