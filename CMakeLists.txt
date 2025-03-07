@@ -751,9 +751,6 @@ if(FIPS)
   endif ()
 
   add_definitions(-DBORINGSSL_FIPS)
-  if(FIPS_BREAK_TEST)
-    add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
-  endif()
   # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
     if(BUILD_SHARED_LIBS)
