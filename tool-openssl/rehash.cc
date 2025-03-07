@@ -24,6 +24,8 @@
 
 #define NUM_ELEMENTS(x) (sizeof(x)/sizeof((x)[0]))
 
+static const std::vector<std::string> valid_extensions = {".pem", ".crt", ".cer", ".crl"};
+
 //typedef struct hentry_st {              // Represents a single certificate/CRL file
 //    struct hentry_st *next;             // Links to next entry in same bucket
 //    char *filename;                     // Actual filename
@@ -143,8 +145,59 @@
 //    return 0;
 //}
 
-// returns one for all reasons such as not having a valid extension, or not being able to add to hashtable, and zero for error.
+
+// returns one for all reasons such as not having a valid extension, more than one cert/crl in a file, or not being able to add to hashtable, and zero for error.
 static int process_file(std::string filename, std::string fullpath) {
+  // Skip files with invalid extensions
+  size_t dot_pos = filename.find_last_of('.');
+  if (dot_pos == std::string::npos ||
+    std::none_of(valid_extensions.begin(), valid_extensions.end(),
+                [&filename, dot_pos](const std::string& ext) {
+                    return strcasecmp(filename.c_str() + dot_pos, ext.c_str()) == 0;
+                  })) {
+    // Skip files with invalid extensions
+    return 1;
+  }
+
+  // Ensure file contains X.509 data
+  BIO* bio = BIO_new_file(fullpath.c_str(), "r");
+  if (!bio) {
+    fprintf(stderr, "Error: Cannot open file %s\n", filename.c_str());
+    return 0;
+  }
+
+  bssl::UniquePtr<STACK_OF(X509_INFO)> x509_info_stack(PEM_X509_INFO_read_bio(bio, nullptr, nullptr, nullptr));
+  BIO_free(bio);
+
+  // Ensure there is only one cert/CRL in the file
+  if (!x509_info_stack || sk_X509_INFO_num(x509_info_stack.get()) != 1) {
+    return 1;
+  }
+
+  // Process single cert/CRL
+  X509_INFO* x509_info = sk_X509_INFO_value(x509_info_stack.get(), 0);
+  X509_NAME* x509_name;
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+
+  if (x509_info->x509) {
+    // Handle certificate
+    if (!X509_digest(x509_info->x509, EVP_sha1(), digest, &digest_len)) {
+      return 0;
+    }
+    x509_name = X509_get_subject_name(x509_info->x509);
+
+  } else if (x509_info->crl) {
+    // Handle CRL
+    if (!X509_CRL_digest(x509_info->crl, EVP_sha1(), digest, &digest_len)) {
+      return 0;
+    }
+    x509_name = X509_CRL_get_issuer(x509_info->crl);
+  }
+
+  // Now do the add_entry call. Need to simplofy this struct and remove the need_symlink field etc.
+  // Also need to add a type var above that we can then pass into add_entry.
+
 
   return 1;
 }
@@ -168,7 +221,7 @@ static int symlink_check(std::string filename, std::string fullpath, const std::
       }
       is_symlink = true;
     }
-    
+
     return 1;
 }
 
