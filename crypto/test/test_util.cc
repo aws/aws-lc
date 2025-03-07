@@ -18,8 +18,12 @@
 #include <ostream>
 #include <thread>
 
+#if !defined(OPENSSL_WINDOWS)
+#include <sys/wait.h>
+#endif
+
 #include <openssl/err.h>
-#include "openssl/pem.h"
+#include <openssl/pem.h>
 
 #include "../internal.h"
 #include "../ube/fork_detect.h"
@@ -277,7 +281,7 @@ bool forkAndRunTest(std::function<bool()> child_func,
 #if defined(OPENSSL_WINDOWS)
   // fork() is not supported on Windows. We could potentially add support for
   // the CreateProcess API at some point.
-  return false
+  return false;
 #else
   pid_t pid = fork();
   if (pid == 0) { // Child
