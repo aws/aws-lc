@@ -124,6 +124,11 @@
   },
   {
     "cmd": [
+      "crypto/rand_concurrency_test"
+    ]
+  },
+  {
+    "cmd": [
       "crypto/rwlock_static_init"
     ]
   },
