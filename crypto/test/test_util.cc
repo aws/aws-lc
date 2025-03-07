@@ -274,6 +274,11 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 bool forkAndRunTest(std::function<bool()> child_func,
   std::function<bool()> parent_func) {
 
+#if defined(OPENSSL_WINDOWS)
+  // fork() is not supported on Windows. We could potentially add support for
+  // the CreateProcess API at some point.
+  return false
+#else
   pid_t pid = fork();
   if (pid == 0) { // Child
     bool success = child_func();
@@ -287,6 +292,7 @@ bool forkAndRunTest(std::function<bool()> child_func,
 
   // Fork failed
   return false;
+#endif
 }
 
 void maybeDisableSomeForkDetectMechanisms(void) {

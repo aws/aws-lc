@@ -9,6 +9,7 @@
 
 #include "entropy/internal.h"
 #include "internal.h"
+#include "../../ube/internal.h"
 
 #include "../../test/test_util.h"
 
@@ -128,7 +129,64 @@ thread_local size_t randConcurrencyTest::cachedGetSeedCount = 0;
 thread_local size_t randConcurrencyTest::cachedGetExtraEntropyCount = 0;
 thread_local size_t randConcurrencyTest::cachedGetPredictionResistanceCount = 0;
 
-TEST_F(randConcurrencyTest, Basic) {
+TEST_F(randConcurrencyTest, BasicThread) {
+
+  EXPECT_EXIT(({
+
+    const struct entropy_source_methods override_entropy_source_methods = {
+      &overrideInitialize,
+      &overrideZeroizeThread,
+      &overrideFreeThread,
+      &overrideGetSeed,
+      &overrideGetExtraEntropy,
+      &overrideGetPredictionResistance
+    };
+    override_entropy_source_method_FOR_TESTING(&override_entropy_source_methods);
+
+    std::vector<uint8_t> init_buffer(64);
+    ASSERT_TRUE(RAND_bytes(init_buffer.data(), init_buffer.size()));
+
+    std::function<void(bool*)> threadFunc = [](bool *result) {
+
+      // In a fresh thread, we expect a reseed.
+      bool test1 = assertReseed(1, []() {
+        std::vector<uint8_t> outputRand(64);
+        if (!RAND_bytes(outputRand.data(), outputRand.size())) {
+          fprintf(stderr, "FAIL child\n");
+          return false;
+        }
+
+        return true;
+      });
+
+      // If UBE detection is not supported, we expect a reseed again. Otherwise,
+      // no reseed is expected.
+      size_t expectReseed = 1;
+      uint64_t current_generation_number = 0;
+      if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1) {
+        expectReseed = 0;
+      }
+      bool test2 = assertReseed(expectReseed, []() {
+        std::vector<uint8_t> outputRand(64);
+        if (!RAND_bytes(outputRand.data(), outputRand.size())) {
+          fprintf(stderr, "FAIL child\n");
+          return false;
+        }
+
+        return true;
+      });
+
+      *result = test1 && test2;
+    };
+
+    bool exit_code = threadTest(8, threadFunc);
+
+    exit(exit_code ? 0 : 1);
+  }), ::testing::ExitedWithCode(0), "");
+}
+
+#if !defined(OPENSSL_WINDOWS)
+TEST_F(randConcurrencyTest, BasicFork) {
 
   EXPECT_EXIT(({
 
@@ -197,7 +255,7 @@ TEST_F(randConcurrencyTest, Basic) {
         // If fork detection is supported, we expect a reseed in each thread.
         // If fork detection is not enabled, we also expect a reseed in each
         // thread.
-        std::function<void(bool*)> threadFund = [](bool *result) {
+        std::function<void(bool*)> threadFunc = [](bool *result) {
           *result = assertReseed(1, []() {
             std::vector<uint8_t> outputRand(64);
             if (!RAND_bytes(outputRand.data(), outputRand.size())) {
@@ -208,7 +266,7 @@ TEST_F(randConcurrencyTest, Basic) {
             return true;
           });
         };
-        return threadTest(8, threadFund);
+        return threadTest(8, threadFunc);
       },
       []() {
         // In parent. Expect no reseed.
@@ -227,3 +285,4 @@ TEST_F(randConcurrencyTest, Basic) {
     exit(exit_code ? 0 : 1);
   }), ::testing::ExitedWithCode(0), "");
 }
+#endif
