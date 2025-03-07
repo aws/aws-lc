@@ -418,13 +418,6 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
 OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
                                     void *userdata);
 
-// PEM_proc_type appends a Proc-Type header to |buf|, determined by |type|.
-void PEM_proc_type(char buf[PEM_BUFSIZE], int type);
-
-// PEM_dek_info appends a DEK-Info header to |buf|, with an algorithm of |type|
-// and a single parameter, specified by hex-encoding |len| bytes from |str|.
-void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
-                  char *str);
 
 DECLARE_PEM_rw(X509, X509)
 

@@ -69,6 +69,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
 
 static X509_PKEY *X509_PKEY_new(void) {
