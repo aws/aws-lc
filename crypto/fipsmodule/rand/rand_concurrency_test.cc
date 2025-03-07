@@ -11,243 +11,206 @@
 #include "internal.h"
 #include "../../ube/internal.h"
 
+#include "../../test/ube_test.h"
 #include "../../test/test_util.h"
+
+static const size_t request_len = 64;
+static const size_t number_of_threads = 8;
+
+static thread_local size_t initialize_count = 0;
+static thread_local size_t zeroize_thread_count = 0;
+static thread_local size_t free_thread_count = 0;
+static thread_local size_t get_seed_count = 0;
+static thread_local size_t get_extra_entropy_count = 0;
+static thread_local size_t get_prediction_resistance_count = 0;
+
+static thread_local size_t cached_get_seed_count = 0;
+static thread_local size_t cached_get_extra_entropy_count = 0;
+
+static entropy_source_methods entropy_methods = {};
+
+static int overrideInitialize(struct entropy_source_t *entropy_source) {
+  initialize_count++;
+  return 1;
+}
+
+static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {
+  zeroize_thread_count++;
+}
+
+static void overrideFreeThread(struct entropy_source_t *entropy_source) {
+  free_thread_count++;
+}
+
+static int overrideGetSeed(const struct entropy_source_t *entropy_source,
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  get_seed_count++;
+  return 1;
+}
+
+static int overrideGetExtraEntropy(const struct entropy_source_t *entropy_source,
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  get_extra_entropy_count++;
+  return 1;
+}
+
+static int overrideGetPredictionResistance(
+  const struct entropy_source_t *entropy_source,
+  uint8_t seed[RAND_PRED_RESISTANCE_LEN]) {
+  get_prediction_resistance_count++;
+  return 1;
+}
+
+static void cacheAssertReseed() {
+  cached_get_seed_count = get_seed_count;
+  cached_get_extra_entropy_count = get_extra_entropy_count;
+}
+
+static bool assertReseed(size_t expected_count) {
+  if (cached_get_seed_count + expected_count != get_seed_count ||
+      cached_get_extra_entropy_count + expected_count != get_extra_entropy_count) {
+    std::cerr << "Reseed count mismatch:\n"
+              << "  Seed count: expected=" << (cached_get_seed_count + expected_count) 
+              << ", actual=" << get_seed_count << '\n'
+              << "  Extra entropy count: expected=" << (cached_get_extra_entropy_count + expected_count)
+              << ", actual=" << get_extra_entropy_count << '\n';
+    return false;
+  }
+  return true;
+}
+
+static bool assertReseed(size_t expected_count, std::function<int()> func) {
+  cacheAssertReseed();
+  if (func() != 1) {
+    return false;
+  }
+  return assertReseed(expected_count);
+}
+
+static void overrideEntropySourceMethodsCount() {
+  entropy_methods = {
+    &overrideInitialize,
+    &overrideZeroizeThread,
+    &overrideFreeThread,
+    &overrideGetSeed,
+    &overrideGetExtraEntropy,
+    &overrideGetPredictionResistance
+  };
+  override_entropy_source_method_FOR_TESTING(&entropy_methods);
+}
 
 class randConcurrencyTest : public::testing::Test {
   private:
-    static thread_local size_t initializeCount;
-    static thread_local size_t zeroizeThreadCount;
-    static thread_local size_t freeThreadCount;
-    static thread_local size_t getSeedCount;
-    static thread_local size_t getExtraEntropyCount;
-    static thread_local size_t getPredictionResistanceCount;
-
-    static thread_local size_t cachedInitializeCount;
-    static thread_local size_t cachedZeroizeThreadCount;
-    static thread_local size_t cachedFreeThreadCount;
-    static thread_local size_t cachedGetSeedCount;
-    static thread_local size_t cachedGetExtraEntropyCount;
-    static thread_local size_t cachedGetPredictionResistanceCount;
+    UbeBase ube_base_;
 
   protected:
-    static int overrideInitialize(struct entropy_source_t *entropy_source) {
-      initializeCount++;
-      return 1;
+    void SetUp() override {
+      ube_base_.SetUp();
     }
 
-    static size_t getInitializeCount(void) {
-      return initializeCount;
+    void TearDown() override {
+      ube_base_.TearDown();
     }
 
-    static void overrideZeroizeThread(struct entropy_source_t *entropy_source) {
-      zeroizeThreadCount++;
+    bool UbeIsSupported() const {
+      return ube_base_.UbeIsSupported();
     }
 
-    static size_t getZeroizeThreadCount(void) {
-      return zeroizeThreadCount;
-    }
-
-    static void overrideFreeThread(struct entropy_source_t *entropy_source) {
-      freeThreadCount++;
-    }
-
-    static size_t getFreeThreadCount(void) {
-      return freeThreadCount;
-    }
-
-    static int overrideGetSeed(const struct entropy_source_t *entropy_source,
-      uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
-      getSeedCount++;
-      return 1;
-    }
-
-    static size_t getGetSeedCount(void) {
-      return getSeedCount;
-    }
-
-    static int overrideGetExtraEntropy(const struct entropy_source_t *entropy_source,
-      uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
-      getExtraEntropyCount++;
-      return 1;
-    }
-
-    static size_t getGetExtraEntropyCount(void) {
-      return getExtraEntropyCount;
-    }
-
-    static int overrideGetPredictionResistance(
-      const struct entropy_source_t *entropy_source,
-      uint8_t seed[RAND_PRED_RESISTANCE_LEN]) {
-      getPredictionResistanceCount++;
-      return 1;
-    }
-
-    static size_t getGetPredictionResistanceCount(void) {
-      return getPredictionResistanceCount;
-    }
-
-    static void cacheAssertReseed(void) {
-      cachedGetSeedCount = getGetSeedCount();
-      cachedGetExtraEntropyCount = getGetExtraEntropyCount();
-    }
-
-    static bool assertReseed(size_t expectedCount) {
-      if (cachedGetSeedCount + expectedCount != getGetSeedCount() ||
-          cachedGetExtraEntropyCount + expectedCount != getGetExtraEntropyCount()) {
-        fprintf(stderr, "cached Seed count = %zu\n", cachedGetSeedCount);
-        fprintf(stderr, "current Seed count = %zu\n", getGetSeedCount());
-        fprintf(stderr, "cached extra entropy count = %zu\n", cachedGetExtraEntropyCount);
-        fprintf(stderr, "current extra entropy count = %zu\n", getGetExtraEntropyCount());
-        return false;
-      }
-      return true;
-    }
-
-    static bool assertReseed(size_t expectedCount, std::function<int()> func) {
-      cacheAssertReseed();
-      if (func() != 1) {
-        return false;
-      }
-      return assertReseed(expectedCount);
+    void allowMockedUbe() const {
+      ube_base_.allowMockedUbe();
     }
 };
 
-// We can't rely on Google Test executing all test fixtures sequentially. But
-// below test fixtures all spawn a child process that will have an independent
-// copy of these counters.
-thread_local size_t randConcurrencyTest::initializeCount = 0;
-thread_local size_t randConcurrencyTest::zeroizeThreadCount = 0;
-thread_local size_t randConcurrencyTest::freeThreadCount = 0;
-thread_local size_t randConcurrencyTest::getSeedCount = 0;
-thread_local size_t randConcurrencyTest::getExtraEntropyCount = 0;
-thread_local size_t randConcurrencyTest::getPredictionResistanceCount = 0;
+static bool generateRandomness(size_t req_Len, const char *error_text = "Failed") {
+  std::vector<uint8_t> output_rand(req_Len);
+  if (!RAND_bytes(output_rand.data(), output_rand.size())) {
+    std::cerr << error_text << '\n';
+    return false;
+  }
+  return true;
+}
 
-thread_local size_t randConcurrencyTest::cachedInitializeCount = 0;
-thread_local size_t randConcurrencyTest::cachedZeroizeThreadCount = 0;
-thread_local size_t randConcurrencyTest::cachedFreeThreadCount = 0;
-thread_local size_t randConcurrencyTest::cachedGetSeedCount = 0;
-thread_local size_t randConcurrencyTest::cachedGetExtraEntropyCount = 0;
-thread_local size_t randConcurrencyTest::cachedGetPredictionResistanceCount = 0;
+static bool generateRandomnessChild(void) {
+  return generateRandomness(request_len, "Failed in child");
+}
+
+static bool generateRandomnessParent(void) {
+  return generateRandomness(request_len, "Failed in parent");
+}
 
 TEST_F(randConcurrencyTest, BasicThread) {
 
-  EXPECT_EXIT(({
+  // Test reseeds are observed when spawning new threads.
+  auto testFunc = [this]() {
 
-    const struct entropy_source_methods override_entropy_source_methods = {
-      &overrideInitialize,
-      &overrideZeroizeThread,
-      &overrideFreeThread,
-      &overrideGetSeed,
-      &overrideGetExtraEntropy,
-      &overrideGetPredictionResistance
-    };
-    override_entropy_source_method_FOR_TESTING(&override_entropy_source_methods);
+    // Setup entropy source method override.
+    overrideEntropySourceMethodsCount();
+    generateRandomness(request_len);
 
-    std::vector<uint8_t> init_buffer(64);
-    ASSERT_TRUE(RAND_bytes(init_buffer.data(), init_buffer.size()));
-
-    std::function<void(bool*)> threadFunc = [](bool *result) {
-
+    std::function<void(bool*)> threadFunc = [this](bool *result) {
       // In a fresh thread, we expect a reseed.
       bool test1 = assertReseed(1, []() {
-        std::vector<uint8_t> outputRand(64);
-        if (!RAND_bytes(outputRand.data(), outputRand.size())) {
-          fprintf(stderr, "FAIL child\n");
-          return false;
-        }
-
-        return true;
+        return generateRandomness(request_len);
       });
 
       // If UBE detection is not supported, we expect a reseed again. Otherwise,
       // no reseed is expected.
-      size_t expectReseed = 1;
-      uint64_t current_generation_number = 0;
-      if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1) {
-        expectReseed = 0;
+      size_t expect_reseed = 1;
+      if (UbeIsSupported()) {
+        expect_reseed = 0;
       }
-      bool test2 = assertReseed(expectReseed, []() {
-        std::vector<uint8_t> outputRand(64);
-        if (!RAND_bytes(outputRand.data(), outputRand.size())) {
-          fprintf(stderr, "FAIL child\n");
-          return false;
-        }
-
-        return true;
+      bool test2 = assertReseed(expect_reseed, []() {
+        return generateRandomness(request_len);
       });
 
       *result = test1 && test2;
     };
 
-    bool exit_code = threadTest(8, threadFunc);
-
+    bool exit_code = threadTest(number_of_threads, threadFunc);
     exit(exit_code ? 0 : 1);
-  }), ::testing::ExitedWithCode(0), "");
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
 #if !defined(OPENSSL_WINDOWS)
 TEST_F(randConcurrencyTest, BasicFork) {
 
-  EXPECT_EXIT(({
+  // Test reseed is observed when forking.
+  auto testFuncSingleFork = []() {
 
-    const struct entropy_source_methods override_entropy_source_methods = {
-      &overrideInitialize,
-      &overrideZeroizeThread,
-      &overrideFreeThread,
-      &overrideGetSeed,
-      &overrideGetExtraEntropy,
-      &overrideGetPredictionResistance
-    };
-    override_entropy_source_method_FOR_TESTING(&override_entropy_source_methods);
-
-    std::vector<uint8_t> init_buffer(64);
-    ASSERT_TRUE(RAND_bytes(init_buffer.data(), init_buffer.size()));
+    // Setup entropy source method override
+    overrideEntropySourceMethodsCount();
+    generateRandomness(request_len);
 
     bool exit_code = forkAndRunTest(
       []() {
         // In child. If fork detection is supported, we expect a reseed.
         // If fork detection is not enabled, we also expect a reseed.
         return assertReseed(1, []() {
-          std::vector<uint8_t> outputRand(64);
-          if (!RAND_bytes(outputRand.data(), outputRand.size())) {
-            fprintf(stderr, "FAIL child\n");
-            return false;
-          }
-
-          return true;
+          return generateRandomnessChild();
         });
       },
       []() {
         // In parent. Expect no reseed.
         return assertReseed(0, []() {
-          std::vector<uint8_t> outputRand(64);
-          if (!RAND_bytes(outputRand.data(), outputRand.size())) {
-            fprintf(stderr, "FAIL parent\n");
-            return false;
-          }
-
-          return true;
+          return generateRandomnessParent();
         });
       }
     );
 
     exit(exit_code ? 0 : 1);
-  }), ::testing::ExitedWithCode(0), "");
+  };
 
-  EXPECT_EXIT(({
+  EXPECT_EXIT(testFuncSingleFork(), ::testing::ExitedWithCode(0), "");
 
-    const struct entropy_source_methods override_entropy_source_methods = {
-      &overrideInitialize,
-      &overrideZeroizeThread,
-      &overrideFreeThread,
-      &overrideGetSeed,
-      &overrideGetExtraEntropy,
-      &overrideGetPredictionResistance
-    };
-    override_entropy_source_method_FOR_TESTING(&override_entropy_source_methods);
+  // Test reseed is observed when forking and spawning new threads before
+  // generating randomness.
+  auto testFuncSingleForkThenThread = []() {
 
-    std::vector<uint8_t> init_buffer(64);
-    ASSERT_TRUE(RAND_bytes(init_buffer.data(), init_buffer.size()));
+    // Setup entropy source method override
+    overrideEntropySourceMethodsCount();
+    generateRandomness(request_len);
 
     bool exit_code = forkAndRunTest(
       []() {
@@ -257,32 +220,22 @@ TEST_F(randConcurrencyTest, BasicFork) {
         // thread.
         std::function<void(bool*)> threadFunc = [](bool *result) {
           *result = assertReseed(1, []() {
-            std::vector<uint8_t> outputRand(64);
-            if (!RAND_bytes(outputRand.data(), outputRand.size())) {
-              fprintf(stderr, "FAIL child\n");
-              return false;
-            }
-
-            return true;
+            return generateRandomnessChild();
           });
         };
-        return threadTest(8, threadFunc);
+        return threadTest(number_of_threads, threadFunc);
       },
       []() {
         // In parent. Expect no reseed.
         return assertReseed(0, []() {
-          std::vector<uint8_t> outputRand(64);
-          if (!RAND_bytes(outputRand.data(), outputRand.size())) {
-            fprintf(stderr, "FAIL parent\n");
-            return false;
-          }
-
-          return true;   
+          return generateRandomnessParent();
         });
       }
     );
 
     exit(exit_code ? 0 : 1);
-  }), ::testing::ExitedWithCode(0), "");
+  };
+
+  EXPECT_EXIT(testFuncSingleForkThenThread(), ::testing::ExitedWithCode(0), "");
 }
 #endif
