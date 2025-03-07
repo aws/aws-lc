@@ -20,6 +20,9 @@ static void pqdsa_free(EVP_PKEY *pkey) {
 
 static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
                                    size_t *out_len) {
+  GUARD_PTR(pkey);
+  GUARD_PTR(out_len);
+
   if (pkey->pkey.pqdsa_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
@@ -88,16 +91,15 @@ static int pqdsa_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
   return 1;
 }
 
-static int pqdsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int pqdsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
-  // section 4. the only parameter that can be included is the OID which has
-  // length 9
-  if (CBS_len(params) != 9) {
+  // section 4. There should be no parameters
+  if (CBS_len(params) > 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
   // Set the pqdsa params on |out|.
-  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
+  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(oid))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -138,64 +140,80 @@ static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
                         a->pkey.pqdsa_key->pqdsa->public_key_len) == 0;
 }
 
-static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int pqdsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
-  // section 6. the only parameter that can be included is the OID which has
-  // length 9.
-  if (CBS_len(params) != 9) {
+  // section 6. There should be no parameters.
+  if (CBS_len(params) > 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
   // Set the pqdsa params on |out|.
-  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
+  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(oid))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  // check the size of the provided input against the private key and seed len
-  if (CBS_len(key) != out->pkey.pqdsa_key->pqdsa->private_key_len &&
-      CBS_len(key) != out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+  // Try to parse as one of the three ASN.1 formats defined in ML-DSA-XX-PrivateKey
+  // Currently only the following cases are supported:
+  // Case 1: seed [0] OCTET STRING
+  // Case 2: expandedKey OCTET STRING
+
+  // Once https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // is stable we will implement:
+  // Case 3: both SEQUENCE { seed, expandedKey }
+
+  if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+    // Case 1: seed [0] OCTET STRING
+    CBS seed;
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (CBS_len(&seed) != out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
+
+    return PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, &seed);
+  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
+    // Case 2: expandedKey OCTET STRING
+    CBS expanded_key;
+    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (CBS_len(&expanded_key) != out->pkey.pqdsa_key->pqdsa->private_key_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
+
+    return PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, &expanded_key);
+  } else {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
-  // The caller can either provide the full key of size |private_key_len| or
-  // |keygen_seed_len|.
-  if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->private_key_len) {
-
-    // Set the private key
-    if (!PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, key)) {
-      // PQDSA_KEY_set_raw_private_key sets the appropriate error.
-      return 0;
-    }
-
-  } else if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
-    if (!PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, key)) {
-      // PQDSA_KEY_set_raw_keypair_from_seed sets the appropriate error.
-      return 0;
-    }
-  }
-  return 1;
 }
 
 static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   PQDSA_KEY *key = pkey->pkey.pqdsa_key;
   const PQDSA *pqdsa = key->pqdsa;
-  if (key->private_key == NULL) {
+  if (key->seed == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
-  CBB pkcs8, algorithm, oid, private_key;
+  CBB pkcs8, algorithm, oid, private_key, seed_choice;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&private_key, key->private_key, pqdsa->private_key_len) ||
+      !CBB_add_asn1(&private_key, &seed_choice, CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
+      !CBB_add_bytes(&seed_choice, key->seed, pqdsa->keygen_seed_len) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;

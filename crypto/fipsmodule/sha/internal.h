@@ -92,7 +92,7 @@ struct keccak_st {
   size_t buf_load;                                 // used bytes in below buffer
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
   uint8_t pad;                                     // padding character
-  uint8_t state;                                  // denotes the keccak phase (absorb, squeeze, final)
+  uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
 };
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is

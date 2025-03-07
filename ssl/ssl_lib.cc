@@ -695,6 +695,15 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return nullptr;
   }
 
+  if (ctx->cipher_list) {
+    ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    ssl->config->cipher_list->Init(*ctx->cipher_list.get());
+  }
+  if (ctx->tls13_cipher_list) {
+    ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get());
+  }
+
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint.reset(
         OPENSSL_strdup(ctx->psk_identity_hint.get()));
@@ -2158,6 +2167,7 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
   if (ssl == NULL) {
     return NULL;
   }
+
   if (ssl->config && ssl->config->cipher_list) {
     return ssl->config->cipher_list->ciphers.get();
   }

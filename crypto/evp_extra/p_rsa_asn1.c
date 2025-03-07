@@ -85,7 +85,7 @@ static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int rsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // The IETF specification defines that the parameters must be
   // NULL. See RFC 3279, section 2.3.1.
   // There is also an ITU-T X.509 specification that is rarely seen,
@@ -105,7 +105,7 @@ static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   return 1;
 }
 
-static int rsa_pss_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int rsa_pss_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   RSASSA_PSS_PARAMS *pss = NULL;
   if (!RSASSA_PSS_parse_params(params, &pss)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -152,7 +152,7 @@ static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int rsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   if(pubkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -178,7 +178,7 @@ static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   return 1;
 }
 
-static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   RSASSA_PSS_PARAMS *pss = NULL;
   if (!RSASSA_PSS_parse_params(params, &pss)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);

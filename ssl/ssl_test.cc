@@ -2821,6 +2821,66 @@ TEST(SSLTest, FindingCipher) {
   ASSERT_FALSE(cipher3);
 }
 
+TEST(SSLTest, CheckSSLCipherInheritance) {
+  // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+
+  // Modify CTX ciphersuites
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
+
+  // Ensure SSL object inherits initial CTX cipher suites
+  STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
+  STACK_OF(SSL_CIPHER) *server_ciphers = SSL_get_ciphers(server.get());
+  ASSERT_TRUE(client_ciphers);
+  ASSERT_TRUE(server_ciphers);
+  ASSERT_EQ(sk_SSL_CIPHER_num(client_ciphers), 2u);
+  ASSERT_EQ(sk_SSL_CIPHER_num(server_ciphers), 2u);
+  const SSL_CIPHER *tls13_cipher = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
+  const SSL_CIPHER *tls12_cipher = SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_128_SHA & 0xFFFF);
+  ASSERT_TRUE(tls13_cipher);
+  ASSERT_TRUE(tls12_cipher);
+
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls12_cipher));
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls13_cipher));
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls12_cipher));
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls13_cipher));
+
+  SSL_set_shed_handshake_config(client.get(), 1);
+  SSL_set_shed_handshake_config(server.get(), 1);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Ensure we fall back to ctx once config is shed
+  client_ciphers = SSL_get_ciphers(client.get());
+  server_ciphers = SSL_get_ciphers(server.get());
+
+  tls13_cipher = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
+  tls12_cipher = SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_256_SHA & 0xFFFF);
+
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, tls13_cipher));
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, tls12_cipher));
+}
+
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Default) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
@@ -6503,6 +6563,12 @@ TEST(SSLTest, SetChainAndKeyMismatch) {
   ASSERT_FALSE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
                                          key.get(), nullptr));
   ERR_clear_error();
+
+  // Ensure |SSL_CTX_use_cert_and_key| also fails
+  bssl::UniquePtr<X509> x509_leaf = X509FromBuffer(GetChainTestCertificateBuffer());
+  ASSERT_FALSE(SSL_CTX_use_cert_and_key(ctx.get(), x509_leaf.get(),
+                                        key.get(), NULL, 1));
+  ERR_clear_error();
 }
 
 TEST(SSLTest, SetChainAndKey) {
@@ -6539,6 +6605,42 @@ TEST(SSLTest, SetChainAndKey) {
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
+}
+
+TEST(SSLTest, SetLeafChainAndKey) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+
+  ASSERT_EQ(nullptr, SSL_CTX_get0_chain(server_ctx.get()));
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = GetChainTestCertificate();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509> intermediate = GetChainTestIntermediate();
+  bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  ASSERT_TRUE(chain);
+  ASSERT_TRUE(PushToStack(chain.get(), std::move(intermediate)));
+
+  ASSERT_TRUE(SSL_CTX_use_cert_and_key(server_ctx.get(), leaf.get(),
+                                        key.get(), chain.get(), 1));
+
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Try setting on previously populated fields without an override
+  ASSERT_FALSE(SSL_CTX_use_cert_and_key(server_ctx.get(), leaf.get(),
+                                        key.get(), chain.get(), 0));
+  ERR_clear_error();
 }
 
 TEST(SSLTest, BuffersFailWithoutCustomVerify) {
