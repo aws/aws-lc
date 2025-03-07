@@ -32,6 +32,12 @@
 #include "../cpucap/internal.h"
 #include "internal.h"
 
+#if defined(NDEBUG)
+#define CHECK(x) (void) (x)
+#else
+#define CHECK(x) assert(x)
+#endif
+
 const uint8_t RFC8032_DOM2_PREFIX[DOM2_PREFIX_SIZE] = {
     'S', 'i', 'g', 'E', 'd', '2', '5', '5', '1', '9', ' ',
     'n', 'o', ' ', 'E', 'd', '2', '5', '5', '1', '9', ' ',
@@ -166,7 +172,7 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   // The existing public function is void, ED25519_keypair_internal can only
   // fail if the PWCT fails and we're in a callback build where AWS_LC_FIPS_failure
   // doesn't abort on FIPS failure.
-  assert(ED25519_keypair_internal(out_public_key, out_private_key));
+  CHECK(ED25519_keypair_internal(out_public_key, out_private_key));
 }
 
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
