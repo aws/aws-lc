@@ -16,7 +16,6 @@
 #include "internal.h"
 
 #define MAX_COLLISIONS 256
-#define NUM_ELEMENTS(x) (sizeof(x)/sizeof((x)[0]))
 
 static const std::vector<std::string> valid_extensions = {".pem", ".crt", ".cer", ".crl"};
 
@@ -56,13 +55,14 @@ static size_t evpmdsize = EVP_MD_size(EVP_sha1());
 // list may be created when the bucket for a type + hash combo has one
 // or more |HASH_ENTRY|'s and the cert/crl doesn't already exist in the table.
 static BUCKET *hash_table[257];
+const size_t num_elems = std::size(hash_table);
 
 // add_entry creates a mapping for |filename| in |hash_table|
 static void add_entry(enum Type type, uint32_t hash, const char *filename,
                      const uint8_t *digest) {
   BUCKET *bucket;
   HASH_ENTRY *entry = NULL;
-  uint32_t hash_idx = (type + hash) % NUM_ELEMENTS(hash_table);
+  uint32_t hash_idx = (type + hash) % num_elems;
 
   // Find an existing bucket if any for this |type| + |hash| combination at
   // |hash_idx|
@@ -230,8 +230,6 @@ static void generate_symlinks(const std::string &directory_path) {
     return;
   }
 
-  size_t num_elems = NUM_ELEMENTS(hash_table);
-
   for (size_t i = 0; i < num_elems; i++) {
     for (BUCKET* bucket = hash_table[i]; bucket; bucket = bucket->next) {
       // A given type + hash combo can only exist in one bucket. Therefore,
@@ -275,6 +273,7 @@ static void process_directory(const std::string &directory_path) {
     status_flag = false;
     return;
   }
+  OPENSSL_memset(hash_table, 0, sizeof(hash_table));
 
   // Process every file. Remove any symlinks matching the regex and create
   // mappings in the hashtable for any valid files.
@@ -305,6 +304,26 @@ static void process_directory(const std::string &directory_path) {
   // Pass 2: Process hash table to create symlinks.
   generate_symlinks(directory_path);
   closedir(dir);
+}
+
+static void cleanup_hash_table() {
+  for (size_t i = 0; i < num_elems; i++) {
+    BUCKET* current_bucket = hash_table[i];
+    while (current_bucket) {
+      HASH_ENTRY* current_entry = current_bucket->first_entry;
+      while (current_entry) {
+        HASH_ENTRY* next_entry = current_entry->next;
+        OPENSSL_free(current_entry->filename);
+        OPENSSL_free(current_entry);
+        current_entry = next_entry;
+      }
+      BUCKET* next_bucket = current_bucket->next;
+      OPENSSL_free(current_bucket);
+      current_bucket = next_bucket;
+    }
+
+    hash_table[i] = nullptr;
+  }
 }
 
 static const argument_t kArguments[] = {
@@ -386,6 +405,8 @@ bool RehashTool(const args_list_t &args) {
 
   // Process directory
   process_directory(directory_path);
+
+  cleanup_hash_table();
 
   return status_flag;
 }
