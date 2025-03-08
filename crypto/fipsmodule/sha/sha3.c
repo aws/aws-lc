@@ -110,12 +110,16 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 }
 
 // FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
+// FIPS202_Reset zero's |ctx| fields.
 static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
   OPENSSL_memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
   ctx->state = KECCAK1600_STATE_ABSORB;
 }
 
+// FIPS202_Init checks the correctness of the padding character and size of
+// the internal buffer. It initialises the |ctx| fields and returns 1 on
+// success and 0 on failure.
 static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
   if (pad != SHA3_PAD_CHAR && 
       pad != SHAKE_PAD_CHAR) { 
@@ -132,12 +136,16 @@ static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, siz
     return 0;
 }
 
+// FIPS202_Update checks the state of the |ctx| and processes intermediate buffer from
+// previous calls. It processes |data| in blocks through |Keccak1600_Absorb| and places
+// the rest in the intermediate buffer. FIPS202_Update fails if called from inappropriate
+// |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
 static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
 
-  if (ctx->state == KECCAK1600_STATE_SQUEEZE || 
+  if (ctx->state == KECCAK1600_STATE_SQUEEZE ||
       ctx->state == KECCAK1600_STATE_FINAL ) {
     return 0;
   }
@@ -181,7 +189,9 @@ static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 // FIPS202_Finalize processes padding and absorb of last input block
-// This function should be called once to finalize absorb and initiate squeeze phase
+// This function should be called once to finalize absorb and initiate
+// squeeze phase. FIPS202_Finalize fails if called from inappropriate
+// |ctx->state| or on |Keccak1600_Absorb| error. Otherwise, it returns 1.
 static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
@@ -364,13 +374,13 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   }
 
   if (len > 0) {
-    // Process an additional block if output length is not a multiple of block size. 
+    // Process an additional block if output length is not a multiple of block size.
     // Generated output is store in |ctx->buf|. Only requested bytes are transfered
     // to the output. The 'unused' output data is kept for processing in a sequenctual
     // call to SHAKE_Squeeze (incremental byte-wise SHAKE_Squeeze)
     Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size, ctx->state);
     OPENSSL_memcpy(md, ctx->buf, len);
-    ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed    
+    ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed
     ctx->state = KECCAK1600_STATE_SQUEEZE;
   }
 

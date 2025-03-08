@@ -409,53 +409,81 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
-// SHA3_Init initialises |ctx| fields through |FIPS202_Init| and 
-// returns 1 on success and 0 on failure.
+// SHA3_Init initialises |ctx| fields through |FIPS202_Init| and
+// returns 1 on success and 0 on failure. SHA3_Init fails if
+// |ctx| is nullptr or |bitlen| is inproper for SHA3 (any security
+// level) block size length. Otherwise, it propagates the |FIPS202_Init|
+// return value.
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
- // SHA3_Update check |ctx| pointer and |len| value, calls |FIPS202_Update| 
- // and returns 1 on success and 0 on failure.
+// SHA3_Update check |ctx| pointer and |len| value, calls |FIPS202_Update|
+// and returns 1 on success and 0 on failure. SHA3_Update fails if |ctx| is
+// nullptr or |data| is nullptr and |len| is different from 0.
+// Otherwise, it propagates the |FIPS202_Update| return value.
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
 // SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
-// It then calls |Keccak1600_Squeeze| and returns 1 on success 
-// and 0 on failure.
+// It then calls |Keccak1600_Squeeze| and returns 1 on success
+// and 0 on failure. SHA3_Final fails if |ctx| or |md| are nullptr or
+// on |FIPS202_Finalize| fail. Otherwise, it returns 1.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and 
-// returns 1 on success and 0 on failure.
+// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and
+// returns 1 on success and 0 on failure. SHAKE_Init fails if
+// |ctx| is nullptr or |block_size| is inproper for SHAKE128 or
+// SHAKE256. Otherwise, it propagates the |FIPS202_Init| return value.
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
-// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs 
-// input blocks via |FIPS202_Update|.
+// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs
+// input blocks via |FIPS202_Update|. SHAKE_Absorb fails if |ctx| is nullptr
+// or |data| is nullptr and |len| is different from 0. Otherwise, it
+// propagates the |FIPS202_Update| return value.
 int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
-// SHAKE_Squeeze pads the last data block and absorbs it through 
-// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental 
-// XOF output to |md| and returns 1 on success and 0 on failure. It can be 
-// called multiple times.
+// SHAKE_Squeeze pads the last data block and absorbs it through
+// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental
+// XOF output to |md| and returns 1 on success and 0 on failure. It can be
+// called multiple times. SHAKE_Squeeze fails if |ctx| or |md| are nullptr,
+// when called from inappropriate |ctx->state|, or on |FIPS202_Finalize| fail.
+// Otherwise, it returns 1.
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
 // success and 0 on failure. It should be called once to finalize absorb and
 // squeeze phases. Incremental XOF output should be generated via |SHAKE_Squeeze|.
+// SHAKE_Final fails if |ctx| or |md| are nullptr or on |FIPS202_Finalize| fail.
+// Otherwise, it returns 1.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE128_Init_x4 is a batched API that operates on four independent
 // Keccak bitstates. It initialises all four |ctx| fields through four
 // consecutive calls to |SHAKE_Init| and returns 1 on success and 0 on failure.
+// SHAKE128_Init_x4 succeeds when all four |SHAKE_Init| functions succeed.
+// It fails on the first |SHAKE_Init| function fail.
+// As part of MLKEM PQ algorithm: SHAKE128_Init_x4 always returns 1 since it
+// is called with a valid |ctx|.
 OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
 
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs all four inputs through four
 // consecutive calls to |SHAKE_Absorb| and returns 1 on success and 0 on failure.
+// SHAKE128_Absorb_once_x4 succeeds when all four |SHAKE_Absorb| functions succeed.
+// It fails on the first |SHAKE_Absorb| function fail.
+// As part of MLKEM PQ algorithm: SHAKE128_Absorb_once_x4 always returns 1 since it
+// is called with valid |ctx|, |data0|, |data1|, |data2|, |data3| and
+// |len| of 34 bytes.
 OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 
 // SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent
 // Keccak bitstates. It squeezes all four XOF digests through four consecutive
 // calls to |SHAKE_Squeeze| and returns 1 on success and 0 on failure.
+// SHAKE128_Squeezeblocks_x4 succeeds when all four |SHAKE_Squeeze| functions succeed.
+// It fails on the first |SHAKE_Squeeze| function fail.
+// As part of MLKEM PQ algorithm: SHAKE128_Squeezeblocks_x4 always returns 1 since it
+// is called with a valid |ctx|, |md0|, |md1|, |md2|, |md3| and with |len| value a
+// mutliple of block size lenght.
 OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t len);
 
@@ -463,6 +491,11 @@ OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t
 // Keccak bitstates. It writes all four |out_len|-byte outputs from
 // |in_len|-byte inputs to |out0|, |out1|, |out2|, |out3| and returns
 // 1 on success and 0 on failure.
+// SHAKE128_Init_x4 succeeds when all four |SHAKE256| functions succeed.
+// It fails on the first |SHAKE256| function fail.
+// As part of MLKEM PQ algorithm: SHAKE256_x4 always returns 1 since it
+// is called with valid |ctx|, |data0|, |data1|, |data2|, |data3|, |md0|, |md1|,
+// |md2|, |md3| and with |in_len| of 33 bytes.
 OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
                                   const uint8_t *data2, const uint8_t *data3,
                                   const size_t in_len, uint8_t *out0, uint8_t *out1,
