@@ -55,7 +55,7 @@ static size_t evpmdsize = EVP_MD_size(EVP_sha1());
 // list may be created when the bucket for a type + hash combo has one
 // or more |HASH_ENTRY|'s and the cert/crl doesn't already exist in the table.
 static BUCKET *hash_table[257];
-const size_t num_elems = std::size(hash_table);
+static const size_t num_elems = sizeof(hash_table) / sizeof(hash_table[0]);
 
 // add_entry creates a mapping for |filename| in |hash_table|
 static void add_entry(enum Type type, uint32_t hash, const char *filename,
