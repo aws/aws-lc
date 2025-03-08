@@ -2889,7 +2889,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHRSS(selected) ||
        !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
        !SpeedECKeyGenerateKey(true, selected) ||
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_AWSLC) && defined(OPENSSL_INTERNAL)
        !SpeedRefcount(selected) ||
 #endif
 #if defined(INTERNAL_TOOL)
