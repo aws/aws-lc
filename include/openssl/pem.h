@@ -381,6 +381,17 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
     BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
 
+// PEM_X509_INFO_write_bio writes the contents of the |X509_INFO| structure |xi|
+// to the |BIO| object |bp| in PEM format. If the X509_INFO contains a
+// certificate (x509), it will be written after the private key (if any). Other
+// fields in X509_INFO (such as CRLs) are currently ignored.
+//
+// It returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi,
+                                           EVP_CIPHER *enc, unsigned char *kstr,
+                                           int klen, pem_password_cb *cd,
+                                           void *u);
+
 // PEM_X509_INFO_read behaves like |PEM_X509_INFO_read_bio| but reads from a
 // |FILE|.
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp,

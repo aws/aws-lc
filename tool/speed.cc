@@ -38,7 +38,9 @@
 #include "openssl/cmac.h"
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
+#if defined(INTERNAL_TOOL)
 #include "../crypto/internal.h"
+#endif
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
@@ -68,7 +70,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
-#if !defined(OPENSSL_IS_AWSLC)
+#if !defined(OPENSSL_IS_AWSLC) || !defined(INTERNAL_TOOL)
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
 // power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
 // space.
@@ -2591,7 +2593,7 @@ static bool SpeedPKCS8(const std::string &selected) {
 }
 #endif
 
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_AWSLC) && defined(INTERNAL_TOOL)
 static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
   CRYPTO_refcount_t refcount = 0;
   size_t iterations_per_thread = 1000;
@@ -2978,7 +2980,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHRSS(selected) ||
        !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
        !SpeedECKeyGenerateKey(true, selected) ||
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_AWSLC) && defined(INTERNAL_TOOL)
        !SpeedRefcount(selected) ||
 #endif
 #if defined(INTERNAL_TOOL)
