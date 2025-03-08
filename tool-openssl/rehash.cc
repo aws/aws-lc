@@ -57,7 +57,7 @@ static size_t evpmdsize = EVP_MD_size(EVP_sha1());
 // or more |HASH_ENTRY|'s and the cert/crl doesn't already exist in the table.
 static BUCKET *hash_table[257];
 
-// Add an entry to the hash table
+// add_entry creates a mapping for |filename| in |hash_table|
 static void add_entry(enum Type type, uint32_t hash, const char *filename,
                      const uint8_t *digest) {
   BUCKET *bucket;
@@ -125,8 +125,8 @@ static void add_entry(enum Type type, uint32_t hash, const char *filename,
   bucket->num_entries++;
 }
 
-
-// returns one for all reasons such as not having a valid extension, more than one cert/crl in a file, or not being able to add to hashtable, and zero for error.
+// process_file checks if |filename| is valid and creates a mapping in
+// |hash_table|
 static void process_file(const std::string &filename,
                          const std::string &fullpath) {
   // Skip files with invalid extensions
@@ -185,11 +185,7 @@ static void process_file(const std::string &filename,
     return;
   }
 
-  // Now do the add_entry call. Need to simplofy this struct and remove the need_symlink field etc.
-  // Also need to add a type var above that we can then pass into add_entry.
-  // add_entry should update the errs var on its own.
   add_entry(type, X509_NAME_hash(x509_name), filename.c_str(), digest);
-
 }
 
 // symlink_check determines if |filename| is a symbolic link matching the regex
@@ -209,7 +205,8 @@ static void symlink_check(const std::string &filename,
     // If it's a symlink and matches our pattern, remove it
     if (S_ISLNK(path_stat.st_mode) && std::regex_match(filename, pattern)) {
       if (unlink(fullpath.c_str()) != 0) {
-        fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n", fullpath.c_str(), strerror(errno));
+        fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n",
+          fullpath.c_str(), strerror(errno));
         status_flag = false;
         return;
       }
@@ -217,19 +214,70 @@ static void symlink_check(const std::string &filename,
     }
 }
 
-static void process_directory(const std::string &directory_path) {
-  // MAYBE COUPLE THE FILE PROCESSING. SO in one pass we identify and remove any symlinks, and otherwise
-  // we process an appropriate file and at least store the info in the hashtable. Then we can create them all at once.
-
-  DIR* dir = opendir(directory_path.c_str());
-  if (dir == nullptr) {
-    fprintf(stderr, "Error opening directory '%s': %s\n", directory_path.c_str(), strerror(errno));
+static void generate_symlinks(const std::string &directory_path) {
+  char prev_dir[PATH_MAX];
+  if (getcwd(prev_dir, sizeof(prev_dir)) == NULL) {
+    fprintf(stderr, "Error getting current directory: %s\n", strerror(errno));
     status_flag = false;
     return;
   }
 
-  // Process every file. Remove any symlinks matching the regex.
-  // Otherwise, process the file and store its info in the hashtable.
+  // Change to target directory
+  if (chdir(directory_path.c_str()) != 0) {
+    fprintf(stderr, "Warning: Error changing to directory %s: %s\n",
+            directory_path.c_str(), strerror(errno));
+    status_flag = false;
+    return;
+  }
+
+  size_t num_elems = NUM_ELEMENTS(hash_table);
+
+  for (size_t i = 0; i < num_elems; i++) {
+    for (BUCKET* bucket = hash_table[i]; bucket; bucket = bucket->next) {
+      // A given type + hash combo can only exist in one bucket. Therefore,
+      // a counter per bucket is enough to determine suffix
+      int count = 0;
+
+      for (HASH_ENTRY* entry = bucket->first_entry; entry; entry = entry->next) {
+        char link_name[PATH_MAX];
+
+        // Format: <hash>.<count> for certs, <hash>.r<count> for CRLs
+        if (bucket->type == TYPE_CERT) {
+          snprintf(link_name, sizeof(link_name), "%08x.%d",
+            bucket->hash, count);
+        } else {  // TYPE_CRL
+          snprintf(link_name, sizeof(link_name), "%08x.r%d",
+            bucket->hash, count);
+        }
+        count++;
+
+        if (symlink(entry->filename, link_name) != 0) {
+          fprintf(stderr, "Warning: Error creating symlink '%s': %s\n",
+                  link_name, strerror(errno));
+          status_flag = false;
+        }
+      }
+    }
+  }
+
+  if (chdir(prev_dir) != 0) {
+    fprintf(stderr, "Warning: Error returning to original directory: %s\n",
+            strerror(errno));
+    status_flag = false;
+  }
+}
+
+static void process_directory(const std::string &directory_path) {
+  DIR* dir = opendir(directory_path.c_str());
+  if (dir == nullptr) {
+    fprintf(stderr, "Error opening directory '%s': %s\n",
+      directory_path.c_str(), strerror(errno));
+    status_flag = false;
+    return;
+  }
+
+  // Process every file. Remove any symlinks matching the regex and create
+  // mappings in the hashtable for any valid files.
   struct dirent* entry;
   const std::regex symlink_pattern("[0-9a-f]{8}\\.(?:r)?[0-9]+");
   while ((entry = readdir(dir)) != nullptr) {
@@ -254,8 +302,8 @@ static void process_directory(const std::string &directory_path) {
     process_file(filename, full_path);
   }
 
-  // Pass 2: Process generated hash table to create new symlinks.
-
+  // Pass 2: Process hash table to create symlinks.
+  generate_symlinks(directory_path);
   closedir(dir);
 }
 
