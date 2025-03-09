@@ -42,7 +42,7 @@ class newRandTest : public ubeTest {
  }
 };
 
-static void randBasicTestsNewThread(bool *returnFlag) {
+static void randBasicTests(bool *returnFlag) {
   // Do not use stack arrays for these. For example, Alpine OS has too low
   // default thread stack size limit to accommodate.
   uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(MAX_REQUEST_SIZE);
@@ -61,7 +61,10 @@ static void randBasicTestsNewThread(bool *returnFlag) {
 }
 
 TEST_F(newRandTest, Basic) {
-  ASSERT_TRUE(threadTest(number_of_threads, randBasicTestsNewThread));
+  bool returnFlag = false;
+  randBasicTests(&returnFlag);
+  ASSERT_TRUE(returnFlag);
+  ASSERT_TRUE(threadTest(number_of_threads, randBasicTests));
 }
 
 static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
