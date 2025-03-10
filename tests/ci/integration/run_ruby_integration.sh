@@ -71,7 +71,7 @@ function ruby_patch() {
         --branch ${branch}
 
     # Add directory of backport patches if branch is not master.
-    if [[ "${branch}" != "master" ]]; then
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         patch_dirs+=("${RUBY_BACKPORT_FOLDER}")
     fi
 
