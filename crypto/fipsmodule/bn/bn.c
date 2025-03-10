@@ -218,6 +218,11 @@ unsigned BN_num_bits_word(BN_ULONG l) {
   return bits;
 }
 
+// |BN_num_bits| and |BN_num_bytes| return ints in OpenSSL. In theory, a swap
+// from OpenSSL to AWS-LC is not type-safe. However, in practice, the bit length
+// should be representable by a int due to |BN_MAX_WORDS|. The maximum bit size
+// of a BIGNUM is right-shifted by 2. If bit-sizes can be
+// represented by an int, so the byte/word size.
 unsigned BN_num_bits(const BIGNUM *bn) {
   const int width = bn_minimal_width(bn);
   if (width == 0) {
@@ -231,7 +236,7 @@ unsigned BN_num_bytes(const BIGNUM *bn) {
   return (BN_num_bits(bn) + 7) / 8;
 }
 
-int BN_get_minimal_width(const BIGNUM *bn) {
+unsigned BN_get_minimal_width(const BIGNUM *bn) {
   return bn_minimal_width(bn);
 }
 
