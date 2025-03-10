@@ -61,9 +61,6 @@ static void randBasicTests(bool *returnFlag) {
 }
 
 TEST_F(newRandTest, Basic) {
-  bool returnFlag = false;
-  randBasicTests(&returnFlag);
-  ASSERT_TRUE(returnFlag);
   ASSERT_TRUE(threadTest(number_of_threads, randBasicTests));
 }
 
@@ -116,9 +113,6 @@ TEST_F(newRandTest, ReseedIntervalWhenUbeIsSupported) {
   if (!UbeIsSupported()) {
     GTEST_SKIP() << "UBE detection is not supported";
   }
-  bool returnFlag = false;
-  randReseedIntervalUbeIsSupportedTests(&returnFlag);
-  ASSERT_TRUE(returnFlag);
   ASSERT_TRUE(threadTest(number_of_threads, randReseedIntervalUbeIsSupportedTests));
 }
 
@@ -156,9 +150,6 @@ TEST_F(newRandTest, ReseedIntervalWhenUbeNotSupported) {
   if (UbeIsSupported()) {
     GTEST_SKIP() << "UBE detection is supported";
   }
-  bool returnFlag = false;
-  randReseedIntervalUbeNotSupportedTests(&returnFlag);
-  ASSERT_TRUE(returnFlag);
   ASSERT_TRUE(threadTest(number_of_threads, randReseedIntervalUbeNotSupportedTests));
 }
 
