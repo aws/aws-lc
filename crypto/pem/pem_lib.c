@@ -70,6 +70,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
 #include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
 
