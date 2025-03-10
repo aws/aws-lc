@@ -236,7 +236,9 @@ unsigned BN_num_bytes(const BIGNUM *bn) {
   return (BN_num_bits(bn) + 7) / 8;
 }
 
-unsigned BN_get_minimal_width(const BIGNUM *bn) {
+// ibmtpm performs a direct check of output to a signed value. This won't work
+// if below returns an unsigned value. Hence, the int return type.
+int BN_get_minimal_width(const BIGNUM *bn) {
   return bn_minimal_width(bn);
 }
 

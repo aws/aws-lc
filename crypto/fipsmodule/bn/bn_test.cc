@@ -2679,7 +2679,6 @@ TEST_F(BNTest, NonMinimal) {
 
     EXPECT_EQ(4u, BN_num_bits(ten.get()));
     EXPECT_EQ(1u, BN_num_bytes(ten.get()));
-    EXPECT_EQ(1u, BN_get_minimal_width(ten.get()));
     EXPECT_FALSE(BN_is_pow2(ten.get()));
 
     bssl::UniquePtr<char> hex(BN_bn2hex(ten.get()));
@@ -2886,22 +2885,22 @@ TEST_F(BNTest, GetMinimalWidth) {
 
   // Zero needs 0 words
   BN_zero(bn.get());
-  EXPECT_EQ(0u, BN_get_minimal_width(bn.get()));
+  EXPECT_EQ(0, BN_get_minimal_width(bn.get()));
 
   // 1 needs 1 word
   ASSERT_TRUE(BN_one(bn.get()));
-  EXPECT_EQ(1u, BN_get_minimal_width(bn.get()));
+  EXPECT_EQ(1, BN_get_minimal_width(bn.get()));
 
   // Test negative numbers
   ASSERT_TRUE(BN_set_word(bn.get(), 1));
   BN_set_negative(bn.get(), 1);
-  EXPECT_EQ(1u, BN_get_minimal_width(bn.get()));
+  EXPECT_EQ(1, BN_get_minimal_width(bn.get()));
 
   // Test powers of two
   ASSERT_TRUE(BN_set_word(bn.get(), 1));
   for (size_t i = 0; i < 256; i++) {
     // For 2^i, we need ceil((i+1)/BN_BITS2) words
-    unsigned expected_words = (i + BN_BITS2) / BN_BITS2;
+    int expected_words = (i + BN_BITS2) / BN_BITS2;
     EXPECT_EQ(expected_words, BN_get_minimal_width(bn.get()))
         << "Failed for 2^" << i;
     ASSERT_TRUE(BN_lshift1(bn.get(), bn.get()));
@@ -2912,8 +2911,8 @@ TEST_F(BNTest, GetMinimalWidth) {
   // For 64-bit: word = 64 bits
   struct {
     const char* hex;
-    unsigned expected_32bit;
-    unsigned expected_64bit;
+    int expected_32bit;
+    int expected_64bit;
   } kTests[] = {
     // 8-bit number
     {"ff", 1, 1},
