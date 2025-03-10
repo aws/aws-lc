@@ -296,10 +296,6 @@ int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
   return 1;
 }
 
-long BIO_get_mem_data(BIO *bio, char **contents) {
-  return BIO_ctrl(bio, BIO_CTRL_INFO, 0, contents);
-}
-
 int BIO_get_mem_ptr(BIO *bio, BUF_MEM **out) {
   return (int)BIO_ctrl(bio, BIO_C_GET_BUF_MEM_PTR, 0, out);
 }
