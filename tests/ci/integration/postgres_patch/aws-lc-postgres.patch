@@ -1,33 +1,74 @@
+# NOTE: There are also some minor error string differences for AWS-LC
+# vs OpenSSL in "src/test/ssl/t/001_ssltests.pl" that are not within
+# this patch (AWS-LC uses all caps, OpenSSL uses lower case).
+# We use sed in "tests/ci/integration/run_postgres_integration.sh" to
+# account for these differences instead to minimize churn in this patch.
+# If we do ever get the chance to submit a patch upstream, this patch
+# should account for those error string discrepencies.
+#
+diff --git a/configure b/configure
+index 93fddd6998..6a981cc247 100755
+--- a/configure
++++ b/configure
+@@ -12805,6 +12805,18 @@ if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+ #define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+ _ACEOF
+ 
++fi
++done
++
++  # Function specific to AWS-LC.
++  for ac_func in awslc_version_string
++do :
++  ac_fn_c_check_func "$LINENO" "awslc_version_string" "ac_cv_func_awslc_version_string"
++if test "x$ac_cv_func_awslc_version_string" = xyes; then :
++  cat >>confdefs.h <<_ACEOF
++#define HAVE_AWSLC_VERSION_STRING 1
++_ACEOF
++
+ fi
+ done
+ 
+diff --git a/configure.ac b/configure.ac
+index b6d02f5ecc..f2ba62b35d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1371,6 +1371,8 @@ if test "$with_ssl" = openssl ; then
+   AC_CHECK_FUNCS([SSL_CTX_set_cert_cb])
+   # Function introduced in OpenSSL 1.1.1, not in LibreSSL.
+   AC_CHECK_FUNCS([X509_get_signature_info SSL_CTX_set_num_tickets])
++  # Function specific to AWS-LC.
++  AC_CHECK_FUNCS([awslc_version_string])
+   AC_DEFINE([USE_OPENSSL], 1, [Define to 1 to build with OpenSSL support. (--with-ssl=openssl)])
+ elif test "$with_ssl" != no ; then
+   AC_MSG_ERROR([--with-ssl must specify openssl])
+diff --git a/src/include/pg_config.h.in b/src/include/pg_config.h.in
+index db6454090d..0fa2ebe3a3 100644
+--- a/src/include/pg_config.h.in
++++ b/src/include/pg_config.h.in
+@@ -364,6 +364,9 @@
+ /* Define to 1 if you have the `SSL_CTX_set_num_tickets' function. */
+ #undef HAVE_SSL_CTX_SET_NUM_TICKETS
+ 
++/* Define to 1 if you have the declaration of `awslc_version_string'. */
++#undef HAVE_AWSLC_VERSION_STRING
++
+ /* Define to 1 if you have the <stdint.h> header file. */
+ #undef HAVE_STDINT_H
+
 diff --git a/src/test/ssl/t/002_scram.pl b/src/test/ssl/t/002_scram.pl
-index dd93224124..44f570c8e2 100644
+index fffc51f404..93e2b4f8ae 100644
 --- a/src/test/ssl/t/002_scram.pl
 +++ b/src/test/ssl/t/002_scram.pl
-@@ -155,14 +155,18 @@ $node->connect_ok(
- # Now test with a server certificate that uses the RSA-PSS algorithm.
- # This checks that the certificate can be loaded and that channel binding
- # works. (see bug #17760)
--if ($supports_rsapss_certs)
--{
--	switch_server_cert($node, certfile => 'server-rsapss');
--	$node->connect_ok(
--		"$common_connstr user=ssltestuser channel_binding=require",
--		"SCRAM with SSL and channel_binding=require, server certificate uses 'rsassaPss'",
--		log_like => [
--			qr/connection authenticated: identity="ssltestuser" method=scram-sha-256/
--		]);
--}
-+#
-+# AWS-LC does not support RSA-PSS certificates in libssl. If there is a relevant
-+# feature request for this, cut an issue to our public repository.
-+#
-+# if ($supports_rsapss_certs)
-+# {
-+# 	switch_server_cert($node, certfile => 'server-rsapss');
-+# 	$node->connect_ok(
-+# 		"$common_connstr user=ssltestuser channel_binding=require",
-+# 		"SCRAM with SSL and channel_binding=require, server certificate uses 'rsassaPss'",
-+# 		log_like => [
-+# 			qr/connection authenticated: identity="ssltestuser" method=scram-sha-256/
-+# 		]);
-+# }
- done_testing();
+@@ -46,8 +46,10 @@ my $SERVERHOSTCIDR = '127.0.0.1/32';
+ 
+ # Determine whether build supports detection of hash algorithms for
+ # RSA-PSS certificates.
++# AWS-LC does not support RSA-PSS certificates in libssl.
+ my $supports_rsapss_certs =
+-  check_pg_config("#define HAVE_X509_GET_SIGNATURE_INFO 1");
++  check_pg_config("#define HAVE_X509_GET_SIGNATURE_INFO 1") &&
++  !check_pg_config("#define HAVE_AWSLC_VERSION_STRING 1");
+ 
+ # Allocation of base connection string shared among multiple tests.
+ my $common_connstr;
