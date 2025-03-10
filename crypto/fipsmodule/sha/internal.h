@@ -476,16 +476,16 @@ OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
 OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 
-// SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent
-// Keccak bitstates. It squeezes all four XOF digests through four consecutive
-// calls to |SHAKE_Squeeze| and returns 1 on success and 0 on failure.
+// SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
+// bitstates. It squeezes |blks| number of blocks for all four XOF digests through
+// four consecutive calls to |SHAKE_Squeeze| and returns 1 on success and 0 on failure.
 // SHAKE128_Squeezeblocks_x4 succeeds when all four |SHAKE_Squeeze| functions succeed.
 // It fails on the first |SHAKE_Squeeze| function fail.
 // As part of MLKEM PQ algorithm: SHAKE128_Squeezeblocks_x4 always returns 1 since it
-// is called with a valid |ctx|, |md0|, |md1|, |md2|, |md3| and with |len| value a
-// mutliple of block size lenght.
+// is called with a valid |ctx|, |md0|, |md1|, |md2|, |md3| and with |blks| number of
+// blocks.
 OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
-                                  KECCAK1600_CTX_x4 *ctx, size_t len);
+                                  KECCAK1600_CTX_x4 *ctx, size_t blks);
 
 // SHAKE256_x4 is a batched API that operates on four independent
 // Keccak bitstates. It writes all four |out_len|-byte outputs from

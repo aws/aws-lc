@@ -410,12 +410,12 @@ int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const voi
 }
 
 int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
-                                  KECCAK1600_CTX_x4 *ctx, size_t len) {
+                                  KECCAK1600_CTX_x4 *ctx, size_t blks) {
 
-  int ok = (SHAKE_Squeeze(md0, &(*ctx)[0], len) &&
-            SHAKE_Squeeze(md1, &(*ctx)[1], len) &&
-            SHAKE_Squeeze(md2, &(*ctx)[2], len) &&
-            SHAKE_Squeeze(md3, &(*ctx)[3], len));
+  int ok = (SHAKE_Squeeze(md0, &(*ctx)[0], blks * SHAKE128_BLOCKSIZE) &&
+            SHAKE_Squeeze(md1, &(*ctx)[1], blks * SHAKE128_BLOCKSIZE) &&
+            SHAKE_Squeeze(md2, &(*ctx)[2], blks * SHAKE128_BLOCKSIZE) &&
+            SHAKE_Squeeze(md3, &(*ctx)[3], blks * SHAKE128_BLOCKSIZE));
 
     return ok;
 }
