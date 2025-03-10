@@ -110,7 +110,6 @@
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
 #include <openssl/crypto.h>
-#include <openssl/pem.h>
 #include <openssl/ex_data.h>
 #include <openssl/service_indicator.h>
 #include <openssl/stack.h>
