@@ -109,7 +109,9 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
   return out;
 }
 
-// FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
+/*
+ * FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
+ */
 // FIPS202_Reset zero's |ctx| fields.
 static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
   OPENSSL_memset(ctx->A, 0, sizeof(ctx->A));
@@ -218,7 +220,9 @@ static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   return 1;
 }
 
-// SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
+/*
+ * SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
+ */
 int SHA3_Init(KECCAK1600_CTX *ctx, size_t bit_len) {
   if (ctx == NULL) {
     return 0;
@@ -271,6 +275,9 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   return 1;
 }
 
+/*
+ * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
+ */
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
   if (ctx == NULL) {
     return 0;
@@ -388,6 +395,9 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   return 1;
 }
 
+/*
+ * SHAKE batched (x4) APIs implement SHAKE functionalities in batches of four on top of SHAKE API layer
+ */
 int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx) {
 
   int ok = (SHAKE_Init(&(*ctx)[0], SHAKE128_BLOCKSIZE) &&
