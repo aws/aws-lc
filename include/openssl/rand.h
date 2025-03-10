@@ -38,7 +38,8 @@ OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 // RAND_bytes_with_user_prediction_resistance is functionally equivalent to
 // |RAND_bytes| but also provides a way for the caller to inject prediction
 // resistance material using the argument |user_pred_resistance|.
-// |user_pred_resistance| must be filled with |RAND_PRED_RESISTANCE_LEN| bytes.
+// |user_pred_resistance| must not be NULL and |user_pred_resistance| must be
+// filled with |RAND_PRED_RESISTANCE_LEN| bytes.
 OPENSSL_EXPORT int RAND_bytes_with_user_prediction_resistance(uint8_t *out,
   size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
 
