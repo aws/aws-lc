@@ -1,14 +1,11 @@
+#ifndef OPENSSL_WINDOWS
 #include <regex>
-#include <filesystem>
 #include <dirent.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <limits.h>
 #include <errno.h>
 #include <string.h>
-#include <ctype.h>
 #include <sys/stat.h>
-#include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
@@ -410,3 +407,10 @@ bool RehashTool(const args_list_t &args) {
 
   return status_flag;
 }
+#else
+#include <stdio.h>
+bool RehashTool(const args_list_t &args) {
+  fprintf(stderr, "RehashTool: Not implemented for windows\n");
+  retrun false;
+}
+#endif
