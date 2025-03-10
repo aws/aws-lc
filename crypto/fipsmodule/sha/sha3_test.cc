@@ -530,8 +530,8 @@ TEST(SHAKETest_x4, RandomMessages) {
                                                         &ctx, RAND_OUT_BLCKS));
 
     for (int j = 0; j < BATCHED_x4; j++) {
-      EXPECT_EQ(EncodeHex(bssl::MakeConstSpan(digest_x4[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE)),
-                EncodeHex(bssl::MakeConstSpan(digest[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE)));
+      EXPECT_EQ(Bytes(digest_x4[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE),
+                Bytes(digest[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE));
     }
   }
 
