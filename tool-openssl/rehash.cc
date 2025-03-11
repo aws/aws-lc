@@ -399,7 +399,9 @@ bool RehashTool(const args_list_t &args) {
 #else
 #include <stdio.h>
 #include <stdbool.h>
+#include "internal.h"
 #include "../tool/internal.h"
+
 bool RehashTool(const args_list_t &args) {
   fprintf(stderr, "RehashTool: Not implemented for windows\n");
   return false;

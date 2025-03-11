@@ -14,7 +14,7 @@ protected:
   BUCKET** hash_table = get_table();
 
   void makePathInDir(char *full_path, const char *dir, const char *filename) {
-    snprintf(full_path, PATH_MAX, "%s/%s", dir, filename);
+    snprintf(full_path, 255, "%s/%s", dir, filename);
   }
 
   void SetUp() override {
