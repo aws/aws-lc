@@ -178,6 +178,7 @@ TEST_F(RehashTest, RehashHelp) {
 }
 
 TEST_F(RehashTest, InvalidDirectory) {
+  errno = 0;
   args_list_t args = {"/random/dir"};
   bool result = RehashTool(args);
   ASSERT_FALSE(result);
@@ -185,9 +186,9 @@ TEST_F(RehashTest, InvalidDirectory) {
 }
 
 TEST_F(RehashTest, MoreThanOneDirectory) {
+  errno = 0;
   args_list_t args = {"/random/dir", "/random/dir2"};
   bool result = RehashTool(args);
-  fprintf(stderr, "filename %s", cert1_path);
   ASSERT_FALSE(result);
   // errno should not be set
   ASSERT_EQ(errno, 0);
