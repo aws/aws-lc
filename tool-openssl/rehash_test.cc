@@ -78,7 +78,7 @@ protected:
   char cert2_path[256];
   char crl1_path[256];
   char crl2_path[256];
-  char test_dir[256];
+  char test_dir[128];
 };
 
 // Test hashtable Bucket collisions at an idx
