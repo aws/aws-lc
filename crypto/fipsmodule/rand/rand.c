@@ -359,6 +359,7 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 // resistance. The latter ensures that |user_pred_resistance| is not used.
 //
 // If the state has just been initialized, then |ctr_drbg_state_is_fresh| is 1.
+// Otherwise, 0.
 static void rand_bytes_core(
   struct rand_thread_local_state *state,
   uint8_t *out, size_t out_len,
