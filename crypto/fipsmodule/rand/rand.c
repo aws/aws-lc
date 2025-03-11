@@ -496,7 +496,7 @@ static void rand_bytes_private(uint8_t *out, size_t out_len,
     rand_state_initialize(state);
     thread_local_list_add_node(state);
 
-    ctr_drbg_state_is_fresh = 0;
+    ctr_drbg_state_is_fresh = 1;
   }
 
   rand_bytes_core(state, out, out_len, user_pred_resistance,
