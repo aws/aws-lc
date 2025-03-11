@@ -185,6 +185,15 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   close(fd);
   return strnlen(buffer, PATH_MAX);
 }
+
+size_t createTempDIRpath(char buffer[PATH_MAX]) {
+  snprintf(buffer, PATH_MAX, "/tmp/awslcTestDirXXXXXX");
+  if (mkdtemp(buffer) == NULL) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+
 FILE* createRawTempFILE() {
   return tmpfile();
 }

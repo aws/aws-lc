@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #ifndef OPENSSL_WINDOWS
 #include <regex>
 #include <dirent.h>
@@ -24,25 +27,6 @@ static const std::vector<std::string> valid_extensions = {".pem", ".crt", ".cer"
 // to use this variable as a counter instead of a flag.
 static bool status_flag = true;
 
-typedef struct hash_entry_st {        // Represents a single certificate/CRL file
-  struct hash_entry_st *next;         // Links to next entry in same bucket
-  char *filename;                     // Actual filename
-  uint8_t digest[EVP_MAX_MD_SIZE];    // File's cryptographic digest
-} HASH_ENTRY;
-
-typedef struct bucket_st {    // Groups entries with same hash
-  struct bucket_st *next;     // Links to next bucket in hash table slot
-  HASH_ENTRY *first_entry;    // Start of entry list
-  HASH_ENTRY *last_entry;     // End of entry list
-  uint32_t hash;              // Hash value of the certificates/CRLs
-  uint16_t type;              // CERT or CRL Bucket
-  uint16_t num_entries;       // Count of entries
-} BUCKET;
-
-enum Type {
-    TYPE_CERT=0, TYPE_CRL=1
-};
-
 static size_t evpmdsize = EVP_MD_size(EVP_sha1());
 
 // Each index may point to a list of |BUCKET|'s. Each |BUCKET| may point
@@ -52,10 +36,14 @@ static size_t evpmdsize = EVP_MD_size(EVP_sha1());
 // list may be created when the bucket for a type + hash combo has one
 // or more |HASH_ENTRY|'s and the cert/crl doesn't already exist in the table.
 static BUCKET *hash_table[257];
-static const size_t num_elems = sizeof(hash_table) / sizeof(hash_table[0]);
+static const size_t num_elems = OPENSSL_ARRAY_SIZE(hash_table);
+
+BUCKET** get_table() {
+  return hash_table;
+}
 
 // add_entry creates a mapping for |filename| in |hash_table|
-static void add_entry(enum Type type, uint32_t hash, const char *filename,
+void add_entry(enum Type type, uint32_t hash, const char *filename,
                      const uint8_t *digest) {
   BUCKET *bucket;
   HASH_ENTRY *entry = NULL;
@@ -303,7 +291,7 @@ static void process_directory(const std::string &directory_path) {
   closedir(dir);
 }
 
-static void cleanup_hash_table() {
+void cleanup_hash_table() {
   for (size_t i = 0; i < num_elems; i++) {
     BUCKET* current_bucket = hash_table[i];
     while (current_bucket) {
