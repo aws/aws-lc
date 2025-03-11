@@ -194,12 +194,6 @@ TEST_F(RehashTest, MoreThanOneDirectory) {
   ASSERT_EQ(errno, 0);
 }
 
-TEST_F(RehashTest, ValidDirectory2) {
-  args_list_t args = {test_dir};
-  bool result = RehashTool(args);
-  ASSERT_TRUE(result);
-}
-
 // We cannot force the order in which rehash processes files from the given
 // directory. Therefore, we cannot deterministically know the symlink # suffix
 // for a given filename. We only check that the correct symlinks exist, with

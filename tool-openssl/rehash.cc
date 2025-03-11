@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #if !defined(OPENSSL_WINDOWS) && !defined(_WIN32)
-#include <regex>
+#include <regex.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <limits.h>
@@ -177,8 +177,7 @@ static void process_file(const std::string &filename,
 // [0-9a-f]{8}.([r])?[0-9]+.
 // If so, it deletes the symbolic link and sets |is_symlink| to true.
 static void symlink_check(const std::string &filename,
-                          const std::string &fullpath,
-                          const std::regex &pattern, bool &is_symlink) {
+                          const std::string &fullpath, bool &is_symlink) {
     struct stat path_stat;
 
     if (lstat(fullpath.c_str(), &path_stat) != 0) {
@@ -187,16 +186,28 @@ static void symlink_check(const std::string &filename,
       return;
     }
 
+    regex_t regex;
+    int ret = regcomp(&regex, "^[0-9a-f]{8}\\.([r])?[0-9]+$", REG_EXTENDED | REG_NOSUB);
+    if (ret) {
+      fprintf(stderr, "Could not compile regex\n");
+      return;
+    }
+
     // If it's a symlink and matches our pattern, remove it
-    if (S_ISLNK(path_stat.st_mode) && std::regex_match(filename, pattern)) {
-      if (unlink(fullpath.c_str()) != 0) {
-        fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n",
-          fullpath.c_str(), strerror(errno));
-        status_flag = false;
-        return;
+    if (S_ISLNK(path_stat.st_mode)) {
+      ret = regexec(&regex, filename.c_str(), 0, NULL, 0);
+      if (ret == 0) { // regex matched
+        if (unlink(fullpath.c_str()) != 0) {
+          regfree(&regex);
+          fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n",
+            fullpath.c_str(), strerror(errno));
+          status_flag = false;
+          return;
+        }
       }
       is_symlink = true;
     }
+    regfree(&regex);
 }
 
 static void generate_symlinks(const std::string &directory_path) {
@@ -263,7 +274,6 @@ static void process_directory(const std::string &directory_path) {
   // Process every file. Remove any symlinks matching the regex and create
   // mappings in the hashtable for any valid files.
   struct dirent* entry;
-  const std::regex symlink_pattern("[0-9a-f]{8}\\.(?:r)?[0-9]+");
   while ((entry = readdir(dir)) != nullptr) {
     std::string filename(entry->d_name);
 
@@ -276,7 +286,7 @@ static void process_directory(const std::string &directory_path) {
     // Check if it's a symlink matching the regex, continue processing even with
     // errors.
     bool is_symlink = false;
-    symlink_check(filename, full_path, symlink_pattern, is_symlink);
+    symlink_check(filename, full_path, is_symlink);
     if (is_symlink) {
       continue;
     }
