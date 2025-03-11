@@ -68,36 +68,27 @@ static int overrideGetPredictionResistance(
   return 1;
 }
 
-static void cacheAssertReseed() {
+static bool assertSeedOrReseed(size_t expected_count, std::function<bool()> func,
+  const char *error_text = "") {
+
   cached_get_seed_count = get_seed_count;
   cached_get_extra_entropy_count = get_extra_entropy_count;
-}
 
-static bool assertReseed(size_t expected_count, const char *error_text = "") {
+  if (!func()) {
+    return false;
+  }
+
   if (cached_get_seed_count + expected_count != get_seed_count ||
       cached_get_extra_entropy_count + expected_count != get_extra_entropy_count) {
-    std::cerr << "Entropy source method count mismatch " << error_text << '\n'
+    std::cerr << "Entropy source method expected count mismatch " << error_text << '\n'
               << "  Get seed count: expected=" << (cached_get_seed_count + expected_count)
               << ", actual=" << get_seed_count << '\n'
               << "  Get extra entropy count: expected=" << (cached_get_extra_entropy_count + expected_count)
               << ", actual=" << get_extra_entropy_count << '\n';
     return false;
   }
+
   return true;
-}
-
-static bool assertReseed(size_t expected_count, std::function<int()> func,
-  const char *error_text = "") {
-  cacheAssertReseed();
-  if (func() != 1) {
-    return false;
-  }
-  return assertReseed(expected_count, error_text);
-}
-
-static bool assertSeed(size_t expected_count, std::function<int()> func,
-  const char *error_text = "") {
-  return assertReseed(expected_count, func, error_text);
 }
 
 static void overrideEntropySourceMethodsCount() {
@@ -112,7 +103,7 @@ static void overrideEntropySourceMethodsCount() {
   override_entropy_source_method_FOR_TESTING(&entropy_methods);
 }
 
-class randConcurrencyTest : public::testing::Test {
+class randIsolatedTest : public::testing::Test {
   private:
     UbeBase ube_base_;
 
@@ -134,16 +125,16 @@ class randConcurrencyTest : public::testing::Test {
     }
 };
 
-static bool generateRandomness(size_t req_Len, const char *error_text = "Failed") {
+static bool generateRandomness(size_t req_Len, const char *error_text = "") {
   std::vector<uint8_t> output_rand(req_Len);
   if (!RAND_bytes(output_rand.data(), output_rand.size())) {
-    std::cerr << error_text << '\n';
+    std::cerr << "Generating randomness failed " << error_text << '\n';
     return false;
   }
   return true;
 }
 
-TEST_F(randConcurrencyTest, BasicThread) {
+TEST_F(randIsolatedTest, BasicThread) {
 
   // Test reseeds are observed when spawning new threads.
   auto testFunc = [this]() {
@@ -154,7 +145,7 @@ TEST_F(randConcurrencyTest, BasicThread) {
 
     std::function<void(bool*)> threadFunc = [this](bool *result) {
       // In a fresh thread, we expect a seed.
-      bool test1 = assertSeed(1, []() {
+      bool test1 = assertSeedOrReseed(1, []() {
         return generateRandomness(request_len);
       });
 
@@ -165,7 +156,7 @@ TEST_F(randConcurrencyTest, BasicThread) {
         expect_reseed = 0;
       }
 
-      bool test2 = assertReseed(expect_reseed, []() {
+      bool test2 = assertSeedOrReseed(expect_reseed, []() {
         return generateRandomness(request_len);
       });
 
@@ -181,27 +172,7 @@ TEST_F(randConcurrencyTest, BasicThread) {
 
 #if !defined(OPENSSL_WINDOWS)
 
-static bool assertReseedChild(size_t expected_count, std::function<int()> func) {
-  return assertReseed(expected_count, func, "child");
-}
-
-static bool assertReseedParent(size_t expected_count, std::function<int()> func) {
-  return assertReseed(expected_count, func, "parent");
-}
-
-static bool assertSeedChild(size_t expected_count, std::function<int()> func) {
-  return assertSeed(expected_count, func, "child");
-}
-
-static bool generateRandomnessChild(void) {
-  return generateRandomness(request_len, "Failed in child");
-}
-
-static bool generateRandomnessParent(void) {
-  return generateRandomness(request_len, "Failed in parent");
-}
-
-TEST_F(randConcurrencyTest, BasicFork) {
+TEST_F(randIsolatedTest, BasicFork) {
 
   // Test reseed is observed when forking.
   auto testFuncSingleFork = [this]() {
@@ -214,9 +185,9 @@ TEST_F(randConcurrencyTest, BasicFork) {
       []() {
         // In child. If fork detection is supported, we expect a reseed.
         // If fork detection is not enabled, we also expect a reseed.
-        return assertReseedChild(1, []() {
-          return generateRandomnessChild();
-        });
+        return assertSeedOrReseed(1, []() {
+          return generateRandomness(request_len, "child");
+        }, "child");
       },
       [this]() {
         // In parent. If UBE detection is not supported, we expect a reseed
@@ -226,9 +197,9 @@ TEST_F(randConcurrencyTest, BasicFork) {
           expect_reseed = 0;
         }
 
-        return assertReseedParent(expect_reseed, []() {
-          return generateRandomnessParent();
-        });
+        return assertSeedOrReseed(expect_reseed, []() {
+          return generateRandomness(request_len, "parent");
+        }, "parent");
       }
     );
 
@@ -252,9 +223,9 @@ TEST_F(randConcurrencyTest, BasicFork) {
         // If fork detection is not enabled, we also expect a seed in each
         // thread.
         std::function<void(bool*)> threadFunc = [](bool *result) {
-          *result = assertSeedChild(1, []() {
-            return generateRandomnessChild();
-          });
+          *result = assertSeedOrReseed(1, []() {
+            return generateRandomness(request_len, "child");
+          }, "child");
         };
         return threadTest(number_of_threads, threadFunc);
       },
@@ -266,9 +237,9 @@ TEST_F(randConcurrencyTest, BasicFork) {
           expect_reseed = 0;
         }
 
-        return assertReseedParent(expect_reseed, []() {
-          return generateRandomnessParent();
-        });
+        return assertSeedOrReseed(expect_reseed, []() {
+          return generateRandomness(request_len, "parent");
+        }, "parent");
       }
     );
 
@@ -278,3 +249,32 @@ TEST_F(randConcurrencyTest, BasicFork) {
   EXPECT_EXIT(testFuncSingleForkThenThread(), ::testing::ExitedWithCode(0), "");
 }
 #endif
+
+TEST_F(randIsolatedTest, BasicInitialization) {
+
+  // Test only one seed occurs on initialization.
+  auto testFunc = [this]() {
+
+    // Setup entropy source method override.
+    overrideEntropySourceMethodsCount();
+
+    bool test1 = assertSeedOrReseed(1, []() {
+      return generateRandomness(request_len);
+    });
+
+    // In parent. If UBE detection is not supported, we expect a reseed on
+    // second invocation. Otherwise, no reseed is expected.
+    size_t expect_reseed = 1;
+    if (UbeIsSupported()) {
+      expect_reseed = 0;
+    }
+
+    bool test2 = assertSeedOrReseed(expect_reseed, []() {
+      return generateRandomness(request_len);
+    });
+
+    exit((test1 && test2) ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}

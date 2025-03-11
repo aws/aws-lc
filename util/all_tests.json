@@ -124,7 +124,7 @@
   },
   {
     "cmd": [
-      "crypto/rand_concurrency_test"
+      "crypto/rand_isolated_test"
     ]
   },
   {
