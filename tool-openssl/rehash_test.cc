@@ -1,11 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
-#ifndef OPENSSL_WINDOWS
 
+#if !defined(OPENSSL_WINDOWS) && !defined(_WIN32)
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
-#include <openssl/evp.h>
-#include <openssl/digest.h>
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "test_util.h"
@@ -76,11 +74,11 @@ protected:
     return count;
   }
 
-  char cert1_path[PATH_MAX];
-  char cert2_path[PATH_MAX];
-  char crl1_path[PATH_MAX];
-  char crl2_path[PATH_MAX];
-  char test_dir[PATH_MAX];
+  char cert1_path[256];
+  char cert2_path[256];
+  char crl1_path[256];
+  char crl2_path[256];
+  char test_dir[256];
 };
 
 // Test hashtable Bucket collisions at an idx
@@ -259,6 +257,5 @@ TEST_F(RehashTest, ValidDirectory) {
     unlink(link_path);
   }
 }
-
 
 #endif

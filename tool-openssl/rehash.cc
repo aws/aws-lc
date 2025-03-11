@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef OPENSSL_WINDOWS
+#if !defined(OPENSSL_WINDOWS) && !defined(_WIN32)
 #include <regex>
 #include <dirent.h>
 #include <unistd.h>
@@ -395,6 +395,7 @@ bool RehashTool(const args_list_t &args) {
 
   return status_flag;
 }
+
 #else
 #include <stdio.h>
 bool RehashTool(const args_list_t &args) {
