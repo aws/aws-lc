@@ -139,6 +139,16 @@ char *X509_TRUST_get0_name(const X509_TRUST *xp) { return xp->name; }
 
 int X509_TRUST_get_trust(const X509_TRUST *xp) { return xp->trust; }
 
+void X509_TRUST_cleanup(void) {
+      // This is an intentional No-Op (no operation) function.
+      //
+      // Historical Context:
+      // - This function existed in OpenSSL versions prior to 1.1.0
+      // - AWS-LC does not support static trust settings storage
+      //
+      // - Kept for API compatibility with older versions
+}
+
 static int trust_1oidany(const X509_TRUST *trust, X509 *x) {
   if (x->aux && (x->aux->trust || x->aux->reject)) {
     return obj_trust(trust->arg1, x);

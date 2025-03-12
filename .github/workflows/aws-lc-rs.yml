@@ -52,6 +52,11 @@ jobs:
         working-directory: ./aws-lc-rs
         run: |
           cargo test -p aws-lc-sys --features bindgen
+      - name: Delete current symbol files and headers
+        working-directory: ./aws-lc-rs
+        run: |
+          rm -rf ./aws-lc-sys/symbols/* ./aws-lc-sys/generated-include/*
+          mkdir -p ./aws-lc-sys/symbols ./aws-lc-sys/generated-include/openssl
       - name: Collect symbols
         working-directory: ./aws-lc-rs
         run: |

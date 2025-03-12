@@ -39,7 +39,7 @@ The AWS-LC-FIPS v2.0 module uses passive entropy by default and the specific ent
 
 ## Breaking known-answer and continuous tests
 
-Each known-answer test (KAT) uses a unique, random input value. `util/fipstools/break-kat.go` contains a listing of those values and can be used to corrupt a given test in a binary. Since changes to the KAT input values will invalidate the integrity test, `BORINGSSL_FIPS_BREAK_TESTS` can be defined in `fips_break_tests.h` to disable it for the purposes of testing.
+Each known-answer test (KAT) uses a unique, random input value. `util/fipstools/break-kat.go` contains a listing of those values and can be used to corrupt a given test in a binary. Since changes to the KAT input values will invalidate the integrity test, `BORINGSSL_FIPS_BREAK_TESTS` can be defined using CMake CMAKE_C_FLAGS to disable it for the purposes of testing.
 
 Some FIPS tests cannot be broken by replacing a known string in the binary. For those, when `BORINGSSL_FIPS_BREAK_TESTS` is defined, the environment variable `BORINGSSL_FIPS_BREAK_TEST` can be set to one of a number of values in order to break the corresponding test:
 
