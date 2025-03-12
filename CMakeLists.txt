@@ -862,6 +862,7 @@ if(ARCH STREQUAL "x86" AND NOT OPENSSL_NO_SSE2_FOR_TESTING)
   # See: https://github.com/aws/aws-lc/commit/6fe8dcbe96e580ea85233fdb98a142e42951b70b
   if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
   endif()
 endif()
 
