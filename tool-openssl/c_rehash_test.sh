@@ -2,8 +2,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# Run c_rehash with --help
-output=$(./c_rehash --help 2>&1)
+# Run c_rehash with -help
+output=$(./c_rehash -help 2>&1)
 
 # Check for either expected output
 if [[ "$output" =~ "Usage: openssl rehash" ]] || [[ "$output" =~ "RehashTool: Not implemented for windows" ]]; then
