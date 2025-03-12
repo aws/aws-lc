@@ -863,6 +863,7 @@ if(ARCH STREQUAL "x86" AND NOT OPENSSL_NO_SSE2_FOR_TESTING)
   if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -msse2")
   endif()
 endif()
 
