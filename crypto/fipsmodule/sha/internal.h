@@ -380,7 +380,7 @@ OPENSSL_EXPORT int SHA512_256_get_state(
  * of SHA3/SHAKE API layer
  *
  * SHA3/SHAKE single-shot functions never fail when the later call-discipline is
- * adhered to: (a) the pointers passed to the functions are valid, is satisfied.
+ * adhered to: (a) the pointers passed to the functions are valid.
  */
 
 // SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|.
@@ -496,24 +496,23 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
  */
 
 // SHAKE128_Init_x4 is a batched API that operates on four independent
-// Keccak bitstates. It initialises all four |ctx| fields through four
-// consecutive calls to |SHAKE_Init| and returns 1 on success and 0 on failure.
-// When call-discipline is maintained, this function never fails.
+// Keccak bitstates. It initialises all four |ctx| fields and returns
+// 1 on success and 0 on failure. When call-discipline is maintained,
+// this function never fails.
 OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
 
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs all four inputs |data0|, |data1|, |data2|, |data3|
-// of equal length of |len| bytes through four consecutive calls to |SHAKE_Absorb|
-// and returns 1 on success and 0 on failure. When call-discipline is
-// maintained and |len| value corresponds to the input messages length
-// (including zero), this function never fails.
+// of equal length of |len| bytes returns 1 on success and 0 on failure. When
+// is maintained and |len| value corresponds to the input messages length
+// call-discipline (including zero), this function never fails.
 OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 
 // SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
-// bitstates. It squeezes |blks| number of blocks for all four XOF digests through
-// four consecutive calls to |SHAKE_Squeeze| and returns 1 on success and 0 on failure.
-// When call-discipline is maintained, this function never fails.
+// bitstates. It squeezes |blks| number of blocks for all four XOF digests and returns
+// 1 on success and 0 on failure. When call-discipline is maintained, this function
+// never fails.
 OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t blks);
 /*
@@ -521,7 +520,7 @@ OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t
  * of FIPS202 API layer
  *
  * SHAKE256_x4_ function never fails when the later call-discipline is adhered to:
- * (a) the pointers passed to the functions are valid, is satisfied.
+ * (a) the pointers passed to the functions are valid.
  */
 
 // SHAKE256_x4 is a batched API that operates on four independent
