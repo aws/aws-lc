@@ -1469,6 +1469,55 @@ TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
 -----END CERTIFICATE-----
 )";
 
+// This is a "root certificate" where the basicConstraints extension
+// has marked this with cA:false. The root certificate though has the
+// keyCertSign bit set for the keyUsage extension.
+//
+// Private Key:
+// -----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfVMH4tqIaJ6OzyxY
+// mqWXNwmK7gpXYDFhX80mXKgzrGGhRANCAATCqXrfbdTjFimzdBHxj71Ejcc/stea
+// 5xAU/xxK+s77yXzB5lfy/zEbcYxuOrnwHrWsX9sugWgCy74ZRNWJPTDW
+// -----END PRIVATE KEY-----
+static const char kRootBadBasicConstraints[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBmDCCAT+gAwIBAgIUdUDg7B26eXlz1kIvnpH+xuRxxWQwCgYIKoZIzj0EAwIw
+KzEXMBUGA1UECgwOQVdTLUxDIFRlc3RpbmcxEDAOBgNVBAMMB1Jvb3QgQ0EwIBcN
+MjUwMjI4MjIyODM5WhgPMjA5OTEyMjQyMjI4MzlaMCsxFzAVBgNVBAoMDkFXUy1M
+QyBUZXN0aW5nMRAwDgYDVQQDDAdSb290IENBMFkwEwYHKoZIzj0CAQYIKoZIzj0D
+AQcDQgAEwql6323U4xYps3QR8Y+9RI3HP7LXmucQFP8cSvrO+8l8weZX8v8xG3GM
+bjq58B61rF/bLoFoAsu+GUTViT0w1qM/MD0wDgYDVR0PAQH/BAQDAgIEMAwGA1Ud
+EwEB/wQCMAAwHQYDVR0OBBYEFBkZ4YwJ4l1cFgThnHRmGf24UlvfMAoGCCqGSM49
+BAMCA0cAMEQCIBzU4Tsvcro7Ngh7OAvPoxeRJjV5Cxas3wpEeDWkVow0AiB+DCN+
+fx6O+iOJWecFfO2w756B+z9LvBhfV8HA7Dflyw==
+-----END CERTIFICATE-----
+)";
+
+// This is an end-entity certificate signed by |kRootBadBasicConstraints|.
+// This should not be considered as the kRootBadBasicConstraints is a v3 certificate
+// which has a basicConstraints extension indicating that it is not a CA.
+//
+// Private Key:
+// -----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgRpZ8cAJjAb0htcq+
+// UkqSo8Ud1wsOrNE28cmjwFjBHsuhRANCAASyt7018uvahtXcQETHIxT50KVAFzCF
+// tsYROMLbLMW8DBkR2Ghh1qOSa4oYUizchqetKa2RrH7fhyQ787RxK05Y
+// -----END PRIVATE KEY-----
+static const char kEndEntitySignedByBadRoot[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB1DCCAXqgAwIBAgIUeRFjDJSyJybmzn8Uf1u2NfICP7QwCgYIKoZIzj0EAwIw
+KzEXMBUGA1UECgwOQVdTLUxDIFRlc3RpbmcxEDAOBgNVBAMMB1Jvb3QgQ0EwIBcN
+MjUwMjI4MjIyODQ1WhgPMjA5OTEyMjQyMjI4NDVaMCYxFzAVBgNVBAoMDkFXUy1M
+QyBUZXN0aW5nMQswCQYDVQQDDAJFRTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+BLK3vTXy69qG1dxARMcjFPnQpUAXMIW2xhE4wtssxbwMGRHYaGHWo5JrihhSLNyG
+p60prZGsft+HJDvztHErTlijfzB9MA4GA1UdDwEB/wQEAwIHgDAMBgNVHRMBAf8E
+AjAAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAdBgNVHQ4EFgQUyHhk
+6fecD1biHc7u7STgnx1Lo78wHwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhS
+W98wCgYIKoZIzj0EAwIDSAAwRQIhAPknNhPpJBWKSAVtY7yrwkmx2yCPU4u22kW0
+C2Z6lTDpAiBUkWczZ5By5KTXVE/TX/dpNHhOr8VO/rTCY0YNjBiZ1w==
+-----END CERTIFICATE-----
+)";
+
 // CRLFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509_CRL*|.
 static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {
@@ -8203,4 +8252,15 @@ TEST(X509Test, Trust) {
   EXPECT_EQ(X509_V_OK, Verify(leaf.distrusted_server.get(), {root.normal.get()},
                               {intermediate.normal.get()}, {},
                               /*flags=*/0, set_server_trust));
+}
+
+TEST(X509Test, CertificatesFromTrustStoreValidated) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kRootBadBasicConstraints);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> leaf = CertFromPEM(kEndEntitySignedByBadRoot);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0));
 }
