@@ -17,14 +17,18 @@ static const uint8_t kOIDMLKEM768[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04
 static const uint8_t kOIDMLKEM1024[] = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04, 0x03};
 
 static int ml_kem_1024_keygen_deterministic(uint8_t *public_key,
+                                                size_t *public_len,
                                                 uint8_t *secret_key,
+                                                size_t *secret_len,
                                                 const uint8_t *seed) {
-  return ml_kem_1024_keypair_deterministic(public_key, secret_key, seed) == 0;
+  return ml_kem_1024_keypair_deterministic(public_key, public_len, secret_key, secret_len, seed) == 0;
 }
 
 static int ml_kem_1024_keygen(uint8_t *public_key,
-                                  uint8_t *secret_key) {
-  return ml_kem_1024_keypair(public_key, secret_key) == 0;
+                                  size_t *public_len,
+                                  uint8_t *secret_key,
+                                  size_t *secret_len) {
+  return ml_kem_1024_keypair(public_key, public_len, secret_key, secret_len) == 0;
 }
 
 static int ml_kem_1024_encaps_deterministic(uint8_t *ciphertext,
@@ -55,14 +59,18 @@ DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_1024_method) {
 }
 
 static int ml_kem_768_keygen_deterministic(uint8_t *public_key,
+                                               size_t *public_len,
                                                uint8_t *secret_key,
+                                               size_t *secret_len,
                                                const uint8_t *seed) {
-  return ml_kem_768_keypair_deterministic(public_key, secret_key, seed) == 0;
+  return ml_kem_768_keypair_deterministic(public_key, public_len, secret_key, secret_len, seed) == 0;
 }
 
 static int ml_kem_768_keygen(uint8_t *public_key,
-                                 uint8_t *secret_key) {
-  return ml_kem_768_keypair(public_key, secret_key) == 0;
+                                 size_t *public_len,
+                                 uint8_t *secret_key,
+                                 size_t *secret_len) {
+  return ml_kem_768_keypair(public_key, public_len, secret_key, secret_len) == 0;
 }
 
 static int ml_kem_768_encaps_deterministic(uint8_t *ciphertext,
@@ -93,14 +101,18 @@ DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_768_method) {
 }
 
 static int ml_kem_512_keygen_deterministic(uint8_t *public_key,
+                                               size_t *public_len,
                                                uint8_t *secret_key,
+                                               size_t *secret_len,
                                                const uint8_t *seed) {
-  return ml_kem_512_keypair_deterministic(public_key, secret_key, seed) == 0;
+  return ml_kem_512_keypair_deterministic(public_key, public_len, secret_key, secret_len, seed) == 0;
 }
 
 static int ml_kem_512_keygen(uint8_t *public_key,
-                             uint8_t *secret_key) {
-  return ml_kem_512_keypair(public_key, secret_key) == 0;
+                             size_t *public_len,
+                             uint8_t *secret_key,
+                             size_t *secret_len) {
+  return ml_kem_512_keypair(public_key, public_len, secret_key, secret_len) == 0;
 }
 
 static int ml_kem_512_encaps_deterministic(uint8_t *ciphertext,

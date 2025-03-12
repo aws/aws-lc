@@ -12,13 +12,17 @@
 // and fails (0). Define wrappers to handle that.
 
 static int kyber512r3_keygen_deterministic(uint8_t *public_key,
+                                           size_t *public_len,
                                            uint8_t *secret_key,
+                                           size_t *secret_len,
                                            const uint8_t *seed) {
   return pqcrystals_kyber512_ref_keypair_derand(public_key, secret_key, seed) == 0;
 }
 
 static int kyber512r3_keygen(uint8_t *public_key,
-                             uint8_t *secret_key) {
+                             size_t *public_len,
+                             uint8_t *secret_key,
+                             size_t *secret_len) {
   return pqcrystals_kyber512_ref_keypair(public_key, secret_key) == 0;
 }
 
@@ -50,13 +54,17 @@ static const KEM_METHOD kem_kyber512r3_method = {
 };
 
 static int kyber768r3_keygen_deterministic(uint8_t *public_key,
+                                           size_t *public_len,
                                            uint8_t *secret_key,
+                                           size_t *secret_len,
                                            const uint8_t *seed) {
   return pqcrystals_kyber768_ref_keypair_derand(public_key, secret_key, seed) == 0;
 }
 
 static int kyber768r3_keygen(uint8_t *public_key,
-                             uint8_t *secret_key) {
+                             size_t *public_len,
+                             uint8_t *secret_key,
+                             size_t *secret_len) {
   return pqcrystals_kyber768_ref_keypair(public_key, secret_key) == 0;
 }
 
@@ -88,13 +96,17 @@ static const KEM_METHOD kem_kyber768r3_method = {
 };
 
 static int kyber1024r3_keygen_deterministic(uint8_t *public_key,
+                                            size_t *public_len,
                                             uint8_t *secret_key,
+                                            size_t *secret_len,
                                             const uint8_t *seed) {
   return pqcrystals_kyber1024_ref_keypair_derand(public_key, secret_key, seed) == 0;
 }
 
 static int kyber1024r3_keygen(uint8_t *public_key,
-                              uint8_t *secret_key) {
+                              size_t *public_len,
+                              uint8_t *secret_key,
+                              size_t *secret_len) {
   return pqcrystals_kyber1024_ref_keypair(public_key, secret_key) == 0;
 }
 
