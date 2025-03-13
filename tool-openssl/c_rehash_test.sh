@@ -11,6 +11,7 @@ output=$("${SCRIPT_DIR}/c_rehash" -help 2>&1)
 # Check for either expected output
 if [[ "$output" =~ "Usage: openssl rehash" ]] || [[ "$output" =~ "RehashTool: Not implemented for windows" ]]; then
     echo "Test passed: Found expected output"
+    echo "PASS"
     exit 0
 else
     echo "Test failed: Unexpected output"
