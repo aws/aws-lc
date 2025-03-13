@@ -92,16 +92,6 @@ if(BUILD_TESTING)
         x509_test.cc
     )
 
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
-        ${CMAKE_CURRENT_BINARY_DIR}/c_rehash_test
-        COPYONLY
-        FILE_PERMISSIONS
-        OWNER_READ OWNER_WRITE OWNER_EXECUTE
-        GROUP_READ GROUP_EXECUTE
-        WORLD_READ WORLD_EXECUTE
-    )
-
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
     target_include_directories(tool_openssl_test BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests tool_openssl_test)

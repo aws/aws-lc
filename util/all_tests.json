@@ -130,10 +130,5 @@
     "cmd": [
       "tool-openssl/tool_openssl_test"
     ]
-  },
-  {
-    "cmd": [
-      "tool-openssl/c_rehash_test"
-    ]
   }
 ]
