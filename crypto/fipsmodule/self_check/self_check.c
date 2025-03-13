@@ -915,7 +915,7 @@ static int boringssl_self_test_ml_kem(void) {
       0x07, 0x4b, 0xff, 0x80, 0x44, 0x44, 0x5e, 0x11, 0x66, 0x0b, 0x1b,
       0x6b, 0x26, 0xdf, 0x24, 0x2b, 0x8f, 0xc0, 0x2b, 0x9e, 0x8d, 0xf5,
       0x38, 0xdb, 0x17, 0xa6, 0x39, 0xd7, 0xc4, 0x61, 0x32
-};
+  };
   static const uint8_t kKeyGenDK[MLKEM512_SECRET_KEY_BYTES] = {
       0x88, 0xc1, 0x2c, 0xea, 0xa6, 0xcb, 0x91, 0xf5, 0x89, 0xac, 0xb8, 0x6d,
       0x91, 0x3c, 0x7a, 0x60, 0xf7, 0xcd, 0xab, 0xe3, 0xb7, 0xb5, 0x90, 0x09,
@@ -1061,6 +1061,21 @@ static int boringssl_self_test_ml_kem(void) {
                   "ML-KEM-keyGen-decaps") ||
       encaps_len > MLKEM512_PUBLIC_KEY_BYTES ||
       decaps_len > MLKEM512_SECRET_KEY_BYTES) {
+    goto err;
+  }
+
+  size_t wrong_encaps_len = 1;
+  size_t wrong_decaps_len = 1;
+  if (ml_kem_512_keypair_deterministic_no_self_test(
+          keygen_encaps, &wrong_encaps_len, keygen_decaps, &decaps_len, kKeyGenEKSeed)) {
+    goto err;
+  }
+  if (ml_kem_512_keypair_deterministic_no_self_test(
+          keygen_encaps, &encaps_len, keygen_decaps, &wrong_decaps_len, kKeyGenEKSeed)) {
+    goto err;
+  }
+  if (ml_kem_512_keypair_deterministic_no_self_test(
+          keygen_encaps, &wrong_encaps_len, keygen_decaps, &wrong_decaps_len, kKeyGenEKSeed)) {
     goto err;
   }
 
