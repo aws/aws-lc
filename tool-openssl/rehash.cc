@@ -1,7 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#if !defined(OPENSSL_WINDOWS) && !defined(_WIN32)
+#include "internal.h"
+#include "../tool/internal.h"
+
+#if !defined(OPENSSL_WINDOWS)
 #include <regex.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -13,11 +16,11 @@
 #include <openssl/x509.h>
 
 #include "../crypto/internal.h"
-#include "internal.h"
 
 #define MAX_COLLISIONS 256
 
-static const std::vector<std::string> valid_extensions = {".pem", ".crt", ".cer", ".crl"};
+static const std::vector<std::string> valid_extensions = {".pem", ".crt",
+                                                          ".cer", ".crl"};
 
 // status_flag tracks if any errors were encountered during processing of the
 // directory. Some errors are not fatal, therefore this flag tracks if we have
@@ -409,8 +412,6 @@ bool RehashTool(const args_list_t &args) {
 #else
 #include <stdio.h>
 #include <stdbool.h>
-#include "internal.h"
-#include "../tool/internal.h"
 
 bool RehashTool(const args_list_t &args) {
   fprintf(stderr, "RehashTool: Not implemented for windows\n");

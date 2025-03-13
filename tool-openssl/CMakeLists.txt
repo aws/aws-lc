@@ -77,6 +77,16 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        configure_file(
+            ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
+            ${CMAKE_CURRENT_BINARY_DIR}/c_rehash_test
+            COPYONLY
+            FILE_PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE
+        )
+
         crl.cc
         crl_test.cc
         dgst.cc
