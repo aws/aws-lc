@@ -13,9 +13,14 @@
 
 // Set values for input/output lengths used in
 // |NISTTestVectors_SHAKESqueeze| test function
-#define RAND_BYTES     256
-#define RAND_OUT_BYTES 256
+#define RAND_BYTES              256
+#define RAND_OUT_BYTES          256
 
+#define RAND_BYTES_x4           34
+#define RAND_OUT_BLCKS          6
+
+#define BATCHED_x4              4
+#define NUM_TESTS               10
 // Table containing the length of the output to squeeze for the
 // initial call, followed by a output length for each subsequent call.
 static const struct {
@@ -494,6 +499,62 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
   }
 
   EVP_MD_unstable_sha3_enable(false);
+}
+
+// Test x4 batched SHAKE against 4 consecutive SHAKE calls
+// Assert success when digest and digest_x4 values are equal
+TEST(SHAKETest_x4, RandomMessages) {
+  KECCAK1600_CTX_x4 ctx;
+
+  uint8_t random_in[BATCHED_x4][RAND_BYTES_x4];
+  uint8_t digest[BATCHED_x4][RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE];
+  uint8_t digest_x4[BATCHED_x4][RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE];
+
+  // Test |SHAKE128_Init_x4|, |SHAKE128_Absorb_once_x4|, and |SHAKE128_Squeezeblocks_x4| functions
+  // Assert success when digest and digest_x4 values are equal
+  for (int i = 0; i < NUM_TESTS; i++) {
+    for (int j = 0; j < BATCHED_x4; j++) {
+      OPENSSL_memset(digest[j], 0, RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE);
+      OPENSSL_memset(digest_x4[j], 0, RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE);
+
+      ASSERT_TRUE(RAND_bytes(random_in[j], RAND_BYTES_x4));
+      ASSERT_TRUE(SHAKE128(random_in[j], RAND_BYTES_x4, digest[j],
+                                              RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE));
+    }
+
+    // Compute one batched x4 SHAKE128
+    ASSERT_TRUE(SHAKE128_Init_x4(&ctx));
+    ASSERT_TRUE(SHAKE128_Absorb_once_x4(&ctx, random_in[0], random_in[1], random_in[2], random_in[3],
+                                                                                          RAND_BYTES_x4));
+    ASSERT_TRUE(SHAKE128_Squeezeblocks_x4(digest_x4[0], digest_x4[1], digest_x4[2], digest_x4[3],
+                                                        &ctx, RAND_OUT_BLCKS));
+
+    for (int j = 0; j < BATCHED_x4; j++) {
+      EXPECT_EQ(Bytes(digest_x4[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE),
+                Bytes(digest[j], RAND_OUT_BLCKS * SHAKE128_BLOCKSIZE));
+    }
+  }
+
+  // Test |SHAKE256_x4| function
+  // Assert success when digest and digest_x4 values are equal
+  for (int i = 0; i < NUM_TESTS; i++) {
+    for (int j = 0; j < BATCHED_x4; j++) {
+      OPENSSL_memset(digest[j], 0, RAND_OUT_BLCKS);
+      OPENSSL_memset(digest_x4[j], 0, RAND_OUT_BLCKS);
+
+      ASSERT_TRUE(RAND_bytes(random_in[j], RAND_BYTES_x4));
+      SHAKE256(random_in[j], RAND_BYTES_x4, digest[j], RAND_OUT_BLCKS);
+    }
+
+    // Compute one batched x4 SHAKE128
+    ASSERT_TRUE(SHAKE256_x4(random_in[0], random_in[1], random_in[2], random_in[3], RAND_BYTES_x4,
+                            digest_x4[0], digest_x4[1], digest_x4[2], digest_x4[3], RAND_OUT_BLCKS));
+
+    for (int j = 0; j < BATCHED_x4; j++) {
+      EXPECT_EQ(EncodeHex(bssl::MakeConstSpan(digest_x4[j], RAND_OUT_BLCKS)),
+                EncodeHex(bssl::MakeConstSpan(digest[j], RAND_OUT_BLCKS)));
+    }
+  }
 }
 
 TEST(SHAKETest, NISTTestVectors) {

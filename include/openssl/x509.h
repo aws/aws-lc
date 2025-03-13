@@ -5090,6 +5090,11 @@ OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
 OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
+// X509_TRUST_cleanup intentionally does nothing.
+// This function is maintained only for compatibility with applications
+// that consume OpenSSL APIs. AWS-LC does not support the related
+// static trust settings functions which were also deprecated in OpenSSL 1.1.0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void X509_TRUST_cleanup(void);
 
 #define X509_LU_NONE 0
 #define X509_LU_X509 1

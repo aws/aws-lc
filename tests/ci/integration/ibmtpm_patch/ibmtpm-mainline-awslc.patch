@@ -1,0 +1,146 @@
+diff --git a/src/BnToOsslMath.c b/src/BnToOsslMath.c
+index a185a70..1f17489 100644
+--- a/src/BnToOsslMath.c
++++ b/src/BnToOsslMath.c
+@@ -86,6 +86,12 @@
+ #ifdef MATH_LIB_OSSL
+ #  include "BnToOsslMath_fp.h"
+
++#ifdef OPENSSL_IS_AWSLC
++    #define BN_FIELD_SIZE(a) (BN_get_minimal_width(a))
++#else
++    #define BN_FIELD_SIZE(a) ((a)->top)
++#endif
++
+ //** Functions
+
+ //*** OsslToTpmBn()
+@@ -105,10 +111,10 @@ BOOL OsslToTpmBn(bigNum bn, BIGNUM* osslBn)
+ 	{
+ 	    int i;
+ 	    //
+-	    GOTO_ERROR_UNLESS((unsigned)osslBn->top <= BnGetAllocated(bn));
+-	    for(i = 0; i < osslBn->top; i++)
++	    GOTO_ERROR_UNLESS((unsigned)BN_FIELD_SIZE(osslBn) <= BnGetAllocated(bn));
++	    for(i = 0; i < BN_FIELD_SIZE(osslBn); i++)
+ 		bn->d[i] = osslBn->d[i];
+-	    BnSetTop(bn, osslBn->top);
++	    BnSetTop(bn, BN_FIELD_SIZE(osslBn));
+ 	}
+     return TRUE;
+  Error:
+@@ -127,7 +133,11 @@ BIGNUM* BigInitialized(BIGNUM* toInit, bigConst initializer)
+ 	return NULL;
+     toInit->d     = (BN_ULONG*)&initializer->d[0];
+     toInit->dmax  = (int)initializer->allocated;
++#ifdef OPENSSL_IS_AWSLC
++    toInit->width = (int)initializer->size;
++#else
+     toInit->top   = (int)initializer->size;
++#endif
+     toInit->neg   = 0;
+     toInit->flags = 0;
+     return toInit;
+@@ -156,7 +166,7 @@ static void BIGNUM_print(const char* label, const BIGNUM* a, BOOL eol)
+ 	}
+     if(a->neg)
+ 	printf("-");
+-    for(i = a->top, d = &a->d[i - 1]; i > 0; i--)
++    for(i = BN_FIELD_SIZE(a), d = &a->d[i - 1]; i > 0; i--)
+ 	{
+ 	    int      j;
+ 	    BN_ULONG l = *d--;
+@@ -209,7 +219,7 @@ BOOL BnMathLibraryCompatibilityCheck(void)
+     // Convert the test data to an OpenSSL BIGNUM
+     BN_bin2bn(test, sizeof(test), osslTemp);
+     // Make sure the values are consistent
+-    GOTO_ERROR_UNLESS(osslTemp->top == (int)tpmTemp->size);
++    GOTO_ERROR_UNLESS(BN_FIELD_SIZE(osslTemp) == (int)tpmTemp->size);
+     for(i = 0; i < tpmTemp->size; i++)
+ 	GOTO_ERROR_UNLESS(osslTemp->d[i] == tpmTemp->d[i]);
+     OSSL_LEAVE();
+@@ -558,6 +568,18 @@ LIB_EXPORT BOOL BnEccModMult2(bigPoint            R,  // OUT: computed point
+ 	EC_POINT_mul(E->G, pR, bnD, pQ, bnU, E->CTX);
+     else
+ 	{
++#ifdef OPENSSL_IS_AWSLC
++        EC_POINT *pR1 = EC_POINT_new(E->G);
++        EC_POINT *pR2 = EC_POINT_new(E->G);
++        int OK;
++
++        OK = EC_POINT_mul(E->G, pR1, NULL, pS, bnD, E->CTX);
++        OK &= EC_POINT_mul(E->G, pR2, NULL, pQ, bnU, E->CTX);
++        OK &= EC_POINT_add(E->G, pR, pR1, pR2, E->CTX);
++
++        EC_POINT_free(pR1);
++        EC_POINT_free(pR2);
++#else
+ 	    const EC_POINT* points[2];
+ 	    const BIGNUM*   scalars[2];
+ 	    points[0]  = pS;
+@@ -565,6 +587,7 @@ LIB_EXPORT BOOL BnEccModMult2(bigPoint            R,  // OUT: computed point
+ 	    scalars[0] = bnD;
+ 	    scalars[1] = bnU;
+ 	    EC_POINTs_mul(E->G, pR, NULL, 2, points, scalars, E->CTX);
++#endif
+ 	}
+     PointFromOssl(R, pR, E);
+     EC_POINT_free(pR);
+diff --git a/src/BnToOsslMath.h b/src/BnToOsslMath.h
+index 165304d..78f295b 100644
+--- a/src/BnToOsslMath.h
++++ b/src/BnToOsslMath.h
+@@ -81,7 +81,7 @@
+ // Check the bignum_st definition against the one below and either update the
+ // version check or provide the new definition for this version.
+ #  error Untested OpenSSL version
+-#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
++#elif OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(OPENSSL_IS_AWSLC)
+ // from crypto/bn/bn_lcl.h (OpenSSL 1.x) or crypto/bn/bn_local.h (OpenSSL 3.0)
+ struct bignum_st
+ {
+diff --git a/src/TpmProfile_Common.h b/src/TpmProfile_Common.h
+index 13dfc0d..3c87c3e 100644
+--- a/src/TpmProfile_Common.h
++++ b/src/TpmProfile_Common.h
+@@ -65,6 +65,8 @@
+ // Requires basic YES/NO defines are already set (by TpmBuildSwitches.h)
+ // Less frequently changed items are in other TpmProfile Headers.
+
++#include <openssl/opensslconf.h>
++
+ #ifndef _TPM_PROFILE_COMMON_H_
+ #define _TPM_PROFILE_COMMON_H_
+ // YES & NO defined by TpmBuildSwitches.h
+@@ -107,6 +109,10 @@
+ #define     SM4_128                     (NO  * ALG_SM4)
+
+ #define ALG_CAMELLIA                ALG_YES
++#ifdef OPENSSL_NO_CAMELLIA
++#undef ALG_CAMELLIA
++#define ALG_CAMELLIA                ALG_NO
++#endif
+
+ #define     CAMELLIA_128                (YES * ALG_CAMELLIA)
+ #define     CAMELLIA_192                (NO  * ALG_CAMELLIA)
+diff --git a/src/makefile b/src/makefile
+index 407dc9c..b2b50a9 100644
+--- a/src/makefile
++++ b/src/makefile
+@@ -47,7 +47,7 @@ CCFLAGS = -Wall  			\
+ 	 -c -ggdb -O0 			\
+ 	-DTPM_POSIX			\
+ 	-D_POSIX_			\
+-	-DTPM_NUVOTON
++	-DTPM_NUVOTON $(CFLAGS)
+
+ # add this line for big endian platforms
+ #	-DBIG_ENDIAN_TPM=YES
+@@ -59,7 +59,7 @@ LNFLAGS = -ggdb 			\
+ 	-lcrypto			\
+ 	-lpthread			\
+ 	-lrt				\
+-	-I.
++	-I. $(LDFLAGS)
+
+ #	--coverage -lgcov

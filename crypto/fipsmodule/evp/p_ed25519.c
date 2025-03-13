@@ -19,6 +19,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../curve25519/internal.h"
 
 
 // Ed25519 has no parameters to copy.
@@ -33,12 +34,14 @@ static int pkey_ed25519_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   evp_pkey_set_method(pkey, &ed25519_asn1_meth);
 
   uint8_t pubkey_unused[32];
-  ED25519_keypair(pubkey_unused, key->key);
-  key->has_private = 1;
+  int result = ED25519_keypair_internal(pubkey_unused, key->key);
+  if (result) {
+    key->has_private = 1;
+    OPENSSL_free(pkey->pkey.ptr);
+    pkey->pkey.ptr = key;
+  }
 
-  OPENSSL_free(pkey->pkey.ptr);
-  pkey->pkey.ptr = key;
-  return 1;
+  return result;
 }
 
 static int pkey_ed25519_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,

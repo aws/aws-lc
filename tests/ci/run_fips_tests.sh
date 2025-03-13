@@ -5,6 +5,7 @@
 set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
+source tests/ci/gtest_util.sh
 
 function static_linux_supported() {
   if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
@@ -35,7 +36,7 @@ if static_linux_supported || static_openbsd_supported; then
   run_build -DFIPS=1 \
     -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS -DAWSLC_FIPS_FAILURE_CALLBACK" \
     -DCMAKE_CXX_FLAGS="-DAWSLC_FIPS_FAILURE_CALLBACK"
-  ./test_build_dir/crypto/crypto_test
+  shard_gtest ./test_build_dir/crypto/crypto_test
   ./tests/ci/run_fips_callback_tests.sh
 
   echo "Testing AWS-LC static breakable release build"

@@ -222,6 +222,10 @@ OPENSSL_EXPORT unsigned BN_num_bits(const BIGNUM *bn);
 // will always fit in |int|.
 OPENSSL_EXPORT unsigned BN_num_bytes(const BIGNUM *bn);
 
+// BN_get_minimal_width returns the minimal number of words needed to represent
+// |bn|. This function can leak the size of the value encoded in |BN|.
+OPENSSL_EXPORT int BN_get_minimal_width(const BIGNUM *bn);
+
 // BN_zero sets |bn| to zero.
 OPENSSL_EXPORT void BN_zero(BIGNUM *bn);
 
