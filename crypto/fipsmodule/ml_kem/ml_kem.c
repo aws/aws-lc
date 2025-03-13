@@ -6,7 +6,6 @@
 #include "./ml_kem_ref/kem.h"
 #include "./ml_kem_ref/params.h"
 
-#include "../../internal.h"
 #include "./ml_kem_ref/cbd.c"
 #include "./ml_kem_ref/indcpa.c"
 #include "./ml_kem_ref/kem.c"
