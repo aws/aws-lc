@@ -6,6 +6,7 @@
 #include "./ml_kem_ref/kem.h"
 #include "./ml_kem_ref/params.h"
 
+#include "../../internal.h"
 #include "./ml_kem_ref/cbd.c"
 #include "./ml_kem_ref/indcpa.c"
 #include "./ml_kem_ref/kem.c"
@@ -16,7 +17,6 @@
 #include "./ml_kem_ref/reduce.c"
 #include "./ml_kem_ref/symmetric-shake.c"
 #include "./ml_kem_ref/verify.c"
-#include "../../internal.h"
 
 // Note: These methods currently default to using the reference code for ML_KEM.
 // In a future where AWS-LC has optimized options available, those can be
@@ -83,45 +83,90 @@ int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
 }
 
 int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                             size_t *ciphertext_len    /* IN_OUT */,
                                              uint8_t *shared_secret    /* OUT */,
+                                             size_t *shared_secret_len /* IN_OUT */,
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed       /* IN */) {
   boringssl_ensure_ml_kem_self_test();
-  return ml_kem_512_encapsulate_deterministic_no_self_test(ciphertext, shared_secret, public_key, seed);
+  return ml_kem_512_encapsulate_deterministic_no_self_test(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
 int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       /* OUT */,
+                                                      size_t *ciphertext_len    /* IN_OUT */,
                                                       uint8_t *shared_secret    /* OUT */,
+                                                      size_t *shared_secret_len /* IN_OUT */,
                                                       const uint8_t *public_key /* IN  */,
                                                       const uint8_t *seed       /* IN */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key,
+
+  if (*ciphertext_len < params.ciphertext_bytes ||
+      *shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+
+  const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key,
                                seed);
+
+  if (res != 0) {
+    *ciphertext_len = params.ciphertext_bytes;
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+
+  return res;
 }
 
 int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
+                               size_t *ciphertext_len    /* IN_OUT */,
                                uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *public_key /* IN  */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+
+  if (*ciphertext_len < params.ciphertext_bytes ||
+      *shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+
+  const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+
+  if (res != 0) {
+    *ciphertext_len = params.ciphertext_bytes;
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+
+  return res;
 }
 
 int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */) {
   boringssl_ensure_ml_kem_self_test();
-  return ml_kem_512_decapsulate_no_self_test(shared_secret, ciphertext, secret_key);
+  return ml_kem_512_decapsulate_no_self_test(shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
 int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
+                                        size_t *shared_secret_len /* IN_OUT */,
                                         const uint8_t *ciphertext /* IN  */,
                                         const uint8_t *secret_key /* IN  */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+
+  if (*shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+
+  const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+
+  if (res != 0) {
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+
+  return res;
 }
 
 
@@ -177,31 +222,59 @@ int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
 }
 
 int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                             size_t *ciphertext_len /* IN_OUT */,
                                              uint8_t *shared_secret    /* OUT */,
+                                             size_t *shared_secret_len /* IN_OUT */,
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed       /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+  const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  if (res != 0) {
+    *ciphertext_len = params.ciphertext_bytes;
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+  return res;
 }
 
 int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
+                               size_t *ciphertext_len /* IN_OUT */,
                                uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *public_key /* IN  */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+  const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  if (res != 0) {
+    *ciphertext_len = params.ciphertext_bytes;
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+  return res;
 }
 
 int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  if (*shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+  const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  if (res != 0) {
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+  return res;
 }
 
 int ml_kem_1024_keypair_deterministic(uint8_t *public_key  /* OUT */,
@@ -256,29 +329,57 @@ int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
 }
 
 int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                              size_t *ciphertext_len /* IN_OUT */,
                                               uint8_t *shared_secret    /* OUT */,
+                                              size_t *shared_secret_len /* IN_OUT */,
                                               const uint8_t *public_key /* IN  */,
                                               const uint8_t *seed       /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+  const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  if (res != 0) {
+    *ciphertext_len = params.ciphertext_bytes;
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+  return res;
 }
 
 int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
+                                size_t *ciphertext_len /* IN_OUT */,
                                 uint8_t *shared_secret    /* OUT */,
+                                size_t *shared_secret_len /* IN_OUT */,
                                 const uint8_t *public_key /* IN  */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+  const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  if (res != 0) {
+    *ciphertext_len = params.ciphertext_bytes;
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+  return res;
 }
 
 int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
+                                size_t *shared_secret_len /* IN_OUT */,
                                 const uint8_t *ciphertext /* IN  */,
                                 const uint8_t *secret_key /* IN  */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  if (*shared_secret_len < params.shared_secret_bytes) {
+    return 0;
+  }
+  const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  if (res != 0) {
+    *shared_secret_len = params.shared_secret_bytes;
+  }
+  return res;
 }

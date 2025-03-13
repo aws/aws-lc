@@ -32,22 +32,27 @@ static int ml_kem_1024_keygen(uint8_t *public_key,
 }
 
 static int ml_kem_1024_encaps_deterministic(uint8_t *ciphertext,
+                                                size_t *ciphertext_len,
                                                 uint8_t *shared_secret,
+                                                size_t *shared_secret_len,
                                                 const uint8_t *public_key,
                                                 const uint8_t *seed) {
-  return ml_kem_1024_encapsulate_deterministic(ciphertext, shared_secret, public_key, seed) == 0;
+  return ml_kem_1024_encapsulate_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed) == 0;
 }
 
 static int ml_kem_1024_encaps(uint8_t *ciphertext,
+                                  size_t *ciphertext_len,
                                   uint8_t *shared_secret,
+                                  size_t *shared_secret_len,
                                   const uint8_t *public_key) {
-  return ml_kem_1024_encapsulate(ciphertext, shared_secret, public_key) == 0;
+  return ml_kem_1024_encapsulate(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key) == 0;
 }
 
 static int ml_kem_1024_decaps(uint8_t *shared_secret,
+                                  size_t *shared_secret_len,
                                   const uint8_t *ciphertext,
                                   const uint8_t *secret_key) {
-  return ml_kem_1024_decapsulate(shared_secret, ciphertext, secret_key) == 0;
+  return ml_kem_1024_decapsulate(shared_secret, shared_secret_len, ciphertext, secret_key) == 0;
 }
 
 DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_1024_method) {
@@ -74,22 +79,27 @@ static int ml_kem_768_keygen(uint8_t *public_key,
 }
 
 static int ml_kem_768_encaps_deterministic(uint8_t *ciphertext,
+                                               size_t *ciphertext_len,
                                                uint8_t *shared_secret,
+                                               size_t *shared_secret_len,
                                                const uint8_t *public_key,
                                                const uint8_t *seed) {
-  return ml_kem_768_encapsulate_deterministic(ciphertext, shared_secret, public_key, seed) == 0;
+  return ml_kem_768_encapsulate_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed) == 0;
 }
 
 static int ml_kem_768_encaps(uint8_t *ciphertext,
+                                 size_t *ciphertext_len,
                                  uint8_t *shared_secret,
+                                 size_t *shared_secret_len,
                                  const uint8_t *public_key) {
-  return ml_kem_768_encapsulate(ciphertext, shared_secret, public_key) == 0;
+  return ml_kem_768_encapsulate(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key) == 0;
 }
 
 static int ml_kem_768_decaps(uint8_t *shared_secret,
+                                 size_t *shared_secret_len,
                                  const uint8_t *ciphertext,
                                  const uint8_t *secret_key) {
-  return ml_kem_768_decapsulate(shared_secret, ciphertext, secret_key) == 0;
+  return ml_kem_768_decapsulate(shared_secret, shared_secret_len, ciphertext, secret_key) == 0;
 }
 
 DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_768_method) {
@@ -116,22 +126,27 @@ static int ml_kem_512_keygen(uint8_t *public_key,
 }
 
 static int ml_kem_512_encaps_deterministic(uint8_t *ciphertext,
+                                               size_t *ciphertext_len,
                                                uint8_t *shared_secret,
+                                               size_t *shared_secret_len,
                                                const uint8_t *public_key,
                                                const uint8_t *seed) {
-  return ml_kem_512_encapsulate_deterministic(ciphertext, shared_secret, public_key, seed) == 0;
+  return ml_kem_512_encapsulate_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed) == 0;
 }
 
 static int ml_kem_512_encaps(uint8_t *ciphertext,
+                             size_t *ciphertext_len,
                              uint8_t *shared_secret,
+                             size_t *shared_secret_len,
                              const uint8_t *public_key) {
-  return ml_kem_512_encapsulate(ciphertext, shared_secret, public_key) == 0;
+  return ml_kem_512_encapsulate(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key) == 0;
 }
 
 static int ml_kem_512_decaps(uint8_t *shared_secret,
+                             size_t *shared_secret_len,
                              const uint8_t *ciphertext,
                              const uint8_t *secret_key) {
-  return ml_kem_512_decapsulate(shared_secret, ciphertext, secret_key) == 0;
+  return ml_kem_512_decapsulate(shared_secret, shared_secret_len, ciphertext, secret_key) == 0;
 }
 
 DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_512_method) {

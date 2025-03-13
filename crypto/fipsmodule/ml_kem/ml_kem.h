@@ -46,24 +46,32 @@ int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
                            size_t *secret_len /* IN_OUT */);
 
 int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                             size_t *ciphertext_len /* IN_OUT */,
                                              uint8_t *shared_secret    /* OUT */,
+                                             size_t *shared_secret_len /* IN_OUT */,
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed /* IN */);
 
 int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       /* OUT */,
+                                                      size_t *ciphertext_len    /* IN_OUT */,
                                                       uint8_t *shared_secret    /* OUT */,
+                                                      size_t *shared_secret_len /* IN_OUT */,
                                                       const uint8_t *public_key /* IN  */,
                                                       const uint8_t *seed       /* IN */);
 
 int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
+                               size_t *ciphertext_len    /* IN_OUT */,
                                uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *public_key /* IN  */);
 
 int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */);
 
 int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
+                                        size_t *shared_secret_len /* IN_OUT */,
                                         const uint8_t *ciphertext /* IN  */,
                                         const uint8_t *secret_key /* IN  */);
 
@@ -79,15 +87,20 @@ int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
                            size_t *secret_len /* IN_OUT */);
 
 int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                             size_t *ciphertext_len    /* IN_OUT */,
                                              uint8_t *shared_secret    /* OUT */,
+                                             size_t *shared_secret_len /* IN_OUT */,
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed /* IN */);
 
 int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
+                               size_t *ciphertext_len    /* IN_OUT */,
                                uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *public_key /* IN  */);
 
 int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
+                               size_t *shared_secret_len /* IN_OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */);
 
@@ -103,15 +116,20 @@ int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
                             size_t *secret_len /* IN_OUT */);
 
 int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                              size_t *ciphertext_len    /* IN_OUT */,
                                               uint8_t *shared_secret    /* OUT */,
+                                              size_t *shared_secret_len /* IN_OUT */,
                                               const uint8_t *public_key /* IN  */,
                                               const uint8_t *seed /* IN */);
 
 int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
+                                size_t *ciphertext_len    /* IN_OUT */,
                                 uint8_t *shared_secret    /* OUT */,
+                                size_t *shared_secret_len /* IN_OUT */,
                                 const uint8_t *public_key /* IN  */);
 
 int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
+                                size_t *shared_secret_len /* IN_OUT */,
                                 const uint8_t *ciphertext /* IN  */,
                                 const uint8_t *secret_key /* IN  */);
 #endif // ML_KEM_H

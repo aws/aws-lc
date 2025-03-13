@@ -176,7 +176,7 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->encaps_deterministic(ciphertext, shared_secret, key->public_key, seed)) {
+  if (!kem->method->encaps_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, key->public_key, seed)) {
     return 0;
   }
 
@@ -239,7 +239,7 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->encaps(ciphertext, shared_secret, key->public_key)) {
+  if (!kem->method->encaps(ciphertext, ciphertext_len, shared_secret, shared_secret_len, key->public_key)) {
     return 0;
   }
 
@@ -294,7 +294,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->decaps(shared_secret, ciphertext, key->secret_key)) {
+  if (!kem->method->decaps(shared_secret, shared_secret_len, ciphertext, key->secret_key)) {
     return 0;
   }
 

@@ -32,6 +32,7 @@ typedef struct {
   size_t public_key_bytes;
   size_t secret_key_bytes;
   size_t ciphertext_bytes;
+  size_t shared_secret_bytes;
 } ml_kem_params;
 
 // We define max values for some parameters because they are used

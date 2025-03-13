@@ -25,15 +25,20 @@ typedef struct {
                 size_t *secret_key_len);
 
   int (*encaps_deterministic)(uint8_t *ciphertext,
+                              size_t *ciphertext_len,
                               uint8_t *shared_secret,
+                              size_t *shared_secret_len,
                               const uint8_t *public_key,
                               const uint8_t *seed);
 
   int (*encaps)(uint8_t *ciphertext,
+                size_t *ciphertext_len,
                 uint8_t *shared_secret,
+                size_t *shared_secret_len,
                 const uint8_t *public_key);
 
   int (*decaps)(uint8_t *shared_secret,
+                size_t *shared_secret_len,
                 const uint8_t *ciphertext,
                 const uint8_t *secret_key);
 } KEM_METHOD;
