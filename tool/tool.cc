@@ -30,16 +30,6 @@
 
 #include "internal.h"
 
-#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
-extern "C" {
-  void AWS_LC_fips_failure_callback(const char* message);
-}
-
-void AWS_LC_fips_failure_callback(const char* message) {
-    fprintf(stderr, "FIPS failure:\n%s", message);
-}
-#endif
-
 static bool version(const std::vector<std::string> &args) {
   printf("%s\n", AWSLC_VERSION_NUMBER_STRING);
   return true;
