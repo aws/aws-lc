@@ -1270,8 +1270,16 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #if defined(BORINGSSL_FIPS)
 
 // AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
-// fails. If the library is built in FIPS mode it prevents any further
-// cryptographic operations by the current process.
+// fails. The behavior depends on how AWS-LC is built:
+// - When AWS-LC is not in FIPS mode it prints |message| to |stderr|.
+// - If AWS-LC is built with FIPS it prints |message| to |stderr| and prevents
+//     any further cryptographic operations by the current process.
+// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
+//      application does not define the AWS_LC_fips_failure_callback function
+//      the normal behavior FIPS behavior is used.
+// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
+//      application defines the AWS_LC_fips_failure_callback function that
+//      function is called with |message|.
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message);
 #else

@@ -6,7 +6,7 @@ source tests/ci/common_posix_setup.sh
 
 # This test file is designed to replicate the internal FIPS callback build defined in the build-glue package
 
-# This should follow fips_tests.sh maybe_run_fips_tests
+# This should follow AWS-LC-Build-GLue/bin/fips_tests.sh maybe_run_fips_tests
 function maybe_run_fips_tests() {
   expect_fips_mode=1
   module_status=$("${BUILD_ROOT}/tool/bssl" isfips)
@@ -18,21 +18,21 @@ function maybe_run_fips_tests() {
   "${BUILD_ROOT}/util/fipstools/test_fips"
 }
 
-# This should follow fips_tests.sh maybe_run_fips_break_tests
+# This should follow AWS-LC-Build-GLue/bin/fips_tests.sh maybe_run_fips_break_tests
 function maybe_run_fips_break_tests() {
-  working_bssl="${BUILD_ROOT}/tool/bssl"
-  "$working_bssl" isfips
-
   break_kat_executable="${BUILD_ROOT}/break-kat"
   pushd "${SRC_ROOT}"
   go build -o "$break_kat_executable" "./util/fipstools/break-kat.go"
   "$break_kat_executable" -list-tests
 
+  working_bssl="${BUILD_ROOT}/tool/bssl"
+    broken_bssl="${BUILD_ROOT}/tool/brokenbssl"
+  "$working_bssl" isfips
+
   # This breaks a local copy of bssl that will not be included in the build artifacts
-  broken_bssl="${BUILD_ROOT}/brokenbssl"
   "$break_kat_executable" "$working_bssl" DRBG >"$broken_bssl"
   chmod +x "$broken_bssl"
-  if ! ("$broken_bssl" 2>&1 >/dev/null || true) |
+  if ! ("$broken_bssl" isfips 2>&1 >/dev/null || true) |
     grep -q "DRBG"; then
     echo "Broken bssl did not mention DRBG failure in startup"
     exit 1
