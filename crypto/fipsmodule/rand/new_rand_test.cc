@@ -29,13 +29,19 @@ static void test_all_exported_functions(size_t request_len, uint8_t *out_buf,
   ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(out_buf, request_len, user_pred_res));
 }
 
-class newRandTest : public ubeTest {
+class newRandTest : public::testing::Test {
   private:
     UbeBase ube_base_;
 
   protected:
     void SetUp() override {
       ube_base_.SetUp();
+
+      // Ensure randomness generation state is initialized.
+      uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(MAX_REQUEST_SIZE);
+      bssl::UniquePtr<uint8_t> deleter(randomness);
+      uint8_t user_prediction_resistance[RAND_PRED_RESISTANCE_LEN] = {0};
+      test_all_exported_functions(global_request_len, randomness, user_prediction_resistance);
     }
 
     void TearDown() override {
@@ -48,17 +54,6 @@ class newRandTest : public ubeTest {
 
     void allowMockedUbe() const {
       return ube_base_.allowMockedUbe();
-    }
-
-  public:
-    void SetUp() override {
-      ubeTest::SetUp();
-
-      // Ensure randomness generation state is initialized.
-      uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(MAX_REQUEST_SIZE);
-      bssl::UniquePtr<uint8_t> deleter(randomness);
-      uint8_t user_prediction_resistance[RAND_PRED_RESISTANCE_LEN] = {0};
-      test_all_exported_functions(global_request_len, randomness, user_prediction_resistance);
     }
 };
 
