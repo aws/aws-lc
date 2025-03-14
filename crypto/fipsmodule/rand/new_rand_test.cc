@@ -79,6 +79,11 @@ TEST_F(newRandTest, Basic) {
   ASSERT_TRUE(threadTest(number_of_threads, randBasicTests));
 }
 
+#if !defined(AWSLC_SNAPSAFE_TESTING) && 0
+// Snapsafe testing is globally configured via a file. Predicting reseeding is
+// sensitive to testing snapsafe in parallel because a UBE-triggered reseed can
+// happen during execution.
+
 static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
   uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1);
   bssl::UniquePtr<uint8_t> deleter(randomness);
@@ -214,3 +219,5 @@ TEST_F(newRandTest, UbeDetectionMocked) {
     }
   );
 }
+
+#endif
