@@ -450,7 +450,7 @@ typedef void *OPENSSL_BLOCK;
 extern "C++" {
 
 // Building libssl for `arm-linux-androideabi` fails unless <atomic> is included before <memory>
-// ¯\_(ツ)_/¯
+// See: https://github.com/aws/aws-lc-rs/pull/734
 #include <atomic>
 #include <memory>
 
