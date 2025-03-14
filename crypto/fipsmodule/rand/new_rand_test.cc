@@ -79,7 +79,7 @@ TEST_F(newRandTest, Basic) {
   ASSERT_TRUE(threadTest(number_of_threads, randBasicTests));
 }
 
-#if !defined(AWSLC_SNAPSAFE_TESTING) && 0
+#if !defined(AWSLC_SNAPSAFE_TESTING)
 // Snapsafe testing is globally configured via a file. Predicting reseeding is
 // sensitive to testing snapsafe in parallel because a UBE-triggered reseed can
 // happen during execution.
