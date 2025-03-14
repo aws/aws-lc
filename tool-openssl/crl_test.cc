@@ -9,7 +9,7 @@
 #include "../crypto/test/test_util.h"
 #include <cctype>
 
-static X509_CRL* createTestCRL() {
+X509_CRL* createTestCRL() {
   bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
   if (!crl) {
     ERR_print_errors_fp(stderr);
