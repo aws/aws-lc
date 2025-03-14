@@ -5112,6 +5112,34 @@ OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
 
+// SSL BIO methods
+
+// BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
+// that this has quite different behaviour from the version in OpenSSL (notably
+// that it doesn't try to auto renegotiate).
+//
+// IMPORTANT: if you are not curl, don't use this.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
+
+// BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must
+// have been created using |BIO_f_ssl|. If |take_owership| is true, |bio| will
+// call |SSL_free| on |ssl| when closed. It returns one on success or something
+// other than one on error.
+OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
+
+// BIO_get_ssl assigns the internal |SSL| of |bio| to |*ssl|. |*ssl| should
+// not be freed. It returns one on success or something other than one on error.
+OPENSSL_EXPORT long BIO_get_ssl(BIO *bio, SSL **ssl);
+
+// BIO_new_ssl_connect uses |ctx| to return a newly allocated BIO chain with
+// |BIO_new_ssl|, followed by a connect BIO.
+OPENSSL_EXPORT BIO *BIO_new_ssl_connect(SSL_CTX *ctx);
+
+// BIO_new_ssl returns a newly allocated SSL BIO created with |ctx|. A client
+// SSL is created if |client| is non-zero, and a server is created if otherwise.
+OPENSSL_EXPORT BIO *BIO_new_ssl(SSL_CTX *ctx, int client);
+
+
 // Deprecated functions.
 
 // SSL_library_init calls |CRYPTO_library_init| and returns one.
@@ -5508,19 +5536,6 @@ OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
 
 // SSL_enable_tls_channel_id calls |SSL_set_tls_channel_id_enabled|.
 OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
-
-// BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
-// that this has quite different behaviour from the version in OpenSSL (notably
-// that it doesn't try to auto renegotiate).
-//
-// IMPORTANT: if you are not curl, don't use this.
-OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
-
-// BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must
-// have been created using |BIO_f_ssl|. If |take_owership| is true, |bio| will
-// call |SSL_free| on |ssl| when closed. It returns one on success or something
-// other than one on error.
-OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
 
 // SSL_get_session returns a non-owning pointer to |ssl|'s session. For
 // historical reasons, which session it returns depends on |ssl|'s state.
