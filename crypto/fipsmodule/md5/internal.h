@@ -45,13 +45,23 @@ OPENSSL_EXPORT int MD5_get_state(MD5_CTX *ctx,
                                  uint8_t out_h[MD5_CHAINING_LENGTH],
                                  uint64_t *out_n);
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64))
+#if !defined(OPENSSL_NO_ASM)
+// If building for x86_64 and we have a new enough assembler, we need both
+// definitions for the case where we've built for AVX-512, but it is not
+// available at runtime.
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#define MD5_ASM_AVX512
+extern void md5_x86_64_avx512(uint32_t *state, const uint8_t *data, 
+                              size_t num);
+#endif
+
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || \
+    defined(OPENSSL_AARCH64)
 #define MD5_ASM
 extern void md5_block_asm_data_order(uint32_t *state, const uint8_t *data,
                                      size_t num);
 #endif
-
+#endif // !defined(OPENSSL_NO_ASM)
 
 #if defined(__cplusplus)
 }  // extern "C"
