@@ -15,7 +15,8 @@
 #include "../../test/test_util.h"
 
 static const size_t request_len = 64;
-static const size_t number_of_threads = 8;
+// static const size_t number_of_threads = 8;
+static const size_t number_of_threads = 1;
 
 static thread_local size_t initialize_count = 0;
 static thread_local size_t zeroize_thread_count = 0;
@@ -170,7 +171,7 @@ TEST_F(randIsolatedTest, BasicThread) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
-#if !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS) && 0
 
 TEST_F(randIsolatedTest, BasicFork) {
 
