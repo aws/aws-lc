@@ -62,9 +62,7 @@ typedef struct {
 struct kem_key_st {
   const KEM *kem;
   uint8_t *public_key;
-  size_t *public_key_len;
   uint8_t *secret_key;
-  size_t *secret_key_len;
 };
 
 const KEM *KEM_find_kem_by_nid(int nid);
