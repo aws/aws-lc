@@ -510,9 +510,7 @@ static void rand_bytes_private(uint8_t *out, size_t out_len,
 int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
 
-  if (user_pred_resistance == NULL) {
-    abort();
-  }
+  GUARD_PTR_ABORT(user_pred_resistance);
 
   rand_bytes_private(out, out_len, user_pred_resistance,
     RAND_USE_USER_PRED_RESISTANCE);
