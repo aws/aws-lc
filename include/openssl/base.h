@@ -449,6 +449,9 @@ typedef void *OPENSSL_BLOCK;
 
 extern "C++" {
 
+// Building libssl for `arm-linux-androideabi` fails unless <atomic> is included before <memory>
+// See: https://github.com/aws/aws-lc-rs/pull/734
+#include <atomic>
 #include <memory>
 
 // STLPort, used by some Android consumers, not have std::unique_ptr.
