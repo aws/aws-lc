@@ -890,11 +890,15 @@ static int boringssl_self_test_ml_kem(void) {
       0x1d, 0x2d, 0x8c, 0xaf, 0x5a, 0xf4, 0xa6, 0x92};
   uint8_t keygen_decaps[MLKEM512_SECRET_KEY_BYTES] = {0};
   uint8_t keygen_encaps[MLKEM512_PUBLIC_KEY_BYTES] = {0};
+  size_t decaps_len = MLKEM512_SECRET_KEY_BYTES;
+  size_t encaps_len = MLKEM512_PUBLIC_KEY_BYTES;
 
   if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, keygen_decaps, kKeyGenEKSeed) ||
+          keygen_encaps, &encaps_len, keygen_decaps, &decaps_len, kKeyGenEKSeed) ||
       !check_test(kKeyGenEK, keygen_encaps, sizeof(keygen_encaps),
-              "ML-KEM-keyGen-encaps")) {
+              "ML-KEM-keyGen-encaps") ||
+      decaps_len > MLKEM512_SECRET_KEY_BYTES ||
+      encaps_len > MLKEM512_PUBLIC_KEY_BYTES) {
     goto err;
   }
 
@@ -911,7 +915,7 @@ static int boringssl_self_test_ml_kem(void) {
       0x07, 0x4b, 0xff, 0x80, 0x44, 0x44, 0x5e, 0x11, 0x66, 0x0b, 0x1b,
       0x6b, 0x26, 0xdf, 0x24, 0x2b, 0x8f, 0xc0, 0x2b, 0x9e, 0x8d, 0xf5,
       0x38, 0xdb, 0x17, 0xa6, 0x39, 0xd7, 0xc4, 0x61, 0x32
-};
+  };
   static const uint8_t kKeyGenDK[MLKEM512_SECRET_KEY_BYTES] = {
       0x88, 0xc1, 0x2c, 0xea, 0xa6, 0xcb, 0x91, 0xf5, 0x89, 0xac, 0xb8, 0x6d,
       0x91, 0x3c, 0x7a, 0x60, 0xf7, 0xcd, 0xab, 0xe3, 0xb7, 0xb5, 0x90, 0x09,
@@ -1049,10 +1053,29 @@ static int boringssl_self_test_ml_kem(void) {
       0x2f, 0x55, 0xa2, 0x46, 0x1b, 0x07, 0x4b, 0xff, 0x80, 0x44, 0x44, 0x5e,
       0x11, 0x66, 0x0b, 0x1b, 0x6b, 0x26, 0xdf, 0x24, 0x2b, 0x8f, 0xc0, 0x2b,
       0x9e, 0x8d, 0xf5, 0x38, 0xdb, 0x17, 0xa6, 0x39, 0xd7, 0xc4, 0x61, 0x32};
+  encaps_len = MLKEM512_PUBLIC_KEY_BYTES;
+  decaps_len = MLKEM512_SECRET_KEY_BYTES;
   if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, keygen_decaps, kKeyGenDKSeed) ||
+          keygen_encaps, &encaps_len, keygen_decaps, &decaps_len, kKeyGenDKSeed) ||
       !check_test(kKeyGenDK, keygen_decaps, sizeof(keygen_decaps),
-                  "ML-KEM-keyGen-decaps")) {
+                  "ML-KEM-keyGen-decaps") ||
+      encaps_len > MLKEM512_PUBLIC_KEY_BYTES ||
+      decaps_len > MLKEM512_SECRET_KEY_BYTES) {
+    goto err;
+  }
+
+  size_t wrong_encaps_len = 1;
+  size_t wrong_decaps_len = 1;
+  if (ml_kem_512_keypair_deterministic_no_self_test(
+          keygen_encaps, &wrong_encaps_len, keygen_decaps, &decaps_len, kKeyGenEKSeed)) {
+    goto err;
+  }
+  if (ml_kem_512_keypair_deterministic_no_self_test(
+          keygen_encaps, &encaps_len, keygen_decaps, &wrong_decaps_len, kKeyGenEKSeed)) {
+    goto err;
+  }
+  if (ml_kem_512_keypair_deterministic_no_self_test(
+          keygen_encaps, &wrong_encaps_len, keygen_decaps, &wrong_decaps_len, kKeyGenEKSeed)) {
     goto err;
   }
 
@@ -1200,9 +1223,11 @@ static int boringssl_self_test_ml_kem(void) {
 
   uint8_t ciphertext[MLKEM512_CIPHERTEXT_BYTES] = {0};
   uint8_t shared_secret[MLKEM512_SHARED_SECRET_LEN] = {0};
+  size_t ciphertext_len = MLKEM512_CIPHERTEXT_BYTES;
+  size_t shared_secret_len = MLKEM512_SHARED_SECRET_LEN;
 
   if (ml_kem_512_encapsulate_deterministic_no_self_test(
-          ciphertext, shared_secret, kEncapEK, kEncapM) ||
+          ciphertext, &ciphertext_len, shared_secret, &shared_secret_len, kEncapEK, kEncapM) ||
       !check_test(kEncapCiphertext, ciphertext, sizeof(kEncapCiphertext),
                   "ML-KEM-encapsulate-ciphertext") ||
       !check_test(kEncapSharedSecret, shared_secret, sizeof(kEncapSharedSecret),
@@ -1485,13 +1510,14 @@ static int boringssl_self_test_ml_kem(void) {
       0x98, 0xed, 0x60, 0x0f, 0xfd, 0x9e, 0x01, 0x9f, 0x35, 0x0e, 0x0a,
       0x15, 0xd4, 0x69, 0x5b, 0xa0, 0x96, 0xce, 0x2b, 0x32, 0xc3, 0x75,
       0x24, 0x4f, 0x79, 0xa5, 0x74, 0xda, 0x06, 0xb4, 0xb1, 0xbd};
+  shared_secret_len = MLKEM512_SHARED_SECRET_LEN;
 
-  if (ml_kem_512_decapsulate_no_self_test(shared_secret, kDecapCiphertext,
+  if (ml_kem_512_decapsulate_no_self_test(shared_secret, &shared_secret_len, kDecapCiphertext,
                                           kDecapDK) ||
       !check_test(kDecapSharedSecret, shared_secret, sizeof(kDecapSharedSecret),
                   "ML-KEM decapsulate non-rejection") ||
       ml_kem_512_decapsulate_no_self_test(
-          shared_secret, kDecapCiphertextRejection, kDecapDK) ||
+          shared_secret, &shared_secret_len, kDecapCiphertextRejection, kDecapDK) ||
       !check_test(kDecapSharedSecretRejection, shared_secret,
                   sizeof(kDecapSharedSecretRejection),
                   "ML-KEM decapsulate implicit rejection")) {
