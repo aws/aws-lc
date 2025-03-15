@@ -1035,6 +1035,7 @@ struct bio_st {
 #define BIO_C_GET_FILE_PTR 107
 #define BIO_C_SET_FILENAME 108
 #define BIO_C_SET_SSL 109
+#define BIO_C_GET_SSL 110
 #define BIO_C_SET_MD 111
 #define BIO_C_GET_MD 112
 #define BIO_C_GET_CIPHER_STATUS 113
