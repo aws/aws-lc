@@ -1,0 +1,5 @@
+name: jitterentropy-library
+source: smuellerDD/jitterentropy-library.git
+commit: ddcf1124801b74bcf39285b070093ab674d8ea97
+target: v3.6.2
+imported-at: 2025-03-17T23:31:29+0000
