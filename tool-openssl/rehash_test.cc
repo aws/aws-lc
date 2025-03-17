@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include "internal.h"
-
-#if !defined(OPENSSL_WINDOWS)
-#include <gtest/gtest.h>
-#include <openssl/pem.h>
 #include "../crypto/test/test_util.h"
 #include "test_util.h"
+#include <gtest/gtest.h>
+
+#if !defined(OPENSSL_WINDOWS)
+#include <openssl/pem.h>
 
 // Test fixture class
 class RehashTest : public ::testing::Test {
@@ -252,6 +252,32 @@ TEST_F(RehashTest, ValidDirectory) {
     ASSERT_TRUE(strstr(link_target, "crl") != nullptr);\
     unlink(link_path);
   }
+}
+#else
+
+TEST(TmpDir, CreateTmpDir) {
+  char tempdir[PATH_MAX];
+
+  // Test directory creation
+  size_t len = createTempDirPath(tempdir);
+  ASSERT_GT(len, 0u);
+
+  // Verify directory exists
+  DWORD attrs = GetFileAttributesA(tempdir);
+  EXPECT_NE(attrs, INVALID_FILE_ATTRIBUTES);
+  EXPECT_TRUE(attrs & FILE_ATTRIBUTE_DIRECTORY);
+
+  // Test we can create a file in the directory
+  char testfile[PATH_MAX];
+  snprintf(testfile, PATH_MAX, "%s\\test.txt", tempdir);
+  FILE* f = fopen(testfile, "w");
+  ASSERT_TRUE(f != nullptr);
+  fprintf(f, "test");
+  fclose(f);
+
+  // Cleanup
+  DeleteFileA(testfile);  // Delete test file
+  EXPECT_TRUE(RemoveDirectoryA(tempdir));  // Delete directory
 }
 
 #endif
