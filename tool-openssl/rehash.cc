@@ -17,7 +17,7 @@
 
 #include "../crypto/internal.h"
 
-#define MAX_COLLISIONS 256
+#define MAX_BUCKET_ENTRIES 256
 
 static const std::vector<std::string> valid_extensions = {".pem", ".crt",
                                                           ".cer", ".crl"};
@@ -30,16 +30,17 @@ static const std::vector<std::string> valid_extensions = {".pem", ".crt",
 // to use this variable as a counter instead of a flag.
 static bool status_flag = true;
 
-static size_t evpmdsize = EVP_MD_size(EVP_sha1());
-
 // Each index may point to a list of |BUCKET|'s. Each |BUCKET| may point
 // to a list of |HASH_ENTRY|'s.
 // A |BUCKET| list may be created at an index when a collision occurs for a
 // type + hash combo that does not already exist at that index. A |HASH_ENTRY|
 // list may be created when the bucket for a type + hash combo has one
 // or more |HASH_ENTRY|'s and the cert/crl doesn't already exist in the table.
+// This table is initialized and processed in |process_directory|.
 static BUCKET *hash_table[257];
-static const size_t num_elems = OPENSSL_ARRAY_SIZE(hash_table);
+
+static const size_t HASH_TABLE_SIZE = OPENSSL_ARRAY_SIZE(hash_table);
+static size_t evpmdsize = EVP_MD_size(EVP_sha1());
 
 BUCKET** get_table() {
   return hash_table;
@@ -50,7 +51,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
                      const uint8_t *digest) {
   BUCKET *bucket;
   HASH_ENTRY *entry = NULL;
-  uint32_t hash_idx = (type + hash) % num_elems;
+  uint32_t hash_idx = (type + hash) % HASH_TABLE_SIZE;
 
   // Find an existing bucket if any for this |type| + |hash| combination at
   // |hash_idx|
@@ -67,8 +68,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
       fprintf(stderr, "ERROR: Failed to allocate new bucket\n");
       return;
     }
-    // Store any previous bucket at the same index but with a
-    // different |type| + |hash| combination or NULL
+    // Insert new bucket as head of linked-list
     bucket->next = hash_table[hash_idx];
     bucket->type = type;
     bucket->hash = hash;
@@ -85,7 +85,7 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
   }
 
   // Create new entry
-  if (bucket->num_entries >= MAX_COLLISIONS) {
+  if (bucket->num_entries >= MAX_BUCKET_ENTRIES) {
     fprintf(stderr, "Error: hash table overflow for %s\n", filename);
     status_flag = false;
     return;
@@ -229,7 +229,7 @@ static void generate_symlinks(const std::string &directory_path) {
     return;
   }
 
-  for (size_t i = 0; i < num_elems; i++) {
+  for (size_t i = 0; i < HASH_TABLE_SIZE; i++) {
     for (BUCKET* bucket = hash_table[i]; bucket; bucket = bucket->next) {
       // A given type + hash combo can only exist in one bucket. Therefore,
       // a counter per bucket is enough to determine suffix
@@ -305,7 +305,7 @@ static void process_directory(const std::string &directory_path) {
 }
 
 void cleanup_hash_table() {
-  for (size_t i = 0; i < num_elems; i++) {
+  for (size_t i = 0; i < HASH_TABLE_SIZE; i++) {
     BUCKET* current_bucket = hash_table[i];
     while (current_bucket) {
       HASH_ENTRY* current_entry = current_bucket->first_entry;

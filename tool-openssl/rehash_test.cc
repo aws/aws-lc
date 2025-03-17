@@ -19,7 +19,7 @@ protected:
   }
 
   void SetUp() override {
-    ASSERT_GT(createTempDIRpath(test_dir), 0u);
+    ASSERT_GT(createTempDirPath(test_dir), 0u);
     makePathInDir(cert1_path, test_dir, "cert1.pem");
     makePathInDir(cert2_path, test_dir, "cert2.pem");
     makePathInDir(crl1_path, test_dir, "crl1.pem");
