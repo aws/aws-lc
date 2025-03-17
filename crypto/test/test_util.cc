@@ -305,3 +305,18 @@ void maybeDisableSomeForkDetectMechanisms(void) {
     CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING();
   }
 }
+
+bool runtimeEmulationIsIntelSde(void) {
+  if (getenv("RUNTIME_EMULATION_SDE")) {
+    return true;
+  }
+  return false;
+}
+
+bool addressSanitizerIsEnabled(void) {
+#if defined(OPENSSL_ASAN)
+  return true;
+#else
+  return false;
+#endif
+}

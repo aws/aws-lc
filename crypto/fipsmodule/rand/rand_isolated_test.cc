@@ -15,8 +15,7 @@
 #include "../../test/test_util.h"
 
 static const size_t request_len = 64;
-// static const size_t number_of_threads = 8;
-static const size_t number_of_threads = 1;
+static const size_t number_of_threads = 8;
 
 static thread_local size_t initialize_count = 0;
 static thread_local size_t zeroize_thread_count = 0;
@@ -171,9 +170,13 @@ TEST_F(randIsolatedTest, BasicThread) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
-#if !defined(OPENSSL_WINDOWS) && 0
+#if !defined(OPENSSL_WINDOWS)
 
 TEST_F(randIsolatedTest, BasicFork) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
 
   // Test reseed is observed when forking.
   auto testFuncSingleFork = [this]() {
@@ -252,6 +255,10 @@ TEST_F(randIsolatedTest, BasicFork) {
 #endif
 
 TEST_F(randIsolatedTest, BasicInitialization) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
 
   // Test only one seed occurs on initialization.
   auto testFunc = [this]() {

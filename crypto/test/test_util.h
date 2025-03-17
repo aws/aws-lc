@@ -130,6 +130,8 @@ bool forkAndRunTest(std::function<bool()> child_func,
   std::function<bool()> parent_func);
 
 void maybeDisableSomeForkDetectMechanisms(void);
+bool runtimeEmulationIsIntelSde(void);
+bool addressSanitizerIsEnabled(void);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {
