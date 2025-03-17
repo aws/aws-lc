@@ -31,6 +31,7 @@ tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 bool CRLTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
+bool reqTool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
 bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
