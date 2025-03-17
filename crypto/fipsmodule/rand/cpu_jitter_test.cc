@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "../../test/test_util.h"
-#include "../../../third_party/jitterentropy/jitterentropy.h"
+#include "../../../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 
 // Struct for Jitter entropy collector instance with constructor/desctructor.
 struct JitterEC {
@@ -60,6 +60,6 @@ TEST(CPUJitterEntropyTest, Basic) {
                               (char*) data1, data_len), data_len);
 
   // Verify that the Jitter library version is v3.4.0.
-  unsigned int jitter_version = 3040000;
+  unsigned int jitter_version = 3060200;
   EXPECT_EQ(jitter_version, jent_version());
 }
