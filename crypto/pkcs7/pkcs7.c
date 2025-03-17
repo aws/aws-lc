@@ -1553,6 +1553,9 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
   }
 
   const int md_type = OBJ_obj2nid(si->digest_alg->algorithm);
+  if (md_type == NID_undef) {
+    goto out;
+  }
   EVP_MD_CTX *mdc = NULL;
   BIO *bio = in_bio;
   // There may be multiple MD-type BIOs in the chain, so iterate until we find
@@ -1597,7 +1600,8 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
       goto out;
     }
 
-    if (!EVP_VerifyInit_ex(mdc_tmp, EVP_get_digestbynid(md_type), NULL)) {
+    const EVP_MD *md = EVP_get_digestbynid(md_type);
+    if (md == NULL || !EVP_VerifyInit_ex(mdc_tmp, md, NULL)) {
       goto out;
     }
 

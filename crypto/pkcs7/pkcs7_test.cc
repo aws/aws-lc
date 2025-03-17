@@ -1701,8 +1701,8 @@ TEST(PKCS7Test, TestEnveloped) {
   // NOTE: we make |buf| larger than |pt_len| in case padding gets added.
   // without the extra room, we sometimes overflow into the next variable on the
   // stack.
-  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH],
-      decrypted[pt_len + EVP_MAX_BLOCK_LENGTH];
+  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH];
+  uint8_t decrypted[pt_len + EVP_MAX_BLOCK_LENGTH];
 
   OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_memset(buf, 'A', pt_len);
@@ -2074,9 +2074,9 @@ TEST(PKCS7Test, SetDetached) {
 
 TEST(PKCS7Test, PKCS7SignedAttributes) {
   // This file was generated with the following command:
-  // openssl smime -sign -in input.txt -signer crypto/ocsp/aws/ca_cert.pem \
-  // -inkey crypto/ocsp/aws/ca_key.pem -out signed.p7s -outform PEM \
-  // -nodetach -md sha512
+  // openssl smime -sign -in input.txt -signer crypto/ocsp/aws/ca_cert.pem
+  //        -inkey crypto/ocsp/aws/ca_key.pem -out signed.p7s -outform PEM
+  //        -nodetach -md sha512
   //
   // Files with signed attributes aren't generatable with AWS-LC for now, as
   // |PKCS7_NOATTR| is always assumed with |PKCS7_sign|. See |PKCS7_sign|
