@@ -115,10 +115,7 @@ using TempFILE = std::unique_ptr<FILE, TempFileCloser>;
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
-
-#ifndef OPENSSL_WINDOWS
 size_t createTempDirPath(char buffer[PATH_MAX]);
-#endif
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {
