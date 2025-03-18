@@ -681,6 +681,12 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
     cont = *in;
     len = p - cont + plen;
     p += plen;
+  } else if (cst) {
+    // This parser historically supported BER constructed strings. We no
+    // longer do and will gradually tighten this parser into a DER
+    // parser. BER types should use |CBS_asn1_ber_to_der|.
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+    return 0;
   } else {
     cont = p;
     len = plen;
