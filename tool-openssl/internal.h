@@ -38,4 +38,7 @@ bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
 
+// Req Tool Utilities
+X509_NAME* parse_subject_name(std::string &subject_string);
+
 #endif //INTERNAL_H

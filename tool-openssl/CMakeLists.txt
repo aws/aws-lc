@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    req.cc
     rsa.cc
     s_client.cc
     tool.cc
@@ -64,6 +65,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        req.cc
+        req_test.cc
         rsa.cc
         rsa_test.cc
         s_client.cc
