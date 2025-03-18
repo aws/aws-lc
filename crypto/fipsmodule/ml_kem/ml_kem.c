@@ -40,7 +40,7 @@ int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */
   int res;
   ml_kem_512_params_init(&params);
   if (*public_len < params.public_key_bytes || *secret_len < params.secret_key_bytes) {
-    return 0;
+    return 1;
   }
   res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
 #if defined(AWSLC_FIPS)
@@ -65,7 +65,7 @@ int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
   ml_kem_params params;
   ml_kem_512_params_init(&params);
   if (*public_len < params.public_key_bytes || *secret_len < params.secret_key_bytes) {
-    return 0;
+    return 1;
   }
   res = ml_kem_keypair_ref(&params, public_key, secret_key);
 #if defined(AWSLC_FIPS)
@@ -102,7 +102,7 @@ int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       
 
   if (*ciphertext_len < params.ciphertext_bytes ||
       *shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
 
   const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key,
@@ -127,7 +127,7 @@ int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
 
   if (*ciphertext_len < params.ciphertext_bytes ||
       *shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
 
   const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
@@ -156,7 +156,7 @@ int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
   ml_kem_512_params_init(&params);
 
   if (*shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
 
   const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
@@ -179,7 +179,7 @@ int ml_kem_768_keypair_deterministic(uint8_t *public_key  /* OUT */,
   int res;
   ml_kem_768_params_init(&params);
   if (*public_len < params.public_key_bytes || *secret_len < params.secret_key_bytes) {
-    return 0;
+    return 1;
   }
   res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
 #if defined(AWSLC_FIPS)
@@ -204,7 +204,7 @@ int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
   int res;
   ml_kem_768_params_init(&params);
   if (*public_len < params.public_key_bytes || *secret_len < params.secret_key_bytes) {
-    return 0;
+    return 1;
   }
   res = ml_kem_keypair_ref(&params, public_key, secret_key);
 #if defined(AWSLC_FIPS)
@@ -230,7 +230,7 @@ int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
   ml_kem_params params;
   ml_kem_768_params_init(&params);
   if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
   const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
   if (res == 0) {
@@ -249,7 +249,7 @@ int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
   ml_kem_params params;
   ml_kem_768_params_init(&params);
   if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
   const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
   if (res == 0) {
@@ -267,7 +267,7 @@ int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
   ml_kem_params params;
   ml_kem_768_params_init(&params);
   if (*shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
   const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
   if (res == 0) {
@@ -286,7 +286,7 @@ int ml_kem_1024_keypair_deterministic(uint8_t *public_key  /* OUT */,
   int res;
   ml_kem_1024_params_init(&params);
   if (*public_len < params.public_key_bytes || *secret_len < params.secret_key_bytes) {
-    return 0;
+    return 1;
   }
   res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
 #if defined(AWSLC_FIPS)
@@ -311,7 +311,7 @@ int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
   int res;
   ml_kem_1024_params_init(&params);
   if (*public_len < params.public_key_bytes || *secret_len < params.secret_key_bytes) {
-    return 0;
+    return 1;
   }
   res = ml_kem_keypair_ref(&params, public_key, secret_key);
 #if defined(AWSLC_FIPS)
@@ -337,7 +337,7 @@ int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
   if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
   const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
   if (res == 0) {
@@ -356,7 +356,7 @@ int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
   if (*ciphertext_len < params.ciphertext_bytes || *shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
   const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
   if (res == 0) {
@@ -374,7 +374,7 @@ int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
   if (*shared_secret_len < params.shared_secret_bytes) {
-    return 0;
+    return 1;
   }
   const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
   if (res == 0) {
