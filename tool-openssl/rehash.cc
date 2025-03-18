@@ -203,7 +203,6 @@ static void symlink_check(const std::string &filename, const std::string &fullpa
     int ret = regexec(&regex, filename.c_str(), 0, NULL, 0);
     if (ret == 0) { // regex matched
       if (unlink(fullpath.c_str()) != 0) {
-        regfree(&regex);
         fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n",
           fullpath.c_str(), strerror(errno));
         status_flag = false;
@@ -212,7 +211,6 @@ static void symlink_check(const std::string &filename, const std::string &fullpa
     }
     is_symlink = true;
   }
-  regfree(&regex);
 }
 
 static void generate_symlinks(const std::string &directory_path) {
@@ -406,12 +404,14 @@ bool RehashTool(const args_list_t &args) {
   regex_t regex;
   int ret = regcomp(&regex, "^[0-9a-fA-F]{8}\\.([r])?[0-9]+$", REG_EXTENDED | REG_NOSUB);
   if (ret) {
+    regfree(&regex);
     fprintf(stderr, "Could not compile regex\n");
     return false;
   }
   // Process directory
   process_directory(directory_path, regex);
 
+  regfree(&regex);
   cleanup_hash_table();
 
   return status_flag;
