@@ -140,7 +140,13 @@ static void process_file(const std::string &filename,
   BIO_free(bio);
 
   // Ensure there is only one cert/CRL in the file, this is not an error
-  if (!x509_info_stack || sk_X509_INFO_num(x509_info_stack.get()) != 1) {
+  if (!x509_info_stack) {
+    return;
+  }
+
+  if (sk_X509_INFO_num(x509_info_stack.get()) != 1) {
+    fprintf(stderr, "Warning: Skipping %s as it does not contain exactly one "
+                    "certificate or CRL\n", filename.c_str());
     return;
   }
 
@@ -155,6 +161,7 @@ static void process_file(const std::string &filename,
     // Handle certificate
     type = TYPE_CERT;
     if (!X509_digest(x509_info->x509, EVP_sha1(), digest, &digest_len)) {
+      fprintf(stderr, "Error: Failed to generate digest for %s\n", filename.c_str());
       status_flag = false;
       return;
     }
@@ -164,11 +171,13 @@ static void process_file(const std::string &filename,
     // Handle CRL
     type = TYPE_CRL;
     if (!X509_CRL_digest(x509_info->crl, EVP_sha1(), digest, &digest_len)) {
+      fprintf(stderr, "Error: Failed to generate digest for %s\n", filename.c_str());
       status_flag = false;
       return;
     }
     x509_name = X509_CRL_get_issuer(x509_info->crl);
   } else {
+    fprintf(stderr, "Error: No certificate or CRL found in %s\n", filename.c_str());
     status_flag = false;
     return;
   }
@@ -179,38 +188,31 @@ static void process_file(const std::string &filename,
 // symlink_check determines if |filename| is a symbolic link matching the regex
 // [0-9a-f]{8}.([r])?[0-9]+.
 // If so, it deletes the symbolic link and sets |is_symlink| to true.
-static void symlink_check(const std::string &filename,
-                          const std::string &fullpath, bool &is_symlink) {
-    struct stat path_stat;
+static void symlink_check(const std::string &filename, const std::string &fullpath,
+                          bool &is_symlink, regex_t &regex) {
+  struct stat path_stat;
 
-    if (lstat(fullpath.c_str(), &path_stat) != 0) {
-      fprintf(stderr, "Warning: Cannot stat '%s': %s\n", fullpath.c_str(), strerror(errno));
-      status_flag = false;
-      return;
-    }
+  if (lstat(fullpath.c_str(), &path_stat) != 0) {
+    fprintf(stderr, "Warning: Cannot stat '%s': %s\n", fullpath.c_str(), strerror(errno));
+    status_flag = false;
+    return;
+  }
 
-    regex_t regex;
-    int ret = regcomp(&regex, "^[0-9a-f]{8}\\.([r])?[0-9]+$", REG_EXTENDED | REG_NOSUB);
-    if (ret) {
-      fprintf(stderr, "Could not compile regex\n");
-      return;
-    }
-
-    // If it's a symlink and matches our pattern, remove it
-    if (S_ISLNK(path_stat.st_mode)) {
-      ret = regexec(&regex, filename.c_str(), 0, NULL, 0);
-      if (ret == 0) { // regex matched
-        if (unlink(fullpath.c_str()) != 0) {
-          regfree(&regex);
-          fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n",
-            fullpath.c_str(), strerror(errno));
-          status_flag = false;
-          return;
-        }
+  // If it's a symlink and matches our pattern, remove it
+  if (S_ISLNK(path_stat.st_mode)) {
+    int ret = regexec(&regex, filename.c_str(), 0, NULL, 0);
+    if (ret == 0) { // regex matched
+      if (unlink(fullpath.c_str()) != 0) {
+        regfree(&regex);
+        fprintf(stderr, "Warning: Failed to remove symlink '%s': %s\n",
+          fullpath.c_str(), strerror(errno));
+        status_flag = false;
+        return;
       }
-      is_symlink = true;
     }
-    regfree(&regex);
+    is_symlink = true;
+  }
+  regfree(&regex);
 }
 
 static void generate_symlinks(const std::string &directory_path) {
@@ -264,7 +266,7 @@ static void generate_symlinks(const std::string &directory_path) {
   }
 }
 
-static void process_directory(const std::string &directory_path) {
+static void process_directory(const std::string &directory_path, regex_t &regex) {
   DIR* dir = opendir(directory_path.c_str());
   if (dir == nullptr) {
     fprintf(stderr, "Error opening directory '%s': %s\n",
@@ -289,7 +291,7 @@ static void process_directory(const std::string &directory_path) {
     // Check if it's a symlink matching the regex, continue processing even with
     // errors.
     bool is_symlink = false;
-    symlink_check(filename, full_path, is_symlink);
+    symlink_check(filename, full_path, is_symlink, regex);
     if (is_symlink) {
       continue;
     }
@@ -401,8 +403,14 @@ bool RehashTool(const args_list_t &args) {
     return false;
   }
 
+  regex_t regex;
+  int ret = regcomp(&regex, "^[0-9a-fA-F]{8}\\.([r])?[0-9]+$", REG_EXTENDED | REG_NOSUB);
+  if (ret) {
+    fprintf(stderr, "Could not compile regex\n");
+    return false;
+  }
   // Process directory
-  process_directory(directory_path);
+  process_directory(directory_path, regex);
 
   cleanup_hash_table();
 
