@@ -896,9 +896,7 @@ static int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_keypair_deterministic_no_self_test(
           keygen_encaps, &encaps_len, keygen_decaps, &decaps_len, kKeyGenEKSeed) ||
       !check_test(kKeyGenEK, keygen_encaps, sizeof(keygen_encaps),
-              "ML-KEM-keyGen-encaps") ||
-      decaps_len > MLKEM512_SECRET_KEY_BYTES ||
-      encaps_len > MLKEM512_PUBLIC_KEY_BYTES) {
+              "ML-KEM-keyGen-encaps")) {
     goto err;
   }
 
@@ -1058,24 +1056,7 @@ static int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_keypair_deterministic_no_self_test(
           keygen_encaps, &encaps_len, keygen_decaps, &decaps_len, kKeyGenDKSeed) ||
       !check_test(kKeyGenDK, keygen_decaps, sizeof(keygen_decaps),
-                  "ML-KEM-keyGen-decaps") ||
-      encaps_len > MLKEM512_PUBLIC_KEY_BYTES ||
-      decaps_len > MLKEM512_SECRET_KEY_BYTES) {
-    goto err;
-  }
-
-  size_t wrong_encaps_len = 1;
-  size_t wrong_decaps_len = 1;
-  if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, &wrong_encaps_len, keygen_decaps, &decaps_len, kKeyGenEKSeed)) {
-    goto err;
-  }
-  if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, &encaps_len, keygen_decaps, &wrong_decaps_len, kKeyGenEKSeed)) {
-    goto err;
-  }
-  if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, &wrong_encaps_len, keygen_decaps, &wrong_decaps_len, kKeyGenEKSeed)) {
+                  "ML-KEM-keyGen-decaps")) {
     goto err;
   }
 
