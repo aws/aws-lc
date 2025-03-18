@@ -126,7 +126,12 @@ bool osIsAmazonLinux(void);
 bool threadTest(const size_t numberOfThreads,
   std::function<void(bool*)> testFunc);
 
+bool forkAndRunTest(std::function<bool()> child_func,
+  std::function<bool()> parent_func);
+
 void maybeDisableSomeForkDetectMechanisms(void);
+bool runtimeEmulationIsIntelSde(void);
+bool addressSanitizerIsEnabled(void);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {
@@ -138,6 +143,5 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
 // ErrorEquals asserts that |err| is an error with library |lib| and reason
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
-
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H

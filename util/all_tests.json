@@ -123,6 +123,10 @@
     ]
   },
   {
+    "comment": "Run randomness generation tests in isolated process",
+    "cmd": ["crypto/rand_isolated_test"]
+  },
+  {
     "cmd": [
       "crypto/rwlock_static_init"
     ]

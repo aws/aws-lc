@@ -11,6 +11,9 @@
 #include "../internal.h"
 #include "../../delocate.h"
 
+DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
+DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
+
 static int entropy_get_prediction_resistance(
   const struct entropy_source_t *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
@@ -51,6 +54,14 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   }
 }
 
+static const struct entropy_source_methods * get_entropy_source_methods(void) {
+  if (*allow_entropy_source_methods_override_bss_get() == 1) {
+    return *entropy_source_methods_override_bss_get();
+  }
+
+  return tree_jitter_entropy_source_methods();
+}
+
 struct entropy_source_t * get_entropy_source(void) {
 
   struct entropy_source_t *entropy_source = OPENSSL_zalloc(sizeof(struct entropy_source_t));
@@ -58,7 +69,7 @@ struct entropy_source_t * get_entropy_source(void) {
     return NULL;
   }
 
-  entropy_source->methods = tree_jitter_entropy_source_methods();
+  entropy_source->methods = get_entropy_source_methods();
 
   // Make sure that the function table contains the minimal number of callbacks
   // that we expect. Also make sure that the entropy source is initialized such
@@ -130,3 +141,10 @@ int rdrand(uint8_t *buf, const size_t len) {
 }
 
 #endif
+
+void override_entropy_source_method_FOR_TESTING(
+  const struct entropy_source_methods *override_entropy_source_methods) {
+
+  *allow_entropy_source_methods_override_bss_get() = 1;
+  *entropy_source_methods_override_bss_get() = override_entropy_source_methods;
+}

@@ -18,8 +18,12 @@
 #include <ostream>
 #include <thread>
 
+#if !defined(OPENSSL_WINDOWS)
+#include <sys/wait.h>
+#endif
+
 #include <openssl/err.h>
-#include "openssl/pem.h"
+#include <openssl/pem.h>
 
 #include "../internal.h"
 #include "../ube/fork_detect.h"
@@ -271,9 +275,48 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
   return res;
 }
 
+bool forkAndRunTest(std::function<bool()> child_func,
+  std::function<bool()> parent_func) {
+
+#if defined(OPENSSL_WINDOWS)
+  // fork() is not supported on Windows. We could potentially add support for
+  // the CreateProcess API at some point.
+  return false;
+#else
+  pid_t pid = fork();
+  if (pid == 0) { // Child
+    bool success = child_func();
+    exit(success ? 0 : 1);
+  } else if (pid > 0) { // Parent
+    bool parent_success = parent_func();
+    int status;
+    waitpid(pid, &status, 0);
+    return parent_success && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+  }
+
+  // Fork failed
+  return false;
+#endif
+}
+
 void maybeDisableSomeForkDetectMechanisms(void) {
   if (getenv("BORINGSSL_IGNORE_FORK_DETECTION")) {
     CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
     CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING();
   }
+}
+
+bool runtimeEmulationIsIntelSde(void) {
+  if (getenv("RUNTIME_EMULATION_SDE")) {
+    return true;
+  }
+  return false;
+}
+
+bool addressSanitizerIsEnabled(void) {
+#if defined(OPENSSL_ASAN)
+  return true;
+#else
+  return false;
+#endif
 }
