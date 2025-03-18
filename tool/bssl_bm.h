@@ -30,7 +30,7 @@
 #if defined(INTERNAL_TOOL)
 #include <../crypto/ec_extra/internal.h>
 #include <../crypto/trust_token/internal.h>
-#include "../third_party/jitterentropy/jitterentropy.h"
+#include "../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 #endif // INTERNAL_TOOL
 
 #define BM_NAMESPACE bssl
