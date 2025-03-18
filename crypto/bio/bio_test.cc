@@ -1275,3 +1275,20 @@ TEST(BIOTest, TestCtrlCallback) {
   bio_callback_cleanup();
   ASSERT_EQ(BIO_free(bio), 1);
 }
+
+TEST(BIOTest, GetMemDataBackwardsCompat) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  const uint8_t contents[] = {0x72, 0x61, 0x63, 0x63, 0x6f, 0x6f, 0x6e};
+
+  // Write some test data
+  int write_len = BIO_write(bio.get(), contents, sizeof(contents));
+  ASSERT_EQ(sizeof(contents), (size_t)write_len);
+
+  // Yes, this is something gRPC does
+  const uint8_t *ptr = NULL;
+  long data_len = BIO_get_mem_data(bio.get(), &ptr);
+  ASSERT_EQ((size_t)data_len, sizeof(contents));
+  EXPECT_EQ(Bytes(contents, sizeof(contents)), Bytes(ptr, data_len));
+}
