@@ -17,7 +17,24 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
+class ReqTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+  }
+  void TearDown() override {
 
+  }
+};
+
+
+// ----------------------------- X509 Option Tests -----------------------------
+
+// Test -in and -out
+TEST_F(ReqTest, ReqInitialTest) {
+  args_list_t args = {"-new", "-x509"};
+  bool result = reqTool(args);
+  ASSERT_TRUE(result);
+}
 
 
 

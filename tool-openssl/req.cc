@@ -53,8 +53,8 @@ static const argument_t kArguments[] = {
 };
 
 
-// Parse key specification string and generate key
-// Could be rsa:2048, rsa, or any other string
+// Parse key specification string and generate key. Valid strings are in the format rsa:nbits.
+// RSA key with 2048 bit length is used by default is |keyspec| is not valid.
 static EVP_PKEY *generate_key(const char *keyspec) {
     EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -93,6 +93,7 @@ static EVP_PKEY *generate_key(const char *keyspec) {
     return pkey;
 }
 
+// Parse the subject string provided by a user with the -subj option.
 X509_NAME* parse_subject_name(std::string &subject_string) {
   const char *subject_name_ptr = subject_string.c_str();
 
@@ -174,41 +175,256 @@ X509_NAME* parse_subject_name(std::string &subject_string) {
 
   return name;
 }
-//
-// X509_NAME* prompt_user_subject_name() {
-//   return nullptr;
-// }
-//
-// static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name) {
-//   X509_NAME *name;
-//
-//   // Set version
-//   if (!X509_REQ_set_version(req, 0L))  // version 1
-//     return 0;
-//
-//   if (subject_name.empty()) {// Prompt the user
-//     name = prompt_user_subject_name();
-//   } else { // Parse user provided string
-//     name = parse_subject_name(subject_name);
-//     if (!name) {
-//       return 0;
-//     }
-//   }
-//
-//
-//   if (!X509_REQ_set_subject_name(req, name)) {
-//     X509_NAME_free(name);
-//     return 0;
-//   }
-//   X509_NAME_free(name);
-//
-//   // Set public key
-//   if (!X509_REQ_set_pubkey(req, pkey)) {
-//     return 0;
-//   }
-//
-//   return 1;
-// }
+
+X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
+  // Default values for subject fields
+  const struct {
+    const char* field_name;
+    const char* short_desc;
+    const char* default_value;
+    int nid;
+  } subject_fields[] = {
+    {"countryName", "Country Name (2 letter code)", "AU", NID_countryName},
+    {"stateOrProvinceName", "State or Province Name (full name)", "Some-State", NID_stateOrProvinceName},
+    {"localityName", "Locality Name (eg, city)", "", NID_localityName},
+    {"organizationName", "Organization Name (eg, company)", "Internet Widgits Pty Ltd", NID_organizationName},
+    {"organizationalUnitName", "Organizational Unit Name (eg, section)", "", NID_organizationalUnitName},
+    {"commonName", "Common Name (e.g. server FQDN or YOUR name)", "", NID_commonName},
+    {"emailAddress", "Email Address", "", NID_pkcs9_emailAddress}
+  };
+
+  // Extra attributes for CSR
+  const struct {
+    const char* field_name;
+    const char* short_desc;
+    const char* default_value;
+    int nid;
+  } extra_attributes[] = {
+    {"challengePassword", "A challenge password", "", NID_pkcs9_challengePassword},
+    {"unstructuredName", "An optional company name", "", NID_pkcs9_unstructuredName}
+  };
+
+  // Get the subject name from the request
+  X509_NAME* subj = X509_NAME_new();
+  if (!subj) {
+    fprintf(stderr, "Error getting subject name from request\n");
+    return false;
+  }
+
+  // Print the instructions
+  fprintf(stdout, "You are about to be asked to enter information that will be incorporated\n");
+  fprintf(stdout, "into your certificate request.\n");
+  fprintf(stdout, "What you are about to enter is what is called a Distinguished Name or a DN.\n");
+  fprintf(stdout, "There are quite a few fields but you can leave some blank\n");
+  fprintf(stdout, "For some fields there will be a default value,\n");
+  fprintf(stdout, "If you enter '.', the field will be left blank.\n");
+  fprintf(stdout, "\n");
+
+  char buffer[1024];
+
+  // Process each subject field
+  for (const auto& field : subject_fields) {
+    // Prompt with default value if available
+    if (field.default_value && field.default_value[0]) {
+      fprintf(stdout, "%s [%s]: ", field.short_desc, field.default_value);
+    } else {
+      fprintf(stdout, "%s: ", field.short_desc);
+    }
+    fflush(stdout);
+
+    // Get input with fgets
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+      X509_NAME_free(subj);
+      fprintf(stderr, "Error reading input\n");
+      return false;
+    }
+
+    // Remove newline character if present
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == '\n') {
+      buffer[len - 1] = '\0';
+      len--;
+    }
+
+    // Process input
+    const char* value = nullptr;
+    if (strcmp(buffer, ".") == 0) {
+      // Empty entry requested
+      value = "";
+    } else if (len == 0 && field.default_value) {
+      // Use default value
+      value = field.default_value;
+    } else if (len > 0) {
+      // Use provided input
+      value = buffer;
+    } else {
+      // Empty input and no default - use empty string
+      value = "";
+    }
+
+    // Only add non-empty values
+    if (value && value[0]) {
+      if (!X509_NAME_add_entry_by_NID(subj, field.nid, chtype,
+                                     reinterpret_cast<const unsigned char*>(value),
+                                     -1, -1, 0)) {
+        X509_NAME_free(subj);
+        fprintf(stderr, "Error adding %s to subject\n", field.field_name);
+        return false;
+      }
+    }
+  }
+
+  // If this is a CSR, handle extra attributes
+  if (isCSR) {
+    fprintf(stdout, "\nPlease enter the following 'extra' attributes\n");
+    fprintf(stdout, "to be sent with your certificate request\n");
+
+    // Process each extra attribute
+    for (const auto& attr : extra_attributes) {
+      // Prompt with default value if available
+      if (attr.default_value && attr.default_value[0]) {
+        fprintf(stdout, "%s [%s]: ", attr.short_desc, attr.default_value);
+      } else {
+        fprintf(stdout, "%s: ", attr.short_desc);
+      }
+      fflush(stdout);
+
+      // Get input with fgets
+      if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+        fprintf(stderr, "Error reading input\n");
+        return false;
+      }
+
+      // Remove newline character if present
+      size_t len = strlen(buffer);
+      if (len > 0 && buffer[len - 1] == '\n') {
+        buffer[len - 1] = '\0';
+        len--;
+      }
+
+      // Process input
+      const char* value = nullptr;
+      if (strcmp(buffer, ".") == 0) {
+        // Empty entry requested
+        value = "";
+      } else if (len == 0 && attr.default_value) {
+        // Use default value
+        value = attr.default_value;
+      } else if (len > 0) {
+        // Use provided input
+        value = buffer;
+      } else {
+        // Empty input and no default - use empty string
+        value = "";
+      }
+
+      // Only add non-empty attributes
+      if (value && value[0]) {
+        X509_ATTRIBUTE* x509_attr = X509_ATTRIBUTE_create_by_NID(nullptr,
+                                                               attr.nid,
+                                                               MBSTRING_ASC,
+                                                               reinterpret_cast<const unsigned char*>(value),
+                                                               -1);
+        if (!x509_attr) {
+          fprintf(stderr, "Error creating attribute %s\n", attr.field_name);
+          return false;
+        }
+
+        if (!X509_REQ_add1_attr(req, x509_attr)) {
+          fprintf(stderr, "Error adding attribute %s to request\n", attr.field_name);
+          X509_ATTRIBUTE_free(x509_attr);
+          return false;
+        }
+
+        X509_ATTRIBUTE_free(x509_attr);
+      }
+    }
+  }
+
+  return subj;
+}
+
+static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name) {
+  X509_NAME *name;
+
+  // Set version
+  if (!X509_REQ_set_version(req, 0L))  // version 1
+    return 0;
+
+  if (subject_name.empty()) {// Prompt the user
+    name = prompt_for_subject();
+  } else { // Parse user provided string
+    name = parse_subject_name(subject_name);
+    if (!name) {
+      return 0;
+    }
+  }
+
+  if (!X509_REQ_set_subject_name(req, name)) {
+    X509_NAME_free(name);
+    return 0;
+  }
+  X509_NAME_free(name);
+
+  // Set public key. IS THIS HERE OR LATER IN THE CODE?
+  if (!X509_REQ_set_pubkey(req, pkey)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int req_password_callback(char *buf, int size, int rwflag, void *userdata) {
+  const char *prompt = "Enter PEM pass phrase:";
+  char verify_buf[1024];
+  int len;
+
+  // Display prompt
+  fprintf(stderr, "%s", prompt);
+  fflush(stderr);
+
+  // Get password
+  if (fgets(buf, size, stdin) == NULL) {
+    fprintf(stderr, "Error reading password\n");
+    return 0;
+  }
+
+  // Remove trailing newline
+  len = strlen(buf);
+  if (len > 0 && buf[len-1] == '\n')
+    buf[--len] = '\0';
+
+  // For encryption only (which is the case for req tool)
+  if (rwflag) {
+    // Verify password
+    fprintf(stderr, "Verifying - %s", prompt);
+    fflush(stderr);
+
+    if (fgets(verify_buf, sizeof(verify_buf), stdin) == NULL) {
+      fprintf(stderr, "Error reading verification password\n");
+      return 0;
+    }
+
+    // Remove trailing newline
+    int verify_len = strlen(verify_buf);
+    if (verify_len > 0 && verify_buf[verify_len-1] == '\n')
+      verify_buf[--verify_len] = '\0';
+
+    // Check if passwords match
+    if (strcmp(buf, verify_buf) != 0) {
+      fprintf(stderr, "Passwords don't match\n");
+      return 0;
+    }
+
+    // Enforce minimum length
+    if (len < 4) {
+      fprintf(stderr, "Password too short (minimum 4 characters)\n");
+      return 0;
+    }
+  }
+
+  return len;
+}
 
 bool reqTool(const args_list_t &args) {
   args_map_t parsed_args;
@@ -244,11 +460,6 @@ bool reqTool(const args_list_t &args) {
     return false;
   }
 
-  if (new_flag && x509_flag) {
-  	fprintf(stderr, "Error: Only one of -x509 or -req may be specified. \n");
-    return false;
-  }
-
   std::string keyspec = "rsa:2048";
   if (!newkey.empty()) {
 	keyspec = newkey;
@@ -259,9 +470,6 @@ bool reqTool(const args_list_t &args) {
     fprintf(stderr, "Error: Failed to generate private key.\n");
     return false;
   }
-  // NEED PASSWORD PROMPTING STUFF HERE, THAT TIES INTO PEM_DEF CALLBACK. I
-  // BELIEVE YOU NEED EITHER A PASSWORD OR CIPHER TO DO THE PRIV KEY CREATION.
-  // NEED TO FIGURE THIS OUT.
 
   // Generate and write private key
   EVP_CIPHER *cipher = NULL;
@@ -280,22 +488,24 @@ bool reqTool(const args_list_t &args) {
     out_bio.reset(BIO_new_file(default_keyfile, "w"));
   }
 
-  if (!out_bio || !PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), cipher, NULL, 0, NULL, NULL)) {
+  // If encryption disabled, don't use password prompting callback
+  if (!out_bio || !PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), cipher, NULL, 0,
+                                            cipher ? req_password_callback : NULL, NULL)) {
 	  fprintf(stderr, "Failed to write private key.\n");
     return false;
   }
 
   // At this point, one of -new -newkey or -x509 must be defined
   // Like OpenSSL, generate CSR first - then convert to cert if needed
-//  bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
-//  X509 *cert = NULL;
-//  int ret = 0;
+  bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
+  X509 *cert = NULL;
+  int ret = 0;
 
-//  // Always create a CSR first
-//  if (req == NULL || !make_certificate_request(req.get(), pkey.get(), &subj)) {
-//    fprintf(stderr, "Failed to create certificate request\n");
-//    goto end;
-//  }
+  // Always create a CSR first
+  if (req == NULL || !make_certificate_request(req.get(), pkey.get(), subj)) {
+    fprintf(stderr, "Failed to create certificate request\n");
+    goto end;
+  }
 //
 //    if (params->is_x509) {
 //        // Convert CSR to certificate
@@ -364,10 +574,9 @@ bool reqTool(const args_list_t &args) {
 //
 //    ret = 1;
 //
-//end:
-//    X509_REQ_free(req);
-//    X509_free(cert);
-//    return ret;
+end:
+    X509_free(cert);
+    return ret;
 
 
 
