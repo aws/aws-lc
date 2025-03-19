@@ -36,14 +36,6 @@ TEST_F(ReqTest, ReqInitialTest) {
   ASSERT_TRUE(result);
 }
 
-
-
-
-
-
-
-
-
 struct SubjectNameTestCase {
   std::string input;
   bool expect_success;
@@ -51,7 +43,7 @@ struct SubjectNameTestCase {
   std::vector<std::string> expected_values;
 };
 class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
- protected:
+  protected:
   static std::string GetEntryValue(X509_NAME* name, int index) {
     unsigned char* tmp;
     X509_NAME_ENTRY* entry = X509_NAME_get_entry(name, index);
@@ -140,8 +132,3 @@ TEST_P(SubjectNameTest, ParseSubjectName) {
 
   X509_NAME_free(name);
 }
-
-
-
-
-

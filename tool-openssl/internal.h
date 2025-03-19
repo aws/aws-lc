@@ -40,5 +40,6 @@ bool X509Tool(const args_list_t &args);
 
 // Req Tool Utilities
 X509_NAME* parse_subject_name(std::string &subject_string);
+X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype);
 
 #endif //INTERNAL_H

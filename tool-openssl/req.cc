@@ -208,7 +208,7 @@ X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = 
   X509_NAME* subj = X509_NAME_new();
   if (!subj) {
     fprintf(stderr, "Error getting subject name from request\n");
-    return false;
+    return NULL;
   }
 
   // Print the instructions
@@ -236,7 +236,7 @@ X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = 
     if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
       X509_NAME_free(subj);
       fprintf(stderr, "Error reading input\n");
-      return false;
+      return NULL;
     }
 
     // Remove newline character if present
@@ -269,7 +269,7 @@ X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = 
                                      -1, -1, 0)) {
         X509_NAME_free(subj);
         fprintf(stderr, "Error adding %s to subject\n", field.field_name);
-        return false;
+        return NULL;
       }
     }
   }
@@ -292,7 +292,7 @@ X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = 
       // Get input with fgets
       if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
         fprintf(stderr, "Error reading input\n");
-        return false;
+        return NULL;
       }
 
       // Remove newline character if present
@@ -327,13 +327,13 @@ X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = 
                                                                -1);
         if (!x509_attr) {
           fprintf(stderr, "Error creating attribute %s\n", attr.field_name);
-          return false;
+          return NULL;
         }
 
         if (!X509_REQ_add1_attr(req, x509_attr)) {
           fprintf(stderr, "Error adding attribute %s to request\n", attr.field_name);
           X509_ATTRIBUTE_free(x509_attr);
-          return false;
+          return NULL;
         }
 
         X509_ATTRIBUTE_free(x509_attr);
@@ -344,7 +344,7 @@ X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = 
   return subj;
 }
 
-static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name) {
+static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name, bool isCSR) {
   X509_NAME *name;
 
   // Set version
@@ -352,7 +352,7 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &
     return 0;
 
   if (subject_name.empty()) {// Prompt the user
-    name = prompt_for_subject();
+    name = prompt_for_subject(req, isCSR);
   } else { // Parse user provided string
     name = parse_subject_name(subject_name);
     if (!name) {
@@ -366,7 +366,6 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &
   }
   X509_NAME_free(name);
 
-  // Set public key. IS THIS HERE OR LATER IN THE CODE?
   if (!X509_REQ_set_pubkey(req, pkey)) {
     return 0;
   }
@@ -424,6 +423,131 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
   }
 
   return len;
+}
+
+// Default extensions used in OpenSSL
+bool create_config(CONF **conf_out, BIO **bio_out) {
+    // Create in-memory configuration string
+    const char *config =
+        "[v3_ca]\n"
+        "subjectKeyIdentifier=hash\n"
+        "authorityKeyIdentifier=keyid:always,issuer:always\n"
+        "basicConstraints=critical,CA:true\n";
+
+    // Create a BIO for the config
+    BIO *bio = BIO_new_mem_buf(config, -1);
+    if (!bio) {
+        fprintf(stderr, "Failed to create memory BIO\n");
+        return false;
+    }
+
+    CONF *conf = NCONF_new(NULL);
+    if (!conf) {
+        BIO_free(bio);
+        fprintf(stderr, "Failed to create CONF structure\n");
+        return false;
+    }
+
+    if (NCONF_load_bio(conf, bio, NULL) <= 0) {
+        BIO_free(bio);
+        NCONF_free(conf);
+        fprintf(stderr, "Failed to load config from BIO\n");
+        return false;
+    }
+
+    *conf_out = conf;
+    *bio_out = bio;
+    return true;
+}
+
+// Function to add extensions to a certificate
+bool add_cert_extensions(X509 *cert) {
+    CONF *conf = NULL;
+    BIO *bio = NULL;
+
+    if (!create_config(&conf, &bio)) {
+        return false;
+    }
+
+    // Set up X509V3 context for certificate
+    X509V3_CTX ctx;
+    X509V3_set_ctx_nodb(&ctx);
+    X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);  // Self-signed: cert is both issuer and subject
+    X509V3_set_nconf(&ctx, conf);
+
+    // Add extensions from config to the certificate
+    bool result = X509V3_EXT_add_nconf(conf, &ctx, "v3_ca", cert) != 0;
+
+    // Clean up
+    NCONF_free(conf);
+    BIO_free(bio);
+
+    if (!result) {
+        fprintf(stderr, "Failed to add extensions to certificate\n");
+    }
+
+    return result;
+}
+
+// Function to add extensions to a CSR
+bool add_csr_extensions(X509_REQ *req) {
+    CONF *conf = NULL;
+    BIO *bio = NULL;
+
+    if (!create_config(&conf, &bio)) {
+        return false;
+    }
+
+    // Set up X509V3 context for CSR
+    X509V3_CTX ctx;
+    X509V3_set_ctx_nodb(&ctx);
+    X509V3_set_ctx(&ctx, NULL, NULL, req, NULL, 0);  // CSR doesn't have issuer/subject certs
+    X509V3_set_nconf(&ctx, conf);
+
+    // Add extensions from config to the CSR
+    bool result = X509V3_EXT_REQ_add_nconf(conf, &ctx, "v3_ca", req) != 0;
+
+    // Clean up
+    NCONF_free(conf);
+    BIO_free(bio);
+
+    if (!result) {
+        fprintf(stderr, "Failed to add extensions to CSR\n");
+    }
+
+    return result;
+}
+
+// Generate a random serial number for a certificate
+bool generate_serial(X509 *cert) {
+  // Create a new BIGNUM to hold the random value
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  if (!bn) {
+    fprintf(stderr, "Failed to create BIGNUM for serial\n");
+    return false;
+  }
+
+  // Generate random number with 159 bits (same as OpenSSL's SERIAL_RAND_BITS)
+  constexpr int SERIAL_RAND_BITS = 159;
+  if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
+    fprintf(stderr, "Failed to generate random serial number\n");
+    return false;
+  }
+
+  // Get a pointer to the certificate's ASN1_INTEGER serial number field
+  ASN1_INTEGER *serial = X509_get_serialNumber(cert);
+  if (!serial) {
+    fprintf(stderr, "Failed to get certificate serial number field\n");
+    return false;
+  }
+
+  // Convert BIGNUM to ASN1_INTEGER and set it as the certificate's serial number
+  if (!BN_to_ASN1_INTEGER(bn.get(), serial)) {
+    fprintf(stderr, "Failed to convert BIGNUM to ASN1_INTEGER\n");
+    return false;
+  }
+
+  return true;
 }
 
 bool reqTool(const args_list_t &args) {
@@ -498,90 +622,83 @@ bool reqTool(const args_list_t &args) {
   // At this point, one of -new -newkey or -x509 must be defined
   // Like OpenSSL, generate CSR first - then convert to cert if needed
   bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
-  X509 *cert = NULL;
+  bssl::UniquePtr<X509> cert(X509_new());
   int ret = 0;
 
   // Always create a CSR first
-  if (req == NULL || !make_certificate_request(req.get(), pkey.get(), subj)) {
+  if (req == NULL || !make_certificate_request(req.get(), pkey.get(), subj, !x509_flag)) {
     fprintf(stderr, "Failed to create certificate request\n");
-    goto end;
+    return false;
   }
-//
-//    if (params->is_x509) {
-//        // Convert CSR to certificate
-//        cert = X509_new();
-//        if (cert == NULL) {
-//            fprintf(stderr, "Failed to create X509 structure\n");
-//            goto end;
-//        }
-//
-//        // Set version
-//        if (!X509_set_version(cert, params->version)) {
-//            fprintf(stderr, "Failed to set certificate version\n");
-//            goto end;
-//        }
-//
-//        // Generate random serial number
-//        if (!generate_serial(cert)) {
-//            fprintf(stderr, "Failed to generate serial number\n");
-//            goto end;
-//        }
-//
-//        // Set subject and issuer from CSR
-//        if (!X509_set_subject_name(cert, X509_REQ_get_subject_name(req)) ||
-//            !X509_set_issuer_name(cert, X509_REQ_get_subject_name(req))) {
-//            fprintf(stderr, "Failed to set subject/issuer\n");
-//            goto end;
-//        }
-//
-//        // Set validity period
-//        time_t now = time(NULL);
-//        if (!X509_time_adj_ex(X509_getm_notBefore(cert), 0, 0, &now) ||
-//            !X509_time_adj_ex(X509_getm_notAfter(cert), params->days, 0, &now)) {
-//            fprintf(stderr, "Failed to set validity period\n");
-//            goto end;
-//        }
-//
-//        // Copy public key from CSR
-//        EVP_PKEY *tmppkey = X509_REQ_get0_pubkey(req);
-//        if (!tmppkey || !X509_set_pubkey(cert, tmppkey)) {
-//            fprintf(stderr, "Failed to set public key\n");
-//            goto end;
-//        }
-//
-//        // Sign the certificate
-//        if (!X509_sign(cert, pkey, EVP_sha256())) {
-//            fprintf(stderr, "Failed to sign certificate\n");
-//            goto end;
-//        }
-//    } else {
-//      // do other processing for CSR and then sign it
-//      // Sign the request
-// 	  if (!X509_REQ_sign(req, pkey, EVP_sha256())) {
-//   		return 0;
-//  	  }
-//
-//    }
-//
-//    // Set output parameters
-//    if (params->is_x509) {
-//        *cert_out = cert;
-//        cert = NULL;
-//    } else {
-//        *req_out = req;
-//        req = NULL;
-//    }
-//
-//    ret = 1;
-//
-end:
-    X509_free(cert);
-    return ret;
 
 
+  // Convert CSR to certificate
+  if (x509_flag) {
+    if (cert == NULL) {
+      fprintf(stderr, "Failed to create X509 structure\n");
+      return false;
+    }
+    // Set version
+    if (!X509_set_version(cert.get(), 2)) {
+      fprintf(stderr, "Failed to set certificate version\n");
+      return false;
+    }
 
+    // Generate random serial number
+    if (!generate_serial(cert.get())) {
+      fprintf(stderr, "Failed to generate serial number\n");
+      return false;
+    }
 
+    // Set subject and issuer from CSR
+    if (!X509_set_subject_name(cert.get(), X509_REQ_get_subject_name(req.get())) ||
+        !X509_set_issuer_name(cert.get(), X509_REQ_get_subject_name(req.get()))) {
+      fprintf(stderr, "Failed to set subject/issuer\n");
+      return false;
+    }
 
+    // Set expiration to be 'days' days from now
+    if (!X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0)) {
+      fprintf(stderr, "Failed to set notBefore field\n");
+      return false;
+    }
+    if (!X509_time_adj_ex(X509_getm_notAfter(cert.get()), days, 0, NULL)) {
+      fprintf(stderr, "Failed to set notAfter field\n");
+      return false;
+    }
+
+    // Copy public key from CSR
+    EVP_PKEY *tmppkey = X509_REQ_get0_pubkey(req.get());
+    if (!tmppkey || !X509_set_pubkey(cert.get(), tmppkey)) {
+      fprintf(stderr, "Failed to set public key\n");
+      return false;
+    }
+
+    // Add extensions to certificate
+    if (!add_cert_extensions(cert.get())) {
+      fprintf(stderr, "Failed to add extensions to certificate\n");
+      return false;
+    }
+
+    // Sign the certificate
+    if (!X509_sign(cert.get(), pkey.get(), EVP_sha256())) {
+      fprintf(stderr, "Failed to sign certificate\n");
+      return false;
+    }
+  } else {
+    // Add extensions to certificate
+    if (!add_csr_extensions(req.get())) {
+      fprintf(stderr, "Failed to add extensions to certificate\n");
+      return false;
+    }
+
+    // Sign the request
+	  if (!X509_REQ_sign(req.get(), pkey.get(), EVP_sha256())) {
+  	  return 0;
+ 	  }
+  }
+
+  // Handle writing out.
 
 
   return true;
