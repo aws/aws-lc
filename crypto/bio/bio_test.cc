@@ -1397,7 +1397,7 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
   ASSERT_EQ(BIO_free(bio), 1);
 }
 
-TEST(BIOTest, TestGetsCallback) {
+TEST_P(BIOPairTest, TestGetsCallback) {
   bio_callback_cleanup();
 
   BIO* bio = BIO_new(BIO_s_mem());
@@ -1405,7 +1405,21 @@ TEST(BIOTest, TestGetsCallback) {
   // write data to BIO, then set callback
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
   char buf[TEST_BUF_LEN];
-  BIO_set_callback_ex(bio, bio_cb_ex);
+
+  // params is a tuple<bool, bool> where:
+  //   - get<0> controls bio swapping ** Unused for this test
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const auto& params = GetParam();
+
+  if (std::get<1>(params)) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio, bio_cb);
+  }
 
   ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio, buf, sizeof(buf)));
 
@@ -1416,16 +1430,25 @@ TEST(BIOTest, TestGetsCallback) {
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-  ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
+  // Only verify length parameters if using extended callback (BIO_callback_ex)
+  // because the legacy callback (BIO_callback) doesn't provide length information
+  if (std::get<1>(params)) {  // If using extended callback
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
+  }
 
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  ASSERT_EQ(param_processed_ex[0], 0u);
-  ASSERT_EQ(param_processed_ex[1], 5u);
+  // Only verify processed parameters if using extended callback (BIO_callback_ex)
+  // because the legacy callback (BIO_callback) doesn't support tracking processed bytes.
+  if (std::get<1>(params)) { // If using extended callback
+    ASSERT_EQ(param_processed_ex[0], 0u);
+    ASSERT_EQ(param_processed_ex[1], 5u);
+  }
+
 
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
@@ -1433,12 +1456,26 @@ TEST(BIOTest, TestGetsCallback) {
   ASSERT_EQ(BIO_free(bio), 1);
 }
 
-TEST(BIOTest, TestCtrlCallback) {
+TEST_P(BIOPairTest, TestCtrlCallback) {
   bio_callback_cleanup();
 
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
-  BIO_set_callback_ex(bio, bio_cb_ex);
+
+  // params is a tuple<bool, bool> where:
+  //   - get<0> controls bio swapping ** Unused for this test
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const auto& params = GetParam();
+
+  if (std::get<1>(params)) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio, bio_cb);
+  }
 
   char buf[TEST_BUF_LEN];
   // Test BIO_ctrl. This is not normally called directly so we can use one of
