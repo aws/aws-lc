@@ -141,6 +141,7 @@ static void process_file(const std::string &filename,
 
   // Ensure there is only one cert/CRL in the file, this is not an error
   if (!x509_info_stack) {
+    fprintf(stderr, "Warning: Failed to parse file %s\n", filename.c_str());
     return;
   }
 
