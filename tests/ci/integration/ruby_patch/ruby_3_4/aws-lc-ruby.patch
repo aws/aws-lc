@@ -95,7 +95,7 @@ index 9852be6..f970b06 100644
                   "supported by this OpenSSL version");
  #else
 diff --git ruby/ext/openssl/ossl_ssl.c ruby/ext/openssl/ossl_ssl.c
-index 2525d0c..172aecc 100644
+index 2525d0c..4a17bbc 100644
 --- ruby/ext/openssl/ossl_ssl.c
 +++ ruby/ext/openssl/ossl_ssl.c
 @@ -823,7 +823,9 @@ ossl_sslctx_setup(VALUE self)
@@ -108,10 +108,10 @@ index 2525d0c..172aecc 100644
  #endif
  
      val = rb_attr_get(self, id_i_cert_store);
-@@ -1241,7 +1241,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
+@@ -1243,7 +1245,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
      rb_check_frozen(self);
      GetSSLCTX(self, ctx);
-
+ 
 -#if defined(HAVE_SSL_CTX_GET_SECURITY_LEVEL)
 +#if defined(HAVE_SSL_CTX_GET_SECURITY_LEVEL) && !defined(OPENSSL_IS_AWSLC)
      SSL_CTX_set_security_level(ctx, NUM2INT(value));
@@ -224,7 +224,7 @@ index 68a23b2..1b53287 100644
          "omg",
          "hello",
 diff --git ruby/test/openssl/test_pkcs7.rb ruby/test/openssl/test_pkcs7.rb
-index 862716b..033fdcf 100644
+index 862716b..dc209f9 100644
 --- ruby/test/openssl/test_pkcs7.rb
 +++ ruby/test/openssl/test_pkcs7.rb
 @@ -211,6 +211,8 @@ END
@@ -245,20 +245,15 @@ index 862716b..033fdcf 100644
      p7 = OpenSSL::PKCS7.new
      p7.type = "signed"
      assert_match(/signed/, p7.to_text)
-@@ -346,7 +350,12 @@ END
-     store = OpenSSL::X509::Store.new
-     pki_msg.verify(nil, store, nil, OpenSSL::PKCS7::NOVERIFY)
-     p7enc = OpenSSL::PKCS7.new(pki_msg.data)
--    assert_equal(pki_message_content_pem, p7enc.to_pem)
-+    # AWS-LC uses explicit OCTET STRING headers when encoding PKCS7 EncryptedContent,
-+    # while OpenSSL traditionally uses indefinite-length encoding (ASN1_TFLG_NDEF)
-+    # in its PKCS7 implementation.
-+    unless aws_lc?
-+      assert_equal(pki_message_content_pem, p7enc.to_pem)
-+    end
+@@ -276,6 +280,8 @@ END
    end
- end
  
+   def test_split_content
++     pend "AWS-LC ASN.1 parsers has no current support for parsing indefinite BER constructed strings" if aws_lc?
++
+      pki_message_pem = <<END
+ -----BEGIN PKCS7-----
+ MIIHSwYJKoZIhvcNAQcCoIIHPDCCBzgCAQExCzAJBgUrDgMCGgUAMIIDiAYJKoZI
 diff --git ruby/test/openssl/test_pkey_dh.rb ruby/test/openssl/test_pkey_dh.rb
 index d32ffaf..67fd9cf 100644
 --- ruby/test/openssl/test_pkey_dh.rb
@@ -475,7 +470,7 @@ index 02693c2..e1a0df1 100644
      EOF
      assert_same_rsa rsa, OpenSSL::PKey.read(pem, "abcdef")
 diff --git ruby/test/openssl/test_ssl.rb ruby/test/openssl/test_ssl.rb
-index 459efcc..1942cd3 100644
+index 459efcc..4dcb882 100644
 --- ruby/test/openssl/test_ssl.rb
 +++ ruby/test/openssl/test_ssl.rb
 @@ -39,7 +39,7 @@ class OpenSSL::TestSSL < OpenSSL::SSLTestCase
