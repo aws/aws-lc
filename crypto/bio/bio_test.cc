@@ -919,15 +919,30 @@ TEST(BIOTest, FileMode) {
   expect_text_mode(bio.get());
 }
 
-// Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.
-class BIOPairTest : public testing::TestWithParam<bool> {};
+// BIOPairTest: A parameterized test fixture for testing BIO pair operations
+// This test class runs each test case with four different combinations:
+//   1. Normal order (bio1->bio2) with legacy callback
+//   2. Normal order (bio1->bio2) with extended callback
+//   3. Swapped order (bio2->bio1) with legacy callback
+//   4. Swapped order (bio2->bio1) with extended callback
+//
+// Parameters:
+//   std::tuple<bool, bool>:
+//     - First bool (get<0>): Controls BIO swapping
+//       * false = normal order (bio1->bio2)
+//       * true = swapped order (bio2->bio1)
+//     - Second bool (get<1>): Controls callback type
+//       * false = legacy callback (BIO_set_callback)
+//       * true = extended callback (BIO_set_callback_ex)
+class BIOPairTest : public testing::TestWithParam<std::tuple<bool, bool>> {};
 
 TEST_P(BIOPairTest, TestPair) {
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
   bssl::UniquePtr<BIO> free_bio1(bio1), free_bio2(bio2);
 
-  if (GetParam()) {
+  const auto& params = GetParam();
+  if (std::get<0>(params)) { // swap_bios
     std::swap(bio1, bio2);
   }
 
@@ -1045,6 +1060,21 @@ static long bio_cb_ex(BIO *b, int oper, const char *argp, size_t len, int argi,
   return ret;
 }
 
+static long bio_cb(BIO *b, int oper, const char *argp, int argi,
+                      long argl, int ret) {
+  if (test_count_ex >= CB_TEST_COUNT) {
+    return CALL_BACK_FAILURE;
+  }
+  param_b_ex[test_count_ex] = b;
+  param_oper_ex[test_count_ex] = oper;
+  param_argp_ex[test_count_ex] = argp;
+  param_argi_ex[test_count_ex] = argi;
+  param_argl_ex[test_count_ex] = argl;
+  param_ret_ex[test_count_ex] = ret;
+  test_count_ex++;
+  return ret;
+}
+
 static void bio_callback_cleanup() {
   // These mocks are used in multiple tests and need to be reset
   test_count_ex = 0;
@@ -1066,11 +1096,28 @@ TEST_P(BIOPairTest, TestCallbacks) {
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
 
-  if (GetParam()) {
+  // Check the first parameter from the test tuple to determine which controls bio swapping
+  // params is a tuple<bool, bool> where:
+  //   - get<0> controls bio swapping
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const auto& params = GetParam();
+  if (std::get<0>(params)) {  // swap_bios
     std::swap(bio1, bio2);
   }
 
-  BIO_set_callback_ex(bio2, bio_cb_ex);
+  // Check the second parameter from the test tuple to determine which callback type to use
+  // params is a tuple<bool, bool> where:
+  //   - get<0> controls bio swapping
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  if (std::get<1>(params)) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio2, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio2, bio_cb);
+  }
 
   // Data written in one end may be read out the other.
   uint8_t buf[TEST_BUF_LEN];
@@ -1159,7 +1206,33 @@ TEST(BIOTest, InvokeConnectCallback) {
 }
 }  // namespace
 
-INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
+// Instantiate the parameterized test suite for BIOPairTest
+// This creates test instances for all combinations of the boolean parameters
+//
+// Parameters:
+//   First argument "All": Test suite name prefix
+//   Second argument "BIOPairTest": The test fixture class
+//   Third argument: Parameter generator using testing::Combine to create Cartesian product
+//     - First Bool(): Controls BIO swapping
+//       * false: Keep original BIO order (bio1->bio2)
+//       * true:  Swap BIOs (bio2->bio1)
+//     - Second Bool(): Controls callback type
+//       * false: Use legacy callback (BIO_set_callback)
+//       * true:  Use extended callback (BIO_set_callback_ex)
+//
+// This will generate four test combinations:
+//   1. (false, false) - Normal order, Legacy callback
+//   2. (false, true)  - Normal order, Extended callback
+//   3. (true, false)  - Swapped order, Legacy callback
+//   4. (true, true)   - Swapped order, Extended callback
+INSTANTIATE_TEST_SUITE_P(
+All,
+  BIOPairTest,
+  testing::Combine(
+      testing::Bool(),  // swap_bios
+      testing::Bool()   // use_extended_callback
+  )
+  );
 
 TEST(BIOTest, ReadWriteEx) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
