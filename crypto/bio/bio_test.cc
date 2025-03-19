@@ -1096,7 +1096,7 @@ TEST_P(BIOPairTest, TestCallbacks) {
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
 
-  // Check the first parameter from the test tuple to determine which controls bio swapping
+  // Check the first parameter from the test tuple which controls bio swapping
   // params is a tuple<bool, bool> where:
   //   - get<0> controls bio swapping
   //   - get<1> controls callback type (true = extended, false = legacy)
@@ -1349,12 +1349,25 @@ TEST(BIOTest, TestPutsNullMethod) {
 }
 } //namespace
 
-TEST(BIOTest, TestPutsCallbacks) {
+TEST_P(BIOPairTest, TestPutsCallbacks) {
   bio_callback_cleanup();
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
 
-  BIO_set_callback_ex(bio, bio_cb_ex);
+  // params is a tuple<bool, bool> where:
+  //   - get<0> controls bio swapping ** Unused for this test
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const auto& params = GetParam();
+
+  if (std::get<1>(params)) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio, bio_cb);
+  }
 
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio, "12345"));
 
