@@ -28,6 +28,10 @@
 #define MLKEM1024_SECRET_KEY_BYTES  (3168)
 #define MLKEM1024_CIPHERTEXT_BYTES  (1568)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 int ml_kem_512_keypair_deterministic(uint8_t *public_key /* OUT */,
                                          size_t *public_len /* IN_OUT */,
                                          uint8_t *secret_key /* OUT */,
@@ -132,4 +136,9 @@ int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
                                 size_t *shared_secret_len /* IN_OUT */,
                                 const uint8_t *ciphertext /* IN  */,
                                 const uint8_t *secret_key /* IN  */);
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif // ML_KEM_H
