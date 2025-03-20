@@ -79,11 +79,12 @@ The following code snippet from `service_indicator.h` shows the macro which perf
     int before = FIPS_service_indicator_before_call();              \
     func;                                                           \
     int after = FIPS_service_indicator_after_call();                \
-    if (FIPS_service_indicator_check_approved(before, after)) {     \
-      (approved) = AWSLC_APPROVED;                                  \
+    if (before != after) {                                          \
+        assert(before + 1 == after);                                \
+        (approved) = AWSLC_APPROVED;                                \
     }                                                               \
-  }                                                                 \
-  while(0)
+ }                                                                  \
+ while(0)
 ```
 Please review the correct [FIPS Security Policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf)
 to determine which APIs, algorithms, and parameters are approved.
