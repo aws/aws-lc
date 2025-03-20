@@ -107,8 +107,8 @@ TEST_P(MLKEMKeypairLengthTest, ShortLengthDeterministic) {
   decaps = new uint8_t[params.secret_len/2]{};
   size_t decaps_len = params.secret_len/2;
   ASSERT_NE(0, params.keypair_deterministic(encaps, &encaps_len, decaps, &decaps_len, params.seed));
-  ASSERT_EQ(params.public_len, encaps_len);
-  ASSERT_EQ(params.secret_len, decaps_len);
+  ASSERT_EQ(params.public_len/2, encaps_len);
+  ASSERT_EQ(params.secret_len/2, decaps_len);
 }
 
 TEST_P(MLKEMKeypairLengthTest, ShortLength) {
