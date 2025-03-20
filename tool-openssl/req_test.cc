@@ -5,11 +5,9 @@
 #include "../tool/internal.h"
 #include <openssl/evp.h>
 #include <openssl/err.h>
-#include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <string.h>
 #include <stdio.h>
-
 
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
@@ -17,23 +15,260 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
-class ReqTest : public ::testing::Test {
+class ReqComparisonTest : public ::testing::Test {
 protected:
   void SetUp() override {
-  }
-  void TearDown() override {
+    // Skip gtests if env variables not set
+    tool_executable_path = getenv("AWSLC_TOOL_PATH");
+    openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
+    }
 
+    ASSERT_GT(createTempFILEpath(cert_path_openssl), 0u);
+    ASSERT_GT(createTempFILEpath(cert_path_awslc), 0u);
+    ASSERT_GT(createTempFILEpath(csr_path_openssl), 0u);
+    ASSERT_GT(createTempFILEpath(csr_path_awslc), 0u);
+    ASSERT_GT(createTempFILEpath(key_path_openssl), 0u);
+    ASSERT_GT(createTempFILEpath(key_path_awslc), 0u);
   }
+
+  void TearDown() override {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
+      RemoveFile(cert_path_openssl);
+      RemoveFile(cert_path_awslc);
+      RemoveFile(csr_path_openssl);
+      RemoveFile(csr_path_awslc);
+      RemoveFile(key_path_openssl);
+      RemoveFile(key_path_awslc);
+    }
+  }
+
+public:
+  int ExecuteCommand(const std::string& command) {
+    return system(command.c_str());
+  }
+
+  // Load a CSR from a PEM file
+  bssl::UniquePtr<X509_REQ> LoadCSR(const char* path) {
+    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
+    if (!bio) {
+      return NULL;
+    }
+
+    bssl::UniquePtr<X509_REQ> csr(PEM_read_bio_X509_REQ(bio.get(), nullptr, nullptr, nullptr));
+    return csr;
+  }
+
+  // Load an X509 certificate from a PEM file
+  bssl::UniquePtr<X509> LoadCertificate(const char* path) {
+    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
+    if (!bio) {
+      return NULL;
+    }
+
+    bssl::UniquePtr<X509> cert(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+    return cert;
+  }
+
+  bool CompareCSRs(X509_REQ* csr1, X509_REQ* csr2) {
+    if (!csr1 || !csr2) return false;
+
+    // 1. Compare subjects
+    X509_NAME* name1 = X509_REQ_get_subject_name(csr1);
+    X509_NAME* name2 = X509_REQ_get_subject_name(csr2);
+    if (X509_NAME_cmp(name1, name2) != 0) return false;
+
+    // 2. Compare signature algorithms
+    int sig_nid1 = X509_REQ_get_signature_nid(csr1);
+    int sig_nid2 = X509_REQ_get_signature_nid(csr2);
+    if (sig_nid1 != sig_nid2) return false;
+
+    // 3. Compare public key type and parameters
+    EVP_PKEY* pkey1 = X509_REQ_get0_pubkey(csr1);
+    EVP_PKEY* pkey2 = X509_REQ_get0_pubkey(csr2);
+    if (!pkey1 || !pkey2) {
+      return false;
+    }
+    if (EVP_PKEY_id(pkey1) != EVP_PKEY_id(pkey2)) {
+      return false;
+    }
+
+    // For RSA keys, check key size
+    if (EVP_PKEY_id(pkey1) == EVP_PKEY_RSA) {
+      RSA* rsa1 = EVP_PKEY_get0_RSA(pkey1);
+      RSA* rsa2 = EVP_PKEY_get0_RSA(pkey2);
+      if (!rsa1 || !rsa2) {
+        return false;
+      }
+      if (RSA_size(rsa1) != RSA_size(rsa2)) {
+        return false;
+      }
+    }
+
+    // 4. Verify that both CSRs have valid signatures
+    if (X509_REQ_verify(csr1, pkey1) != 1) {
+      return false;
+    }
+    if (X509_REQ_verify(csr2, pkey2) != 1) {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool CheckCertificateValidityPeriod(X509* cert, int expected_days) {
+    if (!cert) return false;
+
+    const ASN1_TIME *not_before = X509_get0_notBefore(cert);
+    const ASN1_TIME *not_after = X509_get0_notAfter(cert);
+    if (!not_before || !not_after) return false;
+
+    // Get the difference in days between not_before and not_after
+    int days, seconds;
+    if (!ASN1_TIME_diff(&days, &seconds, not_before, not_after)) {
+      return false;
+    }
+
+    return (days == expected_days);
+  }
+
+  // Improved certificate comparison function
+  bool CompareCertificates(X509* cert1, X509* cert2, int expected_days) {
+    if (!cert1 || !cert2) return false;
+
+    // 1. Compare subjects
+    X509_NAME* subj1 = X509_get_subject_name(cert1);
+    X509_NAME* subj2 = X509_get_subject_name(cert2);
+    if (X509_NAME_cmp(subj1, subj2) != 0) return false;
+
+    // 2. Compare issuers
+    X509_NAME* issuer1 = X509_get_issuer_name(cert1);
+    X509_NAME* issuer2 = X509_get_issuer_name(cert2);
+    if (X509_NAME_cmp(issuer1, issuer2) != 0) return false;
+
+    // 3. Both certificates should be self-signed
+    if (X509_NAME_cmp(subj1, issuer1) != 0) return false;
+    if (X509_NAME_cmp(subj2, issuer2) != 0) return false;
+
+    // 4. Compare signature algorithms
+    int sig_nid1 = X509_get_signature_nid(cert1);
+    int sig_nid2 = X509_get_signature_nid(cert2);
+    if (sig_nid1 != sig_nid2) return false;
+
+    // 5. Check validity periods
+    if (!CheckCertificateValidityPeriod(cert1, expected_days)) return false;
+    if (!CheckCertificateValidityPeriod(cert2, expected_days)) return false;
+
+    // 6. Check public key type and parameters
+    EVP_PKEY* pkey1 = X509_get0_pubkey(cert1);
+    EVP_PKEY* pkey2 = X509_get0_pubkey(cert2);
+    if (!pkey1 || !pkey2) return false;
+
+    if (EVP_PKEY_id(pkey1) != EVP_PKEY_id(pkey2)) return false;
+
+    // For RSA keys, check key size
+    if (EVP_PKEY_id(pkey1) == EVP_PKEY_RSA) {
+      RSA* rsa1 = EVP_PKEY_get0_RSA(pkey1);
+      RSA* rsa2 = EVP_PKEY_get0_RSA(pkey2);
+      if (!rsa1 || !rsa2) return false;
+
+      if (RSA_size(rsa1) != RSA_size(rsa2)) return false;
+    }
+
+    // 7. Verify signatures (self-signed)
+    if (X509_verify(cert1, pkey1) != 1) return false;
+    if (X509_verify(cert2, pkey2) != 1) return false;
+
+    // 8. Compare extensions - simplified approach
+    int ext_count1 = X509_get_ext_count(cert1);
+    int ext_count2 = X509_get_ext_count(cert2);
+    if (ext_count1 != ext_count2) return false;
+
+    // Compare each extension by index (assuming same order)
+    for (int i = 0; i < ext_count1; i++) {
+      X509_EXTENSION* ext1 = X509_get_ext(cert1, i);
+      X509_EXTENSION* ext2 = X509_get_ext(cert2, i);
+      if (!ext1 || !ext2) return false;
+
+      // Compare extension OIDs
+      ASN1_OBJECT* obj1 = X509_EXTENSION_get_object(ext1);
+      ASN1_OBJECT* obj2 = X509_EXTENSION_get_object(ext2);
+      if (!obj1 || !obj2) return false;
+
+      if (OBJ_cmp(obj1, obj2) != 0) return false;
+
+      // Compare critical flags
+      if (X509_EXTENSION_get_critical(ext1) != X509_EXTENSION_get_critical(ext2)) return false;
+    }
+
+    return true;
+  }
+
+  char cert_path_openssl[PATH_MAX];
+  char cert_path_awslc[PATH_MAX];
+  char csr_path_openssl[PATH_MAX];
+  char csr_path_awslc[PATH_MAX];
+  char key_path_openssl[PATH_MAX];
+  char key_path_awslc[PATH_MAX];
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
 };
 
 
-// ----------------------------- X509 Option Tests -----------------------------
+TEST_F(ReqComparisonTest, GenerateBasicCSR) {
+  // Subject for certificate
+  std::string subject = "/C=US/ST=Washington/L=Seattle/O=Example Inc/CN=example.com";
 
-// Test -in and -out
-TEST_F(ReqTest, ReqInitialTest) {
-  args_list_t args = {"-new", "-x509"};
-  bool result = reqTool(args);
-  ASSERT_TRUE(result);
+  std::string awslc_command = std::string(tool_executable_path) + " req -new "
+                           + "-newkey rsa:2048 -nodes -keyout " + key_path_awslc
+                           + " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
+
+  std::string openssl_command = std::string(openssl_executable_path) + " req -new "
+                              + "-newkey rsa:2048 -nodes -keyout " + key_path_openssl
+                              + " -out " + csr_path_openssl + " -subj \"" + subject + "\"";
+
+  // Execute both commands
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0) << "Failed to execute tool command";
+  ASSERT_EQ(ExecuteCommand(openssl_command), 0) << "Failed to execute OpenSSL command";
+
+  // Cross-check CSR attributes
+  auto csr_tool = LoadCSR(csr_path_awslc);
+  auto csr_openssl = LoadCSR(csr_path_openssl);
+
+  ASSERT_TRUE(csr_tool != nullptr) << "Failed to load CSR generated by tool";
+  ASSERT_TRUE(csr_openssl != nullptr) << "Failed to load CSR generated by OpenSSL";
+
+  // Compare CSR attributes
+  EXPECT_TRUE(CompareCSRs(csr_tool.get(), csr_openssl.get())) << "CSR attributes don't match";
+}
+
+// Test for generating a self-signed certificate
+TEST_F(ReqComparisonTest, GenerateSelfSignedCertificate) {
+  std::string subject = "/C=US/ST=Washington/L=Seattle/O=Example Inc/CN=example.com";
+
+  std::string tool_command = std::string(tool_executable_path) + " req -x509 -new "
+                           + "-newkey rsa:2048 -nodes -days 365 -keyout " + key_path_awslc
+                           + " -out " + cert_path_awslc + " -subj \"" + subject + "\"";
+
+  std::string openssl_command = std::string(openssl_executable_path) + " req -x509 -new "
+                              + "-newkey rsa:2048 -nodes -days 365 -keyout " + key_path_openssl
+                              + " -out " + cert_path_openssl + " -subj \"" + subject + "\"";
+
+  // Execute both commands
+  ASSERT_EQ(ExecuteCommand(tool_command), 0) << "Failed to execute tool command";
+  ASSERT_EQ(ExecuteCommand(openssl_command), 0) << "Failed to execute OpenSSL command";
+
+  // Load certificates
+  auto cert_tool = LoadCertificate(cert_path_awslc);
+  auto cert_openssl = LoadCertificate(cert_path_openssl);
+
+  ASSERT_TRUE(cert_tool != nullptr) << "Failed to load certificate generated by tool";
+  ASSERT_TRUE(cert_openssl != nullptr) << "Failed to load certificate generated by OpenSSL";
+
+  // Compare certificates in detail with 365 days validity period
+  EXPECT_TRUE(CompareCertificates(cert_tool.get(), cert_openssl.get(), 365))
+    << "Certificates generated by tool and OpenSSL have different attributes";
 }
 
 struct SubjectNameTestCase {
@@ -42,6 +277,7 @@ struct SubjectNameTestCase {
   int expected_entry_count;
   std::vector<std::string> expected_values;
 };
+
 class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
   protected:
   static std::string GetEntryValue(X509_NAME* name, int index) {
@@ -58,58 +294,58 @@ class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
 };
 
 INSTANTIATE_TEST_SUITE_P(
-    SubjectNameTests,
-    SubjectNameTest,
-    testing::Values(
-        // Valid subject with multiple fields
-        SubjectNameTestCase{
-            "/C=US/ST=California/O=Example/CN=test.com",
-            true,
-            4,
-            {"US", "California", "Example", "test.com"}
-        },
-        // Escaped characters
-        SubjectNameTestCase{
-            "/CN=test\\/example\\.com",
-            true,
-            1,
-            {"test/example.com"}
-        },
-        // Missing leading slash
-        SubjectNameTestCase{
-            "CN=test.com",
-            false,
-            0,
-            {}
-        },
-        // Missing equals sign
-        SubjectNameTestCase{
-            "/CNtest.com",
-            false,
-            0,
-            {}
-        },
-        // Empty value
-        SubjectNameTestCase{
-            "/CN=/O=test",
-            true,
-            1,
-            {"test"}
-        },
-        // Unknown attribute
-        SubjectNameTestCase{
-            "/UNKNOWN=test/CN=example.com",
-            true,
-            1,
-            {"example.com"}
-        },
-        // Empty subject
-        SubjectNameTestCase{
-            "/",
-            true,
-            0,
-            {}
-        }
+  SubjectNameTests,
+  SubjectNameTest,
+  testing::Values(
+    // Valid subject with multiple fields
+    SubjectNameTestCase{
+      "/C=US/ST=California/O=Example/CN=test.com",
+      true,
+      4,
+      {"US", "California", "Example", "test.com"}
+    },
+    // Escaped characters
+    SubjectNameTestCase{
+      "/CN=test\\/example\\.com",
+      true,
+      1,
+      {"test/example.com"}
+    },
+    // Missing leading slash
+    SubjectNameTestCase{
+      "CN=test.com",
+      false,
+      0,
+      {}
+    },
+    // Missing equals sign
+    SubjectNameTestCase{
+      "/CNtest.com",
+      false,
+      0,
+      {}
+    },
+    // Empty value
+    SubjectNameTestCase{
+      "/CN=/O=test",
+      true,
+      1,
+      {"test"}
+    },
+    // Unknown attribute
+    SubjectNameTestCase{
+      "/UNKNOWN=test/CN=example.com",
+      true,
+      1,
+      {"example.com"}
+    },
+    // Empty subject
+    SubjectNameTestCase{
+      "/",
+      true,
+      0,
+      {}
+    }
 ));
 
 TEST_P(SubjectNameTest, ParseSubjectName) {

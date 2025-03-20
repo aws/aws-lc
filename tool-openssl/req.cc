@@ -20,8 +20,9 @@
 // is implied with -x509.
 //
 // In general, OpenSSL supports a default config file which it defaults to when user input is
-// not provided. We do not support this interface. Therefore, -keyout defaults to privkey.pem when
-// user input is not provided.
+// not provided. We don't support this default config file interface. For fields that are not
+// overriden by user input, we hardcode default values (e.g. X509 extensions, -keyout
+// defaults to privkey.pem, etc.)
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "-new", kBooleanArgument, "Generates a new certificate request." \
@@ -427,11 +428,10 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
 
 // Function to add extensions to a certificate
 static bool add_cert_extensions(X509 *cert) {
-  const char *config =
-    "[v3_ca]\n"
-    "subjectKeyIdentifier=hash\n"
-    "authorityKeyIdentifier=keyid:always,issuer:always\n"
-    "basicConstraints=critical,CA:true\n";
+  const char *config = "[v3_ca]\n"
+                       "subjectKeyIdentifier=hash\n"
+                       "authorityKeyIdentifier=keyid:always,issuer:always\n"
+                       "basicConstraints=critical,CA:true\n";
 
   // Create a BIO for the config
   BIO *bio = BIO_new_mem_buf(config, -1);
@@ -457,7 +457,7 @@ static bool add_cert_extensions(X509 *cert) {
   // Set up X509V3 context for certificate
   X509V3_CTX ctx;
   X509V3_set_ctx_nodb(&ctx);
-  X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);  // Self-signed: cert is both issuer and subject
+  X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);  // Self-signed
   X509V3_set_nconf(&ctx, conf);
 
   // Add extensions from config to the certificate
@@ -538,7 +538,7 @@ bool reqTool(const args_list_t &args) {
 
   std::string keyspec = "rsa:2048";
   if (!newkey.empty()) {
-	keyspec = newkey;
+	  keyspec = newkey;
   }
 
   bssl::UniquePtr<EVP_PKEY> pkey(generate_key(keyspec.c_str()));
@@ -550,7 +550,7 @@ bool reqTool(const args_list_t &args) {
   // Generate and write private key
   EVP_CIPHER *cipher = NULL;
   if (!nodes) {
-	cipher = (EVP_CIPHER*)EVP_des_ede3_cbc();
+	  cipher = (EVP_CIPHER*)EVP_des_ede3_cbc();
   }
 
   bssl::UniquePtr<BIO> out_bio;
@@ -638,7 +638,7 @@ bool reqTool(const args_list_t &args) {
   } else {
     // Sign the request
 	  if (!X509_REQ_sign(req.get(), pkey.get(), EVP_sha256())) {
-  	  return 0;
+  	  return false;
  	  }
   }
 
