@@ -1072,7 +1072,7 @@ $code.=<<___    if ($flavour =~ /64/);
     aese    $dat0,q21
     aesmc   $dat0,$dat0
     subs    $rounds,$rounds,#10     // if rounds==10, jump to aes-128-xts processing
-    b.eq    .Lxts_128_enc
+//    b.eq    .Lxts_128_enc
 .Lxts_enc_round_loop:
     aese    $dat0,q8
     aesmc   $dat0,$dat0
@@ -1082,7 +1082,7 @@ $code.=<<___    if ($flavour =~ /64/);
     vld1.32 {q9},[$key1],#16            // load key schedule...
     subs    $rounds,$rounds,#2          // bias
     b.gt    .Lxts_enc_round_loop
-.Lxts_128_enc:
+//.Lxts_128_enc:
     vld1.32 {q10-q11},[$key1],#32       // load key schedule...
     aese    $dat0,q8
     aesmc   $dat0,$dat0
