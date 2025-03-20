@@ -1143,8 +1143,12 @@ TEST_P(BIOPairTest, TestCallbacks) {
 
   // For callback_ex the |len| param is the requested number of bytes to
   // read/write
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+  // Only verify length parameters if using extended callback (BIO_callback_ex)
+  // because the legacy callback (BIO_callback) doesn't provide length information
+  if (std::get<1>(params)) {// If using extended callback
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+  }
 
   // For callback_ex argi and arl are unused
   ASSERT_EQ(param_argi_ex[0], 0);
@@ -1154,8 +1158,12 @@ TEST_P(BIOPairTest, TestCallbacks) {
 
   // processed is null (0 in the array) the first call and the actual data the
   // second time
-  ASSERT_EQ(param_processed_ex[0], 0u);
-  ASSERT_EQ(param_processed_ex[1], 5u);
+  // Only verify processed parameters if using extended callback (BIO_callback_ex)
+  // because the legacy callback (BIO_callback) doesn't support tracking processed bytes.
+  if (std::get<1>(params)) {// If using extended callback
+    ASSERT_EQ(param_processed_ex[0], 0u);
+    ASSERT_EQ(param_processed_ex[1], 5u);
+  }
 
   // The mock should be "full" at this point
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
@@ -1354,12 +1362,10 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
 
-  // params is a tuple<bool, bool> where:
-  //   - get<0> controls bio swapping ** Unused for this test
   //   - get<1> controls callback type (true = extended, false = legacy)
-  const auto& params = GetParam();
+  const bool use_extended_callback = std::get<1>(GetParam());
 
-  if (std::get<1>(params)) {
+  if (use_extended_callback) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
     // - processed: pointer to store number of bytes actually processed
@@ -1379,16 +1385,24 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
   // len unused in puts callback
-  ASSERT_FALSE(param_len_ex[0]);
-  ASSERT_FALSE(param_len_ex[1]);
+  // Only verify length parameters if using extended callback (BIO_callback_ex)
+  // because the legacy callback (BIO_callback) doesn't provide length information
+  if (use_extended_callback) {
+    ASSERT_FALSE(param_len_ex[0]);
+    ASSERT_FALSE(param_len_ex[1]);
+  }
 
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  ASSERT_EQ(param_processed_ex[0], 0u);
-  ASSERT_EQ(param_processed_ex[1], 5u);
+  // Only verify processed parameters if using extended callback (BIO_callback_ex)
+  // because the legacy callback (BIO_callback) doesn't support tracking processed bytes.
+  if (use_extended_callback) {
+    ASSERT_EQ(param_processed_ex[0], 0u);
+    ASSERT_EQ(param_processed_ex[1], 5u);
+  }
 
   // The mock should be "full" at this point
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
