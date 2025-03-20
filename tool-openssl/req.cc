@@ -176,7 +176,7 @@ X509_NAME* parse_subject_name(std::string &subject_string) {
   return name;
 }
 
-X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
+static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
   // Default values for subject fields
   const struct {
     const char* field_name;
@@ -425,101 +425,53 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
   return len;
 }
 
-// Default extensions used in OpenSSL
-bool create_config(CONF **conf_out, BIO **bio_out) {
-    // Create in-memory configuration string
-    const char *config =
-        "[v3_ca]\n"
-        "subjectKeyIdentifier=hash\n"
-        "authorityKeyIdentifier=keyid:always,issuer:always\n"
-        "basicConstraints=critical,CA:true\n";
-
-    // Create a BIO for the config
-    BIO *bio = BIO_new_mem_buf(config, -1);
-    if (!bio) {
-        fprintf(stderr, "Failed to create memory BIO\n");
-        return false;
-    }
-
-    CONF *conf = NCONF_new(NULL);
-    if (!conf) {
-        BIO_free(bio);
-        fprintf(stderr, "Failed to create CONF structure\n");
-        return false;
-    }
-
-    if (NCONF_load_bio(conf, bio, NULL) <= 0) {
-        BIO_free(bio);
-        NCONF_free(conf);
-        fprintf(stderr, "Failed to load config from BIO\n");
-        return false;
-    }
-
-    *conf_out = conf;
-    *bio_out = bio;
-    return true;
-}
-
 // Function to add extensions to a certificate
-bool add_cert_extensions(X509 *cert) {
-    CONF *conf = NULL;
-    BIO *bio = NULL;
+static bool add_cert_extensions(X509 *cert) {
+  const char *config =
+    "[v3_ca]\n"
+    "subjectKeyIdentifier=hash\n"
+    "authorityKeyIdentifier=keyid:always,issuer:always\n"
+    "basicConstraints=critical,CA:true\n";
 
-    if (!create_config(&conf, &bio)) {
-        return false;
-    }
+  // Create a BIO for the config
+  BIO *bio = BIO_new_mem_buf(config, -1);
+  if (!bio) {
+    fprintf(stderr, "Failed to create memory BIO\n");
+    return false;
+  }
 
-    // Set up X509V3 context for certificate
-    X509V3_CTX ctx;
-    X509V3_set_ctx_nodb(&ctx);
-    X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);  // Self-signed: cert is both issuer and subject
-    X509V3_set_nconf(&ctx, conf);
-
-    // Add extensions from config to the certificate
-    bool result = X509V3_EXT_add_nconf(conf, &ctx, "v3_ca", cert) != 0;
-
-    // Clean up
-    NCONF_free(conf);
+  CONF *conf = NCONF_new(NULL);
+  if (!conf) {
     BIO_free(bio);
+    fprintf(stderr, "Failed to create CONF structure\n");
+    return false;
+  }
 
-    if (!result) {
-        fprintf(stderr, "Failed to add extensions to certificate\n");
-    }
-
-    return result;
-}
-
-// Function to add extensions to a CSR
-bool add_csr_extensions(X509_REQ *req) {
-    CONF *conf = NULL;
-    BIO *bio = NULL;
-
-    if (!create_config(&conf, &bio)) {
-        return false;
-    }
-
-    // Set up X509V3 context for CSR
-    X509V3_CTX ctx;
-    X509V3_set_ctx_nodb(&ctx);
-    X509V3_set_ctx(&ctx, NULL, NULL, req, NULL, 0);  // CSR doesn't have issuer/subject certs
-    X509V3_set_nconf(&ctx, conf);
-
-    // Add extensions from config to the CSR
-    bool result = X509V3_EXT_REQ_add_nconf(conf, &ctx, "v3_ca", req) != 0;
-
-    // Clean up
-    NCONF_free(conf);
+  if (NCONF_load_bio(conf, bio, NULL) <= 0) {
     BIO_free(bio);
+    NCONF_free(conf);
+    fprintf(stderr, "Failed to load config from BIO\n");
+    return false;
+  }
 
-    if (!result) {
-        fprintf(stderr, "Failed to add extensions to CSR\n");
-    }
+  // Set up X509V3 context for certificate
+  X509V3_CTX ctx;
+  X509V3_set_ctx_nodb(&ctx);
+  X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);  // Self-signed: cert is both issuer and subject
+  X509V3_set_nconf(&ctx, conf);
 
-    return result;
+  // Add extensions from config to the certificate
+  bool result = X509V3_EXT_add_nconf(conf, &ctx, "v3_ca", cert) != 0;
+
+  // Clean up
+  NCONF_free(conf);
+  BIO_free(bio);
+
+  return result;
 }
 
 // Generate a random serial number for a certificate
-bool generate_serial(X509 *cert) {
+static bool generate_serial(X509 *cert) {
   // Create a new BIGNUM to hold the random value
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   if (!bn) {
@@ -623,14 +575,12 @@ bool reqTool(const args_list_t &args) {
   // Like OpenSSL, generate CSR first - then convert to cert if needed
   bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
   bssl::UniquePtr<X509> cert(X509_new());
-  int ret = 0;
 
   // Always create a CSR first
   if (req == NULL || !make_certificate_request(req.get(), pkey.get(), subj, !x509_flag)) {
     fprintf(stderr, "Failed to create certificate request\n");
     return false;
   }
-
 
   // Convert CSR to certificate
   if (x509_flag) {
@@ -686,20 +636,31 @@ bool reqTool(const args_list_t &args) {
       return false;
     }
   } else {
-    // Add extensions to certificate
-    if (!add_csr_extensions(req.get())) {
-      fprintf(stderr, "Failed to add extensions to certificate\n");
-      return false;
-    }
-
     // Sign the request
 	  if (!X509_REQ_sign(req.get(), pkey.get(), EVP_sha256())) {
   	  return 0;
  	  }
   }
 
-  // Handle writing out.
+  if (!out.empty()) {
+    out_bio.reset(BIO_new_file(out.c_str(), "w"));
+  } else {
+    // Default to stdout
+    out_bio.reset(BIO_new_fp(stdout, BIO_CLOSE));
+  }
 
+  // Handle writing out.
+  if (x509_flag) {
+    if (!PEM_write_bio_X509(out_bio.get(), cert.get())) {
+      fprintf(stderr, "Failed to write certificate\n");
+      return false;
+    }
+  } else {
+    if (!PEM_write_bio_X509_REQ(out_bio.get(), req.get())) {
+      fprintf(stderr, "Failed to write certificate request\n");
+      return false;
+    }
+  }
 
   return true;
 }
