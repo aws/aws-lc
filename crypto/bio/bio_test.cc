@@ -941,8 +941,8 @@ TEST_P(BIOPairTest, TestPair) {
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
   bssl::UniquePtr<BIO> free_bio1(bio1), free_bio2(bio2);
 
-  const auto& params = GetParam();
-  if (std::get<0>(params)) { // swap_bios
+  const bool should_swap = std::get<0>(GetParam());
+  if (should_swap) {
     std::swap(bio1, bio2);
   }
 
@@ -1096,7 +1096,7 @@ TEST_P(BIOPairTest, TestCallbacks) {
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
 
-  // Check the first parameter from the test tuple which controls bio swapping
+  // Check the second parameter from the test tuple to determine which callback type to use
   // params is a tuple<bool, bool> where:
   //   - get<0> controls bio swapping
   //   - get<1> controls callback type (true = extended, false = legacy)
@@ -1105,10 +1105,6 @@ TEST_P(BIOPairTest, TestCallbacks) {
     std::swap(bio1, bio2);
   }
 
-  // Check the second parameter from the test tuple to determine which callback type to use
-  // params is a tuple<bool, bool> where:
-  //   - get<0> controls bio swapping
-  //   - get<1> controls callback type (true = extended, false = legacy)
   if (std::get<1>(params)) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
@@ -1141,26 +1137,20 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // the length of data read/written
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  // For callback_ex the |len| param is the requested number of bytes to
-  // read/write
-  // Only verify length parameters if using extended callback (BIO_callback_ex)
-  // because the legacy callback (BIO_callback) doesn't provide length information
-  if (std::get<1>(params)) {// If using extended callback
-    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-  }
-
   // For callback_ex argi and arl are unused
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  // processed is null (0 in the array) the first call and the actual data the
-  // second time
-  // Only verify processed parameters if using extended callback (BIO_callback_ex)
-  // because the legacy callback (BIO_callback) doesn't support tracking processed bytes.
+  // Extended callback specific verifications
   if (std::get<1>(params)) {// If using extended callback
+    // For callback_ex the |len| param is the requested number of bytes to
+    // read/write
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    // processed is null (0 in the array) the first call and the actual data the
+    // second time
     ASSERT_EQ(param_processed_ex[0], 0u);
     ASSERT_EQ(param_processed_ex[1], 5u);
   }
@@ -1384,22 +1374,18 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  // len unused in puts callback
-  // Only verify length parameters if using extended callback (BIO_callback_ex)
-  // because the legacy callback (BIO_callback) doesn't provide length information
-  if (use_extended_callback) {
-    ASSERT_FALSE(param_len_ex[0]);
-    ASSERT_FALSE(param_len_ex[1]);
-  }
-
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  // Only verify processed parameters if using extended callback (BIO_callback_ex)
-  // because the legacy callback (BIO_callback) doesn't support tracking processed bytes.
+  // Extended callback specific verifications
   if (use_extended_callback) {
+    // len unused in puts callback
+    ASSERT_FALSE(param_len_ex[0]);
+    ASSERT_FALSE(param_len_ex[1]);
+
+    // Verify processed bytes
     ASSERT_EQ(param_processed_ex[0], 0u);
     ASSERT_EQ(param_processed_ex[1], 5u);
   }
@@ -1420,12 +1406,10 @@ TEST_P(BIOPairTest, TestGetsCallback) {
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
   char buf[TEST_BUF_LEN];
 
-  // params is a tuple<bool, bool> where:
-  //   - get<0> controls bio swapping ** Unused for this test
   //   - get<1> controls callback type (true = extended, false = legacy)
-  const auto& params = GetParam();
+  const bool use_extended_callback = std::get<1>(GetParam());
 
-  if (std::get<1>(params)) {
+  if (use_extended_callback) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
     // - processed: pointer to store number of bytes actually processed
@@ -1443,22 +1427,15 @@ TEST_P(BIOPairTest, TestGetsCallback) {
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
-
-  // Only verify length parameters if using extended callback (BIO_callback_ex)
-  // because the legacy callback (BIO_callback) doesn't provide length information
-  if (std::get<1>(params)) {  // If using extended callback
-    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-    ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
-  }
-
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  // Only verify processed parameters if using extended callback (BIO_callback_ex)
-  // because the legacy callback (BIO_callback) doesn't support tracking processed bytes.
-  if (std::get<1>(params)) { // If using extended callback
+  // Extended callback specific verifications
+  if (use_extended_callback) {
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
     ASSERT_EQ(param_processed_ex[0], 0u);
     ASSERT_EQ(param_processed_ex[1], 5u);
   }
@@ -1476,12 +1453,10 @@ TEST_P(BIOPairTest, TestCtrlCallback) {
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
 
-  // params is a tuple<bool, bool> where:
-  //   - get<0> controls bio swapping ** Unused for this test
   //   - get<1> controls callback type (true = extended, false = legacy)
-  const auto& params = GetParam();
+  const bool use_extended_callback = std::get<1>(GetParam());
 
-  if (std::get<1>(params)) {
+  if (use_extended_callback) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
     // - processed: pointer to store number of bytes actually processed
