@@ -76,6 +76,20 @@ function build_and_test {
   run_cmake_custom_target 'run_tests'
 }
 
+function test_c_rehash {
+  if [ -f "${BUILD_ROOT}/tool-openssl/c_rehash_test" ]; then
+    "${BUILD_ROOT}/tool-openssl/c_rehash_test"
+    local test_result=$?
+    if [ $test_result -ne 0 ]; then
+        echo "c_rehash test failed with exit code ${test_result}"
+        exit 1
+    fi
+  else
+    echo "c_rehash test script not found in ${BUILD_ROOT}/tool-openssl/"
+    exit 1
+  fi
+}
+
 function generate_symbols_file {
   # read_symbols.go currently only support static libraries
   if [ ! -f  "$BUILD_ROOT"/crypto/libcrypto.a ]; then
