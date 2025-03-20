@@ -66,7 +66,12 @@
 #endif  // OPENSSL_LINUX
 
 #if defined(OPENSSL_APPLE)
+#if __has_include(<CommonCrypto/CommonRandom.h>)
+#define AWS_LC_HAVE_COMMON_CRYPTO
 #include <CommonCrypto/CommonRandom.h>
+#else
+#define AWS_LC_USE_ARC4RANDOM
+#endif
 #endif
 
 #if defined(OPENSSL_FREEBSD)
@@ -80,6 +85,10 @@
 #endif
 
 #if defined(OPENSSL_OPENBSD)
+#define AWS_LC_USE_ARC4RANDOM
+#endif
+
+#if defined(AWS_LC_USE_ARC4RANDOM)
 #include <stdlib.h>
 #endif
 
@@ -250,16 +259,16 @@ static void init_once(void) {
   }
 #endif  // USE_NR_getrandom
 
-#if defined(OPENSSL_APPLE)
+#if defined(AWS_LC_HAVE_COMMON_CRYPTO)
   // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
   // function provided by Apple rather than /dev/urandom or |getentropy|
   // function which is available on MacOS but not on iOS.
   return;
 #endif
 
-#if defined(OPENSSL_OPENBSD)
+#if defined(AWS_LC_USE_ARC4RANDOM)
   // To get system randomness on OpenBSD we use |arc4random_buf| function
-  // which is recommended to use for C APIs rather then /dev/urandom.
+  // which is recommended to use for C APIs rather than /dev/urandom.
   // See https://man.openbsd.org/arc4random.3
   return;
 #endif
@@ -350,7 +359,8 @@ static void wait_for_entropy(void) {
   }
 
 #if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY) && \
-    !(defined(OPENSSL_APPLE) || defined(OPENSSL_OPENBSD)) // On MacOS, iOS, and OpenBSD we don't use /dev/urandom.
+    !(defined(AWS_LC_HAVE_COMMON_CRYPTO) || defined(AWS_LC_USE_ARC4RANDOM))
+  // On MacOS, iOS, and OpenBSD we don't use /dev/urandom.
 
   // In FIPS mode on platforms where urandom doesn't block at startup, we ensure
   // that the kernel has sufficient entropy before continuing. This is
@@ -388,7 +398,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
     return 1;
   }
 
-#if defined(OPENSSL_APPLE)
+#if defined(AWS_LC_HAVE_COMMON_CRYPTO)
   // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
   // rather than |getentropy| and /dev/urandom.
   if (CCRandomGenerateBytes(out, len) == kCCSuccess) {
@@ -399,7 +409,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   }
 #endif
 
-#if defined(OPENSSL_OPENBSD)
+#if defined(AWS_LC_USE_ARC4RANDOM)
   // Return value is void, no error to check
   arc4random_buf(out, len);
   return 1;
