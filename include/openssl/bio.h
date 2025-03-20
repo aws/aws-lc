@@ -295,6 +295,9 @@ typedef long (*BIO_callback_fn_ex)(BIO *bio, int oper, const char *argp,
                                    size_t len, int argi, long argl, int bio_ret,
                                    size_t *processed);
 
+typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp,
+    int argi, long argl, int bio_ret);
+
 
 // BIO_callback_ctrl allows the callback function to be manipulated. The |cmd|
 // arg will generally be |BIO_CTRL_SET_CALLBACK| but arbitrary command values
@@ -327,6 +330,9 @@ OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
+
+// BIO_set_callback sets the |callback| for |bio|
+OPENSSL_EXPORT void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
 
 // BIO_set_callback_arg sets the callback |arg| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
@@ -1002,6 +1008,7 @@ struct bio_st {
   // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|, 
   // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
+  BIO_callback_fn callback;
   // Optional callback argument, only intended for applications use.
   char *cb_arg;
 
