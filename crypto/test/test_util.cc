@@ -164,6 +164,31 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   }
   return GetTempFileNameA(pathname, "awslctest", 0, buffer);
 }
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  char pathname[PATH_MAX];
+  char tempdir[PATH_MAX];
+
+  if (0 == GetTempPathA(PATH_MAX, pathname)) {
+    return 0;
+  }
+
+  // Generate a unique name using Windows API
+  if (0 == GetTempFileNameA(pathname, "awslctestdir", 0, tempdir)) {
+    return 0;
+  }
+
+  // Delete the file that GetTempFileNameA created
+  DeleteFileA(tempdir);
+
+  if (!CreateDirectoryA(tempdir, NULL)) {
+    return 0;
+  }
+
+  strncpy(buffer, tempdir, PATH_MAX);
+  return strnlen(buffer, PATH_MAX);
+}
+
 FILE* createRawTempFILE() {
   char filename[PATH_MAX];
   if(createTempFILEpath(filename) == 0) {
@@ -185,6 +210,15 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   close(fd);
   return strnlen(buffer, PATH_MAX);
 }
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  snprintf(buffer, PATH_MAX, "/tmp/awslcTestDirXXXXXX");
+  if (mkdtemp(buffer) == NULL) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+
 FILE* createRawTempFILE() {
   return tmpfile();
 }
