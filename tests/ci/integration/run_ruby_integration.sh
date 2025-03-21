@@ -70,7 +70,7 @@ function ruby_patch() {
         --depth 1 \
         --branch ${branch}
 
-    # Add directory of backport patches if branch is not master.
+    # Add directory of backport patches if branch is a version later than Ruby 3.4.
     if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         patch_dirs+=("${RUBY_BACKPORT_FOLDER}")
     fi
