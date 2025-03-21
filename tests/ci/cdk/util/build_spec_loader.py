@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 from aws_cdk import aws_codebuild as codebuild, aws_s3_assets
-from util.metadata import CAN_AUTOLOAD, TEAM_ACCOUNT, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
+from util.metadata import CAN_AUTOLOAD, PROD_ACCOUNT, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
 import tempfile
 
 
@@ -24,7 +24,7 @@ class BuildSpecLoader(object):
             return codebuild.BuildSpec.from_source_filename("tests/ci/cdk/{}".format(file_path))
         # TODO(CryptoAlg-1276): remove below when the batch BuildSpec supports the env variable of account and region.
         placeholder_map = {
-            TEAM_ACCOUNT: AWS_ACCOUNT,
+            PROD_ACCOUNT: AWS_ACCOUNT,
             DEFAULT_REGION: AWS_REGION,
         }
         with open(file_path) as original_file:

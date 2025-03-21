@@ -4,6 +4,8 @@
 
 set -exuo pipefail
 
+source pipeline/scripts/util.sh
+
 # -e: Exit on any failure
 # -x: Print the command before running
 # -u: Any variable that is not set will cause an error if used
@@ -14,11 +16,11 @@ function delete_s3_buckets() {
   aws s3api list-buckets --query "Buckets[].Name" | jq '.[]' | while read -r i; do
     bucket_name=$(echo "${i}" | tr -d '"')
     # Delete the bucket if its name uses AWS_LC_S3_BUCKET_PREFIX.
-    if [[ "${bucket_name}" == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
-      aws s3 rm "s3://${bucket_name}" --recursive
-      aws s3api delete-bucket --bucket "${bucket_name}"
+#    if [[ "${bucket_name}" == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
+#      aws s3 rm "s3://${bucket_name}" --recursive
+#      aws s3api delete-bucket --bucket "${bucket_name}"
     # Delete bm-framework buckets if we're not on the team account
-    elif [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
+    if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
     fi
@@ -305,10 +307,12 @@ function export_global_variables() {
   export ECR_LINUX_X86_REPO_NAME='aws-lc-docker-images-linux-x86'
   export ECR_WINDOWS_X86_REPO_NAME='aws-lc-docker-images-windows-x86'
   export AWS_LC_S3_BUCKET_PREFIX='aws-lc-windows-docker-image-build-s3'
-  export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
+#  export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
   export WIN_EC2_TAG_KEY='aws-lc'
-  export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
-  export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
+#  export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
+  export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build"
+#  export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
+  export WIN_DOCKER_BUILD_SSM_DOCUMENT="AWSLC-BuildWindowsDockerImages-${DATE_NOW}"
   export IMG_BUILD_STATUS='unknown'
   # 620771051181 is AWS-LC team AWS account.
   if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
@@ -344,6 +348,10 @@ function main() {
       ;;
     --action)
       export ACTION="${2}"
+      shift
+      ;;
+    --command)
+      COMMAND="${2}"
       shift
       ;;
     *)
@@ -388,13 +396,16 @@ function main() {
     build_win_docker_images
     ;;
   synth)
-    cdk synth 'aws-lc-ci-*'
+    cdk synth '*'
     ;;
   diff)
     cdk diff aws-lc-ci-*
     ;;
   bootstrap)
     cdk bootstrap
+    ;;
+  invoke)
+    ${COMMAND:?}
     ;;
   *)
     echo "--action is required. Use '--help' to see allowed actions."
