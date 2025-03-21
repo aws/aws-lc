@@ -116,11 +116,6 @@ static BIO_callback_fn_ex get_callback(BIO *bio) {
 static int call_bio_callback_with_processed(BIO *bio, const int oper,
                                         const void *buf, int len, int ret) {
   if (HAS_CALLBACK(bio)) {
-    // Preserves flag behavior for old-style callback to match callback_ex
-    if (bio->callback_ex == NULL && bio->callback != NULL) {
-      long callback_ret = bio->callback(bio, oper, buf, 0, 0L, ret);
-      return callback_ret;
-    }
     size_t processed = 0;
     // The original BIO return value can be an error value (less than 0) or
     // the number of bytes read/written
@@ -130,7 +125,8 @@ static int call_bio_callback_with_processed(BIO *bio, const int oper,
     // Pass the original BIO's return value to the callback. If the callback
     // is successful return processed from the callback, if the callback is
     // not successful return the callback's return value.
-    long callback_ret = bio->callback_ex(bio, oper, buf, len, 0, 0L, ret, &processed);
+    BIO_callback_fn_ex cb = get_callback(bio);
+    long callback_ret = cb(bio, oper, buf, len, 0, 0L, ret, &processed);
     if (callback_ret <= INT_MAX && callback_ret >= INT_MIN) {
       ret = (int)callback_ret;
       if (ret > 0) {
