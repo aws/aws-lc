@@ -63,9 +63,9 @@ static EVP_PKEY *generate_key(const char *keyspec) {
     int pkey_type = EVP_PKEY_RSA;
 
     // Parse keyspec
-    if (strncasecmp(keyspec, "rsa:", 4) == 0) {
+    if (OPENSSL_strncasecmp(keyspec, "rsa:", 4) == 0) {
       keylen = atol(keyspec + 4);
-    } else if (strcasecmp(keyspec, "rsa") == 0) {
+    } else if (OPENSSL_strcasecmp(keyspec, "rsa") == 0) {
 	    keylen = DEFAULT_KEY_LENGTH;
     } else {
       fprintf(stderr, "Unknown key specification: %s, using RSA key with 2048 bit length\n", keyspec);
