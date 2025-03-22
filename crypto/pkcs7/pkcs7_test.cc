@@ -2159,6 +2159,11 @@ iWjrtmwM/HRbFEg2THS9b/vkiTsNSRCR9goaq9KPqXuJJsjJIoMA8IBHSLVvFnLf
   bssl::UniquePtr<BIO> out(BIO_new(BIO_s_mem()));
   EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
                            out.get(), /*flags*/ 0));
+
+  // Run |PKCS7_verify| again to check that we're consuming a copy of the
+  // underlying |EVP_MD_CTX|.
+  EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
+                         out.get(), /*flags*/ 0));
 }
 
 TEST(PKCS7Test, PKCS7SignedAttributesRuby) {
