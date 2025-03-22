@@ -449,9 +449,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
 // written to |out| and 1 is returned. On error or verification failure, 0 is
 // returned.
 //
-// We don't currently support authenticated attributes, so if any of |p7|'s
-// signer infos have authenticated attributes, PKCS7_verify will fail.
-//
 // Flags: If |PKCS7_NOVERIFY| is specified, trust chain validation is skipped.
 // This function also enforces the behavior of OpenSSL's |PKCS7_NO_DUAL_CONTENT|
 // meaning that |indata| may not be specified if |p7|'s signed data is attached.
