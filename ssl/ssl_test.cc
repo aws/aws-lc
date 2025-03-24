@@ -47,7 +47,6 @@
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
-#include "../crypto/kyber/kem_kyber.h"
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 
@@ -605,39 +604,6 @@ static const CurveTest kCurveTests[] = {
     },
   },
   {
-    "SecP256r1Kyber768Draft00:prime256v1:secp384r1:secp521r1:x25519",
-    {
-      SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
-      SSL_GROUP_SECP521R1,
-      SSL_GROUP_X25519,
-    },
-  },
-  {
-    "X25519Kyber768Draft00:prime256v1:secp384r1",
-    {
-      SSL_GROUP_X25519_KYBER768_DRAFT00,
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
-    },
-  },
-  {
-    "X25519:X25519Kyber768Draft00",
-    {
-      SSL_GROUP_X25519,
-      SSL_GROUP_X25519_KYBER768_DRAFT00,
-    },
-  },
-  {
-    "X25519:SecP256r1Kyber768Draft00:prime256v1",
-    {
-      SSL_GROUP_X25519,
-      SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-      SSL_GROUP_SECP256R1,
-    },
-  },
-  {
     "SecP256r1MLKEM768:prime256v1:secp384r1:secp521r1:x25519",
     {
       SSL_GROUP_SECP256R1_MLKEM768,
@@ -682,13 +648,6 @@ static const size_t X25519_SECRET_SIZE = 32;
 
 static const GroupTest kKemGroupTests[] = {
   {
-    NID_KYBER768_R3,
-    SSL_GROUP_KYBER768_R3,
-    KYBER768_R3_PUBLIC_KEY_BYTES,
-    KYBER768_R3_CIPHERTEXT_BYTES,
-    KYBER_R3_SHARED_SECRET_LEN,
-  },
-  {
     NID_MLKEM768,
     SSL_GROUP_MLKEM768,
     MLKEM768_PUBLIC_KEY_BYTES,
@@ -698,36 +657,6 @@ static const GroupTest kKemGroupTests[] = {
 };
 
 static const HybridGroupTest kHybridGroupTests[] = {
-  {
-    NID_SecP256r1Kyber768Draft00,
-    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    P256_KEYSHARE_SIZE + KYBER768_R3_PUBLIC_KEY_BYTES,
-    P256_KEYSHARE_SIZE + KYBER768_R3_CIPHERTEXT_BYTES,
-    P256_SECRET_SIZE + KYBER_R3_SHARED_SECRET_LEN,
-    {
-      P256_KEYSHARE_SIZE,             // offer_share_sizes[0]
-      KYBER768_R3_PUBLIC_KEY_BYTES,   // offer_share_sizes[1]
-    },
-    {
-      P256_KEYSHARE_SIZE,             // accept_share_sizes[0]
-      KYBER768_R3_CIPHERTEXT_BYTES,   // accept_share_sizes[1]
-    },
-  },
-  {
-    NID_X25519Kyber768Draft00,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    X25519_KEYSHARE_SIZE + KYBER768_R3_PUBLIC_KEY_BYTES,
-    X25519_KEYSHARE_SIZE + KYBER768_R3_CIPHERTEXT_BYTES,
-    X25519_SECRET_SIZE + KYBER_R3_SHARED_SECRET_LEN,
-    {
-      X25519_KEYSHARE_SIZE,           // offer_share_sizes[0]
-      KYBER768_R3_PUBLIC_KEY_BYTES,   // offer_share_sizes[1]
-    },
-    {
-      X25519_KEYSHARE_SIZE,          // accept_share_sizes[0]
-      KYBER768_R3_CIPHERTEXT_BYTES,  // accept_share_sizes[1]
-    },
-  },
   {
     NID_SecP256r1MLKEM768,
     SSL_GROUP_SECP256R1_MLKEM768,
@@ -773,325 +702,11 @@ static const char *kBadCurvesLists[] = {
   "P-256:RSA",
   "X25519:P-256:",
   ":X25519:P-256",
-  "kyber768_r3",
-  "x25519_kyber768:prime256v1",
   "mlkem768",
   "x25519_mlkem768:prime256v1",
 };
 
 static const HybridHandshakeTest kHybridHandshakeTests[] = {
-  // The corresponding hybrid group should be negotiated when client
-  // and server support only that group
-  {
-    "X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    false,
-  },
-
-  {
-    "SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    false,
-  },
-
-  // The client's preferred hybrid group should be negotiated when also
-  // supported by the server, even if the server "prefers"/supports other groups.
-  {
-    "X25519Kyber768Draft00:x25519",
-    TLS1_3_VERSION,
-    "x25519:prime256v1:X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    false,
-  },
-
-  {
-    "X25519Kyber768Draft00:x25519",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00:x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    false,
-  },
-
-  {
-    "SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00:secp384r1:x25519:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    false,
-  },
-
-  // The client lists PQ/hybrid groups as both first and second preferences.
-  // The key share logic is implemented such that the client will always
-  // attempt to send one hybrid key share and one classical key share.
-  // Therefore, the client will send key shares [SecP256r1Kyber768Draft00, x25519],
-  // skipping X25519Kyber768Draft00, and the server will choose to negotiate
-  // x25519 since it is the only mutually supported group.
-  {
-    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:x25519",
-    TLS1_3_VERSION,
-    "secp384r1:x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519,
-    false,
-  },
-
-  // The client will send key shares [x25519, SecP256r1Kyber768Draft00].
-  // The server will negotiate SecP256r1Kyber768Draft00 since it is the only
-  // mutually supported group.
-  {
-    "x25519:secp384r1:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "SecP256r1Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    false,
-  },
-
-  // The client will send key shares [x25519, SecP256r1Kyber768Draft00]. The
-  // server will negotiate x25519 since the client listed it as its first
-  // preference, even though it supports SecP256r1Kyber768Draft00.
-  {
-    "x25519:prime256v1:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "prime256v1:x25519:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519,
-    false,
-  },
-
-  // The client will send key shares [SecP256r1Kyber768Draft00, x25519].
-  // The server will negotiate SecP256r1Kyber768Draft00 since the client listed
-  // it as its first preference.
-  {
-    "SecP256r1Kyber768Draft00:x25519:prime256v1",
-    TLS1_3_VERSION,
-    "prime256v1:x25519:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    false,
-  },
-
-  // In the supported_groups extension, the client will indicate its
-  // preferences, in order, as [SecP256r1Kyber768Draft00, X25519Kyber768Draft00,
-  // x25519, prime256v1]. From those groups, it will send key shares
-  // [SecP256r1Kyber768Draft00, x25519]. The server supports, and receives a
-  // key share for, x25519. However, when selecting a mutually supported group
-  // to negotiate, the server recognizes that the client prefers
-  // X25519Kyber768Draft00 over x25519. Since the server also supports
-  // X25519Kyber768Draft00, but did not receive a key share for it, it will
-  // select it and send an HRR. This ensures that the client's highest
-  // preference group will be negotiated, even at the expense of an additional
-  // round-trip.
-  //
-  // In our SSL implementation, this situation is unique to the case where the
-  // client supports both ECC and hybrid/PQ. When sending key shares, the
-  // client will send at most two key shares in one of the following ways:
-
-  // (a) one ECC key share - if the client supports only ECC;
-  // (b) one PQ key share - if the client supports only PQ;
-  // (c) one ECC and one PQ key share - if the client supports ECC and PQ.
-  //
-  // One of the above cases will be true irrespective of how many groups
-  // the client supports. If, say, the client supports four ECC groups
-  // and zero PQ groups, it will still only send a single ECC share. In cases
-  // (a) and (b), either the server supports that group and chooses to
-  // negotiate it, or it doesn't support it and sends an HRR. Case (c) is the
-  // only case where the server might receive a key share for a mutually
-  // supported group, but chooses to respect the client's preference order
-  // defined in the supported_groups extension at the expense of an additional
-  // round-trip.
-  {
-    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:x25519:prime256v1",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00:prime256v1:x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    true,
-  },
-
-  // Like the previous case, but the client's prioritization of ECC and PQ
-  // is inverted.
-  {
-    "x25519:prime256v1:SecP256r1Kyber768Draft00:X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1,
-    true,
-  },
-
-  // The client will send key shares [SecP256r1Kyber768Draft00, x25519]. The
-  // server will negotiate X25519Kyber768Draft00 after an HRR.
-  {
-    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:x25519:prime256v1",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    true,
-  },
-
-  // EC should be negotiated when client prefers EC, or server does not
-  // support hybrid
-  {
-    "X25519Kyber768Draft00:x25519",
-    TLS1_3_VERSION,
-    "x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519,
-    false,
-  },
-  {
-    "x25519:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519,
-    false,
-  },
-  {
-    "prime256v1:X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1,
-    false,
-  },
-  {
-    "prime256v1:x25519:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "x25519:prime256v1:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1,
-    false,
-  },
-
-  // EC should be negotiated, after a HelloRetryRequest, if the server
-  // supports only curves for which it did not initially receive a key share
-  {
-    "X25519Kyber768Draft00:x25519:SecP256r1Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    "prime256v1",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1,
-    true,
-  },
-  {
-    "X25519Kyber768Draft00:SecP256r1Kyber768Draft00:prime256v1:x25519",
-    TLS1_3_VERSION,
-    "secp224r1:secp384r1:secp521r1:x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519,
-    true,
-  },
-
-  // Hybrid should be negotiated, after a HelloRetryRequest, if the server
-  // supports only curves for which it did not initially receive a key share
-  {
-    "x25519:prime256v1:SecP256r1Kyber768Draft00:X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    "secp224r1:X25519Kyber768Draft00:secp521r1",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519_KYBER768_DRAFT00,
-    true,
-  },
-  {
-    "X25519Kyber768Draft00:x25519:prime256v1:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    true,
-  },
-
-  // If there is no overlap between client and server groups,
-  // the handshake should fail
-  {
-    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:secp384r1",
-    TLS1_3_VERSION,
-    "prime256v1:x25519",
-    TLS1_3_VERSION,
-    0,
-    false,
-  },
-  {
-    "secp384r1:SecP256r1Kyber768Draft00:X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    "prime256v1:x25519",
-    TLS1_3_VERSION,
-    0,
-    false,
-  },
-  {
-    "secp384r1:SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "prime256v1:x25519:X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    0,
-    false,
-  },
-  {
-    "SecP256r1Kyber768Draft00",
-    TLS1_3_VERSION,
-    "X25519Kyber768Draft00",
-    TLS1_3_VERSION,
-    0,
-    false,
-  },
-
-  // If the client supports hybrid TLS 1.3, but the server
-  // only supports TLS 1.2, then TLS 1.2 EC should be negotiated.
-  {
-    "SecP256r1Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    "prime256v1:x25519",
-    TLS1_2_VERSION,
-    SSL_GROUP_SECP256R1,
-    false,
-  },
-
-  // Same as above, but server also has SecP256r1Kyber768Draft00 in it's
-  // supported list, but can't use it since TLS 1.3 is the minimum version that
-  // supports PQ.
-  {
-    "SecP256r1Kyber768Draft00:prime256v1",
-    TLS1_3_VERSION,
-    "SecP256r1Kyber768Draft00:prime256v1:x25519",
-    TLS1_2_VERSION,
-    SSL_GROUP_SECP256R1,
-    false,
-  },
-
-  // If the client configures the curve list to include a hybrid
-  // curve, then initiates a 1.2 handshake, it will not advertise
-  // hybrid groups because hybrid is not supported for 1.2. So
-  // a 1.2 EC handshake will be negotiated (even if the server
-  // supports 1.3 with corresponding hybrid group).
-  {
-    "SecP256r1Kyber768Draft00:x25519",
-    TLS1_2_VERSION,
-    "SecP256r1Kyber768Draft00:x25519",
-    TLS1_3_VERSION,
-    SSL_GROUP_X25519,
-    false,
-  },
-  {
-    "SecP256r1Kyber768Draft00:prime256v1",
-    TLS1_2_VERSION,
-    "prime256v1:x25519",
-    TLS1_2_VERSION,
-    SSL_GROUP_SECP256R1,
-    false,
-  },
   // The corresponding hybrid group should be negotiated when client
   // and server support only that group
   {
@@ -13090,7 +12705,6 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
         // continue with the handshake, then verify that the client and
         // server ultimately arrived at different shared secrets.
         EXPECT_TRUE(
-          hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
         );
@@ -13358,7 +12972,6 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
         // continue with the handshake, then verify that the client and
         // server ultimately arrived at different shared secrets.
         EXPECT_TRUE(
-          hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
         );

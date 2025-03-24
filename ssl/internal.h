@@ -1287,7 +1287,7 @@ OPENSSL_EXPORT Span<const HybridGroup> HybridGroups();
 
 // PQGroups returns all supported post-quantum groups. A post-quantum
 // group may be a hybrid group containing at least one PQ
-// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ group
+// component (e.g. SSL_GROUP_SECP256R1_MLKEM768) or a standalone PQ group
 // (e.g. KYBER768_R3).
 Span<const uint16_t> PQGroups();
 
