@@ -187,6 +187,13 @@ size_t createTempDirPath(char buffer[PATH_MAX]) {
   return strnlen(buffer, PATH_MAX);
 }
 
+FILE* createRawTempFILE() {
+  char filename[PATH_MAX];
+  if(createTempFILEpath(filename) == 0) {
+    return nullptr;
+  }
+  return fopen(filename, "w+b");
+}
 #else
 #include <cstdlib>
 #include <unistd.h>
