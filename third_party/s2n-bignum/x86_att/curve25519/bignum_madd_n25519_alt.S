@@ -31,34 +31,34 @@
 // close to the loop body of the bignum_mod_n25519 function.
 
 #define reduce(m4,m3,m2,m1,m0)                                  \
-        movq    m4, %rbx ;                                        \
-        shldq   $0x4, m3, %rbx ;                                   \
-        shrq    $0x3c, m4 ;                                       \
-        subq    m4, %rbx ;                                        \
-        shlq    $0x4, m3 ;                                        \
-        shrdq   $0x4, m4, m3 ;                                    \
-        movabsq $0x5812631a5cf5d3ed, %rax ;                        \
-        mulq    %rbx;                                            \
-        movq    %rax, %rbp ;                                       \
-        movq    %rdx, %rcx ;                                       \
-        movabsq $0x14def9dea2f79cd6, %rax ;                        \
-        mulq    %rbx;                                            \
-        addq    %rax, %rcx ;                                       \
-        adcq    $0x0, %rdx ;                                       \
-        subq    %rbp, m0 ;                                        \
-        sbbq    %rcx, m1 ;                                        \
-        sbbq    %rdx, m2 ;                                        \
-        sbbq    $0x0, m3 ;                                        \
-        sbbq    %rbx, %rbx ;                                       \
-        movabsq $0x5812631a5cf5d3ed, %rax ;                        \
-        andq    %rbx, %rax ;                                       \
-        movabsq $0x14def9dea2f79cd6, %rdx ;                        \
-        andq    %rbx, %rdx ;                                       \
-        movabsq $0x1000000000000000, %rbx ;                        \
-        andq    %rax, %rbx ;                                       \
-        addq    %rax, m0 ;                                        \
-        adcq    %rdx, m1 ;                                        \
-        adcq    $0x0, m2 ;                                        \
+        movq    m4, %rbx  ASM_LINE_END                                        \
+        shldq   $0x4, m3, %rbx  ASM_LINE_END                                   \
+        shrq    $0x3c, m4  ASM_LINE_END                                       \
+        subq    m4, %rbx  ASM_LINE_END                                        \
+        shlq    $0x4, m3  ASM_LINE_END                                        \
+        shrdq   $0x4, m4, m3  ASM_LINE_END                                    \
+        movabsq $0x5812631a5cf5d3ed, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                                            \
+        movq    %rax, %rbp  ASM_LINE_END                                       \
+        movq    %rdx, %rcx  ASM_LINE_END                                       \
+        movabsq $0x14def9dea2f79cd6, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                                            \
+        addq    %rax, %rcx  ASM_LINE_END                                       \
+        adcq    $0x0, %rdx  ASM_LINE_END                                       \
+        subq    %rbp, m0  ASM_LINE_END                                        \
+        sbbq    %rcx, m1  ASM_LINE_END                                        \
+        sbbq    %rdx, m2  ASM_LINE_END                                        \
+        sbbq    $0x0, m3  ASM_LINE_END                                        \
+        sbbq    %rbx, %rbx  ASM_LINE_END                                       \
+        movabsq $0x5812631a5cf5d3ed, %rax  ASM_LINE_END                        \
+        andq    %rbx, %rax  ASM_LINE_END                                       \
+        movabsq $0x14def9dea2f79cd6, %rdx  ASM_LINE_END                        \
+        andq    %rbx, %rdx  ASM_LINE_END                                       \
+        movabsq $0x1000000000000000, %rbx  ASM_LINE_END                        \
+        andq    %rax, %rbx  ASM_LINE_END                                       \
+        addq    %rax, m0  ASM_LINE_END                                        \
+        adcq    %rdx, m1  ASM_LINE_END                                        \
+        adcq    $0x0, m2  ASM_LINE_END                                        \
         adcq    %rbx, m3
 
 // Special case of "reduce" with m4 = 0. As well as not using m4,
@@ -66,32 +66,32 @@
 // versus min (floor(m/2^252)) (2^63-1).
 
 #define reduce0(m3,m2,m1,m0)                                    \
-        movq    m3, %rbx ;                                        \
-        shrq    $60, %rbx ;                                        \
-        shlq    $4, m3 ;                                          \
-        shrq    $4, m3 ;                                          \
-        movabsq $0x5812631a5cf5d3ed, %rax ;                        \
-        mulq    %rbx;                                            \
-        movq    %rax, %rbp ;                                       \
-        movq    %rdx, %rcx ;                                       \
-        movabsq $0x14def9dea2f79cd6, %rax ;                        \
-        mulq    %rbx;                                            \
-        addq    %rax, %rcx ;                                       \
-        adcq    $0x0, %rdx ;                                       \
-        subq    %rbp, m0 ;                                        \
-        sbbq    %rcx, m1 ;                                        \
-        sbbq    %rdx, m2 ;                                        \
-        sbbq    $0x0, m3 ;                                        \
-        sbbq    %rbx, %rbx ;                                       \
-        movabsq $0x5812631a5cf5d3ed, %rax ;                        \
-        andq    %rbx, %rax ;                                       \
-        movabsq $0x14def9dea2f79cd6, %rdx ;                        \
-        andq    %rbx, %rdx ;                                       \
-        movabsq $0x1000000000000000, %rbx ;                        \
-        andq    %rax, %rbx ;                                       \
-        addq    %rax, m0 ;                                        \
-        adcq    %rdx, m1 ;                                        \
-        adcq    $0x0, m2 ;                                        \
+        movq    m3, %rbx  ASM_LINE_END                                        \
+        shrq    $60, %rbx  ASM_LINE_END                                        \
+        shlq    $4, m3  ASM_LINE_END                                          \
+        shrq    $4, m3  ASM_LINE_END                                          \
+        movabsq $0x5812631a5cf5d3ed, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                                            \
+        movq    %rax, %rbp  ASM_LINE_END                                       \
+        movq    %rdx, %rcx  ASM_LINE_END                                       \
+        movabsq $0x14def9dea2f79cd6, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                                            \
+        addq    %rax, %rcx  ASM_LINE_END                                       \
+        adcq    $0x0, %rdx  ASM_LINE_END                                       \
+        subq    %rbp, m0  ASM_LINE_END                                        \
+        sbbq    %rcx, m1  ASM_LINE_END                                        \
+        sbbq    %rdx, m2  ASM_LINE_END                                        \
+        sbbq    $0x0, m3  ASM_LINE_END                                        \
+        sbbq    %rbx, %rbx  ASM_LINE_END                                       \
+        movabsq $0x5812631a5cf5d3ed, %rax  ASM_LINE_END                        \
+        andq    %rbx, %rax  ASM_LINE_END                                       \
+        movabsq $0x14def9dea2f79cd6, %rdx  ASM_LINE_END                        \
+        andq    %rbx, %rdx  ASM_LINE_END                                       \
+        movabsq $0x1000000000000000, %rbx  ASM_LINE_END                        \
+        andq    %rax, %rbx  ASM_LINE_END                                       \
+        addq    %rax, m0  ASM_LINE_END                                        \
+        adcq    %rdx, m1  ASM_LINE_END                                        \
+        adcq    $0x0, m2  ASM_LINE_END                                        \
         adcq    %rbx, m3
 
 S2N_BN_SYMBOL(bignum_madd_n25519_alt):

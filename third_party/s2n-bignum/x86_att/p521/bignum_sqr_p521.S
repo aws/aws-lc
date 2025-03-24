@@ -31,8 +31,8 @@
 // using %rax and %rcx as temporaries.
 
 #define mulpadd(high,low,I)             \
-        mulxq   I(x), %rax, %rcx ;        \
-        adcxq   %rax, low ;               \
+        mulxq   I(x), %rax, %rcx  ASM_LINE_END        \
+        adcxq   %rax, low  ASM_LINE_END               \
         adoxq   %rcx, high
 
 // mulpade(high,low,i) adds %rdx * x[i] to a register-pair (high,low)
@@ -41,8 +41,8 @@
 // and that zero has value zero.
 
 #define mulpade(high,low,I)             \
-        mulxq   I(x), %rax, high ;       \
-        adcxq   %rax, low ;               \
+        mulxq   I(x), %rax, high  ASM_LINE_END       \
+        adcxq   %rax, low  ASM_LINE_END               \
         adoxq   zero, high
 
 S2N_BN_SYMBOL(bignum_sqr_p521):

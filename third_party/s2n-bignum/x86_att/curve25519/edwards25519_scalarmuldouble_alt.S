@@ -97,259 +97,259 @@
 // different from a pure function call to bignum_mul_p25519_alt.
 
 #define mul_p25519(P0,P1,P2)                    \
-        movq    P1, %rax ;                      \
-        mulq     P2;                 \
-        movq    %rax, %r8 ;                         \
-        movq    %rdx, %r9 ;                         \
-        xorq    %r10, %r10 ;                        \
-        xorq    %r11, %r11 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x8+P2;             \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     P2;                 \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        adcq    $0x0, %r11 ;                        \
-        xorq    %r12, %r12 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x10+P2;            \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    %r12, %r12 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x8+P2;             \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        xorq    %r13, %r13 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x18+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    %r13, %r13 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x10+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        xorq    %r14, %r14 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x18+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    %r14, %r14 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        xorq    %r15, %r15 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    %r15, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    $0x0, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r14 ;                        \
-        adcq    %rdx, %r15 ;                        \
-        movl    $0x26, %esi ;                       \
-        movq    %r12, %rax ;                        \
-        mulq    %rsi;                            \
-        addq    %rax, %r8 ;                         \
-        adcq    %rdx, %r9 ;                         \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r13, %rax ;                        \
-        mulq    %rsi;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r14, %rax ;                        \
-        mulq    %rsi;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r15, %rax ;                        \
-        mulq    %rsi;                            \
-        subq    %rcx, %rdx ;                        \
-        xorq    %rcx, %rcx ;                        \
-        addq    %rax, %r11 ;                        \
-        movq    %rdx, %r12 ;                        \
-        adcq    %rcx, %r12 ;                        \
-        shldq   $0x1, %r11, %r12 ;                    \
-        leaq    0x1(%r12), %rax ;                  \
-        movl    $0x13, %esi ;                       \
-        bts     $63, %r11 ;                         \
-        imulq   %rsi, %rax ;                        \
-        addq    %rax, %r8 ;                         \
-        adcq    %rcx, %r9 ;                         \
-        adcq    %rcx, %r10 ;                        \
-        adcq    %rcx, %r11 ;                        \
-        sbbq    %rax, %rax ;                        \
-        notq    %rax;                            \
-        andq    %rsi, %rax ;                        \
-        subq    %rax, %r8 ;                         \
-        sbbq    %rcx, %r9 ;                         \
-        sbbq    %rcx, %r10 ;                        \
-        sbbq    %rcx, %r11 ;                        \
-        btr     $63, %r11 ;                         \
-        movq    %r8, P0 ;                        \
-        movq    %r9, 0x8+P0 ;                    \
-        movq    %r10, 0x10+P0 ;                  \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     P2 ASM_LINE_END                 \
+        movq    %rax, %r8  ASM_LINE_END                         \
+        movq    %rdx, %r9  ASM_LINE_END                         \
+        xorq    %r10, %r10  ASM_LINE_END                        \
+        xorq    %r11, %r11  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     P2 ASM_LINE_END                 \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        adcq    $0x0, %r11  ASM_LINE_END                        \
+        xorq    %r12, %r12  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    %r12, %r12  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     P2 ASM_LINE_END                 \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        xorq    %r13, %r13  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    %r13, %r13  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     P2 ASM_LINE_END                 \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        xorq    %r14, %r14  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    %r14, %r14  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        xorq    %r15, %r15  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r13  ASM_LINE_END                        \
+        adcq    %rdx, %r14  ASM_LINE_END                        \
+        adcq    %r15, %r15  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r13  ASM_LINE_END                        \
+        adcq    %rdx, %r14  ASM_LINE_END                        \
+        adcq    $0x0, %r15  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r14  ASM_LINE_END                        \
+        adcq    %rdx, %r15  ASM_LINE_END                        \
+        movl    $0x26, %esi  ASM_LINE_END                       \
+        movq    %r12, %rax  ASM_LINE_END                        \
+        mulq    %rsi ASM_LINE_END                            \
+        addq    %rax, %r8  ASM_LINE_END                         \
+        adcq    %rdx, %r9  ASM_LINE_END                         \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r13, %rax  ASM_LINE_END                        \
+        mulq    %rsi ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r14, %rax  ASM_LINE_END                        \
+        mulq    %rsi ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r15, %rax  ASM_LINE_END                        \
+        mulq    %rsi ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        xorq    %rcx, %rcx  ASM_LINE_END                        \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        movq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    %rcx, %r12  ASM_LINE_END                        \
+        shldq   $0x1, %r11, %r12  ASM_LINE_END                    \
+        leaq    0x1(%r12), %rax  ASM_LINE_END                  \
+        movl    $0x13, %esi  ASM_LINE_END                       \
+        bts     $63, %r11  ASM_LINE_END                         \
+        imulq   %rsi, %rax  ASM_LINE_END                        \
+        addq    %rax, %r8  ASM_LINE_END                         \
+        adcq    %rcx, %r9  ASM_LINE_END                         \
+        adcq    %rcx, %r10  ASM_LINE_END                        \
+        adcq    %rcx, %r11  ASM_LINE_END                        \
+        sbbq    %rax, %rax  ASM_LINE_END                        \
+        notq    %rax ASM_LINE_END                            \
+        andq    %rsi, %rax  ASM_LINE_END                        \
+        subq    %rax, %r8  ASM_LINE_END                         \
+        sbbq    %rcx, %r9  ASM_LINE_END                         \
+        sbbq    %rcx, %r10  ASM_LINE_END                        \
+        sbbq    %rcx, %r11  ASM_LINE_END                        \
+        btr     $63, %r11  ASM_LINE_END                         \
+        movq    %r8, P0  ASM_LINE_END                        \
+        movq    %r9, 0x8+P0  ASM_LINE_END                    \
+        movq    %r10, 0x10+P0  ASM_LINE_END                  \
         movq    %r11, 0x18+P0
 
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
 
 #define mul_4(P0,P1,P2)                         \
-        movq    P1, %rax ;                      \
-        mulq     P2;                 \
-        movq    %rax, %r8 ;                         \
-        movq    %rdx, %r9 ;                         \
-        xorq    %r10, %r10 ;                        \
-        xorq    %r11, %r11 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x8+P2;             \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     P2;                 \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        adcq    $0x0, %r11 ;                        \
-        xorq    %r12, %r12 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x10+P2;            \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    %r12, %r12 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x8+P2;             \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        xorq    %r13, %r13 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x18+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    %r13, %r13 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x10+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        xorq    %r14, %r14 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x18+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    %r14, %r14 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        xorq    %r15, %r15 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    %r15, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    $0x0, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r14 ;                        \
-        adcq    %rdx, %r15 ;                        \
-        movl    $0x26, %ebx ;                       \
-        movq    %r12, %rax ;                        \
-        mulq    %rbx;                            \
-        addq    %rax, %r8 ;                         \
-        adcq    %rdx, %r9 ;                         \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r13, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r14, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r15, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        xorq    %rcx, %rcx ;                        \
-        addq    %rax, %r11 ;                        \
-        movq    %rdx, %r12 ;                        \
-        adcq    %rcx, %r12 ;                        \
-        shldq   $0x1, %r11, %r12 ;                    \
-        btr     $0x3f, %r11 ;                      \
-        movl    $0x13, %edx ;                      \
-        imulq   %r12, %rdx ;                       \
-        addq    %rdx, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     P2 ASM_LINE_END                 \
+        movq    %rax, %r8  ASM_LINE_END                         \
+        movq    %rdx, %r9  ASM_LINE_END                         \
+        xorq    %r10, %r10  ASM_LINE_END                        \
+        xorq    %r11, %r11  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     P2 ASM_LINE_END                 \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        adcq    $0x0, %r11  ASM_LINE_END                        \
+        xorq    %r12, %r12  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    %r12, %r12  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     P2 ASM_LINE_END                 \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        xorq    %r13, %r13  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    %r13, %r13  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     P2 ASM_LINE_END                 \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        xorq    %r14, %r14  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    %r14, %r14  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     0x8+P2 ASM_LINE_END             \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        xorq    %r15, %r15  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r13  ASM_LINE_END                        \
+        adcq    %rdx, %r14  ASM_LINE_END                        \
+        adcq    %r15, %r15  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     0x10+P2 ASM_LINE_END            \
+        addq    %rax, %r13  ASM_LINE_END                        \
+        adcq    %rdx, %r14  ASM_LINE_END                        \
+        adcq    $0x0, %r15  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq     0x18+P2 ASM_LINE_END            \
+        addq    %rax, %r14  ASM_LINE_END                        \
+        adcq    %rdx, %r15  ASM_LINE_END                        \
+        movl    $0x26, %ebx  ASM_LINE_END                       \
+        movq    %r12, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        addq    %rax, %r8  ASM_LINE_END                         \
+        adcq    %rdx, %r9  ASM_LINE_END                         \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r13, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r14, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r15, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        xorq    %rcx, %rcx  ASM_LINE_END                        \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        movq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    %rcx, %r12  ASM_LINE_END                        \
+        shldq   $0x1, %r11, %r12  ASM_LINE_END                    \
+        btr     $0x3f, %r11  ASM_LINE_END                      \
+        movl    $0x13, %edx  ASM_LINE_END                      \
+        imulq   %r12, %rdx  ASM_LINE_END                       \
+        addq    %rdx, %r8  ASM_LINE_END                        \
+        adcq    %rcx, %r9  ASM_LINE_END                        \
+        adcq    %rcx, %r10  ASM_LINE_END                       \
+        adcq    %rcx, %r11  ASM_LINE_END                       \
+        movq    %r8, P0  ASM_LINE_END                       \
+        movq    %r9, 0x8+P0  ASM_LINE_END                   \
+        movq    %r10, 0x10+P0  ASM_LINE_END                 \
         movq    %r11, 0x18+P0
 
 // Squaring just giving a result < 2 * p_25519, which is done by
@@ -357,137 +357,137 @@
 // optional correction.
 
 #define sqr_4(P0,P1)                            \
-        movq    P1, %rax ;                      \
-        mulq    %rax;                            \
-        movq    %rax, %r8 ;                         \
-        movq    %rdx, %r9 ;                         \
-        xorq    %r10, %r10 ;                        \
-        xorq    %r11, %r11 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x8+P1;             \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r11 ;                        \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        adcq    $0x0, %r11 ;                        \
-        xorq    %r12, %r12 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq    %rax;                            \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x10+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r12 ;                        \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        xorq    %r13, %r13 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x18+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r13 ;                        \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x10+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r13 ;                        \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        xorq    %r14, %r14 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x18+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r14 ;                        \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq    %rax;                            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        xorq    %r15, %r15 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x18+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r15 ;                        \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    $0x0, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq    %rax;                            \
-        addq    %rax, %r14 ;                        \
-        adcq    %rdx, %r15 ;                        \
-        movl    $0x26, %ebx ;                       \
-        movq    %r12, %rax ;                        \
-        mulq    %rbx;                            \
-        addq    %rax, %r8 ;                         \
-        adcq    %rdx, %r9 ;                         \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r13, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r14, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r15, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        xorq    %rcx, %rcx ;                        \
-        addq    %rax, %r11 ;                        \
-        movq    %rdx, %r12 ;                        \
-        adcq    %rcx, %r12 ;                        \
-        shldq   $0x1, %r11, %r12 ;                  \
-        btr     $0x3f, %r11 ;                      \
-        movl    $0x13, %edx ;                      \
-        imulq   %r12, %rdx ;                       \
-        addq    %rdx, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq    %rax ASM_LINE_END                            \
+        movq    %rax, %r8  ASM_LINE_END                         \
+        movq    %rdx, %r9  ASM_LINE_END                         \
+        xorq    %r10, %r10  ASM_LINE_END                        \
+        xorq    %r11, %r11  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x8+P1 ASM_LINE_END             \
+        addq    %rax, %rax  ASM_LINE_END                        \
+        adcq    %rdx, %rdx  ASM_LINE_END                        \
+        adcq    $0x0, %r11  ASM_LINE_END                        \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        adcq    $0x0, %r11  ASM_LINE_END                        \
+        xorq    %r12, %r12  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq    %rax ASM_LINE_END                            \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x10+P1 ASM_LINE_END            \
+        addq    %rax, %rax  ASM_LINE_END                        \
+        adcq    %rdx, %rdx  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        adcq    $0x0, %r12  ASM_LINE_END                        \
+        xorq    %r13, %r13  ASM_LINE_END                        \
+        movq    P1, %rax  ASM_LINE_END                      \
+        mulq     0x18+P1 ASM_LINE_END            \
+        addq    %rax, %rax  ASM_LINE_END                        \
+        adcq    %rdx, %rdx  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x10+P1 ASM_LINE_END            \
+        addq    %rax, %rax  ASM_LINE_END                        \
+        adcq    %rdx, %rdx  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        adcq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    $0x0, %r13  ASM_LINE_END                        \
+        xorq    %r14, %r14  ASM_LINE_END                        \
+        movq    0x8+P1, %rax  ASM_LINE_END                  \
+        mulq     0x18+P1 ASM_LINE_END            \
+        addq    %rax, %rax  ASM_LINE_END                        \
+        adcq    %rdx, %rdx  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq    %rax ASM_LINE_END                            \
+        addq    %rax, %r12  ASM_LINE_END                        \
+        adcq    %rdx, %r13  ASM_LINE_END                        \
+        adcq    $0x0, %r14  ASM_LINE_END                        \
+        xorq    %r15, %r15  ASM_LINE_END                        \
+        movq    0x10+P1, %rax  ASM_LINE_END                 \
+        mulq     0x18+P1 ASM_LINE_END            \
+        addq    %rax, %rax  ASM_LINE_END                        \
+        adcq    %rdx, %rdx  ASM_LINE_END                        \
+        adcq    $0x0, %r15  ASM_LINE_END                        \
+        addq    %rax, %r13  ASM_LINE_END                        \
+        adcq    %rdx, %r14  ASM_LINE_END                        \
+        adcq    $0x0, %r15  ASM_LINE_END                        \
+        movq    0x18+P1, %rax  ASM_LINE_END                 \
+        mulq    %rax ASM_LINE_END                            \
+        addq    %rax, %r14  ASM_LINE_END                        \
+        adcq    %rdx, %r15  ASM_LINE_END                        \
+        movl    $0x26, %ebx  ASM_LINE_END                       \
+        movq    %r12, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        addq    %rax, %r8  ASM_LINE_END                         \
+        adcq    %rdx, %r9  ASM_LINE_END                         \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r13, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        addq    %rax, %r9  ASM_LINE_END                         \
+        adcq    %rdx, %r10  ASM_LINE_END                        \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r14, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        addq    %rax, %r10  ASM_LINE_END                        \
+        adcq    %rdx, %r11  ASM_LINE_END                        \
+        sbbq    %rcx, %rcx  ASM_LINE_END                        \
+        movq    %r15, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                            \
+        subq    %rcx, %rdx  ASM_LINE_END                        \
+        xorq    %rcx, %rcx  ASM_LINE_END                        \
+        addq    %rax, %r11  ASM_LINE_END                        \
+        movq    %rdx, %r12  ASM_LINE_END                        \
+        adcq    %rcx, %r12  ASM_LINE_END                        \
+        shldq   $0x1, %r11, %r12  ASM_LINE_END                  \
+        btr     $0x3f, %r11  ASM_LINE_END                      \
+        movl    $0x13, %edx  ASM_LINE_END                      \
+        imulq   %r12, %rdx  ASM_LINE_END                       \
+        addq    %rdx, %r8  ASM_LINE_END                        \
+        adcq    %rcx, %r9  ASM_LINE_END                        \
+        adcq    %rcx, %r10  ASM_LINE_END                       \
+        adcq    %rcx, %r11  ASM_LINE_END                       \
+        movq    %r8, P0  ASM_LINE_END                       \
+        movq    %r9, 0x8+P0  ASM_LINE_END                   \
+        movq    %r10, 0x10+P0  ASM_LINE_END                 \
         movq    %r11, 0x18+P0
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
 #define sub_twice4(P0,P1,P2)                    \
-        movq    P1, %r8 ;                       \
-        xorl    %ebx, %ebx ;                       \
-        subq    P2, %r8 ;                       \
-        movq    8+P1, %r9 ;                     \
-        sbbq    8+P2, %r9 ;                     \
-        movl    $38, %ecx ;                        \
-        movq    16+P1, %r10 ;                   \
-        sbbq    16+P2, %r10 ;                   \
-        movq    24+P1, %rax ;                   \
-        sbbq    24+P2, %rax ;                   \
-        cmovncq %rbx, %rcx ;                       \
-        subq    %rcx, %r8 ;                        \
-        sbbq    %rbx, %r9 ;                        \
-        sbbq    %rbx, %r10 ;                       \
-        sbbq    %rbx, %rax ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 8+P0 ;                     \
-        movq    %r10, 16+P0 ;                   \
+        movq    P1, %r8  ASM_LINE_END                       \
+        xorl    %ebx, %ebx  ASM_LINE_END                       \
+        subq    P2, %r8  ASM_LINE_END                       \
+        movq    8+P1, %r9  ASM_LINE_END                     \
+        sbbq    8+P2, %r9  ASM_LINE_END                     \
+        movl    $38, %ecx  ASM_LINE_END                        \
+        movq    16+P1, %r10  ASM_LINE_END                   \
+        sbbq    16+P2, %r10  ASM_LINE_END                   \
+        movq    24+P1, %rax  ASM_LINE_END                   \
+        sbbq    24+P2, %rax  ASM_LINE_END                   \
+        cmovncq %rbx, %rcx  ASM_LINE_END                       \
+        subq    %rcx, %r8  ASM_LINE_END                        \
+        sbbq    %rbx, %r9  ASM_LINE_END                        \
+        sbbq    %rbx, %r10  ASM_LINE_END                       \
+        sbbq    %rbx, %rax  ASM_LINE_END                       \
+        movq    %r8, P0  ASM_LINE_END                       \
+        movq    %r9, 8+P0  ASM_LINE_END                     \
+        movq    %r10, 16+P0  ASM_LINE_END                   \
         movq    %rax, 24+P0
 
 // Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
@@ -497,57 +497,57 @@
 // at least one of them is reduced double modulo.
 
 #define add_twice4(P0,P1,P2)                    \
-        movq    P1, %r8 ;                       \
-        xorl    %ecx, %ecx ;                       \
-        addq    P2, %r8 ;                       \
-        movq    0x8+P1, %r9 ;                   \
-        adcq    0x8+P2, %r9 ;                   \
-        movq    0x10+P1, %r10 ;                 \
-        adcq    0x10+P2, %r10 ;                 \
-        movq    0x18+P1, %r11 ;                 \
-        adcq    0x18+P2, %r11 ;                 \
-        movl    $38, %eax ;                        \
-        cmovncq %rcx, %rax ;                       \
-        addq    %rax, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
+        movq    P1, %r8  ASM_LINE_END                       \
+        xorl    %ecx, %ecx  ASM_LINE_END                       \
+        addq    P2, %r8  ASM_LINE_END                       \
+        movq    0x8+P1, %r9  ASM_LINE_END                   \
+        adcq    0x8+P2, %r9  ASM_LINE_END                   \
+        movq    0x10+P1, %r10  ASM_LINE_END                 \
+        adcq    0x10+P2, %r10  ASM_LINE_END                 \
+        movq    0x18+P1, %r11  ASM_LINE_END                 \
+        adcq    0x18+P2, %r11  ASM_LINE_END                 \
+        movl    $38, %eax  ASM_LINE_END                        \
+        cmovncq %rcx, %rax  ASM_LINE_END                       \
+        addq    %rax, %r8  ASM_LINE_END                        \
+        adcq    %rcx, %r9  ASM_LINE_END                        \
+        adcq    %rcx, %r10  ASM_LINE_END                       \
+        adcq    %rcx, %r11  ASM_LINE_END                       \
+        movq    %r8, P0  ASM_LINE_END                       \
+        movq    %r9, 0x8+P0  ASM_LINE_END                   \
+        movq    %r10, 0x10+P0  ASM_LINE_END                 \
         movq    %r11, 0x18+P0
 
 #define double_twice4(P0,P1)                    \
-        movq    P1, %r8 ;                       \
-        xorl    %ecx, %ecx ;                       \
-        addq    %r8, %r8 ;                         \
-        movq    0x8+P1, %r9 ;                   \
-        adcq    %r9, %r9 ;                         \
-        movq    0x10+P1, %r10 ;                 \
-        adcq    %r10, %r10 ;                       \
-        movq    0x18+P1, %r11 ;                 \
-        adcq    %r11, %r11 ;                       \
-        movl    $38, %eax ;                        \
-        cmovncq %rcx, %rax ;                       \
-        addq    %rax, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
+        movq    P1, %r8  ASM_LINE_END                       \
+        xorl    %ecx, %ecx  ASM_LINE_END                       \
+        addq    %r8, %r8  ASM_LINE_END                         \
+        movq    0x8+P1, %r9  ASM_LINE_END                   \
+        adcq    %r9, %r9  ASM_LINE_END                         \
+        movq    0x10+P1, %r10  ASM_LINE_END                 \
+        adcq    %r10, %r10  ASM_LINE_END                       \
+        movq    0x18+P1, %r11  ASM_LINE_END                 \
+        adcq    %r11, %r11  ASM_LINE_END                       \
+        movl    $38, %eax  ASM_LINE_END                        \
+        cmovncq %rcx, %rax  ASM_LINE_END                       \
+        addq    %rax, %r8  ASM_LINE_END                        \
+        adcq    %rcx, %r9  ASM_LINE_END                        \
+        adcq    %rcx, %r10  ASM_LINE_END                       \
+        adcq    %rcx, %r11  ASM_LINE_END                       \
+        movq    %r8, P0  ASM_LINE_END                       \
+        movq    %r9, 0x8+P0  ASM_LINE_END                   \
+        movq    %r10, 0x10+P0  ASM_LINE_END                 \
         movq    %r11, 0x18+P0
 
 // Load the constant k_25519 = 2 * d_25519 using immediate operations
 
 #define load_k25519(P0)                         \
-        movq    $0xebd69b9426b2f159, %rax ;        \
-        movq    %rax, P0 ;                      \
-        movq    $0x00e0149a8283b156, %rax ;        \
-        movq    %rax, 8+P0 ;                    \
-        movq    $0x198e80f2eef3d130, %rax ;        \
-        movq    %rax, 16+P0 ;                   \
-        movq    $0x2406d9dc56dffce7, %rax ;        \
+        movq    $0xebd69b9426b2f159, %rax  ASM_LINE_END        \
+        movq    %rax, P0  ASM_LINE_END                      \
+        movq    $0x00e0149a8283b156, %rax  ASM_LINE_END        \
+        movq    %rax, 8+P0  ASM_LINE_END                    \
+        movq    $0x198e80f2eef3d130, %rax  ASM_LINE_END        \
+        movq    %rax, 16+P0  ASM_LINE_END                   \
+        movq    $0x2406d9dc56dffce7, %rax  ASM_LINE_END        \
         movq    %rax, 24+P0
 
 S2N_BN_SYMBOL(edwards25519_scalarmuldouble_alt):

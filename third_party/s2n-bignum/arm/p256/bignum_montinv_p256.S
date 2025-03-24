@@ -82,9 +82,9 @@
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
+        movz    nn, n0 ASM_LINE_END                                             \
+        movk    nn, n1, lsl #16 ASM_LINE_END                                    \
+        movk    nn, n2, lsl #32 ASM_LINE_END                                    \
         movk    nn, n3, lsl #48
 
 // ---------------------------------------------------------------------------
@@ -98,37 +98,37 @@
 #define amontred(d4,d3,d2,d1,d0, t2,t1,t0)                                  \
 /* We only know the input is -2^316 < x < 2^316. To do traditional  */      \
 /* unsigned Montgomery reduction, start by adding 2^61 * p_256.     */      \
-        mov     t0, #0xe000000000000000;                            \
-        adds    d0, d0, t0;                                         \
-        sbcs    d1, d1, xzr;                                        \
-        mov     t1, #0x000000001fffffff;                            \
-        adcs    d2, d2, t1;                                         \
-        mov     t2, #0x2000000000000000;                            \
-        adcs    d3, d3, t2;                                         \
-        mov     t0, #0x1fffffffe0000000;                            \
-        adc     d4, d4, t0;                                         \
-/* Let w = d0, the original word we use as offset; d0 gets recycled */      \
-/* First let [t2;t1] = 2^32 * w                                     */      \
-/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)      */      \
-        lsl     t1, d0, #32;                                        \
-        subs    t0, d0, t1;                                         \
-        lsr     t2, d0, #32;                                        \
-        sbc     d0, d0, t2;                                         \
-/* Hence basic [d4;d3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w  */      \
-        adds    d1, d1, t1;                                         \
-        adcs    d2, d2, t2;                                         \
-        adcs    d3, d3, t0;                                         \
-        adcs    d4, d4, d0;                                         \
+        mov     t0, #0xe000000000000000 ASM_LINE_END                            \
+        adds    d0, d0, t0 ASM_LINE_END                                         \
+        sbcs    d1, d1, xzr ASM_LINE_END                                        \
+        mov     t1, #0x000000001fffffff ASM_LINE_END                            \
+        adcs    d2, d2, t1 ASM_LINE_END                                         \
+        mov     t2, #0x2000000000000000 ASM_LINE_END                            \
+        adcs    d3, d3, t2 ASM_LINE_END                                         \
+        mov     t0, #0x1fffffffe0000000 ASM_LINE_END                            \
+        adc     d4, d4, t0 ASM_LINE_END                                         \
+/* Let w = d0, the original word we use as offset ASM_LINE_END d0 gets recycled */      \
+/* First let [t2 ASM_LINE_ENDt1] = 2^32 * w                                     */      \
+/* then let [d0 ASM_LINE_ENDt0] = (2^64 - 2^32 + 1) * w (overwrite old d0)      */      \
+        lsl     t1, d0, #32 ASM_LINE_END                                        \
+        subs    t0, d0, t1 ASM_LINE_END                                         \
+        lsr     t2, d0, #32 ASM_LINE_END                                        \
+        sbc     d0, d0, t2 ASM_LINE_END                                         \
+/* Hence basic [d4 ASM_LINE_ENDd3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w  */      \
+        adds    d1, d1, t1 ASM_LINE_END                                         \
+        adcs    d2, d2, t2 ASM_LINE_END                                         \
+        adcs    d3, d3, t0 ASM_LINE_END                                         \
+        adcs    d4, d4, d0 ASM_LINE_END                                         \
 /* Now capture top carry and subtract p_256 if set (almost-Montgomery) */   \
-        mov     t0, #0xffffffffffffffff;                            \
-        mov     t1, #0x00000000ffffffff;                            \
-        mov     t2, #0xffffffff00000001;                            \
-        csel    t0, t0, xzr, cs;                                    \
-        csel    t1, t1, xzr, cs;                                    \
-        csel    t2, t2, xzr, cs;                                    \
-        subs    d1, d1, t0;                                         \
-        sbcs    d2, d2, t1;                                         \
-        sbcs    d3, d3, xzr;                                        \
+        mov     t0, #0xffffffffffffffff ASM_LINE_END                            \
+        mov     t1, #0x00000000ffffffff ASM_LINE_END                            \
+        mov     t2, #0xffffffff00000001 ASM_LINE_END                            \
+        csel    t0, t0, xzr, cs ASM_LINE_END                                    \
+        csel    t1, t1, xzr, cs ASM_LINE_END                                    \
+        csel    t2, t2, xzr, cs ASM_LINE_END                                    \
+        subs    d1, d1, t0 ASM_LINE_END                                         \
+        sbcs    d2, d2, t1 ASM_LINE_END                                         \
+        sbcs    d3, d3, xzr ASM_LINE_END                                        \
         sbc     d4, d4, t2
 
 // Very similar to a subroutine call to the s2n-bignum word_divstep59.
@@ -139,610 +139,610 @@
 // [ m10  m11]
 
 #define divstep59()                                                     \
-        and     x4, x2, #0xfffff;                                       \
-        orr     x4, x4, #0xfffffe0000000000;                            \
-        and     x5, x3, #0xfffff;                                       \
-        orr     x5, x5, #0xc000000000000000;                            \
-        tst     x5, #0x1;                                               \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        asr     x5, x5, #1;                                             \
-        add     x8, x4, #0x100, lsl #12;                                \
-        sbfx    x8, x8, #21, #21;                                       \
-        mov     x11, #0x100000;                                         \
-        add     x11, x11, x11, lsl #21;                                 \
-        add     x9, x4, x11;                                            \
-        asr     x9, x9, #42;                                            \
-        add     x10, x5, #0x100, lsl #12;                               \
-        sbfx    x10, x10, #21, #21;                                     \
-        add     x11, x5, x11;                                           \
-        asr     x11, x11, #42;                                          \
-        mul     x6, x8, x2;                                             \
-        mul     x7, x9, x3;                                             \
-        mul     x2, x10, x2;                                            \
-        mul     x3, x11, x3;                                            \
-        add     x4, x6, x7;                                             \
-        add     x5, x2, x3;                                             \
-        asr     x2, x4, #20;                                            \
-        asr     x3, x5, #20;                                            \
-        and     x4, x2, #0xfffff;                                       \
-        orr     x4, x4, #0xfffffe0000000000;                            \
-        and     x5, x3, #0xfffff;                                       \
-        orr     x5, x5, #0xc000000000000000;                            \
-        tst     x5, #0x1;                                               \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        asr     x5, x5, #1;                                             \
-        add     x12, x4, #0x100, lsl #12;                               \
-        sbfx    x12, x12, #21, #21;                                     \
-        mov     x15, #0x100000;                                         \
-        add     x15, x15, x15, lsl #21;                                 \
-        add     x13, x4, x15;                                           \
-        asr     x13, x13, #42;                                          \
-        add     x14, x5, #0x100, lsl #12;                               \
-        sbfx    x14, x14, #21, #21;                                     \
-        add     x15, x5, x15;                                           \
-        asr     x15, x15, #42;                                          \
-        mul     x6, x12, x2;                                            \
-        mul     x7, x13, x3;                                            \
-        mul     x2, x14, x2;                                            \
-        mul     x3, x15, x3;                                            \
-        add     x4, x6, x7;                                             \
-        add     x5, x2, x3;                                             \
-        asr     x2, x4, #20;                                            \
-        asr     x3, x5, #20;                                            \
-        and     x4, x2, #0xfffff;                                       \
-        orr     x4, x4, #0xfffffe0000000000;                            \
-        and     x5, x3, #0xfffff;                                       \
-        orr     x5, x5, #0xc000000000000000;                            \
-        tst     x5, #0x1;                                               \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        mul     x2, x12, x8;                                            \
-        mul     x3, x12, x9;                                            \
-        mul     x6, x14, x8;                                            \
-        mul     x7, x14, x9;                                            \
-        madd    x8, x13, x10, x2;                                       \
-        madd    x9, x13, x11, x3;                                       \
-        madd    x16, x15, x10, x6;                                      \
-        madd    x17, x15, x11, x7;                                      \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        tst     x5, #0x2;                                               \
-        asr     x5, x5, #1;                                             \
-        csel    x6, x4, xzr, ne;                                        \
-        ccmp    x1, xzr, #0x8, ne;                                      \
-        cneg    x1, x1, ge;                                             \
-        cneg    x6, x6, ge;                                             \
-        csel    x4, x5, x4, ge;                                         \
-        add     x5, x5, x6;                                             \
-        add     x1, x1, #0x2;                                           \
-        asr     x5, x5, #1;                                             \
-        add     x12, x4, #0x100, lsl #12;                               \
-        sbfx    x12, x12, #22, #21;                                     \
-        mov     x15, #0x100000;                                         \
-        add     x15, x15, x15, lsl #21;                                 \
-        add     x13, x4, x15;                                           \
-        asr     x13, x13, #43;                                          \
-        add     x14, x5, #0x100, lsl #12;                               \
-        sbfx    x14, x14, #22, #21;                                     \
-        add     x15, x5, x15;                                           \
-        asr     x15, x15, #43;                                          \
-        mneg    x2, x12, x8;                                            \
-        mneg    x3, x12, x9;                                            \
-        mneg    x4, x14, x8;                                            \
-        mneg    x5, x14, x9;                                            \
-        msub    m00, x13, x16, x2;                                      \
-        msub    m01, x13, x17, x3;                                      \
-        msub    m10, x15, x16, x4;                                      \
+        and     x4, x2, #0xfffff ASM_LINE_END                                       \
+        orr     x4, x4, #0xfffffe0000000000 ASM_LINE_END                            \
+        and     x5, x3, #0xfffff ASM_LINE_END                                       \
+        orr     x5, x5, #0xc000000000000000 ASM_LINE_END                            \
+        tst     x5, #0x1 ASM_LINE_END                                               \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        add     x8, x4, #0x100, lsl #12 ASM_LINE_END                                \
+        sbfx    x8, x8, #21, #21 ASM_LINE_END                                       \
+        mov     x11, #0x100000 ASM_LINE_END                                         \
+        add     x11, x11, x11, lsl #21 ASM_LINE_END                                 \
+        add     x9, x4, x11 ASM_LINE_END                                            \
+        asr     x9, x9, #42 ASM_LINE_END                                            \
+        add     x10, x5, #0x100, lsl #12 ASM_LINE_END                               \
+        sbfx    x10, x10, #21, #21 ASM_LINE_END                                     \
+        add     x11, x5, x11 ASM_LINE_END                                           \
+        asr     x11, x11, #42 ASM_LINE_END                                          \
+        mul     x6, x8, x2 ASM_LINE_END                                             \
+        mul     x7, x9, x3 ASM_LINE_END                                             \
+        mul     x2, x10, x2 ASM_LINE_END                                            \
+        mul     x3, x11, x3 ASM_LINE_END                                            \
+        add     x4, x6, x7 ASM_LINE_END                                             \
+        add     x5, x2, x3 ASM_LINE_END                                             \
+        asr     x2, x4, #20 ASM_LINE_END                                            \
+        asr     x3, x5, #20 ASM_LINE_END                                            \
+        and     x4, x2, #0xfffff ASM_LINE_END                                       \
+        orr     x4, x4, #0xfffffe0000000000 ASM_LINE_END                            \
+        and     x5, x3, #0xfffff ASM_LINE_END                                       \
+        orr     x5, x5, #0xc000000000000000 ASM_LINE_END                            \
+        tst     x5, #0x1 ASM_LINE_END                                               \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        add     x12, x4, #0x100, lsl #12 ASM_LINE_END                               \
+        sbfx    x12, x12, #21, #21 ASM_LINE_END                                     \
+        mov     x15, #0x100000 ASM_LINE_END                                         \
+        add     x15, x15, x15, lsl #21 ASM_LINE_END                                 \
+        add     x13, x4, x15 ASM_LINE_END                                           \
+        asr     x13, x13, #42 ASM_LINE_END                                          \
+        add     x14, x5, #0x100, lsl #12 ASM_LINE_END                               \
+        sbfx    x14, x14, #21, #21 ASM_LINE_END                                     \
+        add     x15, x5, x15 ASM_LINE_END                                           \
+        asr     x15, x15, #42 ASM_LINE_END                                          \
+        mul     x6, x12, x2 ASM_LINE_END                                            \
+        mul     x7, x13, x3 ASM_LINE_END                                            \
+        mul     x2, x14, x2 ASM_LINE_END                                            \
+        mul     x3, x15, x3 ASM_LINE_END                                            \
+        add     x4, x6, x7 ASM_LINE_END                                             \
+        add     x5, x2, x3 ASM_LINE_END                                             \
+        asr     x2, x4, #20 ASM_LINE_END                                            \
+        asr     x3, x5, #20 ASM_LINE_END                                            \
+        and     x4, x2, #0xfffff ASM_LINE_END                                       \
+        orr     x4, x4, #0xfffffe0000000000 ASM_LINE_END                            \
+        and     x5, x3, #0xfffff ASM_LINE_END                                       \
+        orr     x5, x5, #0xc000000000000000 ASM_LINE_END                            \
+        tst     x5, #0x1 ASM_LINE_END                                               \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        mul     x2, x12, x8 ASM_LINE_END                                            \
+        mul     x3, x12, x9 ASM_LINE_END                                            \
+        mul     x6, x14, x8 ASM_LINE_END                                            \
+        mul     x7, x14, x9 ASM_LINE_END                                            \
+        madd    x8, x13, x10, x2 ASM_LINE_END                                       \
+        madd    x9, x13, x11, x3 ASM_LINE_END                                       \
+        madd    x16, x15, x10, x6 ASM_LINE_END                                      \
+        madd    x17, x15, x11, x7 ASM_LINE_END                                      \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        tst     x5, #0x2 ASM_LINE_END                                               \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        csel    x6, x4, xzr, ne ASM_LINE_END                                        \
+        ccmp    x1, xzr, #0x8, ne ASM_LINE_END                                      \
+        cneg    x1, x1, ge ASM_LINE_END                                             \
+        cneg    x6, x6, ge ASM_LINE_END                                             \
+        csel    x4, x5, x4, ge ASM_LINE_END                                         \
+        add     x5, x5, x6 ASM_LINE_END                                             \
+        add     x1, x1, #0x2 ASM_LINE_END                                           \
+        asr     x5, x5, #1 ASM_LINE_END                                             \
+        add     x12, x4, #0x100, lsl #12 ASM_LINE_END                               \
+        sbfx    x12, x12, #22, #21 ASM_LINE_END                                     \
+        mov     x15, #0x100000 ASM_LINE_END                                         \
+        add     x15, x15, x15, lsl #21 ASM_LINE_END                                 \
+        add     x13, x4, x15 ASM_LINE_END                                           \
+        asr     x13, x13, #43 ASM_LINE_END                                          \
+        add     x14, x5, #0x100, lsl #12 ASM_LINE_END                               \
+        sbfx    x14, x14, #22, #21 ASM_LINE_END                                     \
+        add     x15, x5, x15 ASM_LINE_END                                           \
+        asr     x15, x15, #43 ASM_LINE_END                                          \
+        mneg    x2, x12, x8 ASM_LINE_END                                            \
+        mneg    x3, x12, x9 ASM_LINE_END                                            \
+        mneg    x4, x14, x8 ASM_LINE_END                                            \
+        mneg    x5, x14, x9 ASM_LINE_END                                            \
+        msub    m00, x13, x16, x2 ASM_LINE_END                                      \
+        msub    m01, x13, x17, x3 ASM_LINE_END                                      \
+        msub    m10, x15, x16, x4 ASM_LINE_END                                      \
         msub    m11, x15, x17, x5
 
 S2N_BN_SYMBOL(bignum_montinv_p256):

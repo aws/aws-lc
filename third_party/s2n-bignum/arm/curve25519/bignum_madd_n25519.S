@@ -39,9 +39,9 @@
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
+        movz    nn, n0 ASM_LINE_END                                             \
+        movk    nn, n1, lsl #16 ASM_LINE_END                                    \
+        movk    nn, n2, lsl #32 ASM_LINE_END                                    \
         movk    nn, n3, lsl #48
 
 // Single round of modular reduction mod_n25519, mapping
@@ -50,27 +50,27 @@
 // close to the loop body of the bignum_mod_n25519 function.
 
 #define reduce(m4,m3,m2,m1,m0)                          \
-        extr    q, m4, m3, #60;                         \
-        and     m3, m3, #0x0FFFFFFFFFFFFFFF;            \
-        sub     q, q, m4, lsr #60;                      \
-        and     t0, m4, #0xF000000000000000;            \
-        add     m3, m3, t0;                             \
-        mul     t0, n0, q;                              \
-        mul     t1, n1, q;                              \
-        umulh   t2, n0, q;                              \
-        adds    t1, t1, t2;                             \
-        umulh   t2, n1, q;                              \
-        adc     t2, t2, xzr;                            \
-        subs    m0, m0, t0;                             \
-        sbcs    m1, m1, t1;                             \
-        sbcs    m2, m2, t2;                             \
-        sbcs    m3, m3, xzr;                            \
-        csel    t0, n0, xzr, cc;                        \
-        csel    t1, n1, xzr, cc;                        \
-        adds    m0, m0, t0;                             \
-        and     t2, t0, #0x1000000000000000;            \
-        adcs    m1, m1, t1;                             \
-        adcs    m2, m2, xzr;                            \
+        extr    q, m4, m3, #60 ASM_LINE_END                         \
+        and     m3, m3, #0x0FFFFFFFFFFFFFFF ASM_LINE_END            \
+        sub     q, q, m4, lsr #60 ASM_LINE_END                      \
+        and     t0, m4, #0xF000000000000000 ASM_LINE_END            \
+        add     m3, m3, t0 ASM_LINE_END                             \
+        mul     t0, n0, q ASM_LINE_END                              \
+        mul     t1, n1, q ASM_LINE_END                              \
+        umulh   t2, n0, q ASM_LINE_END                              \
+        adds    t1, t1, t2 ASM_LINE_END                             \
+        umulh   t2, n1, q ASM_LINE_END                              \
+        adc     t2, t2, xzr ASM_LINE_END                            \
+        subs    m0, m0, t0 ASM_LINE_END                             \
+        sbcs    m1, m1, t1 ASM_LINE_END                             \
+        sbcs    m2, m2, t2 ASM_LINE_END                             \
+        sbcs    m3, m3, xzr ASM_LINE_END                            \
+        csel    t0, n0, xzr, cc ASM_LINE_END                        \
+        csel    t1, n1, xzr, cc ASM_LINE_END                        \
+        adds    m0, m0, t0 ASM_LINE_END                             \
+        and     t2, t0, #0x1000000000000000 ASM_LINE_END            \
+        adcs    m1, m1, t1 ASM_LINE_END                             \
+        adcs    m2, m2, xzr ASM_LINE_END                            \
         adc     m3, m3, t2
 
 // Special case of "reduce" with m4 = 0. As well as not using m4,
@@ -78,24 +78,24 @@
 // versus min (floor(m/2^252)) (2^63-1).
 
 #define reduce0(m3,m2,m1,m0)                            \
-        lsr     q, m3, #60;                             \
-        and     m3, m3, #0x0FFFFFFFFFFFFFFF;            \
-        mul     t0, n0, q;                              \
-        mul     t1, n1, q;                              \
-        umulh   t2, n0, q;                              \
-        adds    t1, t1, t2;                             \
-        umulh   t2, n1, q;                              \
-        adc     t2, t2, xzr;                            \
-        subs    m0, m0, t0;                             \
-        sbcs    m1, m1, t1;                             \
-        sbcs    m2, m2, t2;                             \
-        sbcs    m3, m3, xzr;                            \
-        csel    t0, n0, xzr, cc;                        \
-        csel    t1, n1, xzr, cc;                        \
-        adds    m0, m0, t0;                             \
-        and     t2, t0, #0x1000000000000000;            \
-        adcs    m1, m1, t1;                             \
-        adcs    m2, m2, xzr;                            \
+        lsr     q, m3, #60 ASM_LINE_END                             \
+        and     m3, m3, #0x0FFFFFFFFFFFFFFF ASM_LINE_END            \
+        mul     t0, n0, q ASM_LINE_END                              \
+        mul     t1, n1, q ASM_LINE_END                              \
+        umulh   t2, n0, q ASM_LINE_END                              \
+        adds    t1, t1, t2 ASM_LINE_END                             \
+        umulh   t2, n1, q ASM_LINE_END                              \
+        adc     t2, t2, xzr ASM_LINE_END                            \
+        subs    m0, m0, t0 ASM_LINE_END                             \
+        sbcs    m1, m1, t1 ASM_LINE_END                             \
+        sbcs    m2, m2, t2 ASM_LINE_END                             \
+        sbcs    m3, m3, xzr ASM_LINE_END                            \
+        csel    t0, n0, xzr, cc ASM_LINE_END                        \
+        csel    t1, n1, xzr, cc ASM_LINE_END                        \
+        adds    m0, m0, t0 ASM_LINE_END                             \
+        and     t2, t0, #0x1000000000000000 ASM_LINE_END            \
+        adcs    m1, m1, t1 ASM_LINE_END                             \
+        adcs    m2, m2, xzr ASM_LINE_END                            \
         adc     m3, m3, t2
 
 S2N_BN_SYMBOL(bignum_madd_n25519):

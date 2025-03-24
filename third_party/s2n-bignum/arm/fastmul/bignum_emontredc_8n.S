@@ -29,18 +29,18 @@
 // ---------------------------------------------------------------------------
 
 #define muldiffnadd(b,a, c,h,l,t, x,y, w,z) \
-        subs    t, x, y ; \
-        cneg    t, t, cc ; \
-        csetm   c, cc ; \
-        subs    h, w, z ; \
-        cneg    h, h, cc ; \
-        mul     l, t, h ; \
-        umulh   h, t, h ; \
-        cinv    c, c, cc ; \
-        adds    xzr, c, #1 ; \
-        eor     l, l, c ; \
-        adcs    a, a, l ; \
-        eor     h, h, c ; \
+        subs    t, x, y  ASM_LINE_END \
+        cneg    t, t, cc  ASM_LINE_END \
+        csetm   c, cc  ASM_LINE_END \
+        subs    h, w, z  ASM_LINE_END \
+        cneg    h, h, cc  ASM_LINE_END \
+        mul     l, t, h  ASM_LINE_END \
+        umulh   h, t, h  ASM_LINE_END \
+        cinv    c, c, cc  ASM_LINE_END \
+        adds    xzr, c, #1  ASM_LINE_END \
+        eor     l, l, c  ASM_LINE_END \
+        adcs    a, a, l  ASM_LINE_END \
+        eor     h, h, c  ASM_LINE_END \
         adcs    b, b, h
 
 // The inputs, though k gets processed so we use a different name

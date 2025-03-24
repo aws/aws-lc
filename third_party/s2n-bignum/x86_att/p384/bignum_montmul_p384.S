@@ -42,8 +42,8 @@
 // using %rax and %rbx as temporaries
 
 #define mulpadd(high,low,m)             \
-        mulxq   m, %rax, %rbx ;            \
-        adcxq   %rax, low ;               \
+        mulxq   m, %rax, %rbx  ASM_LINE_END            \
+        adcxq   %rax, low  ASM_LINE_END               \
         adoxq   %rbx, high
 
 // Core one-step Montgomery reduction macro. Takes input in
@@ -62,27 +62,27 @@
 
 #define montredc(d7,d6,d5,d4,d3,d2,d1,d0)                               \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-        movq    d0, %rdx ;                                        \
-        shlq    $32, %rdx ;                                        \
-        addq    d0, %rdx ;                                        \
-/* Construct [%rbp;%rbx;%rax;-] = (2^384 - p_384) * w */                   \
+        movq    d0, %rdx  ASM_LINE_END                                        \
+        shlq    $32, %rdx  ASM_LINE_END                                        \
+        addq    d0, %rdx  ASM_LINE_END                                        \
+/* Construct [%rbp ASM_LINE_END%rbx;%rax;-] = (2^384 - p_384) * w */                   \
 /* We know the lowest word will cancel so we can re-use d0 as a temp */ \
-        xorl    %ebp, %ebp ;                                       \
-        movq    $0xffffffff00000001, %rax ;                        \
-        mulxq   %rax, %rbx, %rax ;                                  \
-        movl    $0x00000000ffffffff, %ebx ;                        \
-        mulxq   %rbx, d0, %rbx ;                                   \
-        adcq    d0, %rax ;                                        \
-        adcq    %rdx, %rbx ;                                       \
-        adcl    %ebp, %ebp ;                                       \
+        xorl    %ebp, %ebp  ASM_LINE_END                                       \
+        movq    $0xffffffff00000001, %rax  ASM_LINE_END                        \
+        mulxq   %rax, %rbx, %rax  ASM_LINE_END                                  \
+        movl    $0x00000000ffffffff, %ebx  ASM_LINE_END                        \
+        mulxq   %rbx, d0, %rbx  ASM_LINE_END                                   \
+        adcq    d0, %rax  ASM_LINE_END                                        \
+        adcq    %rdx, %rbx  ASM_LINE_END                                       \
+        adcl    %ebp, %ebp  ASM_LINE_END                                       \
 /*  Now subtract that and add 2^384 * w */                              \
-        subq    %rax, d1 ;                                        \
-        sbbq    %rbx, d2 ;                                        \
-        sbbq    %rbp, d3 ;                                        \
-        sbbq    $0, d4 ;                                          \
-        sbbq    $0, d5 ;                                          \
-        sbbq    $0, %rdx ;                                         \
-        addq    %rdx, d6 ;                                        \
+        subq    %rax, d1  ASM_LINE_END                                        \
+        sbbq    %rbx, d2  ASM_LINE_END                                        \
+        sbbq    %rbp, d3  ASM_LINE_END                                        \
+        sbbq    $0, d4  ASM_LINE_END                                          \
+        sbbq    $0, d5  ASM_LINE_END                                          \
+        sbbq    $0, %rdx  ASM_LINE_END                                         \
+        addq    %rdx, d6  ASM_LINE_END                                        \
         adcq    $0, d7
 
 S2N_BN_SYMBOL(bignum_montmul_p384):

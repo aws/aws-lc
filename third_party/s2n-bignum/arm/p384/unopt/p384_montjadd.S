@@ -838,20 +838,20 @@
 
 
 #define montmul_p384(P0,P1,P2) \
-        add x0, P0;\
-        add x1, P1;\
-        add x2, P2;\
+        add x0, P0 ASM_LINE_END\
+        add x1, P1 ASM_LINE_END\
+        add x2, P2 ASM_LINE_END\
         bl .montmul_p384
 
 #define montsqr_p384(P0,P1) \
-        add x0, P0;\
-        add x1, P1;\
+        add x0, P0 ASM_LINE_END\
+        add x1, P1 ASM_LINE_END\
         bl .montsqr_p384
 
 #define sub_p384(P0,P1,P2) \
-        add x0, P0;\
-        add x1, P1;\
-        add x2, P2;\
+        add x0, P0 ASM_LINE_END\
+        add x1, P1 ASM_LINE_END\
+        add x2, P2 ASM_LINE_END\
         bl .sub_p384
 
 

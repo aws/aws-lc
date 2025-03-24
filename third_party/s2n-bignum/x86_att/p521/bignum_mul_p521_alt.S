@@ -29,27 +29,27 @@
 // Macro for the key "multiply and add to (c,h,l)" step
 
 #define combadd(c,h,l,numa,numb)                \
-        movq    numa, %rax ;                      \
-        mulq     numb;                 \
-        addq    %rax, l ;                         \
-        adcq    %rdx, h ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq     numb ASM_LINE_END                 \
+        addq    %rax, l  ASM_LINE_END                         \
+        adcq    %rdx, h  ASM_LINE_END                         \
         adcq    $0, c
 
 // A minutely shorter form for when c = 0 initially
 
 #define combadz(c,h,l,numa,numb)                \
-        movq    numa, %rax ;                      \
-        mulq     numb;                 \
-        addq    %rax, l ;                         \
-        adcq    %rdx, h ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq     numb ASM_LINE_END                 \
+        addq    %rax, l  ASM_LINE_END                         \
+        adcq    %rdx, h  ASM_LINE_END                         \
         adcq    c, c
 
 // A short form where we don't expect a top carry
 
 #define combads(h,l,numa,numb)                  \
-        movq    numa, %rax ;                      \
-        mulq     numb;                 \
-        addq    %rax, l ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq     numb ASM_LINE_END                 \
+        addq    %rax, l  ASM_LINE_END                         \
         adcq    %rdx, h
 
 S2N_BN_SYMBOL(bignum_mul_p521_alt):

@@ -27,38 +27,38 @@
 
 #define modstep_p384(d6,d5,d4,d3,d2,d1,d0, t1,t2,t3)                        \
 /* Initial quotient approximation q = min (h + 1) (2^64 - 1) */             \
-        adds    d6, d6, #1;                                         \
-        csetm   t3, cs;                                             \
-        add     d6, d6, t3;                                         \
-        orn     t3, xzr, t3;                                        \
-        sub     t2, d6, #1;                                         \
-        sub     t1, xzr, d6;                                        \
-/* Correction term [d6;t2;t1;d0] = q * (2^384 - p_384) */                   \
-        lsl     d0, t1, #32;                                        \
-        extr    t1, t2, t1, #32;                                    \
-        lsr     t2, t2, #32;                                        \
-        adds    d0, d0, d6;                                         \
-        adcs    t1, t1, xzr;                                        \
-        adcs    t2, t2, d6;                                         \
-        adc     d6, xzr, xzr;                                       \
+        adds    d6, d6, #1 ASM_LINE_END                                         \
+        csetm   t3, cs ASM_LINE_END                                             \
+        add     d6, d6, t3 ASM_LINE_END                                         \
+        orn     t3, xzr, t3 ASM_LINE_END                                        \
+        sub     t2, d6, #1 ASM_LINE_END                                         \
+        sub     t1, xzr, d6 ASM_LINE_END                                        \
+/* Correction term [d6 ASM_LINE_ENDt2;t1;d0] = q * (2^384 - p_384) */                   \
+        lsl     d0, t1, #32 ASM_LINE_END                                        \
+        extr    t1, t2, t1, #32 ASM_LINE_END                                    \
+        lsr     t2, t2, #32 ASM_LINE_END                                        \
+        adds    d0, d0, d6 ASM_LINE_END                                         \
+        adcs    t1, t1, xzr ASM_LINE_END                                        \
+        adcs    t2, t2, d6 ASM_LINE_END                                         \
+        adc     d6, xzr, xzr ASM_LINE_END                                       \
 /* Addition to the initial value */                                         \
-        adds    d1, d1, t1;                                         \
-        adcs    d2, d2, t2;                                         \
-        adcs    d3, d3, d6;                                         \
-        adcs    d4, d4, xzr;                                        \
-        adcs    d5, d5, xzr;                                        \
-        adc     t3, t3, xzr;                                        \
+        adds    d1, d1, t1 ASM_LINE_END                                         \
+        adcs    d2, d2, t2 ASM_LINE_END                                         \
+        adcs    d3, d3, d6 ASM_LINE_END                                         \
+        adcs    d4, d4, xzr ASM_LINE_END                                        \
+        adcs    d5, d5, xzr ASM_LINE_END                                        \
+        adc     t3, t3, xzr ASM_LINE_END                                        \
 /* Use net top of the 7-word answer in t3 for masked correction */          \
-        mov     t1, #0x00000000ffffffff;                            \
-        and     t1, t1, t3;                                         \
-        adds    d0, d0, t1;                                         \
-        eor     t1, t1, t3;                                         \
-        adcs    d1, d1, t1;                                         \
-        mov     t1, #0xfffffffffffffffe;                            \
-        and     t1, t1, t3;                                         \
-        adcs    d2, d2, t1;                                         \
-        adcs    d3, d3, t3;                                         \
-        adcs    d4, d4, t3;                                         \
+        mov     t1, #0x00000000ffffffff ASM_LINE_END                            \
+        and     t1, t1, t3 ASM_LINE_END                                         \
+        adds    d0, d0, t1 ASM_LINE_END                                         \
+        eor     t1, t1, t3 ASM_LINE_END                                         \
+        adcs    d1, d1, t1 ASM_LINE_END                                         \
+        mov     t1, #0xfffffffffffffffe ASM_LINE_END                            \
+        and     t1, t1, t3 ASM_LINE_END                                         \
+        adcs    d2, d2, t1 ASM_LINE_END                                         \
+        adcs    d3, d3, t3 ASM_LINE_END                                         \
+        adcs    d4, d4, t3 ASM_LINE_END                                         \
         adc     d5, d5, t3
 
 S2N_BN_SYMBOL(bignum_tomont_p384):

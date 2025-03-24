@@ -34,24 +34,24 @@
 #define montreds(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64            */  \
 /* Store it in d6 to make the 2^384 * w contribution already            */  \
-        lsl     t1, d0, #32;                                        \
-        add     d6, t1, d0;                                         \
-/* Now let [t3;t2;t1;-] = (2^384 - p_384) * w                    */         \
+        lsl     t1, d0, #32 ASM_LINE_END                                        \
+        add     d6, t1, d0 ASM_LINE_END                                         \
+/* Now let [t3 ASM_LINE_ENDt2;t1;-] = (2^384 - p_384) * w                    */         \
 /* We know the lowest word will cancel d0 so we don't need it    */         \
-        mov     t1, #0xffffffff00000001;                            \
-        umulh   t1, t1, d6;                                         \
-        mov     t2, #0x00000000ffffffff;                            \
-        mul     t3, t2, d6;                                         \
-        umulh   t2, t2, d6;                                         \
-        adds    t1, t1, t3;                                         \
-        adcs    t2, t2, d6;                                         \
-        adc     t3, xzr, xzr;                                       \
+        mov     t1, #0xffffffff00000001 ASM_LINE_END                            \
+        umulh   t1, t1, d6 ASM_LINE_END                                         \
+        mov     t2, #0x00000000ffffffff ASM_LINE_END                            \
+        mul     t3, t2, d6 ASM_LINE_END                                         \
+        umulh   t2, t2, d6 ASM_LINE_END                                         \
+        adds    t1, t1, t3 ASM_LINE_END                                         \
+        adcs    t2, t2, d6 ASM_LINE_END                                         \
+        adc     t3, xzr, xzr ASM_LINE_END                                       \
 /* Now add it, by subtracting from 2^384 * w + x */                         \
-        subs    d1, d1, t1;                                         \
-        sbcs    d2, d2, t2;                                         \
-        sbcs    d3, d3, t3;                                         \
-        sbcs    d4, d4, xzr;                                        \
-        sbcs    d5, d5, xzr;                                        \
+        subs    d1, d1, t1 ASM_LINE_END                                         \
+        sbcs    d2, d2, t2 ASM_LINE_END                                         \
+        sbcs    d3, d3, t3 ASM_LINE_END                                         \
+        sbcs    d4, d4, xzr ASM_LINE_END                                        \
+        sbcs    d5, d5, xzr ASM_LINE_END                                        \
         sbc     d6, d6, xzr
 
 

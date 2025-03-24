@@ -28,18 +28,18 @@
 // ---------------------------------------------------------------------------
 
 #define muldiffnadd(b,a,x,y,w,z)        \
-        subs    t, x, y;                \
-        cneg    t, t, cc;               \
-        csetm   c, cc;                  \
-        subs    h, w, z;                \
-        cneg    h, h, cc;               \
-        mul     l, t, h;                \
-        umulh   h, t, h;                \
-        cinv    c, c, cc;               \
-        adds    xzr, c, #1;             \
-        eor     l, l, c;                \
-        adcs    a, a, l;                \
-        eor     h, h, c;                \
+        subs    t, x, y ASM_LINE_END                \
+        cneg    t, t, cc ASM_LINE_END               \
+        csetm   c, cc ASM_LINE_END                  \
+        subs    h, w, z ASM_LINE_END                \
+        cneg    h, h, cc ASM_LINE_END               \
+        mul     l, t, h ASM_LINE_END                \
+        umulh   h, t, h ASM_LINE_END                \
+        cinv    c, c, cc ASM_LINE_END               \
+        adds    xzr, c, #1 ASM_LINE_END             \
+        eor     l, l, c ASM_LINE_END                \
+        adcs    a, a, l ASM_LINE_END                \
+        eor     h, h, c ASM_LINE_END                \
         adcs    b, b, h
 
 #define z x0
@@ -80,66 +80,66 @@
 #define mul4                                                            \
 /*  First accumulate all the "simple" products as [s7,s6,s5,s4,s0] */   \
         \
-        mul     s0, a0, b0;                                     \
-        mul     s4, a1, b1;                                     \
-        mul     s5, a2, b2;                                     \
-        mul     s6, a3, b3;                                     \
+        mul     s0, a0, b0 ASM_LINE_END                                     \
+        mul     s4, a1, b1 ASM_LINE_END                                     \
+        mul     s5, a2, b2 ASM_LINE_END                                     \
+        mul     s6, a3, b3 ASM_LINE_END                                     \
         \
-        umulh   s7, a0, b0;                                     \
-        adds    s4, s4, s7;                                     \
-        umulh   s7, a1, b1;                                     \
-        adcs    s5, s5, s7;                                     \
-        umulh   s7, a2, b2;                                     \
-        adcs    s6, s6, s7;                                     \
-        umulh   s7, a3, b3;                                     \
-        adc     s7, s7, xzr;                                    \
+        umulh   s7, a0, b0 ASM_LINE_END                                     \
+        adds    s4, s4, s7 ASM_LINE_END                                     \
+        umulh   s7, a1, b1 ASM_LINE_END                                     \
+        adcs    s5, s5, s7 ASM_LINE_END                                     \
+        umulh   s7, a2, b2 ASM_LINE_END                                     \
+        adcs    s6, s6, s7 ASM_LINE_END                                     \
+        umulh   s7, a3, b3 ASM_LINE_END                                     \
+        adc     s7, s7, xzr ASM_LINE_END                                    \
         \
-/*  Multiply by B + 1 to get [s7;s6;s5;s4;s1;s0] */                     \
+/*  Multiply by B + 1 to get [s7 ASM_LINE_ENDs6;s5;s4;s1;s0] */                     \
         \
-        adds    s1, s4, s0;                                     \
-        adcs    s4, s5, s4;                                     \
-        adcs    s5, s6, s5;                                     \
-        adcs    s6, s7, s6;                                     \
-        adc     s7, xzr, s7;                                    \
+        adds    s1, s4, s0 ASM_LINE_END                                     \
+        adcs    s4, s5, s4 ASM_LINE_END                                     \
+        adcs    s5, s6, s5 ASM_LINE_END                                     \
+        adcs    s6, s7, s6 ASM_LINE_END                                     \
+        adc     s7, xzr, s7 ASM_LINE_END                                    \
         \
-/*  Multiply by B^2 + 1 to get [s7;s6;s5;s4;s3;s2;s1;s0] */             \
+/*  Multiply by B^2 + 1 to get [s7 ASM_LINE_ENDs6;s5;s4;s3;s2;s1;s0] */             \
         \
-        adds    s2, s4, s0;                                     \
-        adcs    s3, s5, s1;                                     \
-        adcs    s4, s6, s4;                                     \
-        adcs    s5, s7, s5;                                     \
-        adcs    s6, xzr, s6;                                    \
-        adc     s7, xzr, s7;                                    \
+        adds    s2, s4, s0 ASM_LINE_END                                     \
+        adcs    s3, s5, s1 ASM_LINE_END                                     \
+        adcs    s4, s6, s4 ASM_LINE_END                                     \
+        adcs    s5, s7, s5 ASM_LINE_END                                     \
+        adcs    s6, xzr, s6 ASM_LINE_END                                    \
+        adc     s7, xzr, s7 ASM_LINE_END                                    \
         \
 /*  Now add in all the "complicated" terms. */                          \
         \
-        muldiffnadd(s6,s5, a2,a3, b3,b2);                       \
-        adc     s7, s7, c;                                      \
+        muldiffnadd(s6,s5, a2,a3, b3,b2) ASM_LINE_END                       \
+        adc     s7, s7, c ASM_LINE_END                                      \
         \
-        muldiffnadd(s2,s1, a0,a1, b1,b0);                       \
-        adcs    s3, s3, c;                                      \
-        adcs    s4, s4, c;                                      \
-        adcs    s5, s5, c;                                      \
-        adcs    s6, s6, c;                                      \
-        adc     s7, s7, c;                                      \
+        muldiffnadd(s2,s1, a0,a1, b1,b0) ASM_LINE_END                       \
+        adcs    s3, s3, c ASM_LINE_END                                      \
+        adcs    s4, s4, c ASM_LINE_END                                      \
+        adcs    s5, s5, c ASM_LINE_END                                      \
+        adcs    s6, s6, c ASM_LINE_END                                      \
+        adc     s7, s7, c ASM_LINE_END                                      \
         \
-        muldiffnadd(s5,s4, a1,a3, b3,b1);                       \
-        adcs    s6, s6, c;                                      \
-        adc     s7, s7, c;                                      \
+        muldiffnadd(s5,s4, a1,a3, b3,b1) ASM_LINE_END                       \
+        adcs    s6, s6, c ASM_LINE_END                                      \
+        adc     s7, s7, c ASM_LINE_END                                      \
         \
-        muldiffnadd(s3,s2, a0,a2, b2,b0);                       \
-        adcs    s4, s4, c;                                      \
-        adcs    s5, s5, c;                                      \
-        adcs    s6, s6, c;                                      \
-        adc     s7, s7, c;                                      \
+        muldiffnadd(s3,s2, a0,a2, b2,b0) ASM_LINE_END                       \
+        adcs    s4, s4, c ASM_LINE_END                                      \
+        adcs    s5, s5, c ASM_LINE_END                                      \
+        adcs    s6, s6, c ASM_LINE_END                                      \
+        adc     s7, s7, c ASM_LINE_END                                      \
         \
-        muldiffnadd(s4,s3, a0,a3, b3,b0);                       \
-        adcs    s5, s5, c;                                      \
-        adcs    s6, s6, c;                                      \
-        adc     s7, s7, c;                                      \
-        muldiffnadd(s4,s3, a1,a2, b2,b1);                       \
-        adcs    s5, s5, c;                                      \
-        adcs    s6, s6, c;                                      \
+        muldiffnadd(s4,s3, a0,a3, b3,b0) ASM_LINE_END                       \
+        adcs    s5, s5, c ASM_LINE_END                                      \
+        adcs    s6, s6, c ASM_LINE_END                                      \
+        adc     s7, s7, c ASM_LINE_END                                      \
+        muldiffnadd(s4,s3, a1,a2, b2,b1) ASM_LINE_END                       \
+        adcs    s5, s5, c ASM_LINE_END                                      \
+        adcs    s6, s6, c ASM_LINE_END                                      \
         adc     s7, s7, c                                       \
 
 S2N_BN_SYMBOL(bignum_mul_p521):

@@ -61,15 +61,15 @@
 // which doesn't accept repetitions, assembler macros etc.
 
 #define selectblock(I,C)                                        \
-        cmpq    $I, %rdi ;                                         \
-        cmovzq  TAB+JACSIZE*(I-1)+C*NUMSIZE(%rsp), %rax ;         \
-        cmovzq  TAB+JACSIZE*(I-1)+8+C*NUMSIZE(%rsp), %rbx ;       \
-        cmovzq  TAB+JACSIZE*(I-1)+16+C*NUMSIZE(%rsp), %rcx ;      \
-        cmovzq  TAB+JACSIZE*(I-1)+24+C*NUMSIZE(%rsp), %rdx ;      \
-        cmovzq  TAB+JACSIZE*(I-1)+32+C*NUMSIZE(%rsp), %r8 ;       \
-        cmovzq  TAB+JACSIZE*(I-1)+40+C*NUMSIZE(%rsp), %r9 ;       \
-        cmovzq  TAB+JACSIZE*(I-1)+48+C*NUMSIZE(%rsp), %r10 ;      \
-        cmovzq  TAB+JACSIZE*(I-1)+56+C*NUMSIZE(%rsp), %r11 ;      \
+        cmpq    $I, %rdi  ASM_LINE_END                                         \
+        cmovzq  TAB+JACSIZE*(I-1)+C*NUMSIZE(%rsp), %rax  ASM_LINE_END         \
+        cmovzq  TAB+JACSIZE*(I-1)+8+C*NUMSIZE(%rsp), %rbx  ASM_LINE_END       \
+        cmovzq  TAB+JACSIZE*(I-1)+16+C*NUMSIZE(%rsp), %rcx  ASM_LINE_END      \
+        cmovzq  TAB+JACSIZE*(I-1)+24+C*NUMSIZE(%rsp), %rdx  ASM_LINE_END      \
+        cmovzq  TAB+JACSIZE*(I-1)+32+C*NUMSIZE(%rsp), %r8  ASM_LINE_END       \
+        cmovzq  TAB+JACSIZE*(I-1)+40+C*NUMSIZE(%rsp), %r9  ASM_LINE_END       \
+        cmovzq  TAB+JACSIZE*(I-1)+48+C*NUMSIZE(%rsp), %r10  ASM_LINE_END      \
+        cmovzq  TAB+JACSIZE*(I-1)+56+C*NUMSIZE(%rsp), %r11  ASM_LINE_END      \
         cmovzq  TAB+JACSIZE*(I-1)+64+C*NUMSIZE(%rsp), %r12
 
 S2N_BN_SYMBOL(p521_jscalarmul_alt):

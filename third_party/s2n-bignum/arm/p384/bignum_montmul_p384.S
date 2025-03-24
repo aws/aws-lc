@@ -28,15 +28,15 @@
 // ---------------------------------------------------------------------------
 
 #define muldiffn(c,h,l, t, x,y, w,z)    \
-        subs    t, x, y;                \
-        cneg    t, t, cc;               \
-        csetm   c, cc;                  \
-        subs    h, w, z;                \
-        cneg    h, h, cc;               \
-        mul     l, t, h;                \
-        umulh   h, t, h;                \
-        cinv    c, c, cc;               \
-        eor     l, l, c;                \
+        subs    t, x, y ASM_LINE_END                \
+        cneg    t, t, cc ASM_LINE_END               \
+        csetm   c, cc ASM_LINE_END                  \
+        subs    h, w, z ASM_LINE_END                \
+        cneg    h, h, cc ASM_LINE_END               \
+        mul     l, t, h ASM_LINE_END                \
+        umulh   h, t, h ASM_LINE_END                \
+        cinv    c, c, cc ASM_LINE_END               \
+        eor     l, l, c ASM_LINE_END                \
         eor     h, h, c
 
 // ---------------------------------------------------------------------------
@@ -52,27 +52,27 @@
 #define montreds(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64            */  \
 /* Recycle d0 (which we know gets implicitly cancelled) to store it     */  \
-        lsl     t1, d0, #32;                                        \
-        add     d0, t1, d0;                                         \
-/* Now let [t2;t1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)     */  \
+        lsl     t1, d0, #32 ASM_LINE_END                                        \
+        add     d0, t1, d0 ASM_LINE_END                                         \
+/* Now let [t2 ASM_LINE_ENDt1] = 2^64 * w - w + w_hi where w_hi = floor(w/2^32)     */  \
 /* We need to subtract 2^32 * this, and we can ignore its lower 32      */  \
-/* bits since by design it will cancel anyway; we only need the w_hi    */  \
+/* bits since by design it will cancel anyway ASM_LINE_END we only need the w_hi    */  \
 /* part to get the carry propagation going.                             */  \
-        lsr     t1, d0, #32;                                        \
-        subs    t1, t1, d0;                                         \
-        sbc     t2, d0, xzr;                                        \
+        lsr     t1, d0, #32 ASM_LINE_END                                        \
+        subs    t1, t1, d0 ASM_LINE_END                                         \
+        sbc     t2, d0, xzr ASM_LINE_END                                        \
 /* Now select in t1 the field to subtract from d1                       */  \
-        extr    t1, t2, t1, #32;                                    \
+        extr    t1, t2, t1, #32 ASM_LINE_END                                    \
 /* And now get the terms to subtract from d2 and d3                     */  \
-        lsr     t2, t2, #32;                                        \
-        adds    t2, t2, d0;                                         \
-        adc     t3, xzr, xzr;                                       \
+        lsr     t2, t2, #32 ASM_LINE_END                                        \
+        adds    t2, t2, d0 ASM_LINE_END                                         \
+        adc     t3, xzr, xzr ASM_LINE_END                                       \
 /* Do the subtraction of that portion                                   */  \
-        subs    d1, d1, t1;                                         \
-        sbcs    d2, d2, t2;                                         \
-        sbcs    d3, d3, t3;                                         \
-        sbcs    d4, d4, xzr;                                        \
-        sbcs    d5, d5, xzr;                                        \
+        subs    d1, d1, t1 ASM_LINE_END                                         \
+        sbcs    d2, d2, t2 ASM_LINE_END                                         \
+        sbcs    d3, d3, t3 ASM_LINE_END                                         \
+        sbcs    d4, d4, xzr ASM_LINE_END                                        \
+        sbcs    d5, d5, xzr ASM_LINE_END                                        \
 /* Now effectively add 2^384 * w by taking d0 as the input for last sbc */  \
         sbc     d6, d0, xzr
 

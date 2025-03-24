@@ -1,8 +1,14 @@
 
 #ifdef __APPLE__
 #   define S2N_BN_SYMBOL(NAME) _##NAME
+#   if defined(__AARCH64EL__) || defined(__ARMEL__)
+#     define ASM_LINE_END %%
+#   else
+#     define ASM_LINE_END ;
+#   endif
 #else
 #   define S2N_BN_SYMBOL(name) name
+#   define ASM_LINE_END ;
 #endif
 
 #define S2N_BN_SYM_VISIBILITY_DIRECTIVE(name) .globl S2N_BN_SYMBOL(name)

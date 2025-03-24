@@ -77,233 +77,233 @@
 // Load 64-bit immediate into a register
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
+        movz    nn, n0 ASM_LINE_END                                             \
+        movk    nn, n1, lsl #16 ASM_LINE_END                                    \
+        movk    nn, n2, lsl #32 ASM_LINE_END                                    \
         movk    nn, n3, lsl #48
 
 // Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
 // trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(P0,P1,P2)                    \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [P2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [P1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #0x26;                      \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, cs;                        \
-        adds    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        cmn     x15, x15;                       \
-        orr     x15, x15, #0x8000000000000000;  \
-        adc     x8, x16, x16;                   \
-        mov     x7, #0x13;                      \
-        madd    x11, x7, x8, x7;                \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, xzr;                  \
-        csel    x7, x7, xzr, cc;                \
-        subs    x12, x12, x7;                   \
-        sbcs    x13, x13, xzr;                  \
-        sbcs    x14, x14, xzr;                  \
-        sbc     x15, x15, xzr;                  \
-        and     x15, x15, #0x7fffffffffffffff;  \
-        stp     x12, x13, [P0];                 \
+        ldp     x3, x4, [P1] ASM_LINE_END                   \
+        ldp     x7, x8, [P2] ASM_LINE_END                   \
+        mul     x12, x3, x7 ASM_LINE_END                    \
+        umulh   x13, x3, x7 ASM_LINE_END                    \
+        mul     x11, x3, x8 ASM_LINE_END                    \
+        umulh   x14, x3, x8 ASM_LINE_END                    \
+        adds    x13, x13, x11 ASM_LINE_END                  \
+        ldp     x9, x10, [P2+16] ASM_LINE_END               \
+        mul     x11, x3, x9 ASM_LINE_END                    \
+        umulh   x15, x3, x9 ASM_LINE_END                    \
+        adcs    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x3, x10 ASM_LINE_END                   \
+        umulh   x16, x3, x10 ASM_LINE_END                   \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        adc     x16, x16, xzr ASM_LINE_END                  \
+        ldp     x5, x6, [P1+16] ASM_LINE_END                \
+        mul     x11, x4, x7 ASM_LINE_END                    \
+        adds    x13, x13, x11 ASM_LINE_END                  \
+        mul     x11, x4, x8 ASM_LINE_END                    \
+        adcs    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x4, x9 ASM_LINE_END                    \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        mul     x11, x4, x10 ASM_LINE_END                   \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        umulh   x3, x4, x10 ASM_LINE_END                    \
+        adc     x3, x3, xzr ASM_LINE_END                    \
+        umulh   x11, x4, x7 ASM_LINE_END                    \
+        adds    x14, x14, x11 ASM_LINE_END                  \
+        umulh   x11, x4, x8 ASM_LINE_END                    \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        umulh   x11, x4, x9 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        adc     x3, x3, xzr ASM_LINE_END                    \
+        mul     x11, x5, x7 ASM_LINE_END                    \
+        adds    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x5, x8 ASM_LINE_END                    \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        mul     x11, x5, x9 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        mul     x11, x5, x10 ASM_LINE_END                   \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        umulh   x4, x5, x10 ASM_LINE_END                    \
+        adc     x4, x4, xzr ASM_LINE_END                    \
+        umulh   x11, x5, x7 ASM_LINE_END                    \
+        adds    x15, x15, x11 ASM_LINE_END                  \
+        umulh   x11, x5, x8 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        umulh   x11, x5, x9 ASM_LINE_END                    \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        adc     x4, x4, xzr ASM_LINE_END                    \
+        mul     x11, x6, x7 ASM_LINE_END                    \
+        adds    x15, x15, x11 ASM_LINE_END                  \
+        mul     x11, x6, x8 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        mul     x11, x6, x9 ASM_LINE_END                    \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        mul     x11, x6, x10 ASM_LINE_END                   \
+        adcs    x4, x4, x11 ASM_LINE_END                    \
+        umulh   x5, x6, x10 ASM_LINE_END                    \
+        adc     x5, x5, xzr ASM_LINE_END                    \
+        umulh   x11, x6, x7 ASM_LINE_END                    \
+        adds    x16, x16, x11 ASM_LINE_END                  \
+        umulh   x11, x6, x8 ASM_LINE_END                    \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        umulh   x11, x6, x9 ASM_LINE_END                    \
+        adcs    x4, x4, x11 ASM_LINE_END                    \
+        adc     x5, x5, xzr ASM_LINE_END                    \
+        mov     x7, #0x26 ASM_LINE_END                      \
+        mul     x11, x7, x16 ASM_LINE_END                   \
+        umulh   x9, x7, x16 ASM_LINE_END                    \
+        adds    x12, x12, x11 ASM_LINE_END                  \
+        mul     x11, x7, x3 ASM_LINE_END                    \
+        umulh   x3, x7, x3 ASM_LINE_END                     \
+        adcs    x13, x13, x11 ASM_LINE_END                  \
+        mul     x11, x7, x4 ASM_LINE_END                    \
+        umulh   x4, x7, x4 ASM_LINE_END                     \
+        adcs    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x7, x5 ASM_LINE_END                    \
+        umulh   x5, x7, x5 ASM_LINE_END                     \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        cset    x16, cs ASM_LINE_END                        \
+        adds    x15, x15, x4 ASM_LINE_END                   \
+        adc     x16, x16, x5 ASM_LINE_END                   \
+        cmn     x15, x15 ASM_LINE_END                       \
+        orr     x15, x15, #0x8000000000000000 ASM_LINE_END  \
+        adc     x8, x16, x16 ASM_LINE_END                   \
+        mov     x7, #0x13 ASM_LINE_END                      \
+        madd    x11, x7, x8, x7 ASM_LINE_END                \
+        adds    x12, x12, x11 ASM_LINE_END                  \
+        adcs    x13, x13, x9 ASM_LINE_END                   \
+        adcs    x14, x14, x3 ASM_LINE_END                   \
+        adcs    x15, x15, xzr ASM_LINE_END                  \
+        csel    x7, x7, xzr, cc ASM_LINE_END                \
+        subs    x12, x12, x7 ASM_LINE_END                   \
+        sbcs    x13, x13, xzr ASM_LINE_END                  \
+        sbcs    x14, x14, xzr ASM_LINE_END                  \
+        sbc     x15, x15, xzr ASM_LINE_END                  \
+        and     x15, x15, #0x7fffffffffffffff ASM_LINE_END  \
+        stp     x12, x13, [P0] ASM_LINE_END                 \
         stp     x14, x15, [P0+16]
 
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
 
 #define mul_4(P0,P1,P2)                         \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [P2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [P1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #0x26;                      \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, cs;                        \
-        adds    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        cmn     x15, x15;                       \
-        bic     x15, x15, #0x8000000000000000;  \
-        adc     x8, x16, x16;                   \
-        mov     x7, #0x13;                      \
-        mul     x11, x7, x8;                    \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adc     x15, x15, xzr;                  \
-        stp     x12, x13, [P0];                 \
+        ldp     x3, x4, [P1] ASM_LINE_END                   \
+        ldp     x7, x8, [P2] ASM_LINE_END                   \
+        mul     x12, x3, x7 ASM_LINE_END                    \
+        umulh   x13, x3, x7 ASM_LINE_END                    \
+        mul     x11, x3, x8 ASM_LINE_END                    \
+        umulh   x14, x3, x8 ASM_LINE_END                    \
+        adds    x13, x13, x11 ASM_LINE_END                  \
+        ldp     x9, x10, [P2+16] ASM_LINE_END               \
+        mul     x11, x3, x9 ASM_LINE_END                    \
+        umulh   x15, x3, x9 ASM_LINE_END                    \
+        adcs    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x3, x10 ASM_LINE_END                   \
+        umulh   x16, x3, x10 ASM_LINE_END                   \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        adc     x16, x16, xzr ASM_LINE_END                  \
+        ldp     x5, x6, [P1+16] ASM_LINE_END                \
+        mul     x11, x4, x7 ASM_LINE_END                    \
+        adds    x13, x13, x11 ASM_LINE_END                  \
+        mul     x11, x4, x8 ASM_LINE_END                    \
+        adcs    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x4, x9 ASM_LINE_END                    \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        mul     x11, x4, x10 ASM_LINE_END                   \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        umulh   x3, x4, x10 ASM_LINE_END                    \
+        adc     x3, x3, xzr ASM_LINE_END                    \
+        umulh   x11, x4, x7 ASM_LINE_END                    \
+        adds    x14, x14, x11 ASM_LINE_END                  \
+        umulh   x11, x4, x8 ASM_LINE_END                    \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        umulh   x11, x4, x9 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        adc     x3, x3, xzr ASM_LINE_END                    \
+        mul     x11, x5, x7 ASM_LINE_END                    \
+        adds    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x5, x8 ASM_LINE_END                    \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        mul     x11, x5, x9 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        mul     x11, x5, x10 ASM_LINE_END                   \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        umulh   x4, x5, x10 ASM_LINE_END                    \
+        adc     x4, x4, xzr ASM_LINE_END                    \
+        umulh   x11, x5, x7 ASM_LINE_END                    \
+        adds    x15, x15, x11 ASM_LINE_END                  \
+        umulh   x11, x5, x8 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        umulh   x11, x5, x9 ASM_LINE_END                    \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        adc     x4, x4, xzr ASM_LINE_END                    \
+        mul     x11, x6, x7 ASM_LINE_END                    \
+        adds    x15, x15, x11 ASM_LINE_END                  \
+        mul     x11, x6, x8 ASM_LINE_END                    \
+        adcs    x16, x16, x11 ASM_LINE_END                  \
+        mul     x11, x6, x9 ASM_LINE_END                    \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        mul     x11, x6, x10 ASM_LINE_END                   \
+        adcs    x4, x4, x11 ASM_LINE_END                    \
+        umulh   x5, x6, x10 ASM_LINE_END                    \
+        adc     x5, x5, xzr ASM_LINE_END                    \
+        umulh   x11, x6, x7 ASM_LINE_END                    \
+        adds    x16, x16, x11 ASM_LINE_END                  \
+        umulh   x11, x6, x8 ASM_LINE_END                    \
+        adcs    x3, x3, x11 ASM_LINE_END                    \
+        umulh   x11, x6, x9 ASM_LINE_END                    \
+        adcs    x4, x4, x11 ASM_LINE_END                    \
+        adc     x5, x5, xzr ASM_LINE_END                    \
+        mov     x7, #0x26 ASM_LINE_END                      \
+        mul     x11, x7, x16 ASM_LINE_END                   \
+        umulh   x9, x7, x16 ASM_LINE_END                    \
+        adds    x12, x12, x11 ASM_LINE_END                  \
+        mul     x11, x7, x3 ASM_LINE_END                    \
+        umulh   x3, x7, x3 ASM_LINE_END                     \
+        adcs    x13, x13, x11 ASM_LINE_END                  \
+        mul     x11, x7, x4 ASM_LINE_END                    \
+        umulh   x4, x7, x4 ASM_LINE_END                     \
+        adcs    x14, x14, x11 ASM_LINE_END                  \
+        mul     x11, x7, x5 ASM_LINE_END                    \
+        umulh   x5, x7, x5 ASM_LINE_END                     \
+        adcs    x15, x15, x11 ASM_LINE_END                  \
+        cset    x16, cs ASM_LINE_END                        \
+        adds    x15, x15, x4 ASM_LINE_END                   \
+        adc     x16, x16, x5 ASM_LINE_END                   \
+        cmn     x15, x15 ASM_LINE_END                       \
+        bic     x15, x15, #0x8000000000000000 ASM_LINE_END  \
+        adc     x8, x16, x16 ASM_LINE_END                   \
+        mov     x7, #0x13 ASM_LINE_END                      \
+        mul     x11, x7, x8 ASM_LINE_END                    \
+        adds    x12, x12, x11 ASM_LINE_END                  \
+        adcs    x13, x13, x9 ASM_LINE_END                   \
+        adcs    x14, x14, x3 ASM_LINE_END                   \
+        adc     x15, x15, xzr ASM_LINE_END                  \
+        stp     x12, x13, [P0] ASM_LINE_END                 \
         stp     x14, x15, [P0+16]
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
 #define sub_twice4(P0,P1,P2)                    \
-        ldp     x5, x6, [P1];                   \
-        ldp     x4, x3, [P2];                   \
-        subs    x5, x5, x4;                     \
-        sbcs    x6, x6, x3;                     \
-        ldp     x7, x8, [P1+16];                \
-        ldp     x4, x3, [P2+16];                \
-        sbcs    x7, x7, x4;                     \
-        sbcs    x8, x8, x3;                     \
-        mov     x4, #38;                        \
-        csel    x3, x4, xzr, lo;                \
-        subs    x5, x5, x3;                     \
-        sbcs    x6, x6, xzr;                    \
-        sbcs    x7, x7, xzr;                    \
-        sbc     x8, x8, xzr;                    \
-        stp     x5, x6, [P0];                   \
+        ldp     x5, x6, [P1] ASM_LINE_END                   \
+        ldp     x4, x3, [P2] ASM_LINE_END                   \
+        subs    x5, x5, x4 ASM_LINE_END                     \
+        sbcs    x6, x6, x3 ASM_LINE_END                     \
+        ldp     x7, x8, [P1+16] ASM_LINE_END                \
+        ldp     x4, x3, [P2+16] ASM_LINE_END                \
+        sbcs    x7, x7, x4 ASM_LINE_END                     \
+        sbcs    x8, x8, x3 ASM_LINE_END                     \
+        mov     x4, #38 ASM_LINE_END                        \
+        csel    x3, x4, xzr, lo ASM_LINE_END                \
+        subs    x5, x5, x3 ASM_LINE_END                     \
+        sbcs    x6, x6, xzr ASM_LINE_END                    \
+        sbcs    x7, x7, xzr ASM_LINE_END                    \
+        sbc     x8, x8, xzr ASM_LINE_END                    \
+        stp     x5, x6, [P0] ASM_LINE_END                   \
         stp     x7, x8, [P0+16]
 
 // Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
@@ -313,37 +313,37 @@
 // at least one of them is reduced double modulo.
 
 #define add_twice4(P0,P1,P2)                    \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        adds    x3, x3, x7;                     \
-        adcs    x4, x4, x8;                     \
-        ldp     x5, x6, [P1+16];                \
-        ldp     x7, x8, [P2+16];                \
-        adcs    x5, x5, x7;                     \
-        adcs    x6, x6, x8;                     \
-        mov     x9, #38;                        \
-        csel    x9, x9, xzr, cs;                \
-        adds    x3, x3, x9;                     \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        adc     x6, x6, xzr;                    \
-        stp     x3, x4, [P0];                   \
+        ldp     x3, x4, [P1] ASM_LINE_END                   \
+        ldp     x7, x8, [P2] ASM_LINE_END                   \
+        adds    x3, x3, x7 ASM_LINE_END                     \
+        adcs    x4, x4, x8 ASM_LINE_END                     \
+        ldp     x5, x6, [P1+16] ASM_LINE_END                \
+        ldp     x7, x8, [P2+16] ASM_LINE_END                \
+        adcs    x5, x5, x7 ASM_LINE_END                     \
+        adcs    x6, x6, x8 ASM_LINE_END                     \
+        mov     x9, #38 ASM_LINE_END                        \
+        csel    x9, x9, xzr, cs ASM_LINE_END                \
+        adds    x3, x3, x9 ASM_LINE_END                     \
+        adcs    x4, x4, xzr ASM_LINE_END                    \
+        adcs    x5, x5, xzr ASM_LINE_END                    \
+        adc     x6, x6, xzr ASM_LINE_END                    \
+        stp     x3, x4, [P0] ASM_LINE_END                   \
         stp     x5, x6, [P0+16]
 
 #define double_twice4(P0,P1)                    \
-        ldp     x3, x4, [P1];                   \
-        adds    x3, x3, x3;                     \
-        adcs    x4, x4, x4;                     \
-        ldp     x5, x6, [P1+16];                \
-        adcs    x5, x5, x5;                     \
-        adcs    x6, x6, x6;                     \
-        mov     x9, #38;                        \
-        csel    x9, x9, xzr, cs;                \
-        adds    x3, x3, x9;                     \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        adc     x6, x6, xzr;                    \
-        stp     x3, x4, [P0];                   \
+        ldp     x3, x4, [P1] ASM_LINE_END                   \
+        adds    x3, x3, x3 ASM_LINE_END                     \
+        adcs    x4, x4, x4 ASM_LINE_END                     \
+        ldp     x5, x6, [P1+16] ASM_LINE_END                \
+        adcs    x5, x5, x5 ASM_LINE_END                     \
+        adcs    x6, x6, x6 ASM_LINE_END                     \
+        mov     x9, #38 ASM_LINE_END                        \
+        csel    x9, x9, xzr, cs ASM_LINE_END                \
+        adds    x3, x3, x9 ASM_LINE_END                     \
+        adcs    x4, x4, xzr ASM_LINE_END                    \
+        adcs    x5, x5, xzr ASM_LINE_END                    \
+        adc     x6, x6, xzr ASM_LINE_END                    \
+        stp     x3, x4, [P0] ASM_LINE_END                   \
         stp     x5, x6, [P0+16]
 
 S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt):

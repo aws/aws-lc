@@ -32,58 +32,58 @@
 // Macro for the key "multiply and add to (c,h,l)" step
 
 #define combadd(c,h,l,numa,numb)                \
-        movq    numa, %rax ;                      \
-        mulq     numb;                 \
-        addq    %rax, l ;                         \
-        adcq    %rdx, h ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq     numb ASM_LINE_END                 \
+        addq    %rax, l  ASM_LINE_END                         \
+        adcq    %rdx, h  ASM_LINE_END                         \
         adcq    $0, c
 
 // Set up initial window (c,h,l) = numa * numb
 
 #define combaddz(c,h,l,numa,numb)               \
-        movq    numa, %rax ;                      \
-        mulq     numb;                 \
-        xorq    c, c ;                           \
-        movq    %rax, l ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq     numb ASM_LINE_END                 \
+        xorq    c, c  ASM_LINE_END                           \
+        movq    %rax, l  ASM_LINE_END                         \
         movq    %rdx, h
 
 // Doubling step (c,h,l) = 2 * (c,hh,ll) + (0,h,l)
 
 #define doubladd(c,h,l,hh,ll)                   \
-        addq    ll, ll ;                         \
-        adcq    hh, hh ;                         \
-        adcq    c, c ;                           \
-        addq    ll, l ;                          \
-        adcq    hh, h ;                          \
+        addq    ll, ll  ASM_LINE_END                         \
+        adcq    hh, hh  ASM_LINE_END                         \
+        adcq    c, c  ASM_LINE_END                           \
+        addq    ll, l  ASM_LINE_END                          \
+        adcq    hh, h  ASM_LINE_END                          \
         adcq    $0, c
 
 // Square term incorporation (c,h,l) += numba^2
 
 #define combadd1(c,h,l,numa)                    \
-        movq    numa, %rax ;                      \
-        mulq    %rax;                            \
-        addq    %rax, l ;                         \
-        adcq    %rdx, h ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq    %rax ASM_LINE_END                            \
+        addq    %rax, l  ASM_LINE_END                         \
+        adcq    %rdx, h  ASM_LINE_END                         \
         adcq    $0, c
 
 // A short form where we don't expect a top carry
 
 #define combads(h,l,numa)                       \
-        movq    numa, %rax ;                      \
-        mulq    %rax;                            \
-        addq    %rax, l ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq    %rax ASM_LINE_END                            \
+        addq    %rax, l  ASM_LINE_END                         \
         adcq    %rdx, h
 
 // A version doubling directly before adding, for single non-square terms
 
 #define combadd2(c,h,l,numa,numb)               \
-        movq    numa, %rax ;                      \
-        mulq     numb;                 \
-        addq    %rax, %rax ;                       \
-        adcq    %rdx, %rdx ;                       \
-        adcq    $0, c ;                           \
-        addq    %rax, l ;                         \
-        adcq    %rdx, h ;                         \
+        movq    numa, %rax  ASM_LINE_END                      \
+        mulq     numb ASM_LINE_END                 \
+        addq    %rax, %rax  ASM_LINE_END                       \
+        adcq    %rdx, %rdx  ASM_LINE_END                       \
+        adcq    $0, c  ASM_LINE_END                           \
+        addq    %rax, l  ASM_LINE_END                         \
+        adcq    %rdx, h  ASM_LINE_END                         \
         adcq    $0, c
 
 S2N_BN_SYMBOL(bignum_montsqr_p521_alt):

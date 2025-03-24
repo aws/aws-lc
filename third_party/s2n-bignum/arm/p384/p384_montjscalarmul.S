@@ -61,42 +61,42 @@
 // which doesn't accept repetitions, assembler macros etc.
 
 #define selectblock(I)                            \
-        cmp     bf, #(1*I);                       \
-        ldp     x20, x21, [x19];                  \
-        csel    x0, x20, x0, eq;                  \
-        csel    x1, x21, x1, eq;                  \
-        ldp     x20, x21, [x19, #16];             \
-        csel    x2, x20, x2, eq;                  \
-        csel    x3, x21, x3, eq;                  \
-        ldp     x20, x21, [x19, #32];             \
-        csel    x4, x20, x4, eq;                  \
-        csel    x5, x21, x5, eq;                  \
-        ldp     x20, x21, [x19, #48];             \
-        csel    x6, x20, x6, eq;                  \
-        csel    x7, x21, x7, eq;                  \
-        ldp     x20, x21, [x19, #64];             \
-        csel    x8, x20, x8, eq;                  \
-        csel    x9, x21, x9, eq;                  \
-        ldp     x20, x21, [x19, #80];             \
-        csel    x10, x20, x10, eq;                \
-        csel    x11, x21, x11, eq;                \
-        ldp     x20, x21, [x19, #96];             \
-        csel    x12, x20, x12, eq;                \
-        csel    x13, x21, x13, eq;                \
-        ldp     x20, x21, [x19, #112];            \
-        csel    x14, x20, x14, eq;                \
-        csel    x15, x21, x15, eq;                \
-        ldp     x20, x21, [x19, #128];            \
-        csel    x16, x20, x16, eq;                \
-        csel    x17, x21, x17, eq;                \
+        cmp     bf, #(1*I) ASM_LINE_END                       \
+        ldp     x20, x21, [x19] ASM_LINE_END                  \
+        csel    x0, x20, x0, eq ASM_LINE_END                  \
+        csel    x1, x21, x1, eq ASM_LINE_END                  \
+        ldp     x20, x21, [x19, #16] ASM_LINE_END             \
+        csel    x2, x20, x2, eq ASM_LINE_END                  \
+        csel    x3, x21, x3, eq ASM_LINE_END                  \
+        ldp     x20, x21, [x19, #32] ASM_LINE_END             \
+        csel    x4, x20, x4, eq ASM_LINE_END                  \
+        csel    x5, x21, x5, eq ASM_LINE_END                  \
+        ldp     x20, x21, [x19, #48] ASM_LINE_END             \
+        csel    x6, x20, x6, eq ASM_LINE_END                  \
+        csel    x7, x21, x7, eq ASM_LINE_END                  \
+        ldp     x20, x21, [x19, #64] ASM_LINE_END             \
+        csel    x8, x20, x8, eq ASM_LINE_END                  \
+        csel    x9, x21, x9, eq ASM_LINE_END                  \
+        ldp     x20, x21, [x19, #80] ASM_LINE_END             \
+        csel    x10, x20, x10, eq ASM_LINE_END                \
+        csel    x11, x21, x11, eq ASM_LINE_END                \
+        ldp     x20, x21, [x19, #96] ASM_LINE_END             \
+        csel    x12, x20, x12, eq ASM_LINE_END                \
+        csel    x13, x21, x13, eq ASM_LINE_END                \
+        ldp     x20, x21, [x19, #112] ASM_LINE_END            \
+        csel    x14, x20, x14, eq ASM_LINE_END                \
+        csel    x15, x21, x15, eq ASM_LINE_END                \
+        ldp     x20, x21, [x19, #128] ASM_LINE_END            \
+        csel    x16, x20, x16, eq ASM_LINE_END                \
+        csel    x17, x21, x17, eq ASM_LINE_END                \
         add     x19, x19, #JACSIZE
 
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
+        movz    nn, n0 ASM_LINE_END                                             \
+        movk    nn, n1, lsl #16 ASM_LINE_END                                    \
+        movk    nn, n2, lsl #32 ASM_LINE_END                                    \
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(p384_montjscalarmul):

@@ -59,23 +59,23 @@
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
+        movz    nn, n0 ASM_LINE_END                                             \
+        movk    nn, n1, lsl #16 ASM_LINE_END                                    \
+        movk    nn, n2, lsl #32 ASM_LINE_END                                    \
         movk    nn, n3, lsl #48
 
 // Macros wrapping up calls to the local subroutines
 
 #define mulp(dest,src1,src2)                                            \
-        add     x0, dest;                                               \
-        add     x1, src1;                                               \
-        add     x2, src2;                                               \
+        add     x0, dest ASM_LINE_END                                               \
+        add     x1, src1 ASM_LINE_END                                               \
+        add     x2, src2 ASM_LINE_END                                               \
         bl      edwards25519_decode_mul_p25519
 
 #define nsqr(dest,n,src)                                                \
-        add     x0, dest;                                               \
-        mov     x1, n;                                                  \
-        add     x2, src;                                                \
+        add     x0, dest ASM_LINE_END                                               \
+        mov     x1, n ASM_LINE_END                                                  \
+        add     x2, src ASM_LINE_END                                                \
         bl      edwards25519_decode_nsqr_p25519
 
 S2N_BN_SYMBOL(edwards25519_decode):

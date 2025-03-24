@@ -63,27 +63,27 @@
 // which doesn't accept repetitions, assembler macros etc.
 
 #define selectblock_xz(I)                         \
-        cmpq    $I, %rdi ;                           \
-        cmovzq  TAB+JACSIZE*(I-1)(%rsp), %rax ;     \
-        cmovzq  TAB+JACSIZE*(I-1)+8(%rsp), %rbx ;   \
-        cmovzq  TAB+JACSIZE*(I-1)+16(%rsp), %rcx ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+24(%rsp), %rdx ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+32(%rsp), %r8 ;   \
-        cmovzq  TAB+JACSIZE*(I-1)+40(%rsp), %r9 ;   \
-        cmovzq  TAB+JACSIZE*(I-1)+96(%rsp), %r10 ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+104(%rsp), %r11 ; \
-        cmovzq  TAB+JACSIZE*(I-1)+112(%rsp), %r12 ; \
-        cmovzq  TAB+JACSIZE*(I-1)+120(%rsp), %r13 ; \
-        cmovzq  TAB+JACSIZE*(I-1)+128(%rsp), %r14 ; \
+        cmpq    $I, %rdi  ASM_LINE_END                           \
+        cmovzq  TAB+JACSIZE*(I-1)(%rsp), %rax  ASM_LINE_END     \
+        cmovzq  TAB+JACSIZE*(I-1)+8(%rsp), %rbx  ASM_LINE_END   \
+        cmovzq  TAB+JACSIZE*(I-1)+16(%rsp), %rcx  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+24(%rsp), %rdx  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+32(%rsp), %r8  ASM_LINE_END   \
+        cmovzq  TAB+JACSIZE*(I-1)+40(%rsp), %r9  ASM_LINE_END   \
+        cmovzq  TAB+JACSIZE*(I-1)+96(%rsp), %r10  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+104(%rsp), %r11  ASM_LINE_END \
+        cmovzq  TAB+JACSIZE*(I-1)+112(%rsp), %r12  ASM_LINE_END \
+        cmovzq  TAB+JACSIZE*(I-1)+120(%rsp), %r13  ASM_LINE_END \
+        cmovzq  TAB+JACSIZE*(I-1)+128(%rsp), %r14  ASM_LINE_END \
         cmovzq  TAB+JACSIZE*(I-1)+136(%rsp), %r15
 
 #define selectblock_y(I)                          \
-        cmpq    $I, %rdi ;                           \
-        cmovzq  TAB+JACSIZE*(I-1)+48(%rsp), %rax ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+56(%rsp), %rbx ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+64(%rsp), %rcx ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+72(%rsp), %rdx ;  \
-        cmovzq  TAB+JACSIZE*(I-1)+80(%rsp), %r8 ;   \
+        cmpq    $I, %rdi  ASM_LINE_END                           \
+        cmovzq  TAB+JACSIZE*(I-1)+48(%rsp), %rax  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+56(%rsp), %rbx  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+64(%rsp), %rcx  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+72(%rsp), %rdx  ASM_LINE_END  \
+        cmovzq  TAB+JACSIZE*(I-1)+80(%rsp), %r8  ASM_LINE_END   \
         cmovzq  TAB+JACSIZE*(I-1)+88(%rsp), %r9
 
 S2N_BN_SYMBOL(p384_montjscalarmul):

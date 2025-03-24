@@ -60,33 +60,33 @@
 // which doesn't accept repetitions, assembler macros etc.
 
 #define selectblock(I)                          \
-        cmp     x14, #(1*I);                    \
-        ldp     x12, x13, [x15];                \
-        csel    x0, x12, x0, eq;                \
-        csel    x1, x13, x1, eq;                \
-        ldp     x12, x13, [x15, #16];           \
-        csel    x2, x12, x2, eq;                \
-        csel    x3, x13, x3, eq;                \
-        ldp     x12, x13, [x15, #32];           \
-        csel    x4, x12, x4, eq;                \
-        csel    x5, x13, x5, eq;                \
-        ldp     x12, x13, [x15, #48];           \
-        csel    x6, x12, x6, eq;                \
-        csel    x7, x13, x7, eq;                \
-        ldp     x12, x13, [x15, #64];           \
-        csel    x8, x12, x8, eq;                \
-        csel    x9, x13, x9, eq;                \
-        ldp     x12, x13, [x15, #80];           \
-        csel    x10, x12, x10, eq;              \
-        csel    x11, x13, x11, eq;              \
+        cmp     x14, #(1*I) ASM_LINE_END                    \
+        ldp     x12, x13, [x15] ASM_LINE_END                \
+        csel    x0, x12, x0, eq ASM_LINE_END                \
+        csel    x1, x13, x1, eq ASM_LINE_END                \
+        ldp     x12, x13, [x15, #16] ASM_LINE_END           \
+        csel    x2, x12, x2, eq ASM_LINE_END                \
+        csel    x3, x13, x3, eq ASM_LINE_END                \
+        ldp     x12, x13, [x15, #32] ASM_LINE_END           \
+        csel    x4, x12, x4, eq ASM_LINE_END                \
+        csel    x5, x13, x5, eq ASM_LINE_END                \
+        ldp     x12, x13, [x15, #48] ASM_LINE_END           \
+        csel    x6, x12, x6, eq ASM_LINE_END                \
+        csel    x7, x13, x7, eq ASM_LINE_END                \
+        ldp     x12, x13, [x15, #64] ASM_LINE_END           \
+        csel    x8, x12, x8, eq ASM_LINE_END                \
+        csel    x9, x13, x9, eq ASM_LINE_END                \
+        ldp     x12, x13, [x15, #80] ASM_LINE_END           \
+        csel    x10, x12, x10, eq ASM_LINE_END              \
+        csel    x11, x13, x11, eq ASM_LINE_END              \
         add     x15, x15, #96
 
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
+        movz    nn, n0 ASM_LINE_END                                             \
+        movk    nn, n1, lsl #16 ASM_LINE_END                                    \
+        movk    nn, n2, lsl #32 ASM_LINE_END                                    \
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(p256_montjscalarmul_alt):

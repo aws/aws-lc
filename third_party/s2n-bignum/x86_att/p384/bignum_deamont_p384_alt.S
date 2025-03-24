@@ -46,28 +46,28 @@
 
 #define montreds(d6,d5,d4,d3,d2,d1,d0)                                  \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-        movq    d0, %rcx ;                                        \
-        shlq    $32, %rcx ;                                        \
-        addq    d0, %rcx ;                                        \
-/* Construct [%rax;%rdx;d0;-] = (2^384 - p_384) * w            */         \
+        movq    d0, %rcx  ASM_LINE_END                                        \
+        shlq    $32, %rcx  ASM_LINE_END                                        \
+        addq    d0, %rcx  ASM_LINE_END                                        \
+/* Construct [%rax ASM_LINE_END%rdx;d0;-] = (2^384 - p_384) * w            */         \
 /* We know the lowest word will cancel so we can re-use d0   */         \
 /* and %rcx as temps.                                         */         \
-        movq    $0xffffffff00000001, %rax ;                        \
-        mulq    %rcx;                                            \
-        movq    %rdx, d0 ;                                        \
-        movq    $0x00000000ffffffff, %rax ;                        \
-        mulq    %rcx;                                            \
-        addq    %rax, d0 ;                                        \
-        movl    $0, %eax ;                                         \
-        adcq    %rcx, %rdx ;                                       \
-        adcl    %eax, %eax ;                                       \
+        movq    $0xffffffff00000001, %rax  ASM_LINE_END                        \
+        mulq    %rcx ASM_LINE_END                                            \
+        movq    %rdx, d0  ASM_LINE_END                                        \
+        movq    $0x00000000ffffffff, %rax  ASM_LINE_END                        \
+        mulq    %rcx ASM_LINE_END                                            \
+        addq    %rax, d0  ASM_LINE_END                                        \
+        movl    $0, %eax  ASM_LINE_END                                         \
+        adcq    %rcx, %rdx  ASM_LINE_END                                       \
+        adcl    %eax, %eax  ASM_LINE_END                                       \
 /* Now subtract that and add 2^384 * w                       */         \
-        subq    d0, d1 ;                                         \
-        sbbq    %rdx, d2 ;                                        \
-        sbbq    %rax, d3 ;                                        \
-        sbbq    $0, d4 ;                                          \
-        sbbq    $0, d5 ;                                          \
-        movq    %rcx, d6 ;                                        \
+        subq    d0, d1  ASM_LINE_END                                         \
+        sbbq    %rdx, d2  ASM_LINE_END                                        \
+        sbbq    %rax, d3  ASM_LINE_END                                        \
+        sbbq    $0, d4  ASM_LINE_END                                          \
+        sbbq    $0, d5  ASM_LINE_END                                          \
+        movq    %rcx, d6  ASM_LINE_END                                        \
         sbbq    $0, d6
 
 S2N_BN_SYMBOL(bignum_deamont_p384_alt):

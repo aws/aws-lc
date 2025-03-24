@@ -36,8 +36,8 @@
 // using %rax and %rbx as temporaries.
 
 #define mulpadd(high,low,x)             \
-        mulxq   x, %rax, %rbx ;            \
-        adcxq   %rax, low ;               \
+        mulxq   x, %rax, %rbx  ASM_LINE_END            \
+        adcxq   %rax, low  ASM_LINE_END               \
         adoxq   %rbx, high
 
 S2N_BN_SYMBOL(bignum_montmul_p521):

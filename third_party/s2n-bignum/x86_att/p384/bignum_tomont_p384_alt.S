@@ -37,29 +37,29 @@
 // as temporaries
 
 #define mulpadd(carry,high,low,m)       \
-        movq    m, %rax ;                 \
-        mulq    %rbx;                    \
-        subq    carry, %rdx ;             \
-        addq    %rax, low ;               \
-        adcq    %rdx, high ;              \
+        movq    m, %rax  ASM_LINE_END                 \
+        mulq    %rbx ASM_LINE_END                    \
+        subq    carry, %rdx  ASM_LINE_END             \
+        addq    %rax, low  ASM_LINE_END               \
+        adcq    %rdx, high  ASM_LINE_END              \
         sbbq    carry, carry
 
 // Initial version assuming no carry-in
 
 #define mulpadi(carry,high,low,m)       \
-        movq    m, %rax ;                 \
-        mulq    %rbx;                    \
-        addq    %rax, low ;               \
-        adcq    %rdx, high ;              \
+        movq    m, %rax  ASM_LINE_END                 \
+        mulq    %rbx ASM_LINE_END                    \
+        addq    %rax, low  ASM_LINE_END               \
+        adcq    %rdx, high  ASM_LINE_END              \
         sbbq    carry, carry
 
 // End version not catching the top carry-out
 
 #define mulpade(carry,high,low,m)       \
-        movq    m, %rax ;                 \
-        mulq    %rbx;                    \
-        subq    carry, %rdx ;             \
-        addq    %rax, low ;               \
+        movq    m, %rax  ASM_LINE_END                 \
+        mulq    %rbx ASM_LINE_END                    \
+        subq    carry, %rdx  ASM_LINE_END             \
+        addq    %rax, low  ASM_LINE_END               \
         adcq    %rdx, high
 
 // Core one-step Montgomery reduction macro. Takes input in
@@ -78,28 +78,28 @@
 
 #define montredc(d7,d6,d5,d4,d3,d2,d1,d0)                               \
 /* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64 */         \
-        movq    d0, %rbx ;                                        \
-        shlq    $32, %rbx ;                                        \
-        addq    d0, %rbx ;                                        \
-/* Construct [%rcx;%rdx;%rax;-] = (2^384 - p_384) * w */                   \
+        movq    d0, %rbx  ASM_LINE_END                                        \
+        shlq    $32, %rbx  ASM_LINE_END                                        \
+        addq    d0, %rbx  ASM_LINE_END                                        \
+/* Construct [%rcx ASM_LINE_END%rdx;%rax;-] = (2^384 - p_384) * w */                   \
 /* We know the lowest word will cancel so we can re-use d0 as a temp */ \
-        xorl    %ecx, %ecx ;                                       \
-        movq    $0xffffffff00000001, %rax ;                        \
-        mulq    %rbx;                                            \
-        movq    %rdx, d0 ;                                        \
-        movq    $0x00000000ffffffff, %rax ;                        \
-        mulq    %rbx;                                            \
-        addq    d0, %rax ;                                        \
-        adcq    %rbx, %rdx ;                                       \
-        adcl    %ecx, %ecx ;                                       \
+        xorl    %ecx, %ecx  ASM_LINE_END                                       \
+        movq    $0xffffffff00000001, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                                            \
+        movq    %rdx, d0  ASM_LINE_END                                        \
+        movq    $0x00000000ffffffff, %rax  ASM_LINE_END                        \
+        mulq    %rbx ASM_LINE_END                                            \
+        addq    d0, %rax  ASM_LINE_END                                        \
+        adcq    %rbx, %rdx  ASM_LINE_END                                       \
+        adcl    %ecx, %ecx  ASM_LINE_END                                       \
 /*  Now subtract that and add 2^384 * w */                              \
-        subq    %rax, d1 ;                                        \
-        sbbq    %rdx, d2 ;                                        \
-        sbbq    %rcx, d3 ;                                        \
-        sbbq    $0, d4 ;                                          \
-        sbbq    $0, d5 ;                                          \
-        sbbq    $0, %rbx ;                                         \
-        addq    %rbx, d6 ;                                        \
+        subq    %rax, d1  ASM_LINE_END                                        \
+        sbbq    %rdx, d2  ASM_LINE_END                                        \
+        sbbq    %rcx, d3  ASM_LINE_END                                        \
+        sbbq    $0, d4  ASM_LINE_END                                          \
+        sbbq    $0, d5  ASM_LINE_END                                          \
+        sbbq    $0, %rbx  ASM_LINE_END                                         \
+        addq    %rbx, d6  ASM_LINE_END                                        \
         adcq    $0, d7
 
 S2N_BN_SYMBOL(bignum_tomont_p384_alt):
