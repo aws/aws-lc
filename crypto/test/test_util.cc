@@ -166,36 +166,27 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
 }
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
-  char pathname[PATH_MAX];
-  char tempdir[PATH_MAX];
+  char temp_path[PATH_MAX];
 
-  if (0 == GetTempPathA(PATH_MAX, pathname)) {
+  // Get the temporary path
+  if (0 == GetTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 
-  // Generate a unique name using Windows API
-  if (0 == GetTempFileNameA(pathname, "awslctestdir", 0, tempdir)) {
+  // Create a unique name using process ID and timestamp
+  snprintf(buffer, PATH_MAX, "%s\\awslctest_%u_%llu",
+           temp_path,
+           GetCurrentProcessId(),
+           (unsigned long long)time(NULL));
+
+  // Create the directory directly
+  if (!CreateDirectoryA(buffer, NULL)) {
     return 0;
   }
 
-  // Delete the file that GetTempFileNameA created
-  DeleteFileA(tempdir);
-
-  if (!CreateDirectoryA(tempdir, NULL)) {
-    return 0;
-  }
-
-  strncpy(buffer, tempdir, PATH_MAX);
   return strnlen(buffer, PATH_MAX);
 }
 
-FILE* createRawTempFILE() {
-  char filename[PATH_MAX];
-  if(createTempFILEpath(filename) == 0) {
-    return nullptr;
-  }
-  return fopen(filename, "w+b");
-}
 #else
 #include <cstdlib>
 #include <unistd.h>
