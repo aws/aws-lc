@@ -314,14 +314,14 @@ static const SubjectNameTestCase kSubjectNameTestCases[] = {
     "CN=test.com",
     false,
     0,
-    {}
+    {""}
   },
   // Missing equals sign
   {
     "/CNtest.com",
     false,
     0,
-    {}
+    {""}
   },
   // Empty value
   {
@@ -342,7 +342,7 @@ static const SubjectNameTestCase kSubjectNameTestCases[] = {
     "/",
     true,
     0,
-    {}
+    {""}
   }
 };
 
@@ -366,7 +366,9 @@ TEST_P(SubjectNameTest, ParseSubjectName) {
   EXPECT_EQ(X509_NAME_entry_count(name), test_case.expected_entry_count);
 
   for (size_t i = 0; i < test_case.expected_values.size(); ++i) {
-    EXPECT_EQ(GetEntryValue(name, i), test_case.expected_values[i]);
+    if (!test_case.expected_values[i].empty()) {
+      EXPECT_EQ(GetEntryValue(name, i), test_case.expected_values[i]);
+    }
   }
 
   X509_NAME_free(name);

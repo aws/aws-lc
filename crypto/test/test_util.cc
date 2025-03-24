@@ -174,7 +174,7 @@ size_t createTempDirPath(char buffer[PATH_MAX]) {
   }
 
   // Create a unique name using process ID and timestamp
-  snprintf(buffer, PATH_MAX, "%s\\awslctest_%u_%llu",
+  snprintf(buffer, PATH_MAX, "%s\\awslctest_%lu_%llu",
            temp_path,
            GetCurrentProcessId(),
            (unsigned long long)time(NULL));
