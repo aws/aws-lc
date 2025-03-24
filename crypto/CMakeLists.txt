@@ -768,7 +768,6 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/p_kem_test.cc
     evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
     fips_callback_test.cc
@@ -784,6 +783,7 @@ if(BUILD_TESTING)
     fipsmodule/evp/evp_ctx_test.cc
     fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
+    fipsmodule/ml_kem/ml_kem_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
     fipsmodule/pbkdf/pbkdf_test.cc
