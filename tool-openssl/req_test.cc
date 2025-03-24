@@ -347,8 +347,8 @@ static const SubjectNameTestCase kSubjectNameTestCases[] = {
 };
 
 INSTANTIATE_TEST_SUITE_P(SubjectNameTests, SubjectNameTest, testing::ValuesIn(kSubjectNameTestCases),
-                         [](const testing::TestParamInfo<SubjectNameTestCase>& info) {
-                            return "Case_" + std::to_string(info.index);
+                         [](const testing::TestParamInfo<SubjectNameTestCase>& subj) {
+                            return "Case_" + std::to_string(subj.index);
                          });
 
 TEST_P(SubjectNameTest, ParseSubjectName) {
