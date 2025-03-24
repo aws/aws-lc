@@ -857,15 +857,14 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
 }
 
 static bool SpeedKEM(std::string selected) {
-  return
 #if AWSLC_API_VERSION >= 30
+  return
          SpeedSingleKEM("ML-KEM-512", NID_MLKEM512, selected) &&
          SpeedSingleKEM("ML-KEM-768", NID_MLKEM768, selected) &&
-         SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected) &&
+         SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected);
+#else
+  return true;
 #endif
-         SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
-         SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
-         SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
 #if AWSLC_API_VERSION > 31

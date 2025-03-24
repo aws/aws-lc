@@ -4283,6 +4283,18 @@ extern "C" {
 #define NID_kem 970
 #define OBJ_kem 2L, 16L, 840L, 1L, 101L, 3L, 4L, 4L
 
+#define SN_KYBER512 "KYBER512"
+#define NID_KYBER512 971
+
+#define SN_KYBER512_R3 "KYBER512_R3"
+#define NID_KYBER512_R3 972
+
+#define SN_KYBER768_R3 "KYBER768_R3"
+#define NID_KYBER768_R3 973
+
+#define SN_KYBER1024_R3 "KYBER1024_R3"
+#define NID_KYBER1024_R3 974
+
 #define SN_DILITHIUM3_R3 "DILITHIUM3_R3"
 #define NID_DILITHIUM3_R3 975
 #define OBJ_DILITHIUM3_R3 1L, 3L, 6L, 1L, 4L, 1L, 2L, 267L, 7L, 6L, 5L
@@ -4307,6 +4319,14 @@ extern "C" {
 #define LN_shake256 "shake256"
 #define NID_shake256 980
 #define OBJ_shake256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 12L
+
+#define SN_SecP256r1Kyber768Draft00 "SecP256r1Kyber768Draft00"
+#define NID_SecP256r1Kyber768Draft00 981
+#define OBJ_SecP256r1Kyber768Draft00 1L, 3L, 9999L, 99L, 52L
+
+#define SN_X25519Kyber768Draft00 "X25519Kyber768Draft00"
+#define NID_X25519Kyber768Draft00 982
+#define OBJ_X25519Kyber768Draft00 1L, 3L, 9999L, 99L, 51L
 
 #define SN_ffdhe3072 "ffdhe3072"
 #define NID_ffdhe3072 983
