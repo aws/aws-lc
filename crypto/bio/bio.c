@@ -148,33 +148,33 @@ static BIO_callback_fn_ex get_callback(BIO *bio) {
 // Helper function to create a placeholder |processed| that the callback can
 // modify and return to the caller. Used only in callbacks that pass in
 // |processed|.
-static int call_bio_callback_with_processed(BIO *bio, const int oper,
-                                        const void *buf, int len, int ret) {
-
-    size_t processed = 0;
-    // The original BIO return value can be an error value (less than 0) or
-    // the number of bytes read/written
-    if (ret > 0) {
-      processed = ret;
-    }
-  if (HAS_CALLBACK(bio)) {
-    // Pass the original BIO's return value to the callback. If the callback
-    // is successful return processed from the callback, if the callback is
-    // not successful return the callback's return value.
-    BIO_callback_fn_ex cb = get_callback(bio);
-    long callback_ret = cb(bio, oper, buf, len, 0, 0L, ret, &processed);
-    if (callback_ret <= INT_MAX && callback_ret >= INT_MIN) {
-      ret = (int)callback_ret;
-      if (ret > 0) {
-        // BIO will only read int |len| bytes so this is a safe cast
-        ret = (int)processed;
-      }
-    } else {
-      ret = -1;
-    }
-  }
-  return ret;
-}
+// static int call_bio_callback_with_processed(BIO *bio, const int oper,
+//                                         const void *buf, int len, int ret) {
+//
+//     size_t processed = 0;
+//     // The original BIO return value can be an error value (less than 0) or
+//     // the number of bytes read/written
+//     if (ret > 0) {
+//       processed = ret;
+//     }
+//   if (HAS_CALLBACK(bio)) {
+//     // Pass the original BIO's return value to the callback. If the callback
+//     // is successful return processed from the callback, if the callback is
+//     // not successful return the callback's return value.
+//     BIO_callback_fn_ex cb = get_callback(bio);
+//     long callback_ret = cb(bio, oper, buf, len, 0, 0L, ret, &processed);
+//     if (callback_ret <= INT_MAX && callback_ret >= INT_MIN) {
+//       ret = (int)callback_ret;
+//       if (ret > 0) {
+//         // BIO will only read int |len| bytes so this is a safe cast
+//         ret = (int)processed;
+//       }
+//     } else {
+//       ret = -1;
+//     }
+//   }
+//   return ret;
+// }
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
@@ -325,8 +325,8 @@ int BIO_gets(BIO *bio, char *buf, int len) {
   if (len <= 0) {
     return 0;
   }
+  size_t processed = 0;
 
-  if (HAS_CALLBACK(bio)) {
     BIO_callback_fn_ex cb = get_callback(bio);
     if (cb != NULL) {
       long callback_ret = cb(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
@@ -337,7 +337,7 @@ int BIO_gets(BIO *bio, char *buf, int len) {
         return INT_MIN;
       }
     }
-  }
+
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
@@ -345,9 +345,24 @@ int BIO_gets(BIO *bio, char *buf, int len) {
   int ret = bio->method->bgets(bio, buf, len);
   if (ret > 0) {
     bio->num_read += ret;
+    processed = ret;
+    ret = 1;
   }
-  ret = call_bio_callback_with_processed(bio, BIO_CB_GETS | BIO_CB_RETURN, buf,
-                                         len, ret);
+
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_GETS | BIO_CB_RETURN, buf, len, 0, 0L,
+      ret, &processed);
+  }
+
+  if (ret <= INT_MAX && ret >= INT_MIN) {
+    if (ret > 0) {
+      // BIO will only read int |len| bytes so this is a safe cast
+      ret = (int)processed;
+    }
+  } else {
+    ret = -1;
+  }
+
   return ret;
 }
 

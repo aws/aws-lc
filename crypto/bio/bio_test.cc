@@ -1442,19 +1442,23 @@ TEST_P(BIOPairTest, TestGetsCallback) {
 
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
   ASSERT_EQ(param_ret_ex[0], 1);
-  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+
 
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
   // Old-style callback uses argi for len
   if (!use_extended_callback) {
+    // use ret for data processed
+    ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
     ASSERT_EQ(param_argi_ex[0], TEST_BUF_LEN);
     ASSERT_EQ(param_argi_ex[1], TEST_BUF_LEN);
   }
 
   // Extended callback specific verifications
   if (use_extended_callback) {
+    // ret is set to 1 after setting processed
+    ASSERT_EQ(param_ret_ex[1], 1);
     ASSERT_EQ(param_argi_ex[0], 0);
     ASSERT_EQ(param_argi_ex[1], 0);
     ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
