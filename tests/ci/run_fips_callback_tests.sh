@@ -71,7 +71,7 @@ function run_all_break_tests() {
 
 echo "Testing AWS-LC static breakable build with custom callback and Jitter enabled"
 build_and_test -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_BUILD_SHARED_LIBS=OFF \
+  -DBUILD_SHARED_LIBS=OFF \
   -DFIPS=1 \
   -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_INSTALL_INCLUDEDIR=include \
@@ -87,7 +87,7 @@ run_all_break_tests
 
 echo "Testing AWS-LC static build with custom callback and Jitter enabled"
 build_and_test -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_BUILD_SHARED_LIBS=OFF \
+  -DBUILD_SHARED_LIBS=OFF \
   -DFIPS=1 \
   -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_INSTALL_INCLUDEDIR=include \
