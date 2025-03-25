@@ -347,8 +347,8 @@ int BIO_write(BIO *bio, const void *in, int inl) {
   if (inl <= 0) {
     return 0;
   }
+  size_t processed = 0;
 
-  if (HAS_CALLBACK(bio)) {
     BIO_callback_fn_ex cb = get_callback(bio);
     if (cb != NULL) {
       long callback_ret = cb(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
@@ -359,7 +359,6 @@ int BIO_write(BIO *bio, const void *in, int inl) {
         return INT_MIN;
       }
     }
-  }
 
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
@@ -368,10 +367,22 @@ int BIO_write(BIO *bio, const void *in, int inl) {
   ret = bio->method->bwrite(bio, in, inl);
   if (ret > 0) {
     bio->num_write += ret;
+    processed  = ret;
+    ret = 1;
   }
 
-  ret = call_bio_callback_with_processed(bio, BIO_CB_WRITE | BIO_CB_RETURN, in,
-                                         inl, ret);
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_WRITE | BIO_CB_RETURN, in, inl, 0, 0L, ret, &processed);
+  }
+
+  if (ret <= INT_MAX && ret >= INT_MIN) {
+    if (ret > 0) {
+      // BIO will only read int |len| bytes so this is a safe cast
+      ret = (int)processed;
+    }
+  } else {
+    ret = -1;
+  }
 
   return ret;
 }
@@ -472,9 +483,6 @@ int BIO_puts(BIO *bio, const char *in) {
   } else {
     ret = -1;
   }
-
-  // ret = call_bio_callback_with_processed(bio, BIO_CB_PUTS | BIO_CB_RETURN,
-  //                                         in, 0, ret);
   
   return ret;
 }
