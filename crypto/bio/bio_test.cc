@@ -1061,7 +1061,7 @@ static long bio_cb_ex(BIO *b, int oper, const char *argp, size_t len, int argi,
 }
 
 static long bio_cb(BIO *b, int oper, const char *argp, int argi,
-                      long argl, int ret) {
+                      long argl, long ret) {
   if (test_count_ex >= CB_TEST_COUNT) {
     return CALL_BACK_FAILURE;
   }
@@ -1137,14 +1137,21 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // the length of data read/written
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  // For callback_ex argi and arl are unused
-  ASSERT_EQ(param_argi_ex[0], 0);
-  ASSERT_EQ(param_argi_ex[1], 0);
-  ASSERT_EQ(param_argl_ex[0], 0);
-  ASSERT_EQ(param_argl_ex[1], 0);
+  if (!std::get<1>(params)) {
+    // For old-style callback argi is used for len
+    ASSERT_EQ(param_argi_ex[0], TEST_BUF_LEN);
+    ASSERT_EQ(param_argi_ex[1], TEST_BUF_LEN);
+    ASSERT_EQ(param_argl_ex[0], 0);
+    ASSERT_EQ(param_argl_ex[1], 0);
+  }
 
   // Extended callback specific verifications
   if (std::get<1>(params)) {// If using extended callback
+    // For callback_ex argi and arl are unused
+    ASSERT_EQ(param_argi_ex[0], 0);
+    ASSERT_EQ(param_argi_ex[1], 0);
+    ASSERT_EQ(param_argl_ex[0], 0);
+    ASSERT_EQ(param_argl_ex[1], 0);
     // For callback_ex the |len| param is the requested number of bytes to
     // read/write
     ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
@@ -1372,7 +1379,12 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
 
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
   ASSERT_EQ(param_ret_ex[0], 1);
-  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+
+  if (!use_extended_callback) {
+    // Legacy callback uses ret for data processed
+    ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+  }
+
 
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
@@ -1381,6 +1393,8 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
 
   // Extended callback specific verifications
   if (use_extended_callback) {
+    // ret is set to processed and ret is reset back to 1
+    ASSERT_EQ(param_ret_ex[1], 1);
     // len unused in puts callback
     ASSERT_FALSE(param_len_ex[0]);
     ASSERT_FALSE(param_len_ex[1]);
@@ -1427,13 +1441,20 @@ TEST_P(BIOPairTest, TestGetsCallback) {
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
-  ASSERT_EQ(param_argi_ex[0], 0);
-  ASSERT_EQ(param_argi_ex[1], 0);
+
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
+  // Old-style callback uses argi for len
+  if (!use_extended_callback) {
+    ASSERT_EQ(param_argi_ex[0], TEST_BUF_LEN);
+    ASSERT_EQ(param_argi_ex[1], TEST_BUF_LEN);
+  }
+
   // Extended callback specific verifications
   if (use_extended_callback) {
+    ASSERT_EQ(param_argi_ex[0], 0);
+    ASSERT_EQ(param_argi_ex[1], 0);
     ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
     ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
     ASSERT_EQ(param_processed_ex[0], 0u);
