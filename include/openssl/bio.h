@@ -295,8 +295,16 @@ typedef long (*BIO_callback_fn_ex)(BIO *bio, int oper, const char *argp,
                                    size_t len, int argi, long argl, int bio_ret,
                                    size_t *processed);
 
+  // |BIO_callback_fn_ex| parameters have the following meaning:
+  //    |bio| the bio that made the call
+  //    |oper| the operation being performed, may be or'd with |BIO_CB_RETURN|
+  //    |argp| and |argl| depends on the value of oper
+  //    |argi| is used to hold len value for |BIO_CB_READ|, |BIO_CB_WRITE|, and
+  //    |BIO_CB_GETS|
+  //    |bio_ret| is the return value from the BIO method itself,
+  //    or value of processed where applicable
 typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp,
-    int argi, long argl, int bio_ret);
+    int argi, long argl, long bio_ret);
 
 
 // BIO_callback_ctrl allows the callback function to be manipulated. The |cmd|
