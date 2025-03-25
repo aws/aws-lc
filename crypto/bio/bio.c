@@ -248,6 +248,7 @@ void BIO_free_all(BIO *bio) {
 
 int BIO_read(BIO *bio, void *buf, int len) {
   int ret = 0;
+  size_t processed = 0;
   if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
@@ -256,7 +257,6 @@ int BIO_read(BIO *bio, void *buf, int len) {
     return 0;
   }
 
-  if (HAS_CALLBACK(bio)) {
     BIO_callback_fn_ex cb = get_callback(bio);
     if (cb != NULL) {
       long callback_ret = cb(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
@@ -267,7 +267,7 @@ int BIO_read(BIO *bio, void *buf, int len) {
         return INT_MIN;
       }
     }
-  }
+
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
@@ -275,10 +275,23 @@ int BIO_read(BIO *bio, void *buf, int len) {
   ret = bio->method->bread(bio, buf, len);
   if (ret > 0) {
     bio->num_read += ret;
+    processed = ret;
+    ret = 1;
   }
 
-  ret = call_bio_callback_with_processed(bio, BIO_CB_READ | BIO_CB_RETURN, buf,
-                                         len, ret);
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_READ | BIO_CB_RETURN, buf, len, 0, 0L,
+      ret, &processed);
+  }
+
+  if (ret <= INT_MAX && ret >= INT_MIN) {
+    if (ret > 0) {
+      // BIO will only read int |len| bytes so this is a safe cast
+      ret = (int)processed;
+    }
+  } else {
+    ret = -1;
+  }
 
   return ret;
 }

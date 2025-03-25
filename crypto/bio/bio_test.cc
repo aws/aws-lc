@@ -1133,12 +1133,12 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // The calls before the BIO operation use 1 for the BIO's return value
   ASSERT_EQ(param_ret_ex[0], 1);
 
-  // The calls after the BIO call use the return value from the BIO, which is
-  // the length of data read/written
-  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+
 
   if (!std::get<1>(params)) {
-    // For old-style callback argi is used for len
+    // Legacy callback uses ret to hold data processed
+    ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+    // Legacy callback argi is used for len
     ASSERT_EQ(param_argi_ex[0], TEST_BUF_LEN);
     ASSERT_EQ(param_argi_ex[1], TEST_BUF_LEN);
     ASSERT_EQ(param_argl_ex[0], 0);
@@ -1147,6 +1147,8 @@ TEST_P(BIOPairTest, TestCallbacks) {
 
   // Extended callback specific verifications
   if (std::get<1>(params)) {// If using extended callback
+    // For callback_ex ret is set to 1 after setting processed
+    ASSERT_EQ(param_ret_ex[1], 1);
     // For callback_ex argi and arl are unused
     ASSERT_EQ(param_argi_ex[0], 0);
     ASSERT_EQ(param_argi_ex[1], 0);
