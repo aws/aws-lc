@@ -228,8 +228,7 @@ BIO *BIO_new_ssl(SSL_CTX *ctx, int client) {
   }
   if (client) {
     SSL_set_connect_state(ssl);
-  }
-  else {
+  } else {
     SSL_set_accept_state(ssl);
   }
 
