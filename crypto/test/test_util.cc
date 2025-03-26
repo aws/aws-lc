@@ -20,6 +20,7 @@
 
 #include "../internal.h"
 #include "openssl/pem.h"
+#include "openssl/rand.h"
 
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
@@ -167,17 +168,21 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
   char temp_path[PATH_MAX];
+  uint8_t random_bytes[8]; // 64 bits of randomness is sufficient
 
   // Get the temporary path
   if (0 == GetTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 
-  // Create the path string, use process id and time for uniqueness
-  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%lu_%llu",
+  if (!RAND_bytes(random_bytes, sizeof(random_bytes))) {
+    return 0;
+  }
+
+  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%02x%02x%02x%02x%02x%02x%02x%02x",
                         temp_path,
-                        GetCurrentProcessId(),
-                        (unsigned long long)time(NULL));
+                        random_bytes[0], random_bytes[1], random_bytes[2], random_bytes[3],
+                        random_bytes[4], random_bytes[5], random_bytes[6], random_bytes[7]);
 
   // Check for truncation of dirname
   if (written < 0 || written >= PATH_MAX) {
