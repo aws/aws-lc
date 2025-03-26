@@ -155,28 +155,6 @@ def s3_read_write_policy_in_json(s3_bucket_name):
         ]
     }
 
-def s3_read_policy_in_json():
-    """
-    Define an IAM policy statement for reading from S3 bucket.
-    :return: an IAM policy statement in json.
-    """
-    return {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "s3:GetObject",
-                    "s3:GetObjectVersion",
-                    "s3:ListBucket"
-                ],
-                "Resource": [
-                    "*"
-                ]
-            }
-        ]
-    }
-
 
 def ecr_repo_arn(repo_name, env):
     """

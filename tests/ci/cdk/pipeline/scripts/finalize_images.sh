@@ -88,28 +88,3 @@ for repo in ${REPOS}; do
 done
 
 wait
-
-
-# List all images in the repository and filter the ones with any tag ending with '_pending'
-#image_digests=$(aws ecr describe-images --repository-name "$repo" --region "$REGION" --query "imageDetails[?length(imageTags) > 0 && imageTags[?ends_with(@, '_pending')]].imageDigest" --output text)
-#
-#if [ -z "$image_digests" ]; then
-#  echo "No images found with tags ending in '_pending'."
-#  exit 0
-#fi
-
-## Loop through and delete each image by its digest
-#for image_digest in $image_digests; do
-#  echo "Deleting image with digest: $image_digest..."
-#
-#  # Delete the image by its digest
-#  aws ecr batch-delete-image --repository-name "$repo" --region "$REGION" --image-ids imageDigest="$image_digest"
-#
-#  if [ $? -eq 0 ]; then
-#    echo "Image $image_digest deleted successfully."
-#  else
-#    echo "Failed to delete image $image_digest."
-#  fi
-#done
-#
-#echo "Cleanup complete."

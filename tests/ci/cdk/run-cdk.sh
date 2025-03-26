@@ -47,9 +47,9 @@ function destroy_ci() {
   fi
   cdk destroy 'aws-lc-*' --force
   # CDK stack destroy does not delete s3 bucket automatically.
-  delete_s3_buckets
+#  delete_s3_buckets
   # CDK stack destroy does not delete ecr automatically.
-  delete_container_repositories
+#  delete_container_repositories
 }
 
 function destroy_docker_img_build_stack() {

@@ -26,16 +26,12 @@ class LinuxDockerImageBatchBuildStack(Stack):
             self,
             scope: Construct,
             id: str,
-            env: typing.Optional[typing.Union[Environment, typing.Dict[str, typing.Any]]],
+            env: typing.Union[Environment, typing.Dict[str, typing.Any]],
             **kwargs) -> None:
         super().__init__(scope, id, env=env, **kwargs)
 
         github_repo_owner = GITHUB_REPO_OWNER
         github_repo_name = GITHUB_REPO_NAME
-
-        if env.account == PRE_PROD_ACCOUNT:
-            github_repo_owner = STAGING_GITHUB_REPO_OWNER
-            github_repo_name = STAGING_GITHUB_REPO_NAME
 
         # Define CodeBuild resource.
         git_hub_source = codebuild.Source.git_hub(

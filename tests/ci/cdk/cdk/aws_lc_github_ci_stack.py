@@ -8,7 +8,7 @@ from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import code_build_batch_policy_in_json, code_build_publish_metrics_in_json, \
-    code_build_cloudwatch_logs_policy_in_json, s3_read_policy_in_json
+    code_build_cloudwatch_logs_policy_in_json
 from util.metadata import GITHUB_PUSH_CI_BRANCH_TARGETS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, \
     PIPELINE_ACCOUNT, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_OWNER, STAGING_GITHUB_REPO_NAME
 from util.build_spec_loader import BuildSpecLoader
@@ -21,7 +21,7 @@ class AwsLcGitHubCIStack(Stack):
                  scope: Construct,
                  id: str,
                  spec_file_path: str,
-                 env: typing.Optional[typing.Union[Environment, typing.Dict[str, typing.Any]]],
+                 env: typing.Union[Environment, typing.Dict[str, typing.Any]],
                  **kwargs) -> None:
         super().__init__(scope, id, env=env, **kwargs)
 
@@ -52,16 +52,11 @@ class AwsLcGitHubCIStack(Stack):
         code_build_cloudwatch_logs_policy = iam.PolicyDocument.from_json(
             code_build_cloudwatch_logs_policy_in_json([log_group])
         )
-        s3_assets_policy = iam.PolicyDocument.from_json(s3_read_policy_in_json())
         resource_access_role = iam.Role(scope=self,
                                         id="{}-resource-role".format(id),
-                                        assumed_by=iam.CompositePrincipal(
-                                            iam.ServicePrincipal("codebuild.amazonaws.com"),
-                                            iam.ArnPrincipal(f'arn:aws:iam::{PIPELINE_ACCOUNT}:role/CrossAccountCodeBuildRole')
-                                        ),
+                                        assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                                         inline_policies={
                                             "code_build_cloudwatch_logs_policy": code_build_cloudwatch_logs_policy,
-                                            "s3_assets_policy": s3_assets_policy
                                         })
 
         # Define a IAM role for this stack.
@@ -83,11 +78,6 @@ class AwsLcGitHubCIStack(Stack):
                 log_group=log_group
             )
         )
-
-        # test = iam.Role(scope=self,
-        #                 id="test",
-        #                 assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-        #                 inline_policies=inline_policies)
 
         # Define CodeBuild.
         project = codebuild.Project(

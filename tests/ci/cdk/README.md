@@ -87,14 +87,14 @@ Use these commands to deploy the CI pipeline. Any changes to the CI or Docker im
 
 These commands are run from `aws-lc/tests/ci/cdk`.
 
-If not done previously, bootstrap cdk for the pipeline account before running the next commands.
-```
-cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
-```
-
 [SKIP IF NO CROSS-ACCOUNT DEPLOYMENT] Give the pipeline account administrator access to the deployment account's CloudFormation. Repeat this step depending on how many deployment environment there are. You only need to run this step once when the pipeline is deploying to a new account for the first time.
 ```
 cdk bootstrap aws://${DEPLOY_ACCOUNT_ID}/us-west-2 --trust ${PIPELINE_ACCOUNT_ID} --trust-for-lookup ${PIPELINE_ACCOUNT_ID} --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+If not done previously, bootstrap cdk for the pipeline account before running the next commands.
+```
+cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
 ```
 
 To deploy dev pipeline to the same account as your CI:
@@ -111,25 +111,6 @@ To deploy production pipeline using default parameters:
 ```
 ./run-cdk.sh --action deploy-production-pipeline
 ```
-
-<!-- Bootstrap pipeline account
-```
-AWS_ACCOUNT_ID=183295444613
-PIPELINE_ACCOUNT_ID=774305600158
-cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
-```
-
-Give pipeline account administrator access to deployment account's CloudFormation
-```
-cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-west-2 --trust ${PIPELINE_ACCOUNT_ID} --trust-for-lookup ${PIPELINE_ACCOUNT_ID} --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
-```
-
-Deploy pipeline
-```
-GITHUB_REPO_OWNER=nhatnghiho
-GITHUB_SOURCE_VERSION=ci-pipeline
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --aws-account ${AWS_ACCOUNT_ID} --action invoke --command "cdk deploy AwsLcCiPipeline --require-approval never"
-``` -->
 
 ### CI Commands
 Use these commands if you wish to deploy individual stacks instead of the entire pipeline.

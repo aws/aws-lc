@@ -1,7 +1,9 @@
 import pathlib
+import typing
 
-from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr_assets as ecr_assets, aws_secretsmanager as sm, \
-    aws_events as events, aws_events_targets as events_targets, aws_iam as iam, Duration
+from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr_assets as ecr_assets, \
+    aws_secretsmanager as sm, \
+    aws_events as events, aws_events_targets as events_targets, aws_iam as iam, Duration, Environment
 
 from constructs import Construct
 from util.metadata import GITHUB_REPO_OWNER, GITHUB_TOKEN_SECRET_NAME
@@ -14,7 +16,7 @@ class PruneStaleGitHubBuilds(Construct):
             id: str,
             *,
             project: codebuild.IProject,
-            env,
+            env: typing.Union[Environment, typing.Dict[str, typing.Any]],
             ec2_permissions: bool
     ) -> None:
         super().__init__(scope, id)

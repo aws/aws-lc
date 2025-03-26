@@ -20,7 +20,7 @@ class AwsLcGitHubAnalyticsStack(Stack):
                  scope: Construct,
                  id: str,
                  spec_file_path: str,
-                 env: typing.Optional[typing.Union[Environment, typing.Dict[str, typing.Any]]],
+                 env: typing.Union[Environment, typing.Dict[str, typing.Any]],
                  **kwargs) -> None:
         super().__init__(scope, id, env=env, **kwargs)
 

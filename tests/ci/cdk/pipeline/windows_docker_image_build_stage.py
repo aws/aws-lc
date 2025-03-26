@@ -1,5 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+import typing
 
 from aws_cdk import Stage, Environment, Stack, Duration, aws_iam as iam, pipelines, Fn
 from aws_cdk.pipelines import CodeBuildStep
@@ -7,7 +8,6 @@ from constructs import Construct
 
 from cdk.ecr_stack import EcrStack
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
-from pipeline.deploy_util import DeployEnvironmentType
 from util.metadata import WINDOWS_X86_ECR_REPO, WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE, SSM_DOCUMENT_NAME
 
 
@@ -15,9 +15,9 @@ class WindowsDockerImageBuildStage(Stage):
     def __init__(
             self,
             scope: Construct,
-            id,
-            pipeline_environment,
-            deploy_environment,
+            id: str,
+            pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+            deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
             **kwargs
     ):
         super().__init__(
@@ -49,7 +49,7 @@ class WindowsDockerImageBuildStage(Stage):
         self.need_rebuild = None
 
     @property
-    def stacks(self):
+    def stacks(self) -> typing.List[Stack]:
         return [child for child in self.node.children if isinstance(child, Stack)]
 
     def add_stage_to_wave(
@@ -57,12 +57,15 @@ class WindowsDockerImageBuildStage(Stage):
             wave: pipelines.Wave,
             input: pipelines.FileSet,
             role: iam.Role,
-            max_retry: int=2,
-            additional_stacks: list[Construct]=[],
-            env=None,
+            max_retry: typing.Optional[int] = 2,
+            additional_stacks: typing.Optional[typing.List[str]] = None,
+            env: typing.Optional[typing.Mapping[str, str]] = None
     ):
-        stacks = self.stacks + additional_stacks
+        stacks = self.stacks + (additional_stacks if additional_stacks else [])
         stack_names = [stack.stack_name for stack in stacks]
+
+        env = env if env else {}
+        timeout = (max_retry + 1) * 120
 
         docker_build_step = CodeBuildStep(
             "StartWait",
@@ -80,14 +83,14 @@ class WindowsDockerImageBuildStage(Stage):
                 "STACKS": " ".join(stack_names),
                 "ECR_REPOS": " ".join(self.ecr_repo_names),
                 "MAX_RETRY": str(max_retry),
-                "TIMEOUT": str(180), # 3 hours
+                "TIMEOUT": str(timeout),
                 "WIN_EC2_TAG_KEY": WIN_EC2_TAG_KEY,
                 "WIN_EC2_TAG_VALUE": WIN_EC2_TAG_VALUE,
                 "WIN_DOCKER_BUILD_SSM_DOCUMENT": SSM_DOCUMENT_NAME,
                 "S3_FOR_WIN_DOCKER_IMG_BUILD": self.s3_bucket_name,
             },
             role=role,
-            timeout=Duration.minutes(180)
+            timeout=Duration.minutes(timeout)
         )
 
         wave.add_stage(

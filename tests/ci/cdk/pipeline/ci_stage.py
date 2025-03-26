@@ -1,5 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+import builtins
+import re
+import typing
 
 from aws_cdk import Stage, Environment, Duration, pipelines, aws_iam as iam, Stack
 from constructs import Construct
@@ -9,16 +12,15 @@ from cdk.aws_lc_android_ci_stack import AwsLcAndroidCIStack
 from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import AwsLcGitHubFuzzCIStack
-from pipeline.codebuild_batch_step import BatchBuildTargetOptions, CodeBuildBatchStep
-
+from pipeline.codebuild_batch_step import CodeBuildBatchStep
 
 class CiStage(Stage):
     def __init__(
             self,
             scope: Construct,
-            id,
-            pipeline_environment,
-            deploy_environment,
+            id: str,
+            pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+            deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
             **kwargs
     ):
         super().__init__(
@@ -28,7 +30,7 @@ class CiStage(Stage):
             **kwargs,
         )
 
-        self.build_targets = []
+        self.build_options = []
 
         # Define CodeBuild Batch job for testing code.
         x86_build_spec_file = "cdk/codebuild/github_ci_linux_x86_omnibus.yaml"
@@ -39,8 +41,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-linux-x86",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-linux-x86",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-linux-x86",
             ignore_failure=False,
         ))
 
@@ -53,8 +55,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name=arm_stack_name,
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-linux-arm",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-linux-arm",
             ignore_failure=False,
         ))
 
@@ -66,8 +68,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-integration",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-integration",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-integration",
             ignore_failure=True,
         ))
 
@@ -79,8 +81,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-fuzzing",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-fuzzing",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-fuzzing",
             ignore_failure=False,
         ))
 
@@ -92,8 +94,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-analytics",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-analytics",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-analytics",
             ignore_failure=True,
         ))
 
@@ -109,8 +111,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-ec2-test-framework",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-ec2-test-framework",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-ec2-test-framework",
             ignore_failure=True,
         ))
 
@@ -122,8 +124,8 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-devicefarm-android",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-devicefarm-android",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-devicefarm-android",
             ignore_failure=False,
         ))
 
@@ -135,13 +137,13 @@ class CiStage(Stage):
             env=deploy_environment,
             stack_name="aws-lc-ci-windows-x86",
         )
-        self.build_targets.append(BatchBuildTargetOptions(
-            target="aws-lc-ci-windows-x86",
+        self.build_options.append(BatchBuildOptions(
+            project="aws-lc-ci-windows-x86",
             ignore_failure=False,
         ))
 
     @property
-    def stacks(self):
+    def stacks(self) -> typing.List[Stack]:
         return [child for child in self.node.children if isinstance(child, Stack)]
 
     def add_stage_to_pipeline(
@@ -149,10 +151,12 @@ class CiStage(Stage):
             pipeline: pipelines.CodePipeline,
             input: pipelines.FileSet,
             role: iam.Role,
-            max_retry: int=2,
-            env={},
+            max_retry: typing.Optional[int] = 2,
+            env: typing.Optional[typing.Mapping[str, str]] = None,
     ):
         stack_names = [stack.stack_name for stack in self.stacks]
+
+        env = env or {}
 
         prebuild_check_step = pipelines.CodeBuildStep(
             "PrebuildCheck",
@@ -168,8 +172,7 @@ class CiStage(Stage):
                 "STACKS": " ".join(stack_names),
             },
             role=role,
-            timeout=Duration.minutes(180)
-            # project_name=f"{self.stage_name}-PrebuildCheck"
+            timeout=Duration.minutes(60)
         )
 
         batch_build_jobs = {
@@ -179,13 +182,13 @@ class CiStage(Stage):
                     "ignore-failure": options.ignore_failure,
                     "env": {
                         "variables": {
-                            "PROJECT": options.target,
-                            "TIMEOUT": options.timeout,
+                            "PROJECT": options.project,
+                            "TIMEOUT": str(max_retry * options.timeout),
                             **options.env,
                         }
                     }
                 }
-                for options in self.build_targets
+                for options in self.build_options
             ]
         }
 
@@ -199,31 +202,16 @@ class CiStage(Stage):
                 "./build_target.sh --build-type ci --project ${PROJECT} --max-retry ${MAX_RETRY} --timeout ${TIMEOUT}"
             ],
             role=role,
-            partial_batch_buildspec=batch_build_jobs,
+            timeout=300,
+            partial_batch_build_spec=batch_build_jobs,
             env={
                 **env,
                 "MAX_RETRY": max_retry,
-                "NEED_REBUILD": prebuild_check_step.exported_variable("NEED_REBUILD")
+                "NEED_REBUILD": prebuild_check_step.exported_variable("NEED_REBUILD"),
             },
         )
 
         ci_run_step.add_step_dependency(prebuild_check_step)
-
-        # pipeline.add_stage(
-        #     self,
-        #     post=[
-        #         CodeBuildRunStep(
-        #             f"{self.stage_name}-BuildStep",
-        #             name_prefix=self.stage_name,
-        #             input=input,
-        #             role=role,
-        #             stacks=[stack.stack_name for stack in self.stacks],
-        #             build_targets=self.build_targets,
-        #             max_retry=max_retry,
-        #             env=env,
-        #         )
-        #     ]
-        # )
 
         pipeline.add_stage(
             self,
@@ -233,6 +221,17 @@ class CiStage(Stage):
             ]
         )
 
-
-
-
+class BatchBuildOptions:
+    def __init__(
+            self,
+            project: str,
+            identifier: str = None,
+            ignore_failure: bool = False,
+            timeout: int = 120,
+            env: typing.Optional[typing.Mapping[str, str]] = None
+    ):
+        self.project = project
+        self.identifier = identifier or re.sub(r'[^a-zA-Z0-9]', '_', project)
+        self.ignore_failure = ignore_failure
+        self.timeout = timeout
+        self.env = env or {}

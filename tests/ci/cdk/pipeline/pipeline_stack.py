@@ -1,5 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+import typing
 
 from aws_cdk import Stack, Environment, Duration
 from aws_cdk import (
@@ -182,7 +183,7 @@ class AwsLcCiPipeline(Stack):
             pipeline: pipelines.CodePipeline,
             source: pipelines.CodePipelineSource,
             cross_account_role: iam.Role,
-            codebuild_environment_variables = {},
+            codebuild_environment_variables: typing.Optional[typing.Mapping[str, str]] = None,
     ):
         pipeline_environment = Environment(account=PIPELINE_ACCOUNT, region=PIPELINE_REGION)
 
@@ -192,6 +193,8 @@ class AwsLcCiPipeline(Stack):
             deploy_environment = Environment(account=DEPLOY_ACCOUNT, region=DEPLOY_REGION)
         else:
             deploy_environment = Environment(account=PROD_ACCOUNT, region=PROD_REGION)
+
+        codebuild_environment_variables = codebuild_environment_variables if codebuild_environment_variables else {}
 
         codebuild_environment_variables = {
             **codebuild_environment_variables,

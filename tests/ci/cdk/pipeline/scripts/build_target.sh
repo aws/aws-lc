@@ -27,8 +27,14 @@ function build_codebuild_ci_project() {
       exit 1
   fi
 
+  if [[ ${DEPLOY_ACCOUNT} == '351119683581' ]]; then
+    source_version="main"
+  else
+    source_version=${COMMIT_HASH}
+  fi
+
   echo "Starting CI tests in ${project}"
-  start_codebuild_project "${project}" "${COMMIT_HASH}"
+  start_codebuild_project "${project}" "${source_version}"
 
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
     attempt=$((attempt + 1))

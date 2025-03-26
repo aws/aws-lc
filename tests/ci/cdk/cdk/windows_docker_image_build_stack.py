@@ -34,7 +34,7 @@ class WindowsDockerImageBuildStack(Stack):
             self,
             scope: Construct,
             id: str,
-            env: typing.Optional[typing.Union[Environment, typing.Dict[str, typing.Any]]],
+            env: typing.Union[Environment, typing.Dict[str, typing.Any]],
             **kwargs) -> None:
         super().__init__(
             scope,

@@ -1,3 +1,5 @@
+import typing
+
 from aws_cdk import Stage, aws_codebuild as codebuild, Environment, Stack, aws_iam as iam
 from constructs import Construct
 
@@ -8,12 +10,13 @@ from util.metadata import LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_
 
 
 class SetupStage(Stage):
+    """Define a stack of IAM role to allow cross-account deployment"""
     def __init__(
             self,
             scope: Construct,
-            id,
-            pipeline_environment,
-            deploy_environment,
+            id: str,
+            pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+            deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
             **kwargs
     ):
         super().__init__(
@@ -37,13 +40,15 @@ class SetupStage(Stage):
         return [child for child in self.node.children if isinstance(child, Stack)]
 
 class SetupStack(Stack):
+    """Define a stack of IAM role to allow cross-account deployment"""
     def __init__(
             self,
             scope: Construct,
             id: str,
-            pipeline_environment,
-            deploy_environment,
-            **kwargs) -> None:
+            pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+            deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+            **kwargs
+    ) -> None:
         super().__init__(scope, id, env=deploy_environment, **kwargs)
 
         cross_account_role = iam.Role(

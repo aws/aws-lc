@@ -9,13 +9,12 @@ from util.metadata import (
     GITHUB_REPO_OWNER, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_OWNER, STAGING_GITHUB_REPO_NAME,
 )
 
-
 class AwsLcGitHubX509CIStack(Stack):
     def __init__(
         self,
         scope: Construct,
         id: str,
-        env: typing.Optional[typing.Union[Environment, typing.Dict[str, typing.Any]]],
+        env: typing.Union[Environment, typing.Dict[str, typing.Any]],
         **kwargs,
     ) -> None:
         super().__init__(scope, id, env=env, **kwargs)

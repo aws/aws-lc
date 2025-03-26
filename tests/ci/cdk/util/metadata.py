@@ -22,7 +22,7 @@ DEPLOY_REGION = EnvUtil.get_optional("DEPLOY_REGION")
 STAGING_GITHUB_REPO_OWNER = "aws"
 STAGING_GITHUB_REPO_NAME = "private-aws-lc-staging"
 
-IS_DEV = EnvUtil.get("IS_DEV", "True") == "True" #TODO: change default value to true
+IS_DEV = EnvUtil.get("IS_DEV", "False") == "True" #TODO: change default value to true
 MAX_TEST_RETRY = int(EnvUtil.get("MAX_TEST_RETRY", "2"))
 
 # Used when AWS CDK defines ECR repos.

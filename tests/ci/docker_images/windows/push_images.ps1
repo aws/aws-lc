@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 $ECS_REPO=$args[0]
-Write-Host "TRIGGER_TYPE: $TRIGGER_TYPE"
 $TAG = if (-not [string]::IsNullOrEmpty($TRIGGER_TYPE) -and $TRIGGER_TYPE -eq "pipeline") {
     "pending"
 } else {

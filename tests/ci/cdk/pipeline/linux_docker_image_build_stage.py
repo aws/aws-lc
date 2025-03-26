@@ -1,5 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+import typing
 
 from aws_cdk import Stage, Environment, Stack, Duration, aws_iam as iam, pipelines
 from aws_cdk.pipelines import CodeBuildStep
@@ -15,9 +16,9 @@ class LinuxDockerImageBuildStage(Stage):
     def __init__(
             self,
             scope: Construct,
-            id,
-            pipeline_environment,
-            deploy_environment,
+            id: str,
+            pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+            deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
             **kwargs
     ):
         super().__init__(
@@ -58,7 +59,7 @@ class LinuxDockerImageBuildStage(Stage):
         self.need_rebuild = None
 
     @property
-    def stacks(self):
+    def stacks(self) -> typing.List[Stack]:
         return [child for child in self.node.children if isinstance(child, Stack)]
 
     def add_stage_to_wave(
@@ -66,12 +67,15 @@ class LinuxDockerImageBuildStage(Stage):
             wave: pipelines.Wave,
             input: pipelines.FileSet,
             role: iam.Role,
-            max_retry: int=2,
-            additional_stacks: list[Stack]=[],
-            env={},
+            max_retry: typing.Optional[int] = 2,
+            additional_stacks: typing.Optional[typing.List[str]] = None,
+            env: typing.Optional[typing.Mapping[str, str]] = None
     ):
-        stacks = self.stacks + additional_stacks
+        stacks = self.stacks + (additional_stacks if additional_stacks else [])
         stack_names = [stack.stack_name for stack in stacks]
+
+        env = env if env else {}
+        timeout = (max_retry + 1) * 120
 
         docker_build_step = CodeBuildStep(
             "StartWait",
@@ -89,11 +93,10 @@ class LinuxDockerImageBuildStage(Stage):
                 "STACKS": " ".join(stack_names),
                 "ECR_REPOS": " ".join(self.ecr_repo_names),
                 "MAX_RETRY": str(max_retry),
-                "TIMEOUT": str(180), # 3 hours
+                "TIMEOUT": str(timeout),
             },
             role=role,
-            timeout=Duration.minutes(180)
-            # project_name=f"{self.stage_name}-StartWait"
+            timeout=Duration.minutes(timeout)
         )
 
         wave.add_stage(
