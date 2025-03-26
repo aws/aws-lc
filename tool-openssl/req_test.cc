@@ -15,6 +15,44 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
+static void setup_config(char *openssl_config_path) {
+  FILE *config_file = fopen(openssl_config_path, "w");
+  if (config_file == NULL) {
+    fprintf(stderr, "Error opening config file for writing\n");
+    return;
+  }
+
+  // Write the OpenSSL configuration content
+  fprintf(config_file,
+      "[ req ]\n"
+      "default_bits           = 2048\n"
+      "default_keyfile        = keyfile.pem\n"
+      "distinguished_name     = req_distinguished_name\n"
+      "attributes             = req_attributes\n"
+      "prompt                 = no\n"
+      "output_password        = mypass\n"
+      "x509_extensions        = v3_ca\n"
+      "\n"
+      "[ req_distinguished_name ]\n"
+      "C                      = GB\n"
+      "ST                     = Test State or Province\n"
+      "L                      = Test Locality\n"
+      "O                      = Organization Name\n"
+      "OU                     = Organizational Unit Name\n"
+      "CN                     = Common Name\n"
+      "emailAddress           = test@email.address\n"
+      "\n"
+      "[ req_attributes ]\n"
+      "challengePassword      = A challenge password\n"
+      "\n"
+      "[ v3_ca ]\n"
+      "subjectKeyIdentifier    = hash\n"
+      "authorityKeyIdentifier  = keyid:always,issuer:always\n"
+      "basicConstraints        = critical, CA:true\n");
+
+  fclose(config_file);
+}
+
 class ReqComparisonTest : public ::testing::Test {
 protected:
   void SetUp() override {
@@ -31,6 +69,9 @@ protected:
     ASSERT_GT(createTempFILEpath(csr_path_awslc), 0u);
     ASSERT_GT(createTempFILEpath(key_path_openssl), 0u);
     ASSERT_GT(createTempFILEpath(key_path_awslc), 0u);
+    ASSERT_GT(createTempFILEpath(openssl_config_path), 0u);
+
+    setup_config(openssl_config_path);
   }
 
   void TearDown() override {
@@ -41,6 +82,7 @@ protected:
       RemoveFile(csr_path_awslc);
       RemoveFile(key_path_openssl);
       RemoveFile(key_path_awslc);
+      RemoveFile(openssl_config_path);
     }
   }
 
@@ -211,10 +253,10 @@ public:
   char csr_path_awslc[PATH_MAX];
   char key_path_openssl[PATH_MAX];
   char key_path_awslc[PATH_MAX];
+  char openssl_config_path[PATH_MAX];
   const char* tool_executable_path;
   const char* openssl_executable_path;
 };
-
 
 TEST_F(ReqComparisonTest, GenerateBasicCSR) {
   // Subject for certificate
@@ -225,7 +267,8 @@ TEST_F(ReqComparisonTest, GenerateBasicCSR) {
                            + " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
 
   std::string openssl_command = std::string(openssl_executable_path) + " req -new "
-                              + "-newkey rsa:2048 -nodes -keyout " + key_path_openssl
+                              + "-newkey rsa:2048 -nodes -config " + openssl_config_path +
+                              " -keyout " + key_path_openssl
                               + " -out " + csr_path_openssl + " -subj \"" + subject + "\"";
 
   // Execute both commands, return values may not match due to missing conf support
@@ -252,7 +295,8 @@ TEST_F(ReqComparisonTest, GenerateSelfSignedCertificate) {
                            + " -out " + cert_path_awslc + " -subj \"" + subject + "\"";
 
   std::string openssl_command = std::string(openssl_executable_path) + " req -x509 -new "
-                              + "-newkey rsa:2048 -nodes -days 365 -keyout " + key_path_openssl
+                              + "-newkey rsa:2048 -nodes -config " + openssl_config_path
+                              + " -days 365 -keyout " + key_path_openssl
                               + " -out " + cert_path_openssl + " -subj \"" + subject + "\"";
 
   // Execute both commands, return values may not match due to missing conf support
