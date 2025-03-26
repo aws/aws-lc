@@ -68,15 +68,15 @@
 
 #include "../internal.h"
 
-//   |callback_fn_wrap_ex| adapts the legacy callback interface |BIO_callback_fn| to the
-//   extended callback interface |BIO_callback_fn_ex|. This function should only be
-//   called when |callback_ex| is not available and the legacy callback is set.
+// |callback_fn_wrap_ex| adapts the legacy callback interface |BIO_callback_fn| to the
+// extended callback interface |BIO_callback_fn_ex|. This function should only be
+// called when |callback_ex| is not available and the legacy callback is set.
 //
-//   |len| and |processed| parameters from the extended interface are ignored since
-//   they are not supported by the legacy callback interface.
+// The extended interface parameters |len| and |processed| are mapped to the legacy
+// interface parameters |argi| and |bio_ret| respectively.
 //
-//   Returns -1 on NULL |BIO| or callback, otherwise returns the result of the legacy
-//   callback.
+// Returns -1 on NULL |BIO| or callback, otherwise returns the result of the legacy
+// callback.
 static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
                               size_t len, int argi, long argl, int bio_ret,
                               size_t *processed) {
