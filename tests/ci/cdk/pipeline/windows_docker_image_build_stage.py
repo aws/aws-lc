@@ -8,17 +8,22 @@ from constructs import Construct
 
 from cdk.ecr_stack import EcrStack
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
-from util.metadata import WINDOWS_X86_ECR_REPO, WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE, SSM_DOCUMENT_NAME
+from util.metadata import (
+    WINDOWS_X86_ECR_REPO,
+    WIN_EC2_TAG_KEY,
+    WIN_EC2_TAG_VALUE,
+    SSM_DOCUMENT_NAME,
+)
 
 
 class WindowsDockerImageBuildStage(Stage):
     def __init__(
-            self,
-            scope: Construct,
-            id: str,
-            pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
-            deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
-            **kwargs
+        self,
+        scope: Construct,
+        id: str,
+        pipeline_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+        deploy_environment: typing.Union[Environment, typing.Dict[str, typing.Any]],
+        **kwargs
     ):
         super().__init__(
             scope,
@@ -32,7 +37,7 @@ class WindowsDockerImageBuildStage(Stage):
             "aws-lc-ecr-windows-x86",
             WINDOWS_X86_ECR_REPO,
             env=deploy_environment,
-            stack_name="aws-lc-ecr-windows-x86"
+            stack_name="aws-lc-ecr-windows-x86",
         )
 
         self.windows_docker_build_stack = WindowsDockerImageBuildStack(
@@ -53,13 +58,13 @@ class WindowsDockerImageBuildStage(Stage):
         return [child for child in self.node.children if isinstance(child, Stack)]
 
     def add_stage_to_wave(
-            self,
-            wave: pipelines.Wave,
-            input: pipelines.FileSet,
-            role: iam.Role,
-            max_retry: typing.Optional[int] = 2,
-            additional_stacks: typing.Optional[typing.List[str]] = None,
-            env: typing.Optional[typing.Mapping[str, str]] = None
+        self,
+        wave: pipelines.Wave,
+        input: pipelines.FileSet,
+        role: iam.Role,
+        max_retry: typing.Optional[int] = 2,
+        additional_stacks: typing.Optional[typing.List[str]] = None,
+        env: typing.Optional[typing.Mapping[str, str]] = None,
     ):
         stacks = self.stacks + (additional_stacks if additional_stacks else [])
         stack_names = [stack.stack_name for stack in stacks]
@@ -73,10 +78,10 @@ class WindowsDockerImageBuildStage(Stage):
             commands=[
                 "cd tests/ci/cdk/pipeline/scripts",
                 "chmod +x cleanup_orphaned_images.sh check_trigger_conditions.sh build_target.sh",
-                "./cleanup_orphaned_images.sh --repos \"${ECR_REPOS}\"",
-                "trigger_conditions=$(./check_trigger_conditions.sh --build-type docker --platform windows --stacks \"${STACKS}\")",
+                './cleanup_orphaned_images.sh --repos "${ECR_REPOS}"',
+                'trigger_conditions=$(./check_trigger_conditions.sh --build-type docker --platform windows --stacks "${STACKS}")',
                 "export NEED_REBUILD=$(echo $trigger_conditions | sed -n -e 's/.*\(NEED_REBUILD=[0-9]*\).*/\\1/p' | cut -d'=' -f2 )",
-                "./build_target.sh --build-type docker --platform windows --max-retry ${MAX_RETRY} --timeout ${TIMEOUT}"
+                "./build_target.sh --build-type docker --platform windows --max-retry ${MAX_RETRY} --timeout ${TIMEOUT}",
             ],
             env={
                 **env,
@@ -90,14 +95,9 @@ class WindowsDockerImageBuildStage(Stage):
                 "S3_FOR_WIN_DOCKER_IMG_BUILD": self.s3_bucket_name,
             },
             role=role,
-            timeout=Duration.minutes(timeout)
+            timeout=Duration.minutes(timeout),
         )
 
-        wave.add_stage(
-            self,
-            post=[
-                docker_build_step
-            ]
-        )
+        wave.add_stage(self, post=[docker_build_step])
 
         self.need_rebuild = docker_build_step.exported_variable("NEED_REBUILD")

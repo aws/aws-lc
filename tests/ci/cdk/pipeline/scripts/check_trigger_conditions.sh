@@ -18,10 +18,10 @@ export CROSS_ACCOUNT_BUILD_SESSION="pipeline-${COMMIT_HASH}"
 
 function check_pipeline_trigger_type() {
   trigger_type=$(aws codepipeline get-pipeline-execution \
-                     --pipeline-name AwsLcCiPipeline \
-                     --pipeline-execution-id ${PIPELINE_EXECUTION_ID} \
-                     --query 'pipelineExecution.trigger.triggerType' \
-                     --output text)
+    --pipeline-name AwsLcCiPipeline \
+    --pipeline-execution-id ${PIPELINE_EXECUTION_ID} \
+    --query 'pipelineExecution.trigger.triggerType' \
+    --output text)
 
   # unblock execution for self-mutation, weekly cron job, and manual start/forced deploy
   if [[ "$trigger_type" == "StartPipelineExecution" || "$trigger_type" == "CloudWatchEvent" ]]; then
@@ -50,13 +50,13 @@ function get_commit_changed_files() {
 function get_cfn_changeset() {
   for stack in ${STACKS}; do
     change_set_arn=$(aws cloudformation describe-stacks \
-                        --stack-name "${stack}" \
-                        --query "Stacks[0].ChangeSetId" \
-                        --output text)
+      --stack-name "${stack}" \
+      --query "Stacks[0].ChangeSetId" \
+      --output text)
     changes_count=$(aws cloudformation describe-change-set \
-                          --change-set-name "${change_set_arn}" \
-                          --stack-name "${stack}" \
-                          --query "Changes" | jq 'length')
+      --change-set-name "${change_set_arn}" \
+      --stack-name "${stack}" \
+      --query "Changes" | jq 'length')
     if [ "$changes_count" -gt 0 ]; then
       NEED_REBUILD=$((NEED_REBUILD + 1))
       break
@@ -94,7 +94,7 @@ if [[ -z "${BUILD_TYPE+x}" || -z "${BUILD_TYPE}" ]]; then
   exit 1
 fi
 
-if [[ -z "${STACKS+x}"  || -z "${STACKS}" ]]; then
+if [[ -z "${STACKS+x}" || -z "${STACKS}" ]]; then
   echo "No stacks provided."
   exit 1
 fi
@@ -107,8 +107,8 @@ fi
 
 if [[ ${BUILD_TYPE} == "docker" ]]; then
   if [[ -z "${PLATFORM+x}" || -z "${PLATFORM}" ]]; then
-      echo "A platform must be specified"
-      exit 1
+    echo "A platform must be specified"
+    exit 1
   fi
 
   check_pipeline_trigger_type

@@ -1,4 +1,10 @@
-if  [[ -z "${PIPELINE_EXECUTION_ID+x}" || -z "${PIPELINE_EXECUTION_ID}" ]]; then
+#!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -ex
+
+if [[ -z "${PIPELINE_EXECUTION_ID+x}" || -z "${PIPELINE_EXECUTION_ID}" ]]; then
   TRIGGER_TYPE="manual"
 else
   TRIGGER_TYPE="pipeline"
@@ -6,8 +12,8 @@ fi
 
 function assume_role() {
   if [[ -z ${CROSS_ACCOUNT_BUILD_ROLE_ARN} ]]; then
-      echo "No role arn provided"
-      return 1
+    echo "No role arn provided"
+    return 1
   fi
 
   local session_name=${CROSS_ACCOUNT_BUILD_SESSION:-"build-session"}
@@ -32,7 +38,7 @@ function refresh_session() {
 
 function start_codebuild_project() {
   local project=${1}
-  local commit_hash=${2:-HEAD}
+  local commit_hash=${2:-main}
 
   if [[ -z ${project} ]]; then
     echo "No project name provided."
@@ -41,16 +47,16 @@ function start_codebuild_project() {
 
   # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/codebuild/start-build-batch.html
   build_id=$(aws codebuild start-build-batch --project-name ${project} \
-                                             --source-version ${commit_hash} \
-                                             --environment-variables-override "name=TRIGGER_TYPE,value=${TRIGGER_TYPE},type=PLAINTEXT" \
-                                             --query "buildBatch.id" \
-                                             --output text)
+    --source-version ${commit_hash} \
+    --environment-variables-override "name=TRIGGER_TYPE,value=${TRIGGER_TYPE},type=PLAINTEXT" \
+    --query "buildBatch.id" \
+    --output text)
   export BUILD_BATCH_ID=${build_id}
 }
 
 function retry_batch_build() {
   aws codebuild retry-build-batch --id "${BUILD_BATCH_ID}" \
-                                  --retry-type RETRY_FAILED_BUILDS
+    --retry-type RETRY_FAILED_BUILDS
 }
 
 function codebuild_build_status_check() {
@@ -61,8 +67,8 @@ function codebuild_build_status_check() {
   for i in $(seq 1 ${status_check_max}); do
     # https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-build-batches.html
     build_batch_status=$(aws codebuild batch-get-build-batches --ids "${BUILD_BATCH_ID}" \
-                                                               --query "buildBatches[0].buildBatchStatus" \
-                                                               --output text 2>&1)
+      --query "buildBatches[0].buildBatchStatus" \
+      --output text 2>&1)
     if [[ ${build_batch_status} == "SUCCEEDED" ]]; then
       echo "Build ${BUILD_BATCH_ID} finished successfully."
       return 0
@@ -105,8 +111,8 @@ function start_windows_img_build() {
         --document-name "${WIN_DOCKER_BUILD_SSM_DOCUMENT}" \
         --output-s3-bucket-name "${S3_FOR_WIN_DOCKER_IMG_BUILD}" \
         --output-s3-key-prefix 'runcommand' \
-        --parameters "TriggerType=[\"${TRIGGER_TYPE}\"]" \
-        | jq -r '.Command.CommandId')
+        --parameters "TriggerType=[\"${TRIGGER_TYPE}\"]" |
+        jq -r '.Command.CommandId')
       # Export for checking command run status.
       export WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID="${command_id}"
       echo "Windows ec2 is executing SSM command."

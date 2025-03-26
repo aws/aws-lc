@@ -22,5 +22,5 @@ class EcrStack(Stack):
         repo.add_lifecycle_rule(
             description="Remove untagged images after 1 day",
             tag_status=ecr.TagStatus.UNTAGGED,
-            max_image_age=Duration.days(1)
+            max_image_age=Duration.days(1),
         )

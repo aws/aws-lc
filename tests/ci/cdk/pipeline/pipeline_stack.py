@@ -10,7 +10,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_events as events,
     aws_events_targets as targets,
-    aws_cloudwatch as cloudwatch
+    aws_cloudwatch as cloudwatch,
 )
 from aws_cdk.pipelines import CodeBuildStep
 from constructs import Construct
@@ -22,12 +22,13 @@ from pipeline.setup_stage import SetupStage
 from pipeline.windows_docker_image_build_stage import WindowsDockerImageBuildStage
 from util.metadata import *
 
+
 class AwsLcCiPipeline(Stack):
     def __init__(
-            self,
-            scope: Construct,
-            id: str,
-            **kwargs,
+        self,
+        scope: Construct,
+        id: str,
+        **kwargs,
     ) -> None:
         super().__init__(
             scope,
@@ -48,14 +49,14 @@ class AwsLcCiPipeline(Stack):
             role_name="CrossAccountPipelineRole",
             assumed_by=iam.CompositePrincipal(
                 iam.ServicePrincipal("codebuild.amazonaws.com"),
-                iam.ServicePrincipal("codepipeline.amazonaws.com")
+                iam.ServicePrincipal("codepipeline.amazonaws.com"),
             ),
         )
 
         cross_account_role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                resources=['*'],
+                resources=["*"],
                 actions=["codepipeline:GetPipelineExecution"],
             )
         )
@@ -76,7 +77,7 @@ class AwsLcCiPipeline(Stack):
             pipeline_name="AwsLcCiPipeline",
             cross_account_keys=True,
             enable_key_rotation=True,
-            restart_execution_on_update=True
+            restart_execution_on_update=True,
         )
 
         # Bucket contains artifacts from old pipeline executions
@@ -99,7 +100,7 @@ class AwsLcCiPipeline(Stack):
             "LINUX_AARCH_ECR_REPO": LINUX_AARCH_ECR_REPO,
             "LINUX_X86_ECR_REPO": LINUX_X86_ECR_REPO,
             "WINDOWS_X86_ECR_REPO": WINDOWS_X86_ECR_REPO,
-            "IS_DEV": str(IS_DEV)
+            "IS_DEV": str(IS_DEV),
         }
 
         if DEPLOY_ACCOUNT is not None and DEPLOY_REGION is not None:
@@ -115,13 +116,13 @@ class AwsLcCiPipeline(Stack):
                 "Synth",
                 input=source,
                 commands=[
-                    "echo \"Environment variables:\"",
+                    'echo "Environment variables:"',
                     "env",
                     "npm install -g aws-cdk",
                     "cd tests/ci",
                     "python -m pip install -r requirements.txt",
                     "cd cdk",
-                    "cdk synth"
+                    "cdk synth",
                 ],
                 env=cdk_env,
                 primary_output_directory="tests/ci/cdk/cdk.out",
@@ -137,7 +138,7 @@ class AwsLcCiPipeline(Stack):
                             "StringEquals": {
                                 "iam:ResourceTag/aws-cdk:bootstrap-role": "lookup",
                             }
-                        }
+                        },
                     ),
                 ],
             ),
@@ -158,56 +159,63 @@ class AwsLcCiPipeline(Stack):
                 cross_account_role=cross_account_role,
             )
 
-            #TODO: add prod env
+            # TODO: add prod env
 
         pipeline.build_pipeline()
 
         # Schedule pipeline to run every Tuesday 15:00 UTC or 7:00 PST
         events.Rule(
-            self, "WeeklyCodePipelineRun",
+            self,
+            "WeeklyCodePipelineRun",
             schedule=events.Schedule.cron(
                 minute="0",
                 hour="15",
                 # weekday="TUE", #TODO: Uncomment this line. It's running everyday now to make sure I didn't break anything
             ),
-            targets=[
-                targets.CodePipeline(
-                    pipeline=base_pipeline
-                )
-            ]
+            targets=[targets.CodePipeline(pipeline=base_pipeline)],
         )
 
     def deploy_to_environment(
-            self,
-            deploy_environment_type: DeployEnvironmentType,
-            pipeline: pipelines.CodePipeline,
-            source: pipelines.CodePipelineSource,
-            cross_account_role: iam.Role,
-            codebuild_environment_variables: typing.Optional[typing.Mapping[str, str]] = None,
+        self,
+        deploy_environment_type: DeployEnvironmentType,
+        pipeline: pipelines.CodePipeline,
+        source: pipelines.CodePipelineSource,
+        cross_account_role: iam.Role,
+        codebuild_environment_variables: typing.Optional[
+            typing.Mapping[str, str]
+        ] = None,
     ):
-        pipeline_environment = Environment(account=PIPELINE_ACCOUNT, region=PIPELINE_REGION)
+        pipeline_environment = Environment(
+            account=PIPELINE_ACCOUNT, region=PIPELINE_REGION
+        )
 
         if deploy_environment_type == DeployEnvironmentType.PRE_PROD:
-            deploy_environment = Environment(account=PRE_PROD_ACCOUNT, region=PRE_PROD_REGION)
+            deploy_environment = Environment(
+                account=PRE_PROD_ACCOUNT, region=PRE_PROD_REGION
+            )
         elif deploy_environment_type == DeployEnvironmentType.DEV:
-            deploy_environment = Environment(account=DEPLOY_ACCOUNT, region=DEPLOY_REGION)
+            deploy_environment = Environment(
+                account=DEPLOY_ACCOUNT, region=DEPLOY_REGION
+            )
         else:
             deploy_environment = Environment(account=PROD_ACCOUNT, region=PROD_REGION)
 
-        codebuild_environment_variables = codebuild_environment_variables if codebuild_environment_variables else {}
+        codebuild_environment_variables = (
+            codebuild_environment_variables if codebuild_environment_variables else {}
+        )
 
         codebuild_environment_variables = {
             **codebuild_environment_variables,
             "PIPELINE_EXECUTION_ID": "#{codepipeline.PipelineExecutionId}",
             "DEPLOY_ACCOUNT": deploy_environment.account,
-            "DEPLOY_REGION": deploy_environment.region
+            "DEPLOY_REGION": deploy_environment.region,
         }
 
         cross_account_role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 resources=[
-                    f'arn:aws:iam::{deploy_environment.account}:role/CrossAccountCodeBuildRole'
+                    f"arn:aws:iam::{deploy_environment.account}:role/CrossAccountCodeBuildRole"
                 ],
                 actions=["sts:AssumeRole"],
             )
@@ -222,7 +230,9 @@ class AwsLcCiPipeline(Stack):
 
         pipeline.add_stage(setup_stage)
 
-        docker_build_wave = pipeline.add_wave(f"{deploy_environment_type.value}-DockerImageBuild")
+        docker_build_wave = pipeline.add_wave(
+            f"{deploy_environment_type.value}-DockerImageBuild"
+        )
 
         linux_stage = LinuxDockerImageBuildStage(
             self,
@@ -237,7 +247,7 @@ class AwsLcCiPipeline(Stack):
             role=cross_account_role,
             additional_stacks=setup_stage.stacks,
             max_retry=MAX_TEST_RETRY,
-            env=codebuild_environment_variables
+            env=codebuild_environment_variables,
         )
 
         windows_stage = WindowsDockerImageBuildStage(
@@ -253,7 +263,7 @@ class AwsLcCiPipeline(Stack):
             role=cross_account_role,
             additional_stacks=setup_stage.stacks,
             max_retry=MAX_TEST_RETRY,
-            env=codebuild_environment_variables
+            env=codebuild_environment_variables,
         )
 
         docker_build_wave.add_post(
@@ -267,7 +277,7 @@ class AwsLcCiPipeline(Stack):
                 ],
                 env={
                     **codebuild_environment_variables,
-                    "ECR_REPOS": f"{' '.join(linux_stage.ecr_repo_names)} {' '.join(windows_stage.ecr_repo_names)}"
+                    "ECR_REPOS": f"{' '.join(linux_stage.ecr_repo_names)} {' '.join(windows_stage.ecr_repo_names)}",
                 },
                 role=cross_account_role,
             )
@@ -287,6 +297,6 @@ class AwsLcCiPipeline(Stack):
             max_retry=MAX_TEST_RETRY,
             env={
                 **codebuild_environment_variables,
-                "PREVIOUS_REBUILDS": f'{linux_stage.need_rebuild} {linux_stage.need_rebuild}'
+                "PREVIOUS_REBUILDS": f"{linux_stage.need_rebuild} {linux_stage.need_rebuild}",
             },
         )

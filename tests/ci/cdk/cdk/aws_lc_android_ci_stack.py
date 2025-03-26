@@ -2,13 +2,28 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 import typing
 
-from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_iam as iam, Environment
+from aws_cdk import (
+    Duration,
+    Environment,
+    Stack,
+    aws_codebuild as codebuild,
+    aws_iam as iam,
+)
 from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
-from util.iam_policies import code_build_batch_policy_in_json, device_farm_access_policy_in_json
-from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_PUSH_CI_BRANCH_TARGETS, PRE_PROD_ACCOUNT, \
-    STAGING_GITHUB_REPO_OWNER, STAGING_GITHUB_REPO_NAME
+from util.iam_policies import (
+    code_build_batch_policy_in_json,
+    device_farm_access_policy_in_json,
+)
+from util.metadata import (
+    GITHUB_REPO_OWNER,
+    GITHUB_REPO_NAME,
+    GITHUB_PUSH_CI_BRANCH_TARGETS,
+    PRE_PROD_ACCOUNT,
+    STAGING_GITHUB_REPO_OWNER,
+    STAGING_GITHUB_REPO_NAME,
+)
 from util.build_spec_loader import BuildSpecLoader
 
 
@@ -18,12 +33,14 @@ class AwsLcAndroidCIStack(Stack):
     # The Device Farm resource used to in this CI spec, must be manually created.
     # TODO: Automate Device Farm creation with cdk script.
 
-    def __init__(self,
-                 scope: Construct,
-                 id: str,
-                 spec_file_path: str,
-                 env: typing.Union[Environment, typing.Dict[str, typing.Any]],
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        spec_file_path: str,
+        env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+        **kwargs
+    ) -> None:
         super().__init__(scope, id, env=env, **kwargs)
 
         github_repo_owner = GITHUB_REPO_OWNER
@@ -42,11 +59,14 @@ class AwsLcAndroidCIStack(Stack):
                 codebuild.FilterGroup.in_event_of(
                     codebuild.EventAction.PULL_REQUEST_CREATED,
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
-                    codebuild.EventAction.PULL_REQUEST_REOPENED),
-                codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH).and_branch_is(
-                    GITHUB_PUSH_CI_BRANCH_TARGETS),
+                    codebuild.EventAction.PULL_REQUEST_REOPENED,
+                ),
+                codebuild.FilterGroup.in_event_of(
+                    codebuild.EventAction.PUSH
+                ).and_branch_is(GITHUB_PUSH_CI_BRANCH_TARGETS),
             ],
-            webhook_triggers_batch_build=True)
+            webhook_triggers_batch_build=True,
+        )
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(
@@ -55,11 +75,16 @@ class AwsLcAndroidCIStack(Stack):
         device_farm_policy = iam.PolicyDocument.from_json(
             device_farm_access_policy_in_json(env)
         )
-        inline_policies = {"code_build_batch_policy": code_build_batch_policy, "device_farm_policy": device_farm_policy}
-        role = iam.Role(scope=self,
-                        id="{}-role".format(id),
-                        assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
-                        inline_policies=inline_policies)
+        inline_policies = {
+            "code_build_batch_policy": code_build_batch_policy,
+            "device_farm_policy": device_farm_policy,
+        }
+        role = iam.Role(
+            scope=self,
+            id="{}-role".format(id),
+            assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
+            inline_policies=inline_policies,
+        )
 
         # Define CodeBuild.
         project = codebuild.Project(
@@ -69,10 +94,19 @@ class AwsLcAndroidCIStack(Stack):
             source=git_hub_source,
             role=role,
             timeout=Duration.minutes(180),
-            environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
-                                                   privileged=False,
-                                                   build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
-            build_spec=BuildSpecLoader.load(spec_file_path, env))
+            environment=codebuild.BuildEnvironment(
+                compute_type=codebuild.ComputeType.SMALL,
+                privileged=False,
+                build_image=codebuild.LinuxBuildImage.STANDARD_4_0,
+            ),
+            build_spec=BuildSpecLoader.load(spec_file_path, env),
+        )
         project.enable_batch_builds()
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project, ec2_permissions=False, env=env)
+        PruneStaleGitHubBuilds(
+            scope=self,
+            id="PruneStaleGitHubBuilds",
+            project=project,
+            ec2_permissions=False,
+            env=env,
+        )

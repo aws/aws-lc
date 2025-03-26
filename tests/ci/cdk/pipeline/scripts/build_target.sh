@@ -9,7 +9,7 @@ source util.sh
 echo \"Environment variables:\"
 env
 
-if [[ -z "${NEED_REBUILD+x}" || -z "${NEED_REBUILD}" ||  ${NEED_REBUILD} -eq 0 ]]; then
+if [[ -z "${NEED_REBUILD+x}" || -z "${NEED_REBUILD}" || ${NEED_REBUILD} -eq 0 ]]; then
   echo "No rebuild needed"
   exit 0
 fi
@@ -23,8 +23,8 @@ function build_codebuild_ci_project() {
   local project=${1}
 
   if [[ -z ${project} ]]; then
-      echo "No project name provided."
-      exit 1
+    echo "No project name provided."
+    exit 1
   fi
 
   if [[ ${DEPLOY_ACCOUNT} == '351119683581' ]]; then
@@ -41,13 +41,13 @@ function build_codebuild_ci_project() {
 
     echo "Waiting for CI tests for complete. This may take anywhere from 15 minutes to 1 hour"
     if ! codebuild_build_status_check "${TIMEOUT}"; then
-        echo "Tests failed, retrying ${attempt}/${MAX_RETRY}..."
-        if [[ ${attempt} -le ${MAX_RETRY} ]]; then
-          retry_batch_build
-        else
-          echo "CI tests failed"
-          exit 1
-        fi
+      echo "Tests failed, retrying ${attempt}/${MAX_RETRY}..."
+      if [[ ${attempt} -le ${MAX_RETRY} ]]; then
+        retry_batch_build
+      else
+        echo "CI tests failed"
+        exit 1
+      fi
     fi
   done
 
@@ -64,15 +64,15 @@ function build_linux_docker_images() {
     attempt=$((attempt + 1))
 
     echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
-     # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
+    # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
     if ! codebuild_build_status_check "${TIMEOUT}"; then
-        echo "Build failed, retrying ${attempt}/${MAX_RETRY}..."
-        if [[ ${attempt} -le ${MAX_RETRY} ]]; then
-          retry_batch_build
-        else
-          echo "Failed to build Linux docker images"
-          exit 1
-        fi
+      echo "Build failed, retrying ${attempt}/${MAX_RETRY}..."
+      if [[ ${attempt} -le ${MAX_RETRY} ]]; then
+        retry_batch_build
+      else
+        echo "Failed to build Linux docker images"
+        exit 1
+      fi
     fi
   done
 
@@ -93,8 +93,8 @@ function build_win_docker_images() {
     echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
     # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
     if ! win_docker_img_build_status_check "${TIMEOUT}"; then
-        echo "Build failed, retrying ${attempt}/${MAX_RETRY}..."
-        continue
+      echo "Build failed, retrying ${attempt}/${MAX_RETRY}..."
+      continue
     fi
 
     echo "Successfully built Windows docker images"
@@ -152,15 +152,15 @@ fi
 
 if [[ ${BUILD_TYPE} == "docker" ]]; then
   if [[ -z "${PLATFORM+x}" || -z "${PLATFORM}" ]]; then
-      echo "When building Docker images, a platform must be specified"
-      exit 1
+    echo "When building Docker images, a platform must be specified"
+    exit 1
   fi
 
-#  if [[ ${PLATFORM} == "linux" ]]; then
-#    build_linux_docker_images
-#  elif [[ ${PLATFORM} == "windows" ]]; then
-#    build_win_docker_images
-#  fi
+  if [[ ${PLATFORM} == "linux" ]]; then
+    build_linux_docker_images
+  elif [[ ${PLATFORM} == "windows" ]]; then
+    build_win_docker_images
+  fi
   exit 0
 fi
 

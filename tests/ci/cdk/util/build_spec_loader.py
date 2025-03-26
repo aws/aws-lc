@@ -24,7 +24,9 @@ class BuildSpecLoader(object):
         # If the deployment uses team account, the change of batch BuildSpec file is loaded automatically without deployment.
         # else, the change will require manual deployment via CDK command.
         if can_autoload:
-            return codebuild.BuildSpec.from_source_filename("tests/ci/cdk/{}".format(file_path))
+            return codebuild.BuildSpec.from_source_filename(
+                "tests/ci/cdk/{}".format(file_path)
+            )
         # TODO(CryptoAlg-1276): remove below when the batch BuildSpec supports the env variable of account and region.
         placeholder_map = {
             PROD_ACCOUNT: env.account,
@@ -34,6 +36,6 @@ class BuildSpecLoader(object):
             file_text = original_file.read()
             for key in placeholder_map.keys():
                 file_text = file_text.replace(key, placeholder_map[key])
-            with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
                 temp_file.write(file_text)
                 return codebuild.BuildSpec.from_asset(temp_file.name)

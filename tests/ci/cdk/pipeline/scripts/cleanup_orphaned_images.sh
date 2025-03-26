@@ -27,7 +27,7 @@ function remove_pending_images() {
 
     for tag in $tags; do
       if [[ "$tag" == *"_pending" ]]; then
-        new_tag="${tag%_pending}_latest"  # Replace '_pending' with '_latest'
+        new_tag="${tag%_pending}_latest" # Replace '_pending' with '_latest'
 
         if echo "${tags}" | grep -q "${new_tag}"; then
           echo "Image with digest $image_digest is tagged as latest. Will only be removing pending tag..."

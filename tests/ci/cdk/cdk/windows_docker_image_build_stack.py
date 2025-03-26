@@ -5,10 +5,12 @@ import typing
 from aws_cdk import (
     Stack,
     Tags,
+    PhysicalName,
+    Environment,
     aws_ec2 as ec2,
     aws_s3 as s3,
     aws_iam as iam,
-    aws_ssm as ssm, PhysicalName, CfnOutput, CfnParameter, Environment
+    aws_ssm as ssm,
 )
 from constructs import Construct
 
@@ -31,17 +33,13 @@ class WindowsDockerImageBuildStack(Stack):
     """Define a temporary stack used to build Windows Docker images."""
 
     def __init__(
-            self,
-            scope: Construct,
-            id: str,
-            env: typing.Union[Environment, typing.Dict[str, typing.Any]],
-            **kwargs) -> None:
-        super().__init__(
-            scope,
-            id,
-            env=env,
-            **kwargs
-        )
+        self,
+        scope: Construct,
+        id: str,
+        env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+        **kwargs
+    ) -> None:
+        super().__init__(scope, id, env=env, **kwargs)
 
         # Define SSM command document.
         # ecr_uri = ecr_windows_x86.ecr_repo.repository_uri
@@ -132,7 +130,7 @@ class WindowsDockerImageBuildStack(Stack):
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             machine_image=machine_image,
             user_data=setup_user_data,
-            instance_name="{}-instance".format(id)
+            instance_name="{}-instance".format(id),
         )
 
         Tags.of(instance).add(WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE)

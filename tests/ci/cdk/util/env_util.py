@@ -23,4 +23,3 @@ class EnvUtil(object):
     @staticmethod
     def get_optional(key):
         return os.environ.get(key)
-

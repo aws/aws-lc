@@ -12,8 +12,9 @@ from aws_cdk import (
     aws_codepipeline_actions as cp_actions,
     aws_codebuild as codebuild,
     aws_codepipeline as codepipeline,
-    aws_iam as iam
+    aws_iam as iam,
 )
+
 
 @jsii.implements(pipelines.ICodePipelineActionFactory)
 class CodeBuildBatchStep(pipelines.Step):
@@ -31,15 +32,18 @@ class CodeBuildBatchStep(pipelines.Step):
 
     :return: A new CodeBuildBatchStep.
     """
-    def __init__(self,
-                 id,
-                 input: pipelines.FileSet,
-                 action_name: str,
-                 commands: typing.List[str],
-                 partial_batch_build_spec: typing.Mapping[builtins.str, typing.Any],
-                 role: iam.Role,
-                 timeout: int = 300,
-                 env: typing.Optional[typing.Mapping[str, str]]=None):
+
+    def __init__(
+        self,
+        id,
+        input: pipelines.FileSet,
+        action_name: str,
+        commands: typing.List[str],
+        partial_batch_build_spec: typing.Mapping[builtins.str, typing.Any],
+        role: iam.Role,
+        timeout: int = 300,
+        env: typing.Optional[typing.Mapping[str, str]] = None,
+    ):
         super().__init__(id)
 
         self._discover_referenced_outputs(env)
@@ -50,31 +54,33 @@ class CodeBuildBatchStep(pipelines.Step):
         self.partial_batch_build_spec = partial_batch_build_spec
         self.role = role
         self.timeout = timeout
-        self.env = {
-            key: codebuild.BuildEnvironmentVariable(value=value)
-            for key, value in env.items()
-        } if env else {}
+        self.env = (
+            {
+                key: codebuild.BuildEnvironmentVariable(value=value)
+                for key, value in env.items()
+            }
+            if env
+            else {}
+        )
 
     @jsii.member(jsii_name="produceAction")
     def produce_action(
-            self,
-            stage: codepipeline.IStage,
-            options: pipelines.ProduceActionOptions,
+        self,
+        stage: codepipeline.IStage,
+        options: pipelines.ProduceActionOptions,
     ) -> pipelines.CodePipelineActionFactoryResult:
         batch_build_project = codebuild.PipelineProject(
             options.scope,
             self.action_name,
-            build_spec=codebuild.BuildSpec.from_object({
-                "version": 0.2,
-                "batch": self.partial_batch_build_spec,
-                "phases": {
-                    "build": {
-                        "commands": self.commands
-                    }
+            build_spec=codebuild.BuildSpec.from_object(
+                {
+                    "version": 0.2,
+                    "batch": self.partial_batch_build_spec,
+                    "phases": {"build": {"commands": self.commands}},
                 }
-            }),
+            ),
             role=self.role,
-            timeout=Duration.minutes(self.timeout)
+            timeout=Duration.minutes(self.timeout),
         )
 
         batch_build_action = cp_actions.CodeBuildAction(
@@ -83,11 +89,9 @@ class CodeBuildBatchStep(pipelines.Step):
             run_order=options.run_order,
             project=batch_build_project,
             execute_batch_build=True,
-            environment_variables=self.env
+            environment_variables=self.env,
         )
 
         stage.add_action(batch_build_action)
 
-        return pipelines.CodePipelineActionFactoryResult(
-            run_orders_consumed=1
-        )
+        return pipelines.CodePipelineActionFactoryResult(run_orders_consumed=1)

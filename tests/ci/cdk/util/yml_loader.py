@@ -12,7 +12,9 @@ class YmlLoader(object):
     """Responsible for loading yml file as python object."""
 
     @staticmethod
-    def load(file_path, placeholder_map: typing.Optional[typing.Mapping[str, str]] = None):
+    def load(
+        file_path, placeholder_map: typing.Optional[typing.Mapping[str, str]] = None
+    ):
         """
         Used to load yml file and replace some placeholders if needed.
         :param file_path: path to the yml file.

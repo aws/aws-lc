@@ -1,13 +1,23 @@
 import typing
 
-from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_s3 as s3, Environment
+from aws_cdk import (
+    Duration,
+    Stack,
+    aws_codebuild as codebuild,
+    aws_s3 as s3,
+    Environment,
+)
 from constructs import Construct
 from util.build_spec_loader import BuildSpecLoader
 from util.metadata import (
     GITHUB_PUSH_CI_BRANCH_TARGETS,
     GITHUB_REPO_NAME,
-    GITHUB_REPO_OWNER, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_OWNER, STAGING_GITHUB_REPO_NAME,
+    GITHUB_REPO_OWNER,
+    PRE_PROD_ACCOUNT,
+    STAGING_GITHUB_REPO_OWNER,
+    STAGING_GITHUB_REPO_NAME,
 )
+
 
 class AwsLcGitHubX509CIStack(Stack):
     def __init__(
@@ -88,8 +98,7 @@ class AwsLcGitHubX509CIStack(Stack):
             project_name=id,
             source=git_hub_source,
             build_spec=BuildSpecLoader.load(
-                "cdk/codebuild/github_ci_x509_omnibus.yaml",
-                env
+                "cdk/codebuild/github_ci_x509_omnibus.yaml", env
             ),
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_6_0,

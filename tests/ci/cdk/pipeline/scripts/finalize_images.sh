@@ -11,7 +11,7 @@ export CROSS_ACCOUNT_BUILD_SESSION="pipeline-${CODEBUILD_RESOLVED_SOURCE_VERSION
 
 function promote_pending_tags_to_latest() {
   local repo=${1}
-  
+
   # Get the list of images with tags ending in "_pending"
   echo "Fetching images from repository '$repo'..."
 
@@ -31,7 +31,7 @@ function promote_pending_tags_to_latest() {
     # Check if any tag ends with '_pending'
     for tag in $tags; do
       if [[ "$tag" == *"_pending" ]]; then
-        new_tag="${tag%_pending}_latest"  # Replace '_pending' with '_latest'
+        new_tag="${tag%_pending}_latest" # Replace '_pending' with '_latest'
 
         if echo "${tags}" | grep -q "${new_tag}"; then
           echo "Image with digest $image_digest already has tag '$new_tag' - skipping tag update"
