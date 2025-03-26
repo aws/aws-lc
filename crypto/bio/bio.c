@@ -68,13 +68,6 @@
 
 #include "../internal.h"
 
-/*
- * Helper macro for the callback to determine whether an operator expects a
- * len parameter or not
- */
-#define HAS_LEN_OPER(o)        ((o) == BIO_CB_READ || (o) == BIO_CB_WRITE || \
-(o) == BIO_CB_GETS)
-
 //   |callback_fn_wrap_ex| adapts the legacy callback interface |BIO_callback_fn| to the
 //   extended callback interface |BIO_callback_fn_ex|. This function should only be
 //   called when |callback_ex| is not available and the legacy callback is set.
@@ -95,7 +88,8 @@ static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
   /* Strip off any BIO_CB_RETURN flag */
   int bareoper = oper & ~BIO_CB_RETURN;
 
-  if (HAS_LEN_OPER(bareoper)) {
+  if (bareoper == BIO_CB_READ || bareoper == BIO_CB_WRITE
+    || bareoper == BIO_CB_GETS) {
     /* In this case |len| is set, and should be used instead of |argi| */
     if (len > INT_MAX)
       return -1;
