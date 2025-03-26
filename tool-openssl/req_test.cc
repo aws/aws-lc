@@ -287,6 +287,7 @@ struct SubjectNameTestCase {
         expected_values(expected_values_) {}
 };
 
+void PrintTo(const SubjectNameTestCase& test_case, std::ostream* os);
 class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
   protected:
     static std::string GetEntryValue(X509_NAME* name, int index) {
