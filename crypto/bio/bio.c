@@ -201,16 +201,16 @@ int BIO_free(BIO *bio) {
       bio->method->destroy(bio);
     }
 
-      BIO_callback_fn_ex cb = get_callback(bio);
-      if (cb != NULL) {
-        long ret = cb(bio, BIO_CB_FREE, NULL, 0, 0, 0L, 1L, NULL);
-        if (ret <= 0) {
-          if (ret >= INT_MIN) {
-            return (int)ret;
-          }
-          return INT_MIN;
+    BIO_callback_fn_ex cb = get_callback(bio);
+    if (cb != NULL) {
+      long ret = cb(bio, BIO_CB_FREE, NULL, 0, 0, 0L, 1L, NULL);
+      if (ret <= 0) {
+        if (ret >= INT_MIN) {
+          return (int)ret;
         }
+        return INT_MIN;
       }
+    }
 
 
 
@@ -244,16 +244,16 @@ int BIO_read(BIO *bio, void *buf, int len) {
     return 0;
   }
 
-    BIO_callback_fn_ex cb = get_callback(bio);
-    if (cb != NULL) {
-      long callback_ret = cb(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
-      if (callback_ret <= 0) {
-        if (callback_ret >= INT_MIN) {
-          return (int)callback_ret;
-        }
-        return INT_MIN;
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
       }
+      return INT_MIN;
     }
+  }
 
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
@@ -300,16 +300,16 @@ int BIO_gets(BIO *bio, char *buf, int len) {
   }
   size_t processed = 0;
 
-    BIO_callback_fn_ex cb = get_callback(bio);
-    if (cb != NULL) {
-      long callback_ret = cb(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
-      if (callback_ret <= 0) {
-        if (callback_ret >= INT_MIN) {
-          return (int)callback_ret;
-        }
-        return INT_MIN;
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
       }
+      return INT_MIN;
     }
+  }
 
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
@@ -336,16 +336,16 @@ int BIO_write(BIO *bio, const void *in, int inl) {
   }
   size_t processed = 0;
 
-    BIO_callback_fn_ex cb = get_callback(bio);
-    if (cb != NULL) {
-      long callback_ret = cb(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
-      if (callback_ret <= 0) {
-        if (callback_ret >= INT_MIN) {
-          return (int)callback_ret;
-        }
-        return INT_MIN;
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
       }
+      return INT_MIN;
     }
+  }
 
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
@@ -410,16 +410,16 @@ int BIO_puts(BIO *bio, const char *in) {
     return -2;
   }
 
-    BIO_callback_fn_ex cb = get_callback(bio);
-    if (cb != NULL) {
-      long callback_ret = cb(bio, BIO_CB_PUTS, in, 0, 0, 0L, 1L, NULL);
-      if (callback_ret <= 0) {
-        if (callback_ret >= INT_MIN) {
-          return (int)callback_ret;
-        }
-        return INT_MIN;
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_PUTS, in, 0, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
       }
+      return INT_MIN;
     }
+  }
 
 
   if (!bio->init) {
@@ -463,22 +463,22 @@ long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
   }
   long ret = 0;
 
-    BIO_callback_fn_ex cb = get_callback(bio);
-    if (cb != NULL) {
-      ret = cb(bio, BIO_CB_CTRL, parg, 0, cmd, larg, 1L, NULL);
-      if (ret <= 0) {
-        return ret;
-      }
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_CTRL, parg, 0, cmd, larg, 1L, NULL);
+    if (ret <= 0) {
+      return ret;
     }
+  }
 
 
   ret = bio->method->ctrl(bio, cmd, larg, parg);
 
-    cb = get_callback(bio);
-    if (cb != NULL) {
-      ret = cb(bio, BIO_CB_CTRL | BIO_CB_RETURN, parg, 0, cmd, larg,
-                           ret, NULL);
-    }
+  cb = get_callback(bio);
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_CTRL | BIO_CB_RETURN, parg, 0, cmd, larg,
+                         ret, NULL);
+  }
 
   return ret;
 }
