@@ -6,7 +6,7 @@ set -exuo pipefail
 
 source util.sh
 
-NEED_REBUILD=${NEED_REBUILD:-1}
+NEED_REBUILD=${NEED_REBUILD:-0}
 COMMIT_HASH=${COMMIT_HASH:-$CODEBUILD_RESOLVED_SOURCE_VERSION}
 
 LINUX_DOCKER_PATH="tests/ci/docker_images/(dependencies|linux)"

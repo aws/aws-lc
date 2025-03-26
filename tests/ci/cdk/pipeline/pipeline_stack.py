@@ -268,12 +268,12 @@ class AwsLcCiPipeline(Stack):
 
         docker_build_wave.add_post(
             CodeBuildStep(
-                f"{deploy_environment_type.value}-CompleteDockerBuild",
+                f"{deploy_environment_type.value}-FinalizeImages",
                 input=source,
                 commands=[
                     "cd tests/ci/cdk/pipeline/scripts",
                     "chmod +x finalize_images.sh",
-                    # "./finalize_images.sh --repos \"${ECR_REPOS}\"",
+                    "./finalize_images.sh --repos \"${ECR_REPOS}\"",
                 ],
                 env={
                     **codebuild_environment_variables,

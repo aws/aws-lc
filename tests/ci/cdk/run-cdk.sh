@@ -296,8 +296,8 @@ For aws-lc continuous integration setup, this script uses aws cli to build some 
 
 Options:
     --help                       Displays this help
-    --aws-account                AWS account for CDK deploy/destroy. Default to '620771051181'.
-    --aws-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
+    --deploy-account                AWS account for CDK deploy/destroy. Default to '620771051181'.
+    --deploy-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
     --github-repo-owner          GitHub repository owner. Default to 'aws'.
     --github-source-version      GitHub source version. Default to 'main'.
     --action                     Required. The value can be
@@ -313,6 +313,7 @@ Options:
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
                                    'bootstrap': Bootstraps the CDK stack. This is needed before deployment or updating the CI.
                                    'invoke': invoke a custom command. Provide the custom command through '--command <YOUR_CUSTOM_COMMAND>'
+    --command                    Custom command to invoke. Required for '--action invoke'.
 EOF
 }
 

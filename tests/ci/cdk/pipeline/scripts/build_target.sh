@@ -37,15 +37,19 @@ function build_codebuild_ci_project() {
   start_codebuild_project "${project}" "${source_version}"
 
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
+    if [[ $attempt -gt 0 ]]; then
+      echo "Retrying ${attempt}/${MAX_RETRY}..."
+    fi
+
     attempt=$((attempt + 1))
 
     echo "Waiting for CI tests for complete. This may take anywhere from 15 minutes to 1 hour"
     if ! codebuild_build_status_check "${TIMEOUT}"; then
-      echo "Tests failed, retrying ${attempt}/${MAX_RETRY}..."
+      echo "Tests failed."
       if [[ ${attempt} -le ${MAX_RETRY} ]]; then
         retry_batch_build
       else
-        echo "CI tests failed"
+        echo "CI tests failed."
         exit 1
       fi
     fi
@@ -61,12 +65,16 @@ function build_linux_docker_images() {
   start_codebuild_project aws-lc-docker-image-build-linux "${COMMIT_HASH}"
 
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
+    if [[ $attempt -gt 0 ]]; then
+      echo "Retrying ${attempt}/${MAX_RETRY}..."
+    fi
+
     attempt=$((attempt + 1))
 
     echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
     # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
     if ! codebuild_build_status_check "${TIMEOUT}"; then
-      echo "Build failed, retrying ${attempt}/${MAX_RETRY}..."
+      echo "Build failed."
       if [[ ${attempt} -le ${MAX_RETRY} ]]; then
         retry_batch_build
       else
@@ -83,17 +91,22 @@ function build_win_docker_images() {
   local attempt=0
 
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
+    if [[ $attempt -gt 0 ]]; then
+      echo "Retrying ${attempt}/${MAX_RETRY}..."
+    fi
+
     attempt=$((attempt + 1))
+
     echo "Executing AWS SSM commands to build Windows docker images."
     if ! start_windows_img_build; then
-      echo "Failed to start build, retrying ${attempt}/${MAX_RETRY}..."
+      echo "Failed to start build"
       continue
     fi
 
     echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
     # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
     if ! win_docker_img_build_status_check "${TIMEOUT}"; then
-      echo "Build failed, retrying ${attempt}/${MAX_RETRY}..."
+      echo "Build failed"
       continue
     fi
 
