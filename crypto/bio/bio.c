@@ -80,9 +80,8 @@
 static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
                               size_t len, int argi, long argl, int bio_ret,
                               size_t *processed) {
-  if (bio == NULL || bio->callback == NULL) {
-    return -1;
-  }
+  assert(bio != NULL);
+  assert(bio->callback != NULL);
 
   /* Strip off any BIO_CB_RETURN flag */
   int bareoper = oper & ~BIO_CB_RETURN;
