@@ -225,6 +225,33 @@ function setup_ci() {
   create_android_resources
 }
 
+function deploy_production_pipeline() {
+  cdk deploy AwsLcCiPipeline --require-approval never
+}
+
+function deploy_dev_pipeline() {
+  if [[ -z "${DEPLOY_ACCOUNT:+x}" || -z "${PIPELINE_ACCOUNT}" ]]; then
+    echo "The pipeline needs a deployment acount to know where to deploy the CI to."
+    exit 1
+  fi
+
+  if [[ ${DEPLOY_ACCOUNT} == '620771051181' ]]; then
+    echo "Dev pipeline cannot deploy to production account."
+    exit 1
+  fi
+
+  if [[ -z "${PIPELINE_ACCOUNT+x}" || -z "${PIPELINE_ACCOUNT}" ]]; then
+    export PIPELINE_ACCOUNT=DEPLOY_ACCOUNT
+  fi
+
+  if [[ ${PIPELINE_ACCOUNT+x} == '774305600158' ]]; then
+    echo "Cannot deploy. The production pipeline is hosted with the same name in this pipeline account."
+    exit 1
+  fi
+
+  cdk deploy AwsLcCiPipeline --require-approval never
+}
+
 function create_android_resources() {
   # Use aws cli to create Device Farm project and get project arn to create device pools.
   # TODO: Move resource creation to aws cdk when cdk has support for device form resource constructs.
@@ -285,6 +312,7 @@ Options:
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
                                    'bootstrap': Bootstraps the CDK stack. This is needed before deployment or updating the CI.
+                                   'invoke': invoke a custom command. Provide the custom command through '--command <YOUR_CUSTOM_COMMAND>'
 EOF
 }
 
@@ -311,11 +339,12 @@ function export_global_variables() {
   export ECR_WINDOWS_X86_REPO_NAME='aws-lc-docker-images-windows-x86'
   export AWS_LC_S3_BUCKET_PREFIX='aws-lc-windows-docker-image-build-s3'
   export WIN_EC2_TAG_KEY='aws-lc'
-  export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build"
-  export WIN_DOCKER_BUILD_SSM_DOCUMENT="AWSLC-BuildWindowsDockerImagesTEST"
+  export WIN_EC2_TAG_VALUE='aws-lc-windows-docker-image-build'
+  export WIN_DOCKER_BUILD_SSM_DOCUMENT='AWSLC-BuildWindowsDockerImages'
+  export MAX_TEST_RETRY=2
   export IMG_BUILD_STATUS='unknown'
   # 620771051181 and 351119683581 is AWS-LC team AWS account.
-  if [[ "${DEPLOY_ACCOUNT}" != "620771051181" && "${DEPLOY_ACCOUNT}" != "351119683581" ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
+  if [[ "${DEPLOY_ACCOUNT}" != "620771051181" && "${DEPLOY_ACCOUNT}" != '351119683581' ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
     echo "Only team account is allowed to create CI stacks on aws repo."
     exit 1
   fi
@@ -329,13 +358,21 @@ function main() {
       script_helper
       exit 0
       ;;
-    --aws-account)
+    --deploy-account)
       export DEPLOY_ACCOUNT="${2}"
       shift
       ;;
-    --aws-region)
+    --deploy-region)
       export DEPLOY_REGION="${2}"
       export AWS_DEFAULT_REGION="${DEPLOY_REGION}"
+      shift
+      ;;
+    --pipeline-account)
+      export PIPELINE_ACCOUNT="${2}"
+      shift
+      ;;
+    --pipeline-region)
+      export PIPELINE_REGION="${2}"
       shift
       ;;
     --github-repo-owner)
@@ -374,6 +411,14 @@ function main() {
 
   # Execute the action.
   case ${ACTION} in
+  deploy-production-pipeline)
+    export IS_DEV="False"
+    deploy_production_pipeline
+    ;;
+  deploy-dev-pipeline)
+    export IS_DEV="True"
+    deploy_dev_pipeline
+    ;;
   deploy-ci)
     setup_ci
     ;;
@@ -405,6 +450,10 @@ function main() {
     cdk bootstrap
     ;;
   invoke)
+    if [[ -z "${COMMAND+x}" || -z "${COMMAND}" ]]; then
+      echo "--action invoke requires a command."
+      exit 1
+    fi
     ${COMMAND:?}
     ;;
   *)

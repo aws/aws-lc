@@ -2,7 +2,26 @@
 
 AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, ECR).
 
-## CI Setup
+## Table of Contents
+- [CI Setup](#ci-setup)
+  - [Before running CDK command](#before-running-cdk-command)
+  - [Minimal permissions](#minimal-permissions)
+  - [Pipeline Commands](#pipeline-commands)
+  - [CI Commands](#ci-commands)
+- [AWS-LC Benchmarking Framework](#aws-lc-benchmarking-framework)
+  - [Framework Setup](#framework-setup)
+  - [How to Use](#how-to-use)
+    - [Start from Pull Request](#start-from-pull-request)
+    - [Start Locally](#start-locally)
+    - [Examine Output](#examine-output)
+- [Files](#files)
+- [Development Reference](#development-reference)
+  - [Useful commands](#useful-commands)
+  - [Useful Docker image build commands](#useful-docker-image-build-commands)
+    - [Linux Docker image build](#linux-docker-image-build)
+    - [Windows Docker image build (DEPRECATED)](#windows-docker-image-build-deprecated)
+
+## CDK Setup
 
 ### Before running CDK command:
 
@@ -64,7 +83,36 @@ To setup or update the CI in your account you will need the following IAM permis
   * secretsmanager:GetSecretValue
 
 ### Pipeline Commands
-Bootstrap pipeline account
+Use these commands to deploy the CI pipeline. Any changes to the CI or Docker images will be updated automatically after the pipeline is deployed. 
+
+These commands are run from `aws-lc/tests/ci/cdk`.
+
+If not done previously, bootstrap cdk for the pipeline account before running the next commands.
+```
+cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
+```
+
+[SKIP IF NO CROSS-ACCOUNT DEPLOYMENT] Give the pipeline account administrator access to the deployment account's CloudFormation. Repeat this step depending on how many deployment environment there are. You only need to run this step once when the pipeline is deploying to a new account for the first time.
+```
+cdk bootstrap aws://${DEPLOY_ACCOUNT_ID}/us-west-2 --trust ${PIPELINE_ACCOUNT_ID} --trust-for-lookup ${PIPELINE_ACCOUNT_ID} --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+To deploy dev pipeline to the same account as your CI:
+```
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
+```
+
+To deploy dev pipeline but pipeline is hosted in a separate account:
+```
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --pipeline-acount ${PIPELINE_ACCOUNT_ID} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
+```
+
+To deploy production pipeline using default parameters:
+```
+./run-cdk.sh --action deploy-production-pipeline
+```
+
+<!-- Bootstrap pipeline account
 ```
 AWS_ACCOUNT_ID=183295444613
 PIPELINE_ACCOUNT_ID=774305600158
@@ -81,19 +129,22 @@ Deploy pipeline
 GITHUB_REPO_OWNER=nhatnghiho
 GITHUB_SOURCE_VERSION=ci-pipeline
 ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --aws-account ${AWS_ACCOUNT_ID} --action invoke --command "cdk deploy AwsLcCiPipeline --require-approval never"
-```
+``` -->
 
-### Commands
+### CI Commands
+Use these commands if you wish to deploy individual stacks instead of the entire pipeline.
 
-These commands are run from `aws-lc/tests/ci/cdk`. \
-If not done previously, bootstrap cdk before running the commands below:
+These commands are run from `aws-lc/tests/ci/cdk`.
+
+If not done previously, bootstrap cdk before running the commands below. Make sure that AWS_ACCOUNT_ID is the AWS account you wish to deploy the CI stacks to.
+
 ```shell
 cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-west-2
 ```
 
 You may also need to request an increase to certain account quotas:
 ```shell
-open https://${CDK_DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
+open https://${DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
 ```
 * **EC2-VPC Elastic IPs** = 20
 
@@ -102,23 +153,23 @@ Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
 
 To set up AWS-LC CI, run command:
 ```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action deploy-ci --aws-account ${AWS_ACCOUNT_ID}
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action deploy-ci --deploy-account ${AWS_ACCOUNT_ID}
 ```
 
 To update AWS-LC CI, run command:
 ```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action update-ci --aws-account ${AWS_ACCOUNT_ID}
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action update-ci --deploy-account ${AWS_ACCOUNT_ID}
 ```
 
 To create/update Linux Docker images, run command:
 ```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action build-linux-img --aws-account ${AWS_ACCOUNT_ID}
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action build-linux-img --deploy-account ${AWS_ACCOUNT_ID}
 ```
 
 To destroy AWS-LC CI resources created above, run command:
 ```
 # NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action destroy-ci --aws-account ${AWS_ACCOUNT_ID}
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action destroy-ci --deploy-account ${AWS_ACCOUNT_ID}
 ```
 
 For help, run command:
@@ -175,6 +226,10 @@ Below is CI file structure.
 │   ├── __init__.py
 │   ├── ecr_stack.py
 │   ├── ...
+├── pipeline
+│   ├── __init__.py
+│   ├── pipeline_stack.py
+│   ├── ...
 ├── cdk.json
 ├── requirements.txt
 ├── run-cdk.sh
@@ -187,7 +242,8 @@ Below is CI file structure.
 * `README.md` — The introductory README for this project.
 * `app.py` — The “main” for this sample application.
 * `cdk.json` — A configuration file for CDK that defines what executable CDK should run to generate the CDK construct tree.
-* `cdk` — A CDK module directory
+* `cdk` — A module directory that contains all CI-related stacks and utilities
+* `pipeline` - A module directory that defines a continuous deployment pipeline for the CI.
 * `requirements.txt` — This file is used by pip to install all of the dependencies for your application. In this case, it contains only -e . This tells pip to install the requirements specified in setup.py. It also tells pip to run python setup.py develop to install the code in the cdk module so that it can be edited in place.
 * `setup.py` — Defines how this Python package would be constructed and what the dependencies are.
 
@@ -264,7 +320,7 @@ aws codebuild start-build-batch --project-name aws-lc-docker-image-build-linux
 # Go to AWS console, you can check CodeBuild by clicking "Developer Tools > CodeBuild > Build projects".
 ```
 
-#### Windows Docker image build
+#### Windows Docker image build (DEPRECATED)
 Windows docker image build requires more resources (like EC2 host, S3, SSM and so on) set up because DIND (Docker in Docker) is not supported by Windows.
 Below are some commands specific to windows docker image build.
  
