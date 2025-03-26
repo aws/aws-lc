@@ -84,27 +84,29 @@ static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
     return -1;
   }
 
-  long ret;
   /* Strip off any BIO_CB_RETURN flag */
   int bareoper = oper & ~BIO_CB_RETURN;
 
   if (bareoper == BIO_CB_READ || bareoper == BIO_CB_WRITE
     || bareoper == BIO_CB_GETS) {
     /* In this case |len| is set, and should be used instead of |argi| */
-    if (len > INT_MAX)
+    if (len > INT_MAX) {
       return -1;
+    }
 
     argi = (int)len;
   }
 
   if (bio_ret && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
-    if (*processed > INT_MAX)
+    if (*processed > INT_MAX) {
       return -1;
+    }
+
     bio_ret = *processed;
   }
 
 
-  ret =  bio->callback(bio, oper, argp, argi, argl, bio_ret);
+  long ret = bio->callback(bio, oper, argp, argi, argl, bio_ret);
 
   if (ret >= 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
     *processed = (size_t)ret;
@@ -124,46 +126,40 @@ static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
 //   Returns the |callback_ex| function if available, a wrapped legacy callback if only
 //   |callback| is set, or NULL if no callbacks are set.
 static BIO_callback_fn_ex get_callback(BIO *bio) {
-    if (bio->callback_ex != NULL) {
-      return bio->callback_ex;
-    }
-    if (bio->callback != NULL) {
-      // Wrap old-style callback in extended format
-      return callback_fn_wrap_ex;
-    }
+  if (bio == NULL) {
+    return NULL;
+  }
+
+  if (bio->callback_ex != NULL) {
+    return bio->callback_ex;
+  }
+  if (bio->callback != NULL) {
+    // Wrap old-style callback in extended format
+    return callback_fn_wrap_ex;
+  }
   return NULL;
 }
 
 // Helper function to create a placeholder |processed| that the callback can
 // modify and return to the caller. Used only in callbacks that pass in
 // |processed|.
-// static int call_bio_callback_with_processed(BIO *bio, const int oper,
-//                                         const void *buf, int len, int ret) {
-//
-//     size_t processed = 0;
-//     // The original BIO return value can be an error value (less than 0) or
-//     // the number of bytes read/written
-//     if (ret > 0) {
-//       processed = ret;
-//     }
-//   if (HAS_CALLBACK(bio)) {
-//     // Pass the original BIO's return value to the callback. If the callback
-//     // is successful return processed from the callback, if the callback is
-//     // not successful return the callback's return value.
-//     BIO_callback_fn_ex cb = get_callback(bio);
-//     long callback_ret = cb(bio, oper, buf, len, 0, 0L, ret, &processed);
-//     if (callback_ret <= INT_MAX && callback_ret >= INT_MIN) {
-//       ret = (int)callback_ret;
-//       if (ret > 0) {
-//         // BIO will only read int |len| bytes so this is a safe cast
-//         ret = (int)processed;
-//       }
-//     } else {
-//       ret = -1;
-//     }
-//   }
-//   return ret;
-// }
+static int handle_callback_return(BIO *bio, int oper, const void *buf,
+int len, int ret, size_t *processed) {
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    ret = cb(bio, oper | BIO_CB_RETURN, buf, len, 0, 0L, ret, processed);
+  }
+
+  if (ret <= INT_MAX && ret >= INT_MIN) {
+    if (ret > 0) {
+      ret = (int)*processed;
+    }
+  } else {
+    ret = -1;
+  }
+
+  return ret;
+}
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
@@ -268,21 +264,7 @@ int BIO_read(BIO *bio, void *buf, int len) {
     ret = 1;
   }
 
-  if (cb != NULL) {
-    ret = cb(bio, BIO_CB_READ | BIO_CB_RETURN, buf, len, 0, 0L,
-      ret, &processed);
-  }
-
-  if (ret <= INT_MAX && ret >= INT_MIN) {
-    if (ret > 0) {
-      // BIO will only read int |len| bytes so this is a safe cast
-      ret = (int)processed;
-    }
-  } else {
-    ret = -1;
-  }
-
-  return ret;
+  return handle_callback_return(bio, BIO_CB_READ, buf, len, ret, &processed);
 }
 
 int BIO_read_ex(BIO *bio, void *data, size_t data_len, size_t *read_bytes) {
@@ -338,21 +320,7 @@ int BIO_gets(BIO *bio, char *buf, int len) {
     ret = 1;
   }
 
-  if (cb != NULL) {
-    ret = cb(bio, BIO_CB_GETS | BIO_CB_RETURN, buf, len, 0, 0L,
-      ret, &processed);
-  }
-
-  if (ret <= INT_MAX && ret >= INT_MIN) {
-    if (ret > 0) {
-      // BIO will only read int |len| bytes so this is a safe cast
-      ret = (int)processed;
-    }
-  } else {
-    ret = -1;
-  }
-
-  return ret;
+  return handle_callback_return(bio, BIO_CB_GETS, buf, len, ret, &processed);
 }
 
 int BIO_write(BIO *bio, const void *in, int inl) {
@@ -388,20 +356,7 @@ int BIO_write(BIO *bio, const void *in, int inl) {
     ret = 1;
   }
 
-  if (cb != NULL) {
-    ret = cb(bio, BIO_CB_WRITE | BIO_CB_RETURN, in, inl, 0, 0L, ret, &processed);
-  }
-
-  if (ret <= INT_MAX && ret >= INT_MIN) {
-    if (ret > 0) {
-      // BIO will only read int |len| bytes so this is a safe cast
-      ret = (int)processed;
-    }
-  } else {
-    ret = -1;
-  }
-
-  return ret;
+  return handle_callback_return(bio, BIO_CB_WRITE, in, inl, ret, &processed);
 }
 
 int BIO_write_ex(BIO *bio, const void *data, size_t data_len, size_t *written_bytes) {
@@ -488,20 +443,7 @@ int BIO_puts(BIO *bio, const char *in) {
     ret = 1;
   }
 
-  if (cb != NULL) {
-    ret = cb(bio, BIO_CB_PUTS | BIO_CB_RETURN, in, 0, 0, 0L, ret, &processed);
-  }
-
-  if (ret <= INT_MAX && ret >= INT_MIN) {
-    if (ret > 0) {
-      // BIO will only read int |len| bytes so this is a safe cast
-      ret = (int)processed;
-    }
-  } else {
-    ret = -1;
-  }
-  
-  return ret;
+  return handle_callback_return(bio, BIO_CB_PUTS, in, 0, ret, &processed);
 }
 
 int BIO_flush(BIO *bio) {
