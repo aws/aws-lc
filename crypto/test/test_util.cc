@@ -173,18 +173,22 @@ size_t createTempDirPath(char buffer[PATH_MAX]) {
     return 0;
   }
 
-  // Create a unique name using process ID and timestamp
-  snprintf(buffer, PATH_MAX, "%s\\awslctest_%lu_%llu",
-           temp_path,
-           GetCurrentProcessId(),
-           (unsigned long long)time(NULL));
+  // Create the path string, use process id and time for uniqueness
+  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%lu_%llu",
+                        temp_path,
+                        GetCurrentProcessId(),
+                        (unsigned long long)time(NULL));
 
-  // Create the directory directly
+  // Check for truncation of dirname
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+
   if (!CreateDirectoryA(buffer, NULL)) {
     return 0;
   }
 
-  return strnlen(buffer, PATH_MAX);
+  return (size_t)written;
 }
 
 FILE* createRawTempFILE() {
@@ -194,6 +198,7 @@ FILE* createRawTempFILE() {
   }
   return fopen(filename, "w+b");
 }
+
 #else
 #include <cstdlib>
 #include <unistd.h>

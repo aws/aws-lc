@@ -276,6 +276,15 @@ struct SubjectNameTestCase {
   bool expect_success;
   int expected_entry_count;
   std::vector<std::string> expected_values;
+
+  SubjectNameTestCase(const std::string& input_,
+                     bool expect_success_,
+                     int expected_entry_count_,
+                     const std::vector<std::string>& expected_values_)
+      : input(input_),
+        expect_success(expect_success_),
+        expected_entry_count(expected_entry_count_),
+        expected_values(expected_values_) {}
 };
 
 class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
@@ -284,7 +293,7 @@ class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
       unsigned char* tmp;
       X509_NAME_ENTRY* entry = X509_NAME_get_entry(name, index);
       int len = ASN1_STRING_to_UTF8(&tmp, X509_NAME_ENTRY_get_data(entry));
-      std::string result;
+      std::string result = "";
       if (len > 0) {
         result.assign(reinterpret_cast<char*>(tmp), len);
       }
@@ -293,63 +302,74 @@ class SubjectNameTest : public testing::TestWithParam<SubjectNameTestCase> {
     }
 };
 
-// Then create an array of test cases
+void PrintTo(const SubjectNameTestCase& test_case, std::ostream* os) {
+  *os << "SubjectNameTestCase{"
+      << "input: \"" << test_case.input << "\", "
+      << "expect_success: " << (test_case.expect_success ? "true" : "false") << ", "
+      << "expected_entry_count: " << test_case.expected_entry_count << ", "
+      << "expected_values: [";
+
+  for (size_t i = 0; i < test_case.expected_values.size(); ++i) {
+    if (i > 0) *os << ", ";
+    *os << "\"" << test_case.expected_values[i] << "\"";
+  }
+
+  *os << "]}";
+}
+
 static const SubjectNameTestCase kSubjectNameTestCases[] = {
   // Valid subject with multiple fields
-  {
+  SubjectNameTestCase(
     "/C=US/ST=California/O=Example/CN=test.com",
     true,
     4,
     {"US", "California", "Example", "test.com"}
-  },
+  ),
   // Escaped characters
-  {
+  SubjectNameTestCase(
     "/CN=test\\/example\\.com",
     true,
     1,
     {"test/example.com"}
-  },
+  ),
   // Missing leading slash
-  {
+  SubjectNameTestCase(
     "CN=test.com",
     false,
     0,
     {""}
-  },
+  ),
   // Missing equals sign
-  {
+  SubjectNameTestCase(
     "/CNtest.com",
     false,
     0,
     {""}
-  },
+  ),
   // Empty value
-  {
+  SubjectNameTestCase(
     "/CN=/O=test",
     true,
     1,
     {"test"}
-  },
+  ),
   // Unknown attribute
-  {
+  SubjectNameTestCase(
     "/UNKNOWN=test/CN=example.com",
     true,
     1,
     {"example.com"}
-  },
+  ),
   // Empty subject
-  {
+  SubjectNameTestCase(
     "/",
     true,
     0,
     {""}
-  }
+  )
 };
 
-INSTANTIATE_TEST_SUITE_P(SubjectNameTests, SubjectNameTest, testing::ValuesIn(kSubjectNameTestCases),
-                         [](const testing::TestParamInfo<SubjectNameTestCase>& subj) {
-                            return "Case_" + std::to_string(subj.index);
-                         });
+INSTANTIATE_TEST_SUITE_P(SubjectNameTests, SubjectNameTest, testing::ValuesIn(kSubjectNameTestCases));
 
 TEST_P(SubjectNameTest, ParseSubjectName) {
   const SubjectNameTestCase& test_case = GetParam();
