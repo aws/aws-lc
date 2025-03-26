@@ -140,9 +140,8 @@ static BIO_callback_fn_ex get_callback(BIO *bio) {
   return NULL;
 }
 
-// Helper function to create a placeholder |processed| that the callback can
-// modify and return to the caller. Used only in callbacks that pass in
-// |processed|.
+// Helper function to handle return values from |BIO_read|, |BIO_write|,
+// |BIO_gets|, and |BIO_puts| operations.
 static int handle_callback_return(BIO *bio, int oper, const void *buf,
 int len, int ret, size_t *processed) {
   BIO_callback_fn_ex cb = get_callback(bio);
@@ -150,12 +149,15 @@ int len, int ret, size_t *processed) {
     ret = cb(bio, oper | BIO_CB_RETURN, buf, len, 0, 0L, ret, processed);
   }
 
-  if (ret <= INT_MAX && ret >= INT_MIN) {
-    if (ret > 0) {
+  if (ret > INT_MAX || ret < INT_MIN) {
+    return -1;
+  }
+  if (ret > 0) {
+    if (*processed > INT_MAX) {
+      ret = -1; // Value too large to represent as int
+    } else {
       ret = (int)*processed;
     }
-  } else {
-    ret = -1;
   }
 
   return ret;
