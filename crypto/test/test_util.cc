@@ -169,18 +169,21 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
   char temp_path[PATH_MAX];
-  uint64_t random_bytes; // 64 bits of randomness is sufficient
+  union {
+    uint8_t bytes[8];
+    uint64_t value;
+  } random_bytes;
 
   // Get the temporary path
   if (0 == GetTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 
-  if (!RAND_bytes(&random_bytes, sizeof(random_bytes))) {
+  if (!RAND_bytes(random_bytes.bytes, sizeof(random_bytes.bytes))) {
     return 0;
   }
 
-  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%" PRIX64, temp_path, random_bytes);
+  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%" PRIX64, temp_path, random_bytes.value);
 
   // Check for truncation of dirname
   if (written < 0 || written >= PATH_MAX) {
