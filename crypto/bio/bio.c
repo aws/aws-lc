@@ -158,12 +158,14 @@ int len, int ret) {
 
   BIO_callback_fn_ex cb = get_callback(bio);
   if (cb != NULL) {
-    ret = cb(bio, oper | BIO_CB_RETURN, buf, len, 0, 0L, ret, &processed);
+    long callback_ret = cb(bio, oper | BIO_CB_RETURN, buf, len, 0, 0L, ret, &processed);
+    if (ret > INT_MAX || ret < INT_MIN) {
+      return -1;
+    }
+    ret = (int)callback_ret;
   }
 
-  if (ret > INT_MAX || ret < INT_MIN) {
-    return -1;
-  }
+
   if (ret > 0) {
     if (processed > INT_MAX) {
       ret = -1; // Value too large to represent as int
