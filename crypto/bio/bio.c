@@ -160,7 +160,7 @@ int len, int ret) {
   BIO_callback_fn_ex cb = get_callback(bio);
   if (cb != NULL) {
     long callback_ret = cb(bio, oper | BIO_CB_RETURN, buf, len, 0, 0L, ret, &processed);
-    if (ret > INT_MAX || ret < INT_MIN) {
+    if (callback_ret > INT_MAX || callback_ret < INT_MIN) {
       return -1;
     }
     ret = (int)callback_ret;
