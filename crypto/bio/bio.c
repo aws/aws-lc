@@ -152,6 +152,9 @@ int len, int ret) {
     } else if (oper == BIO_CB_WRITE || oper == BIO_CB_PUTS) {
       bio->num_write += ret;
     }
+    // |callback_ex| receives the number of bytes processed via the |processed| parameter,
+    // while the legacy callback receives this information through both |argi| and |ret|.
+    // When using the legacy callback, the |processed| value will be mapped back to |ret|.
     processed = ret;
     ret = 1;
   }
