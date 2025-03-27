@@ -420,7 +420,7 @@ TEST_P(SubjectNameTest, ParseSubjectName) {
   const SubjectNameTestCase& test_case = GetParam();
   std::string mutable_input = test_case.input;  // Create mutable copy
 
-  X509_NAME* name = parse_subject_name(mutable_input);
+  bssl::UniquePtr<X509_NAME> name = parse_subject_name(mutable_input);
 
   if (!test_case.expect_success) {
     EXPECT_EQ(name, nullptr);
@@ -428,13 +428,11 @@ TEST_P(SubjectNameTest, ParseSubjectName) {
   }
 
   ASSERT_NE(name, nullptr);
-  EXPECT_EQ(X509_NAME_entry_count(name), test_case.expected_entry_count);
+  EXPECT_EQ(X509_NAME_entry_count(name.get()), test_case.expected_entry_count);
 
   for (size_t i = 0; i < test_case.expected_values.size(); ++i) {
     if (!test_case.expected_values[i].empty()) {
-      EXPECT_EQ(GetEntryValue(name, i), test_case.expected_values[i]);
+      EXPECT_EQ(GetEntryValue(name.get(), i), test_case.expected_values[i]);
     }
   }
-
-  X509_NAME_free(name);
 }

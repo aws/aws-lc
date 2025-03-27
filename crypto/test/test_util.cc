@@ -15,6 +15,7 @@
 #include "test_util.h"
 
 #include <ostream>
+#include <inttypes.h>
 
 #include <openssl/err.h>
 
@@ -168,21 +169,18 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
   char temp_path[PATH_MAX];
-  uint8_t random_bytes[8]; // 64 bits of randomness is sufficient
+  uint64_t random_bytes; // 64 bits of randomness is sufficient
 
   // Get the temporary path
   if (0 == GetTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 
-  if (!RAND_bytes(random_bytes, sizeof(random_bytes))) {
+  if (!RAND_bytes(&random_bytes, sizeof(random_bytes))) {
     return 0;
   }
 
-  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%02x%02x%02x%02x%02x%02x%02x%02x",
-                        temp_path,
-                        random_bytes[0], random_bytes[1], random_bytes[2], random_bytes[3],
-                        random_bytes[4], random_bytes[5], random_bytes[6], random_bytes[7]);
+  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%" PRIX64, temp_path, random_bytes);
 
   // Check for truncation of dirname
   if (written < 0 || written >= PATH_MAX) {

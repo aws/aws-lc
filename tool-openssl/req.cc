@@ -14,7 +14,7 @@
 
 #define DEFAULT_KEY_LENGTH 2048
 #define MIN_KEY_LENGTH 512
-#define MAX_KEY_LENGTH 16000
+#define MAX_KEY_LENGTH 16384
 #define BUF_SIZE 1024
 #define DEFAULT_CHAR_TYPE MBSTRING_ASC
 
@@ -59,56 +59,53 @@ static const argument_t kArguments[] = {
 // Parse key specification string and generate key. Valid strings are in the format rsa:nbits.
 // RSA key with 2048 bit length is used by default is |keyspec| is not valid.
 static EVP_PKEY *generate_key(const char *keyspec) {
-    EVP_PKEY_CTX *ctx = NULL;
-    EVP_PKEY *pkey = NULL;
-    long keylen = DEFAULT_KEY_LENGTH;
-    int pkey_type = EVP_PKEY_RSA;
+  EVP_PKEY *pkey = NULL;
+  long keylen = DEFAULT_KEY_LENGTH;
+  int pkey_type = EVP_PKEY_RSA;
 
-    // Parse keyspec
-    if (OPENSSL_strncasecmp(keyspec, "rsa:", 4) == 0) {
-      char *endptr = NULL;
-      long value = strtol(keyspec + 4, &endptr, 10);
-      if (endptr != keyspec + 4 && *endptr == '\0' && errno != ERANGE) {
-        keylen = value;
-      } else {
-        fprintf(stderr, "Invalid RSA key length: %s, using default length\n", keyspec + 4);
-      }
-    } else if (OPENSSL_strcasecmp(keyspec, "rsa") == 0) {
-	    keylen = DEFAULT_KEY_LENGTH;
+  // Parse keyspec
+  if (OPENSSL_strncasecmp(keyspec, "rsa:", 4) == 0) {
+    char *endptr = NULL;
+    long value = strtol(keyspec + 4, &endptr, 10);
+    if (endptr != keyspec + 4 && *endptr == '\0' && errno != ERANGE) {
+      keylen = value;
     } else {
-      fprintf(stderr, "Unknown key specification: %s, using RSA key with 2048 bit length\n", keyspec);
+      fprintf(stderr, "Invalid RSA key length: %s, using default length\n", keyspec + 4);
     }
+  } else if (OPENSSL_strcasecmp(keyspec, "rsa") == 0) {
+	  keylen = DEFAULT_KEY_LENGTH;
+  } else {
+    fprintf(stderr, "Unknown key specification: %s, using RSA key with 2048 bit length\n", keyspec);
+  }
 
 
-    // Validate key length
-    if (keylen < MIN_KEY_LENGTH) {
-      fprintf(stderr, "Key length too short (minimum %d bits)\n", MIN_KEY_LENGTH);
-      return NULL;
-    }
+  // Validate key length
+  if (keylen < MIN_KEY_LENGTH) {
+    fprintf(stderr, "Key length too short (minimum %d bits)\n", MIN_KEY_LENGTH);
+    return NULL;
+  }
 
-    if (keylen > MAX_KEY_LENGTH) {
-      fprintf(stderr, "Key length too large (maximum %d bits)\n", MAX_KEY_LENGTH);
-      return NULL;
-    }
+  if (keylen > MAX_KEY_LENGTH) {
+    fprintf(stderr, "Key length too large (maximum %d bits)\n", MAX_KEY_LENGTH);
+    return NULL;
+  }
 
-    // Create key generation context
-    ctx = EVP_PKEY_CTX_new_id(pkey_type, NULL);
-    if (ctx == NULL) {
-      return NULL;
-    }
+  // Create key generation context
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(pkey_type, NULL));
+  if (ctx == NULL) {
+    return NULL;
+  }
 
-	if (EVP_PKEY_keygen_init(ctx) <= 0 || EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, keylen) <= 0
-        || EVP_PKEY_keygen(ctx, &pkey) <= 0) {
-    	EVP_PKEY_CTX_free(ctx);
-        return NULL;
-    }
+	if (EVP_PKEY_keygen_init(ctx.get()) <= 0 || EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), keylen) <= 0
+      || EVP_PKEY_keygen(ctx.get(), &pkey) <= 0) {
+    return NULL;
+  }
 
-    EVP_PKEY_CTX_free(ctx);
-    return pkey;
+  return pkey;
 }
 
 // Parse the subject string provided by a user with the -subj option.
-X509_NAME* parse_subject_name(std::string &subject_string) {
+bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string) {
   const char *subject_name_ptr = subject_string.c_str();
 
   if (*subject_name_ptr++ != '/') {
@@ -185,17 +182,57 @@ X509_NAME* parse_subject_name(std::string &subject_string) {
     }
   }
 
-  return name.release();
+  return name;
 }
 
-static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
+typedef struct {
+  const char* field_name;
+  const char* short_desc;
+  const char* default_value;
+  int nid;
+} ReqField;
+
+static const char* prompt_field(const ReqField &field, char *buffer, size_t buffer_size) {
+  // Prompt with default value if available
+  if (field.default_value && field.default_value[0]) {
+    fprintf(stdout, "%s [%s]: ", field.short_desc, field.default_value);
+  } else {
+    fprintf(stdout, "%s: ", field.short_desc);
+  }
+  fflush(stdout);
+
+  // Get input with fgets
+  if (fgets(buffer, buffer_size, stdin) == NULL) {
+    fprintf(stderr, "Error reading input\n");
+    return NULL;
+  }
+
+  // Remove newline character if present
+  size_t len = strnlen(buffer, buffer_size);
+  if (len > 0 && buffer[len - 1] == '\n') {
+    buffer[len - 1] = '\0';
+    len--;
+  }
+
+  if (strcmp(buffer, ".") == 0) {
+    // Empty entry requested
+    return "";
+  }
+  if (len == 0 && field.default_value) {
+    return field.default_value;
+  }
+  if (len > 0) {
+    // Use provided input
+    return buffer;
+  }
+
+  // Empty input and no default - use empty string
+  return "";
+}
+
+static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
   // Default values for subject fields
-  const struct {
-    const char* field_name;
-    const char* short_desc;
-    const char* default_value;
-    int nid;
-  } subject_fields[] = {
+  const ReqField subject_fields[] = {
     {"countryName", "Country Name (2 letter code)", "AU", NID_countryName},
     {"stateOrProvinceName", "State or Province Name (full name)", "Some-State", NID_stateOrProvinceName},
     {"localityName", "Locality Name (eg, city)", "", NID_localityName},
@@ -206,12 +243,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
   };
 
   // Extra attributes for CSR
-  const struct {
-    const char* field_name;
-    const char* short_desc;
-    const char* default_value;
-    int nid;
-  } extra_attributes[] = {
+  const ReqField extra_attributes[] = {
     {"challengePassword", "A challenge password", "", NID_pkcs9_challengePassword},
     {"unstructuredName", "An optional company name", "", NID_pkcs9_unstructuredName}
   };
@@ -236,41 +268,10 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
 
   // Process each subject field
   for (const auto& field : subject_fields) {
-    // Prompt with default value if available
-    if (field.default_value && field.default_value[0]) {
-      fprintf(stdout, "%s [%s]: ", field.short_desc, field.default_value);
-    } else {
-      fprintf(stdout, "%s: ", field.short_desc);
-    }
-    fflush(stdout);
+    const char* value = prompt_field(field, buffer, sizeof(buffer));
 
-    // Get input with fgets
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-      fprintf(stderr, "Error reading input\n");
+    if (value == NULL) {
       return NULL;
-    }
-
-    // Remove newline character if present
-    size_t len = strnlen(buffer, sizeof(buffer));
-    if (len > 0 && buffer[len - 1] == '\n') {
-      buffer[len - 1] = '\0';
-      len--;
-    }
-
-    // Process input
-    const char* value = nullptr;
-    if (strncmp(buffer, ".", sizeof(buffer)) == 0) {
-      // Empty entry requested
-      value = "";
-    } else if (len == 0 && field.default_value) {
-      // Use default value
-      value = field.default_value;
-    } else if (len > 0) {
-      // Use provided input
-      value = buffer;
-    } else {
-      // Empty input and no default - use empty string
-      value = "";
     }
 
     // Only add non-empty values
@@ -283,6 +284,10 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
       }
     }
   }
+  if (X509_NAME_entry_count(subj.get()) == 0) {
+    fprintf(stderr, "Error: At least one subject field must be provided.\n");
+    return NULL;
+  }
 
   // If this is a CSR, handle extra attributes
   if (isCSR) {
@@ -291,71 +296,37 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
 
     // Process each extra attribute
     for (const auto& attr : extra_attributes) {
-      // Prompt with default value if available
-      if (attr.default_value && attr.default_value[0]) {
-        fprintf(stdout, "%s [%s]: ", attr.short_desc, attr.default_value);
-      } else {
-        fprintf(stdout, "%s: ", attr.short_desc);
-      }
-      fflush(stdout);
+      const char *value = prompt_field(attr, buffer, sizeof(buffer));
 
-      // Get input with fgets
-      if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-        fprintf(stderr, "Error reading input\n");
+      if (value == NULL) {
         return NULL;
-      }
-
-      // Remove newline character if present
-      size_t len = strnlen(buffer, sizeof(buffer));
-      if (len > 0 && buffer[len - 1] == '\n') {
-        buffer[len - 1] = '\0';
-        len--;
-      }
-
-      // Process input
-      const char* value = nullptr;
-      if (strncmp(buffer, ".", sizeof(buffer)) == 0) {
-        // Empty entry requested
-        value = "";
-      } else if (len == 0 && attr.default_value) {
-        // Use default value
-        value = attr.default_value;
-      } else if (len > 0) {
-        // Use provided input
-        value = buffer;
-      } else {
-        // Empty input and no default - use empty string
-        value = "";
       }
 
       // Only add non-empty attributes
       if (value && value[0]) {
-        X509_ATTRIBUTE* x509_attr = X509_ATTRIBUTE_create_by_NID(nullptr,
-                                                               attr.nid,
-                                                               MBSTRING_ASC,
-                                                               reinterpret_cast<const unsigned char*>(value),
-                                                               -1);
+        bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(nullptr,
+                                                     attr.nid,
+                                                     MBSTRING_ASC,
+                                                     reinterpret_cast<const unsigned char*>(value),
+                                                     -1));
         if (!x509_attr) {
           fprintf(stderr, "Error creating attribute %s\n", attr.field_name);
           return NULL;
         }
 
-        if (!X509_REQ_add1_attr(req, x509_attr)) {
+        if (!X509_REQ_add1_attr(req, x509_attr.get())) {
           fprintf(stderr, "Error adding attribute %s to request\n", attr.field_name);
-          X509_ATTRIBUTE_free(x509_attr);
           return NULL;
         }
-
-        X509_ATTRIBUTE_free(x509_attr);
       }
     }
   }
 
-  return subj.release();
+  return subj;
 }
 
 static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name, bool isCSR) {
-  X509_NAME *name;
+  bssl::UniquePtr<X509_NAME> name;
 
   // Set version
   if (!X509_REQ_set_version(req, 0L))  // version 1
@@ -370,11 +341,9 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &
     }
   }
 
-  if (!X509_REQ_set_subject_name(req, name)) {
-    X509_NAME_free(name);
+  if (!X509_REQ_set_subject_name(req, name.get())) {
     return 0;
   }
-  X509_NAME_free(name);
 
   if (!X509_REQ_set_pubkey(req, pkey)) {
     return 0;
@@ -443,22 +412,19 @@ static bool add_cert_extensions(X509 *cert) {
                        "basicConstraints=critical,CA:true\n";
 
   // Create a BIO for the config
-  BIO *bio = BIO_new_mem_buf(config, -1);
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(config, -1));
   if (!bio) {
     fprintf(stderr, "Failed to create memory BIO\n");
     return false;
   }
 
-  CONF *conf = NCONF_new(NULL);
+  bssl::UniquePtr<CONF> conf(NCONF_new(NULL));
   if (!conf) {
-    BIO_free(bio);
     fprintf(stderr, "Failed to create CONF structure\n");
     return false;
   }
 
-  if (NCONF_load_bio(conf, bio, NULL) <= 0) {
-    BIO_free(bio);
-    NCONF_free(conf);
+  if (NCONF_load_bio(conf.get(), bio.get(), NULL) <= 0) {
     fprintf(stderr, "Failed to load config from BIO\n");
     return false;
   }
@@ -467,14 +433,10 @@ static bool add_cert_extensions(X509 *cert) {
   X509V3_CTX ctx;
   X509V3_set_ctx_nodb(&ctx);
   X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);  // Self-signed
-  X509V3_set_nconf(&ctx, conf);
+  X509V3_set_nconf(&ctx, conf.get());
 
   // Add extensions from config to the certificate
-  bool result = X509V3_EXT_add_nconf(conf, &ctx, "v3_ca", cert) != 0;
-
-  // Clean up
-  NCONF_free(conf);
-  BIO_free(bio);
+  bool result = X509V3_EXT_add_nconf(conf.get(), &ctx, "v3_ca", cert) != 0;
 
   return result;
 }
