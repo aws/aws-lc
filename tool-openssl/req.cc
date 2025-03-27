@@ -14,6 +14,8 @@
 
 #define DEFAULT_KEY_LENGTH 2048
 #define MIN_KEY_LENGTH 512
+#define MAX_KEY_LENGTH 16000
+#define BUF_SIZE 1024
 #define DEFAULT_CHAR_TYPE MBSTRING_ASC
 
 // Notes: -x509 option assumes -new when -in is not passed in with OpenSSL. We do not support -in as of now, so -new
@@ -64,7 +66,13 @@ static EVP_PKEY *generate_key(const char *keyspec) {
 
     // Parse keyspec
     if (OPENSSL_strncasecmp(keyspec, "rsa:", 4) == 0) {
-      keylen = atol(keyspec + 4);
+      char *endptr = NULL;
+      long value = strtol(keyspec + 4, &endptr, 10);
+      if (endptr != keyspec + 4 && *endptr == '\0' && errno != ERANGE) {
+        keylen = value;
+      } else {
+        fprintf(stderr, "Invalid RSA key length: %s, using default length\n", keyspec + 4);
+      }
     } else if (OPENSSL_strcasecmp(keyspec, "rsa") == 0) {
 	    keylen = DEFAULT_KEY_LENGTH;
     } else {
@@ -74,8 +82,13 @@ static EVP_PKEY *generate_key(const char *keyspec) {
 
     // Validate key length
     if (keylen < MIN_KEY_LENGTH) {
-        fprintf(stderr, "Key length too short (minimum %d bits)\n", MIN_KEY_LENGTH);
-        return NULL;
+      fprintf(stderr, "Key length too short (minimum %d bits)\n", MIN_KEY_LENGTH);
+      return NULL;
+    }
+
+    if (keylen > MAX_KEY_LENGTH) {
+      fprintf(stderr, "Key length too large (maximum %d bits)\n", MAX_KEY_LENGTH);
+      return NULL;
     }
 
     // Create key generation context
@@ -107,7 +120,7 @@ X509_NAME* parse_subject_name(std::string &subject_string) {
   }
 
   // Create new X509_NAME
-  X509_NAME* name = X509_NAME_new();
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
   if (!name) {
     return nullptr;
   }
@@ -127,7 +140,6 @@ X509_NAME* parse_subject_name(std::string &subject_string) {
 
     if (!*subject_name_ptr) {
       fprintf(stderr, "Hit end of string before finding the equals.\n");
-      X509_NAME_free(name);
       return nullptr;
     }
 
@@ -165,16 +177,15 @@ X509_NAME* parse_subject_name(std::string &subject_string) {
     }
 
     // Add entry to the name
-    if (!X509_NAME_add_entry_by_NID(name, nid, DEFAULT_CHAR_TYPE,
+    if (!X509_NAME_add_entry_by_NID(name.get(), nid, DEFAULT_CHAR_TYPE,
                                    (unsigned char*)value.c_str(),
                                    -1, -1, 0)) {
       OPENSSL_PUT_ERROR(X509, ERR_R_X509_LIB);
-      X509_NAME_free(name);
       return nullptr;
     }
   }
 
-  return name;
+  return name.release();
 }
 
 static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
@@ -206,7 +217,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
   };
 
   // Get the subject name from the request
-  X509_NAME* subj = X509_NAME_new();
+  bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
   if (!subj) {
     fprintf(stderr, "Error getting subject name from request\n");
     return NULL;
@@ -221,7 +232,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
   fprintf(stdout, "If you enter '.', the field will be left blank.\n");
   fprintf(stdout, "\n");
 
-  char buffer[1024];
+  char buffer[BUF_SIZE];
 
   // Process each subject field
   for (const auto& field : subject_fields) {
@@ -235,13 +246,12 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
 
     // Get input with fgets
     if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-      X509_NAME_free(subj);
       fprintf(stderr, "Error reading input\n");
       return NULL;
     }
 
     // Remove newline character if present
-    size_t len = strlen(buffer);
+    size_t len = strnlen(buffer, sizeof(buffer));
     if (len > 0 && buffer[len - 1] == '\n') {
       buffer[len - 1] = '\0';
       len--;
@@ -249,7 +259,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
 
     // Process input
     const char* value = nullptr;
-    if (strcmp(buffer, ".") == 0) {
+    if (strncmp(buffer, ".", sizeof(buffer)) == 0) {
       // Empty entry requested
       value = "";
     } else if (len == 0 && field.default_value) {
@@ -265,10 +275,9 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
 
     // Only add non-empty values
     if (value && value[0]) {
-      if (!X509_NAME_add_entry_by_NID(subj, field.nid, chtype,
+      if (!X509_NAME_add_entry_by_NID(subj.get(), field.nid, chtype,
                                      reinterpret_cast<const unsigned char*>(value),
                                      -1, -1, 0)) {
-        X509_NAME_free(subj);
         fprintf(stderr, "Error adding %s to subject\n", field.field_name);
         return NULL;
       }
@@ -297,7 +306,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
       }
 
       // Remove newline character if present
-      size_t len = strlen(buffer);
+      size_t len = strnlen(buffer, sizeof(buffer));
       if (len > 0 && buffer[len - 1] == '\n') {
         buffer[len - 1] = '\0';
         len--;
@@ -305,7 +314,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
 
       // Process input
       const char* value = nullptr;
-      if (strcmp(buffer, ".") == 0) {
+      if (strncmp(buffer, ".", sizeof(buffer)) == 0) {
         // Empty entry requested
         value = "";
       } else if (len == 0 && attr.default_value) {
@@ -342,7 +351,7 @@ static X509_NAME *prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long ch
     }
   }
 
-  return subj;
+  return subj.release();
 }
 
 static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name, bool isCSR) {
@@ -376,7 +385,7 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &
 
 static int req_password_callback(char *buf, int size, int rwflag, void *userdata) {
   const char *prompt = "Enter PEM pass phrase:";
-  char verify_buf[1024];
+  char verify_buf[BUF_SIZE];
   int len;
 
   // Display prompt
@@ -390,7 +399,7 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
   }
 
   // Remove trailing newline
-  len = strlen(buf);
+  len = strnlen(buf, sizeof(buf));
   if (len > 0 && buf[len-1] == '\n')
     buf[--len] = '\0';
 
@@ -406,12 +415,12 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
     }
 
     // Remove trailing newline
-    int verify_len = strlen(verify_buf);
+    int verify_len = strnlen(verify_buf, sizeof(verify_buf));
     if (verify_len > 0 && verify_buf[verify_len-1] == '\n')
       verify_buf[--verify_len] = '\0';
 
     // Check if passwords match
-    if (strcmp(buf, verify_buf) != 0) {
+    if (strncmp(buf, verify_buf, BUF_SIZE) != 0) {
       fprintf(stderr, "Passwords don't match\n");
       return 0;
     }
