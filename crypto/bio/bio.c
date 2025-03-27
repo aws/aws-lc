@@ -96,7 +96,7 @@ static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
     argi = (int)len;
   }
 
-  if (bio_ret && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+  if (bio_ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
     if (*processed > INT_MAX) {
       return -1;
     }
@@ -107,7 +107,7 @@ static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
 
   long ret = bio->callback(bio, oper, argp, argi, argl, bio_ret);
 
-  if (ret >= 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+  if (ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
     *processed = (size_t)ret;
     ret = 1;
   }
