@@ -115,19 +115,17 @@ static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
   return ret;
 }
 
-//   |get_callback| returns the appropriate callback function for a given |BIO|, preferring
-//   the extended interface |callback_ex| over the legacy interface.
+// |get_callback| returns the appropriate callback function for a given |BIO|, preferring
+// the extended interface |callback_ex| over the legacy interface.
 //
-//   When only the legacy callback is available, it is wrapped in the extended format
-//   via |callback_fn_wrap_ex| to provide a consistent interface. The extended callback
-//   provides additional parameters for length and bytes processed tracking.
+// When only the legacy callback is available, it is wrapped in the extended format
+// via |callback_fn_wrap_ex| to provide a consistent interface. The extended callback
+// provides additional parameters for length and bytes processed tracking.
 //
-//   Returns the |callback_ex| function if available, a wrapped legacy callback if only
-//   |callback| is set, or NULL if no callbacks are set.
+// Returns the |callback_ex| function if available, a wrapped legacy callback if only
+// |callback| is set, or NULL if no callbacks are set.
 static BIO_callback_fn_ex get_callback(BIO *bio) {
-  if (bio == NULL) {
-    return NULL;
-  }
+  assert(bio != NULL);
 
   if (bio->callback_ex != NULL) {
     return bio->callback_ex;
@@ -251,7 +249,6 @@ void BIO_free_all(BIO *bio) {
 }
 
 int BIO_read(BIO *bio, void *buf, int len) {
-  int ret = 0;
 
   if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
@@ -276,7 +273,7 @@ int BIO_read(BIO *bio, void *buf, int len) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
   }
-  ret = bio->method->bread(bio, buf, len);
+  int ret = bio->method->bread(bio, buf, len);
 
   return handle_callback_return(bio, BIO_CB_READ, buf, len, ret);
 }
@@ -332,7 +329,7 @@ int BIO_gets(BIO *bio, char *buf, int len) {
 }
 
 int BIO_write(BIO *bio, const void *in, int inl) {
-  int ret = 0;
+
   if (bio == NULL || bio->method == NULL || bio->method->bwrite == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
@@ -356,7 +353,7 @@ int BIO_write(BIO *bio, const void *in, int inl) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
   }
-  ret = bio->method->bwrite(bio, in, inl);
+  int ret = bio->method->bwrite(bio, in, inl);
 
   return handle_callback_return(bio, BIO_CB_WRITE, in, inl, ret);
 }
