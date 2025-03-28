@@ -78,6 +78,7 @@ extern "C" {
 // considered a priority for performance or hardening work. Do not use it in
 // new code. Use Ed25519, ECDSA with P-256, or RSA instead.
 
+#define OPENSSL_DSA_MAX_MODULUS_BITS 10000
 
 // Allocation and destruction.
 //
@@ -187,8 +188,8 @@ OPENSSL_EXPORT DSA *DSAparams_dup(const DSA *dsa);
 // Key generation.
 
 // DSA_generate_key generates a public/private key pair in |dsa|, which must
-// already have parameters setup. It returns one on success and zero on
-// error.
+// already have parameters setup. Only supports generating upto |OPENSSL_DSA_MAX_MODULUS_BITS|
+// bit keys. It returns one on success and zero on error.
 OPENSSL_EXPORT int DSA_generate_key(DSA *dsa);
 
 
