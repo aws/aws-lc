@@ -1071,7 +1071,7 @@ $code.=<<___    if ($flavour =~ /64/);
     vld1.32 {q8-q9},[$key1],#32         // load key schedule...
     aese    $dat0,q21
     aesmc   $dat0,$dat0
-    subs    $rounds,$rounds,#10     // if rounds==10, jump to aes-128-xts processing
+    subs    $rounds,$rounds,#10     //// if rounds==10, jump to aes-128-xts processing
 //    b.eq    .Lxts_128_enc
 .Lxts_enc_round_loop:
     aese    $dat0,q8
@@ -1167,12 +1167,12 @@ $code.=<<___    if ($flavour =~ /64/);
     vld1.32 {q8-q9},[$key1]         // load key schedule...
     sub     $rounds0,$rounds0,#6
     add     $key_,$key1,$ivp,lsl#4  // pointer to last 7 round keys
-    sub     $rounds0,$rounds0,#2
     vld1.32 {q10-q11},[$key_],#32
     vld1.32 {q12-q13},[$key_],#32
     vld1.32 {q14-q15},[$key_],#32
     vld1.32 {$rndlast},[$key_]
 
+    sub     $rounds0,$rounds0,#2
     add     $key_,$key1,#32
     mov     $rounds,$rounds0
 
@@ -1231,7 +1231,7 @@ $code.=<<___    if ($flavour =~ /64/);
     veor    $dat4,$dat4,$iv4
     sub     $len,$len,#32           // bias
     mov     $rounds,$rounds0
-    b       .Loop5x_xts_enc
+  //  b       .Loop5x_xts_enc
 
 .align  4
 .Loop5x_xts_enc:
@@ -1344,8 +1344,14 @@ $code.=<<___    if ($flavour =~ /64/);
     aese    $dat4,q14
     aesmc   $dat4,$dat4
 
-    veor    $tmp0,$rndlast,$iv0
     aese    $dat0,q15
+    aese    $dat1,q15
+    aese    $dat2,q15
+    aese    $dat3,q15
+    aese    $dat4,q15
+
+    veor    $tmp0,$rndlast,$iv0
+    //    aese    $dat0,q15
     // The iv for first block of one iteration
     extr    $midnumx,$ivh,$ivh,#32
     extr    $ivh,$ivh,$ivl,#63
@@ -1355,7 +1361,7 @@ $code.=<<___    if ($flavour =~ /64/);
     fmov    $ivd01,$ivh
     veor    $tmp1,$rndlast,$iv1
     vld1.8  {$in0},[$inp],#16
-    aese    $dat1,q15
+    //  aese    $dat1,q15
     // The iv for second block
     extr    $midnumx,$ivh,$ivh,#32
     extr    $ivh,$ivh,$ivl,#63
@@ -1365,7 +1371,7 @@ $code.=<<___    if ($flavour =~ /64/);
     fmov    $ivd11,$ivh
     veor    $tmp2,$rndlast,$iv2
     vld1.8  {$in1},[$inp],#16
-    aese    $dat2,q15
+    //  aese    $dat2,q15
     // The iv for third block
     extr    $midnumx,$ivh,$ivh,#32
     extr    $ivh,$ivh,$ivl,#63
@@ -1375,7 +1381,7 @@ $code.=<<___    if ($flavour =~ /64/);
     fmov    $ivd21,$ivh
     veor    $tmp3,$rndlast,$iv3
     vld1.8  {$in2},[$inp],#16
-    aese    $dat3,q15
+    //  aese    $dat3,q15
     // The iv for fourth block
     extr    $midnumx,$ivh,$ivh,#32
     extr    $ivh,$ivh,$ivl,#63
@@ -1385,7 +1391,7 @@ $code.=<<___    if ($flavour =~ /64/);
     fmov    $ivd31,$ivh
     veor    $tmp4,$rndlast,$iv4
     vld1.8  {$in3},[$inp],#16
-    aese    $dat4,q15
+    //  aese    $dat4,q15
 
     // The iv for fifth block
     extr    $midnumx,$ivh,$ivh,#32
@@ -1397,7 +1403,7 @@ $code.=<<___    if ($flavour =~ /64/);
 
     vld1.8  {$in4},[$inp],#16
     cbz     $xoffset,.Lxts_enc_tail4x
-    vld1.32 {q8},[$key_],#16        // re-pre-load rndkey[0]
+//    vld1.32 {q8},[$key_],#16        // re-pre-load rndkey[0]
     veor    $tmp0,$tmp0,$dat0
     veor    $dat0,$in0,$iv0
     veor    $tmp1,$tmp1,$dat1
@@ -1407,14 +1413,18 @@ $code.=<<___    if ($flavour =~ /64/);
     veor    $tmp3,$tmp3,$dat3
     veor    $dat3,$in3,$iv3
     veor    $tmp4,$tmp4,$dat4
-    vst1.8  {$tmp0},[$out],#16
+    //vst1.8  {$tmp0},[$out],#16
     veor    $dat4,$in4,$iv4
-    vst1.8  {$tmp1},[$out],#16
+    //vst1.8  {$tmp1},[$out],#16
     mov     $rounds,$rounds0
+    vst1.8  {$tmp0-$tmp1},[$out],#32
     vst1.8  {$tmp2},[$out],#16
+//    vld1.32 {q9},[$key_],#16        // re-pre-load rndkey[1]
+//    vst1.8  {$tmp3},[$out],#16
+//    vst1.8  {$tmp4},[$out],#16
+    vst1.8  {$tmp3-$tmp4},[$out],#32
+    vld1.32 {q8},[$key_],#16        // re-pre-load rndkey[0]
     vld1.32 {q9},[$key_],#16        // re-pre-load rndkey[1]
-    vst1.8  {$tmp3},[$out],#16
-    vst1.8  {$tmp4},[$out],#16
     b.hs    .Loop5x_xts_enc
 
 
@@ -1492,31 +1502,12 @@ $code.=<<___    if ($flavour =~ /64/);
     aese    $dat2,q8
     aesmc   $dat2,$dat2
     veor    $tmp0,$iv0,$rndlast
-    subs    $len,$len,#0x30
-    // The iv for first block
-    fmov    $ivl,$ivd20
-    fmov    $ivh,$ivd21
-    //mov   $constnum,#0x87
-    extr    $midnumx,$ivh,$ivh,#32
-    extr    $ivh,$ivh,$ivl,#63
-    and     $tmpmw,$constnum,$midnum,asr#31
-    eor     $ivl,$tmpmx,$ivl,lsl#1
-    fmov    $ivd00,$ivl
-    fmov    $ivd01,$ivh
-    veor    $tmp1,$iv1,$rndlast
-    csel    $xoffset,$len,$xoffset,lo   // x6, w6, is zero at this point
     aese    $dat0,q9
     aesmc   $dat0,$dat0
     aese    $dat1,q9
     aesmc   $dat1,$dat1
     aese    $dat2,q9
     aesmc   $dat2,$dat2
-    veor    $tmp2,$iv2,$rndlast
-
-    add     $xoffset,$xoffset,#0x20
-    add     $inp,$inp,$xoffset
-    mov     $key_,$key1
-
     aese    $dat0,q12
     aesmc   $dat0,$dat0
     aese    $dat1,q12
@@ -1538,15 +1529,65 @@ $code.=<<___    if ($flavour =~ /64/);
     aese    $dat0,q15
     aese    $dat1,q15
     aese    $dat2,q15
+
+    veor    $tmp2,$iv2,$rndlast
+    subs    $len,$len,#0x30
+    // The iv for first block
+    fmov    $ivl,$ivd20
+    fmov    $ivh,$ivd21
+    //mov   $constnum,#0x87
+    extr    $midnumx,$ivh,$ivh,#32
+    extr    $ivh,$ivh,$ivl,#63
+    and     $tmpmw,$constnum,$midnum,asr#31
+    eor     $ivl,$tmpmx,$ivl,lsl#1
+    fmov    $ivd00,$ivl
+    fmov    $ivd01,$ivh
+    veor    $tmp1,$iv1,$rndlast
+    csel    $xoffset,$len,$xoffset,lo   // x6, w6, is zero at this point
+//    aese    $dat0,q9
+//    aesmc   $dat0,$dat0
+//    aese    $dat1,q9
+//    aesmc   $dat1,$dat1
+//    aese    $dat2,q9
+//    aesmc   $dat2,$dat2
+//    veor    $tmp2,$iv2,$rndlast
+
+    add     $xoffset,$xoffset,#0x20
+    add     $inp,$inp,$xoffset
+    mov     $key_,$key1
+
+//    aese    $dat0,q12
+//    aesmc   $dat0,$dat0
+//    aese    $dat1,q12
+//    aesmc   $dat1,$dat1
+//    aese    $dat2,q12
+//    aesmc   $dat2,$dat2
+//    aese    $dat0,q13
+//    aesmc   $dat0,$dat0
+//    aese    $dat1,q13
+//    aesmc   $dat1,$dat1
+//    aese    $dat2,q13
+//    aesmc   $dat2,$dat2
+//    aese    $dat0,q14
+//    aesmc   $dat0,$dat0
+//    aese    $dat1,q14
+//    aesmc   $dat1,$dat1
+//    aese    $dat2,q14
+//    aesmc   $dat2,$dat2
+//    aese    $dat0,q15
+//    aese    $dat1,q15
+//    aese    $dat2,q15
     vld1.8  {$in2},[$inp],#16
     add     $rounds,$rounds0,#2
-    vld1.32 {q8},[$key_],#16        // re-pre-load rndkey[0]
+//    vld1.32 {q8},[$key_],#16        // re-pre-load rndkey[0]
     veor    $tmp0,$tmp0,$dat0
     veor    $tmp1,$tmp1,$dat1
     veor    $dat2,$dat2,$tmp2
-    vld1.32 {q9},[$key_],#16        // re-pre-load rndkey[1]
-    vst1.8  {$tmp0},[$out],#16
-    vst1.8  {$tmp1},[$out],#16
+//    vld1.32 {q9},[$key_],#16        // re-pre-load rndkey[1]
+  vld1.32 {q8,q9},[$key_],#32
+//    vst1.8  {$tmp0},[$out],#16
+//    vst1.8  {$tmp1},[$out],#16
+    vst1.8  {$tmp0-$tmp1},[$out],#32
     vst1.8  {$dat2},[$out],#16
     cmn     $len,#0x30
     b.eq    .Lxts_enc_done
