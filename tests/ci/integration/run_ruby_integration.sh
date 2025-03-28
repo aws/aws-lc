@@ -51,7 +51,7 @@ function ruby_build() {
     make test-all TESTS="test/rubygems/test*.rb"
 
     # drb was moved from a default gem to a bundled gem in later versions of Ruby.
-    if [[ "${branch}" != "master" ]]; then
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         make test-all TESTS="test/drb/*ssl*.rb"
     fi
 
@@ -70,15 +70,15 @@ function ruby_patch() {
         --depth 1 \
         --branch ${branch}
 
-    # Add directory of backport patches if branch is not master.
-    if [[ "${branch}" != "master" ]]; then
+    # Add directory of backport patches if branch is a version later than Ruby 3.4.
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         patch_dirs+=("${RUBY_BACKPORT_FOLDER}")
     fi
 
     for patch_dir in "${patch_dirs[@]}"; do
         for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
           echo "Apply patch ${patchfile}..."
-          cat ${patchfile} | patch -p1 -F 3 --quiet -d ${src_dir}
+          patch --strip 1 -F 3 --quiet -d ${src_dir} --input ${patchfile}
         done
     done
 }

@@ -60,7 +60,7 @@ enum FIPSStatus {
         (approved) = AWSLC_APPROVED;                                \
     }                                                               \
  }                                                                  \
- while(0)                                                           \
+ while(0)
 
 #else
 

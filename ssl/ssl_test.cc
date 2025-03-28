@@ -11148,6 +11148,40 @@ TEST(SSLTest, BIO) {
   }
 }
 
+TEST(SSLTest, BIO_2) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<BIO> server_bio(BIO_new_ssl(server_ctx.get(), 0));
+  bssl::UniquePtr<BIO> client_bio(BIO_new_ssl_connect(client_ctx.get()));
+  ASSERT_TRUE(server_bio);
+  ASSERT_TRUE(client_bio);
+
+  SSL *server_ssl_ptr, *client_ssl_ptr;
+  ASSERT_TRUE(BIO_get_ssl(server_bio.get(), &server_ssl_ptr));
+  ASSERT_TRUE(BIO_get_ssl(client_bio.get(), &client_ssl_ptr));
+  ASSERT_TRUE(server_ssl_ptr);
+  ASSERT_TRUE(client_ssl_ptr);
+
+  // Client SSL BIOs typically establish connections to a host using
+  // |BIO_do_connect|, which leverages the underlying connect |BIO| for socket
+  // management. While OpenSSL provides |BIO_new_accept| and |BIO_s_accept| for
+  // server-side socket setup, we haven't yet implemented this functionality.
+  // For these tests, we opt for traditional SSL connection methods instead
+  // until we have support for server-side socket management via |BIO|s.
+  // Adding full socket management on the server side would exceed the scope of
+  // testing |BIO_new_ssl(_connect)|, especially since we have dedicated tests
+  // elsewhere that verify |BIO_do_connect|'s correctness.
+  BIO *bio1, *bio2;
+  ASSERT_TRUE(BIO_new_bio_pair(&bio1, 0, &bio2, 0));
+  SSL_set_bio(client_ssl_ptr, bio1, bio1);
+  SSL_set_bio(server_ssl_ptr, bio2, bio2);
+  ASSERT_TRUE(CompleteHandshakes(client_ssl_ptr, server_ssl_ptr));
+}
+
 TEST(SSLTest, ALPNConfig) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);

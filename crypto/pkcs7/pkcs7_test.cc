@@ -27,6 +27,8 @@
 #include "../test/test_util.h"
 #include "internal.h"
 
+std::string GetTestData(const char *path);
+
 // kPKCS7NSS contains the certificate chain of mail.google.com, as saved by NSS
 // using the Chrome UI.
 static const uint8_t kPKCS7NSS[] = {
@@ -1699,7 +1701,8 @@ TEST(PKCS7Test, TestEnveloped) {
   // NOTE: we make |buf| larger than |pt_len| in case padding gets added.
   // without the extra room, we sometimes overflow into the next variable on the
   // stack.
-  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH], decrypted[pt_len + EVP_MAX_BLOCK_LENGTH];
+  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH];
+  uint8_t decrypted[pt_len + EVP_MAX_BLOCK_LENGTH];
 
   OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_memset(buf, 'A', pt_len);
@@ -1828,9 +1831,9 @@ TEST(PKCS7Test, TestEnveloped) {
   // expectation. Ideally we'd find a way to access the padded plaintext and
   // account for this deterministically by checking the random "padding" and
   // adusting accordingly.
-  const size_t max_decrypt =
-    pt_len + EVP_CIPHER_block_size(EVP_aes_128_cbc());
-  const size_t decrypted_len = (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted));
+  const size_t max_decrypt = pt_len + EVP_CIPHER_block_size(EVP_aes_128_cbc());
+  const size_t decrypted_len =
+      (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted));
   ASSERT_LE(decrypted_len, sizeof(decrypted));
   if (decrypted_len > pt_len) {
     EXPECT_LT(max_decrypt - 4, decrypted_len);
@@ -2067,4 +2070,159 @@ TEST(PKCS7Test, SetDetached) {
   // data is "detached" when |PKCS7_set_detached| is set with 1.
   EXPECT_TRUE(PKCS7_set_detached(p7.get(), 1));
   EXPECT_FALSE(p7.get()->d.sign->contents->d.data);
+}
+
+TEST(PKCS7Test, PKCS7SignedAttributes) {
+  // This file was generated with the following command:
+  // openssl smime -sign -in input.txt -signer crypto/ocsp/aws/ca_cert.pem
+  //        -inkey crypto/ocsp/aws/ca_key.pem -out signed.p7s -outform PEM
+  //        -nodetach -md sha512
+  //
+  // Files with signed attributes aren't generatable with AWS-LC for now, as
+  // |PKCS7_NOATTR| is always assumed with |PKCS7_sign|. See |PKCS7_sign|
+  // for more details.
+  static const char kPKCS7SignedAttributes[] = R"(
+-----BEGIN PKCS7-----
+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
+-----END PKCS7-----
+)";
+
+  // Timestamp for March 11, 2025.
+  static const int64_t kReferencePKCS7Time = 1741824000;
+
+  const bssl::UniquePtr<BIO> bio(
+      BIO_new_mem_buf(kPKCS7SignedAttributes, strlen(kPKCS7SignedAttributes)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<PKCS7> pkcs7(
+      PEM_read_bio_PKCS7(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkcs7);
+  ASSERT_TRUE(PKCS7_type_is_signed(pkcs7.get()));
+
+  // Set up trust store for verification.
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), ca_cert.get()));
+
+  // Set a valid time to avoid time bomb in tests.
+  X509_VERIFY_PARAM *param = X509_STORE_get0_param(store.get());
+  X509_VERIFY_PARAM_set_time_posix(param, kReferencePKCS7Time);
+
+  bssl::UniquePtr<BIO> out(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
+                           out.get(), /*flags*/ 0));
+
+  // Run |PKCS7_verify| again to check that we're consuming a copy of the
+  // underlying |EVP_MD_CTX|.
+  EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
+                         out.get(), /*flags*/ 0));
+}
+
+TEST(PKCS7Test, PKCS7SignedAttributesRuby) {
+  // The following test file was taken from ruby/openssl's pkcs7 tests.
+  static const char kPKCS7Ruby[] = R"(
+-----BEGIN PKCS7-----
+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
+-----END PKCS7-----
+)";
+
+  const bssl::UniquePtr<BIO> bio(
+      BIO_new_mem_buf(kPKCS7Ruby, strlen(kPKCS7Ruby)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<PKCS7> pkcs7(
+      PEM_read_bio_PKCS7(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkcs7);
+  ASSERT_TRUE(PKCS7_type_is_signed(pkcs7.get()));
+
+  // Verify the file how Ruby's tests do it.
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  bssl::UniquePtr<BIO> out(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
+                           out.get(), /*flags*/ PKCS7_NOVERIFY));
 }
