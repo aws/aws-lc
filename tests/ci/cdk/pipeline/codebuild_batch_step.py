@@ -42,6 +42,7 @@ class CodeBuildBatchStep(pipelines.Step):
         partial_batch_build_spec: typing.Mapping[builtins.str, typing.Any],
         role: iam.Role,
         timeout: int = 300,
+        project_description: str = None,
         env: typing.Optional[typing.Mapping[str, str]] = None,
     ):
         super().__init__(id)
@@ -54,6 +55,7 @@ class CodeBuildBatchStep(pipelines.Step):
         self.partial_batch_build_spec = partial_batch_build_spec
         self.role = role
         self.timeout = timeout
+        self.project_description = project_description
         self.env = (
             {
                 key: codebuild.BuildEnvironmentVariable(value=value)
@@ -80,6 +82,7 @@ class CodeBuildBatchStep(pipelines.Step):
                 }
             ),
             role=self.role,
+            description=self.project_description,
             timeout=Duration.minutes(self.timeout),
         )
 

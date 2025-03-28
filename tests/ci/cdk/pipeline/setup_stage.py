@@ -56,11 +56,11 @@ class SetupStack(Stack):
 
         cross_account_role = iam.Role(
             self,
-            "CrossAccountCodeBuildRole",
-            role_name="CrossAccountCodeBuildRole",
+            "CrossAccountBuildRole",
+            role_name="CrossAccountBuildRole",
             assumed_by=iam.ArnPrincipal(
                 f"arn:aws:iam::{pipeline_environment.account}:role/CrossAccountPipelineRole"
-            ),  # TODO: add a conditional to exclude this in dev env
+            ),
         )
 
         # Grant access to all CodeBuild projects

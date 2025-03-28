@@ -165,7 +165,7 @@ fi
 
 if [[ ${BUILD_TYPE} == "docker" ]]; then
   if [[ -z "${PLATFORM+x}" || -z "${PLATFORM}" ]]; then
-    echo "When building Docker images, a platform must be specified"
+    echo "When building Docker images, a platform must be specified."
     exit 1
   fi
 
@@ -179,7 +179,7 @@ fi
 
 if [[ ${BUILD_TYPE} == "ci" ]]; then
   if [[ -z "${PROJECT+x}" || -z "${PROJECT}" ]]; then
-    echo "When building CI tests, a project name must be specified"
+    echo "When building CI tests, a project name must be specified."
     exit 1
   fi
 

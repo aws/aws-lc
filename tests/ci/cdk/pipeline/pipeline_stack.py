@@ -57,7 +57,11 @@ class AwsLcCiPipeline(Stack):
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 resources=["*"],
-                actions=["codepipeline:GetPipelineExecution"],
+                actions=[
+                    "codepipeline:GetPipelineExecution",
+                    "secretsmanager:GetSecretValue",
+                    "kms:Decrypt"
+                ],
             )
         )
 

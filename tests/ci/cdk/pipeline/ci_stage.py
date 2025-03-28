@@ -4,7 +4,7 @@ import builtins
 import re
 import typing
 
-from aws_cdk import Stage, Environment, Duration, pipelines, aws_iam as iam, Stack
+from aws_cdk import Stage, Environment, Duration, Stack, pipelines, aws_iam as iam, aws_codebuild as codebuild
 from constructs import Construct
 
 from cdk.aws_lc_analytics_stack import AwsLcGitHubAnalyticsStack
@@ -13,6 +13,7 @@ from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import AwsLcGitHubFuzzCIStack
 from pipeline.codebuild_batch_step import CodeBuildBatchStep
+from util.metadata import PRE_PROD_ACCOUNT
 
 
 class CiStage(Stage):
@@ -173,6 +174,37 @@ class CiStage(Stage):
     ):
         stack_names = [stack.stack_name for stack in self.stacks]
 
+        private_repo_sync_step=None
+
+        if self.stacks[0].account == PRE_PROD_ACCOUNT:
+            private_repo_sync_step = pipelines.CodeBuildStep(
+                "PrivateRepoSync",
+                build_environment=codebuild.BuildEnvironment(
+                    environment_variables={
+                        "GITHUB_PAT":  codebuild.BuildEnvironmentVariable(
+                            type=codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER,
+                            value="aws-lc/ci/github/token",
+                        ),
+                    }
+                ),
+                commands=[
+                    "env",
+                    "curl -H \"Authorization: token ${GITHUB_PAT}\" https://api.github.com/user",
+                    "git clone https://${GITHUB_PAT}@github.com/${STAGING_GITHUB_REPO_OWNER}/${STAGING_GITHUB_REPO_NAME}.git",
+                    "git remote add upstream https://github.com/aws/aws-lc.git",
+                    "git fetch upstream",
+                    "git checkout main",
+                    "git merge upstream/main",
+                    # "git push origin main",
+                ],
+                env={
+                    "STAGING_GITHUB_REPO_OWNER": "aws",
+                    "STAGING_GITHUB_REPO_NAME": "private-aws-lc-staging",
+                },
+                role=role,
+                timeout=Duration.minutes(60),
+            )
+
         env = env or {}
 
         prebuild_check_step = pipelines.CodeBuildStep(
@@ -220,6 +252,7 @@ class CiStage(Stage):
             ],
             role=role,
             timeout=300,
+            project_description=f"Pipeline step AwsLcCiPipeline/{self.stage_name}/StartWait",
             partial_batch_build_spec=batch_build_jobs,
             env={
                 **env,
@@ -230,7 +263,11 @@ class CiStage(Stage):
 
         ci_run_step.add_step_dependency(prebuild_check_step)
 
-        pipeline.add_stage(self, post=[prebuild_check_step, ci_run_step])
+        pipeline.add_stage(
+            self,
+            pre=[private_repo_sync_step] if private_repo_sync_step else None,
+            post=[prebuild_check_step, ci_run_step]
+        )
 
 
 class BatchBuildOptions:
