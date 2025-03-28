@@ -437,7 +437,7 @@ err:
 // actually exercised, in FIPS mode. (In non-FIPS mode these tests are only run
 // when requested by |BORINGSSL_self_test|.)
 
-static int boringssl_self_test_rsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_rsa(void) {
   int ret = 0;
   uint8_t output[256];
 
@@ -536,7 +536,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ecc(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ecc(void) {
   int ret = 0;
   EC_KEY *ec_key = NULL;
   EC_POINT *ec_point_in = NULL;
@@ -662,7 +662,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ffdh(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ffdh(void) {
   int ret = 0;
   DH *dh = NULL;
   DH *fb_dh = NULL;
@@ -809,7 +809,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ml_kem(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ml_kem(void) {
   int ret = 0;
 
   static const uint8_t kKeyGenEKSeed[MLKEM512_KEYGEN_SEED_LEN] = {
@@ -1503,7 +1503,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ml_dsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
   int ret = 0;
 
   // Examples kMLDSAKeyGenSeed, kMLDSAKeyGenPublicKey, kMLDSAKeyGenPrivateKey from
@@ -2308,7 +2308,7 @@ static int boringssl_self_test_ml_dsa(void) {
     return ret;
 }
 
-static int boringssl_self_test_eddsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_eddsa(void) {
   int ret = 0;
 
   static const uint8_t kEd25519PrivateKey[ED25519_PRIVATE_KEY_SEED_LEN] = {
@@ -2371,7 +2371,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_hasheddsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_hasheddsa(void) {
   int ret = 0;
 
   static const uint8_t kEd25519PrivateKey[ED25519_PRIVATE_KEY_SEED_LEN] = {
@@ -2555,7 +2555,7 @@ int boringssl_self_test_sha256(void) {
                     "SHA-256 KAT");
 }
 
-static int boringssl_self_test_sha512(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_sha512(void) {
   static const uint8_t kInput[16] = {
       0x21, 0x25, 0x12, 0xf8, 0xd2, 0xad, 0x83, 0x22,
       0x78, 0x1c, 0x6c, 0x4d, 0x69, 0xa9, 0xda, 0xa1,
@@ -2596,7 +2596,7 @@ int boringssl_self_test_hmac_sha256(void) {
                     "HMAC-SHA-256 KAT");
 }
 
-static int boringssl_self_test_hkdf_sha256(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_hkdf_sha256(void) {
   static const uint8_t kHKDF_ikm_tc1[] = {
       0x58, 0x3e, 0xa3, 0xcf, 0x8f, 0xcf, 0xc8, 0x08, 0x73, 0xcc, 0x7b, 0x88,
       0x00, 0x9d, 0x4a, 0xed, 0x07, 0xd8, 0xd8, 0x88, 0xae, 0x98, 0x76, 0x8d,
@@ -2625,7 +2625,7 @@ static int boringssl_self_test_hkdf_sha256(void) {
                     "HKDF-SHA-256 KAT");
 }
 
-static int boringssl_self_test_sha3_256(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_sha3_256(void) {
   // From: SHA3_256ShortMsg.txt
   // Len = 128
   // Msg = d83c721ee51b060c5a41438a8221e040
@@ -2647,7 +2647,7 @@ static int boringssl_self_test_sha3_256(void) {
                     "SHA3-256 KAT");
 }
 
-static int boringssl_self_test_fast(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_fast(void) {
   static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
                                       'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
   // Older versions of the gcc release build on ARM will optimize out the

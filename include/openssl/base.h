@@ -248,6 +248,12 @@ extern "C" {
 #define OPENSSL_INLINE static inline OPENSSL_UNUSED
 #endif
 
+#if defined(OPENSSL_WINDOWS)
+#define OPENSSL_NOINLINE __declspec(noinline)
+#else
+#define OPENSSL_NOINLINE __attribute__((noinline))
+#endif
+
 // ossl_ssize_t is a signed type which is large enough to fit the size of any
 // valid memory allocation. We prefer using |size_t|, but sometimes we need a
 // signed type for OpenSSL API compatibility. This type can be used in such
