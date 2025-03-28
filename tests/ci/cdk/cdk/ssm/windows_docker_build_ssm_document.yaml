@@ -10,6 +10,10 @@ mainSteps:
   inputs:
     timeoutSeconds: '7200'
     runCommand:
+    - $ErrorActionPreference = 'Stop'
+    - $TRIGGER_TYPE = '{{ TriggerType }}'
+    - "Get-ChildItem Env: | Sort-Object Name"
+    - if (Test-Path "docker-images") { Remove-Item -Recurse -Force "docker-images" }
     - mkdir docker-images
     - cd docker-images
     - Set-ExecutionPolicy Bypass -Scope Process -Force; [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; $env:chocolateyUseWindowsCompression = 'true'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) | Out-Null
@@ -23,3 +27,7 @@ mainSteps:
     - Invoke-Expression -Command (Get-ECRLoginCommand -Region REGION_PLACEHOLDER).Command
     - .\build_images.ps1
     - .\push_images.ps1 ECR_PLACEHOLDER
+parameters:
+  TriggerType:
+    type: String
+    description: Specifies how this command was initiated.
