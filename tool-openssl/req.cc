@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/base.h>
-#include <openssl/pem.h>
-#include "internal.h"
-#include "../tool/internal.h"
-#include <openssl/evp.h>
-#include <openssl/err.h>
 #include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+#include "../tool/internal.h"
+#include "internal.h"
 
 #define DEFAULT_KEY_LENGTH 2048
 #define MIN_KEY_LENGTH 512
@@ -18,46 +18,55 @@
 #define BUF_SIZE 1024
 #define DEFAULT_CHAR_TYPE MBSTRING_ASC
 
-// Notes: -x509 option assumes -new when -in is not passed in with OpenSSL. We do not support -in as of now, so -new
-// is implied with -x509.
+// Notes: -x509 option assumes -new when -in is not passed in with OpenSSL. We
+// do not support -in as of now, so -new is implied with -x509.
 //
-// In general, OpenSSL supports a default config file which it defaults to when user input is
-// not provided. We don't support this default config file interface. For fields that are not
-// overriden by user input, we hardcode default values (e.g. X509 extensions, -keyout
-// defaults to privkey.pem, etc.)
+// In general, OpenSSL supports a default config file which it defaults to when
+// user input is not provided. We don't support this default config file
+// interface. For fields that are not overriden by user input, we hardcode
+// default values (e.g. X509 extensions, -keyout defaults to privkey.pem, etc.)
 static const argument_t kArguments[] = {
-  { "-help", kBooleanArgument, "Display option summary" },
-  { "-new", kBooleanArgument, "Generates a new certificate request." \
-                    "It will prompt the user for the relevant field values." \
-                    "If the -newkey option is not given it will generate a new " \
-                    "private key with 2048 bits length" },
-  { "-newkey", kOptionalArgument, "This option is used to generate a new private " \
-    				        "key. This option supports RSA keys in the format [rsa:]nbits. " \
-     				        "If nbits is not given, i.e. -newkey rsa is specified, 2048 " \
-           			    "bits length is used. This implies -new unless used with -x509." },
-  { "-days", kOptionalArgument, "When -x509 is in use this specifies the number of " \
-					          "days from today to certify the certificate for, otherwise it " \
-     				        "is ignored. n should be a positive integer. The default is" \
-     				        "30 days." },
-  { "-nodes", kBooleanArgument, "If this option is specified then if a private " \
-                    "key is created it will not be encrypted." },
-  { "-x509", kBooleanArgument, "This option outputs a certificate instead of" \
-                    "a certificate request. If the -newkey option is not given it " \
-        			"will generate a new private key with 2048 bits length" },
-  { "-subj", kOptionalArgument, "Sets subject name for new request. The arg must " \
-                    "be formatted as /type0=value0/type1=value1/type2=.... " \
-     				        "Keyword characters may be escaped by \\ (backslash), and " \
-     				        "whitespace is retained." },
-  { "-keyout", kOptionalArgument, "This specifies the output filename for the " \
-                    " private key or writes to a file called privkey.pem in the current directory." },
-  { "-out", kOptionalArgument, "This specifies the output filename to write to or " \
-                    "standard output by default." },
-  { "", kOptionalArgument, "" }
-};
+    {"-help", kBooleanArgument, "Display option summary"},
+    {"-new", kBooleanArgument,
+     "Generates a new certificate request."
+     "It will prompt the user for the relevant field values."
+     "If the -newkey option is not given it will generate a new "
+     "private key with 2048 bits length"},
+    {"-newkey", kOptionalArgument,
+     "This option is used to generate a new private "
+     "key. This option supports RSA keys in the format [rsa:]nbits. "
+     "If nbits is not given, i.e. -newkey rsa is specified, 2048 "
+     "bits length is used. This implies -new unless used with -x509."},
+    {"-days", kOptionalArgument,
+     "When -x509 is in use this specifies the number of "
+     "days from today to certify the certificate for, otherwise it "
+     "is ignored. n should be a positive integer. The default is"
+     "30 days."},
+    {"-nodes", kBooleanArgument,
+     "If this option is specified then if a private "
+     "key is created it will not be encrypted."},
+    {"-x509", kBooleanArgument,
+     "This option outputs a certificate instead of"
+     "a certificate request. If the -newkey option is not given it "
+     "will generate a new private key with 2048 bits length"},
+    {"-subj", kOptionalArgument,
+     "Sets subject name for new request. The arg must "
+     "be formatted as /type0=value0/type1=value1/type2=.... "
+     "Keyword characters may be escaped by \\ (backslash), and "
+     "whitespace is retained."},
+    {"-keyout", kOptionalArgument,
+     "This specifies the output filename for the "
+     " private key or writes to a file called privkey.pem in the current "
+     "directory."},
+    {"-out", kOptionalArgument,
+     "This specifies the output filename to write to or "
+     "standard output by default."},
+    {"", kOptionalArgument, ""}};
 
 
-// Parse key specification string and generate key. Valid strings are in the format rsa:nbits.
-// RSA key with 2048 bit length is used by default is |keyspec| is not valid.
+// Parse key specification string and generate key. Valid strings are in the
+// format rsa:nbits. RSA key with 2048 bit length is used by default is
+// |keyspec| is not valid.
 static EVP_PKEY *generate_key(const char *keyspec) {
   EVP_PKEY *pkey = NULL;
   long keylen = DEFAULT_KEY_LENGTH;
@@ -70,12 +79,16 @@ static EVP_PKEY *generate_key(const char *keyspec) {
     if (endptr != keyspec + 4 && *endptr == '\0' && errno != ERANGE) {
       keylen = value;
     } else {
-      fprintf(stderr, "Invalid RSA key length: %s, using default length\n", keyspec + 4);
+      fprintf(stderr, "Invalid RSA key length: %s, using default length\n",
+              keyspec + 4);
     }
   } else if (OPENSSL_strcasecmp(keyspec, "rsa") == 0) {
-	  keylen = DEFAULT_KEY_LENGTH;
+    keylen = DEFAULT_KEY_LENGTH;
   } else {
-    fprintf(stderr, "Unknown key specification: %s, using RSA key with 2048 bit length\n", keyspec);
+    fprintf(
+        stderr,
+        "Unknown key specification: %s, using RSA key with 2048 bit length\n",
+        keyspec);
   }
 
 
@@ -96,8 +109,9 @@ static EVP_PKEY *generate_key(const char *keyspec) {
     return NULL;
   }
 
-	if (EVP_PKEY_keygen_init(ctx.get()) <= 0 || EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), keylen) <= 0
-      || EVP_PKEY_keygen(ctx.get(), &pkey) <= 0) {
+  if (EVP_PKEY_keygen_init(ctx.get()) <= 0 ||
+      EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), keylen) <= 0 ||
+      EVP_PKEY_keygen(ctx.get(), &pkey) <= 0) {
     return NULL;
   }
 
@@ -109,10 +123,11 @@ bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string) {
   const char *subject_name_ptr = subject_string.c_str();
 
   if (*subject_name_ptr++ != '/') {
-    fprintf(stderr, "name is expected to be in the format "
-                    "/type0=value0/type1=value1/type2=... where characters may "
-                    "be escaped by \\. This name is not in that format: '%s'\n",
-                   --subject_name_ptr);
+    fprintf(stderr,
+            "name is expected to be in the format "
+            "/type0=value0/type1=value1/type2=... where characters may "
+            "be escaped by \\. This name is not in that format: '%s'\n",
+            --subject_name_ptr);
     return nullptr;
   }
 
@@ -162,21 +177,24 @@ bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string) {
     // Convert type to NID, skip unknown attributes
     int nid = OBJ_txt2nid(type.c_str());
     if (nid == NID_undef) {
-      fprintf(stderr, "Warning: Skipping unknown attribute \"%s\"\n", type.c_str());
+      fprintf(stderr, "Warning: Skipping unknown attribute \"%s\"\n",
+              type.c_str());
       // Skip unknown attributes
       continue;
     }
 
     // Skip empty values
     if (value.empty()) {
-      fprintf(stderr, "Warning: No value specified for attribute \"%s\", Skipped\n", type.c_str());
+      fprintf(stderr,
+              "Warning: No value specified for attribute \"%s\", Skipped\n",
+              type.c_str());
       continue;
     }
 
     // Add entry to the name
     if (!X509_NAME_add_entry_by_NID(name.get(), nid, DEFAULT_CHAR_TYPE,
-                                   (unsigned char*)value.c_str(),
-                                   -1, -1, 0)) {
+                                    (unsigned char *)value.c_str(), -1, -1,
+                                    0)) {
       OPENSSL_PUT_ERROR(X509, ERR_R_X509_LIB);
       return nullptr;
     }
@@ -186,13 +204,14 @@ bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string) {
 }
 
 typedef struct {
-  const char* field_name;
-  const char* short_desc;
-  const char* default_value;
+  const char *field_name;
+  const char *short_desc;
+  const char *default_value;
   int nid;
 } ReqField;
 
-static const char* prompt_field(const ReqField &field, char *buffer, size_t buffer_size) {
+static const char *prompt_field(const ReqField &field, char *buffer,
+                                size_t buffer_size) {
   // Prompt with default value if available
   if (field.default_value && field.default_value[0]) {
     fprintf(stdout, "%s [%s]: ", field.short_desc, field.default_value);
@@ -208,7 +227,7 @@ static const char* prompt_field(const ReqField &field, char *buffer, size_t buff
   }
 
   // Remove newline character if present
-  size_t len = strnlen(buffer, buffer_size);
+  size_t len = OPENSSL_strnlen(buffer, buffer_size);
   if (len > 0 && buffer[len - 1] == '\n') {
     buffer[len - 1] = '\0';
     len--;
@@ -230,23 +249,28 @@ static const char* prompt_field(const ReqField &field, char *buffer, size_t buff
   return "";
 }
 
-static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
+static bssl::UniquePtr<X509_NAME> prompt_for_subject(
+    X509_REQ *req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
   // Default values for subject fields
   const ReqField subject_fields[] = {
-    {"countryName", "Country Name (2 letter code)", "AU", NID_countryName},
-    {"stateOrProvinceName", "State or Province Name (full name)", "Some-State", NID_stateOrProvinceName},
-    {"localityName", "Locality Name (eg, city)", "", NID_localityName},
-    {"organizationName", "Organization Name (eg, company)", "Internet Widgits Pty Ltd", NID_organizationName},
-    {"organizationalUnitName", "Organizational Unit Name (eg, section)", "", NID_organizationalUnitName},
-    {"commonName", "Common Name (e.g. server FQDN or YOUR name)", "", NID_commonName},
-    {"emailAddress", "Email Address", "", NID_pkcs9_emailAddress}
-  };
+      {"countryName", "Country Name (2 letter code)", "AU", NID_countryName},
+      {"stateOrProvinceName", "State or Province Name (full name)",
+       "Some-State", NID_stateOrProvinceName},
+      {"localityName", "Locality Name (eg, city)", "", NID_localityName},
+      {"organizationName", "Organization Name (eg, company)",
+       "Internet Widgits Pty Ltd", NID_organizationName},
+      {"organizationalUnitName", "Organizational Unit Name (eg, section)", "",
+       NID_organizationalUnitName},
+      {"commonName", "Common Name (e.g. server FQDN or YOUR name)", "",
+       NID_commonName},
+      {"emailAddress", "Email Address", "", NID_pkcs9_emailAddress}};
 
   // Extra attributes for CSR
   const ReqField extra_attributes[] = {
-    {"challengePassword", "A challenge password", "", NID_pkcs9_challengePassword},
-    {"unstructuredName", "An optional company name", "", NID_pkcs9_unstructuredName}
-  };
+      {"challengePassword", "A challenge password", "",
+       NID_pkcs9_challengePassword},
+      {"unstructuredName", "An optional company name", "",
+       NID_pkcs9_unstructuredName}};
 
   // Get the subject name from the request
   bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
@@ -256,10 +280,15 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, 
   }
 
   // Print the instructions
-  fprintf(stdout, "You are about to be asked to enter information that will be incorporated\n");
+  fprintf(stdout,
+          "You are about to be asked to enter information that will be "
+          "incorporated\n");
   fprintf(stdout, "into your certificate request.\n");
-  fprintf(stdout, "What you are about to enter is what is called a Distinguished Name or a DN.\n");
-  fprintf(stdout, "There are quite a few fields but you can leave some blank\n");
+  fprintf(stdout,
+          "What you are about to enter is what is called a Distinguished Name "
+          "or a DN.\n");
+  fprintf(stdout,
+          "There are quite a few fields but you can leave some blank\n");
   fprintf(stdout, "For some fields there will be a default value,\n");
   fprintf(stdout, "If you enter '.', the field will be left blank.\n");
   fprintf(stdout, "\n");
@@ -267,8 +296,8 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, 
   char buffer[BUF_SIZE];
 
   // Process each subject field
-  for (const auto& field : subject_fields) {
-    const char* value = prompt_field(field, buffer, sizeof(buffer));
+  for (const auto &field : subject_fields) {
+    const char *value = prompt_field(field, buffer, sizeof(buffer));
 
     if (value == NULL) {
       return NULL;
@@ -276,9 +305,9 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, 
 
     // Only add non-empty values
     if (value && value[0]) {
-      if (!X509_NAME_add_entry_by_NID(subj.get(), field.nid, chtype,
-                                     reinterpret_cast<const unsigned char*>(value),
-                                     -1, -1, 0)) {
+      if (!X509_NAME_add_entry_by_NID(
+              subj.get(), field.nid, chtype,
+              reinterpret_cast<const unsigned char *>(value), -1, -1, 0)) {
         fprintf(stderr, "Error adding %s to subject\n", field.field_name);
         return NULL;
       }
@@ -295,7 +324,7 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, 
     fprintf(stdout, "to be sent with your certificate request\n");
 
     // Process each extra attribute
-    for (const auto& attr : extra_attributes) {
+    for (const auto &attr : extra_attributes) {
       const char *value = prompt_field(attr, buffer, sizeof(buffer));
 
       if (value == NULL) {
@@ -304,18 +333,17 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, 
 
       // Only add non-empty attributes
       if (value && value[0]) {
-        bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(nullptr,
-                                                     attr.nid,
-                                                     MBSTRING_ASC,
-                                                     reinterpret_cast<const unsigned char*>(value),
-                                                     -1));
+        bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(
+            nullptr, attr.nid, MBSTRING_ASC,
+            reinterpret_cast<const unsigned char *>(value), -1));
         if (!x509_attr) {
           fprintf(stderr, "Error creating attribute %s\n", attr.field_name);
           return NULL;
         }
 
         if (!X509_REQ_add1_attr(req, x509_attr.get())) {
-          fprintf(stderr, "Error adding attribute %s to request\n", attr.field_name);
+          fprintf(stderr, "Error adding attribute %s to request\n",
+                  attr.field_name);
           return NULL;
         }
       }
@@ -325,16 +353,18 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(X509_REQ* req, bool isCSR, 
   return subj;
 }
 
-static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &subject_name, bool isCSR) {
+static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey,
+                                    std::string &subject_name, bool isCSR) {
   bssl::UniquePtr<X509_NAME> name;
 
-  // Set version
-  if (!X509_REQ_set_version(req, 0L))  // version 1
+  // version 1
+  if (!X509_REQ_set_version(req, 0L)) {
     return 0;
+  }
 
-  if (subject_name.empty()) {// Prompt the user
+  if (subject_name.empty()) {  // Prompt the user
     name = prompt_for_subject(req, isCSR);
-  } else { // Parse user provided string
+  } else {  // Parse user provided string
     name = parse_subject_name(subject_name);
     if (!name) {
       return 0;
@@ -352,7 +382,8 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey, std::string &
   return 1;
 }
 
-static int req_password_callback(char *buf, int size, int rwflag, void *userdata) {
+static int req_password_callback(char *buf, int size, int rwflag,
+                                 void *userdata) {
   const char *prompt = "Enter PEM pass phrase:";
   char verify_buf[BUF_SIZE];
   int len;
@@ -368,9 +399,10 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
   }
 
   // Remove trailing newline
-  len = strnlen(buf, sizeof(buf));
-  if (len > 0 && buf[len-1] == '\n')
+  len = OPENSSL_strnlen(buf, sizeof(buf));
+  if (len > 0 && buf[len - 1] == '\n') {
     buf[--len] = '\0';
+  }
 
   // For encryption only (which is the case for req tool)
   if (rwflag) {
@@ -384,8 +416,8 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
     }
 
     // Remove trailing newline
-    int verify_len = strnlen(verify_buf, sizeof(verify_buf));
-    if (verify_len > 0 && verify_buf[verify_len-1] == '\n')
+    int verify_len = OPENSSL_strnlen(verify_buf, sizeof(verify_buf));
+    if (verify_len > 0 && verify_buf[verify_len - 1] == '\n')
       verify_buf[--verify_len] = '\0';
 
     // Check if passwords match
@@ -406,10 +438,11 @@ static int req_password_callback(char *buf, int size, int rwflag, void *userdata
 
 // Function to add extensions to a certificate
 static bool add_cert_extensions(X509 *cert) {
-  const char *config = "[v3_ca]\n"
-                       "subjectKeyIdentifier=hash\n"
-                       "authorityKeyIdentifier=keyid:always,issuer:always\n"
-                       "basicConstraints=critical,CA:true\n";
+  const char *config =
+      "[v3_ca]\n"
+      "subjectKeyIdentifier=hash\n"
+      "authorityKeyIdentifier=keyid:always,issuer:always\n"
+      "basicConstraints=critical,CA:true\n";
 
   // Create a BIO for the config
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(config, -1));
@@ -443,28 +476,25 @@ static bool add_cert_extensions(X509 *cert) {
 
 // Generate a random serial number for a certificate
 static bool generate_serial(X509 *cert) {
-  // Create a new BIGNUM to hold the random value
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   if (!bn) {
     fprintf(stderr, "Failed to create BIGNUM for serial\n");
     return false;
   }
 
-  // Generate random number with 159 bits (same as OpenSSL's SERIAL_RAND_BITS)
   constexpr int SERIAL_RAND_BITS = 159;
-  if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
+  if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
+               BN_RAND_BOTTOM_ANY)) {
     fprintf(stderr, "Failed to generate random serial number\n");
     return false;
   }
 
-  // Get a pointer to the certificate's ASN1_INTEGER serial number field
   ASN1_INTEGER *serial = X509_get_serialNumber(cert);
   if (!serial) {
     fprintf(stderr, "Failed to get certificate serial number field\n");
     return false;
   }
 
-  // Convert BIGNUM to ASN1_INTEGER and set it as the certificate's serial number
   if (!BN_to_ASN1_INTEGER(bn.get(), serial)) {
     fprintf(stderr, "Failed to convert BIGNUM to ASN1_INTEGER\n");
     return false;
@@ -494,8 +524,8 @@ bool reqTool(const args_list_t &args) {
   GetString(&newkey, "-newkey", "", parsed_args);
   GetUnsigned(&days, "-days", 30u, parsed_args);
   GetString(&subj, "-subj", "", parsed_args);
-  GetString(&keyout, "-keyout", "" , parsed_args);
-  GetString(&out, "-out", "" , parsed_args);
+  GetString(&keyout, "-keyout", "", parsed_args);
+  GetString(&out, "-out", "", parsed_args);
 
   if (help) {
     PrintUsage(kArguments);
@@ -503,13 +533,15 @@ bool reqTool(const args_list_t &args) {
   }
 
   if (!new_flag && !x509_flag && newkey.empty()) {
-    fprintf(stderr, "Error: Missing required options, -x509, -new, or -newkey must be specified. \n");
+    fprintf(stderr,
+            "Error: Missing required options, -x509, -new, or -newkey must be "
+            "specified. \n");
     return false;
   }
 
   std::string keyspec = "rsa:2048";
   if (!newkey.empty()) {
-	  keyspec = newkey;
+    keyspec = newkey;
   }
 
   bssl::UniquePtr<EVP_PKEY> pkey(generate_key(keyspec.c_str()));
@@ -519,9 +551,9 @@ bool reqTool(const args_list_t &args) {
   }
 
   // Generate and write private key
-  EVP_CIPHER *cipher = NULL;
+  const EVP_CIPHER *cipher = NULL;
   if (!nodes) {
-	  cipher = (EVP_CIPHER*)EVP_des_ede3_cbc();
+    cipher = EVP_des_ede3_cbc();
   }
 
   bssl::UniquePtr<BIO> out_bio;
@@ -530,15 +562,16 @@ bool reqTool(const args_list_t &args) {
     out_bio.reset(BIO_new_file(keyout.c_str(), "w"));
   } else {
     // Default to privkey.pem in the current directory
-    const char* default_keyfile = "privkey.pem";
+    const char *default_keyfile = "privkey.pem";
     fprintf(stderr, "Writing private key to %s (default)\n", default_keyfile);
     out_bio.reset(BIO_new_file(default_keyfile, "w"));
   }
 
   // If encryption disabled, don't use password prompting callback
-  if (!out_bio || !PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), cipher, NULL, 0,
-                                            cipher ? req_password_callback : NULL, NULL)) {
-	  fprintf(stderr, "Failed to write private key.\n");
+  if (!out_bio ||
+      !PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), cipher, NULL, 0,
+                                cipher ? req_password_callback : NULL, NULL)) {
+    fprintf(stderr, "Failed to write private key.\n");
     return false;
   }
 
@@ -548,7 +581,8 @@ bool reqTool(const args_list_t &args) {
   bssl::UniquePtr<X509> cert(X509_new());
 
   // Always create a CSR first
-  if (req == NULL || !make_certificate_request(req.get(), pkey.get(), subj, !x509_flag)) {
+  if (req == NULL ||
+      !make_certificate_request(req.get(), pkey.get(), subj, !x509_flag)) {
     fprintf(stderr, "Failed to create certificate request\n");
     return false;
   }
@@ -572,8 +606,10 @@ bool reqTool(const args_list_t &args) {
     }
 
     // Set subject and issuer from CSR
-    if (!X509_set_subject_name(cert.get(), X509_REQ_get_subject_name(req.get())) ||
-        !X509_set_issuer_name(cert.get(), X509_REQ_get_subject_name(req.get()))) {
+    if (!X509_set_subject_name(cert.get(),
+                               X509_REQ_get_subject_name(req.get())) ||
+        !X509_set_issuer_name(cert.get(),
+                              X509_REQ_get_subject_name(req.get()))) {
       fprintf(stderr, "Failed to set subject/issuer\n");
       return false;
     }
@@ -608,9 +644,9 @@ bool reqTool(const args_list_t &args) {
     }
   } else {
     // Sign the request
-	  if (!X509_REQ_sign(req.get(), pkey.get(), EVP_sha256())) {
-  	  return false;
- 	  }
+    if (!X509_REQ_sign(req.get(), pkey.get(), EVP_sha256())) {
+      return false;
+    }
   }
 
   if (!out.empty()) {
