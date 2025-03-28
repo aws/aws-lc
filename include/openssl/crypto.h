@@ -175,6 +175,11 @@ OPENSSL_EXPORT unsigned long OpenSSL_version_num(void);
 
 OPENSSL_EXPORT unsigned long awslc_api_version_num(void);
 
+// |CRYPTO_mem_ctrl| intentionally does nothing.
+// AWS-LC does not support the related
+// memory debugging with |OPENSSL_NO_CRYPTO_MDEBUG| defined.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
+
 // CRYPTO_malloc_init returns one.
 OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 

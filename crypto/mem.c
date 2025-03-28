@@ -122,6 +122,16 @@ WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
 WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_realloc, (void *ptr, size_t size))
 
+int CRYPTO_mem_ctrl(int mode) {
+  #ifdef OPENSSL_NO_CRYPTO_MDEBUG
+  // Since AWS-LC doesn't support CRYPTO_MDEBUG, always return 0
+  (void)mode;  // Silence unused parameter warning
+  return 0;
+  #else
+    #error "Must compile with OPENSSL_NO_CRYPTO_MDEBUG defined."
+  #endif
+}
+
 // Below can be customized by |CRYPTO_set_mem_functions| only once.
 static void *(*malloc_impl)(size_t, const char *, int) = NULL;
 static void *(*realloc_impl)(void *, size_t, const char *, int) = NULL;
