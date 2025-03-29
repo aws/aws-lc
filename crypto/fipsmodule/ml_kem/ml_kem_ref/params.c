@@ -15,6 +15,7 @@ static void ml_kem_params_init(ml_kem_params *params, size_t k) {
   size_t public_key_bytes = indcpa_public_key_bytes;
   size_t secret_key_bytes = indcpa_secret_key_bytes + indcpa_public_key_bytes + 2*KYBER_SYMBYTES;
   size_t ciphertext_bytes = indcpa_bytes;
+  size_t shared_secret_bytes = KYBER_SSBYTES;
 
   params->k = k;
   params->eta1 = eta1;
@@ -27,6 +28,7 @@ static void ml_kem_params_init(ml_kem_params *params, size_t k) {
   params->public_key_bytes = public_key_bytes;
   params->secret_key_bytes = secret_key_bytes;
   params->ciphertext_bytes = ciphertext_bytes;
+  params->shared_secret_bytes = shared_secret_bytes;
 }
 
 void ml_kem_512_params_init(ml_kem_params *params) {
