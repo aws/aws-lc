@@ -9,12 +9,13 @@ mainSteps:
     name: runShellScript
     inputs:
       timeoutSeconds: '7200'
+      shell: bash
       runCommand:
         # Fallback plan to shut down the ec2 instance in 90 minutes in case it's not terminated.
         # Codebuild just "stops" the instance calling the script, so "trap cleanup" is not executed.
         - |
             exec 2>&1            
-            set -exo pipefail
+            set -ex
             shutdown -P +90
             sudo -i
             systemctl stop apt-daily.timer
