@@ -70,6 +70,8 @@
 extern "C" {
 #endif
 
+#define OPENSSL_DSA_MAX_MODULUS_BITS 10000
+
 
 // DSA contains functions for signing and verifying with the Digital Signature
 // Algorithm.
@@ -78,7 +80,6 @@ extern "C" {
 // considered a priority for performance or hardening work. Do not use it in
 // new code. Use Ed25519, ECDSA with P-256, or RSA instead.
 
-#define OPENSSL_DSA_MAX_MODULUS_BITS 10000
 
 // Allocation and destruction.
 //
