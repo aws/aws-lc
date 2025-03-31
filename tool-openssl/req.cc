@@ -291,7 +291,7 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(
     }
 
     // Only add non-empty values
-    if (value && value[0]) {
+    if (OPENSSL_strnlen(value, BUF_SIZE) > 0) {
       if (!X509_NAME_add_entry_by_NID(
               subj.get(), field.nid, chtype,
               reinterpret_cast<const unsigned char *>(value), -1, -1, 0)) {
