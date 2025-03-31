@@ -189,7 +189,7 @@ OPENSSL_EXPORT DSA *DSAparams_dup(const DSA *dsa);
 // Key generation.
 
 // DSA_generate_key generates a public/private key pair in |dsa|, which must
-// already have parameters setup. Only supports generating upto |OPENSSL_DSA_MAX_MODULUS_BITS|
+// already have parameters setup. Only supports generating up to |OPENSSL_DSA_MAX_MODULUS_BITS|
 // bit keys. It returns one on success and zero on error.
 OPENSSL_EXPORT int DSA_generate_key(DSA *dsa);
 
