@@ -249,28 +249,29 @@ static const char *prompt_field(const ReqField &field, char *buffer,
   return "";
 }
 
+// Default values for subject fields
+const ReqField subject_fields[] = {
+  {"countryName", "Country Name (2 letter code)", "AU", NID_countryName},
+  {"stateOrProvinceName", "State or Province Name (full name)",
+   "Some-State", NID_stateOrProvinceName},
+  {"localityName", "Locality Name (eg, city)", "", NID_localityName},
+  {"organizationName", "Organization Name (eg, company)",
+   "Internet Widgits Pty Ltd", NID_organizationName},
+  {"organizationalUnitName", "Organizational Unit Name (eg, section)", "",
+   NID_organizationalUnitName},
+  {"commonName", "Common Name (e.g. server FQDN or YOUR name)", "",
+   NID_commonName},
+  {"emailAddress", "Email Address", "", NID_pkcs9_emailAddress}};
+
+// Extra attributes for CSR
+const ReqField extra_attributes[] = {
+  {"challengePassword", "A challenge password", "",
+   NID_pkcs9_challengePassword},
+  {"unstructuredName", "An optional company name", "",
+   NID_pkcs9_unstructuredName}};
+
 static bssl::UniquePtr<X509_NAME> prompt_for_subject(
     X509_REQ *req, bool isCSR, unsigned long chtype = MBSTRING_ASC) {
-  // Default values for subject fields
-  const ReqField subject_fields[] = {
-      {"countryName", "Country Name (2 letter code)", "AU", NID_countryName},
-      {"stateOrProvinceName", "State or Province Name (full name)",
-       "Some-State", NID_stateOrProvinceName},
-      {"localityName", "Locality Name (eg, city)", "", NID_localityName},
-      {"organizationName", "Organization Name (eg, company)",
-       "Internet Widgits Pty Ltd", NID_organizationName},
-      {"organizationalUnitName", "Organizational Unit Name (eg, section)", "",
-       NID_organizationalUnitName},
-      {"commonName", "Common Name (e.g. server FQDN or YOUR name)", "",
-       NID_commonName},
-      {"emailAddress", "Email Address", "", NID_pkcs9_emailAddress}};
-
-  // Extra attributes for CSR
-  const ReqField extra_attributes[] = {
-      {"challengePassword", "A challenge password", "",
-       NID_pkcs9_challengePassword},
-      {"unstructuredName", "An optional company name", "",
-       NID_pkcs9_unstructuredName}};
 
   // Get the subject name from the request
   bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
@@ -278,20 +279,6 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(
     fprintf(stderr, "Error getting subject name from request\n");
     return NULL;
   }
-
-  // Print the instructions
-  fprintf(stdout,
-          "You are about to be asked to enter information that will be "
-          "incorporated\n");
-  fprintf(stdout, "into your certificate request.\n");
-  fprintf(stdout,
-          "What you are about to enter is what is called a Distinguished Name "
-          "or a DN.\n");
-  fprintf(stdout,
-          "There are quite a few fields but you can leave some blank\n");
-  fprintf(stdout, "For some fields there will be a default value,\n");
-  fprintf(stdout, "If you enter '.', the field will be left blank.\n");
-  fprintf(stdout, "\n");
 
   char buffer[BUF_SIZE];
 
@@ -332,7 +319,7 @@ static bssl::UniquePtr<X509_NAME> prompt_for_subject(
       }
 
       // Only add non-empty attributes
-      if (value && value[0]) {
+      if (OPENSSL_strnlen(value, BUF_SIZE) > 0) {
         bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(
             nullptr, attr.nid, MBSTRING_ASC,
             reinterpret_cast<const unsigned char *>(value), -1));
@@ -363,6 +350,18 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey,
   }
 
   if (subject_name.empty()) {  // Prompt the user
+    fprintf(stdout,
+            "You are about to be asked to enter information that will be "
+            "incorporated\n");
+    fprintf(stdout, "into your certificate request.\n");
+    fprintf(stdout,
+            "What you are about to enter is what is called a Distinguished Name "
+            "or a DN.\n");
+    fprintf(stdout,
+            "There are quite a few fields but you can leave some blank\n");
+    fprintf(stdout, "For some fields there will be a default value,\n");
+    fprintf(stdout, "If you enter '.', the field will be left blank.\n");
+    fprintf(stdout, "\n");
     name = prompt_for_subject(req, isCSR);
   } else {  // Parse user provided string
     name = parse_subject_name(subject_name);
