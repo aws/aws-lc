@@ -1753,13 +1753,10 @@ ___
     .L_steal_cipher_with_tweak_${rndsuffix}:
     # %xmm0 holds tweak, %xmm15 holds tweak'
     vmovdqa	shufb_15_7(%rip),%xmm11
-    mov 	 \$0xaa,$tmp1
-    kmovq 	 $tmp1,%k2
     vpshufb 	 %xmm11,%xmm0,%xmm12
     vpsllq	\$0x1,%xmm0,%xmm13
-    vpsrlq \$0xf,%xmm12,%xmm14
+    vpsrlq \$0x7,%xmm12,%xmm14
     vpclmulqdq 	 \$0x0,%xmm25,%xmm14,%xmm15 # just the first lane of ZPOLY
-    vpxorq 	 %xmm13,%xmm14,%xmm13{%k2}
     vpxord 	 %xmm13,%xmm15,%xmm15
 
     .L_steal_cipher_${rndsuffix}:
