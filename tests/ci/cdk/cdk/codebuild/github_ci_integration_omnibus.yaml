@@ -352,7 +352,7 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_ibmtpm_integration.sh"
 
-    - identified: libwebsockets_integration_x86_64
+    - identifier: libwebsockets_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
