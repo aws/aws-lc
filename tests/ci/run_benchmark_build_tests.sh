@@ -23,7 +23,6 @@ function build_aws_lc_fips {
   run_build \
       -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
       -DFIPS=1 \
-      -DENABLE_DILITHIUM=ON \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DBUILD_SHARED_LIBS=1 \
       -DBUILD_TESTING=OFF \
@@ -45,7 +44,6 @@ function build_aws_lc_branch {
     cmake -GNinja \
         -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-${branch}" \
         -DFIPS=1 \
-        -DENABLE_DILITHIUM=ON \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DBUILD_SHARED_LIBS=1
     ninja install
@@ -83,7 +81,7 @@ build_openssl_no_debug $openssl_3_2_branch
 build_openssl_no_debug $openssl_master_branch
 build_boringssl
 
-run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON -DBENCHMARK_LIBS="\
+run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_STANDARD=11 -DBENCHMARK_LIBS="\
 aws-lc-fips-2021:${install_dir}/aws-lc-fips-2021-10-20;\
 aws-lc-fips-2022:${install_dir}/aws-lc-fips-2022-11-02;\
 aws-lc-fips-2024:${install_dir}/aws-lc-fips-2024-09-27;\
