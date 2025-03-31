@@ -1776,10 +1776,11 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 // SSL_in_connect_init returns 1 if |ssl| is a client and has a pending
 // handshake. Otherwise, it returns 0.
-# define SSL_in_connect_init(a)          (SSL_in_init(a) && !SSL_is_server(a))
+OPENSSL_EXPORT int SSL_in_connect_init(const SSL *ssl);
+
 // SSL_in_accept_init returns 1 if |ssl| is a server and has a pending
 // handshake. Otherwise, it returns 0.
-# define SSL_in_accept_init(a)           (SSL_in_init(a) && SSL_is_server(a))
+OPENSSL_EXPORT int SSL_in_accept_init(const SSL *ssl);
 
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
 // and has no pending handshake. It returns zero otherwise.
