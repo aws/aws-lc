@@ -166,10 +166,11 @@ In addition, we use assembly from [s2n-bignum](https://github.com/awslabs/s2n-bi
 | Algorithms | Routines | CPUs |
 | ----------| ------------| ------------|
 | RSA | Montgomery multiplication | aarch64 |
-| P-384 | field operations | aarch64, x86_64 |
-| P-521 | field operations | aarch64, x86_64 |
-| X25519 | field operations, group operations, scalar point multiplication | aarch64, x86_64 |
-| Ed25519 |  encode, decode, scalar point multiplication | aarch64, x86_64 |
+| P-256 | field operations, scalar point multiplication | aarch64, x86_64 |
+| P-384 | field operations, group operations, scalar point multiplication | aarch64, x86_64 |
+| P-521 | field operations, group operations, scalar point multiplication | aarch64, x86_64 |
+| X25519 | scalar point multiplication | aarch64, x86_64 |
+| Ed25519 | field operations, encode, decode, scalar point multiplication | aarch64, x86_64 |
 
 ## Have a Question?
 
