@@ -2,31 +2,6 @@ diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
 index 0e50d09..f4b7b3c 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
-@@ -41,6 +41,7 @@
- from ssl import Purpose, TLSVersion, _TLSContentType, _TLSMessageType, _TLSAlertType
- 
- Py_DEBUG_WIN32 = support.Py_DEBUG and sys.platform == 'win32'
-+Py_OPENSSL_IS_AWSLC = "AWS-LC" in ssl.OPENSSL_VERSION
- 
- PROTOCOLS = sorted(ssl._PROTOCOL_NAMES)
- HOST = socket_helper.HOST
-@@ -174,7 +175,7 @@ def is_ubuntu():
-     except FileNotFoundError:
-         return False
- 
--if is_ubuntu():
-+if is_ubuntu() and not Py_OPENSSL_IS_AWSLC:
-     def seclevel_workaround(*ctxs):
-         """"Lower security level to '1' and allow all ciphers for TLS 1.0/1"""
-         for ctx in ctxs:
-@@ -4001,6 +4002,7 @@ def test_no_legacy_server_connect(self):
-                                    sni_name=hostname)
- 
-     @unittest.skipIf(Py_DEBUG_WIN32, "Avoid mixing debug/release CRT on Windows")
-+    @unittest.skipIf(Py_OPENSSL_IS_AWSLC, "AWS-LC doesn't support (FF)DHE")
-     def test_dh_params(self):
-         # Check we can get a connection with ephemeral Diffie-Hellman
-         client_context, server_context, hostname = testing_context()
 @@ -4443,14 +4445,14 @@ def server_callback(identity):
              self.assertEqual(identity, client_identity)
              return psk
