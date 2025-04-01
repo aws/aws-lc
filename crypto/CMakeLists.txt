@@ -823,10 +823,12 @@ if(BUILD_TESTING)
     spake25519/spake25519_test.cc
     test/file_util.cc
     test/file_test_gtest.cc
+    test/x509_util.cc
     thread_test.cc
     trust_token/trust_token_test.cc
     x509/tab_test.cc
     x509/x509_test.cc
+    x509/x509_compat_test.cc
     x509/x509_time_test.cc
     decrepit/blowfish/blowfish_test.cc
     decrepit/cast/cast_test.cc

@@ -39,6 +39,7 @@
 #include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
+#include "../test/x509_util.h"
 #include "../fipsmodule/pqdsa/internal.h"
 
 #if defined(OPENSSL_THREADS)
@@ -1469,55 +1470,6 @@ TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
 -----END CERTIFICATE-----
 )";
 
-// This is a "root certificate" where the basicConstraints extension
-// has marked this with cA:false. The root certificate though has the
-// keyCertSign bit set for the keyUsage extension.
-//
-// Private Key:
-// -----BEGIN PRIVATE KEY-----
-// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfVMH4tqIaJ6OzyxY
-// mqWXNwmK7gpXYDFhX80mXKgzrGGhRANCAATCqXrfbdTjFimzdBHxj71Ejcc/stea
-// 5xAU/xxK+s77yXzB5lfy/zEbcYxuOrnwHrWsX9sugWgCy74ZRNWJPTDW
-// -----END PRIVATE KEY-----
-static const char kRootBadBasicConstraints[] = R"(
------BEGIN CERTIFICATE-----
-MIIBmDCCAT+gAwIBAgIUdUDg7B26eXlz1kIvnpH+xuRxxWQwCgYIKoZIzj0EAwIw
-KzEXMBUGA1UECgwOQVdTLUxDIFRlc3RpbmcxEDAOBgNVBAMMB1Jvb3QgQ0EwIBcN
-MjUwMjI4MjIyODM5WhgPMjA5OTEyMjQyMjI4MzlaMCsxFzAVBgNVBAoMDkFXUy1M
-QyBUZXN0aW5nMRAwDgYDVQQDDAdSb290IENBMFkwEwYHKoZIzj0CAQYIKoZIzj0D
-AQcDQgAEwql6323U4xYps3QR8Y+9RI3HP7LXmucQFP8cSvrO+8l8weZX8v8xG3GM
-bjq58B61rF/bLoFoAsu+GUTViT0w1qM/MD0wDgYDVR0PAQH/BAQDAgIEMAwGA1Ud
-EwEB/wQCMAAwHQYDVR0OBBYEFBkZ4YwJ4l1cFgThnHRmGf24UlvfMAoGCCqGSM49
-BAMCA0cAMEQCIBzU4Tsvcro7Ngh7OAvPoxeRJjV5Cxas3wpEeDWkVow0AiB+DCN+
-fx6O+iOJWecFfO2w756B+z9LvBhfV8HA7Dflyw==
------END CERTIFICATE-----
-)";
-
-// This is an end-entity certificate signed by |kRootBadBasicConstraints|.
-// This should not be considered as the kRootBadBasicConstraints is a v3 certificate
-// which has a basicConstraints extension indicating that it is not a CA.
-//
-// Private Key:
-// -----BEGIN PRIVATE KEY-----
-// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgRpZ8cAJjAb0htcq+
-// UkqSo8Ud1wsOrNE28cmjwFjBHsuhRANCAASyt7018uvahtXcQETHIxT50KVAFzCF
-// tsYROMLbLMW8DBkR2Ghh1qOSa4oYUizchqetKa2RrH7fhyQ787RxK05Y
-// -----END PRIVATE KEY-----
-static const char kEndEntitySignedByBadRoot[] = R"(
------BEGIN CERTIFICATE-----
-MIIB1DCCAXqgAwIBAgIUeRFjDJSyJybmzn8Uf1u2NfICP7QwCgYIKoZIzj0EAwIw
-KzEXMBUGA1UECgwOQVdTLUxDIFRlc3RpbmcxEDAOBgNVBAMMB1Jvb3QgQ0EwIBcN
-MjUwMjI4MjIyODQ1WhgPMjA5OTEyMjQyMjI4NDVaMCYxFzAVBgNVBAoMDkFXUy1M
-QyBUZXN0aW5nMQswCQYDVQQDDAJFRTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
-BLK3vTXy69qG1dxARMcjFPnQpUAXMIW2xhE4wtssxbwMGRHYaGHWo5JrihhSLNyG
-p60prZGsft+HJDvztHErTlijfzB9MA4GA1UdDwEB/wQEAwIHgDAMBgNVHRMBAf8E
-AjAAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAdBgNVHQ4EFgQUyHhk
-6fecD1biHc7u7STgnx1Lo78wHwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhS
-W98wCgYIKoZIzj0EAwIDSAAwRQIhAPknNhPpJBWKSAVtY7yrwkmx2yCPU4u22kW0
-C2Z6lTDpAiBUkWczZ5By5KTXVE/TX/dpNHhOr8VO/rTCY0YNjBiZ1w==
------END CERTIFICATE-----
-)";
-
 // CRLFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509_CRL*|.
 static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {
@@ -1541,71 +1493,6 @@ static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
       BIO_new_mem_buf(const_cast<char *>(pem), strlen(pem)));
   return bssl::UniquePtr<EVP_PKEY>(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
-}
-
-// CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
-// STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
-static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
-    const std::vector<X509_CRL *> &crls) {
-  bssl::UniquePtr<STACK_OF(X509_CRL)> stack(sk_X509_CRL_new_null());
-  if (!stack) {
-    return nullptr;
-  }
-  for (auto crl : crls) {
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(crl))) {
-      return nullptr;
-    }
-  }
-
-  return stack;
-}
-
-static int Verify(
-    X509 *leaf, const std::vector<X509 *> &roots,
-    const std::vector<X509 *> &intermediates,
-    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_STORE_CTX *)> configure_callback = nullptr) {
-  bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
-  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
-      CertsToStack(intermediates));
-  bssl::UniquePtr<STACK_OF(X509_CRL)> crls_stack(CRLsToStack(crls));
-
-  if (!roots_stack ||
-      !intermediates_stack ||
-      !crls_stack) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-
-  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
-  if (!ctx ||
-      !store) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-
-  if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
-                           intermediates_stack.get())) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-
-  X509_STORE_CTX_set0_trusted_stack(ctx.get(), roots_stack.get());
-  X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
-
-  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
-  X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
-  if (configure_callback) {
-    configure_callback(ctx.get());
-  }
-  if (flags) {
-    X509_VERIFY_PARAM_set_flags(param, flags);
-  }
-
-  ERR_clear_error();
-  if (X509_verify_cert(ctx.get()) != 1) {
-    return X509_STORE_CTX_get_error(ctx.get());
-  }
-
-  return X509_V_OK;
 }
 
 TEST(X509Test, X509Extensions) {
@@ -8252,15 +8139,4 @@ TEST(X509Test, Trust) {
   EXPECT_EQ(X509_V_OK, Verify(leaf.distrusted_server.get(), {root.normal.get()},
                               {intermediate.normal.get()}, {},
                               /*flags=*/0, set_server_trust));
-}
-
-TEST(X509Test, CertificatesFromTrustStoreValidated) {
-  bssl::UniquePtr<X509> root = CertFromPEM(kRootBadBasicConstraints);
-  ASSERT_TRUE(root);
-  bssl::UniquePtr<X509> leaf = CertFromPEM(kEndEntitySignedByBadRoot);
-  ASSERT_TRUE(leaf);
-
-  EXPECT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
-                   /*crls=*/{}, /*flags=*/0));
 }
