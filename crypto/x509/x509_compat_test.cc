@@ -153,6 +153,10 @@ bqbf/QCFwAYCIQDuFSNQQBtnsOsTdW4pZrDmWM8fwl6hhQFFnE2r52GscA==
 )";
 
 /*
+The is a valid root certificate that is expected to pass validation.
+It may be used as a trust-anchor for both good or bad intermediate or
+client certificates in testing.
+
 Certificate:
     Data:
         Version: 3 (0x2)
@@ -270,6 +274,77 @@ Dd9ONQ==
 -----END CERTIFICATE-----
 )";
 
+/*
+This certificate has a CRL Distribution Points extension, that per RFC 5280:
+"The [CRL distribution points] extension SHOULD be non-critical, but this profile
+RECOMMENDS support for this extension by CAs and applications."
+
+OpenSSL 1.1.1 supports this extension being marked as critical, and will not fail certificate
+verification because so.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            78:ea:d8:8b:b6:51:24:24:05:ed:24:af:8f:d5:1f:e2:43:bb:f6:1c
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C = US, ST = Washington, O = AWS Libcrypto, OU = Good CA, CN = Root CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C = US, ST = Washington, O = AWS Libcrypto, OU = Good Endpoint, CN = RFC 5280 4.2.1.13, SN = CRL distribution points ... extension SHOULD be non-critical
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 CRL Distribution Points: critical
+                Full Name:
+                  URI:http://example.com/crl
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:46:02:21:00:cc:41:52:6e:40:01:46:d1:5e:4c:5b:23:27:
+        55:ea:02:55:60:62:10:0c:9b:45:65:9a:a4:5b:9b:74:72:fa:
+        c4:02:21:00:ba:2f:dc:ba:96:6d:ae:f3:19:3e:66:aa:18:9b:
+        c5:ec:61:53:5a:d6:25:e5:66:bf:f3:9b:d6:d9:d2:e3:88:63
+*/
+static char kValidEndEntityCertWithCriticalCRLDistributionExt[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICyDCCAm2gAwIBAgIUeOrYi7ZRJCQF7SSvj9Uf4kO79hwwCgYIKoZIzj0EAwIw
+YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
+MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowgbUxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRYwFAYDVQQKDA1BV1MgTGliY3J5cHRv
+MRYwFAYDVQQLDA1Hb29kIEVuZHBvaW50MRowGAYDVQQDDBFSRkMgNTI4MCA0LjIu
+MS4xMzFFMEMGA1UEBAw8Q1JMIGRpc3RyaWJ1dGlvbiBwb2ludHMgLi4uIGV4dGVu
+c2lvbiBTSE9VTEQgYmUgbm9uLWNyaXRpY2FsMFkwEwYHKoZIzj0CAQYIKoZIzj0D
+AQcDQgAEsre9NfLr2obV3EBExyMU+dClQBcwhbbGETjC2yzFvAwZEdhoYdajkmuK
+GFIs3IanrSmtkax+34ckO/O0cStOWKOBrDCBqTAOBgNVHQ8BAf8EBAMCBaAwDAYD
+VR0TAQH/BAIwADAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwKgYDVR0f
+AQH/BCAwHjAcoBqgGIYWaHR0cDovL2V4YW1wbGUuY29tL2NybDAdBgNVHQ4EFgQU
+yHhk6fecD1biHc7u7STgnx1Lo78wHwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ
+/bhSW98wCgYIKoZIzj0EAwIDSQAwRgIhAMxBUm5AAUbRXkxbIydV6gJVYGIQDJtF
+ZZqkW5t0cvrEAiEAui/cupZtrvMZPmaqGJvF7GFTWtYl5Wa/85vW2dLjiGM=
+-----END CERTIFICATE-----
+)";
+
 // EE certificate should not verify if signed by invalid root CA
 TEST(X509CompatTest, CertificatesFromTrustStoreValidated) {
   bssl::UniquePtr<X509> root = CertFromPEM(kRootBadBasicConstraints);
@@ -292,6 +367,18 @@ TEST(X509CompatTest, EndpointCertificateWithCriticalAKID) {
   ASSERT_TRUE(leaf);
 
   EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0));
+}
+
+// Certificate should not be rejected if it contains a critical CRL Distribution Points extension.
+TEST(X509CompatTest, CertificateWithCriticalCRLDistributionPointsExt) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> leaf = CertFromPEM(kValidEndEntityCertWithCriticalCRLDistributionExt);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
                    /*crls=*/{}, /*flags=*/0));
 }
