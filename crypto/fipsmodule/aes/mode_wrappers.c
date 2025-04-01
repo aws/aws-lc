@@ -54,21 +54,47 @@
 #include "../modes/internal.h"
 #include "../cipher/internal.h"
 
+// The following wrappers ensure that the delocator can handle the
+// function pointer calculation in AES_ctr128_encrypt. Without it,
+// on AArch64 there is risk of the calculations requiring a PC-relative
+// offset outside of the range (-1MB,1MB) addressable using `ADR`.
+static inline void aes_hw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+						       uint8_t *out, size_t len,
+						       const AES_KEY *key,
+						       const uint8_t ivec[16])
+{
+    aes_hw_ctr32_encrypt_blocks(in, out, len, key, ivec);
+}
+
+#if defined(VPAES_CTR32)
+static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+                                                      uint8_t *out, size_t len,
+                                                      const AES_KEY *key,
+                                                      const uint8_t ivec[16]) {
+  vpaes_ctr32_encrypt_blocks(in, out, len, key, ivec);
+}
+#else // VPAES_CTR32
+static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                         const AES_KEY *key) {
+  vpaes_encrypt(in, out, key);
+}
+#endif // !VPAES_CTR32
+
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
                         uint8_t ecount_buf[AES_BLOCK_SIZE], unsigned int *num) {
   if (hwaes_capable()) {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                aes_hw_ctr32_encrypt_blocks);
+                                aes_hw_ctr32_encrypt_blocks_wrapper);
   } else if (vpaes_capable()) {
 #if defined(VPAES_CTR32)
     // TODO(davidben): On ARM, where |BSAES| is additionally defined, this could
     // use |vpaes_ctr32_encrypt_blocks_with_bsaes|.
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                vpaes_ctr32_encrypt_blocks);
+                                vpaes_ctr32_encrypt_blocks_wrapper);
 #else
     CRYPTO_ctr128_encrypt(in, out, len, key, ivec, ecount_buf, num,
-                          vpaes_encrypt);
+                          vpaes_encrypt_wrapper);
 #endif
   } else {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,

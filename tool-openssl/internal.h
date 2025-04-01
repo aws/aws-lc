@@ -34,11 +34,15 @@ bool CRLTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool RehashTool(const args_list_t &args);
+bool reqTool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
 bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
+
+// Req Tool Utilities
+bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string);
 
 
 // Rehash tool Utils

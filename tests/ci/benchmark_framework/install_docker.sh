@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -xo
+set -exo pipefail
 
 if ! [ -x "$(command -v docker)" ]; then
   apt-get update
