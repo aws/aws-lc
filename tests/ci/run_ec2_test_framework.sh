@@ -95,8 +95,7 @@ ec2_test_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${instance_id}" ${c
 run_url="https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}\
 #logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/${ec2_test_ssm_command_id}\$252F${instance_id}\$252FrunShellScript\$252F"
 
-echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}stdout"
-echo "Error outputs can be observered at CloudWatch URL: ${run_url}stderr"
+echo "Actual Run in EC2 can be observed at CloudWatch URL: ${run_url}stdout all output is redirected to stdout. If something is weird check the same url s/stdout/stderr"
 
 
 # Give some time for the commands to run, total wait time is 90 minutes.

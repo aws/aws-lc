@@ -15,11 +15,13 @@
 #include "test_util.h"
 
 #include <ostream>
+#include <inttypes.h>
 
 #include <openssl/err.h>
 
 #include "../internal.h"
 #include "openssl/pem.h"
+#include "openssl/rand.h"
 
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
@@ -166,27 +168,33 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
 }
 
 size_t createTempDirPath(char buffer[PATH_MAX]) {
-  char pathname[PATH_MAX];
-  char tempdir[PATH_MAX];
+  char temp_path[PATH_MAX];
+  union {
+    uint8_t bytes[8];
+    uint64_t value;
+  } random_bytes;
 
-  if (0 == GetTempPathA(PATH_MAX, pathname)) {
+  // Get the temporary path
+  if (0 == GetTempPathA(PATH_MAX, temp_path)) {
     return 0;
   }
 
-  // Generate a unique name using Windows API
-  if (0 == GetTempFileNameA(pathname, "awslctestdir", 0, tempdir)) {
+  if (!RAND_bytes(random_bytes.bytes, sizeof(random_bytes.bytes))) {
     return 0;
   }
 
-  // Delete the file that GetTempFileNameA created
-  DeleteFileA(tempdir);
+  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%" PRIX64, temp_path, random_bytes.value);
 
-  if (!CreateDirectoryA(tempdir, NULL)) {
+  // Check for truncation of dirname
+  if (written < 0 || written >= PATH_MAX) {
     return 0;
   }
 
-  strncpy(buffer, tempdir, PATH_MAX);
-  return strnlen(buffer, PATH_MAX);
+  if (!CreateDirectoryA(buffer, NULL)) {
+    return 0;
+  }
+
+  return (size_t)written;
 }
 
 FILE* createRawTempFILE() {
@@ -196,6 +204,7 @@ FILE* createRawTempFILE() {
   }
   return fopen(filename, "w+b");
 }
+
 #else
 #include <cstdlib>
 #include <unistd.h>

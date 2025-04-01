@@ -23,23 +23,6 @@ index f3960be..ffd360b 100644
  
  PROTOCOLS = sorted(ssl._PROTOCOL_NAMES)
  HOST = socket_helper.HOST
-@@ -167,7 +168,7 @@ def is_ubuntu():
-     except FileNotFoundError:
-         return False
- 
--if is_ubuntu():
-+if is_ubuntu() and not Py_OPENSSL_IS_AWSLC:
-     def seclevel_workaround(*ctxs):
-         """"Lower security level to '1' and allow all ciphers for TLS 1.0/1"""
-         for ctx in ctxs:
-@@ -3954,6 +3958,7 @@ def test_no_legacy_server_connect(self):
-                                    sni_name=hostname)
- 
-     @unittest.skipIf(Py_DEBUG_WIN32, "Avoid mixing debug/release CRT on Windows")
-+    @unittest.skipIf(Py_OPENSSL_IS_AWSLC, "AWS-LC doesn't support (FF)DHE")
-     def test_dh_params(self):
-         # Check we can get a connection with ephemeral Diffie-Hellman
-         client_context, server_context, hostname = testing_context()
 @@ -4313,7 +4318,10 @@ def test_session_handling(self):
                                   'Session refers to a different SSLContext.')
  
