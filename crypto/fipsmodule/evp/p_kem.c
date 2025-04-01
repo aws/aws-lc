@@ -67,11 +67,9 @@ static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
   }
 
   KEM_KEY *key = KEM_KEY_new();
-  size_t public_len = kem->public_key_len;
-  size_t secret_len = kem->secret_key_len;
   if (key == NULL ||
       !KEM_KEY_init(key, kem) ||
-      !kem->method->keygen_deterministic(key->public_key, &public_len, key->secret_key, &secret_len, seed) ||
+      !kem->method->keygen_deterministic(key->public_key, kem->public_key_len, key->secret_key, kem->secret_key_len, seed) ||
       !EVP_PKEY_assign(pkey, EVP_PKEY_KEM, key)) {
     KEM_KEY_free(key);
     return 0;
@@ -94,11 +92,9 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   }
 
   KEM_KEY *key = KEM_KEY_new();
-  size_t public_len = kem->public_key_len;
-  size_t secret_len = kem->secret_key_len;
   if (key == NULL ||
       !KEM_KEY_init(key, kem) ||
-      !kem->method->keygen(key->public_key, &public_len, key->secret_key, &secret_len) ||
+      !kem->method->keygen(key->public_key, kem->public_key_len, key->secret_key, kem->secret_key_len) ||
       !EVP_PKEY_set_type(pkey, EVP_PKEY_KEM)) {
     KEM_KEY_free(key);
     return 0;
@@ -176,7 +172,7 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->encaps_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, key->public_key, seed)) {
+  if (!kem->method->encaps_deterministic(ciphertext, *ciphertext_len, shared_secret, *shared_secret_len, key->public_key, seed)) {
     return 0;
   }
 
@@ -239,7 +235,7 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->encaps(ciphertext, ciphertext_len, shared_secret, shared_secret_len, key->public_key)) {
+  if (!kem->method->encaps(ciphertext, *ciphertext_len, shared_secret, *shared_secret_len, key->public_key)) {
     return 0;
   }
 
@@ -294,7 +290,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  if (!kem->method->decaps(shared_secret, shared_secret_len, ciphertext, key->secret_key)) {
+  if (!kem->method->decaps(shared_secret, *shared_secret_len, ciphertext, key->secret_key)) {
     return 0;
   }
 
