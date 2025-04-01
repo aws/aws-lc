@@ -38,7 +38,7 @@ OPENSSL_EXPORT int ml_kem_512_keypair_deterministic(uint8_t *public_key /* OUT *
                                          const size_t secret_len /* IN */,
                                          const uint8_t *seed /* IN */);
 
-OPENSSL_EXPORT int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */,
+int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */,
                                                   const size_t public_len /* IN */,
                                                   uint8_t *secret_key  /* OUT */,
                                                   const size_t secret_len /* IN */,
@@ -56,7 +56,7 @@ OPENSSL_EXPORT int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext     
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed /* IN */);
 
-OPENSSL_EXPORT int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       /* OUT */,
+int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       /* OUT */,
                                                       const size_t ciphertext_len    /* IN */,
                                                       uint8_t *shared_secret    /* OUT */,
                                                       const size_t shared_secret_len /* IN */,
@@ -74,7 +74,7 @@ OPENSSL_EXPORT int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */);
 
-OPENSSL_EXPORT int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
+int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                         const size_t shared_secret_len /* IN */,
                                         const uint8_t *ciphertext /* IN  */,
                                         const uint8_t *secret_key /* IN  */);
