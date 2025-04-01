@@ -6178,6 +6178,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_set_tmp_ecdh SSL_set_tmp_ecdh
 #define SSL_set_tmp_rsa SSL_set_tmp_rsa
 #define SSL_total_renegotiations SSL_total_renegotiations
+#define SSL_in_connect_init SSL_in_connect_init
+#define SSL_in_accept_init SSL_in_accept_init
 
 #endif  // !defined(BORINGSSL_PREFIX)
 
