@@ -10,54 +10,6 @@ index e69d0845..bae5ff6a 100644
  #cmakedefine LWS_WITH_CGI
  #cmakedefine LWS_WITH_CONMON
  #cmakedefine LWS_WITH_COSE
-diff --git a/lib/core/private-lib-core.h b/lib/core/private-lib-core.h
-index 8767ec16..36ebd7ee 100644
---- a/lib/core/private-lib-core.h
-+++ b/lib/core/private-lib-core.h
-@@ -115,6 +115,43 @@
-  #define strerror(x) ""
- #endif
-
-+
-+/*
-+* SSL library compatibility layer:
-+*
-+* Different SSL implementations (OpenSSL, BoringSSL, wolfSSL, etc.) require
-+* different type signatures for their APIs. These macros provide the appropriate
-+* type definitions and cast operations to ensure correct function signatures
-+* across all supported SSL backends.
-+*
-+* SSL_OPT_TYPE    - Defines the correct type for SSL options based on library
-+* SSL_SIZE_CAST   - Performs appropriate cast for buffer size parameters
-+* SSL_DATA_CAST   - Handles buffer pointer type differences between implementations
-+*/
-+#if defined(USE_WOLFSSL)
-+    #define SSL_OPT_TYPE long
-+#elif defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
-+    #define SSL_OPT_TYPE uint32_t
-+#elif (OPENSSL_VERSION_NUMBER >= 0x10003000l) && !defined(LIBRESSL_VERSION_NUMBER)
-+    #define SSL_OPT_TYPE unsigned long
-+#else
-+    #define SSL_OPT_TYPE long
-+#endif
-+
-+/* Define macro for appropriate size cast by SSL implementation */
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
-+    #define SSL_SIZE_CAST(x) ((size_t)(x))
-+#else
-+    #define SSL_SIZE_CAST(x) ((int)(x))
-+#endif
-+
-+#if defined(USE_WOLFSSL)
-+	#define SSL_DATA_CAST(x) ((unsigned char *)(x))
-+#else
-+	#define SSL_DATA_CAST(x) (x)
-+#endif
-+
-+
-  /*
-   *
-   *  ------ private platform defines ------
 diff --git a/lib/tls/CMakeLists.txt b/lib/tls/CMakeLists.txt
 index 9b15d9c6..e3eb9e97 100644
 --- a/lib/tls/CMakeLists.txt
@@ -302,10 +254,18 @@ index 884ca021..baec81a7 100644
  #else
  				(long)(lws_intptr_t)
 diff --git a/lib/tls/openssl/openssl-server.c b/lib/tls/openssl/openssl-server.c
-index a3c8d120..6090f8b7 100644
+index a3c8d120..912c0579 100644
 --- a/lib/tls/openssl/openssl-server.c
 +++ b/lib/tls/openssl/openssl-server.c
-@@ -159,7 +159,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
+@@ -23,6 +23,7 @@
+  */
+
+ #include "private-lib-core.h"
++#include "private-lib-tls-openssl.h"
+
+ /*
+  * Care: many openssl apis return 1 for success.  These are translated to the
+@@ -159,7 +160,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
      ((OPENSSL_VERSION_NUMBER < 0x30000000l) || \
       defined(LWS_SUPPRESS_DEPRECATED_API_WARNINGS))
  	const char *ecdh_curve = "prime256v1";
@@ -314,7 +274,7 @@ index a3c8d120..6090f8b7 100644
  	STACK_OF(X509) *extra_certs = NULL;
  #endif
  	EC_KEY *ecdh, *EC_key = NULL;
-@@ -213,14 +213,8 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
+@@ -213,14 +214,8 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
  		m = SSL_CTX_use_certificate_chain_file(vhost->tls.ssl_ctx, cert);
  		if (m != 1) {
  			const char *s;
@@ -331,7 +291,7 @@ index a3c8d120..6090f8b7 100644
 
  			lwsl_err("problem getting cert '%s' %lu: %s\n",
  				 cert, error, s);
-@@ -236,13 +230,8 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
+@@ -236,13 +231,8 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
  			if (SSL_CTX_use_PrivateKey_file(vhost->tls.ssl_ctx, private_key,
  							SSL_FILETYPE_PEM) != 1) {
  				const char *s;
@@ -347,7 +307,7 @@ index a3c8d120..6090f8b7 100644
  				lwsl_err("ssl problem getting key '%s' %lu: %s\n",
  					 private_key, error, s);
  				return 1;
-@@ -262,13 +251,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
+@@ -262,13 +252,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
  	}
 
  #if !defined(USE_WOLFSSL)
@@ -362,7 +322,7 @@ index a3c8d120..6090f8b7 100644
  #else
  	ret = wolfSSL_CTX_use_certificate_buffer(vhost->tls.ssl_ctx,
  						 (uint8_t *)p, (int)flen,
-@@ -291,7 +274,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
+@@ -291,7 +275,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
 
  #if !defined(USE_WOLFSSL)
  	ret = SSL_CTX_use_PrivateKey_ASN1(EVP_PKEY_RSA, vhost->tls.ssl_ctx, p,
@@ -371,7 +331,7 @@ index a3c8d120..6090f8b7 100644
  			(size_t)
  #else
  					  (long)(long long)
-@@ -300,7 +283,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
+@@ -300,7 +284,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
  	if (ret != 1) {
  		ret = SSL_CTX_use_PrivateKey_ASN1(EVP_PKEY_EC,
  						  vhost->tls.ssl_ctx, p,
@@ -380,7 +340,7 @@ index a3c8d120..6090f8b7 100644
  			(size_t)
  #else
  					  (long)(long long)
-@@ -439,7 +422,7 @@ check_key:
+@@ -439,7 +423,7 @@ check_key:
  		lwsl_notice(" Using ECDH certificate support\n");
 
  	/* Get X509 certificate from ssl context */
@@ -389,7 +349,7 @@ index a3c8d120..6090f8b7 100644
  #if !defined(LWS_HAVE_SSL_EXTRA_CHAIN_CERTS)
  	x = sk_X509_value(vhost->tls.ssl_ctx->extra_certs, 0);
  #else
-@@ -482,7 +465,7 @@ check_key:
+@@ -482,7 +466,7 @@ check_key:
 
  	EC_KEY_free(EC_key);
 
@@ -398,7 +358,7 @@ index a3c8d120..6090f8b7 100644
  post_ecdh:
  #endif
  	vhost->tls.skipped_certs = 0;
-@@ -502,13 +485,8 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
+@@ -502,13 +486,8 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
 
  	if (!method) {
  		const char *s;
@@ -414,7 +374,7 @@ index a3c8d120..6090f8b7 100644
 
  		lwsl_err("problem creating ssl method %lu: %s\n",
  				error, s);
-@@ -518,13 +496,8 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
+@@ -518,13 +497,8 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
  	if (!vhost->tls.ssl_ctx) {
  		const char *s;
 
@@ -430,7 +390,7 @@ index a3c8d120..6090f8b7 100644
  		lwsl_err("problem creating ssl context %lu: %s\n",
  				error, s);
  		return 1;
-@@ -569,34 +542,7 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
+@@ -569,34 +543,7 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
  			 __func__);
  	}
 
@@ -466,7 +426,7 @@ index a3c8d120..6090f8b7 100644
 
  	if (info->ssl_options_set)
  		SSL_CTX_set_options(vhost->tls.ssl_ctx, ssl_options_set_value);
-@@ -604,27 +550,7 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
+@@ -604,27 +551,7 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
  #if (OPENSSL_VERSION_NUMBER >= 0x009080df) && !defined(USE_WOLFSSL)
 
  /* SSL_clear_options introduced in 0.9.8m */
@@ -593,6 +553,54 @@ index d8e8dcc8..586ed48d 100644
  			cv = i2v_GENERAL_NAMES((X509V3_EXT_METHOD*)method, akid->issuer, NULL);
  			if (!cv)
  				goto bail_ak;
+diff --git a/lib/tls/openssl/private-lib-tls-openssl.h b/lib/tls/openssl/private-lib-tls-openssl.h
+index 004d596a..48242726 100644
+--- a/lib/tls/openssl/private-lib-tls-openssl.h
++++ b/lib/tls/openssl/private-lib-tls-openssl.h
+@@ -27,6 +27,43 @@
+ #if !defined(__LWS_PRIVATE_LIB_TLS_OPENSSL_H__)
+ #define __LWS_PRIVATE_LIB_TLS_OPENSSL_H__
+
++
++/*
++* SSL library compatibility layer:
++*
++* Different SSL implementations (OpenSSL, BoringSSL, wolfSSL, etc.) require
++* different type signatures for their APIs. These macros provide the appropriate
++* type definitions and cast operations to ensure correct function signatures
++* across all supported SSL backends.
++*
++* SSL_OPT_TYPE    - Defines the correct type for SSL options based on library
++* SSL_SIZE_CAST   - Performs appropriate cast for buffer size parameters
++* SSL_DATA_CAST   - Handles buffer pointer type differences between implementations
++*/
++#if defined(USE_WOLFSSL)
++    #define SSL_OPT_TYPE long
++#elif defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
++    #define SSL_OPT_TYPE uint32_t
++#elif (OPENSSL_VERSION_NUMBER >= 0x10003000l) && !defined(LIBRESSL_VERSION_NUMBER)
++    #define SSL_OPT_TYPE unsigned long
++#else
++    #define SSL_OPT_TYPE long
++#endif
++
++/* Define macro for appropriate size cast by SSL implementation */
++#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
++    #define SSL_SIZE_CAST(x) ((size_t)(x))
++#else
++    #define SSL_SIZE_CAST(x) ((int)(x))
++#endif
++
++#if defined(USE_WOLFSSL)
++	#define SSL_DATA_CAST(x) ((unsigned char *)(x))
++#else
++	#define SSL_DATA_CAST(x) (x)
++#endif
++
++
+ /*
+  * one of these per different client context
+  * cc_owner is in lws_context.lws_context_tls
 diff --git a/lib/tls/private-lib-tls.h b/lib/tls/private-lib-tls.h
 index 28203c58..f43b4392 100644
 --- a/lib/tls/private-lib-tls.h
