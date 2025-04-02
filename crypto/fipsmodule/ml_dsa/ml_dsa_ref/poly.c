@@ -362,7 +362,7 @@ static unsigned int rej_eta(ml_dsa_params *params,
          (params->eta == 4));
 
   unsigned int ctr, pos;
-  uint32_t t0, t1;
+  int32_t t0, t1;
 
   ctr = pos = 0;
   while(ctr < len && pos < buflen) {
