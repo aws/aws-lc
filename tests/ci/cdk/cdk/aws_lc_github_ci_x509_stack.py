@@ -18,7 +18,6 @@ from util.metadata import (
     STAGING_GITHUB_REPO_NAME,
 )
 
-
 class AwsLcGitHubX509CIStack(Stack):
     def __init__(
         self,
