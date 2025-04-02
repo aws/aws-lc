@@ -3,7 +3,7 @@
 AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, ECR).
 
 ## Table of Contents
-- [CI Setup](#ci-setup)
+- [CDK Setup](#cdk-setup)
   - [Before running CDK command](#before-running-cdk-command)
   - [Minimal permissions](#minimal-permissions)
   - [Pipeline Commands](#pipeline-commands)
@@ -104,7 +104,7 @@ To deploy dev pipeline to the same account as your CI:
 
 To deploy dev pipeline but pipeline is hosted in a separate account:
 ```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --pipeline-acount ${PIPELINE_ACCOUNT_ID} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --pipeline-account ${PIPELINE_ACCOUNT_ID} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
 ```
 
 To deploy production pipeline using default parameters:

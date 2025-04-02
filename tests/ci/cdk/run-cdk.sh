@@ -230,7 +230,7 @@ function deploy_production_pipeline() {
 }
 
 function deploy_dev_pipeline() {
-  if [[ -z "${DEPLOY_ACCOUNT:+x}" || -z "${PIPELINE_ACCOUNT}" ]]; then
+  if [[ -z "${DEPLOY_ACCOUNT:+x}" || -z "${DEPLOY_ACCOUNT}" ]]; then
     echo "The pipeline needs a deployment acount to know where to deploy the CI to."
     exit 1
   fi
@@ -241,7 +241,7 @@ function deploy_dev_pipeline() {
   fi
 
   if [[ -z "${PIPELINE_ACCOUNT+x}" || -z "${PIPELINE_ACCOUNT}" ]]; then
-    export PIPELINE_ACCOUNT=DEPLOY_ACCOUNT
+    export PIPELINE_ACCOUNT=${DEPLOY_ACCOUNT}
   fi
 
   if [[ ${PIPELINE_ACCOUNT+x} == '774305600158' ]]; then

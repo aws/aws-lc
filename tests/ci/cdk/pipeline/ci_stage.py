@@ -13,7 +13,8 @@ from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import AwsLcGitHubFuzzCIStack
 from pipeline.codebuild_batch_step import CodeBuildBatchStep
-from util.metadata import PRE_PROD_ACCOUNT
+from util.metadata import PRE_PROD_ACCOUNT, GITHUB_TOKEN_SECRET_NAME, STAGING_GITHUB_REPO_OWNER, \
+    STAGING_GITHUB_REPO_NAME
 
 
 class CiStage(Stage):
@@ -183,7 +184,7 @@ class CiStage(Stage):
                     environment_variables={
                         "GITHUB_PAT":  codebuild.BuildEnvironmentVariable(
                             type=codebuild.BuildEnvironmentVariableType.SECRETS_MANAGER,
-                            value="aws-lc/ci/github/token",
+                            value=GITHUB_TOKEN_SECRET_NAME,
                         ),
                     }
                 ),
@@ -198,8 +199,8 @@ class CiStage(Stage):
                     # "git push origin main",
                 ],
                 env={
-                    "STAGING_GITHUB_REPO_OWNER": "aws",
-                    "STAGING_GITHUB_REPO_NAME": "private-aws-lc-staging",
+                    "STAGING_GITHUB_REPO_OWNER": STAGING_GITHUB_REPO_OWNER,
+                    "STAGING_GITHUB_REPO_NAME": STAGING_GITHUB_REPO_NAME,
                 },
                 role=role,
                 timeout=Duration.minutes(60),

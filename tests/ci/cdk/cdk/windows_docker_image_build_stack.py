@@ -136,5 +136,5 @@ class WindowsDockerImageBuildStack(Stack):
         Tags.of(instance).add(WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE)
 
         self.output = {
-            "s3_bucket_name": bucket.bucket_name,
+            "s3_bucket_name": bucket._generate_physical_name(),
         }

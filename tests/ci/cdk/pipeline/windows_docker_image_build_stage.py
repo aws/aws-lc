@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 import typing
 
-from aws_cdk import Stage, Environment, Stack, Duration, aws_iam as iam, pipelines, Fn
+from aws_cdk import Stage, Environment, Stack, Duration, aws_iam as iam, pipelines
 from aws_cdk.pipelines import CodeBuildStep
 from constructs import Construct
 
