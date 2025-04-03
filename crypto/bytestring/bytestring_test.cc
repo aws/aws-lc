@@ -655,6 +655,38 @@ static const uint8_t kWrappedIndefBER[] = {0x30, 0x08, 0x30, 0x04, 0x30,
 static const uint8_t kWrappedIndefDER[] = {0x30, 0x06, 0x30, 0x02,
                                            0x30, 0x00, 0x30, 0x00};
 
+// kConstructedStringBER contains a deeply-nested constructed OCTET STRING.
+// The BER conversion collapses this to one level deep, but not completely.
+static const uint8_t kConstructedStringBER[] = {
+  0xa0, 0x10, 0x24, 0x06, 0x04, 0x01, 0x00, 0x04, 0x01,
+  0x01, 0x24, 0x06, 0x04, 0x01, 0x02, 0x04, 0x01, 0x03,
+};
+static const uint8_t kConstructedStringDER[] = {
+  0xa0, 0x08, 0x04, 0x02, 0x00, 0x01, 0x04, 0x02, 0x02, 0x03,
+};
+
+// kWrappedConstructedStringBER contains a constructed OCTET STRING, wrapped
+// and followed by valid DER. This tests that we correctly identify BER nested
+// inside DER.
+//
+//  SEQUENCE {
+//    SEQUENCE {
+//      [OCTET_STRING CONSTRUCTED] {
+//        OCTET_STRING {}
+//      }
+//    }
+//    SEQUENCE {}
+//  }
+static const uint8_t kWrappedConstructedStringBER[] = {
+  0x30, 0x08, 0x30, 0x04, 0x24, 0x02, 0x04, 0x00, 0x30, 0x00};
+static const uint8_t kWrappedConstructedStringDER[] = {
+  0x30, 0x06, 0x30, 0x02, 0x04, 0x00, 0x30, 0x00};
+
+// kConstructedBitString contains a BER constructed BIT STRING. These are not
+// supported and thus are left unchanged.
+static const uint8_t kConstructedBitStringBER[] = {
+  0x23, 0x0a, 0x03, 0x03, 0x00, 0x12, 0x34, 0x03, 0x03, 0x00, 0x56, 0x78};
+
 TEST(CBSTest, BerConvert) {
   static const uint8_t kSimpleBER[] = {0x01, 0x01, 0x00};
 
@@ -685,38 +717,6 @@ TEST(CBSTest, BerConvert) {
       0x62, 0xc6, 0x44, 0x12, 0xd5, 0x30, 0x00, 0xf8, 0xf2, 0x1b, 0xf0,
       0x6e, 0x10, 0x9b, 0xb8, 0x02, 0x02, 0x07, 0xd0,
   };
-
-  // kConstructedStringBER contains a deeply-nested constructed OCTET STRING.
-  // The BER conversion collapses this to one level deep, but not completely.
-  static const uint8_t kConstructedStringBER[] = {
-      0xa0, 0x10, 0x24, 0x06, 0x04, 0x01, 0x00, 0x04, 0x01,
-      0x01, 0x24, 0x06, 0x04, 0x01, 0x02, 0x04, 0x01, 0x03,
-  };
-  static const uint8_t kConstructedStringDER[] = {
-      0xa0, 0x08, 0x04, 0x02, 0x00, 0x01, 0x04, 0x02, 0x02, 0x03,
-  };
-
-  // kWrappedConstructedStringBER contains a constructed OCTET STRING, wrapped
-  // and followed by valid DER. This tests that we correctly identify BER nested
-  // inside DER.
-  //
-  //  SEQUENCE {
-  //    SEQUENCE {
-  //      [OCTET_STRING CONSTRUCTED] {
-  //        OCTET_STRING {}
-  //      }
-  //    }
-  //    SEQUENCE {}
-  //  }
-  static const uint8_t kWrappedConstructedStringBER[] = {
-      0x30, 0x08, 0x30, 0x04, 0x24, 0x02, 0x04, 0x00, 0x30, 0x00};
-  static const uint8_t kWrappedConstructedStringDER[] = {
-      0x30, 0x06, 0x30, 0x02, 0x04, 0x00, 0x30, 0x00};
-
-  // kConstructedBitString contains a BER constructed BIT STRING. These are not
-  // supported and thus are left unchanged.
-  static const uint8_t kConstructedBitStringBER[] = {
-      0x23, 0x0a, 0x03, 0x03, 0x00, 0x12, 0x34, 0x03, 0x03, 0x00, 0x56, 0x78};
 
   ExpectBerConvert("kSimpleBER", kSimpleBER, kSimpleBER);
   ExpectBerConvert("kNonMinimalLengthBER", kNonMinimalLengthDER,
@@ -762,12 +762,23 @@ TEST(CBSTest, IndefiniteBerASN1Macros) {
                                    kWrappedIndefBER + sizeof(kWrappedIndefBER)),
               true);
 
-  // TODO: Change expectation of below to true. Below use BER constructed
-  //       strings and will still fail until we revert a70edd4.
+  // Below use BER constructed strings.
   ExpectParse(d2i_ASN1_OCTET_STRING,
               std::vector<uint8_t>(kOctetStringBER,
                                    kOctetStringBER + sizeof(kOctetStringBER)),
-              false);
+              true);
+  ExpectParse(d2i_ASN1_TYPE,
+              std::vector<uint8_t>(kConstructedStringBER,
+                                   kConstructedStringBER + sizeof(kConstructedStringBER)),
+              true);
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY,
+            std::vector<uint8_t>(kWrappedConstructedStringBER,
+                                 kWrappedConstructedStringBER + sizeof(kWrappedConstructedStringBER)),
+            true);
+  ExpectParse(d2i_ASN1_BIT_STRING,
+            std::vector<uint8_t>(kConstructedBitStringBER,
+                                 kConstructedBitStringBER + sizeof(kConstructedBitStringBER)),
+            true);
 }
 
 struct BERTest {
