@@ -121,7 +121,7 @@ TEST_P(MLKEMKeypairLengthTest, LongLengthDeterministic) {
   encaps = new uint8_t[encaps_len]{};
   size_t decaps_len = params.secret_len*2;
   decaps = new uint8_t[decaps_len]{};
-  ASSERT_NE(0, params.keypair_deterministic(encaps, encaps_len, decaps, decaps_len, params.seed));
+  ASSERT_EQ(0, params.keypair_deterministic(encaps, encaps_len, decaps, decaps_len, params.seed));
 }
 
 TEST_P(MLKEMKeypairLengthTest, LongLength) {
@@ -130,7 +130,7 @@ TEST_P(MLKEMKeypairLengthTest, LongLength) {
   encaps = new uint8_t[encaps_len]{};
   size_t decaps_len = params.secret_len*2;
   decaps = new uint8_t[decaps_len]{};
-  ASSERT_NE(0, params.keypair(encaps, encaps_len, decaps, decaps_len));
+  ASSERT_EQ(0, params.keypair(encaps, encaps_len, decaps, decaps_len));
 }
 
 static const uint8_t encaps512Key[MLKEM512_PUBLIC_KEY_BYTES] = {
@@ -542,7 +542,7 @@ TEST_P(MLKEMEncapsulateLengthTest, LongLengthDeterministic) {
   ciphertext = new uint8_t[ciphertext_len]{};
   size_t shared_secret_len = params.shared_secret_len*2;
   shared_secret = new uint8_t[shared_secret_len]{};
-  ASSERT_NE(0, params.encapsulate_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, params.public_key, params.seed));
+  ASSERT_EQ(0, params.encapsulate_deterministic(ciphertext, ciphertext_len, shared_secret, shared_secret_len, params.public_key, params.seed));
 }
 
 TEST_P(MLKEMEncapsulateLengthTest, LongLength) {
@@ -551,7 +551,7 @@ TEST_P(MLKEMEncapsulateLengthTest, LongLength) {
   ciphertext = new uint8_t[ciphertext_len]{};
   size_t shared_secret_len = params.shared_secret_len*2;
   shared_secret = new uint8_t[shared_secret_len]{};
-  ASSERT_NE(0, params.encapsulate(ciphertext, ciphertext_len, shared_secret, shared_secret_len, params.public_key));
+  ASSERT_EQ(0, params.encapsulate(ciphertext, ciphertext_len, shared_secret, shared_secret_len, params.public_key));
 }
 
 static const uint8_t decaps512Key[MLKEM512_SECRET_KEY_BYTES] = {
@@ -1509,5 +1509,5 @@ TEST_P(MLKEMDecapsulateLengthTest, LongLength) {
   MLKEMDecapsulateTestVector params = GetParam();
   size_t shared_secret_len = params.shared_secret_len*2;
   shared_secret = new uint8_t[shared_secret_len]{};
-  ASSERT_NE(0, params.decapsulate(shared_secret, shared_secret_len, params.ciphertext, params.secret_key));
+  ASSERT_EQ(0, params.decapsulate(shared_secret, shared_secret_len, params.ciphertext, params.secret_key));
 }
