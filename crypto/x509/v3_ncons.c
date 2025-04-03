@@ -84,6 +84,7 @@ static int nc_dn(X509_NAME *sub, X509_NAME *nm);
 static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns);
 static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml);
 static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base);
+static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base);
 
 const X509V3_EXT_METHOD v3_name_constraints = {
     NID_name_constraints,
@@ -375,6 +376,9 @@ static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base) {
       return nc_uri(gen->d.uniformResourceIdentifier,
                     base->d.uniformResourceIdentifier);
 
+    case GEN_IPADD:
+      return nc_ip(gen->d.iPAddress, base->d.iPAddress);
+
     default:
       return X509_V_ERR_UNSUPPORTED_CONSTRAINT_TYPE;
   }
@@ -552,6 +556,51 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
 
   if (!equal_case(&base_cbs, &host)) {
     return X509_V_ERR_PERMITTED_VIOLATION;
+  }
+
+  return X509_V_OK;
+}
+
+#define IPV4_ADDR_LEN 4
+#define IPV4_CIDR_LEN (IPV4_ADDR_LEN * 2)
+#define IPV6_ADDR_LEN 16
+#define IPV6_CIDR_LEN (IPV6_ADDR_LEN * 2)
+
+static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
+  int ip_len, cidr_len, i;
+  const unsigned char *ip_ptr, *cidr_ptr, *cidr_prefix_ptr;
+  ip_ptr = ip->data;
+  ip_len = ip->length;
+  cidr_ptr = base->data;
+  cidr_len = base->length;
+
+  // The length should be either the length of an IPv4 or IPv6 address.
+  if (!((ip_len == IPV4_ADDR_LEN) || (ip_len == IPV6_ADDR_LEN))) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // The CIDR length should either be the length of an IPv4 Address+mask or IPv6
+  // Address+mask.
+  if (!((cidr_len == IPV4_CIDR_LEN) || (cidr_len == IPV6_CIDR_LEN))) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  // Validate we have an IPv4 address and IPv4 CIDR or IPv6 Address and IPv6
+  // CIDR
+  if (ip_len * 2 != cidr_len) {
+    return X509_V_ERR_PERMITTED_VIOLATION;
+  }
+
+  // Pointer to the CIDR prefix mask
+  cidr_prefix_ptr = cidr_ptr + ip_len;
+
+  /* Considering possible not aligned base ipAddress */
+  /* Not checking for wrong mask definition: i.e.: 255.0.255.0 */
+  for (i = 0; i < ip_len; i++) {
+    if ((ip_ptr[i] & cidr_prefix_ptr[i]) !=
+        (cidr_ptr[i] & cidr_prefix_ptr[i])) {
+      return X509_V_ERR_PERMITTED_VIOLATION;
+    }
   }
 
   return X509_V_OK;
