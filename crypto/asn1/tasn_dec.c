@@ -916,7 +916,7 @@ err:
 // is more efficient than calling asn1_collect because it does not recurse on
 // each indefinite length header.
 static int asn1_find_end(const unsigned char **in, long len, char inf) {
-  int expected_eoc;
+  uint32_t expected_eoc;
   long plen;
   const unsigned char *p = *in, *q;
   // If not indefinite length constructed just add length.
@@ -932,8 +932,9 @@ static int asn1_find_end(const unsigned char **in, long len, char inf) {
   while (len > 0) {
     if (asn1_check_eoc(&p, len)) {
       expected_eoc--;
-      if (expected_eoc == 0)
+      if (expected_eoc == 0) {
         break;
+      }
       len -= 2;
       continue;
     }
@@ -943,8 +944,12 @@ static int asn1_find_end(const unsigned char **in, long len, char inf) {
                          -1, 0, 0)) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       return 0;
-                         }
+    }
     if (inf) {
+      if (expected_eoc == UINT32_MAX) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
+        return 0;
+      }
       expected_eoc++;
     }
     else {
@@ -960,14 +965,14 @@ static int asn1_find_end(const unsigned char **in, long len, char inf) {
   return 1;
 }
 
-// Check for ASN1 EOC and swallow it if found.
+// Check for ASN1 EOC and swallow it if found. Returns 1 if found and 0 if none.
 static int asn1_check_eoc(const unsigned char **in, long len) {
   const unsigned char *p;
   if (len < 2) {
     return 0;
   }
   p = *in;
-  if (!p[0] && !p[1]) {
+  if (p[0] == '\0' && p[1] == '\0') {
     *in += 2;
     return 1;
   }
@@ -1011,7 +1016,7 @@ static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
   }
 
   // Indicate whether indefinite.
-  if (inf) {
+  if (inf != NULL) {
     *inf = i & 1;
   }
 

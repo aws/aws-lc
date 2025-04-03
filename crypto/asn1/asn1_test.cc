@@ -2377,6 +2377,8 @@ TEST(ASN1Test, ZeroTag) {
   // that later.
   const std::vector<uint8_t> zero_tag_sequence = {0x30, 0x02, 0x00, 0x00};
   const std::vector<uint8_t> zero_tag_set_any = {0x31, 0x02, 0x00, 0x00};
+  // Taken from OpenSSL's test/asn1_decode_test.c.
+  const std::vector<uint8_t> openssl_t_invalid_zero = {0x31, 0x02, 0x00, 0x00};
   // SEQUENCE {
   //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
   //   [UNIVERSAL 0 PRIMITIVE] {}
@@ -2387,11 +2389,13 @@ TEST(ASN1Test, ZeroTag) {
   ExpectParse(d2i_ASN1_SEQUENCE_ANY, zero_tag_sequence, false);
   ExpectParse(d2i_ASN1_SET_ANY, zero_tag_set_any, false);
   ExpectParse(d2i_X509_ALGOR, universal_0_primitive_empty, false);
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, openssl_t_invalid_zero, false);
   // Test that the equivalent test cases are parsable with |ASN1_TYPE| (like
   // OpenSSL).
   ExpectParse(d2i_ASN1_TYPE, zero_tag_sequence, true);
   ExpectParse(d2i_ASN1_TYPE, zero_tag_set_any, true);
   ExpectParse(d2i_ASN1_TYPE, universal_0_primitive_empty, true);
+  ExpectParse(d2i_ASN1_TYPE, openssl_t_invalid_zero, true);
 
 
   // TODO: Change expectation of below to true. Below use BER constructed
