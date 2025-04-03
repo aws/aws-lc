@@ -5227,8 +5227,10 @@ TEST(X509Test, BER) {
   // Constructed strings are forbidden in DER.
   EXPECT_FALSE(CertFromPEM(kConstructedBitString));
   EXPECT_FALSE(CertFromPEM(kConstructedOctetString));
-  // Indefinite lengths are forbidden in DER.
-  EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
+  // Indefinite lengths are forbidden in DER, but allowed in BER. AWS-LC has
+  // reinstated indefinite BER support in the ASN1 macros to align with OpenSSL
+  // behavior.
+  EXPECT_TRUE(CertFromPEM(kIndefiniteLength));
   // Padding bits in BIT STRINGs must be zero in BER.
   EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
   // Tags must be minimal in both BER and DER, though many BER decoders
