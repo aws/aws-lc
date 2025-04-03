@@ -48,8 +48,6 @@ int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   return X509_V_OK;
 }
 
-// CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
-// STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
 bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
     const std::vector<X509_CRL *> &crls) {
   bssl::UniquePtr<STACK_OF(X509_CRL)> stack(sk_X509_CRL_new_null());
