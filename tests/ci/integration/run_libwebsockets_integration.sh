@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -ex
+set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
 
