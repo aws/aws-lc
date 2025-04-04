@@ -686,7 +686,6 @@ TEST_P(MLKEMEncapsulateLengthTest, LongLength) {
     ASSERT_EQ(0, ciphertext[i]);
   }
   for (size_t j = params.shared_secret_len; j < params.shared_secret_len*2; j++) {
-    fprintf(stderr, "%lu %u", j, shared_secret[j]);
     ASSERT_EQ(0, shared_secret[j]);
   }
 }
