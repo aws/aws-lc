@@ -18,14 +18,14 @@
 #include "./ml_kem_ref/verify.c"
 
 // Ensure buffer is long enough and zero any extra memory
-static boolean_t check_and_initialize_buffer(uint8_t *buffer, const size_t len, const size_t expeted_len) {
+static int check_and_initialize_buffer(uint8_t *buffer, const size_t len, const size_t expeted_len) {
   if (buffer == NULL || len < expeted_len) {
-    return false;
+    return 0;
   }
   for (size_t i = expeted_len; i < len; i++) {
     buffer[i] = 0;
   }
-  return true;
+  return 1;
 }
 
 // EVP layer assumes the length parameter passed in will be set to the number of bytes written if call is successful
