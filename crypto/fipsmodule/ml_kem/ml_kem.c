@@ -18,7 +18,7 @@
 #include "./ml_kem_ref/verify.c"
 
 // Ensure buffer is long enough and zero any extra memory
-int check_and_initialize_buffer(uint8_t *buffer, const size_t len, const size_t expeted_len);
+int check_buffer(const uint8_t *buffer, const size_t len, const size_t expeted_len);
 
 // EVP layer assumes the length parameter passed in will be set to the number of bytes written if call is successful
 void set_written_len_on_success(const int result, size_t *length, const size_t written_len);
@@ -249,12 +249,9 @@ int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
   return ml_kem_common_decapsulate(params, shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
-int check_and_initialize_buffer(uint8_t *buffer, const size_t len, const size_t expected_len) {
+int check_buffer(const uint8_t *buffer, const size_t len, const size_t expected_len) {
   if (buffer == NULL || len < expected_len) {
     return 0;
-  }
-  for (size_t i = expected_len; i < len; i++) {
-    buffer[i] = 0;
   }
   return 1;
 }
@@ -271,8 +268,8 @@ int ml_kem_common_keypair_deterministic(ml_kem_params params,
                                         uint8_t *secret_key,
                                         size_t *secret_len,
                                         const uint8_t *seed) {
-  if (!check_and_initialize_buffer(public_key, *public_len, params.public_key_bytes) ||
-      !check_and_initialize_buffer(secret_key, *secret_len, params.secret_key_bytes)) {
+  if (!check_buffer(public_key, *public_len, params.public_key_bytes) ||
+      !check_buffer(secret_key, *secret_len, params.secret_key_bytes)) {
     return 1;
   }
   const int res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
@@ -288,8 +285,8 @@ int ml_kem_common_keypair_deterministic(ml_kem_params params,
 }
 
 int ml_kem_common_keypair(ml_kem_params params, uint8_t *public_key, size_t *public_len, uint8_t *secret_key, size_t *secret_len) {
-  if (!check_and_initialize_buffer(public_key, *public_len, params.public_key_bytes) ||
-      !check_and_initialize_buffer(secret_key, *secret_len, params.secret_key_bytes)) {
+  if (!check_buffer(public_key, *public_len, params.public_key_bytes) ||
+      !check_buffer(secret_key, *secret_len, params.secret_key_bytes)) {
     return 1;
   }
   const int res = ml_kem_keypair_ref(&params, public_key, secret_key);
@@ -305,8 +302,8 @@ int ml_kem_common_keypair(ml_kem_params params, uint8_t *public_key, size_t *pub
 }
 
 int ml_kem_common_encapsulate_deterministic(ml_kem_params params, uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *public_key, const uint8_t *seed) {
-  if (!check_and_initialize_buffer(ciphertext, *ciphertext_len, params.ciphertext_bytes) ||
-      !check_and_initialize_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
+  if (!check_buffer(ciphertext, *ciphertext_len, params.ciphertext_bytes) ||
+      !check_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
     return 1;
   }
   const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
@@ -316,8 +313,8 @@ int ml_kem_common_encapsulate_deterministic(ml_kem_params params, uint8_t *ciphe
 }
 
 int ml_kem_common_encapsulate(ml_kem_params params, uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *public_key) {
-  if (!check_and_initialize_buffer(ciphertext, *ciphertext_len, params.ciphertext_bytes) ||
-      !check_and_initialize_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
+  if (!check_buffer(ciphertext, *ciphertext_len, params.ciphertext_bytes) ||
+      !check_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
     return 1;
   }
   const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
@@ -327,7 +324,7 @@ int ml_kem_common_encapsulate(ml_kem_params params, uint8_t *ciphertext, size_t 
 }
 
 int ml_kem_common_decapsulate(ml_kem_params params, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *ciphertext, const uint8_t *secret_key) {
-  if (!check_and_initialize_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
+  if (!check_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
     return 1;
   }
   const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
