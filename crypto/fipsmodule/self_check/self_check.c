@@ -61,11 +61,11 @@ static void hexdump(char buf[MAX_HEXDUMP_SIZE], const uint8_t *in, size_t in_len
 
 static int check_test_optional_abort(const void *expected, const void *actual,
                       size_t expected_len, const char *name, const bool call_fips_failure) {
+  char expected_hex[MAX_HEXDUMP_SIZE] = {0};
+  char actual_hex[MAX_HEXDUMP_SIZE] = {0};
+  char error_msg[MAX_ERROR_MSG_SIZE] = {0};
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
     assert(sizeof(name) < MAX_NAME);
-    char expected_hex[MAX_HEXDUMP_SIZE] = {0};
-    char actual_hex[MAX_HEXDUMP_SIZE] = {0};
-    char error_msg[MAX_ERROR_MSG_SIZE] = {0};
     hexdump(expected_hex, expected, expected_len);
     hexdump(actual_hex, actual, expected_len);
 
