@@ -67,6 +67,18 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#if defined(OPENSSL_WINDOWS)
+#include <windows.h>
+#include <winsock2.h>
+#include <afunix.h>
+#include <ws2ipdef.h>
+#else
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -694,16 +706,35 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 
 // Datagram BIOs.
-//
-// TODO(fork): not implemented.
+
+  // Data structures
+typedef union bio_addr_st {
+    struct sockaddr sa;
+#ifdef AF_INET6
+    struct sockaddr_in6 s_in6;
+#endif
+    struct sockaddr_in s_in;
+#ifdef AF_UNIX
+    struct sockaddr_un s_un;
+#endif
+} BIO_ADDR;
+
+#define BIO_CTRL_DGRAM_CONNECT       31// BIO dgram special
+#define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
+                                          * socket to be passed in */
+
+# define BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP 37 // flag whether the last
+# define BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP 38 // I/O operation tiemd out
 
 #define BIO_CTRL_DGRAM_QUERY_MTU 40  // as kernel for current MTU
-
+#define BIO_CTRL_DGRAM_GET_MTU 41 // get cached value for MTU
 #define BIO_CTRL_DGRAM_SET_MTU 42 /* set cached value for  MTU. want to use
-                                     this if asking the kernel fails */
+                                   * this if asking the kernel fails */
 
-#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
+#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceeded in
                                           the previous write operation. */
+
+#define BIO_CTRL_DGRAM_SET_PEER           44 // Destination for the data
 
 // BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
 // and depends on |timeval|, which is not 2038-clean on all platforms.
@@ -712,6 +743,31 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 #define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
 
+OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void);
+
+// TODO: documentation
+OPENSSL_EXPORT BIO *BIO_new_dgram(int fd, int close_flag);
+
+// TODO: documentation
+OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bio, const BIO_ADDR *peer);
+
+// TODO: documentation
+OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *sa);
+
+// TODO: documentation
+OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp);
+
+// TODO: documentation
+OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO* bp);
+
+// TODO: documentation
+OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *sa);
+
+// TODO: documentation
+OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *sa);
+
+// TODO: documentation
+OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *sa);
 
 // BIO Pairs.
 //
