@@ -1774,6 +1774,14 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 // Connection information.
 
+// SSL_in_connect_init returns 1 if |ssl| is a client and has a pending
+// handshake. Otherwise, it returns 0.
+OPENSSL_EXPORT int SSL_in_connect_init(const SSL *ssl);
+
+// SSL_in_accept_init returns 1 if |ssl| is a server and has a pending
+// handshake. Otherwise, it returns 0.
+OPENSSL_EXPORT int SSL_in_accept_init(const SSL *ssl);
+
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
 // and has no pending handshake. It returns zero otherwise.
 OPENSSL_EXPORT int SSL_is_init_finished(const SSL *ssl);
@@ -6170,6 +6178,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_set_tmp_ecdh SSL_set_tmp_ecdh
 #define SSL_set_tmp_rsa SSL_set_tmp_rsa
 #define SSL_total_renegotiations SSL_total_renegotiations
+#define SSL_in_connect_init SSL_in_connect_init
+#define SSL_in_accept_init SSL_in_accept_init
 
 #endif  // !defined(BORINGSSL_PREFIX)
 
