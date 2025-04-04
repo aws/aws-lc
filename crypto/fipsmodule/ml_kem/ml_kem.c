@@ -16,213 +16,318 @@
 #include "./ml_kem_ref/reduce.c"
 #include "./ml_kem_ref/symmetric-shake.c"
 #include "./ml_kem_ref/verify.c"
-#include "../../internal.h"
+
+// Ensure buffer is long enough and zero any extra memory
+int check_buffer(const uint8_t *buffer, const size_t len, const size_t expeted_len);
+
+// EVP layer assumes the length parameter passed in will be set to the number of bytes written if call is successful
+void set_written_len_on_success(const int result, size_t *length, const size_t written_len);
+
+int ml_kem_common_keypair_deterministic(ml_kem_params params,
+                                        uint8_t *public_key,
+                                        size_t *public_len,
+                                        uint8_t *secret_key,
+                                        size_t *secret_len,
+                                        const uint8_t *seed);
+
+int ml_kem_common_keypair(ml_kem_params params,
+                          uint8_t *public_key,
+                          size_t *public_len,
+                          uint8_t *secret_key,
+                          size_t *secret_len);
+
+int ml_kem_common_encapsulate_deterministic(ml_kem_params params,
+                                            uint8_t *ciphertext,
+                                            size_t *ciphertext_len,
+                                            uint8_t *shared_secret,
+                                            size_t *shared_secret_len,
+                                            const uint8_t *public_key,
+                                            const uint8_t *seed);
+
+int ml_kem_common_encapsulate(ml_kem_params params,
+                              uint8_t *ciphertext,
+                              size_t *ciphertext_len,
+                              uint8_t *shared_secret,
+                              size_t *shared_secret_len,
+                              const uint8_t *public_key);
+
+int ml_kem_common_decapsulate(ml_kem_params params,
+                              uint8_t *shared_secret,
+                              size_t *shared_secret_len,
+                              const uint8_t *ciphertext,
+                              const uint8_t *secret_key);
 
 // Note: These methods currently default to using the reference code for ML_KEM.
 // In a future where AWS-LC has optimized options available, those can be
 // conditionally (or based on compile-time flags) called here, depending on
 // platform support.
 
-int ml_kem_512_keypair_deterministic(uint8_t *public_key  /* OUT */,
-                                         uint8_t *secret_key  /* OUT */,
-                                         const uint8_t *seed  /* IN */) {
+int ml_kem_512_keypair_deterministic(uint8_t *public_key /* OUT */,
+                                     size_t *public_len  /* IN_OUT */,
+                                     uint8_t *secret_key /* OUT */,
+                                     size_t *secret_len  /* IN_OUT */,
+                                     const uint8_t *seed /* IN */) {
   boringssl_ensure_ml_kem_self_test();
-  return ml_kem_512_keypair_deterministic_no_self_test(public_key, secret_key, seed);
+  return ml_kem_512_keypair_deterministic_no_self_test(public_key, public_len, secret_key, secret_len, seed);
 }
 
-int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */,
-                                                  uint8_t *secret_key  /* OUT */,
-                                                  const uint8_t *seed  /* IN */) {
+int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */,
+                                                  size_t *public_len  /* IN_OUT */,
+                                                  uint8_t *secret_key /* OUT */,
+                                                  size_t *secret_len  /* IN_OUT */,
+                                                  const uint8_t *seed /* IN */) {
   ml_kem_params params;
-  int res;
   ml_kem_512_params_init(&params);
-  res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
-#if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
-  if (res != 0) {
-      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
-  }
-#endif
-  return res;
+  return ml_kem_common_keypair_deterministic(params, public_key, public_len, secret_key, secret_len, seed);
 }
 
 int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
-                           uint8_t *secret_key /* OUT */) {
+                       size_t *public_len  /* IN_OUT */,
+                       uint8_t *secret_key /* OUT */,
+                       size_t *secret_len  /* IN_OUT */) {
   boringssl_ensure_ml_kem_self_test();
-  int res;
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  res = ml_kem_keypair_ref(&params, public_key, secret_key);
-#if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
-  if (res != 0) {
-      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
-  }
-#endif
-  return res;
+  return ml_kem_common_keypair(params, public_key, public_len, secret_key, secret_len);
 }
 
 int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
-                                             uint8_t *shared_secret    /* OUT */,
-                                             const uint8_t *public_key /* IN  */,
-                                             const uint8_t *seed       /* IN */) {
+                                         size_t *ciphertext_len    /* IN_OUT */,
+                                         uint8_t *shared_secret    /* OUT */,
+                                         size_t *shared_secret_len /* IN_OUT */,
+                                         const uint8_t *public_key /* IN  */,
+                                         const uint8_t *seed       /* IN */) {
   boringssl_ensure_ml_kem_self_test();
-  return ml_kem_512_encapsulate_deterministic_no_self_test(ciphertext, shared_secret, public_key, seed);
+  return ml_kem_512_encapsulate_deterministic_no_self_test(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
 int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       /* OUT */,
+                                                      size_t *ciphertext_len    /* IN_OUT */,
                                                       uint8_t *shared_secret    /* OUT */,
-                                                      const uint8_t *public_key /* IN  */,
+                                                      size_t *shared_secret_len /* IN_OUT */,
+                                                      const uint8_t *public_key /* IN */,
                                                       const uint8_t *seed       /* IN */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key,
-                               seed);
+  return ml_kem_common_encapsulate_deterministic(params, ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
 int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
-                               uint8_t *shared_secret    /* OUT */,
-                               const uint8_t *public_key /* IN  */) {
+                           size_t *ciphertext_len    /* IN_OUT */,
+                           uint8_t *shared_secret    /* OUT */,
+                           size_t *shared_secret_len /* IN_OUT */,
+                           const uint8_t *public_key /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  return ml_kem_common_encapsulate(params, ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key);
 }
 
 int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
-                               const uint8_t *ciphertext /* IN  */,
-                               const uint8_t *secret_key /* IN  */) {
+                           size_t *shared_secret_len /* IN_OUT */,
+                           const uint8_t *ciphertext /* IN */,
+                           const uint8_t *secret_key /* IN */) {
   boringssl_ensure_ml_kem_self_test();
-  return ml_kem_512_decapsulate_no_self_test(shared_secret, ciphertext, secret_key);
+  return ml_kem_512_decapsulate_no_self_test(shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
 int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
-                                        const uint8_t *ciphertext /* IN  */,
-                                        const uint8_t *secret_key /* IN  */) {
+                                        size_t *shared_secret_len /* IN_OUT */,
+                                        const uint8_t *ciphertext /* IN */,
+                                        const uint8_t *secret_key /* IN */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  return ml_kem_common_decapsulate(params, shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
 
-int ml_kem_768_keypair_deterministic(uint8_t *public_key  /* OUT */,
-                                         uint8_t *secret_key  /* OUT */,
-                                         const uint8_t *seed  /* IN */) {
+int ml_kem_768_keypair_deterministic(uint8_t *public_key /* OUT */,
+                                     size_t *public_len  /* IN_OUT */,
+                                     uint8_t *secret_key /* OUT */,
+                                     size_t *secret_len  /* IN_OUT */,
+                                     const uint8_t *seed /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
-  int res;
   ml_kem_768_params_init(&params);
-  res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
-#if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
-  if (res != 0) {
-      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
-  }
-#endif
-  return res;
+  return ml_kem_common_keypair_deterministic(params, public_key, public_len, secret_key, secret_len, seed);
 }
 
 int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
-                           uint8_t *secret_key /* OUT */) {
+                       size_t *public_len  /* IN_OUT */,
+                       uint8_t *secret_key /* OUT */,
+                       size_t *secret_len  /* IN_OUT */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
-  int res;
   ml_kem_768_params_init(&params);
-  res = ml_kem_keypair_ref(&params, public_key, secret_key);
-#if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
-  if (res != 0) {
-      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
-  }
-#endif
-  return res;
+  return ml_kem_common_keypair(params, public_key, public_len, secret_key, secret_len);
 }
 
 int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
-                                             uint8_t *shared_secret    /* OUT */,
-                                             const uint8_t *public_key /* IN  */,
-                                             const uint8_t *seed       /* IN */) {
+                                         size_t *ciphertext_len    /* IN_OUT */,
+                                         uint8_t *shared_secret    /* OUT */,
+                                         size_t *shared_secret_len /* IN_OUT */,
+                                         const uint8_t *public_key /* IN */,
+                                         const uint8_t *seed       /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  return ml_kem_common_encapsulate_deterministic(params, ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
 int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
-                               uint8_t *shared_secret    /* OUT */,
-                               const uint8_t *public_key /* IN  */) {
+                           size_t *ciphertext_len    /* IN_OUT */,
+                           uint8_t *shared_secret    /* OUT */,
+                           size_t *shared_secret_len /* IN_OUT */,
+                           const uint8_t *public_key /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  return ml_kem_common_encapsulate(params, ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key);
 }
 
 int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
-                               const uint8_t *ciphertext /* IN  */,
-                               const uint8_t *secret_key /* IN  */) {
+                           size_t *shared_secret_len /* IN_OUT */,
+                           const uint8_t *ciphertext /* IN */,
+                           const uint8_t *secret_key /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  return ml_kem_common_decapsulate(params, shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
-int ml_kem_1024_keypair_deterministic(uint8_t *public_key  /* OUT */,
-                                          uint8_t *secret_key  /* OUT */,
-                                          const uint8_t *seed  /* IN */) {
+int ml_kem_1024_keypair_deterministic(uint8_t *public_key /* OUT */,
+                                      size_t *public_len  /* IN_OUT */,
+                                      uint8_t *secret_key /* OUT */,
+                                      size_t *secret_len  /* IN_OUT */,
+                                      const uint8_t *seed /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
-  int res;
   ml_kem_1024_params_init(&params);
-  res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
-#if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
-  if (res != 0) {
-      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
-  }
-#endif
-  return res;
+  return ml_kem_common_keypair_deterministic(params, public_key, public_len, secret_key, secret_len, seed);
 }
 
 int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
-                            uint8_t *secret_key /* OUT */) {
+                        size_t *public_len  /* IN_OUT */,
+                        uint8_t *secret_key /* OUT */,
+                        size_t *secret_len  /* IN_OUT */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
-  int res;
   ml_kem_1024_params_init(&params);
-  res = ml_kem_keypair_ref(&params, public_key, secret_key);
-#if defined(AWSLC_FIPS)
-  /* PCT failure is the only failure condition for key generation. */
-  if (res != 0) {
-      AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
-  }
-#endif
-  return res;
+  return ml_kem_common_keypair(params, public_key, public_len, secret_key, secret_len);
 }
 
 int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
-                                              uint8_t *shared_secret    /* OUT */,
-                                              const uint8_t *public_key /* IN  */,
-                                              const uint8_t *seed       /* IN */) {
+                                          size_t *ciphertext_len    /* IN_OUT */,
+                                          uint8_t *shared_secret    /* OUT */,
+                                          size_t *shared_secret_len /* IN_OUT */,
+                                          const uint8_t *public_key /* IN */,
+                                          const uint8_t *seed       /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  return ml_kem_common_encapsulate_deterministic(params, ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
 int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
-                                uint8_t *shared_secret    /* OUT */,
-                                const uint8_t *public_key /* IN  */) {
+                            size_t *ciphertext_len    /* IN_OUT */,
+                            uint8_t *shared_secret    /* OUT */,
+                            size_t *shared_secret_len /* IN_OUT */,
+                            const uint8_t *public_key /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  return ml_kem_common_encapsulate(params, ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key);
 }
 
 int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
-                                const uint8_t *ciphertext /* IN  */,
-                                const uint8_t *secret_key /* IN  */) {
+                            size_t *shared_secret_len /* IN_OUT */,
+                            const uint8_t *ciphertext /* IN */,
+                            const uint8_t *secret_key /* IN */) {
   boringssl_ensure_ml_kem_self_test();
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  return ml_kem_common_decapsulate(params, shared_secret, shared_secret_len, ciphertext, secret_key);
+}
+
+int check_buffer(const uint8_t *buffer, const size_t len, const size_t expected_len) {
+  if (buffer == NULL || len < expected_len) {
+    return 0;
+  }
+  return 1;
+}
+
+void set_written_len_on_success(const int result, size_t *length, const size_t written_len) {
+  if (result == 0) {
+    *length = written_len;
+  }
+}
+
+int ml_kem_common_keypair_deterministic(ml_kem_params params,
+                                        uint8_t *public_key,
+                                        size_t *public_len,
+                                        uint8_t *secret_key,
+                                        size_t *secret_len,
+                                        const uint8_t *seed) {
+  if (!check_buffer(public_key, *public_len, params.public_key_bytes) ||
+      !check_buffer(secret_key, *secret_len, params.secret_key_bytes)) {
+    return 1;
+  }
+  const int res = ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+    AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  set_written_len_on_success(res, public_len, params.public_key_bytes);
+  set_written_len_on_success(res, secret_len, params.secret_key_bytes);
+  return res;
+}
+
+int ml_kem_common_keypair(ml_kem_params params, uint8_t *public_key, size_t *public_len, uint8_t *secret_key, size_t *secret_len) {
+  if (!check_buffer(public_key, *public_len, params.public_key_bytes) ||
+      !check_buffer(secret_key, *secret_len, params.secret_key_bytes)) {
+    return 1;
+  }
+  const int res = ml_kem_keypair_ref(&params, public_key, secret_key);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (res != 0) {
+    AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+  }
+#endif
+  set_written_len_on_success(res, public_len, params.public_key_bytes);
+  set_written_len_on_success(res, secret_len, params.secret_key_bytes);
+  return res;
+}
+
+int ml_kem_common_encapsulate_deterministic(ml_kem_params params, uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *public_key, const uint8_t *seed) {
+  if (!check_buffer(ciphertext, *ciphertext_len, params.ciphertext_bytes) ||
+      !check_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
+    return 1;
+  }
+  const int res = ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
+  set_written_len_on_success(res, ciphertext_len, params.ciphertext_bytes);
+  set_written_len_on_success(res, shared_secret_len, params.shared_secret_bytes);
+  return res;
+}
+
+int ml_kem_common_encapsulate(ml_kem_params params, uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *public_key) {
+  if (!check_buffer(ciphertext, *ciphertext_len, params.ciphertext_bytes) ||
+      !check_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
+    return 1;
+  }
+  const int res = ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
+  set_written_len_on_success(res, ciphertext_len, params.ciphertext_bytes);
+  set_written_len_on_success(res, shared_secret_len, params.shared_secret_bytes);
+  return res;
+}
+
+int ml_kem_common_decapsulate(ml_kem_params params, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *ciphertext, const uint8_t *secret_key) {
+  if (!check_buffer(shared_secret, *shared_secret_len, params.shared_secret_bytes)) {
+    return 1;
+  }
+  const int res = ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
+  set_written_len_on_success(res, shared_secret_len, params.shared_secret_bytes);
+  return res;
 }
