@@ -22,6 +22,8 @@ mainSteps:
             shutdown -P +90
             sudo -i
             systemctl stop apt-daily.timer
+            systemctl stop apt-daily-upgrade.timer
+            systemctl stop unattended-upgrades.service
             export DEBIAN_FRONTEND=noninteractive
             export CPU_TYPE=$(dpkg --print-architecture)
             export SOURCE={SOURCE}
