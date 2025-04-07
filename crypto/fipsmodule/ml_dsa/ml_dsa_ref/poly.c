@@ -362,7 +362,7 @@ static unsigned int rej_eta(ml_dsa_params *params,
          (params->eta == 4));
 
   unsigned int ctr, pos;
-  int32_t t0, t1;
+  uint32_t t0, t1;
 
   ctr = pos = 0;
   while(ctr < len && pos < buflen) {
@@ -372,19 +372,19 @@ static unsigned int rej_eta(ml_dsa_params *params,
     if (params->eta == 2) {
       if(t0 < 15) {
         t0 = t0 - (205*t0 >> 10)*5;
-        a[ctr++] = 2 - t0;
+        a[ctr++] = 2 - (int32_t)t0;
       }
       if(t1 < 15 && ctr < len) {
         t1 = t1 - (205*t1 >> 10)*5;
-        a[ctr++] = 2 - t1;
+        a[ctr++] = 2 - (int32_t)t1;
       }
     }
 
     else if (params->eta == 4) {
       if(t0 < 9)
-        a[ctr++] = 4 - t0;
+        a[ctr++] = 4 - (int32_t)t0;
       if(t1 < 9 && ctr < len)
-        a[ctr++] = 4 - t1;
+        a[ctr++] = 4 - (int32_t)t1;
     }
   }
   return ctr;
