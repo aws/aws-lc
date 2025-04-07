@@ -919,15 +919,30 @@ TEST(BIOTest, FileMode) {
   expect_text_mode(bio.get());
 }
 
-// Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.
-class BIOPairTest : public testing::TestWithParam<bool> {};
+// BIOPairTest: A parameterized test fixture for testing BIO pair operations
+// This test class runs each test case with four different combinations:
+//   1. Normal order (bio1->bio2) with legacy callback
+//   2. Normal order (bio1->bio2) with extended callback
+//   3. Swapped order (bio2->bio1) with legacy callback
+//   4. Swapped order (bio2->bio1) with extended callback
+//
+// Parameters:
+//   std::tuple<bool, bool>:
+//     - First bool (get<0>): Controls BIO swapping
+//       * false = normal order (bio1->bio2)
+//       * true = swapped order (bio2->bio1)
+//     - Second bool (get<1>): Controls callback type
+//       * false = legacy callback (BIO_set_callback)
+//       * true = extended callback (BIO_set_callback_ex)
+class BIOPairTest : public testing::TestWithParam<std::tuple<bool, bool>> {};
 
 TEST_P(BIOPairTest, TestPair) {
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
   bssl::UniquePtr<BIO> free_bio1(bio1), free_bio2(bio2);
 
-  if (GetParam()) {
+  const bool should_swap = std::get<0>(GetParam());
+  if (should_swap) {
     std::swap(bio1, bio2);
   }
 
@@ -1045,6 +1060,21 @@ static long bio_cb_ex(BIO *b, int oper, const char *argp, size_t len, int argi,
   return ret;
 }
 
+static long bio_cb(BIO *b, int oper, const char *argp, int argi,
+                      long argl, long ret) {
+  if (test_count_ex >= CB_TEST_COUNT) {
+    return CALL_BACK_FAILURE;
+  }
+  param_b_ex[test_count_ex] = b;
+  param_oper_ex[test_count_ex] = oper;
+  param_argp_ex[test_count_ex] = argp;
+  param_argi_ex[test_count_ex] = argi;
+  param_argl_ex[test_count_ex] = argl;
+  param_ret_ex[test_count_ex] = ret;
+  test_count_ex++;
+  return ret;
+}
+
 static void bio_callback_cleanup() {
   // These mocks are used in multiple tests and need to be reset
   test_count_ex = 0;
@@ -1066,11 +1096,24 @@ TEST_P(BIOPairTest, TestCallbacks) {
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
 
-  if (GetParam()) {
+  // Check the second parameter from the test tuple to determine which callback type to use
+  // params is a tuple<bool, bool> where:
+  //   - get<0> controls bio swapping
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const auto& params = GetParam();
+  if (std::get<0>(params)) {  // swap_bios
     std::swap(bio1, bio2);
   }
 
-  BIO_set_callback_ex(bio2, bio_cb_ex);
+  if (std::get<1>(params)) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio2, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio2, bio_cb);
+  }
 
   // Data written in one end may be read out the other.
   uint8_t buf[TEST_BUF_LEN];
@@ -1090,25 +1133,36 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // The calls before the BIO operation use 1 for the BIO's return value
   ASSERT_EQ(param_ret_ex[0], 1);
 
-  // The calls after the BIO call use the return value from the BIO, which is
-  // the length of data read/written
-  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  // For callback_ex the |len| param is the requested number of bytes to
-  // read/write
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
 
-  // For callback_ex argi and arl are unused
-  ASSERT_EQ(param_argi_ex[0], 0);
-  ASSERT_EQ(param_argi_ex[1], 0);
-  ASSERT_EQ(param_argl_ex[0], 0);
-  ASSERT_EQ(param_argl_ex[1], 0);
+  if (!std::get<1>(params)) {
+    // Legacy callback uses ret to hold data processed
+    ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+    // Legacy callback argi is used for len
+    ASSERT_EQ(param_argi_ex[0], TEST_BUF_LEN);
+    ASSERT_EQ(param_argi_ex[1], TEST_BUF_LEN);
+    ASSERT_EQ(param_argl_ex[0], 0);
+    ASSERT_EQ(param_argl_ex[1], 0);
+  }
 
-  // processed is null (0 in the array) the first call and the actual data the
-  // second time
-  ASSERT_EQ(param_processed_ex[0], 0u);
-  ASSERT_EQ(param_processed_ex[1], 5u);
+  // Extended callback specific verifications
+  if (std::get<1>(params)) {// If using extended callback
+    // For callback_ex ret is set to 1 after setting processed
+    ASSERT_EQ(param_ret_ex[1], 1);
+    // For callback_ex argi and arl are unused
+    ASSERT_EQ(param_argi_ex[0], 0);
+    ASSERT_EQ(param_argi_ex[1], 0);
+    ASSERT_EQ(param_argl_ex[0], 0);
+    ASSERT_EQ(param_argl_ex[1], 0);
+    // For callback_ex the |len| param is the requested number of bytes to
+    // read/write
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    // processed is null (0 in the array) the first call and the actual data the
+    // second time
+    ASSERT_EQ(param_processed_ex[0], 0u);
+    ASSERT_EQ(param_processed_ex[1], 5u);
+  }
 
   // The mock should be "full" at this point
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
@@ -1159,7 +1213,33 @@ TEST(BIOTest, InvokeConnectCallback) {
 }
 }  // namespace
 
-INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
+// Instantiate the parameterized test suite for BIOPairTest
+// This creates test instances for all combinations of the boolean parameters
+//
+// Parameters:
+//   First argument "All": Test suite name prefix
+//   Second argument "BIOPairTest": The test fixture class
+//   Third argument: Parameter generator using testing::Combine to create Cartesian product
+//     - First Bool(): Controls BIO swapping
+//       * false: Keep original BIO order (bio1->bio2)
+//       * true:  Swap BIOs (bio2->bio1)
+//     - Second Bool(): Controls callback type
+//       * false: Use legacy callback (BIO_set_callback)
+//       * true:  Use extended callback (BIO_set_callback_ex)
+//
+// This will generate four test combinations:
+//   1. (false, false) - Normal order, Legacy callback
+//   2. (false, true)  - Normal order, Extended callback
+//   3. (true, false)  - Swapped order, Legacy callback
+//   4. (true, true)   - Swapped order, Extended callback
+INSTANTIATE_TEST_SUITE_P(
+All,
+  BIOPairTest,
+  testing::Combine(
+      testing::Bool(),  // swap_bios
+      testing::Bool()   // use_extended_callback
+  )
+  );
 
 TEST(BIOTest, ReadWriteEx) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
@@ -1276,12 +1356,23 @@ TEST(BIOTest, TestPutsNullMethod) {
 }
 } //namespace
 
-TEST(BIOTest, TestPutsCallbacks) {
+TEST_P(BIOPairTest, TestPutsCallbacks) {
   bio_callback_cleanup();
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
 
-  BIO_set_callback_ex(bio, bio_cb_ex);
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const bool use_extended_callback = std::get<1>(GetParam());
+
+  if (use_extended_callback) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio, bio_cb);
+  }
 
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio, "12345"));
 
@@ -1290,19 +1381,30 @@ TEST(BIOTest, TestPutsCallbacks) {
 
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
   ASSERT_EQ(param_ret_ex[0], 1);
-  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  // len unused in puts callback
-  ASSERT_FALSE(param_len_ex[0]);
-  ASSERT_FALSE(param_len_ex[1]);
+  if (!use_extended_callback) {
+    // Legacy callback uses ret for data processed
+    ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+  }
+
 
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  ASSERT_EQ(param_processed_ex[0], 0u);
-  ASSERT_EQ(param_processed_ex[1], 5u);
+  // Extended callback specific verifications
+  if (use_extended_callback) {
+    // ret is set to processed and ret is reset back to 1
+    ASSERT_EQ(param_ret_ex[1], 1);
+    // len unused in puts callback
+    ASSERT_FALSE(param_len_ex[0]);
+    ASSERT_FALSE(param_len_ex[1]);
+
+    // Verify processed bytes
+    ASSERT_EQ(param_processed_ex[0], 0u);
+    ASSERT_EQ(param_processed_ex[1], 5u);
+  }
 
   // The mock should be "full" at this point
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
@@ -1311,7 +1413,7 @@ TEST(BIOTest, TestPutsCallbacks) {
   ASSERT_EQ(BIO_free(bio), 1);
 }
 
-TEST(BIOTest, TestGetsCallback) {
+TEST_P(BIOPairTest, TestGetsCallback) {
   bio_callback_cleanup();
 
   BIO* bio = BIO_new(BIO_s_mem());
@@ -1319,7 +1421,19 @@ TEST(BIOTest, TestGetsCallback) {
   // write data to BIO, then set callback
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
   char buf[TEST_BUF_LEN];
-  BIO_set_callback_ex(bio, bio_cb_ex);
+
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const bool use_extended_callback = std::get<1>(GetParam());
+
+  if (use_extended_callback) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio, bio_cb);
+  }
 
   ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio, buf, sizeof(buf)));
 
@@ -1328,18 +1442,31 @@ TEST(BIOTest, TestGetsCallback) {
 
   ASSERT_EQ(param_argp_ex[0], param_argp_ex[1]);
   ASSERT_EQ(param_ret_ex[0], 1);
-  ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
-  ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
 
-  ASSERT_EQ(param_argi_ex[0], 0);
-  ASSERT_EQ(param_argi_ex[1], 0);
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  ASSERT_EQ(param_processed_ex[0], 0u);
-  ASSERT_EQ(param_processed_ex[1], 5u);
+  // Old-style callback uses argi for len
+  if (!use_extended_callback) {
+    // use ret for data processed
+    ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
+    ASSERT_EQ(param_argi_ex[0], TEST_BUF_LEN);
+    ASSERT_EQ(param_argi_ex[1], TEST_BUF_LEN);
+  }
+
+  // Extended callback specific verifications
+  if (use_extended_callback) {
+    // ret is set to 1 after setting processed
+    ASSERT_EQ(param_ret_ex[1], 1);
+    ASSERT_EQ(param_argi_ex[0], 0);
+    ASSERT_EQ(param_argi_ex[1], 0);
+    ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_len_ex[1], (size_t)TEST_BUF_LEN);
+    ASSERT_EQ(param_processed_ex[0], 0u);
+    ASSERT_EQ(param_processed_ex[1], 5u);
+  }
+
 
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
@@ -1347,12 +1474,24 @@ TEST(BIOTest, TestGetsCallback) {
   ASSERT_EQ(BIO_free(bio), 1);
 }
 
-TEST(BIOTest, TestCtrlCallback) {
+TEST_P(BIOPairTest, TestCtrlCallback) {
   bio_callback_cleanup();
 
   BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
-  BIO_set_callback_ex(bio, bio_cb_ex);
+
+  //   - get<1> controls callback type (true = extended, false = legacy)
+  const bool use_extended_callback = std::get<1>(GetParam());
+
+  if (use_extended_callback) {
+    // Use extended callback (BIO_callback_ex) which provides additional parameters:
+    // - len: size of the buffer for read/write operations
+    // - processed: pointer to store number of bytes actually processed
+    BIO_set_callback_ex(bio, bio_cb_ex);
+  } else {
+    // Use legacy callback (BIO_callback) with basic parameters
+    BIO_set_callback(bio, bio_cb);
+  }
 
   char buf[TEST_BUF_LEN];
   // Test BIO_ctrl. This is not normally called directly so we can use one of
