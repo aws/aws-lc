@@ -26,9 +26,11 @@ RUN set -ex && \
     lcov \
     libcap-dev \
     libcurl4-openssl-dev \
+    libev-dev \
     libevent-dev \
     libfstrm-dev \
     libftdi-dev \
+    libgcrypt20-dev \
     libglib2.0-dev \
     libgmp-dev \
     libini-config-dev \
@@ -45,8 +47,9 @@ RUN set -ex && \
     libnl-genl-3-dev \
     libpam-dev \
     libpcre3-dev  \
-    libpsl-dev \
+    libprocps-dev \
     libprotobuf-c-dev \
+    libpsl-dev \
     libssl-dev \
     libsystemd-dev \
     liburcu-dev \
@@ -67,7 +70,8 @@ RUN set -ex && \
     python3-sphinx \
     ruby \
     uthash-dev \
-    uuid-dev && \
+    uuid-dev \
+    vim-common && \
     pip3 install gcovr && \
     apt-get autoremove --purge -y && \
     apt-get clean && \

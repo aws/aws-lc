@@ -161,15 +161,16 @@ The CPUs for which code is verified are defined in the following table.
 
 For more details on verified API functions, caveats and technology used, check the [AWS-LC Formal Verification](https://github.com/awslabs/aws-lc-verification) repository.
 
-In addition, we use assembly from [s2n-bignum](https://github.com/awslabs/s2n-bignum) to implement algorithms or sub-routines for x86_64 and aarch64. The following table shows the assembly routines that are formally verified using HOL Light.
+In addition, we use assembly from [s2n-bignum](https://github.com/awslabs/s2n-bignum) to implement algorithms or sub-routines for x86_64 and aarch64. These functions are formally verified in HOL Light. See the following table for detail.
 
-| Algorithms | Routines | CPUs |
+| Algorithms | Functions | CPUs |
 | ----------| ------------| ------------|
-| RSA | Montgomery multiplication | aarch64 |
-| P-384 | field operations | aarch64, x86_64 |
-| P-521 | field operations | aarch64, x86_64 |
-| X25519 | field operations, group operations, scalar point multiplication | aarch64, x86_64 |
-| Ed25519 |  encode, decode, scalar point multiplication | aarch64, x86_64 |
+| RSA | `montgomery_s2n_bignum_mul_mont` | aarch64 |
+| P-256 | `bignum_montinv_p256`, `p256_montjscalarmul_selector` | aarch64, x86_64 |
+| P-384 | `bignum_add_p384`, `bignum_sub_p384`, `bignum_neg_p384`, `bignum_tolebytes_6`, `bignum_fromlebytes_6`, `bignum_to_mont_p384_selector`, `bignum_deamont_p384_selector`, `bignum_montmul_p384_selector`, `bignum_montsqr_p384_selector`, `bignum_nonzero_6`, `bignum_montinv_p384`, `p384_montjdouble_selector`, `p384_montjscalarmul_selector` | aarch64, x86_64 |
+| P-521 | `bignum_add_p521`, `bignum_sub_p521`, `bignum_neg_p521`, `bignum_tolebytes_p521`, `bignum_fromlebytes_p521`, `bignum_mul_p521_selector`, `bignum_sqr_p521_selector`, `bignum_inv_p521`, `p521_jdouble_selector`, `p521_jscalarmul_selector` | aarch64, x86_64 |
+| X25519 | `curve25519_x25519_byte_selector`, `curve25519_x25519base_byte_selector` | aarch64, x86_64 |
+| Ed25519 | `bignum_mod_n25519`, `bignum_neg_p25519`, `bignum_madd_n25519_selector`, `edwards25519_encode`, `edwards25519_decode_selector`, `edwards25519_scalarmulbase_selector`, `edwards25519_scalarmuldouble_selector` | aarch64, x86_64 |
 
 ## Have a Question?
 

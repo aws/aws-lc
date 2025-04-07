@@ -99,7 +99,7 @@ We describe below how we build C and assembly code in order to produce a binary 
 
 ### Linux Shared build
 
-First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is `[bcm.c](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/bcm.c)`). This, along with some assembly sources, comprise the FIPS module.
+First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is [`bcm.c`](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/bcm.c)). This, along with some assembly sources, comprise the FIPS module.
 
 The object files resulting from compiling/assembling those files are linked in partial-linking mode with a [linker script](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/gcc_fips_shared.lds) that causes the linker to insert symbols marking the beginning and end of the text and rodata sections. The linker script also discards other types of data sections to ensure that no unhashed data is used by the module.
 

@@ -3062,6 +3062,14 @@ int SSL_can_release_private_key(const SSL *ssl) {
   return !ssl->s3->hs || ssl->s3->hs->can_release_private_key;
 }
 
+int SSL_in_connect_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && !SSL_is_server(ssl);
+}
+
+int SSL_in_accept_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && SSL_is_server(ssl);
+}
+
 int SSL_is_init_finished(const SSL *ssl) { return !SSL_in_init(ssl); }
 
 int SSL_in_init(const SSL *ssl) {
