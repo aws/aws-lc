@@ -340,6 +340,9 @@ OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);
 // otherwise.
 OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
+// BIO_get_close returns the close flag for |bio|.
+OPENSSL_EXPORT int BIO_get_close(BIO *bio);
+
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
 OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
@@ -749,10 +752,10 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void);
 OPENSSL_EXPORT BIO *BIO_new_dgram(int fd, int close_flag);
 
 // TODO: documentation
-OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bio, const BIO_ADDR *peer);
+OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer);
 
 // TODO: documentation
-OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *sa);
+OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer);
 
 // TODO: documentation
 OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp);
@@ -761,13 +764,13 @@ OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp);
 OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO* bp);
 
 // TODO: documentation
-OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *sa);
+OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer);
 
 // TODO: documentation
-OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *sa);
+OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer);
 
 // TODO: documentation
-OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *sa);
+OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer);
 
 // BIO Pairs.
 //
