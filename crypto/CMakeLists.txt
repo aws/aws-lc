@@ -749,6 +749,7 @@ if(BUILD_TESTING)
     asn1/asn1_test.cc
     base64/base64_test.cc
     bio/bio_test.cc
+    bio/bio_socket_test.cc
     blake2/blake2_test.cc
     buf/buf_test.cc
     bytestring/bytestring_test.cc
