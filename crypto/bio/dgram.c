@@ -2,26 +2,42 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/bio.h>
+
+#if !defined(OPENSSL_NO_SOCK)
+
 #include <openssl/mem.h>
 
+#include <stddef.h>
 #if defined(OPENSSL_WINDOWS)
 #include <windows.h>
 #include <winsock2.h>
-#include <afunix.h>
 #include <ws2ipdef.h>
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;typedef SSIZE_T ssize_t;
+#if !defined(__MINGW32__)
+#include <afunix.h>
+#endif
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#endif
 #include <sys/time.h>
+#endif
 
 #include "../internal.h"
 #include "./internal.h"
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(const int sock) { return close(sock); }
+#endif
+
+#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS)
+// Winsock2 APIs don't support AF_UNIX.
+// > The values currently supported are AF_INET or AF_INET6, which are the
+// > Internet address family formats for IPv4 and IPv6.
+// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-socket
+#define AWS_LC_HAS_AF_UNIX 1
 #endif
 
 /*
@@ -42,7 +58,7 @@ static int BIO_ADDR_make(BIO_ADDR *bap, const struct sockaddr *sap) {
     return 1;
   }
 #endif
-#ifdef AF_UNIX
+#ifdef AWS_LC_HAS_AF_UNIX
   if (sap->sa_family == AF_UNIX) {
     OPENSSL_memcpy(&bap->s_un, sap, sizeof(struct sockaddr_un));
     return 1;
@@ -56,7 +72,6 @@ typedef struct bio_dgram_data_st {
   BIO_ADDR peer;
   unsigned int connected;
   unsigned int _errno;
-  unsigned int mtu;
 } bio_dgram_data;
 
 static socklen_t BIO_ADDR_sockaddr_size(const BIO_ADDR *bap) {
@@ -69,15 +84,13 @@ static socklen_t BIO_ADDR_sockaddr_size(const BIO_ADDR *bap) {
     return sizeof(bap->s_in6);
   }
 #endif
-#ifdef AF_UNIX
+#ifdef AWS_LC_HAS_AF_UNIX
   if (bap->sa.sa_family == AF_UNIX) {
     return sizeof(bap->s_un);
   }
 #endif
   return sizeof(*bap);
 }
-
-
 
 static struct sockaddr *BIO_ADDR_sockaddr_noconst(BIO_ADDR *bap) {
   GUARD_PTR(bap);
@@ -93,8 +106,9 @@ static int dgram_write(BIO *bp, const char *in, const int in_len) {
   GUARD_PTR(bp);
   GUARD_PTR(in);
 
-  bio_dgram_data *data = bp->ptr;
   ssize_t result;
+  bio_dgram_data *data = bp->ptr;
+  GUARD_PTR(data);
 
   if (in_len <= 0) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
@@ -106,9 +120,10 @@ static int dgram_write(BIO *bp, const char *in, const int in_len) {
     // With a zero flags argument, send() is equivalent to write(2).
     result = send(bp->num, in, in_len, 0);
   } else {
-    // If sendto() is used on a connection-mode (SOCK_STREAM, SOCK_SEQPACKET)
-    // socket, the arguments dest_addr and addrlen are ignored
-    const socklen_t peerlen = BIO_ADDR_sockaddr_size(&data->peer);
+    // If a peer address has been pre-specified, sendto may return -1 and set
+    // errno to[EISCONN].
+    const socklen_t peerlen =
+            BIO_ADDR_sockaddr_size(&data->peer);
     result = sendto(bp->num, in, in_len, 0, BIO_ADDR_sockaddr(&data->peer), peerlen);
   }
 
@@ -130,7 +145,7 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   GUARD_PTR(out);
 
   bio_dgram_data *data = bp->ptr;
-  BIO_ADDR peer = {0};
+  BIO_ADDR peer = {{0}};
   socklen_t len = sizeof(peer);
 
   bio_clear_socket_error(bp->num);
@@ -146,7 +161,6 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   const int ret = result;
 
   if (!data->connected && ret >= 0) {
-    assert(len == BIO_ADDR_sockaddr_size(&peer));
     BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_PEER, 0, &peer);
   }
 
@@ -181,6 +195,13 @@ static int dgram_free(BIO *bp) {
   return 1;
 }
 
+static int dgram_new(BIO *bio) {
+  bio->init = 0;
+  bio->num = -1;
+  bio->ptr = OPENSSL_zalloc(sizeof(bio_dgram_data));
+  return bio->ptr != NULL;
+}
+
 static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
   GUARD_PTR(bp);
   bio_dgram_data *data = bp->ptr;
@@ -190,15 +211,13 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
   switch (cmd) {
     case BIO_C_SET_FD:
       GUARD_PTR(ptr);
-      if (0 == dgram_free(bp)) {
-        assert(0);
-      }
+      dgram_free(bp);
+      dgram_new(bp);
       bp->num = *(int*)ptr;
       bp->shutdown = (int)num;
       bp->init = 1;
       break;
     case BIO_C_GET_FD:
-      GUARD_PTR(ptr);
       if (bp->init) {
         int *ip = ptr;
         if (ip) {
@@ -213,19 +232,10 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       ret = bp->shutdown;
       break;
     case BIO_CTRL_SET_CLOSE:
-      bp->shutdown = (num != 0);
+      bp->shutdown = num != 0;
       break;
     case BIO_CTRL_FLUSH:
       ret = 1;
-      break;
-    case BIO_CTRL_DGRAM_GET_MTU:
-      GUARD_PTR(data);
-      ret = data->mtu;
-      break;
-    case BIO_CTRL_DGRAM_SET_MTU:
-      GUARD_PTR(data);
-      data->mtu = num;
-      ret = num;
       break;
     case BIO_CTRL_DGRAM_SET_CONNECTED:
       GUARD_PTR(data);
@@ -238,16 +248,11 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
         ret = 1;
       }
       break;
-    case BIO_CTRL_DGRAM_CONNECT:
-      GUARD_PTR(data);
-      GUARD_PTR(ptr);
-      ret = BIO_ADDR_make(&data->peer, BIO_ADDR_sockaddr(ptr));
-      break;
     case BIO_CTRL_DGRAM_GET_PEER: {
       GUARD_PTR(data);
       GUARD_PTR(ptr);
       const socklen_t size = BIO_ADDR_sockaddr_size(&data->peer);
-      if (num == 0 || num > size) {
+      if (num == 0 || num >= (long)size) {
         OPENSSL_memcpy(ptr, &data->peer, size);
         ret = size;
       } else {
@@ -255,6 +260,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       }
       break;
     }
+    case BIO_CTRL_DGRAM_CONNECT:
     case BIO_CTRL_DGRAM_SET_PEER:
       GUARD_PTR(data);
       GUARD_PTR(ptr);
@@ -274,8 +280,8 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       * or EINPROGRESS (for connect(2)) just as if the socket was specified
       * to be nonblocking.
      */
-      d_errno = (data->_errno == EAGAIN) || (data->_errno == EWOULDBLOCK) ||
-          (data->_errno == EINPROGRESS);
+      d_errno = data->_errno == EAGAIN || data->_errno == EWOULDBLOCK ||
+          data->_errno == EINPROGRESS;
 # endif
       if (d_errno) {
         ret = 1;
@@ -291,14 +297,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
   return ret;
 }
 
-static int dgram_new(BIO *bio) {
-  bio_dgram_data *data = OPENSSL_zalloc(sizeof(*data));
-  if (!data) {
-    return 0;
-  }
-  bio->ptr = data;
-  return 1;
-}
+
 
 static const BIO_METHOD methods_dgramp = {
     .type = BIO_TYPE_DGRAM,
@@ -315,11 +314,9 @@ static const BIO_METHOD methods_dgramp = {
 
 const BIO_METHOD *BIO_s_datagram(void) { return &methods_dgramp; }
 
-BIO *BIO_new_dgram(int fd, int close_flag)
+BIO *BIO_new_dgram(const int fd, const int close_flag)
 {
-  BIO *ret;
-
-  ret = BIO_new(BIO_s_datagram());
+  BIO * ret = BIO_new(BIO_s_datagram());
   if (ret == NULL)
     return NULL;
   BIO_set_fd(ret, fd, close_flag);
@@ -327,7 +324,7 @@ BIO *BIO_new_dgram(int fd, int close_flag)
 }
 
 int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer) {
-  long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_CONNECT, 0, (BIO_ADDR*)peer);
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_CONNECT, 0, (BIO_ADDR*)peer);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
@@ -335,7 +332,7 @@ int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer) {
 }
 
 int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer) {
-  long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (BIO_ADDR*)peer);
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (BIO_ADDR*)peer);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
@@ -343,7 +340,7 @@ int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer) {
 }
 
 int BIO_dgram_recv_timedout(BIO* bp) {
-  long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP, 0, NULL);
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP, 0, NULL);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
@@ -351,7 +348,7 @@ int BIO_dgram_recv_timedout(BIO* bp) {
 }
 
 int BIO_dgram_send_timedout(BIO* bp) {
-  long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP, 0, NULL);
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP, 0, NULL);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
@@ -359,7 +356,7 @@ int BIO_dgram_send_timedout(BIO* bp) {
 }
 
 int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) {
-  long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_PEER, 0, peer);
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_PEER, 0, peer);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
@@ -367,9 +364,11 @@ int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) {
 }
 
 int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) {
-  long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_PEER, 0, (BIO_ADDR*)peer);
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_PEER, 0, (BIO_ADDR*)peer);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
   return ret;
 }
+
+#endif
