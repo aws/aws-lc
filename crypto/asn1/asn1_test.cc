@@ -2422,6 +2422,15 @@ TEST(ASN1Test, IndefiniteLength) {
               {0x31, 0x80, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02, 0x00, 0x00},
               true);
 
+  // constructed [APPLICATION 31] with an invalid indefinite length ending.
+  ExpectParse(d2i_ASN1_TYPE, {0x7f, 0x1f, 0x80, 0x01, 0x01, 0x02, 0x00}, false);
+  // Nested constructed [APPLICATION 31] within another constructed
+  // [APPLICATION 31] with indefinite lengths.
+  ExpectParse(d2i_ASN1_TYPE,
+              {0x7f, 0x1f, 0x80, 0x7f, 0x1f, 0x80, 0x03, 0x01, 0x02, 0x00, 0x00,
+               0x00, 0x00},
+              true);
+
   // The ones below use constructed form and should fail for now. This is
   // indicated with (0x20 | 0x??) in the first byte.
   ExpectParse(d2i_ASN1_INTEGER,

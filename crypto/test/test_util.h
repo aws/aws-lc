@@ -140,6 +140,9 @@ void ExpectParse(T *(*d2i)(T **, const uint8_t **, long),
     EXPECT_TRUE(obj);
   } else {
     EXPECT_FALSE(obj);
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+    ERR_clear_error();
   }
 }
 

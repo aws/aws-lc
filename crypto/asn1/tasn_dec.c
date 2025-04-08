@@ -727,7 +727,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
     }
 
     cont = *in;
-    // If indefinite length constructed find the real end.
+    // If indefinite length constructed, find the real end.
     if (inf) {
       if (!asn1_find_end(&p, plen, inf)) {
         goto err;
@@ -946,6 +946,8 @@ static int asn1_find_end(const unsigned char **in, long len, char inf) {
       return 0;
     }
     if (inf) {
+      // This checks for an underflow due to the loop subtraction done on
+      // |expected_eoc| above.
       if (expected_eoc == UINT32_MAX) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
         return 0;
