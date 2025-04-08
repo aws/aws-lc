@@ -250,7 +250,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         break;
 
       case BIO_CONN_S_BLOCKED_CONNECT:
-        i = bio_sock_error(bio->num);
+        i = bio_sock_error_get_and_clear(bio->num);
         if (i) {
           if (bio_socket_should_retry(ret)) {
             BIO_set_flags(bio, (BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY));
@@ -359,7 +359,7 @@ static int conn_read(BIO *bio, char *out, int out_len) {
     }
   }
 
-  bio_clear_socket_error();
+  bio_clear_socket_error(bio->num);
   ret = (int)recv(bio->num, out, out_len, 0);
   BIO_clear_retry_flags(bio);
   if (ret <= 0) {
@@ -383,7 +383,7 @@ static int conn_write(BIO *bio, const char *in, int in_len) {
     }
   }
 
-  bio_clear_socket_error();
+  bio_clear_socket_error(bio->num);
   ret = (int)send(bio->num, in, in_len, 0);
   BIO_clear_retry_flags(bio);
   if (ret <= 0) {

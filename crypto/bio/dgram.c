@@ -28,20 +28,23 @@ static int closesocket(const int sock) { return close(sock); }
  * BIO_ADDR_make - non-public routine to fill a BIO_ADDR with the contents
  * of a struct sockaddr.
  */
-static int BIO_ADDR_make(BIO_ADDR *ap, const struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    OPENSSL_memcpy(&ap->s_in, sa, sizeof(struct sockaddr_in));
+
+static int BIO_ADDR_make(BIO_ADDR *bap, const struct sockaddr *sap) {
+  GUARD_PTR(bap);
+  GUARD_PTR(sap);
+  if (sap->sa_family == AF_INET) {
+    OPENSSL_memcpy(&bap->s_in, sap, sizeof(struct sockaddr_in));
     return 1;
   }
 #ifdef AF_INET6
-  if (sa->sa_family == AF_INET6) {
-    OPENSSL_memcpy(&ap->s_in6, sa, sizeof(struct sockaddr_in6));
+  if (sap->sa_family == AF_INET6) {
+    OPENSSL_memcpy(&bap->s_in6, sap, sizeof(struct sockaddr_in6));
     return 1;
   }
 #endif
 #ifdef AF_UNIX
-  if (sa->sa_family == AF_UNIX) {
-    OPENSSL_memcpy(&ap->s_un, sa, sizeof(struct sockaddr_un));
+  if (sap->sa_family == AF_UNIX) {
+    OPENSSL_memcpy(&bap->s_un, sap, sizeof(struct sockaddr_un));
     return 1;
   }
 #endif
@@ -56,44 +59,57 @@ typedef struct bio_dgram_data_st {
   unsigned int mtu;
 } bio_dgram_data;
 
-static socklen_t BIO_ADDR_sockaddr_size(const BIO_ADDR *ap) {
-  if (ap->sa.sa_family == AF_INET) {
-    return sizeof(ap->s_in);
+static socklen_t BIO_ADDR_sockaddr_size(const BIO_ADDR *bap) {
+  GUARD_PTR(bap);
+  if (bap->sa.sa_family == AF_INET) {
+    return sizeof(bap->s_in);
   }
 #ifdef AF_INET6
-  if (ap->sa.sa_family == AF_INET6) {
-    return sizeof(ap->s_in6);
+  if (bap->sa.sa_family == AF_INET6) {
+    return sizeof(bap->s_in6);
   }
 #endif
 #ifdef AF_UNIX
-  if (ap->sa.sa_family == AF_UNIX) {
-    return sizeof(ap->s_un);
+  if (bap->sa.sa_family == AF_UNIX) {
+    return sizeof(bap->s_un);
   }
 #endif
-  return sizeof(*ap);
+  return sizeof(*bap);
 }
 
-static struct sockaddr *BIO_ADDR_sockaddr_noconst(BIO_ADDR *ap) {
-  return &ap->sa;
+
+
+static struct sockaddr *BIO_ADDR_sockaddr_noconst(BIO_ADDR *bap) {
+  GUARD_PTR(bap);
+  return &bap->sa;
 }
 
-static const struct sockaddr *BIO_ADDR_sockaddr(const BIO_ADDR *ap) {
-  return &ap->sa;
+static const struct sockaddr *BIO_ADDR_sockaddr(const BIO_ADDR *bap) {
+  GUARD_PTR(bap);
+  return &bap->sa;
 }
 
-static int dgram_write(BIO *bp, const char *in, const int inl) {
+static int dgram_write(BIO *bp, const char *in, const int in_len) {
+  GUARD_PTR(bp);
+  GUARD_PTR(in);
+
   bio_dgram_data *data = bp->ptr;
   ssize_t result;
 
-  errno = 0;
+  if (in_len <= 0) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
+    return 0;
+  }
+
+  bio_clear_socket_error(bp->num);
   if (data->connected) {
     // With a zero flags argument, send() is equivalent to write(2).
-    result = send(bp->num, in, inl, 0);
+    result = send(bp->num, in, in_len, 0);
   } else {
     // If sendto() is used on a connection-mode (SOCK_STREAM, SOCK_SEQPACKET)
     // socket, the arguments dest_addr and addrlen are ignored
     const socklen_t peerlen = BIO_ADDR_sockaddr_size(&data->peer);
-    result = sendto(bp->num, in, inl, 0, BIO_ADDR_sockaddr(&data->peer), peerlen);
+    result = sendto(bp->num, in, in_len, 0, BIO_ADDR_sockaddr(&data->peer), peerlen);
   }
 
   if (result < INT_MIN || result > INT_MAX) {
@@ -102,27 +118,26 @@ static int dgram_write(BIO *bp, const char *in, const int inl) {
   const int ret = result;
 
   BIO_clear_retry_flags(bp);
-  if (ret <= 0 && bio_errno_should_retry(ret)) {
+  if (ret <= 0 && bio_socket_should_retry(ret)) {
     BIO_set_retry_write(bp);
-    data->_errno = errno;
+    data->_errno = bio_sock_error_get_and_clear(bp->num);
   }
   return ret;
 }
 
-static int dgram_read(BIO *bp, char *out, const int outl) {
-  if (!out) {
-    return 0;
-  }
+static int dgram_read(BIO *bp, char *out, const int out_len) {
+  GUARD_PTR(bp);
+  GUARD_PTR(out);
 
   bio_dgram_data *data = bp->ptr;
   BIO_ADDR peer = {0};
   socklen_t len = sizeof(peer);
 
-  errno = 0;
+  bio_clear_socket_error(bp->num);
 
-  // recvfrom may be used to receive data on a socket whether or not it is
-  // connection-oriented.
-  const ssize_t result = recvfrom(bp->num, out, outl, 0,
+  // recvfrom may be used to receive data on a socket regardless of whether
+  // it's connection-oriented.
+  const ssize_t result = recvfrom(bp->num, out, out_len, 0,
                      BIO_ADDR_sockaddr_noconst(&peer), &len);
 
   if (result < INT_MIN || result > INT_MAX) {
@@ -136,19 +151,19 @@ static int dgram_read(BIO *bp, char *out, const int outl) {
   }
 
   BIO_clear_retry_flags(bp);
-  if (ret < 0 && bio_errno_should_retry(ret)) {
+  if (ret < 0 && bio_socket_should_retry(ret)) {
     BIO_set_retry_read(bp);
-    data->_errno = errno;
+    data->_errno = bio_sock_error_get_and_clear(bp->num);
   }
 
   return ret;
 }
 
 static int dgram_puts(BIO *bp, const char *str) {
-  const size_t len = strlen(str);
-  if (len > INT_MAX) {
-    return 0;
-  }
+  GUARD_PTR(bp);
+  GUARD_PTR(str);
+
+  const int len = OPENSSL_strnlen(str, INT_MAX);
   return dgram_write(bp, str, len);
 }
 
@@ -162,52 +177,58 @@ static int dgram_free(BIO *bp) {
   bp->init = 0;
   bp->flags = 0;
   OPENSSL_free(bp->ptr);
+  bp->ptr = NULL;
   return 1;
 }
 
-static long dgram_ctrl(BIO *b, const int cmd, const long num, void *ptr) {
-  GUARD_PTR(b);
-  bio_dgram_data *data = b->ptr;
+static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
+  GUARD_PTR(bp);
+  bio_dgram_data *data = bp->ptr;
 
   long ret = 1;
 
   switch (cmd) {
     case BIO_C_SET_FD:
-      if (0 == dgram_free(b)) {
+      GUARD_PTR(ptr);
+      if (0 == dgram_free(bp)) {
         assert(0);
       }
-      b->num = *(int*)ptr;
-      b->shutdown = (int)num;
-      b->init = 1;
+      bp->num = *(int*)ptr;
+      bp->shutdown = (int)num;
+      bp->init = 1;
       break;
     case BIO_C_GET_FD:
-      if (b->init) {
+      GUARD_PTR(ptr);
+      if (bp->init) {
         int *ip = ptr;
         if (ip) {
-          *ip = b->num;
+          *ip = bp->num;
         }
-        ret = b->num;
+        ret = bp->num;
       } else {
         ret = -1;
       }
       break;
     case BIO_CTRL_GET_CLOSE:
-      ret = b->shutdown;
+      ret = bp->shutdown;
       break;
     case BIO_CTRL_SET_CLOSE:
-      b->shutdown = (int)num;
+      bp->shutdown = (num != 0);
       break;
     case BIO_CTRL_FLUSH:
       ret = 1;
       break;
     case BIO_CTRL_DGRAM_GET_MTU:
+      GUARD_PTR(data);
       ret = data->mtu;
       break;
     case BIO_CTRL_DGRAM_SET_MTU:
+      GUARD_PTR(data);
       data->mtu = num;
       ret = num;
       break;
     case BIO_CTRL_DGRAM_SET_CONNECTED:
+      GUARD_PTR(data);
       if (ptr != NULL) {
         data->connected = 1;
         ret = BIO_ADDR_make(&data->peer, BIO_ADDR_sockaddr(ptr));
@@ -218,9 +239,13 @@ static long dgram_ctrl(BIO *b, const int cmd, const long num, void *ptr) {
       }
       break;
     case BIO_CTRL_DGRAM_CONNECT:
+      GUARD_PTR(data);
+      GUARD_PTR(ptr);
       ret = BIO_ADDR_make(&data->peer, BIO_ADDR_sockaddr(ptr));
       break;
     case BIO_CTRL_DGRAM_GET_PEER: {
+      GUARD_PTR(data);
+      GUARD_PTR(ptr);
       const socklen_t size = BIO_ADDR_sockaddr_size(&data->peer);
       if (num == 0 || num > size) {
         OPENSSL_memcpy(ptr, &data->peer, size);
@@ -231,16 +256,26 @@ static long dgram_ctrl(BIO *b, const int cmd, const long num, void *ptr) {
       break;
     }
     case BIO_CTRL_DGRAM_SET_PEER:
+      GUARD_PTR(data);
+      GUARD_PTR(ptr);
       ret = BIO_ADDR_make(&data->peer, BIO_ADDR_sockaddr(ptr));
       break;
     case BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP:
-    /* fall-through */
     case BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP: {
+
+      GUARD_PTR(data);
       int d_errno = 0;
 # ifdef OPENSSL_WINDOWS
       d_errno = (data->_errno == WSAETIMEDOUT);
 # else
-      d_errno = (data->_errno == EAGAIN);
+      /*
+      * if no data has been transferred and the timeout has been reached,
+      * then -1 is returned with errno set to EAGAIN or EWOULDBLOCK,
+      * or EINPROGRESS (for connect(2)) just as if the socket was specified
+      * to be nonblocking.
+     */
+      d_errno = (data->_errno == EAGAIN) || (data->_errno == EWOULDBLOCK) ||
+          (data->_errno == EINPROGRESS);
 # endif
       if (d_errno) {
         ret = 1;
