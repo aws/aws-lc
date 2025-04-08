@@ -175,11 +175,6 @@ OPENSSL_EXPORT unsigned long OpenSSL_version_num(void);
 
 OPENSSL_EXPORT unsigned long awslc_api_version_num(void);
 
-// |CRYPTO_mem_ctrl| intentionally does nothing.
-// AWS-LC does not support the related
-// memory debugging with |OPENSSL_NO_CRYPTO_MDEBUG| defined.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
-
 // CRYPTO_malloc_init returns one.
 OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 
@@ -221,6 +216,12 @@ OPENSSL_EXPORT void OPENSSL_cleanup(void);
 // FIPS_mode_set returns one if |on| matches whether BoringSSL was built with
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
+
+// |CRYPTO_mem_ctrl| intentionally does nothing and returns 0.
+// AWS-LC defines |OPENSSL_NO_CRYPTO_MDEBUG| by default.
+// These are related to memory debugging functionalities provided by OpenSSL,
+// but are not supported in AWS-LC.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
 
 #if defined(BORINGSSL_FIPS_140_3)
 

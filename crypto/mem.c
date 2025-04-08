@@ -122,11 +122,13 @@ WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
 WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_realloc, (void *ptr, size_t size))
 
-int CRYPTO_mem_ctrl(int mode) {
-  #ifdef OPENSSL_NO_CRYPTO_MDEBUG
-  // Since AWS-LC doesn't support CRYPTO_MDEBUG, always return 0
-  (void)mode;  // Silence unused parameter warning
-  return 0;
+// Control function for crypto memory debugging Always returns 0 in AWS-LC
+// |mode| Unused parameter AWS-LC doesn't support |CRYPTO_MDEBUG|
+// Always returns 0
+int CRYPTO_mem_ctrl(const int mode) {
+  #if defined (OPENSSL_NO_CRYPTO_MDEBUG)
+    (void)mode;  // Silence unused parameter warning
+    return 0;
   #else
     #error "Must compile with OPENSSL_NO_CRYPTO_MDEBUG defined."
   #endif
