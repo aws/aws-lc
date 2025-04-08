@@ -110,12 +110,14 @@ int bio_socket_nbio(int sock, int on) {
 #endif
 }
 
-void bio_clear_socket_error(void) {}
+void bio_clear_socket_error(int sock) {
+  bio_sock_error_get_and_clear(sock);
+}
 
-int bio_sock_error(int sock) {
+int bio_sock_error_get_and_clear(int sock) {
   int error;
   socklen_t error_size = sizeof(error);
-
+  // Get and clear the pending socket error. The SO_ERROR option is read-only.
   if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) < 0) {
     return 1;
   }
