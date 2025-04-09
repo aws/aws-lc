@@ -48,11 +48,11 @@ extern void bignum_add_p256k1 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_B
 
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_add_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6], uint64_t y[S2N_BIGNUM_STATIC 6]);
+extern void bignum_add_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
 
 // Add modulo p_521, z := (x + y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
-extern void bignum_add_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
+extern void bignum_add_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
 
 // Add modulo p_sm2, z := (x + y) mod p_sm2, assuming x and y reduced
 // Inputs x[4], y[4]; output z[4]
@@ -213,8 +213,8 @@ extern void bignum_deamont_p256k1 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S
 
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
-extern void bignum_deamont_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
-extern void bignum_deamont_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_deamont_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_deamont_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Convert from almost-Montgomery form z := (x / 2^576) mod p_521
 // Input x[9]; output z[9]
@@ -320,11 +320,11 @@ extern void bignum_fromlebytes_4 (uint64_t z[S2N_BIGNUM_STATIC 4], uint8_t x[S2N
 
 // Convert 6-digit (384-bit) bignum from little-endian bytes
 // Input x[48] (bytes); output z[6]
-extern void bignum_fromlebytes_6 (uint64_t z[S2N_BIGNUM_STATIC 6], uint8_t x[S2N_BIGNUM_STATIC 48]);
+extern void bignum_fromlebytes_6 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint8_t x[S2N_BIGNUM_STATIC 48]);
 
 // Convert little-endian bytes to 9-digit 528-bit bignum
 // Input x[66] (bytes); output z[9]
-extern void bignum_fromlebytes_p521 (uint64_t z[S2N_BIGNUM_STATIC 9],uint8_t x[S2N_BIGNUM_STATIC 66]);
+extern void bignum_fromlebytes_p521 (uint64_t z[S2N_BIGNUM_STATIC 9],const uint8_t x[S2N_BIGNUM_STATIC 66]);
 
 // Compare bignums, x >= y
 // Inputs x[m], y[n]; output function return
@@ -368,7 +368,7 @@ extern void bignum_inv_p384(uint64_t z[S2N_BIGNUM_STATIC 6],uint64_t x[S2N_BIGNU
 
 // Modular inverse modulo p_521 = 2^521 - 1
 // Input x[9]; output z[9]
-extern void bignum_inv_p521(uint64_t z[S2N_BIGNUM_STATIC 9],uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_inv_p521(uint64_t z[S2N_BIGNUM_STATIC 9],const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Modular inverse modulo p_sm2 = 2^256 - 2^224 - 2^96 + 2^64 - 1
 // Input x[4]; output z[4]
@@ -570,8 +570,8 @@ extern void bignum_montmul_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t
 
 // Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_montmul_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6], uint64_t y[S2N_BIGNUM_STATIC 6]);
-extern void bignum_montmul_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6], uint64_t y[S2N_BIGNUM_STATIC 6]);
+extern void bignum_montmul_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
+extern void bignum_montmul_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
 
 // Montgomery multiply, z := (x * y / 2^576) mod p_521
 // Inputs x[9], y[9]; output z[9]
@@ -603,8 +603,8 @@ extern void bignum_montsqr_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
-extern void bignum_montsqr_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
-extern void bignum_montsqr_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_montsqr_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_montsqr_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Montgomery square, z := (x^2 / 2^576) mod p_521
 // Input x[9]; output z[9]
@@ -647,8 +647,8 @@ extern void bignum_mul_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S
 
 // Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
-extern void bignum_mul_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
-extern void bignum_mul_p521_alt (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
+extern void bignum_mul_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
+extern void bignum_mul_p521_alt (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
 
 // Multiply bignum by 10 and add word: z := 10 * z + d
 // Inputs z[k], d; outputs function return (carry) and z[k]
@@ -684,11 +684,11 @@ extern void bignum_neg_p256k1 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_B
 
 // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
-extern void bignum_neg_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_neg_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Negate modulo p_521, z := (-x) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
-extern void bignum_neg_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_neg_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Negate modulo p_sm2, z := (-x) mod p_sm2, assuming x reduced
 // Input x[4]; output z[4]
@@ -708,7 +708,7 @@ extern uint64_t bignum_nonzero_4(uint64_t x[S2N_BIGNUM_STATIC 4]);
 
 // Test 384-bit bignum for nonzero-ness x =/= 0
 // Input x[6]; output function return
-extern uint64_t bignum_nonzero_6(uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern uint64_t bignum_nonzero_6(const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Normalize bignum in-place by shifting left till top bit is 1
 // Input z[k]; outputs function return (bits shifted left) and z[k]
@@ -805,8 +805,8 @@ extern void bignum_sqr_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S
 
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
-extern void bignum_sqr_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9]);
-extern void bignum_sqr_p521_alt (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_sqr_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_sqr_p521_alt (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Square root modulo p_25519
 // Input x[4]; output function return (Legendre symbol) and z[4]
@@ -831,11 +831,11 @@ extern void bignum_sub_p256k1 (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_B
 
 // Subtract modulo p_384, z := (x - y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_sub_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6], uint64_t y[S2N_BIGNUM_STATIC 6]);
+extern void bignum_sub_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
 
 // Subtract modulo p_521, z := (x - y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
-extern void bignum_sub_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
+extern void bignum_sub_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
 
 // Subtract modulo p_sm2, z := (x - y) mod p_sm2, assuming x and y reduced
 // Inputs x[4], y[4]; output z[4]
@@ -855,11 +855,11 @@ extern void bignum_tolebytes_4 (uint8_t z[S2N_BIGNUM_STATIC 32], uint64_t x[S2N_
 
 // Convert 6-digit (384-bit) bignum to little-endian bytes
 // Input x[6]; output z[48] (bytes)
-extern void bignum_tolebytes_6 (uint8_t z[S2N_BIGNUM_STATIC 48], uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_tolebytes_6 (uint8_t z[S2N_BIGNUM_STATIC 48], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Convert 9-digit 528-bit bignum to little-endian bytes
 // Input x[6]; output z[66] (bytes)
-extern void bignum_tolebytes_p521 (uint8_t z[S2N_BIGNUM_STATIC 66], uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_tolebytes_p521 (uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Convert to Montgomery form z := (2^256 * x) mod p_256
 // Input x[4]; output z[4]
@@ -873,8 +873,8 @@ extern void bignum_tomont_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t 
 
 // Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
-extern void bignum_tomont_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
-extern void bignum_tomont_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_tomont_p384 (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_tomont_p384_alt (uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Convert to Montgomery form z := (2^576 * x) mod p_521
 // Input x[9]; output z[9]
@@ -921,23 +921,23 @@ extern void curve25519_pxscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 8],uint64_
 
 // x25519 function for curve25519
 // Inputs scalar[4], point[4]; output res[4]
-extern void curve25519_x25519(uint64_t res[S2N_BIGNUM_STATIC 4],uint64_t scalar[S2N_BIGNUM_STATIC 4],uint64_t point[S2N_BIGNUM_STATIC 4]);
-extern void curve25519_x25519_alt(uint64_t res[S2N_BIGNUM_STATIC 4],uint64_t scalar[S2N_BIGNUM_STATIC 4],uint64_t point[S2N_BIGNUM_STATIC 4]);
+extern void curve25519_x25519(uint64_t res[S2N_BIGNUM_STATIC 4],uint64_t scalar[S2N_BIGNUM_STATIC 4],const uint64_t point[S2N_BIGNUM_STATIC 4]);
+extern void curve25519_x25519_alt(uint64_t res[S2N_BIGNUM_STATIC 4],uint64_t scalar[S2N_BIGNUM_STATIC 4],const uint64_t point[S2N_BIGNUM_STATIC 4]);
 
 // x25519 function for curve25519 (byte array arguments)
 // Inputs scalar[32] (bytes), point[32] (bytes); output res[32] (bytes)
-extern void curve25519_x25519_byte(uint8_t res[S2N_BIGNUM_STATIC 32],uint8_t scalar[S2N_BIGNUM_STATIC 32],uint8_t point[S2N_BIGNUM_STATIC 32]);
-extern void curve25519_x25519_byte_alt(uint8_t res[S2N_BIGNUM_STATIC 32],uint8_t scalar[S2N_BIGNUM_STATIC 32],uint8_t point[S2N_BIGNUM_STATIC 32]);
+extern void curve25519_x25519_byte(uint8_t res[S2N_BIGNUM_STATIC 32],const uint8_t scalar[S2N_BIGNUM_STATIC 32],const uint8_t point[S2N_BIGNUM_STATIC 32]);
+extern void curve25519_x25519_byte_alt(uint8_t res[S2N_BIGNUM_STATIC 32],const uint8_t scalar[S2N_BIGNUM_STATIC 32],const uint8_t point[S2N_BIGNUM_STATIC 32]);
 
 // x25519 function for curve25519 on base element 9
 // Input scalar[4]; output res[4]
-extern void curve25519_x25519base(uint64_t res[S2N_BIGNUM_STATIC 4],uint64_t scalar[S2N_BIGNUM_STATIC 4]);
-extern void curve25519_x25519base_alt(uint64_t res[S2N_BIGNUM_STATIC 4],uint64_t scalar[S2N_BIGNUM_STATIC 4]);
+extern void curve25519_x25519base(uint64_t res[S2N_BIGNUM_STATIC 4],const uint64_t scalar[S2N_BIGNUM_STATIC 4]);
+extern void curve25519_x25519base_alt(uint64_t res[S2N_BIGNUM_STATIC 4],const uint64_t scalar[S2N_BIGNUM_STATIC 4]);
 
 // x25519 function for curve25519 on base element 9 (byte array arguments)
 // Input scalar[32] (bytes); output res[32] (bytes)
-extern void curve25519_x25519base_byte(uint8_t res[S2N_BIGNUM_STATIC 32],uint8_t scalar[S2N_BIGNUM_STATIC 32]);
-extern void curve25519_x25519base_byte_alt(uint8_t res[S2N_BIGNUM_STATIC 32],uint8_t scalar[S2N_BIGNUM_STATIC 32]);
+extern void curve25519_x25519base_byte(uint8_t res[S2N_BIGNUM_STATIC 32],const uint8_t scalar[S2N_BIGNUM_STATIC 32]);
+extern void curve25519_x25519base_byte_alt(uint8_t res[S2N_BIGNUM_STATIC 32],const uint8_t scalar[S2N_BIGNUM_STATIC 32]);
 
 // Decode compressed 256-bit form of edwards25519 point
 // Input c[32] (bytes); output function return and z[8]
@@ -995,8 +995,8 @@ extern void p256_montjmixadd_alt(uint64_t p3[S2N_BIGNUM_STATIC 12],uint64_t p1[S
 
 // Montgomery-Jacobian form scalar multiplication for P-256
 // Input scalar[4], point[12]; output res[12]
-extern void p256_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 12],uint64_t scalar[S2N_BIGNUM_STATIC 4],uint64_t point[S2N_BIGNUM_STATIC 12]);
-extern void p256_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 12],uint64_t scalar[S2N_BIGNUM_STATIC 4],uint64_t point[S2N_BIGNUM_STATIC 12]);
+extern void p256_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 12],const uint64_t scalar[S2N_BIGNUM_STATIC 4],uint64_t point[S2N_BIGNUM_STATIC 12]);
+extern void p256_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 12],const uint64_t scalar[S2N_BIGNUM_STATIC 4],uint64_t point[S2N_BIGNUM_STATIC 12]);
 
 // Scalar multiplication for NIST curve P-256
 // Input scalar[4], point[8]; output res[8]
@@ -1025,8 +1025,8 @@ extern void p384_montjmixadd_alt(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S
 
 // Montgomery-Jacobian form scalar multiplication for P-384
 // Input scalar[6], point[18]; output res[18]
-extern void p384_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 18],uint64_t scalar[S2N_BIGNUM_STATIC 6],uint64_t point[S2N_BIGNUM_STATIC 18]);
-extern void p384_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 18],uint64_t scalar[S2N_BIGNUM_STATIC 6],uint64_t point[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 18],const uint64_t scalar[S2N_BIGNUM_STATIC 6],uint64_t point[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 18],const uint64_t scalar[S2N_BIGNUM_STATIC 6],uint64_t point[S2N_BIGNUM_STATIC 18]);
 
 // Point addition on NIST curve P-521 in Jacobian coordinates
 // Inputs p1[27], p2[27]; output p3[27]
@@ -1045,8 +1045,8 @@ extern void p521_jmixadd_alt(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_B
 
 // Jacobian form scalar multiplication for P-521
 // Input scalar[9], point[27]; output res[27]
-extern void p521_jscalarmul(uint64_t res[S2N_BIGNUM_STATIC 27],uint64_t scalar[S2N_BIGNUM_STATIC 9],uint64_t point[S2N_BIGNUM_STATIC 27]);
-extern void p521_jscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 27],uint64_t scalar[S2N_BIGNUM_STATIC 9],uint64_t point[S2N_BIGNUM_STATIC 27]);
+extern void p521_jscalarmul(uint64_t res[S2N_BIGNUM_STATIC 27],const uint64_t scalar[S2N_BIGNUM_STATIC 9],const uint64_t point[S2N_BIGNUM_STATIC 27]);
+extern void p521_jscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 27],const uint64_t scalar[S2N_BIGNUM_STATIC 9],const uint64_t point[S2N_BIGNUM_STATIC 27]);
 
 // Point addition on SECG curve secp256k1 in Jacobian coordinates
 // Inputs p1[12], p2[12]; output p3[12]
