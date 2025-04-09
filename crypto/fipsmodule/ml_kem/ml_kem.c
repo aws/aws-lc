@@ -169,7 +169,7 @@ int ml_kem_768_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */,
                                                   size_t *secret_len  /* IN_OUT */,
                                                   const uint8_t *seed /* IN */) {
   OutputBuffer pkey = {public_key, public_len, MLKEM768_PUBLIC_KEY_BYTES};
-  OutputBuffer skey = {secret_key, secret_len, MLKEM768_SHARED_SECRET_LEN};
+  OutputBuffer skey = {secret_key, secret_len, MLKEM768_SECRET_KEY_BYTES};
   if (!check_buffer(pkey) || !check_buffer(skey)) {
     return 1;
   }
