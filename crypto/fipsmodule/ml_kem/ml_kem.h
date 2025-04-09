@@ -85,6 +85,12 @@ OPENSSL_EXPORT int ml_kem_768_keypair_deterministic(uint8_t *public_key /* OUT *
                                                     size_t *secret_len  /* IN_OUT */,
                                                     const uint8_t *seed /* IN */);
 
+int ml_kem_768_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */,
+                                                      size_t *public_len  /* IN_OUT */,
+                                                      uint8_t *secret_key /* OUT */,
+                                                      size_t *secret_len  /* IN_OUT */,
+                                                      const uint8_t *seed /* IN */);
+
 OPENSSL_EXPORT int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
                                       size_t *public_len  /* IN_OUT */,
                                       uint8_t *secret_key /* OUT */,
@@ -148,7 +154,8 @@ int ml_kem_1024_encapsulate_deterministic_no_self_test(uint8_t *ciphertext      
                                            size_t *ciphertext_len    /* IN_OUT */,
                                            uint8_t *shared_secret    /* OUT */,
                                            size_t *shared_secret_len /* IN_OUT */,
-                                           const uint8_t *public_key /* IN  */);
+                                           const uint8_t *public_key /* IN  */,
+                                           const uint8_t *seed       /* IN */);
 
 OPENSSL_EXPORT int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
                                            size_t *ciphertext_len    /* IN_OUT */,
