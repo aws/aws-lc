@@ -1,0 +1,20 @@
+# Build spec for both x86 and arm builds
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - yum -y install valgrind || (apt-get --allow-insecure-repositories update && apt-get -y install valgrind)
+  build:
+    commands:
+      - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
+      - make
+      - if [ ${S2N_BUILD_ARCH} == "x86" ]; then
+        cd ${CODEBUILD_SRC_DIR}/x86_att && make clobber && make && git diff --exit-code . ;
+        fi
+      - cd ${CODEBUILD_SRC_DIR}/tests
+      - make complete
+      - make ctCheck
+      - cd ${CODEBUILD_SRC_DIR}/benchmarks
+      - make
+
