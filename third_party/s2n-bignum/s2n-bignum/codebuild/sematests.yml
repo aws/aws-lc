@@ -1,0 +1,27 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - yum -y install ocaml
+      # Perl dependencies for OPAM
+      - yum -y install perl-CPAN gmp gmp-devel
+      - SHELL=/bin/sh perl -MCPAN -e'install "IPC::System::Simple"'
+      - SHELL=/bin/sh perl -MCPAN -e'install "String::ShellQuote"'
+      # Install OPAM
+      - wget https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh
+      - chmod +x install.sh
+      - echo "/usr/local/bin" | sh ./install.sh
+      - opam init --disable-sandboxing
+      # Build HOL Light
+      - cd ${CODEBUILD_SRC_DIR_hol_light}
+      - git checkout c5e165f85dfb340a786dabd1073a24aa421dd61b
+      - make switch-5
+      - eval $(opam env)
+      - echo $(ocamlc -version)
+      - echo $(camlp5 -v)
+      - HOLLIGHT_USE_MODULE=1 make
+  build:
+    commands:
+      - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
+      - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
+      - make sematest
