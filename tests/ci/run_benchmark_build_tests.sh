@@ -81,7 +81,7 @@ build_openssl $openssl_3_2_branch
 build_openssl $openssl_master_branch
 build_boringssl
 
-run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=14 -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON -DBENCHMARK_LIBS="\
+run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON -DBENCHMARK_LIBS="\
 aws-lc-fips-2021:${install_dir}/aws-lc-fips-2021-10-20;\
 aws-lc-fips-2022:${install_dir}/aws-lc-fips-2022-11-02;\
 open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
