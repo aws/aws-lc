@@ -251,6 +251,113 @@ TEST_F(randIsolatedTest, BasicFork) {
   };
 
   EXPECT_EXIT(testFuncSingleForkThenThread(), ::testing::ExitedWithCode(0), "");
+
+  // Test reseed is observed when forking and then forking again before
+  // generating any randomness.
+  auto testFuncDoubleFork = [this]() {
+
+    // Setup entropy source method override
+    overrideEntropySourceMethodsCount();
+    generateRandomness(request_len);
+
+    bool exit_code = forkAndRunTest(
+      []() {
+
+        // In child. Fork again before generating randomness.
+        bool exit_code_child = forkAndRunTest(
+          []() {
+            // In child-child. If fork detection is supported, we expect a
+            // reseed. If fork detection is not enabled, we also expect a reseed.
+            return assertSeedOrReseed(1, []() {
+              return generateRandomness(request_len, "child-child");
+            }, "child-child");
+          },
+          []() {
+            // In a forked process, should expect a reseed no matter what.
+            return assertSeedOrReseed(1, []() {
+              return generateRandomness(request_len, "child-parent");
+            }, "child-parent");
+          }
+        );
+
+        return exit_code_child;
+      },
+      [this]() {
+        // In parent. If UBE detection is not supported, we expect a reseed
+        // again. Otherwise, no reseed is expected.
+        size_t expect_reseed = 1;
+        if (UbeIsSupported()) {
+          expect_reseed = 0;
+        }
+
+        return assertSeedOrReseed(expect_reseed, []() {
+          return generateRandomness(request_len, "parent");
+        }, "parent");
+      }
+    );
+
+    exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFuncDoubleFork(), ::testing::ExitedWithCode(0), "");
+
+  // Test reseed is observed when forking, generate randomness, and then fork
+  // again.
+  auto testFuncForkGenerateFork = [this]() {
+
+    // Setup entropy source method override
+    overrideEntropySourceMethodsCount();
+    generateRandomness(request_len);
+
+    bool exit_code = forkAndRunTest(
+      [this]() {
+
+        // In a forked process, should expect a reseed no matter what.
+        return assertSeedOrReseed(1, []() {
+          return generateRandomness(request_len, "child-parent");
+        }, "child-parent");
+
+        bool exit_code_child = forkAndRunTest(
+          []() {
+            // In a forked process, should expect a reseed no matter what.
+            return assertSeedOrReseed(1, []() {
+              return generateRandomness(request_len, "child-parent");
+            }, "child-parent");
+          },
+          [this]() {
+            // In parent. If UBE detection is not supported, we expect a reseed
+            // again. Otherwise, no reseed is expected.
+            size_t expect_reseed = 1;
+            if (UbeIsSupported()) {
+              expect_reseed = 0;
+            }
+
+            return assertSeedOrReseed(expect_reseed, []() {
+              return generateRandomness(request_len, "parent");
+            }, "parent");
+          }
+        );
+
+        return exit_code_child;
+      },
+      [this]() {
+        // In parent. If UBE detection is not supported, we expect a reseed
+        // again. Otherwise, no reseed is expected.
+        size_t expect_reseed = 1;
+        if (UbeIsSupported()) {
+          expect_reseed = 0;
+        }
+
+        return assertSeedOrReseed(expect_reseed, []() {
+          return generateRandomness(request_len, "parent");
+        }, "parent");
+      }
+    );
+
+    exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFuncForkGenerateFork(), ::testing::ExitedWithCode(0), "");
 }
 #endif
 
