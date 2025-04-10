@@ -1,7 +1,15 @@
 ---
 Checks: '
   -*,
+  bugprone-dangling-handle,
+  bugprone-integer-overflow,
+  bugprone-infinite-loop,
+  bugprone-leak,
+  bugprone-use-after-free,
   clang-analyzer-*,
+  cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  cppcoreguidelines-pro-bounds-constant-index,
+  security-*,
   -clang-analyzer-optin.*,
   -clang-analyzer-unix.Stream,
   '
