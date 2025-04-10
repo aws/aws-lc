@@ -20,8 +20,9 @@
 
 #include <openssl/span.h>
 
-#include "../ube/fork_detect.h"
+#include "internal.h"
 #include "../fipsmodule/rand/internal.h"
+#include "../ube/fork_detect.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
 

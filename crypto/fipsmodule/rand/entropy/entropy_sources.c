@@ -10,6 +10,7 @@
 #include "internal.h"
 #include "../internal.h"
 #include "../../delocate.h"
+#include "../../../rand_extra/internal.h"
 
 DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)

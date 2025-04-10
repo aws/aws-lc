@@ -473,6 +473,7 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/getentropy.c
   rand_extra/rand_extra.c
+  rand_extra/urandom.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -733,7 +734,7 @@ if(BUILD_TESTING)
   # it does.
   add_executable(
     ${RANDOM_TEST_EXEC}
-    fipsmodule/rand/urandom_test.cc
+    rand_extra/urandom_test.cc
   )
   set_test_location(${RANDOM_TEST_EXEC})
 
