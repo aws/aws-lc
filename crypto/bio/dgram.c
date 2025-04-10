@@ -28,7 +28,7 @@ typedef SSIZE_T ssize_t;
 static int closesocket(const int sock) { return close(sock); }
 #endif
 
-#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS)
+#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_ANDROID)
 // Winsock2 APIs don't support AF_UNIX.
 // > The values currently supported are AF_INET or AF_INET6, which are the
 // > Internet address family formats for IPv4 and IPv6.
