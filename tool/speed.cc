@@ -86,7 +86,7 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 #endif
 
 #if defined(INTERNAL_TOOL)
-#include "../crypto/fipsmodule/rand/internal.h"
+#include "../crypto/rand_extra/internal.h"
 #endif
 
 

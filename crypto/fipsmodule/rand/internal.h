@@ -26,16 +26,6 @@
 extern "C" {
 #endif
 
-#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-#define OPENSSL_RAND_DETERMINISTIC
-#elif defined(OPENSSL_WINDOWS)
-#define OPENSSL_RAND_WINDOWS
-#elif defined(OPENSSL_MACOS) || defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)
-#define OPENSSL_RAND_GETENTROPY
-#else
-#define OPENSSL_RAND_URANDOM
-#endif
-
 // kCtrDrbgReseedInterval is the number of generate calls made to CTR-DRBG,
 // for a specific state, before reseeding.
 static const uint64_t kCtrDrbgReseedInterval = 4096;
@@ -45,45 +35,6 @@ static const uint64_t kCtrDrbgReseedInterval = 4096;
 
 OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
 OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
-
-// Functions:
-// CRYPTO_init_sysrand
-// CRYPTO_sysrand
-// CRYPTO_sysrand_for_seed
-// CRYPTO_sysrand_if_available
-// are the operating system entropy source interface used in the randomness
-// generation implementation.
-
-// CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
-// system.
-OPENSSL_EXPORT void CRYPTO_sysrand(uint8_t *buf, size_t len);
-
-// CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
-// operating system. It may draw from the |GRND_RANDOM| pool on Android,
-// depending on the vendor's configuration.
-OPENSSL_EXPORT void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
-
-#if defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
-// CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
-// from the operating system.
-void CRYPTO_init_sysrand(void);
-#else
-OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
-#endif  // defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
-
-#if defined(OPENSSL_RAND_URANDOM)
-// CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
-// operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
-// pool is initialized or if getrandom() is not available and not in FIPS mode.
-// Otherwise it will not block and will instead fill |buf| with all zeros and
-// return 0.
-int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len);
-#else
-OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
-  CRYPTO_sysrand(buf, len);
-  return 1;
-}
-#endif  // defined(OPENSSL_RAND_URANDOM)
 
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
@@ -135,13 +86,6 @@ OPENSSL_INLINE int have_hw_rng_x86_64(void) {
 }
 
 #endif  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
-
-// Don't retry forever. There is no science in picking this number and can be
-// adjusted in the future if need be. We do not backoff forever, because we
-// believe that it is easier to detect failing calls than detecting infinite
-// spinning loops.
-#define MAX_BACKOFF_RETRIES 9
-OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
 #if defined(__cplusplus)
 }  // extern C
