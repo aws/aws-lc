@@ -115,8 +115,8 @@ jobs:
         uses: actions/checkout@v3
       - name: Build Windows Dependencies
         run: |
-          choco install ninja --version 1.9.0.20190208 -y &&
-          choco install nasm --version 2.14.02 -y
+          choco install ninja  -y &&
+          choco install nasm -y
       - name: Run Windows Tests on MSVC-2019
         run: |
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
@@ -130,8 +130,8 @@ jobs:
         uses: actions/checkout@v3
       - name: Build Windows Dependencies
         run: |
-          choco install ninja --version 1.9.0.20190208 -y &&
-          choco install nasm --version 2.14.02 -y
+          choco install ninja -y &&
+          choco install nasm -y
       - name: Run Windows Tests on MSVC-2022
         run: |
           .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
@@ -148,8 +148,8 @@ jobs:
 
       - name: Build Windows Dependencies
         run: |
-          choco install ninja --version 1.9.0.20190208 -y &&
-          choco install nasm --version 2.14.02 -y
+          choco install ninja -y &&
+          choco install nasm -y
 
       - name: Install SDE simulator
         run: |
