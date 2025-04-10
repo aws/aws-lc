@@ -385,7 +385,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
           }
           len -= p - q;
           seq_eoc = 0;
-          q = p;
           break;
         }
         // This determines the OPTIONAL flag value. The field cannot be

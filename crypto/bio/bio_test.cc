@@ -1071,7 +1071,7 @@ TEST(BIOTest, TestPutsNullMethod) {
 
 TEST_P(BIOPairTest, TestPutsCallbacks) {
   bio_callback_cleanup();
-  BIO* bio = BIO_new(BIO_s_mem());
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
 
   //   - get<1> controls callback type (true = extended, false = legacy)
@@ -1081,13 +1081,13 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
     // - processed: pointer to store number of bytes actually processed
-    BIO_set_callback_ex(bio, bio_cb_ex);
+    BIO_set_callback_ex(bio.get(), bio_cb_ex);
   } else {
     // Use legacy callback (BIO_callback) with basic parameters
-    BIO_set_callback(bio, bio_cb);
+    BIO_set_callback(bio.get(), bio_cb);
   }
 
-  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio, "12345"));
+  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio.get(), "12345"));
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_PUTS);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_PUTS | BIO_CB_RETURN);
@@ -1123,16 +1123,15 @@ TEST_P(BIOPairTest, TestPutsCallbacks) {
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
   bio_callback_cleanup();
-  ASSERT_EQ(BIO_free(bio), 1);
 }
 
 TEST_P(BIOPairTest, TestGetsCallback) {
   bio_callback_cleanup();
 
-  BIO* bio = BIO_new(BIO_s_mem());
+  bssl::UniquePtr<BIO> bio (BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
   // write data to BIO, then set callback
-  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
+  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio.get(), "12345", TEST_DATA_WRITTEN));
   char buf[TEST_BUF_LEN];
 
   //   - get<1> controls callback type (true = extended, false = legacy)
@@ -1142,13 +1141,13 @@ TEST_P(BIOPairTest, TestGetsCallback) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
     // - processed: pointer to store number of bytes actually processed
-    BIO_set_callback_ex(bio, bio_cb_ex);
+    BIO_set_callback_ex(bio.get(), bio_cb_ex);
   } else {
     // Use legacy callback (BIO_callback) with basic parameters
-    BIO_set_callback(bio, bio_cb);
+    BIO_set_callback(bio.get(), bio_cb);
   }
 
-  ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio, buf, sizeof(buf)));
+  ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio.get(), buf, sizeof(buf)));
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_GETS);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_GETS | BIO_CB_RETURN);
@@ -1184,13 +1183,12 @@ TEST_P(BIOPairTest, TestGetsCallback) {
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
   bio_callback_cleanup();
-  ASSERT_EQ(BIO_free(bio), 1);
 }
 
 TEST_P(BIOPairTest, TestCtrlCallback) {
   bio_callback_cleanup();
 
-  BIO* bio = BIO_new(BIO_s_mem());
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
 
   //   - get<1> controls callback type (true = extended, false = legacy)
@@ -1200,16 +1198,16 @@ TEST_P(BIOPairTest, TestCtrlCallback) {
     // Use extended callback (BIO_callback_ex) which provides additional parameters:
     // - len: size of the buffer for read/write operations
     // - processed: pointer to store number of bytes actually processed
-    BIO_set_callback_ex(bio, bio_cb_ex);
+    BIO_set_callback_ex(bio.get(), bio_cb_ex);
   } else {
     // Use legacy callback (BIO_callback) with basic parameters
-    BIO_set_callback(bio, bio_cb);
+    BIO_set_callback(bio.get(), bio_cb);
   }
 
   char buf[TEST_BUF_LEN];
   // Test BIO_ctrl. This is not normally called directly so we can use one of
   // the macros such as BIO_reset to test it
-  ASSERT_EQ(BIO_reset(bio), 1);
+  ASSERT_EQ(BIO_reset(bio.get()), 1);
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_CTRL);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_CTRL | BIO_CB_RETURN);
@@ -1228,10 +1226,9 @@ TEST_P(BIOPairTest, TestCtrlCallback) {
 
   bio_callback_cleanup();
   // check that BIO_reset was called correctly
-  ASSERT_EQ(BIO_gets(bio, buf, sizeof(buf)), 0);
+  ASSERT_EQ(BIO_gets(bio.get(), buf, sizeof(buf)), 0);
 
   bio_callback_cleanup();
-  ASSERT_EQ(BIO_free(bio), 1);
 }
 
 TEST(BIOTest, GetMemDataBackwardsCompat) {
