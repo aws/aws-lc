@@ -2212,6 +2212,32 @@ L6qflZ9YCU5erE4T5U98hCQBMh4nOYxgaTjnZzhpkKQuEiKq/755cjzTzlI/eok=
 -----END PKCS7-----
 )";
 
+  // The test has an expected output. Check that we output the same contents
+  // as OpenSSL.
+  static const char kPKCS7RubyOpenSSLOutput[] =
+    R"(-----BEGIN PKCS7-----
+MIIDawYJKoZIhvcNAQcDoIIDXDCCA1gCAQAxggEQMIIBDAIBADB1MHAxEDAOBgNV
+BAoMB2V4YW1wbGUxFzAVBgNVBAMMDlRBUk1BQyBST09UIENBMSIwIAYJKoZIhvcN
+AQkBFhNzb21lb25lQGV4YW1wbGUub3JnMQswCQYDVQQGEwJVUzESMBAGA1UEBwwJ
+VG93biBIYWxsAgFmMA0GCSqGSIb3DQEBAQUABIGAbKV17HvGYRtRRBNz1QLpW763
+UedhVj5KXi70o4BJGM04lItAgt6aFC9SruZjpWr1gCYKCaRSAg273DeGTQwsDoZ8
+6CPXzBpptYLz0MteQXYYWUaPZT+xmvx4NgDyk9P9MoT7JifsPrtXuzqCRFXhGdu8
+d/ru+OWxhHLvKH+bYekwggI9BgkqhkiG9w0BBwEwFAYIKoZIhvcNAwcECBNs2U5m
+Msd/gIICGFOnLq/EAc9Nv+HjKR3ZVPSJMq0TImjGf5Mvc3nDgI572Hdo2aku0YXM
+6WjSWkpYtxpg7Cqxfl6hPSefLPUnBqlIoM2qbrE7MSKEVD6+2bW9GqYPFVg4qQLL
+sOxnxJIMfOvLFfd7guL+iLH424XfiUUxaf8EdZE4u2IEl4REvkS1FoEGwyA4BEGM
+SeVPedQCbZ0qY7Pc2tmZE3XfEUhIsyStG0Nb6i6AKcAFYGapbgE6kAB0gwsYcHlW
+MOvsvdAfcTq6jwtHlO1s68qtvkWquTQ9lpX+fzddUUNxEHSqv5eU3oo6fT3Vj5ZF
+IVlaA5ThZMrI5PgRPuwJM4GL8/VLwY5mbDLFqn/irGeEvP99J3S87ornLLunjpxS
+y1/AymcVep2H32Tj82WS/IRQXBOzz4EnQRJGszKxAV6tY+Zje3sWyTTgObhlsiTQ
+TDgnvtSW8RvVHqKrwgkxxEsRHg7u8UdzZ0jg+O5+3F8B6/NWMyts0OaFqT9wvI8y
+O7VIy3dUtGdz7Hde6Ggp/iTn1LbgdJ3N8Hzxf1j6NMWUKHVsadvwpRJbUeqq9c3+
+QuxsJi8wWemxxQCE+tPyc1dP+ej5/M7bERbSOHMGgX03758IvP7A/fy2DjGPv2+l
+AwlEke0Uze1367QKgxM0nc3SZDlptY7zPIJC5saWXb8Rt2bw2JxEBOTavrp+ZwJ8
+tcH961onq8Tme2ICaCzk
+-----END PKCS7-----
+)";
+
   const bssl::UniquePtr<BIO> bio(
       BIO_new_mem_buf(kPKCS7Ruby, strlen(kPKCS7Ruby)));
   ASSERT_TRUE(bio);
@@ -2225,4 +2251,17 @@ L6qflZ9YCU5erE4T5U98hCQBMh4nOYxgaTjnZzhpkKQuEiKq/755cjzTzlI/eok=
   bssl::UniquePtr<BIO> out(BIO_new(BIO_s_mem()));
   EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
                            out.get(), /*flags*/ PKCS7_NOVERIFY));
+
+  // The following is bit wonky with the pkcs7 bytes being read and rewritten,
+  // but that's how Ruby's underlying PKCS7 test gets the PEM output.
+  BUF_MEM *buf;
+  BIO_get_mem_ptr(out.get(), &buf);
+  bssl::UniquePtr<BIO> out2(BIO_new_mem_buf(buf->data, buf->length));
+  bssl::UniquePtr<PKCS7> new_pk7(d2i_PKCS7_bio(out2.get(), nullptr));
+  ASSERT_TRUE(new_pk7);
+
+  bssl::UniquePtr<BIO> out3(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(PEM_write_bio_PKCS7(out3.get(), new_pk7.get()));
+  BIO_get_mem_ptr(out3.get(), &buf);
+  EXPECT_EQ(Bytes(buf->data, buf->length), Bytes(kPKCS7RubyOpenSSLOutput));
 }
