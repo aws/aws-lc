@@ -2356,45 +2356,94 @@ TEST(ASN1Test, GetObject) {
 
 }
 
-template <typename T>
-void ExpectNoParse(T *(*d2i)(T **, const uint8_t **, long),
-                   const std::vector<uint8_t> &in) {
-  SCOPED_TRACE(Bytes(in));
-  const uint8_t *ptr = in.data();
-  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
-  EXPECT_FALSE(obj);
-}
-
 // The zero tag, constructed or primitive, is reserved and should rejected by
 // the parser.
 TEST(ASN1Test, ZeroTag) {
-  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
-  ExpectNoParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x02, 0x00, 0x00});
-  ExpectNoParse(d2i_ASN1_SET_ANY, {0x31, 0x02, 0x00, 0x00});
-  // SEQUENCE {
-  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
-  //   [UNIVERSAL 0 PRIMITIVE] {}
-  // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00});
-  // SEQUENCE {
-  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
-  //   [UNIVERSAL 0 CONSTRUCTED] {}
-  // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00});
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x00}, true);
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00},
+              false);  // OpenSSL also rejects this.
   // SEQUENCE {
   //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
   //   [UNIVERSAL 0 PRIMITIVE] { "a" }
   // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61});
+  ExpectParse(d2i_X509_ALGOR,
+              {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+               0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61},
+              true);
+
+
+  // The following test cases are rejected by OpenSSL with their type specific
+  // counterparts. They are parsable with |d2i_ASN1_TYPE| however, and we test
+  // that later.
+  const std::vector<uint8_t> zero_tag_sequence = {0x30, 0x02, 0x00, 0x00};
+  const std::vector<uint8_t> zero_tag_set_any = {0x31, 0x02, 0x00, 0x00};
+  // Taken from OpenSSL's test/asn1_decode_test.c.
+  const std::vector<uint8_t> openssl_t_invalid_zero = {0x31, 0x02, 0x00, 0x00};
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] {}
+  // }
+  const std::vector<uint8_t> universal_0_primitive_empty = {
+      0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+      0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00};
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, zero_tag_sequence, false);
+  ExpectParse(d2i_ASN1_SET_ANY, zero_tag_set_any, false);
+  ExpectParse(d2i_X509_ALGOR, universal_0_primitive_empty, false);
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, openssl_t_invalid_zero, false);
+  // Test that the equivalent test cases are parsable with |ASN1_TYPE| (like
+  // OpenSSL).
+  ExpectParse(d2i_ASN1_TYPE, zero_tag_sequence, true);
+  ExpectParse(d2i_ASN1_TYPE, zero_tag_set_any, true);
+  ExpectParse(d2i_ASN1_TYPE, universal_0_primitive_empty, true);
+  ExpectParse(d2i_ASN1_TYPE, openssl_t_invalid_zero, true);
+
+
+  // TODO: Change expectation of below to true. Below use BER constructed
+  //       strings and will still fail until we revert a70edd4.
+
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 CONSTRUCTED] {}
+  // }
+  ExpectParse(d2i_X509_ALGOR,
+              {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+               0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00},
+              false);
+
+  ExpectParse(d2i_ASN1_TYPE, {0x20, 0x00}, false);
+  ExpectParse(d2i_ASN1_TYPE, {0x20, 0x00}, false);
+}
+
+TEST(ASN1Test, IndefiniteLength) {
+  // Indefinite lengths are more common across container types.
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x80, 0x02, 0x01, 0x2a, 0x00, 0x00},
+              true);
+  ExpectParse(d2i_ASN1_SET_ANY,
+              {0x31, 0x80, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02, 0x00, 0x00},
+              true);
+
+  // constructed [APPLICATION 31] with an invalid indefinite length ending.
+  ExpectParse(d2i_ASN1_TYPE, {0x7f, 0x1f, 0x80, 0x01, 0x01, 0x02, 0x00}, false);
+  // Nested constructed [APPLICATION 31] within another constructed
+  // [APPLICATION 31] with indefinite lengths.
+  ExpectParse(d2i_ASN1_TYPE,
+              {0x7f, 0x1f, 0x80, 0x7f, 0x1f, 0x80, 0x03, 0x01, 0x02, 0x00, 0x00,
+               0x00, 0x00},
+              true);
+
+  // The ones below use constructed form and should fail for now. This is
+  // indicated with (0x20 | 0x??) in the first byte.
+  ExpectParse(d2i_ASN1_INTEGER,
+              {0x22, 0x80, 0x02, 0x01, 0x12, 0x02, 0x01, 0x34, 0x00, 0x00},
+              false);
+  ExpectParse(
+      d2i_ASN1_OCTET_STRING,
+      {0x24, 0x80, 0x04, 0x02, 0x12, 0x34, 0x04, 0x02, 0x56, 0x78, 0x00, 0x00},
+      false);
+  ExpectParse(
+      d2i_ASN1_BIT_STRING,
+      {0x23, 0x80, 0x03, 0x02, 0x00, 0xFF, 0x03, 0x02, 0x00, 0xAA, 0x00, 0x00},
+      false);
 }
 
 // Exhaustively test POSIX time conversions for every day across the millenium.
