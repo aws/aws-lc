@@ -211,7 +211,7 @@ OPENSSL_EXPORT size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead);
 // AEAD operations.
 
 union evp_aead_ctx_st_state {
-  uint8_t opaque[564];
+  uint8_t opaque[700];
   uint64_t alignment;
   void *ptr;
 };
@@ -436,6 +436,13 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xaes_256_gcm(void);
 
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xaes_256_gcm_key_commit(void);
 #endif
+
+#if 1 // AES-GCM with HMAC-SHA256 as a key-deriving PRF
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_hmac_aes_256_gcm(void);
+
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_hmac_aes_256_gcm_key_commit(void);
+#endif
+
 // Obscure functions.
 
 // evp_aead_direction_t denotes the direction of an AEAD operation.

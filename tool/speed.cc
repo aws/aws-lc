@@ -3316,6 +3316,10 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedAEADOpen(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
        !SpeedAEADSeal(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
        !SpeedAEADOpen(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_hmac_aes_256_gcm(), "AEAD-HMAC-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_hmac_aes_256_gcm(), "AEAD-HMAC-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_hmac_aes_256_gcm_key_commit(), "AEAD-HMAC-AES-256-GCM key commit", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_hmac_aes_256_gcm_key_commit(), "AEAD-HMAC-AES-256-GCM key commit", kTLSADLen, selected) ||
        !Speed25519(selected) ||
        !SpeedSPAKE2(selected) ||
        !SpeedRSAKeyGen(true, selected) ||
