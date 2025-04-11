@@ -1,0 +1,89 @@
+name: Zig compiler
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  zig:
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.os.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - name: windows-latest
+            target: x86_64-windows
+          - name: ubuntu-latest
+            target: x86_64-linux
+          - name: macos-latest
+            target: aarch64-macos
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ninja-build tool
+        uses: seanmiddleditch/gha-setup-ninja@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>= 1.18'
+      - name: Install zigcc
+        uses: jiacai2050/zigcc@v1.0.1
+        with:
+          zig-version: 0.14.0
+      - name: Locate zig not on Windows
+        if: matrix.os.name != 'windows-latest'
+        shell: bash
+        run: |
+          cat <<'EOF' > ${PWD}/zig-cc
+          #!/bin/bash
+          zig cc "$@"
+          EOF
+          chmod +x ${PWD}/zig-cc
+          cat <<'EOF' > ${PWD}/zig-c++
+          #!/bin/bash
+          zig c++ "$@"
+          EOF
+          chmod +x ${PWD}/zig-c++
+          echo "ZIGCC=${PWD}/zig-cc" >> $GITHUB_ENV
+          echo "ZIGCXX=${PWD}/zig-c++" >> $GITHUB_ENV
+      - name: Locate zig on Windows
+        if: matrix.os.name == 'windows-latest'
+        shell: bash
+        run: |
+          ZIGCC="python3 $(cygpath -m $(which zigcc))"
+          ZIGCXX="python3 $(cygpath -m $(which zigcxx))"
+          echo "ZIGCC=${ZIGCC}" >> $GITHUB_ENV
+          echo "ZIGCXX=${ZIGCXX}" >> $GITHUB_ENV
+      - name: Create toolchain
+        shell: bash
+        run: |
+          cat <<EOF > ./toolchain.cmake
+          set(CMAKE_C_COMPILER ${ZIGCC})
+          set(CMAKE_C_COMPILER_TARGET  ${{ matrix.os.target }})
+          set(CMAKE_CXX_COMPILER ${ZIGCXX})
+          set(CMAKE_CXX_COMPILER_TARGET ${{ matrix.os.target }})
+          set(CMAKE_ASM_COMPILER ${ZIGCC})
+          set(CMAKE_ASM_COMPILER_TARGET ${{ matrix.os.target }})
+          set(CMAKE_VERBOSE_MAKEFILE ON)
+          set(CMAKE_MESSAGE_LOG_LEVEL DEBUG)
+          EOF
+      - name: Setup CMake
+        shell: bash
+        run: |
+          printenv | sort
+          which zigcc
+          which zigcxx
+          cat ./toolchain.cmake
+          cmake '.' -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=./toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        shell: bash
+        run: |
+          cmake --build ./build --target run_tests --verbose
