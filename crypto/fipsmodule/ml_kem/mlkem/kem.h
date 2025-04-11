@@ -10,6 +10,10 @@
 #include "common.h"
 #include "sys.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #if defined(MLK_CHECK_APIS)
 /* Include to ensure consistency between internal kem.h
  * and external mlkem_native.h. */
@@ -210,5 +214,9 @@ __contract__(
   requires(memory_no_alias(sk, MLKEM_INDCCA_SECRETKEYBYTES))
   assigns(object_whole(ss))
 );
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* !MLK_KEM_H */
