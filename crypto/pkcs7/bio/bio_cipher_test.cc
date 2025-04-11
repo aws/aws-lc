@@ -305,7 +305,7 @@ TEST_P(BIOCipherTest, Randomized) {
   int total_bytes = 0;
   srand(42);
   for (int i = 0; i < 1000; i++) {
-    int n = (rand() % (sizeof(buff) - 1)) + 1;
+    int n = (rand() % (sizeof(buff) - 1)) + 1; // NOLINT(clang-analyzer-security.insecureAPI.rand)
     ASSERT_TRUE(BIO_write(bio_cipher.get(), buff, n));
     pt.insert(pt.end(), buff, buff + n);
     total_bytes += n;

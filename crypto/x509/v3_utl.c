@@ -482,7 +482,7 @@ char *x509v3_bytes_to_hex(const uint8_t *in, size_t len) {
       goto err;
     }
   }
-  uint8_t *ret;
+  uint8_t *ret = NULL;
   size_t unused_len;
   if (!CBB_add_u8(&cbb, 0) || !CBB_finish(&cbb, &ret, &unused_len)) {
     goto err;
@@ -691,6 +691,9 @@ static int equal_nocase(const unsigned char *pattern, size_t pattern_len,
                         const unsigned char *subject, size_t subject_len,
                         unsigned int flags) {
   if (pattern_len != subject_len) {
+    return 0;
+  }
+  if (pattern_len > 0 && (pattern == NULL || subject == NULL)) {
     return 0;
   }
   while (pattern_len) {
@@ -1185,7 +1188,7 @@ int x509v3_a2i_ipadd(unsigned char ipout[16], const char *ipasc) {
 
 static int ipv4_from_asc(unsigned char v4[4], const char *in) {
   int a0, a1, a2, a3;
-  if (sscanf(in, "%d.%d.%d.%d", &a0, &a1, &a2, &a3) != 4) {
+  if (sscanf(in, "%d.%d.%d.%d", &a0, &a1, &a2, &a3) != 4) { // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
     return 0;
   }
   if ((a0 < 0) || (a0 > 255) || (a1 < 0) || (a1 > 255) || (a2 < 0) ||

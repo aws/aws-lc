@@ -915,9 +915,11 @@ int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md) {
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNKNOWN_DIGEST_TYPE);
         return 0;
       }
-      if (p7->d.digest->digest_alg) {
-        OPENSSL_free(p7->d.digest->digest_alg->parameter);
+      if (p7->d.digest->digest_alg == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+        return 0;
       }
+      OPENSSL_free(p7->d.digest->digest_alg->parameter);
       if ((p7->d.digest->digest_alg->parameter = ASN1_TYPE_new()) == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
         return 0;

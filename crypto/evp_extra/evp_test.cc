@@ -1313,14 +1313,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       p224_test_data, p256_test_data, p384_test_data, p521_test_data};
 
     uint8_t *output = nullptr;
-    size_t output_size = 0;
     uint8_t *shared_secret = nullptr;
-    size_t shared_secret_size = 0;
     EVP_PKEY_CTX *pkey_ctx = nullptr;
     EVP_PKEY *pkey_public = nullptr;
     EVP_PKEY *pkey_private = nullptr;
 
     for (ectlsencodedpoint_test_data test_data : test_data_all) {
+      size_t output_size = 0;
+      size_t shared_secret_size = 0;
 
       pkey_private = instantiate_and_set_private_key(test_data.private_key,
         test_data.private_key_size, test_data.key_type, test_data.curve_nid);
@@ -1360,8 +1360,6 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       EVP_PKEY_CTX_free(pkey_ctx);
       EVP_PKEY_free(pkey_public);
       EVP_PKEY_free(pkey_private);
-      output_size = 0;
-      shared_secret_size = 0;
     }
 
     // Above tests explore the happy path. Now test that some invalid

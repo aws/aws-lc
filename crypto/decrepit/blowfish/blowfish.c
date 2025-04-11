@@ -225,8 +225,13 @@ void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
     l2n(xor0, ivec);
     l2n(xor1, ivec);
   }
-  tin0 = tin1 = tout0 = tout1 = xor0 = xor1 = 0;
-  tin[0] = tin[1] = 0;
+  OPENSSL_cleanse(&tin0, sizeof(tin0));
+  OPENSSL_cleanse(&tin1, sizeof(tin1));
+  OPENSSL_cleanse(&tout0, sizeof(tout0));
+  OPENSSL_cleanse(&tout1, sizeof(tout1));
+  OPENSSL_cleanse(&xor0, sizeof(xor0));
+  OPENSSL_cleanse(&xor1, sizeof(xor1));
+  OPENSSL_cleanse(&tin, sizeof(tin));
 }
 
 static const BF_KEY bf_init = {
