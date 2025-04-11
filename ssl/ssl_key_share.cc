@@ -636,11 +636,17 @@ class HybridKeyShare : public SSLKeyShare {
      case SSL_GROUP_SECP256R1:
        *out = 1 + (2 * EC_P256R1_FIELD_ELEM_BYTES);
        return true;
+     case SSL_GROUP_SECP384R1:
+       *out = 1 + (2 * EC_P384R1_FIELD_ELEM_BYTES);
+       return true;
      case SSL_GROUP_KYBER768_R3:
        *out = KYBER768_R3_PUBLIC_KEY_BYTES;
        return true;
      case SSL_GROUP_MLKEM768:
        *out = MLKEM768_PUBLIC_KEY_BYTES;
+       return true;
+    case SSL_GROUP_MLKEM1024:
+       *out = MLKEM1024_PUBLIC_KEY_BYTES;
        return true;
      case SSL_GROUP_X25519:
        *out = 32;
@@ -656,11 +662,17 @@ class HybridKeyShare : public SSLKeyShare {
      case SSL_GROUP_SECP256R1:
        *out = 1 + (2 * EC_P256R1_FIELD_ELEM_BYTES);
        return true;
+     case SSL_GROUP_SECP384R1:
+       *out = 1 + (2 * EC_P384R1_FIELD_ELEM_BYTES);
+       return true;
      case SSL_GROUP_KYBER768_R3:
        *out = KYBER768_R3_CIPHERTEXT_BYTES;
        return true;
      case SSL_GROUP_MLKEM768:
        *out = MLKEM768_CIPHERTEXT_BYTES;
+       return true;
+     case SSL_GROUP_MLKEM1024:
+       *out = MLKEM1024_CIPHERTEXT_BYTES;
        return true;
      case SSL_GROUP_X25519:
        *out = 32;
@@ -686,18 +698,21 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_X25519Kyber768Draft00, SSL_GROUP_X25519_KYBER768_DRAFT00, "X25519Kyber768Draft00", ""},
     {NID_SecP256r1MLKEM768, SSL_GROUP_SECP256R1_MLKEM768, "SecP256r1MLKEM768", ""},
     {NID_X25519MLKEM768, SSL_GROUP_X25519_MLKEM768, "X25519MLKEM768", ""},
+    {NID_SecP384r1MLKEM1024, SSL_GROUP_SECP384R1_MLKEM1024, "SecP384r1MLKEM1024", ""},
 };
 
 CONSTEXPR_ARRAY uint16_t kPQGroups[] = {
     SSL_GROUP_KYBER512_R3,
     SSL_GROUP_KYBER768_R3,
     SSL_GROUP_KYBER1024_R3,
+    SSL_GROUP_MLKEM512,
     SSL_GROUP_MLKEM768,
     SSL_GROUP_MLKEM1024,
     SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
     SSL_GROUP_X25519_KYBER768_DRAFT00,
     SSL_GROUP_SECP256R1_MLKEM768,
-    SSL_GROUP_X25519_MLKEM768
+    SSL_GROUP_X25519_MLKEM768,
+    SSL_GROUP_SECP384R1_MLKEM1024,
 };
 
 CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
@@ -715,7 +730,6 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
       SSL_GROUP_KYBER768_R3,          // component_group_ids[1]
     },
   },
-
   {
     SSL_GROUP_SECP256R1_MLKEM768,     // group_id
     {
@@ -723,7 +737,6 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
       SSL_GROUP_MLKEM768,          // component_group_ids[1]
     },
   },
-
   {
     SSL_GROUP_X25519_MLKEM768,     // group_id
     {
@@ -732,7 +745,14 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
       SSL_GROUP_MLKEM768,          // component_group_ids[0]
       SSL_GROUP_X25519,            // component_group_ids[1]
     },
-  }
+  },
+  {
+    SSL_GROUP_SECP384R1_MLKEM1024,     // group_id
+    {
+      SSL_GROUP_SECP384R1,         // component_group_ids[0]
+      SSL_GROUP_MLKEM1024,         // component_group_ids[1]
+    },
+  },
 };
 
 } // namespace
@@ -773,10 +793,16 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       // MLKEM768, as a standalone group, is not a NamedGroup; however, we
       // need to create MLKEM768 key shares as part of hybrid groups.
       return MakeUnique<KEMKeyShare>(NID_MLKEM768, SSL_GROUP_MLKEM768);
+    case SSL_GROUP_MLKEM1024:
+      // MLKEM1024, as a standalone group, is not a NamedGroup; however, we
+      // need to create MLKEM1024 key shares as part of hybrid groups.
+      return MakeUnique<KEMKeyShare>(NID_MLKEM1024, SSL_GROUP_MLKEM1024);
     case SSL_GROUP_SECP256R1_MLKEM768:
       return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP256R1_MLKEM768);
     case SSL_GROUP_X25519_MLKEM768:
       return MakeUnique<HybridKeyShare>(SSL_GROUP_X25519_MLKEM768);
+    case SSL_GROUP_SECP384R1_MLKEM1024:
+      return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP384R1_MLKEM1024);
     default:
       return nullptr;
   }

@@ -4382,6 +4382,10 @@ extern "C" {
 #define SN_ED25519ph "ED25519ph"
 #define NID_ED25519ph 997
 
+#define SN_SecP384r1MLKEM1024 "SecP384r1MLKEM1024"
+#define NID_SecP384r1MLKEM1024 998
+#define OBJ_SecP384r1MLKEM1024 1L, 3L, 6L, 1L, 4L, 1L, 42235L, 6L
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif
