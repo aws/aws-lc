@@ -406,6 +406,10 @@ OPENSSL_EXPORT int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent);
 OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
                                unsigned indent);
 
+// BIO_dump writes a hex dump of |data| for |len| bytes to |bio|.
+// It returns the total number of bytes written on success, or a negative value on error.
+OPENSSL_EXPORT int BIO_dump(BIO *bio, const void *data, int len);
+
 // ERR_print_errors prints the current contents of the error stack to |bio|
 // using human readable strings where possible.
 OPENSSL_EXPORT void ERR_print_errors(BIO *bio);
