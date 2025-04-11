@@ -9,6 +9,7 @@
 #include "../internal.h"
 #include "../../delocate.h"
 #include "../../../internal.h"
+#include "../../../rand_extra/internal.h"
 #include "../../../ube/internal.h"
 
 #include "../../../../third_party/jitterentropy/jitterentropy.h"
