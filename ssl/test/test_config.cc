@@ -535,8 +535,8 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
     }
   }
 
-  out_resume->handshaker_args = out_initial->handshaker_args;
-  out_retry->handshaker_args = out_initial->handshaker_args;
+  out_resume->handshaker_args = std::vector<const char*>(out_initial->handshaker_args);
+  out_retry->handshaker_args = std::vector<const char*>(out_initial->handshaker_args);
   return true;
 }
 

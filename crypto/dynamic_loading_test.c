@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
 #else
 
 int main(int argc, char **argv) {
-  fprintf(stdout, "PASS\n");
+  fprintf(stdout, "PASS\n"); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
   fflush(stdout);
   return 0;
 }
