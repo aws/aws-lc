@@ -27,7 +27,6 @@ endif()
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
-option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
@@ -92,6 +91,23 @@ endif()
 # chooses to disable building the tests and libssl, do not enable CXX
 if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
+endif()
+
+if(ENABLE_CLANG_TIDY)
+  find_program(CLANG_TIDY_CMD NAMES clang-tidy)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+
+  if(NOT CLANG_TIDY_CMD)
+    message(WARNING "clang-tidy is not found!")
+    set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
+  else()
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_CMD}")
+    set(CLANG_TIDY_EXTRA_ARGS
+            "-extra-arg=-Wno-unknown-warning-option"
+    )
+    set(CMAKE_C_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+  endif()
 endif()
 
 if (NOT DEFINED CMAKE_CXX_STANDARD)
@@ -168,11 +184,6 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
-endif()
-
-
-if(ENABLE_DILITHIUM)
-  add_definitions(-DENABLE_DILITHIUM)
 endif()
 
 if(USE_CUSTOM_LIBCXX)

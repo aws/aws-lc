@@ -9,60 +9,65 @@ mainSteps:
     name: runShellScript
     inputs:
       timeoutSeconds: '7200'
+      shell: bash
       runCommand:
         # Fallback plan to shut down the ec2 instance in 90 minutes in case it's not terminated.
         # Codebuild just "stops" the instance calling the script, so "trap cleanup" is not executed.
-        - shutdown -P +90
-        - sudo -i
-        - systemctl stop apt-daily.timer
-        - export DEBIAN_FRONTEND=noninteractive
-        - export CPU_TYPE=$(dpkg --print-architecture)
-        - export SOURCE={SOURCE}
-        # if we have a cpu type of x86, we want linux-x86
-        - if [ "${CPU_TYPE}" = amd64 ]; then export CPU_ARCH=linux-x86; export AWS_CLI_PREFIX=x86_; fi
-        # if we have a cpu type of arm, we want linux-aarch
-        - if [ "${CPU_TYPE}" = arm64 ]; then export CPU_ARCH=linux-aarch; export AWS_CLI_PREFIX=aarch; fi
-        # install aws-cli
-        - killall apt apt-get
-        - apt-get update
-        - apt-get -y remove needrestart
-        - apt-get -y install unzip
-        - curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_CLI_PREFIX}64.zip" -o "awscliv2.zip"
-        - unzip awscliv2.zip
-        - ./aws/install
-        # Check if the source code is on S3, otherwise treat the source as a PR.
-        - >
-          if [ "$(expr substr "$SOURCE" 1 16)" = "aws-lc-codebuild" ]; then
-            aws s3api get-object --bucket {S3_BUCKET} --key "${SOURCE##{S3_BUCKET}/}" aws-lc-pr.zip
-            unzip aws-lc-pr.zip
-          else
-            git clone {SOURCE} aws-lc-pr
-            cd aws-lc-pr
-            git fetch origin pull/{PR_NUM}/head:temp
-            git checkout temp
-            git show
-            if [ "$(git log -n 1 --pretty=format:"%H")" != "{COMMIT_ID}" ]; then
+        - |
+            #!/usr/bin/env bash
+            # Redirect standard error to out so logs are combined in CloudWatch Logs
+            exec 2>&1
+            # Echo all commands before executing and exit on any failure
+            set -exo pipefail
+            shutdown -P +90
+            sudo -i
+            systemctl stop apt-daily.timer
+            export DEBIAN_FRONTEND=noninteractive
+            export CPU_TYPE=$(dpkg --print-architecture)
+            export SOURCE={SOURCE}
+            # if we have a cpu type of x86, we want linux-x86
+            if [ "${CPU_TYPE}" = amd64 ]; then export CPU_ARCH=linux-x86; export AWS_CLI_PREFIX=x86_; fi
+            # if we have a cpu type of arm, we want linux-aarch
+            if [ "${CPU_TYPE}" = arm64 ]; then export CPU_ARCH=linux-aarch; export AWS_CLI_PREFIX=aarch; fi
+            # install aws-cli
+            killall apt apt-get || echo "No apt processes found"
+            apt-get update
+            apt-get -y remove needrestart
+            apt-get -y install unzip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_CLI_PREFIX}64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install
+            # Check if the source code is on S3, otherwise treat the source as a PR.
+            if [ "$(expr substr "$SOURCE" 1 16)" = "aws-lc-codebuild" ]; then
+              aws s3api get-object --bucket {S3_BUCKET} --key "${SOURCE##{S3_BUCKET}/}" aws-lc-pr.zip
+              unzip aws-lc-pr.zip
+            else
+              git clone {SOURCE} aws-lc-pr
+              cd aws-lc-pr
+              git fetch origin pull/{PR_NUM}/head:temp
+              git checkout temp
+              git show
+              if [ "$(git log -n 1 --pretty=format:"%H")" != "{COMMIT_ID}" ]; then
+                exit 1
+              fi
+            fi
+            # install docker if its not already installed
+            chmod +x ./tests/ci/benchmark_framework/install_docker.sh
+            ./tests/ci/benchmark_framework/install_docker.sh
+            # log into docker and get needed docker image from ecr
+            export ECR_REPO="{AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-${CPU_ARCH}"
+            aws ecr get-login-password --region us-west-2 | docker login -u AWS --password-stdin "${ECR_REPO}"
+            docker pull "${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
+            # Start the container. Docker needs to be run in "privileged" mode for TSAN tests to pass.
+            exec_docker="docker run -v `pwd`:`pwd` -w `pwd` --privileged ${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
+            # Check if container was spun up succesfully. Then run test scripts and check the output.
+            if [ -n "$exec_docker" ]; then
+              chmod +x {TARGET_TEST_SCRIPT}
+              $exec_docker {TARGET_TEST_SCRIPT}
+              if [ $? != 0 ]; then
+                exit 1
+              fi
+            else
               exit 1
             fi
-          fi
-        # install docker if its not already installed
-        - chmod +x ./tests/ci/benchmark_framework/install_docker.sh
-        - ./tests/ci/benchmark_framework/install_docker.sh
-        # log into docker and get needed docker image from ecr
-        - export ECR_REPO="{AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-${CPU_ARCH}"
-        - aws ecr get-login-password --region us-west-2 | docker login -u AWS --password-stdin "${ECR_REPO}"
-        - docker pull "${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
-        # Start the container. Docker needs to be run in "privileged" mode for TSAN tests to pass.
-        - exec_docker="docker run -v `pwd`:`pwd` -w `pwd` --privileged ${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
-        # Check if container was spun up succesfully. Then run test scripts and check the output.
-        - >
-          if [ -n "$exec_docker" ]; then
-            chmod +x {TARGET_TEST_SCRIPT}
-            $exec_docker {TARGET_TEST_SCRIPT}
-            if [ $? != 0 ]; then
-              exit 1
-            fi
-          else
-            exit 1
-          fi
-        - echo All ec2 test framework tests passed
+            echo All ec2 test framework tests passed

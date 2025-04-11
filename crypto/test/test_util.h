@@ -128,5 +128,22 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
 
+// ExpectParse does a d2i parse using the corresponding template and function
+// pointer.
+template <typename T>
+void ExpectParse(T *(*d2i)(T **, const uint8_t **, long),
+                   const std::vector<uint8_t> &in, bool expected) {
+  SCOPED_TRACE(Bytes(in));
+  const uint8_t *ptr = in.data();
+  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
+  if (expected) {
+    EXPECT_TRUE(obj);
+  } else {
+    EXPECT_FALSE(obj);
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+    ERR_clear_error();
+  }
+}
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
