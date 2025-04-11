@@ -1398,3 +1398,32 @@ TEST(BIOTest, GetMemDataBackwardsCompat) {
   ASSERT_EQ((size_t)data_len, sizeof(contents));
   EXPECT_EQ(Bytes(contents, sizeof(contents)), Bytes(ptr, data_len));
 }
+
+TEST(BIOTest, Dump) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  // Test BIO_dump with binary data
+  const uint8_t data[] = {0x00, 0x01, 0x02, 0x7f, 0x80, 0xff, 'A', 'B', 'C', '\n', '\r', '\t'};
+
+  // BIO_dump should return an estimate of bytes written
+  int ret = BIO_dump(bio.get(), data, sizeof(data));
+  ASSERT_GT(ret, 0);
+
+  // Check that BIO_dump produced the expected output format
+  const uint8_t *contents;
+  size_t len;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  std::string output(reinterpret_cast<const char *>(contents), len);
+
+  // Verify the output contains the expected elements (hex values and ASCII representation)
+  EXPECT_NE(output.find("00 01 02 7f 80 ff"), std::string::npos);
+  EXPECT_NE(output.find("ABC"), std::string::npos);
+  EXPECT_NE(output.find("|"), std::string::npos);  // ASCII section divider
+  
+  // Verify BIO_dump works with an empty buffer
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  ret = BIO_dump(bio.get(), data, 0);
+  ASSERT_GE(ret, 0);  // Should return 0 or positive for empty input
+}
