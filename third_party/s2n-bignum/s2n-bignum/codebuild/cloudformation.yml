@@ -1,0 +1,497 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Template to build a CodeBuild Project, assumes that GitHub credentials are already set up."
+Parameters:
+  ProjectName:
+    Type: String
+    Description: The name of the CodeBuild Project
+    Default: s2n-bignum
+  ProjectDescription:
+    Type: String
+    Description: The description for the CodeBuild Project
+  SourceLocation:
+    Type: String
+    Description: The https GitHub URL for the project
+    Default: https://github.com/awslabs/s2n-bignum
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "s2n-bignum CodeBuild Project Template"
+        Parameters:
+          - ProjectName
+          - ProjectDescription
+          - SourceLocation
+
+Resources:
+  CodeBuildProjectX86Tests:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-x86-tests
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/tests.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Cache:
+        Type: "NO_CACHE"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_LARGE"
+        Image: "aws/codebuild/standard:4.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: x86
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: "ENABLED"
+        S3Logs:
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildProjectX86SemaTests:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-x86-sematests
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/sematests.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      SecondarySources:
+        -
+          Type: "GITHUB"
+          Location: https://github.com/jrh13/hol-light
+          ReportBuildStatus: false
+          SourceIdentifier: hol_light
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Cache:
+        Type: "NO_CACHE"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_LARGE"
+        Image: "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: x86
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: "ENABLED"
+        S3Logs:
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildProjectArmTests:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-arm-tests
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/tests.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Cache:
+        Type: "NO_CACHE"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_LARGE"
+        Image: "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "ARM_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: arm
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: "ENABLED"
+        S3Logs:
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildProjectArmSemaTests:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-arm-sematests
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/sematests.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      SecondarySources:
+        -
+          Type: "GITHUB"
+          Location: https://github.com/jrh13/hol-light
+          ReportBuildStatus: false
+          SourceIdentifier: hol_light
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Cache:
+        Type: "NO_CACHE"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_LARGE"
+        Image: "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "ARM_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: arm
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: "ENABLED"
+        S3Logs:
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildProjectX86Proofs:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-x86-proofs
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/proofs.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      SecondarySources:
+        -
+          Type: "GITHUB"
+          Location: https://github.com/jrh13/hol-light
+          ReportBuildStatus: false
+          SourceIdentifier: hol_light
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Cache:
+        Type: "NO_CACHE"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_2XLARGE"
+        Image: "aws/codebuild/standard:4.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: x86
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 480
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: "ENABLED"
+        S3Logs:
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildProjectArmProofs:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Sub ${ProjectName}-arm-proofs
+      Description: !Ref ProjectDescription
+      Source:
+        Location: !Ref SourceLocation
+        BuildSpec: codebuild/proofs.yml
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        InsecureSsl: false
+        ReportBuildStatus: true
+        Type: "GITHUB"
+      SecondarySources:
+        -
+          Type: "GITHUB"
+          Location: https://github.com/jrh13/hol-light
+          ReportBuildStatus: false
+          SourceIdentifier: hol_light
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Cache:
+        Type: "NO_CACHE"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_2XLARGE"
+        Image: "aws/codebuild/standard:4.0"
+        ImagePullCredentialsType: "CODEBUILD"
+        PrivilegedMode: false
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: S2N_BIGNUM_ARCH
+            Type: PLAINTEXT
+            Value: arm
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      TimeoutInMinutes: 480
+      QueuedTimeoutInMinutes: 480
+      EncryptionKey: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+      BadgeEnabled: true
+      Triggers:
+        Webhook: true
+        BuildType: "BUILD"
+        FilterGroups:
+          - - Type: EVENT # Standard builds
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: true
+          - - Type: EVENT # Builds which change build configuration are restricted
+              Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED
+            - Type: BASE_REF
+              Pattern: ^refs/heads/main$
+              ExcludeMatchedPattern: false
+            - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
+              Pattern: codebuild
+              ExcludeMatchedPattern: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: "ENABLED"
+        S3Logs:
+          Status: "DISABLED"
+          EncryptionDisabled: false
+
+  CodeBuildServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/service-role/"
+      RoleName: !Sub "codebuild-${ProjectName}-service-role"
+      AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codebuild.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+      MaxSessionDuration: 3600
+      ManagedPolicyArns:
+        - !Ref CodeBuildBatchPolicy
+        - !Ref CodeBuildBasePolicy
+
+  CodeBuildBatchPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "CodeBuildBuildBatchPolicy-${ProjectName}-${AWS::Region}-codebuild-${ProjectName}-service-role"
+      Path: "/service-role/"
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProjectName}",
+                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProjectName}-*"
+              ],
+              "Action": [
+                "codebuild:StartBuild",
+                "codebuild:StopBuild",
+                "codebuild:RetryBuild"
+              ]
+            }
+          ]
+        }
+
+  CodeBuildBasePolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "CodeBuildBasePolicy-${ProjectName}-${AWS::Region}"
+      Path: "/service-role/"
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}",
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}:*",
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*",
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*:*"
+              ],
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:s3:::codepipeline-${AWS::Region}-*"
+              ],
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:GetBucketAcl",
+                "s3:GetBucketLocation"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "codebuild:CreateReportGroup",
+                "codebuild:CreateReport",
+                "codebuild:UpdateReport",
+                "codebuild:BatchPutTestCases",
+                "codebuild:BatchPutCodeCoverages"
+              ],
+              "Resource": [
+                "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${ProjectName}-*"
+              ]
+            }
+          ]
+        }
