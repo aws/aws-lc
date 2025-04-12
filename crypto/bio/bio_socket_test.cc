@@ -463,7 +463,10 @@ static bssl::UniquePtr<BIO> create_server_bio(int addr_family, int type) {
   // Create a server socket.
   OwnedSocket server_sock(ListenLoopback(type, addr_family));
   if (!server_sock.is_valid()) {
-    ADD_FAILURE() << LastSocketError();
+    if (addr_family != AF_INET6) {
+      // Some CodeBuild environments don't support IPv6
+      ADD_FAILURE() << LastSocketError();
+    }
     return nullptr;
   }
 
@@ -549,6 +552,11 @@ TEST_P(BIODgramTest, SocketDatagramSetPeer) {
   int addr_family = GetParam();
   // Wrap the server socket in a BIO.
   bssl::UniquePtr<BIO> server_bio = create_server_bio(addr_family, SOCK_DGRAM);
+  if (!server_bio && addr_family == AF_INET6) {
+    // Some CodeBuild environments don't support IPv6
+    GTEST_SKIP() << "IPv6 not supported";
+    return;
+  }
   ASSERT_TRUE(server_bio) << LastSocketError();
   ASSERT_EQ(1, BIO_get_close(server_bio.get())) << LastSocketError();
 
@@ -582,6 +590,11 @@ TEST_P(BIODgramTest, SocketDatagramSetConnected) {
   int addr_family = GetParam();
   // Wrap the server socket in a BIO.
   bssl::UniquePtr<BIO> server_bio = create_server_bio(addr_family, SOCK_DGRAM);
+  if (!server_bio && addr_family == AF_INET6) {
+    // Some CodeBuild environments don't support IPv6
+    GTEST_SKIP() << "IPv6 not supported";
+    return;
+  }
   ASSERT_TRUE(server_bio) << LastSocketError();
 
   OwnedSocket server_sock(BIO_get_fd(server_bio.get(), NULL));
@@ -634,6 +647,11 @@ TEST_P(BIODgramTest, SocketDatagramConnect) {
   int addr_family = GetParam();
   // Wrap the server socket in a BIO.
   bssl::UniquePtr<BIO> server_bio = create_server_bio(addr_family, SOCK_DGRAM);
+  if (!server_bio && addr_family == AF_INET6) {
+    // Some CodeBuild environments don't support IPv6
+    GTEST_SKIP() << "IPv6 not supported";
+    return;
+  }
   ASSERT_TRUE(server_bio) << LastSocketError();
 
   OwnedSocket server_sock(BIO_get_fd(server_bio.get(), NULL));
