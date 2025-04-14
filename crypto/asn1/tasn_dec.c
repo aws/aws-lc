@@ -761,7 +761,6 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
     len = buf.length;
     // Append a final null to string.
     if (!BUF_MEM_grow_clean(&buf, len + 1)) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     buf.data[len] = 0;
@@ -1061,7 +1060,6 @@ static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen) {
   if (buf) {
     len = buf->length;
     if (!BUF_MEM_grow_clean(buf, len + plen)) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     OPENSSL_memcpy(buf->data + len, *p, plen);
