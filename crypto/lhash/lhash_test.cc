@@ -35,11 +35,11 @@
 DEFINE_LHASH_OF(char)
 
 static std::unique_ptr<char[]> RandString(void) {
-  unsigned len = 1 + (rand() % 3);
+  unsigned len = 1 + (rand() % 3); // NOLINT(clang-analyzer-security.insecureAPI.rand)
   std::unique_ptr<char[]> ret(new char[len + 1]);
 
   for (unsigned i = 0; i < len; i++) {
-    ret[i] = '0' + (rand() & 7);
+    ret[i] = '0' + (rand() & 7); // NOLINT(clang-analyzer-security.insecureAPI.rand)
   }
   ret[len] = 0;
 
@@ -102,7 +102,7 @@ TEST(LHashTest, Basic) {
       kDelete,
     };
 
-    Action action = static_cast<Action>(rand() % 3);
+    Action action = static_cast<Action>(rand() % 3); // NOLINT(clang-analyzer-security.insecureAPI.rand)
     switch (action) {
       case kRetrieve: {
         std::unique_ptr<char[]> key = RandString();
