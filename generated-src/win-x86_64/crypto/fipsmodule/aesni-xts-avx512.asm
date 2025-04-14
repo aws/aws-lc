@@ -9,6 +9,7 @@ default	rel
 %define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 section	.text code align=64
 
 global	aes_hw_xts_encrypt_avx512
@@ -2146,13 +2147,10 @@ $L$_main_loop_run_8_amivrujEyduiFoi:
 $L$_steal_cipher_with_tweak_amivrujEyduiFoi:
 
 	vmovdqa	xmm11,XMMWORD[shufb_15_7]
-	mov	r8,0xaa
-	kmovq	k2,r8
 	vpshufb	xmm12,xmm0,xmm11
 	vpsllq	xmm13,xmm0,0x1
-	vpsrlq	xmm14,xmm12,0xf
+	vpsrlq	xmm14,xmm12,0x7
 	DB	98,19,13,8,68,249,0
-	vpxorq	xmm13{k2},xmm14,xmm13
 	vpxord	xmm15,xmm15,xmm13
 
 $L$_steal_cipher_amivrujEyduiFoi:
@@ -2832,6 +2830,7 @@ shufb_15_7:
 
 section	.text
 
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

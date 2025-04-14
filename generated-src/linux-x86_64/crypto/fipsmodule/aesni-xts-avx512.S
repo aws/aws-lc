@@ -4,6 +4,7 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text	
 .globl	aes_hw_xts_encrypt_avx512
 .hidden aes_hw_xts_encrypt_avx512
@@ -2061,13 +2062,10 @@ aes_hw_xts_decrypt_avx512:
 .L_steal_cipher_with_tweak_amivrujEyduiFoi:
 
 	vmovdqa	shufb_15_7(%rip),%xmm11
-	movq	$0xaa,%r8
-	kmovq	%r8,%k2
 	vpshufb	%xmm11,%xmm0,%xmm12
 	vpsllq	$0x1,%xmm0,%xmm13
-	vpsrlq	$0xf,%xmm12,%xmm14
+	vpsrlq	$0x7,%xmm12,%xmm14
 .byte	98,19,13,8,68,249,0
-	vpxorq	%xmm13,%xmm14,%xmm13{%k2}
 	vpxord	%xmm13,%xmm15,%xmm15
 
 .L_steal_cipher_amivrujEyduiFoi:
@@ -2717,4 +2715,5 @@ shufb_15_7:
 .byte	0xff, 0xff, 0xff, 0xff, 0xff
 
 .text	
+#endif
 #endif
