@@ -4315,6 +4315,10 @@ static bool CacheEquals(SSL_CTX *ctx,
     if (ptr != session) {
       return false;
     }
+    // Redundant w/ above, but avoids static analysis failure
+    if (ptr == nullptr) {
+      return false;
+    }
     // TODO(davidben): This is an absurd way to denote the end of the list.
     if (ptr->next ==
         reinterpret_cast<SSL_SESSION *>(&ctx->session_cache_tail)) {
