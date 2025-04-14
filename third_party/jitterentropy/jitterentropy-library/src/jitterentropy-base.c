@@ -47,13 +47,39 @@
  #error "The CPU Jitter random number generator must not be compiled with optimizations. See documentation. Use the compiler switch -O0 for compiling jitterentropy.c."
 #endif
 
-/*
- * JENT_POWERUP_TESTLOOPCOUNT needs some loops to identify edge
- * systems. 100 is definitely too little.
+static void ensure_osr_is_at_least_minimal(unsigned int *current_osr)
+{
+	if (*current_osr < JENT_MIN_OSR)
+		*current_osr = JENT_MIN_OSR;
+}
+
+/**
+ * get_powerup_testloopcount() - Return the number of powerup test samples.
  *
- * SP800-90B requires at least 1024 initial test cycles.
+ * This is the number of test samples needed during powerup selftest.
+ *
+ * @return Number of powerup test samples. 0 on failure.
  */
-#define JENT_POWERUP_TESTLOOPCOUNT 1024
+static int get_powerup_test_iterations(size_t osr,
+	size_t *powerup_test_iterations)
+{
+	if (osr < JENT_MIN_OSR)
+		return -1;
+
+	/*
+	 * Poweron selftest needs some loops to identify edge systems. 100 is
+	 * definitely too little. In addition, we also have to consider OSR.
+	 *
+	 * SP800-90B requires at least 1024 initial test cycles. We pick that as
+	 * minimal number of iterations. This assumes 1 bit of entropy per sample.
+	 * This should scale with the oversampling rate OSR, where we assume each
+	 * sample contains 1/OSR bits of entropy.
+	 */
+	static const size_t jent_powerup_testloopcount_min = 1024;
+	*powerup_test_iterations = jent_powerup_testloopcount_min * osr;
+
+	return 0;
+}
 
 /**
  * jent_version() - Return machine-usable version number of jent library
@@ -447,6 +473,11 @@ static struct rand_data
 	    (flags & JENT_FORCE_INTERNAL_TIMER))
 		return NULL;
 
+	/*
+	 * Ensure over sampling rate is not too low.
+	 */
+	ensure_osr_is_at_least_minimal(&osr);
+
 	/* Force the self test to be run */
 	if (!jent_selftest_run && jent_entropy_init_ex(osr, flags))
 		return NULL;
@@ -495,9 +526,7 @@ static struct rand_data
 	/* Initialize the hash state */
 	jent_sha3_256_init(entropy_collector->hash_state);
 
-	/* verify and set the oversampling rate */
-	if (osr < JENT_MIN_OSR)
-		osr = JENT_MIN_OSR;
+	/* Set the oversampling rate */
 	entropy_collector->osr = osr;
 	entropy_collector->flags = flags;
 
@@ -592,10 +621,20 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 {
 	struct rand_data *ec;
 	uint64_t *delta_history;
-	int i, time_backwards = 0, count_stuck = 0, ret = 0;
+	int time_backwards = 0, ret = 0;
 	unsigned int health_test_result;
+	size_t count_stuck = 0;
 
-	delta_history = jent_gcd_init(JENT_POWERUP_TESTLOOPCOUNT);
+	/*
+	 * Ensure over sampling rate is not too low.
+	 */
+	ensure_osr_is_at_least_minimal(&osr);
+
+	size_t poweron_test_number_of_samples = 0;
+	if (get_powerup_test_iterations(osr, &poweron_test_number_of_samples) <= 0)
+		return EPROGERR;
+
+	delta_history = jent_gcd_init(poweron_test_number_of_samples);
 	if (!delta_history)
 		return EMEM;
 
@@ -640,7 +679,7 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 	 * timer.
 	 */
 #define CLEARCACHE 100
-	for (i = -CLEARCACHE; i < JENT_POWERUP_TESTLOOPCOUNT; i++) {
+	for (size_t i = 0, delta_history_index = 0; i < CLEARCACHE + poweron_test_number_of_samples; i++) {
 		uint64_t start_time = 0, end_time = 0, delta = 0;
 		unsigned int stuck;
 
@@ -672,7 +711,7 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 		 * etc. with the goal to clear it to get the worst case
 		 * measurements.
 		 */
-		if (i < 0)
+		if (i < CLEARCACHE)
 			continue;
 
 		if (stuck)
@@ -683,7 +722,8 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 			time_backwards++;
 
 		/* Watch for common adjacent GCD values */
-		jent_gcd_add_value(delta_history, delta, i);
+		jent_gcd_add_value(delta_history, delta, delta_history_index);
+		delta_history_index++;
 	}
 
 	/*
@@ -704,7 +744,7 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 		goto out;
 	}
 
-	ret = jent_gcd_analyze(delta_history, JENT_POWERUP_TESTLOOPCOUNT);
+	ret = jent_gcd_analyze(delta_history, poweron_test_number_of_samples);
 	if (ret)
 		goto out;
 
@@ -712,11 +752,11 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 	 * If we have more than 90% stuck results, then this Jitter RNG is
 	 * likely to not work well.
 	 */
-	if (JENT_STUCK_INIT_THRES(JENT_POWERUP_TESTLOOPCOUNT) < count_stuck)
+	if (JENT_STUCK_INIT_THRES(poweron_test_number_of_samples) < count_stuck)
 		ret = ESTUCK;
 
 out:
-	jent_gcd_fini(delta_history, JENT_POWERUP_TESTLOOPCOUNT);
+	jent_gcd_fini(delta_history, poweron_test_number_of_samples);
 
 	if ((flags & JENT_FORCE_INTERNAL_TIMER) && ec)
 		jent_notime_unsettick(ec);

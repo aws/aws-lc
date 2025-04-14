@@ -127,10 +127,22 @@ static inline void jent_get_nstime(uint64_t *out)
 static inline void jent_get_nstime(uint64_t *out)
 {
         uint64_t ctr_val;
+#if !defined(__MACH__)
         /*
          * Use the system counter for aarch64 (64 bit ARM).
+         * Use the system counter for aarch64 (64 bit ARM)...
          */
         __asm__ __volatile__("mrs %0, " AARCH64_NSTIME_REGISTER : "=r" (ctr_val));
+#else
+        /*
+         * Except on modern Apple platforms. Especially on M1 generation Arm64
+         * CPUs, the system counter is too coarse. Instead, use
+         * clock_gettime_nsec_np(CLOCK_UPTIME_RAW), that is equivalent to
+         * march_absolute_time(), but scaled to nanoseconds. See e.g.
+         * https://www.manpagez.com/man/3/clock_gettime_nsec_np/.
+         */
+        ctr_val = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+#endif
         *out = ctr_val;
 }
 
