@@ -735,6 +735,7 @@ ___
 ___
   }
 
+  $code .= "#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX\n";
   $code .= ".text\n";
 
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2190,6 +2191,7 @@ ___
     .byte  0xff, 0xff, 0xff, 0xff, 0xff
 
 .text
+#endif
 ___
 
 } else {
