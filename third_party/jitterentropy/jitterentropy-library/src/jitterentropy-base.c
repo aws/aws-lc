@@ -47,10 +47,12 @@
  #error "The CPU Jitter random number generator must not be compiled with optimizations. See documentation. Use the compiler switch -O0 for compiling jitterentropy.c."
 #endif
 
-static void ensure_osr_is_at_least_minimal(unsigned int *current_osr)
+static unsigned int ensure_osr_is_at_least_minimal(unsigned int current_osr)
 {
-	if (*current_osr < JENT_MIN_OSR)
-		*current_osr = JENT_MIN_OSR;
+	if (current_osr < JENT_MIN_OSR)
+		return (unsigned int) JENT_MIN_OSR;
+	else
+		return current_osr;
 }
 
 /**
@@ -476,7 +478,7 @@ static struct rand_data
 	/*
 	 * Ensure over sampling rate is not too low.
 	 */
-	ensure_osr_is_at_least_minimal(&osr);
+	osr = ensure_osr_is_at_least_minimal(osr);
 
 	/* Force the self test to be run */
 	if (!jent_selftest_run && jent_entropy_init_ex(osr, flags))
@@ -628,10 +630,10 @@ int jent_time_entropy_init(unsigned int osr, unsigned int flags)
 	/*
 	 * Ensure over sampling rate is not too low.
 	 */
-	ensure_osr_is_at_least_minimal(&osr);
+	osr = ensure_osr_is_at_least_minimal(osr);
 
 	size_t poweron_test_number_of_samples = 0;
-	if (get_powerup_test_iterations(osr, &poweron_test_number_of_samples) <= 0)
+	if (get_powerup_test_iterations(osr, &poweron_test_number_of_samples) < 0)
 		return EPROGERR;
 
 	delta_history = jent_gcd_init(poweron_test_number_of_samples);
