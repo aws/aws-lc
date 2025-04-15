@@ -32,20 +32,21 @@ function xmlsec_build() {
 
   export OPENSSL_CFLAGS="-I${AWS_LC_INSTALL_FOLDER}/include"
   export OPENSSL_LIBS="-L${AWS_LC_INSTALL_FOLDER}/lib -lssl -lcrypto"
+  export LD_FLAGS="-Wl,-rpath=${AWS_LC_INSTALL_FOLDER}/lib"
 
   ./autogen.sh --prefix="$XMLSEC_SRC_FOLDER_BUILD_PREFIX" \
               --exec-prefix="$XMLSEC_SRC_FOLDER_BUILD_EPREFIX"
 
   make -j install
-#
-#  local xmlsec_executable="${XMLSEC_SRC_FOLDER}/build/exec-install/sbin/xmlsec"
-#  ldd ${xmlsec_executable} \
-#    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+
+  local xmlsec_executable="${XMLSEC_SRC_FOLDER}/build/exec-install/lib/libxmlsec1-openssl.so"
+  ldd ${xmlsec_executable} \
+    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
-#
-#function xmlsec_run_tests() {
-#  sudo make check
-#}
+
+function xmlsec_run_tests() {
+  make check
+}
 
 git clone https://github.com/lsh123/xmlsec.git ${XMLSEC_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
@@ -56,4 +57,4 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 # Build xmlsec from source.
 pushd ${XMLSEC_SRC_FOLDER}
 xmlsec_build
-#xmlsec_run_tests
+xmlsec_run_tests
