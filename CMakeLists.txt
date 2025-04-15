@@ -93,6 +93,23 @@ if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
 endif()
 
+if(ENABLE_CLANG_TIDY)
+  find_program(CLANG_TIDY_CMD NAMES clang-tidy)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+
+  if(NOT CLANG_TIDY_CMD)
+    message(WARNING "clang-tidy is not found!")
+    set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
+  else()
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_CMD}")
+    set(CLANG_TIDY_EXTRA_ARGS
+            "-extra-arg=-Wno-unknown-warning-option"
+    )
+    set(CMAKE_C_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+  endif()
+endif()
+
 if (NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 11)
 endif()

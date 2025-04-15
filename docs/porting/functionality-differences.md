@@ -296,6 +296,17 @@ libcrypto is the portion of OpenSSL for performing general-purpose cryptography,
 
 Older and less common usages of `EVP_PKEY` have been removed. For example, signing and verifying with `EVP_PKEY_DSA`  is not supported. More details on specific features can be found in the corresponding [header documentation](https://github.com/aws/aws-lc/tree/main/include/openssl).
 
+Memory debugging functionality between AWS-LC and OpenSSL 1.1.1u:
+
+|Function |OpenSSL 1.1.1 |AWS-LC |
+|--- |--- |--- |
+|CRYPTO_mem_ctrl() |X | |
+|CRYPTO_mem_leaks() |X | |
+|CRYPTO_mem_leaks_fp() |X | |
+|CRYPTO_mem_leaks_cb() |X | |
+
+Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
+
 **When migrating to AWS-LC, it is important to understand the specific libcrypto components your application is reliant on from OpenSSL. For example, there may be underlying differences when consuming** **X509 certificate verification** **from AWS-LC.** <ins>**Migrators to AWS-LC are expected to understand their intended use cases and have tests surrounding functionality they are dependent on.**</ins> AWS-LC provides test coverage for functional and cryptographic correctness, along with compliance with standards like PKCS and X509. Different cryptographic libraries may implement some behavior by convention that is not standardized and thus is not guaranteed to work the same way in AWS-LC. Customers are responsible for writing their own tests to determine whether they are affected by these kinds of differences, and AWS-LC will publish a list of known differences in the future.
 
 **If you have a valid use case for any missing functionality or if anything is not clarified in our documentation, feel free to [cut an issue](https://github.com/aws/aws-lc/issues/new?assignees=&labels=&projects=&template=general-issue.md&title=) or create a PR to let us know.**
@@ -838,8 +849,22 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>Returns NULL.</span></p>
   </td>
  </tr>
+<tr>
+ <td>
+  <p><span>Memory Debugging</span></p>
+ </td>
+ <td>
+  <p><span>crypto.h</span></p>
+ </td>
+ <td>
+  <p><span>CRYPTO_mem_ctrl</span></p>
+ </td>
+<td>
+<p><span>Returns 0.</span></p>
+</td>
+</tr>
  <tr>
-  <td rowspan=13>
+  <td rowspan=14>
   <p><span>Miscellaneous</span></p>
   </td>
   <td rowspan=5>
@@ -1020,4 +1045,21 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>Returns zero.</span></p>
   </td>
  </tr>
+<tr>
+<td>
+<p>
+<span>
+        <a href="https://github.com/aws/aws-lc/blob/412be9d1bb4f9d2f962dba1beac41249dbacdb55/include/openssl/x509.h#L5097">
+            x509.h
+        </a>
+    </span>
+</p>
+</td>
+<td>
+  <p><span>X509_TRUST_cleanup</span></p>
+  </td>
+  <td>
+  <p><span>Does nothing.</span></p>
+  </td>
+</tr>
 </table>
