@@ -14,6 +14,8 @@
 #include "../../test/ube_test.h"
 #include "../../test/test_util.h"
 
+#include <array>
+
 static const size_t request_len = 64;
 static const size_t number_of_threads = 8;
 
