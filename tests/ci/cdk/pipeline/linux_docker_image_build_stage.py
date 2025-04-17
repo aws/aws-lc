@@ -8,7 +8,6 @@ from constructs import Construct
 
 from cdk.ecr_stack import EcrStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
-from pipeline.deploy_util import DeployEnvironmentType
 from util.metadata import LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO
 
 

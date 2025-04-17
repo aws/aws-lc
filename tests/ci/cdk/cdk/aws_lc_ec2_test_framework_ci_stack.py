@@ -21,6 +21,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
 from cdk.components import PruneStaleGitHubBuilds
 from util.metadata import (
     GITHUB_PUSH_CI_BRANCH_TARGETS,
@@ -44,7 +45,7 @@ from util.build_spec_loader import BuildSpecLoader
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
 
-class AwsLcEC2TestingCIStack(Stack):
+class AwsLcEC2TestingCIStack(AwsLcBaseCiStack):
     """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC m1 ci ec2 instance"""
 
     def __init__(
@@ -55,32 +56,7 @@ class AwsLcEC2TestingCIStack(Stack):
         env: typing.Union[Environment, typing.Dict[str, typing.Any]],
         **kwargs
     ) -> None:
-        super().__init__(scope, id, env=env, **kwargs)
-
-        github_repo_owner = GITHUB_REPO_OWNER
-        github_repo_name = GITHUB_REPO_NAME
-
-        if env.account == PRE_PROD_ACCOUNT:
-            github_repo_owner = STAGING_GITHUB_REPO_OWNER
-            github_repo_name = STAGING_GITHUB_REPO_NAME
-
-        # Define CodeBuild resource.
-        git_hub_source = codebuild.Source.git_hub(
-            owner=github_repo_owner,
-            repo=github_repo_name,
-            webhook=True,
-            webhook_filters=[
-                codebuild.FilterGroup.in_event_of(
-                    codebuild.EventAction.PULL_REQUEST_CREATED,
-                    codebuild.EventAction.PULL_REQUEST_UPDATED,
-                    codebuild.EventAction.PULL_REQUEST_REOPENED,
-                ),
-                codebuild.FilterGroup.in_event_of(
-                    codebuild.EventAction.PUSH
-                ).and_branch_is(GITHUB_PUSH_CI_BRANCH_TARGETS),
-            ],
-            webhook_triggers_batch_build=True,
-        )
+        super().__init__(scope, id, env=env, timeout=120, **kwargs)
 
         # S3 bucket for testing internal fixes.
         s3_read_write_policy = iam.PolicyDocument.from_json(
@@ -124,10 +100,13 @@ class AwsLcEC2TestingCIStack(Stack):
         )
 
         # create security group with default rules
-        # security_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
-        #                   allow_all_outbound=True,
-        #                   vpc=vpc,
-        #                   security_group_name='codebuild_ec2_sg')
+        security_group = ec2.SecurityGroup(
+            self,
+            id="{}-ec2-sg".format(id),
+            allow_all_outbound=True,
+            vpc=vpc,
+            security_group_name="codebuild_ec2_sg",
+        )
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(
@@ -136,7 +115,7 @@ class AwsLcEC2TestingCIStack(Stack):
         ec2_policy = iam.PolicyDocument.from_json(
             ec2_policies_in_json(
                 ec2_role.role_name,
-                vpc.vpc_default_security_group,
+                security_group.security_group_id,
                 selected_subnets.subnets[0].subnet_id,
                 vpc.vpc_id,
                 env,
@@ -165,9 +144,9 @@ class AwsLcEC2TestingCIStack(Stack):
             scope=self,
             id=id,
             project_name=id,
-            source=git_hub_source,
+            source=self.git_hub_source,
             role=codebuild_role,
-            timeout=Duration.minutes(120),
+            timeout=Duration.minutes(self.timeout),
             environment=codebuild.BuildEnvironment(
                 compute_type=codebuild.ComputeType.SMALL,
                 privileged=False,
@@ -176,7 +155,7 @@ class AwsLcEC2TestingCIStack(Stack):
             build_spec=BuildSpecLoader.load(spec_file_path, env),
             environment_variables={
                 "EC2_SECURITY_GROUP_ID": codebuild.BuildEnvironmentVariable(
-                    value=vpc.vpc_default_security_group
+                    value=security_group.security_group_id
                 ),
                 "EC2_SUBNET_ID": codebuild.BuildEnvironmentVariable(
                     value=selected_subnets.subnets[0].subnet_id

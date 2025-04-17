@@ -13,6 +13,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
 from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import code_build_publish_metrics_in_json
 from util.metadata import (
@@ -25,7 +26,7 @@ from util.metadata import (
 from util.build_spec_loader import BuildSpecLoader
 
 
-class AwsLcGitHubAnalyticsStack(Stack):
+class AwsLcGitHubAnalyticsStack(AwsLcBaseCiStack):
     """Define a stack used to batch execute AWS-LC tests in GitHub."""
 
     def __init__(
@@ -36,20 +37,12 @@ class AwsLcGitHubAnalyticsStack(Stack):
         env: typing.Union[Environment, typing.Dict[str, typing.Any]],
         **kwargs
     ) -> None:
-        super().__init__(scope, id, env=env, **kwargs)
+        super().__init__(scope, id, env=env, timeout=120, **kwargs)
 
-        # Define CodeBuild resource.
-        github_repo_owner = GITHUB_REPO_OWNER
-        github_repo_name = GITHUB_REPO_NAME
-
-        if env.account == PRE_PROD_ACCOUNT:
-            github_repo_owner = STAGING_GITHUB_REPO_OWNER
-            github_repo_name = STAGING_GITHUB_REPO_NAME
-
-        # Define CodeBuild resource.
-        git_hub_source = codebuild.Source.git_hub(
-            owner=github_repo_owner,
-            repo=github_repo_name,
+        # Override default CodeBuild resource.
+        self.git_hub_source = codebuild.Source.git_hub(
+            owner=self.github_repo_owner,
+            repo=self.github_repo_name,
             webhook=True,
             webhook_filters=[
                 codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH)
@@ -77,7 +70,7 @@ class AwsLcGitHubAnalyticsStack(Stack):
             scope=self,
             id="AnalyticsCodeBuild",
             project_name=id,
-            source=git_hub_source,
+            source=self.git_hub_source,
             role=role,
             timeout=Duration.minutes(120),
             environment=codebuild.BuildEnvironment(

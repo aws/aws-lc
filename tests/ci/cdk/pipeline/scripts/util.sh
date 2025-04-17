@@ -4,7 +4,7 @@
 
 set -ex
 
-if [[ -z "${PIPELINE_EXECUTION_ID+x}" || -z "${PIPELINE_EXECUTION_ID}" ]]; then
+if [[ -z "${PIPELINE_EXECUTION_ID:+x}" ]]; then
   TRIGGER_TYPE="manual"
 else
   TRIGGER_TYPE="pipeline"
@@ -28,7 +28,7 @@ function refresh_session() {
   unset AWS_SECRET_ACCESS_KEY
   unset AWS_SESSION_TOKEN
 
-  if [[ -z "${PIPELINE_EXECUTION_ID+x}" || -z "${PIPELINE_EXECUTION_ID}" ]]; then
+  if [[ -z "${PIPELINE_EXECUTION_ID:+x}" ]]; then
     echo "Security token expired. Please monitor build progress on the console"
     exit 1
   fi

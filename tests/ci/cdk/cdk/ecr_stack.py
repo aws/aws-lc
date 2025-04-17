@@ -15,6 +15,12 @@ class EcrStack(Stack):
         repo.grant_pull_push(iam.ServicePrincipal("codebuild.amazonaws.com"))
         repo.grant_pull(iam.ArnPrincipal("arn:aws:iam::222961743098:role/scrutini-ecr"))
         repo.add_lifecycle_rule(
+            description="Retain latest images",
+            tag_pattern_list=["*_latest"],
+            max_image_age=Duration.days(7300),
+        )
+
+        repo.add_lifecycle_rule(
             description="Expire images older than 1 month",
             max_image_age=Duration.days(30),
         )

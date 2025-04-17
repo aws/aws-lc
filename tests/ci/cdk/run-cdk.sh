@@ -230,7 +230,7 @@ function deploy_production_pipeline() {
 }
 
 function deploy_dev_pipeline() {
-  if [[ -z "${DEPLOY_ACCOUNT:+x}" || -z "${DEPLOY_ACCOUNT}" ]]; then
+  if [[ -z "${DEPLOY_ACCOUNT:+x}" ]]; then
     echo "The pipeline needs a deployment acount to know where to deploy the CI to."
     exit 1
   fi
@@ -240,11 +240,11 @@ function deploy_dev_pipeline() {
     exit 1
   fi
 
-  if [[ -z "${PIPELINE_ACCOUNT+x}" || -z "${PIPELINE_ACCOUNT}" ]]; then
+  if [[ -z "${PIPELINE_ACCOUNT:+x}" ]]; then
     export PIPELINE_ACCOUNT=${DEPLOY_ACCOUNT}
   fi
 
-  if [[ ${PIPELINE_ACCOUNT+x} == '774305600158' ]]; then
+  if [[ ${PIPELINE_ACCOUNT} == '774305600158' ]]; then
     echo "Cannot deploy. The production pipeline is hosted with the same name in this pipeline account."
     exit 1
   fi
@@ -319,17 +319,17 @@ EOF
 
 function export_global_variables() {
   # If these variables are not set or empty, defaults are export.
-  if [[ -z "${DEPLOY_ACCOUNT+x}" || -z "${DEPLOY_ACCOUNT}" ]]; then
+  if [[ -z "${DEPLOY_ACCOUNT:+x}" ]]; then
     export DEPLOY_ACCOUNT='620771051181'
   fi
-  if [[ -z "${DEPLOY_REGION+x}" || -z "${DEPLOY_REGION}" ]]; then
+  if [[ -z "${DEPLOY_REGION:+x}" ]]; then
     export DEPLOY_REGION='us-west-2'
     export AWS_DEFAULT_REGION="${DEPLOY_REGION}"
   fi
-  if [[ -z "${GITHUB_REPO_OWNER+x}" || -z "${GITHUB_REPO_OWNER}" ]]; then
+  if [[ -z "${GITHUB_REPO_OWNER:+x}" ]]; then
     export GITHUB_REPO_OWNER='aws'
   fi
-  if [[ -z "${GITHUB_SOURCE_VERSION+x}" || -z "${GITHUB_SOURCE_VERSION}" ]]; then
+  if [[ -z "${GITHUB_SOURCE_VERSION:+x}" ]]; then
     export GITHUB_SOURCE_VERSION='main'
   fi
   # Other variables for managing resources.
@@ -342,6 +342,7 @@ function export_global_variables() {
   export WIN_EC2_TAG_KEY='aws-lc'
   export WIN_EC2_TAG_VALUE='aws-lc-windows-docker-image-build'
   export WIN_DOCKER_BUILD_SSM_DOCUMENT='AWSLC-BuildWindowsDockerImages'
+  export S3_FOR_WIN_DOCKER_IMG_BUILD='aws-lc-windows-docker-image-build-s3'
   export MAX_TEST_RETRY=2
   export IMG_BUILD_STATUS='unknown'
   # 620771051181 and 351119683581 is AWS-LC team AWS account.
@@ -402,7 +403,7 @@ function main() {
   done
 
   # Make sure action is set.
-  if [[ -z "${ACTION+x}" || -z "${ACTION}" ]]; then
+  if [[ -z "${ACTION:+x}" ]]; then
     echo "${ACTION} is required input."
     exit 1
   fi
@@ -451,7 +452,7 @@ function main() {
     cdk bootstrap
     ;;
   invoke)
-    if [[ -z "${COMMAND+x}" || -z "${COMMAND}" ]]; then
+    if [[ -z "${COMMAND:+x}" ]]; then
       echo "--action invoke requires a command."
       exit 1
     fi

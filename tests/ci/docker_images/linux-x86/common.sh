@@ -5,9 +5,9 @@
 set -ex
 
 if  [[ -n "${TRIGGER_TYPE:+x}" && "${TRIGGER_TYPE}" == "pipeline" ]]; then
-  TAG="pending"
+  TAG_SUFFIX="pending"
 else
-  TAG="latest"
+  TAG_SUFFIX="latest"
 fi
 
 function validate_input() {
@@ -26,7 +26,7 @@ function tag_and_push_img() {
   target="${2}"
   validate_input 'target' "${target}"
   img_push_date=$(date +%Y-%m-%d)
-  docker_img_with_tag="${target}_${TAG}"
+  docker_img_with_tag="${target}_${TAG_SUFFIX}"
   docker_img_with_date="${target}_${img_push_date}"
   docker tag "${source}" "${docker_img_with_tag}"
   docker tag "${source}" "${docker_img_with_date}"

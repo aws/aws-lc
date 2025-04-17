@@ -25,6 +25,7 @@ from util.metadata import (
     WIN_EC2_TAG_VALUE,
     SSM_DOCUMENT_NAME,
     GITHUB_SOURCE_VERSION,
+    S3_FOR_WIN_DOCKER_IMG_BUILD,
 )
 from util.yml_loader import YmlLoader
 
@@ -37,7 +38,7 @@ class WindowsDockerImageBuildStack(Stack):
         scope: Construct,
         id: str,
         env: typing.Union[Environment, typing.Dict[str, typing.Any]],
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(scope, id, env=env, **kwargs)
 
@@ -70,7 +71,7 @@ class WindowsDockerImageBuildStack(Stack):
         bucket = s3.Bucket(
             scope=self,
             id="{}-s3".format(id),
-            bucket_name=PhysicalName.GENERATE_IF_NEEDED,
+            bucket_name=f"{env.account}-{S3_FOR_WIN_DOCKER_IMG_BUILD}",
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
@@ -136,5 +137,5 @@ class WindowsDockerImageBuildStack(Stack):
         Tags.of(instance).add(WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE)
 
         self.output = {
-            "s3_bucket_name": bucket._generate_physical_name(),
+            "s3_bucket_name": f"{env.account}-{S3_FOR_WIN_DOCKER_IMG_BUILD}",
         }

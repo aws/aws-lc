@@ -9,13 +9,13 @@ source util.sh
 echo \"Environment variables:\"
 env
 
-if [[ -z "${NEED_REBUILD+x}" || -z "${NEED_REBUILD}" || ${NEED_REBUILD} -eq 0 ]]; then
+if [[ -z "${NEED_REBUILD:+x}" || ${NEED_REBUILD} -eq 0 ]]; then
   echo "No rebuild needed"
   exit 0
 fi
 
 export COMMIT_HASH=${COMMIT_HASH:-$CODEBUILD_RESOLVED_SOURCE_VERSION}
-export CROSS_ACCOUNT_BUILD_ROLE_ARN="arn:aws:iam::${DEPLOY_ACCOUNT}:role/CrossAccountCodeBuildRole"
+export CROSS_ACCOUNT_BUILD_ROLE_ARN="arn:aws:iam::${DEPLOY_ACCOUNT}:role/CrossAccountBuildRole"
 export CROSS_ACCOUNT_BUILD_SESSION="pipeline-${COMMIT_HASH}"
 
 function build_codebuild_ci_project() {
@@ -33,70 +33,59 @@ function build_codebuild_ci_project() {
     source_version=${COMMIT_HASH}
   fi
 
-  echo "Starting CI tests in ${project}"
-  start_codebuild_project "${project}" "${source_version}"
-
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
-    if [[ $attempt -gt 0 ]]; then
-      echo "Retrying ${attempt}/${MAX_RETRY}..."
-    fi
-
-    attempt=$((attempt + 1))
-
-    echo "Waiting for CI tests for complete. This may take anywhere from 15 minutes to 1 hour"
-    if ! codebuild_build_status_check "${TIMEOUT}"; then
-      echo "Tests failed."
-      if [[ ${attempt} -le ${MAX_RETRY} ]]; then
-        retry_batch_build
+      if [[ ${attempt} -eq 0 ]]; then
+        echo "Starting CI tests in ${project}"
+        start_codebuild_project "${project}" "${source_version}"
       else
-        echo "CI tests failed."
-        exit 1
+        echo "Retrying ${attempt}/${MAX_RETRY}..."
+        retry_batch_build
       fi
-    fi
-  done
 
-  echo "All tests completed successfully"
+      echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
+      # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
+      if codebuild_build_status_check "${TIMEOUT}"; then
+        echo "All tests completed successfully"
+        exit 0
+      fi
+
+      attempt=$((attempt + 1))
+    done
+
+  echo "CI tests failed."
+  exit 1
 }
 
 function build_linux_docker_images() {
   local attempt=0
 
-  echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
-  start_codebuild_project aws-lc-docker-image-build-linux "${COMMIT_HASH}"
-
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
-    if [[ $attempt -gt 0 ]]; then
+    if [[ ${attempt} -eq 0 ]]; then
+      echo "Activating AWS CodeBuild to build Linux aarch & x86 docker images."
+      start_codebuild_project aws-lc-docker-image-build-linux "${COMMIT_HASH}"
+    else
       echo "Retrying ${attempt}/${MAX_RETRY}..."
+      retry_batch_build
     fi
-
-    attempt=$((attempt + 1))
 
     echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
     # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
-    if ! codebuild_build_status_check "${TIMEOUT}"; then
-      echo "Build failed."
-      if [[ ${attempt} -le ${MAX_RETRY} ]]; then
-        retry_batch_build
-      else
-        echo "Failed to build Linux docker images"
-        exit 1
-      fi
+    if codebuild_build_status_check "${TIMEOUT}"; then
+      echo "Successfully built Linux docker images"
+      exit 0
     fi
+
+    attempt=$((attempt + 1))
   done
 
-  echo "Successfully built Linux docker images"
+  echo "Failed to build Linux docker images"
+  exit 1
 }
 
 function build_win_docker_images() {
   local attempt=0
 
   while [[ ${attempt} -le ${MAX_RETRY} ]]; do
-    if [[ $attempt -gt 0 ]]; then
-      echo "Retrying ${attempt}/${MAX_RETRY}..."
-    fi
-
-    attempt=$((attempt + 1))
-
     echo "Executing AWS SSM commands to build Windows docker images."
     if ! start_windows_img_build; then
       echo "Failed to start build"
@@ -107,6 +96,8 @@ function build_win_docker_images() {
     # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
     if ! win_docker_img_build_status_check "${TIMEOUT}"; then
       echo "Build failed"
+      attempt=$((attempt + 1))
+      echo "Retrying ${attempt}/${MAX_RETRY}..."
       continue
     fi
 
@@ -149,7 +140,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 MAX_RETRY=${MAX_RETRY:-0}
-TIMEOUT=${TIMEOUT:-180} # 3 hours
+TIMEOUT=${TIMEOUT:-180} # 3 hours F
 
 if [[ -z ${BUILD_TYPE} ]]; then
   echo "No build type provided."
@@ -158,13 +149,13 @@ fi
 
 assume_role
 
-if [[ -z "${BUILD_TYPE+x}" || -z "${BUILD_TYPE}" ]]; then
+if [[ -z "${BUILD_TYPE:+x}" ]]; then
   echo "No build type provided."
   exit 1
 fi
 
 if [[ ${BUILD_TYPE} == "docker" ]]; then
-  if [[ -z "${PLATFORM+x}" || -z "${PLATFORM}" ]]; then
+  if [[ -z "${PLATFORM:+x}" ]]; then
     echo "When building Docker images, a platform must be specified."
     exit 1
   fi
@@ -178,7 +169,7 @@ if [[ ${BUILD_TYPE} == "docker" ]]; then
 fi
 
 if [[ ${BUILD_TYPE} == "ci" ]]; then
-  if [[ -z "${PROJECT+x}" || -z "${PROJECT}" ]]; then
+  if [[ -z "${PROJECT:+x}" ]]; then
     echo "When building CI tests, a project name must be specified."
     exit 1
   fi

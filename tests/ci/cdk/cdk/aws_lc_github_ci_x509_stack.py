@@ -8,6 +8,8 @@ from aws_cdk import (
     Environment,
 )
 from constructs import Construct
+
+from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
 from util.build_spec_loader import BuildSpecLoader
 from util.metadata import (
     GITHUB_PUSH_CI_BRANCH_TARGETS,
@@ -18,7 +20,8 @@ from util.metadata import (
     STAGING_GITHUB_REPO_NAME,
 )
 
-class AwsLcGitHubX509CIStack(Stack):
+
+class AwsLcGitHubX509CIStack(AwsLcBaseCiStack):
     def __init__(
         self,
         scope: Construct,
@@ -27,31 +30,6 @@ class AwsLcGitHubX509CIStack(Stack):
         **kwargs,
     ) -> None:
         super().__init__(scope, id, env=env, **kwargs)
-
-        github_repo_owner = GITHUB_REPO_OWNER
-        github_repo_name = GITHUB_REPO_NAME
-
-        if env.account == PRE_PROD_ACCOUNT:
-            github_repo_owner = STAGING_GITHUB_REPO_OWNER
-            github_repo_name = STAGING_GITHUB_REPO_NAME
-
-        # Define CodeBuild resource.
-        git_hub_source = codebuild.Source.git_hub(
-            owner=github_repo_owner,
-            repo=github_repo_name,
-            webhook=True,
-            webhook_filters=[
-                codebuild.FilterGroup.in_event_of(
-                    codebuild.EventAction.PULL_REQUEST_CREATED,
-                    codebuild.EventAction.PULL_REQUEST_UPDATED,
-                    codebuild.EventAction.PULL_REQUEST_REOPENED,
-                ),
-                codebuild.FilterGroup.in_event_of(
-                    codebuild.EventAction.PUSH
-                ).and_branch_is(GITHUB_PUSH_CI_BRANCH_TARGETS),
-            ],
-            webhook_triggers_batch_build=True,
-        )
 
         self.reports_bucket = s3.Bucket(
             self,
@@ -91,11 +69,11 @@ class AwsLcGitHubX509CIStack(Stack):
             noncurrent_version_expiration=Duration.days(1),
         )
 
-        self.codebuild_project = codebuild.Project(
+        self.project = codebuild.Project(
             self,
             id,
             project_name=id,
-            source=git_hub_source,
+            source=self.git_hub_source,
             build_spec=BuildSpecLoader.load(
                 "cdk/codebuild/github_ci_x509_omnibus.yaml", env
             ),

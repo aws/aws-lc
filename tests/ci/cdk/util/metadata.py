@@ -53,4 +53,8 @@ SSM_DOCUMENT_NAME = EnvUtil.get(
     "WIN_DOCKER_BUILD_SSM_DOCUMENT", "AWSLC-BuildWindowsDockerImages"
 )
 
+S3_FOR_WIN_DOCKER_IMG_BUILD = EnvUtil.get(
+    "S3_FOR_WIN_DOCKER_IMG_BUILD", "aws-lc-windows-docker-image-build-s3"
+)
+
 GITHUB_PUSH_CI_BRANCH_TARGETS = r"(main|fips-\d{4}-\d{2}-\d{2}.*)"

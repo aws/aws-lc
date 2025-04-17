@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 import typing
+from enum import Enum
 
 from aws_cdk import Stack, Environment, Duration
 from aws_cdk import (
@@ -10,17 +11,22 @@ from aws_cdk import (
     aws_iam as iam,
     aws_events as events,
     aws_events_targets as targets,
-    aws_cloudwatch as cloudwatch,
+    aws_codebuild as codebuild,
 )
 from aws_cdk.pipelines import CodeBuildStep
 from constructs import Construct
 
 from pipeline.ci_stage import CiStage
-from pipeline.deploy_util import DeployEnvironmentType
 from pipeline.linux_docker_image_build_stage import LinuxDockerImageBuildStage
 from pipeline.setup_stage import SetupStage
 from pipeline.windows_docker_image_build_stage import WindowsDockerImageBuildStage
 from util.metadata import *
+
+
+class DeployEnvironmentType(Enum):
+    PRE_PROD = "Staging"
+    PROD = "Prod"
+    DEV = "Dev"
 
 
 class AwsLcCiPipeline(Stack):
@@ -60,7 +66,7 @@ class AwsLcCiPipeline(Stack):
                 actions=[
                     "codepipeline:GetPipelineExecution",
                     "secretsmanager:GetSecretValue",
-                    "kms:Decrypt"
+                    "kms:Decrypt",
                 ],
             )
         )
@@ -133,6 +139,9 @@ class AwsLcCiPipeline(Stack):
             ),
             self_mutation=True,
             code_build_defaults=pipelines.CodeBuildOptions(
+                build_environment=codebuild.BuildEnvironment(
+                    compute_type=codebuild.ComputeType.MEDIUM,
+                ),
                 role_policy=[
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
@@ -219,7 +228,7 @@ class AwsLcCiPipeline(Stack):
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 resources=[
-                    f"arn:aws:iam::{deploy_environment.account}:role/CrossAccountCodeBuildRole"
+                    f"arn:aws:iam::{deploy_environment.account}:role/CrossAccountBuildRole"
                 ],
                 actions=["sts:AssumeRole"],
             )
@@ -277,7 +286,7 @@ class AwsLcCiPipeline(Stack):
                 commands=[
                     "cd tests/ci/cdk/pipeline/scripts",
                     "chmod +x finalize_images.sh",
-                    "./finalize_images.sh --repos \"${ECR_REPOS}\"",
+                    './finalize_images.sh --repos "${ECR_REPOS}"',
                 ],
                 env={
                     **codebuild_environment_variables,

@@ -6,7 +6,7 @@ set -exuo pipefail
 
 source util.sh
 
-export CROSS_ACCOUNT_BUILD_ROLE_ARN="arn:aws:iam::${DEPLOY_ACCOUNT}:role/CrossAccountCodeBuildRole"
+export CROSS_ACCOUNT_BUILD_ROLE_ARN="arn:aws:iam::${DEPLOY_ACCOUNT}:role/CrossAccountBuildRole"
 export CROSS_ACCOUNT_BUILD_SESSION="pipeline-${CODEBUILD_RESOLVED_SOURCE_VERSION}"
 
 function promote_pending_tags_to_latest() {
@@ -76,7 +76,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if [[ -z "${REPOS+x}" || -z "${REPOS}" ]]; then
+if [[ -z "${REPOS:+x}" ]]; then
   echo "No build type provided."
   exit 1
 fi

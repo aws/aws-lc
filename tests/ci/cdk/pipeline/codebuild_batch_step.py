@@ -3,7 +3,6 @@
 import builtins
 import re
 import typing
-from typing import Mapping
 
 import jsii
 from aws_cdk import (
@@ -65,7 +64,6 @@ class CodeBuildBatchStep(pipelines.Step):
             else {}
         )
 
-    @jsii.member(jsii_name="produceAction")
     def produce_action(
         self,
         stage: codepipeline.IStage,
