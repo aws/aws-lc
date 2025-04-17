@@ -45,13 +45,18 @@ int main(int argc, char *argv[])
 	uint64_t val;
 	unsigned int i;
 
+	/*
+	 * Assumed over sampling rate. Equal to the default over sampling rate.
+	 */
+	const size_t osr = JENT_MIN_OSR;
+
 	(void)argc;
 	(void)argv;
 
 	for (i = 0; i < ELEM; i++)
 		jent_gcd_add_value(gcd, i * EXP_GCD, i);
 
-	if (jent_gcd_analyze(gcd, ELEM))
+	if (jent_gcd_analyze(gcd, ELEM, osr))
 		return 1;
 
 	jent_gcd_fini(gcd, ELEM);

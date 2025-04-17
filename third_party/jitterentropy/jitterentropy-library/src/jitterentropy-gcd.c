@@ -96,7 +96,7 @@ static int jent_gcd_analyze_internal(uint64_t *delta_history, size_t nelem,
 	return 0;
 }
 
-int jent_gcd_analyze(uint64_t *delta_history, size_t nelem)
+int jent_gcd_analyze(uint64_t *delta_history, size_t nelem, size_t osr)
 {
 	uint64_t running_gcd, delta_sum;
 	int ret = jent_gcd_analyze_internal(delta_history, nelem, &running_gcd,
@@ -106,10 +106,12 @@ int jent_gcd_analyze(uint64_t *delta_history, size_t nelem)
 		return 0;
 
 	/*
-	 * Variations of deltas of time must on average be larger than 1 to
-	 * ensure the entropy estimation implied with 1 is preserved.
+	 * We assume 1/osr bits of entropy per sample. On average, variations
+	 * of deltas must be larger than 1 over osr cases; we do not capture
+	 * fractions. Hence delta_sum < (nelem / osr) means we cannot satisfy the
+	 * 1/osr bits of entropy per sample assumption.
 	 */
-	if (delta_sum <= nelem - 1) {
+	if ((delta_sum * osr) < nelem) {
 		ret = EMINVARVAR;
 		goto out;
 	}

@@ -211,17 +211,14 @@ int main(int argc, char *argv[])
 		write(varfd, &var, sizeof(var));
 
 		res = strtok_r(NULL, " ", &saveptr);
-		if (!res) {
-			printf("strtok_r error (%s)\n", buf);
-			return 1;
+		if (res) {
+			sample = strtoul(res, NULL, 10);
+			single_unchanged0s |= sample;
+			single_unchanged1s &= sample;
+
+			single = extract(sample, mask);
+			write(singlefd, &single, sizeof(single));
 		}
-
-		sample = strtoul(res, NULL, 10);
-		single_unchanged0s |= sample;
-		single_unchanged1s &= sample;
-
-		single = extract(sample, mask);
-		write(singlefd, &single, sizeof(single));
 
 		if (i >= count)
 			break;
