@@ -907,7 +907,7 @@ if(USE_CUSTOM_LIBCXX)
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -nostdlib++")
   include_directories(
     SYSTEM
-    util/bot/libcxx-config
+    tests/ci/libcxx-config
     ${LLVM_PROJECT_HOME}/libcxx/include
     ${LLVM_PROJECT_HOME}/libcxxabi/include
   )
