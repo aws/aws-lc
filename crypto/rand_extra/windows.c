@@ -15,6 +15,7 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 #if defined(OPENSSL_RAND_WINDOWS)
 
