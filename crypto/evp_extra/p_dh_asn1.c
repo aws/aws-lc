@@ -37,7 +37,7 @@ static int dh_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int dh_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int dh_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // RFC 2786
   BIGNUM *pubkey = NULL;
   DH *dh = NULL;

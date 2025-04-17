@@ -32,7 +32,7 @@ OPENSSL_EXPORT const char* awslc_version_string(void);
 
 enum FIPSStatus {
   AWSLC_NOT_APPROVED = 0,
-  AWSLC_APPROVED = 1,
+  AWSLC_APPROVED = 1
 };
 
 #if defined(AWSLC_FIPS)
@@ -60,7 +60,7 @@ enum FIPSStatus {
         (approved) = AWSLC_APPROVED;                                \
     }                                                               \
  }                                                                  \
- while(0)                                                           \
+ while(0)
 
 #else
 

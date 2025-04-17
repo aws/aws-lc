@@ -113,10 +113,16 @@ typedef struct argument_t {
 typedef std::vector<std::string> args_list_t;
 typedef std::map<std::string, std::string> args_map_t;
 
+bool IsFlag(const std::string& arg);
+
 // ParseKeyValueArguments converts the list of strings |args| ["-filter", "RSA", "-Timeout", "10"] into a map in
 // |out_args| of key value pairs {"-filter": "RSA", "-Timeout": "10"}. It uses |templates| to determine what arguments
-// are option or required.
-bool ParseKeyValueArguments(args_map_t *out_args, const args_list_t &args, const argument_t *templates);
+// are option or required. Any extra arguments that don't look like an unknown flag argument (prefixed by "-" or "--")
+// will be appended to extra_args in the order they appear in.
+bool ParseKeyValueArguments(args_map_t &out_args,
+                            args_list_t &extra_args,
+                            const args_list_t &args,
+                            const argument_t *templates);
 
 // PrintUsage prints the description from the list of templates in |templates| to stderr.
 void PrintUsage(const argument_t *templates);

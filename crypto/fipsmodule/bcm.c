@@ -116,6 +116,7 @@
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
 #include "evp/p_ed25519.c"
+#include "evp/p_ed25519ph.c"
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
 #include "evp/p_kem.c"
@@ -251,6 +252,14 @@ static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 
 #endif  // !ASAN
 
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+#if defined(__ELF__) && defined(__GNUC__)
+WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
+#else
+#error AWSLC_FIPS_FAILURE_CALLBACK not supported on this platform
+#endif
+#endif
+
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
 static void BORINGSSL_bcm_power_on_self_test(void);
@@ -270,8 +279,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   if (jent_entropy_init()) {
-    fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
-    AWS_LC_FIPS_failure("CPU Jitter failed to initilize");
+    AWS_LC_FIPS_failure("CPU Jitter entropy RNG initialization failed");
   }
 #endif
 
@@ -333,8 +341,8 @@ int BORINGSSL_integrity_test(void) {
 
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
-  if (!boringssl_self_test_sha256(true) ||
-      !boringssl_self_test_hmac_sha256(true)) {
+  if (!boringssl_self_test_sha256() ||
+      !boringssl_self_test_hmac_sha256()) {
     return 0;
   }
 
@@ -379,11 +387,11 @@ int BORINGSSL_integrity_test(void) {
 
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
   // Check the integrity but don't call AWS_LC_FIPS_failure or return 0
-  check_test(expected, result, sizeof(result), "FIPS integrity test", false);
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", false);
 #else
   // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which will
   // result in an abort
-  check_test(expected, result, sizeof(result), "FIPS integrity test", true);
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
 #endif
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
@@ -392,15 +400,26 @@ int BORINGSSL_integrity_test(void) {
 #endif  // OPENSSL_ASAN
 
 void AWS_LC_FIPS_failure(const char* message) {
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+  if (AWS_LC_fips_failure_callback != NULL) {
+    AWS_LC_fips_failure_callback(message);
+    return;
+  }
+  // Fallback to the default behavior if the callback is not defined
+#endif
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fflush(stderr);
   for (;;) {
     abort();
     exit(1);
   }
 }
-
+#else  // BORINGSSL_FIPS
+void AWS_LC_FIPS_failure(const char* message) {
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+  fflush(stderr);
+}
 #endif  // BORINGSSL_FIPS
-
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // When linking with a static library, if no symbols in an object file are
 // referenced then the object file is discarded, even if it has a constructor

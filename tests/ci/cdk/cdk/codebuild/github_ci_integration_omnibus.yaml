@@ -36,6 +36,16 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_crt_integration.sh"
 
+    - identifier: libgit2_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_libgit2_integration.sh"
+
     - identifier: openssh_integration_master_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
@@ -250,13 +260,13 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_ntp_integration.sh"
-          
+
     - identifier: pq_tls_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_SMALL
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_pq_tls_integration.sh"
@@ -321,3 +331,185 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_accp_integration.sh"
+
+    - identifier: nmap_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_nmap_integration.sh"
+
+    - identifier: ibmtpm_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_ibmtpm_integration.sh"
+
+    - identifier: libwebsockets_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_libwebsockets_integration.sh"
+
+    - identifier: grpc_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_grpc_integration.sh"
+
+    - identifier: bind9_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_bind9_integration.sh"
+
+    - identifier: strongswan_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_strongswan_integration.sh"
+
+    - identifier: openvpn2_6_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_openvpn_integration.sh release/2.6"
+
+    - identifier: openvpnMaster_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_openvpn_integration.sh master"
+          
+    - identifier: python_main_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_python_integration.sh main"
+
+    # NOTE: As we add more variables to build matrices, we might want to port these into a separate file
+    - identifier: python_release_fips_0_crt_0_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13"
+          FIPS: 0
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: 0
+
+    - identifier: python_release_fips_0_crt_1_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13"
+          FIPS: 0
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: 1
+
+    - identifier: python_release_fips_1_crt_0_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13"
+          FIPS: 1
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: 0
+
+    - identifier: python_release_fips_1_crt_1_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13"
+          FIPS: 1
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: 1
+
+    - identifier: ruby_main_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_ruby_integration.sh master"
+          FIPS: 1
+
+    - identifier: ruby_release_fips_0_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_ruby_integration.sh ruby_3_4 ruby_3_3 ruby_3_2"
+          FIPS: 0
+
+    - identifier: ruby_release_fips_1_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_ruby_integration.sh ruby_3_4 ruby_3_3 ruby_3_2"
+          FIPS: 1
+
+    - identifier: xtrabackup_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_xtrabackup_integration.sh"

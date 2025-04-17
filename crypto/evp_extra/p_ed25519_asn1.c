@@ -126,7 +126,7 @@ static int ed25519_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
   return 1;
 }
 
-static int ed25519_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int ed25519_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // See RFC 8410, section 4.
 
   // The parameters must be omitted. Public keys have length 32.
@@ -166,7 +166,7 @@ static int ed25519_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
                         b_key->key + ED25519_PUBLIC_KEY_OFFSET, ED25519_PUBLIC_KEY_LEN) == 0;
 }
 
-static int ed25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int ed25519_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   // See RFC 8410, section 7.
 
   // Parameters must be empty. The key is a 32-byte value wrapped in an extra

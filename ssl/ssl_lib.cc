@@ -695,6 +695,15 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return nullptr;
   }
 
+  if (ctx->cipher_list) {
+    ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    ssl->config->cipher_list->Init(*ctx->cipher_list.get());
+  }
+  if (ctx->tls13_cipher_list) {
+    ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get());
+  }
+
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint.reset(
         OPENSSL_strdup(ctx->psk_identity_hint.get()));
@@ -2158,6 +2167,7 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
   if (ssl == NULL) {
     return NULL;
   }
+
   if (ssl->config && ssl->config->cipher_list) {
     return ssl->config->cipher_list->ciphers.get();
   }
@@ -3050,6 +3060,14 @@ int SSL_can_release_private_key(const SSL *ssl) {
 
   // Otherwise, this is determined by the current handshake.
   return !ssl->s3->hs || ssl->s3->hs->can_release_private_key;
+}
+
+int SSL_in_connect_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && !SSL_is_server(ssl);
+}
+
+int SSL_in_accept_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && SSL_is_server(ssl);
 }
 
 int SSL_is_init_finished(const SSL *ssl) { return !SSL_in_init(ssl); }

@@ -14,6 +14,16 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-8x_latest
 
+    - identifier: c99_cplusplus98_checker # The checker script runs on gcc.
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/coding_guidelines/c99_cplusplus98_test.sh"
+
     - identifier: ubuntu1604_gcc5x_x86
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
@@ -618,3 +628,14 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-10.04_gcc-4.1x_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_legacy_build.sh"
+
+    - identifier: amazonlinux2_gcc7x_x86_64_fips_callback
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_fips_callback_tests.sh"
+

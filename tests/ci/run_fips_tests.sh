@@ -5,6 +5,7 @@
 set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
+source tests/ci/gtest_util.sh
 
 function static_linux_supported() {
   if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then

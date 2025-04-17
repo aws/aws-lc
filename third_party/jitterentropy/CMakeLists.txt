@@ -7,14 +7,14 @@
 # the same as the source code.
 
 set(JITTER_SOURCES
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
+        ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${AWSLC_SOURCE_DIR}/include)
 
 if(WIN32)
     if(MSVC)
@@ -37,4 +37,4 @@ endif()
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
 add_dependencies(jitterentropy boringssl_prefix_symbols)
-target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+target_include_directories(jitterentropy BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)

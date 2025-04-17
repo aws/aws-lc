@@ -2879,6 +2879,68 @@ TEST_F(BNTest, FormatWord) {
 #endif
 }
 
+TEST_F(BNTest, GetMinimalWidth) {
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  ASSERT_TRUE(bn);
+
+  // Zero needs 0 words
+  BN_zero(bn.get());
+  EXPECT_EQ(0, BN_get_minimal_width(bn.get()));
+
+  // 1 needs 1 word
+  ASSERT_TRUE(BN_one(bn.get()));
+  EXPECT_EQ(1, BN_get_minimal_width(bn.get()));
+
+  // Test negative numbers
+  ASSERT_TRUE(BN_set_word(bn.get(), 1));
+  BN_set_negative(bn.get(), 1);
+  EXPECT_EQ(1, BN_get_minimal_width(bn.get()));
+
+  // Test powers of two
+  ASSERT_TRUE(BN_set_word(bn.get(), 1));
+  for (size_t i = 0; i < 256; i++) {
+    // For 2^i, we need ceil((i+1)/BN_BITS2) words
+    int expected_words = (i + BN_BITS2) / BN_BITS2;
+    EXPECT_EQ(expected_words, BN_get_minimal_width(bn.get()))
+        << "Failed for 2^" << i;
+    ASSERT_TRUE(BN_lshift1(bn.get(), bn.get()));
+  }
+
+  // Test values near word boundaries
+  // For 32-bit: word = 32 bits
+  // For 64-bit: word = 64 bits
+  struct {
+    const char* hex;
+    int expected_32bit;
+    int expected_64bit;
+  } kTests[] = {
+    // 8-bit number
+    {"ff", 1, 1},
+    // 32-bit number
+    {"ffffffff", 1, 1},
+    // 33-bit number
+    {"100000000", 2, 1},
+    // 64-bit number
+    {"ffffffff00000000", 2, 1},
+    // 64-bit number
+    {"ffffffffffffffff", 2, 1},
+    // 65-bit number
+    {"10000000000000000", 3, 2},
+    // Multiple word number
+    {"ffffffffffffffffffffffffffffffff", 4, 2},
+  };
+
+  for (const auto& test : kTests) {
+    SCOPED_TRACE(test.hex);
+    HexToBIGNUM(&bn, test.hex);
+#if defined(OPENSSL_32_BIT)
+    EXPECT_EQ(test.expected_32bit, BN_get_minimal_width(bn.get()));
+#elif defined(OPENSSL_64_BIT)
+    EXPECT_EQ(test.expected_64bit, BN_get_minimal_width(bn.get()));
+#endif
+  }
+}
+
 #if defined(OPENSSL_BN_ASM_MONT) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, BNMulMontABI) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {

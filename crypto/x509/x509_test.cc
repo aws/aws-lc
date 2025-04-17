@@ -5159,8 +5159,8 @@ DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
 DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQMA4w
 DAYDVR0TBAUwAwEB/zAKBggqhkjOPQQDAiNOAyQAMEYCIQCp0iIX5s30KXjihR4g
-KnJpd3seqGlVRqCVgrD0KAADJgA1QAIhAKkx0vR82QU0NtHDD11KX/LuQF2T+2nX
-oeKp5LKAbMUA
+KnJpd3seqGlVRqCVgrD0KGYDJgA1QAIhAKkx0vR82QU0NtHDD11KX/LuQF2T+2nX
+oeKp5LKAbMVi
 -----END CERTIFICATE-----
 )";
 
@@ -5172,8 +5172,8 @@ MIIBJDCByqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
 DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
 DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMUMBIw
-EAYDVR0TJAkEAzADAQQCAf8wCgYIKoZIzj0EAwIDSQAwRgQhAKnSIhfmzfQpeOKF
-HiAqcml3ex6oaVVGoJWCsPQoZjVABCEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh
+EAYDVR0TJAkEAzADAQQCAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKF
+HiAqcml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh
 4qnksoBsxWI=
 -----END CERTIFICATE-----
 )";
@@ -5224,11 +5224,13 @@ soBsxWI=
 )";
 
 TEST(X509Test, BER) {
-  // Constructed strings are forbidden in DER, but allowed in BER.
-  EXPECT_TRUE(CertFromPEM(kConstructedBitString));
-  EXPECT_TRUE(CertFromPEM(kConstructedOctetString));
-  // Indefinite lengths are forbidden in DER.
-  EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
+  // Constructed strings are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kConstructedBitString));
+  EXPECT_FALSE(CertFromPEM(kConstructedOctetString));
+  // Indefinite lengths are forbidden in DER, but allowed in BER. AWS-LC has
+  // reinstated indefinite BER support in the ASN1 macros to align with OpenSSL
+  // behavior.
+  EXPECT_TRUE(CertFromPEM(kIndefiniteLength));
   // Padding bits in BIT STRINGs must be zero in BER.
   EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
   // Tags must be minimal in both BER and DER, though many BER decoders
@@ -7520,6 +7522,7 @@ TEST(X509Test, NameAttributeValues) {
       {CBS_ASN1_UNIVERSALSTRING, "not utf-32"},
       {CBS_ASN1_UTCTIME, "not utctime"},
       {CBS_ASN1_GENERALIZEDTIME, "not generalizedtime"},
+      {CBS_ASN1_UTF8STRING | CBS_ASN1_CONSTRUCTED, ""},
       {CBS_ASN1_SEQUENCE & ~CBS_ASN1_CONSTRUCTED, ""},
 
       // TODO(crbug.com/boringssl/412): The following inputs should parse, but

@@ -1,0 +1,44 @@
+diff --git a/Lib/test/libregrtest/runtest.py b/Lib/test/libregrtest/runtest.py
+index 489ab98..d8c8765 100644
+--- a/Lib/test/libregrtest/runtest.py
++++ b/Lib/test/libregrtest/runtest.py
+@@ -4,17 +4,29 @@
+ import importlib
+ import io
+ import os
++import signal
+ import sys
+ import time
+ import traceback
+ import unittest
+ 
++from contextlib import contextmanager
+ from test import support
+ from test.support import os_helper
+ from test.libregrtest.cmdline import Namespace
+ from test.libregrtest.save_env import saved_test_environment
+ from test.libregrtest.utils import clear_caches, format_duration, print_warning
+ 
++@contextmanager
++def restore_sigint():
++    original_handler = signal.getsignal(signal.SIGINT)
++    signal.signal(signal.SIGINT, signal.default_int_handler)
++    try:
++        yield
++    except:
++        raise
++    finally:
++       signal.signal(signal.SIGINT, original_handler)
+ 
+ class TestResult:
+     def __init__(
+@@ -242,7 +254,8 @@ def runtest(ns: Namespace, test_name: str) -> TestResult:
+     generated testsuite element.
+     """
+     try:
+-        return _runtest(ns, test_name)
++        with restore_sigint():
++            return _runtest(ns, test_name)
+     except:
+         if not ns.pgo:
+             msg = traceback.format_exc()

@@ -130,7 +130,7 @@ enum fips_counter_t {
   fips_counter_evp_aes_128_ctr = 2,
   fips_counter_evp_aes_256_ctr = 3,
 
-  fips_counter_max = 3,
+  fips_counter_max = 3
 };
 
 // FIPS_read_counter returns a counter of the number of times the specific
@@ -216,6 +216,12 @@ OPENSSL_EXPORT void OPENSSL_cleanup(void);
 // FIPS_mode_set returns one if |on| matches whether BoringSSL was built with
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
+
+// CRYPTO_mem_ctrl intentionally does nothing and returns 0.
+// AWS-LC defines |OPENSSL_NO_CRYPTO_MDEBUG| by default.
+// These are related to memory debugging functionalities provided by OpenSSL,
+// but are not supported in AWS-LC.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
 
 #if defined(BORINGSSL_FIPS_140_3)
 

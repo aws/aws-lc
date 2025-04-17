@@ -95,7 +95,7 @@ struct evp_pkey_asn1_method_st {
   // leading padding byte checked and removed. Although X.509 uses BIT STRINGs
   // to represent SubjectPublicKeyInfo, every key type defined encodes the key
   // as a byte string with the same conversion to BIT STRING.
-  int (*pub_decode)(EVP_PKEY *out, CBS *params, CBS *key);
+  int (*pub_decode)(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key);
 
   // pub_encode encodes |key| as a SubjectPublicKeyInfo and appends the result
   // to |out|. It returns one on success and zero on error.
@@ -107,7 +107,7 @@ struct evp_pkey_asn1_method_st {
   // result into |out|. It returns one on success and zero on error. |params| is
   // the AlgorithmIdentifier after the OBJECT IDENTIFIER type field, and |key|
   // is the contents of the OCTET STRING privateKey field.
-  int (*priv_decode)(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey);
+  int (*priv_decode)(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey);
 
   // priv_encode encodes |key| as a PrivateKeyInfo and appends the result to
   // |out|. It returns one on success and zero on error.
@@ -383,8 +383,8 @@ typedef struct {
 void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
-#define FIPS_EVP_PKEY_METHODS 8
-#define NON_FIPS_EVP_PKEY_METHODS 4
+#define FIPS_EVP_PKEY_METHODS 9
+#define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 11
 
 struct fips_evp_pkey_methods {

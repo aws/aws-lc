@@ -26,5 +26,7 @@ function shard_gtest() {
           RESULT=${?}
         fi
     done
+    unset GTEST_SHARD_INDEX
+    unset GTEST_TOTAL_SHARDS
     return $RESULT
 }

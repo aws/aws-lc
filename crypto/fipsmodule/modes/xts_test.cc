@@ -23,7 +23,9 @@
 #include "internal.h"
 #include "../../test/test_util.h"
 
-
+#if defined(OPENSSL_LINUX)
+#include <sys/mman.h>
+#endif
 struct XTSTestCase {
   const char *key_hex;
   const char *iv_hex;
@@ -273,6 +275,11 @@ static const XTSTestCase kXTSTestCases[] = {
     // the AArch64 implementation produces the same output.
     // The plaintext lengths were chosen such that one or more vectors
     // exercise a certain path in the assembly code.
+    // For AVX-512 implementation, additional tests are for the
+    // two main loops of 16x and 8x where their exit paths are the same. There
+    // is a separate exit path for each possibility, 1 to 7, of remaining blocks,
+    // each of which can either exit or take the path to cipher-stealing
+    // (trailing bytes that don't form a block).
     // len = 44 bytes = 2 blocks + 12 bytes
     {
         "1338d7d3d66137abf00c8f33050cff7e0a6fa10ff2e2bd860119dfa68ee815c4"
@@ -409,7 +416,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "769d1b0e0c0b99ea11de58fcd3b72e1be0ad32884698e15420e52c96b698bba1"
         "ce3d9a8750b8",
     },
-    // len = 144 bytes = 9 blocks
+    // len = 144 bytes = 9 blocks (= 8 + 1 blocks)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -425,7 +432,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
         "e11b6adce343e1f38c6a879463c080d7",
     },
-    // len = 158 bytes = 9 blocks + 14 bytes
+    // len = 158 bytes = 9 blocks + 14 bytes (= 8 + 1 blocks + t bytes)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -441,7 +448,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
         "a5da920d96beb388ade417027054dbd0e11b6adce343e1f38c6a879463c0",
     },
-    // len = 160 bytes = 10 blocks
+    // len = 160 bytes = 10 blocks (= 8 + 2 blocks)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -457,7 +464,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
         "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e",
     },
-    // len = 165 bytes = 10 blocks + 5 bytes
+    // len = 165 bytes = 10 blocks + 5 bytes (= 8 + 2 blocks + t bytes)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -475,7 +482,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "e11b6adce343e1f38c6a879463c080d7254c4d65cf40e04934108bcde6bda824"
         "4a72a90b1e",
     },
-    // len = 176 bytes = 11 blocks
+    // len = 176 bytes = 11 blocks (= 8 + 3 blocks)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -493,7 +500,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
         "ae8cc61cbb5f8cbd0c6f052e95ed6539",
     },
-    // len = 185 bytes = 11 blocks + 9 bytes
+    // len = 185 bytes = 11 blocks + 9 bytes (= 8 + 3 blocks + t bytes)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -511,7 +518,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
         "3ed782ad26e98e07f14d47f3c2a8e92aae8cc61cbb5f8cbd0c",
     },
-    // len = 224 bytes = 14 blocks
+    // len = 224 bytes = 14 blocks (= 8 + 6 blocks)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -531,7 +538,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "ae8cc61cbb5f8cbd0c6f052e95ed65399009f56148fc07d88c8e0113d7eafb1f"
         "ea39991882130ee45e95a3c6bc508f09c990add0cd3f1ca3403c096f9277e785",
     },
-    // len = 226 bytes = 14 blocks + 2 bytes
+    // len = 226 bytes = 14 blocks + 2 bytes (= 8 + 6 blocks + t bytes)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -553,7 +560,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "ea39991882130ee45e95a3c6bc508f09d2ee8fafae5864a6b21b93bf6a642637"
         "c990",
     },
-    // len = 240 bytes = 15 blocks
+    // len = 240 bytes = 15 blocks (= 8 + 7 blocks)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -575,7 +582,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "ea39991882130ee45e95a3c6bc508f09c990add0cd3f1ca3403c096f9277e785"
         "6ea0659808172173e234f7dfd6f9789b",
     },
-    // len = 253 bytes = 15 blocks + 13 bytes
+    // len = 253 bytes = 15 blocks + 13 bytes (= 8 + 7 blocks + t bytes)
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
@@ -621,7 +628,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "d8c48e8fff9445248b0016897269022420c51e8472b9aa1a2350699815f62a66"
         "3f"
     },
-    // len = 276 bytes = 17 blocks + 4 bytes
+    // len = 276 bytes = 17 blocks + 4 bytes (= 16 + 1 blocks + t bytes)
     {
         "6dcc2392c5f0af2f5d84b455cd7b04abb785e0d19049fc675d625eeff162ef67"
         "321369f778a33a28e50973dd3a37857177da17a5c23f7859eb12b72b6af60da7",
@@ -645,7 +652,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "cb8e120115d5b9c66f6a7e973bcf2f418f37e19a51713577182ea38c5493ff46"
         "966b2f87f3dd957226a4823848f42d943898a8c7"
     },
-    // len = 299 bytes = 18 blocks + 11 bytes
+    // len = 299 bytes = 18 blocks + 11 bytes (= 16 + 2 blocks + t bytes)
     {
         "de5e919626694311364505d8471a5fc5ed22e159d26efc6d5f19dab8367bdad3"
         "e5e5bdda19663958dfe62753455a083d247fb908c3157f32b264f121d29640c8",
@@ -671,7 +678,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "ea30464b626f017e03a9b8d13efe0f1b589bfabc4eee2c38977e345ccb30d7ab"
         "f7b541294e651a657663b1"
     },
-    // len = 314 bytes = 19 blocks + 10 bytes
+    // len = 314 bytes = 19 blocks + 10 bytes (= 16 + 3 blocks + t bytes)
     {
         "ed80e39253604e671080b99bcda0589d47dc51d810ce196d0f0eebb9453b6ce3"
         "349634aea22ae00fd9e4fef19c8213451d2a6ea4395e3529edc8a9b9599ed8b3",
@@ -697,7 +704,41 @@ static const XTSTestCase kXTSTestCases[] = {
         "4ab4a9738f30a46646d386e9ade5b4ea00a5456535f7972a54dcda19f8d26e43"
         "30c3d760bc4e278fa5ab8481dadde7829fde7563ece4094588f9"
     },
-    // len = 331 bytes = 20 blocks + 11 bytes
+    // len = 448 bytes = 28 blocks (= 16 + 8 + 4 blocks)
+    {
+      "471f9a9ee92d06701e84d8ee35773e00939620dcfe7679b4aa6eb0d6c59bec8a"
+      "f51000afca6d6fafc3d7775468b59e86202d34090a05e79738825de54e049b7f",
+      "bb20acdc5589e553935c580c430ca3ed",
+      "451170f56e46da349475388011c2ffcce2aca837358e8bc8eae3d42df0771a35"
+      "888a2af7d1042b657a63e68b25e5570791003fc68eca8e78ad62a59dd9bfd262"
+      "4afc591b0184807be766060c4c5d13dd5d52a4eb1c3263ca9508676ec83ad012"
+      "36292d37adadb29414b8a06016b43d7306e15f2314c2eda9cb5417938ee8a5c5"
+      "11d2fcbf7faf539367f4f37da831f1ae1250d12612becfdd13e770a1cf1566e0"
+      "e7639f6712f3fa79e7eef78f1fe83d31380f584acd2728e00e9882ddaee8be95"
+      "4b5dfc5d50f7d737e5cec604b60435ee138d38e0b560c1c3f943a1a72b5f3c77"
+      "bc39d40d30ab4415790b192f0f4e1d22dc560291b6c354af06f556325493a911"
+      "cc7d1efc296211a26d2ad27c78ef9e5445a1e5fc643aab6b2f029d8495469561"
+      "c3b35dec156e8f839861ff10509e65963f4a92a3843d0eb43fab38d4f1cd35b5"
+      "8092a195003018989118a9e2b60e78f5580a98dd47a7918752c95b449691f916"
+      "239aab24cbc4bc5cdc653e9273b687ccc01fa908c63a8f1903ea5d997b56af9f"
+      "f05ac3bb1e7f18fae5568c580d1324cd33cdd5f90764120a4f6fa3cac55269b6"
+      "ad2c71cbac89c691e052e9ed660eba99db9092e3f4a5ed4314910edae3779090",
+      "4df3fa60e97ddd3d9890bfc71e75f43aa2951f8b9f1eafbc7d85dcd52587af30"
+      "4ddcd513d4608123d797d3b734dced7c7549d54a0d18f19b3a3d8a46f1c480b8"
+      "4a986f47610907e764d214ee2af6831aad11daa8c55a483d7c99cdd418cb06a5"
+      "ee1be3f5cccefc1c5200f4320399b7430c90cf00bc901df08a20e2fbeee38e0a"
+      "65b4a43038ecbdfd7ecd3a8d138e862e6313fafc39453b2e610577749a1e0d11"
+      "7c3ec5018d3b56495d03e639c46233752371bcefb276b9b7b0623a6bf533cb72"
+      "016238ecc3ac227717c3c6b69b5f74ac27b2c966e552b85b67739c3540930cc0"
+      "e3a62d4a7362bd825d13fe1a6b68d6152ac6615eca89b3c1b8571e57b55766fb"
+      "a3ac11df6161dd6e5110e9047a6637349b0e49738a4ca52ba7e0f84e01a2af01"
+      "db63fa36bafc6e212089196b20d30b346ce865f0c1412d196e56b328cd1c2399"
+      "59202aeabc56aa08c847360ea1d3a5521748e853869b7a783874424c62b5da33"
+      "1d95880aa77ec6d04aa59b6e2e85a75a3fcc9be9537c3cf065d69537e1454024"
+      "4398137ae4d6cc84c5323df0b9cccf5bc51ad873847369c92e0bed692bc03b47"
+      "94b20ac22f672a64ecd15a69665f21233f47e6904b6cd2972ffc6aeb2961f666"
+  },
+  // len = 331 bytes = 20 blocks + 11 bytes (= 16 + 4 blocks + t bytes)
     {
         "ce86af621fe0bca7d825d43ee182ddf0604e1ff2b4de268e62843598d0cb5859"
         "23a2a8e2049f541edc8682620db53dac770fb03fd27085feb336c3161badbcb9",
@@ -725,7 +766,43 @@ static const XTSTestCase kXTSTestCases[] = {
         "6c8df1492055d0464d3800df0278609ddd277e8ff1d12ee78d623e2e816fb5ec"
         "9d6aa67116f98db59ede5b"
     },
-    // len = 348 bytes = 21 blocks + 12 bytes
+  // len = 464 bytes = 29 blocks (= 16 + 8 + 5 blocks)
+    {
+        "471f9a9ee92d06701e84d8ee35773e00939620dcfe7679b4aa6eb0d6c59bec8a"
+        "f51000afca6d6fafc3d7775468b59e86202d34090a05e79738825de54e049b7f",
+        "bb20acdc5589e553935c580c430ca3ed",
+        "451170f56e46da349475388011c2ffcce2aca837358e8bc8eae3d42df0771a35"
+        "888a2af7d1042b657a63e68b25e5570791003fc68eca8e78ad62a59dd9bfd262"
+        "4afc591b0184807be766060c4c5d13dd5d52a4eb1c3263ca9508676ec83ad012"
+        "36292d37adadb29414b8a06016b43d7306e15f2314c2eda9cb5417938ee8a5c5"
+        "11d2fcbf7faf539367f4f37da831f1ae1250d12612becfdd13e770a1cf1566e0"
+        "e7639f6712f3fa79e7eef78f1fe83d31380f584acd2728e00e9882ddaee8be95"
+        "4b5dfc5d50f7d737e5cec604b60435ee138d38e0b560c1c3f943a1a72b5f3c77"
+        "bc39d40d30ab4415790b192f0f4e1d22dc560291b6c354af06f556325493a911"
+        "cc7d1efc296211a26d2ad27c78ef9e5445a1e5fc643aab6b2f029d8495469561"
+        "c3b35dec156e8f839861ff10509e65963f4a92a3843d0eb43fab38d4f1cd35b5"
+        "8092a195003018989118a9e2b60e78f5580a98dd47a7918752c95b449691f916"
+        "239aab24cbc4bc5cdc653e9273b687ccc01fa908c63a8f1903ea5d997b56af9f"
+        "f05ac3bb1e7f18fae5568c580d1324cd33cdd5f90764120a4f6fa3cac55269b6"
+        "ad2c71cbac89c691e052e9ed660eba99db9092e3f4a5ed4314910edae3779090"
+        "a4015c508b22e16b74ca58dad81273b4",
+        "4df3fa60e97ddd3d9890bfc71e75f43aa2951f8b9f1eafbc7d85dcd52587af30"
+        "4ddcd513d4608123d797d3b734dced7c7549d54a0d18f19b3a3d8a46f1c480b8"
+        "4a986f47610907e764d214ee2af6831aad11daa8c55a483d7c99cdd418cb06a5"
+        "ee1be3f5cccefc1c5200f4320399b7430c90cf00bc901df08a20e2fbeee38e0a"
+        "65b4a43038ecbdfd7ecd3a8d138e862e6313fafc39453b2e610577749a1e0d11"
+        "7c3ec5018d3b56495d03e639c46233752371bcefb276b9b7b0623a6bf533cb72"
+        "016238ecc3ac227717c3c6b69b5f74ac27b2c966e552b85b67739c3540930cc0"
+        "e3a62d4a7362bd825d13fe1a6b68d6152ac6615eca89b3c1b8571e57b55766fb"
+        "a3ac11df6161dd6e5110e9047a6637349b0e49738a4ca52ba7e0f84e01a2af01"
+        "db63fa36bafc6e212089196b20d30b346ce865f0c1412d196e56b328cd1c2399"
+        "59202aeabc56aa08c847360ea1d3a5521748e853869b7a783874424c62b5da33"
+        "1d95880aa77ec6d04aa59b6e2e85a75a3fcc9be9537c3cf065d69537e1454024"
+        "4398137ae4d6cc84c5323df0b9cccf5bc51ad873847369c92e0bed692bc03b47"
+        "94b20ac22f672a64ecd15a69665f21233f47e6904b6cd2972ffc6aeb2961f666"
+        "923c13d3ab532009211c784f6a855320"
+   },
+   // len = 348 bytes = 21 blocks + 12 bytes (= 16 + 5 blocks + t bytes)
     {
         "ccdeca713961d5f0fa9f3717aa335e3fd37637a08fa1e0b0299d23e22cd012b4"
         "d64c1903a731de4c97c2d4817803fd2a1d9de770026492db4f61b4cd158a0fe5",
@@ -753,7 +830,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "7fefc0a1c37727269e3440d765e2e3d736003e6d0408d2ebcabffc0d275f61e5"
         "2ebeb0c06962e11a3ff932a3f32f74eddb06f26b50f88d1b9741e53f"
     },
-    // len = 359 bytes = 22 blocks + 7 bytes
+    // len = 359 bytes = 22 blocks + 7 bytes (= 16 + 6 blocks + t bytes)
     {
         "b120b40812ac153cf5ad7235213d12186b31f83ca4523e20e8928fd1a552757b"
         "046dbf1c6b475566595fc277dea167c3391f390be8b98f33cd5ac7b00eb76ae0",
@@ -783,7 +860,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "e85d813d4adbd69083bcb7bcda1667d30e0315753e1801c165b7f8a8be6a0717"
         "c6d5e3ce942c57"
     },
-    // len = 370 bytes = 23 blocks + 2 bytes
+    // len = 370 bytes = 23 blocks + 2 bytes (= 16 + 7 blocks + t bytes)
     {
         "f4269bca3fb01715a422ab9f9dedb7b4218e8a004af9216e687cc024d55fc239"
         "71e2b043f12f710d59b63011ba02b0acdabc59c9b0610ec590131b5d128d14e4",
@@ -813,7 +890,37 @@ static const XTSTestCase kXTSTestCases[] = {
         "59ad6b5d74d0677c792a89c3c20f22285ae56aaea231b27fc0be998320cc395c"
         "42d9a1b72c80603465ca9bdb3960f0f7a534"
     },
-    // len = 399 bytes = 24 blocks + 15 bytes
+    // len = 384 bytes = 24 blocks (= 16 + 8 blocks)
+    {
+        "53cf540aac7f2dd4fef9161811619879af7b9378ccd7ca9eb78aa39c319e11b4"
+        "9b904b754798d2a40cc10ccf8fe913eb4803853ff8f9abc897cda2b4fec917c0",
+        "5f2fc3f2b53c328134097bfeb519c66c",
+        "b0503a54f3d60824d4a6eee6bda2a61cd26a0f87a64108da4a83d8ff9c9e6c4d"
+        "efa6a1e27ca9065150f4370d97dd2a694739f0ed7af8c7c47c9fc4183e30652d"
+        "d6060f52b015a3000ada0da1b8370aff70faedeaf2b4af6e54738792a3ecbf79"
+        "f3cecba3e36fa3ed49b08e01e898015892ee4385a2f2f3f6657a88086747815a"
+        "154cfdf9bba0e605507506380d0791a0f5d42598c6188e2b931733fa5eb45474"
+        "00516dbcf153c141c8c77ad6cf0b76c4df9b5ca5b3ebd04602034060b794d4b7"
+        "e54173d69534185dfc9233cb9da98f7c44ec21f8d7f13ed9f47f39ab130e62f9"
+        "4fd6cfe40ae742067975d1161f6192634db35b24a49afd981936432c44a62594"
+        "7cf57886dcba8d56305e6c4fbfffb20cb20e3057a82defc16433eda8d9133c55"
+        "08b5dbe46f683a9fc7a7ee86a6a19358afc3af57f19f1855d205fdab183a0020"
+        "efdb055e443ffe0be6ec918c8d24e53ce89493d933ab2e05b12bb0c965b0ea54"
+        "8cefb3d02eb1db159d6ca12b918667791bfb524ea6805457ab042111b50b6541",
+        "89119ff52d0dd7274f6bef39e395541f9a7db5d4bbefefd73a3126bfc9dec2fe"
+        "9af741c5b70a3322aa84c88ddae92c7c48ce2685950139c644eb5faad8e0d823"
+        "9e65b272cb4bde4562294445249a0bccfd27f06074217b45344b4ec1c83d0024"
+        "244a300b8fe9e6e4266c75fc8bdf219cbfa0c0286fc772e34e1742c12732251c"
+        "3d3c2b5425535214abe1f0aeabdd86a28d562df5c8f851a54c3517bca02029c0"
+        "7229b6493297b8c5173b72d7ad3732bb100d5e92ca02a3d339a6838dc7744d44"
+        "bedfe9696e2ed6869277c406c3b64148e2dec18c28c0db1afd557285046a851e"
+        "5f95ca48117900e21ae7204a01122135f0b667e12dc81476547081507fdf506e"
+        "7a14107a9f172c61948b92d92c6337c77bdaf6ba07691d105518b5887c22f526"
+        "4f3b7838f3e8b56d568d8249d28cd62457aad01b8b90a1ff4548cc02e794a12c"
+        "c7d8af55204bffda04dd8f53041876a3468a4d5747f57b225b4feb1fbb523103"
+        "30145923a945c02b6d79acf69e0c6b4126f1ca0f722b377f1f9b5b1dc246d462"
+    },
+    // len = 399 bytes = 24 blocks + 15 bytes (= 16 + 8 blocks + t bytes)
     {
         "53cf540aac7f2dd4fef9161811619879af7b9378ccd7ca9eb78aa39c319e11b4"
         "9b904b754798d2a40cc10ccf8fe913eb4803853ff8f9abc897cda2b4fec917c0",
@@ -845,7 +952,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "30145923a945c02b6d79acf69e0c6b41408deab6ecb2f4b7fbb760372d7bdb8a"
         "26f1ca0f722b377f1f9b5b1dc246d4"
     },
-    // len = 512 bytes = 32 blocks
+    // len = 512 bytes = 32 blocks (2 * 16 blocks)
     {
         "471f9a9ee92d06701e84d8ee35773e00939620dcfe7679b4aa6eb0d6c59bec8a"
         "f51000afca6d6fafc3d7775468b59e86202d34090a05e79738825de54e049b7f",
@@ -923,7 +1030,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "9cfc069b2fc61d0a4c7cdcb9d7bee655df0f08137ed40076a293a450b4602009"
         "cdb56932ca319152849f37"
     },
-    // len = 544 bytes = 34 blocks
+    // len = 544 bytes = 34 blocks (2 * 16 + 2 blocks)
     {
         "b0f0dc151095ec58d407195199de7a769a755b2bda7c52a039474db388ee3b2d"
         "f04af5b44f1091da6520a660f008aa2a66778a6cc0c6d426a75298e6910364d6",
@@ -995,8 +1102,39 @@ static const XTSTestCase kXTSTestCases[] = {
     },
 };
 
+#if defined(OPENSSL_LINUX)
+static uint8_t *get_buffer_beg(int pagesize) {
+  // Allocate 3x pagesize memory and protect the first and last pages against
+  // read/write.
+  // Return the beginning of the non-protected page.
+  uint8_t *three_pages_p = (uint8_t *)mmap(NULL, 3*pagesize, PROT_READ|PROT_WRITE,
+                                      MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+  EXPECT_TRUE(three_pages_p != NULL) << "mmap returned NULL.";
+
+  int ret = mprotect(three_pages_p, pagesize, PROT_NONE);
+  EXPECT_TRUE(ret == 0) << "mprotect 1st page failed.";
+
+  ret = mprotect(three_pages_p + 2*pagesize, pagesize, PROT_NONE);
+  EXPECT_TRUE(ret == 0) << "mprotect 3rd page failed.";
+
+  return three_pages_p + pagesize;
+}
+
+static void free_memory(uint8_t *addr, int pagesize) {
+  munmap(addr - 2* pagesize, 3 * pagesize);
+}
+#endif
+
 TEST(XTSTest, TestVectors) {
   unsigned test_num = 0;
+#if defined(OPENSSL_LINUX)
+  int pagesize = sysconf(_SC_PAGE_SIZE);
+  ASSERT_GE(pagesize, 0);
+  uint8_t *in_buffer_beg = get_buffer_beg(pagesize);
+  uint8_t *out_buffer_beg = get_buffer_beg(pagesize);
+  uint8_t *in_buffer_end = in_buffer_beg + pagesize;
+  uint8_t *out_buffer_end = out_buffer_beg + pagesize;
+#endif
   for (const auto &test : kXTSTestCases) {
     test_num++;
     SCOPED_TRACE(test_num);
@@ -1013,45 +1151,68 @@ TEST(XTSTest, TestVectors) {
     ASSERT_EQ(EVP_CIPHER_iv_length(cipher), iv.size());
     ASSERT_EQ(plaintext.size(), ciphertext.size());
 
+    int len;
+    uint8_t *in_p, *out_p;
+  #if defined(OPENSSL_LINUX)
+    ASSERT_GE(pagesize, (int)plaintext.size());
+
     // Note XTS doesn't support streaming, so we only test single-shot inputs.
-    for (bool in_place : {false, true}) {
-      SCOPED_TRACE(in_place);
-
-      // Test encryption.
-      bssl::Span<const uint8_t> in = plaintext;
-      std::vector<uint8_t> out(plaintext.size());
-      if (in_place) {
-        out = plaintext;
-        in = out;
+    // Outer loop is for placing the input at the end of the allowed memory
+    // (to test for overread) then at the beginning of it (to test for
+    // underread).
+    for (bool beg: {false, true}) {
+      if (!beg) {
+        in_p = in_buffer_end - plaintext.size();
+        out_p = out_buffer_end - plaintext.size();
+      } else {
+        // beginning of unprotected memory after a protected page
+        in_p = in_buffer_end - pagesize;
+        out_p = out_buffer_end - pagesize;
       }
+      OPENSSL_memset(in_p, 0x00, plaintext.size());
+      OPENSSL_memset(out_p, 0x00, plaintext.size());
+    #else
+      std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
+      std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
+      in_p = in.get();
+      out_p = out.get();
+    #endif
+          for (bool in_place : {false, true}) {
+        SCOPED_TRACE(in_place);
 
-      bssl::ScopedEVP_CIPHER_CTX ctx;
-      ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                                     iv.data()));
-      int len;
-      ASSERT_TRUE(
-          EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
-      out.resize(len);
-      EXPECT_EQ(Bytes(ciphertext), Bytes(out));
+        // Test encryption.
 
-      // Test decryption.
-      in = ciphertext;
-      out.clear();
-      out.resize(plaintext.size());
-      if (in_place) {
-        out = ciphertext;
-        in = out;
+        OPENSSL_memcpy(in_p, plaintext.data(), plaintext.size());
+        if (in_place) {
+          out_p = in_p;
+        }
+
+        bssl::ScopedEVP_CIPHER_CTX ctx;
+        ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                      iv.data()));
+        ASSERT_TRUE(
+            EVP_EncryptUpdate(ctx.get(), out_p, &len, in_p, plaintext.size()));
+        EXPECT_EQ(Bytes(ciphertext), Bytes(out_p, static_cast<size_t>(len)));
+
+        // Test decryption.
+
+        if (!in_place) {
+          OPENSSL_memset(in_p, 0, len);
+        }
+
+        ctx.Reset();
+        ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                      iv.data()));
+        ASSERT_TRUE(
+            EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, ciphertext.size()));
+        EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
       }
-
-      ctx.Reset();
-      ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                                     iv.data()));
-      ASSERT_TRUE(
-          EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
-      out.resize(len);
-      EXPECT_EQ(Bytes(plaintext), Bytes(out));
     }
+#if defined(OPENSSL_LINUX)
   }
+  free_memory(in_buffer_end, pagesize);
+  free_memory(out_buffer_end, pagesize);
+#endif
 }
 
 // Negative test for key1 = key2

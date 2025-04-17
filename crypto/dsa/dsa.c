@@ -241,6 +241,11 @@ int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
                           int *out_counter, unsigned long *out_h,
                           BN_GENCB *cb)
 {
+  if (bits > OPENSSL_DSA_MAX_MODULUS_BITS) {
+    OPENSSL_PUT_ERROR(DSA, DSA_R_INVALID_PARAMETERS);
+    return 0;
+  }
+
   int ok = 0;
   unsigned char seed[SHA256_DIGEST_LENGTH];
   unsigned char md[SHA256_DIGEST_LENGTH];
@@ -510,11 +515,13 @@ DSA *DSAparams_dup(const DSA *dsa) {
 }
 
 int DSA_generate_key(DSA *dsa) {
-  int ok = 0;
-  BN_CTX *ctx = NULL;
-  BIGNUM *pub_key = NULL, *priv_key = NULL;
+  if (!dsa_check_key(dsa)) {
+    return 0;
+  }
 
-  ctx = BN_CTX_new();
+  int ok = 0;
+  BIGNUM *pub_key = NULL, *priv_key = NULL;
+  BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     goto err;
   }

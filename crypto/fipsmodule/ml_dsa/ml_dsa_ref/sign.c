@@ -51,7 +51,7 @@ static int ml_dsa_keypair_pct(ml_dsa_params *params,
  *                             array of CRYPTO_SECRETKEYBYTES bytes)
  *              - const uint8_t *rnd: pointer to random seed
  *
- * Returns 0 (success)
+ * Returns 0 (success) -1 on failure or abort depending on FIPS mode
  **************************************************/
 int ml_dsa_keypair_internal(ml_dsa_params *params,
                             uint8_t *pk,
@@ -114,6 +114,7 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
   // Abort in case of PCT failure.
   if (!ml_dsa_keypair_pct(params, pk, sk)) {
     AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+    return -1;
   }
 #endif
   return 0;
@@ -126,21 +127,21 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
 *              Generates public and private key.
 *
 * Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *pk: pointer to output public key (allocated
-*                             array of CRYPTO_PUBLICKEYBYTES bytes)
-*              - uint8_t *sk: pointer to output private key (allocated
-*                             array of CRYPTO_SECRETKEYBYTES bytes)
+*              - uint8_t *pk:   pointer to output public key (allocated
+*                               array of CRYPTO_PUBLICKEYBYTES bytes)
+*              - uint8_t *sk:   pointer to output private key (allocated
+*                               array of CRYPTO_SECRETKEYBYTES bytes)
+*              - uint8_t *seed: pointer to output keygen seed (allocated
+*                               array of ML_DSA_SEEDBYTES bytes)
 *
 * Returns 0 (success) -1 on failure
 **************************************************/
-int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
-  uint8_t seed[ML_DSA_SEEDBYTES];
+int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *seed) {
   if (!RAND_bytes(seed, ML_DSA_SEEDBYTES)) {
     return -1;
   }
-  ml_dsa_keypair_internal(params, pk, sk, seed);
-  OPENSSL_cleanse(seed, sizeof(seed));
-  return 0;
+  int result = ml_dsa_keypair_internal(params, pk, sk, seed);
+  return result;
 }
 
 /*************************************************
@@ -197,9 +198,9 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   if (!external_mu) {
     //constuct mu = h(tr | m') when not in prehash mode
     SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-    SHA3_Update(&state, tr, ML_DSA_TRBYTES);
-    SHA3_Update(&state, pre, prelen);
-    SHA3_Update(&state, m, mlen);
+    SHAKE_Absorb(&state, tr, ML_DSA_TRBYTES);
+    SHAKE_Absorb(&state, pre, prelen);
+    SHAKE_Absorb(&state, m, mlen);
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
@@ -476,9 +477,9 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
     // Like crypto_sign_signature_internal, the processing of M' is performed
     // here, as opposed to within the external function.
     SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-    SHA3_Update(&state, tr, ML_DSA_TRBYTES);
-    SHA3_Update(&state, pre, prelen);
-    SHA3_Update(&state, m, mlen);
+    SHAKE_Absorb(&state, tr, ML_DSA_TRBYTES);
+    SHAKE_Absorb(&state, pre, prelen);
+    SHAKE_Absorb(&state, m, mlen);
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {

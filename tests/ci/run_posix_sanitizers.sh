@@ -7,7 +7,7 @@ set -exo pipefail
 source tests/ci/common_posix_setup.sh
 
 build_type=Release
-cflags=("-DCMAKE_BUILD_TYPE=${build_type}" "-DENABLE_DILITHIUM=ON")
+cflags=("-DCMAKE_BUILD_TYPE=${build_type}")
 if [ $(uname -p) == "aarch64" ]; then
   # BoringSSL provides two sets tests: the C/C++ tests and the blackbox tests.
   # Details: https://github.com/google/boringssl/blob/master/BUILDING.md
