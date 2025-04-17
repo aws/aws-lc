@@ -594,7 +594,7 @@ static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
 
   if (!CBS_get_bytes(&cidr_cbs, &cidr_addr, ip_len) ||
       !CBS_get_bytes(&cidr_cbs, &cidr_mask, ip_len) || CBS_len(&cidr_cbs) > 0) {
-    return X509_V_ERR_PERMITTED_VIOLATION;
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
   uint8_t ip_byte, cidr_addr_byte, cidr_mask_byte;
