@@ -19,6 +19,15 @@ mqWXNwmK7gpXYDFhX80mXKgzrGGhRANCAATCqXrfbdTjFimzdBHxj71Ejcc/stea
 5xAU/xxK+s77yXzB5lfy/zEbcYxuOrnwHrWsX9sugWgCy74ZRNWJPTDW
 -----END PRIVATE KEY-----
 
+The default intermediate certificate key, "INT_KEY_1", used for intermediate certs,
+unless otherwise specified. This is EC prime256v1 key.
+
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgi8u0pAYRFQMfuPFA
+lZbxzOm4ZKQ0WovdzFj+CzdvnzOhRANCAASeZNGM4efwO6Ui3wQtVProzLEi54vG
+YNlyza0aFtw0n5noIoCV3hlbCk7W1kdat0QyFz9rMoDlDjXLaGLE3THR
+-----END PRIVATE KEY-----
+
 The default end-entity certificate key, "EE_KEY_1", used for ee certs,
 unless otherwise specified. This is EC prime256v1 key.
 -----BEGIN PRIVATE KEY-----
@@ -171,7 +180,6 @@ Certificate:
         Subject Public Key Info:
             Public Key Algorithm: id-ecPublicKey
                 Public-Key: (256 bit)
-                pub:
                     04:c2:a9:7a:df:6d:d4:e3:16:29:b3:74:11:f1:8f:
                     bd:44:8d:c7:3f:b2:d7:9a:e7:10:14:ff:1c:4a:fa:
                     ce:fb:c9:7c:c1:e6:57:f2:ff:31:1b:71:8c:6e:3a:
@@ -538,6 +546,514 @@ jAIgISL/9Zt5VQMEhpLhxbIRbX/4dyPkwAlTwAEHPfUAd+w=
 -----END CERTIFICATE-----
 )";
 
+/*
+Intermediate CA signed by |kValidRootCA1|.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            1e:d3:b4:51:2e:cc:35:dd:ac:45:03:34:94:ff:5e:ae:a2:0c:c7:98
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Root CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 1
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:9e:64:d1:8c:e1:e7:f0:3b:a5:22:df:04:2d:54:
+                    fa:e8:cc:b1:22:e7:8b:c6:60:d9:72:cd:ad:1a:16:
+                    dc:34:9f:99:e8:22:80:95:de:19:5b:0a:4e:d6:d6:
+                    47:5a:b7:44:32:17:3f:6b:32:80:e5:0e:35:cb:68:
+                    62:c4:dd:31:d1
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Certificate Sign, CRL Sign
+            X509v3 Basic Constraints: critical
+                CA:TRUE
+            X509v3 Name Constraints:
+                Permitted:
+                  IP:10.1.0.0/255.255.0.0
+                Excluded:
+                  IP:10.1.1.0/255.255.255.0
+            X509v3 Subject Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+            X509v3 Authority Key Identifier:
+                19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:45:02:20:0d:0f:59:61:82:af:ad:7e:45:38:95:c7:76:17:
+        34:5b:57:a7:00:1c:bc:b6:24:79:00:61:f5:a6:02:5f:a1:48:
+        02:21:00:93:a0:2d:0e:6d:60:23:4d:0a:12:4d:a7:db:f4:f4:
+        f0:4b:b7:d0:7c:6b:6c:95:9f:99:e3:15:b7:d3:76:d3:c0
+*/
+static char kValidIntCAWithIPv4NameConstraints[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICUjCCAfigAwIBAgIUHtO0US7MNd2sRQM0lP9erqIMx5gwCgYIKoZIzj0EAwIw
+YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
+MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowYjELMAkGA1UEBhMC
+VVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFXUyBMaWJjcnlwdG8x
+EDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBDQSAxMFkwEwYHKoZI
+zj0CAQYIKoZIzj0DAQcDQgAEnmTRjOHn8DulIt8ELVT66MyxIueLxmDZcs2tGhbc
+NJ+Z6CKAld4ZWwpO1tZHWrdEMhc/azKA5Q41y2hixN0x0aOBizCBiDAOBgNVHQ8B
+Af8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAlBgNVHR4EHjAcoAwwCocICgEAAP//
+AAChDDAKhwgKAQEA////ADAdBgNVHQ4EFgQUudHPCKXymStagMl4I3jRvHlwn/sw
+HwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhSW98wCgYIKoZIzj0EAwIDSAAw
+RQIgDQ9ZYYKvrX5FOJXHdhc0W1enABy8tiR5AGH1pgJfoUgCIQCToC0ObWAjTQoS
+Tafb9PTwS7fQfGtslZ+Z4xW303bTwA==
+-----END CERTIFICATE-----
+)";
+
+/*
+End-entity certificate signed by |kValidIntCAWithIPv4NameConstraints|.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            3c:e0:97:cf:b4:c1:15:28:aa:a8:21:76:23:3b:ad:08:31:18:a5:4f
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Good Endpoint, CN=Permitted IP
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:10.1.2.1
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:45:02:21:00:da:b5:af:58:58:38:69:be:d1:c0:38:b3:7c:
+        2e:18:fe:5a:a8:7e:2b:85:44:b2:d8:66:78:bf:fa:b7:44:9d:
+        a7:02:20:7a:80:35:24:95:08:5e:98:af:3e:4a:4a:a5:8d:11:
+        06:90:cf:b8:34:25:04:94:86:a4:b4:9b:84:b9:61:00:65
+*/
+static char kValidEECertWithValidIPv4SubjectAltName[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICbjCCAhSgAwIBAgIUPOCXz7TBFSiqqCF2IzutCDEYpU8wCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBD
+QSAxMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjBpMQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKV2FzaGluZ3RvbjEWMBQGA1UECgwNQVdTIExpYmNyeXB0
+bzEWMBQGA1UECwwNR29vZCBFbmRwb2ludDEVMBMGA1UEAwwMUGVybWl0dGVkIElQ
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsre9NfLr2obV3EBExyMU+dClQBcw
+hbbGETjC2yzFvAwZEdhoYdajkmuKGFIs3IanrSmtkax+34ckO/O0cStOWKOBnjCB
+mzAOBgNVHQ8BAf8EBAMCBaAwDAYDVR0TAQH/BAIwADAdBgNVHSUEFjAUBggrBgEF
+BQcDAQYIKwYBBQUHAwIwHAYDVR0RBBUwE4ILZXhhbXBsZS5jb22HBAoBAgEwHQYD
+VR0OBBYEFMh4ZOn3nA9W4h3O7u0k4J8dS6O/MB8GA1UdIwQYMBaAFLnRzwil8pkr
+WoDJeCN40bx5cJ/7MAoGCCqGSM49BAMCA0gAMEUCIQData9YWDhpvtHAOLN8Lhj+
+Wqh+K4VEsthmeL/6t0SdpwIgeoA1JJUIXpivPkpKpY0RBpDPuDQlBJSGpLSbhLlh
+AGU=
+-----END CERTIFICATE-----
+)";
+
+/*
+An invalid end-entity certificate signed by |kValidIntCAWithIPv4NameConstraints|
+with an excluded IP address in the subject alternative name.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            33:19:62:14:a9:8a:02:74:a0:ba:55:ad:73:c9:a4:7e:83:ce:18:7e
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Bad Endpoint, CN=Excluded IP
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:10.1.1.2
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:44:02:20:72:ec:70:f1:58:de:9c:66:8f:98:22:9d:ad:5a:
+        b2:e2:4a:24:2f:82:43:0f:6d:17:e7:a6:3f:81:8a:e6:76:40:
+        02:20:10:e0:6e:15:9b:9e:db:15:c8:39:5a:76:5f:17:f9:62:
+        f3:8d:c7:87:0b:eb:bc:42:42:22:73:65:b5:82:01:91
+*/
+static char kInvalidEECertWithInvalidExcludedIPv4SubjAlt[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICazCCAhKgAwIBAgIUMxliFKmKAnSgulWtc8mkfoPOGH4wCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBD
+QSAxMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjBnMQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKV2FzaGluZ3RvbjEWMBQGA1UECgwNQVdTIExpYmNyeXB0
+bzEVMBMGA1UECwwMQmFkIEVuZHBvaW50MRQwEgYDVQQDDAtFeGNsdWRlZCBJUDBZ
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABLK3vTXy69qG1dxARMcjFPnQpUAXMIW2
+xhE4wtssxbwMGRHYaGHWo5JrihhSLNyGp60prZGsft+HJDvztHErTlijgZ4wgZsw
+DgYDVR0PAQH/BAQDAgWgMAwGA1UdEwEB/wQCMAAwHQYDVR0lBBYwFAYIKwYBBQUH
+AwEGCCsGAQUFBwMCMBwGA1UdEQQVMBOCC2V4YW1wbGUuY29thwQKAQECMB0GA1Ud
+DgQWBBTIeGTp95wPVuIdzu7tJOCfHUujvzAfBgNVHSMEGDAWgBS50c8IpfKZK1qA
+yXgjeNG8eXCf+zAKBggqhkjOPQQDAgNHADBEAiBy7HDxWN6cZo+YIp2tWrLiSiQv
+gkMPbRfnpj+BiuZ2QAIgEOBuFZue2xXIOVp2Xxf5YvONx4cL67xCQiJzZbWCAZE=
+-----END CERTIFICATE-----
+)";
+
+/*
+Signed by |kValidIntCAWithIPv4NameConstraints|, but with an invalid permitted ip address.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            7a:15:18:c0:d9:39:b6:d9:8e:9a:29:87:d8:6a:ad:ce:5b:90:cc:49
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Bad Endpoint, CN=Not Permitted IP
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:10.2.0.1
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:45:02:21:00:de:8a:39:0b:90:fe:1b:37:f3:9f:ab:60:77:
+        58:8b:79:1b:3a:06:ed:dc:91:85:98:b5:21:44:d5:a6:da:04:
+        e9:02:20:22:60:af:9d:79:56:4c:bf:50:ae:eb:93:ac:fd:6e:
+        d1:f9:60:d5:24:0e:09:00:33:8c:f1:46:6a:69:f8:24:03
+*/
+static char kInvalidEECertWithInvalidPermittedIPv4SubjAlt[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICcTCCAhegAwIBAgIUehUYwNk5ttmOmimH2GqtzluQzEkwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBD
+QSAxMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjBsMQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKV2FzaGluZ3RvbjEWMBQGA1UECgwNQVdTIExpYmNyeXB0
+bzEVMBMGA1UECwwMQmFkIEVuZHBvaW50MRkwFwYDVQQDDBBOb3QgUGVybWl0dGVk
+IElQMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsre9NfLr2obV3EBExyMU+dCl
+QBcwhbbGETjC2yzFvAwZEdhoYdajkmuKGFIs3IanrSmtkax+34ckO/O0cStOWKOB
+njCBmzAOBgNVHQ8BAf8EBAMCBaAwDAYDVR0TAQH/BAIwADAdBgNVHSUEFjAUBggr
+BgEFBQcDAQYIKwYBBQUHAwIwHAYDVR0RBBUwE4ILZXhhbXBsZS5jb22HBAoCAAEw
+HQYDVR0OBBYEFMh4ZOn3nA9W4h3O7u0k4J8dS6O/MB8GA1UdIwQYMBaAFLnRzwil
+8pkrWoDJeCN40bx5cJ/7MAoGCCqGSM49BAMCA0gAMEUCIQDeijkLkP4bN/Ofq2B3
+WIt5GzoG7dyRhZi1IUTVptoE6QIgImCvnXlWTL9QruuTrP1u0flg1SQOCQAzjPFG
+amn4JAM=
+-----END CERTIFICATE-----
+)";
+
+/*
+Signed by |kValidRootCA1|.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            5b:f2:ea:34:90:86:19:ae:89:9d:e7:81:9b:37:4d:93:8e:32:10:48
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Root CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 2
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:9e:64:d1:8c:e1:e7:f0:3b:a5:22:df:04:2d:54:
+                    fa:e8:cc:b1:22:e7:8b:c6:60:d9:72:cd:ad:1a:16:
+                    dc:34:9f:99:e8:22:80:95:de:19:5b:0a:4e:d6:d6:
+                    47:5a:b7:44:32:17:3f:6b:32:80:e5:0e:35:cb:68:
+                    62:c4:dd:31:d1
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Certificate Sign, CRL Sign
+            X509v3 Basic Constraints: critical
+                CA:TRUE
+            X509v3 Name Constraints:
+                Permitted:
+                  IP:0:0:0:0:0:FFFF:A01:0/FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:0
+                Excluded:
+                  IP:0:0:0:0:0:FFFF:A01:100/FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FF00
+            X509v3 Subject Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+            X509v3 Authority Key Identifier:
+                19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:45:02:20:22:a0:76:63:1e:2b:a6:f7:f3:e7:ba:ca:23:65:
+        f6:ed:7e:c5:e2:84:5a:81:70:58:d3:33:2c:0a:5c:c6:0a:a0:
+        02:21:00:f3:87:b7:3f:e6:3b:fe:a2:00:c9:b7:e2:a0:5e:52:
+        36:ce:25:39:83:55:bb:45:55:95:09:47:a5:2e:20:85:42
+*/
+static char kValidIntCAWithIPv6NameConstraints[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICgjCCAiigAwIBAgIUW/LqNJCGGa6JneeBmzdNk44yEEgwCgYIKoZIzj0EAwIw
+YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
+MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowYjELMAkGA1UEBhMC
+VVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFXUyBMaWJjcnlwdG8x
+EDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBDQSAyMFkwEwYHKoZI
+zj0CAQYIKoZIzj0DAQcDQgAEnmTRjOHn8DulIt8ELVT66MyxIueLxmDZcs2tGhbc
+NJ+Z6CKAld4ZWwpO1tZHWrdEMhc/azKA5Q41y2hixN0x0aOBuzCBuDAOBgNVHQ8B
+Af8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zBVBgNVHR4ETjBMoCQwIocgAAAAAAAA
+AAAAAP//CgEAAP//////////////////AAChJDAihyAAAAAAAAAAAAAA//8KAQEA
+////////////////////ADAdBgNVHQ4EFgQUudHPCKXymStagMl4I3jRvHlwn/sw
+HwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhSW98wCgYIKoZIzj0EAwIDSAAw
+RQIgIqB2Yx4rpvfz57rKI2X27X7F4oRagXBY0zMsClzGCqACIQDzh7c/5jv+ogDJ
+t+KgXlI2ziU5g1W7RVWVCUelLiCFQg==
+-----END CERTIFICATE-----
+)";
+
+/*
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            50:69:9a:a0:95:99:2f:a6:e6:b1:72:93:88:56:64:bd:33:98:83:92
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 2
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Good Endpoint, CN=Permitted IPv6
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:0:0:0:0:0:FFFF:A01:201
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:44:02:20:06:7e:89:4d:f3:c0:9f:bc:8d:1c:b7:10:43:a4:
+        06:dc:63:b3:29:d3:96:bb:b8:15:a6:f3:8f:28:75:6b:a6:f0:
+        02:20:49:7f:ce:91:3d:44:0e:f4:c8:22:c0:c1:fe:f0:e1:a4:
+        55:31:29:24:30:40:06:27:29:51:89:1a:aa:a9:7e:4e
+*/
+static char kValidEECertWithValidIPv6SubjectAltName[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICezCCAiKgAwIBAgIUUGmaoJWZL6bmsXKTiFZkvTOYg5IwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBD
+QSAyMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjBrMQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKV2FzaGluZ3RvbjEWMBQGA1UECgwNQVdTIExpYmNyeXB0
+bzEWMBQGA1UECwwNR29vZCBFbmRwb2ludDEXMBUGA1UEAwwOUGVybWl0dGVkIElQ
+djYwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASyt7018uvahtXcQETHIxT50KVA
+FzCFtsYROMLbLMW8DBkR2Ghh1qOSa4oYUizchqetKa2RrH7fhyQ787RxK05Yo4Gq
+MIGnMA4GA1UdDwEB/wQEAwIFoDAMBgNVHRMBAf8EAjAAMB0GA1UdJQQWMBQGCCsG
+AQUFBwMBBggrBgEFBQcDAjAoBgNVHREEITAfggtleGFtcGxlLmNvbYcQAAAAAAAA
+AAAAAP//CgECATAdBgNVHQ4EFgQUyHhk6fecD1biHc7u7STgnx1Lo78wHwYDVR0j
+BBgwFoAUudHPCKXymStagMl4I3jRvHlwn/swCgYIKoZIzj0EAwIDRwAwRAIgBn6J
+TfPAn7yNHLcQQ6QG3GOzKdOWu7gVpvOPKHVrpvACIEl/zpE9RA70yCLAwf7w4aRV
+MSkkMEAGJylRiRqqqX5O
+-----END CERTIFICATE-----
+)";
+
+/*
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            15:a5:1d:5a:37:04:67:db:0c:ff:14:fe:5e:48:6b:fe:bb:d3:13:6c
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 2
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Good Endpoint, CN=Excluded IPv6
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:0:0:0:0:0:FFFF:A01:102
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:44:02:20:4c:76:bd:2e:df:89:c9:be:78:53:f7:71:d6:85:
+        49:a0:f7:5e:c6:ed:f5:f2:88:be:3f:dc:ad:19:ab:bd:ec:ee:
+        02:20:0d:ad:b4:45:a4:3d:c3:e5:f4:16:56:40:0b:5e:33:10:
+        e6:4e:49:a6:9d:c3:eb:27:bf:3e:98:cd:d5:87:ce:db
+*/
+static char kInvalidEECertWithInvalidExcludedIPv6SubjAlt[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICejCCAiGgAwIBAgIUFaUdWjcEZ9sM/xT+Xkhr/rvTE2wwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBD
+QSAyMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjBqMQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKV2FzaGluZ3RvbjEWMBQGA1UECgwNQVdTIExpYmNyeXB0
+bzEWMBQGA1UECwwNR29vZCBFbmRwb2ludDEWMBQGA1UEAwwNRXhjbHVkZWQgSVB2
+NjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLK3vTXy69qG1dxARMcjFPnQpUAX
+MIW2xhE4wtssxbwMGRHYaGHWo5JrihhSLNyGp60prZGsft+HJDvztHErTlijgaow
+gacwDgYDVR0PAQH/BAQDAgWgMAwGA1UdEwEB/wQCMAAwHQYDVR0lBBYwFAYIKwYB
+BQUHAwEGCCsGAQUFBwMCMCgGA1UdEQQhMB+CC2V4YW1wbGUuY29thxAAAAAAAAAA
+AAAA//8KAQECMB0GA1UdDgQWBBTIeGTp95wPVuIdzu7tJOCfHUujvzAfBgNVHSME
+GDAWgBS50c8IpfKZK1qAyXgjeNG8eXCf+zAKBggqhkjOPQQDAgNHADBEAiBMdr0u
+34nJvnhT93HWhUmg917G7fXyiL4/3K0Zq73s7gIgDa20RaQ9w+X0FlZAC14zEOZO
+Saadw+snvz6YzdWHzts=
+-----END CERTIFICATE-----
+)";
+
+/*
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            75:62:5c:30:b0:0e:c2:19:c0:ae:5d:f1:32:70:09:9c:7f:0e:db:d1
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Int NC CA 2
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Bad Endpoint, CN=Not Permitted IPv6
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:example.com, IP Address:0:0:0:0:0:FFFF:A02:1
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                B9:D1:CF:08:A5:F2:99:2B:5A:80:C9:78:23:78:D1:BC:79:70:9F:FB
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:44:02:20:4f:a4:0e:29:a3:3c:43:53:78:87:5b:9e:f7:a4:
+        92:ae:fa:d0:51:db:da:1e:ec:69:cc:25:6b:be:cf:b7:e1:8a:
+        02:20:1d:f5:10:0a:3d:92:84:f3:7d:b0:86:0e:95:6b:97:b5:
+        0f:ca:4c:6b:99:0b:a0:b1:10:17:17:94:a0:bd:62:f9
+*/
+static char kInvalidEECertWithInvalidPermittedIPv6SubjAlt[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICfjCCAiWgAwIBAgIUdWJcMLAOwhnArl3xMnAJnH8O29EwCgYIKoZIzj0EAwIw
+YjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBD
+QSAyMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjBuMQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKV2FzaGluZ3RvbjEWMBQGA1UECgwNQVdTIExpYmNyeXB0
+bzEVMBMGA1UECwwMQmFkIEVuZHBvaW50MRswGQYDVQQDDBJOb3QgUGVybWl0dGVk
+IElQdjYwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASyt7018uvahtXcQETHIxT5
+0KVAFzCFtsYROMLbLMW8DBkR2Ghh1qOSa4oYUizchqetKa2RrH7fhyQ787RxK05Y
+o4GqMIGnMA4GA1UdDwEB/wQEAwIFoDAMBgNVHRMBAf8EAjAAMB0GA1UdJQQWMBQG
+CCsGAQUFBwMBBggrBgEFBQcDAjAoBgNVHREEITAfggtleGFtcGxlLmNvbYcQAAAA
+AAAAAAAAAP//CgIAATAdBgNVHQ4EFgQUyHhk6fecD1biHc7u7STgnx1Lo78wHwYD
+VR0jBBgwFoAUudHPCKXymStagMl4I3jRvHlwn/swCgYIKoZIzj0EAwIDRwAwRAIg
+T6QOKaM8Q1N4h1ue96SSrvrQUdvaHuxpzCVrvs+34YoCIB31EAo9koTzfbCGDpVr
+l7UPykxrmQugsRAXF5SgvWL5
+-----END CERTIFICATE-----
+)";
+
+
 // EE certificate should not verify if signed by invalid root CA
 TEST(X509CompatTest, CertificatesFromTrustStoreValidated) {
   bssl::UniquePtr<X509> root = CertFromPEM(kRootBadBasicConstraints);
@@ -604,5 +1120,95 @@ TEST(X509CompatTest, EECertificateWithNegativeSerialNumber) {
 
   EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), /*roots=*/{root.get()}, /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0));
+}
+
+TEST(X509CompatTest, EECertificateWithValidNameConstrainedSubjAltIPv4) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kValidIntCAWithIPv4NameConstraints);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kValidEECertWithValidIPv4SubjectAltName);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), /*roots=*/{root.get()},
+                              /*intermediates=*/{inter.get()},
+                              /*crls=*/{}, /*flags=*/0));
+}
+
+TEST(X509CompatTest, EECertificateWithInvalidExcludedNameConstrainedSubjAltIPv4) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kValidIntCAWithIPv4NameConstraints);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kInvalidEECertWithInvalidExcludedIPv4SubjAlt);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_EXCLUDED_VIOLATION,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{inter.get()},
+                   /*crls=*/{}, /*flags=*/0));
+}
+
+TEST(X509CompatTest, EECertificateWithInvalidPermittedNameConstrainedSubjAltIPv4) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kValidIntCAWithIPv4NameConstraints);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kInvalidEECertWithInvalidPermittedIPv4SubjAlt);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{inter.get()},
+                   /*crls=*/{}, /*flags=*/0));
+}
+
+TEST(X509CompatTest, EECertificateWithValidNameConstrainedSubjAltIPv6) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kValidIntCAWithIPv6NameConstraints);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kValidEECertWithValidIPv6SubjectAltName);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), /*roots=*/{root.get()},
+                              /*intermediates=*/{inter.get()},
+                              /*crls=*/{}, /*flags=*/0));
+}
+
+TEST(X509CompatTest,
+     EECertificateWithInvalidExcludedNameConstrainedSubjAltIPv6) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kValidIntCAWithIPv6NameConstraints);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kInvalidEECertWithInvalidExcludedIPv6SubjAlt);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_EXCLUDED_VIOLATION,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{inter.get()},
+                   /*crls=*/{}, /*flags=*/0));
+}
+
+TEST(X509CompatTest,
+     EECertificateWithInvalidPermittedNameConstrainedSubjAltIPv6) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kValidIntCAWithIPv6NameConstraints);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kInvalidEECertWithInvalidPermittedIPv6SubjAlt);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_PERMITTED_VIOLATION,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{inter.get()},
                    /*crls=*/{}, /*flags=*/0));
 }

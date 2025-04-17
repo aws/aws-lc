@@ -567,38 +567,45 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
 #define IPV6_CIDR_LEN (IPV6_ADDR_LEN * 2)
 
 static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
-  int ip_len, cidr_len, i;
-  const unsigned char *ip_ptr, *cidr_ptr, *cidr_prefix_ptr;
-  ip_ptr = ip->data;
-  ip_len = ip->length;
-  cidr_ptr = base->data;
-  cidr_len = base->length;
+  CBS ip_cbs, cidr_cbs, cidr_addr, cidr_mask;
 
-  // The length should be either the length of an IPv4 or IPv6 address.
-  if (!((ip_len == IPV4_ADDR_LEN) || (ip_len == IPV6_ADDR_LEN))) {
-    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
-  }
+  CBS_init(&ip_cbs, ip->data, ip->length);
+  CBS_init(&cidr_cbs, base->data, base->length);
 
-  // The CIDR length should either be the length of an IPv4 Address+mask or IPv6
-  // Address+mask.
-  if (!((cidr_len == IPV4_CIDR_LEN) || (cidr_len == IPV6_CIDR_LEN))) {
-    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
-  }
+  size_t ip_len = CBS_len(&ip_cbs);
+  size_t cidr_len = CBS_len(&cidr_cbs);
 
-  // Validate we have an IPv4 address and IPv4 CIDR or IPv6 Address and IPv6
-  // CIDR
+  // Validate that the CIDR length is twice the size of the provided IP (address
+  // + mask).
   if (ip_len * 2 != cidr_len) {
     return X509_V_ERR_PERMITTED_VIOLATION;
   }
 
-  // Pointer to the CIDR prefix mask
-  cidr_prefix_ptr = cidr_ptr + ip_len;
+  // Next the IP length should be either the length of an IPv4 or IPv6 address.
+  if (!((ip_len == IPV4_ADDR_LEN) || (ip_len == IPV6_ADDR_LEN))) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
 
-  /* Considering possible not aligned base ipAddress */
-  /* Not checking for wrong mask definition: i.e.: 255.0.255.0 */
-  for (i = 0; i < ip_len; i++) {
-    if ((ip_ptr[i] & cidr_prefix_ptr[i]) !=
-        (cidr_ptr[i] & cidr_prefix_ptr[i])) {
+  // Finally the CIDR length should either be the length of an IPv4 address+mask
+  // or IPv6 address+mask.
+  if (!((cidr_len == IPV4_CIDR_LEN) || (cidr_len == IPV6_CIDR_LEN))) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  if (!CBS_get_bytes(&cidr_cbs, &cidr_addr, ip_len) ||
+      !CBS_get_bytes(&cidr_cbs, &cidr_mask, ip_len) || CBS_len(&cidr_cbs) > 0) {
+    return X509_V_ERR_PERMITTED_VIOLATION;
+  }
+
+  uint8_t ip_byte, cidr_addr_byte, cidr_mask_byte;
+
+  // Considering possible not aligned base ipAddress
+  // Not checking for wrong mask definition: i.e.: 255.0.255.0
+  for (size_t i = 0; i < ip_len; i++) {
+    if (!CBS_get_u8(&ip_cbs, &ip_byte) ||
+        !CBS_get_u8(&cidr_addr, &cidr_addr_byte) ||
+        !CBS_get_u8(&cidr_mask, &cidr_mask_byte) ||
+        ((ip_byte & cidr_mask_byte) != (cidr_addr_byte & cidr_mask_byte))) {
       return X509_V_ERR_PERMITTED_VIOLATION;
     }
   }
