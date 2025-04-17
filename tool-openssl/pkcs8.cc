@@ -140,7 +140,7 @@ bool pkcs8Tool(const args_list_t &args) {
     }
     
     const uint8_t *p = data;
-    pkey = d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &p, len);  // Assuming RSA, will add support for other types later
+    pkey = d2i_AutoPrivateKey(nullptr, &p, len);  // Support for all key types
     OPENSSL_free(data);
   }
   
@@ -148,6 +148,7 @@ bool pkcs8Tool(const args_list_t &args) {
     OPENSSL_free(passin);
     OPENSSL_free(passout);
     fprintf(stderr, "Error: Failed to read private key from '%s'\n", in_path.c_str());
+    fprintf(stderr, "Check that the file contains a valid key and the password (if any) is correct\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
@@ -158,10 +159,11 @@ bool pkcs8Tool(const args_list_t &args) {
     // Convert to PKCS#8
     if (nocrypt) {
       // Unencrypted PKCS#8
-      PKCS8_PRIV_KEY_INFO *p8inf = EVP_PKEY2PKCS8(pkey);
-      if (!p8inf) {
-        fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
-        ERR_print_errors_fp(stderr);
+        PKCS8_PRIV_KEY_INFO *p8inf = EVP_PKEY2PKCS8(pkey);
+        if (!p8inf) {
+          fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
+          fprintf(stderr, "The key type may not be supported for PKCS#8 conversion\n");
+          ERR_print_errors_fp(stderr);
       } else {
         // Write the output
         if (outform == "PEM") {
@@ -185,21 +187,21 @@ bool pkcs8Tool(const args_list_t &args) {
         }
         
         // Handle PRF algorithm if specified
-        int prf_nid = NID_hmacWithSHA1;  // Default to SHA1
+        // Note: While OpenSSL supports explicit PRF selection, AWS-LC uses its default PRF
+        // implementation for PKCS#8 encryption. The -v2prf parameter is accepted for
+        // command-line compatibility but does not affect the actual PRF used.
         if (!v2prf.empty()) {
-          if (v2prf == "hmacWithSHA1") {
-            prf_nid = NID_hmacWithSHA1;
-          } else if (v2prf == "hmacWithSHA256") {
-            prf_nid = NID_hmacWithSHA256;
-          } else if (v2prf == "hmacWithSHA512") {
-            prf_nid = NID_hmacWithSHA512;
-          } else {
+          // In AWS-LC, we'll validate that it's one of the known values to maintain compatibility
+          if (v2prf != "hmacWithSHA1" && 
+              v2prf != "hmacWithSHA256" && 
+              v2prf != "hmacWithSHA512") {
             fprintf(stderr, "Error: Unknown PRF %s\n", v2prf.c_str());
             EVP_PKEY_free(pkey);
             OPENSSL_free(passin);
             OPENSSL_free(passout);
             return false;
           }
+          // The PRF specification is validated but not used by AWS-LC implementation
         }
         
         // Convert and encrypt
@@ -210,9 +212,15 @@ bool pkcs8Tool(const args_list_t &args) {
             fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
             ERR_print_errors_fp(stderr);
           } else {
-            // Use default PKCS#5 v2.0 with the specified cipher
+            // Always use the default PRF (-1) with the specified cipher
+            // AWS-LC's implementation ignores explicit PRF specifications
             p8 = PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
                               NULL, 0, PKCS12_DEFAULT_ITER, p8inf);
+            if (!p8) {
+              fprintf(stderr, "Error: Failed to encrypt private key\n");
+              fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
+              ERR_print_errors_fp(stderr);
+            }
             PKCS8_PRIV_KEY_INFO_free(p8inf);
           }
         }
@@ -246,6 +254,7 @@ bool pkcs8Tool(const args_list_t &args) {
   
   if (!result) {
     fprintf(stderr, "Error: Failed to write private key\n");
+    fprintf(stderr, "Check file permissions and available disk space\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
