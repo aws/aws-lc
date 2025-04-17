@@ -87,14 +87,16 @@ TEST_F(PKCS8Test, PKCS8ToolFormatTest) {
 
 // Test -v2 with aes-256-cbc and -passout
 TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
-  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-passout", "file:pass_path"};
+  std::string passout = std::string("file:") + pass_path;
+  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-passout", passout.c_str()};
   bool result = pkcs8Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -v2prf with hmacWithSHA256
 TEST_F(PKCS8Test, PKCS8ToolPRFTest) {
-  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-v2prf", "hmacWithSHA256", "-passout", "file:pass_path"};
+  std::string passout = std::string("file:") + pass_path;
+  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-v2prf", "hmacWithSHA256", "-passout", passout.c_str()};
   bool result = pkcs8Tool(args);
   ASSERT_TRUE(result);
 }
