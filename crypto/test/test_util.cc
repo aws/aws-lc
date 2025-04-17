@@ -18,15 +18,14 @@
 #include <ostream>
 #include <thread>
 
-#if !defined(OPENSSL_WINDOWS)
-#include <sys/wait.h>
-#endif
+#include <inttypes.h>
 
 #include <openssl/err.h>
-#include <openssl/pem.h>
 
 #include "../internal.h"
 #include "../ube/fork_detect.h"
+#include "openssl/pem.h"
+#include "openssl/rand.h"
 
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
@@ -171,6 +170,37 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   }
   return GetTempFileNameA(pathname, "awslctest", 0, buffer);
 }
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  char temp_path[PATH_MAX];
+  union {
+    uint8_t bytes[8];
+    uint64_t value;
+  } random_bytes;
+
+  // Get the temporary path
+  if (0 == GetTempPathA(PATH_MAX, temp_path)) {
+    return 0;
+  }
+
+  if (!RAND_bytes(random_bytes.bytes, sizeof(random_bytes.bytes))) {
+    return 0;
+  }
+
+  int written = snprintf(buffer, PATH_MAX, "%s\\awslctest_%" PRIX64, temp_path, random_bytes.value);
+
+  // Check for truncation of dirname
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+
+  if (!CreateDirectoryA(buffer, NULL)) {
+    return 0;
+  }
+
+  return (size_t)written;
+}
+
 FILE* createRawTempFILE() {
   char filename[PATH_MAX];
   if(createTempFILEpath(filename) == 0) {
@@ -178,6 +208,7 @@ FILE* createRawTempFILE() {
   }
   return fopen(filename, "w+b");
 }
+
 #else
 #include <cstdlib>
 #include <unistd.h>
@@ -192,6 +223,15 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   close(fd);
   return strnlen(buffer, PATH_MAX);
 }
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  snprintf(buffer, PATH_MAX, "/tmp/awslcTestDirXXXXXX");
+  if (mkdtemp(buffer) == NULL) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+
 FILE* createRawTempFILE() {
   return tmpfile();
 }

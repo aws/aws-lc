@@ -195,12 +195,12 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")
-    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att)
+    set(S2N_BIGNUM_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/x86_att)
   else()
-    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm)
+    set(S2N_BIGNUM_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/arm)
   endif()
 
-  set(S2N_BIGNUM_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/include)
+  set(S2N_BIGNUM_INCLUDE_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/include)
 
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
@@ -322,13 +322,13 @@ function(s2n_asm_cpreprocess dest src)
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
 
   if(BORINGSSL_PREFIX)
-    set(S2N_BIGNUM_PREFIX_INCLUDE "--include=${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+    set(S2N_BIGNUM_PREFIX_INCLUDE "--include=${AWSLC_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h")
   endif()
 
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} ${S2N_BIGNUM_PREFIX_INCLUDE} -DS2N_BN_HIDE_SYMBOLS | tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${AWSLC_BINARY_DIR}/symbol_prefix_include -I${S2N_BIGNUM_INCLUDE_DIR} ${S2N_BIGNUM_PREFIX_INCLUDE} -DS2N_BN_HIDE_SYMBOLS | tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .
@@ -367,7 +367,7 @@ if(FIPS_DELOCATE)
   add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
   # Important: We do not want to add the generated prefix symbols to the include path here!
   # Delocator expects symbols to not be prefixed.
-  target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(bcm_c_generated_asm PRIVATE ${AWSLC_SOURCE_DIR}/include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -394,17 +394,17 @@ if(FIPS_DELOCATE)
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
     ${DELOCATE_EXTRA_ARGS}
-    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
+    ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
+    ${AWSLC_SOURCE_DIR}/include/openssl/target.h
     ${BCM_ASM_SOURCES}
     DEPENDS
     bcm_c_generated_asm
     delocate
     ${BCM_ASM_SOURCES}
-    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
+    ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
+    ${AWSLC_SOURCE_DIR}/include/openssl/target.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
@@ -426,8 +426,8 @@ if(FIPS_DELOCATE)
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset boringssl_prefix_symbols)
-  target_include_directories(bcm_hashunset BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(bcm_hashunset PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(bcm_hashunset BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_hashunset PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
@@ -458,8 +458,8 @@ if(FIPS_DELOCATE)
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -478,8 +478,8 @@ elseif(FIPS_SHARED)
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   add_library(
     bcm_library
@@ -491,11 +491,11 @@ elseif(FIPS_SHARED)
     ${BCM_ASM_SOURCES}
   )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
-  target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
   add_dependencies(bcm_library boringssl_prefix_symbols)
-  target_include_directories(bcm_library BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(bcm_library BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include)
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -602,7 +602,7 @@ else()
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
 endif()

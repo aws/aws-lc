@@ -10,130 +10,18 @@ concurrency:
 env:
   CC: gcc
 jobs:
-  nmap:
+  libssh2:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make gobject-introspection
-      - uses: actions/checkout@v3
-      - name: Run nmap build
-        run: |
-          ./tests/ci/integration/run_nmap_integration.sh
-  grpc:
-    if: github.repository_owner == 'aws'
-    env:
-      DEBIAN_FRONTEND: noninteractive
-      TZ: Etc/UTC
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:latest
-      options: --sysctl=net.ipv6.conf.all.disable_ipv6=0
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          apt-get -y --no-install-recommends install cmake gcc g++ ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev python3-six
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_grpc_integration.sh
-  python-main:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    name: Python main
     steps:
       - name: Install OS Dependencies
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build python, run tests
-        run: |
-          ./tests/ci/integration/run_python_integration.sh main
-  python-releases:
-    if: github.repository_owner == 'aws'
-    strategy:
-      fail-fast: false
-      matrix:
-        openssl_in_crt:
-          - "0"
-          - "1"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-latest
-    name: Python releases (FIPS=${{ matrix.fips}} OPENSSL_IN_CRT=${{ matrix.openssl_in_crt }})
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build python, run tests
-        run: |
-          ./tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13
-        env:
-          FIPS: ${{ matrix.fips }}
-          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
-  bind9:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-pytest autoconf pkg-config libcmocka-dev liburcu-dev libuv1-dev libnghttp2-dev libcap-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libjemalloc-dev
-      - uses: actions/checkout@v3
-      - name: Run bind9 build
-        run: |
-          ./tests/ci/integration/run_bind9_integration.sh
-  strongswan:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang make gperf bison flex autogen autoconf \
-          pkg-config libtool gettext libgmp-dev libsystemd-dev
       - uses: actions/checkout@v4
-      - name: Run strongswan build
+      - name: Run libssh2 integration tests
         run: |
-          ./tests/ci/integration/run_strongswan_integration.sh
-  openvpn2-6:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev \
-          libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
-          python3-docutils
-      - uses: actions/checkout@v4
-      - name: Run openvpn build 2.6.x
-        run: |
-          ./tests/ci/integration/run_openvpn_integration.sh release/2.6
-  openvpnMaster:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev \
-          libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
-          python3-docutils
-      - uses: actions/checkout@v4
-      - name: Run openvpn build main
-        run: |
-          ./tests/ci/integration/run_openvpn_integration.sh master
+          ./tests/ci/integration/run_libssh2_integration.sh
   libevent:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -147,39 +35,41 @@ jobs:
       - name: Run libevent build
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
-  ruby-main:
+  librdkafka:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
-    name: Ruby main
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build ruby, run tests
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang
+      - uses: actions/checkout@v4
+      - name: Run librdkafka build
         run: |
-          ./tests/ci/integration/run_ruby_integration.sh master
-        env:
-          FIPS: 1
-  ruby-releases:
+          ./tests/ci/integration/run_librdkafka_integration.sh
+  rust-openssl:
     if: github.repository_owner == 'aws'
-    strategy:
-      fail-fast: false
-      matrix:
-        fips:
-          - "0"
-          - "1"
     runs-on: ubuntu-latest
-    name: Ruby releases (FIPS=${{ matrix.fips}})
     steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
-      - uses: actions/checkout@v3
-      - name: Build AWS-LC, build ruby, run tests
-        run: |
-          ./tests/ci/integration/run_ruby_integration.sh ruby_3_3 ruby_3_2 ruby_3_1
+      - name: Checkout aws-lc
+        uses: actions/checkout@v4
+        with:
+          path: aws-lc
+      - name: Checkout rust-openssl
+        uses: actions/checkout@v4
+        with:
+          repository: sfackler/rust-openssl
+          path: rust-openssl
+      - uses: dtolnay/rust-toolchain@stable
+        id: toolchain
+      - name: Set Rust toolchain override
+        run: rustup override set ${{ steps.toolchain.outputs.name }}
+      - name: Install bindgen-cli
+        run: cargo install --locked bindgen-cli
+      - name: Run rust-openssl integration tests
         env:
-          FIPS: ${{ matrix.fips }}
+          RUST_OPENSSL_SRC_DIR: "${{ github.workspace }}/rust-openssl"
+        run: |
+          pushd "${GITHUB_WORKSPACE}/aws-lc"
+          ./tests/ci/integration/run_rust_openssl_integration.sh

@@ -77,6 +77,8 @@ typedef struct DES_cblock_st {
   uint8_t bytes[8];
 } DES_cblock;
 
+typedef struct DES_cblock_st const_DES_cblock;
+
 typedef struct DES_ks {
   uint32_t subkeys[16][2];
 } DES_key_schedule;

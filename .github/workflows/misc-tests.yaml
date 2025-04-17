@@ -121,3 +121,15 @@ jobs:
       - if: ${{ matrix.os != 'windows-latest' }}
         name: Run tests
         run: cmake --build "path has spaces/build-fips" --target run_tests
+  git-tag-check:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-tags: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check for git tag
+        run: python ./util/git-tag-check/git-tag-check.py

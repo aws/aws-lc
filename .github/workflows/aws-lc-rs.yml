@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-14-xlarge ]
+        os: [ ubuntu-latest, macos-14-xlarge, windows-latest ]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -29,6 +29,7 @@ jobs:
           submodules: false
       - name: Remove aws-lc submodule from crate directory
         working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
         run: |
           rm -rf aws-lc
       - uses: actions/checkout@v3
@@ -44,6 +45,8 @@ jobs:
       - name: Install current Bash on macOS
         if: runner.os == 'macOS'
         run: brew install bash coreutils
+      - uses: ilammy/setup-nasm@v1
+        if: runner.os == 'Windows'
       - name: No-prefix build for ${{ matrix.os }}
         env:
           AWS_LC_SYS_NO_PREFIX: "1"
@@ -52,16 +55,29 @@ jobs:
         working-directory: ./aws-lc-rs
         run: |
           cargo test -p aws-lc-sys --features bindgen
+      - name: Delete current symbol files and headers
+        working-directory: ./aws-lc-rs
+        shell: bash
+        run: |
+          rm -rf ./aws-lc-sys/symbols/* ./aws-lc-sys/generated-include/*
+          mkdir -p ./aws-lc-sys/symbols ./aws-lc-sys/generated-include/openssl
       - name: Collect symbols
         working-directory: ./aws-lc-rs
+        shell: bash
         run: |
           ./scripts/build/collect_symbols.sh -c aws-lc-sys
       - name: Generate Prefix Headers
         working-directory: ./aws-lc-rs
+        shell: bash
         run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
       - name: Update sys-crate metadata
         working-directory: ./aws-lc-rs
+        shell: bash
         run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Clean
+        working-directory: ./aws-lc-rs
+        run: |
+          cargo clean
       - name: Generate bindings for ${{ matrix.os }}
         env:
           AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
@@ -69,61 +85,6 @@ jobs:
         run: |
           cargo test -p aws-lc-sys --features bindgen
       - name: Collect source from ${{ matrix.os }}
+        if: runner.os != 'Windows'
         working-directory: ./aws-lc-rs
         run: ./scripts/build/collect_build_src.sh
-  windows-aws-lc-rs-bindgen:
-    if: github.repository_owner == 'aws'
-    runs-on: ${{ matrix.os }}
-    name: aws-lc-rs bindgen on ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ windows-latest ]
-        target: [ x86_64-pc-windows-msvc ]
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          repository: aws/aws-lc-rs
-          path: ./aws-lc-rs
-          submodules: false
-      - name: Remove aws-lc submodule from crate directory
-        working-directory: ./aws-lc-rs/aws-lc-sys
-        shell: bash
-        run: |
-          rm -rf aws-lc
-      - uses: actions/checkout@v3
-        with:
-          path: ./aws-lc-rs/aws-lc-sys/aws-lc
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_SCRIPT_NIGHTLY_TOOLCHAIN }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.20'
-      - uses: ilammy/setup-nasm@v1
-      - name: No-prefix build for ${{ matrix.target }}
-        env:
-          AWS_LC_SYS_NO_PREFIX: "1"
-        working-directory: ./aws-lc-rs
-        run: |
-          cargo test -p aws-lc-sys --features bindgen --target  ${{ matrix.target }}
-      - name: Collect symbols
-        working-directory: ./aws-lc-rs
-        shell: bash
-        run: |
-          ./scripts/build/collect_symbols.sh -c aws-lc-sys -t ${{ matrix.target }}
-      - name: Generate Prefix Headers
-        working-directory: ./aws-lc-rs
-        shell: bash
-        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
-      - name: Update sys-crate metadata
-        working-directory: ./aws-lc-rs
-        shell: bash
-        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
-      - name: Generate bindings for ${{ matrix.target }}
-        env:
-          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
-        working-directory: ./aws-lc-rs
-        run: |
-          cargo test -p aws-lc-sys --features bindgen --target ${{ matrix.target }}

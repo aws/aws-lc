@@ -86,16 +86,6 @@ static void __asan_poison_memory_region(const void *addr, size_t size) {}
 static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #endif
 
-// Windows doesn't really support weak symbols as of May 2019, and Clang on
-// Windows will emit strong symbols instead. See
-// https://bugs.llvm.org/show_bug.cgi?id=37598
-#if defined(__ELF__) && defined(__GNUC__)
-#define WEAK_SYMBOL_FUNC(rettype, name, args) \
-  rettype name args __attribute__((weak));
-#else
-#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
-#endif
-
 #define AWSLC_FILE ""
 #define AWSLC_LINE 0
 
@@ -131,6 +121,18 @@ WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_alloc, (size_t size))
 WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
 WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_realloc, (void *ptr, size_t size))
+
+// Control function for crypto memory debugging Always returns 0 in AWS-LC
+// |mode| Unused parameter AWS-LC doesn't support |CRYPTO_MDEBUG|
+// Always returns 0
+int CRYPTO_mem_ctrl(int mode) {
+  #if defined (OPENSSL_NO_CRYPTO_MDEBUG)
+    (void)mode;  // Silence unused parameter warning
+    return 0;
+  #else
+    #error "Must compile with OPENSSL_NO_CRYPTO_MDEBUG defined."
+  #endif
+}
 
 // Below can be customized by |CRYPTO_set_mem_functions| only once.
 static void *(*malloc_impl)(size_t, const char *, int) = NULL;

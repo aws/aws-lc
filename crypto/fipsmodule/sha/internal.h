@@ -92,8 +92,11 @@ struct keccak_st {
   size_t buf_load;                                 // used bytes in below buffer
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
   uint8_t pad;                                     // padding character
-  uint8_t state;                                  // denotes the keccak phase (absorb, squeeze, final)
+  uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
 };
+
+// KECCAK1600 x4 batched context structure
+typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
@@ -372,6 +375,14 @@ OPENSSL_EXPORT int SHA512_256_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
     uint64_t *out_n);
 
+/*
+ * SHA3/SHAKE single-shot APIs implement SHA3 functionalities on top
+ * of SHA3/SHAKE API layer
+ *
+ * SHA3/SHAKE single-shot functions never fail when the later call-discipline is
+ * adhered to: (a) the pointers passed to the functions are valid.
+ */
+
 // SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_224| returns NULL.
@@ -405,39 +416,126 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 // to |out| and returns |out| on success and NULL on failure.
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
+/*
+ * SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
+ *
+ * SHA3 context must go through the flow: (a) Init, (b) Update [multiple times],
+ * (c) Final [one time].
+ *
+ * SHA3 functions never fail when the later call-discipline is adhered to:
+ * (a) the context execution flow is followed (b) the pointers passed to the
+ * functions are valid (c) any additional per-function parameter value conditions,
+ * detailed above each SHA3_ function signature, is satisfied.
+ */
 
-// SHA3_Init initialises |ctx| fields through |FIPS202_Init| and 
-// returns 1 on success and 0 on failure.
+// SHA3_Init initialises |ctx| field through |FIPS202_Init| and
+// returns 1 on success and 0 on failure. When call-discipline is
+// maintained and |bitlen| value corresponds to a SHA3 digest length
+// in bits, this function never fails.
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
- // SHA3_Update check |ctx| pointer and |len| value, calls |FIPS202_Update| 
- // and returns 1 on success and 0 on failure.
+// SHA3_Update checks |ctx| pointer and |len| value, calls |FIPS202_Update|
+// and returns 1 on success and 0 on failure. When call-discipline is
+// maintained and |len| value corresponds to the input message length
+// (including zero), this function never fails.
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
 // SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
-// It then calls |Keccak1600_Squeeze| and returns 1 on success 
-// and 0 on failure.
+// It then calls |Keccak1600_Squeeze| and returns 1 on success and 0 on failure.
+// When call-discipline is maintained, this function never fails.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and 
-// returns 1 on success and 0 on failure.
+/*
+ * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
+ *
+ * SHAKE context must go through the flow: (a) Init, (b) Absorb [multiple times],
+ * (c) Final [one time] or Squeeze [multiple times]
+ *
+ * SHAKE functions never fail when the later call-discipline is adhered to:
+ * (a) the context execution flow is followed (b) the pointers passed to the
+ * functions are valid (c) any additional per-function parameter value conditions,
+ * detailed above each SHAKE_ function signature, is satisfied.
+ */
+
+// SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and
+// returns 1 on success and 0 on failure. When call-discipline is
+// maintained and |block_size| value corresponds to a SHAKE block size length
+// in bytes, this function never fails.
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
-// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs 
-// input blocks via |FIPS202_Update|.
+// SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs
+// input blocks via |FIPS202_Update|. When call-discipline is
+// maintained and |len| value corresponds to the input message length
+// (including zero), this function never fails.
 int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
-// SHAKE_Squeeze pads the last data block and absorbs it through 
-// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental 
-// XOF output to |md| and returns 1 on success and 0 on failure. It can be 
-// called multiple times.
+// SHAKE_Squeeze pads the last data block and absorbs it through
+// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental
+// XOF output to |md| and returns 1 on success and 0 on failure. It can be
+// called multiple times. When call-discipline is maintained, this function
+// never fails.
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
 // success and 0 on failure. It should be called once to finalize absorb and
 // squeeze phases. Incremental XOF output should be generated via |SHAKE_Squeeze|.
+// When call-discipline is maintained, this function never fails.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+
+/*
+ * SHAKE128_x4_ batched APIs implement x4 SHAKE functionalities on top of FIPS202 API layer
+ *
+ * SHAKE128_x4_ context must go through the flow: (a) Init_x4, (b) Absorb_once_x4 [one time;
+ * maximum input length of |SHAKE128_BLOCKSIZE - 1|] (c) Squeezeblocks_x4 [multiple times]
+ *
+ * SHAKE128_x4_ functions never fail when the later call-discipline is adhered to:
+ * (a) the context execution flow is followed (b) the pointers passed to the
+ * functions are valid (c) any additional per-function parameter value conditions,
+ * detailed above each SHAKE128_x4_ function signature, is satisfied.
+ */
+
+// SHAKE128_Init_x4 is a batched API that operates on four independent
+// Keccak bitstates. It initialises all four |ctx| fields and returns
+// 1 on success and 0 on failure. When call-discipline is maintained,
+// this function never fails.
+OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
+
+// SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
+// Keccak bitstates. It absorbs all four inputs |data0|, |data1|, |data2|, |data3|
+// of equal length of |len| bytes returns 1 on success and 0 on failure. When
+// is maintained and |len| value corresponds to the input messages length
+// call-discipline (including zero), this function never fails.
+OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
+                                  const void *data2, const void *data3, size_t len);
+
+// SHAKE128_Squeezeblocks_x4 is a batched API that operates on four independent Keccak
+// bitstates. It squeezes |blks| number of blocks for all four XOF digests and returns
+// 1 on success and 0 on failure. When call-discipline is maintained, this function
+// never fails.
+OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
+                                  KECCAK1600_CTX_x4 *ctx, size_t blks);
+/*
+ * SHAKE256_x4_ signle-shot batched API implements x4 SHAKE256 functionalities on top
+ * of FIPS202 API layer
+ *
+ * SHAKE256_x4_ function never fails when the later call-discipline is adhered to:
+ * (a) the pointers passed to the functions are valid.
+ */
+
+// SHAKE256_x4 is a batched API that operates on four independent
+// Keccak bitstates. It writes all four |out_len|-byte outputs from
+// |in_len|-byte inputs to |out0|, |out1|, |out2|, |out3| and returns
+// 1 on success and 0 on failure.
+// When call-discipline is maintained, this function never fails.
+OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
+                                  const uint8_t *data2, const uint8_t *data3,
+                                  const size_t in_len, uint8_t *out0, uint8_t *out1,
+                                  uint8_t *out2, uint8_t *out3, size_t out_len);
+
+/*
+ * Keccak1600_ APIs implement Keccak absorb and squeeze phases
+ */
 
 // Keccak1600_Absorb processes the largest multiple of |r| (block size) out of
 // |len| bytes and returns the remaining number of bytes.

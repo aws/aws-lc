@@ -1,0 +1,37 @@
+diff --git a/Lib/test/libregrtest/worker.py b/Lib/test/libregrtest/worker.py
+index 556706e..f8b2d9d 100644
+--- a/Lib/test/libregrtest/worker.py
++++ b/Lib/test/libregrtest/worker.py
+@@ -1,6 +1,8 @@
++import signal
+ import subprocess
+ import sys
+ import os
++from contextlib import contextmanager
+ from typing import Any, NoReturn
+ 
+ from test.support import os_helper
+@@ -15,6 +17,16 @@
+ 
+ USE_PROCESS_GROUP = (hasattr(os, "setsid") and hasattr(os, "killpg"))
+ 
++@contextmanager
++def restore_sigint():
++    original_handler = signal.getsignal(signal.SIGINT)
++    signal.signal(signal.SIGINT, signal.default_int_handler)
++    try:
++        yield
++    except:
++        raise
++    finally:
++        signal.signal(signal.SIGINT, original_handler)
+ 
+ def create_worker_process(runtests: WorkerRunTests, output_fd: int,
+                           tmp_dir: StrPath | None = None) -> subprocess.Popen:
+@@ -101,4 +113,5 @@ def main():
+ 
+ 
+ if __name__ == "__main__":
+-    main()
++    with restore_sigint():
++        main()

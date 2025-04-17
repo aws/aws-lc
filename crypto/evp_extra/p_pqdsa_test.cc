@@ -1089,20 +1089,20 @@ const char *mldsa_87_pub_pem_str =
 // C.1.  Example Private Key
 const char *mldsa_44_priv_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
-"MDICAQAwCwYJYIZIAWUDBAMRBCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRob\n"
-"HB0eHw==\n"
+"MDQCAQAwCwYJYIZIAWUDBAMRBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+"GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
 const char *mldsa_65_priv_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
-"MDICAQAwCwYJYIZIAWUDBAMSBCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRob\n"
-"HB0eHw==\n"
+"MDQCAQAwCwYJYIZIAWUDBAMSBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+"GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
 const char *mldsa_87_priv_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
-"MDICAQAwCwYJYIZIAWUDBAMTBCAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRob\n"
-"HB0eHw==\n"
+"MDQCAQAwCwYJYIZIAWUDBAMTBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+"GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
 struct PQDSATestVector {
@@ -1463,11 +1463,10 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_NE(private_pkey->pkey.pqdsa_key->private_key, nullptr);
 
   // ---- 5. Test get_raw public/private failure modes ----
-  uint8_t *buf = nullptr;
-  size_t buf_size;
+  std::vector<uint8_t> get_sk(sk_len);
 
   // Attempting to get a private key that is not present must fail correctly
-  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(public_pkey.get(), buf, &buf_size));
+  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(public_pkey.get(), get_sk.data(), &sk_len));
   GET_ERR_AND_CHECK_REASON(EVP_R_NOT_A_PRIVATE_KEY);
 
   // Null PKEY must fail correctly.
@@ -1754,6 +1753,15 @@ TEST_P(PQDSAParameterTest, ParsePrivateKey) {
   // the public key that was parsed from PEM.
   ASSERT_EQ(1, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
 
+  // ---- 5. test failure modes ----
+  // Test case in which a parsed key does not contain a seed
+  bssl::ScopedCBB cbb;
+  void *tmp = (void*) pkey1.get()->pkey.pqdsa_key->seed;
+  pkey1.get()->pkey.pqdsa_key->seed =nullptr;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_FALSE(EVP_marshal_private_key(cbb.get(), pkey1.get()));
+  pkey1.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
+
   // Clean up
   OPENSSL_free(der_pub);
   OPENSSL_free(der_priv);
@@ -1780,7 +1788,7 @@ TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
   // ---- 3. Generate a raw public key from the raw private key ----
   ASSERT_TRUE(GetParam().pack_key(pk.data(), sk.data()));
 
-  // ---- 4. Generate a raw public key from the raw private key ----
+  // ---- 4. Test that the calculated pk is equal to original pkey ----
   CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
 }
 

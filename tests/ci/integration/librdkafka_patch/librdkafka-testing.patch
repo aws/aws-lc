@@ -1,0 +1,13 @@
+diff --git a/tests/Makefile b/tests/Makefile
+index 543639e4..41791162 100644
+--- a/tests/Makefile
++++ b/tests/Makefile
+@@ -51,7 +51,7 @@ full: broker broker_idempotent sasl
+ #
+ # The following targets require an existing cluster running (test.conf)
+ #
+-quick:
++quick: $(BIN)
+ 	@echo "Running quick(er) test suite (without sockem)"
+ 	./run-test.sh -Q -E
+ 

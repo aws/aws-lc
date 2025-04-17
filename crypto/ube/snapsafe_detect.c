@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "../internal.h"
@@ -24,24 +25,15 @@ static volatile uint32_t *sgn_addr = NULL;
 static int snapsafety_state = 0;
 
 
-// aws_snapsafe_check_kernel_support returns 1 if the special sysgenid device
-// file exists and 0 otherwise.
-static int aws_snapsafe_check_kernel_support(void) {
-  // This file-exist method is generally brittle. But for our purpose, this
-  // should be more than fine.
-  if (access(CRYPTO_get_sysgenid_path(), F_OK) != 0) {
-    return 0;
-  }
-  return 1;
-}
-
 static void do_aws_snapsafe_init(void) {
   snapsafety_state = SNAPSAFETY_STATE_NOT_SUPPORTED;
   sgn_addr = NULL;
 
-  if (aws_snapsafe_check_kernel_support() != 1) {
+  struct stat buff;
+  if (stat(CRYPTO_get_sysgenid_path(), &buff) != 0) {
     return;
   }
+  
   snapsafety_state = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
   int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_RDONLY);

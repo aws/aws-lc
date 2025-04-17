@@ -1270,14 +1270,25 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #if defined(BORINGSSL_FIPS)
 
 // AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
+// fails. The behavior depends on how AWS-LC is built:
+// - When AWS-LC is not in FIPS mode it prints |message| to |stderr|.
+// - If AWS-LC is built with FIPS it prints |message| to |stderr| and prevents
+//     any further cryptographic operations by the current process.
+// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
+//      application does not define the AWS_LC_fips_failure_callback function
+//      the normal behavior FIPS behavior is used.
+// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
+//      application defines the AWS_LC_fips_failure_callback function that
+//      function is called with |message|.
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+void AWS_LC_FIPS_failure(const char* message);
+#else
 #if defined(_MSC_VER)
 __declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
 void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
-
+#endif
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.
 // Call |BORINGSSL_self_test| to run every self test.
@@ -1330,17 +1341,16 @@ OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
 
+// Outside of FIPS mode AWS_LC_FIPS_failure simply logs the message to stderr
+void AWS_LC_FIPS_failure(const char* message);
+
 #endif  // FIPS
 
-// boringssl_self_test_sha256 performs a SHA-256 KAT, |call_aws_lc_fips_failure|
-// determines if error messages should be printed to |stderr| call
-// |AWS_LC_FIPS_failure| with the message.
-int boringssl_self_test_sha256(const bool call_aws_lc_fips_failure);
+// boringssl_self_test_sha256 performs a SHA-256 KAT
+int boringssl_self_test_sha256(void);
 
-  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT,
-  // |call_aws_lc_fips_failure| determines if error messages should be printed
-  // to |stderr| or call |AWS_LC_FIPS_failure| with the message.
-int boringssl_self_test_hmac_sha256(const bool call_aws_lc_fips_failure);
+  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
+int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 void boringssl_fips_inc_counter(enum fips_counter_t counter);
@@ -1424,6 +1434,16 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 // GUARD_PTR_ABORT checks |ptr|: if it is NULL it calls abort() and does nothing
 // otherwise.
 #define GUARD_PTR_ABORT(ptr) __AWS_LC_ENSURE((ptr) != NULL, abort())
+
+// Windows doesn't really support weak symbols as of May 2019, and Clang on
+// Windows will emit strong symbols instead. See
+// https://bugs.llvm.org/show_bug.cgi?id=37598
+#if defined(__ELF__) && defined(__GNUC__)
+#define WEAK_SYMBOL_FUNC(rettype, name, args) \
+rettype name args __attribute__((weak));
+#else
+#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
+#endif
 
 #if defined(__cplusplus)
 }  // extern C

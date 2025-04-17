@@ -446,19 +446,36 @@ int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
   return 1;
 }
 
-ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
-  if (si == NULL) {
-    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
-    return NULL;
-  }
-  for (size_t i = 0; i < sk_X509_ATTRIBUTE_num(si->auth_attr); i++) {
-    X509_ATTRIBUTE *attr = sk_X509_ATTRIBUTE_value(si->auth_attr, i);
+static ASN1_TYPE *get_attribute(STACK_OF(X509_ATTRIBUTE) *sk, int nid) {
+  for (size_t i = 0; i < sk_X509_ATTRIBUTE_num(sk); i++) {
+    X509_ATTRIBUTE *attr = sk_X509_ATTRIBUTE_value(sk, i);
     ASN1_OBJECT *obj = X509_ATTRIBUTE_get0_object(attr);
     if (OBJ_obj2nid(obj) == nid) {
       return X509_ATTRIBUTE_get0_type(attr, 0);
     }
   }
   return NULL;
+}
+
+ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
+  if (si == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+  return get_attribute(si->auth_attr, nid);
+}
+
+static ASN1_OCTET_STRING *PKCS7_digest_from_attributes(
+    STACK_OF(X509_ATTRIBUTE) *sk) {
+  if (sk == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+  ASN1_TYPE *astype = get_attribute(sk, NID_pkcs9_messageDigest);
+  if (astype == NULL) {
+    return NULL;
+  }
+  return astype->value.octet_string;
 }
 
 STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
@@ -866,9 +883,7 @@ int PKCS7_set_detached(PKCS7 *p7, int detach) {
   }
 }
 
-int PKCS7_get_detached(PKCS7 *p7) {
-  return PKCS7_is_detached(p7);
-}
+int PKCS7_get_detached(PKCS7 *p7) { return PKCS7_is_detached(p7); }
 
 
 static BIO *pkcs7_find_digest(EVP_MD_CTX **pmd, BIO *bio, int nid) {
@@ -900,9 +915,11 @@ int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md) {
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNKNOWN_DIGEST_TYPE);
         return 0;
       }
-      if (p7->d.digest->digest_alg) {
-        OPENSSL_free(p7->d.digest->digest_alg->parameter);
+      if (p7->d.digest->digest_alg == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+        return 0;
       }
+      OPENSSL_free(p7->d.digest->digest_alg->parameter);
       if ((p7->d.digest->digest_alg->parameter = ASN1_TYPE_new()) == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
         return 0;
@@ -1399,7 +1416,8 @@ PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509) {
   return ri;
 }
 
-int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int _flags) {
+int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data,
+                  int _flags) {
   GUARD_PTR(p7);
   GUARD_PTR(pkey);
   GUARD_PTR(data);
@@ -1528,7 +1546,18 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
   GUARD_PTR(signer);
   int ret = 0;
 
+  // Create a new |EVP_MD_CTX| to be consumed, so that the original |EVP_MD_CTX|
+  // is still in a usable state.
+  EVP_MD_CTX *mdc_tmp = EVP_MD_CTX_new();
+  if (mdc_tmp == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_MALLOC_FAILURE);
+    goto out;
+  }
+
   const int md_type = OBJ_obj2nid(si->digest_alg->algorithm);
+  if (md_type == NID_undef) {
+    goto out;
+  }
   EVP_MD_CTX *mdc = NULL;
   BIO *bio = in_bio;
   // There may be multiple MD-type BIOs in the chain, so iterate until we find
@@ -1548,19 +1577,57 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
     bio = BIO_next(bio);
   }
 
-  // We don't currently support signed attributes. See |PKCS7_NOATTR|.
-  if (si->auth_attr && sk_X509_ATTRIBUTE_num(si->auth_attr) != 0) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_SIGNED_DATA_TYPE);
+  // mdc is the digest ctx that we want, unless there are attributes, in
+  // which case the digest is the signed attributes.
+  if (!EVP_MD_CTX_copy_ex(mdc_tmp, mdc)) {
     goto out;
   }
 
-  EVP_PKEY *pkey;
-  if ((pkey = X509_get0_pubkey(signer)) == NULL) {
+  if (si->auth_attr != NULL && sk_X509_ATTRIBUTE_num(si->auth_attr) != 0) {
+    unsigned char md_data[EVP_MAX_MD_SIZE], *abuf = NULL;
+    unsigned int md_len;
+
+    if (!EVP_DigestFinal_ex(mdc_tmp, md_data, &md_len)) {
+      goto out;
+    }
+    ASN1_OCTET_STRING *message_digest =
+        PKCS7_digest_from_attributes(si->auth_attr);
+    if (message_digest == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNABLE_TO_FIND_MESSAGE_DIGEST);
+      goto out;
+    }
+    if (message_digest->length != (int)md_len ||
+        OPENSSL_memcmp(message_digest->data, md_data, md_len) != 0) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_DIGEST_FAILURE);
+      goto out;
+    }
+
+    const EVP_MD *md = EVP_get_digestbynid(md_type);
+    if (md == NULL || !EVP_VerifyInit_ex(mdc_tmp, md, NULL)) {
+      goto out;
+    }
+
+    int alen = ASN1_item_i2d((ASN1_VALUE *)si->auth_attr, &abuf,
+                             ASN1_ITEM_rptr(PKCS7_ATTR_VERIFY));
+    if (alen <= 0 || abuf == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+      ret = -1;
+      goto out;
+    }
+    if (!EVP_VerifyUpdate(mdc_tmp, abuf, alen)) {
+      OPENSSL_free(abuf);
+      goto out;
+    }
+    OPENSSL_free(abuf);
+  }
+
+  EVP_PKEY *pkey = X509_get0_pubkey(signer);
+  if (pkey == NULL) {
     goto out;
   }
 
   ASN1_OCTET_STRING *data_body = si->enc_digest;
-  if (!EVP_VerifyFinal(mdc, data_body->data, data_body->length, pkey)) {
+  if (!EVP_VerifyFinal(mdc_tmp, data_body->data, data_body->length, pkey)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNATURE_FAILURE);
     goto out;
   }
@@ -1568,6 +1635,7 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
   ret = 1;
 
 out:
+  EVP_MD_CTX_free(mdc_tmp);
   return ret;
 }
 

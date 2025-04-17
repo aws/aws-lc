@@ -51,7 +51,7 @@ function ruby_build() {
     make test-all TESTS="test/rubygems/test*.rb"
 
     # drb was moved from a default gem to a bundled gem in later versions of Ruby.
-    if [[ "${branch}" != "master" ]]; then
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         make test-all TESTS="test/drb/*ssl*.rb"
     fi
 
@@ -62,7 +62,7 @@ function ruby_patch() {
     local branch=${1}
     local src_dir="${RUBY_SRC_FOLDER}/${branch}"
     local patch_dirs=("${RUBY_PATCH_FOLDER}/${branch}" "${RUBY_COMMON_FOLDER}")
-    if [[ ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
+    if [[ "${branch}" != "master" && ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
         echo "No patch for ${branch}!"
         exit 1
     fi
@@ -70,15 +70,15 @@ function ruby_patch() {
         --depth 1 \
         --branch ${branch}
 
-    # Add directory of backport patches if branch is not master.
-    if [[ "${branch}" != "master" ]]; then
+    # Add directory of backport patches if branch is a version later than Ruby 3.4.
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         patch_dirs+=("${RUBY_BACKPORT_FOLDER}")
     fi
 
     for patch_dir in "${patch_dirs[@]}"; do
         for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
           echo "Apply patch ${patchfile}..."
-          cat ${patchfile} | patch -p1 -F 3 --quiet -d ${src_dir}
+          patch --strip 1 -F 3 --quiet -d ${src_dir} --input ${patchfile}
         done
     done
 }
@@ -86,6 +86,10 @@ function ruby_patch() {
 if [[ "$#" -eq "0" ]]; then
     echo "No ruby branches provided for testing"
     exit 1
+fi
+
+if [[ "${FIPS}" -eq "1" ]]; then
+    export TEST_RUBY_OPENSSL_FIPS_ENABLED="true"
 fi
 
 mkdir -p ${SCRATCH_FOLDER}

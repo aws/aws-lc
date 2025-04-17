@@ -70,6 +70,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
 #include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
 
@@ -79,8 +80,7 @@
 static int load_iv(char **fromp, unsigned char *to, size_t num);
 static int check_pem(const char *nm, const char *name);
 
-// PEM_proc_type appends a Proc-Type header to |buf|, determined by |type|.
-static void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
+void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
   const char *str;
 
   if (type == PEM_TYPE_ENCRYPTED) {
@@ -98,9 +98,7 @@ static void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
   OPENSSL_strlcat(buf, "\n", PEM_BUFSIZE);
 }
 
-// PEM_dek_info appends a DEK-Info header to |buf|, with an algorithm of |type|
-// and a single parameter, specified by hex-encoding |len| bytes from |str|.
-static void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
+void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
                          char *str) {
   static const unsigned char map[17] = "0123456789ABCDEF";
 
@@ -286,7 +284,7 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
                        const EVP_CIPHER *enc, const unsigned char *pass,
                        int pass_len, pem_password_cb *callback, void *u) {
   EVP_CIPHER_CTX ctx;
-  int dsize = 0, i, j, ret = 0;
+  int i, j, ret = 0;
   unsigned char *p, *data = NULL;
   const char *objstr = NULL;
   char buf[PEM_BUFSIZE];
@@ -302,9 +300,10 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     }
   }
 
-  if ((dsize = i2d(x, NULL)) < 0) {
+  int dsize = i2d(x, NULL);
+  if (dsize < 0) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
-    dsize = 0;
+    OPENSSL_cleanse(&dsize, sizeof(dsize));
     goto err;
   }
   // dzise + 8 bytes are needed
@@ -320,7 +319,6 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     const unsigned iv_len = EVP_CIPHER_iv_length(enc);
 
     if (pass == NULL) {
-      pass_len = 0;
       if (!callback) {
         callback = PEM_def_callback;
       }
@@ -396,7 +394,6 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
     return 1;
   }
 
-  pass_len = 0;
   if (!callback) {
     callback = PEM_def_callback;
   }

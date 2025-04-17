@@ -215,6 +215,9 @@ For Keccak and AES we are using public-domain
 code from sources and by authors listed in
 comments on top of the respective files.
 
+The code in crypto/fipsmodule/ml_kem/mlkem is imported from mlkem-native
+(https://github.com/pq-code-package/mlkem-native) and carries the
+Apache 2.0 license. This license is reproduced at the bottom of this file.
 
 Licenses for support code
 -------------------------
@@ -286,10 +289,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
  
-Apache 2.0 license for AWS-LC content
--------------------------------------
  
  
+Apache 2.0 license for AWS-LC content and mlkem-native
+------------------------------------------------------
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/

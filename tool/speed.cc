@@ -34,6 +34,8 @@
 #include "internal.h"
 
 #include <openssl/crypto.h>
+
+#include "openssl/cmac.h"
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
@@ -417,8 +419,7 @@ static bool SpeedRSA(const std::string &selected) {
 }
 
 static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
-  // Don't run this by default because it's so slow.
-  if (selected != "RSAKeyGen") {
+  if (!selected.empty() && selected.find("RSAKeyGen") == std::string::npos) {
     return true;
   }
 
@@ -1127,7 +1128,12 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
                EVP_DigestUpdate(ctx.get(), input.get(), chunk_len) &&
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
+               (EVP_MD_flags(md) & EVP_MD_FLAG_XOF) ?
+                 EVP_DigestFinalXOF(ctx.get(), digest, 32) : EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
+#else
                EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
+#endif
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
     ERR_print_errors_fp(stderr);
@@ -1263,6 +1269,70 @@ static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
   return true;
 }
 
+#if !defined(OPENSSL_1_0_BENCHMARK)
+static bool SpeedCmacChunk(const EVP_CIPHER *cipher, std::string name,
+                           size_t chunk_len) {
+  BM_NAMESPACE::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+
+  if (!CMAC_Init(ctx.get(), key.get(), key_len, cipher, NULL /* ENGINE */)) {
+    fprintf(stderr, "Failed to create CMAC_CTX.\n");
+  }
+  TimeResults results;
+  if (!TimeFunction(&results, [&ctx, chunk_len, &input]() -> bool {
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        size_t out_len;
+
+        return
+#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
+               CMAC_Reset(ctx.get()) &&
+#else
+               CMAC_Init(ctx.get(), nullptr, 0, nullptr, nullptr /* ENGINE */) &&
+#endif
+               CMAC_Update(ctx.get(), input.get(), chunk_len) &&
+               CMAC_Final(ctx.get(), digest, &out_len);
+      })) {
+    fprintf(stderr, "CMAC_Final failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedCmac(const EVP_CIPHER *cipher, const std::string &name, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  TimeResults results;
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+  BM_NAMESPACE::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+  if (!TimeFunction(&results, [&]() -> bool {
+        return CMAC_Init(ctx.get(), key.get(), key_len, cipher,
+                         nullptr /* ENGINE */);
+      })) {
+    fprintf(stderr, "CMAC_Init failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+      }
+  results.Print(name + " init");
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedCmacChunk(cipher, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+#endif
 
 using RandomFunction = std::function<void(uint8_t *, size_t)>;
 static bool SpeedRandomChunk(RandomFunction function, std::string name, size_t chunk_len) {
@@ -2684,7 +2754,9 @@ bool Speed(const std::vector<std::string> &args) {
   EVP_MD_unstable_sha3_enable(true);
 #endif
   std::map<std::string, std::string> args_map;
-  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+  args_list_t extra_args;
+  if (!ParseKeyValueArguments(args_map, extra_args, args, kArguments) ||
+      extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
@@ -2804,8 +2876,12 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedEvpCipherGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
        !SpeedAES256XTS("AES-256-XTS", selected) ||
-       // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
+       // OpenSSL 3.0 deprecated RC4
+       !SpeedEvpCipherGeneric(EVP_rc4(), "EVP-RC4", kTLSADLen, selected) ||
+#endif
+#if !defined(OPENSSL_3_0_BENCHMARK)
+       // OpenSSL 3.0 doesn't allow MD4 calls
        !SpeedHash(EVP_md4(), "MD4", selected) ||
 #endif
        !SpeedHash(EVP_md5(), "MD5", selected) ||
@@ -2821,6 +2897,18 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
        !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
 #endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
+       // OpenSSL 1.0 and BoringSSL don't support SHAKE
+       !SpeedHash(EVP_shake128(), "SHAKE-128", selected) ||
+       !SpeedHash(EVP_shake256(), "SHAKE-256", selected) ||
+#endif
+#if (!defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 20
+       // BoringSSL doesn't support ripemd160
+       !SpeedHash(EVP_ripemd160(), "RIPEMD-160", selected) ||
+#endif
+#if !defined(OPENSSL_1_0_BENCHMARK)
+       !SpeedHash(EVP_md5_sha1(), "MD5-SHA-1", selected) ||
+#endif
        !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
        !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
        !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
@@ -2831,6 +2919,10 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+#if !defined(OPENSSL_1_0_BENCHMARK)
+       !SpeedCmac(EVP_aes_128_cbc(), "CMAC-AES-128-CBC", selected) ||
+       !SpeedCmac(EVP_aes_256_cbc(), "CMAC-AES-256-CBC", selected) ||
+#endif
        !SpeedRandom(RAND_bytes, "RNG", selected) ||
        !SpeedECDH(selected) ||
        !SpeedECDSA(selected) ||

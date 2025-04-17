@@ -49,7 +49,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   PQDSA_KEY *key = PQDSA_KEY_new();
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
-      !pqdsa->method->pqdsa_keygen(key->public_key, key->private_key) ||
+      !pqdsa->method->pqdsa_keygen(key->public_key, key->private_key, key->seed) ||
       !EVP_PKEY_assign(pkey, EVP_PKEY_PQDSA, key)) {
     PQDSA_KEY_free(key);
     return 0;

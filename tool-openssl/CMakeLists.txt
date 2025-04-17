@@ -9,6 +9,8 @@ add_executable(
 
     crl.cc
     dgst.cc
+    rehash.cc
+    req.cc
     rsa.cc
     s_client.cc
     tool.cc
@@ -17,7 +19,7 @@ add_executable(
     x509.cc
 )
 
-target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(openssl PUBLIC ${AWSLC_SOURCE_DIR}/include)
 target_compile_options(openssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)
@@ -38,11 +40,27 @@ else()
     endif()
 endif()
 
-target_include_directories(openssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+target_include_directories(openssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
 install(TARGETS openssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/c_rehash
+    COPYONLY
+    FILE_PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE
+)
+
+install(
+    PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
+    RENAME c_rehash
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
@@ -64,6 +82,10 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        rehash.cc
+        rehash_test.cc
+        req.cc
+        req_test.cc
         rsa.cc
         rsa_test.cc
         s_client.cc
@@ -73,8 +95,18 @@ if(BUILD_TESTING)
         x509_test.cc
     )
 
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
+        ${CMAKE_CURRENT_BINARY_DIR}/c_rehash_test
+        COPYONLY
+        FILE_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+    )
+
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
-    target_include_directories(tool_openssl_test BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+    target_include_directories(tool_openssl_test BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests tool_openssl_test)
     set_test_location(tool_openssl_test)
 endif()
