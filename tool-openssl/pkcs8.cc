@@ -210,9 +210,8 @@ bool pkcs8Tool(const args_list_t &args) {
             fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
             ERR_print_errors_fp(stderr);
           } else {
-            // Use the specified PRF algorithm NID
-            int nid = !v2prf.empty() ? prf_nid : NID_pbeWithSHA1AndRC2_CBC;
-            p8 = PKCS8_encrypt(nid, cipher, passout, strlen(passout), 
+            // Use default PKCS#5 v2.0 with the specified cipher
+            p8 = PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
                               NULL, 0, PKCS12_DEFAULT_ITER, p8inf);
             PKCS8_PRIV_KEY_INFO_free(p8inf);
           }
