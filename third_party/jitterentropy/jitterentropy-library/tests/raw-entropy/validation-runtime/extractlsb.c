@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 		write(varfd, &var, sizeof(var));
 
 		res = strtok_r(NULL, " ", &saveptr);
-		if (res) {
+		if (!res) {
 			sample = strtoul(res, NULL, 10);
 			single_unchanged0s |= sample;
 			single_unchanged1s &= sample;
