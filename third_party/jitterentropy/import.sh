@@ -74,7 +74,7 @@ EOF
 # Submodule path might be cached.
 echo ""
 echo "Post actions: Run"
-echo "$ git add jitterentropy-library ; git commit -m \"Imported Jitter Entropy version: ${GITHUB_TARGET}\""
+echo "$ git add jitterentropy-library META.yml ; git commit -m \"Imported Jitter Entropy version: ${GITHUB_TARGET}\""
 echo "to add new source to git tree"
 echo "A submodule path have have been cached. To remove the submodule run:"
 echo "$ git rm --cached third_party/jitterentropy/jitterentropy-library/tests/raw-entropy/recording_userspace/jitterentropy"
