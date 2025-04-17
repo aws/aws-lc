@@ -72,7 +72,8 @@ TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
-    bssl::UniquePtr<EVP_PKEY> parsed_key(PEM_read_PKCS8_PRIV_KEY_INFO_ex(out_file.get(), nullptr, nullptr, nullptr, nullptr));
+    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(PEM_read_PKCS8_PRIV_KEY_INFO(out_file.get(), nullptr, nullptr, nullptr));
+    bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_PKCS82PKEY(p8inf.get()));
     ASSERT_TRUE(parsed_key);
   }
 }

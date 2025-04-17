@@ -6,6 +6,7 @@
 #include <openssl/pem.h>
 #include <openssl/pkcs8.h>
 #include <openssl/err.h>
+#include <cstring>
 #include "internal.h"
 
 static const argument_t kArguments[] = {
@@ -209,8 +210,8 @@ bool pkcs8Tool(const args_list_t &args) {
             fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
             ERR_print_errors_fp(stderr);
           } else {
-            p8 = PKCS8_encrypt(NID_pbe_withSHA1AndRC2_CBC, cipher, passout, strlen(passout), 
-                              NULL, 0, PKCS8_DEFAULT_ITERATIONS, p8inf);
+            p8 = PKCS8_encrypt(NID_pbeWithSHA1AndRC2_CBC, cipher, passout, strlen(passout), 
+                              NULL, 0, PKCS12_DEFAULT_ITER, p8inf);
             PKCS8_PRIV_KEY_INFO_free(p8inf);
           }
         }
