@@ -185,7 +185,7 @@ bool pkcs8Tool(const args_list_t &args) {
         }
         
         // Handle PRF algorithm if specified
-        int prf_nid = -1;
+        int prf_nid = NID_hmacWithSHA1;  // Default to SHA1
         if (!v2prf.empty()) {
           if (v2prf == "hmacWithSHA1") {
             prf_nid = NID_hmacWithSHA1;
@@ -210,7 +210,9 @@ bool pkcs8Tool(const args_list_t &args) {
             fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
             ERR_print_errors_fp(stderr);
           } else {
-            p8 = PKCS8_encrypt(NID_pbeWithSHA1AndRC2_CBC, cipher, passout, strlen(passout), 
+            // Use the specified PRF algorithm NID
+            int nid = !v2prf.empty() ? prf_nid : NID_pbeWithSHA1AndRC2_CBC;
+            p8 = PKCS8_encrypt(nid, cipher, passout, strlen(passout), 
                               NULL, 0, PKCS12_DEFAULT_ITER, p8inf);
             PKCS8_PRIV_KEY_INFO_free(p8inf);
           }
