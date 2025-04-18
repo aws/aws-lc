@@ -364,6 +364,7 @@ add_library(
   bio/bio.c
   bio/bio_mem.c
   bio/connect.c
+  bio/dgram.c
   bio/errno.c
   bio/fd.c
   bio/file.c
