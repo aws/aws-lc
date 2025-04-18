@@ -379,7 +379,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: OpenBSD
-        uses: cross-platform-actions/action@v0.27.0
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
@@ -513,7 +513,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Prepare VM
-        uses: cross-platform-actions/action@v0.27.0
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 90m
