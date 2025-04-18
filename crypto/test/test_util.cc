@@ -18,6 +18,9 @@
 #include <ostream>
 #include <thread>
 
+#if !defined(OPENSSL_WINDOWS)
+ #include <sys/wait.h>
+#endif
 #include <inttypes.h>
 
 #include <openssl/err.h>
