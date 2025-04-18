@@ -124,7 +124,7 @@
      defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
     defined(OPENSSL_AARCH64)
 
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 
 #define BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE 1
 

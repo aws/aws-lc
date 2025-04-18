@@ -5,7 +5,7 @@
 #include "../cpucap/internal.h"
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 
 void x25519_scalar_mult_generic_s2n_bignum(
   uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
