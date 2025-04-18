@@ -166,7 +166,7 @@ jobs:
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
-  gcc-ubuntu-2204-sanity:
+  gcc-ubuntu-2004-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
@@ -177,7 +177,7 @@ jobs:
         fips:
           - "0"
           - "1"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -302,7 +302,7 @@ jobs:
       - name: Build SSL
         run: cmake --build ./build --target ssl
 
-  clang-ubuntu-2204-sanity:
+  clang-ubuntu-2004-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
@@ -315,7 +315,7 @@ jobs:
         fips:
           - "0"
           - "1"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
