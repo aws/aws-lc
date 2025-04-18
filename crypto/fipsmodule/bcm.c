@@ -416,7 +416,7 @@ void AWS_LC_FIPS_failure(const char* message) {
 }
 #else  // BORINGSSL_FIPS
 void AWS_LC_FIPS_failure(const char* message) {
-  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
   fflush(stderr);
 }
 #endif  // BORINGSSL_FIPS

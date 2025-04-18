@@ -75,6 +75,11 @@
 static int asn1_check_eoc(const unsigned char **in, long len);
 static int asn1_find_end(const unsigned char **in, long len, char inf);
 
+static int asn1_collect(BUF_MEM *buf, const unsigned char **in, long len,
+                        char inf, int tag, int aclass, int depth);
+
+static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen);
+
 static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
                            char *inf, char *cst, const unsigned char **in,
                            long len, int exptag, int expclass, char opt);
@@ -385,7 +390,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
           }
           len -= p - q;
           seq_eoc = 0;
-          q = p;
           break;
         }
         // This determines the OPTIONAL flag value. The field cannot be
@@ -668,6 +672,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
   long plen;
   char cst, inf;
   const unsigned char *p;
+  BUF_MEM buf = {0, NULL, 0 };
   const unsigned char *cont = NULL;
   long len;
   if (!pval) {
@@ -738,11 +743,28 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
       p += plen;
     }
   } else if (cst) {
-    // This parser historically supported BER constructed strings. We no
-    // longer do and will gradually tighten this parser into a DER
-    // parser. BER types should use |CBS_asn1_ber_to_der|.
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
-    return 0;
+    if (utype == V_ASN1_NULL || utype == V_ASN1_BOOLEAN
+                || utype == V_ASN1_OBJECT || utype == V_ASN1_INTEGER
+                || utype == V_ASN1_ENUMERATED) {
+      // These types only have primitive encodings.
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+      return 0;
+    }
+
+    // Should really check the internal tags are correct but some things
+    // may get this wrong. The relevant specs say that constructed string
+    // types should be OCTET STRINGs internally irrespective of the type.
+    // So instead just check for UNIVERSAL class and ignore the tag.
+    if (!asn1_collect(&buf, &p, plen, inf, -1, V_ASN1_UNIVERSAL, 0)) {
+      goto err;
+    }
+    len = buf.length;
+    // Append a final null to string.
+    if (!BUF_MEM_grow_clean(&buf, len + 1)) {
+      goto err;
+    }
+    buf.data[len] = 0;
+    cont = (const unsigned char *)buf.data;
   } else {
     cont = p;
     len = plen;
@@ -757,6 +779,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
   *in = p;
   ret = 1;
 err:
+  OPENSSL_free(buf.data);
   return ret;
 }
 
@@ -964,6 +987,84 @@ static int asn1_find_end(const unsigned char **in, long len, char inf) {
     return 0;
   }
   *in = p;
+  return 1;
+}
+
+// This function collects the asn1 data from a constructed string type into
+// a buffer. The values of 'in' and 'len' should refer to the contents of the
+// constructed type and 'inf' should be set if it is indefinite length.
+
+// This determines how many levels of recursion are permitted in ASN1 string
+// types. If it is not limited stack overflows can occur. If set to zero no
+// recursion is allowed at all. Although zero should be adequate examples
+// exist that require a value of 1. So 5 should be more than enough.
+
+#define ASN1_MAX_STRING_NEST 5
+
+static int asn1_collect(BUF_MEM *buf, const unsigned char **in, long len,
+                        char inf, int tag, int aclass, int depth) {
+  const unsigned char *p, *q;
+  long plen;
+  char cst, ininf;
+  p = *in;
+  inf &= 1;
+  // If no buffer and not indefinite length constructed just pass over the
+  // encoded data
+  if (!buf && !inf) {
+    *in += len;
+    return 1;
+  }
+  while (len > 0) {
+    q = p;
+    // Check for EOC.
+    if (asn1_check_eoc(&p, len)) {
+      // EOC is illegal outside indefinite length constructed form
+      if (!inf) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
+        return 0;
+      }
+      inf = 0;
+      break;
+    }
+
+    if (!asn1_check_tlen(&plen, NULL, NULL, &ininf, &cst, &p,
+                         len, tag, aclass, 0)) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
+      return 0;
+    }
+
+    // If indefinite length constructed, update max length.
+    if (cst) {
+      if (depth >= ASN1_MAX_STRING_NEST) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_STRING);
+        return 0;
+      }
+      if (!asn1_collect(buf, &p, plen, ininf, tag, aclass, depth + 1)) {
+        return 0;
+      }
+    } else if (plen && !collect_data(buf, &p, plen)) {
+      return 0;
+    }
+    len -= p - q;
+  }
+  if (inf) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
+    return 0;
+  }
+  *in = p;
+  return 1;
+}
+
+static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen) {
+  int len;
+  if (buf) {
+    len = buf->length;
+    if (!BUF_MEM_grow_clean(buf, len + plen)) {
+      return 0;
+    }
+    OPENSSL_memcpy(buf->data + len, *p, plen);
+  }
+  *p += plen;
   return 1;
 }
 

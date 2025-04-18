@@ -284,7 +284,7 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
                        const EVP_CIPHER *enc, const unsigned char *pass,
                        int pass_len, pem_password_cb *callback, void *u) {
   EVP_CIPHER_CTX ctx;
-  int dsize = 0, i, j, ret = 0;
+  int i, j, ret = 0;
   unsigned char *p, *data = NULL;
   const char *objstr = NULL;
   char buf[PEM_BUFSIZE];
@@ -300,9 +300,10 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     }
   }
 
-  if ((dsize = i2d(x, NULL)) < 0) {
+  int dsize = i2d(x, NULL);
+  if (dsize < 0) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
-    dsize = 0;
+    OPENSSL_cleanse(&dsize, sizeof(dsize));
     goto err;
   }
   // dzise + 8 bytes are needed
@@ -318,7 +319,6 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     const unsigned iv_len = EVP_CIPHER_iv_length(enc);
 
     if (pass == NULL) {
-      pass_len = 0;
       if (!callback) {
         callback = PEM_def_callback;
       }
@@ -394,7 +394,6 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
     return 1;
   }
 
-  pass_len = 0;
   if (!callback) {
     callback = PEM_def_callback;
   }
