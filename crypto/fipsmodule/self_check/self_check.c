@@ -61,11 +61,11 @@ static void hexdump(char buf[MAX_HEXDUMP_SIZE], const uint8_t *in, size_t in_len
 
 static int check_test_optional_abort(const void *expected, const void *actual,
                       size_t expected_len, const char *name, const bool call_fips_failure) {
+  char expected_hex[MAX_HEXDUMP_SIZE] = {0};
+  char actual_hex[MAX_HEXDUMP_SIZE] = {0};
+  char error_msg[MAX_ERROR_MSG_SIZE] = {0};
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
     assert(sizeof(name) < MAX_NAME);
-    char expected_hex[MAX_HEXDUMP_SIZE] = {0};
-    char actual_hex[MAX_HEXDUMP_SIZE] = {0};
-    char error_msg[MAX_ERROR_MSG_SIZE] = {0};
     hexdump(expected_hex, expected, expected_len);
     hexdump(actual_hex, actual, expected_len);
 
@@ -2537,7 +2537,7 @@ void boringssl_ensure_hasheddsa_self_test(void) {
 // These tests are run at process start when in FIPS mode. Note that the SHA256
 // and HMAC-SHA256 tests are also used from bcm.c, so they can't be static.
 
-int boringssl_self_test_sha256(void) {
+OPENSSL_NOINLINE int boringssl_self_test_sha256(void) {
   static const uint8_t kInput[16] = {
       0xff, 0x3b, 0x85, 0x7d, 0xa7, 0x23, 0x6a, 0x2b,
       0xaa, 0x0f, 0x39, 0x6b, 0x51, 0x52, 0x22, 0x17,
@@ -2576,7 +2576,7 @@ static OPENSSL_NOINLINE int boringssl_self_test_sha512(void) {
                     "SHA-512 KAT");
 }
 
-int boringssl_self_test_hmac_sha256(void) {
+OPENSSL_NOINLINE int boringssl_self_test_hmac_sha256(void) {
   static const uint8_t kInput[16] = {
       0xda, 0xd9, 0x12, 0x93, 0xdf, 0xcf, 0x2a, 0x7c,
       0x8e, 0xcd, 0x13, 0xfe, 0x35, 0x3f, 0xa7, 0x5b,
