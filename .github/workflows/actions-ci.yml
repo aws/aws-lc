@@ -174,35 +174,6 @@ jobs:
       matrix:
         gccversion:
           - "10"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-${{ matrix.gccversion }}
-          cxx-compiler: g++-${{ matrix.gccversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        run: cmake --build ./build --target all
-      - name: Run tests
-        run: cmake --build ./build --target run_tests
-
-  gcc-ubuntu-2204-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    strategy:
-      fail-fast: false
-      matrix:
-        gccversion:
-          - "10"
           - "11"
           - "12"
         fips:
@@ -301,37 +272,6 @@ jobs:
         run: cmake --build ./build --target crypto
       - name: Build SSL
         run: cmake --build ./build --target ssl
-
-  clang-ubuntu-2204-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    strategy:
-      fail-fast: false
-      matrix:
-        clangversion:
-          - "10"
-          - "11"
-          - "12"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-${{ matrix.clangversion }}
-          cxx-compiler: clang++-${{ matrix.clangversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        run: cmake --build ./build --target all
-      - name: Run tests
-        run: cmake --build ./build --target run_tests
 
   clang-ubuntu-2204-sanity:
     if: github.repository_owner == 'aws'
@@ -439,7 +379,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: OpenBSD
-        uses: cross-platform-actions/action@595d543e5d1aeb6d48c0a176965028afe56c7018
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
@@ -566,14 +506,14 @@ jobs:
           - 'x86-64'
           - 'arm64'
         version:
-          - '13.3'
-          - '14.1'
+          - '13.5'
+          - '14.2'
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - name: Prepare VM
-        uses: cross-platform-actions/action@v0.25.0
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 90m
