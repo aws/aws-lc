@@ -192,3 +192,17 @@ int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len, unsigned indent) {
 
   return 1;
 }
+
+int BIO_dump(BIO *bio, const void *data, int len) {
+  if (bio == NULL || data == NULL || len < 0) {
+    return -1;
+  }
+  
+  // Use existing hexdump functionality with no indentation
+  if (!BIO_hexdump(bio, (const uint8_t *)data, (size_t)len, 0)) {
+    return -1;
+  }
+  
+  // Return estimate of bytes written (each line is ~80 bytes)
+  return ((len + 15) / 16) * 80;
+}
