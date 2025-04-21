@@ -8,8 +8,6 @@ source tests/ci/common_posix_setup.sh
 
 echo "Testing AWS-LC in debug mode."
 build_and_test
-echo "Testing c_rehash script executes."
-test_c_rehash
 
 echo "Testing c_rehash script executes."
 test_c_rehash
