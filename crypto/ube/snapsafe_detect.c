@@ -24,7 +24,6 @@ static CRYPTO_once_t aws_snapsafe_init = CRYPTO_ONCE_INIT;
 static volatile uint32_t *sgn_addr = NULL;
 static int snapsafety_state = 0;
 
-
 static void do_aws_snapsafe_init(void) {
   snapsafety_state = SNAPSAFETY_STATE_NOT_SUPPORTED;
   sgn_addr = NULL;

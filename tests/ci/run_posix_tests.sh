@@ -15,7 +15,6 @@ test_c_rehash
 echo "Testing AWS-LC in release mode."
 build_and_test -DCMAKE_BUILD_TYPE=Release
 
-
 echo "Testing AWS-LC small compilation."
 build_and_test -DOPENSSL_SMALL=1 -DCMAKE_BUILD_TYPE=Release
 
