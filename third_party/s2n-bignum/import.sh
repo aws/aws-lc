@@ -55,7 +55,7 @@ echo "Cloned s2n-bignum folder"
 ls -la ${TMP}
 
 echo "Remove source code from s2n-bignum that is not needed..."
-code_not_needed=("benchmarks" "codebuild" "common" "tests" "tools" "x86")
+code_not_needed=("benchmarks" "codebuild" "common" "tests" "tools" "x86" "arm/proofs")
 for code in "${code_not_needed[@]}"; do
   rm -rf ${TMP}/${code}
 done
