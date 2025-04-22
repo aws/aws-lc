@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.48.2"
+#define AWSLC_VERSION_NUMBER_STRING "1.49.1"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -246,6 +246,12 @@ extern "C" {
 // (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
 // clang's -Wunused-function.
 #define OPENSSL_INLINE static inline OPENSSL_UNUSED
+#endif
+
+#if defined(OPENSSL_WINDOWS)
+#define OPENSSL_NOINLINE __declspec(noinline)
+#else
+#define OPENSSL_NOINLINE __attribute__((noinline))
 #endif
 
 // ossl_ssize_t is a signed type which is large enough to fit the size of any

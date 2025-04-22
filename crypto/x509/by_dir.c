@@ -247,7 +247,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
   int hash_index;
   BUF_MEM *b = NULL;
   X509_OBJECT stmp, *tmp;
-  const char *postfix = "";
+  const char *postfix;
 
   if (name == NULL) {
     return 0;

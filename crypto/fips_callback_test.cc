@@ -147,7 +147,6 @@ TEST(FIPSCallback, PWCT) {
   ASSERT_TRUE(ed_ctx);
   EXPECT_TRUE(EVP_PKEY_keygen_init(ed_ctx.get()));
   EVP_PKEY *ed_key = nullptr;
-  EXPECT_TRUE(EVP_PKEY_keygen(ed_ctx.get(), &ed_key));
   if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "EDDSA_PWCT" ) == 0) {
     EXPECT_FALSE(EVP_PKEY_keygen(ed_ctx.get(), &ed_key));
   } else {

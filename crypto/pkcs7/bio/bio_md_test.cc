@@ -182,7 +182,7 @@ TEST_P(BIOMessageDigestTest, Randomized) {
       {4, 1, 5, 3, 2, 0, 1, MESSAGE_LEN, 133, 4555, 22, 4, 7964, 1234},
   };
   std::vector<size_t> v(1000);
-  std::generate(v.begin(), v.end(), [] { return rand() % MESSAGE_LEN; });
+  std::generate(v.begin(), v.end(), [] { return rand() % MESSAGE_LEN; }); // NOLINT(clang-analyzer-security.insecureAPI.rand)
   io_patterns.push_back(std::move(v));
 
   for (auto io_pattern : io_patterns) {
@@ -193,7 +193,7 @@ TEST_P(BIOMessageDigestTest, Randomized) {
     // Construct overall message and its expected expected_digest
     for (auto io_size : io_pattern) {
       ASSERT_LE(io_size, sizeof(message_buf));
-      char c = rand() % 256;
+      char c = rand() % 256; // NOLINT(clang-analyzer-security.insecureAPI.rand)
       OPENSSL_memset(message_buf, c, io_size);
       message.insert(message.end(), &message_buf[0], &message_buf[io_size]);
     }

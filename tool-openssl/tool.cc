@@ -15,10 +15,12 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 8> kTools = {{
+static const std::array<Tool, 10> kTools = {{
     {"crl", CRLTool},
     {"dgst", dgstTool},
     {"md5", md5Tool},
+    {"rehash", RehashTool},
+    {"req", reqTool},
     {"rsa", rsaTool},
     {"s_client", SClientTool},
     {"verify", VerifyTool},

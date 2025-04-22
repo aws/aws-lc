@@ -270,13 +270,6 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
-  if (AWS_LC_fips_failure_callback == NULL) {
-    fprintf(stderr, "AWS_LC_fips_failure_callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK\n");
-    fflush(stderr);
-    abort();
-  }
-#endif
 // TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
 // PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
 // to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
@@ -408,25 +401,22 @@ int BORINGSSL_integrity_test(void) {
 
 void AWS_LC_FIPS_failure(const char* message) {
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
-  if (AWS_LC_fips_failure_callback == NULL) {
-    fprintf(stderr, "AWS_LC_fips_failure_callback not defined but AWS-LC built with AWSLC_FIPS_FAILURE_CALLBACK. FIPS failure:\n%s", message);
-    fflush(stderr);
-    abort();
-  } else {
+  if (AWS_LC_fips_failure_callback != NULL) {
     AWS_LC_fips_failure_callback(message);
+    return;
   }
-#else
+  // Fallback to the default behavior if the callback is not defined
+#endif
   fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
   fflush(stderr);
   for (;;) {
     abort();
     exit(1);
   }
-#endif
 }
 #else  // BORINGSSL_FIPS
 void AWS_LC_FIPS_failure(const char* message) {
-  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
   fflush(stderr);
 }
 #endif  // BORINGSSL_FIPS

@@ -184,6 +184,9 @@ static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
   for (i = 0; i < sk_GENERAL_SUBTREE_num(trees); i++) {
     tree = sk_GENERAL_SUBTREE_value(trees, i);
     BIO_printf(bp, "%*s", ind + 2, "");
+    if (tree == NULL) {
+      return 0;
+    }
     if (tree->base->type == GEN_IPADD) {
       print_nc_ipadd(bp, tree->base->d.ip);
     } else {
