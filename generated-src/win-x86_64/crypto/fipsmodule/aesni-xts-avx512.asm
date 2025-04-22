@@ -447,7 +447,7 @@ $L$_remaining_num_blocks_is_5_hEgxyDlCngwrfFe:
 	vmovdqu8	ZMMWORD[rdx],zmm1
 	vmovdqu	XMMWORD[64+rdx],xmm2
 	add	rdx,0x50
-	movdqa	xmm8,xmm2
+	vmovdqa	xmm8,xmm2
 	vextracti32x4	xmm0,zmm10,0x1
 	and	r8,0xf
 	je	NEAR $L$_ret_hEgxyDlCngwrfFe
