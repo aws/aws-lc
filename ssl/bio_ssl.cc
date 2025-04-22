@@ -114,6 +114,14 @@ static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       bio->init = 1;
       return 1;
 
+    case BIO_C_GET_SSL:
+      if (ptr != nullptr) {
+        auto sslp = static_cast<SSL **>(ptr);
+        *sslp = ssl;
+        return 1;
+      }
+      return 0;
+
     case BIO_CTRL_GET_CLOSE:
       return bio->shutdown;
 
@@ -190,3 +198,44 @@ const BIO_METHOD *BIO_f_ssl(void) { return &ssl_method; }
 long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership) {
   return BIO_ctrl(bio, BIO_C_SET_SSL, take_owership, ssl);
 }
+
+long BIO_get_ssl(BIO *bio, SSL **ssl) {
+  return BIO_ctrl(bio, BIO_C_GET_SSL, 0, ssl);
+}
+
+BIO *BIO_new_ssl_connect(SSL_CTX *ctx) {
+  bssl::UniquePtr<BIO> con(BIO_new(BIO_s_connect()));
+  bssl::UniquePtr<BIO> ssl(BIO_new_ssl(ctx, 1));
+  if (!con || !ssl) {
+    return nullptr;
+  }
+  bssl::UniquePtr<BIO> ret(BIO_push(ssl.get(), con.get()));
+  if (!ret) {
+    return nullptr;
+  }
+
+  con.release();
+  ssl.release();
+  return ret.release();
+}
+
+BIO *BIO_new_ssl(SSL_CTX *ctx, int client) {
+  bssl::UniquePtr<BIO> ret(BIO_new(BIO_f_ssl()));
+  SSL *ssl = SSL_new(ctx);
+
+  if (!ret || !ssl) {
+    return nullptr;
+  }
+  if (client) {
+    SSL_set_connect_state(ssl);
+  } else {
+    SSL_set_accept_state(ssl);
+  }
+
+  if (BIO_set_ssl(ret.get(), ssl, BIO_CLOSE) <= 0) {
+    return nullptr;
+  }
+  return ret.release();
+}
+
+

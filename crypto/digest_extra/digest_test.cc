@@ -357,6 +357,7 @@ static void TestDigest(const DigestTestVector *test) {
     }
     ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
+    ctx.Reset();
 
     // Move the digest with half the input provided.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));

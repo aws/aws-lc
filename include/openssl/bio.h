@@ -295,6 +295,17 @@ typedef long (*BIO_callback_fn_ex)(BIO *bio, int oper, const char *argp,
                                    size_t len, int argi, long argl, int bio_ret,
                                    size_t *processed);
 
+  // |BIO_callback_fn_ex| parameters have the following meaning:
+  //    |bio| the bio that made the call
+  //    |oper| the operation being performed, may be or'd with |BIO_CB_RETURN|
+  //    |argp| and |argl| depends on the value of oper
+  //    |argi| is used to hold len value for |BIO_CB_READ|, |BIO_CB_WRITE|, and
+  //    |BIO_CB_GETS|
+  //    |bio_ret| is the return value from the BIO method itself,
+  //    or value of processed where applicable
+typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp,
+    int argi, long argl, long bio_ret);
+
 
 // BIO_callback_ctrl allows the callback function to be manipulated. The |cmd|
 // arg will generally be |BIO_CTRL_SET_CALLBACK| but arbitrary command values
@@ -327,6 +338,11 @@ OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
+
+// BIO_set_callback sets the legacy |callback| for |bio|. When both |callback| and
+// |callback_ex| are set, |callback_ex| will be used. Added for compatibility with
+// existing applications.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
 
 // BIO_set_callback_arg sets the callback |arg| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
@@ -1002,6 +1018,20 @@ struct bio_st {
   // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|, 
   // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
+
+  // Legacy callback function that handles the same events as |callback_ex| but without
+  // length and processed parameters.
+  // When both callbacks are set, |callback_ex| will be used.
+  // Handles |BIO_read|, |BIO_write|, |BIO_free|, |BIO_gets|, |BIO_puts|,
+  // and |BIO_ctrl| operations.
+  // Callbacks are only called with for the following events: |BIO_CB_READ|,
+  // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
+  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
+  // |BIO_CB_PUTS|+|BIO_CB_RETURN|, |BIO_CB_GETS|,
+  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|,
+  // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
+  BIO_callback_fn callback;
+
   // Optional callback argument, only intended for applications use.
   char *cb_arg;
 
@@ -1035,6 +1065,7 @@ struct bio_st {
 #define BIO_C_GET_FILE_PTR 107
 #define BIO_C_SET_FILENAME 108
 #define BIO_C_SET_SSL 109
+#define BIO_C_GET_SSL 110
 #define BIO_C_SET_MD 111
 #define BIO_C_GET_MD 112
 #define BIO_C_GET_CIPHER_STATUS 113

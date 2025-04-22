@@ -194,7 +194,8 @@ static int pkey_dsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
   CBS sig_cbs;
   CBS_init(&sig_cbs, sig, siglen);
   dsa_sig = DSA_SIG_parse(&sig_cbs);
-  if (dsa_sig == NULL) {
+  // Allocation failure, invalid asn1 encoding, or trailing garbage
+  if (dsa_sig == NULL || CBS_len(&sig_cbs) != 0) {
     goto end;
   }
   if (1 != DSA_do_verify(tbs, tbslen, dsa_sig, dsa)) {
