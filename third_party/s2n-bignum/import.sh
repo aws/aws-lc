@@ -35,14 +35,14 @@ TMP="TEMP_CAN_DELETE"
 
 # Check if TMP directory already exists
 if [ -d "${TMP}" ]; then
-    echo "Source directory or symlink ${TMP} does already exist -- please remove it before re-running the importer"
-    exit 1
+  echo "Source directory or symlink ${TMP} does already exist -- please remove it before re-running the importer"
+  exit 1
 fi
 
 # Check if source directory already exists
 if [ -d "${SRC}" ]; then
-    echo "Source directory or symlink ${SRC} does already exist -- please remove it before re-running the importer"
-    exit 1
+  echo "Source directory or symlink ${SRC} does already exist -- please remove it before re-running the importer"
+  exit 1
 fi
 
 mkdir ${TMP}
@@ -51,9 +51,24 @@ echo "Fetching repository ..."
 git clone ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} ${TMP} --branch ${GITHUB_TARGET} --single-branch > /dev/null
 GITHUB_COMMIT=$(cd ${TMP} >/dev/null; git rev-parse HEAD)
 
+echo "Cloned s2n-bignum folder"
+ls -la ${TMP}
+
+echo "Remove source code from s2n-bignum that is not needed..."
+code_not_needed=("benchmarks" "codebuild" "common" "tests" "tools" "x86")
+for code in "${code_not_needed[@]}"; do
+  rm -rf ${TMP}/${code}
+done
+
+echo "Cloned s2n-bignum folder after removing unneeded source code..."
+ls -la ${TMP}
+
 echo "Copy source code ..."
 mkdir ${SRC}
 cp -rH ${TMP}/* ${SRC}
+
+echo "Copied s2n-bignum source code..."
+ls -la ${SRC}
 
 echo "Remove temporary artifacts ..."
 rm -rf ${TMP}
