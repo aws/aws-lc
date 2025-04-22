@@ -30,7 +30,7 @@ GITHUB_SERVER_URL="https://github.com/"
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:=awslabs/s2n-bignum.git}
 GITHUB_TARGET=${GITHUB_TARGET:=main}
 
-SRC="s2n-bignum"
+SRC="s2n-bignum-imported"
 TMP="TEMP_CAN_DELETE"
 
 # Check if TMP directory already exists
@@ -70,5 +70,5 @@ EOF
 # Submodule path might be cached.
 echo ""
 echo "Post actions: Run"
-echo "$ git add s2n-bignum META.yml ; git commit -m \"Imported s2n-bignum version: ${GITHUB_TARGET}/${GITHUB_COMMIT}\""
+echo "$ git add ${SRC} META.yml ; git commit -m \"Imported s2n-bignum version: ${GITHUB_TARGET}/${GITHUB_COMMIT}\""
 echo "to add new source to git tree"
