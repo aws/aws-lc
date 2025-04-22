@@ -15,7 +15,7 @@
 #ifndef S2N_BIGNUM_AWS_LC_H
 #define S2N_BIGNUM_AWS_LC_H
 
-#include "s2n-bignum/include/s2n-bignum.h"
+#include "s2n-bignum-imported/include/s2n-bignum.h"
 
 // ----------------------------------------------------------------------------
 // C prototypes for s2n-bignum functions used in AWS-LC
