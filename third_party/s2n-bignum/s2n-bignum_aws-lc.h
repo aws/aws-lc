@@ -52,6 +52,10 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 }
 #endif
 
+#define S2NBIGNUM_KSQR_16_32_TEMP_NWORDS 24
+#define S2NBIGNUM_KMUL_16_32_TEMP_NWORDS 32
+#define S2NBIGNUM_KMUL_32_64_TEMP_NWORDS 96
+
 static inline void p256_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]) {
   if (use_s2n_bignum_alt()) { p256_montjscalarmul_alt(res, scalar, point); }
   else { p256_montjscalarmul(res, scalar, point); }

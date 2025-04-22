@@ -290,16 +290,10 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 generic/bignum_optsub.S
                 generic/bignum_sqr.S
 
-                fastmul/bignum_kmul_16_32_neon.S
-                fastmul/bignum_kmul_32_64_neon.S
-                fastmul/bignum_ksqr_16_32_neon.S
-                fastmul/bignum_ksqr_32_64_neon.S
-                fastmul/bignum_emontredc_8n_neon.S
-
                 generic/bignum_copy_row_from_table.S
-                generic/bignum_copy_row_from_table_8n_neon.S
-                generic/bignum_copy_row_from_table_16_neon.S
-                generic/bignum_copy_row_from_table_32_neon.S
+                generic/bignum_copy_row_from_table_8n.S
+                generic/bignum_copy_row_from_table_16.S
+                generic/bignum_copy_row_from_table_32.S
     )
   endif()
 endif()
