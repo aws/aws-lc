@@ -15,7 +15,7 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
         variables:
-          EC2_AMI: "ami-0c29a2c5cf69b5a9c"
+          EC2_AMI: "ami-0e8c824f386e1de06"
           EC2_INSTANCE_TYPE: "c6g.2xlarge"
           ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
           TARGET_TEST_SCRIPT: "./tests/ci/run_posix_sanitizers.sh"
@@ -28,7 +28,7 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
         variables:
-          EC2_AMI: "ami-0c29a2c5cf69b5a9c"
+          EC2_AMI: "ami-0e8c824f386e1de06"
           EC2_INSTANCE_TYPE: "c6g.4xlarge"
           ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
           TARGET_TEST_SCRIPT: "./tests/ci/run_fips_tests.sh"
@@ -42,7 +42,7 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
         variables:
-          EC2_AMI: "ami-0c29a2c5cf69b5a9c"
+          EC2_AMI: "ami-0e8c824f386e1de06"
           EC2_INSTANCE_TYPE: "r8g.2xlarge"
           ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
           TARGET_TEST_SCRIPT: "./tests/ci/run_posix_sanitizers.sh"
@@ -55,7 +55,7 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
         variables:
-          EC2_AMI: "ami-0c29a2c5cf69b5a9c"
+          EC2_AMI: "ami-0e8c824f386e1de06"
           EC2_INSTANCE_TYPE: "r8g.2xlarge"
           ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
           TARGET_TEST_SCRIPT: "./tests/ci/run_fips_tests.sh"
