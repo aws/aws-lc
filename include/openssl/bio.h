@@ -245,13 +245,12 @@ OPENSSL_EXPORT int BIO_method_type(const BIO *bio);
 // The BIO_CB_RETURN flag indicates if it is after the call
 #define BIO_CB_RETURN 0x80
 
-// bio_info_cb is the type of a callback function that can be called for most
-// BIO operations. The |event| argument is one of |BIO_CB_*| and can be ORed
-// with |BIO_CB_RETURN| if the callback is being made after the operation in
-// question. In that case, |return_value| will contain the return value from
-// the operation.
-typedef long (*bio_info_cb)(BIO *bio, int event, const char *parg, int cmd,
-                            long larg, long return_value);
+// |bio_info_cb| is a type of callback function providing information about a
+// BIO operation. |state| identifies the current state of the BIO
+// object, such as |BIO_CONN_S_BEFORE|. |res| represent the result of the
+// operation that triggered the callback. This can be a positive value, zero,
+// or a negative value depending on the operation and its outcome.
+typedef long (*bio_info_cb)(BIO *b, int state, int res);
 
 // |BIO_callback_fn_ex| parameters have the following meaning:
 //    |bio| the bio that made the call
