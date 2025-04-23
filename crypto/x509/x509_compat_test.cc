@@ -553,7 +553,7 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number:
-            1e:d3:b4:51:2e:cc:35:dd:ac:45:03:34:94:ff:5e:ae:a2:0c:c7:98
+            31:b6:83:37:da:68:56:9c:ac:0a:fd:0c:f1:7b:d1:8c:c9:23:e7:8f
         Signature Algorithm: ecdsa-with-SHA256
         Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Root CA 1
         Validity
@@ -576,7 +576,7 @@ Certificate:
                 Digital Signature, Certificate Sign, CRL Sign
             X509v3 Basic Constraints: critical
                 CA:TRUE
-            X509v3 Name Constraints:
+            X509v3 Name Constraints: critical
                 Permitted:
                   IP:10.1.0.0/255.255.0.0
                 Excluded:
@@ -587,26 +587,26 @@ Certificate:
                 19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
     Signature Algorithm: ecdsa-with-SHA256
     Signature Value:
-        30:45:02:20:0d:0f:59:61:82:af:ad:7e:45:38:95:c7:76:17:
-        34:5b:57:a7:00:1c:bc:b6:24:79:00:61:f5:a6:02:5f:a1:48:
-        02:21:00:93:a0:2d:0e:6d:60:23:4d:0a:12:4d:a7:db:f4:f4:
-        f0:4b:b7:d0:7c:6b:6c:95:9f:99:e3:15:b7:d3:76:d3:c0
+        30:45:02:20:0f:7a:b1:66:83:b6:b7:70:af:14:ae:0f:98:3d:
+        36:5c:9e:65:8f:e7:3c:f5:05:00:b4:14:53:10:15:2b:c5:7d:
+        02:21:00:ac:53:f8:9c:65:e2:38:7f:66:da:96:b2:03:ad:68:
+        57:30:30:8a:4c:0f:2b:4b:9f:36:ea:1f:e3:8e:25:14:9b
 */
 static char kValidIntCAWithIPv4NameConstraints[] = R"(
 -----BEGIN CERTIFICATE-----
-MIICUjCCAfigAwIBAgIUHtO0US7MNd2sRQM0lP9erqIMx5gwCgYIKoZIzj0EAwIw
+MIICVTCCAfugAwIBAgIUMbaDN9poVpysCv0M8XvRjMkj548wCgYIKoZIzj0EAwIw
 YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
 UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
 MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowYjELMAkGA1UEBhMC
 VVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFXUyBMaWJjcnlwdG8x
 EDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBDQSAxMFkwEwYHKoZI
 zj0CAQYIKoZIzj0DAQcDQgAEnmTRjOHn8DulIt8ELVT66MyxIueLxmDZcs2tGhbc
-NJ+Z6CKAld4ZWwpO1tZHWrdEMhc/azKA5Q41y2hixN0x0aOBizCBiDAOBgNVHQ8B
-Af8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAlBgNVHR4EHjAcoAwwCocICgEAAP//
-AAChDDAKhwgKAQEA////ADAdBgNVHQ4EFgQUudHPCKXymStagMl4I3jRvHlwn/sw
-HwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhSW98wCgYIKoZIzj0EAwIDSAAw
-RQIgDQ9ZYYKvrX5FOJXHdhc0W1enABy8tiR5AGH1pgJfoUgCIQCToC0ObWAjTQoS
-Tafb9PTwS7fQfGtslZ+Z4xW303bTwA==
+NJ+Z6CKAld4ZWwpO1tZHWrdEMhc/azKA5Q41y2hixN0x0aOBjjCBizAOBgNVHQ8B
+Af8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAoBgNVHR4BAf8EHjAcoAwwCocICgEA
+AP//AAChDDAKhwgKAQEA////ADAdBgNVHQ4EFgQUudHPCKXymStagMl4I3jRvHlw
+n/swHwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhSW98wCgYIKoZIzj0EAwID
+SAAwRQIgD3qxZoO2t3CvFK4PmD02XJ5lj+c89QUAtBRTEBUrxX0CIQCsU/icZeI4
+f2balrIDrWhXMDCKTA8rS5826h/jjiUUmw==
 -----END CERTIFICATE-----
 )";
 
@@ -809,7 +809,7 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number:
-            5b:f2:ea:34:90:86:19:ae:89:9d:e7:81:9b:37:4d:93:8e:32:10:48
+            75:fb:e0:27:bc:8e:e1:39:d5:90:91:20:c7:40:ec:dd:d4:e8:13:a3
         Signature Algorithm: ecdsa-with-SHA256
         Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Root CA 1
         Validity
@@ -832,7 +832,7 @@ Certificate:
                 Digital Signature, Certificate Sign, CRL Sign
             X509v3 Basic Constraints: critical
                 CA:TRUE
-            X509v3 Name Constraints:
+            X509v3 Name Constraints: critical
                 Permitted:
                   IP:0:0:0:0:0:FFFF:A01:0/FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:0
                 Excluded:
@@ -843,27 +843,27 @@ Certificate:
                 19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
     Signature Algorithm: ecdsa-with-SHA256
     Signature Value:
-        30:45:02:20:22:a0:76:63:1e:2b:a6:f7:f3:e7:ba:ca:23:65:
-        f6:ed:7e:c5:e2:84:5a:81:70:58:d3:33:2c:0a:5c:c6:0a:a0:
-        02:21:00:f3:87:b7:3f:e6:3b:fe:a2:00:c9:b7:e2:a0:5e:52:
-        36:ce:25:39:83:55:bb:45:55:95:09:47:a5:2e:20:85:42
+        30:45:02:20:73:9d:b0:46:93:44:d4:8e:cc:b0:a0:dd:93:28:
+        38:df:1f:cd:ff:52:91:4b:d7:6e:1f:9d:36:23:ad:77:b9:52:
+        02:21:00:c8:e5:54:f3:2d:f3:f3:e9:7c:8b:03:60:94:75:5c:
+        ca:66:94:5f:ac:87:ed:7b:53:52:2d:71:89:e1:d0:d2:fc
 */
 static char kValidIntCAWithIPv6NameConstraints[] = R"(
 -----BEGIN CERTIFICATE-----
-MIICgjCCAiigAwIBAgIUW/LqNJCGGa6JneeBmzdNk44yEEgwCgYIKoZIzj0EAwIw
+MIIChTCCAiugAwIBAgIUdfvgJ7yO4TnVkJEgx0Ds3dToE6MwCgYIKoZIzj0EAwIw
 YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
 UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
 MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowYjELMAkGA1UEBhMC
 VVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFXUyBMaWJjcnlwdG8x
 EDAOBgNVBAsMB0dvb2QgQ0ExFDASBgNVBAMMC0ludCBOQyBDQSAyMFkwEwYHKoZI
 zj0CAQYIKoZIzj0DAQcDQgAEnmTRjOHn8DulIt8ELVT66MyxIueLxmDZcs2tGhbc
-NJ+Z6CKAld4ZWwpO1tZHWrdEMhc/azKA5Q41y2hixN0x0aOBuzCBuDAOBgNVHQ8B
-Af8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zBVBgNVHR4ETjBMoCQwIocgAAAAAAAA
-AAAAAP//CgEAAP//////////////////AAChJDAihyAAAAAAAAAAAAAA//8KAQEA
-////////////////////ADAdBgNVHQ4EFgQUudHPCKXymStagMl4I3jRvHlwn/sw
-HwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhSW98wCgYIKoZIzj0EAwIDSAAw
-RQIgIqB2Yx4rpvfz57rKI2X27X7F4oRagXBY0zMsClzGCqACIQDzh7c/5jv+ogDJ
-t+KgXlI2ziU5g1W7RVWVCUelLiCFQg==
+NJ+Z6CKAld4ZWwpO1tZHWrdEMhc/azKA5Q41y2hixN0x0aOBvjCBuzAOBgNVHQ8B
+Af8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zBYBgNVHR4BAf8ETjBMoCQwIocgAAAA
+AAAAAAAAAP//CgEAAP//////////////////AAChJDAihyAAAAAAAAAAAAAA//8K
+AQEA////////////////////ADAdBgNVHQ4EFgQUudHPCKXymStagMl4I3jRvHlw
+n/swHwYDVR0jBBgwFoAUGRnhjAniXVwWBOGcdGYZ/bhSW98wCgYIKoZIzj0EAwID
+SAAwRQIgc52wRpNE1I7MsKDdkyg43x/N/1KRS9duH502I613uVICIQDI5VTzLfPz
+6XyLA2CUdVzKZpRfrIfte1NSLXGJ4dDS/A==
 -----END CERTIFICATE-----
 )";
 
