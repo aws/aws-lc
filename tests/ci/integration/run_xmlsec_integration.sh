@@ -20,6 +20,7 @@ SCRATCH_FOLDER="${SRC_ROOT}/XMLSEC_BUILD_ROOT"
 XMLSEC_SRC_FOLDER="${SCRATCH_FOLDER}/xmlsec"
 XMLSEC_SRC_FOLDER_BUILD_PREFIX="${XMLSEC_SRC_FOLDER}/build/install"
 XMLSEC_SRC_FOLDER_BUILD_EPREFIX="${XMLSEC_SRC_FOLDER}/build/exec-install"
+XMLSEC_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/xmlsec_patch"
 
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -44,6 +45,12 @@ function xmlsec_build() {
     | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
+function xmlsec_patch() {
+  patchfile="${XMLSEC_PATCH_FOLDER}/xmlsec_master.patch"
+  echo "Apply patch $patchfile..."
+  patch -p1 --quiet -i "$patchfile"
+}
+
 function xmlsec_run_tests() {
   make check
 }
@@ -56,5 +63,6 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 
 # Build xmlsec from source.
 pushd ${XMLSEC_SRC_FOLDER}
+xmlsec_patch
 xmlsec_build
 xmlsec_run_tests
