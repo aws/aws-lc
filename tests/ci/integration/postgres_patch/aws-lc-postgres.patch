@@ -1,3 +1,19 @@
+# NOTE: There are also some minor error string differences for AWS-LC
+# vs OpenSSL in "src/test/ssl/t/001_ssltests.pl" that are not within
+# this patch (AWS-LC uses all caps, OpenSSL uses lower case).
+# We use sed in "tests/ci/integration/run_postgres_integration.sh" to
+# account for these differences instead to minimize churn in this patch.
+# If we do ever get the chance to submit a patch upstream, this patch
+# should account for those error string discrepencies.
+#
+# Ideally we wouldn't be commenting out the test below, but we'd rather
+# do an AC_CHECK_FUNCS check against |awslc_version_string| to determine
+# whether Postgres is using AWS-LC. That change touches significantly
+# more files and causes more churn in our CI however.
+# Commit db723116a144386007295521987feed4a6daab2f has a more suitable
+# patch that includes the configure script change. That patch would be
+# more suitable for upstreaming to postgres whenever we decide to do so. 
+
 diff --git a/src/test/ssl/t/002_scram.pl b/src/test/ssl/t/002_scram.pl
 index dd93224124..44f570c8e2 100644
 --- a/src/test/ssl/t/002_scram.pl
