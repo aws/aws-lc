@@ -58,6 +58,7 @@
 #include <string.h>
 
 #include <openssl/asn1t.h>
+#include <openssl/bytestring.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -566,6 +567,62 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
 #define IPV6_ADDR_LEN 16
 #define IPV6_CIDR_LEN (IPV6_ADDR_LEN * 2)
 
+static int validate_ipv4_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
+  if (mask_len != IPV4_ADDR_LEN) {
+    return 0;
+  }
+
+  uint32_t mask = ((uint32_t)mask_ptr[0] << 24) |
+                  ((uint32_t)mask_ptr[1] << 16) | ((uint32_t)mask_ptr[2] << 8) |
+                  ((uint32_t)mask_ptr[3]);
+
+  if (!(mask == 0 || ((~mask + 1) & ~mask) == 0)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int validate_ipv6_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
+  if (mask_len != IPV6_ADDR_LEN) {
+    return 0;
+  }
+
+  uint64_t mask_high =
+      (((uint64_t)mask_ptr[0]) << 56) | ((uint64_t)mask_ptr[1] << 48) |
+      ((uint64_t)mask_ptr[2] << 40) | ((uint64_t)mask_ptr[3] << 32) |
+      ((uint64_t)mask_ptr[4] << 24) | ((uint64_t)mask_ptr[5] << 16) |
+      ((uint64_t)mask_ptr[6] << 8) | ((uint64_t)mask_ptr[7]);
+
+  if (!(mask_high == 0 || ((~mask_high + 1) & ~mask_high) == 0)) {
+    return 0;
+  }
+
+  uint64_t mask_low =
+      (((uint64_t)mask_ptr[8]) << 56) | ((uint64_t)mask_ptr[9] << 48) |
+      ((uint64_t)mask_ptr[10] << 40) | ((uint64_t)mask_ptr[11] << 32) |
+      ((uint64_t)mask_ptr[12] << 24) | ((uint64_t)mask_ptr[13] << 16) |
+      ((uint64_t)mask_ptr[14] << 8) | ((uint64_t)mask_ptr[15]);
+
+  if (!(mask_low == 0 || ((~mask_low + 1) & ~mask_low) == 0)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int validate_cidr_mask(CBS *cidr_mask) {
+  size_t mask_len = CBS_len(cidr_mask);
+  switch (mask_len) {
+    case IPV4_ADDR_LEN:
+      return validate_ipv4_cidr_mask(CBS_data(cidr_mask), mask_len);
+    case IPV6_ADDR_LEN:
+      return validate_ipv6_cidr_mask(CBS_data(cidr_mask), mask_len);
+    default:
+      return 0;
+  }
+}
+
 static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
   CBS ip_cbs, cidr_cbs, cidr_addr, cidr_mask;
 
@@ -575,21 +632,18 @@ static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
   size_t ip_len = CBS_len(&ip_cbs);
   size_t cidr_len = CBS_len(&cidr_cbs);
 
+  // Next the IP length should be either the length of an IPv4 or IPv6 address.
+  // Finally the CIDR length should either be the length of an IPv4 address+mask
+  // or IPv6 address+mask.
+  if (!((ip_len == IPV4_ADDR_LEN) || (ip_len == IPV6_ADDR_LEN)) ||
+      !((cidr_len == IPV4_CIDR_LEN) || (cidr_len == IPV6_CIDR_LEN))) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
   // Validate that the CIDR length is twice the size of the provided IP (address
   // + mask).
   if (ip_len * 2 != cidr_len) {
     return X509_V_ERR_PERMITTED_VIOLATION;
-  }
-
-  // Next the IP length should be either the length of an IPv4 or IPv6 address.
-  if (!((ip_len == IPV4_ADDR_LEN) || (ip_len == IPV6_ADDR_LEN))) {
-    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
-  }
-
-  // Finally the CIDR length should either be the length of an IPv4 address+mask
-  // or IPv6 address+mask.
-  if (!((cidr_len == IPV4_CIDR_LEN) || (cidr_len == IPV6_CIDR_LEN))) {
-    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
   if (!CBS_get_bytes(&cidr_cbs, &cidr_addr, ip_len) ||
@@ -597,10 +651,14 @@ static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
+  // Checking for wrong mask definition that are not valid CIDR prefixes.
+  // For example: 255.0.255.0
+  if (!validate_cidr_mask(&cidr_mask)) {
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
   uint8_t ip_byte, cidr_addr_byte, cidr_mask_byte;
 
-  // Considering possible not aligned base ipAddress
-  // Not checking for wrong mask definition: i.e.: 255.0.255.0
   for (size_t i = 0; i < ip_len; i++) {
     if (!CBS_get_u8(&ip_cbs, &ip_byte) ||
         !CBS_get_u8(&cidr_addr, &cidr_addr_byte) ||
