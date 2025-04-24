@@ -164,6 +164,10 @@ static const EVP_MD *cbs_to_md(const CBS *cbs) {
 }
 
 const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
+  if(obj == NULL) {
+    return NULL;
+  }
+
   // Handle objects with no corresponding OID. Note we don't use |OBJ_obj2nid|
   // here to avoid pulling in the OID table.
   if (obj->nid != NID_undef) {
