@@ -93,6 +93,22 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
   ASSERT_TRUE(result);
 }
 
+// Test -v2 option without a value (should default to aes-256-cbc)
+TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
+  std::string passout = std::string("file:") + pass_path;
+  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "-passout", passout.c_str()};
+  bool result = pkcs8Tool(args);
+  ASSERT_TRUE(result);
+  
+  // Verify the output is an encrypted PKCS8 file
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  
+  std::string content = ReadFileToString(out_path);
+  ASSERT_FALSE(content.empty());
+  ASSERT_TRUE(content.find("-----BEGIN ENCRYPTED PRIVATE KEY-----") != std::string::npos);
+}
+
 // Test -v2prf with hmacWithSHA1 (only supported PRF in AWS-LC)
 TEST_F(PKCS8Test, PKCS8ToolPRFTest) {
   std::string passout = std::string("file:") + pass_path;
@@ -261,6 +277,24 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2prfOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + 
                              in_path + " -out " + out_path_tool + " -passout file:" + pass_path;
   std::string openssl_command = std::string(openssl_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + 
+                                in_path + " -out " + out_path_openssl + " -passout file:" + pass_path;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  trim(tool_output_str);
+  trim(openssl_output_str);
+  
+  ASSERT_TRUE(CheckPKCS8Boundaries(tool_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
+  ASSERT_TRUE(CheckPKCS8Boundaries(openssl_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
+}
+
+// Test against OpenSSL output with -v2 flag without value (should default to aes-256-cbc)
+TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2DefaultOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " pkcs8 -topk8 -v2 -in " + 
+                             in_path + " -out " + out_path_tool + " -passout file:" + pass_path;
+  std::string openssl_command = std::string(openssl_executable_path) + " pkcs8 -topk8 -v2 -in " + 
                                 in_path + " -out " + out_path_openssl + " -passout file:" + pass_path;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);

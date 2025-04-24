@@ -154,11 +154,11 @@ bool pkcs8Tool(const args_list_t &args) {
     // Convert to PKCS#8
     if (nocrypt) {
       // Unencrypted PKCS#8
-        bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
-        if (!p8inf) {
-          fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
-          fprintf(stderr, "The key type may not be supported for PKCS#8 conversion\n");
-          ERR_print_errors_fp(stderr);
+      bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
+      if (!p8inf) {
+        fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
+        fprintf(stderr, "The key type may not be supported for PKCS#8 conversion\n");
+        ERR_print_errors_fp(stderr);
       } else {
         // Write the output
         if (outform == "PEM") {
@@ -169,57 +169,66 @@ bool pkcs8Tool(const args_list_t &args) {
       }
     } else {
       // Encrypted PKCS#8
-      if (!v2_cipher.empty()) {
-        // Use PKCS#5 v2.0
-        const EVP_CIPHER *cipher = EVP_get_cipherbyname(v2_cipher.c_str());
-        if (!cipher) {
-          fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
-          return false;
-        }
-        
-        // Handle PRF algorithm if specified
-        // Note: AWS-LC only supports hmacWithSHA1 for PKCS#8 v2 encryption.
-        // For compatibility with OpenSSL, the -v2prf parameter is accepted but
-        // must be set to "hmacWithSHA1" or omitted.
-        if (!v2prf.empty()) {
-          if (v2prf != "hmacWithSHA1") {
-            fprintf(stderr, "Error: AWS-LC only supports hmacWithSHA1 as the PRF algorithm\n");
-            fprintf(stderr, "PRF specified: %s\n", v2prf.c_str());
+      const EVP_CIPHER *cipher = nullptr;
+      
+      // Check if -v2 was specified in the command line
+      if (parsed_args.count("-v2") > 0) {
+        if (!v2_cipher.empty()) {
+          // User specified a cipher with -v2
+          cipher = EVP_get_cipherbyname(v2_cipher.c_str());
+          if (!cipher) {
+            fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
             return false;
           }
-          // The PRF specification is validated to ensure it's hmacWithSHA1
-        }
-        
-        // Convert and encrypt
-        bssl::UniquePtr<X509_SIG> p8;
-        if (passout) {
-          bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
-          if (!p8inf) {
-            fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
-            ERR_print_errors_fp(stderr);
-          } else {
-            // Always use the default PRF (-1) with the specified cipher
-            // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
-            p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
-                              NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
-            if (!p8) {
-              fprintf(stderr, "Error: Failed to encrypt private key\n");
-              fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
-              ERR_print_errors_fp(stderr);
-            }
-          }
-        }
-        
-        if (p8) {
-          // Write the output
-          if (outform == "PEM") {
-            result = PEM_write_PKCS8(out, p8.get());
-          } else {  // DER
-            result = i2d_PKCS8_fp(out, p8.get());
-          }
+        } else {
+          // -v2 was specified without a value, default to aes-256-cbc for OpenSSL 1.1.1 compatibility
+          cipher = EVP_aes_256_cbc();
         }
       } else {
-        fprintf(stderr, "Error: Encryption requested but no cipher specified with -v2\n");
+        fprintf(stderr, "Error: Encryption requested but -v2 option not specified\n");
+        return false;
+      }
+      
+      // Handle PRF algorithm if specified
+      // Note: AWS-LC only supports hmacWithSHA1 for PKCS#8 v2 encryption.
+      // For compatibility with OpenSSL, the -v2prf parameter is accepted but
+      // must be set to "hmacWithSHA1" or omitted.
+      if (!v2prf.empty()) {
+        if (v2prf != "hmacWithSHA1") {
+          fprintf(stderr, "Error: AWS-LC only supports hmacWithSHA1 as the PRF algorithm\n");
+          fprintf(stderr, "PRF specified: %s\n", v2prf.c_str());
+          return false;
+        }
+        // The PRF specification is validated to ensure it's hmacWithSHA1
+      }
+      
+      // Convert and encrypt
+      bssl::UniquePtr<X509_SIG> p8;
+      if (passout) {
+        bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
+        if (!p8inf) {
+          fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
+          ERR_print_errors_fp(stderr);
+        } else {
+          // Always use the default PRF (-1) with the specified cipher
+          // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
+          p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
+                            NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
+          if (!p8) {
+            fprintf(stderr, "Error: Failed to encrypt private key\n");
+            fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
+            ERR_print_errors_fp(stderr);
+          }
+        }
+      }
+      
+      if (p8) {
+        // Write the output
+        if (outform == "PEM") {
+          result = PEM_write_PKCS8(out, p8.get());
+        } else {  // DER
+          result = i2d_PKCS8_fp(out, p8.get());
+        }
       }
     }
   } else {
