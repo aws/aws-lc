@@ -262,10 +262,10 @@ batch:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_ntp_integration.sh"
 
     - identifier: pq_tls_integration_x86_64
-      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      buildspec: tests/ci/codebuild/common/run_ipv6_target.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
         variables:
@@ -295,7 +295,7 @@ batch:
       buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_integration_latest
         variables:
