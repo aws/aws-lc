@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/base.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/pkcs8.h>
@@ -95,57 +96,52 @@ bool pkcs8Tool(const args_list_t &args) {
   FILE *out = out_file.get() ? out_file.get() : stdout;
 
   // Get passwords if needed
+  OpenSSLPointer<char> passin_ptr;
+  OpenSSLPointer<char> passout_ptr;
   char *passin = nullptr, *passout = nullptr;
+
   if (!passin_arg.empty()) {
-    passin = OPENSSL_strdup(passin_arg.c_str());
-    if (!passin) {
+    passin_ptr.reset(OPENSSL_strdup(passin_arg.c_str()));
+    if (!passin_ptr) {
       fprintf(stderr, "Error: memory allocation failure\n");
       return false;
     }
+    passin = passin_ptr.get();
   }
   
   if (!passout_arg.empty()) {
-    passout = OPENSSL_strdup(passout_arg.c_str());
-    if (!passout) {
-      OPENSSL_free(passin);
+    passout_ptr.reset(OPENSSL_strdup(passout_arg.c_str()));
+    if (!passout_ptr) {
       fprintf(stderr, "Error: memory allocation failure\n");
       return false;
     }
+    passout = passout_ptr.get();
   }
 
   // Read the private key
-  EVP_PKEY *pkey = nullptr;
+  bssl::UniquePtr<EVP_PKEY> pkey;
   if (inform == "PEM") {
-    pkey = PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, passin);
+    pkey.reset(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, passin));
   } else {  // DER
-    uint8_t *data = nullptr;
     long len;
     if (fseek(in_file.get(), 0, SEEK_END) != 0 ||
         (len = ftell(in_file.get())) < 0 ||
         fseek(in_file.get(), 0, SEEK_SET) != 0) {
-      OPENSSL_free(passin);
-      OPENSSL_free(passout);
       fprintf(stderr, "Error: failed to determine input file size\n");
       return false;
     }
     
-    data = (uint8_t *)OPENSSL_malloc(len);
-    if (!data || fread(data, 1, len, in_file.get()) != (size_t)len) {
-      OPENSSL_free(data);
-      OPENSSL_free(passin);
-      OPENSSL_free(passout);
+    OpenSSLPointer<uint8_t> data((uint8_t*)OPENSSL_malloc(len));
+    if (!data || fread(data.get(), 1, len, in_file.get()) != (size_t)len) {
       fprintf(stderr, "Error: failed to read input file\n");
       return false;
     }
     
-    const uint8_t *p = data;
-    pkey = d2i_AutoPrivateKey(nullptr, &p, len);  // Support for all key types
-    OPENSSL_free(data);
+    const uint8_t *p = data.get();
+    pkey.reset(d2i_AutoPrivateKey(nullptr, &p, len));  // Support for all key types
   }
   
   if (!pkey) {
-    OPENSSL_free(passin);
-    OPENSSL_free(passout);
     fprintf(stderr, "Error: Failed to read private key from '%s'\n", in_path.c_str());
     fprintf(stderr, "Check that the file contains a valid key and the password (if any) is correct\n");
     ERR_print_errors_fp(stderr);
@@ -158,7 +154,7 @@ bool pkcs8Tool(const args_list_t &args) {
     // Convert to PKCS#8
     if (nocrypt) {
       // Unencrypted PKCS#8
-        PKCS8_PRIV_KEY_INFO *p8inf = EVP_PKEY2PKCS8(pkey);
+        bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
         if (!p8inf) {
           fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
           fprintf(stderr, "The key type may not be supported for PKCS#8 conversion\n");
@@ -166,11 +162,10 @@ bool pkcs8Tool(const args_list_t &args) {
       } else {
         // Write the output
         if (outform == "PEM") {
-          result = PEM_write_PKCS8_PRIV_KEY_INFO(out, p8inf);
+          result = PEM_write_PKCS8_PRIV_KEY_INFO(out, p8inf.get());
         } else {  // DER
-          result = i2d_PKCS8_PRIV_KEY_INFO_fp(out, p8inf);
+          result = i2d_PKCS8_PRIV_KEY_INFO_fp(out, p8inf.get());
         }
-        PKCS8_PRIV_KEY_INFO_free(p8inf);
       }
     } else {
       // Encrypted PKCS#8
@@ -179,9 +174,6 @@ bool pkcs8Tool(const args_list_t &args) {
         const EVP_CIPHER *cipher = EVP_get_cipherbyname(v2_cipher.c_str());
         if (!cipher) {
           fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
-          EVP_PKEY_free(pkey);
-          OPENSSL_free(passin);
-          OPENSSL_free(passout);
           return false;
         }
         
@@ -193,43 +185,38 @@ bool pkcs8Tool(const args_list_t &args) {
           if (v2prf != "hmacWithSHA1") {
             fprintf(stderr, "Error: AWS-LC only supports hmacWithSHA1 as the PRF algorithm\n");
             fprintf(stderr, "PRF specified: %s\n", v2prf.c_str());
-            EVP_PKEY_free(pkey);
-            OPENSSL_free(passin);
-            OPENSSL_free(passout);
             return false;
           }
           // The PRF specification is validated to ensure it's hmacWithSHA1
         }
         
         // Convert and encrypt
-        X509_SIG *p8 = nullptr;
+        bssl::UniquePtr<X509_SIG> p8;
         if (passout) {
-          PKCS8_PRIV_KEY_INFO *p8inf = EVP_PKEY2PKCS8(pkey);
+          bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
           if (!p8inf) {
             fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
             ERR_print_errors_fp(stderr);
           } else {
             // Always use the default PRF (-1) with the specified cipher
             // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
-            p8 = PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
-                              NULL, 0, PKCS12_DEFAULT_ITER, p8inf);
+            p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
+                              NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
             if (!p8) {
               fprintf(stderr, "Error: Failed to encrypt private key\n");
               fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
               ERR_print_errors_fp(stderr);
             }
-            PKCS8_PRIV_KEY_INFO_free(p8inf);
           }
         }
         
         if (p8) {
           // Write the output
           if (outform == "PEM") {
-            result = PEM_write_PKCS8(out, p8);
+            result = PEM_write_PKCS8(out, p8.get());
           } else {  // DER
-            result = i2d_PKCS8_fp(out, p8);
+            result = i2d_PKCS8_fp(out, p8.get());
           }
-          X509_SIG_free(p8);
         }
       } else {
         fprintf(stderr, "Error: Encryption requested but no cipher specified with -v2\n");
@@ -238,16 +225,13 @@ bool pkcs8Tool(const args_list_t &args) {
   } else {
     // Just convert between PEM and DER without changing format
     if (outform == "PEM") {
-      result = PEM_write_PrivateKey(out, pkey, nullptr, nullptr, 0, nullptr, nullptr);
+      result = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
     } else {  // DER
-      result = i2d_PrivateKey_fp(out, pkey);
+      result = i2d_PrivateKey_fp(out, pkey.get());
     }
   }
 
-  // Clean up
-  EVP_PKEY_free(pkey);
-  OPENSSL_free(passin);
-  OPENSSL_free(passout);
+  // Smart pointers handle cleanup automatically
   
   if (!result) {
     fprintf(stderr, "Error: Failed to write private key\n");
