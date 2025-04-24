@@ -114,7 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 32
+#define AWSLC_API_VERSION 33
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
