@@ -186,21 +186,19 @@ bool pkcs8Tool(const args_list_t &args) {
         }
         
         // Handle PRF algorithm if specified
-        // Note: While OpenSSL supports explicit PRF selection, AWS-LC uses its default PRF
-        // implementation for PKCS#8 encryption. The -v2prf parameter is accepted for
-        // command-line compatibility but does not affect the actual PRF used.
+        // Note: AWS-LC only supports hmacWithSHA1 for PKCS#8 v2 encryption.
+        // For compatibility with OpenSSL, the -v2prf parameter is accepted but
+        // must be set to "hmacWithSHA1" or omitted.
         if (!v2prf.empty()) {
-          // In AWS-LC, we'll validate that it's one of the known values to maintain compatibility
-          if (v2prf != "hmacWithSHA1" && 
-              v2prf != "hmacWithSHA256" && 
-              v2prf != "hmacWithSHA512") {
-            fprintf(stderr, "Error: Unknown PRF %s\n", v2prf.c_str());
+          if (v2prf != "hmacWithSHA1") {
+            fprintf(stderr, "Error: AWS-LC only supports hmacWithSHA1 as the PRF algorithm\n");
+            fprintf(stderr, "PRF specified: %s\n", v2prf.c_str());
             EVP_PKEY_free(pkey);
             OPENSSL_free(passin);
             OPENSSL_free(passout);
             return false;
           }
-          // The PRF specification is validated but not used by AWS-LC implementation
+          // The PRF specification is validated to ensure it's hmacWithSHA1
         }
         
         // Convert and encrypt
@@ -212,7 +210,7 @@ bool pkcs8Tool(const args_list_t &args) {
             ERR_print_errors_fp(stderr);
           } else {
             // Always use the default PRF (-1) with the specified cipher
-            // AWS-LC's implementation ignores explicit PRF specifications
+            // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
             p8 = PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
                               NULL, 0, PKCS12_DEFAULT_ITER, p8inf);
             if (!p8) {

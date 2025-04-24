@@ -93,12 +93,20 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
   ASSERT_TRUE(result);
 }
 
-// Test -v2prf with hmacWithSHA256
+// Test -v2prf with hmacWithSHA1 (only supported PRF in AWS-LC)
 TEST_F(PKCS8Test, PKCS8ToolPRFTest) {
+  std::string passout = std::string("file:") + pass_path;
+  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-v2prf", "hmacWithSHA1", "-passout", passout.c_str()};
+  bool result = pkcs8Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test that unsupported PRF algorithms are rejected
+TEST_F(PKCS8Test, PKCS8ToolUnsupportedPRFTest) {
   std::string passout = std::string("file:") + pass_path;
   args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-v2prf", "hmacWithSHA256", "-passout", passout.c_str()};
   bool result = pkcs8Tool(args);
-  ASSERT_TRUE(result);
+  ASSERT_FALSE(result);
 }
 
 // -------------------- PKCS8 Option Usage Error Tests --------------------------
@@ -250,9 +258,9 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareDERFormatOpenSSL) {
 
 // Test against OpenSSL output with v2prf
 TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2prfOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA256 -in " + 
+  std::string tool_command = std::string(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + 
                              in_path + " -out " + out_path_tool + " -passout file:" + pass_path;
-  std::string openssl_command = std::string(openssl_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA256 -in " + 
+  std::string openssl_command = std::string(openssl_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + 
                                 in_path + " -out " + out_path_openssl + " -passout file:" + pass_path;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
