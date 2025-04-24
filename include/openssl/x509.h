@@ -3091,6 +3091,11 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                                     unsigned int flags);
 
+// X509_VERIFY_PARAM_get_hostflags returns |param|'s name-checking flags.
+OPENSSL_EXPORT unsigned int X509_VERIFY_PARAM_get_hostflags(
+    const X509_VERIFY_PARAM *param);
+
+
 // X509_VERIFY_PARAM_set1_email configures |param| to check for the email
 // address specified by |email|. It returns one on success and zero on error.
 // |emaillen| should be set to the length of |email|. It may be zero if |email|
