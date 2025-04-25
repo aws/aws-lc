@@ -568,9 +568,7 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
 #define IPV6_CIDR_LEN (IPV6_ADDR_LEN * 2)
 
 static int validate_ipv4_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
-  if (mask_len != IPV4_ADDR_LEN) {
-    return 0;
-  }
+  assert(mask_len == IPV4_ADDR_LEN);
 
   uint32_t mask = ((uint32_t)mask_ptr[0] << 24) |
                   ((uint32_t)mask_ptr[1] << 16) | ((uint32_t)mask_ptr[2] << 8) |
@@ -584,9 +582,7 @@ static int validate_ipv4_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
 }
 
 static int validate_ipv6_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
-  if (mask_len != IPV6_ADDR_LEN) {
-    return 0;
-  }
+  assert(mask_len == IPV6_ADDR_LEN);
 
   uint64_t mask_high =
       (((uint64_t)mask_ptr[0]) << 56) | ((uint64_t)mask_ptr[1] << 48) |
