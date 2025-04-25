@@ -201,30 +201,39 @@ bool pkcs8Tool(const args_list_t &args) {
       bssl::UniquePtr<X509_SIG> p8;
       
       // If no password is provided, prompt for one (twice for verification)
-      char password_buf[256];
-      if (!passout) {
-        if (EVP_read_pw_string(password_buf, sizeof(password_buf), "Enter Encryption Password:", 1) != 0) {
-          fprintf(stderr, "Error: Failed to read password\n");
-          return false;
+      // char password_buf[256];
+      // if (!passout) {
+      //   if (EVP_read_pw_string(password_buf, sizeof(password_buf), "Enter Encryption Password:", 1) != 0) {
+      //     fprintf(stderr, "Error: Failed to read password\n");
+      //     return false;
+      //   }
+      //   passout = password_buf;
+      // }
+      
+      if (!passout)
+      {
+        fprintf(stderr, "Error: -passout must be provided for encryption\n");
+          ERR_print_errors_fp(stderr);
+      }
+      else {
+        bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
+        if (!p8inf) {
+          fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
+          ERR_print_errors_fp(stderr);
+        } else {
+          // Always use the default PRF (-1) with the specified cipher
+          // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
+          p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout),
+                         NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
+          if (!p8) {
+            fprintf(stderr, "Error: Failed to encrypt private key\n");
+            fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
+            ERR_print_errors_fp(stderr);
+          }
         }
-        passout = password_buf;
       }
       
-      bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
-      if (!p8inf) {
-        fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
-        ERR_print_errors_fp(stderr);
-      } else {
-        // Always use the default PRF (-1) with the specified cipher
-        // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
-        p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout),
-                         NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
-        if (!p8) {
-          fprintf(stderr, "Error: Failed to encrypt private key\n");
-          fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
-          ERR_print_errors_fp(stderr);
-        }
-      }
+      
       
       if (p8) {
         // Write the output
