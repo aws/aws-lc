@@ -576,7 +576,7 @@ static int validate_ipv4_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
                   ((uint32_t)mask_ptr[1] << 16) | ((uint32_t)mask_ptr[2] << 8) |
                   ((uint32_t)mask_ptr[3]);
 
-  if (!(mask == 0 || ((~mask + 1) & ~mask) == 0)) {
+  if (mask != 0 && ((~mask + 1) & ~mask)) {
     return 0;
   }
 
@@ -594,24 +594,34 @@ static int validate_ipv6_cidr_mask(const uint8_t *mask_ptr, size_t mask_len) {
       ((uint64_t)mask_ptr[4] << 24) | ((uint64_t)mask_ptr[5] << 16) |
       ((uint64_t)mask_ptr[6] << 8) | ((uint64_t)mask_ptr[7]);
 
-  if (!(mask_high == 0 || ((~mask_high + 1) & ~mask_high) == 0)) {
-    return 0;
-  }
-
   uint64_t mask_low =
       (((uint64_t)mask_ptr[8]) << 56) | ((uint64_t)mask_ptr[9] << 48) |
       ((uint64_t)mask_ptr[10] << 40) | ((uint64_t)mask_ptr[11] << 32) |
       ((uint64_t)mask_ptr[12] << 24) | ((uint64_t)mask_ptr[13] << 16) |
       ((uint64_t)mask_ptr[14] << 8) | ((uint64_t)mask_ptr[15]);
 
-  if (!(mask_low == 0 || ((~mask_low + 1) & ~mask_low) == 0)) {
+  if(mask_high == 0) {
+    // if the high bits are all 0, then low bits must be all 0.
+    return mask_low == 0;
+  }
+
+  // Check that all the 1's are contiguous from left to right
+  uint64_t inv_mask_high = ~mask_high;
+  if ((inv_mask_high + 1) & inv_mask_high) {
     return 0;
   }
 
-  return 1;
+  // If there was one or more 0's then low has to be all zeros
+  if(inv_mask_high) {
+    return mask_low == 0;
+  }
+
+  // Otherwise low may be all zero's, and if not then the 1's must be contiguous
+  // from left to right
+  return (mask_low == 0 || ((~mask_low + 1) & ~mask_low) == 0);
 }
 
-static int validate_cidr_mask(CBS *cidr_mask) {
+int validate_cidr_mask(CBS *cidr_mask) {
   size_t mask_len = CBS_len(cidr_mask);
   switch (mask_len) {
     case IPV4_ADDR_LEN:

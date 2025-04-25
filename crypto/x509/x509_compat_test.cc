@@ -6,6 +6,7 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
+#include "internal.h"
 #include "../test/test_util.h"
 #include "../test/x509_util.h"
 
@@ -1620,16 +1621,82 @@ TEST(X509CompatTest, EECertificateWithIPv6SANIssuedByCAWithBadNameConstraint) {
 }
 
 TEST(X509CompatTest, EECertificateWithIPSANIssuedByCAWithBadNameConstraint) {
-    bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
-    ASSERT_TRUE(root);
-    bssl::UniquePtr<X509> inter = CertFromPEM(kIntCAWithBadIPNameConstraint);
-    ASSERT_TRUE(inter);
-    bssl::UniquePtr<X509> leaf =
-        CertFromPEM(kInvalidEECertIssuedByCAWithBadIPNameConstraint);
-    ASSERT_TRUE(leaf);
-  
-    EXPECT_EQ(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
-              Verify(leaf.get(), /*roots=*/{root.get()},
-                     /*intermediates=*/{inter.get()},
-                     /*crls=*/{}, /*flags=*/0));
-  }
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> inter = CertFromPEM(kIntCAWithBadIPNameConstraint);
+  ASSERT_TRUE(inter);
+  bssl::UniquePtr<X509> leaf =
+      CertFromPEM(kInvalidEECertIssuedByCAWithBadIPNameConstraint);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{inter.get()},
+                   /*crls=*/{}, /*flags=*/0));
+}
+
+struct IpCidrNetmaskTestParam {
+    std::string mask_hex;
+    bool valid;
+};
+
+static const IpCidrNetmaskTestParam kIpCidrNetmaskTestParams[] = {
+    // invalid lengths
+    {"00", false},          // single byte address too short
+    {"000000", false},      // one byte less then IPv4
+    {"ffffffffff", false},  // 255.255.255.255.255 (/40)
+    {"ffffffff0000000000000000000000", false},     // 1 byte short of IPv6
+    {"ffffffffffffffffffffffffffffffff00", false},  // Invalid length - 17 bytes
+
+    // valid v4
+    {"00000000", true},  // 0.0.0.0 (/0)
+    {"ff000000", true},  // 255.0.0.0 (/8)
+    {"ffff0000", true},  // 255.255.0.0 (/16)
+    {"ffffff00", true},  // 255.255.255.0 (/24)
+    {"ffffffff", true},  // 255.255.255.255 (/32)
+
+    // invalid v4 (non-contiguous 1s)
+    {"ffff00ff", false},  // 255.255.0.255
+    {"ff00ff00", false},  // 255.0.255.0
+    {"f0f0f0f0", false},  // 240.240.240.240
+    {"0fff0000", false},  // 15.255.0.0
+
+
+    // valid v6
+    {"00000000000000000000000000000000",
+     true},  // 0000:0000:0000:0000:0000:0000:0000:0000 (/0)
+    {"ffff0000000000000000000000000000",
+     true},  // ffff:0000:0000:0000:0000:0000:0000:0000 (/16)
+    {"ffffffff000000000000000000000000",
+     true},  // ffff:ffff:0000:0000:0000:0000:0000:0000 (/32)
+    {"ffffffffffff00000000000000000000",
+     true},  // ffff:ffff:ffff:0000:0000:0000:0000:0000 (/48)
+    {"ffffffffffffffff0000000000000000",
+     true},  // ffff:ffff:ffff:ffff:0000:0000:0000:0000 (/64)
+    {"ffffffffffffffffffff000000000000",
+     true},  // ffff:ffff:ffff:ffff:ffff:0000:0000:0000 (/80)
+    {"ffffffffffffffffffffffff00000000",
+     true},  // ffff:ffff:ffff:ffff:ffff:ffff:0000:0000 (/96)
+    {"ffffffffffffffffffffffffffff0000",
+     true},  // ffff:ffff:ffff:ffff:ffff:ffff:ffff:0000 (/112)
+    {"ffffffffffffffffffffffffffffffff",
+     true},  // ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff (/128)
+
+    // invalid v6 (non-contiguous 1s)
+    {"ffff0000ffffffffffffffffffffffff", false},  // Non-contiguous 1s
+    {"ffffffffffffffff0000ffff00000000", false},  // Non-contiguous 1s
+    {"f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0", false},  // Non-contiguous 1s
+};
+
+class IpCidrNetmaskTest
+    : public testing::TestWithParam<IpCidrNetmaskTestParam> {};
+
+TEST_P(IpCidrNetmaskTest, ValidatesNetmasks) {
+  const IpCidrNetmaskTestParam &params = GetParam();
+  std::vector<uint8_t> mask_bytes = HexToBytes(params.mask_hex.c_str());
+  CBS mask;
+  CBS_init(&mask, mask_bytes.data(), mask_bytes.size());
+  ASSERT_EQ(params.valid, validate_cidr_mask(&mask));
+}
+
+INSTANTIATE_TEST_SUITE_P(X509CompatTest, IpCidrNetmaskTest, testing::ValuesIn(kIpCidrNetmaskTestParams));
