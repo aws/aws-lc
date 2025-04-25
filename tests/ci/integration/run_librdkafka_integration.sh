@@ -50,7 +50,7 @@ function kafka_run_tests() {
   pushd ${KAFKA_SRC_FOLDER}/tests
   python3 -m pip install -U -r requirements.txt
   python3 -m trivup.clusters.KafkaCluster --version 3.9.0 << EOF
-  make quick
+  make -j quick
   exit
 EOF
 }
