@@ -171,22 +171,17 @@ bool pkcs8Tool(const args_list_t &args) {
       // Encrypted PKCS#8
       const EVP_CIPHER *cipher = nullptr;
       
-      // Check if -v2 was specified in the command line
-      if (parsed_args.count("-v2") > 0) {
-        if (!v2_cipher.empty()) {
-          // User specified a cipher with -v2
-          cipher = EVP_get_cipherbyname(v2_cipher.c_str());
-          if (!cipher) {
-            fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
-            return false;
-          }
-        } else {
-          // -v2 was specified without a value, default to aes-256-cbc for OpenSSL 1.1.1 compatibility
-          cipher = EVP_aes_256_cbc();
+      // Get cipher from -v2 option or default to aes-256-cbc
+      if (!v2_cipher.empty()) {
+        // User specified a cipher with -v2
+        cipher = EVP_get_cipherbyname(v2_cipher.c_str());
+        if (!cipher) {
+          fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
+          return false;
         }
       } else {
-        fprintf(stderr, "Error: Encryption requested but -v2 option not specified\n");
-        return false;
+        // Default to aes-256-cbc for OpenSSL 1.1.1 compatibility
+        cipher = EVP_aes_256_cbc();
       }
       
       // Handle PRF algorithm if specified
@@ -204,21 +199,30 @@ bool pkcs8Tool(const args_list_t &args) {
       
       // Convert and encrypt
       bssl::UniquePtr<X509_SIG> p8;
-      if (passout) {
-        bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
-        if (!p8inf) {
-          fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
+      
+      // If no password is provided, prompt for one (twice for verification)
+      char password_buf[256];
+      if (!passout) {
+        if (EVP_read_pw_string(password_buf, sizeof(password_buf), "Enter Encryption Password:", 1) != 0) {
+          fprintf(stderr, "Error: Failed to read password\n");
+          return false;
+        }
+        passout = password_buf;
+      }
+      
+      bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
+      if (!p8inf) {
+        fprintf(stderr, "Error: Failed to convert key to PKCS#8 format\n");
+        ERR_print_errors_fp(stderr);
+      } else {
+        // Always use the default PRF (-1) with the specified cipher
+        // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
+        p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout),
+                         NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
+        if (!p8) {
+          fprintf(stderr, "Error: Failed to encrypt private key\n");
+          fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
           ERR_print_errors_fp(stderr);
-        } else {
-          // Always use the default PRF (-1) with the specified cipher
-          // AWS-LC only supports hmacWithSHA1 (which is what -1 selects)
-          p8.reset(PKCS8_encrypt(-1, cipher, passout, strlen(passout), 
-                            NULL, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
-          if (!p8) {
-            fprintf(stderr, "Error: Failed to encrypt private key\n");
-            fprintf(stderr, "Encryption parameters may be invalid or unsupported\n");
-            ERR_print_errors_fp(stderr);
-          }
         }
       }
       
@@ -232,11 +236,37 @@ bool pkcs8Tool(const args_list_t &args) {
       }
     }
   } else {
-    // Just convert between PEM and DER without changing format
-    if (outform == "PEM") {
-      result = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
-    } else {  // DER
-      result = i2d_PrivateKey_fp(out, pkey.get());
+    // Handle non-PKCS#8 format
+    if (parsed_args.count("-v2") > 0) {
+      // Encryption requested without -topk8
+      const EVP_CIPHER *cipher = nullptr;
+      
+      // Get the cipher
+      if (!v2_cipher.empty()) {
+        cipher = EVP_get_cipherbyname(v2_cipher.c_str());
+        if (!cipher) {
+          fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
+          return false;
+        }
+      } else {
+        // Default to aes-256-cbc
+        cipher = EVP_aes_256_cbc();
+      }
+      
+      // Encrypt the private key
+      if (outform == "PEM") {
+        result = PEM_write_PrivateKey(out, pkey.get(), cipher, nullptr, 0, nullptr, passout);
+      } else {  // DER
+        fprintf(stderr, "Error: Encrypted DER format is not supported without -topk8\n");
+        return false;
+      }
+    } else {
+      // Just convert between PEM and DER without changing format or encrypting
+      if (outform == "PEM") {
+        result = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+      } else {  // DER
+        result = i2d_PrivateKey_fp(out, pkey.get());
+      }
     }
   }
 
