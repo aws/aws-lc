@@ -261,6 +261,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
   // Verify AWS-LC output has correct PKCS8 boundaries
   tool_output_str = ReadFileToString(out_path_tool);
   ASSERT_FALSE(tool_output_str.empty());
+  trim(tool_output_str);
+  std::cout << "AWS-LC output content:" << std::endl << tool_output_str << std::endl;
   ASSERT_TRUE(CheckPKCS8Boundaries(tool_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
@@ -290,6 +292,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
   // Verify OpenSSL output has correct PKCS8 boundaries
   openssl_output_str = ReadFileToString(out_path_openssl);
   ASSERT_FALSE(openssl_output_str.empty());
+  trim(openssl_output_str);
+  std::cout << "OpenSSL output content:" << std::endl << openssl_output_str << std::endl;
   ASSERT_TRUE(CheckPKCS8Boundaries(openssl_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
@@ -358,6 +362,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
   // Verify AWS-LC output has correct PKCS8 boundaries
   tool_output_str = ReadFileToString(out_path_tool);
   ASSERT_FALSE(tool_output_str.empty());
+  trim(tool_output_str);
+  std::cout << "AWS-LC output content (with PRF):" << std::endl << tool_output_str << std::endl;
   ASSERT_TRUE(CheckPKCS8Boundaries(tool_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
@@ -387,6 +393,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
   // Verify OpenSSL output has correct PKCS8 boundaries
   openssl_output_str = ReadFileToString(out_path_openssl);
   ASSERT_FALSE(openssl_output_str.empty());
+  trim(openssl_output_str);
+  std::cout << "OpenSSL output content (with PRF):" << std::endl << openssl_output_str << std::endl;
   ASSERT_TRUE(CheckPKCS8Boundaries(openssl_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
@@ -444,6 +452,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithDefaultCip
   // Verify AWS-LC output has correct PKCS8 boundaries
   tool_output_str = ReadFileToString(out_path_tool);
   ASSERT_FALSE(tool_output_str.empty());
+  trim(tool_output_str);
+  std::cout << "AWS-LC output content (default cipher):" << std::endl << tool_output_str << std::endl;
   ASSERT_TRUE(CheckPKCS8Boundaries(tool_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
@@ -473,6 +483,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithDefaultCip
   // Verify OpenSSL output has correct PKCS8 boundaries
   openssl_output_str = ReadFileToString(out_path_openssl);
   ASSERT_FALSE(openssl_output_str.empty());
+  trim(openssl_output_str);
+  std::cout << "OpenSSL output content (default cipher):" << std::endl << openssl_output_str << std::endl;
   ASSERT_TRUE(CheckPKCS8Boundaries(openssl_output_str, ENC_PKCS8_BEGIN, ENC_PKCS8_END, ENC_PKCS8_BEGIN, ENC_PKCS8_END));
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
