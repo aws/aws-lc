@@ -120,8 +120,48 @@ bool pkcs8Tool(const args_list_t &args) {
 
   // Read the private key
   bssl::UniquePtr<EVP_PKEY> pkey;
+  
   if (inform == "PEM") {
-    pkey.reset(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, passin));
+    // Check if this might be a PKCS#8 encrypted key first
+    bool is_pkcs8_encrypted = false;
+    char line[100];
+    long pos = ftell(in_file.get());
+    
+    // Check the header to determine if it's an encrypted PKCS#8 key
+    if (fgets(line, sizeof(line), in_file.get())) {
+      is_pkcs8_encrypted = (strstr(line, "-----BEGIN ENCRYPTED PRIVATE KEY-----") != nullptr);
+    }
+    fseek(in_file.get(), pos, SEEK_SET); // Reset position
+    
+    if (is_pkcs8_encrypted && passin != nullptr) {
+      // Handle encrypted PKCS#8 format
+      X509_SIG *p8 = PEM_read_PKCS8(in_file.get(), NULL, NULL, NULL);
+      
+      if (p8) {
+        // We have a valid PKCS#8 encrypted structure, attempt decryption
+        PKCS8_PRIV_KEY_INFO *p8inf = PKCS8_decrypt(p8, passin, strlen(passin));
+        X509_SIG_free(p8);
+        
+        if (p8inf) {
+          // Successfully decrypted, convert to EVP_PKEY
+          pkey.reset(EVP_PKCS82PKEY(p8inf));
+          PKCS8_PRIV_KEY_INFO_free(p8inf);
+        } else {
+          // Reset file position to try the regular method
+          fseek(in_file.get(), pos, SEEK_SET);
+        }
+      } else {
+        // Reset file position to try the regular method
+        fseek(in_file.get(), pos, SEEK_SET);
+      }
+    }
+    
+    // If we don't have a key yet, try the regular PEM reader
+    if (!pkey) {
+      // TODO: Use EVP_read_pw_string once implemented in AWS-LC
+      // to prompt for password if not provided and key is encrypted
+      pkey.reset(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, passin));
+    }
   } else {  // DER
     long len;
     if (fseek(in_file.get(), 0, SEEK_END) != 0 ||
@@ -138,7 +178,32 @@ bool pkcs8Tool(const args_list_t &args) {
     }
     
     const uint8_t *p = data.get();
-    pkey.reset(d2i_AutoPrivateKey(nullptr, &p, len));  // Support for all key types
+    
+    // First try to detect and decrypt PKCS#8 format
+    bssl::UniquePtr<BIO> mem_bio(BIO_new_mem_buf(data.get(), len));
+    if (mem_bio) {
+      X509_SIG *p8 = d2i_PKCS8_bio(mem_bio.get(), NULL);
+      
+      if (p8 && passin != nullptr) {
+        // We have a valid PKCS#8 encrypted structure, attempt decryption
+        PKCS8_PRIV_KEY_INFO *p8inf = PKCS8_decrypt(p8, passin, strlen(passin));
+        X509_SIG_free(p8);
+        
+        if (p8inf) {
+          // Successfully decrypted, convert to EVP_PKEY
+          pkey.reset(EVP_PKCS82PKEY(p8inf));
+          PKCS8_PRIV_KEY_INFO_free(p8inf);
+        }
+      } else if (p8) {
+        X509_SIG_free(p8);
+      }
+    }
+    
+    // If we couldn't get the key via PKCS#8, try the regular method
+    if (!pkey) {
+      p = data.get();  // Reset pointer
+      pkey.reset(d2i_AutoPrivateKey(nullptr, &p, len));  // Support for all key types
+    }
   }
   
   if (!pkey) {
@@ -200,6 +265,7 @@ bool pkcs8Tool(const args_list_t &args) {
       // Convert and encrypt
       bssl::UniquePtr<X509_SIG> p8;
       
+      // TODO: Use EVP_read_pw_string once implemented in AWS-LC
       // If no password is provided, prompt for one (twice for verification)
       // char password_buf[256];
       // if (!passout) {
