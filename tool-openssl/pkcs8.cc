@@ -162,27 +162,60 @@ bool pkcs8Tool(const args_list_t &args) {
         // First try the standard decryption
         PKCS8_PRIV_KEY_INFO *p8inf = PKCS8_decrypt(p8, passin, strlen(passin));
         
-        // If standard decryption fails for PBES2, reset and try manual PEM parsing approach
-        if (!p8inf && algor && algor->algorithm && 
-            OBJ_obj2nid(algor->algorithm) == NID_pbes2) {
-          fprintf(stderr, "DEBUG: Standard PBES2 decryption failed, trying alternative approach\n");
-          
-          // Rewind file and try raw data read
-          fseek(in_file.get(), pos_before_read, SEEK_SET);
+          // If standard decryption fails for PBES2, add in-depth debugging and try alternative methods
+          if (!p8inf && algor && algor->algorithm && 
+              OBJ_obj2nid(algor->algorithm) == NID_pbes2) {
+            fprintf(stderr, "DEBUG: Standard PBES2 decryption failed, examining parameters:\n");
             
-          // Manual approach to read and parse the PEM data
-          // Reset position to beginning of file and try standard PEM private key read
-          // This may work because some implementations can handle PKCS#8 directly
-          pkey.reset(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, passin));
-          if (pkey) {
-            fprintf(stderr, "DEBUG: Successfully decrypted using direct PEM_read_PrivateKey\n");
-            X509_SIG_free(p8);
-            return true; // We have a key, continue with normal flow
+            // Examine PBES2 parameters in detail
+            if (algor->parameter) {
+              fprintf(stderr, "DEBUG: PBES2 parameter type: %d\n", algor->parameter->type);
+              
+              // Try to dump the parameter as hex for analysis
+              if (algor->parameter->type == V_ASN1_SEQUENCE) {
+                unsigned char *der_bytes = NULL;
+                int der_len = i2d_ASN1_TYPE(algor->parameter, &der_bytes);
+                if (der_len > 0 && der_bytes) {
+                  fprintf(stderr, "DEBUG: PBES2 parameter DER (%d bytes):\n  ", der_len);
+                  for (int i = 0; i < der_len && i < 64; i++) {
+                    fprintf(stderr, "%02x", der_bytes[i]);
+                    if ((i + 1) % 16 == 0 && i + 1 < der_len && i + 1 < 64)
+                      fprintf(stderr, "\n  ");
+                  }
+                  fprintf(stderr, "\n");
+                  OPENSSL_free(der_bytes);
+                }
+              }
+            }
+            
+            // Try direct key loading workaround by reinitializing the key buffer
+            fprintf(stderr, "DEBUG: Trying alternative PKCS#8 decryption methods\n");
+            
+            // 1. Rewind file and try with PEM_read_PrivateKey
+            fseek(in_file.get(), pos_before_read, SEEK_SET);
+            pkey.reset(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, passin));
+            if (pkey) {
+              fprintf(stderr, "DEBUG: Successfully decrypted using direct PEM_read_PrivateKey\n");
+              X509_SIG_free(p8);
+              return true; // We have a key, continue with normal flow
+            } else {
+              fprintf(stderr, "DEBUG: Direct PEM_read_PrivateKey failed. Error stack:\n");
+              ERR_print_errors_fp(stderr);
+            }
+            
+            // If still failing, let's try a different approach: extract raw encrypted key for examination
+            fprintf(stderr, "DEBUG: Attempting to extract and examine raw encrypted data\n");
+            if (oct && oct->data && oct->length > 0) {
+              fprintf(stderr, "DEBUG: Encrypted data size: %d bytes, first 16 bytes: ", oct->length);
+              for (int i = 0; i < 16 && i < oct->length; i++) {
+                fprintf(stderr, "%02x", oct->data[i]);
+              }
+              fprintf(stderr, "\n");
+            }
+            
+            // Return to original position for standard fallback
+            fseek(in_file.get(), pos_before_read, SEEK_SET);
           }
-          
-          // If we get here, return to original position for fallback
-          fseek(in_file.get(), pos_before_read, SEEK_SET);
-        }
         
         if (!p8inf) {
           fprintf(stderr, "DEBUG: PKCS8_decrypt failed. Error stack:\n");
