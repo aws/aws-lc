@@ -12,7 +12,7 @@ set -euo pipefail
 # Usage:
 #
 # ```
-# rm -rf ./s2n-bignum
+# rm -rf ./s2n-bignum-imported
 # ./import.sh
 # ```
 #
