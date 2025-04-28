@@ -127,7 +127,7 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 }
 
 static bool os_supports_avx512(uint64_t xcr0) {
-#if defined(__APPLE__)
+#if defined(OPENSSL_APPLE)
   // The Darwin kernel had a bug where it could corrupt the opmask registers.
   // See
   // https://community.intel.com/t5/Software-Tuning-Performance/MacOS-Darwin-kernel-bug-clobbers-AVX-512-opmask-register-state/m-p/1327259
