@@ -533,6 +533,8 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
   ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
                      ",value:", (val)->value);
 
+int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc);
+
 // GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
 // value otherwise. Note this function does not provide a comparison suitable
 // for sorting.
