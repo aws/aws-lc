@@ -130,28 +130,65 @@ bool pkcs8Tool(const args_list_t &args) {
     // Check the header to determine if it's an encrypted PKCS#8 key
     if (fgets(line, sizeof(line), in_file.get())) {
       is_pkcs8_encrypted = (strstr(line, "-----BEGIN ENCRYPTED PRIVATE KEY-----") != nullptr);
+      fprintf(stderr, "DEBUG: Key format detection - PKCS#8 encrypted? %s\n", is_pkcs8_encrypted ? "Yes" : "No");
     }
     fseek(in_file.get(), pos, SEEK_SET); // Reset position
     
     if (is_pkcs8_encrypted && passin != nullptr) {
+      fprintf(stderr, "DEBUG: Attempting to process PKCS#8 encrypted key with password\n");
+      
       // Handle encrypted PKCS#8 format
       X509_SIG *p8 = PEM_read_PKCS8(in_file.get(), NULL, NULL, NULL);
       
       if (p8) {
+        fprintf(stderr, "DEBUG: Successfully read PKCS#8 encrypted structure\n");
+        
+        // Print algorithm OID if available
+        X509_ALGOR *algor = NULL;
+        const ASN1_OCTET_STRING *oct = NULL;
+        X509_SIG_get0(p8, &algor, &oct);
+        if (algor && algor->algorithm) {
+          int pbe_nid = OBJ_obj2nid(algor->algorithm);
+          const char *pbe_name = OBJ_nid2sn(pbe_nid);
+          fprintf(stderr, "DEBUG: Encryption algorithm: %s (NID: %d)\n", 
+                  pbe_name ? pbe_name : "Unknown", pbe_nid);
+        }
+        
         // We have a valid PKCS#8 encrypted structure, attempt decryption
+        fprintf(stderr, "DEBUG: Attempting decryption with password (length: %zu)\n", 
+                passin ? strlen(passin) : 0);
         PKCS8_PRIV_KEY_INFO *p8inf = PKCS8_decrypt(p8, passin, strlen(passin));
+        
+        if (!p8inf) {
+          fprintf(stderr, "DEBUG: PKCS8_decrypt failed. Error stack:\n");
+          ERR_print_errors_fp(stderr);
+        }
+        
         X509_SIG_free(p8);
         
         if (p8inf) {
           // Successfully decrypted, convert to EVP_PKEY
+          fprintf(stderr, "DEBUG: Successfully decrypted PKCS#8 structure\n");
           pkey.reset(EVP_PKCS82PKEY(p8inf));
+          
+          if (!pkey) {
+            fprintf(stderr, "DEBUG: EVP_PKCS82PKEY failed. Error stack:\n");
+            ERR_print_errors_fp(stderr);
+          } else {
+            fprintf(stderr, "DEBUG: Successfully converted to EVP_PKEY\n");
+          }
+          
           PKCS8_PRIV_KEY_INFO_free(p8inf);
         } else {
           // Reset file position to try the regular method
+          fprintf(stderr, "DEBUG: Failed to decrypt PKCS#8 structure, trying fallback method\n");
           fseek(in_file.get(), pos, SEEK_SET);
         }
       } else {
         // Reset file position to try the regular method
+        fprintf(stderr, "DEBUG: Failed to read PKCS#8 structure, trying fallback method\n");
+        fprintf(stderr, "DEBUG: Error stack:\n");
+        ERR_print_errors_fp(stderr);
         fseek(in_file.get(), pos, SEEK_SET);
       }
     }
