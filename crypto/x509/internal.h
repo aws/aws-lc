@@ -567,6 +567,15 @@ int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
 // TODO(https://crbug.com/boringssl/695): Remove this.
 int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
 
+// Exported for testing purposes only. Used for validating that the CIDR mask bytes
+// from a IP Name Constraint is a valid CIDR prefix.
+//
+// It accepts either IPv4 (4 bytes) or IPv6 (16 bytes) masks, returns 0 for any other lengths,
+// and otherwise returns 1 if the provided netmask is a valid CIDR prefix.
+//
+// For example the IPv4 mask `255.255.255.0` would return valid, but `255.0.255.0` would be invalid.
+OPENSSL_EXPORT int validate_cidr_mask(CBS *cidr_mask);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
