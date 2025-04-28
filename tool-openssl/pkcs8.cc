@@ -144,7 +144,7 @@ bool pkcs8Tool(const args_list_t &args) {
         fprintf(stderr, "DEBUG: Successfully read PKCS#8 encrypted structure\n");
         
         // Print algorithm OID if available
-        X509_ALGOR *algor = NULL;
+        const X509_ALGOR *algor = NULL;
         const ASN1_OCTET_STRING *oct = NULL;
         X509_SIG_get0(p8, &algor, &oct);
         if (algor && algor->algorithm) {
