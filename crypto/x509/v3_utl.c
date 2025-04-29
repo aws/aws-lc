@@ -951,11 +951,13 @@ static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
 
   GENERAL_NAMES *gens = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
   if (gens) {
+    int san_present = 0;
     for (size_t i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
       const GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
       if (gen->type != check_type) {
         continue;
       }
+      san_present = 1;
       const ASN1_STRING *cstr;
       if (check_type == GEN_EMAIL) {
         cstr = gen->d.rfc822Name;
@@ -971,7 +973,12 @@ static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
       }
     }
     GENERAL_NAMES_free(gens);
-    return rv;
+    if(rv != 0) {
+      return rv;
+    }
+    if(san_present && !(flags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT)) {
+      return 0;
+    }
   }
 
   // We're done if CN-ID is not pertinent
