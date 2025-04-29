@@ -3450,8 +3450,8 @@ TEST(X509Test, CommonNameFallback) {
     });
   };
 
-  // By default, the common name is ignored if the SAN list is present but
-  // otherwise is checked.
+  // Certificate Subject commonName will be checked by default except
+  // if the EE has a DNS SAN.
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(with_sans.get(), 0 /* no flags */, "foo.host1.test"));
   EXPECT_EQ(X509_V_OK,
@@ -3460,13 +3460,13 @@ TEST(X509Test, CommonNameFallback) {
             verify_cert(with_sans.get(), 0 /* no flags */, "foo.host3.test"));
   EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(), 0 /* no flags */,
                                    "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_email.get(), 0 /* no flags */, "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_ip.get(), 0 /* no flags */, "foo.host1.test"));
 
-  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT is ignored.
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT behavior is supported.
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_sans.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
   EXPECT_EQ(X509_V_OK,
@@ -3478,10 +3478,10 @@ TEST(X509Test, CommonNameFallback) {
   EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(),
                                    X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                                    "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_email.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_ip.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
 
