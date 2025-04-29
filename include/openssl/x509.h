@@ -4986,6 +4986,10 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
 OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
                                              STACK_OF(X509) *sk);
 
+// X509_STORE_CTX_set0_untrusted is an alias for  |X509_STORE_CTX_set_chain|.
+OPENSSL_EXPORT void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx,
+                                                  STACK_OF(X509) *sk);
+
 // The following flags do nothing. The corresponding non-standard options have
 // been removed.
 #define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0
