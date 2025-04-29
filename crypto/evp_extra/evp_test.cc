@@ -1469,18 +1469,17 @@ TEST(EVPTest, ECTLSEncodedPoint) {
 }
 
 TEST(EVPTest, PKEY_set_type_str) {
-  EVP_PKEY *pkey = NULL;
-  pkey = EVP_PKEY_new();
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   /* Test case 1: Assign RSA algorithm */
-  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey, "RSA", 3));
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "RSA", 3));
   ASSERT_EQ(pkey->type, EVP_PKEY_RSA);
 
   /* Test case 2: Assign EC algorithm */
-  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey, "EC", 2));
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "EC", 2));
   ASSERT_EQ(pkey->type, EVP_PKEY_EC);
 
   /* Test case 3: Assign non-existent algorithm */
-  ASSERT_FALSE(EVP_PKEY_set_type_str(pkey, "Nonsense", 8));
+  ASSERT_FALSE(EVP_PKEY_set_type_str(pkey.get(), "Nonsense", 8));
 }
 
 TEST(EVPTest, PKEY_asn1_find) {
