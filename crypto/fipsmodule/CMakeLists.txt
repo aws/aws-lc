@@ -193,12 +193,12 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")
-    set(S2N_BIGNUM_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/x86_att)
+    set(S2N_BIGNUM_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/x86_att)
   else()
-    set(S2N_BIGNUM_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/arm)
+    set(S2N_BIGNUM_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm)
   endif()
 
-  set(S2N_BIGNUM_INCLUDE_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/include)
+  set(S2N_BIGNUM_INCLUDE_DIR ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include)
 
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
@@ -290,16 +290,10 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 generic/bignum_optsub.S
                 generic/bignum_sqr.S
 
-                fastmul/bignum_kmul_16_32_neon.S
-                fastmul/bignum_kmul_32_64_neon.S
-                fastmul/bignum_ksqr_16_32_neon.S
-                fastmul/bignum_ksqr_32_64_neon.S
-                fastmul/bignum_emontredc_8n_neon.S
-
                 generic/bignum_copy_row_from_table.S
-                generic/bignum_copy_row_from_table_8n_neon.S
-                generic/bignum_copy_row_from_table_16_neon.S
-                generic/bignum_copy_row_from_table_32_neon.S
+                generic/bignum_copy_row_from_table_8n.S
+                generic/bignum_copy_row_from_table_16.S
+                generic/bignum_copy_row_from_table_32.S
     )
   endif()
 endif()
