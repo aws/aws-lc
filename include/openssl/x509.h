@@ -3091,6 +3091,11 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                                     unsigned int flags);
 
+// X509_VERIFY_PARAM_get_hostflags returns |param|'s name-checking flags.
+OPENSSL_EXPORT unsigned int X509_VERIFY_PARAM_get_hostflags(
+    const X509_VERIFY_PARAM *param);
+
+
 // X509_VERIFY_PARAM_set1_email configures |param| to check for the email
 // address specified by |email|. It returns one on success and zero on error.
 // |emaillen| should be set to the length of |email|. It may be zero if |email|
@@ -4980,6 +4985,10 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
 // for the duration of the certificate verification.
 OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
                                              STACK_OF(X509) *sk);
+
+// X509_STORE_CTX_set0_untrusted is an alias for  |X509_STORE_CTX_set_chain|.
+OPENSSL_EXPORT void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx,
+                                                  STACK_OF(X509) *sk);
 
 // The following flags do nothing. The corresponding non-standard options have
 // been removed.
