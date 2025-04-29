@@ -122,6 +122,10 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x);
 static int internal_verify(X509_STORE_CTX *ctx);
 
 static int null_callback(int ok, X509_STORE_CTX *e) { return ok; }
+static int null_verify_crit_oids_callback(X509_STORE_CTX *ctx, X509 *x509,
+                                          STACK_OF(ASN1_OBJECT) *oids) {
+  return 0;
+}
 
 // cert_self_signed checks if |x| is self-signed. If |x| is valid, it returns
 // one and sets |*out_is_self_signed| to the result. If |x| is invalid, it
@@ -519,7 +523,7 @@ static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
     issuer = sk_X509_value(sk, i);
     if (x509_check_issued_with_callback(ctx, x, issuer)) {
       candidate = issuer;
-      if (x509_check_cert_time(ctx, candidate, /*suppress_error*/1)) {
+      if (x509_check_cert_time(ctx, candidate, /*suppress_error*/ 1)) {
         break;
       }
     }
@@ -561,6 +565,45 @@ static int get_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   return X509_STORE_CTX_get1_issuer(issuer, ctx, x);
 }
 
+static int check_custom_known_critical_extension(X509_STORE_CTX *ctx, X509 *x) {
+  if (ctx->custom_crit_oids == NULL) {
+    // Fail if custom critical extensions are enabled, but none were set.
+    return 0;
+  }
+  size_t known_oid_count = sk_ASN1_OBJECT_num(ctx->custom_crit_oids);
+  if (known_oid_count == 0) {
+    return 0;
+  }
+
+  // Iterate through all critical extensions of |x| and validate against the
+  // ones that aren't recognized by |X509_supported_extension|.
+  int last_pos = X509_get_ext_by_critical(x, 1, -1);
+  while (last_pos >= 0) {
+    const X509_EXTENSION *ext = X509_get_ext(x, last_pos);
+    if (!X509_supported_extension(ext)) {
+      int found = 0;
+
+      // Iterate through all set |custom_crit_oids|.
+      for (size_t i = 0; i < known_oid_count; i++) {
+        ASN1_OBJECT *known_ext =
+            sk_ASN1_OBJECT_value(ctx->custom_crit_oids, i);
+        if (OBJ_cmp(ext->object, known_ext) == 0) {
+          found = 1;
+          break;
+        }
+      }
+
+      if (!found) {
+        // If any critical extension isn't in our known list, return early.
+        return 0;
+      }
+    }
+    last_pos = X509_get_ext_by_critical(x, 1, last_pos);
+  }
+  // If we get here, all unknown critical extensions were found
+  return 1;
+}
+
 // Check a certificate chains extensions for consistency with the supplied
 // purpose
 
@@ -571,8 +614,11 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
   // Check all untrusted certificates
   for (int i = 0; i < ctx->last_untrusted; i++) {
     X509 *x = sk_X509_value(ctx->chain, i);
-    if (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
-        (x->ex_flags & EXFLAG_CRITICAL)) {
+    if ((!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
+         (x->ex_flags & EXFLAG_CRITICAL)) &&
+        // Do check for enabling custom unknown critical extensions.
+        (!check_custom_known_critical_extension(ctx, x) ||
+         !ctx->verify_crit_oids(ctx, x, ctx->custom_crit_oids))) {
       ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -1439,7 +1485,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     }
 
   check_cert:
-    ok = x509_check_cert_time(ctx, xs, /*suppress_error*/0);
+    ok = x509_check_cert_time(ctx, xs, /*suppress_error*/ 0);
     if (!ok) {
       goto end;
     }
@@ -1686,6 +1732,8 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
     ctx->check_crl = check_crl;
   }
 
+  ctx->verify_crit_oids = null_verify_crit_oids_callback;
+
   return 1;
 
 err:
@@ -1714,6 +1762,7 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
   X509_VERIFY_PARAM_free(ctx->param);
   sk_X509_pop_free(ctx->chain, X509_free);
+  sk_ASN1_OBJECT_pop_free(ctx->custom_crit_oids, ASN1_OBJECT_free);
   OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
 }
 
@@ -1761,4 +1810,30 @@ void X509_STORE_CTX_set0_param(X509_STORE_CTX *ctx, X509_VERIFY_PARAM *param) {
     X509_VERIFY_PARAM_free(ctx->param);
   }
   ctx->param = param;
+}
+
+int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx, ASN1_OBJECT *oid) {
+  GUARD_PTR(ctx);
+  GUARD_PTR(oid);
+
+  ASN1_OBJECT *oid_dup = OBJ_dup(oid);
+  if (oid_dup == NULL) {
+    return 0;
+  }
+  if (ctx->custom_crit_oids == NULL) {
+    ctx->custom_crit_oids = sk_ASN1_OBJECT_new_null();
+    if (ctx->custom_crit_oids == NULL) {
+      return 0;
+    }
+  }
+
+  if (!sk_ASN1_OBJECT_push(ctx->custom_crit_oids, oid_dup)) {
+    return 0;
+  }
+  return 1;
+}
+
+void X509_STORE_CTX_set_verify_crit_oids(
+    X509_STORE_CTX *ctx, X509_STORE_CTX_verify_crit_oids verify_crit_oids) {
+  ctx->verify_crit_oids = verify_crit_oids;
 }

@@ -2903,6 +2903,35 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose);
 // difference.
 OPENSSL_EXPORT int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust);
 
+// X509_STORE_CTX_add_custom_crit_oid adds |oid| to the list of "known"
+// critical extension OIDs in |ctx|. Typical OpenSSL/AWS-LC behavior returns
+// an error if there are any unknown critical extensions present within the
+// certificates being validated. This function lets users to specify custom
+// OIDs of any critical extensions that are within the certificates being
+// validated, that they wish to allow.
+//
+// To properly consume this feature, the callback mechanism with
+// |X509_STORE_CTX_set_verify_crit_oids| must be set. See its specific
+// documentation for more details.
+OPENSSL_EXPORT int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx,
+                                                      ASN1_OBJECT *oid);
+
+// X509_STORE_CTX_verify_crit_oids is the callback signature for
+// |X509_STORE_CTX_set_verify_crit_oids|. |ctx| is the context being used,
+// |x509| represents the current certificate being validated, and |oids|
+// represents the stack of custom OIDs that have been set by
+// |X509_STORE_CTX_add_custom_crit_oid|.
+typedef int (*X509_STORE_CTX_verify_crit_oids)(X509_STORE_CTX *ctx, X509 *x509,
+                                               STACK_OF(ASN1_OBJECT) *oids);
+
+// X509_STORE_CTX_set_verify_crit_oids sets the |verify_crit_oids| callback
+// function for |ctx|. Consumers should be performing additional validation
+// against the custom extension oids after or during the handshake with
+// |X509_STORE_CTX_set_verify_crit_oids|. This callback forces users to validate
+// their custom OIDs when processing unknown custom critical extensions.
+OPENSSL_EXPORT void X509_STORE_CTX_set_verify_crit_oids(
+    X509_STORE_CTX *ctx, X509_STORE_CTX_verify_crit_oids verify_crit_oids);
+
 
 // Verification parameters
 //
