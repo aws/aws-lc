@@ -59,9 +59,12 @@ git clone https://github.com/lsh123/xmlsec.git ${XMLSEC_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 
-aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE_INSTALL_LIBDIR=lib  -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=1
 
 # Build xmlsec from source.
+apt update -y
+apt install -y libtool libtool-bin libltdl-dev
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 pushd ${XMLSEC_SRC_FOLDER}
 xmlsec_patch
 xmlsec_build
