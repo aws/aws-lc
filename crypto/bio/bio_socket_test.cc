@@ -518,6 +518,7 @@ static void test_send_receive(bssl::UniquePtr<BIO> &sender_bio,
 
   // Receive a message
   char buff[1024];
+  OPENSSL_cleanse(buff, sizeof(buff));
   ASSERT_EQ((int)strlen(kTestMessage) + 1,
             BIO_read(receiver_bio.get(), buff, sizeof(buff)))
       << LastSocketError();
@@ -539,6 +540,7 @@ static void test_puts_receive(bssl::UniquePtr<BIO> &sender_bio,
 
   // Receive a message.
   char buff[1024];
+  OPENSSL_cleanse(buff, sizeof(buff));
   // `BIO_puts` does not send the \0 byte at the end of the string.
   ASSERT_EQ((int)strlen(kTestMessage),
             BIO_read(receiver_bio.get(), buff, sizeof(buff)))
