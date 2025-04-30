@@ -19,7 +19,7 @@
 // This test is, strictly speaking, flaky, but we use large enough buffers
 // that the probability of failing when we should pass is negligible.
 
-TEST(CCRandomGenerateByesTest, NotObviouslyBroken) {
+TEST(CCRandomGenerateBytesTest, NotObviouslyBroken) {
   static const uint8_t kZeros[1024] = {0};
 
   uint8_t buf1[256], buf2[1024], buf3[256];;
