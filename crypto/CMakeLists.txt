@@ -468,6 +468,7 @@ add_library(
   poly1305/poly1305_arm.c
   poly1305/poly1305_vec.c
   pool/pool.c
+  rand_extra/ccrandomgeneratebytes.c
   rand_extra/deterministic.c
   rand_extra/getentropy.c
   rand_extra/rand_extra.c
@@ -818,6 +819,7 @@ if(BUILD_TESTING)
     pkcs8/pkcs12_test.cc
     poly1305/poly1305_test.cc
     pool/pool_test.cc
+    rand_extra/ccrandomgeneratebytes_test.c
     rand_extra/getentropy_test.cc
     rand_extra/rand_test.cc
     refcount_test.cc
