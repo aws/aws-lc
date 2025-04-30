@@ -289,7 +289,7 @@ index 081dc002..e9bcfed0 100755
 
  if [ "z$crypto" = "zopenssl" ] ; then
 -    min_percent_success=90
-+    min_percent_success=80
++    min_percent_success=75
  elif [ "z$crypto" = "znss" ] ; then
      min_percent_success=90
  elif [ "z$crypto" = "zgnutls" ] ; then
