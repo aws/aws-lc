@@ -12,6 +12,8 @@
 
 #include <openssl/span.h>
 
+#include <CommonCrypto/CommonRandom.h>
+
 #include "../test/test_util.h"
 
 // This test is, strictly speaking, flaky, but we use large enough buffers
@@ -22,15 +24,15 @@ TEST(GetEntropyTest, NotObviouslyBroken) {
 
   uint8_t buf1[256], buf2[1024], buf3[256];;
 
-  EXPECT_EQ(CCRandomGenerateBytes(buf1, sizeof(buf1)), 0);
-  EXPECT_EQ(CCRandomGenerateBytes(buf2, sizeof(buf2)), 0);
+  EXPECT_EQ(CCRandomGenerateBytes(buf1, sizeof(buf1)), kCCSuccess);
+  EXPECT_EQ(CCRandomGenerateBytes(buf2, sizeof(buf2)), kCCSuccess);
   EXPECT_NE(Bytes(buf1), Bytes(buf2));
   EXPECT_NE(Bytes(buf1), Bytes(kZeros));
   EXPECT_NE(Bytes(buf2), Bytes(kZeros));
 
   // Ensure that the implementation is not simply returning the memory unchanged.
   memcpy(buf3, buf1, sizeof(buf3));
-  EXPECT_EQ(CCRandomGenerateBytes(buf1, sizeof(buf1)), 0);
+  EXPECT_EQ(CCRandomGenerateBytes(buf1, sizeof(buf1)), kCCSuccess);
   EXPECT_NE(Bytes(buf1), Bytes(buf3));
 }
 
