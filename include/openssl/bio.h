@@ -68,12 +68,11 @@
 #include <openssl/thread.h>
 
 #if defined(OPENSSL_WINDOWS)
-#include <windows.h>
+// Due to name conflicts, we must prevent "wincrypt.h" from being included
+#define NOCRYPT
 #include <winsock2.h>
 #include <ws2ipdef.h>
-#if !defined(__MINGW32__)
-#include <afunix.h>
-#endif
+#undef NOCRYPT
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
