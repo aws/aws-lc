@@ -65,10 +65,16 @@
 
 #include "../internal.h"
 
+typedef struct bio_buf_mem_st {
+  struct buf_mem_st *buf;   /* allocated buffer */
+  size_t off;
+} BIO_BUF_MEM;
+
 
 BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
   BIO *ret;
   BUF_MEM *b;
+  BIO_BUF_MEM *bbm;
   const size_t size = len < 0 ? strlen((char *)buf) : (size_t)len;
 
   if (!buf && len != 0) {
@@ -81,7 +87,8 @@ BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
     return NULL;
   }
 
-  b = (BUF_MEM *)ret->ptr;
+  bbm = (BIO_BUF_MEM *)ret->ptr;
+  b = bbm->buf;
   // BIO_FLAGS_MEM_RDONLY ensures |b->data| is not written to.
   b->data = (void *)buf;
   b->length = size;
@@ -98,35 +105,59 @@ BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
 }
 
 static int mem_new(BIO *bio) {
-  BUF_MEM *b;
+  BIO_BUF_MEM *bbm = OPENSSL_zalloc(sizeof(*bbm));
 
-  b = BUF_MEM_new();
-  if (b == NULL) {
+  if (bbm == NULL) {
+    return 0;
+  }
+
+  bbm->buf = BUF_MEM_new();
+  if (bbm->buf == NULL) {
+    OPENSSL_free(bbm);
     return 0;
   }
 
   // |shutdown| is used to store the close flag: whether the BIO has ownership
   // of the BUF_MEM.
+  bbm->off = 0;
   bio->shutdown = 1;
   bio->init = 1;
   bio->num = -1;
-  bio->ptr = (char *)b;
+  bio->ptr = (char *)bbm;
 
   return 1;
 }
 
 static int mem_free(BIO *bio) {
+  BIO_BUF_MEM *bbm;
+
+  bbm = (BIO_BUF_MEM *)bio->ptr;
+  BUF_MEM *b = bbm->buf;
+
   if (!bio->shutdown || !bio->init || bio->ptr == NULL) {
     return 1;
   }
 
-  BUF_MEM *b = (BUF_MEM *)bio->ptr;
   if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
     b->data = NULL;
   }
   BUF_MEM_free(b);
   bio->ptr = NULL;
+
+  OPENSSL_free(bbm);
   return 1;
+}
+
+static int mem_buf_sync(BIO *bio) {
+  if (bio != NULL && bio->init != 0 && bio->ptr != NULL) {
+    BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
+    BUF_MEM *b = bbm->buf;
+
+    OPENSSL_memmove(b->data, &b->data[bbm->off], b->length);
+    bbm->off = 0;
+  }
+
+  return 0;
 }
 
 static int mem_read(BIO *bio, char *out, int outl) {
@@ -135,19 +166,24 @@ static int mem_read(BIO *bio, char *out, int outl) {
     return 0;
   }
 
-  BUF_MEM *b = bio->ptr;
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
+  BUF_MEM *b = bbm->buf;
+
   int ret = outl;
   if ((size_t)ret > b->length) {
     ret = (int)b->length;
   }
 
   if (ret > 0) {
-    OPENSSL_memcpy(out, b->data, ret);
+    size_t off = bbm->off;
+    if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+      off = 0;
+    }
+    OPENSSL_memcpy(out, &b->data[off], ret);
     b->length -= ret;
+    bbm->off += ret;
     if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
       b->data += ret;
-    } else {
-      OPENSSL_memmove(b->data, &b->data[ret], b->length);
     }
   } else if (b->length == 0) {
     ret = bio->num;
@@ -169,7 +205,11 @@ static int mem_write(BIO *bio, const char *in, int inl) {
     return -1;
   }
 
-  BUF_MEM *b = bio->ptr;
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
+  BUF_MEM *b = bbm->buf;
+
+  mem_buf_sync(bio);
+
   if (!BUF_MEM_append(b, in, inl)) {
     return -1;
   }
@@ -185,16 +225,22 @@ static int mem_gets(BIO *bio, char *buf, int size) {
 
   // The buffer size includes space for the trailing NUL, so we can read at most
   // one fewer byte.
-  BUF_MEM *b = bio->ptr;
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
+  BUF_MEM *b = bbm->buf;
   int ret = size - 1;
   if ((size_t)ret > b->length) {
     ret = (int)b->length;
   }
 
+  size_t off = bbm->off;
+  if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+    off = 0;
+  }
+
   // Stop at the first newline.
-  const char *newline = OPENSSL_memchr(b->data, '\n', ret);
+  const char *newline = OPENSSL_memchr(&b->data[off], '\n', ret);
   if (newline != NULL) {
-    ret = (int)(newline - b->data + 1);
+    ret = (int)(newline - &b->data[off] + 1);
   }
 
   ret = mem_read(bio, buf, ret);
@@ -207,7 +253,8 @@ static int mem_gets(BIO *bio, char *buf, int size) {
 static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
   long ret = 1;
 
-  BUF_MEM *b = (BUF_MEM *)bio->ptr;
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
+  BUF_MEM *b = bbm->buf;
 
   switch (cmd) {
     case BIO_CTRL_RESET:
@@ -222,6 +269,18 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
         }
       }
       break;
+    case BIO_C_FILE_SEEK:
+      if (num < 0 || (size_t)num > bbm->off + b->length)
+        return -1;
+
+      if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+        b->data += -bbm->off + num;
+      }
+
+      b->length += bbm->off - num;
+      bbm->off = num;
+      ret = num;
+      break;
     case BIO_CTRL_EOF:
       ret = (long)(b->length == 0);
       break;
@@ -231,6 +290,9 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
     case BIO_CTRL_INFO:
       ret = (long)b->length;
       if (ptr != NULL) {
+        if (!(bio->flags & BIO_FLAGS_MEM_RDONLY)) {
+          mem_buf_sync(bio);
+        }
         char **pptr = ptr;
         *pptr = b->data;
       }
@@ -242,6 +304,9 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       break;
     case BIO_C_GET_BUF_MEM_PTR:
       if (ptr != NULL) {
+        if (!(bio->flags & BIO_FLAGS_MEM_RDONLY)) {
+          mem_buf_sync(bio);
+        }
         BUF_MEM **pptr = ptr;
         *pptr = b;
       }
@@ -281,12 +346,17 @@ const BIO_METHOD *BIO_s_mem(void) { return &mem_method; }
 
 int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
                      size_t *out_len) {
-  const BUF_MEM *b;
   if (!bio || bio->method != &mem_method) {
     return 0;
   }
 
-  b = (BUF_MEM *)bio->ptr;
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
+  const BUF_MEM *b = bbm->buf;
+
+  if (!(bio->flags & BIO_FLAGS_MEM_RDONLY)) {
+    mem_buf_sync((BIO *)bio);
+  }
+
   if (out_contents != NULL) {
     *out_contents = (uint8_t *)b->data;
   }
