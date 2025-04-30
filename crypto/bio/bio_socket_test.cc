@@ -526,6 +526,28 @@ static void test_send_receive(bssl::UniquePtr<BIO> &sender_bio,
   ASSERT_EQ(Bytes(buff), Bytes(kTestMessage));
 }
 
+static void test_puts_receive(bssl::UniquePtr<BIO> &sender_bio,
+                              bssl::UniquePtr<BIO> &receiver_bio) {
+  static constexpr char kTestMessage[] = "test";
+
+  // Send a message
+  ASSERT_EQ((int)strlen(kTestMessage),
+            BIO_puts(sender_bio.get(), kTestMessage))
+      << LastSocketError();
+  // BIO_flush is a no-op, but test it anyway.
+  ASSERT_EQ(1, BIO_flush(sender_bio.get())) << LastSocketError();
+
+  // Receive a message.
+  char buff[1024];
+  // `BIO_puts` does not send the \0 byte at the end of the string.
+  ASSERT_EQ((int)strlen(kTestMessage),
+            BIO_read(receiver_bio.get(), buff, sizeof(buff)))
+      << LastSocketError();
+
+  // Verify the message received matches the message sent.
+  ASSERT_EQ(Bytes(buff), Bytes(kTestMessage));
+}
+
 class BIODgramTest : public testing::TestWithParam<int> {
   // You can implement all the usual fixture class members here.
   // To access the test parameter, call GetParam() from class
@@ -583,7 +605,10 @@ TEST_P(BIODgramTest, SocketDatagramSetPeer) {
   ASSERT_EQ(bio_server_addr, bio_server_addr_copy) << LastSocketError();
 
   test_send_receive(client_bio, server_bio);
+  ASSERT_EQ(0, BIO_dgram_send_timedout(client_bio.get()));
+  ASSERT_EQ(0, BIO_dgram_recv_timedout(server_bio.get()));
   test_send_receive(server_bio, client_bio);
+  test_puts_receive(client_bio, server_bio);
 }
 
 TEST_P(BIODgramTest, SocketDatagramSetConnected) {
