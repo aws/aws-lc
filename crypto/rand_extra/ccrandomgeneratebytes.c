@@ -15,14 +15,12 @@
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 
   if (len == 0) {
-    return 1;
+    return;
   }
 
   // To get system randomness on iOS we use |CCRandomGenerateBytes|. On MacOS we
   // use |getentropy| but iOS doesn't expose that.
-  if (CCRandomGenerateBytes(out, len) == kCCSuccess) {
-    return 1;
-  } else {
+  if (CCRandomGenerateBytes(out, len) != kCCSuccess) {
     fprintf(stderr, "CCRandomGenerateBytes failed.\n");
     abort();
   }
