@@ -31,7 +31,6 @@
 #include <unistd.h>
 
 #if defined(OPENSSL_LINUX)
-#if defined(BORINGSSL_FIPS)
 #if !defined(AWS_LC_URANDOM_U32)
   // On old Linux OS: unknown type name '__u32' when include <linux/random.h>.
   // If '__u32' is predefined, redefine will cause compiler error.
@@ -39,7 +38,6 @@
 #endif
 #include <linux/random.h>
 #include <sys/ioctl.h>
-#endif
 #include <sys/param.h>
 #include <sys/syscall.h>
 
@@ -65,15 +63,16 @@
 #endif
 #endif  // OPENSSL_LINUX
 
-#if defined(OPENSSL_APPLE)
-#include <CommonCrypto/CommonRandom.h>
-#endif
-
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
 #include "getrandom_fillin.h"
 #include "../internal.h"
+
+#if defined(OPENSSL_MSAN)
+void __msan_unpoison(void *, size_t);
+#endif
+
 
 #ifndef MIN
 #define AWSLC_MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
@@ -86,6 +85,45 @@
 // 250 milliseconds in nanoseconds.
 #define MILLISECONDS_250 INT64_C(250000000)
 #define INITIAL_BACKOFF_DELAY 1
+
+enum random_flavor_t {
+  NOT_CHOSEN,
+  USE_GETRANDOM,
+  USE_DEV_URANDOM
+};
+
+// random_flavor determines the randomness function used. This is either
+// getrandom or /dev/urandom. It's protected by |initialize_random_flavor_once|.
+static enum random_flavor_t random_flavor = NOT_CHOSEN;
+
+enum random_state_t {
+  STATE_NOT_READY,
+  STATE_READY
+};
+
+// random_flavor_state is |STATE_READY| if the entropy pool of |random_flavor|
+// has been (fully) initialized and |STATE_NOT_READY| otherwise. It's protected
+// by |ensure_random_state_is_initialized_once|. Note the state of
+// |random_flavor| only matters for blocking randomness reads. Non-blocking
+// reads ignore the state status.
+static enum random_state_t random_flavor_state = STATE_NOT_READY;
+
+// urandom_fd is a file descriptor to /dev/urandom. It's protected by
+// |initialize_random_flavor_once|.
+static int urandom_fd = 0;
+
+static CRYPTO_once_t initialize_random_flavor_once = CRYPTO_ONCE_INIT;
+static CRYPTO_once_t ensure_random_state_is_initialized_once = CRYPTO_ONCE_INIT;
+
+// getrandom_syscall_number_available returns 1 if the getrandom system call
+// number is defined, otherwise 0.
+static int getrandom_syscall_number_available(void) {
+#if defined(USE_NR_getrandom)
+  return 1;
+#else
+  return 0;
+#endif
+}
 
 // handle_rare_urandom_error initiates exponential backoff. |backoff| holds the
 // previous backoff delay. Initial backoff delay is |INITIAL_BACKOFF_DELAY|.
@@ -119,24 +157,43 @@ static void handle_rare_urandom_error(long *backoff) {
   nanosleep(&sleep_time, &sleep_time);
 }
 
-#if defined(USE_NR_getrandom)
+static ssize_t wrapper_dev_urandom(void *buf, size_t buf_len, int block) {
 
-#if defined(OPENSSL_MSAN)
-void __msan_unpoison(void *, size_t);
-#endif
-
-static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
-
-  ssize_t ret;
-  long backoff = INITIAL_BACKOFF_DELAY;
+  ssize_t ret = 0;
   size_t retry_counter = 0;
+  long backoff = INITIAL_BACKOFF_DELAY;
 
   do {
-    ret = syscall(__NR_getrandom, buf, buf_len, flags);
+    ret = read(urandom_fd, buf, buf_len);
+    if ((ret == -1) && (errno != EINTR)) {
+      if (!block ||
+          retry_counter >= MAX_BACKOFF_RETRIES) {
+        break;
+      }
+      // We have observed extremely rare events in which a |read| on a
+      // |urandom| fd failed with |errno| != |EINTR|. We regard this as an
+      // intermittent error that is recoverable. Therefore, backoff to allow
+      // recovery and to avoid creating a tight spinning loop.
+      handle_rare_urandom_error(&backoff);
+      retry_counter = retry_counter + 1;
+    }
+  } while (ret == -1);
+
+  return ret;
+}
+
+static ssize_t wrapper_getrandom(void *buf, size_t buf_len, int block) {
+
+  ssize_t ret = 0;
+  size_t retry_counter = 0;
+  long backoff = INITIAL_BACKOFF_DELAY;
+
+  do {
+    ret = syscall(__NR_getrandom, buf, buf_len, block ? 0 : GRND_NONBLOCK);
     if ((ret == -1) && (errno != EINTR)) {
       // Don't block in non-block mode except if a signal handler interrupted
       // |getrandom|.
-      if ((flags & GRND_NONBLOCK) != 0 ||
+      if (!block ||
           (retry_counter >= MAX_BACKOFF_RETRIES)) {
         break;
       }
@@ -158,103 +215,53 @@ static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
   }
 #endif  // OPENSSL_MSAN
 
-  return ret;
+    return ret;
 }
 
-#endif  // USE_NR_getrandom
+// init_try_getrandom_once tests whether getrandom is supported. Returns 1 if
+// getrandom is supported, 0 otherwise.
+static int init_try_getrandom_once(void) {
 
-// kHaveGetrandom in |urandom_fd| signals that |getrandom| or |getentropy| is
-// available and should be used instead.
-static const int kHaveGetrandom = -3;
-
-// urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|.
-static int urandom_fd = 0;
-
-#if defined(USE_NR_getrandom)
-
-// getrandom_ready is one if |getrandom| had been initialized by the time
-// |init_once| was called and zero otherwise.
-static int getrandom_ready = 0;
-
-// extra_getrandom_flags_for_seed contains a value that is ORed into the flags
-// for getrandom() when reading entropy for a seed.
-static int extra_getrandom_flags_for_seed = 0;
-
-// On Android, check a system property to decide whether to set
-// |extra_getrandom_flags_for_seed| otherwise they will default to zero.  If
-// ro.oem_boringcrypto_hwrand is true then |extra_getrandom_flags_for_seed| will
-// be set to GRND_RANDOM, causing all random data to be drawn from the same
-// source as /dev/random.
-static void maybe_set_extra_getrandom_flags(void) {
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
-  char value[PROP_VALUE_MAX + 1];
-  int length = __system_property_get("ro.boringcrypto.hwrand", value);
-  if (length < 0 || length > PROP_VALUE_MAX) {
-    return;
+  if (!getrandom_syscall_number_available()) {
+    return 0;
   }
 
-  value[length] = 0;
-  if (OPENSSL_strcasecmp(value, "true") == 0) {
-    extra_getrandom_flags_for_seed = GRND_RANDOM;
-  }
-#endif
-}
+  uint8_t dummy = 0;
+  ssize_t getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), 0);
 
-#endif  // USE_NR_getrandom
-
-static CRYPTO_once_t urandom_initialize_once = CRYPTO_ONCE_INIT;
-
-// init_once initializes the state of this module to values previously
-// requested. This is the only function that modifies |urandom_fd|, which may be
-// read safely after calling the once.
-static void init_once(void) {
-#if defined(USE_NR_getrandom)
-  int have_getrandom;
-  uint8_t dummy;
-  ssize_t getrandom_ret =
-      boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
   if (getrandom_ret == 1) {
-    getrandom_ready = 1;
-    have_getrandom = 1;
+    // We have getrandom and entropy pool is also fully initialized.
+    random_flavor = USE_GETRANDOM;
+    random_flavor_state = STATE_READY;
+    return 1;
   } else if (getrandom_ret == -1 && errno == EAGAIN) {
     // We have getrandom, but the entropy pool has not been initialized yet.
-    have_getrandom = 1;
+    random_flavor = USE_GETRANDOM;
+    return 1;
   } else if (getrandom_ret == -1 && errno == ENOSYS) {
-    // Fallthrough to using /dev/urandom, below.
-    have_getrandom = 0;
+    // Kernel doesn't support getrandom.
+    return 0;
   } else {
     // Other errors are fatal.
     perror("getrandom");
     abort();
   }
+}
 
-  if (have_getrandom) {
-    urandom_fd = kHaveGetrandom;
-    maybe_set_extra_getrandom_flags();
-    return;
-  }
-#endif  // USE_NR_getrandom
+// init_try_urandom_once attempts to initialize /dev/urandom. Returns 1 if
+// successful, 0 otherwise.
+static int init_try_urandom_once(void) {
 
-#if defined(OPENSSL_IOS)
-  // To get system randomness on iOS we use |CCRandomGenerateBytes| because
-  // |getentroopy| is not available.
-  return;
-#endif
+  int ret = 0;
+  int fd = 0;
 
-  // Android FIPS builds must support getrandom.
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
-  perror("getrandom not found");
-  abort();
-#endif
-
-  int fd;
   do {
     fd = open("/dev/urandom", O_RDONLY);
   } while (fd == -1 && errno == EINTR);
 
   if (fd < 0) {
     perror("failed to open /dev/urandom");
-    abort();
+    goto out;
   }
 
   int flags = fcntl(fd, F_GETFD);
@@ -262,79 +269,90 @@ static void init_once(void) {
     // Native Client doesn't implement |fcntl|.
     if (errno != ENOSYS) {
       perror("failed to get flags from urandom fd");
-      abort();
+      goto out;
     }
   } else {
     flags |= FD_CLOEXEC;
     if (fcntl(fd, F_SETFD, flags) == -1) {
       perror("failed to set FD_CLOEXEC on urandom fd");
-      abort();
+      goto out;
     }
   }
+
+  random_flavor = USE_DEV_URANDOM;
   urandom_fd = fd;
+  ret = 1;
+
+out:
+  return ret;
 }
 
-static CRYPTO_once_t wait_for_entropy_once = CRYPTO_ONCE_INIT;
+// init_once initializes the state of this module to values previously
+// requested. Only function that mutates the chosen random function flavor.
+static void init_random_flavor_once(void) {
 
-static void wait_for_entropy(void) {
-  int fd = urandom_fd;
-  if (fd == kHaveGetrandom) {
-    // |getrandom| and |getentropy| support blocking in |fill_with_entropy|
-    // directly. For |getrandom|, we first probe with a non-blocking call to aid
-    // debugging.
-#if defined(USE_NR_getrandom)
-    if (getrandom_ready) {
-      // The entropy pool was already initialized in |init_once|.
+  // First determine if we can use getrandom. We prefer getrandom.
+  if (init_try_getrandom_once()) {
       return;
-    }
+  }
 
-    uint8_t dummy;
-    ssize_t getrandom_ret =
-        boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
-    if (getrandom_ret == -1 && errno == EAGAIN) {
-      // Attempt to get the path of the current process to aid in debugging when
-      // something blocks.
-      const char *current_process = "<unknown>";
-#if defined(OPENSSL_HAS_GETAUXVAL)
-      const unsigned long getauxval_ret = getauxval(AT_EXECFN);
-      if (getauxval_ret != 0) {
-        current_process = (const char *)getauxval_ret;
-      }
-#endif
-
-      fprintf(
-          stderr,
-          "%s: getrandom indicates that the entropy pool has not been "
-          "initialized. Rather than continue with poor entropy, this process "
-          "will block until entropy is available.\n",
-          current_process);
-
-      getrandom_ret =
-          boringssl_getrandom(&dummy, sizeof(dummy), 0 /* no flags */);
-    }
-
-    if (getrandom_ret != 1) {
-      perror("getrandom");
-      abort();
-    }
-#endif  // USE_NR_getrandom
+  // getrandom is not available. Fall-back to /dev/urandom.
+  if (init_try_urandom_once()) {
     return;
   }
 
-#if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY) && \
-    !defined(OPENSSL_IOS) // On iOS we don't use /dev/urandom.
+  // This is a fatal error and there is no way to recover.
+  abort();
+}
 
-  // In FIPS mode on platforms where urandom doesn't block at startup, we ensure
-  // that the kernel has sufficient entropy before continuing. This is
-  // automatically handled by getrandom, which requires that the entropy pool
-  // has been initialised, but for urandom we have to poll.
+static void ensure_getrandom_is_initialized(void) {
 
+  if (random_flavor_state == STATE_READY) {
+    // The entropy pool was already initialized in |init_try_getrandom_once|.
+    return;
+  }
+
+  uint8_t dummy = 0;
+  ssize_t getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
+
+  if (getrandom_ret == -1 && errno == EAGAIN) {
+    // Attempt to get the path of the current process to aid in debugging when
+    // something blocks.
+    const char *current_process = "<unknown>";
+#if defined(OPENSSL_HAS_GETAUXVAL)
+    const unsigned long getauxval_ret = getauxval(AT_EXECFN);
+    if (getauxval_ret != 0) {
+      current_process = (const char *)getauxval_ret;
+    }
+#endif
+
+    fprintf(stderr,
+      "%s: getrandom indicates that the entropy pool has not been "
+      "initialized. Rather than continue with poor entropy, this process "
+      "will block until entropy is available.\n",
+      current_process);
+
+    getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), 0);
+  }
+
+  if (getrandom_ret != 1) {
+    perror("getrandom");
+    abort();
+  }
+
+  random_flavor_state = STATE_READY;
+}
+
+static void ensure_dev_urandom_is_initialized(void) {
+
+  // On platforms where urandom doesn't block at startup, we ensure that the
+  // kernel has sufficient entropy before continuing.
   for (;;) {
-    int entropy_bits;
-    if (ioctl(fd, RNDGETENTCNT, &entropy_bits)) {
+    int entropy_bits = 0;
+    if (ioctl(urandom_fd, RNDGETENTCNT, &entropy_bits)) {
       fprintf(stderr,
-              "RNDGETENTCNT on /dev/urandom failed. We cannot continue in this "
-              "case when in FIPS mode.\n");
+        "RNDGETENTCNT on /dev/urandom failed. We cannot determine if the kernel "
+        "has enough entropy and must abort.\n");
       abort();
     }
 
@@ -343,96 +361,86 @@ static void wait_for_entropy(void) {
       break;
     }
 
+    fprintf(stderr,
+      "RNDGETENTCNT on /dev/urandom indicates that the entropy pool does not "
+      "have enough entropy. Rather than continue with poor entropy, this "
+      "process will block until entropy is available.\n");
+
     struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = MILLISECONDS_250 };
     nanosleep(&sleep_time, &sleep_time);
   }
-#endif  // BORINGSSL_FIPS && !URANDOM_BLOCKS_FOR_ENTROPY
+
+  random_flavor_state = STATE_READY;
+}
+
+// wait_for_entropy ensures the entropy pool has been initialized. If
+// initialization haven't happened yet, it will block the process.
+static void ensure_entropy_state_is_initd_once(void) {
+
+  if (random_flavor == USE_GETRANDOM) {
+    ensure_getrandom_is_initialized();
+  } else if (random_flavor == USE_DEV_URANDOM) {
+    ensure_dev_urandom_is_initialized();
+  } else {
+    // Indicates a state machine logical error which is fatal.
+    abort();
+  }
 }
 
 // fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
 // on success and zero on error. If |block| is one, this function will block
 // until the entropy pool is initialized. Otherwise, this function may fail,
 // setting |errno| to |EAGAIN| if the entropy pool has not yet been initialized.
-// If |seed| is one, this function will OR in the value of
-// |extra_getrandom_flags_for_seed| when using |getrandom|.
 static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
+
   if (len == 0) {
     return 1;
   }
 
-#if defined(OPENSSL_IOS)
-  // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
-  // rather than |getentropy| and /dev/urandom.
-  if (CCRandomGenerateBytes(out, len) == kCCSuccess) {
-    return 1;
-  } else {
-    fprintf(stderr, "CCRandomGenerateBytes failed.\n");
+  CRYPTO_once(&initialize_random_flavor_once, init_random_flavor_once);
+
+  if (random_flavor == NOT_CHOSEN) {
+    // This should never happen. It means there is a logical error somewhere.
+    // Hard bail.
     abort();
   }
-#endif
 
-#if defined(USE_NR_getrandom)
-  int getrandom_flags = 0;
-  if (!block) {
-    getrandom_flags |= GRND_NONBLOCK;
-  }
-#endif
-
-#if defined (USE_NR_getrandom)
-  if (seed) {
-    getrandom_flags |= extra_getrandom_flags_for_seed;
-  }
-#endif
-
-  CRYPTO_init_sysrand();
   if (block) {
-    CRYPTO_once(&wait_for_entropy_once, wait_for_entropy);
-  }
+    // "Entropy depletion" is not a thing. So, it's enough to ensure the
+    // entropy pool is initialized once.
+    CRYPTO_once(&ensure_random_state_is_initialized_once, ensure_entropy_state_is_initd_once);
+
+    if (random_flavor_state == STATE_NOT_READY) {
+      // This should never happen. It means there is a logical error somewhere.
+      // Hard bail.
+      abort();
+    }
+  }  
 
   // Clear |errno| so it has defined value if |read| or |getrandom|
   // "successfully" returns zero.
   errno = 0;
   while (len > 0) {
-    ssize_t r;
+    ssize_t ret;
 
-    if (urandom_fd == kHaveGetrandom) {
-#if defined(USE_NR_getrandom)
-      r = boringssl_getrandom(out, len, getrandom_flags);
-#else  // USE_NR_getrandom
-      fprintf(stderr, "urandom fd corrupt.\n");
-      abort();
-#endif
+    if (random_flavor == USE_GETRANDOM) {
+      ret = wrapper_getrandom(out, len, block);
     } else {
-      size_t retry_counter = 0;
-      long backoff = INITIAL_BACKOFF_DELAY;
-      do {
-        r = read(urandom_fd, out, len);
-        if ((r == -1) && (errno != EINTR)) {
-          if (retry_counter >= MAX_BACKOFF_RETRIES) {
-            break;
-          }
-          // We have observed extremely rare events in which a |read| on a
-          // |urandom| fd failed with |errno| != |EINTR|. We regard this as an
-          // intermittent error that is recoverable. Therefore, backoff to allow
-          // recovery and to avoid creating a tight spinning loop.
-          handle_rare_urandom_error(&backoff);
-          retry_counter = retry_counter + 1;
-        }
-      } while (r == -1);
+      ret = wrapper_dev_urandom(out, len, block);
     }
 
-    if (r <= 0) {
+    if (ret <= 0) {
       return 0;
     }
-    out += r;
-    len -= r;
+    out += ret;
+    len -= ret;
   }
 
   return 1;
 }
 
 void CRYPTO_init_sysrand(void) {
-  CRYPTO_once(&urandom_initialize_once, init_once);
+  CRYPTO_once(&initialize_random_flavor_once, init_random_flavor_once);
 }
 
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
