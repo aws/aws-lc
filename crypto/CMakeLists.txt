@@ -819,7 +819,7 @@ if(BUILD_TESTING)
     pkcs8/pkcs12_test.cc
     poly1305/poly1305_test.cc
     pool/pool_test.cc
-    rand_extra/ccrandomgeneratebytes_test.c
+    rand_extra/ccrandomgeneratebytes_test.cc
     rand_extra/getentropy_test.cc
     rand_extra/rand_test.cc
     refcount_test.cc
