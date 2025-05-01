@@ -116,6 +116,16 @@ that improve the experience for consumers on these platforms.
 | OpenBSD   | x86-64      |
 | FreeBSD   | x86-64      |
 
+### FIPS Compliance
+
+AWS-LC can be built in FIPS mode for compliance with FIPS 140-3 requirements. However, please note that:
+
+- Static FIPS builds are only supported on Linux platforms
+- Shared library FIPS builds are supported on both Linux and Windows
+- Windows Debug builds are not supported with FIPS
+
+For more details on building AWS-LC in FIPS mode, see the [FIPS Mode section in BUILDING.md](BUILDING.md#fips-mode).
+
 ### Post-Quantum Cryptography
 
 Details on the post-quantum algorithms supported by AWS-LC can be found at [PQREADME](https://github.com/aws/aws-lc/tree/main/crypto/fipsmodule/PQREADME.md).
@@ -188,5 +198,3 @@ Security via our
 Please do **not** create a public GitHub issue.
 
 If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
-
-
