@@ -75,8 +75,6 @@
 #include "../fipsmodule/evp/internal.h"
 
 
-#define MIN_LENGTH 4
-
 static int load_iv(char **fromp, unsigned char *to, size_t num);
 static int check_pem(const char *nm, const char *name);
 

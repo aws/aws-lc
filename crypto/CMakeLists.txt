@@ -452,6 +452,7 @@ add_library(
   pem/pem_info.c
   pem/pem_lib.c
   pem/pem_oth.c
+  pem/pem_passwd.c
   pem/pem_pk8.c
   pem/pem_pkey.c
   pem/pem_x509.c

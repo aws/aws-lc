@@ -162,10 +162,73 @@ char *EVP_get_pw_prompt(void) {
   return prompt_string;
 }
 
+int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify) {
+  return EVP_read_pw_string_min(buf, 0, length, prompt, verify);
+}
+
 int EVP_read_pw_string_min(char *buf, int min_length, int length,
                                           const char *prompt, int verify) {
-  return 0;
+  int ret = -1;
+  char verify_buf[1024];
+
+  if (prompt == NULL) {
+    prompt = EVP_get_pw_prompt();
+  }
+
+  // Write out prompt and get password string with func 1
+
+  if (verify) {
+    // Write out verify prompt and get user input into verify_buf
+    // set to -2 if we get interrupt, cancel events from UI processing flow
+    ret = -2;
+  }
+
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+  return ret;
 }
+
+// int EVP_read_pw_string_min(char *buf, int min_length, int length,
+//                            const char *prompt, int verify) {
+//   int ret = -1;
+//   char verify_buf[1024];
+//
+//   if (prompt == NULL) {
+//     prompt = EVP_get_pw_prompt();
+//   }
+//
+//   // Open console
+//   if (!openssl_console_open())
+//     return -1;
+//
+//   // Write prompt
+//   openssl_console_write(prompt);
+//
+//   // Read password with echo disabled
+//   ret = openssl_console_read(buf, min_length, length, 0);
+//
+//   if (ret > 0 && verify) {
+//     // Write verification prompt
+//     openssl_console_write("Verifying - ");
+//     openssl_console_write(prompt);
+//
+//     // Read verification password
+//     ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
+//
+//     if (ret > 0) {
+//       // Compare passwords
+//       if (strcmp(buf, verify_buf) != 0) {
+//         openssl_console_write("Verify failure\n");
+//         ret = -1;
+//       }
+//     }
+//   }
+//
+//   // Close console
+//   openssl_console_close();
+//
+//   OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+//   return ret;
+// }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
   SET_DIT_AUTO_RESET;
