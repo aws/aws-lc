@@ -450,8 +450,8 @@ elseif(FIPS_SHARED)
 
     ${BCM_ASM_SOURCES}
   )
-  target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
-  target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include)
+  target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS )
+  target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include ${S2N_BIGNUM_INCLUDE_DIR})
 
   add_dependencies(bcm_library boringssl_prefix_symbols)
   target_include_directories(bcm_library BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
