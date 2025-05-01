@@ -327,7 +327,7 @@ if(FIPS_DELOCATE)
   add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
   # Important: We do not want to add the generated prefix symbols to the include path here!
   # Delocator expects symbols to not be prefixed.
-  target_include_directories(bcm_c_generated_asm PRIVATE "${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
+  target_include_directories(bcm_c_generated_asm PRIVATE ${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
