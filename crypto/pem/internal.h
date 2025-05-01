@@ -15,7 +15,5 @@ void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
 // Console Management Functions
 int openssl_console_open(void);
 int openssl_console_close(void);
-int openssl_console_echo_disable(void);
-int openssl_console_echo_enable(void);
 int openssl_console_write(const char *str);
-int openssl_console_read(char *buf, int minsize, int maxsize, int echo, int strip_nl);
+int openssl_console_read(char *buf, int minsize, int maxsize, int echo);

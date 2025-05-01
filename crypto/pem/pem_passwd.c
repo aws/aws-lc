@@ -178,7 +178,7 @@ int openssl_console_close(void) {
     return 1;
 }
 
-int openssl_console_echo_disable(void) {
+static int openssl_console_echo_disable(void) {
 # if !defined(_WIN32)
     memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
     tty_new.TTY_FLAGS &= ~ECHO;
@@ -196,8 +196,7 @@ int openssl_console_echo_disable(void) {
     return 1;
 }
 
-int openssl_console_echo_enable(void)
-{
+static int openssl_console_echo_enable(void) {
 # if !defined(_WIN32)
     memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
     if (is_a_tty && (TTY_set(fileno(tty_in), &tty_new) == -1)) {
@@ -218,7 +217,7 @@ int openssl_console_write(const char *str) {
     return 1;
 }
 
-int openssl_console_read(char *buf, int minsize, int maxsize, int echo, int strip_nl) {
+int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     int ok;
     char *p = NULL;
     int echo_eol = !echo;
@@ -274,23 +273,21 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo, int stri
 //    } else
 #  endif
     p = fgets(buf, maxsize, tty_in);
-    if (p == NULL)
-        goto error;
-    if (feof(tty_in))
-        goto error;
-    if (ferror(tty_in))
-        goto error;
+    if (p == NULL || feof(tty_in) || ferror(tty_in)) {
+      goto error;
+    }
+
     if ((p = (char *)strchr(buf, '\n')) != NULL) {
-        if (strip_nl)
-            *p = '\0';
-    } else if (!read_till_nl(tty_in))
+        *p = '\0';
+    } else if (!read_till_nl(tty_in)) {
         goto error;
+    }
 
     ok = 1;
 
 error:
     if (intr_signal == SIGINT) {
-        ok = -1;
+        ok = -2;
     }
     if (echo_eol) {
         fprintf(tty_out, "\n");
