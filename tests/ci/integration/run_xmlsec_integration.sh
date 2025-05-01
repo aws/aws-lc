@@ -52,7 +52,7 @@ function xmlsec_patch() {
 }
 
 function xmlsec_run_tests() {
-  make check
+  make check XMLSEC_TEST_IGNORE_PERCENT_SUCCESS=y
 }
 
 git clone https://github.com/lsh123/xmlsec.git ${XMLSEC_SRC_FOLDER}

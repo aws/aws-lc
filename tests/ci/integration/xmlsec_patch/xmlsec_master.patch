@@ -280,16 +280,3 @@ index b1f40619..6e53a5ef 100755
 
 
  extra_message="Negative test: bad retrieval method"
-diff --git a/tests/testrun.sh b/tests/testrun.sh
-index 081dc002..e9bcfed0 100755
---- a/tests/testrun.sh
-+++ b/tests/testrun.sh
-@@ -813,7 +813,7 @@ if [ $count_total -gt 0 ] ; then
- fi
-
- if [ "z$crypto" = "zopenssl" ] ; then
--    min_percent_success=90
-+    min_percent_success=75
- elif [ "z$crypto" = "znss" ] ; then
-     min_percent_success=90
- elif [ "z$crypto" = "zgnutls" ] ; then
