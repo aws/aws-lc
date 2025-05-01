@@ -47,7 +47,7 @@ index d9e8423c..c63e812c 100644
  static xmlChar* gXmlSecOpenSSLTrustedCertsFolder = NULL;
 
 -#if !defined(XMLSEC_OPENSSL_API_300) && !defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_NO_ERR)
-+#if !defined(XMLSEC_OPENSSL_API_300) && !defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_NO_ERR) && !defined(OPENSSL_IS_AWSLC)
++#if !defined(XMLSEC_OPENSSL_API_300) && !defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_NO_ERR)
 
  #define XMLSEC_OPENSSL_ERRORS_FUNCTION                  0
 
