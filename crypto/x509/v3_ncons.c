@@ -306,9 +306,7 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
 }
 
 static int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
-  if (dnsid == NULL || idlen == NULL) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
+  assert(dnsid != NULL && idlen != NULL);
 
   // Don't leave outputs uninitialized
   *dnsid = NULL;
@@ -358,7 +356,7 @@ static int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   // means that "CN=sometld" cannot be precluded by DNS name constraints, but
   // that is not a problem.
   for (int i = 0; i < utf8_length; ++i) {
-    unsigned char c = utf8_value[i];
+    const unsigned char c = utf8_value[i];
 
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
         (c >= '0' && c <= '9') || c == '_') {
@@ -396,7 +394,7 @@ static int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
 // Check CN against DNS-ID name constraints.
 int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc) {
   int ret;
-  X509_NAME *nm = X509_get_subject_name(x);
+  const X509_NAME *nm = X509_get_subject_name(x);
   ASN1_STRING stmp = {.length = 0, .type = V_ASN1_IA5STRING, .data = NULL, .flags = 0};
   GENERAL_NAME gntmp = {.type = GEN_DNS, .d = {.dNSName = &stmp}};
 
