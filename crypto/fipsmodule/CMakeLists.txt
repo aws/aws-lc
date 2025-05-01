@@ -352,7 +352,8 @@ if(FIPS_DELOCATE)
     -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
-    -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -I\"${S2N_BIGNUM_INCLUDE_DIR}\" -DS2N_BN_HIDE_SYMBOLS"
+    -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS"
+    -s2n-bignum-include "${S2N_BIGNUM_INCLUDE_DIR}"
     ${DELOCATE_EXTRA_ARGS}
     ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
     ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
