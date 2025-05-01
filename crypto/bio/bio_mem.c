@@ -153,8 +153,10 @@ static int mem_buf_sync(BIO *bio) {
     BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
     BUF_MEM *b = bbm->buf;
 
-    OPENSSL_memmove(b->data, &b->data[bbm->off], b->length);
-    bbm->off = 0;
+    if (b->data != NULL) {
+      OPENSSL_memmove(b->data, &b->data[bbm->off], b->length);
+      bbm->off = 0;
+    }
   }
 
   return 0;
@@ -238,9 +240,11 @@ static int mem_gets(BIO *bio, char *buf, int size) {
   }
 
   // Stop at the first newline.
-  const char *newline = OPENSSL_memchr(&b->data[off], '\n', ret);
-  if (newline != NULL) {
-    ret = (int)(newline - &b->data[off] + 1);
+  if (b->data != NULL) {
+    const char *newline = OPENSSL_memchr(&b->data[off], '\n', ret);
+    if (newline != NULL) {
+      ret = (int)(newline - &b->data[off] + 1);
+    }
   }
 
   ret = mem_read(bio, buf, ret);
@@ -274,10 +278,10 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
         return -1;
 
       if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-        b->data += -bbm->off + num;
+        b->data -= (long)bbm->off - num;
       }
 
-      b->length += bbm->off - num;
+      b->length += (long)bbm->off - num;
       bbm->off = num;
       ret = num;
       break;
