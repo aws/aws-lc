@@ -156,6 +156,17 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   return -2;
 }
 
+char *prompt_string = "Enter PEM pass phrase:";
+
+char *EVP_get_pw_prompt(void) {
+  return prompt_string;
+}
+
+int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                                          const char *prompt, int verify) {
+  return 0;
+}
+
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
   SET_DIT_AUTO_RESET;
   if (to->type == EVP_PKEY_NONE) {

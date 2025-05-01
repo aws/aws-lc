@@ -142,6 +142,22 @@ OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 // EVP_MD_name calls |EVP_MD_get0_name|
 OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
 
+// EVP Password Utility Functions
+//
+// EVP_get_pw_prompt returns an internal pointer to static memory containing
+// the default prompt. In AWS-LC, this default is hardcoded. In OpenSSL,
+// the default prompt must first be configured by a user.
+OPENSSL_EXPORT char *EVP_get_pw_prompt(void);
+
+// writes the prompt to /dev/tty, or, if that could not be opened, to standard
+// output, turns echo off, and reads an input string from /dev/tty, or, if that
+// could not be opened, from standard input. The string is returned in buf, which
+// must have space for at least length bytes. If verify is set, the user is asked
+// for the password twice and unless the two copies match, an error is returned.
+OPENSSL_EXPORT int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                                          const char *prompt, int verify);
+
+
 // Getting and setting concrete public key types.
 //
 // The following functions get and set the underlying public key in an
