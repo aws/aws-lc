@@ -196,10 +196,17 @@ jobs:
         id: setup_msys2
         with:
           msystem: CLANG64 # x86_64 clang-based environment
+          update: true
           pacboy: >-
             clang
             nasm
             go
+      - name: Update Environment
+        shell: bash
+        run: |
+          echo "GOPATH=${{ steps.setup_msys2.outputs.msys2-location }}\clang64" >> $GITHUB_ENV
+          echo "GOROOT=${{ steps.setup_msys2.outputs.msys2-location }}\clang64\lib\go" >> $GITHUB_ENV
+          echo "${{ steps.setup_msys2.outputs.msys2-location }}\clang64\bin" >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup CMake
