@@ -10,14 +10,6 @@
 #include <vector>
 #include <memory>
 
-// Smart pointer wrapper for memory allocated with OPENSSL_malloc/OPENSSL_strdup
-struct OpenSSLFree {
-  void operator()(void* p) { OPENSSL_free(p); }
-};
-
-template <typename T>
-using OpenSSLPointer = std::unique_ptr<T, OpenSSLFree>;
-
 #if !defined(O_BINARY)
 #define O_BINARY 0
 #endif
