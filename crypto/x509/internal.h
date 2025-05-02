@@ -573,6 +573,8 @@ int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
 // For example the IPv4 mask `255.255.255.0` would return valid, but `255.0.255.0` would be invalid.
 OPENSSL_EXPORT int validate_cidr_mask(CBS *cidr_mask);
 
+OPENSSL_EXPORT int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

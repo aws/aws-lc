@@ -2312,3 +2312,53 @@ TEST(X509CompatTest, EECertWithInvalidDnsCnSubjAltIp) {
                      X509_VERIFY_PARAM_set1_ip_asc(param, ip);
                    }));
 }
+
+TEST(X509CompatTest, CommonNameToDNS) {
+  struct CommonNameToDNSTestParam {
+    std::string common_name;
+    bool expect_dns;
+    std::string expected_dns_name;
+  };
+
+  CommonNameToDNSTestParam params[] = {
+      {"example.com", true, "example.com"},
+      {"exa_mple.com", true, "exa_mple.com"},
+      {"foo-bar.example.com", true, "foo-bar.example.com"},
+      {"1.example.com", true, "1.example.com"},
+      {"", false, ""},
+      {".", false, ""},
+      {"-", false, ""},
+      {"example.com.", false, ""},
+      {".example.com", false, ""},
+      {".example.com.", false, ""},
+      {"-example.com", false, ""},
+      {"example.com-", false, ""},
+      {"-example.com-", false, ""},
+      {"example.-com", false, ""},
+      {"example..com", false, ""},
+      {"example-.com", false, ""},
+      {"example", false, ""},
+      {"eXaMpLe", false, ""},
+      {"cn with spaces", false, ""},
+      {"1 and 2 and 3", false, ""},
+  };
+
+  for (CommonNameToDNSTestParam &param : params) {
+    ASN1_STRING *asn1_cn = NULL;
+    std::vector<uint8_t> cn(param.common_name.begin(), param.common_name.end());
+    ASSERT_GE(ASN1_mbstring_copy(&asn1_cn, cn.data(), cn.size(), MBSTRING_UTF8,
+                                 V_ASN1_IA5STRING),
+              0);
+    unsigned char *dnsid = NULL;
+    size_t idlen = 0;
+    ASSERT_EQ(X509_V_OK, cn2dnsid(asn1_cn, &dnsid, &idlen));
+    if (param.expect_dns) {
+      ASSERT_TRUE(dnsid);
+      std::string dns_name(reinterpret_cast<char *>(dnsid), idlen);
+      ASSERT_EQ(param.expected_dns_name, dns_name);
+    } else {
+      ASSERT_EQ(nullptr, dnsid);
+      ASSERT_EQ((size_t)0, idlen);
+    }
+  }
+}

@@ -305,7 +305,7 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
-static int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
+int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   assert(dnsid != NULL && idlen != NULL);
 
   // Don't leave outputs uninitialized
