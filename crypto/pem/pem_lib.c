@@ -787,7 +787,7 @@ int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
     return 0;
   }
 
-  if (userdata == NULL) {
+  if (userdata) {
     size_t len =  strlen((char *)userdata);
     if (len >= (size_t)size) {
       return 0;
