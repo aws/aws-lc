@@ -21,12 +21,74 @@ static const argument_t kArguments[] = {
   { "-v2prf", kOptionalArgument, "Use specified PRF algorithm with PKCS#5 v2.0" },
   { "-passin", kOptionalArgument, "Input file passphrase source" },
   { "-passout", kOptionalArgument, "Output file passphrase source" },
+  { "-inform", kOptionalArgument, "Input format (DER or PEM)" },
+  { "-outform", kOptionalArgument, "Output format (DER or PEM)" },
   { "", kOptionalArgument, "" }
 };
 
 // Helper function to print OpenSSL errors
 static void print_errors() {
   ERR_print_errors_fp(stderr);
+}
+
+// Extract password from various sources like pass:, file:, env:
+static bool extract_password(const std::string& source, std::string* out_password) {
+  if (!out_password) {
+    return false;
+  }
+  
+  // Handle pass:password format
+  if (source.compare(0, 5, "pass:") == 0) {
+    *out_password = source.substr(5);
+    return true;
+  }
+  
+  // Handle file:pathname format
+  if (source.compare(0, 5, "file:") == 0) {
+    std::string path = source.substr(5);
+    ScopedFILE file(fopen(path.c_str(), "r"));
+    if (!file) {
+      fprintf(stderr, "Error: Could not open password file '%s'\n", path.c_str());
+      return false;
+    }
+    
+    char buf[4096]; // Reasonable max password length
+    if (fgets(buf, sizeof(buf), file.get()) == nullptr) {
+      fprintf(stderr, "Error: Could not read from password file\n");
+      return false;
+    }
+    
+    // Remove trailing newline if present
+    size_t len = strlen(buf);
+    if (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
+      buf[len-1] = '\0';
+      // Handle \r\n if present
+      if (len > 1 && buf[len-2] == '\r') {
+        buf[len-2] = '\0';
+      }
+    }
+    
+    *out_password = buf;
+    return true;
+  }
+  
+  // Handle env:var format
+  if (source.compare(0, 4, "env:") == 0) {
+    const char* env_value = getenv(source.substr(4).c_str());
+    if (!env_value) {
+      fprintf(stderr, "Error: Environment variable '%s' not set\n", 
+              source.substr(4).c_str());
+      return false;
+    }
+    
+    *out_password = env_value;
+    return true;
+  }
+  
+  // If no recognized prefix, return the source directly
+  // This maintains backward compatibility with direct password input
+  *out_password = source;
+  return true;
 }
 
 // Helper function to read a private key in any format
@@ -105,6 +167,22 @@ bool pkcs8Tool(const args_list_t &args) {
   GetString(&v2_prf, "-v2prf", "", parsed_args);
   GetString(&passin_arg, "-passin", "", parsed_args);
   GetString(&passout_arg, "-passout", "", parsed_args);
+  
+  // Handle format options
+  std::string inform, outform;
+  GetString(&inform, "-inform", "PEM", parsed_args);
+  GetString(&outform, "-outform", "PEM", parsed_args);
+  
+  // Validate formats
+  if (inform != "PEM" && inform != "DER") {
+    fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
+    return false;
+  }
+  
+  if (outform != "PEM" && outform != "DER") {
+    fprintf(stderr, "Error: '-outform' option must specify a valid encoding DER|PEM\n");
+    return false;
+  }
 
   if (in_path.empty()) {
     fprintf(stderr, "Error: missing required argument '-in'\n");
@@ -127,24 +205,23 @@ bool pkcs8Tool(const args_list_t &args) {
   }
   FILE *out = out_file.get() ? out_file.get() : stdout;
 
-  // Extract password from pass:xxx format if present
+  // Extract password from various sources
+  std::string passin_password, passout_password;
   const char* passin = nullptr;
   const char* passout = nullptr;
 
   if (!passin_arg.empty()) {
-    if (passin_arg.compare(0, 5, "pass:") == 0) {
-      passin = passin_arg.c_str() + 5;
-    } else {
-      passin = passin_arg.c_str();
+    if (!extract_password(passin_arg, &passin_password)) {
+      return false;  // Error message already printed
     }
+    passin = passin_password.c_str();
   }
 
   if (!passout_arg.empty()) {
-    if (passout_arg.compare(0, 5, "pass:") == 0) {
-      passout = passout_arg.c_str() + 5;
-    } else {
-      passout = passout_arg.c_str();
+    if (!extract_password(passout_arg, &passout_password)) {
+      return false;  // Error message already printed
     }
+    passout = passout_password.c_str();
   }
 
   // Read the private key using the improved method
@@ -169,14 +246,24 @@ bool pkcs8Tool(const args_list_t &args) {
     if (nocrypt) {
       result = PEM_write_PKCS8_PRIV_KEY_INFO(out, p8inf.get());
     } else {
+      // When -topk8 is used without -nocrypt, we're encrypting the key
       const EVP_CIPHER *cipher = nullptr;
-      if (!v2_cipher.empty()) {
+      
+      // If -v2 is specified, it must have a value
+      if (parsed_args.count("-v2") > 0) {
+        if (v2_cipher.empty()) {
+          fprintf(stderr, "Error: -v2 option requires a cipher name argument\n");
+          return false;
+        }
+        
         cipher = EVP_get_cipherbyname(v2_cipher.c_str());
         if (!cipher) {
           fprintf(stderr, "Error: Unknown cipher %s\n", v2_cipher.c_str());
           return false;
         }
       } else {
+        // If -topk8 is used without -nocrypt and without explicit -v2,
+        // we still use PKCS#5 v2.0 with the default cipher
         cipher = EVP_aes_256_cbc();
       }
 
