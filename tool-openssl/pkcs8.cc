@@ -60,12 +60,8 @@ static bool extract_password(const std::string& source, std::string* out_passwor
     
     // Remove trailing newline if present
     size_t len = strlen(buf);
-    if (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
-      buf[len-1] = '\0';
-      // Handle \r\n if present
-      if (len > 1 && buf[len-2] == '\r') {
-        buf[len-2] = '\0';
-      }
+    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
+      buf[--len] = '\0';
     }
     
     *out_password = buf;
@@ -92,9 +88,92 @@ static bool extract_password(const std::string& source, std::string* out_passwor
 }
 
 // Helper function to read a private key in any format
-static bssl::UniquePtr<EVP_PKEY> read_private_key(FILE* in_file, const char* passin) {
+static bssl::UniquePtr<EVP_PKEY> read_private_key(FILE* in_file, const char* passin, const std::string& format) {
   bssl::UniquePtr<EVP_PKEY> pkey;
 
+  // Handle DER format input
+  if (format == "DER") {
+    rewind(in_file);
+    // For DER format, first try as unencrypted PKCS8
+    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
+    
+    {
+      const uint8_t *derp;
+      long derlen;
+      // Get file size for DER reading
+      fseek(in_file, 0, SEEK_END);
+      derlen = ftell(in_file);
+      rewind(in_file);
+      
+      if (derlen <= 0) {
+        return nullptr;
+      }
+      
+      std::vector<uint8_t> der(derlen);
+      if (fread(der.data(), 1, derlen, in_file) != static_cast<size_t>(derlen)) {
+        return nullptr;
+      }
+      
+      derp = der.data();
+      p8inf.reset(d2i_PKCS8_PRIV_KEY_INFO(nullptr, &derp, derlen));
+    }
+    
+    if (p8inf) {
+      pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
+      if (pkey) {
+        return pkey;
+      }
+    }
+    
+    // If that failed and a password is provided, try as encrypted PKCS8
+    if (passin) {
+      rewind(in_file);
+      bssl::UniquePtr<X509_SIG> p8;
+      
+      {
+        const uint8_t *derp;
+        long derlen;
+        fseek(in_file, 0, SEEK_END);
+        derlen = ftell(in_file);
+        rewind(in_file);
+        
+        if (derlen <= 0) {
+          return nullptr;
+        }
+        
+        std::vector<uint8_t> der(derlen);
+        if (fread(der.data(), 1, derlen, in_file) != static_cast<size_t>(derlen)) {
+          return nullptr;
+        }
+        
+        derp = der.data();
+        // Use d2i_X509_SIG instead of d2i_PKCS8_bio
+        p8.reset(d2i_X509_SIG(nullptr, &derp, derlen));
+      }
+      
+      if (p8) {
+        p8inf.reset(PKCS8_decrypt(p8.get(), passin, strlen(passin)));
+        if (p8inf) {
+          pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
+          if (pkey) {
+            return pkey;
+          }
+        }
+      }
+    }
+    
+    // Finally try as traditional format DER
+    rewind(in_file);
+    pkey.reset(d2i_PrivateKey_fp(in_file, nullptr));
+    if (pkey) {
+      return pkey;
+    }
+    
+    // All DER attempts failed
+    return nullptr;
+  }
+  
+  // For PEM format input (default)
   // First try reading as encrypted PKCS#8
   rewind(in_file);
   bssl::UniquePtr<X509_SIG> p8(PEM_read_PKCS8(in_file, nullptr, nullptr, nullptr));
@@ -224,8 +303,8 @@ bool pkcs8Tool(const args_list_t &args) {
     passout = passout_password.c_str();
   }
 
-  // Read the private key using the improved method
-  bssl::UniquePtr<EVP_PKEY> pkey = read_private_key(in_file.get(), passin);
+  // Read the private key using the improved method with format
+  bssl::UniquePtr<EVP_PKEY> pkey = read_private_key(in_file.get(), passin, inform);
   if (!pkey) {
     fprintf(stderr, "Error: Failed to read private key from '%s'\n", in_path.c_str());
     fprintf(stderr, "Check that the file contains a valid key and the password (if any) is correct\n");
@@ -244,7 +323,12 @@ bool pkcs8Tool(const args_list_t &args) {
     }
 
     if (nocrypt) {
-      result = PEM_write_PKCS8_PRIV_KEY_INFO(out, p8inf.get());
+      // Handle output format
+      if (outform == "PEM") {
+        result = PEM_write_PKCS8_PRIV_KEY_INFO(out, p8inf.get());
+      } else { // DER
+        result = i2d_PKCS8_PRIV_KEY_INFO_fp(out, p8inf.get());
+      }
     } else {
       // When -topk8 is used without -nocrypt, we're encrypting the key
       const EVP_CIPHER *cipher = nullptr;
@@ -295,10 +379,20 @@ bool pkcs8Tool(const args_list_t &args) {
         return false;
       }
 
-      result = PEM_write_PKCS8(out, p8_enc.get());
+      // Handle output format for encrypted key
+      if (outform == "PEM") {
+        result = PEM_write_PKCS8(out, p8_enc.get());
+      } else { // DER
+        result = i2d_PKCS8_fp(out, p8_enc.get());
+      }
     }
   } else {
-    result = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+    // Handle traditional key output format
+    if (outform == "PEM") {
+      result = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+    } else { // DER
+      result = i2d_PrivateKey_fp(out, pkey.get());
+    }
   }
 
   if (!result) {
