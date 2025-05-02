@@ -499,7 +499,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7_RECIP_INFO *PKCS7_add_recipient(
     PKCS7 *p7, X509 *x509);
 
 // PKCS7_get0_signers retrieves the signer's certificates from p7. It does not
-// check their validity or whether any signatures are valid
+// check their validity or whether any signatures are valid. The caller owns the
+// returned X509 stack and is responsible for freeing it.
 OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(X509) *PKCS7_get0_signers(
     PKCS7 *p7, STACK_OF(X509) *certs, int flags);
 
