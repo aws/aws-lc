@@ -122,8 +122,11 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x);
 static int internal_verify(X509_STORE_CTX *ctx);
 
 static int null_callback(int ok, X509_STORE_CTX *e) { return ok; }
-static int null_verify_crit_oids_callback(X509_STORE_CTX *ctx, X509 *x509,
-                                          STACK_OF(ASN1_OBJECT) *oids) {
+static int null_verify_custom_crit_oids_callback(X509_STORE_CTX *ctx,
+                                                 X509 *x509,
+                                                 STACK_OF(ASN1_OBJECT) *oids) {
+  // This returns 0 by default, so that the callback must be configured by the
+  // user when enabling the custom critical extensions feature.
   return 0;
 }
 
@@ -565,13 +568,19 @@ static int get_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   return X509_STORE_CTX_get1_issuer(issuer, ctx, x);
 }
 
-static int check_custom_known_critical_extension(X509_STORE_CTX *ctx, X509 *x) {
+static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
   if (ctx->custom_crit_oids == NULL) {
     // Fail if custom critical extensions are enabled, but none were set.
     return 0;
   }
   size_t known_oid_count = sk_ASN1_OBJECT_num(ctx->custom_crit_oids);
   if (known_oid_count == 0) {
+    return 0;
+  }
+
+  // Allocate |found_exts| to pass to the callback.
+  STACK_OF(ASN1_OBJECT) *found_exts = sk_ASN1_OBJECT_new_null();
+  if (found_exts == NULL) {
     return 0;
   }
 
@@ -585,10 +594,12 @@ static int check_custom_known_critical_extension(X509_STORE_CTX *ctx, X509 *x) {
 
       // Iterate through all set |custom_crit_oids|.
       for (size_t i = 0; i < known_oid_count; i++) {
-        ASN1_OBJECT *known_ext =
-            sk_ASN1_OBJECT_value(ctx->custom_crit_oids, i);
+        ASN1_OBJECT *known_ext = sk_ASN1_OBJECT_value(ctx->custom_crit_oids, i);
         if (OBJ_cmp(ext->object, known_ext) == 0) {
           found = 1;
+          if (!sk_ASN1_OBJECT_push(found_exts, known_ext)) {
+            return 0;
+          }
           break;
         }
       }
@@ -600,7 +611,17 @@ static int check_custom_known_critical_extension(X509_STORE_CTX *ctx, X509 *x) {
     }
     last_pos = X509_get_ext_by_critical(x, 1, last_pos);
   }
-  // If we get here, all unknown critical extensions were found
+
+  // If we get here, all unknown critical extensions in |x| were
+  // properly handled and we pass the ones that were found to the caller.
+  if (!ctx->verify_custom_crit_oids(ctx, x, found_exts)) {
+    return 0;
+  }
+
+  // Remove the |EXFLAG_CRITICAL| flag from |x|, now that all unknown
+  // critical extensions have been handled.
+  x->ex_flags &= ~EXFLAG_CRITICAL;
+
   return 1;
 }
 
@@ -614,11 +635,14 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
   // Check all untrusted certificates
   for (int i = 0; i < ctx->last_untrusted; i++) {
     X509 *x = sk_X509_value(ctx->chain, i);
-    if ((!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
+    if (  // OpenSSL's historic check for unknown critical extensions.
+          // |EXFLAG_CRITICAL| indicates an unsupported critical extension was
+          // found in |x| during the initial parsing of the certificate.
+        (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
          (x->ex_flags & EXFLAG_CRITICAL)) &&
-        // Do check for enabling custom unknown critical extensions.
-        (!check_custom_known_critical_extension(ctx, x) ||
-         !ctx->verify_crit_oids(ctx, x, ctx->custom_crit_oids))) {
+        // AWS-LC specific logic for enabling custom unknown critical
+        // extensions.
+        !check_custom_critical_extensions(ctx, x)) {
       ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -1732,7 +1756,7 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
     ctx->check_crl = check_crl;
   }
 
-  ctx->verify_crit_oids = null_verify_crit_oids_callback;
+  ctx->verify_custom_crit_oids = null_verify_custom_crit_oids_callback;
 
   return 1;
 
@@ -1834,6 +1858,7 @@ int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx, ASN1_OBJECT *oid) {
 }
 
 void X509_STORE_CTX_set_verify_crit_oids(
-    X509_STORE_CTX *ctx, X509_STORE_CTX_verify_crit_oids verify_crit_oids) {
-  ctx->verify_crit_oids = verify_crit_oids;
+    X509_STORE_CTX *ctx,
+    X509_STORE_CTX_verify_crit_oids_cb verify_custom_crit_oids) {
+  ctx->verify_custom_crit_oids = verify_custom_crit_oids;
 }

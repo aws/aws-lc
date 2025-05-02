@@ -344,8 +344,8 @@ struct x509_store_ctx_st {
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
-  X509_STORE_CTX_verify_crit_oids
-      verify_crit_oids;  // Check custom critical oids
+  X509_STORE_CTX_verify_crit_oids_cb
+      verify_custom_crit_oids;  // Check custom critical oids
 
   // The following is built up
 
@@ -361,7 +361,7 @@ struct x509_store_ctx_st {
 
   int current_crl_score;         // score of current CRL
 
-  // Array of allowed custom critical extension oids.
+  // Stack of allowed custom critical extension oids.
   STACK_OF(ASN1_OBJECT) *custom_crit_oids;
 
   CRYPTO_EX_DATA ex_data;

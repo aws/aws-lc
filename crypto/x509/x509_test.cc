@@ -8314,6 +8314,9 @@ TEST(X509Test, X509CustomExtensions) {
   bssl::UniquePtr<X509> ca(CertFromPEM(kX509CustomExtensionsCA));
   ASSERT_TRUE(ca);
 
+  // Check that the cert has been marked as |EXFLAG_CRITICAL|.
+  EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+
   bssl::UniquePtr<ASN1_OBJECT> custom_oid(OBJ_txt2obj("1.3.187.25204.5", 1));
   ASSERT_TRUE(custom_oid);
 
@@ -8344,7 +8347,7 @@ TEST(X509Test, X509CustomExtensions) {
             Verify(cert.get(), {ca.get()}, {}, {},
                    /*flags=*/0, set_no_custom_ext_with_callback));
 
-  // This correctly sets up |ctx| with a customcritical extension and the
+  // This correctly sets up |ctx| with a custom critical extension and the
   // |verify_crit_oids| callback.
   auto set_custom_ext_with_callback = [&](X509_STORE_CTX *ctx) {
     SetupVerificationContext(ctx, {custom_oid.get()}, true);
@@ -8352,6 +8355,8 @@ TEST(X509Test, X509CustomExtensions) {
   EXPECT_EQ(X509_V_OK,
             Verify(cert.get(), {ca.get()}, {}, {}, /*flags=*/0,
                    set_custom_ext_with_callback));
+  // Check that |EXFLAG_CRITICAL| has been removed after validation.
+  EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
 }
 
 TEST(X509Test, X509MultipleCustomExtensions) {
@@ -8359,6 +8364,9 @@ TEST(X509Test, X509MultipleCustomExtensions) {
   ASSERT_TRUE(cert);
   bssl::UniquePtr<X509> ca(CertFromPEM(kX509MultipleCustomExtensionsCA));
   ASSERT_TRUE(ca);
+
+  // Check that the cert has been marked as |EXFLAG_CRITICAL|.
+  EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
 
   bssl::UniquePtr<ASN1_OBJECT> custom_oid(OBJ_txt2obj("1.3.187.25204.5", 1));
   ASSERT_TRUE(custom_oid);
@@ -8397,4 +8405,6 @@ TEST(X509Test, X509MultipleCustomExtensions) {
   };
   EXPECT_EQ(X509_V_OK, Verify(cert.get(), {ca.get()}, {}, {},
                               /*flags=*/0, set_custom_exts_with_callback));
+  // Check that |EXFLAG_CRITICAL| has been removed after validation.
+  EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
 }
