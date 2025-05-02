@@ -100,7 +100,7 @@ TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
   ScopedFILE test_file(fopen(pass_path, "r"));
   ASSERT_TRUE(test_file);
   char password_buffer[100] = {0};
-  fgets(password_buffer, sizeof(password_buffer), test_file.get());
+  ASSERT_TRUE(fgets(password_buffer, sizeof(password_buffer), test_file.get()) != nullptr);
   ASSERT_STREQ(password_buffer, "testpassword");
   
   std::string passout = std::string("pass:testpassword");  // Use direct password instead of file
