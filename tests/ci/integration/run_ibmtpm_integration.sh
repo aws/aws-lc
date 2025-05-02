@@ -19,7 +19,6 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER="${SRC_ROOT}/IBMTPM_BUILD_ROOT"
 IBMTPM_SRC_FOLDER="${SCRATCH_FOLDER}/ibmtpm"
 IBMTPM_BUILD_PREFIX="${IBMTPM_SRC_FOLDER}/build/install"
-IBMTPM_PATCH_BUILD_FOLDER="${SRC_ROOT}/tests/ci/integration/ibmtpm_patch"
 
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -44,12 +43,6 @@ function ibmtpm_build() {
   popd
 }
 
-function ibmtpm_patch_build() {
-  patchfile="${IBMTPM_PATCH_BUILD_FOLDER}/ibmtpm-mainline-awslc.patch"
-  echo "Apply patch $patchfile..."
-  patch -p1 --quiet -i "$patchfile"
-}
-
 git clone https://github.com/kgoldman/ibmswtpm2.git ${IBMTPM_SRC_FOLDER}
 cd ${IBMTPM_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
@@ -59,6 +52,5 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DCMAKE
 
 # Build ibmtpm from source.
 pushd ${IBMTPM_SRC_FOLDER}
-ibmtpm_patch_build
 ibmtpm_build
 popd
