@@ -6,7 +6,7 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
-MYSQL_VERSION_TAG="mysql-cluster-9.2.0"
+MYSQL_VERSION_TAG="mysql-cluster-9.3.0"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
 BOOST_INSTALL_FOLDER=/home/dependencies/boost
