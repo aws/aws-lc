@@ -43,13 +43,6 @@
 #include <cassert>
 #include "internal.h"
 
-// SECURITY: Define constants with security implications
-// SECURITY ASSUMPTION: 1MB is sufficient for legitimate PKCS#8 keys
-static const long MAX_FILE_SIZE = 1024 * 1024;  // 1MB
-
-// SECURITY ASSUMPTION: 4KB is sufficient for all reasonable passwords
-static const size_t MAX_PASSWORD_LENGTH = 4096;
-
 // SECURITY: Define allowlists of supported ciphers and PRF algorithms
 static const std::unordered_set<std::string> kSupportedCiphers = {
     "aes-128-cbc", "aes-192-cbc", "aes-256-cbc", 
@@ -61,44 +54,6 @@ static const std::unordered_set<std::string> kSupportedCiphers = {
 static const std::unordered_set<std::string> kSupportedPRFs = {
     "hmacWithSHA1"  // Currently the only supported PRF in AWS-LC
 };
-
-// SECURITY: Securely clear a string from memory
-static void secure_clear_string(std::string& str) {
-    if (!str.empty()) {
-        volatile char* p = const_cast<volatile char*>(str.data());
-        OPENSSL_cleanse(const_cast<char*>(p), str.size());
-        str.clear();
-    }
-}
-
-// SECURITY: Validate file size to prevent DoS from extremely large files
-// This implementation preserves the current file position
-static bool validate_file_size(FILE* file) {
-    assert(file != nullptr && "File handle cannot be null");
-    if (!file) return false;
-    
-    const long current_pos = ftell(file);  // Save current position
-    if (current_pos < 0) return false;
-    
-    if (fseek(file, 0, SEEK_END) != 0) return false;
-    const long size = ftell(file);
-    
-    // Restore original position
-    if (fseek(file, current_pos, SEEK_SET) != 0) return false;
-    
-    if (size <= 0) {
-        fprintf(stderr, "Error: Empty file or file size couldn't be determined\n");
-        return false;
-    }
-    
-    if (size > MAX_FILE_SIZE) {
-        fprintf(stderr, "Error: File exceeds maximum allowed size of %ld bytes\n", 
-                MAX_FILE_SIZE);
-        return false;
-    }
-    
-    return true;
-}
 
 // SECURITY: Validate cipher algorithms against the allowlist
 static bool validate_cipher(const std::string& cipher_name) {
@@ -157,144 +112,20 @@ static void print_errors() {
   ERR_print_errors_fp(stderr);
 }
 
-// SECURITY: Extract password from various sources with proper validation and secure handling
-static bool extract_password(const std::string& source, std::string* out_password) {
-  assert(out_password != nullptr && "Password output pointer cannot be null");
-  if (!out_password) {
-    return false;
-  }
-  
-  // Handle pass:password format
-  if (source.compare(0, 5, "pass:") == 0) {
-    std::string password = source.substr(5);
-    
-    // SECURITY: Check password length
-    if (password.length() > MAX_PASSWORD_LENGTH) {
-      fprintf(stderr, "Error: Password exceeds maximum allowed length of %zu characters\n", 
-              MAX_PASSWORD_LENGTH);
-      return false;
-    }
-    
-    *out_password = password;
-    return true;
-  }
-  
-  // Handle file:pathname format
-  if (source.compare(0, 5, "file:") == 0) {
-    std::string path = source.substr(5);
-    ScopedFILE file(fopen(path.c_str(), "r"));
-    if (!file) {
-      fprintf(stderr, "Error: Could not open password file '%s'\n", path.c_str());
-      return false;
-    }
-    
-    // SECURITY: Use fixed-size buffer with secure clearing
-    char buf[MAX_PASSWORD_LENGTH];
-    memset(buf, 0, sizeof(buf));
-    
-    if (fgets(buf, sizeof(buf), file.get()) == nullptr) {
-      fprintf(stderr, "Error: Could not read from password file\n");
-      OPENSSL_cleanse(buf, sizeof(buf));
-      return false;
-    }
-    
-    // Remove trailing newline if present
-    size_t len = strlen(buf);
-    bool possible_truncation = (len == MAX_PASSWORD_LENGTH - 1 && 
-                              buf[len - 1] != '\n' && buf[len - 1] != '\r');
-    
-    while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
-      buf[--len] = '\0';
-    }
-    
-    if (possible_truncation) {
-      fprintf(stderr, "Warning: Password may have been truncated (exceeds %zu characters)\n", 
-              MAX_PASSWORD_LENGTH - 1);
-    }
-    
-    *out_password = buf;
-    // SECURITY: Securely clear the buffer
-    OPENSSL_cleanse(buf, sizeof(buf));
-    return true;
-  }
-  
-  // Handle env:var format
-  if (source.compare(0, 4, "env:") == 0) {
-    std::string env_var = source.substr(4);
-    const char* env_value = getenv(env_var.c_str());
-    if (!env_value) {
-      fprintf(stderr, "Error: Environment variable '%s' not set\n", 
-              env_var.c_str());
-      return false;
-    }
-    
-    // SECURITY: Check password length
-    if (strlen(env_value) > MAX_PASSWORD_LENGTH) {
-      fprintf(stderr, "Error: Password from environment variable exceeds maximum length of %zu characters\n", 
-              MAX_PASSWORD_LENGTH);
-      return false;
-    }
-    
-    *out_password = env_value;
-    return true;
-  }
-  
-  // If no recognized prefix, return the source directly
-  // This maintains backward compatibility with direct password input
-  if (source.length() > MAX_PASSWORD_LENGTH) {
-    fprintf(stderr, "Error: Password exceeds maximum allowed length of %zu characters\n", 
-            MAX_PASSWORD_LENGTH);
-    return false;
-  }
-  
-  *out_password = source;
-  return true;
-}
-
 // SECURITY: Helper function to read a private key in any format with validation
-static bssl::UniquePtr<EVP_PKEY> read_private_key(FILE* in_file, const char* passin, const std::string& format) {
-  if (!in_file) {
-    fprintf(stderr, "Error: Null file handle in read_private_key\n");
+static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, const std::string& format) {
+  if (!in_bio) {
+    fprintf(stderr, "Error: Null BIO handle in read_private_key\n");
     return nullptr;
-  }
-  
-  // SECURITY: Validate file size
-  if (!validate_file_size(in_file)) {
-    return nullptr;  // Error already printed
   }
   
   bssl::UniquePtr<EVP_PKEY> pkey;
 
   // Handle DER format input
   if (format == "DER") {
-    rewind(in_file);
     // For DER format, first try as unencrypted PKCS8
-    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
-    
-    {
-      const uint8_t *derp;
-      long derlen;
-      // Get file size for DER reading
-      const long current_pos = ftell(in_file);
-      if (current_pos < 0) return nullptr;
-      
-      if (fseek(in_file, 0, SEEK_END) != 0) return nullptr;
-      derlen = ftell(in_file);
-      
-      if (fseek(in_file, current_pos, SEEK_SET) != 0) return nullptr;
-      
-      if (derlen <= 0 || derlen > MAX_FILE_SIZE) {
-        return nullptr;
-      }
-      
-      std::vector<uint8_t> der(derlen);
-      if (fread(der.data(), 1, derlen, in_file) != static_cast<size_t>(derlen)) {
-        return nullptr;
-      }
-      
-      derp = der.data();
-      p8inf.reset(d2i_PKCS8_PRIV_KEY_INFO(nullptr, &derp, derlen));
-    }
+    BIO_reset(in_bio);
+    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(d2i_PKCS8_PRIV_KEY_INFO_bio(in_bio, nullptr));
     
     if (p8inf) {
       pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
@@ -305,44 +136,16 @@ static bssl::UniquePtr<EVP_PKEY> read_private_key(FILE* in_file, const char* pas
     
     // If that failed and a password is provided, try as encrypted PKCS8
     if (passin) {
-      rewind(in_file);
-      bssl::UniquePtr<X509_SIG> p8;
-      
-      {
-        const uint8_t *derp;
-        long derlen;
-        fseek(in_file, 0, SEEK_END);
-        derlen = ftell(in_file);
-        rewind(in_file);
-        
-        if (derlen <= 0) {
-          return nullptr;
-        }
-        
-        std::vector<uint8_t> der(derlen);
-        if (fread(der.data(), 1, derlen, in_file) != static_cast<size_t>(derlen)) {
-          return nullptr;
-        }
-        
-        derp = der.data();
-        // Use d2i_X509_SIG instead of d2i_PKCS8_bio
-        p8.reset(d2i_X509_SIG(nullptr, &derp, derlen));
-      }
-      
-      if (p8) {
-        p8inf.reset(PKCS8_decrypt(p8.get(), passin, strlen(passin)));
-        if (p8inf) {
-          pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
-          if (pkey) {
-            return pkey;
-          }
-        }
+      BIO_reset(in_bio);
+      pkey.reset(d2i_PKCS8PrivateKey_bio(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
+      if (pkey) {
+        return pkey;
       }
     }
     
     // Finally try as traditional format DER
-    rewind(in_file);
-    pkey.reset(d2i_PrivateKey_fp(in_file, nullptr));
+    BIO_reset(in_bio);
+    pkey.reset(d2i_PrivateKey_bio(in_bio, nullptr));
     if (pkey) {
       return pkey;
     }
@@ -352,42 +155,9 @@ static bssl::UniquePtr<EVP_PKEY> read_private_key(FILE* in_file, const char* pas
   }
   
   // For PEM format input (default)
-  // First try reading as encrypted PKCS#8
-  rewind(in_file);
-  bssl::UniquePtr<X509_SIG> p8(PEM_read_PKCS8(in_file, nullptr, nullptr, nullptr));
-  if (p8) {
-    if (passin) {
-      bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(
-          PKCS8_decrypt(p8.get(), passin, strlen(passin)));
-      if (p8inf) {
-        pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
-        if (pkey) {
-          return pkey;
-        }
-      }
-    }
-    // Don't print error here - we'll try other formats first
-    ERR_clear_error();
-  }
-
-  // Try unencrypted PKCS#8
-  rewind(in_file);
-  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(
-      PEM_read_PKCS8_PRIV_KEY_INFO(in_file, nullptr, nullptr, nullptr));
-  if (p8inf) {
-    pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
-    if (pkey) {
-      return pkey;
-    }
-    ERR_clear_error();
-  }
-
-  // Finally try traditional format
-  rewind(in_file);
-  EVP_PKEY *raw_pkey = nullptr;
-  if (PEM_read_PrivateKey(in_file, &raw_pkey, nullptr,
-                         const_cast<char*>(passin))) {
-    pkey.reset(raw_pkey);
+  BIO_reset(in_bio);
+  pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
+  if (pkey) {
     return pkey;
   }
 
@@ -446,26 +216,20 @@ bool pkcs8Tool(const args_list_t &args) {
     return false;
   }
 
-  ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
-  if (!in_file) {
-    fprintf(stderr, "Error: unable to open input file '%s'\n", in_path.c_str());
-    return false;
+  // Create input BIO with validation
+  ScopedBIO in_bio(in_path, "rb");
+  if (!in_bio.valid()) {
+    return false; // Error already printed
   }
 
-  // SECURITY: Validate input file size
-  if (!validate_file_size(in_file.get())) {
-    return false;  // Error already printed
-  }
+  // Create output BIO
+  ScopedBIO out_bio(out_path.empty() ? 
+      BIO_new_fp(stdout, BIO_NOCLOSE) : 
+      BIO_new_file(out_path.c_str(), "wb"));
 
-  ScopedFILE out_file;
-  if (!out_path.empty()) {
-    out_file.reset(fopen(out_path.c_str(), "wb"));
-    if (!out_file) {
-      fprintf(stderr, "Error: unable to open output file '%s'\n", out_path.c_str());
-      return false;
-    }
+  if (!out_bio.valid()) {
+    return false; // Error already printed
   }
-  FILE *out = out_file.get() ? out_file.get() : stdout;
 
   // SECURITY: Extract password with validation
   std::string passin_password, passout_password;
@@ -497,7 +261,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
 
   // Read the private key using the improved method with format
-  bssl::UniquePtr<EVP_PKEY> pkey = read_private_key(in_file.get(), passin, inform);
+  bssl::UniquePtr<EVP_PKEY> pkey = read_private_key(in_bio.get(), passin, inform);
   if (!pkey) {
     return cleanup_and_fail(passin_password, passout_password, 
                           "Failed to read private key. Check that the file contains a valid key and the password (if any) is correct");
@@ -513,11 +277,19 @@ bool pkcs8Tool(const args_list_t &args) {
     }
 
     if (nocrypt) {
-      // Handle output format
+      // Handle output format using helper function for unencrypted PKCS8
+      ERR_clear_error();
       if (outform == "PEM") {
-        result = PEM_write_PKCS8_PRIV_KEY_INFO(out, p8inf.get());
+        result = PEM_write_bio_PKCS8_PRIV_KEY_INFO(out_bio.get(), p8inf.get());
       } else { // DER
-        result = i2d_PKCS8_PRIV_KEY_INFO_fp(out, p8inf.get());
+        result = i2d_PKCS8_PRIV_KEY_INFO_bio(out_bio.get(), p8inf.get());
+      }
+      
+      if (!result) {
+        BIOError error = BIOError::from_current_error();
+        error.type = BIOErrorType::KEY_OPERATION_ERROR;
+        error.message = "Failed to write PKCS8 private key info in " + outform + " format";
+        handle_bio_error(error);
       }
     } else {
       // When -topk8 is used without -nocrypt, we're encrypting the key
@@ -562,30 +334,20 @@ bool pkcs8Tool(const args_list_t &args) {
                               "-passout must be provided for encryption");
       }
 
-      bssl::UniquePtr<X509_SIG> p8_enc(
-          PKCS8_encrypt(-1, cipher, passout, strlen(passout),
-                       nullptr, 0, PKCS12_DEFAULT_ITER, p8inf.get()));
-
-      if (!p8_enc) {
-        print_errors();
-        return cleanup_and_fail(passin_password, passout_password, 
-                              "Failed to encrypt private key using PKCS#5 v2.0");
-      }
-
-      // Handle output format for encrypted key
+      // Handle encrypted output for different formats
       if (outform == "PEM") {
-        result = PEM_write_PKCS8(out, p8_enc.get());
+        result = PEM_write_bio_PKCS8PrivateKey(out_bio.get(), pkey.get(), 
+                                             cipher, passout, strlen(passout),
+                                             nullptr, nullptr);
       } else { // DER
-        result = i2d_PKCS8_fp(out, p8_enc.get());
+        result = i2d_PKCS8PrivateKey_bio(out_bio.get(), pkey.get(),
+                                        cipher, passout, strlen(passout),
+                                        nullptr, nullptr);
       }
     }
   } else {
-    // Handle traditional key output format
-    if (outform == "PEM") {
-      result = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
-    } else { // DER
-      result = i2d_PrivateKey_fp(out, pkey.get());
-    }
+    // Use the write_key_bio utility for traditional key format
+    result = write_key_bio(out_bio.get(), pkey.get(), outform);
   }
 
   if (!result) {

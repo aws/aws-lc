@@ -41,14 +41,15 @@ protected:
     key.reset(CreateTestKey());
     ASSERT_TRUE(key);
 
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(in_file.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
+    // Use BIO for writing the key to input file
+    ScopedBIO in_bio(in_path, "wb");
+    ASSERT_TRUE(in_bio.valid());
+    ASSERT_TRUE(PEM_write_bio_PrivateKey(in_bio.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
     
     // Make sure password is just "testpassword" without any extra characters
-    ScopedFILE pass_file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(pass_file);
-    fprintf(pass_file.get(), "testpassword");
+    ScopedBIO pass_bio(pass_path, "wb");
+    ASSERT_TRUE(pass_bio.valid());
+    ASSERT_TRUE(BIO_printf(pass_bio.get(), "testpassword") > 0);
   }
   
   void TearDown() override {
@@ -71,9 +72,9 @@ TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
   bool result = pkcs8Tool(args);
   ASSERT_TRUE(result);
   {
-    ScopedFILE out_file(fopen(out_path, "rb"));
-    ASSERT_TRUE(out_file);
-    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(PEM_read_PKCS8_PRIV_KEY_INFO(out_file.get(), nullptr, nullptr, nullptr));
+    ScopedBIO out_bio(out_path, "rb");
+    ASSERT_TRUE(out_bio.valid());
+    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(PEM_read_bio_PKCS8_PRIV_KEY_INFO(out_bio.get(), nullptr, nullptr, nullptr));
     bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_PKCS82PKEY(p8inf.get()));
     ASSERT_TRUE(parsed_key);
   }
@@ -97,10 +98,10 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
 // Test -v2 option with the default cipher (aes-256-cbc)
 TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
   // First verify the password file content is correct
-  ScopedFILE test_file(fopen(pass_path, "r"));
-  ASSERT_TRUE(test_file);
+  ScopedBIO test_bio(pass_path, "r");
+  ASSERT_TRUE(test_bio.valid());
   char password_buffer[100] = {0};
-  ASSERT_TRUE(fgets(password_buffer, sizeof(password_buffer), test_file.get()) != nullptr);
+  ASSERT_GT(BIO_gets(test_bio.get(), password_buffer, sizeof(password_buffer)), 0);
   ASSERT_STREQ(password_buffer, "testpassword");
   
   std::string passout = std::string("pass:testpassword");  // Use direct password instead of file
@@ -109,9 +110,6 @@ TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
   ASSERT_TRUE(result);
   
   // Verify the output is an encrypted PKCS8 file
-  ScopedFILE out_file(fopen(out_path, "rb"));
-  ASSERT_TRUE(out_file);
-  
   std::string content = ReadFileToString(out_path);
   ASSERT_FALSE(content.empty());
   ASSERT_TRUE(content.find("-----BEGIN ENCRYPTED PRIVATE KEY-----") != std::string::npos);
@@ -193,13 +191,13 @@ protected:
     key.reset(CreateTestKey());
     ASSERT_TRUE(key);
 
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(in_file.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
+    ScopedBIO in_bio(in_path, "wb");
+    ASSERT_TRUE(in_bio.valid());
+    ASSERT_TRUE(PEM_write_bio_PrivateKey(in_bio.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
     
-    ScopedFILE pass_file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(pass_file);
-    fprintf(pass_file.get(), "testpassword");
+    ScopedBIO pass_bio(pass_path, "wb");
+    ASSERT_TRUE(pass_bio.valid());
+    ASSERT_TRUE(BIO_printf(pass_bio.get(), "testpassword") > 0);
   }
 
   void TearDown() override {
@@ -211,7 +209,6 @@ protected:
       RemoveFile(decrypt_path);
     }
   }
-
 
   char in_path[PATH_MAX];
   char out_path_tool[PATH_MAX];
