@@ -1,47 +1,27 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// PKCS8 Tool - Security Properties and Design
-// -------------------------------------------
+// PKCS8 Tool
+// ----------
 // 
-// This implementation provides the following security properties:
+// This implementation uses the security infrastructure defined in tool-openssl/internal.h
+// and adds PKCS8-specific functionality for:
 //
-// 1. Password Confidentiality:
-//    - All password buffers are securely cleared from memory after use
-//    - RAII patterns ensure automatic clearing even in error cases
-//    - Volatile pointers are used to prevent compiler optimization of clearing operations
+// - Cipher and PRF algorithm validation against allowlists
+// - PKCS8 format-specific key handling
 //
-// 2. Input Validation:
-//    - File paths are validated to detect potentially malicious paths
-//    - File sizes are validated to prevent denial-of-service attacks
-//    - Password lengths are bounded to prevent buffer-related issues
-//    - Cipher algorithms and PRF names are validated against an allowlist
-//
-// 3. Error Handling:
-//    - Security-sensitive errors are explicitly logged
-//    - Error messages are designed to be informative without leaking sensitive information
-//    - Consolidated error handling ensures consistent behavior and cleanup
-//
-// SECURITY ASSUMPTIONS:
-//
-// 1. The operating system provides a secure implementation of standard library functions
-// 2. The OpenSSL/AWS-LC cryptographic operations are secure and correctly implemented
-// 3. The maximum file size limit (1MB) is sufficient for legitimate PKCS#8 keys
-// 4. The maximum password length (4096 chars) is sufficient for all legitimate use cases
-// 5. The supported ciphers and PRFs represent the set of algorithms that the tool should support
+// See tool-openssl/internal.h for shared security mechanisms including:
+// - Password confidentiality
+// - File I/O validation
+// - Error handling
 
 #include <openssl/base.h>
 #include <openssl/evp.h>
-#include <openssl/pem.h>
 #include <openssl/pkcs8.h>
-#include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
-#include <openssl/mem.h>
-#include <cstring>
 #include <unordered_set>
-#include <cassert>
-#include "internal.h"
+#include "internal.h"  // Includes openssl/bio.h, openssl/err.h, openssl/pem.h, etc.
 
 // SECURITY: Define allowlists of supported ciphers and PRF algorithms
 static const std::unordered_set<std::string> kSupportedCiphers = {
