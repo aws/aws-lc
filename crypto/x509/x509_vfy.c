@@ -1575,6 +1575,10 @@ void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
   ctx->untrusted = sk;
 }
 
+void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
+  X509_STORE_CTX_set_chain(ctx, sk);
+}
+
 STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(X509_STORE_CTX *ctx) {
   return ctx->untrusted;
 }
