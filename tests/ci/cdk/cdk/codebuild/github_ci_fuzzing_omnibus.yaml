@@ -22,7 +22,7 @@ batch:
       env:
         type: ARM_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_XLARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_sanitizer_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_fuzz_tests.sh"
