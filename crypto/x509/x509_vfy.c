@@ -594,18 +594,24 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
 
       // Iterate through all set |custom_crit_oids|.
       for (size_t i = 0; i < known_oid_count; i++) {
-        ASN1_OBJECT *known_ext = sk_ASN1_OBJECT_value(ctx->custom_crit_oids, i);
+        const ASN1_OBJECT *known_ext =
+            sk_ASN1_OBJECT_value(ctx->custom_crit_oids, i);
         if (OBJ_cmp(ext->object, known_ext) == 0) {
-          found = 1;
-          if (!sk_ASN1_OBJECT_push(found_exts, known_ext)) {
+          // |sk_ASN1_OBJECT_value| returns a direct pointer.
+          ASN1_OBJECT *dup_obj = OBJ_dup(known_ext);
+          if (dup_obj == NULL || !sk_ASN1_OBJECT_push(found_exts, dup_obj)) {
+            ASN1_OBJECT_free(dup_obj);
+            sk_ASN1_OBJECT_pop_free(found_exts, ASN1_OBJECT_free);
             return 0;
           }
+          found = 1;
           break;
         }
       }
 
       if (!found) {
         // If any critical extension isn't in our known list, return early.
+        sk_ASN1_OBJECT_pop_free(found_exts, ASN1_OBJECT_free);
         return 0;
       }
     }
@@ -615,6 +621,7 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
   // If we get here, all unknown critical extensions in |x| were
   // properly handled and we pass the ones that were found to the caller.
   if (!ctx->verify_custom_crit_oids(ctx, x, found_exts)) {
+    sk_ASN1_OBJECT_pop_free(found_exts, ASN1_OBJECT_free);
     return 0;
   }
 
@@ -622,6 +629,7 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
   // critical extensions have been handled.
   x->ex_flags &= ~EXFLAG_CRITICAL;
 
+  sk_ASN1_OBJECT_pop_free(found_exts, ASN1_OBJECT_free);
   return 1;
 }
 
