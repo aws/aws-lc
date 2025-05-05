@@ -8279,7 +8279,6 @@ static int verify_crit_oids_callback(X509_STORE_CTX *ctx, X509 *x509,
     return 0;  // Fail if no OIDs provided
   }
   size_t known_oid_count = sk_ASN1_OBJECT_num(oids);
-  ;
   size_t unknown_ext_count = 0;
   int last_pos = X509_get_ext_by_critical(x509, 1, -1);
   while (last_pos >= 0) {
