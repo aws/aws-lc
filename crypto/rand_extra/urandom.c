@@ -313,7 +313,7 @@ static void ensure_getrandom_is_initialized(void) {
   }
 
   uint8_t dummy = 0;
-  ssize_t getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
+  ssize_t getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), 0);
 
   if (getrandom_ret == -1 && errno == EAGAIN) {
     // Attempt to get the path of the current process to aid in debugging when
@@ -332,7 +332,7 @@ static void ensure_getrandom_is_initialized(void) {
       "will block until entropy is available.\n",
       current_process);
 
-    getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), 0);
+    getrandom_ret = wrapper_getrandom(&dummy, sizeof(dummy), 1);
   }
 
   if (getrandom_ret != 1) {
