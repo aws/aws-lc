@@ -8,11 +8,8 @@
 
 #include <openssl/base64.h>
 #include <openssl/buf.h>
-#include <openssl/des.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/mem.h>
-#include <openssl/obj.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
@@ -30,18 +27,20 @@
 // - WIN32 Console for Windows
 # if !defined(_WIN32)
 #  define SIGACTION
-#  include <stdio.h>
 #  include <termios.h>
 #  define DEV_TTY "/dev/tty"
 #  define TTY_STRUCT             struct termios
 #  define TTY_FLAGS              c_lflag
-#  define TTY_get(tty,data)      tcgetattr(tty,data)
-#  define TTY_set(tty,data)      tcsetattr(tty,TCSANOW,data)
+#  define TTY_get(tty,data)      tcgetattr(tty, data)
+#  define TTY_set(tty,data)      tcsetattr(tty, TCSANOW, data)
 # else /* _WIN32 */
 #  include <windows.h>
 # endif
 
 # define NUM_SIG 32
+
+static volatile sig_atomic_t intr_signal;
+static struct CRYPTO_STATIC_MUTEX console_global_mutex = CRYPTO_STATIC_MUTEX_INIT;
 
 # ifdef SIGACTION
 static struct sigaction savsig[NUM_SIG];
@@ -49,21 +48,20 @@ static struct sigaction savsig[NUM_SIG];
 static void (*savsig[NUM_SIG]) (int);
 # endif
 
-# if defined(_WIN32)
-static DWORD tty_orig, tty_new;
-# else
-static TTY_STRUCT tty_orig, tty_new;
-# endif
-
-static FILE *tty_in, *tty_out;
-static int is_a_tty;
-
 static int read_till_nl(FILE *);
 static void recsig(int);
 static void pushsig(void);
 static void popsig(void);
 
-static volatile sig_atomic_t intr_signal;
+#if defined(_WIN32)
+  DWORD tty_orig, tty_new;
+#else
+  TTY_STRUCT tty_orig, tty_new;
+#endif
+
+FILE *tty_in, *tty_out;
+int is_a_tty;
+
 
 /* Internal functions to read a string without echoing */
 static int read_till_nl(FILE *in) {
@@ -127,15 +125,16 @@ static void popsig(void) {
 # endif
 }
 
-static void recsig(int i) {
-    intr_signal = i;
+static void recsig(int signal) {
+    intr_signal = signal;
 }
 
 /* Console management functions */
 int openssl_console_open(void) {
+    CRYPTO_STATIC_MUTEX_lock_write(&console_global_mutex);
     is_a_tty = 1;
 
-# if !defined(_WIN32)
+    # if !defined(_WIN32)
     if ((tty_in = fopen(DEV_TTY, "r")) == NULL) {
         tty_in = stdin;
     }
@@ -175,6 +174,7 @@ int openssl_console_close(void) {
         fclose(tty_out);
     }
 
+    CRYPTO_STATIC_MUTEX_unlock_write(&console_global_mutex);
     return 1;
 }
 
@@ -212,8 +212,9 @@ static int openssl_console_echo_enable(void) {
 }
 
 int openssl_console_write(const char *str) {
-    fputs(str, tty_out);
-    fflush(tty_out);
+    if (!fputs(str, tty_out) || !fflush(tty_out)) {
+        return 0;
+    }
     return 1;
 }
 
@@ -239,26 +240,23 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     if (is_a_tty) {
         DWORD numread;
         // for now assuming UTF-8....
-//#   if defined(CP_UTF8)
-        if (GetEnvironmentVariableW(L"OPENSSL_WIN32_UTF8", NULL, 0) != 0) {
-            WCHAR wresult[BUFSIZ];
+        WCHAR wresult[BUFSIZ];
 
-            if (ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE),
-                         wresult, maxsize, &numread, NULL)) {
-                if (numread >= 2 &&
-                    wresult[numread-2] == L'\r' &&
-                    wresult[numread-1] == L'\n') {
-                    wresult[numread-2] = L'\n';
-                    numread--;
-                }
-                wresult[numread] = '\0';
-                if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1,
-                                        buf, maxsize + 1, NULL, 0) > 0)
-                    p = buf;
-
-                OPENSSL_cleanse(wresult, sizeof(wresult));
+        if (ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE),
+                     wresult, maxsize, &numread, NULL)) {
+            if (numread >= 2 &&
+                wresult[numread-2] == L'\r' &&
+                wresult[numread-1] == L'\n') {
+                wresult[numread-2] = L'\n';
+                numread--;
             }
-        } else
+            wresult[numread] = '\0';
+            if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1,
+                                    buf, maxsize + 1, NULL, 0) > 0)
+                p = buf;
+
+            OPENSSL_cleanse(wresult, sizeof(wresult));
+        }
 //#   endif
 //        if (ReadConsoleA(GetStdHandle(STD_INPUT_HANDLE),
 //                         buf, maxsize, &numread, NULL)) {
@@ -277,13 +275,15 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
       goto error;
     }
 
-    if ((p = (char *)strchr(buf, '\n')) != NULL) {
+    if ((p = strchr(buf, '\n')) != NULL) {
         *p = '\0';
     } else if (!read_till_nl(tty_in)) {
         goto error;
     }
 
     ok = 1;
+
+
 
 error:
     if (intr_signal == SIGINT) {
