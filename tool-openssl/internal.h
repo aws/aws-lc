@@ -22,62 +22,26 @@
 
 // Secure File I/O Utilities
 // ------------------------
-// These utilities provide secure file I/O operations using OpenSSL's BIO
-// interface with the following security properties:
-// 
+// Utilities for secure BIO operations providing:
 // - Size validation to prevent DoS attacks
 // - Secure memory handling for sensitive data
 // - Structured error handling
-// - RAII-style resource management
-// 
-// SECURITY PROPERTIES:
-// 1. Password Confidentiality:
-//    - All password buffers are securely cleared from memory after use
-//    - RAII patterns ensure automatic clearing even in error cases
-//    - Volatile pointers are used to prevent compiler optimization of clearing operations
-//
-// 2. Input Validation:
-//    - File sizes are validated to prevent denial-of-service attacks
-//    - Password lengths are bounded to prevent buffer-related issues
-//
-// 3. Error Handling:
-//    - Security-sensitive errors are explicitly logged
-//    - Error messages are designed to be informative without leaking sensitive information
-//    - Structured error handling ensures consistent behavior and cleanup
 //
 // Example usage:
-//   // Simple usage with defaults
 //   ScopedBIO input_bio("input.pem", "rb");
 //   if (!input_bio.valid()) {
 //     return false;
 //   }
-//
-//   // Advanced usage with custom validation and error handling
-//   BIOValidationParams params;
-//   params.max_size = 2 * DEFAULT_MAX_CRYPTO_FILE_SIZE; // Allow larger file
-//   
-//   ScopedBIO input_bio("input.pem", "rb", params, 
-//                        [](const BIOError& err) {
-//                          fprintf(stderr, "Custom error handler: %s\n", err.message.c_str());
-//                        });
-//   
-//   // Password handling
-//   std::string password;
-//   if (!extract_password("file:password.txt", &password)) {
-//     return false;
-//   }
-//   // Use password...
-//   secure_clear_string(password); // Clear when done
 
 // Maximum file size for cryptographic operations (1MB)
-// This limit helps prevent denial-of-service attacks through large file processing
+// Prevents DoS attacks through large file processing
 static const long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
 
-// Maximum length for passwords and other sensitive strings
-// This provides reasonable upper bound for memory allocation while allowing complex passwords
+// Maximum length for passwords (4KB)
+// Provides reasonable bound while allowing complex passwords
 static const size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
 
-// SECURITY: Securely clear a string from memory
+// Zero sensitive data from memory using volatile to prevent optimization
 inline void secure_clear_string(std::string& str) {
     if (!str.empty()) {
         volatile char* p = const_cast<volatile char*>(str.data());
@@ -86,8 +50,7 @@ inline void secure_clear_string(std::string& str) {
     }
 }
 
-// Parameters for BIO validation with default security settings
-// This simplifies the validation process while maintaining security
+// Parameters for BIO validation with security-focused defaults
 struct BIOValidationParams {
     long max_size;
     
@@ -155,7 +118,7 @@ static void handle_bio_error(const BIOError& error, BIOErrorHandler handler = nu
     }
 }
 
-// Validate BIO size to prevent DoS from extremely large files
+// SECURITY: Validate BIO size to prevent DoS from extremely large files
 inline bool validate_bio_size(BIO* bio, const BIOValidationParams& params = BIOValidationParams()) {
     if (!bio) return false;
     

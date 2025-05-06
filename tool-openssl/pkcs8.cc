@@ -4,16 +4,10 @@
 // PKCS8 Tool
 // ----------
 // 
-// This implementation uses the security infrastructure defined in tool-openssl/internal.h
-// and adds PKCS8-specific functionality for:
-//
+// Implements PKCS8 key format operations with:
 // - Cipher and PRF algorithm validation against allowlists
-// - PKCS8 format-specific key handling
-//
-// See tool-openssl/internal.h for shared security mechanisms including:
-// - Password confidentiality
-// - File I/O validation
-// - Error handling
+// - Format conversion between traditional and PKCS8
+// - Secure key handling
 
 #include <openssl/base.h>
 #include <openssl/evp.h>
@@ -35,7 +29,7 @@ static const std::unordered_set<std::string> kSupportedPRFs = {
     "hmacWithSHA1"  // Currently the only supported PRF in AWS-LC
 };
 
-// SECURITY: Validate cipher algorithms against the allowlist
+// SECURITY: Validates cipher algorithm against security allowlist
 static bool validate_cipher(const std::string& cipher_name) {
     if (kSupportedCiphers.find(cipher_name) == kSupportedCiphers.end()) {
         fprintf(stderr, "Error: Unsupported cipher algorithm: %s\n", cipher_name.c_str());
@@ -48,7 +42,7 @@ static bool validate_cipher(const std::string& cipher_name) {
     return true;
 }
 
-// SECURITY: Validate PRF algorithms against the allowlist
+// SECURITY: Validates PRF algorithm against security allowlist
 static bool validate_prf(const std::string& prf_name) {
     if (kSupportedPRFs.find(prf_name) == kSupportedPRFs.end()) {
         fprintf(stderr, "Error: Unsupported PRF algorithm: %s\n", prf_name.c_str());
