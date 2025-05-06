@@ -20,13 +20,13 @@
 
 #include "getrandom_fillin.h"
 #include "internal.h"
+#include "../ube/internal.h"
 #include "../ube/snapsafe_detect.h"
 
-#if defined(OPENSSL_RAND_URANDOM) && defined(OPENSSL_X86_64) && \
+#if defined(OPENSSL_RAND_URANDOM) && \
     !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
-    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING) && \
-    defined(NEW_RAND_DISABLED_TEST)
+    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING)
 
 #include <linux/types.h>
 
@@ -51,24 +51,6 @@
 
 #if !defined(PTRACE_O_TRACESYSGOOD)
 #define PTRACE_O_TRACESYSGOOD (1)
-#endif
-
-#if defined(AWSLC_FIPS)
-static const bool kIsFIPS = true;
-#else
-static const bool kIsFIPS = false;
-#endif
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-static const bool kIsFipsSourceJitterCpu = true;
-#else
-static const bool kIsFipsSourceJitterCpu = false;
-#endif
-
-#if defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-static const bool kIsFipsSourcePassive = true;
-#else
-static const bool kIsFipsSourcePassive = false;
 #endif
 
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
@@ -304,11 +286,10 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
       }
 
       case __NR_nanosleep: {
-        // First true condition: In FIPS mode, an |ioctl| call with command
-        // |RNDGETENTCNT| is used. If this fails, a delay is injected. The
-        // failure happens when the test flag |URANDOM_NOT_READY| is set. But
-        // since this bit is cleared below we detect this event using
-        // |urandom_not_ready_was_cleared|.
+        // If blocking, an |ioctl| call with command |RNDGETENTCNT| is used. If
+        // this fails, a delay is injected. The failure happens when the test
+        // flag |URANDOM_NOT_READY| is set. But since this bit is cleared below
+        // we detect this event using |urandom_not_ready_was_cleared|.
         //
         // Second true condition: We can have two or more consecutive
         // |nanosleep| calls. This happens if |nanosleep| returns -1. The PRNG
@@ -413,8 +394,9 @@ static void TestFunction() {
   RAND_bytes(&byte, sizeof(byte));
 }
 
-static bool have_fork_detection() {
-  return CRYPTO_get_fork_generation() != 0;
+static bool have_ube_detection() {
+  uint64_t tmp_gn = 0;
+  return CRYPTO_get_ube_generation_number(&tmp_gn) != 0;
 }
 
 // TestFunctionPRNGModel is a model of how the urandom.c code will behave when
@@ -423,12 +405,18 @@ static bool have_fork_detection() {
 static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
   std::vector<Event> ret;
-  bool urandom_probed = false;
+  bool urandom_ready = false;
   bool getrandom_ready = false;
 
   // Probe for getrandom support
   ret.push_back(Event::GetRandom(1, GRND_NONBLOCK));
-  std::function<void()> wait_for_entropy;
+
+  // Define callbacks that model system calls made for each of the random
+  // function flavors defined in urandom.c; currently, this is either getrandom
+  // or /dev/urandom.|ensure_entropy_pool_is_initialized| models
+  // |ensure_entropy_state_is_initd_once| while |sysrand| models either
+  // |wrapper_getrandom| or |wrapper_dev_urandom|.
+  std::function<void()> ensure_entropy_pool_is_initialized;
   std::function<bool(bool, size_t)> sysrand;
 
   if (flags & NO_GETRANDOM) {
@@ -438,8 +426,8 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       return ret;
     }
 
-    wait_for_entropy = [&ret, &urandom_probed, flags] {
-      if (!kIsFIPS || urandom_probed) {
+    ensure_entropy_pool_is_initialized = [&ret, &urandom_ready, flags] {
+      if (urandom_ready) {
         return;
       }
 
@@ -452,19 +440,22 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
         ret.push_back(Event::UrandomIoctl());
       }
 
-      urandom_probed = true;
+      urandom_ready = true;
     };
 
-    sysrand = [&ret, &wait_for_entropy, flags](bool block, size_t len) {
+    sysrand = [&ret, &ensure_entropy_pool_is_initialized, flags](bool block, size_t len) {
       if (block) {
-        wait_for_entropy();
+        ensure_entropy_pool_is_initialized();
       }
       ret.push_back(Event::UrandomRead(len));
       if (flags & URANDOM_ERROR) {
-        for (size_t i = 0; i < MAX_BACKOFF_RETRIES; i++) {
-          ret.push_back(Event::NanoSleep());
-          ret.push_back(Event::UrandomRead(len));
+        if (block) {
+          for (size_t i = 0; i < MAX_BACKOFF_RETRIES; i++) {
+            ret.push_back(Event::NanoSleep());
+            ret.push_back(Event::UrandomRead(len));
+          }
         }
+
         ret.push_back(Event::Abort());
         return false;
       }
@@ -477,7 +468,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
     }
 
     getrandom_ready = (flags & GETRANDOM_NOT_READY) == 0;
-    wait_for_entropy = [&ret, &getrandom_ready] {
+    ensure_entropy_pool_is_initialized = [&ret, &getrandom_ready] {
       if (getrandom_ready) {
         return;
       }
@@ -486,86 +477,69 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       ret.push_back(Event::GetRandom(1, 0));
       getrandom_ready = true;
     };
-    sysrand = [&ret, &wait_for_entropy](bool block, size_t len) {
+
+    sysrand = [&ret, &ensure_entropy_pool_is_initialized](bool block, size_t len) {
       if (block) {
-        wait_for_entropy();
+        ensure_entropy_pool_is_initialized();
       }
+
       ret.push_back(Event::GetRandom(len, block ? 0 : GRND_NONBLOCK));
       return true;
     };
   }
 
-  const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN;
-  const size_t kAdditionalDataLength = 32;
   const size_t kPersonalizationStringLength = CTR_DRBG_ENTROPY_LEN;
-  const size_t kPassiveEntropyWithWhitenFactor = PASSIVE_ENTROPY_LOAD_LENGTH;
-  const bool kHaveRdrand = have_hw_rng_x86_64();
-  const bool kHaveFastRdrand = have_hw_rng_x86_64();
-  const bool kHaveForkDetection = have_fork_detection();
+  const size_t kPredictionResistanceStringLength = RAND_PRED_RESISTANCE_LEN;
+  const bool kHaveUbeDetection = have_ube_detection();
 
-  // Additional data might be drawn on each invocation of RAND_bytes(). In case
-  // it is and there is no rdrand at all, the call is blocking. In the case
-  // where there is at least a "slow" rdrand, first a non-blocking call to
-  // system random is performed followed by an rdrand call.
+  // We now build the randomness generation model. Only system call events
+  // can be captured. To build the model, we reason about the expected workflow
+  // for randomness generation and must correctly predict when a specific
+  // system call is made. We assume two consecutive RAND_bytes() calls, as
+  // specified by the test function TestFunction().
+  //
+  // First call to RAND_bytes(): Seed the frontend CTR-DRBG using seed source
+  // and personalization string source. The seed source is the tree-DRBG and
+  // personalization string the operating system source. The tree-DRBG will use
+  // Jitter Entropy at its root. The tree-DRBG per-thread CTR-DRBG will use the
+  // operating system entropy source for prediction resistance if there is no
+  // UBE detection.
 
-  // First call to RAND_bytes() will do two things:
-  // * maybe draw for additional data
-  // * seed the CTR-DRBG
-  // First is deciding on additional data.
-  if (!kHaveRdrand || !kHaveFastRdrand) {
-    if (!kHaveForkDetection) {
-      // If no rdrand, we use additional data if fork detection is not enabled.
-      if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
-        return ret;
-      }
-    }
-  }
-
-  // Now the entropy for seeding.
-  if (kIsFIPS) {
-    if (kIsFipsSourceJitterCpu) {
-      // In FIPS mode we use Jitter Entropy by default for the seed but Jitter
-      // is not modeled. A blocking system random call for a personalization
-      // string always follows.
-      if (!sysrand(true, kPersonalizationStringLength)) {
-        return ret;
-      }
-    } else if (kIsFipsSourcePassive) {
-      // The Passive FIPS entropy source either gathers entropy from a CPU
-      // source or a system source. The former is not modeled.
-      if (!kHaveRdrand) {
-        if (!sysrand(true, kPassiveEntropyWithWhitenFactor)) {
-                return ret;
-        }
-      } else {
-        // If using the CPU source, also drawing additional data for diversity.
-        if (!sysrand(false, kPersonalizationStringLength)) {
-                return ret;
-        }
-      }
-    } else {
-      // This shouldn't really happen...
-      return ret;
-    }
-  } else {
-    // In non-FIPS mode entropy for the seed is drawn from system random.
-    if (!sysrand(true, kSeedLength)) {
+  // Capture tree-DRBG per-thread CTR-DRBG maybe using prediction resistance.
+  if (!kHaveUbeDetection) {
+    if (!sysrand(true, kPredictionResistanceStringLength)) {
       return ret;
     }
   }
 
-  // Second RAND_bytes() call. No seeding or re-seeding, but in some cases
-  // entropy is drawn for additional data as in the first call to RAND_bytes().
-  if (!kHaveRdrand || !kHaveFastRdrand) {
-    if (!kHaveForkDetection) {
-      if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
+  // Seeding of frontend CTR-DRBG will always use a personalization string.
+  if (!sysrand(true, kPersonalizationStringLength)) {
+    return ret;
+  }
+
+  // Second call to RAND_bytes(): If there is no UBE detection, we initiate a
+  // reseed before generating any output.
+  if (!kHaveUbeDetection) {
+    // Again, the tree-DRBG per-thread CTR-DRBG will use prediction resistance
+    // if there is no UBE detection.
+    if (!kHaveUbeDetection) {
+      if (!sysrand(true, kPredictionResistanceStringLength)) {
         return ret;
       }
+    }
+
+    // Seeding of frontend CTR-DRBG will always use a personalization string.
+    if (!sysrand(true, kPersonalizationStringLength)) {
+      return ret;
     }
   }
 
   return ret;
 }
+
+#define SCOPED_TRACE_FLAG(flag)                                  \
+  snprintf(buf, sizeof(buf), #flag ": %d", (flags & flag) != 0); \
+  SCOPED_TRACE(buf);
 
 // Tests that |TestFunctionPRNGModel| is a correct model for the code in
 // urandom.c, at least to the limits of the the |Event| type.
@@ -583,23 +557,24 @@ TEST(URandomTest, Test) {
       (syscall(__NR_getrandom, scratch, sizeof(scratch), GRND_NONBLOCK) != -1 ||
        errno != ENOSYS);
 
-#define TRACE_FLAG(flag)                                         \
-  snprintf(buf, sizeof(buf), #flag ": %d", (flags & flag) != 0); \
-  SCOPED_TRACE(buf);
-
   for (unsigned flags = 0; flags < NEXT_FLAG; flags++) {
     if (!has_getrandom && !(flags & NO_GETRANDOM)) {
         continue;
     }
 
-    TRACE_FLAG(NO_GETRANDOM);
-    TRACE_FLAG(NO_URANDOM);
-    TRACE_FLAG(GETRANDOM_NOT_READY);
-    TRACE_FLAG(URANDOM_NOT_READY);
-    TRACE_FLAG(GETRANDOM_ERROR);
-    TRACE_FLAG(URANDOM_ERROR);
+    // Prints test configuration if an error is reported below. Scoped to this
+    // iteration of the for-loop.
+    SCOPED_TRACE_FLAG(NO_GETRANDOM);
+    SCOPED_TRACE_FLAG(NO_URANDOM);
+    SCOPED_TRACE_FLAG(GETRANDOM_NOT_READY);
+    SCOPED_TRACE_FLAG(URANDOM_NOT_READY);
+    SCOPED_TRACE_FLAG(GETRANDOM_ERROR);
+    SCOPED_TRACE_FLAG(URANDOM_ERROR);
 
+    // From PRNG model, generate the expected trace of system calls.
     const std::vector<Event> expected_trace = TestFunctionPRNGModel(flags);
+
+    // Generate the real trace of system calls.
     std::vector<Event> actual_trace;
     GetTrace(&actual_trace, flags, TestFunction);
 
