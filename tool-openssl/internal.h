@@ -86,16 +86,13 @@ inline void secure_clear_string(std::string& str) {
     }
 }
 
-// Parameters for BIO validation allowing customization of security checks
+// Parameters for BIO validation with default security settings
+// This simplifies the validation process while maintaining security
 struct BIOValidationParams {
     long max_size;
-    bool allow_empty;
-    bool verify_readable;
     
     BIOValidationParams()
-        : max_size(DEFAULT_MAX_CRYPTO_FILE_SIZE),
-          allow_empty(true),  // Allow empty files by default
-          verify_readable(true) {}
+        : max_size(DEFAULT_MAX_CRYPTO_FILE_SIZE) {}
 };
 
 // Error types for BIO operations
@@ -173,10 +170,7 @@ inline bool validate_bio_size(BIO* bio, const BIOValidationParams& params = BIOV
     // Restore position
     if (BIO_seek(bio, current_pos) < 0) return false;
     
-    if (size <= 0 && !params.allow_empty) {
-        fprintf(stderr, "Error: Empty file or size couldn't be determined\n");
-        return false;
-    }
+    // Allow empty files by default
     
     if (size > params.max_size) {
         fprintf(stderr, "Error: File exceeds maximum allowed size of %ld bytes\n", 
@@ -184,8 +178,8 @@ inline bool validate_bio_size(BIO* bio, const BIOValidationParams& params = BIOV
         return false;
     }
     
-    // Optionally verify file is readable by reading first byte
-    if (params.verify_readable && size > 0) {
+    // Always verify file is readable by reading first byte
+    if (size > 0) {
         unsigned char byte;
         long pos = BIO_tell(bio);
         
@@ -201,39 +195,19 @@ inline bool validate_bio_size(BIO* bio, const BIOValidationParams& params = BIOV
     return true;
 }
 
-// Create BIO with validation
-inline bssl::UniquePtr<BIO> create_validated_bio(const std::string& path, 
-                                                const char* mode,
-                                                const BIOValidationParams& params = BIOValidationParams()) {
-    bssl::UniquePtr<BIO> bio(BIO_new_file(path.c_str(), mode));
-    if (!bio) {
-        fprintf(stderr, "Error: Could not open file '%s'\n", path.c_str());
-        return nullptr;
-    }
-    
-    if (strcmp(mode, "rb") == 0 && !validate_bio_size(bio.get(), params)) {
-        return nullptr;  // validate_bio_size prints its own error
-    }
-    
-    return bio;
-}
-
 // RAII wrapper for BIO operations with validation and error handling
 class ScopedBIO {
 private:
     bssl::UniquePtr<BIO> bio_;
     BIOErrorHandler error_handler_;
-    bool auto_flush_;
 
 public:
     // Constructor for file-based BIO
     ScopedBIO(const std::string& path, 
               const char* mode,
               const BIOValidationParams& params = BIOValidationParams(),
-              BIOErrorHandler handler = nullptr,
-              bool auto_flush = true)
-        : error_handler_(handler),
-          auto_flush_(auto_flush) {
+              BIOErrorHandler handler = nullptr)
+        : error_handler_(handler) {
         
         bio_.reset(BIO_new_file(path.c_str(), mode));
         
@@ -258,9 +232,8 @@ public:
     }
     
     // Constructor for existing BIO (like stdout)
-    ScopedBIO(BIO* bio, BIOErrorHandler handler = nullptr, bool auto_flush = true)
-        : error_handler_(handler),
-          auto_flush_(auto_flush) {
+    ScopedBIO(BIO* bio, BIOErrorHandler handler = nullptr)
+        : error_handler_(handler) {
         if (bio) {
             bio_.reset(bio);
         } else {
@@ -273,7 +246,7 @@ public:
     }
     
     ~ScopedBIO() {
-        if (bio_ && auto_flush_) {
+        if (bio_) {
             BIO_flush(bio_.get());
         }
     }
