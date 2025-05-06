@@ -124,11 +124,13 @@
      defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
     defined(OPENSSL_AARCH64)
 
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 
 #define BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE 1
 
-OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 1; }
+OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) {
+  return CRYPTO_is_NEON_capable();
+}
 
 #else
 
@@ -143,17 +145,12 @@ static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width
 #if defined(BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE)
 
   int table_height = 1 << window;
-  if (CRYPTO_is_NEON_capable()) {
-    if (width == 32) {
-      bignum_copy_row_from_table_32_neon(dest, table, table_height, rowidx);
-    } else if (width == 16) {
-      bignum_copy_row_from_table_16_neon(dest, table, table_height, rowidx);
-    } else if (width % 8 == 0) {
-      bignum_copy_row_from_table_8n_neon(dest, table, table_height, width,
-                                         rowidx);
-    } else {
-      bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
-    }
+  if (width == 32) {
+    bignum_copy_row_from_table_32(dest, table, table_height, rowidx);
+  } else if (width == 16) {
+    bignum_copy_row_from_table_16(dest, table, table_height, rowidx);
+  } else if (width % 8 == 0) {
+    bignum_copy_row_from_table_8n(dest, table, table_height, width, rowidx);
   } else {
     bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
   }

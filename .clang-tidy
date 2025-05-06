@@ -1,0 +1,16 @@
+---
+Checks: '
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer,
+  concurrency-*,
+  cppcoreguidelines-*,
+  hicpp-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*
+  '
+WarningsAsErrors: ''

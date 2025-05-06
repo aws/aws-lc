@@ -670,6 +670,14 @@ static const CurveTest kCurveTests[] = {
       SSL_GROUP_SECP256R1,
     },
   },
+{
+  "SecP384r1MLKEM1024:X25519MLKEM768:SecP256r1MLKEM768",
+  {
+    SSL_GROUP_SECP384R1_MLKEM1024,
+    SSL_GROUP_X25519_MLKEM768,
+    SSL_GROUP_SECP256R1_MLKEM768,
+  },
+},
 };
 
 
@@ -677,6 +685,8 @@ static const CurveTest kCurveTests[] = {
 // X25519:        https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
 static const size_t P256_KEYSHARE_SIZE = ((EC_P256R1_FIELD_ELEM_BYTES * 2) + 1);
 static const size_t P256_SECRET_SIZE = EC_P256R1_FIELD_ELEM_BYTES;
+static const size_t P384_KEYSHARE_SIZE = ((EC_P384R1_FIELD_ELEM_BYTES * 2) + 1);
+static const size_t P384_SECRET_SIZE = EC_P384R1_FIELD_ELEM_BYTES;
 static const size_t X25519_KEYSHARE_SIZE = 32;
 static const size_t X25519_SECRET_SIZE = 32;
 
@@ -760,6 +770,21 @@ static const HybridGroupTest kHybridGroupTests[] = {
       // See: https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
       MLKEM768_CIPHERTEXT_BYTES,      // accept_share_sizes[0]
       X25519_KEYSHARE_SIZE,           // accept_share_sizes[1]
+    },
+  },
+  {
+    NID_SecP384r1MLKEM1024,
+    SSL_GROUP_SECP384R1_MLKEM1024,
+    P384_KEYSHARE_SIZE + MLKEM1024_PUBLIC_KEY_BYTES,
+    P384_KEYSHARE_SIZE + MLKEM1024_CIPHERTEXT_BYTES,
+    P384_SECRET_SIZE + MLKEM1024_SHARED_SECRET_LEN,
+    {
+      P384_KEYSHARE_SIZE,             // offer_share_sizes[0]
+      MLKEM1024_PUBLIC_KEY_BYTES,     // offer_share_sizes[1]
+    },
+    {
+      P384_KEYSHARE_SIZE,             // accept_share_sizes[0]
+      MLKEM1024_CIPHERTEXT_BYTES,     // accept_share_sizes[1]
     },
   },
 };
@@ -1112,6 +1137,15 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
     false,
   },
 
+  {
+    "SecP384r1MLKEM1024",
+    TLS1_3_VERSION,
+    "SecP384r1MLKEM1024",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP384R1_MLKEM1024,
+    false,
+  },
+
   // The client's preferred hybrid group should be negotiated when also
   // supported by the server, even if the server "prefers"/supports other groups.
   {
@@ -1138,6 +1172,24 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
     "X25519MLKEM768:secp384r1:x25519:SecP256r1MLKEM768",
     TLS1_3_VERSION,
     SSL_GROUP_SECP256R1_MLKEM768,
+    false,
+  },
+
+  {
+    "X25519MLKEM768:SecP256r1MLKEM768:SecP384r1MLKEM1024",
+    TLS1_3_VERSION,
+    "SecP384r1MLKEM1024:SecP256r1MLKEM768:X25519MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    false,
+  },
+
+  {
+    "SecP384r1MLKEM1024:SecP256r1MLKEM768:X25519MLKEM768",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:SecP256r1MLKEM768:SecP384r1MLKEM1024",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP384R1_MLKEM1024,
     false,
   },
 
@@ -4261,6 +4313,10 @@ static bool CacheEquals(SSL_CTX *ctx,
   SSL_SESSION *ptr = ctx->session_cache_head;
   for (SSL_SESSION *session : expected) {
     if (ptr != session) {
+      return false;
+    }
+    // Redundant w/ above, but avoids static analysis failure
+    if (ptr == nullptr) {
       return false;
     }
     // TODO(davidben): This is an absurd way to denote the end of the list.
@@ -13126,6 +13182,7 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
         EXPECT_TRUE(
           hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM1024 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
         );
 
@@ -13145,7 +13202,10 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
       } else {
         // The Accept() functionality for the NIST curves (e.g. P256) is
         // written so that it will return failure if the key share is invalid.
-        EXPECT_EQ(hybrid_group->component_group_ids[i], SSL_GROUP_SECP256R1);
+        EXPECT_TRUE(
+          hybrid_group->component_group_ids[i] == SSL_GROUP_SECP256R1 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_SECP384R1
+        );
         EXPECT_EQ(server_alert, SSL_AD_ILLEGAL_PARAMETER);
       }
 
@@ -13394,6 +13454,7 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
         EXPECT_TRUE(
           hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM1024 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
         );
 
@@ -13407,7 +13468,10 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
       } else {
         // The Finish() functionality for the NIST curves (e.g. P256) is
         // written so that it will return failure if the key share is invalid.
-        EXPECT_EQ(hybrid_group->component_group_ids[i], SSL_GROUP_SECP256R1);
+        EXPECT_TRUE(
+          hybrid_group->component_group_ids[i] == SSL_GROUP_SECP256R1 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_SECP384R1
+        );
         EXPECT_EQ(client_alert, SSL_AD_ILLEGAL_PARAMETER);
       }
 
