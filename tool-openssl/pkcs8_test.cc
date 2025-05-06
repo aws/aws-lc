@@ -41,14 +41,16 @@ protected:
     ASSERT_TRUE(key);
 
     // Use BIO for writing the key to input file
-    ScopedBIO in_bio(in_path, "wb");
-    ASSERT_TRUE(in_bio.valid());
+    bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path, "wb"));
+    ASSERT_TRUE(in_bio);
     ASSERT_TRUE(PEM_write_bio_PrivateKey(in_bio.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
+    BIO_flush(in_bio.get()); // Ensure data is written
     
     // Make sure password is just "testpassword" without any extra characters
-    ScopedBIO pass_bio(pass_path, "wb");
-    ASSERT_TRUE(pass_bio.valid());
+    bssl::UniquePtr<BIO> pass_bio(BIO_new_file(pass_path, "wb"));
+    ASSERT_TRUE(pass_bio);
     ASSERT_TRUE(BIO_printf(pass_bio.get(), "testpassword") > 0);
+    BIO_flush(pass_bio.get()); // Ensure data is written
   }
   
   void TearDown() override {
@@ -71,8 +73,8 @@ TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
   bool result = pkcs8Tool(args);
   ASSERT_TRUE(result);
   {
-    ScopedBIO out_bio(out_path, "rb");
-    ASSERT_TRUE(out_bio.valid());
+    bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
+    ASSERT_TRUE(out_bio);
     bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(PEM_read_bio_PKCS8_PRIV_KEY_INFO(out_bio.get(), nullptr, nullptr, nullptr));
     bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_PKCS82PKEY(p8inf.get()));
     ASSERT_TRUE(parsed_key);
@@ -140,8 +142,8 @@ TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
 // Test -v2 option with the default cipher (aes-256-cbc)
 TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
   // First verify the password file content is correct
-  ScopedBIO test_bio(pass_path, "r");
-  ASSERT_TRUE(test_bio.valid());
+  bssl::UniquePtr<BIO> test_bio(BIO_new_file(pass_path, "r"));
+  ASSERT_TRUE(test_bio);
   char password_buffer[100] = {0};
   ASSERT_GT(BIO_gets(test_bio.get(), password_buffer, sizeof(password_buffer)), 0);
   ASSERT_STREQ(password_buffer, "testpassword");
@@ -230,16 +232,18 @@ protected:
     ASSERT_GT(createTempFILEpath(pass_path), 0u);
     ASSERT_GT(createTempFILEpath(decrypt_path), 0u);
 
-    key.reset(CreateTestKey());
-    ASSERT_TRUE(key);
+  key.reset(CreateTestKey());
+  ASSERT_TRUE(key);
 
-    ScopedBIO in_bio(in_path, "wb");
-    ASSERT_TRUE(in_bio.valid());
-    ASSERT_TRUE(PEM_write_bio_PrivateKey(in_bio.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
-    
-    ScopedBIO pass_bio(pass_path, "wb");
-    ASSERT_TRUE(pass_bio.valid());
-    ASSERT_TRUE(BIO_printf(pass_bio.get(), "testpassword") > 0);
+  bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path, "wb"));
+  ASSERT_TRUE(in_bio);
+  ASSERT_TRUE(PEM_write_bio_PrivateKey(in_bio.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr));
+  BIO_flush(in_bio.get()); // Ensure data is written
+  
+  bssl::UniquePtr<BIO> pass_bio(BIO_new_file(pass_path, "wb"));
+  ASSERT_TRUE(pass_bio);
+  ASSERT_TRUE(BIO_printf(pass_bio.get(), "testpassword") > 0);
+  BIO_flush(pass_bio.get()); // Ensure data is written
   }
 
   void TearDown() override {

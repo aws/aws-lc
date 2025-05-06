@@ -27,9 +27,16 @@
 // - Secure memory handling for sensitive data
 // - Structured error handling
 //
+// Security Best Practices for BIO Operations:
+// 1. Use bssl::UniquePtr<BIO> for resource management
+// 2. Call validate_bio_size() on read operations to prevent DoS attacks
+// 3. Use BIO_flush() explicitly after writing sensitive data
+// 4. Handle errors with clear context using ERR_print_errors_fp(stderr)
+//
 // Example usage:
-//   ScopedBIO input_bio("input.pem", "rb");
-//   if (!input_bio.valid()) {
+//   bssl::UniquePtr<BIO> bio(BIO_new_file("input.pem", "rb"));
+//   if (!bio || !validate_bio_size(bio.get())) {
+//     // Error handling
 //     return false;
 //   }
 
@@ -158,69 +165,6 @@ inline bool validate_bio_size(BIO* bio, const BIOValidationParams& params = BIOV
     return true;
 }
 
-// RAII wrapper for BIO operations with validation and error handling
-class ScopedBIO {
-private:
-    bssl::UniquePtr<BIO> bio_;
-    BIOErrorHandler error_handler_;
-
-public:
-    // Constructor for file-based BIO
-    ScopedBIO(const std::string& path, 
-              const char* mode,
-              const BIOValidationParams& params = BIOValidationParams(),
-              BIOErrorHandler handler = nullptr)
-        : error_handler_(handler) {
-        
-        bio_.reset(BIO_new_file(path.c_str(), mode));
-        
-        if (!bio_) {
-            BIOError error;
-            error.type = BIOErrorType::FILE_ACCESS;
-            error.message = "Could not open file: " + path;
-            error.openssl_error = ERR_peek_last_error();
-            
-            handle_bio_error(error, error_handler_);
-            return;
-        }
-        
-        if (strcmp(mode, "rb") == 0 && !validate_bio_size(bio_.get(), params)) {
-            BIOError error;
-            error.type = BIOErrorType::SIZE_LIMIT;
-            error.message = "File size validation failed for: " + path;
-            
-            handle_bio_error(error, error_handler_);
-            bio_.reset(); // Invalidate the BIO
-        }
-    }
-    
-    // Constructor for existing BIO (like stdout)
-    ScopedBIO(BIO* bio, BIOErrorHandler handler = nullptr)
-        : error_handler_(handler) {
-        if (bio) {
-            bio_.reset(bio);
-        } else {
-            BIOError error;
-            error.type = BIOErrorType::FILE_ACCESS;
-            error.message = "Null BIO provided";
-            
-            handle_bio_error(error, error_handler_);
-        }
-    }
-    
-    ~ScopedBIO() {
-        if (bio_) {
-            BIO_flush(bio_.get());
-        }
-    }
-    
-    BIO* get() { return bio_.get(); }
-    bool valid() const { return bio_ != nullptr; }
-    
-    // Prevent copying
-    ScopedBIO(const ScopedBIO&) = delete;
-    ScopedBIO& operator=(const ScopedBIO&) = delete;
-};
 
 // Add error context to BIO operations
 inline bool write_key_bio(BIO* bio, EVP_PKEY* pkey, const std::string& format) {

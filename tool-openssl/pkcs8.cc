@@ -191,18 +191,31 @@ bool pkcs8Tool(const args_list_t &args) {
   }
 
   // Create input BIO with validation
-  ScopedBIO in_bio(in_path, "rb");
-  if (!in_bio.valid()) {
-    return false; // Error already printed
+  bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path.c_str(), "rb"));
+  if (!in_bio) {
+    fprintf(stderr, "Error: Could not open file: %s\n", in_path.c_str());
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  // Validate file size to prevent DoS attacks
+  if (!validate_bio_size(in_bio.get())) {
+    fprintf(stderr, "Error: File size validation failed for: %s\n", in_path.c_str());
+    return false;
   }
 
   // Create output BIO
-  ScopedBIO out_bio(out_path.empty() ? 
-      BIO_new_fp(stdout, BIO_NOCLOSE) : 
-      BIO_new_file(out_path.c_str(), "wb"));
-
-  if (!out_bio.valid()) {
-    return false; // Error already printed
+  bssl::UniquePtr<BIO> out_bio;
+  if (out_path.empty()) {
+    out_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else {
+    out_bio.reset(BIO_new_file(out_path.c_str(), "wb"));
+  }
+  
+  if (!out_bio) {
+    fprintf(stderr, "Error: Could not open file for writing\n");
+    ERR_print_errors_fp(stderr);
+    return false;
   }
 
   // SECURITY: Extract password with validation
@@ -328,6 +341,9 @@ bool pkcs8Tool(const args_list_t &args) {
     print_errors();
     return cleanup_and_fail(passin_password, passout_password, "Failed to write private key");
   }
+
+  // Ensure data is flushed to disk
+  BIO_flush(out_bio.get());
 
   // SECURITY: Clear passwords before returning
   secure_clear_string(passin_password);
