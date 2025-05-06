@@ -11,9 +11,8 @@
 bool CheckPKCS8Boundaries(const std::string &content, const std::string &begin1, const std::string &end1, 
                      const std::string &begin2, const std::string &end2);
 
-EVP_PKEY* CreateTestKey();
-
-EVP_PKEY* CreateTestKey() {
+// Helper function to create a test RSA key for the PKCS8 tests
+static EVP_PKEY* CreateTestKey() {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
     return nullptr;

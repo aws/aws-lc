@@ -62,13 +62,13 @@ static bool validate_prf(const std::string& prf_name) {
 }
 
 // SECURITY: Helper function for consistent error handling and password cleanup
-static bool cleanup_and_fail(std::string& passin_password, 
-                          std::string& passout_password,
+static bool cleanup_and_fail(std::string& passin, 
+                          std::string& passout,
                           const char* error_msg) {
-    assert(error_msg != nullptr && "Error message cannot be null");
+    assert(error_msg != nullptr);
     fprintf(stderr, "Error: %s\n", error_msg);
-    secure_clear_string(passin_password);
-    secure_clear_string(passout_password);
+    secure_clear_string(passin);
+    secure_clear_string(passout);
     return false;
 }
 
