@@ -94,6 +94,49 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
   ASSERT_TRUE(result);
 }
 
+// Test env:var password source format (cross-platform: Windows, macOS, Linux)
+TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
+  // Set an environment variable with a test password
+  // Using platform-specific methods to set and unset environment variables
+#ifdef _WIN32
+  // Windows implementation
+  const char* env_var_name = "PKCS8_TEST_PASSWORD";
+  _putenv_s(env_var_name, "testpassword");
+#else
+  // POSIX implementation (Linux, macOS, BSD, etc.)
+  const char* env_var_name = "PKCS8_TEST_PASSWORD";
+  setenv(env_var_name, "testpassword", 1);
+#endif
+  
+  // Run pkcs8Tool with env: format password
+  std::string passout = std::string("env:") + env_var_name;
+  args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", 
+                     "-passout", passout.c_str()};
+  bool result = pkcs8Tool(args);
+  ASSERT_TRUE(result);
+  
+  // Verify the output is correctly encrypted
+  std::string content = ReadFileToString(out_path);
+  ASSERT_FALSE(content.empty());
+  ASSERT_TRUE(content.find("-----BEGIN ENCRYPTED PRIVATE KEY-----") != std::string::npos);
+  
+  // Test we can decrypt the file with the correct password
+  bssl::UniquePtr<EVP_PKEY> decrypted_key(DecryptPrivateKey(out_path, "testpassword"));
+  ASSERT_TRUE(decrypted_key) << "Failed to decrypt key using test password";
+  
+  // Verify the key matches the original
+  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
+  
+  // Clean up environment variable
+#ifdef _WIN32
+  // Windows cleanup
+  _putenv_s(env_var_name, "");
+#else
+  // POSIX cleanup (Linux, macOS, BSD, etc.)
+  unsetenv(env_var_name);
+#endif
+}
+
 // Test -v2 option with the default cipher (aes-256-cbc)
 TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
   // First verify the password file content is correct

@@ -364,18 +364,26 @@ inline bool extract_password(const std::string& source, std::string* out_passwor
         return true;
     }
     
-    // Handle env:var format
+    // Handle env:var format - retrieve password from environment variable
     if (source.compare(0, 4, "env:") == 0) {
         std::string env_var = source.substr(4);
+        
+        // Validate environment variable name is not empty
+        if (env_var.empty()) {
+            fprintf(stderr, "Error: Empty environment variable name in 'env:' format\n");
+            return false;
+        }
+        
         const char* env_value = getenv(env_var.c_str());
         if (!env_value) {
-            fprintf(stderr, "Error: Environment variable '%s' not set\n", 
+            fprintf(stderr, "Error: Environment variable '%s' not set or inaccessible\n", 
                     env_var.c_str());
             return false;
         }
         
         if (strlen(env_value) > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
-            fprintf(stderr, "Error: Password from environment variable exceeds maximum length\n");
+            fprintf(stderr, "Error: Password from environment variable '%s' exceeds maximum allowed length of %zu characters\n", 
+                   env_var.c_str(), DEFAULT_MAX_SENSITIVE_STRING_LENGTH);
             return false;
         }
         
@@ -383,14 +391,13 @@ inline bool extract_password(const std::string& source, std::string* out_passwor
         return true;
     }
     
-    // Direct input
-    if (source.length() > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
-        fprintf(stderr, "Error: Password exceeds maximum allowed length\n");
-        return false;
-    }
+    // TODO: Implement EVP password prompting functionality similar to OpenSSL 1.1.1
+    // This would handle cases where the password needs to be prompted from the user
+    // interactively using EVP_read_pw_string or similar functionality.
+    // See OpenSSL implementation in crypto/pem/pem_lib.c
     
-    *out_password = source;
-    return true;
+    fprintf(stderr, "Error: Unsupported password format. Use pass:, file:, or env: prefix.\n");
+    return false;
 }
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
