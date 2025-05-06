@@ -20,9 +20,9 @@
 // that the probability of failing when we should pass is negligible.
 
 TEST(CCRandomGenerateBytesTest, NotObviouslyBroken) {
-  static const uint8_t kZeros[1024] = {0};
+  static const uint8_t kZeros[256] = {0};
 
-  uint8_t buf1[256], buf2[1024], buf3[256];;
+  uint8_t buf1[256] = {0}, buf2[256] = {0}, buf3[256] = {0};
 
   EXPECT_EQ(CCRandomGenerateBytes(buf1, sizeof(buf1)), kCCSuccess);
   EXPECT_EQ(CCRandomGenerateBytes(buf2, sizeof(buf2)), kCCSuccess);
@@ -34,6 +34,10 @@ TEST(CCRandomGenerateBytesTest, NotObviouslyBroken) {
   memcpy(buf3, buf1, sizeof(buf3));
   EXPECT_EQ(CCRandomGenerateBytes(buf1, sizeof(buf1)), kCCSuccess);
   EXPECT_NE(Bytes(buf1), Bytes(buf3));
+
+  // |CCRandomGenerateBytes| supports bigger inputs.
+  uint8_t buf4[1024] = {0}, buf5[1024] = {0};
+  EXPECT_NE(Bytes(buf4), Bytes(buf5));
 }
 
 #endif // defined(OPENSSL_RAND_CCRANDOMGENERATEBYTES)
