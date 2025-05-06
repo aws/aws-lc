@@ -343,11 +343,11 @@ jobs:
       - name: Build Project
         # TODO: Re-enable gcc-14/FIPS build once delocator updated
         if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
-        run: cmake -DCMAKE_C_FLAGS='{$CMAKE_C_FLAGS} -O2 -fhardened -Wno-error=hardened' --build ./build --target all
+        run: cmake -DCMAKE_C_FLAGS='-O2 -fhardened -Wno-error=hardened' -S. -Bbuild && cmake --build ./build --target all
       - name: Run tests
         # TODO: Re-enable gcc-14/FIPS build once delocator updated
         if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
-        run: cmake --build ./build --target run_tests
+        run: cmake -DCMAKE_C_FLAGS='-O2 -fhardened -Wno-error=hardened' -S. -Bbuild && cmake --build ./build --target all
 
   gcc-13-pedantic:
     if: github.repository_owner == 'aws'
