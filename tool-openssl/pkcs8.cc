@@ -70,15 +70,15 @@ static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "-in", kOptionalArgument, "Input file" },
   { "-out", kOptionalArgument, "Output file" },
+  { "-inform", kOptionalArgument, "Input format (DER or PEM)" },
+  { "-outform", kOptionalArgument, "Output format (DER or PEM)" },
   { "-topk8", kBooleanArgument, "Convert traditional format to PKCS#8" },
   { "-nocrypt", kBooleanArgument, "Use unencrypted private key" },
   { "-v2", kOptionalArgument, "Use PKCS#5 v2.0 and specified cipher" },
   { "-v2prf", kOptionalArgument, "Use specified PRF algorithm with PKCS#5 v2.0" },
   { "-passin", kOptionalArgument, "Input file passphrase source" },
   { "-passout", kOptionalArgument, "Output file passphrase source" },
-  { "-inform", kOptionalArgument, "Input format (DER or PEM)" },
-  { "-outform", kOptionalArgument, "Output format (DER or PEM)" },
-  { "", kOptionalArgument, "" }
+  { "", kOptionalArgument, "" }  // Terminator entry - must be the last one
 };
 
 // Helper function to print OpenSSL errors
