@@ -177,26 +177,35 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
   }
 
   if (!openssl_console_open()) {
-    return -1;
+    return ret;
   }
 
   // Write initial password prompt
-  openssl_console_write(prompt);
+  if (!openssl_console_write(prompt)) {
+    return ret;
+  }
 
-  // Read password with echo disabled
+  // Read password with echo disabled, returns 1 on success, 0 on error, -2 on interrupt
   ret = openssl_console_read(buf, min_length, length, 0);
+  if (ret != 0) {
+    OPENSSL_cleanse(buf, sizeof(buf));
+    OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+    return ret;
+  }
 
-  if (ret > 0 && verify) {
+  if (verify) {
     openssl_console_write("Verifying - ");
     openssl_console_write(prompt);
 
     ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
 
-    if (ret > 0) {
+    if (ret == 0) {
       if (strcmp(buf, verify_buf) != 0) {
         openssl_console_write("Verify failure\n");
         ret = -1;
       }
+    } else {
+      OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
     }
   }
 

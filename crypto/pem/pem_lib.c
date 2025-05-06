@@ -811,13 +811,7 @@ int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
   int min_len = rwflag ? MIN_LENGTH : 0;
 
   int ret = EVP_read_pw_string_min(buf, min_len, size, prompt, rwflag);
-  if (ret != 0) {
-    OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
-    OPENSSL_memset(buf, 0, size);
-    return -1;
-  }
-
-  if (size > INT_MAX) {
+  if (ret != 0 || size > INT_MAX) {
     return 0;
   }
 

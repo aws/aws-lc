@@ -212,19 +212,19 @@ static int openssl_console_echo_enable(void) {
 }
 
 int openssl_console_write(const char *str) {
-    if (!fputs(str, tty_out) || !fflush(tty_out)) {
+    if (fputs(str, tty_out) < 0 || fflush(tty_out) != 0) {
         return 0;
     }
     return 1;
 }
 
+// returns 0 on success, -1 on error, -2 if interrupt signal received
 int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
-    int ok;
+    int ok = 0;
     char *p = NULL;
     int echo_eol = !echo;
 
     intr_signal = 0;
-    ok = 0;
     int phase = 0;
 
     pushsig();
@@ -275,25 +275,22 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
       goto error;
     }
 
+    // check if we see a new line, otherwise clear out remaining input buffer
     if ((p = strchr(buf, '\n')) != NULL) {
         *p = '\0';
     } else if (!read_till_nl(tty_in)) {
         goto error;
     }
 
-    ok = 1;
-
-
-
 error:
     if (intr_signal == SIGINT) {
-        ok = -2;
+        ok = -2; // interrupted
     }
     if (echo_eol) {
         fprintf(tty_out, "\n");
     }
     if (phase >= 2 && !echo && !openssl_console_echo_enable()) {
-        ok = 0;
+        ok = -1; // general errors
     }
     if (phase >= 1) {
         popsig();
