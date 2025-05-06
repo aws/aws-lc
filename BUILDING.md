@@ -240,21 +240,7 @@ See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
 
 # FIPS Mode
 
-AWS-LC can be built in FIPS mode by passing `-DFIPS=1` to the CMake configuration. When built in FIPS mode, AWS-LC implements additional security checks and validations required for FIPS 140-3 compliance.
-
-```bash
-cmake -GNinja -B build -DFIPS=1
-ninja -C build
-```
-
-Important considerations for FIPS mode:
-
-- Static FIPS builds are only supported on Linux platforms. Shared library FIPS builds are supported on both Linux and Windows.
-- Windows Debug builds are not supported with FIPS. Use Release or RelWithDebInfo build types instead.
-- FIPS entropy source can be configured with `-DENABLE_FIPS_ENTROPY_CPU_JITTER=ON`. By default, passive entropy source is used.
-- FIPS failure callback is only supported with static library builds and can be enabled with `-DAWSLC_FIPS_FAILURE_CALLBACK`.
-
-For more information about FIPS compliance and validation status, please contact the AWS-LC team.
+For more details on building AWS-LC in FIPS mode, see the [crypto/fipsmodule/FIPS.md](crypto/fipsmodule/FIPS.md).
 
 # Data Independent Timing on AArch64
 

@@ -118,13 +118,7 @@ that improve the experience for consumers on these platforms.
 
 ### FIPS Compliance
 
-AWS-LC can be built in FIPS mode for compliance with FIPS 140-3 requirements. However, please note that:
-
-- Static FIPS builds are only supported on Linux platforms
-- Shared library FIPS builds are supported on both Linux and Windows
-- Windows Debug builds are not supported with FIPS
-
-For more details on building AWS-LC in FIPS mode, see the [FIPS Mode section in BUILDING.md](BUILDING.md#fips-mode).
+For information about FIPS compliance, building AWS-LC in FIPS mode, and platform limitations, see [crypto/fipsmodule/FIPS.md](crypto/fipsmodule/FIPS.md).
 
 ### Post-Quantum Cryptography
 
