@@ -67,7 +67,7 @@
 
 typedef struct bio_buf_mem_st {
   struct buf_mem_st *buf;   /* allocated buffer */
-  size_t off;
+  size_t read_off;          /* number of bytes already read from the buffer */
 } BIO_BUF_MEM;
 
 
@@ -119,7 +119,7 @@ static int mem_new(BIO *bio) {
 
   // |shutdown| is used to store the close flag: whether the BIO has ownership
   // of the BUF_MEM.
-  bbm->off = 0;
+  bbm->read_off = 0;
   bio->shutdown = 1;
   bio->init = 1;
   bio->num = -1;
@@ -149,13 +149,17 @@ static int mem_free(BIO *bio) {
 }
 
 static int mem_buf_sync(BIO *bio) {
+  if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+    return 0;
+  }
+
   if (bio != NULL && bio->init != 0 && bio->ptr != NULL) {
     BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
     BUF_MEM *b = bbm->buf;
 
     if (b->data != NULL) {
-      OPENSSL_memmove(b->data, &b->data[bbm->off], b->length);
-      bbm->off = 0;
+      OPENSSL_memmove(b->data, &b->data[bbm->read_off], b->length);
+      bbm->read_off = 0;
     }
   }
 
@@ -177,13 +181,18 @@ static int mem_read(BIO *bio, char *out, int outl) {
   }
 
   if (ret > 0) {
-    size_t off = bbm->off;
+    // If the buffer is read-only, |data| is already pointing to the correct
+    // read position. If the buffer is writeable, |data| is pointing to the start
+    // of the buffer, so we need to add |read_off| to get the correct read
+    // position.
     if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-      off = 0;
+      OPENSSL_memcpy(out, b->data, ret);
+    } else {
+      OPENSSL_memcpy(out, &b->data[bbm->read_off], ret);
     }
-    OPENSSL_memcpy(out, &b->data[off], ret);
     b->length -= ret;
-    bbm->off += ret;
+    bbm->read_off += ret;
+
     if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
       b->data += ret;
     }
@@ -234,16 +243,20 @@ static int mem_gets(BIO *bio, char *buf, int size) {
     ret = (int)b->length;
   }
 
-  size_t off = bbm->off;
+  // If the buffer is read-only, |data| is already pointing to the correct
+  // read position. If the buffer is writeable, |data| is pointing to the start
+  // of the buffer, so we need to add |read_off| to get the correct read
+  // position.
+  char *readp = &b->data[bbm->read_off];
   if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-    off = 0;
+    readp = b->data;
   }
 
   // Stop at the first newline.
   if (b->data != NULL) {
-    const char *newline = OPENSSL_memchr(&b->data[off], '\n', ret);
+    const char *newline = OPENSSL_memchr(readp, '\n', ret);
     if (newline != NULL) {
-      ret = (int)(newline - &b->data[off] + 1);
+      ret = (int)(newline - readp + 1);
     }
   }
 
@@ -274,15 +287,16 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       }
       break;
     case BIO_C_FILE_SEEK:
-      if (num < 0 || (size_t)num > bbm->off + b->length)
+      if (num < 0 || (size_t)num > bbm->read_off + b->length) {
         return -1;
-
-      if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-        b->data -= (long)bbm->off - num;
       }
 
-      b->length += (long)bbm->off - num;
-      bbm->off = num;
+      if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+        b->data -= (long)bbm->read_off - num;
+      }
+
+      b->length += (long)bbm->read_off - num;
+      bbm->read_off = num;
       ret = num;
       break;
     case BIO_CTRL_EOF:
@@ -294,9 +308,6 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
     case BIO_CTRL_INFO:
       ret = (long)b->length;
       if (ptr != NULL) {
-        if (!(bio->flags & BIO_FLAGS_MEM_RDONLY)) {
-          mem_buf_sync(bio);
-        }
         char **pptr = ptr;
         *pptr = b->data;
       }

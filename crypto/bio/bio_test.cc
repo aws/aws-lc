@@ -289,6 +289,7 @@ TEST(BIOTest, MemReadOnly) {
   ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("pqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 1);
 
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
   EXPECT_EQ(Bytes(contents, len), Bytes(""));
