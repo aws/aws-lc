@@ -7,22 +7,7 @@
 #include "internal.h"
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
-
-bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2);
-
-RSA* CreateRSAKey();
-
-RSA* CreateRSAKey() {
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
-    return nullptr;
-  }
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  if (!rsa || !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr)) {
-    return nullptr;
-  }
-  return rsa.release();
-}
+#include "rsa_pkcs8_shared.h"
 
 class RSATest : public ::testing::Test {
 protected:
@@ -30,7 +15,7 @@ protected:
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path), 0u);
 
-    bssl::UniquePtr<RSA> rsa(CreateRSAKey());
+    bssl::UniquePtr<RSA> rsa(awslc_test::CreateRSAKey());
     ASSERT_TRUE(rsa);
 
     ScopedFILE in_file(fopen(in_path, "wb"));
@@ -120,7 +105,7 @@ protected:
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
     ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
 
-    rsa.reset(CreateRSAKey());
+    rsa = awslc_test::CreateRSAKey();
     ASSERT_TRUE(rsa);
 
     ScopedFILE in_file(fopen(in_path, "wb"));
@@ -155,10 +140,8 @@ const std::string END = "-----END PRIVATE KEY-----";
 const std::string MODULUS = "Modulus=";
 
 // OpenSSL versions 3.1.0 and later change PEM outputs from "BEGIN RSA PRIVATE KEY" to "BEGIN PRIVATE KEY"
-bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2) {
-  return (content.compare(0, begin1.size(), begin1) == 0 && content.compare(content.size() - end1.size(), end1.size(), end1) == 0) ||
-         (content.compare(0, begin2.size(), begin2) == 0 && content.compare(content.size() - end2.size(), end2.size(), end2) == 0);
-}
+// Using the shared implementation from rsa_pkcs8_shared.h
+using awslc_test::CheckKeyBoundaries;
 
 // Test against OpenSSL output "openssl rsa -in file -modulus"
 // Rsa private key is printed to stdin
@@ -169,10 +152,10 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOpenSSL) {
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   trim(tool_output_str);
-  ASSERT_TRUE(CheckBoundaries(tool_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
+  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
 
   trim(openssl_output_str);
-  ASSERT_TRUE(CheckBoundaries(openssl_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
+  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -noout"
@@ -202,10 +185,10 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
   tool_output_str = ReadFileToString(out_path_tool);
   openssl_output_str = ReadFileToString(out_path_openssl);
   trim(tool_output_str);
-  ASSERT_TRUE(CheckBoundaries(tool_output_str, MODULUS, RSA_END, MODULUS, END));
+  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, MODULUS, RSA_END, MODULUS, END));
 
   trim(openssl_output_str);
-  ASSERT_TRUE(CheckBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
+  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file -noout"

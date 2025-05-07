@@ -74,47 +74,6 @@ inline void RemoveFile(const char* path) {
 // OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
 std::string GetHash(const std::string& str);
 
-// Helper function to decrypt a PEM private key file using the provided password
-inline bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password) {
-  if (!path) {
-    return nullptr;
-  }
-  
-  ScopedFILE file(fopen(path, "r"));
-  if (!file) {
-    return nullptr;
-  }
-  
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_PrivateKey(file.get(), nullptr, nullptr, const_cast<char*>(password)));
-}
-
-// Helper method to compare two EVP_PKEY structures for equality
-// Note: Unlike EVP_PKEY_cmp which only compares public components,
-// this function compares private key components (including private exponent)
-// which is necessary for PKCS8 private key testing.
-inline bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
-  if (!key1 || !key2) return false;
-  if (EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) return false;
-  
-  if (EVP_PKEY_id(key1) == EVP_PKEY_RSA) {
-    RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
-    RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
-    
-    if (!rsa1 || !rsa2) return false;  // Add this null check
-    
-    // Compare modulus, public exponent, and private exponent
-    const BIGNUM *n1, *e1, *d1, *n2, *e2, *d2;
-    RSA_get0_key(rsa1, &n1, &e1, &d1);
-    RSA_get0_key(rsa2, &n2, &e2, &d2);
-    
-    return (BN_cmp(n1, n2) == 0) && 
-           (BN_cmp(e1, e2) == 0) && 
-           (BN_cmp(d1, d2) == 0);
-  }
-  
-  // If not RSA, you could add more key type comparisons here
-  return false;
-}
+// Helper functions DecryptPrivateKey and CompareKeys have been moved to rsa_pkcs8_shared.h/.cc
 
 #endif //TEST_UTIL_H
