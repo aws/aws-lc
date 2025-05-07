@@ -63,14 +63,10 @@ TEST_F(RSATest, RSAToolNooutTest) {
 // -------------------- RSA Option Usage Error Tests --------------------------
 
 class RSAOptionUsageErrorsTest : public RSATest {
+  // Using the shared template implementation for error testing
 protected:
   void TestOptionUsageErrors(const std::vector<std::string>& args) {
-    args_list_t c_args;
-    for (const auto& arg : args) {
-      c_args.push_back(arg.c_str());
-    }
-    bool result = rsaTool(c_args);
-    ASSERT_FALSE(result);
+    awslc_test::TestKeyToolOptionErrors(rsaTool, args);
   }
 };
 
@@ -132,16 +128,17 @@ protected:
 };
 
 
-// RSA boundaries
-const std::string RSA_BEGIN = "-----BEGIN RSA PRIVATE KEY-----";
-const std::string RSA_END = "-----END RSA PRIVATE KEY-----";
-const std::string BEGIN = "-----BEGIN PRIVATE KEY-----";
-const std::string END = "-----END PRIVATE KEY-----";
-const std::string MODULUS = "Modulus=";
-
-// OpenSSL versions 3.1.0 and later change PEM outputs from "BEGIN RSA PRIVATE KEY" to "BEGIN PRIVATE KEY"
-// Using the shared implementation from rsa_pkcs8_shared.h
+// Using the shared implementations from rsa_pkcs8_shared.h
 using awslc_test::CheckKeyBoundaries;
+using awslc_test::key_boundaries::RSA_BEGIN;
+using awslc_test::key_boundaries::RSA_END;
+using awslc_test::key_boundaries::PKCS8_BEGIN;
+using awslc_test::key_boundaries::PKCS8_END;
+
+// Other constants needed for RSA tests
+const std::string MODULUS = "Modulus=";
+const std::string BEGIN = PKCS8_BEGIN; // Alias for readability
+const std::string END = PKCS8_END;     // Alias for readability
 
 // Test against OpenSSL output "openssl rsa -in file -modulus"
 // Rsa private key is printed to stdin

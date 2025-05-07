@@ -157,14 +157,10 @@ TEST_F(PKCS8Test, PKCS8ToolUnsupportedPRFTest) {
 // -------------------- PKCS8 Option Usage Error Tests --------------------------
 
 class PKCS8OptionUsageErrorsTest : public PKCS8Test {
+  // Using the shared template implementation for error testing
 protected:
   void TestOptionUsageErrors(const std::vector<std::string>& args) {
-    args_list_t c_args;
-    for (const auto& arg : args) {
-      c_args.push_back(arg.c_str());
-    }
-    bool result = pkcs8Tool(c_args);
-    ASSERT_FALSE(result);
+    awslc_test::TestKeyToolOptionErrors(pkcs8Tool, args);
   }
 };
 
@@ -247,14 +243,12 @@ protected:
   std::string openssl_output_str;
 };
 
-// PKCS8 boundaries
-const std::string PKCS8_BEGIN = "-----BEGIN PRIVATE KEY-----";
-const std::string PKCS8_END = "-----END PRIVATE KEY-----";
-const std::string ENC_PKCS8_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
-const std::string ENC_PKCS8_END = "-----END ENCRYPTED PRIVATE KEY-----";
-
-// Using the shared implementation from rsa_pkcs8_shared.h
+// Using the shared implementations from rsa_pkcs8_shared.h
 using awslc_test::CheckKeyBoundaries;
+using awslc_test::key_boundaries::PKCS8_BEGIN;
+using awslc_test::key_boundaries::PKCS8_END;
+using awslc_test::key_boundaries::ENC_PKCS8_BEGIN;
+using awslc_test::key_boundaries::ENC_PKCS8_END;
 
 
 // Test against OpenSSL output "openssl pkcs8 -topk8 -nocrypt -in file -out file"
