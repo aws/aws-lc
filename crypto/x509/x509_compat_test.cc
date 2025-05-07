@@ -2344,23 +2344,26 @@ TEST(X509CompatTest, CommonNameToDNS) {
   };
 
   for (CommonNameToDNSTestParam &param : params) {
-    ASN1_STRING *ptr = NULL;
+    ASN1_STRING *asn1_str_ptr = NULL;
     std::vector<uint8_t> cn(param.common_name.begin(), param.common_name.end());
-    ASSERT_GE(ASN1_mbstring_copy(&ptr, cn.data(), cn.size(), MBSTRING_UTF8,
-                                 V_ASN1_IA5STRING),
+    ASSERT_GE(ASN1_mbstring_copy(&asn1_str_ptr, cn.data(), cn.size(),
+                                 MBSTRING_UTF8, V_ASN1_IA5STRING),
               0);
-    bssl::UniquePtr<ASN1_STRING> asn1_cn(ptr);
+    bssl::UniquePtr<ASN1_STRING> asn1_cn(asn1_str_ptr);
     ASSERT_TRUE(asn1_cn);
-    unsigned char *dnsid = NULL;
+    unsigned char *dnsid_ptr = NULL;
     size_t idlen = 0;
-    ASSERT_EQ(X509_V_OK, cn2dnsid(asn1_cn.get(), &dnsid, &idlen));
+    ASSERT_EQ(X509_V_OK, cn2dnsid(asn1_cn.get(), &dnsid_ptr, &idlen));
+    std::unique_ptr<unsigned char, void (*)(unsigned char *)> dnsid(
+        dnsid_ptr, [](unsigned char *ptr) { OPENSSL_free(ptr); });
     if (param.expect_dns) {
-      ASSERT_TRUE(dnsid);
-      std::string dns_name(reinterpret_cast<char *>(dnsid), idlen);
+      ASSERT_TRUE(dnsid.get());
+      std::string dns_name(reinterpret_cast<char *>(dnsid.get()), idlen);
       ASSERT_EQ(param.expected_dns_name, dns_name);
     } else {
-      ASSERT_EQ(nullptr, dnsid);
+      ASSERT_FALSE(dnsid.get());
       ASSERT_EQ((size_t)0, idlen);
     }
   }
 }
+
