@@ -33,13 +33,19 @@ bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2);
 template<typename ToolFunc>
 void TestKeyToolOptionErrors(ToolFunc tool_func, const std::vector<std::string>& args);
 
-namespace key_boundaries {
+// PEM format boundary markers used by various key formats
+namespace pem_markers {
+    // RSA-specific format markers
     extern const std::string RSA_BEGIN;
     extern const std::string RSA_END;
-    extern const std::string PKCS8_BEGIN;
-    extern const std::string PKCS8_END;
-    extern const std::string ENC_PKCS8_BEGIN;
-    extern const std::string ENC_PKCS8_END;
+    
+    // Generic private key format markers (PKCS8 format)
+    extern const std::string PRIVATE_KEY_BEGIN;
+    extern const std::string PRIVATE_KEY_END;
+    
+    // Encrypted private key format markers
+    extern const std::string ENCRYPTED_PRIVATE_KEY_BEGIN;
+    extern const std::string ENCRYPTED_PRIVATE_KEY_END;
 }
 
 } // namespace awslc_test

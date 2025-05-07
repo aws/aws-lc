@@ -130,15 +130,15 @@ protected:
 
 // Using the shared implementations from rsa_pkcs8_shared.h
 using awslc_test::CheckKeyBoundaries;
-using awslc_test::key_boundaries::RSA_BEGIN;
-using awslc_test::key_boundaries::RSA_END;
-using awslc_test::key_boundaries::PKCS8_BEGIN;
-using awslc_test::key_boundaries::PKCS8_END;
+using awslc_test::pem_markers::RSA_BEGIN;
+using awslc_test::pem_markers::RSA_END;
+using awslc_test::pem_markers::PRIVATE_KEY_BEGIN;
+using awslc_test::pem_markers::PRIVATE_KEY_END;
 
 // Other constants needed for RSA tests
 const std::string MODULUS = "Modulus=";
-const std::string BEGIN = PKCS8_BEGIN; // Alias for readability
-const std::string END = PKCS8_END;     // Alias for readability
+const std::string BEGIN = PRIVATE_KEY_BEGIN; // Alias for OpenSSL 3.1.0+ compatibility
+const std::string END = PRIVATE_KEY_END;     // Alias for OpenSSL 3.1.0+ compatibility
 
 // Test against OpenSSL output "openssl rsa -in file -modulus"
 // Rsa private key is printed to stdin

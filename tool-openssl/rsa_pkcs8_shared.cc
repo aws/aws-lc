@@ -109,13 +109,13 @@ bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
     return false;
 }
 
-namespace key_boundaries {
+namespace pem_markers {
     const std::string RSA_BEGIN = "-----BEGIN RSA PRIVATE KEY-----";
     const std::string RSA_END = "-----END RSA PRIVATE KEY-----";
-    const std::string PKCS8_BEGIN = "-----BEGIN PRIVATE KEY-----";
-    const std::string PKCS8_END = "-----END PRIVATE KEY-----";
-    const std::string ENC_PKCS8_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
-    const std::string ENC_PKCS8_END = "-----END ENCRYPTED PRIVATE KEY-----";
+    const std::string PRIVATE_KEY_BEGIN = "-----BEGIN PRIVATE KEY-----";
+    const std::string PRIVATE_KEY_END = "-----END PRIVATE KEY-----";
+    const std::string ENCRYPTED_PRIVATE_KEY_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
+    const std::string ENCRYPTED_PRIVATE_KEY_END = "-----END ENCRYPTED PRIVATE KEY-----";
 }
 
 } // namespace awslc_test
