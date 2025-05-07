@@ -94,6 +94,13 @@ enum random_flavor_t {
 
 // random_flavor determines the randomness function used. This is either
 // getrandom or /dev/urandom. It's protected by |initialize_random_flavor_once|.
+// If both getrandom and /dev/urandom are available, we prefer getrandom. The
+// reasons are:
+//  - getrandom has better blocking semantics than /dev/urandom; Former blocks
+//    on initialization by default.
+//  - getrandom doesn't require a file descriptor.
+//  - Existence of vgetrandom can yield greater performance, see e.g.
+//    https://www.phoronix.com/news/glibc-getrandom-vDSO-Merged.
 static enum random_flavor_t random_flavor = NOT_CHOSEN;
 
 enum random_state_t {
@@ -102,10 +109,19 @@ enum random_state_t {
 };
 
 // random_flavor_state is |STATE_READY| if the entropy pool of |random_flavor|
-// has been (fully) initialized and |STATE_NOT_READY| otherwise. It's protected
-// by |ensure_random_state_is_initialized_once|. Note the state of
-// |random_flavor| only matters for blocking randomness reads. Non-blocking
-// reads ignore the state status.
+// has been (fully) initialized and |STATE_NOT_READY| otherwise. Initialized in
+// in this context means that the implementation of |random_flavor| has decided
+// that enough entropy/noise has been accumulated. It's protected by
+// |ensure_random_state_is_initialized_once|.
+//
+// If |random_flavor_state| has been initialized, we assume it stays
+// initialized forever. That is, we assume "entropy depletion" does not exist.
+// See e.g. https://www.nccgroup.com/us/research-blog/on-linux-s-random-number-generation/
+// for an exposè on entropy depletion.
+//
+// If a consumer requests a non-blocking read of randomness from
+// |random_flavor|, the state |random_flavor_state| is not checked before
+// returning randomness.
 static enum random_state_t random_flavor_state = STATE_NOT_READY;
 
 // urandom_fd is a file descriptor to /dev/urandom. It's protected by
