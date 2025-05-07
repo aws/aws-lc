@@ -141,11 +141,11 @@ static int getrandom_syscall_number_available(void) {
 #endif
 }
 
-// handle_rare_urandom_error initiates exponential backoff. |backoff| holds the
-// previous backoff delay. Initial backoff delay is |INITIAL_BACKOFF_DELAY|.
-// This function will be called so rarely (if ever), that we keep it as a
-// function call and don't care about attempting to inline it.
-static void handle_rare_urandom_error(long *backoff) {
+// do_backoff initiates exponential backoff. |backoff| holds the previous
+// backoff delay. Initial backoff delay is |INITIAL_BACKOFF_DELAY|. This
+// function will be called so rarely (if ever), that we keep it as a function
+// call and don't care about attempting to inline it.
+static void do_backoff(long *backoff) {
 
   // Exponential backoff.
   //
@@ -190,7 +190,7 @@ static ssize_t wrapper_dev_urandom(void *buf, size_t buf_len, int block) {
       // |urandom| fd failed with |errno| != |EINTR|. We regard this as an
       // intermittent error that is recoverable. Therefore, backoff to allow
       // recovery and to avoid creating a tight spinning loop.
-      handle_rare_urandom_error(&backoff);
+      do_backoff(&backoff);
       retry_counter = retry_counter + 1;
     }
   } while (ret == -1);
@@ -218,7 +218,7 @@ static ssize_t wrapper_getrandom(void *buf, size_t buf_len, int block) {
       // |urandom| fd failed with |errno| != |EINTR|. |getrandom| uses |urandom|
       // under the covers. Assuming transitivity, |getrandom| is therefore also
       // subject to the same rare error events.
-      handle_rare_urandom_error(&backoff);
+      do_backoff(&backoff);
       retry_counter = retry_counter + 1;
     }
   } while (ret == -1);
