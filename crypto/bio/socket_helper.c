@@ -51,7 +51,7 @@ int bio_ip_and_port_to_socket_and_addr(int *out_sock,
 
   *out_sock = -1;
 
-  OPENSSL_memset(&hint, 0, sizeof(hint));
+  OPENSSL_cleanse(&hint,sizeof(hint));
   hint.ai_family = AF_UNSPEC;
   hint.ai_socktype = SOCK_STREAM;
 
@@ -72,7 +72,7 @@ int bio_ip_and_port_to_socket_and_addr(int *out_sock,
     if ((size_t) cur->ai_addrlen > sizeof(struct sockaddr_storage)) {
       continue;
     }
-    OPENSSL_memset(out_addr, 0, sizeof(struct sockaddr_storage));
+    OPENSSL_cleanse(out_addr, sizeof(struct sockaddr_storage));
     OPENSSL_memcpy(out_addr, cur->ai_addr, cur->ai_addrlen);
     *out_addr_length = cur->ai_addrlen;
 
@@ -110,12 +110,14 @@ int bio_socket_nbio(int sock, int on) {
 #endif
 }
 
-void bio_clear_socket_error(void) {}
+void bio_clear_socket_error(int sock) {
+  bio_sock_error_get_and_clear(sock);
+}
 
-int bio_sock_error(int sock) {
+int bio_sock_error_get_and_clear(int sock) {
   int error;
   socklen_t error_size = sizeof(error);
-
+  // Get and clear the pending socket error. The SO_ERROR option is read-only.
   if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) < 0) {
     return 1;
   }
