@@ -723,7 +723,7 @@ typedef union bio_addr_st {
 #endif
 } BIO_ADDR;
 
-#define BIO_CTRL_DGRAM_CONNECT       31// BIO dgram special
+#define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
 #define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
                                           * socket to be passed in */
 
@@ -765,12 +765,14 @@ OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer);
 OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer);
 
 // BIO_dgram_recv_timedout returns 1 if the most recent datagram receive
-// operation on |bp| timed out, and a non-positive value otherwise.
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
 OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp);
 
 // BIO_dgram_send_timedout returns 1 if the most recent datagram send
-// operation on |bp| timed out, and a non-positive value otherwise.
-OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO* bp);
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO *bp);
 
 // BIO_dgram_get_peer stores the address of the peer the datagram BIO is
 // connected to in |peer|. It returns 1 on success and a non-positive value on error.

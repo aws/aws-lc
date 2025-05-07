@@ -98,7 +98,7 @@ int bio_socket_nbio(int sock, int on);
 // bio_clear_socket_error clears the last socket error on |sock|.
 void bio_clear_socket_error(int sock);
 
-// bio_sock_error returns the last socket error on |sock|.
+// bio_sock_error_get_and_clear clears and returns the last socket error on |sock|.
 int bio_sock_error_get_and_clear(int sock);
 
 // bio_socket_should_retry returns non-zero if |return_value| indicates an error

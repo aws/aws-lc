@@ -161,7 +161,8 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
                                   BIO_ADDR_sockaddr_noconst(&peer), &len);
 
   if (result < INT_MIN || result > INT_MAX) {
-    abort();
+    OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+    return -1;
   }
   const int ret = result;
 
@@ -194,6 +195,7 @@ static int dgram_free(BIO *bp) {
     }
   }
   bp->init = 0;
+  bp->num = -1;
   bp->flags = 0;
   OPENSSL_free(bp->ptr);
   bp->ptr = NULL;
