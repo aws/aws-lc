@@ -2344,14 +2344,16 @@ TEST(X509CompatTest, CommonNameToDNS) {
   };
 
   for (CommonNameToDNSTestParam &param : params) {
-    ASN1_STRING *asn1_cn = NULL;
+    ASN1_STRING *ptr = NULL;
     std::vector<uint8_t> cn(param.common_name.begin(), param.common_name.end());
-    ASSERT_GE(ASN1_mbstring_copy(&asn1_cn, cn.data(), cn.size(), MBSTRING_UTF8,
+    ASSERT_GE(ASN1_mbstring_copy(&ptr, cn.data(), cn.size(), MBSTRING_UTF8,
                                  V_ASN1_IA5STRING),
               0);
+    bssl::UniquePtr<ASN1_STRING> asn1_cn(ptr);
+    ASSERT_TRUE(asn1_cn);
     unsigned char *dnsid = NULL;
     size_t idlen = 0;
-    ASSERT_EQ(X509_V_OK, cn2dnsid(asn1_cn, &dnsid, &idlen));
+    ASSERT_EQ(X509_V_OK, cn2dnsid(asn1_cn.get(), &dnsid, &idlen));
     if (param.expect_dns) {
       ASSERT_TRUE(dnsid);
       std::string dns_name(reinterpret_cast<char *>(dnsid), idlen);
