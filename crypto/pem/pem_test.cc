@@ -15,6 +15,7 @@
 #include <openssl/pem.h>
 
 #include <gtest/gtest.h>
+#include <signal.h>
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
@@ -25,9 +26,7 @@
 #include <openssl/rsa.h>
 
 #include "../test/test_util.h"
-
-
-#include "../test/test_util.h"
+#include "internal.h"
 
 const char* SECRET = "test";
 
@@ -452,10 +451,7 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   ASSERT_TRUE(pkey_read);
 
   DSA *pkey_dsa = EVP_PKEY_get0_DSA(pkey.get());
-  EXPECT_EQ(0,
-            BN_cmp(DSA_get0_priv_key(pkey_dsa), DSA_get0_priv_key(dsa.get())));
-  EXPECT_EQ(0,
-            BN_cmp(DSA_get0_priv_key(pkey_dsa), DSA_get0_priv_key(dsa.get())));
+  EXPECT_EQ(0, BN_cmp(DSA_get0_priv_key(pkey_dsa), DSA_get0_priv_key(dsa.get())));
 
   // Test |PEM_write_bio_PrivateKey_traditional| with |DH|. This should fail,
   // since it's not supported by the API.
@@ -472,4 +468,272 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   ASSERT_TRUE(EVP_PKEY_set1_DH(pkey.get(), dh.get()));
   EXPECT_FALSE(PEM_write_bio_PrivateKey_traditional(
       write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+}
+
+// Mock stdin/stderr for password tests
+class PemPasswdTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    // Create temporary files for mock stdin/stderr
+    stdin_file = tmpfile();
+    stderr_file = tmpfile();
+    ASSERT_TRUE(stdin_file != nullptr);
+    ASSERT_TRUE(stderr_file != nullptr);
+    
+    // Save original stdin/stderr
+    original_stdin = stdin;
+    original_stderr = stderr;
+    
+    // Redirect stdin/stderr to our temp files
+    stdin = stdin_file;
+    stderr = stderr_file;
+  }
+
+  void TearDown() override {
+    // Restore original stdin/stderr
+    stdin = original_stdin;
+    stderr = original_stderr;
+    
+    // Close temp files
+    if (stdin_file) fclose(stdin_file);
+    if (stderr_file) fclose(stderr_file);
+  }
+
+  void MockStdinInput(const std::string& input) {
+    rewind(stdin_file);
+    ASSERT_GT(fwrite(input.c_str(), 1, input.length(), stdin_file), (size_t)0);
+    rewind(stdin_file);
+  }
+
+  std::string GetStderrOutput() {
+    std::string output;
+    char buf[1024];
+    rewind(stderr_file);
+    while (fgets(buf, sizeof(buf), stderr_file) != nullptr) {
+      output += buf;
+    }
+    return output;
+  }
+
+  FILE* stdin_file = nullptr;
+  FILE* stderr_file = nullptr;
+  FILE* original_stdin = nullptr;
+  FILE* original_stderr = nullptr;
+};
+
+TEST_F(PemPasswdTest, BasicPasswordFlow) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  const char* test_password = "test_password\n";
+  
+  // Mock the password input
+  MockStdinInput(test_password);
+  
+  // Test basic password input without verification
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+  
+  // Verify the password was read correctly
+  ASSERT_STREQ(buf, "test_password");
+  
+  // Verify the prompt was written to stderr
+  std::string output = GetStderrOutput();
+  ASSERT_TRUE(output.find(test_prompt) != std::string::npos);
+}
+
+TEST_F(PemPasswdTest, PasswordVerificationFlow) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  const char* test_password = "test_password\n";
+  
+  // Mock the password input for both initial and verification prompts
+  std::string combined_input = test_password;
+  combined_input += test_password;  // Same password for verification
+  MockStdinInput(combined_input);
+  
+  // Test password input with verification
+  ASSERT_TRUE(openssl_console_open());
+  
+  // First password entry
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  
+  // Verification prompt
+  ASSERT_TRUE(openssl_console_write("Verifying - "));
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  
+  char verify_buf[1024] = {0};
+  ASSERT_EQ(0, openssl_console_read(verify_buf, 0, sizeof(verify_buf), 0));
+  
+  // Verify passwords match
+  ASSERT_STREQ(buf, verify_buf);
+  ASSERT_STREQ(buf, "test_password");
+  
+  ASSERT_TRUE(openssl_console_close());
+  
+  // Verify the prompts were written to stderr
+  std::string output = GetStderrOutput();
+  ASSERT_TRUE(output.find(test_prompt) != std::string::npos);
+  ASSERT_TRUE(output.find("Verifying - ") != std::string::npos);
+}
+
+TEST_F(PemPasswdTest, PasswordVerificationMismatch) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  const char* first_password = "password1\n";
+  const char* second_password = "password2\n";
+  
+  // Mock different passwords for initial and verification prompts
+  std::string combined_input = first_password;
+  combined_input += second_password;
+  MockStdinInput(combined_input);
+  
+  // Test password input with verification
+  ASSERT_TRUE(openssl_console_open());
+  
+  // First password entry
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  
+  // Verification prompt
+  ASSERT_TRUE(openssl_console_write("Verifying - "));
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  
+  char verify_buf[1024] = {0};
+  ASSERT_EQ(0, openssl_console_read(verify_buf, 0, sizeof(verify_buf), 0));
+  
+  // Verify passwords don't match
+  ASSERT_STRNE(buf, verify_buf);
+  ASSERT_STREQ(buf, "password1");
+  ASSERT_STREQ(verify_buf, "password2");
+  
+  ASSERT_TRUE(openssl_console_close());
+  
+  // Verify the prompts were written to stderr
+  std::string output = GetStderrOutput();
+  ASSERT_TRUE(output.find(test_prompt) != std::string::npos);
+  ASSERT_TRUE(output.find("Verifying - ") != std::string::npos);
+}
+
+TEST_F(PemPasswdTest, EmptyPassword) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  const char* empty_password = "\n";
+  
+  // Test with minsize = 0 (should accept empty password)
+  MockStdinInput(empty_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+  ASSERT_STREQ(buf, "");
+  
+  // Test with minsize = 1 (should still read the input but return error)
+  MockStdinInput(empty_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(-1, openssl_console_read(buf, 1, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+}
+
+TEST_F(PemPasswdTest, LongPassword) {
+  const char* test_prompt = "Enter password:";
+  char buf[16] = {0};  // Small buffer to test truncation
+  
+  // Create a password longer than the buffer
+  std::string long_password(32, 'a');
+  long_password += "\n";
+  
+  MockStdinInput(long_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+  
+  // Verify the password was truncated to fit the buffer
+  std::string expected(15, 'a');  // 15 chars + null terminator
+  ASSERT_STREQ(buf, expected.c_str());
+}
+
+TEST_F(PemPasswdTest, MinimumLengthRequirement) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  
+  // Test password shorter than minimum length
+  MockStdinInput("short\n");
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(-1, openssl_console_read(buf, 10, sizeof(buf), 0));  // min length 10
+  ASSERT_TRUE(openssl_console_close());
+  
+  // Test password meeting minimum length
+  MockStdinInput("longenoughpass\n");
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 10, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+  ASSERT_STREQ(buf, "longenoughpass");
+}
+
+TEST_F(PemPasswdTest, EchoModes) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  const char* test_password = "test_password\n";
+  
+  // Test with echo disabled (default)
+  MockStdinInput(test_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));  // echo = 0
+  ASSERT_TRUE(openssl_console_close());
+  ASSERT_STREQ(buf, "test_password");
+  
+  // Test with echo enabled
+  MockStdinInput(test_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 1));  // echo = 1
+  ASSERT_TRUE(openssl_console_close());
+  ASSERT_STREQ(buf, "test_password");
+}
+
+TEST_F(PemPasswdTest, SpecialCharacters) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  
+  // Test various special characters
+  const char* special_password = "!@#$%^&*()\n";
+  MockStdinInput(special_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+  ASSERT_STREQ(buf, "!@#$%^&*()");
+  
+  // Test Unicode characters
+  const char* unicode_password = "パスワード\n";
+  MockStdinInput(unicode_password);
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  ASSERT_EQ(0, openssl_console_read(buf, 0, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
+  ASSERT_STREQ(buf, "パスワード");
+}
+
+TEST_F(PemPasswdTest, SignalHandling) {
+  const char* test_prompt = "Enter password:";
+  char buf[1024] = {0};
+  
+  // Test SIGINT handling
+  MockStdinInput("password\n");
+  ASSERT_TRUE(openssl_console_open());
+  ASSERT_TRUE(openssl_console_write(test_prompt));
+  
+  // Simulate SIGINT
+  raise(SIGINT);
+  
+  ASSERT_EQ(-2, openssl_console_read(buf, 0, sizeof(buf), 0));
+  ASSERT_TRUE(openssl_console_close());
 }
