@@ -231,6 +231,14 @@ static const std::unordered_set<std::string> kSupportedPRFs = {
     "hmacWithSHA1"  // Currently the only supported PRF in AWS-LC
 };
 
+// Validates a key format string (PEM or DER)
+static bool validate_key_format(const std::string& format, const char* option_name) {
+  if (format != "PEM" && format != "DER") {
+    return REPORT_ERROR("'-%s' option must specify a valid encoding DER|PEM", option_name);
+  }
+  return true;
+}
+
 // SECURITY: Validates cipher algorithm against security allowlist
 static bool validate_cipher(const std::string& cipher_name) {
     if (kSupportedCiphers.find(cipher_name) == kSupportedCiphers.end()) {
@@ -377,12 +385,8 @@ bool pkcs8Tool(const args_list_t &args) {
   GetString(&outform, "-outform", "PEM", parsed_args);
   
   // SECURITY: Validate formats
-  if (inform != "PEM" && inform != "DER") {
-    return REPORT_ERROR("'-inform' option must specify a valid encoding DER|PEM");
-  }
-  
-  if (outform != "PEM" && outform != "DER") {
-    return REPORT_ERROR("'-outform' option must specify a valid encoding DER|PEM");
+  if (!validate_key_format(inform, "inform") || !validate_key_format(outform, "outform")) {
+    return false;
   }
 
   if (in_path.empty()) {
@@ -452,90 +456,108 @@ bool pkcs8Tool(const args_list_t &args) {
                           "Failed to read private key. Check that the file contains a valid key and the password (if any) is correct");
   }
 
-  bool result = false;
-
-  if (topk8) {
-    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
-    if (!p8inf) {
+  // Process the key based on user options
+  if (!topk8) {
+    // Case 1: Traditional format - simplest path
+    bool result = write_key_bio(out_bio.get(), pkey.get(), outform);
+    if (!result) {
       print_errors();
-      return cleanup_and_fail(passin_password, passout_password, "Failed to convert key to PKCS#8 format");
+      return cleanup_and_fail(passin_password, passout_password, "Failed to write private key in traditional format");
     }
-
-    if (nocrypt) {
-      // Handle output format using helper function for unencrypted PKCS8
-      ERR_clear_error();
-      if (outform == "PEM") {
-        result = PEM_write_bio_PKCS8_PRIV_KEY_INFO(out_bio.get(), p8inf.get());
-      } else { // DER
-        result = i2d_PKCS8_PRIV_KEY_INFO_bio(out_bio.get(), p8inf.get());
-      }
-      
-      if (!result) {
-        REPORT_ERROR("Failed to write PKCS8 private key info in %s format", outform.c_str());
-        ERR_print_errors_fp(stderr);
-      }
-    } else {
-      // When -topk8 is used without -nocrypt, we're encrypting the key
-      const EVP_CIPHER *cipher = nullptr;
-      
-      // If -v2 is specified, it must have a value
-      if (parsed_args.count("-v2") > 0) {
-        if (v2_cipher.empty()) {
-          return cleanup_and_fail(passin_password, passout_password, 
-                                "-v2 option requires a cipher name argument");
-        }
-        
-        // SECURITY: Already validated the cipher above
-        cipher = EVP_get_cipherbyname(v2_cipher.c_str());
-        if (!cipher) {
-          // Should not happen if validation passed, but handle as a fallback
-          return cleanup_and_fail(passin_password, passout_password, 
-                                "Failed to initialize cipher");
-        }
-      } else {
-        // If -topk8 is used without -nocrypt and without explicit -v2,
-        // we still use PKCS#5 v2.0 with the default cipher
-        cipher = EVP_aes_256_cbc();
-      }
-
-      if (!v2_prf.empty()) {
-        // SECURITY: PRF already validated above
-        int pbe_nid = OBJ_txt2nid(v2_prf.c_str());
-        if (pbe_nid == NID_undef) {
-          return cleanup_and_fail(passin_password, passout_password, 
-                                "Unknown PRF algorithm");
-        }
-        // This check is kept for compatibility with existing code
-        if (pbe_nid != NID_hmacWithSHA1) {
-          return cleanup_and_fail(passin_password, passout_password,
-                                "AWS-LC only supports hmacWithSHA1 as the PRF algorithm");
-        }
-      }
-
-      if (!passout) {
-        return cleanup_and_fail(passin_password, passout_password, 
-                              "-passout must be provided for encryption");
-      }
-
-      // Handle encrypted output for different formats
-      if (outform == "PEM") {
-        result = PEM_write_bio_PKCS8PrivateKey(out_bio.get(), pkey.get(), 
-                                             cipher, passout, strlen(passout),
-                                             nullptr, nullptr);
-      } else { // DER
-        result = i2d_PKCS8PrivateKey_bio(out_bio.get(), pkey.get(),
-                                        cipher, passout, strlen(passout),
-                                        nullptr, nullptr);
-      }
+    
+    // Ensure data is flushed to disk
+    BIO_flush(out_bio.get());
+    
+    // SECURITY: Clear passwords before returning
+    secure_clear_string(passin_password);
+    secure_clear_string(passout_password);
+    return true;
+  }
+  
+  // For all topk8 cases, we need to convert to PKCS8 format first
+  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
+  if (!p8inf) {
+    print_errors();
+    return cleanup_and_fail(passin_password, passout_password, "Failed to convert key to PKCS#8 format");
+  }
+  
+  // Case 2: Unencrypted PKCS8 output
+  if (nocrypt) {
+    ERR_clear_error();
+    bool result;
+    
+    if (outform == "PEM") {
+      result = PEM_write_bio_PKCS8_PRIV_KEY_INFO(out_bio.get(), p8inf.get());
+    } else { // DER
+      result = i2d_PKCS8_PRIV_KEY_INFO_bio(out_bio.get(), p8inf.get());
+    }
+    
+    if (!result) {
+      REPORT_ERROR("Failed to write PKCS8 private key info in %s format", outform.c_str());
+      print_errors();
+      return cleanup_and_fail(passin_password, passout_password, "Failed to write unencrypted PKCS8 key");
+    }
+    
+    BIO_flush(out_bio.get());
+    secure_clear_string(passin_password);
+    secure_clear_string(passout_password);
+    return true;
+  }
+  
+  // Case 3: Encrypted PKCS8 output
+  
+  // Passphrase is required for encryption
+  if (!passout) {
+    return cleanup_and_fail(passin_password, passout_password, "-passout must be provided for encryption");
+  }
+  
+  // Determine which cipher to use
+  const EVP_CIPHER *cipher = nullptr;
+  bool v2_specified = parsed_args.count("-v2") > 0;
+  
+  if (v2_specified) {
+    if (v2_cipher.empty()) {
+      return cleanup_and_fail(passin_password, passout_password, "-v2 option requires a cipher name argument");
+    }
+    
+    // Already validated above
+    cipher = EVP_get_cipherbyname(v2_cipher.c_str());
+    if (!cipher) {
+      // Should not happen if validation passed, but handle as a fallback
+      return cleanup_and_fail(passin_password, passout_password, "Failed to initialize cipher");
     }
   } else {
-    // Use the write_key_bio utility for traditional key format
-    result = write_key_bio(out_bio.get(), pkey.get(), outform);
+    // Default cipher if not specified
+    cipher = EVP_aes_256_cbc();
   }
-
+  
+  // Handle PRF if specified
+  if (!v2_prf.empty()) {
+    int pbe_nid = OBJ_txt2nid(v2_prf.c_str());
+    if (pbe_nid == NID_undef) {
+      return cleanup_and_fail(passin_password, passout_password, "Unknown PRF algorithm");
+    }
+    // This check is kept for compatibility with existing code
+    if (pbe_nid != NID_hmacWithSHA1) {
+      return cleanup_and_fail(passin_password, passout_password, "AWS-LC only supports hmacWithSHA1 as the PRF algorithm");
+    }
+  }
+  
+  // Write the encrypted key in the appropriate format
+  bool result;
+  if (outform == "PEM") {
+    result = PEM_write_bio_PKCS8PrivateKey(out_bio.get(), pkey.get(), 
+                                         cipher, passout, strlen(passout),
+                                         nullptr, nullptr);
+  } else { // DER
+    result = i2d_PKCS8PrivateKey_bio(out_bio.get(), pkey.get(),
+                                    cipher, passout, strlen(passout),
+                                    nullptr, nullptr);
+  }
+  
   if (!result) {
     print_errors();
-    return cleanup_and_fail(passin_password, passout_password, "Failed to write private key");
+    return cleanup_and_fail(passin_password, passout_password, "Failed to write encrypted private key");
   }
 
   // Ensure data is flushed to disk
