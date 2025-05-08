@@ -783,6 +783,10 @@ TEST_F(randIsolatedTest, RngKatWithUbe) {
     GTEST_SKIP() << "Test not supported when UBE is not supported";
   }
 
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
   auto runTest = [](RngKatTestUtils::TestType type) {
     RngKatTestUtils::RngKatTestEnv env(type);
     exit(env.runTest() ? 0 : 1);
@@ -801,6 +805,10 @@ TEST_F(randIsolatedTest, RngKatWithUbe) {
 TEST_F(randIsolatedTest, RngKatNoUbe) {
   if (UbeIsSupported()) {
     GTEST_SKIP() << "Test not supported when UBE is supported";
+  }
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
   }
 
   auto runTest = [](RngKatTestUtils::TestType type) {
