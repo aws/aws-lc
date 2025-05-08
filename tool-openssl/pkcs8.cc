@@ -44,10 +44,8 @@ struct BIOValidationParams {
 
 // Define all PKCS8 errors with X-Macro pattern
 #define PKCS8_ERRORS(X) \
-    X(NONE,              nullptr,                                                                       false, GENERAL) \
     X(FILE_TOO_LARGE,    "File exceeds maximum allowed size of %ld bytes",                               true, FILE) \
     X(CANNOT_OPEN_FILE,  "Could not open file: %s",                                                      true, FILE) \
-    X(FILE_SIZE_CHECK,   "File size validation failed for: %s",                                          true, FILE) \
     X(CANNOT_OPEN_WRITE, "Could not open file for writing",                                             false, FILE) \
     X(INVALID_FORMAT,    "'-%s' option must specify a valid encoding DER|PEM",                           true, FORMAT) \
     X(MISSING_ARGUMENT,  "missing required argument '-in'",                                              true, ARGUMENT) \
@@ -205,7 +203,7 @@ static bool write_key_bio(BIO* bio, EVP_PKEY* pkey, const std::string& format) {
     if (!result) {
         return REPORT_ERROR(PKCS8_ERR_FAILED_WRITE_KEY, format.c_str());
     }
-    return result;
+    return true;
 }
 
 // Extract and validate password from various sources
