@@ -1658,7 +1658,7 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		if *mallocTestDebug {
 			env = append(env, "MALLOC_BREAK_ON_FAIL=1")
 		}
-		env = append(env, "_MALLOC_CHECK=1")
+		env = append(env, "MALLOC_CHECK_=1")
 	}
 
 	shim, err := newShimProcess(dispatcher, shimPath, flags, env)

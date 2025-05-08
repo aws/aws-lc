@@ -562,7 +562,9 @@ static bool SpeedEvpGenericChunk(const EVP_CIPHER *cipher, std::string name,
       result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
     }
     result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+    int ciphertext_len = *len_ptr;
     result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    ciphertext_len += *len_ptr;
     if(isAead) {
       result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
     }
@@ -580,16 +582,16 @@ static bool SpeedEvpGenericChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isAead, &result]() -> bool {
+    if (!TimeFunction(&decryptResults, [&ctx, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isAead, &result, &ciphertext_len]() -> bool {
       result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
       if(isAead) {
         result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
       }
-      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len);
+      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, ciphertext_len);
       if (isAead) {
         result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag);
       }
-      result &= EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      result &= EVP_DecryptFinal_ex(ctx.get(), plaintext + *len_ptr, len_ptr);
       return result;
     })) {
       fprintf(stderr, "%s failed.\n", decryptName.c_str());
@@ -2875,6 +2877,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedEvpCipherGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_128_cbc(), "EVP-AES-128-CBC", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_192_cbc(), "EVP-AES-192-CBC", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_256_cbc(), "EVP-AES-256-CBC", kTLSADLen, selected) ||
        !SpeedAES256XTS("AES-256-XTS", selected) ||
 #if !defined(OPENSSL_3_0_BENCHMARK)
        // OpenSSL 3.0 deprecated RC4

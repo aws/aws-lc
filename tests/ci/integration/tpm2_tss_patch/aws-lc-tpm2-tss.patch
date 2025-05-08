@@ -1,17 +1,18 @@
-From e867fd70195c99a5d2d0f39f8bc7d4641304a53a Mon Sep 17 00:00:00 2001
+From 6eb70474d5767afc3a9111cfbfab8ed83f673d87 Mon Sep 17 00:00:00 2001
 From: Justin W Smith <justsmth@amazon.com>
-Date: Thu, 11 Jul 2024 09:49:35 -0400
-Subject: [PATCH] aws-lc-tpm2-tss.patch
+Date: Fri, 25 Apr 2025 21:18:07 +0000
+Subject: [PATCH] AWS-LC support
 
 ---
- configure.ac                     | 6 ------
- src/tss2-esys/esys_crypto_ossl.c | 2 +-
- src/tss2-fapi/ifapi_curl.c       | 6 +++---
- test/unit/fapi-eventlog.c        | 8 +++++---
- 4 files changed, 9 insertions(+), 13 deletions(-)
+ configure.ac                            | 6 ------
+ src/tss2-esys/esys_crypto_ossl.c        | 2 +-
+ src/tss2-fapi/ifapi_curl.c              | 8 ++++----
+ src/tss2-fapi/ifapi_verify_cert_chain.c | 2 +-
+ test/unit/fapi-eventlog.c               | 8 +++++---
+ 5 files changed, 11 insertions(+), 15 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index eb6051ea..7051e51c 100644
+index 6cc3efc8..9029383d 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -189,12 +189,6 @@ AS_IF([test "x$enable_esys" = xyes],
@@ -41,10 +42,10 @@ index 15e534ce..75043897 100644
          goto_error(r, TSS2_ESYS_RC_GENERAL_FAILURE,
                     "Could not set RSA label.", cleanup);
 diff --git a/src/tss2-fapi/ifapi_curl.c b/src/tss2-fapi/ifapi_curl.c
-index 18f4a9ff..d68450b8 100644
+index 75e81141..79f77fdf 100644
 --- a/src/tss2-fapi/ifapi_curl.c
 +++ b/src/tss2-fapi/ifapi_curl.c
-@@ -88,13 +88,13 @@ get_crl_from_cert(X509 *cert, X509_CRL **crl)
+@@ -88,13 +88,13 @@ ifapi_get_crl_from_cert(X509 *cert, X509_CRL **crl)
      int curl_rc;
  
      *crl = NULL;
@@ -60,7 +61,7 @@ index 18f4a9ff..d68450b8 100644
              {
                  GENERAL_NAME *gen_name = sk_GENERAL_NAME_value(distpoint->name.fullname, j);
                  ASN1_IA5STRING *asn1_str = gen_name->d.uniformResourceIdentifier;
-@@ -171,7 +171,7 @@ ifapi_curl_verify_ek_cert(
+@@ -179,7 +179,7 @@ ifapi_curl_verify_ek_cert(
      X509_STORE_CTX *ctx = NULL;
      X509_CRL *crl_intermed = NULL;
      X509_CRL *crl_ek = NULL;
@@ -69,6 +70,28 @@ index 18f4a9ff..d68450b8 100644
      size_t ui;
      AUTHORITY_INFO_ACCESS *info = NULL;
      ASN1_IA5STRING *uri = NULL;
+@@ -463,7 +463,7 @@ ifapi_get_curl_buffer(unsigned char * url, unsigned char ** buffer,
+         goto out_easy_cleanup;
+     }
+ 
+-    rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
++    rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+     if (rc != CURLE_OK) {
+         LOG_ERROR("curl_easy_setopt for CURLOPT_FOLLOWLOCATION failed: %s",
+                   curl_easy_strerror(rc));
+diff --git a/src/tss2-fapi/ifapi_verify_cert_chain.c b/src/tss2-fapi/ifapi_verify_cert_chain.c
+index b495e512..c741c8ad 100644
+--- a/src/tss2-fapi/ifapi_verify_cert_chain.c
++++ b/src/tss2-fapi/ifapi_verify_cert_chain.c
+@@ -64,7 +64,7 @@ char* get_issuer_url(X509 *cert) {
+     AUTHORITY_INFO_ACCESS *info = X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
+     if (!info) return NULL;
+ 
+-    for (int i = 0; i < sk_ACCESS_DESCRIPTION_num(info); i++) {
++    for (size_t i = 0; i < sk_ACCESS_DESCRIPTION_num(info); i++) {
+         ACCESS_DESCRIPTION *ad = sk_ACCESS_DESCRIPTION_value(info, i);
+         if (OBJ_obj2nid(ad->method) == NID_ad_ca_issuers && ad->location->type == GEN_URI) {
+             ASN1_IA5STRING *uri = ad->location->d.uniformResourceIdentifier;
 diff --git a/test/unit/fapi-eventlog.c b/test/unit/fapi-eventlog.c
 index 3b859e39..796894ee 100644
 --- a/test/unit/fapi-eventlog.c
