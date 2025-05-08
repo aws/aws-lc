@@ -37,16 +37,34 @@ struct BIOValidationParams {
         : max_size(DEFAULT_MAX_CRYPTO_FILE_SIZE) {}
 };
 
-// Simple helper function for reporting errors
+// Define PKCS8 reason codes for the CLI tool
+#ifndef PKCS8_R_CLI_ERROR
+#define PKCS8_R_CLI_ERROR 100
+#endif
+
+// Helper function for reporting errors from the PKCS8 CLI tool
 static bool report_error(const char* format, ...) {
-  fprintf(stderr, "Error: ");
+  // Log to OpenSSL error queue with PKCS8 library code
+  OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_CLI_ERROR);
+  
+  // Format the message
   va_list args;
   va_start(args, format);
-  vfprintf(stderr, format, args);
+  char buffer[512];
+  vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
-  fprintf(stderr, "\n");
+  
+  // Add detailed error data to OpenSSL error queue
+  ERR_add_error_data(1, buffer);
+  
+  // Print user-friendly error to stderr
+  fprintf(stderr, "PKCS8 CLI Error: %s\n", buffer);
   return false;
 }
+
+// Macro for reporting errors from the PKCS8 CLI tool
+#define REPORT_ERROR(format, ...) \
+    report_error(format, ##__VA_ARGS__)
 
 // Zero sensitive data from memory using volatile to prevent optimization
 static void secure_clear_string(std::string& str) {
@@ -75,7 +93,7 @@ static bool validate_bio_size(BIO* bio, const BIOValidationParams& params = BIOV
     // Allow empty files by default
     
     if (size > params.max_size) {
-        return report_error("File exceeds maximum allowed size of %ld bytes", params.max_size);
+        return REPORT_ERROR("File exceeds maximum allowed size of %ld bytes", params.max_size);
     }
     
     // Always verify file is readable by reading first byte
@@ -103,7 +121,7 @@ static bool write_key_bio(BIO* bio, EVP_PKEY* pkey, const std::string& format) {
         i2d_PrivateKey_bio(bio, pkey);
     
     if (!result) {
-        report_error("Failed to write private key in %s format", format.c_str());
+        REPORT_ERROR("Failed to write private key in %s format", format.c_str());
         ERR_print_errors_fp(stderr);
     }
     return result;
@@ -121,7 +139,7 @@ static bool extract_password(const std::string& source, std::string* out_passwor
         std::string password = source.substr(5);
         
         if (password.length() > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
-            return report_error("Password exceeds maximum allowed length of %zu characters", 
+            return REPORT_ERROR("Password exceeds maximum allowed length of %zu characters", 
                     DEFAULT_MAX_SENSITIVE_STRING_LENGTH);
         }
         
@@ -135,7 +153,7 @@ static bool extract_password(const std::string& source, std::string* out_passwor
         bssl::UniquePtr<BIO> file_bio(BIO_new_file(path.c_str(), "r"));
         
         if (!file_bio) {
-            return report_error("Could not open password file '%s'", path.c_str());
+            return REPORT_ERROR("Could not open password file '%s'", path.c_str());
         }
         
         // Use fixed-size buffer with secure clearing
@@ -145,7 +163,7 @@ static bool extract_password(const std::string& source, std::string* out_passwor
         int len = BIO_gets(file_bio.get(), buf, sizeof(buf));
         if (len <= 0) {
             OPENSSL_cleanse(buf, sizeof(buf));
-            return report_error("Could not read from password file");
+            return REPORT_ERROR("Could not read from password file");
         }
         
         // Remove trailing newline if present
@@ -175,17 +193,17 @@ static bool extract_password(const std::string& source, std::string* out_passwor
         
         // Validate environment variable name is not empty
         if (env_var.empty()) {
-            return report_error("Empty environment variable name in 'env:' format");
+            return REPORT_ERROR("Empty environment variable name in 'env:' format");
         }
         
         const char* env_value = getenv(env_var.c_str());
         if (!env_value) {
-            return report_error("Environment variable '%s' not set or inaccessible", 
+            return REPORT_ERROR("Environment variable '%s' not set or inaccessible", 
                     env_var.c_str());
         }
         
         if (strlen(env_value) > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
-            return report_error("Password from environment variable '%s' exceeds maximum allowed length of %zu characters", 
+            return REPORT_ERROR("Password from environment variable '%s' exceeds maximum allowed length of %zu characters", 
                    env_var.c_str(), DEFAULT_MAX_SENSITIVE_STRING_LENGTH);
         }
         
@@ -198,7 +216,7 @@ static bool extract_password(const std::string& source, std::string* out_passwor
     // interactively using EVP_read_pw_string or similar functionality.
     // See OpenSSL implementation in crypto/pem/pem_lib.c
     
-    return report_error("Unsupported password format. Use pass:, file:, or env: prefix.");
+    return REPORT_ERROR("Unsupported password format. Use pass:, file:, or env: prefix.");
 }
 
 // SECURITY: Define allowlists of supported ciphers and PRF algorithms
@@ -216,7 +234,7 @@ static const std::unordered_set<std::string> kSupportedPRFs = {
 // SECURITY: Validates cipher algorithm against security allowlist
 static bool validate_cipher(const std::string& cipher_name) {
     if (kSupportedCiphers.find(cipher_name) == kSupportedCiphers.end()) {
-        report_error("Unsupported cipher algorithm: %s", cipher_name.c_str());
+        REPORT_ERROR("Unsupported cipher algorithm: %s", cipher_name.c_str());
         fprintf(stderr, "Supported ciphers are:\n");
         for (const auto& cipher : kSupportedCiphers) {
             fprintf(stderr, "  %s\n", cipher.c_str());
@@ -229,7 +247,7 @@ static bool validate_cipher(const std::string& cipher_name) {
 // SECURITY: Validates PRF algorithm against security allowlist
 static bool validate_prf(const std::string& prf_name) {
     if (kSupportedPRFs.find(prf_name) == kSupportedPRFs.end()) {
-        report_error("Unsupported PRF algorithm: %s", prf_name.c_str());
+        REPORT_ERROR("Unsupported PRF algorithm: %s", prf_name.c_str());
         fprintf(stderr, "AWS-LC only supports the following PRF algorithms:\n");
         for (const auto& prf : kSupportedPRFs) {
             fprintf(stderr, "  %s\n", prf.c_str());
@@ -247,7 +265,7 @@ static bool cleanup_and_fail(std::string& passin,
     // SECURITY: Ensure passwords are securely cleared from memory
     secure_clear_string(passin);
     secure_clear_string(passout);
-    return report_error("%s", error_msg);
+    return REPORT_ERROR("%s", error_msg);
 }
 
 static const argument_t kArguments[] = {
@@ -273,7 +291,7 @@ static void print_errors() {
 // SECURITY: Helper function to read a private key in any format with validation
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, const std::string& format) {
   if (!in_bio) {
-    report_error("Null BIO handle in read_private_key");
+    REPORT_ERROR("Null BIO handle in read_private_key");
     return nullptr;
   }
   
@@ -360,28 +378,28 @@ bool pkcs8Tool(const args_list_t &args) {
   
   // SECURITY: Validate formats
   if (inform != "PEM" && inform != "DER") {
-    return report_error("'-inform' option must specify a valid encoding DER|PEM");
+    return REPORT_ERROR("'-inform' option must specify a valid encoding DER|PEM");
   }
   
   if (outform != "PEM" && outform != "DER") {
-    return report_error("'-outform' option must specify a valid encoding DER|PEM");
+    return REPORT_ERROR("'-outform' option must specify a valid encoding DER|PEM");
   }
 
   if (in_path.empty()) {
-    return report_error("missing required argument '-in'");
+    return REPORT_ERROR("missing required argument '-in'");
   }
 
   // Create input BIO with validation
   bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path.c_str(), "rb"));
   if (!in_bio) {
-    report_error("Could not open file: %s", in_path.c_str());
+    REPORT_ERROR("Could not open file: %s", in_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
   }
 
   // Validate file size to prevent DoS attacks
   if (!validate_bio_size(in_bio.get())) {
-    return report_error("File size validation failed for: %s", in_path.c_str());
+    return REPORT_ERROR("File size validation failed for: %s", in_path.c_str());
   }
 
   // Create output BIO
@@ -393,7 +411,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
   
   if (!out_bio) {
-    report_error("Could not open file for writing");
+    REPORT_ERROR("Could not open file for writing");
     ERR_print_errors_fp(stderr);
     return false;
   }
@@ -453,7 +471,7 @@ bool pkcs8Tool(const args_list_t &args) {
       }
       
       if (!result) {
-        report_error("Failed to write PKCS8 private key info in %s format", outform.c_str());
+        REPORT_ERROR("Failed to write PKCS8 private key info in %s format", outform.c_str());
         ERR_print_errors_fp(stderr);
       }
     } else {
