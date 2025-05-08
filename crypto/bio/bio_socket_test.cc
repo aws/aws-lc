@@ -156,13 +156,6 @@ class OwnedSocket {
     return temp;
   }
 
-  int type() const {
-    int type = 0;
-    socklen_t length = sizeof(int);
-    getsockopt(get(), SOL_SOCKET, SO_TYPE, (char *)&type, &length);
-    return type;
-  }
-
   SockaddrStorage storage() const {
     SockaddrStorage server_addr;
     if (0 != getsockname(get(), server_addr.addr_mut(), &server_addr.len)) {
@@ -202,7 +195,7 @@ static OwnedSocket Bind(const int family, const int type, const sockaddr *addr,
 static int prepare_unix_domain_socket(sockaddr_un *sun) {
   assert(sun != NULL);
 
-  OPENSSL_cleanse(sun, sizeof(sun));
+  OPENSSL_cleanse(sun, sizeof(struct sockaddr_un));
   sun->sun_family = AF_UNIX;
 
   char dir_buffer[PATH_MAX] = {0};
@@ -248,7 +241,6 @@ static OwnedSocket ListenLoopback(int type, int addr_family = 0,
     sin.sin_family = AF_INET;
     if (inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr) != 1) {
       ADD_FAILURE() << LastSocketError();
-      return OwnedSocket();
       return OwnedSocket();
     }
     sock = Bind(AF_INET, type, reinterpret_cast<const sockaddr *>(&sin),
@@ -545,6 +537,7 @@ static void test_puts_receive(bssl::UniquePtr<BIO> &sender_bio,
   ASSERT_EQ((int)strlen(kTestMessage),
             BIO_read(receiver_bio.get(), buff, sizeof(buff)))
       << LastSocketError();
+  buff[strlen(kTestMessage)] = '\0';
 
   // Verify the message received matches the message sent.
   ASSERT_EQ(Bytes(buff), Bytes(kTestMessage));
