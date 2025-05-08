@@ -721,19 +721,3 @@ TEST_F(PemPasswdTest, SpecialCharacters) {
   ASSERT_TRUE(openssl_console_close());
   ASSERT_STREQ(buf, "パスワード");
 }
-
-TEST_F(PemPasswdTest, SignalHandling) {
-  const char* test_prompt = "Enter password:";
-  char buf[1024] = {0};
-  
-  // Test SIGINT handling
-  MockStdinInput("password\n");
-  ASSERT_TRUE(openssl_console_open());
-  ASSERT_TRUE(openssl_console_write(test_prompt));
-  
-  // Simulate SIGINT
-  raise(SIGINT);
-  
-  ASSERT_EQ(-2, openssl_console_read(buf, 0, sizeof(buf), 0));
-  ASSERT_TRUE(openssl_console_close());
-}

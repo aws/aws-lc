@@ -244,19 +244,18 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
 
         if (ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE),
                      wresult, maxsize, &numread, NULL)) {
-            if (numread >= 2 &&
-                wresult[numread-2] == L'\r' &&
+            if (numread >= 2 && wresult[numread-2] == L'\r' &&
                 wresult[numread-1] == L'\n') {
                 wresult[numread-2] = L'\n';
                 numread--;
             }
             wresult[numread] = '\0';
-            if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1,
-                                    buf, maxsize + 1, NULL, 0) > 0)
+            if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1, buf, maxsize + 1, NULL, 0) > 0) {
                 p = buf;
-
+            }
             OPENSSL_cleanse(wresult, sizeof(wresult));
         }
+    }
 //#   endif
 //        if (ReadConsoleA(GetStdHandle(STD_INPUT_HANDLE),
 //                         buf, maxsize, &numread, NULL)) {
@@ -272,6 +271,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
 #  endif
     p = fgets(buf, maxsize, tty_in);
     if (p == NULL || feof(tty_in) || ferror(tty_in)) {
+      ok = -1;
       goto error;
     }
 
@@ -279,6 +279,14 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     if ((p = strchr(buf, '\n')) != NULL) {
         *p = '\0';
     } else if (!read_till_nl(tty_in)) {
+        ok = -1;
+        goto error;
+    }
+
+    // Validate input length meets minimum requirement
+    size_t input_len = strlen(buf);
+    if (input_len < (size_t)minsize) {
+        ok = -1;
         goto error;
     }
 
