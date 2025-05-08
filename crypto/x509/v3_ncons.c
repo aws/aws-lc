@@ -305,6 +305,132 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
   return X509_V_OK;
 }
 
+int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
+  assert(dnsid != NULL && idlen != NULL);
+
+  // Don't leave outputs uninitialized
+  *dnsid = NULL;
+  *idlen = 0;
+  
+  // Per RFC 6125, DNS-IDs representing internationalized domain names appear
+  // in certificates in A-label encoded form:
+  //
+  // https://tools.ietf.org/html/rfc6125#section-6.4.2
+  //
+  // The same applies to CNs which are intended to represent DNS names.
+  // However, while in the SAN DNS-IDs are IA5Strings, as CNs they may be
+  // needlessly encoded in 16-bit Unicode.  We perform a conversion to UTF-8
+  // to ensure that we get an ASCII representation of any CNs that are
+  // representable as ASCII, but just not encoded as ASCII.  The UTF-8 form
+  // may contain some non-ASCII octets, and that's fine, such CNs are not
+  // valid legacy DNS names.
+  //
+  // Note, 'int' is the return type of ASN1_STRING_to_UTF8() so that's what
+  // we must use for 'utf8_length'.
+  unsigned char *utf8_value;
+  int utf8_length = ASN1_STRING_to_UTF8(&utf8_value, cn);
+  if (utf8_length < 0) {
+    return X509_V_ERR_OUT_OF_MEM;
+  }
+  
+  // Some certificates have had names that include a *trailing* NUL byte.
+  // Remove these harmless NUL characters. They would otherwise yield false
+  // alarms with the following embedded NUL check.
+  while (utf8_length > 0 && utf8_value[utf8_length - 1] == '\0') {
+    --utf8_length;
+  }
+
+  // Reject *embedded* NULs
+  if (OPENSSL_memchr(utf8_value, 0, utf8_length) != NULL) {
+    OPENSSL_free(utf8_value);
+    return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+  }
+
+  int isdnsname = 0;
+  
+  // XXX: Deviation from strict DNS name syntax, also check names with '_'
+  // Check DNS name syntax, any '-' or '.' must be internal,
+  // and on either side of each '.' we can't have a '-' or '.'.
+  //
+  // If the name has just one label, we don't consider it a DNS name.  This
+  // means that "CN=sometld" cannot be precluded by DNS name constraints, but
+  // that is not a problem.
+  for (int i = 0; i < utf8_length; ++i) {
+    const unsigned char c = utf8_value[i];
+
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9') || c == '_') {
+      continue;
+    }
+
+    // Dot and hyphen cannot be first or last.
+    if (i > 0 && i < utf8_length - 1) {
+      if (c == '-') {
+        continue;
+      }
+      
+      // Next to a dot the preceding and following characters must not be
+      // another dot or a hyphen.  Otherwise, record that the name is
+      // plausible, since it has two or more labels.
+      if (c == '.' && utf8_value[i + 1] != '.' && utf8_value[i - 1] != '-' &&
+          utf8_value[i + 1] != '-') {
+        isdnsname = 1;
+        continue;
+      }
+    }
+    isdnsname = 0;
+    break;
+  }
+
+  if (isdnsname) {
+    *dnsid = utf8_value;
+    *idlen = (size_t)utf8_length;
+    return X509_V_OK;
+  }
+  OPENSSL_free(utf8_value);
+  return X509_V_OK;
+}
+
+// Check CN against DNS-ID name constraints.
+int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc) {
+  int ret;
+  const X509_NAME *nm = X509_get_subject_name(x);
+  ASN1_STRING stmp = {.length = 0, .type = V_ASN1_IA5STRING, .data = NULL, .flags = 0};
+  GENERAL_NAME gntmp = {.type = GEN_DNS, .d = {.dNSName = &stmp}};
+
+  // Process any commonName attributes in subject name
+  for (int i = -1;;) {
+    X509_NAME_ENTRY *ne;
+    ASN1_STRING *cn;
+    unsigned char *idval;
+    size_t idlen;
+
+    i = X509_NAME_get_index_by_NID(nm, NID_commonName, i);
+    if (i == -1) {
+      break;
+    }
+    ne = X509_NAME_get_entry(nm, i);
+    cn = X509_NAME_ENTRY_get_data(ne);
+
+    // Only process attributes that look like host names
+    if ((ret = cn2dnsid(cn, &idval, &idlen)) != X509_V_OK) {
+      return ret;
+    }
+    if (idlen == 0) {
+      continue;
+    }
+
+    stmp.length = idlen;
+    stmp.data = idval;
+    ret = nc_match(&gntmp, nc);
+    OPENSSL_free(idval);
+    if (ret != X509_V_OK) {
+      return ret;
+    }
+  }
+  return X509_V_OK;
+}
+
 static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
   GENERAL_SUBTREE *sub;
   int r, match = 0;

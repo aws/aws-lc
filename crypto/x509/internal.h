@@ -451,11 +451,6 @@ unsigned char *x509v3_hex_to_bytes(const char *str, size_t *len);
 // with |cmp| followed by '.', and zero otherwise.
 int x509v3_conf_name_matches(const char *name, const char *cmp);
 
-// x509v3_looks_like_dns_name returns one if |in| looks like a DNS name and zero
-// otherwise.
-OPENSSL_EXPORT int x509v3_looks_like_dns_name(const unsigned char *in,
-                                              size_t len);
-
 // x509v3_cache_extensions fills in a number of fields relating to X.509
 // extensions in |x|. It returns one on success and zero if some extensions were
 // invalid.
@@ -538,6 +533,8 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
   ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
                      ",value:", (val)->value);
 
+int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc);
+
 // GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
 // value otherwise. Note this function does not provide a comparison suitable
 // for sorting.
@@ -575,6 +572,8 @@ int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
 //
 // For example the IPv4 mask `255.255.255.0` would return valid, but `255.0.255.0` would be invalid.
 OPENSSL_EXPORT int validate_cidr_mask(CBS *cidr_mask);
+
+OPENSSL_EXPORT int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen);
 
 #if defined(__cplusplus)
 }  // extern C

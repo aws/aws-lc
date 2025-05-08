@@ -880,56 +880,13 @@ static int equal_wildcard(const unsigned char *pattern, size_t pattern_len,
                         subject_len, flags);
 }
 
-int x509v3_looks_like_dns_name(const unsigned char *in, size_t len) {
-  // This function is used as a heuristic for whether a common name is a
-  // hostname to be matched, or merely a decorative name to describe the
-  // subject. This heuristic must be applied to both name constraints and the
-  // common name fallback, so it must be loose enough to accept hostname
-  // common names, and tight enough to reject decorative common names.
-
-  if (len > 0 && in[len - 1] == '.') {
-    len--;
-  }
-
-  // Wildcards are allowed in front.
-  if (len >= 2 && in[0] == '*' && in[1] == '.') {
-    in += 2;
-    len -= 2;
-  }
-
-  if (len == 0) {
-    return 0;
-  }
-
-  size_t label_start = 0;
-  for (size_t i = 0; i < len; i++) {
-    unsigned char c = in[i];
-    if (OPENSSL_isalnum(c) || (c == '-' && i > label_start) ||
-        // These are not valid characters in hostnames, but commonly found
-        // in deployments outside the Web PKI.
-        c == '_' || c == ':') {
-      continue;
-    }
-
-    // Labels must not be empty.
-    if (c == '.' && i > label_start && i < len - 1) {
-      label_start = i + 1;
-      continue;
-    }
-
-    return 0;
-  }
-
-  return 1;
-}
-
 // Compare an ASN1_STRING to a supplied string. If they match return 1. If
 // cmp_type > 0 only compare if string matches the type, otherwise convert it
 // to UTF8.
 
 static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
-                           unsigned int flags, int check_type, const char *b,
-                           size_t blen, char **peername) {
+                           unsigned int flags, const char *b, size_t blen,
+                           char **peername) {
   int rv = 0;
 
   if (!a->data || !a->length) {
@@ -947,7 +904,7 @@ static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
     if (rv > 0 && peername) {
       *peername = OPENSSL_strndup((char *)a->data, a->length);
       if (*peername == NULL) {
-        return -1;
+        rv = -1;
       }
     }
   } else {
@@ -957,18 +914,11 @@ static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
     if (astrlen < 0) {
       return -1;
     }
-    // We check the common name against DNS name constraints if it passes
-    // |x509v3_looks_like_dns_name|. Thus we must not consider common names
-    // for DNS fallbacks if they fail this check.
-    if (check_type == GEN_DNS && !x509v3_looks_like_dns_name(astr, astrlen)) {
-      rv = 0;
-    } else {
-      rv = equal(astr, astrlen, (unsigned char *)b, blen, flags);
-    }
+    rv = equal(astr, astrlen, (unsigned char *)b, blen, flags);
     if (rv > 0 && peername) {
       *peername = OPENSSL_strndup((char *)astr, astrlen);
       if (*peername == NULL) {
-        return -1;
+        rv = -1;
       }
     }
     OPENSSL_free(astr);
@@ -1001,11 +951,13 @@ static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
 
   GENERAL_NAMES *gens = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
   if (gens) {
+    int san_present = 0;
     for (size_t i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
       const GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
       if (gen->type != check_type) {
         continue;
       }
+      san_present = 1;
       const ASN1_STRING *cstr;
       if (check_type == GEN_EMAIL) {
         cstr = gen->d.rfc822Name;
@@ -1015,13 +967,18 @@ static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
         cstr = gen->d.iPAddress;
       }
       // Positive on success, negative on error!
-      if ((rv = do_check_string(cstr, alt_type, equal, flags, check_type, chk,
-                                chklen, peername)) != 0) {
+      if ((rv = do_check_string(cstr, alt_type, equal, flags,
+                                chk, chklen, peername)) != 0) {
         break;
       }
     }
     GENERAL_NAMES_free(gens);
-    return rv;
+    if(rv != 0) {
+      return rv;
+    }
+    if(san_present && !(flags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT)) {
+      return 0;
+    }
   }
 
   // We're done if CN-ID is not pertinent
@@ -1035,8 +992,8 @@ static int do_x509_check(const X509 *x, const char *chk, size_t chklen,
     const X509_NAME_ENTRY *ne = X509_NAME_get_entry(name, j);
     const ASN1_STRING *str = X509_NAME_ENTRY_get_data(ne);
     // Positive on success, negative on error!
-    if ((rv = do_check_string(str, -1, equal, flags, check_type, chk, chklen,
-                              peername)) != 0) {
+    if ((rv = do_check_string(str, -1, equal, flags,
+                              chk, chklen, peername)) != 0) {
       return rv;
     }
   }

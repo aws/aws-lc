@@ -3079,6 +3079,10 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t name_len);
 
+// X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT enables always checking the subject name for host match 
+// even if subject alt names are present.
+#define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0x1
+
 // X509_CHECK_FLAG_NO_WILDCARDS disables wildcard matching for DNS names.
 #define X509_CHECK_FLAG_NO_WILDCARDS 0x2
 
@@ -4992,7 +4996,6 @@ OPENSSL_EXPORT void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx,
 
 // The following flags do nothing. The corresponding non-standard options have
 // been removed.
-#define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0
 #define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
 #define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
 
