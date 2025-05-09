@@ -381,59 +381,59 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey,
   return 1;
 }
 
-static int req_password_callback(char *buf, int size, int rwflag,
-                                 void *userdata) {
-  const char *prompt = "Enter PEM pass phrase:";
-  char verify_buf[BUF_SIZE];
-  int len;
-
-  // Display prompt
-  fprintf(stderr, "%s", prompt);
-  fflush(stderr);
-
-  // Get password
-  if (fgets(buf, size, stdin) == NULL) {
-    fprintf(stderr, "Error reading password\n");
-    return 0;
-  }
-
-  // Remove trailing newline
-  len = OPENSSL_strnlen(buf, sizeof(buf));
-  if (len > 0 && buf[len - 1] == '\n') {
-    buf[--len] = '\0';
-  }
-
-  // For encryption only (which is the case for req tool)
-  if (rwflag) {
-    // Verify password
-    fprintf(stderr, "Verifying - %s", prompt);
-    fflush(stderr);
-
-    if (fgets(verify_buf, sizeof(verify_buf), stdin) == NULL) {
-      fprintf(stderr, "Error reading verification password\n");
-      return 0;
-    }
-
-    // Remove trailing newline
-    int verify_len = OPENSSL_strnlen(verify_buf, sizeof(verify_buf));
-    if (verify_len > 0 && verify_buf[verify_len - 1] == '\n')
-      verify_buf[--verify_len] = '\0';
-
-    // Check if passwords match
-    if (strncmp(buf, verify_buf, BUF_SIZE) != 0) {
-      fprintf(stderr, "Passwords don't match\n");
-      return 0;
-    }
-
-    // Enforce minimum length
-    if (len < 4) {
-      fprintf(stderr, "Password too short (minimum 4 characters)\n");
-      return 0;
-    }
-  }
-
-  return len;
-}
+// static int req_password_callback(char *buf, int size, int rwflag,
+//                                  void *userdata) {
+//   const char *prompt = "Enter PEM pass phrase:";
+//   char verify_buf[BUF_SIZE];
+//   int len;
+//
+//   // Display prompt
+//   fprintf(stderr, "%s", prompt);
+//   fflush(stderr);
+//
+//   // Get password
+//   if (fgets(buf, size, stdin) == NULL) {
+//     fprintf(stderr, "Error reading password\n");
+//     return 0;
+//   }
+//
+//   // Remove trailing newline
+//   len = OPENSSL_strnlen(buf, sizeof(buf));
+//   if (len > 0 && buf[len - 1] == '\n') {
+//     buf[--len] = '\0';
+//   }
+//
+//   // For encryption only (which is the case for req tool)
+//   if (rwflag) {
+//     // Verify password
+//     fprintf(stderr, "Verifying - %s", prompt);
+//     fflush(stderr);
+//
+//     if (fgets(verify_buf, sizeof(verify_buf), stdin) == NULL) {
+//       fprintf(stderr, "Error reading verification password\n");
+//       return 0;
+//     }
+//
+//     // Remove trailing newline
+//     int verify_len = OPENSSL_strnlen(verify_buf, sizeof(verify_buf));
+//     if (verify_len > 0 && verify_buf[verify_len - 1] == '\n')
+//       verify_buf[--verify_len] = '\0';
+//
+//     // Check if passwords match
+//     if (strncmp(buf, verify_buf, BUF_SIZE) != 0) {
+//       fprintf(stderr, "Passwords don't match\n");
+//       return 0;
+//     }
+//
+//     // Enforce minimum length
+//     if (len < 4) {
+//       fprintf(stderr, "Password too short (minimum 4 characters)\n");
+//       return 0;
+//     }
+//   }
+//
+//   return len;
+// }
 
 // Function to add extensions to a certificate
 static bool add_cert_extensions(X509 *cert) {
@@ -569,7 +569,7 @@ bool reqTool(const args_list_t &args) {
   // If encryption disabled, don't use password prompting callback
   if (!out_bio ||
       !PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), cipher, NULL, 0,
-                                cipher ? req_password_callback : NULL, NULL)) {
+                                NULL, NULL)) {
     fprintf(stderr, "Failed to write private key.\n");
     return false;
   }

@@ -410,11 +410,15 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                                   const unsigned char *pass, int pass_len,
                                   pem_password_cb *callback, void *u);
 
-// PEM_def_callback treats |userdata| as a string and copies it into |buf|,
-// assuming its |size| is sufficient. Returns the length of the string, or 0
-// if there is not enough room. If either |buf| or |userdata| is NULL, 0 is
-// returned. Note that this is different from OpenSSL, which prompts for a
-// password.
+// PEM_def_callback provides a password for PEM encryption/decryption operations.
+// If |userdata| is non-NULL, it treats |userdata| as a string and copies it
+// into |buf|, assuming |size| is sufficient. If |userdata| is NULL, it prompts
+// the user for a password using the prompt from EVP_get_pw_prompt() (or default
+// "Enter PEM pass phrase:"). For encryption (|rwflag|=1), a minimum password
+// length is enforced, while for decryption (|rwflag|=0) any password length is
+// accepted. Returns the length of the password (excluding null
+// terminator) on success, or 0 on error or if |buf| is null, if |buf| is too small,
+// or |size| is negative, or |size| is smaller than user input length.
 OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
                                     void *userdata);
 
