@@ -3,6 +3,7 @@
 #include <openssl/pkcs8.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/bytestring.h>
 #include <string>
 #include <unordered_set>
 #include <cstring>
@@ -180,17 +181,17 @@ static void secure_clear(std::string& str) {
     }
 }
 
-// Comprehensive key reading function
-static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, const std::string& format) {
+// Comprehensive key reading function using library functions
+static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, 
+                                                 const std::string& format) {
     if (!in_bio) return nullptr;
     
     bssl::UniquePtr<EVP_PKEY> pkey;
     
     if (format == "DER") {
-        // Try as unencrypted PKCS8
+        // First try as unencrypted PKCS8
         BIO_reset(in_bio);
         bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(d2i_PKCS8_PRIV_KEY_INFO_bio(in_bio, nullptr));
-        
         if (p8inf) {
             pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
             if (pkey) return pkey;
@@ -318,7 +319,7 @@ bool pkcs8Tool(const args_list_t& args) {
         return false;
     }
 
-    // Use enhanced key reading function
+    // Use enhanced key reading function with library support
     bssl::UniquePtr<EVP_PKEY> pkey = read_private_key(
         in.get(),
         passin.empty() ? nullptr : passin.c_str(),
@@ -334,40 +335,47 @@ bool pkcs8Tool(const args_list_t& args) {
 
     bool success = false;
     if (!topk8) {
+        // Traditional format output - no change here
         success = (outform == "PEM") ?
             PEM_write_bio_PrivateKey(out.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr) :
             i2d_PrivateKey_bio(out.get(), pkey.get());
     } else {
-        bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
-        if (!p8inf) {
-            secure_clear(passin);
-            secure_clear(passout);
-            fprintf(stderr, "Error converting to PKCS#8\n");
-            return false;
-        }
-
         if (nocrypt) {
+            // Unencrypted PKCS8 output - no change here
+            bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
+            if (!p8inf) {
+                secure_clear(passin);
+                secure_clear(passout);
+                fprintf(stderr, "Error converting to PKCS#8\n");
+                return false;
+            }
+            
             success = (outform == "PEM") ?
                 PEM_write_bio_PKCS8_PRIV_KEY_INFO(out.get(), p8inf.get()) :
                 i2d_PKCS8_PRIV_KEY_INFO_bio(out.get(), p8inf.get());
         } else {
-            // Check if passout is provided when encryption is needed
+            // Encrypted PKCS8 output - use library functions
             if (passout.empty()) {
                 secure_clear(passin);
                 fprintf(stderr, "Password required for encryption\n");
                 return false;
             }
 
-            const EVP_CIPHER* cipher = v2_cipher.empty() ?
+            const EVP_CIPHER* cipher = v2_cipher.empty() ? 
                 EVP_aes_256_cbc() : EVP_get_cipherbyname(v2_cipher.c_str());
 
-            success = (outform == "PEM") ?
-                PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), cipher,
-                                            nullptr, 0, nullptr,
-                                            passout.empty() ? nullptr : const_cast<char*>(passout.c_str())) :
-                i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), cipher,
-                                      nullptr, 0, nullptr,
-                                      passout.empty() ? nullptr : const_cast<char*>(passout.c_str()));
+            // Use library functions for encryption
+            if (outform == "PEM") {
+                success = PEM_write_bio_PKCS8PrivateKey(
+                    out.get(), pkey.get(), cipher,
+                    passout.c_str(), passout.length(),
+                    nullptr, nullptr);
+            } else {
+                success = i2d_PKCS8PrivateKey_bio(
+                    out.get(), pkey.get(), cipher,
+                    passout.c_str(), passout.length(),
+                    nullptr, nullptr);
+            }
         }
     }
 
@@ -379,7 +387,6 @@ bool pkcs8Tool(const args_list_t& args) {
         return false;
     }
 
-    // Use BIO_flush with silent error handling
     BIO_flush(out.get());
     return true;
 }
