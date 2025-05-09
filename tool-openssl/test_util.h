@@ -12,6 +12,13 @@
 #include <string>
 #include <iostream>
 #include <cctype>
+#include <sys/stat.h>
+#include <cstring>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/evp.h>
+#include "../tool/internal.h"  // For ScopedFILE definition
+#include "../crypto/test/test_util.h"
 
 
 // Helper function to trim whitespace from both ends of a string to test comparison output
@@ -66,5 +73,7 @@ inline void RemoveFile(const char* path) {
 
 // OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
 std::string GetHash(const std::string& str);
+
+// Helper functions DecryptPrivateKey and CompareKeys have been moved to rsa_pkcs8_shared.h/.cc
 
 #endif //TEST_UTIL_H
