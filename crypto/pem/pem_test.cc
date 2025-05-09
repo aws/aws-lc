@@ -512,13 +512,15 @@ class PemPasswdTest : public testing::Test {
     close(original_stderr);
     
     // Close temp files
-    if (stdin_file) fclose(stdin_file);
-    if (stderr_file) fclose(stderr_file);
+    if (stdin_file) {
+      fclose(stdin_file);
+    }
+    if (stderr_file) {
+      fclose(stderr_file);
+    }
   }
 
   void MockStdinInput(const std::string& input) {
-    ftruncate(fileno(stdin_file), 0);
-    rewind(stdin_file);
     ASSERT_GT(fwrite(input.c_str(), 1, input.length(), stdin_file), (size_t)0);
     rewind(stdin_file);
   }
@@ -531,11 +533,23 @@ class PemPasswdTest : public testing::Test {
       output += buf;
     }
 
-    // Clear the file for next read
-    ftruncate(fileno(stderr_file), 0); 
-    rewind(stderr_file);
     return output;
   }
+
+  void ResetTempFiles() {
+    fclose(stdin_file);
+    fclose(stderr_file);
+
+    stdin_file = tmpfile();
+    stderr_file = tmpfile();
+    ASSERT_TRUE(stdin_file != nullptr);
+    ASSERT_TRUE(stderr_file != nullptr);
+
+    // Redirect stdin/stderr to our NEW temp files
+    ASSERT_NE(-1, dup2(fileno(stdin_file), fileno(stdin)));
+    ASSERT_NE(-1, dup2(fileno(stderr_file), fileno(stderr)));
+  }
+
 
   FILE* stdin_file = nullptr;
   FILE* stderr_file = nullptr;
@@ -587,6 +601,8 @@ TEST_F(PemPasswdTest, PasswordInputVariations) {
     // Verify prompt was written
     std::string output = GetStderrOutput();
     ASSERT_TRUE(output.find(default_prompt) != std::string::npos);
+
+    ResetTempFiles();
   }
 }
 
@@ -634,6 +650,8 @@ TEST_F(PemPasswdTest, PasswordVerification) {
     std::string output = GetStderrOutput();
     ASSERT_TRUE(output.find(default_prompt) != std::string::npos);
     ASSERT_TRUE(output.find("Verifying - ") != std::string::npos);
+
+    ResetTempFiles();
   }
 }
 
