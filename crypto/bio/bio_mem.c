@@ -75,7 +75,8 @@ BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
   BIO *ret;
   BUF_MEM *b;
   BIO_BUF_MEM *bbm;
-  const size_t size = len < 0 ? strlen((char *)buf) : (size_t)len;
+
+  const size_t size = (len < 0 || (size_t)len > SIZE_MAX) ? strlen((char *)buf) : (size_t)len;
 
   if (!buf && len != 0) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_NULL_PARAMETER);
@@ -91,7 +92,7 @@ BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
   b = bbm->buf;
   // BIO_FLAGS_MEM_RDONLY ensures |b->data| is not written to.
   b->data = (void *)buf;
-  b->length = size;
+  b->length = (size < INT_MAX) ? size : INT_MAX;
   b->max = size;
 
   ret->flags |= BIO_FLAGS_MEM_RDONLY;
@@ -129,14 +130,12 @@ static int mem_new(BIO *bio) {
 }
 
 static int mem_free(BIO *bio) {
-  BIO_BUF_MEM *bbm;
-
-  bbm = (BIO_BUF_MEM *)bio->ptr;
-  BUF_MEM *b = bbm->buf;
-
   if (!bio->shutdown || !bio->init || bio->ptr == NULL) {
     return 1;
   }
+
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *)bio->ptr;
+  BUF_MEM *b = bbm->buf;
 
   if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
     b->data = NULL;
@@ -148,12 +147,12 @@ static int mem_free(BIO *bio) {
   return 1;
 }
 
-static int mem_buf_sync(BIO *bio) {
+static void mem_buf_sync(BIO *bio) {
   if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-    return 0;
+    return;
   }
 
-  if (bio != NULL && bio->init != 0 && bio->ptr != NULL) {
+  if (!bio->init && bio->ptr != NULL) {
     BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
     BUF_MEM *b = bbm->buf;
 
@@ -162,8 +161,6 @@ static int mem_buf_sync(BIO *bio) {
       bbm->read_off = 0;
     }
   }
-
-  return 0;
 }
 
 static int mem_read(BIO *bio, char *out, int outl) {
