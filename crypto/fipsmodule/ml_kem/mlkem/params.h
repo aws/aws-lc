@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 #ifndef MLK_PARAMS_H
 #define MLK_PARAMS_H
@@ -42,7 +42,6 @@
 #define MLKEM_POLYCOMPRESSEDBYTES_D11 352
 
 #if MLKEM_K == 2
-#define MLKEM_LVL 512
 #define MLKEM_ETA1 3
 #define MLKEM_DU 10
 #define MLKEM_DV 4
@@ -50,7 +49,6 @@
 #define MLKEM_POLYCOMPRESSEDBYTES_DU MLKEM_POLYCOMPRESSEDBYTES_D10
 #define MLKEM_POLYVECCOMPRESSEDBYTES_DU (MLKEM_K * MLKEM_POLYCOMPRESSEDBYTES_DU)
 #elif MLKEM_K == 3
-#define MLKEM_LVL 768
 #define MLKEM_ETA1 2
 #define MLKEM_DU 10
 #define MLKEM_DV 4
@@ -58,7 +56,6 @@
 #define MLKEM_POLYCOMPRESSEDBYTES_DU MLKEM_POLYCOMPRESSEDBYTES_D10
 #define MLKEM_POLYVECCOMPRESSEDBYTES_DU (MLKEM_K * MLKEM_POLYCOMPRESSEDBYTES_DU)
 #elif MLKEM_K == 4
-#define MLKEM_LVL 1024
 #define MLKEM_ETA1 2
 #define MLKEM_DU 11
 #define MLKEM_DV 5

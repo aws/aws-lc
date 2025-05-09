@@ -1,6 +1,15 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
+ */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
  */
 
 #ifndef MLK_H
@@ -11,6 +20,11 @@
  * Public API for mlkem-native
  *
  * This header defines the public API of a single build of mlkem-native.
+ *
+ * # Examples
+ *
+ * See [examples/mlkem_native_as_code_package], [examples/multilevel_build], and
+ * [examples/multilevel_build_native] for examples of how to use this header.
  *
  * # Usage
  *
@@ -25,14 +39,14 @@
  *   The namespace prefix used for the build.
  *
  *   NOTE:
- *   For a multilevel build, you must include the 512/768/1024 suffixes
+ *   For a multi-level build, you must include the 512/768/1024 suffixes
  *   in MLK_CONFIG_API_NAMESPACE_PREFIX.
  *
  * - MLK_CONFIG_API_NO_SUPERCOP [optional]
  *
  *   By default, this header will also expose the mlkem-native API in the
  *   SUPERCOP naming convention crypto_kem_xxx. If you don't want/need this,
- *   set MLK_CONFIG_API_NO_SUPERCOP. You must set this for a multilevel build.
+ *   set MLK_CONFIG_API_NO_SUPERCOP. You must set this for a multi-level build.
  *
  * - MLK_CONFIG_API_CONSTANTS_ONLY [optional]
  *
@@ -42,19 +56,21 @@
  *   MLK_CONFIG_API_PARAMETER_SET or MLK_CONFIG_API_NAMESPACE_PREFIX,
  *   nor include a configuration.
  *
- * # Multilevel builds
+ * # Multi-level builds
  *
  * This header specifies a build of mlkem-native for a fixed security level.
  * If you need multiple builds, e.g. to build a library offering multiple
- * security levels, you need multiple instances of this header. In this case,
- * make sure to rename or #undef the header guard.
+ * security levels, you need multiple instances of this header.
+ *
+ * NOTE: In this case, you must rename or #undef the MLK_H header guard
+ *       prior to subsequent inclusions of this file.
  *
  ******************************************************************************/
 
 /******************************* Key sizes ************************************/
 
-/* Sizes of cryptographic material, per level */
-/* See mlke/common.h for the arithmetic expressions giving rise to these */
+/* Sizes of cryptographic material, per parameter set */
+/* See mlkem/common.h for the arithmetic expressions giving rise to these */
 /* check-magic: off */
 #define MLKEM512_SECRETKEYBYTES 1632
 #define MLKEM512_PUBLICKEYBYTES 800
@@ -130,7 +146,7 @@
  * Returns:     - 0: On success
  *              - -1: On PCT failure (if MLK_CONFIG_KEYGEN_PCT) is enabled.
  *
- * Specification: Implements [FIPS 203, Algorithm 16, ML-KEM.KeyGen_Internal]
+ * Specification: Implements @[FIPS203, Algorithm 16, ML-KEM.KeyGen_Internal]
  *
  **************************************************/
 MLK_API_MUST_CHECK_RETURN_VALUE
@@ -153,7 +169,7 @@ int MLK_API_NAMESPACE(keypair_derand)(
  * Returns:     - 0: On success
  *              - -1: On PCT failure (if MLK_CONFIG_KEYGEN_PCT) is enabled.
  *
- * Specification: Implements [FIPS 203, Algorithm 19, ML-KEM.KeyGen]
+ * Specification: Implements @[FIPS203, Algorithm 19, ML-KEM.KeyGen]
  *
  **************************************************/
 MLK_API_MUST_CHECK_RETURN_VALUE
@@ -177,10 +193,10 @@ int MLK_API_NAMESPACE(keypair)(
  *                 MLKEM_SYMBYTES bytes.
  *
  * Returns: - 0 on success
- *          - -1 if the 'modulus check' [FIPS 203, Section 7.2]
+ *          - -1 if the 'modulus check' @[FIPS203, Section 7.2]
  *            for the public key fails.
  *
- * Specification: Implements [FIPS 203, Algorithm 17, ML-KEM.Encaps_Internal]
+ * Specification: Implements @[FIPS203, Algorithm 17, ML-KEM.Encaps_Internal]
  *
  **************************************************/
 MLK_API_MUST_CHECK_RETURN_VALUE
@@ -204,10 +220,10 @@ int MLK_API_NAMESPACE(enc_derand)(
  *                 MLKEM{512,768,1024}_PUBLICKEYBYTES bytes.
  *
  * Returns: - 0 on success
- *          - -1 if the 'modulus check' [FIPS 203, Section 7.2]
+ *          - -1 if the 'modulus check' @[FIPS203, Section 7.2]
  *            for the public key fails.
  *
- * Specification: Implements [FIPS 203, Algorithm 20, ML-KEM.Encaps]
+ * Specification: Implements @[FIPS203, Algorithm 20, ML-KEM.Encaps]
  *
  **************************************************/
 MLK_API_MUST_CHECK_RETURN_VALUE
@@ -230,10 +246,10 @@ int MLK_API_NAMESPACE(enc)(
  *                 MLKEM{512,768,1024}_SECRETKEYBYTES bytes.
  *
  * Returns: - 0 on success
- *          - -1 if the 'hash check' [FIPS 203, Section 7.3]
+ *          - -1 if the 'hash check' @[FIPS203, Section 7.3]
  *            for the secret key fails.
  *
- * Specification: Implements [FIPS 203, Algorithm 21, ML-KEM.Decaps]
+ * Specification: Implements @[FIPS203, Algorithm 21, ML-KEM.Decaps]
  *
  **************************************************/
 MLK_API_MUST_CHECK_RETURN_VALUE

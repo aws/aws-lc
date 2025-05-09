@@ -1,7 +1,22 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ *
+ * - [REF]
+ *   CRYSTALS-Kyber C reference implementation
+ *   Bos, Ducas, Kiltz, Lepoint, Lyubashevsky, Schanck, Schwabe, Seiler, Stehlé
+ *   https://github.com/pq-crystals/kyber/tree/main/ref
+ */
+
 #include "common.h"
 #if !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED)
 
@@ -9,7 +24,7 @@
 #include "sampling.h"
 #include "symmetric.h"
 
-/* Reference: `rej_uniform()` in the reference implementation.
+/* Reference: `rej_uniform()` in the reference implementation @[REF].
  *            - Our signature differs from the reference implementation
  *              in that it adds the offset and always expects the base of the
  *              target buffer. This avoids shifting the buffer base in the
@@ -88,7 +103,7 @@ __contract__(
  * is provided on how many bytes of the input buffer have been consumed.
  **************************************************/
 
-/* Reference: `rej_uniform()` in the reference implementation.
+/* Reference: `rej_uniform()` in the reference implementation @[REF].
  *            - Our signature differs from the reference implementation
  *              in that it adds the offset and always expects the base of the
  *              target buffer. This avoids shifting the buffer base in the
@@ -127,7 +142,7 @@ __contract__(
   ((12 * MLKEM_N / 8 * (1 << 12) / MLKEM_Q + MLK_XOF_RATE) / MLK_XOF_RATE)
 #endif
 
-/* Reference: Does not exist in reference implementation.
+/* Reference: Does not exist in the reference implementation @[REF].
  *            - x4-batched version of `rej_uniform()` from the
  *              reference implementation, leveraging x4-batched Keccak-f1600. */
 MLK_INTERNAL_API
@@ -184,7 +199,7 @@ void mlk_poly_rej_uniform_x4(mlk_poly *vec,
   mlk_xof_x4_release(&statex);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(buf, sizeof(buf));
 }
 
@@ -220,7 +235,7 @@ void mlk_poly_rej_uniform(mlk_poly *entry, uint8_t seed[MLKEM_SYMBYTES + 2])
   mlk_xof_release(&state);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(buf, sizeof(buf));
 }
 
@@ -236,7 +251,7 @@ void mlk_poly_rej_uniform(mlk_poly *entry, uint8_t seed[MLKEM_SYMBYTES + 2])
  *
  **************************************************/
 
-/* Reference: `load32_littleendian()` in the reference implementation. */
+/* Reference: `load32_littleendian()` in the reference implementation @[REF]. */
 static uint32_t mlk_load32_littleendian(const uint8_t x[4])
 {
   uint32_t r;
@@ -247,7 +262,7 @@ static uint32_t mlk_load32_littleendian(const uint8_t x[4])
   return r;
 }
 
-/* Reference: `cbd2()` in the reference implementationo. */
+/* Reference: `cbd2()` in the reference implementation @[REF]o. */
 MLK_INTERNAL_API
 void mlk_poly_cbd2(mlk_poly *r, const uint8_t buf[2 * MLKEM_N / 4])
 {
@@ -288,7 +303,7 @@ void mlk_poly_cbd2(mlk_poly *r, const uint8_t buf[2 * MLKEM_N / 4])
  *
  **************************************************/
 
-/* Reference: `load24_littleendian()` in the reference implementation. */
+/* Reference: `load24_littleendian()` in the reference implementation @[REF]. */
 static uint32_t mlk_load24_littleendian(const uint8_t x[3])
 {
   uint32_t r;
@@ -298,7 +313,7 @@ static uint32_t mlk_load24_littleendian(const uint8_t x[3])
   return r;
 }
 
-/* Reference: `cbd3()` in the reference implementationo. */
+/* Reference: `cbd3()` in the reference implementation @[REF]o. */
 MLK_INTERNAL_API
 void mlk_poly_cbd3(mlk_poly *r, const uint8_t buf[3 * MLKEM_N / 4])
 {

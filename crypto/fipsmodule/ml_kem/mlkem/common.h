@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 #ifndef MLK_COMMON_H
 #define MLK_COMMON_H
@@ -37,15 +37,25 @@
 #define MLK_CONCAT(x1, x2) MLK_CONCAT_(x1, x2)
 
 #if defined(MLK_MULTILEVEL_BUILD)
-#define MLK_ADD_LEVEL(s) MLK_CONCAT(s, MLKEM_LVL)
+#define MLK_ADD_PARAM_SET(s) MLK_CONCAT(s, MLK_CONFIG_PARAMETER_SET)
 #else
-#define MLK_ADD_LEVEL(s) s
+#define MLK_ADD_PARAM_SET(s) s
 #endif
 
-#define MLK_NAMESPACE(s) \
-  MLK_CONCAT(MLK_CONCAT(MLK_CONFIG_NAMESPACE_PREFIX, _), s)
-#define MLK_NAMESPACE_K(s) \
-  MLK_CONCAT(MLK_CONCAT(MLK_ADD_LEVEL(MLK_CONFIG_NAMESPACE_PREFIX), _), s)
+#define MLK_NAMESPACE_PREFIX MLK_CONCAT(MLK_CONFIG_NAMESPACE_PREFIX, _)
+#define MLK_NAMESPACE_PREFIX_K \
+  MLK_CONCAT(MLK_ADD_PARAM_SET(MLK_CONFIG_NAMESPACE_PREFIX), _)
+
+/* Functions are prefixed by MLK_CONFIG_NAMESPACE.
+ *
+ * If multiple parameter sets are used, functions depending on the parameter
+ * set are additionally prefixed with 512/768/1024. See config.h.
+ *
+ * Example: If MLK_CONFIG_NAMESPACE_PREFIX is mlkem, then
+ * MLK_NAMESPACE_K(enc) becomes mlkem512_enc/mlkem768_enc/mlkem1024_enc.
+ */
+#define MLK_NAMESPACE(s) MLK_CONCAT(MLK_NAMESPACE_PREFIX, s)
+#define MLK_NAMESPACE_K(s) MLK_CONCAT(MLK_NAMESPACE_PREFIX_K, s)
 
 /* On Apple platforms, we need to emit leading underscore
  * in front of assembly symbols. We thus introducee a separate
@@ -139,6 +149,6 @@
 
 #define MLK_CONFIG_API_PARAMETER_SET MLK_CONFIG_PARAMETER_SET
 #define MLK_CONFIG_API_NAMESPACE_PREFIX \
-  MLK_ADD_LEVEL(MLK_CONFIG_NAMESPACE_PREFIX)
+  MLK_ADD_PARAM_SET(MLK_CONFIG_NAMESPACE_PREFIX)
 
 #endif /* !MLK_COMMON_H */
