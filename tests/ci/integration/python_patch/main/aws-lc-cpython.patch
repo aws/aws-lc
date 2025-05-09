@@ -1,28 +1,3 @@
-diff --git a/Lib/ssl.py b/Lib/ssl.py
-index 05df4ad..7e3c4cb 100644
---- a/Lib/ssl.py
-+++ b/Lib/ssl.py
-@@ -116,7 +116,7 @@
- 
- from _ssl import (
-     HAS_SNI, HAS_ECDH, HAS_NPN, HAS_ALPN, HAS_SSLv2, HAS_SSLv3, HAS_TLSv1,
--    HAS_TLSv1_1, HAS_TLSv1_2, HAS_TLSv1_3, HAS_PSK, HAS_PHA
-+    HAS_TLSv1_1, HAS_TLSv1_2, HAS_TLSv1_3, HAS_PSK, HAS_PSK_TLS13, HAS_PHA
- )
- from _ssl import _DEFAULT_CIPHERS, _OPENSSL_API_VERSION
- 
-diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index 395b2ef..c168224 100644
---- a/Lib/test/test_ssl.py
-+++ b/Lib/test/test_ssl.py
-@@ -4488,6 +4488,7 @@ def server_callback(identity):
- 
-     @requires_tls_version('TLSv1_3')
-     @unittest.skipUnless(ssl.HAS_PSK, 'TLS-PSK disabled on this OpenSSL build')
-+    @unittest.skipUnless(ssl.HAS_PSK_TLS13, 'TLS 1.3 PSK disabled on this OpenSSL build')
-     def test_psk_tls1_3(self):
-         psk = bytes.fromhex('deadbeef')
-         identity_hint = 'identity-hint'
 diff --git a/Modules/Setup b/Modules/Setup
 index a066982..3d7fbc3 100644
 --- a/Modules/Setup
@@ -44,20 +19,3 @@ index a066982..3d7fbc3 100644
  
  # The _tkinter module.
  #
-diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index 97a29f4..3f2f55e 100644
---- a/Modules/_ssl.c
-+++ b/Modules/_ssl.c
-@@ -6626,6 +6626,12 @@ sslmodule_init_constants(PyObject *m)
-     addbool(m, "HAS_PSK", 1);
- #endif
- 
-+#ifdef OPENSSL_NO_EXTERNAL_PSK_TLS13
-+    addbool(m, "HAS_PSK_TLS13", 0);
-+#else
-+    addbool(m, "HAS_PSK_TLS13", 1);
-+#endif
-+
- #ifdef SSL_VERIFY_POST_HANDSHAKE
-     addbool(m, "HAS_PHA", 1);
- #else
