@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_CRYPTO_RAND_GETRANDOM_FILLIN_H
 
 #include <openssl/base.h>
+#include "internal.h"
 
 
 #if defined(OPENSSL_RAND_URANDOM)
