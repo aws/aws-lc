@@ -287,7 +287,6 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     size_t input_len = strlen(buf);
     if (input_len < (size_t)minsize) {
         ok = -1;
-        goto error;
     }
 
 error:
