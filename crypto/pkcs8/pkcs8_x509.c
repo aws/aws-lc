@@ -1056,7 +1056,7 @@ static int add_cert_safe_contents(CBB *cbb, X509 *cert,
 static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
                               size_t password_len, uint32_t iterations,
                               const uint8_t *in, size_t in_len) {
-  uint8_t salt[PKCS5_SALT_LEN];
+  uint8_t salt[PKCS12_SALT_LEN];
   if (!RAND_bytes(salt, sizeof(salt))) {
     return 0;
   }
@@ -1338,7 +1338,7 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   // TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
   //                        OpenSSL 3.x.
   const EVP_MD *mac_md = EVP_sha1();
-  uint8_t mac_salt[PKCS5_SALT_LEN];
+  uint8_t mac_salt[PKCS12_SALT_LEN];
   if (!CBB_flush(&auth_safe_data) ||
       !RAND_bytes(mac_salt, sizeof(mac_salt)) ||
       !pkcs12_gen_and_write_mac(
@@ -1382,7 +1382,7 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
     mac_iterations = 1;
   }
   if (salt_len == 0) {
-    salt_len = PKCS5_SALT_LEN;
+    salt_len = PKCS12_SALT_LEN;
   }
   // Generate |mac_salt| if |salt| is NULL and copy if NULL.
   uint8_t *mac_salt = OPENSSL_malloc(salt_len);
