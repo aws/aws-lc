@@ -189,11 +189,11 @@ static int openssl_console_echo_disable(void) {
     memcpy(tty_new_bss_get(), tty_orig_bss_get(), sizeof(*tty_orig_bss_get()));
     tty_new_bss_get()->TTY_FLAGS &= ~ECHO;
 
-    if (is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
+    if (*is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
         return 0;
     }
 # else
-    if (is_a_tty_bss_get()) {
+    if (*is_a_tty_bss_get()) {
         *tty_new_bss_get() = *tty_orig_bss_get();
         *tty_new_bss_get() &= ~ENABLE_ECHO_INPUT;
         SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), *tty_new_bss_get());
@@ -205,11 +205,11 @@ static int openssl_console_echo_disable(void) {
 static int openssl_console_echo_enable(void) {
 # if !defined(_WIN32)
     memcpy(tty_new_bss_get(), tty_orig_bss_get(), sizeof(*tty_orig_bss_get()));
-    if (is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
+    if (*is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
         return 0;
     }
 # else
-    if (is_a_tty_bss_get()) {
+    if (*is_a_tty_bss_get()) {
         *tty_new_bss_get() = *tty_orig_bss_get();
         SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), *tty_new_bss_get());
     }
@@ -243,7 +243,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
 
     buf[0] = '\0';
 #  if defined(_WIN32)
-    if (is_a_tty_bss_get()) {
+    if (*is_a_tty_bss_get()) {
         DWORD numread;
         // for now assuming UTF-8....
         WCHAR wresult[BUFSIZ];
