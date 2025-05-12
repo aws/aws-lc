@@ -92,7 +92,7 @@ BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
   b = bbm->buf;
   // BIO_FLAGS_MEM_RDONLY ensures |b->data| is not written to.
   b->data = (void *)buf;
-  b->length = (size < INT_MAX) ? size : INT_MAX;
+  b->length = size;
   b->max = size;
 
   ret->flags |= BIO_FLAGS_MEM_RDONLY;
@@ -152,7 +152,7 @@ static void mem_buf_sync(BIO *bio) {
     return;
   }
 
-  if (!bio->init && bio->ptr != NULL) {
+  if (bio->init != 0 && bio->ptr != NULL) {
     BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
     BUF_MEM *b = bbm->buf;
 
@@ -240,17 +240,17 @@ static int mem_gets(BIO *bio, char *buf, int size) {
     ret = (int)b->length;
   }
 
-  // If the buffer is read-only, |data| is already pointing to the correct
-  // read position. If the buffer is writeable, |data| is pointing to the start
-  // of the buffer, so we need to add |read_off| to get the correct read
-  // position.
-  char *readp = &b->data[bbm->read_off];
-  if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-    readp = b->data;
-  }
-
   // Stop at the first newline.
   if (b->data != NULL) {
+    // If the buffer is read-only, |data| is already pointing to the correct
+    // read position. If the buffer is writeable, |data| is pointing to the start
+    // of the buffer, so we need to add |read_off| to get the correct read
+    // position.
+    char *readp = &b->data[bbm->read_off];
+    if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+      readp = b->data;
+    }
+    
     const char *newline = OPENSSL_memchr(readp, '\n', ret);
     if (newline != NULL) {
       ret = (int)(newline - readp + 1);
@@ -278,7 +278,7 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
           b->data -= b->max - b->length;
           b->length = b->max;
         } else {
-          OPENSSL_cleanse(b->data, b->max);
+          OPENSSL_memset(b->data, 0, b->max);
           b->length = 0;
         }
       }
@@ -288,11 +288,13 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
         return -1;
       }
 
+      long relative_read_off = (long)bbm->read_off - num;
+
       if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-        b->data -= (long)bbm->read_off - num;
+        b->data -= relative_read_off;
       }
 
-      b->length += (long)bbm->read_off - num;
+      b->length += relative_read_off;
       bbm->read_off = num;
       ret = num;
       break;
