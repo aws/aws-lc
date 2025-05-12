@@ -34,8 +34,8 @@
 
 #define NUM_SIG 32
 
-DEFINE_BSS_GET(sig_atomic_t, intr_signal);
-DEFINE_STATIC_MUTEX(console_global_mutex);
+DEFINE_BSS_GET(sig_atomic_t, intr_signal)
+DEFINE_STATIC_MUTEX(console_global_mutex)
 
 # ifdef SIGACTION
     static struct sigaction savsig[NUM_SIG];
@@ -52,13 +52,13 @@ static void popsig(void);
     DEFINE_BSS_GET(DWORD, tty_orig);
     DEFINE_BSS_GET(DWORD, tty_new);
 #else
-    DEFINE_BSS_GET(TTY_STRUCT, tty_orig);
-    DEFINE_BSS_GET(TTY_STRUCT, tty_new);
+    DEFINE_BSS_GET(TTY_STRUCT, tty_orig)
+    DEFINE_BSS_GET(TTY_STRUCT, tty_new)
 #endif
 
-DEFINE_BSS_GET(FILE*, tty_in);
-DEFINE_BSS_GET(FILE*, tty_out);
-DEFINE_BSS_GET(int, is_a_tty);
+DEFINE_BSS_GET(FILE*, tty_in)
+DEFINE_BSS_GET(FILE*, tty_out)
+DEFINE_BSS_GET(int, is_a_tty)
 
 /* Internal functions to read a string without echoing */
 static int read_till_nl(FILE *in) {
