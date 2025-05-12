@@ -5134,18 +5134,28 @@ TEST(X509Test, Names) {
       },
 
       // OpenSSL has some non-standard wildcard syntax for input DNS names. We
-      // do not support this.
+      // support this for compatibility.
       {
           /*cert_subject=*/{},
           /*cert_dns_names=*/{"www.a.example", "*.b.test"},
           /*cert_emails=*/{},
-          /*valid_dns_names=*/{},
+          /*valid_dns_names=*/{".a.example", ".b.test", ".example", ".test"},
           /*invalid_dns_names=*/
-          {".www.a.example", ".www.b.test", ".a.example", ".b.test", ".example",
-           ".test"},
+          {".www.a.example", ".www.b.test"},
           /*valid_emails=*/{},
           /*invalid_emails=*/{},
           /*flags=*/0,
+      },
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"www.a.example", "*.b.test"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{".a.example", ".b.test"},
+          /*invalid_dns_names=*/
+          {".www.a.example", ".www.b.test", ".example", ".test"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS,
       },
 
       // Emails match case-sensitively before the '@' and case-insensitively
