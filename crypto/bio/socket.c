@@ -94,7 +94,7 @@ static int sock_read(BIO *b, char *out, int outl) {
     return 0;
   }
 
-  bio_clear_socket_error();
+  bio_clear_socket_error(b->num);
 #if defined(OPENSSL_WINDOWS)
   int ret = recv(b->num, out, outl, 0);
 #else
@@ -110,7 +110,7 @@ static int sock_read(BIO *b, char *out, int outl) {
 }
 
 static int sock_write(BIO *b, const char *in, int inl) {
-  bio_clear_socket_error();
+  bio_clear_socket_error(b->num);
 #if defined(OPENSSL_WINDOWS)
   int ret = send(b->num, in, inl, 0);
 #else

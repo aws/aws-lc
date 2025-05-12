@@ -263,6 +263,35 @@ void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
   pkey->type = pkey->ameth->pkey_id;
 }
 
+static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
+  if (pkey && pkey->pkey.ptr) {
+    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
+    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
+    // behavior.
+    free_it(pkey);
+  }
+
+  const EVP_PKEY_ASN1_METHOD *ameth = NULL;
+
+  if (str != NULL) {
+    ameth = EVP_PKEY_asn1_find_str(NULL, str, len);
+  } else {
+    ameth = evp_pkey_asn1_find(type);
+  }
+
+  if (ameth == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    ERR_add_error_dataf("algorithm %d", type);
+    return 0;
+  }
+
+  if (pkey) {
+    evp_pkey_set_method(pkey, ameth);
+  }
+
+  return 1;
+}
+
 int EVP_PKEY_type(int nid) {
   // In OpenSSL, this was used to map between type aliases. BoringSSL supports
   // no type aliases, so this function is just the identity.
@@ -445,25 +474,12 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   SET_DIT_AUTO_RESET;
-  if (pkey && pkey->pkey.ptr) {
-    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
-    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
-    // behavior.
-    free_it(pkey);
-  }
+  return pkey_set_type(pkey, type, NULL, -1);
+}
 
-  const EVP_PKEY_ASN1_METHOD *ameth = evp_pkey_asn1_find(type);
-  if (ameth == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    ERR_add_error_dataf("algorithm %d", type);
-    return 0;
-  }
-
-  if (pkey) {
-    evp_pkey_set_method(pkey, ameth);
-  }
-
-  return 1;
+int EVP_PKEY_set_type_str(EVP_PKEY *pkey, const char *str, int len) {
+  SET_DIT_AUTO_RESET;
+  return pkey_set_type(pkey, EVP_PKEY_NONE, str, len);
 }
 
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
