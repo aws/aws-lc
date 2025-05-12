@@ -15,13 +15,8 @@ static constexpr long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
 // Maximum length for passwords
 static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
 
-// Parameters for BIO validation with security-focused defaults
-struct BIOValidationParams {
-    long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE;
-};
-
 // Validate BIO size to prevent DoS from extremely large files
-static bool validate_bio_size(BIO* bio, const BIOValidationParams& params = {}) {
+static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
     if (!bio) return false;
     
     const long current_pos = BIO_tell(bio);
@@ -30,7 +25,7 @@ static bool validate_bio_size(BIO* bio, const BIOValidationParams& params = {}) 
     const long size = BIO_tell(bio);
     if (BIO_seek(bio, current_pos) < 0) return false;
     
-    if (size > params.max_size) {
+    if (size > max_size) {
         fprintf(stderr, "File exceeds maximum allowed size\n");
         return false;
     }
