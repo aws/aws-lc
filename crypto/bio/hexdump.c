@@ -197,12 +197,30 @@ int BIO_dump(BIO *bio, const void *data, int len) {
   if (bio == NULL || data == NULL || len < 0) {
     return -1;
   }
-  
-  // Use existing hexdump functionality with no indentation
-  if (!BIO_hexdump(bio, (const uint8_t *)data, (size_t)len, 0)) {
+
+  // Use a temporary memory BIO to capture the formatted output
+  int ret = -1;
+  BIO *mbio = BIO_new(BIO_s_mem());
+  if (mbio == NULL) {
     return -1;
   }
-  
-  // Return estimate of bytes written (each line is ~80 bytes)
-  return ((len + 15) / 16) * 80;
+
+  // Generate the hexdump to the memory BIO
+  if (!BIO_hexdump(mbio, (const uint8_t *)data, (size_t)len, 0)) {
+    goto err;
+  }
+
+  // Get the formatted content
+  const uint8_t *contents;
+  size_t content_len;
+  if (!BIO_mem_contents(mbio, &contents, &content_len)) {
+    goto err;
+  }
+
+  // Write to the original BIO and return the exact bytes written
+  ret = BIO_write(bio, contents, content_len);
+
+err:
+  BIO_free(mbio);
+  return ret;
 }

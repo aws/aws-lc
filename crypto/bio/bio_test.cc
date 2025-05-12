@@ -1258,7 +1258,7 @@ TEST(BIOTest, Dump) {
   // Test BIO_dump with binary data
   const uint8_t data[] = {0x00, 0x01, 0x02, 0x7f, 0x80, 0xff, 'A', 'B', 'C', '\n', '\r', '\t'};
 
-  // BIO_dump should return an estimate of bytes written
+  // BIO_dump should return the exact number of bytes written
   int ret = BIO_dump(bio.get(), data, sizeof(data));
   ASSERT_GT(ret, 0);
 
@@ -1273,9 +1273,17 @@ TEST(BIOTest, Dump) {
   EXPECT_NE(output.find("ABC"), std::string::npos);
   EXPECT_NE(output.find("|"), std::string::npos);  // ASCII section divider
   
+  // Verify return value equals the actual bytes written
+  EXPECT_EQ(ret, (int)len);
+
   // Verify BIO_dump works with an empty buffer
   bio.reset(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
   ret = BIO_dump(bio.get(), data, 0);
-  ASSERT_GE(ret, 0);  // Should return 0 or positive for empty input
+  
+  // For empty input, it should return 0 (no bytes written)
+  ASSERT_EQ(ret, 0);
+  
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  EXPECT_EQ(len, 0u);
 }

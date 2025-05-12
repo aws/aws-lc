@@ -407,7 +407,8 @@ OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
                                unsigned indent);
 
 // BIO_dump writes a hex dump of |data| for |len| bytes to |bio|.
-// It returns the total number of bytes written on success, or a negative value on error.
+// It returns the exact number of bytes written to |bio| on success, or a negative value on error.
+// If |len| is zero or |data| is NULL with |len| being zero, it returns 0.
 OPENSSL_EXPORT int BIO_dump(BIO *bio, const void *data, int len);
 
 // ERR_print_errors prints the current contents of the error stack to |bio|
