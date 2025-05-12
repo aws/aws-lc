@@ -329,7 +329,7 @@ static const BIO_METHOD methods_dgramp = {
 
 const BIO_METHOD *BIO_s_datagram(void) { return &methods_dgramp; }
 
-BIO *BIO_new_dgram(const int fd, const int close_flag) {
+BIO *BIO_new_dgram(int fd, int close_flag) {
   BIO *ret = BIO_new(BIO_s_datagram());
   if (ret == NULL) {
     return NULL;
