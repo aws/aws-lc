@@ -80,8 +80,8 @@ class CiStage(Stage):
                     "git remote add upstream https://github.com/aws/aws-lc.git",
                     "git fetch upstream",
                     "git checkout main",
-                    "git merge upstream/main",
-                    # "git push origin main",
+                    "git merge --ff-only upstream/main",
+                    "git push origin main",
                 ],
                 env={
                     "STAGING_GITHUB_REPO_OWNER": STAGING_GITHUB_REPO_OWNER,
@@ -98,7 +98,6 @@ class CiStage(Stage):
             input=input,
             commands=[
                 "cd tests/ci/cdk/pipeline/scripts",
-                "chmod +x check_trigger_conditions.sh",
                 'trigger_conditions=$(./check_trigger_conditions.sh --build-type ci --stacks "${STACKS}")',
                 "export NEED_REBUILD=$(echo $trigger_conditions | sed -n 's/.*\(NEED_REBUILD=[0-9]*\).*/\\1/p' | cut -d'=' -f2 )",
             ],
@@ -133,7 +132,6 @@ class CiStage(Stage):
             input=input,
             commands=[
                 "cd tests/ci/cdk/pipeline/scripts",
-                "chmod +x build_target.sh",
                 "./build_target.sh --build-type ci --project ${PROJECT} --max-retry ${MAX_RETRY} --timeout ${TIMEOUT}",
             ],
             role=role,

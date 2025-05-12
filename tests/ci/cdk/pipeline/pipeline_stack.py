@@ -285,7 +285,6 @@ class AwsLcCiPipeline(Stack):
                 input=source,
                 commands=[
                     "cd tests/ci/cdk/pipeline/scripts",
-                    "chmod +x finalize_images.sh",
                     './finalize_images.sh --repos "${ECR_REPOS}"',
                 ],
                 env={

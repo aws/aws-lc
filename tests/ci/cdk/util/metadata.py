@@ -4,9 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 from util.env_util import EnvUtil
-from datetime import datetime
-
-# timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M')
 
 # Used when AWS CDK defines AWS resources.
 PROD_ACCOUNT = "620771051181"

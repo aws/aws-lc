@@ -16,11 +16,7 @@ function delete_s3_buckets() {
   aws s3api list-buckets --query "Buckets[].Name" | jq '.[]' | while read -r i; do
     bucket_name=$(echo "${i}" | tr -d '"')
     # Delete the bucket if its name uses AWS_LC_S3_BUCKET_PREFIX.
-#    if [[ "${bucket_name}" == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
-#      aws s3 rm "s3://${bucket_name}" --recursive
-#      aws s3api delete-bucket --bucket "${bucket_name}"
-    # Delete bm-framework buckets if we're not on the team account
-    if [[ "${DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
+    if [[ "${bucket_name}" == *"${S3_FOR_WIN_DOCKER_IMG_BUILD}"* ]]; then
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
     fi
@@ -41,15 +37,15 @@ function delete_container_repositories() {
 }
 
 function destroy_ci() {
-  if [[ "${DEPLOY_ACCOUNT}" == "620771051181" ]]; then
+  if [[ "${DEPLOY_ACCOUNT}" == "620771051181" || "${DEPLOY_ACCOUNT}" == "351119683581" ]]; then
     echo "destroy_ci should not be executed on team account."
     exit 1
   fi
   cdk destroy 'aws-lc-*' --force
   # CDK stack destroy does not delete s3 bucket automatically.
-#  delete_s3_buckets
+  delete_s3_buckets
   # CDK stack destroy does not delete ecr automatically.
-#  delete_container_repositories
+  delete_container_repositories
 }
 
 function destroy_docker_img_build_stack() {
@@ -115,7 +111,7 @@ function run_windows_img_build() {
         --document-name "${WIN_DOCKER_BUILD_SSM_DOCUMENT}" \
         --output-s3-bucket-name "${S3_FOR_WIN_DOCKER_IMG_BUILD}" \
         --output-s3-key-prefix 'runcommand' \
-        --parameters "TriggerType=[\"pipeline\"]" | \
+        --parameters "TriggerType=[\"manual\"]" | \
         jq -r '.Command.CommandId')
       # Export for checking command run status.
       export WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID="${command_id}"
@@ -177,9 +173,6 @@ function win_docker_img_build_status_check() {
 }
 
 function build_linux_docker_images() {
-  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-#  trap destroy_docker_img_build_stack EXIT
-
   # Create/update aws-ecr repo.
   cdk deploy 'aws-lc-ecr-linux-*' --require-approval never
 
@@ -195,9 +188,6 @@ function build_linux_docker_images() {
 }
 
 function build_win_docker_images() {
- # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-# trap destroy_docker_img_build_stack EXIT
-
  # Create/update aws-ecr repo.
  cdk deploy 'aws-lc-ecr-windows-*' --require-approval never
 

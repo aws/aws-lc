@@ -36,6 +36,7 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
     * step 4: click **Connect using OAuth** and **Connect to GitHub**.
     * step 5: follow the OAuth app to grant access.
 * Setup Python environment:
+
   * From `aws-lc/tests/ci` run:
 ```shell
 python -m pip install -r requirements.txt
@@ -83,75 +84,91 @@ To setup or update the CI in your account you will need the following IAM permis
   * secretsmanager:GetSecretValue
 
 ### Pipeline Commands
-Use these commands to deploy the CI pipeline. Any changes to the CI or Docker images will be updated automatically after the pipeline is deployed. 
+Use the following commands to deploy the CI pipeline. Any changes to the CI or Docker images will be updated automatically after the pipeline is deployed. 
 
-These commands are run from `aws-lc/tests/ci/cdk`.
+1. Ensure you are in `aws-lc/tests/ci/cdk`
+2. Export the relevant environment variables:
+   - `PIPELINE_ACCOUNT_ID`: the AWS account to host your pipeline
+   - `DEPLOY_ACCOUNT_ID`: the AWS account to deploy Docker images and CodeBuild CI tests to.
+   - `GITHUB_REPO_OWNER`: GitHub repo targeted by the pipeline (i.e, your personal Github account)
+   - `GITHUB_SOURCE_VERSION`: Git branch holding the latest pipeline code (default: main)
 
-[SKIP IF NO CROSS-ACCOUNT DEPLOYMENT] Give the pipeline account administrator access to the deployment account's CloudFormation. Repeat this step depending on how many deployment environment there are. You only need to run this step once when the pipeline is deploying to a new account for the first time.
-```
-cdk bootstrap aws://${DEPLOY_ACCOUNT_ID}/us-west-2 --trust ${PIPELINE_ACCOUNT_ID} --trust-for-lookup ${PIPELINE_ACCOUNT_ID} --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
-```
+3. [SKIP IF NO CROSS-ACCOUNT DEPLOYMENT] Give the pipeline account administrator access to the deployment account's CloudFormation. Repeat this step depending on how many deployment environment there are. You only need to run this step once when the pipeline is deploying to a new account for the first time.
+    ```shell
+    cdk bootstrap aws://${DEPLOY_ACCOUNT_ID}/us-west-2 --trust ${PIPELINE_ACCOUNT_ID} --trust-for-lookup ${PIPELINE_ACCOUNT_ID} --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+    ```
+4. If not done previously, bootstrap cdk for the pipeline account before running the next commands.
+    ```shell
+    cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
+    ```
+5. You may also need to request an increase to certain account quotas:
+    ```shell
+    open https://${DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
+    ```
+   Set EC2-VPC Elastic IPs = 20 (default is only 5)
 
-If not done previously, bootstrap cdk for the pipeline account before running the next commands.
-```
-cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
-```
 
-To deploy dev pipeline to the same account as your CI:
-```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
-```
+6. Choose 1 of the following options to deploy the pipeline:
+   - To deploy dev pipeline to the same account as your CI
+    ```shell
+    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --deploy-account ${PIPELINE_ACCOUNT_ID} --action deploy-dev-pipeline
+    ```
+   - To deploy dev pipeline but pipeline is hosted in a separate account:
+    ```shell
+    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --pipeline-account ${PIPELINE_ACCOUNT_ID} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
+    ```
+   - To deploy production pipeline using default parameters:
+    ```shell
+    ./run-cdk.sh --action deploy-production-pipeline
+    ```
 
-To deploy dev pipeline but pipeline is hosted in a separate account:
-```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --pipeline-account ${PIPELINE_ACCOUNT_ID} --deploy-account ${DEPLOY_ACCOUNT_ID} --action deploy-dev-pipeline
-```
-
-To deploy production pipeline using default parameters:
-```
-./run-cdk.sh --action deploy-production-pipeline
-```
+**Note**: If this is your first time deploying the pipeline and it's failing on the Source stage, this is normal and expected, since you haven't given CodePipeline access to your repo.
+To fix this:
+1. Go to your Console > CodePipeline > Settings > Connections. You should see a pending connection named `AwsLcCiPipelineGitHubConnection`. Click on it.
+2. Click on `Update Pending Connection.`
+3. On the pop up, you would see an `App Installation - optional`. Click on `Install a new app` (or choose an existing app if you have one). This step is REQUIRED to allow CodePipeline to detect new events from your repo.
+4. Click `Connect`. The connection status should become `Available` now
 
 ### CI Commands
 Use these commands if you wish to deploy individual stacks instead of the entire pipeline.
 
-These commands are run from `aws-lc/tests/ci/cdk`.
+1. Ensure you are in `aws-lc/tests/ci/cdk`
+2. Export the relevant environment variables:
+  - `DEPLOY_ACCOUNT_ID`: AWS account you wish to deploy the CI stacks to
+  - `GITHUB_REPO_OWNER`: the GitHub repo targeted by this CI setup.
 
-If not done previously, bootstrap cdk before running the commands below. Make sure that AWS_ACCOUNT_ID is the AWS account you wish to deploy the CI stacks to.
+2. If not done previously, bootstrap cdk before running the commands below.
+    ```shell
+    cdk bootstrap aws://${DEPLOY_ACCOUNT_ID}/us-west-2
+    ```
 
-```shell
-cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-west-2
-```
+3. You may also need to request an increase to certain account quotas:
+    ```shell
+    open https://${DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
+    ```
+    Set EC2-VPC Elastic IPs = 20 (default is only 5)
 
-You may also need to request an increase to certain account quotas:
-```shell
-open https://${DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
-```
-* **EC2-VPC Elastic IPs** = 20
 
-Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
-* https://github.com/${GITHUB_REPO_OWNER}/aws-lc.git
+4. Choose 1 of the following command options:
+   - To set up AWS-LC CI, run command:
+    ```shell
+    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action deploy-ci --deploy-account ${DEPLOY_ACCOUNT_ID}
+    ```
 
-To set up AWS-LC CI, run command:
-```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action deploy-ci --deploy-account ${AWS_ACCOUNT_ID}
-```
+   - To update AWS-LC CI, run command:
+    ```shell
+    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action update-ci --deploy-account ${DEPLOY_ACCOUNT_ID}
+    ```
+   - To create/update Linux Docker images, run command:
+    ```shell
+    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action build-linux-img --deploy-account ${DEPLOY_ACCOUNT_ID}
+    ```
 
-To update AWS-LC CI, run command:
-```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action update-ci --deploy-account ${AWS_ACCOUNT_ID}
-```
-
-To create/update Linux Docker images, run command:
-```
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action build-linux-img --deploy-account ${AWS_ACCOUNT_ID}
-```
-
-To destroy AWS-LC CI resources created above, run command:
-```
-# NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
-./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action destroy-ci --deploy-account ${AWS_ACCOUNT_ID}
-```
+   - To destroy AWS-LC CI resources created above, run command:
+    ```shell
+    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action destroy-ci --deploy-account ${DEPLOY_ACCOUNT_ID}
+    ```
+   NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
 
 For help, run command:
 ```

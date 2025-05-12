@@ -77,7 +77,6 @@ class WindowsDockerImageBuildStage(Stage):
             input=input,
             commands=[
                 "cd tests/ci/cdk/pipeline/scripts",
-                "chmod +x cleanup_orphaned_images.sh check_trigger_conditions.sh build_target.sh",
                 './cleanup_orphaned_images.sh --repos "${ECR_REPOS}"',
                 'trigger_conditions=$(./check_trigger_conditions.sh --build-type docker --platform windows --stacks "${STACKS}")',
                 "export NEED_REBUILD=$(echo $trigger_conditions | sed -n -e 's/.*\(NEED_REBUILD=[0-9]*\).*/\\1/p' | cut -d'=' -f2 )",

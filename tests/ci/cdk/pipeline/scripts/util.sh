@@ -11,6 +11,7 @@ else
 fi
 
 function assume_role() {
+  set +x
   if [[ -z ${CROSS_ACCOUNT_BUILD_ROLE_ARN} ]]; then
     echo "No role arn provided"
     return 1
@@ -21,6 +22,7 @@ function assume_role() {
   export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r .Credentials.AccessKeyId)
   export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r .Credentials.SecretAccessKey)
   export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r .Credentials.SessionToken)
+  set -x
 }
 
 function refresh_session() {
