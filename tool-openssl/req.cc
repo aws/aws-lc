@@ -226,12 +226,18 @@ static const char *prompt_field(const ReqField &field, char *buffer,
     return NULL;
   }
 
-  // Remove newline character if present
+  // Remove newline character and carriage return if present
   size_t len = OPENSSL_strnlen(buffer, buffer_size);
   if (len > 0 && buffer[len - 1] == '\n') {
     buffer[len - 1] = '\0';
     len--;
   }
+#if defined(_WIN32)
+  if (len > 0 && buffer[len - 1] == '\r') {
+    buffer[len - 1] = '\0';
+    len--;
+  }
+#endif
 
   if (strcmp(buffer, ".") == 0) {
     // Empty entry requested

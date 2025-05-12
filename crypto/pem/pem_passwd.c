@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/base64.h>
 #include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -18,7 +17,6 @@
 #include "../fipsmodule/evp/internal.h"
 
 # include <signal.h>
-# include <stdio.h>
 # include <string.h>
 # include <errno.h>
 
