@@ -19,24 +19,30 @@ static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
 static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
     if (!bio) return false;
     
+    // Save current position
     const long current_pos = BIO_tell(bio);
-    if (current_pos < 0 || BIO_seek(bio, 0) < 0) return false;
+    if (current_pos < 0) return false;
     
-    const long size = BIO_tell(bio);
-    if (BIO_seek(bio, current_pos) < 0) return false;
+    // Get file size by seeking to end manually
+    if (BIO_seek(bio, 0) < 0) return false;
     
-    if (size > max_size) {
-        fprintf(stderr, "File exceeds maximum allowed size\n");
-        return false;
-    }
+    // Read through the file to determine size
+    long size = 0;
+    char buffer[4096];
+    int bytes_read;
     
-    if (size > 0) {
-        unsigned char byte;
-        if (BIO_read(bio, &byte, 1) != 1 || 
-            BIO_seek(bio, current_pos) < 0) {
+    while ((bytes_read = BIO_read(bio, buffer, sizeof(buffer))) > 0) {
+        size += bytes_read;
+        if (size > max_size) {
+            // Restore position and return error
+            BIO_seek(bio, current_pos);
+            fprintf(stderr, "File exceeds maximum allowed size\n");
             return false;
         }
     }
+    
+    // Restore original position
+    if (BIO_seek(bio, current_pos) < 0) return false;
     
     return true;
 }
