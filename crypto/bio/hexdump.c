@@ -211,8 +211,8 @@ int BIO_dump(BIO *bio, const void *data, int len) {
   }
 
   // Get the formatted content
-  const uint8_t *contents;
-  size_t content_len;
+  const uint8_t *contents = NULL;
+  size_t content_len = 0;
   if (!BIO_mem_contents(mbio, &contents, &content_len)) {
     goto err;
   }
