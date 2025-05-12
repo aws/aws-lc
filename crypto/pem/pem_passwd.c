@@ -194,9 +194,9 @@ static int openssl_console_echo_disable(void) {
     }
 # else
     if (is_a_tty_bss_get()) {
-        *tty_new_bss_get() = tty_orig_bss_get();
+        *tty_new_bss_get() = *tty_orig_bss_get();
         *tty_new_bss_get() &= ~ENABLE_ECHO_INPUT;
-        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &tty_new_bss_get);
+        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), *tty_new_bss_get());
     }
 # endif
     return 1;
@@ -204,14 +204,14 @@ static int openssl_console_echo_disable(void) {
 
 static int openssl_console_echo_enable(void) {
 # if !defined(_WIN32)
-    memcpy(tty_orig_bss_get(), tty_orig_bss_get(), sizeof(*tty_orig_bss_get()));
+    memcpy(tty_new_bss_get(), tty_orig_bss_get(), sizeof(*tty_orig_bss_get()));
     if (is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
         return 0;
     }
 # else
     if (is_a_tty_bss_get()) {
-        *tty_new_bss_get() = tty_orig_bss_get();
-        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), tty_new_bss_get());
+        *tty_new_bss_get() = *tty_orig_bss_get();
+        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), *tty_new_bss_get());
     }
 # endif
     return 1;
