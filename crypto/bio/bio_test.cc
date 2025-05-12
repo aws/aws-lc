@@ -23,6 +23,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include <array>
+
 #include "../internal.h"
 #include "../test/file_util.h"
 #include "../test/test_util.h"
@@ -1255,35 +1257,60 @@ TEST(BIOTest, Dump) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
 
-  // Test BIO_dump with binary data
-  const uint8_t data[] = {0x00, 0x01, 0x02, 0x7f, 0x80, 0xff, 'A', 'B', 'C', '\n', '\r', '\t'};
+  static constexpr std::array<uint8_t, 12> data = {{
+      0x00, 0x01, 0x02, 0x7f, 0x80, 0xff, 'A', 'B', 'C', '\n', '\r', '\t'
+  }};
 
-  // BIO_dump should return the exact number of bytes written
-  int ret = BIO_dump(bio.get(), data, sizeof(data));
-  ASSERT_GT(ret, 0);
+  int ret = BIO_dump(bio.get(), data.data(), data.size());
 
-  // Check that BIO_dump produced the expected output format
+  static constexpr char kExpectedOutput[] =
+    "00000000  00 01 02 7f 80 ff 41 42  43 0a 0d 09              |......ABC...|\n";
+
   const uint8_t *contents;
   size_t len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
   std::string output(reinterpret_cast<const char *>(contents), len);
 
-  // Verify the output contains the expected elements (hex values and ASCII representation)
-  EXPECT_NE(output.find("00 01 02 7f 80 ff"), std::string::npos);
-  EXPECT_NE(output.find("ABC"), std::string::npos);
-  EXPECT_NE(output.find("|"), std::string::npos);  // ASCII section divider
-  
-  // Verify return value equals the actual bytes written
-  EXPECT_EQ(ret, (int)len);
+  EXPECT_EQ(output, kExpectedOutput)
+    << "BIO_dump output should exactly match expected format";
+  EXPECT_EQ(ret, static_cast<int>(sizeof(kExpectedOutput) - 1))  // -1 for null terminator
+      << "Return value should match expected length";
 
-  // Verify BIO_dump works with an empty buffer
+  // Test edge cases
   bio.reset(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
-  ret = BIO_dump(bio.get(), data, 0);
-  
-  // For empty input, it should return 0 (no bytes written)
-  ASSERT_EQ(ret, 0);
-  
+  EXPECT_EQ(BIO_dump(bio.get(), data.data(), 0), 0)
+      << "Valid data with zero length should return 0";
+
+  EXPECT_EQ(BIO_dump(bio.get(), data.data(), -1), -1)
+      << "Negative length should return -1";
+
+  EXPECT_EQ(BIO_dump(bio.get(), nullptr, 0), -1)
+      << "BIO_dump with NULL data should return -1";
+
+  EXPECT_EQ(BIO_dump(nullptr, data.data(), data.size()), -1)
+      << "BIO_dump with NULL BIO should return -1";
+
+  // Test with larger data
+  std::array<uint8_t, 32> large_data = {{0}};
+  for (size_t i = 0; i < large_data.size(); ++i) {
+      large_data[i] = static_cast<uint8_t>(i);
+  }
+
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  ret = BIO_dump(bio.get(), large_data.data(), large_data.size());
+
+  static constexpr char kExpectedLargeOutput[] =
+    "00000000  00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f  |................|\n"
+    "00000010  10 11 12 13 14 15 16 17  18 19 1a 1b 1c 1d 1e 1f  |................|\n";
+
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(len, 0u);
+  output = std::string(reinterpret_cast<const char *>(contents), len);
+
+  EXPECT_EQ(output, kExpectedLargeOutput)
+      << "BIO_dump output should exactly match expected format";
+  EXPECT_EQ(ret, static_cast<int>(sizeof(kExpectedLargeOutput) - 1))  // -1 for null terminator
+      << "Return value should match expected length";
+
 }
