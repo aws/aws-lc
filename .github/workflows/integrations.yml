@@ -48,4 +48,42 @@ jobs:
       - name: Run librdkafka build
         run: |
           ./tests/ci/integration/run_librdkafka_integration.sh
-          
+  socat:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    env:
+      SHELL: /usr/bin/bash
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf pkg-config openssl
+      - uses: actions/checkout@v4
+      - name: Run socat integration test
+        run: |
+          ./tests/ci/integration/run_socat_integration.sh
+  rust-openssl:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout aws-lc
+        uses: actions/checkout@v4
+        with:
+          path: aws-lc
+      - name: Checkout rust-openssl
+        uses: actions/checkout@v4
+        with:
+          repository: sfackler/rust-openssl
+          path: rust-openssl
+      - uses: dtolnay/rust-toolchain@stable
+        id: toolchain
+      - name: Set Rust toolchain override
+        run: rustup override set ${{ steps.toolchain.outputs.name }}
+      - name: Install bindgen-cli
+        run: cargo install --locked bindgen-cli
+      - name: Run rust-openssl integration tests
+        env:
+          RUST_OPENSSL_SRC_DIR: "${{ github.workspace }}/rust-openssl"
+        run: |
+          pushd "${GITHUB_WORKSPACE}/aws-lc"
+          ./tests/ci/integration/run_rust_openssl_integration.sh

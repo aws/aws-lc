@@ -217,7 +217,7 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
           b->data -= b->max - b->length;
           b->length = b->max;
         } else {
-          OPENSSL_memset(b->data, 0, b->max);
+          OPENSSL_cleanse(b->data, b->max);
           b->length = 0;
         }
       }

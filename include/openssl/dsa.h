@@ -70,6 +70,8 @@
 extern "C" {
 #endif
 
+#define OPENSSL_DSA_MAX_MODULUS_BITS 10000
+
 
 // DSA contains functions for signing and verifying with the Digital Signature
 // Algorithm.
@@ -187,8 +189,8 @@ OPENSSL_EXPORT DSA *DSAparams_dup(const DSA *dsa);
 // Key generation.
 
 // DSA_generate_key generates a public/private key pair in |dsa|, which must
-// already have parameters setup. It returns one on success and zero on
-// error.
+// already have parameters setup. Only supports generating up to |OPENSSL_DSA_MAX_MODULUS_BITS|
+// bit keys. It returns one on success and zero on error.
 OPENSSL_EXPORT int DSA_generate_key(DSA *dsa);
 
 

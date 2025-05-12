@@ -72,9 +72,17 @@
 // recursive invocations of asn1_item_embed_d2i().
 #define ASN1_MAX_CONSTRUCTED_NEST 30
 
+static int asn1_check_eoc(const unsigned char **in, long len);
+static int asn1_find_end(const unsigned char **in, long len, char inf);
+
+static int asn1_collect(BUF_MEM *buf, const unsigned char **in, long len,
+                        char inf, int tag, int aclass, int depth);
+
+static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen);
+
 static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
-                           char *cst, const unsigned char **in, long len,
-                           int exptag, int expclass, char opt);
+                           char *inf, char *cst, const unsigned char **in,
+                           long len, int exptag, int expclass, char opt);
 
 static int asn1_template_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                                 long len, const ASN1_TEMPLATE *tt, char opt,
@@ -163,7 +171,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
   const ASN1_EXTERN_FUNCS *ef;
   const unsigned char *p = NULL, *q;
   unsigned char oclass;
-  char cst, isopt;
+  char seq_eoc, seq_nolen, cst, isopt;
   int i;
   int otag;
   int ret = 0;
@@ -211,7 +219,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
 
       p = *in;
       // Just read in tag and class
-      ret = asn1_check_tlen(NULL, &otag, &oclass, NULL, &p, len, -1, 0, 1);
+      ret = asn1_check_tlen(NULL, &otag, &oclass, NULL, NULL, &p, len, -1, 0, 1);
       if (!ret) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
         goto err;
@@ -318,13 +326,15 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         aclass = V_ASN1_UNIVERSAL;
       }
       // Get SEQUENCE length and update len, p
-      ret = asn1_check_tlen(&len, NULL, NULL, &cst, &p, len, tag, aclass, opt);
+      ret = asn1_check_tlen(&len, NULL, NULL, &seq_eoc, &cst, &p, len, tag, aclass, opt);
       if (!ret) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
         goto err;
       } else if (ret == -1) {
         return -1;
       }
+      // If indefinite we don't do a length check.
+      seq_nolen = seq_eoc;
       if (!cst) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_SEQUENCE_NOT_CONSTRUCTED);
         goto err;
@@ -369,6 +379,19 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
           break;
         }
         q = p;
+        // |asn1_check_eoc| does a check for eoc (the indefinite length
+        // terminator) here. |seq_eoc| determines if we had found "0x80" earlier
+        // to indicate indefinite length is being used and we error out if eoc
+        // wasn't expected.
+        if (asn1_check_eoc(&p, len)) {
+          if (!seq_eoc) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
+            goto err;
+          }
+          len -= p - q;
+          seq_eoc = 0;
+          break;
+        }
         // This determines the OPTIONAL flag value. The field cannot be
         // omitted if it is the last of a SEQUENCE and there is still
         // data to be read. This isn't strictly necessary but it
@@ -393,8 +416,13 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         len -= p - q;
       }
 
+      // Check for EOC if expecting one.
+      if (seq_eoc && !asn1_check_eoc(&p, len)) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
+        goto err;
+      }
       // Check all data read
-      if (len) {
+      if (!seq_nolen && len) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_SEQUENCE_LENGTH_MISMATCH);
         goto err;
       }
@@ -462,6 +490,7 @@ static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
   int ret;
   long len;
   const unsigned char *p, *q;
+  char exp_eoc;
   if (!val) {
     return 0;
   }
@@ -475,7 +504,7 @@ static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
     char cst;
     // Need to work out amount of data available to the inner content and
     // where it starts: so read in EXPLICIT header to get the info.
-    ret = asn1_check_tlen(&len, NULL, NULL, &cst, &p, inlen, tt->tag, aclass,
+    ret = asn1_check_tlen(&len, NULL, NULL, &exp_eoc, &cst, &p, inlen, tt->tag, aclass,
                           opt);
     q = p;
     if (!ret) {
@@ -496,10 +525,18 @@ static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
     }
     // We read the field in OK so update length
     len -= p - q;
-    // Check for trailing data.
-    if (len) {
-      OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPLICIT_LENGTH_MISMATCH);
-      goto err;
+    if (exp_eoc) {
+      // If NDEF we must have an EOC here.
+      if (!asn1_check_eoc(&p, len)) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
+        goto err;
+      }
+    } else {
+      // Otherwise we must hit the EXPLICIT tag end or its an error
+      if (len) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPLICIT_LENGTH_MISMATCH);
+        goto err;
+      }
     }
   } else {
     return asn1_template_noexp_d2i(val, in, inlen, tt, opt, depth);
@@ -530,6 +567,7 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
   if (flags & ASN1_TFLG_SK_MASK) {
     // SET OF, SEQUENCE OF
     int sktag, skaclass;
+    char sk_eoc;
     // First work out expected inner tag value
     if (flags & ASN1_TFLG_IMPTAG) {
       sktag = tt->tag;
@@ -544,7 +582,7 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
     }
     // Get the tag
     ret =
-        asn1_check_tlen(&len, NULL, NULL, NULL, &p, len, sktag, skaclass, opt);
+        asn1_check_tlen(&len, NULL, NULL, &sk_eoc, NULL, &p, len, sktag, skaclass, opt);
     if (!ret) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       return 0;
@@ -571,6 +609,16 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
     while (len > 0) {
       ASN1_VALUE *skfield;
       const unsigned char *q = p;
+      // See if EOC found.
+      if (asn1_check_eoc(&p, len)) {
+        if (!sk_eoc) {
+          OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
+          goto err;
+        }
+        len -= p - q;
+        sk_eoc = 0;
+        break;
+      }
       skfield = NULL;
       if (!asn1_item_ex_d2i(&skfield, &p, len, ASN1_ITEM_ptr(tt->item), -1, 0,
                             0, depth)) {
@@ -582,6 +630,10 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
         ASN1_item_ex_free(&skfield, ASN1_ITEM_ptr(tt->item));
         goto err;
       }
+    }
+    if (sk_eoc) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
+      goto err;
     }
   } else if (flags & ASN1_TFLG_IMPTAG) {
     // IMPLICIT tagging
@@ -618,8 +670,9 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
                                  int aclass, char opt) {
   int ret = 0, utype;
   long plen;
-  char cst;
+  char cst, inf;
   const unsigned char *p;
+  BUF_MEM buf = {0, NULL, 0 };
   const unsigned char *cont = NULL;
   long len;
   if (!pval) {
@@ -646,7 +699,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
       return 0;
     }
     p = *in;
-    ret = asn1_check_tlen(NULL, &utype, &oclass, NULL, &p, inlen, -1, 0, 0);
+    ret = asn1_check_tlen(NULL, &utype, &oclass, NULL, NULL, &p, inlen, -1, 0, 0);
     if (!ret) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       return 0;
@@ -661,7 +714,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
   }
   p = *in;
   // Check header
-  ret = asn1_check_tlen(&plen, NULL, NULL, &cst, &p, inlen, tag, aclass, opt);
+  ret = asn1_check_tlen(&plen, NULL, NULL, &inf, &cst, &p, inlen, tag, aclass, opt);
   if (!ret) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
     return 0;
@@ -679,14 +732,39 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
     }
 
     cont = *in;
-    len = p - cont + plen;
-    p += plen;
+    // If indefinite length constructed, find the real end.
+    if (inf) {
+      if (!asn1_find_end(&p, plen, inf)) {
+        goto err;
+      }
+      len = p - cont;
+    } else {
+      len = p - cont + plen;
+      p += plen;
+    }
   } else if (cst) {
-    // This parser historically supported BER constructed strings. We no
-    // longer do and will gradually tighten this parser into a DER
-    // parser. BER types should use |CBS_asn1_ber_to_der|.
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
-    return 0;
+    if (utype == V_ASN1_NULL || utype == V_ASN1_BOOLEAN
+                || utype == V_ASN1_OBJECT || utype == V_ASN1_INTEGER
+                || utype == V_ASN1_ENUMERATED) {
+      // These types only have primitive encodings.
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+      return 0;
+    }
+
+    // Should really check the internal tags are correct but some things
+    // may get this wrong. The relevant specs say that constructed string
+    // types should be OCTET STRINGs internally irrespective of the type.
+    // So instead just check for UNIVERSAL class and ignore the tag.
+    if (!asn1_collect(&buf, &p, plen, inf, -1, V_ASN1_UNIVERSAL, 0)) {
+      goto err;
+    }
+    len = buf.length;
+    // Append a final null to string.
+    if (!BUF_MEM_grow_clean(&buf, len + 1)) {
+      goto err;
+    }
+    buf.data[len] = 0;
+    cont = (const unsigned char *)buf.data;
   } else {
     cont = p;
     len = plen;
@@ -701,6 +779,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
   *in = p;
   ret = 1;
 err:
+  OPENSSL_free(buf.data);
   return ret;
 }
 
@@ -855,19 +934,169 @@ err:
   return ret;
 }
 
-// Check an ASN1 tag and length: a bit like ASN1_get_object but it
-// checks the expected tag.
+// This function finds the end of an ASN1 structure when passed its maximum
+// length, whether it is indefinite length and a pointer to the content. This
+// is more efficient than calling asn1_collect because it does not recurse on
+// each indefinite length header.
+static int asn1_find_end(const unsigned char **in, long len, char inf) {
+  uint32_t expected_eoc;
+  long plen;
+  const unsigned char *p = *in, *q;
+  // If not indefinite length constructed just add length.
+  if (inf == 0) {
+    *in += len;
+    return 1;
+  }
+  expected_eoc = 1;
+  // Indefinite length constructed form. Find the end when enough EOCs are
+  // found. If more indefinite length constructed headers are encountered
+  // increment the expected eoc count otherwise just skip to the end of the
+  // data.
+  while (len > 0) {
+    if (asn1_check_eoc(&p, len)) {
+      expected_eoc--;
+      if (expected_eoc == 0) {
+        break;
+      }
+      len -= 2;
+      continue;
+    }
+    q = p;
+    // Just read in a header: only care about the length.
+    if (!asn1_check_tlen(&plen, NULL, NULL, &inf, NULL, &p, len,
+                         -1, 0, 0)) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
+      return 0;
+    }
+    if (inf) {
+      // This checks for an underflow due to the loop subtraction done on
+      // |expected_eoc| above.
+      if (expected_eoc == UINT32_MAX) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
+        return 0;
+      }
+      expected_eoc++;
+    }
+    else {
+      p += plen;
+    }
+    len -= p - q;
+  }
+  if (expected_eoc) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
+    return 0;
+  }
+  *in = p;
+  return 1;
+}
 
+// This function collects the asn1 data from a constructed string type into
+// a buffer. The values of 'in' and 'len' should refer to the contents of the
+// constructed type and 'inf' should be set if it is indefinite length.
+
+// This determines how many levels of recursion are permitted in ASN1 string
+// types. If it is not limited stack overflows can occur. If set to zero no
+// recursion is allowed at all. Although zero should be adequate examples
+// exist that require a value of 1. So 5 should be more than enough.
+
+#define ASN1_MAX_STRING_NEST 5
+
+static int asn1_collect(BUF_MEM *buf, const unsigned char **in, long len,
+                        char inf, int tag, int aclass, int depth) {
+  const unsigned char *p, *q;
+  long plen;
+  char cst, ininf;
+  p = *in;
+  inf &= 1;
+  // If no buffer and not indefinite length constructed just pass over the
+  // encoded data
+  if (!buf && !inf) {
+    *in += len;
+    return 1;
+  }
+  while (len > 0) {
+    q = p;
+    // Check for EOC.
+    if (asn1_check_eoc(&p, len)) {
+      // EOC is illegal outside indefinite length constructed form
+      if (!inf) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
+        return 0;
+      }
+      inf = 0;
+      break;
+    }
+
+    if (!asn1_check_tlen(&plen, NULL, NULL, &ininf, &cst, &p,
+                         len, tag, aclass, 0)) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
+      return 0;
+    }
+
+    // If indefinite length constructed, update max length.
+    if (cst) {
+      if (depth >= ASN1_MAX_STRING_NEST) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_STRING);
+        return 0;
+      }
+      if (!asn1_collect(buf, &p, plen, ininf, tag, aclass, depth + 1)) {
+        return 0;
+      }
+    } else if (plen && !collect_data(buf, &p, plen)) {
+      return 0;
+    }
+    len -= p - q;
+  }
+  if (inf) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
+    return 0;
+  }
+  *in = p;
+  return 1;
+}
+
+static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen) {
+  int len;
+  if (buf) {
+    len = buf->length;
+    if (!BUF_MEM_grow_clean(buf, len + plen)) {
+      return 0;
+    }
+    OPENSSL_memcpy(buf->data + len, *p, plen);
+  }
+  *p += plen;
+  return 1;
+}
+
+// Check for ASN1 EOC and swallow it if found. Returns 1 if found and 0 if none.
+static int asn1_check_eoc(const unsigned char **in, long len) {
+  const unsigned char *p;
+  if (len < 2) {
+    return 0;
+  }
+  p = *in;
+  if (p[0] == '\0' && p[1] == '\0') {
+    *in += 2;
+    return 1;
+  }
+  return 0;
+}
+
+// Check an ASN1 tag and length: a bit like ASN1_get_object but it sets the
+// length for indefinite length constructed form, we don't know the exact
+// length, but we can set an upper bound to the amount of data available minus
+// the header length just read.
 static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
-                           char *cst, const unsigned char **in, long len,
-                           int exptag, int expclass, char opt) {
+                           char *inf, char *cst, const unsigned char **in,
+                           long len, int exptag, int expclass, char opt) {
   int i;
   int ptag, pclass;
   long plen;
-  const unsigned char *p;
+  const unsigned char *p, *q;
   p = *in;
+  q = p;
 
-  i = asn1_get_object_maybe_indefinite(&p, &plen, &ptag, &pclass, len, /*indefinite_ok=*/0);
+  i = ASN1_get_object(&p, &plen, &ptag, &pclass, len);
   if (i & 0x80) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
     return 0;
@@ -881,6 +1110,17 @@ static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TAG);
       return 0;
     }
+  }
+
+  // If indefinite, this sets an upper bound to the amount of data available
+  // minus the header length just read.
+  if (i & 1) {
+    plen = len - (p - q);
+  }
+
+  // Indicate whether indefinite.
+  if (inf != NULL) {
+    *inf = i & 1;
   }
 
   if (cst) {

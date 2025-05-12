@@ -968,7 +968,7 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
 int SSL_process_quic_post_handshake(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
-  if (SSL_in_init(ssl)) {
+  if (ssl->quic_method == nullptr || (SSL_in_init(ssl) != 0)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -3060,6 +3060,14 @@ int SSL_can_release_private_key(const SSL *ssl) {
 
   // Otherwise, this is determined by the current handshake.
   return !ssl->s3->hs || ssl->s3->hs->can_release_private_key;
+}
+
+int SSL_in_connect_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && !SSL_is_server(ssl);
+}
+
+int SSL_in_accept_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && SSL_is_server(ssl);
 }
 
 int SSL_is_init_finished(const SSL *ssl) { return !SSL_in_init(ssl); }

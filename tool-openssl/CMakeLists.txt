@@ -10,6 +10,7 @@ add_executable(
     crl.cc
     dgst.cc
     rehash.cc
+    req.cc
     rsa.cc
     s_client.cc
     tool.cc
@@ -46,14 +47,17 @@ install(TARGETS openssl
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-configure_file(
+file(INSTALL
     ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
-    ${CMAKE_CURRENT_BINARY_DIR}/c_rehash
-    COPYONLY
+    DESTINATION
+    ${CMAKE_CURRENT_BINARY_DIR}
+    NO_SOURCE_PERMISSIONS
     FILE_PERMISSIONS
     OWNER_READ OWNER_WRITE OWNER_EXECUTE
     GROUP_READ GROUP_EXECUTE
     WORLD_READ WORLD_EXECUTE
+    RENAME
+    c_rehash
 )
 
 install(
@@ -83,6 +87,8 @@ if(BUILD_TESTING)
         dgst_test.cc
         rehash.cc
         rehash_test.cc
+        req.cc
+        req_test.cc
         rsa.cc
         rsa_test.cc
         s_client.cc
@@ -92,14 +98,17 @@ if(BUILD_TESTING)
         x509_test.cc
     )
 
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
-        ${CMAKE_CURRENT_BINARY_DIR}/c_rehash_test
-        COPYONLY
-        FILE_PERMISSIONS
-        OWNER_READ OWNER_WRITE OWNER_EXECUTE
-        GROUP_READ GROUP_EXECUTE
-        WORLD_READ WORLD_EXECUTE
+    file(INSTALL
+            ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
+            DESTINATION
+            ${CMAKE_CURRENT_BINARY_DIR}
+            NO_SOURCE_PERMISSIONS
+            FILE_PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE
+            RENAME
+            c_rehash_test
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)

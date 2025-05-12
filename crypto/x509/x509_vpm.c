@@ -403,6 +403,10 @@ void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
   param->hostflags = flags;
 }
 
+unsigned int X509_VERIFY_PARAM_get_hostflags(const X509_VERIFY_PARAM *param) {
+    return param->hostflags;
+}
+
 int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,
                                  size_t emaillen) {
   if (OPENSSL_memchr(email, '\0', emaillen) != NULL ||

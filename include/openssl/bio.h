@@ -67,6 +67,19 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#if defined(OPENSSL_WINDOWS)
+// Due to name conflicts, we must prevent "wincrypt.h" from being included
+#define NOCRYPT
+#include <winsock2.h>
+#include <ws2ipdef.h>
+#undef NOCRYPT
+#else
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -295,6 +308,17 @@ typedef long (*BIO_callback_fn_ex)(BIO *bio, int oper, const char *argp,
                                    size_t len, int argi, long argl, int bio_ret,
                                    size_t *processed);
 
+  // |BIO_callback_fn_ex| parameters have the following meaning:
+  //    |bio| the bio that made the call
+  //    |oper| the operation being performed, may be or'd with |BIO_CB_RETURN|
+  //    |argp| and |argl| depends on the value of oper
+  //    |argi| is used to hold len value for |BIO_CB_READ|, |BIO_CB_WRITE|, and
+  //    |BIO_CB_GETS|
+  //    |bio_ret| is the return value from the BIO method itself,
+  //    or value of processed where applicable
+typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp,
+    int argi, long argl, long bio_ret);
+
 
 // BIO_callback_ctrl allows the callback function to be manipulated. The |cmd|
 // arg will generally be |BIO_CTRL_SET_CALLBACK| but arbitrary command values
@@ -317,6 +341,9 @@ OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);
 // otherwise.
 OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
+// BIO_get_close returns the close flag for |bio|.
+OPENSSL_EXPORT int BIO_get_close(BIO *bio);
+
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
 OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
@@ -327,6 +354,11 @@ OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
+
+// BIO_set_callback sets the legacy |callback| for |bio|. When both |callback| and
+// |callback_ex| are set, |callback_ex| will be used. Added for compatibility with
+// existing applications.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
 
 // BIO_set_callback_arg sets the callback |arg| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
@@ -678,16 +710,35 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 
 // Datagram BIOs.
-//
-// TODO(fork): not implemented.
+
+  // Data structures
+typedef union bio_addr_st {
+    struct sockaddr sa;
+#ifdef AF_INET6
+    struct sockaddr_in6 s_in6;
+#endif
+    struct sockaddr_in s_in;
+#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS)
+    struct sockaddr_un s_un;
+#endif
+} BIO_ADDR;
+
+#define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
+#define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
+                                          * socket to be passed in */
+
+# define BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP 37 // flag whether the last
+# define BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP 38 // I/O operation tiemd out
 
 #define BIO_CTRL_DGRAM_QUERY_MTU 40  // as kernel for current MTU
-
+#define BIO_CTRL_DGRAM_GET_MTU 41 // get cached value for MTU
 #define BIO_CTRL_DGRAM_SET_MTU 42 /* set cached value for  MTU. want to use
-                                     this if asking the kernel fails */
+                                   * this if asking the kernel fails */
 
-#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
+#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceeded in
                                           the previous write operation. */
+
+#define BIO_CTRL_DGRAM_SET_PEER           44 // Destination for the data
 
 // BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
 // and depends on |timeval|, which is not 2038-clean on all platforms.
@@ -696,6 +747,45 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 #define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
 
+// BIO_s_datagram returns the datagram |BIO_METHOD|. A datagram BIO provides a wrapper
+// around datagram sockets.
+OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void);
+
+// BIO_new_dgram creates a new datagram BIO wrapping |fd|. If |close_flag| is
+// non-zero, then |fd| will be closed when the BIO is freed.
+OPENSSL_EXPORT BIO *BIO_new_dgram(const int fd, const int close_flag);
+
+// BIO_ctrl_dgram_connect attempts to connect the datagram BIO to the specified
+// |peer| address. It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer);
+
+// BIO_ctrl_set_connected marks the datagram BIO as connected to the specified
+// |peer| address. This is used for handling DTLS connection-oriented BIOs.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer);
+
+// BIO_dgram_recv_timedout returns 1 if the most recent datagram receive
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp);
+
+// BIO_dgram_send_timedout returns 1 if the most recent datagram send
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO *bp);
+
+// BIO_dgram_get_peer stores the address of the peer the datagram BIO is
+// connected to in |peer|. It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer);
+
+// BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer);
+
+// BIO_dgram_get_mtu_overhead returns the number of bytes of overhead when sending
+// a datagram of the maximum size through |bp| to the specified |peer| address.
+// This is used for PMTU discovery in DTLS.
+OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer);
 
 // BIO Pairs.
 //
@@ -1002,6 +1092,20 @@ struct bio_st {
   // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|, 
   // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
+
+  // Legacy callback function that handles the same events as |callback_ex| but without
+  // length and processed parameters.
+  // When both callbacks are set, |callback_ex| will be used.
+  // Handles |BIO_read|, |BIO_write|, |BIO_free|, |BIO_gets|, |BIO_puts|,
+  // and |BIO_ctrl| operations.
+  // Callbacks are only called with for the following events: |BIO_CB_READ|,
+  // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
+  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
+  // |BIO_CB_PUTS|+|BIO_CB_RETURN|, |BIO_CB_GETS|,
+  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|,
+  // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
+  BIO_callback_fn callback;
+
   // Optional callback argument, only intended for applications use.
   char *cb_arg;
 
@@ -1035,6 +1139,7 @@ struct bio_st {
 #define BIO_C_GET_FILE_PTR 107
 #define BIO_C_SET_FILENAME 108
 #define BIO_C_SET_SSL 109
+#define BIO_C_GET_SSL 110
 #define BIO_C_SET_MD 111
 #define BIO_C_GET_MD 112
 #define BIO_C_GET_CIPHER_STATUS 113

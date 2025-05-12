@@ -2903,6 +2903,38 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose);
 // difference.
 OPENSSL_EXPORT int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust);
 
+// X509_STORE_CTX_add_custom_crit_oid adds |oid| to the list of "known" critical
+// extension OIDs in |ctx|. Typical OpenSSL/AWS-LC behavior returns an error if
+// there are any unknown critical extensions present within the certificates
+// being validated. This function lets users specify custom OIDs of any critical
+// extensions that are within the certificates being validated, that they wish
+// to allow.
+//
+// To properly consume this feature, the callback mechanism with
+// |X509_STORE_CTX_set_verify_crit_oids| must be set. See its specific
+// documentation for more details.
+OPENSSL_EXPORT int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx,
+                                                      ASN1_OBJECT *oid);
+
+// X509_STORE_CTX_verify_crit_oids is the callback signature for
+// |X509_STORE_CTX_set_verify_crit_oids|. |ctx| is the context being used,
+// |x509| represents the current certificate being validated, and |oids|
+// is a stack of |ASN1_OBJECT|s representing unknown critical extension
+// OIDs that were found in |x509| and match those previously registered via
+// |X509_STORE_CTX_add_custom_crit_oid|.
+typedef int (*X509_STORE_CTX_verify_crit_oids_cb)(X509_STORE_CTX *ctx,
+                                                  X509 *x509,
+                                                  STACK_OF(ASN1_OBJECT) *oids);
+
+// X509_STORE_CTX_set_verify_crit_oids sets the |verify_crit_oids| callback
+// function for |ctx|. Consumers should be performing additional validation
+// against the custom extension oids after or during the handshake with
+// |X509_STORE_CTX_set_verify_crit_oids|. This callback forces users to validate
+// their custom OIDs when processing unknown custom critical extensions.
+OPENSSL_EXPORT void X509_STORE_CTX_set_verify_crit_oids(
+    X509_STORE_CTX *ctx,
+    X509_STORE_CTX_verify_crit_oids_cb verify_custom_crit_oids);
+
 
 // Verification parameters
 //
@@ -3090,6 +3122,11 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 // |flags|. |flags| should be a combination of |X509_CHECK_FLAG_*| constants.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                                     unsigned int flags);
+
+// X509_VERIFY_PARAM_get_hostflags returns |param|'s name-checking flags.
+OPENSSL_EXPORT unsigned int X509_VERIFY_PARAM_get_hostflags(
+    const X509_VERIFY_PARAM *param);
+
 
 // X509_VERIFY_PARAM_set1_email configures |param| to check for the email
 // address specified by |email|. It returns one on success and zero on error.
@@ -4980,6 +5017,10 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
 // for the duration of the certificate verification.
 OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
                                              STACK_OF(X509) *sk);
+
+// X509_STORE_CTX_set0_untrusted is an alias for  |X509_STORE_CTX_set_chain|.
+OPENSSL_EXPORT void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx,
+                                                  STACK_OF(X509) *sk);
 
 // The following flags do nothing. The corresponding non-standard options have
 // been removed.
