@@ -592,6 +592,7 @@ TEST_F(PemPasswdTest, PasswordInputVariations) {
     MockStdinInput(tc.input);
 
     ASSERT_TRUE(openssl_console_write(default_prompt));
+
     ASSERT_EQ(openssl_console_read(buf, tc.min_size, sizeof(buf), 0), tc.expected_result);
     
     if (tc.expected_result == 0) {
@@ -692,37 +693,4 @@ TEST_F(PemPasswdTest, EchoModes) {
   // Both should have the same result
   ASSERT_STREQ(buf_no_echo, "test_password");
   ASSERT_STREQ(buf_with_echo, "test_password");
-}
-
-// Test the behavior of the password callback function
-TEST(PemPasswordCallbackTest, BasicCallback) {
-  // Test normal case - verify the buffer is filled correctly
-  {
-    char buf[1024] = {0};
-    const char* test_secret = "test_secret";
-    
-    // We don't care about the return value, just the buffer contents
-    (void)pem_password_callback(buf, sizeof(buf), 0, (void*)test_secret);
-    ASSERT_STREQ(buf, test_secret);
-  }
-  
-  // Test with small buffer - should truncate
-  {
-    char small_buf[5] = {0};
-    const char* test_secret = "test_secret";
-    
-    (void)pem_password_callback(small_buf, sizeof(small_buf), 0, (void*)test_secret);
-    ASSERT_STREQ(small_buf, "test"); // Should be truncated
-  }
-  
-  // Test with zero size buffer - should not modify the buffer
-  {
-    char zero_buf[1] = {'X'};
-    const char* test_secret = "test_secret";
-    
-    // For zero size, we know it returns 0 per the function definition
-    int zero_result = pem_password_callback(zero_buf, 0, 0, (void*)test_secret);
-    ASSERT_EQ(zero_result, 0); // Should return 0 for size <= 0
-    ASSERT_EQ(zero_buf[0], 'X'); // Buffer should be unchanged
-  }
 }

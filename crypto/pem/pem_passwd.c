@@ -151,16 +151,25 @@ int openssl_console_open(void) {
           }
     }
 # else
-    if ((tty_out = fopen("conout$", "w")) == NULL) {
-        tty_out = stderr;
-    }
-    if (GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &tty_orig)) {
-        tty_in = stdin;
-    } else {
-        is_a_tty = 0;
+    DWORD console_mode;
+    HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+
+    // Check if console (equivalent to checking for /dev/tty on Linux)
+    if (GetConsoleMode(hStdIn, &console_mode)) {
+        // It's a real console, use conin$ and conout$ to bypass any redirection
         if ((tty_in = fopen("conin$", "r")) == NULL) {
             tty_in = stdin;
         }
+        if ((tty_out = fopen("conout$", "w")) == NULL) {
+            tty_out = stderr;
+        }
+
+        tty_orig = console_mode;
+    } else {
+        // Not a console, use stdin/stderr
+        tty_in = stdin;
+        tty_out = stderr;
+        is_a_tty = 0;
     }
 #endif
     return 1;
@@ -255,19 +264,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
             }
             OPENSSL_cleanse(wresult, sizeof(wresult));
         }
-    }
-//#   endif
-//        if (ReadConsoleA(GetStdHandle(STD_INPUT_HANDLE),
-//                         buf, maxsize, &numread, NULL)) {
-//            if (numread >= 2 &&
-//                buf[numread-2] == '\r' && buf[numread-1] == '\n') {
-//                buf[numread-2] = '\n';
-//                numread--;
-//            }
-//            buf[numread] = '\0';
-//            p = buf;
-//        }
-//    } else
+    } else
 #  endif
     p = fgets(buf, maxsize, tty_in);
     if (p == NULL || feof(tty_in) || ferror(tty_in)) {
