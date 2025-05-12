@@ -1,20 +1,17 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <string.h>
 
 #include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 #include "../internal.h"
-#include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/delocate.h"
 
 # include <signal.h>
 # include <string.h>
@@ -35,15 +32,15 @@
 #  include <windows.h>
 # endif
 
-# define NUM_SIG 32
+#define NUM_SIG 32
 
-static volatile sig_atomic_t intr_signal;
-static struct CRYPTO_STATIC_MUTEX console_global_mutex = CRYPTO_STATIC_MUTEX_INIT;
+DEFINE_BSS_GET(sig_atomic_t, intr_signal);
+DEFINE_STATIC_MUTEX(console_global_mutex);
 
 # ifdef SIGACTION
-static struct sigaction savsig[NUM_SIG];
+    static struct sigaction savsig[NUM_SIG];
 # else
-static void (*savsig[NUM_SIG]) (int);
+    static void (*savsig[NUM_SIG]) (int);
 # endif
 
 static int read_till_nl(FILE *);
@@ -52,14 +49,16 @@ static void pushsig(void);
 static void popsig(void);
 
 #if defined(_WIN32)
-  DWORD tty_orig, tty_new;
+    DEFINE_BSS_GET(DWORD, tty_orig);
+    DEFINE_BSS_GET(DWORD, tty_new);
 #else
-  TTY_STRUCT tty_orig, tty_new;
+    DEFINE_BSS_GET(TTY_STRUCT, tty_orig);
+    DEFINE_BSS_GET(TTY_STRUCT, tty_new);
 #endif
 
-FILE *tty_in, *tty_out;
-int is_a_tty;
-
+DEFINE_BSS_GET(FILE*, tty_in);
+DEFINE_BSS_GET(FILE*, tty_out);
+DEFINE_BSS_GET(int, is_a_tty);
 
 /* Internal functions to read a string without echoing */
 static int read_till_nl(FILE *in) {
@@ -124,25 +123,25 @@ static void popsig(void) {
 }
 
 static void recsig(int signal) {
-    intr_signal = signal;
+    *intr_signal_bss_get() = signal;
 }
 
 /* Console management functions */
 int openssl_console_open(void) {
-    CRYPTO_STATIC_MUTEX_lock_write(&console_global_mutex);
-    is_a_tty = 1;
+    CRYPTO_STATIC_MUTEX_lock_write(console_global_mutex_bss_get());
+    *is_a_tty_bss_get() = 1;
 
     # if !defined(_WIN32)
-    if ((tty_in = fopen(DEV_TTY, "r")) == NULL) {
-        tty_in = stdin;
+    if ((*tty_in_bss_get() = fopen(DEV_TTY, "r")) == NULL) {
+        *tty_in_bss_get() = stdin;
     }
-    if ((tty_out = fopen(DEV_TTY, "w")) == NULL) {
-        tty_out = stderr;
+    if ((*tty_out_bss_get() = fopen(DEV_TTY, "w")) == NULL) {
+        *tty_out_bss_get() = stderr;
     }
-    if (TTY_get(fileno(tty_in), &tty_orig) == -1) {
+    if (TTY_get(fileno(*tty_in_bss_get()), tty_orig_bss_get()) == -1) {
         if (errno == ENOTTY || errno == EINVAL || errno == ENXIO || errno == EIO
           || errno == EPERM || errno == ENODEV) {
-            is_a_tty = 0;
+            *is_a_tty_bss_get() = 0;
           } else {
               OPENSSL_PUT_ERROR(PEM, ERR_R_INTERNAL_ERROR);
               return 0;
@@ -155,49 +154,49 @@ int openssl_console_open(void) {
     // Check if console (equivalent to checking for /dev/tty on Linux)
     if (GetConsoleMode(hStdIn, &console_mode)) {
         // It's a real console, use conin$ and conout$ to bypass any redirection
-        if ((tty_in = fopen("conin$", "r")) == NULL) {
-            tty_in = stdin;
+        if ((*tty_in_bss_get() = fopen("conin$", "r")) == NULL) {
+            *tty_in_bss_get() = stdin;
         }
-        if ((tty_out = fopen("conout$", "w")) == NULL) {
-            tty_out = stderr;
+        if ((*tty_out_bss_get() = fopen("conout$", "w")) == NULL) {
+            *tty_out_bss_get() = stderr;
         }
 
-        tty_orig = console_mode;
+        *tty_orig_bss_get() = console_mode;
     } else {
         // Not a console, use stdin/stderr
-        tty_in = stdin;
-        tty_out = stderr;
-        is_a_tty = 0;
+        *tty_in_bss_get() = stdin;
+        *tty_out_bss_get() = stderr;
+        *is_a_tty_bss_get() = 0;
     }
 #endif
     return 1;
 }
 
 int openssl_console_close(void) {
-    if (tty_in != stdin) {
-        fclose(tty_in);
+    if (*tty_in_bss_get() != stdin) {
+        fclose(*tty_in_bss_get());
     }
-    if (tty_out != stderr) {
-        fclose(tty_out);
+    if (*tty_out_bss_get() != stderr) {
+        fclose(*tty_out_bss_get());
     }
 
-    CRYPTO_STATIC_MUTEX_unlock_write(&console_global_mutex);
+    CRYPTO_STATIC_MUTEX_unlock_write(console_global_mutex_bss_get());
     return 1;
 }
 
 static int openssl_console_echo_disable(void) {
 # if !defined(_WIN32)
-    memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
-    tty_new.TTY_FLAGS &= ~ECHO;
+    memcpy(tty_new_bss_get(), tty_orig_bss_get(), sizeof(*tty_orig_bss_get()));
+    tty_new_bss_get()->TTY_FLAGS &= ~ECHO;
 
-    if (is_a_tty && (TTY_set(fileno(tty_in), &tty_new) == -1)) {
+    if (is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
         return 0;
     }
 # else
-    if (is_a_tty) {
-        tty_new = tty_orig;
-        tty_new &= ~ENABLE_ECHO_INPUT;
-        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), tty_new);
+    if (is_a_tty_bss_get()) {
+        *tty_new_bss_get() = tty_orig_bss_get();
+        *tty_new_bss_get() &= ~ENABLE_ECHO_INPUT;
+        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &tty_new_bss_get);
     }
 # endif
     return 1;
@@ -205,21 +204,21 @@ static int openssl_console_echo_disable(void) {
 
 static int openssl_console_echo_enable(void) {
 # if !defined(_WIN32)
-    memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
-    if (is_a_tty && (TTY_set(fileno(tty_in), &tty_new) == -1)) {
+    memcpy(tty_orig_bss_get(), tty_orig_bss_get(), sizeof(*tty_orig_bss_get()));
+    if (is_a_tty_bss_get() && (TTY_set(fileno(*tty_in_bss_get()), tty_new_bss_get()) == -1)) {
         return 0;
     }
 # else
-    if (is_a_tty) {
-        tty_new = tty_orig;
-        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), tty_new);
+    if (is_a_tty_bss_get()) {
+        *tty_new_bss_get() = tty_orig_bss_get();
+        SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), tty_new_bss_get());
     }
 # endif
     return 1;
 }
 
 int openssl_console_write(const char *str) {
-    if (fputs(str, tty_out) < 0 || fflush(tty_out) != 0) {
+    if (fputs(str, *tty_out_bss_get()) < 0 || fflush(*tty_out_bss_get()) != 0) {
         return 0;
     }
     return 1;
@@ -231,7 +230,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     char *p = NULL;
     int echo_eol = !echo;
 
-    intr_signal = 0;
+    *intr_signal_bss_get() = 0;
     int phase = 0;
 
     pushsig();
@@ -244,7 +243,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
 
     buf[0] = '\0';
 #  if defined(_WIN32)
-    if (is_a_tty) {
+    if (is_a_tty_bss_get()) {
         DWORD numread;
         // for now assuming UTF-8....
         WCHAR wresult[BUFSIZ];
@@ -264,8 +263,8 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
         }
     } else
 #  endif
-    p = fgets(buf, maxsize, tty_in);
-    if (p == NULL || feof(tty_in) || ferror(tty_in)) {
+    p = fgets(buf, maxsize, *tty_in_bss_get());
+    if (p == NULL || feof(*tty_in_bss_get()) || ferror(*tty_in_bss_get())) {
       ok = -1;
       goto error;
     }
@@ -273,7 +272,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     // check if we see a new line, otherwise clear out remaining input buffer
     if ((p = strchr(buf, '\n')) != NULL) {
         *p = '\0';
-    } else if (!read_till_nl(tty_in)) {
+    } else if (!read_till_nl(*tty_in_bss_get())) {
         ok = -1;
         goto error;
     }
@@ -285,11 +284,11 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     }
 
 error:
-    if (intr_signal == SIGINT) {
+    if (*intr_signal_bss_get() == SIGINT) {
         ok = -2; // interrupted
     }
     if (echo_eol) {
-        fprintf(tty_out, "\n");
+        fprintf(*tty_out_bss_get(), "\n");
     }
     if (phase >= 2 && !echo && !openssl_console_echo_enable()) {
         ok = -1; // general errors
