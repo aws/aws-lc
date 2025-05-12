@@ -14,5 +14,6 @@ jobs:
       - uses: ZedThree/clang-tidy-review@v0.21.0
         with:
           split_workflow: true
+          config_file: '/github/workspace/.clang-tidy'
 
       - uses: ZedThree/clang-tidy-review/upload@v0.21.0
