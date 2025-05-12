@@ -167,7 +167,9 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   const int ret = result;
 
   if (!data->connected && ret >= 0) {
-    BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_PEER, 0, &peer);
+    if (1 != BIO_dgram_set_peer(bp, &peer)) {
+      // The operation does not fail if peer not set.
+    }
   }
 
   BIO_clear_retry_flags(bp);

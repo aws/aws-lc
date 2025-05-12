@@ -600,7 +600,9 @@ static void dtls1_update_mtu(SSL *ssl) {
       ssl->d1->mtu = (unsigned)mtu;
     } else {
       ssl->d1->mtu = kDefaultMTU;
-      BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL);
+      if (1 != BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL)) {
+        // Ignore failure: BIO_CTRL_DGRAM_SET_MTU isn't supported
+      }
     }
   }
 
