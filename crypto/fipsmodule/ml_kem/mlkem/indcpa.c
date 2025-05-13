@@ -1,7 +1,22 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ *
+ * - [REF]
+ *   CRYSTALS-Kyber C reference implementation
+ *   Bos, Ducas, Kiltz, Lepoint, Lyubashevsky, Schanck, Schwabe, Seiler, Stehlé
+ *   https://github.com/pq-crystals/kyber/tree/main/ref
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -15,18 +30,18 @@
 #include "sampling.h"
 #include "symmetric.h"
 
-/* Level namespacing
+/* Parameter set namespacing
  * This is to facilitate building multiple instances
- * of mlkem-native (e.g. with varying security levels)
+ * of mlkem-native (e.g. with varying parameter sets)
  * within a single compilation unit. */
-#define mlk_pack_pk MLK_ADD_LEVEL(mlk_pack_pk)
-#define mlk_unpack_pk MLK_ADD_LEVEL(mlk_unpack_pk)
-#define mlk_pack_sk MLK_ADD_LEVEL(mlk_pack_sk)
-#define mlk_unpack_sk MLK_ADD_LEVEL(mlk_unpack_sk)
-#define mlk_pack_ciphertext MLK_ADD_LEVEL(mlk_pack_ciphertext)
-#define mlk_unpack_ciphertext MLK_ADD_LEVEL(mlk_unpack_ciphertext)
-#define mlk_matvec_mul MLK_ADD_LEVEL(mlk_matvec_mul)
-/* End of level namespacing */
+#define mlk_pack_pk MLK_ADD_PARAM_SET(mlk_pack_pk)
+#define mlk_unpack_pk MLK_ADD_PARAM_SET(mlk_unpack_pk)
+#define mlk_pack_sk MLK_ADD_PARAM_SET(mlk_pack_sk)
+#define mlk_unpack_sk MLK_ADD_PARAM_SET(mlk_unpack_sk)
+#define mlk_pack_ciphertext MLK_ADD_PARAM_SET(mlk_pack_ciphertext)
+#define mlk_unpack_ciphertext MLK_ADD_PARAM_SET(mlk_unpack_ciphertext)
+#define mlk_matvec_mul MLK_ADD_PARAM_SET(mlk_matvec_mul)
+/* End of parameter set namespacing */
 
 /*************************************************
  * Name:        mlk_pack_pk
@@ -41,7 +56,7 @@
  *              const uint8_t *seed: pointer to the input public seed
  *
  * Specification:
- * Implements [FIPS 203, Algorithm 13 (K-PKE.KeyGen), L19]
+ * Implements @[FIPS203, Algorithm 13 (K-PKE.KeyGen), L19]
  *
  **************************************************/
 static void mlk_pack_pk(uint8_t r[MLKEM_INDCPA_PUBLICKEYBYTES], mlk_polyvec pk,
@@ -65,7 +80,7 @@ static void mlk_pack_pk(uint8_t r[MLKEM_INDCPA_PUBLICKEYBYTES], mlk_polyvec pk,
  *                  key.
  *
  * Specification:
- * Implements [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L2-3]
+ * Implements @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L2-3]
  *
  **************************************************/
 static void mlk_unpack_pk(mlk_polyvec pk, uint8_t seed[MLKEM_SYMBYTES],
@@ -90,7 +105,7 @@ static void mlk_unpack_pk(mlk_polyvec pk, uint8_t seed[MLKEM_SYMBYTES],
  *                (secret key)
  *
  * Specification:
- * Implements [FIPS 203, Algorithm 13 (K-PKE.KeyGen), L20]
+ * Implements @[FIPS203, Algorithm 13 (K-PKE.KeyGen), L20]
  *
  **************************************************/
 static void mlk_pack_sk(uint8_t r[MLKEM_INDCPA_SECRETKEYBYTES], mlk_polyvec sk)
@@ -110,7 +125,7 @@ static void mlk_pack_sk(uint8_t r[MLKEM_INDCPA_SECRETKEYBYTES], mlk_polyvec sk)
  *                key
  *
  * Specification:
- * Implements [FIPS 203, Algorithm 15 (K-PKE.Decrypt), L5]
+ * Implements @[FIPS203, Algorithm 15 (K-PKE.Decrypt), L5]
  *
  **************************************************/
 static void mlk_unpack_sk(mlk_polyvec sk,
@@ -131,7 +146,7 @@ static void mlk_unpack_sk(mlk_polyvec sk,
  *              mlk_poly *v: pointer to the input polynomial v
  *
  * Specification:
- * Implements [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L22-23]
+ * Implements @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L22-23]
  *
  **************************************************/
 static void mlk_pack_ciphertext(uint8_t r[MLKEM_INDCPA_BYTES], mlk_polyvec b,
@@ -152,7 +167,7 @@ static void mlk_pack_ciphertext(uint8_t r[MLKEM_INDCPA_BYTES], mlk_polyvec b,
  *              - const uint8_t *c: pointer to the input serialized ciphertext
  *
  * Specification:
- * Implements [FIPS 203, Algorithm 15 (K-PKE.Decrypt), L1-4]
+ * Implements @[FIPS203, Algorithm 15 (K-PKE.Decrypt), L1-4]
  *
  **************************************************/
 static void mlk_unpack_ciphertext(mlk_polyvec b, mlk_poly *v,
@@ -166,7 +181,7 @@ static void mlk_unpack_ciphertext(mlk_polyvec b, mlk_poly *v,
 /* This namespacing is not done at the top to avoid a naming conflict
  * with native backends, which are currently not yet namespaced. */
 #define mlk_poly_permute_bitrev_to_custom \
-  MLK_ADD_LEVEL(mlk_poly_permute_bitrev_to_custom)
+  MLK_ADD_PARAM_SET(mlk_poly_permute_bitrev_to_custom)
 
 static MLK_INLINE void mlk_poly_permute_bitrev_to_custom(int16_t data[MLKEM_N])
 __contract__(
@@ -178,7 +193,7 @@ __contract__(
   ensures(array_bound(data, 0, MLKEM_N, 0, MLKEM_Q))) { ((void)data); }
 #endif /* !MLK_USE_NATIVE_NTT_CUSTOM_ORDER */
 
-/* Reference: `gen_matrix()` in the reference implementation.
+/* Reference: `gen_matrix()` in the reference implementation @[REF].
  *            - We use a special subroutine to generate 4 polynomials
  *              at a time, to be able to leverage batched Keccak-f1600
  *              implementations. The reference implementation generates
@@ -265,7 +280,7 @@ void mlk_gen_matrix(mlk_polymat a, const uint8_t seed[MLKEM_SYMBYTES],
   }
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(seed_ext, sizeof(seed_ext));
 }
 
@@ -283,7 +298,7 @@ void mlk_gen_matrix(mlk_polymat a, const uint8_t seed[MLKEM_SYMBYTES],
  *              - mlk_polyvec vc: Mulcache for v, computed via
  *                  mlk_polyvec_mulcache_compute().
  *
- * Specification: Implements [FIPS 203, Section 2.4.7, Eq (2.12), (2.13)]
+ * Specification: Implements @[FIPS203, Section 2.4.7, Eq (2.12), (2.13)]
  *
  **************************************************/
 static void mlk_matvec_mul(mlk_polyvec out, const mlk_polymat a,
@@ -307,7 +322,7 @@ __contract__(
   }
 }
 
-/* Reference: `indcpa_keypair_derand()` in the reference implementation.
+/* Reference: `indcpa_keypair_derand()` in the reference implementation @[REF].
  *            - We use x4-batched versions of `poly_getnoise` to leverage
  *              batched x4-batched Keccak-f1600.
  *            - We use a different implementation of `gen_matrix()` which
@@ -379,7 +394,7 @@ void mlk_indcpa_keypair_derand(uint8_t pk[MLKEM_INDCPA_PUBLICKEYBYTES],
   mlk_pack_pk(pk, pkpv, publicseed);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(buf, sizeof(buf));
   mlk_zeroize(coins_with_domain_separator, sizeof(coins_with_domain_separator));
   mlk_zeroize(a, sizeof(a));
@@ -388,7 +403,7 @@ void mlk_indcpa_keypair_derand(uint8_t pk[MLKEM_INDCPA_PUBLICKEYBYTES],
   mlk_zeroize(&skpv_cache, sizeof(skpv_cache));
 }
 
-/* Reference: `indcpa_enc()` in the reference implementation.
+/* Reference: `indcpa_enc()` in the reference implementation @[REF].
  *            - We use x4-batched versions of `poly_getnoise` to leverage
  *              batched x4-batched Keccak-f1600.
  *            - We use a different implementation of `gen_matrix()` which
@@ -459,7 +474,7 @@ void mlk_indcpa_enc(uint8_t c[MLKEM_INDCPA_BYTES],
   mlk_pack_ciphertext(c, b, &v);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(seed, sizeof(seed));
   mlk_zeroize(&sp, sizeof(sp));
   mlk_zeroize(&sp_cache, sizeof(sp_cache));
@@ -471,7 +486,7 @@ void mlk_indcpa_enc(uint8_t c[MLKEM_INDCPA_BYTES],
   mlk_zeroize(&epp, sizeof(epp));
 }
 
-/* Reference: `indcpa_dec()` in the reference implementation.
+/* Reference: `indcpa_dec()` in the reference implementation @[REF].
  *            - We use a mulcache for the scalar product.
  *            - We include buffer zeroization. */
 MLK_INTERNAL_API
@@ -497,7 +512,7 @@ void mlk_indcpa_dec(uint8_t m[MLKEM_INDCPA_MSGBYTES],
   mlk_poly_tomsg(m, &v);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(&skpv, sizeof(skpv));
   mlk_zeroize(&b, sizeof(b));
   mlk_zeroize(&b_cache, sizeof(b_cache));

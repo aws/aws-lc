@@ -37,8 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-14-large"
-          - "macos-13-large"
+          - "macos-13"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -56,8 +55,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-14-large"
-          - "macos-13-large"
+          - "macos-13"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -75,8 +73,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-14-xlarge"
-          - "macos-13-xlarge"
+          - "macos-14"
+          - "macos-15"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -94,8 +92,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-14-xlarge"
-          - "macos-13-xlarge"
+          - "macos-14"
+          - "macos-15"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
