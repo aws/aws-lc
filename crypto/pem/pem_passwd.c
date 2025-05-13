@@ -186,7 +186,7 @@ int openssl_console_close(void) {
 
 static int openssl_console_echo_disable(void) {
 # if !defined(_WIN32)
-    memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
+    OPENSSL_memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
     tty_new.TTY_FLAGS &= ~ECHO;
 
     if (is_a_tty && (TTY_set(fileno(tty_in), &tty_new) == -1)) {
@@ -204,7 +204,7 @@ static int openssl_console_echo_disable(void) {
 
 static int openssl_console_echo_enable(void) {
 # if !defined(_WIN32)
-    memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
+    OPENSSL_memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
     if (is_a_tty && (TTY_set(fileno(tty_in), &tty_new) == -1)) {
         return 0;
     }
