@@ -146,6 +146,7 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
 // optimization from discarding the variable.
 //
 // Note, in the prefixed build, |p_thread_callback_boringssl| may be a macro.
+#ifdef _MSC_VER
 #define STRINGIFY(x) #x
 #define EXPAND_AND_STRINGIFY(x) STRINGIFY(x)
 #ifdef _WIN64
@@ -156,6 +157,7 @@ __pragma(comment(
 __pragma(comment(linker, "/INCLUDE:__tls_used"))
 __pragma(comment(
     linker, "/INCLUDE:_" EXPAND_AND_STRINGIFY(p_thread_callback_boringssl)))
+#endif
 #endif
 
 // .CRT$XLA to .CRT$XLZ is an array of PIMAGE_TLS_CALLBACK pointers that are

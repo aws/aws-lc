@@ -2275,6 +2275,7 @@ func main() {
 	outFile := flag.String("o", "", "Path to output assembly")
 	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
+	s2nBignumInclude := flag.String("s2n-bignum-include", "", "Directory with s2n-bignum header files used by the C compiler when preprocessing")
 	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
 
 	flag.Parse()
@@ -2318,6 +2319,10 @@ func main() {
 			path:  path,
 			index: i + 1,
 		})
+	}
+
+	if len(*s2nBignumInclude) > 0 {
+		includePaths[*s2nBignumInclude] = struct{}{}
 	}
 
 	var cppCommand []string
