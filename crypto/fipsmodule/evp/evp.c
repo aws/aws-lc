@@ -158,7 +158,7 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 char *EVP_get_pw_prompt(void) {
-    return "Enter PEM pass phrase:";
+    return (char*)"Enter PEM pass phrase:";
 }
 
 int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify) {
