@@ -38,9 +38,15 @@ DEFINE_BSS_GET(sig_atomic_t, intr_signal)
 DEFINE_STATIC_MUTEX(console_global_mutex)
 
 # ifdef SIGACTION
-    static struct sigaction savsig[NUM_SIG];
+    typedef struct {
+        struct sigaction array[NUM_SIG];
+    } sigaction_array_t;
+    DEFINE_BSS_GET(sigaction_array_t, savsig)
 # else
-    static void (*savsig[NUM_SIG]) (int);
+    typedef struct {
+        void (*array[NUM_SIG]) (int);
+    } sighandler_array_t;
+    DEFINE_BSS_GET(sighandler_array_t, savsig)
 # endif
 
 static int read_till_nl(FILE *);
@@ -85,15 +91,15 @@ static void pushsig(void) {
         if (i == SIGUSR1 || i == SIGUSR2 || i == SIGKILL) {
             continue;
         }
-        sigaction(i, &sa, &savsig[i]);
+        sigaction(i, &sa, &savsig_bss_get()->array[i]);
     }
 # else // Specific error codes for windows
-    savsig[SIGABRT] = signal(SIGABRT, recsig);
-    savsig[SIGFPE] = signal(SIGFPE, recsig);
-    savsig[SIGILL] = signal(SIGILL, recsig);
-    savsig[SIGINT] = signal(SIGINT, recsig);
-    savsig[SIGSEGV] = signal(SIGSEGV, recsig);
-    savsig[SIGTERM] = signal(SIGTERM, recsig);
+    savsig_bss_get()->array[SIGABRT] = signal(SIGABRT, recsig);
+    savsig_bss_get()->array[SIGFPE] = signal(SIGFPE, recsig);
+    savsig_bss_get()->array[SIGILL] = signal(SIGILL, recsig);
+    savsig_bss_get()->array[SIGINT] = signal(SIGINT, recsig);
+    savsig_bss_get()->array[SIGSEGV] = signal(SIGSEGV, recsig);
+    savsig_bss_get()->array[SIGTERM] = signal(SIGTERM, recsig);
 # endif
 
 // set SIGWINCH handler to default so our workflow is not
@@ -110,15 +116,15 @@ static void popsig(void) {
         if (i == SIGUSR1 || i == SIGUSR2 || i == SIGKILL) {
           continue;
         }
-        sigaction(i, &savsig[i], NULL);
+        sigaction(i, &savsig_bss_get()->array[i], NULL);
     }
 # else
-    signal(SIGABRT, savsig[SIGABRT]);
-    signal(SIGFPE, savsig[SIGFPE]);
-    signal(SIGILL, savsig[SIGILL]);
-    signal(SIGINT, savsig[SIGINT]);
-    signal(SIGSEGV, savsig[SIGSEGV]);
-    signal(SIGTERM, savsig[SIGTERM]);
+    signal(SIGABRT, savsig_bss_get()->array[SIGABRT]);
+    signal(SIGFPE, savsig_bss_get()->array[SIGFPE]);
+    signal(SIGILL, savsig_bss_get()->array[SIGILL]);
+    signal(SIGINT, savsig_bss_get()->array[SIGINT]);
+    signal(SIGSEGV, savsig_bss_get()->array[SIGSEGV]);
+    signal(SIGTERM, savsig_bss_get()->array[SIGTERM]);
 # endif
 }
 
