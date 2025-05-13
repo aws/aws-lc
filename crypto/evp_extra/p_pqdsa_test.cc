@@ -946,7 +946,7 @@ static const uint8_t mldsa87kPublicKeySPKI[] = {
 0x67, 0x46, 0xC8, 0x68, 0xB7, 0x65, 0x05, 0x20, 0x02, 0x70, 0xDA, 0x6B, 0xC7,
 0x34};
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/06/
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
 // C.2.  Example Public Key
 const char *mldsa_44_pub_pem_str =
 "-----BEGIN PUBLIC KEY-----\n"
@@ -980,6 +980,8 @@ const char *mldsa_44_pub_pem_str =
 "7e+meTaaIgJ2YVHxapZfn4Hs52zAcLVYaeTbl4TPBcgwsyQsgxI=\n"
 "-----END PUBLIC KEY-----\n";
 
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.2.  Example Public Key
 const char *mldsa_65_pub_pem_str =
 "-----BEGIN PUBLIC KEY-----\n"
 "MIIHsjALBglghkgBZQMEAxIDggehAEhoPZGXjjHrPd24sEc0gtK4il9iWUn9j1il\n"
@@ -1026,6 +1028,8 @@ const char *mldsa_65_pub_pem_str =
 "HgLy6ERP\n"
 "-----END PUBLIC KEY-----\n";
 
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.2.  Example Public Key
 const char *mldsa_87_pub_pem_str =
 "-----BEGIN PUBLIC KEY-----\n"
 "MIIKMjALBglghkgBZQMEAxMDggohAJeSvOwvJDBoaoL8zzwvX/Zl53HXq0G5AljP\n"
@@ -1085,24 +1089,410 @@ const char *mldsa_87_pub_pem_str =
 "5VvgYiIvi6kKl0BzMmsxISrs4KNKYA==\n"
 "-----END PUBLIC KEY-----\n";
 
-// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/06/
-// C.1.  Example Private Key
-const char *mldsa_44_priv_pem_str =
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.1.1.1. Example Private Key
+const char *mldsa_44_priv_seed_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
 "MDQCAQAwCwYJYIZIAWUDBAMRBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
 "GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
-const char *mldsa_65_priv_pem_str =
+// C.1.2.1. Example Private Key
+const char *mldsa_65_priv_seed_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
 "MDQCAQAwCwYJYIZIAWUDBAMSBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
 "GhscHR4f\n"
 "-----END PRIVATE KEY-----\n";
 
-const char *mldsa_87_priv_pem_str =
+// C.1.3.1. Example Private Key
+const char *mldsa_87_priv_seed_pem_str =
 "-----BEGIN PRIVATE KEY-----\n"
 "MDQCAQAwCwYJYIZIAWUDBAMTBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
 "GhscHR4f\n"
+"-----END PRIVATE KEY-----\n";
+
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.1.1.3.  Example Private Key
+const char *mldsa_44_priv_both_pem_str =
+"-----BEGIN PRIVATE KEY-----\n"
+"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\n"
+"-----END PRIVATE KEY-----\n";
+
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.1.2.3.  Example Private Key
+const char *mldsa_65_priv_both_pem_str =
+"-----BEGIN PRIVATE KEY-----\n"
+"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\n"
+"1siS/I7yI6s/Q/kkwvRmCX7o\n"
+"-----END PRIVATE KEY-----\n";
+
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.1.3.3.  Example Private Key
+const char *mldsa_87_priv_both_pem_str =
+"-----BEGIN PRIVATE KEY-----\n"
+"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\n"
+"WWVn6UNk36ptnVpuuZrk3fQk\n"
+"-----END PRIVATE KEY-----\n";
+
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.4.  Example (1) Inconsistent Seed and Expanded Private Keys
+const char *mldsa_44_priv_both_pem_str_inconsistent =
+"-----BEGIN PRIVATE KEY-----\n"
+"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\n"
+"-----END PRIVATE KEY-----\n";
+
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+// C.4.  Example (2) Inconsistent Seed and Expanded Private Keys
+const char *mldsa_44_priv_both_pem_str_inconsistent_tr =
+"-----BEGIN PRIVATE KEY-----\n"
+"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\n"
 "-----END PRIVATE KEY-----\n";
 
 struct PQDSATestVector {
@@ -1116,7 +1506,8 @@ struct PQDSATestVector {
   const uint8_t *kPublicKeySPKI;
   const size_t kPublicKeySPKI_len;
   const char *public_pem_str;
-  const char *private_pem_str;
+  const char *private_pem_seed_str;
+  const char *private_pem_both_str;
 
   int (*keygen)(uint8_t *public_key, uint8_t *private_key, const uint8_t *seed);
 
@@ -1168,7 +1559,8 @@ static const struct PQDSATestVector parameterSet[] = {
     mldsa44kPublicKeySPKI,
     1334,
     mldsa_44_pub_pem_str,
-    mldsa_44_priv_pem_str,
+    mldsa_44_priv_seed_pem_str,
+    mldsa_44_priv_both_pem_str,
     ml_dsa_44_keypair_internal,
     ml_dsa_44_sign_internal,
     ml_dsa_44_verify_internal,
@@ -1185,7 +1577,8 @@ static const struct PQDSATestVector parameterSet[] = {
     mldsa65kPublicKeySPKI,
     1974,
     mldsa_65_pub_pem_str,
-    mldsa_65_priv_pem_str,
+    mldsa_65_priv_seed_pem_str,
+    mldsa_65_priv_both_pem_str,
     ml_dsa_65_keypair_internal,
     ml_dsa_65_sign_internal,
     ml_dsa_65_verify_internal,
@@ -1202,7 +1595,8 @@ static const struct PQDSATestVector parameterSet[] = {
     mldsa87kPublicKeySPKI,
     2614,
     mldsa_87_pub_pem_str,
-    mldsa_87_priv_pem_str,
+    mldsa_87_priv_seed_pem_str,
+    mldsa_87_priv_both_pem_str,
     ml_dsa_87_keypair_internal,
     ml_dsa_87_sign_internal,
     ml_dsa_87_verify_internal,
@@ -1727,14 +2121,14 @@ static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len
   return true;
 }
 
-TEST_P(PQDSAParameterTest, ParsePrivateKey) {
+TEST_P(PQDSAParameterTest, ParsePrivateKeySeed) {
   // ---- 1. Setup phase: parse provided public/private from PEM strings ----
   CBS cbs_pub, cbs_priv;
   uint8_t *der_pub = nullptr, *der_priv = nullptr;
   long der_pub_len = 0, der_priv_len = 0;
 
   ASSERT_TRUE(PEM_to_DER(GetParam().public_pem_str, &der_pub, &der_pub_len));
-  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_str, &der_priv, &der_priv_len));
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_seed_str, &der_priv, &der_priv_len));
 
   CBS_init(&cbs_pub, der_pub, der_pub_len);
   CBS_init(&cbs_priv, der_priv, der_priv_len);
@@ -1763,6 +2157,60 @@ TEST_P(PQDSAParameterTest, ParsePrivateKey) {
   pkey1.get()->pkey.pqdsa_key->seed = (uint8_t *)tmp;
 
   // Clean up
+  OPENSSL_free(der_pub);
+  OPENSSL_free(der_priv);
+}
+
+TEST_P(PQDSAParameterTest, ParsePrivateKeyBoth) {
+  // ---- 1. Setup phase: parse provided public/private from PEM strings ----
+  CBS cbs_pub, cbs_priv;
+  uint8_t *der_pub = nullptr, *der_priv = nullptr;
+  long der_pub_len = 0, der_priv_len = 0;
+
+  ASSERT_TRUE(PEM_to_DER(GetParam().public_pem_str, &der_pub, &der_pub_len));
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_both_str, &der_priv, &der_priv_len));
+
+  CBS_init(&cbs_pub, der_pub, der_pub_len);
+  CBS_init(&cbs_priv, der_priv, der_priv_len);
+
+  // ---- 2. Basic positive test ----
+  bssl::UniquePtr<EVP_PKEY> pkey1(EVP_parse_private_key(&cbs_priv));
+  ASSERT_TRUE(pkey1);
+  bssl::UniquePtr<EVP_PKEY> pkey2(EVP_parse_public_key(&cbs_pub));
+  ASSERT_TRUE(pkey2);
+  ASSERT_EQ(1, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
+
+  // ---- 3. Test with corrupted expanded key ----
+  uint8_t *der_corrupt = (uint8_t*)OPENSSL_malloc(der_priv_len);
+  ASSERT_TRUE(der_corrupt);
+  OPENSSL_memcpy(der_corrupt, der_priv, der_priv_len);
+
+  // ASN.1 DER "both" format accumulative offsets:
+  // SEQUENCE(2) + INT(3) + SEQ/OID(13) + OCTET/SEQ(4) + seed(34) =
+  // expanded_key starts at offset 62
+  const size_t asn1_expanded_key_offset = 62;
+  for(size_t i = 0; i < 4; i++) {
+    der_corrupt[asn1_expanded_key_offset + i] ^= 0xff;
+  }
+
+  CBS cbs_corrupt;
+  CBS_init(&cbs_corrupt, der_corrupt, der_priv_len);
+  EXPECT_FALSE(EVP_parse_private_key(&cbs_corrupt));
+  ERR_clear_error();
+
+  // ---- 4. Test with corrupted seed ----
+  OPENSSL_memcpy(der_corrupt, der_priv, der_priv_len);
+  // The seed is in the 32 bytes immediately before the expanded key
+  const size_t asn1_seed_offset = asn1_expanded_key_offset - 32;
+  for(size_t i = 0; i < 4; i++) {
+    der_corrupt[asn1_seed_offset + i] ^= 0xff;
+  }
+  CBS_init(&cbs_corrupt, der_corrupt, der_priv_len);
+  EXPECT_FALSE(EVP_parse_private_key(&cbs_corrupt));
+  ERR_clear_error();
+
+  // Clean up
+  OPENSSL_free(der_corrupt);
   OPENSSL_free(der_pub);
   OPENSSL_free(der_priv);
 }
@@ -2112,4 +2560,29 @@ TEST(PQDSAParameterTest, ParsePrivateKeyInvalidLength) {
            sizeof(mldsa44kPrivateKeyInvalidLength));
   bssl::UniquePtr<EVP_PKEY> private_pkey_from_der(EVP_parse_private_key(&cbs));
   ASSERT_FALSE(private_pkey_from_der.get());
+}
+
+TEST(PQDSAParameterTest, ParsePrivateKeyInconsistentExamples) {
+  // These test vectors from ML-DSA standard Section C.4 demonstrate
+  // inconsistent private keys for ML-DSA-44
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+
+  // Case 1: "both" format with inconsistent seed and expanded key
+  uint8_t *der_inconsistent = nullptr;
+  long der_inconsistent_len = 0;
+  ASSERT_TRUE(PEM_to_DER(mldsa_44_priv_both_pem_str_inconsistent,
+                         &der_inconsistent, &der_inconsistent_len));
+  CBS cbs_inconsistent;
+  CBS_init(&cbs_inconsistent, der_inconsistent, der_inconsistent_len);
+  EXPECT_FALSE(EVP_parse_private_key(&cbs_inconsistent));
+  ERR_clear_error();
+  OPENSSL_free(der_inconsistent);
+
+  // Case 2: expandedKey format with mismatched public key/tr hash
+  ASSERT_TRUE(PEM_to_DER(mldsa_44_priv_both_pem_str_inconsistent_tr,
+                         &der_inconsistent, &der_inconsistent_len));
+  CBS_init(&cbs_inconsistent, der_inconsistent, der_inconsistent_len);
+  EXPECT_FALSE(EVP_parse_private_key(&cbs_inconsistent));
+  ERR_clear_error();
+  OPENSSL_free(der_inconsistent);
 }
