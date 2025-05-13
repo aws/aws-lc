@@ -67,7 +67,7 @@
 
 typedef struct bio_buf_mem_st {
   struct buf_mem_st *buf;   /* allocated buffer */
-  size_t read_off;          /* number of bytes already read from the buffer */
+  size_t read_off;          /* read pointer offset from current buffer position */
 } BIO_BUF_MEM;
 
 
@@ -148,16 +148,16 @@ static int mem_free(BIO *bio) {
 }
 
 static void mem_buf_sync(BIO *bio) {
-  if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-    return;
-  }
-
   if (bio->init != 0 && bio->ptr != NULL) {
     BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
     BUF_MEM *b = bbm->buf;
 
     if (b->data != NULL) {
-      OPENSSL_memmove(b->data, &b->data[bbm->read_off], b->length);
+      if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+        b->data += bbm->read_off;
+      } else {
+        OPENSSL_memmove(b->data, &b->data[bbm->read_off], b->length);
+      }
       bbm->read_off = 0;
     }
   }
@@ -178,21 +178,9 @@ static int mem_read(BIO *bio, char *out, int outl) {
   }
 
   if (ret > 0) {
-    // If the buffer is read-only, |data| is already pointing to the correct
-    // read position. If the buffer is writeable, |data| is pointing to the start
-    // of the buffer, so we need to add |read_off| to get the correct read
-    // position.
-    if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-      OPENSSL_memcpy(out, b->data, ret);
-    } else {
-      OPENSSL_memcpy(out, &b->data[bbm->read_off], ret);
-    }
+    OPENSSL_memcpy(out, &b->data[bbm->read_off], ret);
     b->length -= ret;
     bbm->read_off += ret;
-
-    if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-      b->data += ret;
-    }
   } else if (b->length == 0) {
     ret = bio->num;
     if (ret != 0) {
@@ -242,15 +230,8 @@ static int mem_gets(BIO *bio, char *buf, int size) {
 
   // Stop at the first newline.
   if (b->data != NULL) {
-    // If the buffer is read-only, |data| is already pointing to the correct
-    // read position. If the buffer is writeable, |data| is pointing to the start
-    // of the buffer, so we need to add |read_off| to get the correct read
-    // position.
     char *readp = &b->data[bbm->read_off];
-    if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-      readp = b->data;
-    }
-    
+
     const char *newline = OPENSSL_memchr(readp, '\n', ret);
     if (newline != NULL) {
       ret = (int)(newline - readp + 1);
@@ -278,24 +259,31 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
           b->data -= b->max - b->length;
           b->length = b->max;
         } else {
-          OPENSSL_memset(b->data, 0, b->max);
+          OPENSSL_cleanse(b->data, b->max);
           b->length = 0;
         }
+        bbm->read_off = 0;
       }
       break;
     case BIO_C_FILE_SEEK:
-      if (num < 0 || (size_t)num > bbm->read_off + b->length) {
-        return -1;
+      if (b->data != NULL) {
+        if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+          if (num < 0 || (size_t)num > b->max) {
+            return -1;
+          }
+
+          b->data -= b->max - b->length;
+          b->length = b->max - num;
+        } else {
+          if (num < 0 || (size_t)num > bbm->read_off + b->length) {
+            return -1;
+          }
+
+          b->length = (b->length + bbm->read_off) - num;
+        }
+
+        bbm->read_off = num;
       }
-
-      long relative_read_off = (long)bbm->read_off - num;
-
-      if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-        b->data -= relative_read_off;
-      }
-
-      b->length += relative_read_off;
-      bbm->read_off = num;
       ret = num;
       break;
     case BIO_CTRL_EOF:
@@ -308,7 +296,7 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       ret = (long)b->length;
       if (ptr != NULL) {
         char **pptr = ptr;
-        *pptr = b->data;
+        *pptr = (b->data != NULL) ? &b->data[bbm->read_off] : NULL;
       }
       break;
     case BIO_C_SET_BUF_MEM:
@@ -318,9 +306,7 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       break;
     case BIO_C_GET_BUF_MEM_PTR:
       if (ptr != NULL) {
-        if (!(bio->flags & BIO_FLAGS_MEM_RDONLY)) {
-          mem_buf_sync(bio);
-        }
+        mem_buf_sync(bio);
         BUF_MEM **pptr = ptr;
         *pptr = b;
       }
@@ -367,12 +353,10 @@ int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
   BIO_BUF_MEM *bbm = (BIO_BUF_MEM *) bio->ptr;
   const BUF_MEM *b = bbm->buf;
 
-  if (!(bio->flags & BIO_FLAGS_MEM_RDONLY)) {
-    mem_buf_sync((BIO *)bio);
-  }
+  mem_buf_sync((BIO *)bio);
 
   if (out_contents != NULL) {
-    *out_contents = (uint8_t *)b->data;
+    *out_contents = (b->data != NULL) ? (uint8_t *)&b->data[bbm->read_off] : NULL;
   }
   if(out_len) {
     *out_len = b->length;

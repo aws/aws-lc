@@ -249,13 +249,26 @@ TEST(BIOTest, MemReadOnly) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kData, strlen(kData)));
   ASSERT_TRUE(bio);
 
+  auto check_bio_contents = [&](Bytes b) {
+    char *contents;
+    long len_l = BIO_get_mem_data(bio.get(), &contents);
+    ASSERT_GE(len_l, 0);
+    EXPECT_EQ(Bytes(contents, len_l), b);
+
+    const uint8_t *contents_c;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents_c, &len));
+    EXPECT_EQ(Bytes(contents_c, len), b);
+
+    BUF_MEM *buf;
+    ASSERT_EQ(BIO_get_mem_ptr(bio.get(), &buf), 1);
+    EXPECT_EQ(Bytes(buf->data, buf->length), b);
+  };
+
   // Writing to read-only buffers should fail.
   EXPECT_EQ(BIO_write(bio.get(), kData, strlen(kData)), -1);
 
-  const uint8_t *contents;
-  size_t len;
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes(kData));
+  check_bio_contents(Bytes(kData));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read less than the whole buffer.
@@ -263,26 +276,20 @@ TEST(BIOTest, MemReadOnly) {
   int ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("abcdef"));
-
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes("ghijklmno\npqrs"));
+  check_bio_contents(Bytes("ghijklmno\npqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("ghijkl"));
-
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes("mno\npqrs"));
+  check_bio_contents(Bytes("mno\npqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read stops at newline
   ret = BIO_gets(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("mno\n"));
-
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes("pqrs"));
+  check_bio_contents(Bytes("pqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read the remainder of the buffer.
@@ -290,9 +297,7 @@ TEST(BIOTest, MemReadOnly) {
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("pqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 1);
-
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes(""));
+  check_bio_contents(Bytes(""));
   EXPECT_EQ(BIO_eof(bio.get()), 1);
 
   // By default, reading from a consumed read-only buffer returns EOF.
@@ -309,9 +314,12 @@ TEST(BIOTest, MemReadOnly) {
   // Rewind buffer
   ret = BIO_seek(bio.get(), 3);
   ASSERT_EQ(ret, 3);
+  check_bio_contents(Bytes("defghijklmno\npqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
 
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes("defghijklmno\npqrs"));
+  ret = BIO_reset(bio.get());
+  ASSERT_EQ(ret, 1);
+  check_bio_contents(Bytes(kData));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read exactly the right number of bytes, to test the boundary condition is
@@ -330,15 +338,15 @@ TEST(BIOTest, MemWritable) {
   ASSERT_TRUE(bio);
 
   auto check_bio_contents = [&](Bytes b) {
-    const uint8_t *contents;
-    size_t len;
-    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-    EXPECT_EQ(Bytes(contents, len), b);
-
-    char *contents_c;
-    long len_l = BIO_get_mem_data(bio.get(), &contents_c);
+    char *contents;
+    long len_l = BIO_get_mem_data(bio.get(), &contents);
     ASSERT_GE(len_l, 0);
-    EXPECT_EQ(Bytes(contents_c, len_l), b);
+    EXPECT_EQ(Bytes(contents, len_l), b);
+
+    const uint8_t *contents_c;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents_c, &len));
+    EXPECT_EQ(Bytes(contents_c, len), b);
 
     BUF_MEM *buf;
     ASSERT_EQ(BIO_get_mem_ptr(bio.get(), &buf), 1);
@@ -368,13 +376,20 @@ TEST(BIOTest, MemWritable) {
   check_bio_contents(Bytes("abcdef"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
+  // Reset clears the buffer
+  int ret = BIO_reset(bio.get());
+  ASSERT_EQ(ret, 1);
+  EXPECT_EQ(BIO_eof(bio.get()), 1);
+  EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
+  EXPECT_TRUE(BIO_should_read(bio.get()));
+
   // Writes can include embedded NULs.
-  ASSERT_EQ(BIO_write(bio.get(), "\0ghijk", 6), 6);
+  ASSERT_EQ(BIO_write(bio.get(), "abcdef\0ghijk", 12), 12);
   check_bio_contents(Bytes("abcdef\0ghijk", 12));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Do a partial read.
-  int ret = BIO_read(bio.get(), buf, 4);
+  ret = BIO_read(bio.get(), buf, 4);
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("abcd"));
   check_bio_contents(Bytes("ef\0ghijk", 8));
