@@ -73,9 +73,7 @@ struct Event {
 
   bool operator==(const Event &other) const {
     return type == other.type && length == other.length &&
-           flags == other.flags &&
-           ((filename == nullptr && other.filename == nullptr) ||
-            strcmp(filename, other.filename) == 0);
+           flags == other.flags && filename == other.filename;
   }
 
   static Event GetRandom(size_t length, unsigned flags) {
@@ -85,9 +83,9 @@ struct Event {
     return e;
   }
 
-  static Event Open(const char *filename) {
+  static Event Open(std::string filename) {
     Event e(Syscall::kOpen);
-    e.filename = filename;
+    e.filename = std::move(filename);
     return e;
   }
 
@@ -121,7 +119,7 @@ struct Event {
         break;
 
       case Syscall::kOpen:
-        snprintf(buf, sizeof(buf), "open(%s, _)", filename);
+        snprintf(buf, sizeof(buf), "open(%s, _)", filename.c_str());
         break;
 
       case Syscall::kUrandomRead:
@@ -144,7 +142,7 @@ struct Event {
   const Syscall type;
   size_t length = 0;
   unsigned flags = 0;
-  const char *filename = nullptr;
+  std::string filename;
 };
 
 static std::string ToString(const std::vector<Event> &trace) {
@@ -175,6 +173,34 @@ static const unsigned GETRANDOM_ERROR = 16;
 // Reading from /dev/urandom gives |EINVAL|.
 static const unsigned URANDOM_ERROR = 32;
 static const unsigned NEXT_FLAG = 64;
+
+// ReadString parses string at address |addr| in child process |pid|.
+static std::string ReadString(pid_t pid, unsigned long addr) {
+  std::string result;
+  size_t i = 0;
+  while (i < 4096) { // Don't accept paths longer than this.
+    long data = ptrace(PTRACE_PEEKDATA, pid, addr + i, NULL);
+    if (data == -1 && errno) {
+      break;
+    }
+
+    char *p = (char*)&data;
+    for (size_t j = 0; j < sizeof(long); j++) {
+      if (p[j] == '\0') {
+        return result;
+      }
+      result += p[j];
+    }
+    i += sizeof(long);
+  }
+  return result;
+}
+
+// HasPrefix returns true of |prefix| is a prefix of |str| and false otherwise.
+static bool HasPrefix(const std::string& str, const std::string& prefix) {
+    return str.length() >= prefix.length() &&
+           (str.compare(0, prefix.length(), prefix) == 0);
+}
 
 // GetTrace runs |thunk| in a forked process and observes the resulting system
 // calls using ptrace. It simulates a variety of failures based on the contents
@@ -260,15 +286,23 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
 
       case __NR_openat:
       case __NR_open: {
-        // It's assumed that any arguments to open(2) are constants in read-only
-        // memory and thus the pointer in the child's context will also be a
-        // valid pointer in our address space.
-        const char *filename = reinterpret_cast<const char *>(
+        std::string filename = ReadString(child_pid,
             (syscall_number == __NR_openat) ? regs.rsi : regs.rdi);
-        if (strcmp(filename, CRYPTO_get_sysgenid_path()) != 0) {
+
+        // From https://github.com/aws/aws-lc/blob/6c961b6617adb773fd9fb79dd805498e7ecc7a8b/third_party/jitterentropy/jitterentropy-base-user.h#L273
+        // We do not model these system calls, because they are part of the
+        // internal implementation detail of Jitter Entropy and there is
+        // currently no exported method from Jitter Entropy that allow us to
+        // continuously predict the behaviour.
+        if (HasPrefix(filename, "/sys/devices/system/cpu/cpu0/cache")) {
+          break;
+        }
+
+        if (filename != CRYPTO_get_sysgenid_path()) {
           out_trace->push_back(Event::Open(filename));
         }
-        is_opening_urandom = strcmp(filename, "/dev/urandom") == 0;
+
+        is_opening_urandom = (filename == "/dev/urandom");
         if (is_opening_urandom && (flags & NO_URANDOM)) {
           inject_error = -ENOENT;
         }
@@ -314,8 +348,15 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
 
       case __NR_ioctl: {
         const int ioctl_fd = regs.rdi;
+        // Apparently, some operating systems sign-extend registers into the
+        // register object when read through ptrace. I assume this is when
+        // registers are 32-bit, while |struct user_regs_struct| contains all
+        // 64-bit type fields. This is, at least, currently the case on Alpine
+        // Linux. This works very poorly when checking the RNDGETENTCNT
+        // condition below. Chop off the leading 32-bits to have a consistent
+        // check over all operating systems that this test supports.
         if (urandom_fd >= 0 && ioctl_fd == urandom_fd &&
-            regs.rsi == RNDGETENTCNT) {
+            (regs.rsi & 0xFFFFFFFF) == RNDGETENTCNT) {
           out_trace->push_back(Event::UrandomIoctl());
           is_urandom_ioctl = true;
           ioctl_output_addr = regs.rdx;
@@ -421,7 +462,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   std::function<bool(bool, size_t)> sysrand;
 
   if (flags & NO_GETRANDOM) {
-    ret.push_back(Event::Open("/dev/urandom"));
+    ret.push_back(Event::Open(std::string("/dev/urandom")));
     if (flags & NO_URANDOM) {
       ret.push_back(Event::Abort());
       return ret;
