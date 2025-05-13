@@ -488,8 +488,8 @@ class PemPasswdTest : public testing::Test {
     original_stderr = dup(fileno(stderr));
     
     // Create temporary files
-    stdin_file = tmpfile();
-    stderr_file = tmpfile();
+    stdin_file = createRawTempFILE();
+    stderr_file = createRawTempFILE();
     ASSERT_TRUE(stdin_file != nullptr);
     ASSERT_TRUE(stderr_file != nullptr);
     

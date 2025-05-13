@@ -45,8 +45,8 @@ static struct sigaction savsig[NUM_SIG];
 static void (*savsig[NUM_SIG]) (int);
 # endif
 
-static int read_till_nl(FILE *);
-static void recsig(int);
+static int read_till_nl(FILE * in);
+static void recsig(int signal);
 static void pushsig(void);
 static void popsig(void);
 
@@ -66,8 +66,9 @@ static int read_till_nl(FILE *in) {
     char buf[SIZE + 1];
 
     do {
-        if (!fgets(buf, SIZE, in))
+        if (!fgets(buf, SIZE, in)) {
             return 0;
+        }
     } while (strchr(buf, '\n') == NULL);
     return 1;
 }
@@ -75,13 +76,12 @@ static int read_till_nl(FILE *in) {
 /* Signal handling functions */
 static void pushsig(void) {
 # if !defined(_WIN32)
-    int i;
     struct sigaction sa;
-
     memset(&sa, 0, sizeof(sa));
+
     sa.sa_handler = recsig;
 
-    for (i = 1; i < NUM_SIG; i++) {
+    for (int i = 1; i < NUM_SIG; i++) {
         if (i == SIGUSR1 || i == SIGUSR2 || i == SIGKILL) {
             continue;
         }
