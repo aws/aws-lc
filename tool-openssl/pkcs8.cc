@@ -92,10 +92,9 @@ static bool validate_prf(const std::string& prf_name) {
     return true;
 }
 
-// Secure password handling
-static bool extract_password(const std::string& source, std::string* out) {
+// Secure password handling - modified to update string in place
+static bool extract_password(std::string& source) {
     if (source.empty()) {
-        out->clear();
         return true;
     }
 
@@ -107,7 +106,7 @@ static bool extract_password(const std::string& source, std::string* out) {
             return false;
         }
         
-        *out = password;
+        source = password; // Replace source with just the password
         return true;
     }
 
@@ -142,7 +141,7 @@ static bool extract_password(const std::string& source, std::string* out) {
             buf[--buf_len] = '\0';
         }
         
-        *out = buf;
+        source = buf; // Replace source with contents from file
         OPENSSL_cleanse(buf, sizeof(buf));
         return true;
     }
@@ -166,7 +165,7 @@ static bool extract_password(const std::string& source, std::string* out) {
             return false;
         }
         
-        *out = env_val;
+        source = env_val; // Replace source with environment variable value
         return true;
     }
 
@@ -268,14 +267,13 @@ bool pkcs8Tool(const args_list_t& args) {
     GetBoolArgument(&topk8, "-topk8", parsed_args);
     GetBoolArgument(&nocrypt, "-nocrypt", parsed_args);
 
-    std::string v2_cipher, v2_prf;
-    GetString(&v2_cipher, "-v2", "", parsed_args);
-    GetString(&v2_prf, "-v2prf", "", parsed_args);
-
-    if (!v2_cipher.empty() && !validate_cipher(v2_cipher)) {
+    // Validate cipher and PRF directly from parsed_args
+    if (parsed_args.count("-v2") > 0 && !parsed_args["-v2"].empty() && 
+        !validate_cipher(parsed_args["-v2"])) {
         return false;
     }
-    if (!v2_prf.empty() && !validate_prf(v2_prf)) {
+    if (parsed_args.count("-v2prf") > 0 && !parsed_args["-v2prf"].empty() && 
+        !validate_prf(parsed_args["-v2prf"])) {
         return false;
     }
 
@@ -283,27 +281,26 @@ bool pkcs8Tool(const args_list_t& args) {
     GetString(&passin_arg, "-passin", "", parsed_args);
     GetString(&passout_arg, "-passout", "", parsed_args);
     
-    std::string passin, passout;
-    if (!extract_password(passin_arg, &passin)) {
+    if (!extract_password(passin_arg)) {
         return false;
     }
-    if (!extract_password(passout_arg, &passout)) {
-        secure_clear(passin);
+    if (!extract_password(passout_arg)) {
+        secure_clear(passin_arg);
         return false;
     }
 
     bssl::UniquePtr<BIO> in(BIO_new_file(in_path.c_str(), "rb"));
     if (!in) {
-        secure_clear(passin);
-        secure_clear(passout);
+        secure_clear(passin_arg);
+        secure_clear(passout_arg);
         fprintf(stderr, "Cannot open input file\n");
         return false;
     }
 
     // Apply file size validation
     if (!validate_bio_size(in.get())) {
-        secure_clear(passin);
-        secure_clear(passout);
+        secure_clear(passin_arg);
+        secure_clear(passout_arg);
         return false;
     }
 
@@ -314,8 +311,8 @@ bool pkcs8Tool(const args_list_t& args) {
         out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
     }
     if (!out) {
-        secure_clear(passin);
-        secure_clear(passout);
+        secure_clear(passin_arg);
+        secure_clear(passout_arg);
         fprintf(stderr, "Cannot open output file\n");
         return false;
     }
@@ -323,13 +320,13 @@ bool pkcs8Tool(const args_list_t& args) {
     // Use enhanced key reading function with library support
     bssl::UniquePtr<EVP_PKEY> pkey = read_private_key(
         in.get(),
-        passin.empty() ? nullptr : passin.c_str(),
+        passin_arg.empty() ? nullptr : passin_arg.c_str(),
         inform
     );
 
     if (!pkey) {
-        secure_clear(passin);
-        secure_clear(passout);
+        secure_clear(passin_arg);
+        secure_clear(passout_arg);
         fprintf(stderr, "Unable to load private key\n");
         return false;
     }
@@ -345,8 +342,8 @@ bool pkcs8Tool(const args_list_t& args) {
             // Unencrypted PKCS8 output - no change here
             bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(EVP_PKEY2PKCS8(pkey.get()));
             if (!p8inf) {
-                secure_clear(passin);
-                secure_clear(passout);
+                secure_clear(passin_arg);
+                secure_clear(passout_arg);
                 fprintf(stderr, "Error converting to PKCS#8\n");
                 return false;
             }
@@ -356,32 +353,33 @@ bool pkcs8Tool(const args_list_t& args) {
                 i2d_PKCS8_PRIV_KEY_INFO_bio(out.get(), p8inf.get());
         } else {
             // Encrypted PKCS8 output - use library functions
-            if (passout.empty()) {
-                secure_clear(passin);
+            if (passout_arg.empty()) {
+                secure_clear(passin_arg);
                 fprintf(stderr, "Password required for encryption\n");
                 return false;
             }
 
-            const EVP_CIPHER* cipher = v2_cipher.empty() ? 
-                EVP_aes_256_cbc() : EVP_get_cipherbyname(v2_cipher.c_str());
+            // Get cipher directly from parsed_args
+            const EVP_CIPHER* cipher = (parsed_args.count("-v2") == 0 || parsed_args["-v2"].empty()) ? 
+                EVP_aes_256_cbc() : EVP_get_cipherbyname(parsed_args["-v2"].c_str());
 
             // Use library functions for encryption
             if (outform == "PEM") {
                 success = PEM_write_bio_PKCS8PrivateKey(
                     out.get(), pkey.get(), cipher,
-                    passout.c_str(), passout.length(),
+                    passout_arg.c_str(), passout_arg.length(),
                     nullptr, nullptr);
             } else {
                 success = i2d_PKCS8PrivateKey_bio(
                     out.get(), pkey.get(), cipher,
-                    passout.c_str(), passout.length(),
+                    passout_arg.c_str(), passout_arg.length(),
                     nullptr, nullptr);
             }
         }
     }
 
-    secure_clear(passin);
-    secure_clear(passout);
+    secure_clear(passin_arg);
+    secure_clear(passout_arg);
 
     if (!success) {
         fprintf(stderr, "Error writing private key\n");
