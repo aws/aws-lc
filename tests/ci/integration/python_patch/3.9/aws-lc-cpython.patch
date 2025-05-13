@@ -269,7 +269,7 @@ index b9163ae..4a2d3a4 100644
      def test_pha_setter(self):
          protocols = [
 diff --git a/Modules/Setup b/Modules/Setup
-index 02cfb67..43f0725 100644
+index 02cfb67..04cd90a 100644
 --- a/Modules/Setup
 +++ b/Modules/Setup
 @@ -211,10 +211,12 @@ _symtable symtablemodule.c
@@ -290,7 +290,7 @@ index 02cfb67..43f0725 100644
  # The crypt module is now disabled by default because it breaks builds
  # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index 5e0be34..380937b 100644
+index 5e0be34..83b8dae 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -325,6 +325,12 @@ SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *s)
@@ -367,15 +367,7 @@ index 5e0be34..380937b 100644
  static int
  set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
      if (arg == NULL) {
-@@ -4896,14 +4903,14 @@ static PyGetSetDef context_getsetlist[] = {
-                       (setter) _PySSLContext_set_msg_callback, NULL},
-     {"sni_callback", (getter) get_sni_callback,
-                      (setter) set_sni_callback, PySSLContext_sni_callback_doc},
--#if (OPENSSL_VERSION_NUMBER >= 0x10101000L) && !defined(LIBRESSL_VERSION_NUMBER)
-+#if (OPENSSL_VERSION_NUMBER >= 0x10101000L) && !defined(LIBRESSL_VERSION_NUMBER) && defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
-     {"num_tickets", (getter) get_num_tickets,
-                     (setter) set_num_tickets, PySSLContext_num_tickets_doc},
- #endif
+@@ -4903,7 +4910,7 @@ static PyGetSetDef context_getsetlist[] = {
      {"options", (getter) get_options,
                  (setter) set_options, NULL},
      {"post_handshake_auth", (getter) get_post_handshake_auth,
