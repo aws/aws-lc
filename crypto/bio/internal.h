@@ -95,13 +95,11 @@ int bio_ip_and_port_to_socket_and_addr(int *out_sock,
 // success and zero otherwise.
 int bio_socket_nbio(int sock, int on);
 
-// bio_clear_socket_error clears the last system socket error.
-//
-// TODO(fork): remove all callers of this.
-void bio_clear_socket_error(void);
+// bio_clear_socket_error clears the last socket error on |sock|.
+void bio_clear_socket_error(int sock);
 
-// bio_sock_error returns the last socket error on |sock|.
-int bio_sock_error(int sock);
+// bio_sock_error_get_and_clear clears and returns the last socket error on |sock|.
+int bio_sock_error_get_and_clear(int sock);
 
 // bio_socket_should_retry returns non-zero if |return_value| indicates an error
 // and the last socket error indicates that it's non-fatal.
@@ -112,7 +110,6 @@ int bio_socket_should_retry(int return_value);
 // bio_errno_should_retry returns non-zero if |return_value| indicates an error
 // and |errno| indicates that it's non-fatal.
 int bio_errno_should_retry(int return_value);
-
 
 #if defined(__cplusplus)
 }  // extern C

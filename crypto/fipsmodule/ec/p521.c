@@ -22,7 +22,7 @@
 #if !defined(OPENSSL_SMALL)
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#  include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 #else
 #  if defined(EC_NISTP_USE_64BIT_LIMB)
 #    include "../../../third_party/fiat/p521_64.h"

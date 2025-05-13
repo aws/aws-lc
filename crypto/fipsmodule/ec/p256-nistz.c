@@ -34,7 +34,7 @@
 #include "ec_nistp.h"
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 #endif
 
 #if !defined(OPENSSL_NO_ASM) &&  \

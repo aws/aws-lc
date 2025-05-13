@@ -127,7 +127,7 @@
      defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
     defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
 
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 
 #define BN_MONTGOMERY_S2N_BIGNUM_CAPABLE 1
 
@@ -137,11 +137,14 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   // (2) num (which is the number of words) is multiplie of 8, because
   //     s2n-bignum's bignum_emontredc_8n requires it, and
   // (3) The word size is 64 bits.
+  // (4) CPU has NEON.
   assert(S2NBIGNUM_KSQR_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
          S2NBIGNUM_KSQR_32_64_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
          S2NBIGNUM_KMUL_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS);
   assert(BN_BITS2 == 64);
-  return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0);
+  return !CRYPTO_is_ARMv8_wide_multiplier_capable() &&
+          (num % 8 == 0) &&
+          CRYPTO_is_NEON_capable();
 }
 
 #else
@@ -454,7 +457,7 @@ err:
 // are equivalent to the arguments of bn_mul_mont.
 // montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8.
 // montgomery_use_s2n_bignum(num) must be called in advance to check this
-// condition.
+// condition, as well as other s2n-bignum requirements.
 // For num = 32 or num = 16, this uses faster primitives in s2n-bignum.
 // montgomery_s2n_bignum_mul_mont allocates S2NBIGNUM_KMUL_32_64_TEMP_NWORDS +
 // 2 * BN_MONTGOMERY_MAX_WORDS uint64_t words at the stack.
@@ -477,34 +480,23 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   uint64_t w = n0[0];
 
   if (num == 32) {
-    if (CRYPTO_is_NEON_capable()) {
-      if (ap == bp)
-        bignum_ksqr_32_64_neon(mulres, ap, t);
-      else
-        bignum_kmul_32_64_neon(mulres, ap, bp, t);
+    if (ap == bp) {
+      bignum_ksqr_32_64(mulres, ap, t);
     } else {
-      if (ap == bp)
-        bignum_ksqr_32_64(mulres, ap, t);
-      else
-        bignum_kmul_32_64(mulres, ap, bp, t);
+      bignum_kmul_32_64(mulres, ap, bp, t);
     }
   } else if (num == 16) {
-    if (CRYPTO_is_NEON_capable()) {
-      if (ap == bp)
-        bignum_ksqr_16_32_neon(mulres, ap, t);
-      else
-        bignum_kmul_16_32_neon(mulres, ap, bp, t);
+    if (ap == bp) {
+      bignum_ksqr_16_32(mulres, ap, t);
     } else {
-      if (ap == bp)
-        bignum_ksqr_16_32(mulres, ap, t);
-      else
-        bignum_kmul_16_32(mulres, ap, bp, t);
+      bignum_kmul_16_32(mulres, ap, bp, t);
     }
   } else {
-    if (ap == bp)
+    if (ap == bp) {
       bignum_sqr(num * 2, mulres, num, ap);
-    else
+    } else {
       bignum_mul(num * 2, mulres, num, ap, num, bp);
+    }
   }
 
   // Do montgomery reduction. We follow the definition of montgomery reduction
@@ -518,9 +510,7 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   //    A. The result of step 1 >= 2^(64*num), meaning that bignum_emontredc_8n
   //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m holds.
   //    B. The result of step 1 fits in 2^(64*num), and the result >= m.
-  uint64_t c = CRYPTO_is_NEON_capable() ? 
-               bignum_emontredc_8n_neon(num, mulres, np, w) :
-               bignum_emontredc_8n(num, mulres, np, w); // c: case A
+  uint64_t c = bignum_emontredc_8n(num, mulres, np, w); // c: case A
   c |= bignum_ge(num, mulres + num, num, np);  // c: case B
   // Optionally subtract and store the result at rp
   bignum_optsub(num, rp, mulres + num, c, np);
