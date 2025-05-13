@@ -479,6 +479,11 @@ TEST(PEMTest, WriteReadTraditionalPem) {
       write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
 }
 
+
+#if !defined(OPENSSL_ANDROID)
+// On Android, when running from an APK, |tmpfile| does not work. See
+// b/36991167#comment8.
+
 // Consolidated password testing
 class PemPasswdTest : public testing::Test {
  protected:
@@ -694,3 +699,4 @@ TEST_F(PemPasswdTest, EchoModes) {
   ASSERT_STREQ(buf_no_echo, "test_password");
   ASSERT_STREQ(buf_with_echo, "test_password");
 }
+#endif
