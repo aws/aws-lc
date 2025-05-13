@@ -800,6 +800,10 @@ void ssl_set_session(SSL *ssl, SSL_SESSION *session) {
   }
 
   ssl->session = UpRef(session);
+
+  if (session != NULL) {
+    ssl->verify_result = session->verify_result;
+  }
 }
 
 // locked by SSL_CTX in the calling function
