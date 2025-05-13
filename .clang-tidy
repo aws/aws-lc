@@ -11,5 +11,7 @@ Checks: '
   modernize-*,
   performance-*,
   portability-*,
+  -cppcoreguidelines-macro-to-enum,
+  -cppcoreguidelines-avoid-non-const-global-variables,
   '
 WarningsAsErrors: ''
