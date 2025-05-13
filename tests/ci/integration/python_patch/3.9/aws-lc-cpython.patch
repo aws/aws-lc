@@ -17,7 +17,7 @@ index 72189bf..b46a28f 100644
 -                        "'127.0.0.1'"):
 +                with self.assertRaisesRegex(ssl.CertificateError, regex):
                      self.loop.run_until_complete(f_c)
- 
+
          # close connection
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
 index 506ab9f..5be2a45 100644
@@ -290,7 +290,7 @@ index 02cfb67..04cd90a 100644
  # The crypt module is now disabled by default because it breaks builds
  # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index 5e0be34..83b8dae 100644
+index 5e0be34..73a44b6 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -325,6 +325,12 @@ SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *s)
@@ -350,7 +350,44 @@ index 5e0be34..83b8dae 100644
      self->post_handshake_auth = 0;
      SSL_CTX_set_post_handshake_auth(self->ctx, self->post_handshake_auth);
  #endif
-@@ -3856,14 +3863,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
+@@ -3648,10 +3655,6 @@ set_verify_flags(PySSLContext *self, PyObject *arg, void *c)
+     return 0;
+ }
+ 
+-/* Getter and setter for protocol version */
+-#if defined(SSL_CTRL_GET_MAX_PROTO_VERSION)
+-
+-
+ static int
+ set_min_max_proto_version(PySSLContext *self, PyObject *arg, int what)
+ {
+@@ -3718,7 +3721,7 @@ set_min_max_proto_version(PySSLContext *self, PyObject *arg, int what)
+ static PyObject *
+ get_minimum_version(PySSLContext *self, void *c)
+ {
+-    int v = SSL_CTX_ctrl(self->ctx, SSL_CTRL_GET_MIN_PROTO_VERSION, 0, NULL);
++    int v = SSL_CTX_get_min_proto_version(self->ctx);
+     if (v == 0) {
+         v = PY_PROTO_MINIMUM_SUPPORTED;
+     }
+@@ -3734,7 +3737,7 @@ set_minimum_version(PySSLContext *self, PyObject *arg, void *c)
+ static PyObject *
+ get_maximum_version(PySSLContext *self, void *c)
+ {
+-    int v = SSL_CTX_ctrl(self->ctx, SSL_CTRL_GET_MAX_PROTO_VERSION, 0, NULL);
++    int v = SSL_CTX_get_max_proto_version(self->ctx);
+     if (v == 0) {
+         v = PY_PROTO_MAXIMUM_SUPPORTED;
+     }
+@@ -3746,7 +3749,6 @@ set_maximum_version(PySSLContext *self, PyObject *arg, void *c)
+ {
+     return set_min_max_proto_version(self, arg, 1);
+ }
+-#endif /* SSL_CTRL_GET_MAX_PROTO_VERSION */
+ 
+ #if (OPENSSL_VERSION_NUMBER >= 0x10101000L) && !defined(LIBRESSL_VERSION_NUMBER)
+ static PyObject *
+@@ -3856,14 +3858,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
  
  static PyObject *
  get_post_handshake_auth(PySSLContext *self, void *c) {
@@ -367,7 +404,20 @@ index 5e0be34..83b8dae 100644
  static int
  set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
      if (arg == NULL) {
-@@ -4903,7 +4910,7 @@ static PyGetSetDef context_getsetlist[] = {
+@@ -4882,12 +4884,10 @@ static PyGetSetDef context_getsetlist[] = {
+                        (setter) set_check_hostname, NULL},
+     {"_host_flags", (getter) get_host_flags,
+                     (setter) set_host_flags, NULL},
+-#if SSL_CTRL_GET_MAX_PROTO_VERSION
+     {"minimum_version", (getter) get_minimum_version,
+                         (setter) set_minimum_version, NULL},
+     {"maximum_version", (getter) get_maximum_version,
+                         (setter) set_maximum_version, NULL},
+-#endif
+ #ifdef HAVE_OPENSSL_KEYLOG
+     {"keylog_filename", (getter) _PySSLContext_get_keylog_filename,
+                         (setter) _PySSLContext_set_keylog_filename, NULL},
+@@ -4903,7 +4903,7 @@ static PyGetSetDef context_getsetlist[] = {
      {"options", (getter) get_options,
                  (setter) set_options, NULL},
      {"post_handshake_auth", (getter) get_post_handshake_auth,
