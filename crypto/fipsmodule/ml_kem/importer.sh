@@ -102,7 +102,7 @@ else
   SED_I=(-i)
 fi
 echo "Fixup include paths"
-sed $SED_I 's/#include "mlkem\/\([^"]*\)"/#include "\1"/' $SRC/mlkem_native_bcm.c
+sed "${SED_I[@]}" 's/#include "mlkem\/\([^"]*\)"/#include "\1"/' $SRC/mlkem_native_bcm.c
 
 echo "Remove temporary artifacts ..."
 rm -rf $TMP
