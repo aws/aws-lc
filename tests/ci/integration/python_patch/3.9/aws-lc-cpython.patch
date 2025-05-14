@@ -17,7 +17,7 @@ index 72189bf..b46a28f 100644
 -                        "'127.0.0.1'"):
 +                with self.assertRaisesRegex(ssl.CertificateError, regex):
                      self.loop.run_until_complete(f_c)
-
+ 
          # close connection
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
 index 506ab9f..5be2a45 100644
@@ -66,7 +66,7 @@ index 057e4e6..7fd5344 100644
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index b9163ae..56d705a 100644
+index b9163ae..61dafbf 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -36,6 +36,8 @@ from ssl import TLSVersion, _TLSContentType, _TLSMessageType
@@ -187,7 +187,63 @@ index b9163ae..56d705a 100644
              self.assertTrue(sslobj.get_channel_binding('tls-unique'))
          try:
              self.ssl_io_loop(sock, incoming, outgoing, sslobj.unwrap)
-@@ -2999,8 +3005,8 @@ class ThreadedTests(unittest.TestCase):
+@@ -2910,31 +2916,36 @@ class ThreadedTests(unittest.TestCase):
+                                chatty=True, connectionchatty=True,
+                                sni_name=hostname)
+ 
++        # OpenSSL defines TLS_client_method() and TLS_server_method()
++        # distinctly, and raises errors when an SSL_CTX initializes with
++        # the client method is used as a server and vice versa.
++        #
++        # https://github.com/openssl/openssl/commit/32ec41539b5b23bc42503589fcc5be65d648d1f5
++        # https://github.com/openssl/openssl/commit/13c9bb3ecec5f847b4c5295249e039d386e2d10e
++        #
++        # AWS-LC, however, defines these methods identically, so each can be
++        # used in place of the other as long as we set the client context's
++        # cert chain keys appropriately for cases where it's used as a server.
++        #
++        # https://github.com/aws/aws-lc/blob/771c13d73295a32ae55954220d4b83be7ce73f01/ssl/tls_method.cc#L313-L319
++
++        client_context.load_cert_chain(SIGNED_CERTFILE)
+         client_context.check_hostname = False
+         with self.subTest(client=ssl.PROTOCOL_TLS_SERVER, server=ssl.PROTOCOL_TLS_CLIENT):
+-            with self.assertRaises(ssl.SSLError) as e:
+-                server_params_test(client_context=server_context,
+-                                   server_context=client_context,
+-                                   chatty=True, connectionchatty=True,
+-                                   sni_name=hostname)
+-            self.assertIn('called a function you should not call',
+-                          str(e.exception))
++            server_params_test(client_context=server_context,
++                               server_context=client_context,
++                               chatty=True, connectionchatty=True,
++                               sni_name=hostname)
+ 
+         with self.subTest(client=ssl.PROTOCOL_TLS_SERVER, server=ssl.PROTOCOL_TLS_SERVER):
+-            with self.assertRaises(ssl.SSLError) as e:
+-                server_params_test(client_context=server_context,
+-                                   server_context=server_context,
+-                                   chatty=True, connectionchatty=True)
+-            self.assertIn('called a function you should not call',
+-                          str(e.exception))
++            server_params_test(client_context=server_context,
++                               server_context=server_context,
++                               chatty=True, connectionchatty=True)
+ 
+         with self.subTest(client=ssl.PROTOCOL_TLS_CLIENT, server=ssl.PROTOCOL_TLS_CLIENT):
+-            with self.assertRaises(ssl.SSLError) as e:
+-                server_params_test(client_context=server_context,
+-                                   server_context=client_context,
+-                                   chatty=True, connectionchatty=True)
+-            self.assertIn('called a function you should not call',
+-                          str(e.exception))
++            server_params_test(client_context=server_context,
++                               server_context=client_context,
++                               chatty=True, connectionchatty=True)
+ 
+     def test_getpeercert(self):
+         if support.verbose:
+@@ -2999,8 +3010,8 @@ class ThreadedTests(unittest.TestCase):
          with server:
              with client_context.wrap_socket(socket.socket(),
                                              server_hostname=hostname) as s:
@@ -198,7 +254,7 @@ index b9163ae..56d705a 100644
                      s.connect((HOST, server.port))
  
          # now load a CRL file. The CRL file is signed by the CA.
-@@ -3303,8 +3309,13 @@ class ThreadedTests(unittest.TestCase):
+@@ -3303,8 +3314,13 @@ class ThreadedTests(unittest.TestCase):
                      self.assertIsInstance(e, ssl.SSLCertVerificationError)
                      self.assertEqual(e.verify_code, 20)
                      self.assertEqual(e.verify_message, msg)
@@ -213,7 +269,7 @@ index b9163ae..56d705a 100644
  
      @requires_tls_version('SSLv2')
      def test_protocol_sslv2(self):
-@@ -3860,7 +3871,10 @@ class ThreadedTests(unittest.TestCase):
+@@ -3860,7 +3876,10 @@ class ThreadedTests(unittest.TestCase):
                                              server_hostname=hostname) as s:
                  with self.assertRaises(OSError):
                      s.connect((HOST, server.port))
@@ -225,7 +281,7 @@ index b9163ae..56d705a 100644
  
      def test_version_basic(self):
          """
-@@ -3952,9 +3966,8 @@ class ThreadedTests(unittest.TestCase):
+@@ -3952,9 +3971,8 @@ class ThreadedTests(unittest.TestCase):
          with ThreadedEchoServer(context=server_context) as server:
              with client_context.wrap_socket(socket.socket(),
                                              server_hostname=hostname) as s:
@@ -233,10 +289,10 @@ index b9163ae..56d705a 100644
 +                with self.assertRaisesRegex(ssl.SSLError, "alert|ALERT") as e:
                      s.connect((HOST, server.port))
 -                self.assertIn("alert", str(e.exception))
-
+ 
      @requires_minimum_version
      @requires_tls_version('SSLv3')
-@@ -4000,6 +4013,9 @@ class ThreadedTests(unittest.TestCase):
+@@ -4000,6 +4018,9 @@ class ThreadedTests(unittest.TestCase):
  
          client_context, server_context, hostname = testing_context()
  
@@ -246,7 +302,7 @@ index b9163ae..56d705a 100644
          server = ThreadedEchoServer(context=server_context,
                                      chatty=True,
                                      connectionchatty=False)
-@@ -4072,6 +4088,7 @@ class ThreadedTests(unittest.TestCase):
+@@ -4072,6 +4093,7 @@ class ThreadedTests(unittest.TestCase):
          self.assertIs(stats['compression'], None)
  
      @unittest.skipIf(Py_DEBUG_WIN32, "Avoid mixing debug/release CRT on Windows")
@@ -254,7 +310,7 @@ index b9163ae..56d705a 100644
      def test_dh_params(self):
          # Check we can get a connection with ephemeral Diffie-Hellman
          client_context, server_context, hostname = testing_context()
-@@ -4302,8 +4319,10 @@ class ThreadedTests(unittest.TestCase):
+@@ -4302,8 +4324,10 @@ class ThreadedTests(unittest.TestCase):
                                             chatty=False,
                                             sni_name='supermessage')
  
@@ -267,7 +323,7 @@ index b9163ae..56d705a 100644
              self.assertEqual(catch.unraisable.exc_type, ZeroDivisionError)
  
      @needs_sni
-@@ -4483,7 +4502,10 @@ class ThreadedTests(unittest.TestCase):
+@@ -4483,7 +4507,10 @@ class ThreadedTests(unittest.TestCase):
                                   'Session refers to a different SSLContext.')
  
  
@@ -301,7 +357,7 @@ index 02cfb67..04cd90a 100644
  # The crypt module is now disabled by default because it breaks builds
  # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index 5e0be34..73a44b6 100644
+index 5e0be34..c4cb8e4 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -325,6 +325,12 @@ SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *s)
@@ -415,7 +471,7 @@ index 5e0be34..73a44b6 100644
  static int
  set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
      if (arg == NULL) {
-@@ -4882,12 +4884,10 @@ static PyGetSetDef context_getsetlist[] = {
+@@ -4882,12 +4886,10 @@ static PyGetSetDef context_getsetlist[] = {
                         (setter) set_check_hostname, NULL},
      {"_host_flags", (getter) get_host_flags,
                      (setter) set_host_flags, NULL},
@@ -428,7 +484,7 @@ index 5e0be34..73a44b6 100644
  #ifdef HAVE_OPENSSL_KEYLOG
      {"keylog_filename", (getter) _PySSLContext_get_keylog_filename,
                          (setter) _PySSLContext_set_keylog_filename, NULL},
-@@ -4903,7 +4903,7 @@ static PyGetSetDef context_getsetlist[] = {
+@@ -4903,7 +4905,7 @@ static PyGetSetDef context_getsetlist[] = {
      {"options", (getter) get_options,
                  (setter) set_options, NULL},
      {"post_handshake_auth", (getter) get_post_handshake_auth,
