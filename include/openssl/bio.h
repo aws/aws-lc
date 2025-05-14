@@ -1116,7 +1116,7 @@ struct bio_st {
   // |BIO_set_close|. For example, whether an fd BIO closes the underlying fd
   // when it, itself, is closed.
   int shutdown;
-  unsigned int flags;
+  int flags;
   int retry_reason;
   // num is a BIO-specific value. For example, in fd BIOs it's used to store a
   // file descriptor.
