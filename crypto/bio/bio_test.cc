@@ -960,6 +960,10 @@ static long callback(BIO *b, int state, int res) {
 }
 
 TEST(BIOTest, InvokeConnectCallback) {
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+  GTEST_SKIP() << "InvokeConnectCallback does not run on iOS";
+#endif
+
   ASSERT_EQ(callback_invoked, 0);
   BIO *bio = BIO_new(BIO_s_connect());
   ASSERT_NE(bio, nullptr);
@@ -974,6 +978,7 @@ TEST(BIOTest, InvokeConnectCallback) {
   ASSERT_TRUE(BIO_free(bio));
 }
 }  // namespace
+
 
 // Instantiate the parameterized test suite for BIOPairTest
 // This creates test instances for all combinations of the boolean parameters

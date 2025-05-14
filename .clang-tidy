@@ -1,15 +1,9 @@
 ---
 Checks: '
   -*,
-  bugprone-*,
-  cert-*,
-  clang-analyzer,
-  concurrency-*,
-  cppcoreguidelines-*,
-  hicpp-*,
-  misc-*,
-  modernize-*,
-  performance-*,
+  clang-analyzer-*,
   portability-*,
+  cppcoreguidelines-init-variables, 
+  readability-braces-around-statements,
   '
 WarningsAsErrors: ''

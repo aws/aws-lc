@@ -1,7 +1,27 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS140_3_IG]
+ *   Implementation Guidance for FIPS 140-3 and the Cryptographic Module
+ *   Validation Program National Institute of Standards and Technology
+ *   https://csrc.nist.gov/projects/cryptographic-module-validation-program/fips-140-3-ig-announcements
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ *
+ * - [REF]
+ *   CRYSTALS-Kyber C reference implementation
+ *   Bos, Ducas, Kiltz, Lepoint, Lyubashevsky, Schanck, Schwabe, Seiler, Stehlé
+ *   https://github.com/pq-crystals/kyber/tree/main/ref
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -12,14 +32,14 @@
 #include "symmetric.h"
 #include "verify.h"
 
-/* Level namespacing
+/* Parameter set namespacing
  * This is to facilitate building multiple instances
  * of mlkem-native (e.g. with varying security levels)
  * within a single compilation unit. */
-#define mlk_check_pk MLK_ADD_LEVEL(mlk_check_pk)
-#define mlk_check_sk MLK_ADD_LEVEL(mlk_check_sk)
-#define mlk_check_pct MLK_ADD_LEVEL(mlk_check_pct)
-/* End of level namespacing */
+#define mlk_check_pk MLK_ADD_PARAM_SET(mlk_check_pk)
+#define mlk_check_sk MLK_ADD_PARAM_SET(mlk_check_sk)
+#define mlk_check_pct MLK_ADD_PARAM_SET(mlk_check_pct)
+/* End of parameter set namespacing */
 
 #if defined(CBMC)
 /* Redeclaration with contract needed for CBMC only */
@@ -43,11 +63,11 @@ __contract__(
  * Returns: - 0 on success
  *          - -1 on failure
  *
- * Specification: Implements [FIPS 203, Section 7.2, 'modulus check']
+ * Specification: Implements @[FIPS203, Section 7.2, 'modulus check']
  *
  **************************************************/
 
-/* Reference: Not implemented in the reference implementation. */
+/* Reference: Not implemented in the reference implementation @[REF]. */
 MLK_MUST_CHECK_RETURN_VALUE
 static int mlk_check_pk(const uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES])
 {
@@ -64,7 +84,7 @@ static int mlk_check_pk(const uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES])
   res = mlk_ct_memcmp(pk, p_reencoded, MLKEM_POLYVECBYTES) ? -1 : 0;
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(p_reencoded, sizeof(p_reencoded));
   mlk_zeroize(&p, sizeof(p));
   return res;
@@ -84,11 +104,11 @@ static int mlk_check_pk(const uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES])
  * Returns: - 0 on success
  *          - -1 on failure
  *
- * Specification: Implements [FIPS 203, Section 7.3, 'hash check']
+ * Specification: Implements @[FIPS203, Section 7.3, 'hash check']
  *
  **************************************************/
 
-/* Reference: Not implemented in the reference implementation. */
+/* Reference: Not implemented in the reference implementation @[REF]. */
 MLK_MUST_CHECK_RETURN_VALUE
 static int mlk_check_sk(const uint8_t sk[MLKEM_INDCCA_SECRETKEYBYTES])
 {
@@ -114,7 +134,7 @@ static int mlk_check_sk(const uint8_t sk[MLKEM_INDCCA_SECRETKEYBYTES])
             : 0;
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(test, sizeof(test));
   return res;
 }
@@ -128,10 +148,10 @@ __contract__(
 
 #if defined(MLK_CONFIG_KEYGEN_PCT)
 /* Specification:
- * Partially implements 'Pairwise Consistency Test' [FIPS 140-3 IG] and
- * [FIPS 203, Section 7.1, Pairwise Consistency]. */
+ * Partially implements 'Pairwise Consistency Test' @[FIPS140_3_IG, p.87] and
+ * @[FIPS203, Section 7.1, Pairwise Consistency]. */
 
-/* Reference: Not implemented in the reference implementation. */
+/* Reference: Not implemented in the reference implementation @[REF]. */
 static int mlk_check_pct(uint8_t const pk[MLKEM_INDCCA_PUBLICKEYBYTES],
                          uint8_t const sk[MLKEM_INDCCA_SECRETKEYBYTES])
 {
@@ -166,7 +186,7 @@ cleanup:
   MLK_CT_TESTING_DECLASSIFY(&res, sizeof(res));
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(ct, sizeof(ct));
   mlk_zeroize(ss_enc, sizeof(ss_enc));
   mlk_zeroize(ss_dec, sizeof(ss_dec));
@@ -184,6 +204,7 @@ static int mlk_check_pct(uint8_t const pk[MLKEM_INDCCA_PUBLICKEYBYTES],
 #endif /* !MLK_CONFIG_KEYGEN_PCT */
 
 /* Reference: `crypto_kem_keypair_derand()` in the reference implementation
+ *            @[REF].
  *            - We optionally include PCT which is not present in
  *              the reference code. */
 MLK_EXTERNAL_API
@@ -202,7 +223,7 @@ int crypto_kem_keypair_derand(uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES],
   /* Declassify public key */
   MLK_CT_TESTING_DECLASSIFY(pk, MLKEM_INDCCA_PUBLICKEYBYTES);
 
-  /* Pairwise Consistency Test (PCT) (FIPS 140-3 IPG) */
+  /* Pairwise Consistency Test (PCT) @[FIPS140_3_IG, p.87] */
   if (mlk_check_pct(pk, sk))
   {
     return -1;
@@ -211,7 +232,7 @@ int crypto_kem_keypair_derand(uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES],
   return 0;
 }
 
-/* Reference: `crypto_kem_keypair()` in the reference implementation
+/* Reference: `crypto_kem_keypair()` in the reference implementation @[REF]
  *            - We zeroize the stack buffer */
 MLK_EXTERNAL_API
 int crypto_kem_keypair(uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES],
@@ -227,12 +248,12 @@ int crypto_kem_keypair(uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES],
   res = crypto_kem_keypair_derand(pk, sk, coins);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(coins, sizeof(coins));
   return res;
 }
 
-/* Reference: `crypto_kem_enc_derand()` in the reference implementation
+/* Reference: `crypto_kem_enc_derand()` in the reference implementation @[REF]
  *            - We include public key check
  *            - We include stack buffer zeroization */
 MLK_EXTERNAL_API
@@ -245,7 +266,7 @@ int crypto_kem_enc_derand(uint8_t ct[MLKEM_INDCCA_CIPHERTEXTBYTES],
   /* Will contain key, coins */
   MLK_ALIGN uint8_t kr[2 * MLKEM_SYMBYTES];
 
-  /* Specification: Implements [FIPS 203, Section 7.2, Modulus check] */
+  /* Specification: Implements @[FIPS203, Section 7.2, Modulus check] */
   if (mlk_check_pk(pk))
   {
     return -1;
@@ -263,14 +284,14 @@ int crypto_kem_enc_derand(uint8_t ct[MLKEM_INDCCA_CIPHERTEXTBYTES],
   memcpy(ss, kr, MLKEM_SYMBYTES);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(buf, sizeof(buf));
   mlk_zeroize(kr, sizeof(kr));
 
   return 0;
 }
 
-/* Reference: `crypto_kem_enc()` in the reference implementation
+/* Reference: `crypto_kem_enc()` in the reference implementation @[REF]
  *            - We include stack buffer zeroization */
 MLK_EXTERNAL_API
 int crypto_kem_enc(uint8_t ct[MLKEM_INDCCA_CIPHERTEXTBYTES],
@@ -286,12 +307,12 @@ int crypto_kem_enc(uint8_t ct[MLKEM_INDCCA_CIPHERTEXTBYTES],
   res = crypto_kem_enc_derand(ct, ss, pk, coins);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(coins, sizeof(coins));
   return res;
 }
 
-/* Reference: `crypto_kem_dec()` in the reference implementation
+/* Reference: `crypto_kem_dec()` in the reference implementation @[REF]
  *            - We include secret key check
  *            - We include stack buffer zeroization */
 MLK_EXTERNAL_API
@@ -307,7 +328,7 @@ int crypto_kem_dec(uint8_t ss[MLKEM_SSBYTES],
 
   const uint8_t *pk = sk + MLKEM_INDCPA_SECRETKEYBYTES;
 
-  /* Specification: Implements [FIPS 203, Section 7.3, Hash check] */
+  /* Specification: Implements @[FIPS203, Section 7.3, Hash check] */
   if (mlk_check_sk(sk))
   {
     return -1;
@@ -335,7 +356,7 @@ int crypto_kem_dec(uint8_t ss[MLKEM_SSBYTES],
   mlk_ct_cmov_zero(ss, kr, MLKEM_SYMBYTES, fail);
 
   /* Specification: Partially implements
-   * [FIPS 203, Section 3.3, Destruction of intermediate values] */
+   * @[FIPS203, Section 3.3, Destruction of intermediate values] */
   mlk_zeroize(buf, sizeof(buf));
   mlk_zeroize(kr, sizeof(kr));
   mlk_zeroize(tmp, sizeof(tmp));

@@ -1,9 +1,26 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 #ifndef MLK_SYS_H
 #define MLK_SYS_H
+
+#if !defined(MLK_CONFIG_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+#define MLK_HAVE_INLINE_ASM
+#endif
+
+/* Try to find endianness, if not forced through CFLAGS already */
+#if !defined(MLK_SYS_LITTLE_ENDIAN) && !defined(MLK_SYS_BIG_ENDIAN)
+#if defined(__BYTE_ORDER__)
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define MLK_SYS_LITTLE_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define MLK_SYS_BIG_ENDIAN
+#else
+#error "__BYTE_ORDER__ defined, but don't recognize value."
+#endif
+#endif /* __BYTE_ORDER__ */
+#endif /* !MLK_SYS_LITTLE_ENDIAN && !MLK_SYS_BIG_ENDIAN */
 
 /* Check if we're running on an AArch64 little endian system. _M_ARM64 is set by
  * MSVC. */
@@ -23,43 +40,33 @@
 #endif
 #endif /* __x86_64__ */
 
+#if defined(MLK_SYS_LITTLE_ENDIAN) && defined(__powerpc64__)
+#define MLK_SYS_PPC64LE
+#endif
+
+#if defined(__riscv) && defined(__riscv_xlen) && __riscv_xlen == 64
+#define MLK_SYS_RISCV64
+#endif
+
 #if defined(_WIN32)
 #define MLK_SYS_WINDOWS
 #endif
 
-#if !defined(MLK_CONFIG_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
-#define MLK_HAVE_INLINE_ASM
-#endif
-
-/* Try to find endianness, if not forced through CFLAGS already */
-#if !defined(MLK_SYS_LITTLE_ENDIAN) && !defined(MLK_SYS_BIG_ENDIAN)
-#if defined(__BYTE_ORDER__)
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define MLK_SYS_LITTLE_ENDIAN
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define MLK_SYS_BIG_ENDIAN
-#else
-#error "__BYTE_ORDER__ defined, but don't recognize value."
-#endif
-#endif /* __BYTE_ORDER__ */
-#endif /* !MLK_SYS_LITTLE_ENDIAN && !MLK_SYS_BIG_ENDIAN */
-
-/* If MLK_FORCE_AARCH64 is set, assert that we're indeed on an AArch64 system.
- */
 #if defined(MLK_FORCE_AARCH64) && !defined(MLK_SYS_AARCH64)
 #error "MLK_FORCE_AARCH64 is set, but we don't seem to be on an AArch64 system."
 #endif
 
-/* If MLK_FORCE_AARCH64_EB is set, assert that we're indeed on a big endian
- * AArch64 system. */
 #if defined(MLK_FORCE_AARCH64_EB) && !defined(MLK_SYS_AARCH64_EB)
 #error \
     "MLK_FORCE_AARCH64_EB is set, but we don't seem to be on an AArch64 system."
 #endif
 
-/* If MLK_FORCE_X86_64 is set, assert that we're indeed on an X86_64 system. */
 #if defined(MLK_FORCE_X86_64) && !defined(MLK_SYS_X86_64)
 #error "MLK_FORCE_X86_64 is set, but we don't seem to be on an X86_64 system."
+#endif
+
+#if defined(MLK_FORCE_PPC64LE) && !defined(MLK_SYS_PPC64LE)
+#error "MLK_FORCE_PPC64LE is set, but we don't seem to be on a PPC64LE system."
 #endif
 
 /*

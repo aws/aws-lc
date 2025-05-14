@@ -1,7 +1,17 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ */
+
 #ifndef MLK_INDCPA_H
 #define MLK_INDCPA_H
 
@@ -23,8 +33,8 @@
  *              - const uint8_t *seed: pointer to input seed
  *              - int transposed: boolean deciding whether A or A^T is generated
  *
- * Specification: Implements [FIPS 203, Algorithm 13 (K-PKE.KeyGen), L3-7]
- *                and [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L4-8].
+ * Specification: Implements @[FIPS203, Algorithm 13 (K-PKE.KeyGen), L3-7]
+ *                and @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L4-8].
  *                The `transposed` parameter only affects internal presentation.
  *
  **************************************************/
@@ -54,7 +64,7 @@ __contract__(
  *              - const uint8_t *coins: pointer to input randomness
  *                             (of length MLKEM_SYMBYTES bytes)
  *
- * Specification: Implements [FIPS 203, Algorithm 13 (K-PKE.KeyGen)].
+ * Specification: Implements @[FIPS203, Algorithm 13 (K-PKE.KeyGen)].
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -86,7 +96,7 @@ __contract__(
  *                 seed (of length MLKEM_SYMBYTES) to deterministically generate
  *                 all randomness
  *
- * Specification: Implements [FIPS 203, Algorithm 14 (K-PKE.Encrypt)].
+ * Specification: Implements @[FIPS203, Algorithm 14 (K-PKE.Encrypt)].
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -116,7 +126,7 @@ __contract__(
  *              - const uint8_t *sk: pointer to input secret key
  *                                   (of length MLKEM_INDCPA_SECRETKEYBYTES)
  *
- * Specification: Implements [FIPS 203, Algorithm 15 (K-PKE.Decrypt)].
+ * Specification: Implements @[FIPS203, Algorithm 15 (K-PKE.Decrypt)].
  *
  **************************************************/
 MLK_INTERNAL_API
