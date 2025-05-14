@@ -2280,8 +2280,8 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
   uint8_t private_key[MLDSA44_PRIVATE_KEY_BYTES] = {0};
 
   if (!ml_dsa_44_keypair_internal_no_self_test(public_key, private_key, kMLDSAKeyGenSeed) ||
-      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA keyGen public") ||
-      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA keyGen private")) {
+      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA keyGen") ||
+      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA keyGen")) {
     goto err;
   }
 
