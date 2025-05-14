@@ -22,8 +22,10 @@ function shard_gtest() {
 
     RESULT=0
     for PID in ${PIDS[*]}; do
-        if wait -f $PID; then
-          RESULT=${?}
+        # The exit status of wait is the exit status of $PID
+        # `if` considers a zero exit status to be "true", but we need to branch on a non-zero exit status
+        if ! wait -f $PID; then
+          RESULT=1
         fi
     done
     unset GTEST_SHARD_INDEX
