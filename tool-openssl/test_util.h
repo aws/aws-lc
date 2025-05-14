@@ -35,13 +35,25 @@ static inline std::string &trim(std::string &s) {
 
 // Helper function to read file content into a string
 inline std::string ReadFileToString(const std::string& file_path) {
-  std::ifstream file_stream(file_path, std::ios::binary);
-  if (!file_stream) {
+  if (file_path.empty()) {
     return "";
   }
-  std::ostringstream buffer;
-  buffer << file_stream.rdbuf();
-  return buffer.str();
+  
+  // Check if file exists first
+  struct stat stat_buffer;
+  if (stat(file_path.c_str(), &stat_buffer) != 0) {
+    return "";
+  }
+
+  std::ifstream file_stream(file_path, std::ios::binary);
+  if (!file_stream.is_open()) {
+    return "";
+  }
+  
+  std::ostringstream output_buffer;
+  output_buffer << file_stream.rdbuf();
+  
+  return output_buffer.str();
 }
 
 inline void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command,

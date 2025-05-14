@@ -156,16 +156,23 @@ static bool extract_password(std::string& source) {
         
         const char* env_val = getenv(env_var.c_str());
         if (!env_val) {
-            fprintf(stderr, "Environment variable not set\n");
+            fprintf(stderr, "Environment variable '%s' not set\n", env_var.c_str());
             return false;
         }
         
-        if (strlen(env_val) > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
+        size_t env_val_len = strlen(env_val);
+        if (env_val_len == 0) {
+            fprintf(stderr, "Environment variable '%s' is empty\n", env_var.c_str());
+            return false;
+        }
+        
+        if (env_val_len > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
             fprintf(stderr, "Environment variable value too long\n");
             return false;
         }
         
-        source = env_val; // Replace source with environment variable value
+        // Create a new copy of the environment variable value
+        source = std::string(env_val); // Replace source with environment variable value
         return true;
     }
 

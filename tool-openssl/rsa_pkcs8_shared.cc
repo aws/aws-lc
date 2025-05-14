@@ -77,13 +77,14 @@ bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* passwo
         return nullptr;
     }
     
-    ScopedFILE file(fopen(path, "r"));
-    if (!file) {
+    // Use a BIO for better compatibility
+    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
+    if (!bio) {
         return nullptr;
     }
     
-    return bssl::UniquePtr<EVP_PKEY>(
-        PEM_read_PrivateKey(file.get(), nullptr, nullptr, const_cast<char*>(password)));
+    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, const_cast<char*>(password));
+    return bssl::UniquePtr<EVP_PKEY>(pkey);
 }
 
 // Compares two EVP_PKEY structures including their private components
