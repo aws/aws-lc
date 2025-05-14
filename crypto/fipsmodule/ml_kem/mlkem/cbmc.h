@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
 #ifndef MLK_CBMC_H
@@ -129,8 +129,10 @@
 
 /* Wrapper around array_bound operating on absolute values.
  *
- * Note that since the absolute bound is inclusive, but the lower
- * bound in array_bound is inclusive, we have to raise it by 1.
+ * The absolute value bound `k` is exclusive.
+ *
+ * Note that since the lower bound in array_bound is inclusive, we have to
+ * raise it by 1 here.
  */
 #define array_abs_bound(arr, lb, ub, k) \
   array_bound((arr), (lb), (ub), -((int)(k)) + 1, (k))
