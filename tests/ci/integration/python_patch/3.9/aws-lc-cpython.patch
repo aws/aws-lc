@@ -66,7 +66,7 @@ index 057e4e6..7fd5344 100644
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index b9163ae..4a2d3a4 100644
+index b9163ae..56d705a 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -36,6 +36,8 @@ from ssl import TLSVersion, _TLSContentType, _TLSMessageType
@@ -225,7 +225,18 @@ index b9163ae..4a2d3a4 100644
  
      def test_version_basic(self):
          """
-@@ -4000,6 +4014,9 @@ class ThreadedTests(unittest.TestCase):
+@@ -3952,9 +3966,8 @@ class ThreadedTests(unittest.TestCase):
+         with ThreadedEchoServer(context=server_context) as server:
+             with client_context.wrap_socket(socket.socket(),
+                                             server_hostname=hostname) as s:
+-                with self.assertRaises(ssl.SSLError) as e:
++                with self.assertRaisesRegex(ssl.SSLError, "alert|ALERT") as e:
+                     s.connect((HOST, server.port))
+-                self.assertIn("alert", str(e.exception))
+
+     @requires_minimum_version
+     @requires_tls_version('SSLv3')
+@@ -4000,6 +4013,9 @@ class ThreadedTests(unittest.TestCase):
  
          client_context, server_context, hostname = testing_context()
  
@@ -235,7 +246,7 @@ index b9163ae..4a2d3a4 100644
          server = ThreadedEchoServer(context=server_context,
                                      chatty=True,
                                      connectionchatty=False)
-@@ -4072,6 +4089,7 @@ class ThreadedTests(unittest.TestCase):
+@@ -4072,6 +4088,7 @@ class ThreadedTests(unittest.TestCase):
          self.assertIs(stats['compression'], None)
  
      @unittest.skipIf(Py_DEBUG_WIN32, "Avoid mixing debug/release CRT on Windows")
@@ -243,7 +254,7 @@ index b9163ae..4a2d3a4 100644
      def test_dh_params(self):
          # Check we can get a connection with ephemeral Diffie-Hellman
          client_context, server_context, hostname = testing_context()
-@@ -4302,8 +4320,10 @@ class ThreadedTests(unittest.TestCase):
+@@ -4302,8 +4319,10 @@ class ThreadedTests(unittest.TestCase):
                                             chatty=False,
                                             sni_name='supermessage')
  
@@ -256,7 +267,7 @@ index b9163ae..4a2d3a4 100644
              self.assertEqual(catch.unraisable.exc_type, ZeroDivisionError)
  
      @needs_sni
-@@ -4483,7 +4503,10 @@ class ThreadedTests(unittest.TestCase):
+@@ -4483,7 +4502,10 @@ class ThreadedTests(unittest.TestCase):
                                   'Session refers to a different SSLContext.')
  
  
