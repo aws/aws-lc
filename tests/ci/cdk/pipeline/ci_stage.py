@@ -81,6 +81,7 @@ class CiStage(Stage):
                     "git fetch upstream",
                     "git checkout main",
                     "git merge --ff-only upstream/main",
+                    "git remote set-url origin https://${GITHUB_PAT}@github.com/${STAGING_GITHUB_REPO_OWNER}/${STAGING_GITHUB_REPO_NAME}.git",
                     "git push origin main",
                 ],
                 env={
