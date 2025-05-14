@@ -89,7 +89,11 @@ class LinuxDockerImageBatchBuildStack(Stack):
         }
 
         # Define VPC
-        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
+        vpc = ec2.Vpc(
+            self,
+            id="{}-ec2-vpc".format(id),
+            nat_gateways=1 # minimize the number of idle NAT gateways and thus elastic IPs
+        )
 
         # Define CodeBuild project.
         project = codebuild.Project(

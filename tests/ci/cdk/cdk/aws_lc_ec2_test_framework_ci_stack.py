@@ -94,7 +94,12 @@ class AwsLcEC2TestingCIStack(AwsLcBaseCiStack):
         )
 
         # create vpc for ec2s
-        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
+        vpc = ec2.Vpc(
+            self,
+            id="{}-ec2-vpc".format(id),
+            nat_gateways=1 # minimize the number of idle NAT gateways and thus elastic IPs
+        )
+
         selected_subnets = vpc.select_subnets(
             subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
         )

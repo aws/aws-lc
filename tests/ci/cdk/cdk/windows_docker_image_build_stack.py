@@ -102,7 +102,11 @@ class WindowsDockerImageBuildStack(Stack):
         machine_image = ec2.MachineImage.latest_windows(
             ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_FULL_BASE
         )
-        vpc = ec2.Vpc(scope=self, id="{}-vpc".format(id))
+        vpc = ec2.Vpc(
+            scope=self,
+            id="{}-vpc".format(id),
+            nat_gateways=1 # minimize the number of idle NAT gateways and thus elastic IPs
+        )
         block_device_volume = ec2.BlockDeviceVolume.ebs(
             volume_size=200, delete_on_termination=True
         )
