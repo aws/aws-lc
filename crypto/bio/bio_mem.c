@@ -263,29 +263,29 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
           b->length = 0;
         }
         bbm->read_off = 0;
+      } else {
+        ret = -1;
       }
       break;
     case BIO_C_FILE_SEEK:
-      if (b->data != NULL) {
-        if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-          if (num < 0 || (size_t)num > b->max) {
-            ret = -1;
-            break;
-          }
+      if (b->data == NULL || num < 0 || (size_t)num > b->max) {
+        ret = -1;
+        break;
+      }
 
-          b->data -= b->max - b->length;
-          b->length = b->max - num;
-        } else {
-          if (num < 0 || (size_t)num > bbm->read_off + b->length) {
-            ret = -1;
-            break;
-          }
-
-          b->length = (b->length + bbm->read_off) - num;
+      if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
+        b->data -= b->max - b->length;
+        b->length = b->max - num;
+      } else {
+        if ((size_t)num > bbm->read_off + b->length) {
+          ret = -1;
+          break;
         }
 
-        bbm->read_off = num;
+        b->length = (b->length + bbm->read_off) - num;
       }
+
+      bbm->read_off = num;
       ret = num;
       break;
     case BIO_CTRL_EOF:
