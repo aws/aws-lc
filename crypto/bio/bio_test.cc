@@ -250,17 +250,17 @@ TEST(BIOTest, MemReadOnly) {
   ASSERT_TRUE(bio);
 
   auto check_bio_contents = [&](Bytes b) {
-    char *contents;
+    char *contents = nullptr;
     long len_l = BIO_get_mem_data(bio.get(), &contents);
     ASSERT_GE(len_l, 0);
     EXPECT_EQ(Bytes(contents, len_l), b);
 
-    const uint8_t *contents_c;
-    size_t len;
+    const uint8_t *contents_c = nullptr;
+    size_t len = 0;
     ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents_c, &len));
     EXPECT_EQ(Bytes(contents_c, len), b);
 
-    BUF_MEM *buf;
+    BUF_MEM *buf = nullptr;
     ASSERT_EQ(BIO_get_mem_ptr(bio.get(), &buf), 1);
     EXPECT_EQ(Bytes(buf->data, buf->length), b);
   };
@@ -338,17 +338,17 @@ TEST(BIOTest, MemWritable) {
   ASSERT_TRUE(bio);
 
   auto check_bio_contents = [&](Bytes b) {
-    char *contents;
+    char *contents = nullptr;
     long len_l = BIO_get_mem_data(bio.get(), &contents);
     ASSERT_GE(len_l, 0);
     EXPECT_EQ(Bytes(contents, len_l), b);
 
-    const uint8_t *contents_c;
-    size_t len;
+    const uint8_t *contents_c = nullptr;
+    size_t len = 0;
     ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents_c, &len));
     EXPECT_EQ(Bytes(contents_c, len), b);
 
-    BUF_MEM *buf;
+    BUF_MEM *buf = nullptr;
     ASSERT_EQ(BIO_get_mem_ptr(bio.get(), &buf), 1);
     EXPECT_EQ(Bytes(buf->data, buf->length), b);
   };
