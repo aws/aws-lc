@@ -104,6 +104,7 @@ if(ARCH STREQUAL "aarch64")
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
+    ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/aes/asm/aes-xts-armv8-enc-slothy.S
   )
 endif()
 
