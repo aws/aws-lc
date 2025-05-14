@@ -269,14 +269,16 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       if (b->data != NULL) {
         if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
           if (num < 0 || (size_t)num > b->max) {
-            return -1;
+            ret = -1;
+            break;
           }
 
           b->data -= b->max - b->length;
           b->length = b->max - num;
         } else {
           if (num < 0 || (size_t)num > bbm->read_off + b->length) {
-            return -1;
+            ret = -1;
+            break;
           }
 
           b->length = (b->length + bbm->read_off) - num;
