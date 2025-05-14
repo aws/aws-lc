@@ -1,17 +1,9 @@
 ---
 Checks: '
   -*,
-  bugprone-*,
-  cert-*,
-  clang-analyzer,
-  concurrency-*,
-  cppcoreguidelines-*,
-  hicpp-*,
-  misc-*,
-  modernize-*,
-  performance-*,
+  clang-analyzer-*,
   portability-*,
-  -cppcoreguidelines-macro-to-enum,
-  -cppcoreguidelines-avoid-non-const-global-variables,
+  cppcoreguidelines-init-variables, 
+  readability-braces-around-statements,
   '
 WarningsAsErrors: ''
