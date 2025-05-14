@@ -77,7 +77,7 @@ static int read_till_nl(FILE *in) {
 static void pushsig(void) {
 # if !defined(_WIN32)
     struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
+    OPENSSL_cleanse(&sa, sizeof(sa));
 
     sa.sa_handler = recsig;
 
