@@ -88,10 +88,10 @@ Use the following commands to deploy the CI pipeline. Any changes to the CI or D
 
 1. Ensure you are in `aws-lc/tests/ci/cdk`
 2. Export the relevant environment variables:
-   - `PIPELINE_ACCOUNT_ID`: the AWS account to host your pipeline
-   - `DEPLOY_ACCOUNT_ID`: the AWS account to deploy Docker images and CodeBuild CI tests to.
-   - `GITHUB_REPO_OWNER`: GitHub repo targeted by the pipeline (i.e, your personal Github account)
-   - `GITHUB_SOURCE_VERSION`: Git branch holding the latest pipeline code (default: main)
+   - `PIPELINE_ACCOUNT_ID` (required): the AWS account to host your pipeline
+   - `DEPLOY_ACCOUNT_ID` (optional) : the AWS account to deploy Docker images and CodeBuild CI tests to, used for dev pipelines only (can be the same as `PIPELINE_ACCOUNT_ID`)
+   - `GITHUB_REPO_OWNER` (optional): GitHub repo targeted by the pipeline (i.e, your personal Github account)
+   - `GITHUB_SOURCE_VERSION` (optional): Git branch holding the latest pipeline code (default: main)
 
 3. [SKIP IF NO CROSS-ACCOUNT DEPLOYMENT] Give the pipeline account administrator access to the deployment account's CloudFormation. Repeat this step depending on how many deployment environment there are. You only need to run this step once when the pipeline is deploying to a new account for the first time.
     ```shell
@@ -101,7 +101,7 @@ Use the following commands to deploy the CI pipeline. Any changes to the CI or D
     ```shell
     cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
     ```
-5. You may also need to request an increase to certain account quotas:
+5. (Optional) You may also need to request an increase to certain account quotas:
     ```shell
     open https://${DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
     ```
@@ -134,15 +134,15 @@ Use these commands if you wish to deploy individual stacks instead of the entire
 
 1. Ensure you are in `aws-lc/tests/ci/cdk`
 2. Export the relevant environment variables:
-  - `DEPLOY_ACCOUNT_ID`: AWS account you wish to deploy the CI stacks to
-  - `GITHUB_REPO_OWNER`: the GitHub repo targeted by this CI setup.
+  - `DEPLOY_ACCOUNT_ID` (required): AWS account you wish to deploy the CI stacks to
+  - `GITHUB_REPO_OWNER` (required): the GitHub repo targeted by this CI setup.
 
 2. If not done previously, bootstrap cdk before running the commands below.
     ```shell
     cdk bootstrap aws://${DEPLOY_ACCOUNT_ID}/us-west-2
     ```
 
-3. You may also need to request an increase to certain account quotas:
+3. (Optional) You may also need to request an increase to certain account quotas:
     ```shell
     open https://${DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
     ```
