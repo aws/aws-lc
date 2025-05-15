@@ -3,9 +3,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-from util.metadata import AWS_REGION, AWS_ACCOUNT
 
-def ec2_policies_in_json(ec2_role_name, ec2_security_group_id, ec2_subnet_id, ec2_vpc_id):
+def ec2_policies_in_json(
+    ec2_role_name, ec2_security_group_id, ec2_subnet_id, ec2_vpc_id, env
+):
     """
     Define an IAM policy that gives permissions for starting, stopping, and getting details of EC2 instances and their Vpcs
     :return: an IAM policy statement in json.
@@ -23,20 +24,29 @@ def ec2_policies_in_json(ec2_role_name, ec2_security_group_id, ec2_subnet_id, ec
                     "ec2:DescribeInstances",
                 ],
                 "Resource": [
-                    "arn:aws:iam::{}:role/{}".format(AWS_ACCOUNT, ec2_role_name),
-                    "arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT),
-                    "arn:aws:ec2:{}::image/*".format(AWS_REGION),
-                    "arn:aws:ec2:{}:{}:network-interface/*".format(AWS_REGION, AWS_ACCOUNT),
-                    "arn:aws:ec2:{}:{}:volume/*".format(AWS_REGION, AWS_ACCOUNT),
-                    "arn:aws:ec2:{}:{}:security-group/{}".format(AWS_REGION, AWS_ACCOUNT, ec2_security_group_id),
-                    "arn:aws:ec2:{}:{}:subnet/{}".format(AWS_REGION, AWS_ACCOUNT, ec2_subnet_id),
-                    "arn:aws:ec2:{}:{}:vpc/{}".format(AWS_REGION, AWS_ACCOUNT, ec2_vpc_id),
-                ]
-            }]
+                    "arn:aws:iam::{}:role/{}".format(env.account, ec2_role_name),
+                    "arn:aws:ec2:{}:{}:instance/*".format(env.region, env.account),
+                    "arn:aws:ec2:{}::image/*".format(env.region),
+                    "arn:aws:ec2:{}:{}:network-interface/*".format(
+                        env.region, env.account
+                    ),
+                    "arn:aws:ec2:{}:{}:volume/*".format(env.region, env.account),
+                    "arn:aws:ec2:{}:{}:security-group/{}".format(
+                        env.region, env.account, ec2_security_group_id
+                    ),
+                    "arn:aws:ec2:{}:{}:subnet/{}".format(
+                        env.region, env.account, ec2_subnet_id
+                    ),
+                    "arn:aws:ec2:{}:{}:vpc/{}".format(
+                        env.region, env.account, ec2_vpc_id
+                    ),
+                ],
+            }
+        ],
     }
 
 
-def ssm_policies_in_json():
+def ssm_policies_in_json(env):
     """
     Define an IAM policy that gives permissions to creating documents and running commands.
     :return: an IAM policy statement in json.
@@ -51,17 +61,21 @@ def ssm_policies_in_json():
                     "ssm:CreateDocument",
                     "ssm:DeleteDocument",
                     "ssm:ListCommands",
-                    "ssm:DescribeInstanceInformation"
+                    "ssm:DescribeInstanceInformation",
                 ],
                 "Resource": [
-                    "arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT), # Needed for ssm:SendCommand
-                    "arn:aws:ssm:{}:{}:*".format(AWS_REGION, AWS_ACCOUNT),
-                    "arn:aws:ssm:{}:{}:document/*".format(AWS_REGION, AWS_ACCOUNT),
-                ]
-            }]
+                    "arn:aws:ec2:{}:{}:instance/*".format(
+                        env.region, env.account
+                    ),  # Needed for ssm:SendCommand
+                    "arn:aws:ssm:{}:{}:*".format(env.region, env.account),
+                    "arn:aws:ssm:{}:{}:document/*".format(env.region, env.account),
+                ],
+            }
+        ],
     }
 
-def code_build_batch_policy_in_json(project_ids):
+
+def code_build_batch_policy_in_json(project_ids, env):
     """
     Define an IAM policy statement for CodeBuild batch operation.
     :param project_ids: a list of CodeBuild project id.
@@ -69,7 +83,11 @@ def code_build_batch_policy_in_json(project_ids):
     """
     resources = []
     for project_id in project_ids:
-        resources.append("arn:aws:codebuild:{}:{}:project/{}*".format(AWS_REGION, AWS_ACCOUNT, project_id))
+        resources.append(
+            "arn:aws:codebuild:{}:{}:project/{}*".format(
+                env.region, env.account, project_id
+            )
+        )
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -78,12 +96,13 @@ def code_build_batch_policy_in_json(project_ids):
                 "Action": [
                     "codebuild:StartBuild",
                     "codebuild:StopBuild",
-                    "codebuild:RetryBuild"
+                    "codebuild:RetryBuild",
                 ],
-                "Resource": resources
+                "Resource": resources,
             }
-        ]
+        ],
     }
+
 
 def code_build_cloudwatch_logs_policy_in_json(log_groups):
     """
@@ -97,17 +116,12 @@ def code_build_cloudwatch_logs_policy_in_json(log_groups):
     return {
         "Version": "2012-10-17",
         "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "logs:GetLogEvents"
-                ],
-                "Resource": resources
-            }
-        ]
+            {"Effect": "Allow", "Action": ["logs:GetLogEvents"], "Resource": resources}
+        ],
     }
 
-def code_build_publish_metrics_in_json():
+
+def code_build_publish_metrics_in_json(env):
     """
     Define an IAM policy that only grants access to publish CloudWatch metrics to the current region in the same
     namespace used in the calls to PutMetricData in tests/ci/common_fuzz.sh.
@@ -121,19 +135,13 @@ def code_build_publish_metrics_in_json():
                 "Resource": "*",
                 "Condition": {
                     "StringEquals": {
-                        "aws:RequestedRegion": [
-                            AWS_REGION
-                        ],
-                        "cloudwatch:namespace": [
-                            "AWS-LC-Fuzz",
-                            "AWS-LC"
-                        ]
+                        "aws:RequestedRegion": [env.region],
+                        "cloudwatch:namespace": ["AWS-LC-Fuzz", "AWS-LC"],
                     }
-                }
+                },
             }
-        ]
+        ],
     }
-
 
 
 def s3_read_write_policy_in_json(s3_bucket_name):
@@ -146,46 +154,39 @@ def s3_read_write_policy_in_json(s3_bucket_name):
         "Statement": [
             {
                 "Effect": "Allow",
-                "Action": [
-                    "s3:PutObject",
-                    "s3:GetObject"
-                ],
-                "Resource": [
-                    "arn:aws:s3:::{}/*".format(s3_bucket_name)
-                ]
+                "Action": ["s3:PutObject", "s3:GetObject"],
+                "Resource": ["arn:aws:s3:::{}/*".format(s3_bucket_name)],
             }
-        ]
+        ],
     }
 
 
-def ecr_repo_arn(repo_name):
+def ecr_repo_arn(repo_name, env):
     """
     Create a ECR repository arn.
     See https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonelasticcontainerregistry.html
     :param repo_name: repository name.
     :return: arn:aws:ecr:${Region}:${Account}:repository/${RepositoryName}
     """
-    ecr_arn_prefix = "arn:aws:ecr:{}:{}:repository".format(AWS_REGION, AWS_ACCOUNT)
+    ecr_arn_prefix = "arn:aws:ecr:{}:{}:repository".format(env.region, env.account)
     return "{}/{}".format(ecr_arn_prefix, repo_name)
 
 
-def ecr_power_user_policy_in_json(ecr_repo_names):
+def ecr_power_user_policy_in_json(ecr_repo_names, env):
     """
     Define an AWS-LC specific IAM policy statement for AWS ECR power user used to create new docker images.
     :return: an IAM policy statement in json.
     """
     ecr_arns = []
     for ecr_repo_name in ecr_repo_names:
-        ecr_arns.append(ecr_repo_arn(ecr_repo_name))
+        ecr_arns.append(ecr_repo_arn(ecr_repo_name, env))
     return {
         "Version": "2012-10-17",
         "Statement": [
             {
                 "Effect": "Allow",
-                "Action": [
-                    "ecr:GetAuthorizationToken"
-                ],
-                "Resource": "*"
+                "Action": ["ecr:GetAuthorizationToken"],
+                "Resource": "*",
             },
             {
                 "Effect": "Allow",
@@ -204,20 +205,21 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
                     "ecr:InitiateLayerUpload",
                     "ecr:UploadLayerPart",
                     "ecr:CompleteLayerUpload",
-                    "ecr:PutImage"
+                    "ecr:PutImage",
                 ],
-                "Resource": ecr_arns
-            }
-        ]
+                "Resource": ecr_arns,
+            },
+        ],
     }
 
-def device_farm_access_policy_in_json():
+
+def device_farm_access_policy_in_json(env):
     """
     Define an IAM policy statement for Device Farm operations.
     :return: an IAM policy statement in json.
     """
     resources = []
-    resources.append("arn:aws:devicefarm:{}:{}:*:*".format(AWS_REGION, AWS_ACCOUNT))
+    resources.append("arn:aws:devicefarm:{}:{}:*:*".format(env.region, env.account))
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -235,7 +237,7 @@ def device_farm_access_policy_in_json():
                     "devicefarm:ListSuites",
                     "devicefarm:ListTests",
                 ],
-                "Resource": resources
+                "Resource": resources,
             }
-        ]
+        ],
     }
