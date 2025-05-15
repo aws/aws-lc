@@ -184,9 +184,7 @@ static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passi
     }
     
     bssl::UniquePtr<EVP_PKEY> pkey;
-    
-    // If a password is provided, only try encrypted paths
-    // since user is explicitly telling us input is encrypted
+
     if (passin) {
         if (format == "DER") {
             BIO_reset(in_bio);
