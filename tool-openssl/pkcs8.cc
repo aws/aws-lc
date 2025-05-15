@@ -17,14 +17,19 @@ static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
 
 // Validate BIO size to prevent DoS from extremely large files
 static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
-    if (!bio) return false;
-    
+    if (!bio) {
+        return false;
+    }
     // Save current position
     const long current_pos = BIO_tell(bio);
-    if (current_pos < 0) return false;
+    if (current_pos < 0) {
+        return false;
+    }
     
     // Get file size by seeking to end manually
-    if (BIO_seek(bio, 0) < 0) return false;
+    if (BIO_seek(bio, 0) < 0) {
+        return false;
+    }
     
     // Read through the file to determine size
     long size = 0;
@@ -42,7 +47,9 @@ static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_
     }
     
     // Restore original position
-    if (BIO_seek(bio, current_pos) < 0) return false;
+    if (BIO_seek(bio, current_pos) < 0) {
+        return false;
+    }
     
     return true;
 }
@@ -191,7 +198,9 @@ static void secure_clear(std::string& str) {
 // Comprehensive key reading function using library functions
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, 
                                                  const std::string& format) {
-    if (!in_bio) return nullptr;
+    if (!in_bio) {
+        return nullptr;
+    }
     
     bssl::UniquePtr<EVP_PKEY> pkey;
     
@@ -201,25 +210,33 @@ static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passi
         bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(d2i_PKCS8_PRIV_KEY_INFO_bio(in_bio, nullptr));
         if (p8inf) {
             pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
-            if (pkey) return pkey;
+            if (pkey) {
+                return pkey;
+            }
         }
         
         // Try as encrypted PKCS8 if password provided
         if (passin) {
             BIO_reset(in_bio);
             pkey.reset(d2i_PKCS8PrivateKey_bio(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
-            if (pkey) return pkey;
+            if (pkey) {
+                return pkey;
+            }
         }
         
         // Try as traditional format
         BIO_reset(in_bio);
         pkey.reset(d2i_PrivateKey_bio(in_bio, nullptr));
-        if (pkey) return pkey;
+        if (pkey) {
+            return pkey;
+        }
     } else {
         // For PEM format input
         BIO_reset(in_bio);
         pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
-        if (pkey) return pkey;
+        if (pkey) {
+            return pkey;
+        }
     }
     
     return nullptr;
