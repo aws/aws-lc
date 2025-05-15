@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #include <openssl/base.h>
 #include <openssl/evp.h>
 #include <openssl/pkcs8.h>
@@ -9,10 +12,13 @@
 #include <cstring>
 #include "internal.h"
 
+// Maximum size for crypto files to prevent loading excessively large files (1MB)
 static constexpr long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
 
+// Maximum length limit for sensitive strings like passwords (4KB)
 static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
 
+// Checks if BIO size is within allowed limits
 static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
     if (!bio) {
         return false;
@@ -41,6 +47,7 @@ static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_
     return true;
 }
 
+// Validates input/output format is PEM or DER
 static bool validate_format(const std::string& format) {
     if (format != "PEM" && format != "DER") {
         fprintf(stderr, "Format must be PEM or DER\n");
@@ -49,12 +56,14 @@ static bool validate_format(const std::string& format) {
     return true;
 }
 
+// Supported cipher algorithms for key encryption
 static const std::unordered_set<std::string> kSupportedCiphers = {
     "aes-128-cbc", "aes-192-cbc", "aes-256-cbc", 
     "des-ede3-cbc", 
     "des-cbc"      
 };
 
+// Checks if the cipher name is supported and can be initialized
 static bool validate_cipher(const std::string& cipher_name) {
     if (kSupportedCiphers.find(cipher_name) == kSupportedCiphers.end()) {
         fprintf(stderr, "Unsupported cipher algorithm\n");
@@ -69,10 +78,12 @@ static bool validate_cipher(const std::string& cipher_name) {
     return true;
 }
 
+// Supported PRF algorithms for PKCS#5 v2.0
 static const std::unordered_set<std::string> kSupportedPRFs = {
     "hmacWithSHA1"  // Currently the only supported PRF in AWS-LC
 };
 
+// Checks if the PRF algorithm name is supported
 static bool validate_prf(const std::string& prf_name) {
     if (kSupportedPRFs.find(prf_name) == kSupportedPRFs.end()) {
         fprintf(stderr, "Only hmacWithSHA1 PRF is supported\n");
@@ -81,6 +92,8 @@ static bool validate_prf(const std::string& prf_name) {
     return true;
 }
 
+// Extracts password from various sources (direct input, file, environment)
+// Updates source string to contain the actual password
 static bool extract_password(std::string& source) {
     // TODO Prompt user for password via EVP_read_pw_string 
     // EVP_read_pw_string not currently implemented in AWS-LC
@@ -155,6 +168,7 @@ static bool extract_password(std::string& source) {
     return false;
 }
 
+// Securely erases sensitive data from a string
 static void secure_clear(std::string& str) {
     if (!str.empty()) {
         OPENSSL_cleanse(&str[0], str.size());
@@ -162,6 +176,7 @@ static void secure_clear(std::string& str) {
     }
 }
 
+// Reads a private key from BIO in the specified format with optional password
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, 
                                                  const std::string& format) {
     if (!in_bio) {
