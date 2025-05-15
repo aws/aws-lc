@@ -15,7 +15,7 @@
 *              - uint8_t pk: pointer to output byte array
 *              - const uint8_t sk: pointer to byte array containing bit-packed sk
 *
-* Returns 0 (when SHAKE256 hash of constructed pk matches tr)
+* Returns 0 (if both key consistency checks pass)
 **************************************************/
 int ml_dsa_pack_pk_from_sk(ml_dsa_params *params,
                            uint8_t *pk,
@@ -27,9 +27,9 @@ int ml_dsa_pack_pk_from_sk(ml_dsa_params *params,
   uint8_t key[ML_DSA_SEEDBYTES];
   polyvecl mat[ML_DSA_K_MAX];
   polyvecl s1;
-  polyveck s2, t1, t0;
+  polyveck s2, t1, t0, t0_validate;
 
-  //unpack sk
+  // unpack sk
   ml_dsa_unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
 
   // generate matrix A
@@ -50,14 +50,15 @@ int ml_dsa_pack_pk_from_sk(ml_dsa_params *params,
   // construct t1 = A * s1 + s2
   ml_dsa_polyveck_add(params, &t1, &t1, &s2);
 
-  // cxtract t1 and write public key
+  // extract t1 and write public key
   ml_dsa_polyveck_caddq(params, &t1);
-  ml_dsa_polyveck_power2round(params, &t1, &t0, &t1);
+  ml_dsa_polyveck_power2round(params, &t1, &t0_validate, &t1);
   ml_dsa_pack_pk(params, pk, rho, &t1);
 
-  // we hash pk to reproduce tr, check it with unpacked value to verify
+  // validate tr: hash pk to reproduce tr, check it with unpacked value
   SHAKE256(pk, params->public_key_bytes, tr_validate, ML_DSA_TRBYTES);
-  return OPENSSL_memcmp(tr_validate, tr, ML_DSA_TRBYTES);
+  return !(!OPENSSL_memcmp(tr_validate, tr, ML_DSA_TRBYTES) &&
+           !OPENSSL_memcmp(&t0, &t0_validate, sizeof(polyveck)));
 }
 
 /*************************************************
