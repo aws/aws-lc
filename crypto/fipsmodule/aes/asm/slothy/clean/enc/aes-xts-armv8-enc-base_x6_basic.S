@@ -1,10 +1,42 @@
 # The following xts encrypt is from MacBook M3 build folder
 # after moving around some instructions
 
+#if !defined(__has_feature)
+#define __has_feature(x) 0
+#endif
+#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
+#define OPENSSL_NO_ASM
+#endif
+
+#include <openssl/asm_base.h>
+
+#if !defined(OPENSSL_NO_ASM) && defined(__AARCH64EL__)
+#if defined(__ELF__)
+#include <openssl/boringssl_prefix_symbols_asm.h>
+#include <openssl/arm_arch.h>
+.arch   armv8-a+crypto
+.text
+.globl  aes_hw_slothy_xts_encrypt
+.hidden aes_hw_slothy_xts_encrypt
+.type   aes_hw_slothy_xts_encrypt,%function
+#elif defined(__APPLE__)
+#if defined(BORINGSSL_PREFIX)
+#include <boringssl_prefix_symbols_asm.h>
+#endif
+#include <openssl/arm_arch.h>
+.text
 .globl	_aes_hw_slothy_xts_encrypt
 .private_extern	_aes_hw_slothy_xts_encrypt
+#else
+#error Unknown configuration
+#endif
+
+#if __ARM_MAX_ARCH__ >= 8
+
+.align	4
 
 _aes_hw_slothy_xts_encrypt:
+aes_hw_slothy_xts_encrypt:
 	# AARCH64_VALID_CALL_TARGET
 	cmp	x2,#16
     // Original input data size bigger than 16, jump to big size processing.
@@ -692,3 +724,10 @@ Lxts_abort:
 	ldp	x19,x20,[sp],#64
 Lxts_enc_final_abort:
 	ret
+
+#endif
+#endif  // !OPENSSL_NO_ASM && defined(__AARCH64EL__) && defined(__APPLE__)
+#if defined(__ELF__)
+// See https://www.airs.com/blog/archives/518.
+.section .note.GNU-stack,"",%progbits
+#endif

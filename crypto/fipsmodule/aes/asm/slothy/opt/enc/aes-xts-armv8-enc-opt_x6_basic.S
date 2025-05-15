@@ -1,10 +1,42 @@
 # The following xts encrypt is from MacBook M3 build folder
 # after moving around some instructions
 
+#if !defined(__has_feature)
+#define __has_feature(x) 0
+#endif
+#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
+#define OPENSSL_NO_ASM
+#endif
+
+#include <openssl/asm_base.h>
+
+#if !defined(OPENSSL_NO_ASM) && defined(__AARCH64EL__)
+#if defined(__ELF__)
+#include <openssl/boringssl_prefix_symbols_asm.h>
+#include <openssl/arm_arch.h>
+.arch   armv8-a+crypto
+.text
+.globl  aes_hw_slothy_xts_encrypt
+.hidden aes_hw_slothy_xts_encrypt
+.type   aes_hw_slothy_xts_encrypt,%function
+#elif defined(__APPLE__)
+#if defined(BORINGSSL_PREFIX)
+#include <boringssl_prefix_symbols_asm.h>
+#endif
+#include <openssl/arm_arch.h>
+.text
 .globl	_aes_hw_slothy_xts_encrypt
 .private_extern	_aes_hw_slothy_xts_encrypt
+#else
+#error Unknown configuration
+#endif
+
+#if __ARM_MAX_ARCH__ >= 8
+
+.align	4
 
 _aes_hw_slothy_xts_encrypt:
+aes_hw_slothy_xts_encrypt:
  # AARCH64_VALID_CALL_TARGET
  cmp	x2,#16
     // Original input data size bigger than 16, jump to big size processing.
@@ -16,13 +48,29 @@ _aes_hw_slothy_xts_encrypt:
  sub	w6,w6,#2
  ld1	{v1.16b},[x4],#16
 
-                // Instructions:    0
-                // Expected cycles: 0
-                // Expected IPC:    0.00
-                //
-                // Wall time:     0.00s
-                // User time:     0.00s
-                //
+                                    // Instructions:    2
+                                    // Expected cycles: 3
+                                    // Expected IPC:    0.67
+                                    //
+                                    // Cycle bound:     3.0
+                                    // IPC bound:       0.67
+                                    //
+                                    // Wall time:     0.01s
+                                    // User time:     0.01s
+                                    //
+                                    // ----- cycle (expected) ------>
+                                    // 0                        25
+                                    // |------------------------|----
+        aese v6.16b, v0.16b         // *.............................
+        aesmc v6.16b, v6.16b        // ..*...........................
+
+                                     // ------ cycle (expected) ------>
+                                     // 0                        25
+                                     // |------------------------|-----
+        // aese v6.16b, v0.16b       // *..............................
+        // aesmc v6.16b, v6.16b      // ..*............................
+
+        sub w6, w6, #2
 Loop_enc_iv_enc:
                                       // Instructions:    6
                                       // Expected cycles: 8
@@ -31,38 +79,57 @@ Loop_enc_iv_enc:
                                       // Cycle bound:     8.0
                                       // IPC bound:       0.75
                                       //
-                                      // Wall time:     0.03s
-                                      // User time:     0.03s
+                                      // Wall time:     0.04s
+                                      // User time:     0.04s
                                       //
                                       // ----- cycle (expected) ------>
                                       // 0                        25
                                       // |------------------------|----
-        aese v6.16b, v0.16b           // *.............................
-        ld1 {v0.4S}, [x4], #16        // .*............................
+        ld1 {v0.4S}, [x4], #16        // *.............................
+        aese v6.16b, v1.16b           // *.............................
+        ld1 {v1.4S}, [x4], #16        // *.............................
         aesmc v6.16b, v6.16b          // ..*...........................
-        aese v6.16b, v1.16b           // ....*.........................
-        ld1 {v1.4S}, [x4], #16        // .....*........................
-        aesmc v6.16b, v6.16b          // ......*.......................
+        aese v6.16b, v0.16b           // ....e.........................
+        aesmc v6.16b, v6.16b          // ......e.......................
 
                                      // ------ cycle (expected) ------>
                                      // 0                        25
                                      // |------------------------|-----
-        // aese v6.16b,v0.16b        // *.......~.......~.......~......
-        // aesmc v6.16b,v6.16b       // ..*.....'.~.....'.~.....'.~....
-        // ld1 {v0.4s},[x4],#16      // .*......'~......'~......'~.....
-        // aese v6.16b,v1.16b        // ....*...'...~...'...~...'...~..
-        // aesmc v6.16b,v6.16b       // ......*.'.....~.'.....~.'......
-        // ld1 {v1.4s},[x4],#16      // .....*..'....~..'....~..'....~.
+        // aese v6.16b,v0.16b        // e...'...~...'...~...'...~...'..
+        // aesmc v6.16b,v6.16b       // ..e.'.....~.'.....~.'.....~.'..
+        // ld1 {v0.4s},[x4],#16      // ....*.......~.......~.......~..
+        // aese v6.16b,v1.16b        // ....*.......~.......~.......~..
+        // aesmc v6.16b,v6.16b       // ....'.*.....'.~.....'.~.....'..
+        // ld1 {v1.4s},[x4],#16      // ....*.......~.......~.......~..
 
         subs w6, w6, 2
         cbnz w6, Loop_enc_iv_enc
-                // Instructions:    0
-                // Expected cycles: 0
-                // Expected IPC:    0.00
-                //
-                // Wall time:     0.00s
-                // User time:     0.00s
-                //
+                                      // Instructions:    4
+                                      // Expected cycles: 3
+                                      // Expected IPC:    1.33
+                                      //
+                                      // Cycle bound:     3.0
+                                      // IPC bound:       1.33
+                                      //
+                                      // Wall time:     0.01s
+                                      // User time:     0.01s
+                                      //
+                                      // ----- cycle (expected) ------>
+                                      // 0                        25
+                                      // |------------------------|----
+        aese v6.16b, v1.16b           // *.............................
+        ld1 {v0.4S}, [x4], #16        // *.............................
+        ld1 {v1.4S}, [x4], #16        // *.............................
+        aesmc v6.16b, v6.16b          // ..*...........................
+
+                                       // ------ cycle (expected) ------>
+                                       // 0                        25
+                                       // |------------------------|-----
+        // ld1 {v0.4S}, [x4], #16      // *..............................
+        // aese v6.16b, v1.16b         // *..............................
+        // ld1 {v1.4S}, [x4], #16      // *..............................
+        // aesmc v6.16b, v6.16b        // ..*............................
+
 
  aese	v6.16b,v0.16b
  aesmc	v6.16b,v6.16b
@@ -730,3 +797,10 @@ Lxts_abort:
  ldp	x19,x20,[sp],#64
 Lxts_enc_final_abort:
  ret
+
+#endif
+#endif  // !OPENSSL_NO_ASM && defined(__AARCH64EL__) && defined(__APPLE__)
+#if defined(__ELF__)
+// See https: // www.airs.com/blog/archives/518.
+.section .note.GNU-stack,"",%progbits
+#endif
