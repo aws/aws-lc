@@ -168,6 +168,21 @@ static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passi
     
     bssl::UniquePtr<EVP_PKEY> pkey;
     
+    // If a password is provided, only try encrypted paths
+    // since user is explicitly telling us input is encrypted
+    if (passin) {
+        if (format == "DER") {
+            BIO_reset(in_bio);
+            pkey.reset(d2i_PKCS8PrivateKey_bio(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
+            return pkey;
+        } else {
+            BIO_reset(in_bio);
+            pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
+            return pkey;
+        }
+    }
+    
+    // If no password provided, try unencrypted paths
     if (format == "DER") {
         BIO_reset(in_bio);
         bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(d2i_PKCS8_PRIV_KEY_INFO_bio(in_bio, nullptr));
@@ -177,26 +192,14 @@ static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passi
                 return pkey;
             }
         }
-        if (passin) {
-            BIO_reset(in_bio);
-            pkey.reset(d2i_PKCS8PrivateKey_bio(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
-            if (pkey) {
-                return pkey;
-            }
-        }
         BIO_reset(in_bio);
         pkey.reset(d2i_PrivateKey_bio(in_bio, nullptr));
-        if (pkey) {
-            return pkey;
-        }
+        return pkey;
     } else {
         BIO_reset(in_bio);
-        pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr, const_cast<char*>(passin)));
-        if (pkey) {
-            return pkey;
-        }
-    }  
-    return nullptr;
+        pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr, nullptr));
+        return pkey;
+    }
 }
 
 static const argument_t kArguments[] = {
@@ -275,6 +278,12 @@ bool pkcs8Tool(const args_list_t& args) {
         goto err;
     }
     
+    // Check for contradictory arguments
+    if (nocrypt && !passin_arg.empty() && !passout_arg.empty()) {
+        fprintf(stderr, "Error: -nocrypt cannot be used with both -passin and -passout\n");
+        goto err;
+    }
+    
     in.reset(BIO_new_file(in_path.c_str(), "rb"));
     if (!in) {
         fprintf(stderr, "Cannot open input file\n");
@@ -309,7 +318,8 @@ bool pkcs8Tool(const args_list_t& args) {
             PEM_write_bio_PrivateKey(out.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr) :
             i2d_PrivateKey_bio(out.get(), pkey.get());
     } else {
-        if (nocrypt) {
+        // If passout is provided, always encrypt the output regardless of nocrypt
+        if (nocrypt && passout_arg.empty()) {
             p8inf.reset(EVP_PKEY2PKCS8(pkey.get()));
             if (!p8inf) {
                 fprintf(stderr, "Error converting to PKCS#8\n");
