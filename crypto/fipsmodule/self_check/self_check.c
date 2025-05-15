@@ -1513,6 +1513,14 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
     0x78, 0x5D, 0x8E, 0x4E, 0xC6, 0x64, 0x08, 0x22, 0x27, 0xD8, 0x67,
     0x04, 0xE9, 0xE4, 0x48, 0x62, 0x62, 0x3A, 0x05, 0xC8, 0xB3
 };
+
+  // Examples kMLDSAKeyGenSeed, kMLDSAKeyGenPublicKey, kMLDSAKeyGenPrivateKey from
+  // testing
+  const uint8_t kMLDSAKeyGenSeed2[MLDSA44_KEYGEN_SEED_BYTES] = {
+    0x4B, 0xE7, 0xA0, 0x1A, 0x99, 0xA5, 0xE5, 0xBC, 0xFE, 0x3C, 0x06,
+    0x78, 0x5D, 0x8E, 0x4E, 0xC6, 0x64, 0x08, 0x22, 0x27, 0xD8, 0x67,
+    0x04, 0xE9, 0xE4, 0x48, 0x62, 0x62, 0x3A, 0x05, 0xC8, 0xB2
+};
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/expectedResults.json#L13
   const uint8_t kMLDSAKeyGenPublicKey[MLDSA44_PUBLIC_KEY_BYTES] = {
     0xad, 0xb0, 0xb3, 0x34, 0x64, 0x81, 0x60, 0x91, 0xf2, 0xa9, 0x59, 0x77,
@@ -2285,23 +2293,31 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
     goto err;
   }
 
+  // Keygen for sign/verify
+  uint8_t sign_public_key[MLDSA44_PUBLIC_KEY_BYTES] = {0};
+  uint8_t sign_private_key[MLDSA44_PRIVATE_KEY_BYTES] = {0};
+
+  if (!ml_dsa_44_keypair_internal_no_self_test(sign_public_key, sign_private_key, kMLDSAKeyGenSeed2)) {
+    goto err;
+  }
+
   // Sign
   uint8_t signature[MLDSA44_SIGNATURE_BYTES] = {0};
   size_t sig_len = MLDSA44_SIGNATURE_BYTES;
   size_t mlen_int = 32;
 
-  if (!ml_dsa_44_sign_internal_no_self_test(private_key, signature, &sig_len, kMLDSASignPlaintext,
+  if (!ml_dsa_44_sign_internal_no_self_test(sign_private_key, signature, &sig_len, kMLDSASignPlaintext,
                                             mlen_int, NULL, 0, kMLDSASigGenSeed) ||
       !check_test(kMLDSASignSignature, signature, sizeof(signature), "ML-DSA-sign")) {
     goto err;
   }
 
   // Verify
-  if (!ml_dsa_44_verify_internal_no_self_test(public_key, kMLDSAVerifySignature, sig_len, kMLDSAVerifyPlaintext,
+  if (!ml_dsa_44_verify_internal_no_self_test(sign_public_key, kMLDSAVerifySignature, sig_len, kMLDSAVerifyPlaintext,
                                               mlen_int, NULL, 0)) {
     AWS_LC_FIPS_failure("ML-DSA-verify failed");
     goto err;
-    }
+  }
 
     ret = 1;
   err:
