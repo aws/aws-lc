@@ -12,7 +12,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// This header is provided for compatibility with older revisions of BoringSSL.
-// TODO(davidben): Remove this header.
+/** \file
+ * This header is provided for compatibility with older revisions of BoringSSL.
+ */
+
+/// TODO(davidben): Remove this header.
 
 #include "crypto.h"

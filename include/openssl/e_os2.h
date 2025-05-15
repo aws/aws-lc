@@ -12,7 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-/* This header is provided in order to make compiling against code that expects
-   OpenSSL easier. */
+/** \file
+ * This header is provided in order to make compiling against code that expects
+ * OpenSSL easier.
+ */
 
 #include <openssl/base.h>

@@ -12,16 +12,18 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-/* This header is provided in order to make compiling against code that expects
-   OpenSSL easier. */
+/** \file
+ * This header is provided in order to make compiling against code that expects
+ * OpenSSL easier.
+ */
 
 #include "crypto.h"
 
-// MySQL does regex parsing on the opensslv.h file directly.
-// https://github.com/mysql/mysql-server/blob/8.0/cmake/ssl.cmake#L208-L227
-// |OPENSSL_VERSION_NUMBER| is defined here again to comply to this. MySQL
-// only parses this to define version numbers in their CMake script.
-// It does not require it to be active.
+/// MySQL does regex parsing on the opensslv.h file directly.
+/// https://github.com/mysql/mysql-server/blob/8.0/cmake/ssl.cmake#L208-L227
+/// |OPENSSL_VERSION_NUMBER| is defined here again to comply to this. MySQL
+/// only parses this to define version numbers in their CMake script.
+/// It does not require it to be active.
 #if 0
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #endif
