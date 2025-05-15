@@ -30,5 +30,13 @@ function shard_gtest() {
     done
     unset GTEST_SHARD_INDEX
     unset GTEST_TOTAL_SHARDS
+
+    if $RESULT -ne "0"; then
+      #  Run w/o sharding to isolate the problem
+      echo shard_gtest-Command: ${1} failed
+      echo Running again w/o sharding
+      ${1}
+    fi
+
     return $RESULT
 }
