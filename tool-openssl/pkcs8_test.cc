@@ -98,7 +98,8 @@ static bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
   }
 
   // Get key components
-  const BIGNUM *n1, *e1, *d1, *n2, *e2, *d2;
+  const BIGNUM *n1 = nullptr, *e1 = nullptr, *d1 = nullptr;
+  const BIGNUM *n2 = nullptr, *e2 = nullptr, *d2 = nullptr;
   RSA_get0_key(rsa1, &n1, &e1, &d1);
   RSA_get0_key(rsa2, &n2, &e2, &d2);
 
@@ -146,9 +147,9 @@ protected:
     RemoveFile(pass_path);
   }
   
-  char in_path[PATH_MAX];
-  char out_path[PATH_MAX];
-  char pass_path[PATH_MAX];
+  char in_path[PATH_MAX] = {};
+  char out_path[PATH_MAX] = {};
+  char pass_path[PATH_MAX] = {};
   bssl::UniquePtr<EVP_PKEY> key;
 };
 
@@ -325,6 +326,9 @@ protected:
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
     }
+    
+    tool_output_str = "";
+    openssl_output_str = "";
 
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
@@ -356,11 +360,11 @@ protected:
     }
   }
 
-  char in_path[PATH_MAX];
-  char out_path_tool[PATH_MAX];
-  char out_path_openssl[PATH_MAX];
-  char pass_path[PATH_MAX];
-  char decrypt_path[PATH_MAX];
+  char in_path[PATH_MAX] = {};
+  char out_path_tool[PATH_MAX] = {};
+  char out_path_openssl[PATH_MAX] = {};
+  char pass_path[PATH_MAX] = {};
+  char decrypt_path[PATH_MAX] = {};
   bssl::UniquePtr<EVP_PKEY> key;
   const char* tool_executable_path;
   const char* openssl_executable_path;

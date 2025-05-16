@@ -31,8 +31,8 @@ static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_
         return false;
     }
     long size = 0;
-    char buffer[4096];
-    int bytes_read;
+    char buffer[4096] = {};
+    int bytes_read = 0;
     while ((bytes_read = BIO_read(bio, buffer, sizeof(buffer))) > 0) {
         size += bytes_read;
         if (size > max_size) {
@@ -118,7 +118,7 @@ static bool extract_password(std::string& source) {
             fprintf(stderr, "Cannot open password file\n");
             return false;
         }
-        char buf[DEFAULT_MAX_SENSITIVE_STRING_LENGTH];
+        char buf[DEFAULT_MAX_SENSITIVE_STRING_LENGTH] = {};
         int len = BIO_gets(bio.get(), buf, sizeof(buf));
         if (len <= 0) {
             OPENSSL_cleanse(buf, sizeof(buf));
