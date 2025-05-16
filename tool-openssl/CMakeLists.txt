@@ -88,7 +88,6 @@ if(BUILD_TESTING)
         dgst_test.cc
         pkcs8.cc
         pkcs8_test.cc
-        rsa_pkcs8_shared.cc
         rehash.cc
         rehash_test.cc
         req.cc

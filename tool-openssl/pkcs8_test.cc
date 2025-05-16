@@ -7,7 +7,97 @@
 #include "internal.h"
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
-#include "rsa_pkcs8_shared.h"
+
+// Additional PEM format boundary markers used by PKCS8
+const std::string PRIVATE_KEY_BEGIN = "-----BEGIN PRIVATE KEY-----";
+const std::string PRIVATE_KEY_END = "-----END PRIVATE KEY-----";
+const std::string ENCRYPTED_PRIVATE_KEY_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
+const std::string ENCRYPTED_PRIVATE_KEY_END = "-----END ENCRYPTED PRIVATE KEY-----";
+
+// Implementation of functions declared in test_util.h
+EVP_PKEY* CreateTestKey(int key_bits) {
+    bssl::UniquePtr<BIGNUM> bn(BN_new());
+    if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
+        return nullptr;
+    }
+    
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    if (!rsa || !RSA_generate_key_ex(rsa.get(), key_bits, bn.get(), nullptr)) {
+        return nullptr;
+    }
+    
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    if (!pkey || !EVP_PKEY_assign_RSA(pkey, rsa.release())) {
+        EVP_PKEY_free(pkey);
+        return nullptr;
+    }
+    
+    return pkey;
+}
+
+bool CheckKeyBoundaries(const std::string &content, 
+                        const std::string &begin1, const std::string &end1, 
+                        const std::string &begin2, const std::string &end2) {
+    if (content.empty() || begin1.empty() || end1.empty()) {
+        return false;
+    }
+    
+    if (content.size() < begin1.size() + end1.size()) {
+        return false;
+    }
+    
+    bool primary_match = 
+        content.compare(0, begin1.size(), begin1) == 0 && 
+        content.compare(content.size() - end1.size(), end1.size(), end1) == 0;
+        
+    if (primary_match || begin2.empty() || end2.empty()) {
+        return primary_match;
+    }
+    
+    if (content.size() < begin2.size() + end2.size()) {
+        return false;
+    }
+    
+    return content.compare(0, begin2.size(), begin2) == 0 && 
+           content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
+}
+
+bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password) {
+    if (!path) {
+        return nullptr;
+    }
+    
+    // Use a BIO for better compatibility
+    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
+    if (!bio) {
+        return nullptr;
+    }
+    
+    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, const_cast<char*>(password));
+    return bssl::UniquePtr<EVP_PKEY>(pkey);
+}
+
+bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
+    if (!key1 || !key2) return false;
+    if (EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) return false;
+    
+    if (EVP_PKEY_id(key1) == EVP_PKEY_RSA) {
+        RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
+        RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
+        
+        if (!rsa1 || !rsa2) return false;
+        
+        const BIGNUM *n1, *e1, *d1, *n2, *e2, *d2;
+        RSA_get0_key(rsa1, &n1, &e1, &d1);
+        RSA_get0_key(rsa2, &n2, &e2, &d2);
+        
+        return (BN_cmp(n1, n2) == 0) && 
+               (BN_cmp(e1, e2) == 0) && 
+               (BN_cmp(d1, d2) == 0);
+    }
+    
+    return false;
+}
 
 class PKCS8Test : public ::testing::Test {
 protected:
@@ -16,7 +106,7 @@ protected:
     ASSERT_GT(createTempFILEpath(out_path), 0u);
     ASSERT_GT(createTempFILEpath(pass_path), 0u);
 
-    key.reset(awslc_test::CreateTestKey());
+    key.reset(CreateTestKey());
     ASSERT_TRUE(key);
 
     // Use BIO for writing the key to input file
@@ -175,7 +265,7 @@ class PKCS8OptionUsageErrorsTest : public PKCS8Test {
   // Using the shared template implementation for error testing
 protected:
   void TestOptionUsageErrors(const std::vector<std::string>& args) {
-    awslc_test::TestKeyToolOptionErrors(pkcs8Tool, args);
+    TestKeyToolOptionErrors(pkcs8Tool, args);
   }
 };
 
@@ -222,7 +312,7 @@ protected:
     ASSERT_GT(createTempFILEpath(pass_path), 0u);
     ASSERT_GT(createTempFILEpath(decrypt_path), 0u);
 
-  key.reset(awslc_test::CreateTestKey());
+  key.reset(CreateTestKey());
   ASSERT_TRUE(key);
 
   bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path, "wb"));
@@ -257,14 +347,6 @@ protected:
   std::string tool_output_str;
   std::string openssl_output_str;
 };
-
-// Using the shared implementations from rsa_pkcs8_shared.h
-using awslc_test::CheckKeyBoundaries;
-using awslc_test::pem_markers::PRIVATE_KEY_BEGIN;
-using awslc_test::pem_markers::PRIVATE_KEY_END;
-using awslc_test::pem_markers::ENCRYPTED_PRIVATE_KEY_BEGIN;
-using awslc_test::pem_markers::ENCRYPTED_PRIVATE_KEY_END;
-
 
 // Test against OpenSSL output "openssl pkcs8 -topk8 -nocrypt -in file -out file"
 TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareUnencryptedOpenSSL) {
@@ -306,11 +388,11 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
   ASSERT_EQ(0, result) << "OpenSSL decryption of AWS-LC output failed";
   
   // Step 3: Load decrypted key and compare with original
-  bssl::UniquePtr<EVP_PKEY> decrypted_key(awslc_test::DecryptPrivateKey(decrypt_path, nullptr));
+  bssl::UniquePtr<EVP_PKEY> decrypted_key(DecryptPrivateKey(decrypt_path, nullptr));
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
   
   // Step 4: Compare with original key
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
+  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
 }
 
 // Test cross-compatibility: OpenSSL encrypts, AWS-LC decrypts
@@ -337,11 +419,11 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
   ASSERT_EQ(0, result) << "AWS-LC decryption of OpenSSL output failed";
   
   // Step 3: Load decrypted key and compare with original
-  bssl::UniquePtr<EVP_PKEY> decrypted_key(awslc_test::DecryptPrivateKey(decrypt_path, nullptr));
+  bssl::UniquePtr<EVP_PKEY> decrypted_key(DecryptPrivateKey(decrypt_path, nullptr));
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
   
   // Step 4: Compare with original key
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
+  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
 }
 
 // Original format comparison test kept for backward compatibility
@@ -363,14 +445,14 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareEncryptedOpenSSL) {
   ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
   
   // Decrypt both outputs and verify they match the original key
-  bssl::UniquePtr<EVP_PKEY> aws_lc_decrypted(awslc_test::DecryptPrivateKey(out_path_tool, "testpassword"));
-  bssl::UniquePtr<EVP_PKEY> openssl_decrypted(awslc_test::DecryptPrivateKey(out_path_openssl, "testpassword"));
+  bssl::UniquePtr<EVP_PKEY> aws_lc_decrypted(DecryptPrivateKey(out_path_tool, "testpassword"));
+  bssl::UniquePtr<EVP_PKEY> openssl_decrypted(DecryptPrivateKey(out_path_openssl, "testpassword"));
   
   ASSERT_TRUE(aws_lc_decrypted) << "Failed to decrypt AWS-LC output";
   ASSERT_TRUE(openssl_decrypted) << "Failed to decrypt OpenSSL output";
   
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), aws_lc_decrypted.get())) << "AWS-LC encrypted key doesn't match original after decryption";
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), openssl_decrypted.get())) << "OpenSSL encrypted key doesn't match original after decryption";
+  ASSERT_TRUE(CompareKeys(key.get(), aws_lc_decrypted.get())) << "AWS-LC encrypted key doesn't match original after decryption";
+  ASSERT_TRUE(CompareKeys(key.get(), openssl_decrypted.get())) << "OpenSSL encrypted key doesn't match original after decryption";
 }
 
 // Test against OpenSSL output with DER format
@@ -407,11 +489,11 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
   ASSERT_EQ(0, result) << "OpenSSL decryption of AWS-LC output with PRF failed";
   
   // Step 3: Load decrypted key and compare with original
-  bssl::UniquePtr<EVP_PKEY> decrypted_key(awslc_test::DecryptPrivateKey(decrypt_path, nullptr));
+  bssl::UniquePtr<EVP_PKEY> decrypted_key(DecryptPrivateKey(decrypt_path, nullptr));
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
   
   // Step 4: Compare with original key
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
+  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
 }
 
 // Test cross-compatibility with PRF: OpenSSL encrypts with hmacWithSHA1 PRF, AWS-LC decrypts
@@ -438,11 +520,11 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
   ASSERT_EQ(0, result) << "AWS-LC decryption of OpenSSL output with PRF failed";
   
   // Step 3: Load decrypted key and compare with original
-  bssl::UniquePtr<EVP_PKEY> decrypted_key(awslc_test::DecryptPrivateKey(decrypt_path, nullptr));
+  bssl::UniquePtr<EVP_PKEY> decrypted_key(DecryptPrivateKey(decrypt_path, nullptr));
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
   
   // Step 4: Compare with original key
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
+  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get())) << "Decrypted key doesn't match original";
 }
 
 // Original format comparison test with PRF kept for backward compatibility
@@ -463,14 +545,14 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2prfOpenSSL) {
   ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
   
   // Decrypt both outputs and verify they match the original key
-  bssl::UniquePtr<EVP_PKEY> aws_lc_decrypted(awslc_test::DecryptPrivateKey(out_path_tool, "testpassword"));
-  bssl::UniquePtr<EVP_PKEY> openssl_decrypted(awslc_test::DecryptPrivateKey(out_path_openssl, "testpassword"));
+  bssl::UniquePtr<EVP_PKEY> aws_lc_decrypted(DecryptPrivateKey(out_path_tool, "testpassword"));
+  bssl::UniquePtr<EVP_PKEY> openssl_decrypted(DecryptPrivateKey(out_path_openssl, "testpassword"));
   
   ASSERT_TRUE(aws_lc_decrypted) << "Failed to decrypt AWS-LC output";
   ASSERT_TRUE(openssl_decrypted) << "Failed to decrypt OpenSSL output";
   
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), aws_lc_decrypted.get())) << "AWS-LC encrypted key doesn't match original after decryption";
-  ASSERT_TRUE(awslc_test::CompareKeys(key.get(), openssl_decrypted.get())) << "OpenSSL encrypted key doesn't match original after decryption";
+  ASSERT_TRUE(CompareKeys(key.get(), aws_lc_decrypted.get())) << "AWS-LC encrypted key doesn't match original after decryption";
+  ASSERT_TRUE(CompareKeys(key.get(), openssl_decrypted.get())) << "OpenSSL encrypted key doesn't match original after decryption";
 }
 
 // End of file

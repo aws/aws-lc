@@ -20,6 +20,12 @@
 #include "../tool/internal.h"  // For ScopedFILE definition
 #include "../crypto/test/test_util.h"
 
+// External constants from rsa_test.cc
+extern const std::string RSA_BEGIN;
+extern const std::string RSA_END;
+extern const std::string BEGIN;
+extern const std::string END;
+extern const std::string MODULUS;
 
 // Helper function to trim whitespace from both ends of a string to test comparison output
 static inline std::string &trim(std::string &s) {
@@ -31,7 +37,6 @@ static inline std::string &trim(std::string &s) {
   }).base(), s.end());
   return s;
 }
-
 
 // Helper function to read file content into a string
 inline std::string ReadFileToString(const std::string& file_path) {
@@ -54,6 +59,33 @@ inline std::string ReadFileToString(const std::string& file_path) {
   output_buffer << file_stream.rdbuf();
   
   return output_buffer.str();
+}
+
+// Function declarations (implementations in pkcs8_test.cc)
+EVP_PKEY* CreateTestKey(int key_bits = 2048);
+bool CheckKeyBoundaries(const std::string &content, 
+                       const std::string &begin1, const std::string &end1, 
+                       const std::string &begin2 = "", const std::string &end2 = "");
+bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password);
+bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2);
+
+// Implementation of the TestKeyToolOptionErrors template function
+// Tests for expected error conditions when invalid options are provided to CLI tools
+template<typename ToolFunc>
+void TestKeyToolOptionErrors(ToolFunc tool_func, const std::vector<std::string>& args) {
+    if (args.empty()) {
+        ADD_FAILURE() << "Empty argument list provided to TestKeyToolOptionErrors";
+        return;
+    }
+    
+    args_list_t c_args;
+    for (const auto& arg : args) {
+        c_args.push_back(arg.c_str());
+    }
+    
+    bool result = tool_func(c_args);
+    ASSERT_FALSE(result) << "Expected error not triggered for args: " 
+                        << args[0] << (args.size() > 1 ? "..." : "");
 }
 
 inline void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command,
@@ -85,7 +117,5 @@ inline void RemoveFile(const char* path) {
 
 // OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
 std::string GetHash(const std::string& str);
-
-// Helper functions DecryptPrivateKey and CompareKeys have been moved to rsa_pkcs8_shared.h/.cc
 
 #endif //TEST_UTIL_H
