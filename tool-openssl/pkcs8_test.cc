@@ -15,8 +15,7 @@ const std::string ENCRYPTED_PRIVATE_KEY_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KE
 const std::string ENCRYPTED_PRIVATE_KEY_END = "-----END ENCRYPTED PRIVATE KEY-----";
 
 // Function to create an RSA key pair wrapped in EVP_PKEY
-EVP_PKEY* CreateTestKey(int key_bits = 2048);
-EVP_PKEY* CreateTestKey(int key_bits) {
+static EVP_PKEY* CreateTestKey(int key_bits) {
     bssl::UniquePtr<BIGNUM> bn(BN_new());
     if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
         return nullptr;
@@ -37,10 +36,7 @@ EVP_PKEY* CreateTestKey(int key_bits) {
 }
 
 // Function to check PEM boundary markers in content
-bool CheckKeyBoundaries(const std::string &content, 
-                        const std::string &begin1, const std::string &end1, 
-                        const std::string &begin2 = "", const std::string &end2 = "");
-bool CheckKeyBoundaries(const std::string &content, 
+static bool CheckKeyBoundaries(const std::string &content,
                         const std::string &begin1, const std::string &end1, 
                         const std::string &begin2, const std::string &end2) {
     if (content.empty() || begin1.empty() || end1.empty()) {
@@ -68,8 +64,7 @@ bool CheckKeyBoundaries(const std::string &content,
 }
 
 // Helper function to decrypt a private key from a file
-bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password = nullptr);
-bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password) {
+static bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password) {
     if (!path) {
         return nullptr;
     }
@@ -84,29 +79,43 @@ bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* passwo
     return bssl::UniquePtr<EVP_PKEY>(pkey);
 }
 
-// Function to compare two RSA keys for equality
-bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2);
-bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
-    if (!key1 || !key2) return false;
-    if (EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) return false;
-    
-    if (EVP_PKEY_id(key1) == EVP_PKEY_RSA) {
-        RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
-        RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
-        
-        if (!rsa1 || !rsa2) return false;
-        
-        const BIGNUM *n1, *e1, *d1, *n2, *e2, *d2;
-        RSA_get0_key(rsa1, &n1, &e1, &d1);
-        RSA_get0_key(rsa2, &n2, &e2, &d2);
-        
-        return (BN_cmp(n1, n2) == 0) && 
-               (BN_cmp(e1, e2) == 0) && 
-               (BN_cmp(d1, d2) == 0);
-    }
-    
+static bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
+  // Early return if either pointer is null or keys are different types
+  if (!key1 || !key2 || EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) {
     return false;
+  }
+
+  // Check if keys are RSA type
+  if (EVP_PKEY_id(key1) != EVP_PKEY_RSA) {
+    return false;
+  }
+
+  // Get RSA structures
+  const RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
+  const RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
+  if (!rsa1 || !rsa2) {
+    return false;
+  }
+
+  // Get key components
+  const BIGNUM *n1, *e1, *d1, *n2, *e2, *d2;
+  RSA_get0_key(rsa1, &n1, &e1, &d1);
+  RSA_get0_key(rsa2, &n2, &e2, &d2);
+
+  // Compare modulus first as it's most likely to be different
+  if (BN_cmp(n1, n2) != 0) {
+    return false;
+  }
+
+  // Compare public exponent next (usually smaller)
+  if (BN_cmp(e1, e2) != 0) {
+    return false;
+  }
+
+  // Finally compare private exponent
+  return BN_cmp(d1, d2) == 0;
 }
+
 
 class PKCS8Test : public ::testing::Test {
 protected:
@@ -115,7 +124,7 @@ protected:
     ASSERT_GT(createTempFILEpath(out_path), 0u);
     ASSERT_GT(createTempFILEpath(pass_path), 0u);
 
-    key.reset(CreateTestKey());
+    key.reset(CreateTestKey(2048));
     ASSERT_TRUE(key);
 
     // Use BIO for writing the key to input file
@@ -271,10 +280,12 @@ TEST_F(PKCS8Test, PKCS8ToolUnsupportedPRFTest) {
 // -------------------- PKCS8 Option Usage Error Tests --------------------------
 
 class PKCS8OptionUsageErrorsTest : public PKCS8Test {
-  // Using the shared template implementation for error testing
 protected:
-  void TestOptionUsageErrors(const std::vector<std::string>& args) {
-    TestKeyToolOptionErrors(pkcs8Tool, args);
+  static void TestOptionUsageErrors(const std::vector<std::string>& args) {
+    // Inline the error testing logic directly
+    EXPECT_FALSE(pkcs8Tool(args))
+        << "Expected pkcs8Tool to fail with args: "
+        << testing::PrintToString(args);
   }
 };
 
@@ -283,7 +294,7 @@ TEST_F(PKCS8OptionUsageErrorsTest, RequiredOptionTests) {
   std::vector<std::vector<std::string>> testparams = {
     {"-out", "output.pem", "-topk8"},
     {"-topk8", "-nocrypt"},
-  };
+};
   for (const auto& args : testparams) {
     TestOptionUsageErrors(args);
   }
@@ -321,7 +332,7 @@ protected:
     ASSERT_GT(createTempFILEpath(pass_path), 0u);
     ASSERT_GT(createTempFILEpath(decrypt_path), 0u);
 
-  key.reset(CreateTestKey());
+  key.reset(CreateTestKey(2048));
   ASSERT_TRUE(key);
 
   bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path, "wb"));

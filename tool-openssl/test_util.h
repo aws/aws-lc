@@ -5,22 +5,18 @@
 #define TEST_UTIL_H
 
 #include <gtest/gtest.h>
-#include <string>
-#include <vector>
+#include <sys/stat.h>
+#include <cctype>
+#include <cstring>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <string>
-#include <iostream>
-#include <cctype>
-#include <sys/stat.h>
-#include <cstring>
-#include <openssl/pem.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
-#include "../tool/internal.h"  // For ScopedFILE definition
+#include <vector>
 #include "../crypto/test/test_util.h"
 
-// Helper function to trim whitespace from both ends of a string to test comparison output
+// Helper function to trim whitespace from both ends of a string to test
+// comparison output
 static inline std::string &trim(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
       return !std::isspace(static_cast<unsigned char>(ch));
@@ -52,25 +48,6 @@ inline std::string ReadFileToString(const std::string& file_path) {
   output_buffer << file_stream.rdbuf();
   
   return output_buffer.str();
-}
-
-// Implementation of the TestKeyToolOptionErrors template function
-// Tests for expected error conditions when invalid options are provided to CLI tools
-template<typename ToolFunc>
-void TestKeyToolOptionErrors(ToolFunc tool_func, const std::vector<std::string>& args) {
-    if (args.empty()) {
-        ADD_FAILURE() << "Empty argument list provided to TestKeyToolOptionErrors";
-        return;
-    }
-    
-    args_list_t c_args;
-    for (const auto& arg : args) {
-        c_args.push_back(arg.c_str());
-    }
-    
-    bool result = tool_func(c_args);
-    ASSERT_FALSE(result) << "Expected error not triggered for args: " 
-                        << args[0] << (args.size() > 1 ? "..." : "");
 }
 
 inline void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command,
