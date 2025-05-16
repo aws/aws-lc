@@ -151,7 +151,7 @@ static void tree_jitter_drbg_maybe_get_pred_resistance(
 
   if (tree_jitter_drbg->is_global == 0 &&
       tree_jitter_drbg->ube_protection != 1) {
-    CRYPTO_sysrand_for_seed(pred_resistance, RAND_PRED_RESISTANCE_LEN);
+    CRYPTO_sysrand(pred_resistance, RAND_PRED_RESISTANCE_LEN);
     *pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
   }
 }
