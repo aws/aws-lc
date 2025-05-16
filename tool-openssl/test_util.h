@@ -20,13 +20,6 @@
 #include "../tool/internal.h"  // For ScopedFILE definition
 #include "../crypto/test/test_util.h"
 
-// External constants from rsa_test.cc
-extern const std::string RSA_BEGIN;
-extern const std::string RSA_END;
-extern const std::string BEGIN;
-extern const std::string END;
-extern const std::string MODULUS;
-
 // Helper function to trim whitespace from both ends of a string to test comparison output
 static inline std::string &trim(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
@@ -60,14 +53,6 @@ inline std::string ReadFileToString(const std::string& file_path) {
   
   return output_buffer.str();
 }
-
-// Function declarations (implementations in pkcs8_test.cc)
-EVP_PKEY* CreateTestKey(int key_bits = 2048);
-bool CheckKeyBoundaries(const std::string &content, 
-                       const std::string &begin1, const std::string &end1, 
-                       const std::string &begin2 = "", const std::string &end2 = "");
-bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password);
-bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2);
 
 // Implementation of the TestKeyToolOptionErrors template function
 // Tests for expected error conditions when invalid options are provided to CLI tools

@@ -14,7 +14,8 @@ const std::string PRIVATE_KEY_END = "-----END PRIVATE KEY-----";
 const std::string ENCRYPTED_PRIVATE_KEY_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
 const std::string ENCRYPTED_PRIVATE_KEY_END = "-----END ENCRYPTED PRIVATE KEY-----";
 
-// Implementation of functions declared in test_util.h
+// Function to create an RSA key pair wrapped in EVP_PKEY
+EVP_PKEY* CreateTestKey(int key_bits = 2048);
 EVP_PKEY* CreateTestKey(int key_bits) {
     bssl::UniquePtr<BIGNUM> bn(BN_new());
     if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
@@ -35,6 +36,10 @@ EVP_PKEY* CreateTestKey(int key_bits) {
     return pkey;
 }
 
+// Function to check PEM boundary markers in content
+bool CheckKeyBoundaries(const std::string &content, 
+                        const std::string &begin1, const std::string &end1, 
+                        const std::string &begin2 = "", const std::string &end2 = "");
 bool CheckKeyBoundaries(const std::string &content, 
                         const std::string &begin1, const std::string &end1, 
                         const std::string &begin2, const std::string &end2) {
@@ -62,6 +67,8 @@ bool CheckKeyBoundaries(const std::string &content,
            content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
 }
 
+// Helper function to decrypt a private key from a file
+bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password = nullptr);
 bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* password) {
     if (!path) {
         return nullptr;
@@ -77,6 +84,8 @@ bssl::UniquePtr<EVP_PKEY> DecryptPrivateKey(const char* path, const char* passwo
     return bssl::UniquePtr<EVP_PKEY>(pkey);
 }
 
+// Function to compare two RSA keys for equality
+bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2);
 bool CompareKeys(EVP_PKEY* key1, EVP_PKEY* key2) {
     if (!key1 || !key2) return false;
     if (EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) return false;
