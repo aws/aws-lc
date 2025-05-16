@@ -154,6 +154,22 @@ extern "C" {
 
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
 
+#if !defined(OPENSSL_WARN_UNUSED_RESULT)
+// This should only affect internal usage of functions
+#if defined(BORINGSSL_IMPLEMENTATION) || defined(AWS_LC_TEST_ENV)
+#if defined(__GNUC__) || defined(__clang__)
+# define OPENSSL_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
+#elif defined(_MSC_VER)
+# define OPENSSL_WARN_UNUSED_RESULT _Check_return_
+#else
+# define OPENSSL_WARN_UNUSED_RESULT
+#endif
+#else
+// The macro is ignored by consumers
+# define OPENSSL_WARN_UNUSED_RESULT
+#endif
+#endif
+
 #if defined(_MSC_VER)
 
 // OPENSSL_DEPRECATED is used to mark a function as deprecated. Use

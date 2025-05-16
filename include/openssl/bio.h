@@ -188,7 +188,7 @@ OPENSSL_EXPORT int BIO_flush(BIO *bio);
 // BIO_ctrl call the |bio| |callback_ex| if set with |BIO_CB_CTRL|, sends the 
 // control request |cmd| to |bio|, then calls |callback_ex| with |BIO_CB_CTRL| 
 // + |BIO_CB_RETURN|. The |cmd| argument should be one of the |BIO_C_*| values.
-OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg);
+OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ptr_ctrl acts like |BIO_ctrl| but passes the address of a |void*|
 // pointer as |parg| and returns the value that is written to it, or NULL if
@@ -202,7 +202,7 @@ OPENSSL_EXPORT long BIO_int_ctrl(BIO *bp, int cmd, long larg, int iarg);
 // BIO_reset resets |bio| to its initial state, the precise meaning of which
 // depends on the concrete type of |bio|. It returns one on success and zero
 // otherwise.
-OPENSSL_EXPORT int BIO_reset(BIO *bio);
+OPENSSL_EXPORT int BIO_reset(BIO *bio) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_eof returns non-zero when |bio| has reached end-of-file. The precise
 // meaning of which depends on the concrete type of |bio|. Note that in the
@@ -754,43 +754,43 @@ typedef union bio_addr_st {
 
 // BIO_s_datagram returns the datagram |BIO_METHOD|. A datagram BIO provides a wrapper
 // around datagram sockets.
-OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void);
+OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_new_dgram creates a new datagram BIO wrapping |fd|. If |close_flag| is
 // non-zero, then |fd| will be closed when the BIO is freed.
-OPENSSL_EXPORT BIO *BIO_new_dgram(const int fd, const int close_flag);
+OPENSSL_EXPORT BIO *BIO_new_dgram(int fd, int close_flag) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ctrl_dgram_connect attempts to connect the datagram BIO to the specified
 // |peer| address. It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer);
+OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ctrl_set_connected marks the datagram BIO as connected to the specified
 // |peer| address. This is used for handling DTLS connection-oriented BIOs.
 // It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer);
+OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_dgram_recv_timedout returns 1 if the most recent datagram receive
 // operation on |bp| timed out, and a non-positive value otherwise. Any error
 // for this socket gets reset by this call.
-OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp);
+OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_dgram_send_timedout returns 1 if the most recent datagram send
 // operation on |bp| timed out, and a non-positive value otherwise. Any error
 // for this socket gets reset by this call.
-OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO *bp);
+OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO *bp) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_dgram_get_peer stores the address of the peer the datagram BIO is
 // connected to in |peer|. It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer);
+OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
 // It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer);
+OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_dgram_get_mtu_overhead returns the number of bytes of overhead when sending
 // a datagram of the maximum size through |bp| to the specified |peer| address.
 // This is used for PMTU discovery in DTLS.
-OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer);
+OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO Pairs.
 //
