@@ -4,11 +4,11 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#include "../tool/internal.h"
 #include <openssl/digest.h>
+#include <memory>
 #include <string>
 #include <vector>
-
+#include "../tool/internal.h"
 #if !defined(O_BINARY)
 #define O_BINARY 0
 #endif
@@ -40,6 +40,8 @@ bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
+bool pkcs8Tool(const args_list_t &args);
+
 
 // Req Tool Utilities
 bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string);
