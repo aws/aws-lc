@@ -121,5 +121,5 @@ jobs:
       - run: |
           brew install llvm bash
       - name: iOS Simulator Runner
-        run: tests/ci/run_ios_sim_tests.sh
+        run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
 
