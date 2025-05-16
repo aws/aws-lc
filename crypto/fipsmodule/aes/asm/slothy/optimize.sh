@@ -72,7 +72,7 @@ fi
 ##     done
 ## done
 
-VARIANTS_ALL="x6_basic"
+VARIANTS_ALL="x5_basic"
 
 VERBOSE=${VERBOSE:=0}
 TIMEOUT=${TIMEOUT:=1200} # 20min timeout by default
@@ -110,7 +110,7 @@ if [ "$SKIP_EXISTING" = "" ]; then
     SKIP_EXISTING=0
 fi
 
-optimize_x6() {
+optimize_x5() {
     slothy-cli Arm_AArch64 $MODEL                      \
     ${INFILE}                                          \
     -l Loop_enc_iv_enc                                 \
@@ -134,7 +134,7 @@ optimize_variant() {
     TMP1=$TMP_DIR/${TMP_STEM}_$1_1.S
     TMP2=$TMP_DIR/${TMP_STEM}_$1_2.S
 
-    optimize_x6
+    optimize_x5
 }
 
 for v in $TODO

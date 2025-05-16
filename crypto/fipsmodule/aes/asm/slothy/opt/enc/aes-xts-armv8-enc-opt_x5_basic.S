@@ -35,9 +35,35 @@
 
 .align	4
 
+
+#define STACK_SIZE_VREGS (3*16)
+
+.macro save_vregs
+        stp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
+        stp d10, d11, [sp, #(STACK_BASE_VREGS + 16*1)]
+        stp d12, d13, [sp, #(STACK_BASE_VREGS + 16*2)]
+.endm
+
+.macro restore_vregs
+        ldp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
+        ldp d10, d11, [sp, #(STACK_BASE_VREGS + 16*1)]
+        ldp d12, d13, [sp, #(STACK_BASE_VREGS + 16*2)]
+.endm
+
+// A single AES round
+// Prevent SLOTHY from unfolding because uArchs tend to fuse AESMC+AESE
+.macro aesr data, key // @slothy:no-unfold
+        aese  \data, \key
+        aesmc \data, \data
+.endm
+
 _aes_hw_slothy_xts_encrypt:
 aes_hw_slothy_xts_encrypt:
  # AARCH64_VALID_CALL_TARGET
+
+    sub sp, sp, #STACK_SIZE_VREGS
+    save_vregs
+
  cmp	x2,#16
     // Original input data size bigger than 16, jump to big size processing.
  b.ne	Lxts_enc_big_size
@@ -48,27 +74,33 @@ aes_hw_slothy_xts_encrypt:
  sub	w6,w6,#2
  ld1	{v1.16b},[x4],#16
 
-                                    // Instructions:    2
-                                    // Expected cycles: 3
-                                    // Expected IPC:    0.67
-                                    //
-                                    // Cycle bound:     3.0
-                                    // IPC bound:       0.67
-                                    //
-                                    // Wall time:     0.01s
-                                    // User time:     0.01s
-                                    //
-                                    // ----- cycle (expected) ------>
-                                    // 0                        25
-                                    // |------------------------|----
-        aese v6.16b, v0.16b         // *.............................
-        aesmc v6.16b, v6.16b        // ..*...........................
+                                      // Instructions:    5
+                                      // Expected cycles: 5
+                                      // Expected IPC:    1.00
+                                      //
+                                      // Cycle bound:     5.0
+                                      // IPC bound:       1.00
+                                      //
+                                      // Wall time:     0.01s
+                                      // User time:     0.01s
+                                      //
+                                      // ----- cycle (expected) ------>
+                                      // 0                        25
+                                      // |------------------------|----
+        aese v6.16b, v0.16b           // *.............................
+        ld1 {v0.4S}, [x4], #16        // *.............................
+        aesmc v6.16b, v6.16b          // ..*...........................
+        aese v6.16b, v1.16b           // ....*.........................
+        ld1 {v1.4S}, [x4], #16        // ....*.........................
 
-                                     // ------ cycle (expected) ------>
-                                     // 0                        25
-                                     // |------------------------|-----
-        // aese v6.16b, v0.16b       // *..............................
-        // aesmc v6.16b, v6.16b      // ..*............................
+                                       // ------ cycle (expected) ------>
+                                       // 0                        25
+                                       // |------------------------|-----
+        // aese v6.16b, v0.16b         // *..............................
+        // aesmc v6.16b, v6.16b        // ..*............................
+        // ld1 {v0.4S}, [x4], #16      // *..............................
+        // aese v6.16b, v1.16b         // ....*..........................
+        // ld1 {v1.4S}, [x4], #16      // ....*..........................
 
         sub w6, w6, #2
 Loop_enc_iv_enc:
@@ -79,56 +111,50 @@ Loop_enc_iv_enc:
                                       // Cycle bound:     8.0
                                       // IPC bound:       0.75
                                       //
-                                      // Wall time:     0.04s
-                                      // User time:     0.04s
+                                      // Wall time:     0.05s
+                                      // User time:     0.05s
                                       //
                                       // ----- cycle (expected) ------>
                                       // 0                        25
                                       // |------------------------|----
-        ld1 {v0.4S}, [x4], #16        // *.............................
-        aese v6.16b, v1.16b           // *.............................
-        ld1 {v1.4S}, [x4], #16        // *.............................
-        aesmc v6.16b, v6.16b          // ..*...........................
-        aese v6.16b, v0.16b           // ....e.........................
-        aesmc v6.16b, v6.16b          // ......e.......................
+        aesmc v6.16b, v6.16b          // .l............................
+        aese v6.16b, v0.16b           // ...*..........................
+        aesmc v6.16b, v6.16b          // .....*........................
+        ld1 {v0.4S}, [x4], #16        // ......*.......................
+        aese v6.16b, v1.16b           // .......*......................
+        ld1 {v1.4S}, [x4], #16        // .......*......................
 
                                      // ------ cycle (expected) ------>
                                      // 0                        25
                                      // |------------------------|-----
-        // aese v6.16b,v0.16b        // e...'...~...'...~...'...~...'..
-        // aesmc v6.16b,v6.16b       // ..e.'.....~.'.....~.'.....~.'..
-        // ld1 {v0.4s},[x4],#16      // ....*.......~.......~.......~..
-        // aese v6.16b,v1.16b        // ....*.......~.......~.......~..
-        // aesmc v6.16b,v6.16b       // ....'.*.....'.~.....'.~.....'..
-        // ld1 {v1.4s},[x4],#16      // ....*.......~.......~.......~..
+        // aese v6.16b,v0.16b        // *.......~.......~.......~......
+        // aesmc v6.16b,v6.16b       // ..*.....'.~.....'.~.....'.~....
+        // ld1 {v0.4s},[x4],#16      // ...*....'..~....'..~....'..~...
+        // aese v6.16b,v1.16b        // ....*...'...~...'...~...'...~..
+        // aesmc v6.16b,v6.16b       // ......l.'.....~.'.....~.'......
+        // ld1 {v1.4s},[x4],#16      // ....*...'...~...'...~...'...~..
 
         subs w6, w6, 2
         cbnz w6, Loop_enc_iv_enc
-                                      // Instructions:    4
-                                      // Expected cycles: 3
-                                      // Expected IPC:    1.33
-                                      //
-                                      // Cycle bound:     3.0
-                                      // IPC bound:       1.33
-                                      //
-                                      // Wall time:     0.01s
-                                      // User time:     0.01s
-                                      //
-                                      // ----- cycle (expected) ------>
-                                      // 0                        25
-                                      // |------------------------|----
-        aese v6.16b, v1.16b           // *.............................
-        ld1 {v0.4S}, [x4], #16        // *.............................
-        ld1 {v1.4S}, [x4], #16        // *.............................
-        aesmc v6.16b, v6.16b          // ..*...........................
+                                    // Instructions:    1
+                                    // Expected cycles: 1
+                                    // Expected IPC:    1.00
+                                    //
+                                    // Cycle bound:     1.0
+                                    // IPC bound:       1.00
+                                    //
+                                    // Wall time:     0.00s
+                                    // User time:     0.00s
+                                    //
+                                    // ----- cycle (expected) ------>
+                                    // 0                        25
+                                    // |------------------------|----
+        aesmc v6.16b, v6.16b        // *.............................
 
-                                       // ------ cycle (expected) ------>
-                                       // 0                        25
-                                       // |------------------------|-----
-        // ld1 {v0.4S}, [x4], #16      // *..............................
-        // aese v6.16b, v1.16b         // *..............................
-        // ld1 {v1.4S}, [x4], #16      // *..............................
-        // aesmc v6.16b, v6.16b        // ..*............................
+                                     // ------ cycle (expected) ------>
+                                     // 0                        25
+                                     // |------------------------|-----
+        // aesmc v6.16b, v6.16b      // *..............................
 
 
  aese	v6.16b,v0.16b
@@ -239,27 +265,38 @@ Loop_iv_enc:
  ldr	w5,[x3,#240]       // next starting point
  ld1	{v0.16b},[x0],x8
 
- ld1	{v16.4s,v17.4s},[x3]         // load key schedule...
- sub	w5,w5,#6
- add	x7,x3,x5,lsl#4  // pointer to last 7 round keys
- ld1	{v18.4s,v19.4s},[x7],#32
- ld1	{v20.4s,v21.4s},[x7],#32
- ld1	{v22.4s,v23.4s},[x7],#32
- ld1	{v7.4s},[x7]
+ // ld1	{v16.4s,v17.4s},[x3]          // load key schedule...
+ // sub	w5,w5,#6
+ // add	x7,x3,x5,lsl#4   // pointer to last 7 round keys
+// ld1	{v18.4s,v19.4s},[x7],#32
+// ld1	{v20.4s,v21.4s},[x7],#32
+// ld1	{v22.4s,v23.4s},[x7],#32
+// ld1	{v7.4s},[x7]
 
- sub	w5,w5,#2
+    ld1	{v16.4s,v17.4s},[x3]         // load key schedule...
+
+    ld1 { v8.4s, v9.4s},[x3, 1*32]
+ ld1	{v10.4s,v11.4s},[x3, 2*32]
+    ld1 {v12},[x3,3*32]
+    ld1	{v18.4s,v19.4s},[x3,3*32+16]
+ ld1	{v20.4s,v21.4s},[x3,4*32+16]
+ ld1	{v22.4s,v23.4s},[x3,5*32+16]
+ ld1	{v7.4s},[x3,6*32+16]
+
+
+ sub	w5,w5,#8
  add	x7,x3,#32
- mov	w6,w5
+ // mov	w6,w5
 
     // Encryption
 Lxts_enc:
  ld1	{v24.16b},[x0],#16
  subs	x2,x2,#32           // bias
  add	w6,w5,#2
- orr	v3.16b,v0.16b,v0.16b
- orr	v1.16b,v0.16b,v0.16b
+ // orr	v3.16b,v0.16b,v0.16b
+ // orr	v1.16b,v0.16b,v0.16b
  orr	v28.16b,v0.16b,v0.16b
- orr	v27.16b,v24.16b,v24.16b
+ // orr	v27.16b,v24.16b,v24.16b
  orr	v29.16b,v24.16b,v24.16b
  b.lo	Lxts_inner_enc_tail    // when input size % 5 = 1 or 2
                                     // (with tail or not)
@@ -796,6 +833,8 @@ Lxts_abort:
  ldp	d10,d11,[sp,#16]
  ldp	x19,x20,[sp],#64
 Lxts_enc_final_abort:
+    restore_vregs
+    add sp, sp, #STACK_SIZE_VREGS
  ret
 
 #endif

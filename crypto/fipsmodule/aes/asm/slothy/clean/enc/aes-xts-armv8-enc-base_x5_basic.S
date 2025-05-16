@@ -35,9 +35,38 @@
 
 .align	4
 
+
+#define STACK_BASE_VREGS 0
+#define STACK_SIZE_VREGS (4*16)
+
+.macro save_vregs
+        stp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
+        stp d10, d11, [sp, #(STACK_BASE_VREGS + 16*1)]
+        stp d12, d13, [sp, #(STACK_BASE_VREGS + 16*2)]
+        stp d14, d15, [sp, #(STACK_BASE_VREGS + 16*3)]
+.endm
+
+.macro restore_vregs
+        ldp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
+        ldp d10, d11, [sp, #(STACK_BASE_VREGS + 16*1)]
+        ldp d12, d13, [sp, #(STACK_BASE_VREGS + 16*2)]
+        ldp d14, d15, [sp, #(STACK_BASE_VREGS + 16*3)]
+.endm
+
+// A single AES round
+// Prevent SLOTHY from unfolding because uArchs tend to fuse AESMC+AESE
+.macro aesr data, key // @slothy:no-unfold
+        aese  \data, \key
+        aesmc \data, \data
+.endm
+
 _aes_hw_slothy_xts_encrypt:
 aes_hw_slothy_xts_encrypt:
 	# AARCH64_VALID_CALL_TARGET
+
+    sub sp, sp, #STACK_SIZE_VREGS
+    save_vregs
+
 	cmp	x2,#16
     // Original input data size bigger than 16, jump to big size processing.
 	b.ne	Lxts_enc_big_size
@@ -174,6 +203,16 @@ Loop_iv_enc:
 	ld1	{v22.4s,v23.4s},[x7],#32
 	ld1	{v7.4s},[x7]
 
+////	add	x7,x3,#32
+////    ld1 { v8.4s, v9.4s},[x7], #32
+////	ld1	{v10.4s,v11.4s},[x7], #32
+////    ld1 {v12.4s},       [x7], #16
+////    ld1	{v18.4s,v19.4s},[x7], #32
+////	ld1	{v20.4s,v21.4s},[x7], #32
+////	ld1	{v22.4s,v23.4s},[x7], #32
+////	ld1	{v7.4s},        [x7]
+
+
 	sub	w5,w5,#2
 	add	x7,x3,#32
 	mov	w6,w5
@@ -183,10 +222,10 @@ Lxts_enc:
 	ld1	{v24.16b},[x0],#16
 	subs	x2,x2,#32           // bias
 	add	w6,w5,#2
-	orr	v3.16b,v0.16b,v0.16b
-	orr	v1.16b,v0.16b,v0.16b
+	//orr	v3.16b,v0.16b,v0.16b
+	//orr	v1.16b,v0.16b,v0.16b
 	orr	v28.16b,v0.16b,v0.16b
-	orr	v27.16b,v24.16b,v24.16b
+	//orr	v27.16b,v24.16b,v24.16b
 	orr	v29.16b,v24.16b,v24.16b
 	b.lo	Lxts_inner_enc_tail    // when input size % 5 = 1 or 2
                                     // (with tail or not)
@@ -723,6 +762,8 @@ Lxts_abort:
 	ldp	d10,d11,[sp,#16]
 	ldp	x19,x20,[sp],#64
 Lxts_enc_final_abort:
+    restore_vregs
+    add sp, sp, #STACK_SIZE_VREGS
 	ret
 
 #endif

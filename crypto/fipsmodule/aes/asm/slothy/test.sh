@@ -143,7 +143,7 @@ do_variant() {
 ## done
 ##
 
-VARIANTS="x6_basic"
+VARIANTS="x5_basic"
 if [ "$1" = "--help" ]; then
     echo "Usage: [ENC=0/1] [BENCH=0/1] [AWS_LC_BASE=PATH] [BUILD_DIR=DIRNAME] [VERBOSE=0/1] [OPT=0/1] test.sh [variant]"
     echo "Valid values for 'variant' are:"
