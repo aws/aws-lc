@@ -69,6 +69,7 @@
 #include <openssl/thread.h>
 
 #include "../../evp_extra/internal.h"
+#include "../../pem/internal.h"
 #include "../../internal.h"
 #include "internal.h"
 
@@ -154,6 +155,68 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   }
 
   return -2;
+}
+
+char *EVP_get_pw_prompt(void) {
+    return (char*)"Enter PEM passphrase:";
+}
+
+int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify) {
+  return EVP_read_pw_string_min(buf, 0, length, prompt, verify);
+}
+
+int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                           const char *prompt, int verify) {
+  int ret = -1;
+  char verify_buf[1024];
+
+  if (prompt == NULL) {
+    prompt = EVP_get_pw_prompt();
+  }
+
+  // acquire write lock
+  openssl_console_acquire_mutex();
+
+  if (!openssl_console_open()) {
+    goto err;
+  }
+
+  // Write initial password prompt
+  if (!openssl_console_write(prompt)) {
+    goto err;
+  }
+
+  // Read password with echo disabled, returns 1 on success, 0 on error, -2 on interrupt
+  ret = openssl_console_read(buf, min_length, length, 0);
+  if (ret != 0) {
+    OPENSSL_cleanse(buf, sizeof(buf));
+    OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+    goto err;
+  }
+
+  if (verify) {
+    openssl_console_write("Verifying - ");
+    openssl_console_write(prompt);
+
+    ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
+
+    if (ret == 0) {
+      if (strcmp(buf, verify_buf) != 0) {
+        openssl_console_write("Verify failure\n");
+        ret = -1;
+      }
+    } else {
+      OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+      goto err;
+    }
+  }
+
+  openssl_console_close();
+
+err:
+  openssl_console_release_mutex();
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+  return ret;
 }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
