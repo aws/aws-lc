@@ -77,11 +77,10 @@ static void recsig(int signal) {
 }
 
 static int discard_line_remainder(FILE *in) {
-    const size_t buf_size = 4;
-    char buf[buf_size + 1];
+    char buf[5];
 
     do {
-        if (!fgets(buf, buf_size, in)) {
+        if (!fgets(buf, 4, in)) {
             return 0;
         }
     } while (strchr(buf, '\n') == NULL);
