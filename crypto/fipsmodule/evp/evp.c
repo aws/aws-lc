@@ -158,7 +158,7 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 char *EVP_get_pw_prompt(void) {
-    return (char*)"Enter PEM pass phrase:";
+    return (char*)"Enter PEM passphrase:";
 }
 
 int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify) {
@@ -174,13 +174,16 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
     prompt = EVP_get_pw_prompt();
   }
 
+  // acquire write lock
+  openssl_console_acquire_mutex();
+
   if (!openssl_console_open()) {
-    return ret;
+    goto err;
   }
 
   // Write initial password prompt
   if (!openssl_console_write(prompt)) {
-    return ret;
+    goto err;
   }
 
   // Read password with echo disabled, returns 1 on success, 0 on error, -2 on interrupt
@@ -188,7 +191,7 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
   if (ret != 0) {
     OPENSSL_cleanse(buf, sizeof(buf));
     OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
-    return ret;
+    goto err;
   }
 
   if (verify) {
@@ -204,11 +207,14 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
       }
     } else {
       OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+      goto err;
     }
   }
 
   openssl_console_close();
 
+err:
+  openssl_console_release_mutex();
   OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
   return ret;
 }

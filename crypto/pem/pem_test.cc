@@ -501,15 +501,16 @@ class PemPasswdTest : public testing::Test {
     // Redirect stdin/stderr to our temp files
     ASSERT_NE(-1, dup2(fileno(stdin_file), fileno(stdin)));
     ASSERT_NE(-1, dup2(fileno(stderr_file), fileno(stderr)));
-    
+
     // Initialize console for each test
+    openssl_console_acquire_mutex();
     ASSERT_TRUE(openssl_console_open());
   }
 
   void TearDown() override {
     // Close console for each test
     ASSERT_TRUE(openssl_console_close());
-    
+    openssl_console_release_mutex();
     // Restore original streams
     ASSERT_NE(-1, dup2(original_stdin, fileno(stdin)));
     ASSERT_NE(-1, dup2(original_stderr, fileno(stderr)));

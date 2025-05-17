@@ -22,15 +22,14 @@
 // We support two types of terminal interface:
 // - termios for Linux/Unix
 // - WIN32 Console for Windows
-# if !defined(_WIN32)
-#  define SIGACTION
+# if !defined(OPENSSL_WINDOWS)
 #  include <termios.h>
 #  define DEV_TTY "/dev/tty"
 #  define TTY_STRUCT             struct termios
 #  define TTY_FLAGS              c_lflag
 #  define TTY_get(tty,data)      tcgetattr(tty, data)
 #  define TTY_set(tty,data)      tcsetattr(tty, TCSANOW, data)
-# else /* _WIN32 */
+# else /* OPENSSL_WINDOWS */
 #  include <windows.h>
 # endif
 
@@ -39,18 +38,13 @@
 static volatile sig_atomic_t intr_signal;
 static struct CRYPTO_STATIC_MUTEX console_global_mutex = CRYPTO_STATIC_MUTEX_INIT;
 
-# ifdef SIGACTION
+# if !defined(OPENSSL_WINDOWS)
 static struct sigaction savsig[NUM_SIG];
 # else
 static void (*savsig[NUM_SIG]) (int);
 # endif
 
-static int read_till_nl(FILE * in);
-static void recsig(int signal);
-static void pushsig(void);
-static void popsig(void);
-
-#if defined(_WIN32)
+#if defined(OPENSSL_WINDOWS)
   DWORD tty_orig, tty_new;
 #else
   TTY_STRUCT tty_orig, tty_new;
@@ -60,13 +54,34 @@ FILE *tty_in, *tty_out;
 int is_a_tty;
 
 
-/* Internal functions to read a string without echoing */
-static int read_till_nl(FILE *in) {
-#  define SIZE 4
-    char buf[SIZE + 1];
+static void popsig(void) {
+# if !defined(OPENSSL_WINDOWS)
+    for (int i = 1; i < NUM_SIG; i++) {
+        if (i == SIGUSR1 || i == SIGUSR2 || i == SIGKILL) {
+            continue;
+        }
+        sigaction(i, &savsig[i], NULL);
+    }
+# else
+    signal(SIGABRT, savsig[SIGABRT]);
+    signal(SIGFPE, savsig[SIGFPE]);
+    signal(SIGILL, savsig[SIGILL]);
+    signal(SIGINT, savsig[SIGINT]);
+    signal(SIGSEGV, savsig[SIGSEGV]);
+    signal(SIGTERM, savsig[SIGTERM]);
+# endif
+}
+
+static void recsig(int signal) {
+    intr_signal = signal;
+}
+
+static int discard_line_remainder(FILE *in) {
+    const size_t buf_size = 4;
+    char buf[buf_size + 1];
 
     do {
-        if (!fgets(buf, SIZE, in)) {
+        if (!fgets(buf, buf_size, in)) {
             return 0;
         }
     } while (strchr(buf, '\n') == NULL);
@@ -75,7 +90,7 @@ static int read_till_nl(FILE *in) {
 
 /* Signal handling functions */
 static void pushsig(void) {
-# if !defined(_WIN32)
+# if !defined(OPENSSL_WINDOWS)
     struct sigaction sa;
     OPENSSL_cleanse(&sa, sizeof(sa));
 
@@ -103,35 +118,21 @@ static void pushsig(void) {
 # endif
 }
 
-static void popsig(void) {
-# if !defined(_WIN32)
-    int i;
-    for (i = 1; i < NUM_SIG; i++) {
-        if (i == SIGUSR1 || i == SIGUSR2 || i == SIGKILL) {
-          continue;
-        }
-        sigaction(i, &savsig[i], NULL);
-    }
-# else
-    signal(SIGABRT, savsig[SIGABRT]);
-    signal(SIGFPE, savsig[SIGFPE]);
-    signal(SIGILL, savsig[SIGILL]);
-    signal(SIGINT, savsig[SIGINT]);
-    signal(SIGSEGV, savsig[SIGSEGV]);
-    signal(SIGTERM, savsig[SIGTERM]);
-# endif
-}
-
-static void recsig(int signal) {
-    intr_signal = signal;
-}
-
 /* Console management functions */
-int openssl_console_open(void) {
+void openssl_console_acquire_mutex(void) {
     CRYPTO_STATIC_MUTEX_lock_write(&console_global_mutex);
-    is_a_tty = 1;
+}
 
-    # if !defined(_WIN32)
+void openssl_console_release_mutex(void) {
+    CRYPTO_STATIC_MUTEX_unlock_write(&console_global_mutex);
+}
+
+int openssl_console_open(void) {
+    is_a_tty = 1;
+    if (CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) != 1) {
+        return 0;
+    }
+#if !defined(OPENSSL_WINDOWS)
     if ((tty_in = fopen(DEV_TTY, "r")) == NULL) {
         tty_in = stdin;
     }
@@ -180,12 +181,11 @@ int openssl_console_close(void) {
         fclose(tty_out);
     }
 
-    CRYPTO_STATIC_MUTEX_unlock_write(&console_global_mutex);
     return 1;
 }
 
 static int openssl_console_echo_disable(void) {
-# if !defined(_WIN32)
+# if !defined(OPENSSL_WINDOWS)
     OPENSSL_memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
     tty_new.TTY_FLAGS &= ~ECHO;
 
@@ -199,11 +199,12 @@ static int openssl_console_echo_disable(void) {
         SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), tty_new);
     }
 # endif
+
     return 1;
 }
 
 static int openssl_console_echo_enable(void) {
-# if !defined(_WIN32)
+# if !defined(OPENSSL_WINDOWS)
     OPENSSL_memcpy(&(tty_new), &(tty_orig), sizeof(tty_orig));
     if (is_a_tty && (TTY_set(fileno(tty_in), &tty_new) == -1)) {
         return 0;
@@ -218,9 +219,13 @@ static int openssl_console_echo_enable(void) {
 }
 
 int openssl_console_write(const char *str) {
+    if (CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) != 1) {
+        return 0;
+    }
     if (fputs(str, tty_out) < 0 || fflush(tty_out) != 0) {
         return 0;
     }
+
     return 1;
 }
 
@@ -233,6 +238,10 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     intr_signal = 0;
     int phase = 0;
 
+    if (CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) != 1) {
+        return -1;
+    }
+
     pushsig();
     phase = 1;
 
@@ -242,7 +251,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     phase = 2;
 
     buf[0] = '\0';
-#  if defined(_WIN32)
+#  if defined(OPENSSL_WINDOWS)
     if (is_a_tty) {
         DWORD numread;
         // for now assuming UTF-8....
@@ -272,7 +281,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     // check if we see a new line, otherwise clear out remaining input buffer
     if ((p = strchr(buf, '\n')) != NULL) {
         *p = '\0';
-    } else if (!read_till_nl(tty_in)) {
+    } else if (!discard_line_remainder(tty_in)) {
         ok = -1;
         goto error;
     }
