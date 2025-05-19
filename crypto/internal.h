@@ -712,7 +712,6 @@ OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_write(
 OPENSSL_EXPORT int CRYPTO_STATIC_MUTEX_is_write_locked(
     struct CRYPTO_STATIC_MUTEX *lock);
 
-
 #if defined(__cplusplus)
 extern "C++" {
 

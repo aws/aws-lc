@@ -128,9 +128,8 @@ void openssl_console_release_mutex(void) {
 
 int openssl_console_open(void) {
     is_a_tty = 1;
-    if (CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) != 1) {
-        return 0;
-    }
+    assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) == 1);
+
 #if !defined(OPENSSL_WINDOWS)
     if ((tty_in = fopen(DEV_TTY, "r")) == NULL) {
         tty_in = stdin;
@@ -218,9 +217,7 @@ static int openssl_console_echo_enable(void) {
 }
 
 int openssl_console_write(const char *str) {
-    if (CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) != 1) {
-        return 0;
-    }
+    assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) == 1);
     if (fputs(str, tty_out) < 0 || fflush(tty_out) != 0) {
         return 0;
     }
@@ -237,9 +234,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
     intr_signal = 0;
     int phase = 0;
 
-    if (CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) != 1) {
-        return -1;
-    }
+    assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex) == 1);
 
     pushsig();
     phase = 1;

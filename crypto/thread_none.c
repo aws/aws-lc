@@ -36,6 +36,10 @@ void CRYPTO_STATIC_MUTEX_unlock_read(struct CRYPTO_STATIC_MUTEX *lock) {}
 
 void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {}
 
+int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
+  return 1;
+}
+
 void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
   if (*once) {
     return;
