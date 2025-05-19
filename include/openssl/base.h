@@ -110,7 +110,7 @@ extern "C" {
 // changes over time. The value itself is not meaningful. It will be incremented
 // whenever is convenient to coordinate an API change with consumers. This will
 // not denote any special point in development.
-//w
+//
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
