@@ -658,6 +658,12 @@ TEST_P(BIODgramTest, SocketDatagramSetConnected) {
       -1;
 #endif
 
+#if defined(__MINGW32__)
+// Mingw environments are inconsistent as to this behavior.
+  if (addr_family == AF_INET6) {
+    return;
+  }
+#endif
   ASSERT_EQ(expected_result,
             BIO_write(client_bio.get(), kTestMessage, sizeof(kTestMessage)))
       << LastSocketError();
