@@ -137,7 +137,6 @@ int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
   return -1;
 }
 
-
 void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
   if (pthread_once(once, init) != 0) {
     abort();
