@@ -276,30 +276,31 @@ Lxts_enc:
 
 .align	4
 Loop5x_xts_enc:
-	aese	v0.16b,v16.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v16.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v16.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v16.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v16.16b
-	aesmc	v26.16b,v26.16b
-	ld1	{v16.4s},[x7],#16
-	subs	w6,w6,#2
-	aese	v0.16b,v17.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v17.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v17.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v17.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v17.16b
-	aesmc	v26.16b,v26.16b
-	ld1	{v17.4s},[x7],#16
-	b.gt	Loop5x_xts_enc
+//	aese	v0.16b,v16.16b
+//	aesmc	v0.16b,v0.16b
+//	aese	v1.16b,v16.16b
+//	aesmc	v1.16b,v1.16b
+//	aese	v24.16b,v16.16b
+//	aesmc	v24.16b,v24.16b
+//	aese	v25.16b,v16.16b
+//	aesmc	v25.16b,v25.16b
+//	aese	v26.16b,v16.16b
+//	aesmc	v26.16b,v26.16b
+//	ld1	{v16.4s},[x7],#16
+//	subs	w6,w6,#2
+//	aese	v0.16b,v17.16b
+//	aesmc	v0.16b,v0.16b
+//	aese	v1.16b,v17.16b
+//	aesmc	v1.16b,v1.16b
+//	aese	v24.16b,v17.16b
+//	aesmc	v24.16b,v24.16b
+//	aese	v25.16b,v17.16b
+//	aesmc	v25.16b,v25.16b
+//	aese	v26.16b,v17.16b
+//	aesmc	v26.16b,v26.16b
+//	ld1	{v17.4s},[x7],#16
+//	b.gt	Loop5x_xts_enc
+
 
 	aese	v0.16b,v16.16b
 	aesmc	v0.16b,v0.16b
@@ -325,6 +326,72 @@ Loop5x_xts_enc:
 	aesmc	v26.16b,v26.16b
 	csel	x6,xzr,x2,gt    // borrow x6, w6, "gt" is not typo
 	mov	x7,x3
+
+	aese	v0.16b,v12.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v12.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v12.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v12.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v12.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v13.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v13.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v13.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v13.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v13.16b
+	aesmc	v26.16b,v26.16b
+
+   	aese	v0.16b,v14.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v14.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v14.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v14.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v14.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v15.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v15.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v15.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v15.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v15.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v4.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v4.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v4.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v4.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v4.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v5.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v5.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v5.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v5.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v5.16b
+	aesmc	v26.16b,v26.16b
 
 	aese	v0.16b,v18.16b
 	aesmc	v0.16b,v0.16b
