@@ -392,8 +392,8 @@ Loop5x_xts_enc:
 	aese	v26.16b,v23.16b
 
     //eor	v4.16b,v7.16b,v6.16b
-	eor	v0.16b,v0.16b,v6.16b
 	eor	v0.16b,v0.16b,v7.16b
+	eor	v0.16b,v0.16b,v6.16b
     //    aese    v0.16b,v23.16b
     // The iv for first block of one iteration
 	extr	x22,x10,x10,#32
@@ -414,7 +414,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d8,x9
 	fmov	v8.d[1],x10
-	eor	v17.16b,v7.16b,v9.16b
+	//eor	v17.16b,v7.16b,v9.16b
+    eor	v24.16b,v24.16b,v7.16b
+    eor	v24.16b,v24.16b,v9.16b
 	ld1	{v3.16b},[x0],#16
     //  aese    v24.16b,v23.16b
     // The iv for third block
@@ -424,7 +426,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d9,x9
 	fmov	v9.d[1],x10
-	eor	v30.16b,v7.16b,v10.16b
+	//eor	v30.16b,v7.16b,v10.16b
+    eor	v25.16b,v25.16b,v7.16b
+    eor	v25.16b,v25.16b,v10.16b
 	ld1	{v27.16b},[x0],#16
     //  aese    v25.16b,v23.16b
     // The iv for fourth block
@@ -434,7 +438,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d10,x9
 	fmov	v10.d[1],x10
-	eor	v31.16b,v7.16b,v11.16b
+	//eor	v31.16b,v7.16b,v11.16b
+    eor	v26.16b,v26.16b,v7.16b
+    eor	v26.16b,v26.16b,v11.16b
 	ld1	{v28.16b},[x0],#16
     //  aese    v26.16b,v23.16b
 
@@ -448,28 +454,29 @@ Loop5x_xts_enc:
 
 	ld1	{v29.16b},[x0],#16
 	cbz	x6,Lxts_enc_tail4x
-    st1  {v0.16b},[x1],#16
-    st1  {v1.16b},[x1],#16
+    st1  {v0.16b,v1.16b},[x1],#32
+    st1	{v24.16b,v25.16b},[x1],#32
+    st1	{v26.16b},[x1],#16
     //    vld1 {v16.4s},[x7],#16        // re-pre-load rndkey[0]
 	//eor	v4.16b,v4.16b,v0.16b
 	eor	v0.16b,v2.16b,v6.16b
 	//eor	v5.16b,v5.16b,v1.16b
 	eor	v1.16b,v3.16b,v8.16b
-	eor	v17.16b,v17.16b,v24.16b
+	//eor	v17.16b,v17.16b,v24.16b
 	eor	v24.16b,v27.16b,v9.16b
-	eor	v30.16b,v30.16b,v25.16b
+	//eor	v30.16b,v30.16b,v25.16b
 	eor	v25.16b,v28.16b,v10.16b
-	eor	v31.16b,v31.16b,v26.16b
+	//eor	v31.16b,v31.16b,v26.16b
     //st1  {v4.16b},[x1],#16
 	eor	v26.16b,v29.16b,v11.16b
     //st1  {v5.16b},[x1],#16
 	mov	w6,w5
 	//st1	{v4.16b,v5.16b},[x1],#32
-	st1	{v17.16b},[x1],#16
+	//st1	{v17.16b},[x1],#16
 //    vld1 {v17.4s},[x7],#16        // re-pre-load rndkey[1]
 //    vst1  {v30.16b},[x1],#16
 //    vst1  {v31.16b},[x1],#16
-	st1	{v30.16b,v31.16b},[x1],#32
+	//st1	{v30.16b,v31.16b},[x1],#32
 	ld1	{v16.4s},[x7],#16        // re-pre-load rndkey[0]
 	ld1	{v17.4s},[x7],#16        // re-pre-load rndkey[1]
 	b.hs	Loop5x_xts_enc
@@ -518,11 +525,13 @@ Lxts_enc_tail4x:
 	//eor	v5.16b,v1.16b,v5.16b
 	//st1	{v5.16b},[x1],#16
     st1  {v1.16b},[x1],#16
-	eor	v17.16b,v24.16b,v17.16b
-	st1	{v17.16b},[x1],#16
-	eor	v30.16b,v25.16b,v30.16b
-	eor	v31.16b,v26.16b,v31.16b
-	st1	{v30.16b,v31.16b},[x1],#32
+	//eor	v17.16b,v24.16b,v17.16b
+	//st1	{v17.16b},[x1],#16
+    st1	{v24.16b,v25.16b},[x1],#32
+	//eor	v30.16b,v25.16b,v30.16b
+	//eor	v31.16b,v26.16b,v31.16b
+	//st1	{v30.16b,v31.16b},[x1],#32
+    st1  {v26.16b},[x1],#16
 	b	Lxts_enc_done
 .align	4
 Lxts_outer_enc_tail:
