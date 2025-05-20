@@ -3086,6 +3086,14 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 // X509_CHECK_FLAG_NO_WILDCARDS disables wildcard matching for DNS names.
 #define X509_CHECK_FLAG_NO_WILDCARDS 0x2
 
+// X509_CHECK_FLAG_NEVER_CHECK_SUBJECT constrains host name patterns passed to |X509_check_host|
+// starting with '.' to only match a single label / subdomain.
+//
+// For example, by default the host name '.example.com' would match a certificate DNS name like
+// 'www.example.com' and 'www.foo.example.com'. Setting this flag would result in the same host name
+// only matching 'www.example.com' but not 'www.foo.example.com'.
+#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0x10
+
 // X509_CHECK_FLAG_NEVER_CHECK_SUBJECT disables the subject fallback, normally
 // enabled when subjectAltNames is missing.
 #define X509_CHECK_FLAG_NEVER_CHECK_SUBJECT 0x20
@@ -4997,7 +5005,6 @@ OPENSSL_EXPORT void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx,
 // The following flags do nothing. The corresponding non-standard options have
 // been removed.
 #define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
-#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
 
 // X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS does nothing, but is necessary in
 // OpenSSL to enable standard wildcard matching. In AWS-LC, this behavior is

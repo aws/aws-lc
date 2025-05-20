@@ -1869,6 +1869,69 @@ Lw6dQq2WGG6gApL/Cc0QonvzksvY5Ewf2qIpu2Si
 -----END CERTIFICATE-----
 )";
 
+/*
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            13:c1:63:e7:03:6f:a3:26:ac:31:71:a9:fe:ad:a6:34:20:94:bf:3a
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Root CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Good Endpoint, SN=Wildcard Testing, CN=*.sub2.example.com
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:b2:b7:bd:35:f2:eb:da:86:d5:dc:40:44:c7:23:
+                    14:f9:d0:a5:40:17:30:85:b6:c6:11:38:c2:db:2c:
+                    c5:bc:0c:19:11:d8:68:61:d6:a3:92:6b:8a:18:52:
+                    2c:dc:86:a7:ad:29:ad:91:ac:7e:df:87:24:3b:f3:
+                    b4:71:2b:4e:58
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name:
+                DNS:*.sub1.example.com, DNS:*.example.org, DNS:host.example.com
+            X509v3 Subject Key Identifier:
+                C8:78:64:E9:F7:9C:0F:56:E2:1D:CE:EE:ED:24:E0:9F:1D:4B:A3:BF
+            X509v3 Authority Key Identifier:
+                19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:45:02:20:13:bc:6c:9c:3b:8e:c7:95:e7:9f:31:08:dd:7f:
+        6c:ea:97:4e:29:01:72:b5:9c:45:f1:29:bc:d7:ce:39:5a:21:
+        02:21:00:f5:77:2c:9d:23:6d:71:69:4d:93:eb:7e:fd:a5:17:
+        24:37:ee:97:01:4f:1c:54:09:cd:3d:87:e9:1d:da:5f:7e
+*/
+static char kFoo[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICsDCCAlagAwIBAgIUE8Fj5wNvoyasMXGp/q2mNCCUvzowCgYIKoZIzj0EAwIw
+YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
+MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowgYoxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRYwFAYDVQQKDA1BV1MgTGliY3J5cHRv
+MRYwFAYDVQQLDA1Hb29kIEVuZHBvaW50MRkwFwYDVQQEDBBXaWxkY2FyZCBUZXN0
+aW5nMRswGQYDVQQDDBIqLnN1YjIuZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggq
+hkjOPQMBBwNCAASyt7018uvahtXcQETHIxT50KVAFzCFtsYROMLbLMW8DBkR2Ghh
+1qOSa4oYUizchqetKa2RrH7fhyQ787RxK05Yo4HAMIG9MA4GA1UdDwEB/wQEAwIF
+oDAMBgNVHRMBAf8EAjAAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjA+
+BgNVHREENzA1ghIqLnN1YjEuZXhhbXBsZS5jb22CDSouZXhhbXBsZS5vcmeCEGhv
+c3QuZXhhbXBsZS5jb20wHQYDVR0OBBYEFMh4ZOn3nA9W4h3O7u0k4J8dS6O/MB8G
+A1UdIwQYMBaAFBkZ4YwJ4l1cFgThnHRmGf24UlvfMAoGCCqGSM49BAMCA0gAMEUC
+IBO8bJw7jseV558xCN1/bOqXTikBcrWcRfEpvNfOOVohAiEA9XcsnSNtcWlNk+t+
+/aUXJDfulwFPHFQJzT2H6R3aX34=
+-----END CERTIFICATE-----
+)";
+
 // EE certificate should not verify if signed by invalid root CA
 TEST(X509CompatTest, CertificatesFromTrustStoreValidated) {
   bssl::UniquePtr<X509> root = CertFromPEM(kRootBadBasicConstraints);
@@ -2367,3 +2430,121 @@ TEST(X509CompatTest, CommonNameToDNS) {
   }
 }
 
+
+TEST(X509CompatTest, WildcardNameBehaviors) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> leaf = CertFromPEM(kFoo);
+  ASSERT_TRUE(leaf);
+
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            Verify(
+                leaf.get(), /*roots=*/{root.get()},
+                /*intermediates=*/{},
+                /*crls=*/{}, /*flags=*/0,
+                [](X509_STORE_CTX *ctx) {
+                  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                  char host[] = "example.com";
+                  X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = "host.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = "foo.sub1.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  // *.sub2.example.com is in the commonName so not checked by default if DNS
+  // SAN is present
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = "bar.sub2.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_set_hostflags(
+                         param, X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT);
+                     char host[] = "bar.sub2.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = "baz.example.org";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+
+  // client-side host name verification behavior with leading '.'
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = ".example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = ".sub1.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     char host[] = ".sub2.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_set_hostflags(
+                         param, X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT);
+                     char host[] = ".sub2.example.com";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_set_hostflags(
+                         param, X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT);
+                     char host[] = ".example.org";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            Verify(leaf.get(), /*roots=*/{root.get()},
+                   /*intermediates=*/{},
+                   /*crls=*/{}, /*flags=*/0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_set_hostflags(
+                         param, X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT);
+                     char host[] = ".baz.example.org";
+                     X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                   }));
+}

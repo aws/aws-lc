@@ -9,10 +9,11 @@
 
 #include <openssl/x509.h>
 
-int Verify(X509 *leaf, const std::vector<X509 *> &roots,
-           const std::vector<X509 *> &intermediates,
-           const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-           std::function<void(X509_STORE_CTX *)> configure_callback = nullptr);
+int Verify(
+    X509 *leaf, const std::vector<X509 *> &roots,
+    const std::vector<X509 *> &intermediates,
+    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
+    std::function<void(X509_STORE_CTX *)> configure_callback = nullptr);
 
 // CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
 // STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
