@@ -196,24 +196,24 @@ Loop_iv_enc:
 	ld1	{v0.16b},[x0],x8
 
 	ld1	{v16.4s,v17.4s},[x3]         // load key schedule...
-	sub	w5,w5,#6
-	add	x7,x3,x5,lsl#4  // pointer to last 7 round keys
-	ld1	{v18.4s,v19.4s},[x7],#32
-	ld1	{v20.4s,v21.4s},[x7],#32
-	ld1	{v22.4s,v23.4s},[x7],#32
-	ld1	{v7.4s},[x7]
+//	sub	w5,w5,#6
+//	add	x7,x3,x5,lsl#4  // pointer to last 7 round keys
+//	ld1	{v18.4s,v19.4s},[x7],#32
+//	ld1	{v20.4s,v21.4s},[x7],#32
+//	ld1	{v22.4s,v23.4s},[x7],#32
+//	ld1	{v7.4s},[x7]
 
-////	add	x7,x3,#32
+	add	x7,x3,#32
     ld1 {v12.4s,v13.4s},[x7], #32
 	ld1	{v14.4s,v15.4s},[x7], #32
-    ld1 {v4.4s},       [x7], #16
-////    ld1	{v18.4s,v19.4s},[x7], #32
-////	ld1	{v20.4s,v21.4s},[x7], #32
-////	ld1	{v22.4s,v23.4s},[x7], #32
-////	ld1	{v7.4s},        [x7]
+    ld1 {v4.4s,v5.4s},  [x7], #32
+    ld1	{v18.4s,v19.4s},[x7], #32
+	ld1	{v20.4s,v21.4s},[x7], #32
+	ld1	{v22.4s,v23.4s},[x7], #32
+	ld1	{v7.4s},        [x7]
 
-
-	sub	w5,w5,#2
+//	sub	w5,w5,#2
+	sub	w5,w5,#8
 	add	x7,x3,#32
 	mov	w6,w5
 
@@ -391,6 +391,7 @@ Loop5x_xts_enc:
 	aese	v25.16b,v23.16b
 	aese	v26.16b,v23.16b
 
+    //eor	v4.16b,v7.16b,v6.16b
 	eor	v0.16b,v0.16b,v6.16b
 	eor	v0.16b,v0.16b,v7.16b
     //    aese    v0.16b,v23.16b
@@ -401,7 +402,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d6,x9
 	fmov	v6.d[1],x10
-	eor	v5.16b,v7.16b,v8.16b
+	//eor	v5.16b,v7.16b,v8.16b
+    eor	v1.16b,v1.16b,v7.16b
+    eor	v1.16b,v1.16b,v8.16b
 	ld1	{v2.16b},[x0],#16
     //  aese    v1.16b,v23.16b
     // The iv for second block
@@ -446,10 +449,11 @@ Loop5x_xts_enc:
 	ld1	{v29.16b},[x0],#16
 	cbz	x6,Lxts_enc_tail4x
     st1  {v0.16b},[x1],#16
-//    vld1 {v16.4s},[x7],#16        // re-pre-load rndkey[0]
+    st1  {v1.16b},[x1],#16
+    //    vld1 {v16.4s},[x7],#16        // re-pre-load rndkey[0]
 	//eor	v4.16b,v4.16b,v0.16b
 	eor	v0.16b,v2.16b,v6.16b
-	eor	v5.16b,v5.16b,v1.16b
+	//eor	v5.16b,v5.16b,v1.16b
 	eor	v1.16b,v3.16b,v8.16b
 	eor	v17.16b,v17.16b,v24.16b
 	eor	v24.16b,v27.16b,v9.16b
@@ -458,7 +462,7 @@ Loop5x_xts_enc:
 	eor	v31.16b,v31.16b,v26.16b
     //st1  {v4.16b},[x1],#16
 	eor	v26.16b,v29.16b,v11.16b
-    st1  {v5.16b},[x1],#16
+    //st1  {v5.16b},[x1],#16
 	mov	w6,w5
 	//st1	{v4.16b,v5.16b},[x1],#32
 	st1	{v17.16b},[x1],#16
@@ -511,8 +515,9 @@ Loop5x_enc_after:
 .align	4
 Lxts_enc_tail4x:
 	add	x0,x0,#16
-	eor	v5.16b,v1.16b,v5.16b
-	st1	{v5.16b},[x1],#16
+	//eor	v5.16b,v1.16b,v5.16b
+	//st1	{v5.16b},[x1],#16
+    st1  {v1.16b},[x1],#16
 	eor	v17.16b,v24.16b,v17.16b
 	st1	{v17.16b},[x1],#16
 	eor	v30.16b,v25.16b,v30.16b
