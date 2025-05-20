@@ -183,7 +183,7 @@ class AwsLcCiPipeline(Stack):
             schedule=events.Schedule.cron(
                 minute="0",
                 hour="15",
-                # weekday="TUE", #TODO: Uncomment this line. It's running everyday now to make sure I didn't break anything
+                week_day="TUE",
             ),
             targets=[targets.CodePipeline(pipeline=base_pipeline)],
         )
