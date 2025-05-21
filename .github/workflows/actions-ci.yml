@@ -326,10 +326,6 @@ jobs:
             compiler: 'gcc15'
           - fips: 1
             compiler: 'clang20'
-          - fips: 0
-            compiler: 'gcc13'
-          - fips: 0
-            compiler: 'clang19'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
