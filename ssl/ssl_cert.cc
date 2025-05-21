@@ -322,8 +322,8 @@ static int cert_set_chain_and_key(
   CERT_PKEY *cert_pkey = &cert->cert_private_keys[slot_idx];
 
   // If privatekey is currently set then reset it.
-  // We are will either and a new privatekey or will be setting
-  // a |privkey_method| which will affect all slots.
+  // We either set a new |privatekey| or |privkey_method|
+  // later below.
   if (cert_pkey->privatekey) {
     cert_pkey->privatekey.reset();
   }

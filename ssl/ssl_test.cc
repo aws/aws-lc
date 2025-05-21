@@ -13691,19 +13691,6 @@ static const SSL_PRIVATE_KEY_METHOD test_ecc_private_key_method = {
     test_ecc_privkey_complete,
 };
 
-static bssl::UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509) {
-  uint8_t *buf = NULL;
-  int cert_len = i2d_X509(x509, &buf);
-  if (cert_len <= 0) {
-    return 0;
-  }
-
-  UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(buf, cert_len, NULL));
-  OPENSSL_free(buf);
-
-  return buffer;
-}
-
 TEST(SSLTest, SSLPrivateKeyMethod) {
   {
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -13729,6 +13716,9 @@ TEST(SSLTest, SSLPrivateKeyMethod) {
                                           chain.size(), nullptr,
                                           &test_ecc_private_key_method));
 
+    // Should be initiall zero
+    ASSERT_EQ(test_ecc_privkey_calls, (size_t)0);
+
     // Index must be ECC key now, but key_method must be set.
     ASSERT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
     ASSERT_EQ(server_ctx->cert->key_method, &test_ecc_private_key_method);
@@ -13740,6 +13730,8 @@ TEST(SSLTest, SSLPrivateKeyMethod) {
 
     ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
+    ASSERT_EQ(test_ecc_privkey_calls, (size_t)1);
+
     // Check the internal slot index to verify that the correct slot was used
     // during the handshake.
     ASSERT_EQ(server->config->cert->cert_private_key_idx, SSL_PKEY_ECC);
@@ -13747,6 +13739,8 @@ TEST(SSLTest, SSLPrivateKeyMethod) {
   }
 
   {
+    size_t current_invoke_count = test_ecc_privkey_calls;
+
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
     bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
 
@@ -13769,7 +13763,7 @@ TEST(SSLTest, SSLPrivateKeyMethod) {
                                           ed_chain.size(), ed_key.get(),
                                           nullptr));
 
-    // Index must be ECC key now, but key_method must be set.
+    // Index must be ECC key now, but key_method must not be set.
     ASSERT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_ED25519);
     ASSERT_EQ(server_ctx->cert->key_method, nullptr);
 
@@ -13787,10 +13781,12 @@ TEST(SSLTest, SSLPrivateKeyMethod) {
 
     ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-    ASSERT_EQ(test_ecc_privkey_calls, (size_t)1);
+    // This should still be the same, as we didn't use the private key method
+    // functionality, so it shouldn't have incremented.
+    ASSERT_EQ(test_ecc_privkey_calls, current_invoke_count);
 
     // Check the internal slot index to verify that the correct slot was used
-    // during the handshake.
+    // during the handshake and that key_method was not set.
     ASSERT_EQ(server->config->cert->cert_private_key_idx, SSL_PKEY_ED25519);
     ASSERT_EQ(server->config->cert->key_method, nullptr);
   }
