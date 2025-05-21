@@ -331,6 +331,10 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+  if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND (CMAKE_C_COMPILER_VERSION VERSION_GREATER "19.99.99"))
+    set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-Wno-unused-command-line-argument")
+  endif()
+
   set(TARGET "")
   if(CMAKE_ASM_COMPILER_TARGET)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
