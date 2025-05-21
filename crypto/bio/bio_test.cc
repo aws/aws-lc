@@ -313,15 +313,34 @@ TEST(BIOTest, MemReadOnly) {
   EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
   EXPECT_TRUE(BIO_should_read(bio.get()));
 
-  // Rewind buffer
+  // Rewind buffer when buffer pointer aligns with read pointer
+  const uint8_t *contents = nullptr;
+  size_t len = 0;
   ret = BIO_seek(bio.get(), 3);
   ASSERT_EQ(ret, 3);
   check_bio_contents(Bytes("defghijklmno\npqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
+  // Rewind buffer when buffer pointer does not align with read pointer
+  EXPECT_GT(BIO_read(bio.get(), buf, sizeof(buf)), 0);
+  ret = BIO_seek(bio.get(), 4);
+  ASSERT_EQ(ret, 4);
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  EXPECT_EQ(Bytes(contents, len), Bytes("efghijklmno\npqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Reset buffer when buffer pointer aligns with read pointer
   ret = BIO_reset(bio.get());
   ASSERT_EQ(ret, 1);
   check_bio_contents(Bytes(kData));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Reset buffer when buffer pointer does not align with read pointer
+  EXPECT_GT(BIO_read(bio.get(), buf, sizeof(buf)), 0);
+  ret = BIO_reset(bio.get());
+  ASSERT_EQ(ret, 1);
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  EXPECT_EQ(Bytes(contents, len), Bytes(kData));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read exactly the right number of bytes, to test the boundary condition is
