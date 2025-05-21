@@ -5,13 +5,23 @@
   <navindex>
     <tab type="mainpage" visible="yes" title=""/>
     <tab type="files" visible="yes" title="">
-      <tab type="filelist" visible="yes" title="" intro=""/>
-      <tab type="globals" visible="yes" title="" intro=""/>
+      <tab type="filelist" visible="yes" title="Tree" intro=""/>
+      <tab type="globals" visible="$ALPHABETICAL_INDEX" title="Index" intro=""/>
     </tab>
-    <tab type="examples" visible="yes" title="" intro=""/>
-    <tab type="concepts" visible="yes" title="">
+    <tab type="classes" visible="yes" title="Data Structures">
+      <tab type="classlist" visible="yes" title="Tree" intro=""/>
+      <tab type="classindex" visible="$ALPHABETICAL_INDEX" title="Index"/>
+      <tab type="hierarchy" visible="no" title="" intro=""/>
+      <tab type="classmembers" visible="no" title="" intro=""/>
+    </tab>
+    <tab type="structs" visible="yes" title="">
+      <tab type="structlist" visible="yes" title="" intro=""/>
+      <tab type="structindex" visible="$ALPHABETICAL_INDEX" title=""/>
+    </tab>
     <tab type="pages" visible="yes" title="" intro=""/>
     <tab type="topics" visible="yes" title="" intro=""/>
+    <tab type="examples" visible="yes" title="" intro=""/>
+    <tab type="concepts" visible="yes" title="">
     <tab type="modules" visible="no" title="" intro="">
       <tab type="modulelist" visible="yes" title="" intro=""/>
       <tab type="modulemembers" visible="yes" title="" intro=""/>
@@ -26,16 +36,6 @@
       <tab type="interfaceindex" visible="$ALPHABETICAL_INDEX" title=""/>
       <tab type="interfacehierarchy" visible="yes" title="" intro=""/>
     </tab>
-    <tab type="classes" visible="no" title="">
-      <tab type="classlist" visible="yes" title="" intro=""/>
-      <tab type="classindex" visible="$ALPHABETICAL_INDEX" title=""/>
-      <tab type="hierarchy" visible="yes" title="" intro=""/>
-      <tab type="classmembers" visible="yes" title="" intro=""/>
-    </tab>
-    <tab type="structs" visible="yes" title="">
-      <tab type="structlist" visible="yes" title="" intro=""/>
-      <tab type="structindex" visible="$ALPHABETICAL_INDEX" title=""/>
-    </tab>
     <tab type="exceptions" visible="no" title="">
       <tab type="exceptionlist" visible="yes" title="" intro=""/>
       <tab type="exceptionindex" visible="$ALPHABETICAL_INDEX" title=""/>
@@ -43,12 +43,13 @@
     </tab>
   </navindex>
 
-  <!-- Layout definition for a class page -->
+  <!-- Layout definition for a class (including structs) page -->
   <class>
     <briefdescription visible="yes"/>
     <includes visible="$SHOW_HEADERFILE"/>
-    <inheritancegraph visible="yes"/>
-    <collaborationgraph visible="yes"/>
+    <detaileddescription visible="yes" title=""/>
+    <inheritancegraph visible="no"/>
+    <collaborationgraph visible="no"/>
     <memberdecl>
       <nestedclasses visible="yes" title=""/>
       <publictypes visible="yes" title=""/>
@@ -83,7 +84,6 @@
       <related visible="yes" title="" subtitle=""/>
       <membergroups visible="yes"/>
     </memberdecl>
-    <detaileddescription visible="yes" title=""/>
     <memberdef>
       <inlineclasses visible="yes" title=""/>
       <typedefs visible="yes" title=""/>
@@ -120,7 +120,7 @@
       <functions visible="yes" title=""/>
       <variables visible="yes" title=""/>
       <properties visible="yes" title=""/>
-      <membergroups visible="yes" visible="yes"/>
+      <membergroups visible="yes" title=""/>
     </memberdecl>
     <detaileddescription visible="yes" title=""/>
     <memberdef>
@@ -148,37 +148,37 @@
   <!-- Layout definition for a file page -->
   <file>
     <briefdescription visible="yes"/>
+    <sourcelink visible="yes"/>
     <includes visible="$SHOW_INCLUDE_FILES"/>
     <detaileddescription visible="yes" title=""/>
-    <includegraph visible="yes"/>
-    <includedbygraph visible="yes"/>
-    <sourcelink visible="yes"/>
+    <includegraph visible="no"/>
+    <includedbygraph visible="no"/>
     <memberdecl>
+      <defines visible="yes" title=""/>
+      <enums visible="yes" title=""/>
+      <structs visible="yes" title=""/>
+      <functions visible="yes" title=""/>
+      <typedefs visible="yes" title=""/>
       <interfaces visible="yes" title=""/>
       <classes visible="yes" title=""/>
-      <structs visible="yes" title=""/>
       <exceptions visible="yes" title=""/>
       <namespaces visible="yes" title=""/>
       <concepts visible="yes" title=""/>
       <constantgroups visible="yes" title=""/>
-      <defines visible="yes" title=""/>
-      <typedefs visible="yes" title=""/>
       <sequences visible="yes" title=""/>
       <dictionaries visible="yes" title=""/>
-      <enums visible="yes" title=""/>
-      <functions visible="yes" title=""/>
       <variables visible="yes" title=""/>
       <properties visible="yes" title=""/>
-      <membergroups visible="yes" visible="yes"/>
+      <membergroups visible="yes" title=""/>
     </memberdecl>
     <memberdef>
       <inlineclasses visible="yes" title=""/>
       <defines visible="yes" title=""/>
+      <enums visible="yes" title=""/>
+      <functions visible="yes" title=""/>
       <typedefs visible="yes" title=""/>
       <sequences visible="yes" title=""/>
       <dictionaries visible="yes" title=""/>
-      <enums visible="yes" title=""/>
-      <functions visible="yes" title=""/>
       <variables visible="yes" title=""/>
       <properties visible="yes" title=""/>
     </memberdef>

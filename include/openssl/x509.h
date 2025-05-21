@@ -3485,7 +3485,7 @@ OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 /// SignedPublicKeyAndChallenge structures.
 ///
 /// The SignedPublicKeyAndChallenge (SPKAC) is a legacy structure to request
-/// certificates, primarily in the legacy <keygen> HTML tag. An SPKAC structure
+/// certificates, primarily in the legacy `<keygen>` HTML tag. An SPKAC structure
 /// is represented by a |NETSCAPE_SPKI| structure.
 ///
 /// The structure is described in

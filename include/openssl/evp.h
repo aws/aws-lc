@@ -1395,20 +1395,24 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, c
                               const char *value);
 
 
-/// Preprocessor compatibility section (hidden).
-///
-/// Historically, a number of APIs were implemented in OpenSSL as macros and
-/// constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this
-/// section defines a number of legacy macros.
-
-/// |BORINGSSL_PREFIX| already makes each of these symbols into macros, so there
-/// is no need to define conflicting macros.
+/**
+ * @name Preprocessor compatibility section (hidden)
+ * Historically, a number of APIs were implemented in OpenSSL as macros and
+ * constants to 'ctrl' functions. To avoid breaking `#ifdefs` in consumers, this
+ * section defines a number of legacy macros.
+ *
+ * `BORINGSSL_PREFIX` already makes each of these symbols into macros, so there
+ * is no need to define conflicting macros.
+ *
+ * @{
+ */
 #if !defined(BORINGSSL_PREFIX)
 #define EVP_PKEY_CTX_set_rsa_oaep_md EVP_PKEY_CTX_set_rsa_oaep_md
 #define EVP_PKEY_CTX_set0_rsa_oaep_label EVP_PKEY_CTX_set0_rsa_oaep_label
 #define EVP_MD_name EVP_MD_name
 #define EVP_MD_pkey_type EVP_MD_pkey_type
 #endif
+/** @} Preprocessor compatibility section (hidden) */
 
 
 /// Nodejs compatibility section (hidden).

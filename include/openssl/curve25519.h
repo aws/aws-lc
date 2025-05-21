@@ -226,7 +226,7 @@ OPENSSL_EXPORT int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out,
 /// |*out_key_len| to the number of bytes written.
 ///
 /// The resulting keying material is suitable for:
-///    - Using directly in a key-confirmation step: i.e. each side could
+///   - Using directly in a key-confirmation step: i.e. each side could
 ///      transmit a hash of their role, a channel-binding value and the key
 ///      material to prove to the other side that they know the shared key.
 ///   -  Using as input keying material to HKDF to generate a variety of subkeys

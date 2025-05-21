@@ -1673,7 +1673,7 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 /// and it's easy to commit typos. Strict functions will also reject the use of
 /// spaces, semi-colons and commas as alternative separators.
 ///
-/// The special |@STRENGTH| directive will sort all enabled ciphers by strength.
+/// The special `@STRENGTH` directive will sort all enabled ciphers by strength.
 ///
 /// The |DEFAULT| directive, when appearing at the front of the string, expands
 /// to the default ordering of available ciphers.
@@ -6038,10 +6038,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 /// Preprocessor compatibility section (hidden).
 ///
 /// Historically, a number of APIs were implemented in OpenSSL as macros and
-/// constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this
+/// constants to 'ctrl' functions. To avoid breaking `#ifdefs` in consumers, this
 /// section defines a number of legacy macros.
 ///
-/// Although using either the CTRL values or their wrapper macros in #ifdefs is
+/// Although using either the CTRL values or their wrapper macros in `#ifdefs` is
 /// still supported, the CTRL values may not be passed to |SSL_ctrl| and
 /// |SSL_CTX_ctrl|. Call the functions (previously wrapper macros) instead.
 ///

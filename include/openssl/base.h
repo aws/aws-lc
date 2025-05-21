@@ -16,7 +16,7 @@
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgment:
  *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+ *    for use in the OpenSSL Toolkit. (http:///www.openssl.org/)"
  *
  * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
  *    endorse or promote products derived from this software without
@@ -30,7 +30,7 @@
  * 6. Redistributions of any form whatsoever must retain the following
  *    acknowledgment:
  *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+ *    for use in the OpenSSL Toolkit (http:///www.openssl.org/)"
  *
  * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
  * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -54,7 +54,7 @@
 #define OPENSSL_HEADER_BASE_H
 
 
-// This file should be the first included by all BoringSSL headers.
+/// This file should be the first included by all BoringSSL headers.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -62,7 +62,7 @@
 #include <sys/types.h>
 
 #if defined(__MINGW32__)
-// stdio.h is needed on MinGW for __MINGW_PRINTF_FORMAT.
+/// stdio.h is needed on MinGW for __MINGW_PRINTF_FORMAT.
 #include <stdio.h>
 #endif
 
@@ -70,12 +70,12 @@
 #include <TargetConditionals.h>
 #endif
 
-// Include an AWS-LC-only header so consumers including this header without
-// setting up include paths do not accidentally pick up the system
-// opensslconf.h.
+/// Include an AWS-LC-only header so consumers including this header without
+/// setting up include paths do not accidentally pick up the system
+/// opensslconf.h.
 #include <openssl/is_awslc.h>
 #include <openssl/opensslconf.h>
-#include <openssl/target.h>  // IWYU pragma: export
+#include <openssl/target.h>  /// IWYU pragma: export
 
 #include <openssl/boringssl_prefix_symbols.h>
 
@@ -88,8 +88,8 @@ extern "C" {
 #endif
 
 #if defined(__APPLE__)
-// Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
-// targets macOS specifically.
+/// Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
+/// targets macOS specifically.
 #if defined(TARGET_OS_OSX) && TARGET_OS_OSX
 #define OPENSSL_MACOS
 #endif
@@ -100,28 +100,28 @@ extern "C" {
 
 #define AWSLC_VERSION_NAME "AWS-LC"
 #define OPENSSL_IS_AWSLC
-// |OPENSSL_VERSION_NUMBER| should match the version number in opensslv.h.
+/// |OPENSSL_VERSION_NUMBER| should match the version number in opensslv.h.
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
-// BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users interpreting AWSLC as BoringSSL.
-// Below are BoringSSL's comments on BORINGSSL_API_VERSION.
-// BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL
-// changes over time. The value itself is not meaningful. It will be incremented
-// whenever is convenient to coordinate an API change with consumers. This will
-// not denote any special point in development.
-//
-// A consumer may use this symbol in the preprocessor to temporarily build
-// against multiple revisions of BoringSSL at the same time. It is not
-// recommended to do so for longer than is necessary.
+/// BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users interpreting AWSLC as BoringSSL.
+/// Below are BoringSSL's comments on BORINGSSL_API_VERSION.
+/// BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL
+/// changes over time. The value itself is not meaningful. It will be incremented
+/// whenever is convenient to coordinate an API change with consumers. This will
+/// not denote any special point in development.
+///
+/// A consumer may use this symbol in the preprocessor to temporarily build
+/// against multiple revisions of BoringSSL at the same time. It is not
+/// recommended to do so for longer than is necessary.
 #define AWSLC_API_VERSION 33
 
-// This string tracks the most current production release version on Github
-// https://github.com/aws/aws-lc/releases.
-// When bumping the encoded version number, also update the test fixture:
-// ServiceIndicatorTest.AWSLCVersionString
-// Note: there are two versions of this test. Only one test is compiled
-// depending on FIPS mode.
+/// This string tracks the most current production release version on Github
+/// https:///github.com/aws/aws-lc/releases.
+/// When bumping the encoded version number, also update the test fixture:
+/// ServiceIndicatorTest.AWSLCVersionString
+/// Note: there are two versions of this test. Only one test is compiled
+/// depending on FIPS mode.
 #define AWSLC_VERSION_NUMBER_STRING "1.51.2"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
@@ -134,7 +134,7 @@ extern "C" {
 #define OPENSSL_EXPORT __declspec(dllimport)
 #endif
 
-#else  // defined(OPENSSL_WINDOWS)
+#else  /// defined(OPENSSL_WINDOWS)
 
 #if defined(BORINGSSL_IMPLEMENTATION)
 #define OPENSSL_EXPORT __attribute__((visibility("default")))
@@ -142,9 +142,9 @@ extern "C" {
 #define OPENSSL_EXPORT
 #endif
 
-#endif  // defined(OPENSSL_WINDOWS)
+#endif  /// defined(OPENSSL_WINDOWS)
 
-#else  // defined(BORINGSSL_SHARED_LIBRARY)
+#else  /// defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)
 #define OPENSSL_EXPORT
@@ -152,22 +152,22 @@ extern "C" {
 #define OPENSSL_EXPORT __attribute__((visibility("default")))
 #endif
 
-#endif  // defined(BORINGSSL_SHARED_LIBRARY)
+#endif  /// defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(_MSC_VER)
 
-// OPENSSL_DEPRECATED is used to mark a function as deprecated. Use
-// of any functions so marked in caller code will produce a warning.
-// OPENSSL_BEGIN_ALLOW_DEPRECATED and OPENSSL_END_ALLOW_DEPRECATED
-// can be used to suppress the warning in regions of caller code.
+/// OPENSSL_DEPRECATED is used to mark a function as deprecated. Use
+/// of any functions so marked in caller code will produce a warning.
+/// OPENSSL_BEGIN_ALLOW_DEPRECATED and OPENSSL_END_ALLOW_DEPRECATED
+/// can be used to suppress the warning in regions of caller code.
 #define OPENSSL_DEPRECATED __declspec(deprecated)
 #define OPENSSL_BEGIN_ALLOW_DEPRECATED \
   __pragma(warning(push)) __pragma(warning(disable : 4996))
 #define OPENSSL_END_ALLOW_DEPRECATED __pragma(warning(pop))
 
 #elif (defined(__GNUC__) && ((__GNUC__ > 4) ||  (__GNUC_MINOR__ >= 6))) || defined(__clang__)
-// `_Pragma("GCC diagnostic push")` was added in GCC 4.6
-// http://gcc.gnu.org/gcc-4.6/changes.html
+/// `_Pragma("GCC diagnostic push")` was added in GCC 4.6
+/// http:///gcc.gnu.org/gcc-4.6/changes.html
 #define OPENSSL_DEPRECATED __attribute__((__deprecated__))
 #define OPENSSL_BEGIN_ALLOW_DEPRECATED \
   _Pragma("GCC diagnostic push")       \
@@ -184,9 +184,9 @@ extern "C" {
 
 
 #if defined(__GNUC__) || defined(__clang__)
-// MinGW has two different printf implementations. Ensure the format macro
-// matches the selected implementation. See
-// https://sourceforge.net/p/mingw-w64/wiki2/gnu%20printf/.
+/// MinGW has two different printf implementations. Ensure the format macro
+/// matches the selected implementation. See
+/// https:///sourceforge.net/p/mingw-w64/wiki2/gnu%20printf/.
 #if defined(__MINGW_PRINTF_FORMAT)
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
   __attribute__(                                                 \
@@ -199,14 +199,14 @@ extern "C" {
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
 #endif
 
-// OPENSSL_CLANG_PRAGMA emits a pragma on clang and nothing on other compilers.
+/// OPENSSL_CLANG_PRAGMA emits a pragma on clang and nothing on other compilers.
 #if defined(__clang__)
 #define OPENSSL_CLANG_PRAGMA(arg) _Pragma(arg)
 #else
 #define OPENSSL_CLANG_PRAGMA(arg)
 #endif
 
-// OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers.
+/// OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers.
 #if defined(_MSC_VER)
 #define OPENSSL_MSVC_PRAGMA(arg) __pragma(arg)
 #else
@@ -219,32 +219,32 @@ extern "C" {
 #define OPENSSL_UNUSED
 #endif
 
-// C and C++ handle inline functions differently. In C++, an inline function is
-// defined in just the header file, potentially emitted in multiple compilation
-// units (in cases the compiler did not inline), but each copy must be identical
-// to satsify ODR. In C, a non-static inline must be manually emitted in exactly
-// one compilation unit with a separate extern inline declaration.
-//
-// In both languages, exported inline functions referencing file-local symbols
-// are problematic. C forbids this altogether (though GCC and Clang seem not to
-// enforce it). It works in C++, but ODR requires the definitions be identical,
-// including all names in the definitions resolving to the "same entity". In
-// practice, this is unlikely to be a problem, but an inline function that
-// returns a pointer to a file-local symbol
-// could compile oddly.
-//
-// Historically, we used static inline in headers. However, to satisfy ODR, use
-// plain inline in C++, to allow inline consumer functions to call our header
-// functions. Plain inline would also work better with C99 inline, but that is
-// not used much in practice, extern inline is tedious, and there are conflicts
-// with the old gnu89 model:
-// https://stackoverflow.com/questions/216510/extern-inline
+/// C and C++ handle inline functions differently. In C++, an inline function is
+/// defined in just the header file, potentially emitted in multiple compilation
+/// units (in cases the compiler did not inline), but each copy must be identical
+/// to satsify ODR. In C, a non-static inline must be manually emitted in exactly
+/// one compilation unit with a separate extern inline declaration.
+///
+/// In both languages, exported inline functions referencing file-local symbols
+/// are problematic. C forbids this altogether (though GCC and Clang seem not to
+/// enforce it). It works in C++, but ODR requires the definitions be identical,
+/// including all names in the definitions resolving to the "same entity". In
+/// practice, this is unlikely to be a problem, but an inline function that
+/// returns a pointer to a file-local symbol
+/// could compile oddly.
+///
+/// Historically, we used static inline in headers. However, to satisfy ODR, use
+/// plain inline in C++, to allow inline consumer functions to call our header
+/// functions. Plain inline would also work better with C99 inline, but that is
+/// not used much in practice, extern inline is tedious, and there are conflicts
+/// with the old gnu89 model:
+/// https:///stackoverflow.com/questions/216510/extern-inline
 #if defined(__cplusplus)
 #define OPENSSL_INLINE inline
 #else
-// Add OPENSSL_UNUSED so that, should an inline function be emitted via macro
-// (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
-// clang's -Wunused-function.
+/// Add OPENSSL_UNUSED so that, should an inline function be emitted via macro
+/// (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
+/// clang's -Wunused-function.
 #define OPENSSL_INLINE static inline OPENSSL_UNUSED
 #endif
 
@@ -254,24 +254,24 @@ extern "C" {
 #define OPENSSL_NOINLINE __attribute__((noinline))
 #endif
 
-// ossl_ssize_t is a signed type which is large enough to fit the size of any
-// valid memory allocation. We prefer using |size_t|, but sometimes we need a
-// signed type for OpenSSL API compatibility. This type can be used in such
-// cases to avoid overflow.
-//
-// Not all |size_t| values fit in |ossl_ssize_t|, but all |size_t| values that
-// are sizes of or indices into C objects, can be converted without overflow.
+/// ossl_ssize_t is a signed type which is large enough to fit the size of any
+/// valid memory allocation. We prefer using |size_t|, but sometimes we need a
+/// signed type for OpenSSL API compatibility. This type can be used in such
+/// cases to avoid overflow.
+///
+/// Not all |size_t| values fit in |ossl_ssize_t|, but all |size_t| values that
+/// are sizes of or indices into C objects, can be converted without overflow.
 typedef ptrdiff_t ossl_ssize_t;
 
-// CBS_ASN1_TAG is the type used by |CBS| and |CBB| for ASN.1 tags. See that
-// header for details. This type is defined in base.h as a forward declaration.
+/// CBS_ASN1_TAG is the type used by |CBS| and |CBB| for ASN.1 tags. See that
+/// header for details. This type is defined in base.h as a forward declaration.
 typedef uint32_t CBS_ASN1_TAG;
 
-// CRYPTO_THREADID is a dummy value.
+/// CRYPTO_THREADID is a dummy value.
 typedef int CRYPTO_THREADID;
 
-// An |ASN1_NULL| is an opaque type. asn1.h represents the ASN.1 NULL value as
-// an opaque, non-NULL |ASN1_NULL*| pointer.
+/// An |ASN1_NULL| is an opaque type. asn1.h represents the ASN.1 NULL value as
+/// an opaque, non-NULL |ASN1_NULL*| pointer.
 typedef struct asn1_null_st ASN1_NULL;
 
 typedef int ASN1_BOOLEAN;
@@ -347,7 +347,14 @@ typedef struct evp_aead_st EVP_AEAD;
 typedef struct evp_aead_ctx_st EVP_AEAD_CTX;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
+
+/**
+ * @typedef EVP_ENCODE_CTX
+ * @copydoc evp_encode_ctx_st
+ * @see evp_encode_ctx_st
+ */
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
+
 typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
 typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
 typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
@@ -418,7 +425,7 @@ typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
 
-// BSSL_CHECK aborts if |condition| is not true.
+/// BSSL_CHECK aborts if |condition| is not true.
 #define BSSL_CHECK(condition) \
   do {                        \
     if (!(condition)) {       \
@@ -427,7 +434,7 @@ typedef void *OPENSSL_BLOCK;
   } while (0);
 
 #if defined(__cplusplus)
-}  // extern C
+}  /// extern C
 #elif !defined(BORINGSSL_NO_CXX)
 #define BORINGSSL_NO_CXX
 #endif
@@ -444,9 +451,9 @@ typedef void *OPENSSL_BLOCK;
 #define BSSL_NAMESPACE_END }
 #endif
 
-// MSVC doesn't set __cplusplus to 201103 to indicate C++11 support (see
-// https://connect.microsoft.com/VisualStudio/feedback/details/763051/a-value-of-predefined-macro-cplusplus-is-still-199711l)
-// so MSVC is just assumed to support C++11.
+/// MSVC doesn't set __cplusplus to 201103 to indicate C++11 support (see
+/// https:///connect.microsoft.com/VisualStudio/feedback/details/763051/a-value-of-predefined-macro-cplusplus-is-still-199711l)
+/// so MSVC is just assumed to support C++11.
 #if !defined(BORINGSSL_NO_CXX) && __cplusplus < 201103L && !defined(_MSC_VER)
 #define BORINGSSL_NO_CXX
 #endif
@@ -457,13 +464,13 @@ extern "C++" {
 
 #include <memory>
 
-// STLPort, used by some Android consumers, not have std::unique_ptr.
+/// STLPort, used by some Android consumers, not have std::unique_ptr.
 #if defined(_STLPORT_VERSION)
 #define BORINGSSL_NO_CXX
 #endif
 
-}  // extern C++
-#endif  // !BORINGSSL_NO_CXX
+}  /// extern C++
+#endif  /// !BORINGSSL_NO_CXX
 
 #if defined(BORINGSSL_NO_CXX)
 
@@ -478,22 +485,22 @@ BSSL_NAMESPACE_BEGIN
 
 namespace internal {
 
-// The Enable parameter is ignored and only exists so specializations can use
-// SFINAE.
+/// The Enable parameter is ignored and only exists so specializations can use
+/// SFINAE.
 template <typename T, typename Enable = void>
 struct DeleterImpl {};
 
 struct Deleter {
   template <typename T>
   void operator()(T *ptr) {
-    // Rather than specialize Deleter for each type, we specialize
-    // DeleterImpl. This allows bssl::UniquePtr<T> to be used while only
-    // including base.h as long as the destructor is not emitted. This matches
-    // std::unique_ptr's behavior on forward-declared types.
-    //
-    // DeleterImpl itself is specialized in the corresponding module's header
-    // and must be included to release an object. If not included, the compiler
-    // will error that DeleterImpl<T> does not have a method Free.
+    /// Rather than specialize Deleter for each type, we specialize
+    /// DeleterImpl. This allows bssl::UniquePtr<T> to be used while only
+    /// including base.h as long as the destructor is not emitted. This matches
+    /// std::unique_ptr's behavior on forward-declared types.
+    ///
+    /// DeleterImpl itself is specialized in the corresponding module's header
+    /// and must be included to release an object. If not included, the compiler
+    /// will error that DeleterImpl<T> does not have a method Free.
     DeleterImpl<T>::Free(ptr);
   }
 };
@@ -554,7 +561,7 @@ class StackAllocatedMovable {
   T ctx_;
 };
 
-}  // namespace internal
+}  /// namespace internal
 
 #define BORINGSSL_MAKE_DELETER(type, deleter)     \
   namespace internal {                            \
@@ -564,9 +571,9 @@ class StackAllocatedMovable {
   };                                              \
   }
 
-// Holds ownership of heap-allocated BoringSSL structures. Sample usage:
-//   bssl::UniquePtr<RSA> rsa(RSA_new());
-//   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+/// Holds ownership of heap-allocated BoringSSL structures. Sample usage:
+///   bssl::UniquePtr<RSA> rsa(RSA_new());
+///   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
 template <typename T>
 using UniquePtr = std::unique_ptr<T, internal::Deleter>;
 
@@ -584,8 +591,8 @@ using UniquePtr = std::unique_ptr<T, internal::Deleter>;
 
 BSSL_NAMESPACE_END
 
-}  // extern C++
+}  /// extern C++
 
-#endif  // !BORINGSSL_NO_CXX
+#endif  /// !BORINGSSL_NO_CXX
 
-#endif  // OPENSSL_HEADER_BASE_H
+#endif  /// OPENSSL_HEADER_BASE_H

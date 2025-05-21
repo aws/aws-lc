@@ -163,7 +163,7 @@ OPENSSL_EXPORT int OPENSSL_isalnum(int c);
 OPENSSL_EXPORT int OPENSSL_tolower(int c);
 
 /// OPENSSL_isspace is a locale-independent, ASCII-only version of isspace(3). It
-/// only recognizes '\t', '\n', '\v', '\f', '\r', and ' '.
+/// only recognizes `\t`, `\n`, `\v`, `\f`, `\r`, and ` `.
 OPENSSL_EXPORT int OPENSSL_isspace(int c);
 
 /// OPENSSL_strcasecmp is a locale-independent, ASCII-only version of
