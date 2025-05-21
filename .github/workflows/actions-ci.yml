@@ -251,81 +251,102 @@ jobs:
       matrix:
         fips: [0, 1]
         compiler:
-          - ['gcc9',    1, 'gcc',   'g++']
-          - ['gcc10',   1, 'gcc',   'g++']
-          - ['gcc11',   1, 'gcc',   'g++']
-          - ['gcc12',   1, 'gcc',   'g++']
-          - ['gcc13',   1, 'gcc',   'g++']
-          - ['gcc14',   0, 'gcc',   'g++']
-          - ['gcc15',   0, 'gcc',   'g++']
-          - ['gcc16',   0, 'gcc',   'g++']
-          - ['clang14', 1, 'clang', 'clang++']
-          - ['clang15', 1, 'clang', 'clang++']
-          - ['clang16', 1, 'clang', 'clang++']
-          - ['clang17', 1, 'clang', 'clang++']
-          - ['clang18', 1, 'clang', 'clang++']
-          - ['clang19', 1, 'clang', 'clang++']
-          - ['clang20', 1, 'clang', 'clang++']
-          - ['clang21', 1, 'clang', 'clang++']
+          - 'gcc9'
+          - 'gcc10'
+          - 'gcc11'
+          - 'gcc12'
+          - 'gcc13'
+          - 'gcc14'
+          - 'gcc15'
+          - 'gcc16'
+          - 'clang14'
+          - 'clang15'
+          - 'clang16'
+          - 'clang17'
+          - 'clang18'
+          - 'clang19'
+          - 'clang20'
+          - 'clang21'
+        exclude:
+          - fips: 1
+            compiler: 'gcc14'
+          - fips: 1
+            compiler: 'gcc15'
+          - fips: 1
+            compiler: 'gcc16'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler[0] }}
+      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v4
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
       - uses: actions/setup-go@v4
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
         with:
           go-version: '>=1.18'
+      - name: Setup Clang
+        if: startsWith(matrix.compiler, 'clang')
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+      - name: Setup GCC
+        if: startsWith(matrix.compiler, 'gcc')
+        run: |
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
       - name: Setup Build
         if: matrix.fips == 0
         run:
-          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release
       - name: Setup FIPS Build
-        if: matrix.fips == 1 && matrix.compiler[1] == 1
+        if: matrix.fips == 1
         run:
-          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release -DFIPS=1
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=1
       - name: Build Project
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target all
       - name: Run tests
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target run_tests
 
   pedantic-tests:
     env:
-      CC: gcc
-      CXX: g++
+      GOFLAGS: "-buildvcs=false"
     strategy:
       fail-fast: false
       matrix:
-        fips: [ 0, 1 ]
+        fips: [0, 1]
         compiler:
-          - [ 'gcc15',   0, 'gcc',   'g++' ]
-          - [ 'clang20', 1, 'clang', 'clang++' ]
+          - 'gcc15'
+          - 'clang20'
+        exclude:
+          - fips: 1
+            compiler: 'gcc15'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler[0] }}
+      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v4
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
       - uses: actions/setup-go@v4
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
         with:
           go-version: '>=1.18'
+      - name: Setup Clang
+        if: startsWith(matrix.compiler, 'clang')
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+      - name: Setup GCC
+        if: startsWith(matrix.compiler, 'gcc')
+        run: |
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
       - name: Setup Build
         if: matrix.fips == 0
         run:
-          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
       - name: Setup FIPS Build
-        if: matrix.fips == 1 && matrix.compiler[1] == 1
+        if: matrix.fips == 1
         run:
-          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic -DFIPS=1
+          cmake -G Ninja -B ./build  -DCMAKE_BUILD_TYPE=Release -DFIPS=1 CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
       - name: Build Project
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target all
       - name: Run tests
-        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target run_tests
 
   OpenBSD:
