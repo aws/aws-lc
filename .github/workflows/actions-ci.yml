@@ -164,49 +164,6 @@ jobs:
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
-  gcc-ubuntu-2004-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    strategy:
-      fail-fast: false
-      matrix:
-        gccversion:
-          - "10"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
-    container:
-      image: ubuntu:20.04
-    steps:
-      - run: |
-          env DEBIAN_FRONTEND=noninteractive apt-get update
-          env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git curl cmake ninja-build \
-            gcc-${{ matrix.gccversion }} g++-${{ matrix.gccversion }}
-      - name: Install Newer Go Compiler
-        run: |
-          curl -L -o /tmp/go.tar.gz https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-          cat <<EOF >/tmp/go.tar.gz.sha256
-          68097bd680839cbc9d464a0edce4f7c333975e27a90246890e9f1078c7e702ad  /tmp/go.tar.gz
-          EOF
-          sha256sum -c /tmp/go.tar.gz.sha256
-          (cd /usr/local && tar xvf /tmp/go.tar.gz)
-      - name: Checkout
-        run: |
-          git config --global --add safe.directory '*'
-          git clone --recursive ${{ github.server_url }}/${{ github.repository }}.git .
-          git fetch origin ${{ github.sha }}
-          git checkout --recurse-submodules -b ci-job ${{ github.sha }}
-      - name: Build Project
-        run: |
-          env PATH="/usr/local/go/bin:${PATH}" \
-            CC=gcc-${{ matrix.gccversion }} CXX=g++-${{ matrix.gccversion }} \
-            cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DFIPS=${{ matrix.fips }} -GNinja
-          cmake --build build --target all
-      - name: Run Tests
-        run: |
-          cmake --build build --target run_tests
-
   clang-ubuntu-2004-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
@@ -250,151 +207,6 @@ jobs:
         run: |
           cmake --build build --target run_tests
 
-  gcc-ubuntu-2204-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    strategy:
-      fail-fast: false
-      matrix:
-        gccversion:
-          - "10"
-          - "11"
-          - "12"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-${{ matrix.gccversion }}
-          cxx-compiler: g++-${{ matrix.gccversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        run: cmake --build ./build --target all
-      - name: Run tests
-        run: cmake --build ./build --target run_tests
-
-  gcc-ubuntu-2404-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    strategy:
-      fail-fast: false
-      matrix:
-        gccversion:
-          - "12"
-          - "13"
-          - "14"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-${{ matrix.gccversion }}
-          cxx-compiler: g++-${{ matrix.gccversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        # TODO: Re-enable gcc-14/FIPS build once delocator updated
-        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
-        run: cmake --build ./build --target all
-      - name: Run tests
-        # TODO: Re-enable gcc-14/FIPS build once delocator updated
-        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
-        run: cmake --build ./build --target run_tests
-
-  gcc-14-hardened:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    strategy:
-      fail-fast: false
-      matrix:
-        gccversion:
-          - "14"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-${{ matrix.gccversion }}
-          cxx-compiler: g++-${{ matrix.gccversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        # -Wno-error=hardened gives us warning but no errors if options implied by -fhardened are downgraded or disabled
-        # Ubuntu sets FORTIFY_SOURCE automatically which is one of the options implemented by hardened so this warning is
-        # generated on every compiler call.
-        # TODO: Re-enable gcc-14/FIPS build once delocator updated
-        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
-        run: |
-          cmake -DCMAKE_C_FLAGS='-O2 -fhardened -Wno-error=hardened' -S. -Bbuild
-          cmake --build ./build --target all
-      - name: Run tests
-        # TODO: Re-enable gcc-14/FIPS build once delocator updated
-        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
-        run: cmake --build ./build --target run_tests
-
-  gcc-13-pedantic:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-13
-          cxx-compiler: g++-13
-          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
-      - name: Build Crypto
-        run: cmake --build ./build --target crypto
-      - name: Build SSL
-        run: cmake --build ./build --target ssl
-
-  clang-19-pedantic:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install clang-19
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod u+x llvm.sh
-          sudo ./llvm.sh 19
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-19
-          cxx-compiler: clang++-19
-          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
-      - name: Build Crypto
-        run: cmake --build ./build --target crypto
-      - name: Build SSL
-        run: cmake --build ./build --target ssl
-
   clang-ubuntu-2204-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
@@ -405,8 +217,6 @@ jobs:
           - "11"
           - "12"
           - "13"
-          - "14"
-          - "15"
         fips:
           - "0"
           - "1"
@@ -433,67 +243,89 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
-  clang-ubuntu-2404-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
+  compiler-tests:
+    env:
+      GOFLAGS: "-buildvcs=false"
     strategy:
       fail-fast: false
       matrix:
-        clangversion:
-          - "16"
-          - "17"
-          - "18"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-24.04
+        fips: [0, 1]
+        compiler:
+          - ['gcc9',    1, 'gcc',   'g++']
+          - ['gcc10',   1, 'gcc',   'g++']
+          - ['gcc11',   1, 'gcc',   'g++']
+          - ['gcc12',   1, 'gcc',   'g++']
+          - ['gcc13',   1, 'gcc',   'g++']
+          - ['gcc14',   0, 'gcc',   'g++']
+          - ['gcc15',   0, 'gcc',   'g++']
+          - ['gcc16',   0, 'gcc',   'g++']
+          - ['clang14', 1, 'clang', 'clang++']
+          - ['clang15', 1, 'clang', 'clang++']
+          - ['clang16', 1, 'clang', 'clang++']
+          - ['clang17', 1, 'clang', 'clang++']
+          - ['clang18', 1, 'clang', 'clang++']
+          - ['clang19', 1, 'clang', 'clang++']
+          - ['clang20', 1, 'clang', 'clang++']
+          - ['clang21', 1, 'clang', 'clang++']
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler[0] }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
       - uses: actions/setup-go@v4
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
         with:
           go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-${{ matrix.clangversion }}
-          cxx-compiler: clang++-${{ matrix.clangversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Setup Build
+        if: matrix.fips == 0
+        run:
+          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release
+      - name: Setup FIPS Build
+        if: matrix.fips == 1 && matrix.compiler[1] == 1
+        run:
+          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release -DFIPS=1
       - name: Build Project
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target all
       - name: Run tests
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target run_tests
 
-  clang-19-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
+  pedantic-tests:
+    env:
+      CC: gcc
+      CXX: g++
     strategy:
       fail-fast: false
       matrix:
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
+        fips: [ 0, 1 ]
+        compiler:
+          - [ 'gcc15',   0, 'gcc',   'g++' ]
+          - [ 'clang20', 1, 'clang', 'clang++' ]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler[0] }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
       - uses: actions/setup-go@v4
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
         with:
           go-version: '>=1.18'
-      - name: Install clang-19
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod u+x llvm.sh
-          sudo ./llvm.sh 19
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-19
-          cxx-compiler: clang++-19
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Setup Build
+        if: matrix.fips == 0
+        run:
+          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+      - name: Setup FIPS Build
+        if: matrix.fips == 1 && matrix.compiler[1] == 1
+        run:
+          cmake -G Ninja -B ./build -DCMAKE_C_COMPILER=${{ matrix.compiler[2] }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler[3] }} -DCMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic -DFIPS=1
       - name: Build Project
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target all
       - name: Run tests
+        if: matrix.fips == 0 || matrix.compiler[1] == 1
         run: cmake --build ./build --target run_tests
 
   OpenBSD:
