@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <signal.h>
-#if defined(_WIN32)
+#if defined(OPENSSL_WINDOWS)
 #include <io.h>
 #define dup _dup
 #define dup2 _dup2
@@ -489,8 +489,8 @@ class PemPasswdTest : public testing::Test {
  protected:
   void SetUp() override {
     // Save original file descriptors
-    original_stdin = dup(fileno(stdin));
-    original_stderr = dup(fileno(stderr));
+    original_stdin = dup(STDIN_FILENO);
+    original_stderr = dup(STDERR_FILENO);
     
     // Create temporary files
     stdin_file = createRawTempFILE();
@@ -499,8 +499,8 @@ class PemPasswdTest : public testing::Test {
     ASSERT_TRUE(stderr_file != nullptr);
     
     // Redirect stdin/stderr to our temp files
-    ASSERT_NE(-1, dup2(fileno(stdin_file), fileno(stdin)));
-    ASSERT_NE(-1, dup2(fileno(stderr_file), fileno(stderr)));
+    ASSERT_NE(-1, dup2(fileno(stdin_file), STDIN_FILENO));
+    ASSERT_NE(-1, dup2(fileno(stderr_file), STDERR_FILENO));
 
     // Initialize console for each test
     openssl_console_acquire_mutex();
@@ -511,11 +511,10 @@ class PemPasswdTest : public testing::Test {
     // Close console for each test
     ASSERT_TRUE(openssl_console_close());
     openssl_console_release_mutex();
+    
     // Restore original streams
-    ASSERT_NE(-1, dup2(original_stdin, fileno(stdin)));
-    ASSERT_NE(-1, dup2(original_stderr, fileno(stderr)));
-    close(original_stdin);
-    close(original_stderr);
+    ASSERT_NE(-1, dup2(original_stdin, STDIN_FILENO));
+    ASSERT_NE(-1, dup2(original_stderr, STDERR_FILENO));
     
     // Close temp files
     if (stdin_file) {
@@ -552,8 +551,8 @@ class PemPasswdTest : public testing::Test {
     ASSERT_TRUE(stderr_file != nullptr);
 
     // Redirect stdin/stderr to our NEW temp files
-    ASSERT_NE(-1, dup2(fileno(stdin_file), fileno(stdin)));
-    ASSERT_NE(-1, dup2(fileno(stderr_file), fileno(stderr)));
+    ASSERT_NE(-1, dup2(fileno(stdin_file), STDIN_FILENO));
+    ASSERT_NE(-1, dup2(fileno(stderr_file), STDERR_FILENO));
   }
 
 
