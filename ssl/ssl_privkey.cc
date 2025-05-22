@@ -104,6 +104,7 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
 
   // Update certificate slot index once all checks have passed.
   cert->cert_private_keys[idx].privatekey = UpRef(pkey);
+  cert->key_method = nullptr; // key_method should be cleared since we've set a private key
   cert->cert_private_key_idx = idx;
   return true;
 }

@@ -170,7 +170,7 @@ static void check_ssl_ctx_x509_method(const SSL_CTX *ctx) {
 
 // x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
 // contents of |x509|.
-static UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509) {
+UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509) {
   uint8_t *buf = NULL;
   int cert_len = i2d_X509(x509, &buf);
   if (cert_len <= 0) {
