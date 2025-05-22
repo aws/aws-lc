@@ -1,5 +1,5 @@
-# The following xts encrypt is from MacBook M3 build folder
-# after moving around some instructions
+// The following xts encrypt is from MacBook M3 build folder
+// after moving around some instructions
 
 #if !defined(__has_feature)
 #define __has_feature(x) 0
@@ -276,32 +276,6 @@ Lxts_enc:
 
 .align	4
 Loop5x_xts_enc:
-//	aese	v0.16b,v16.16b
-//	aesmc	v0.16b,v0.16b
-//	aese	v1.16b,v16.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v16.16b
-//	aesmc	v24.16b,v24.16b
-//	aese	v25.16b,v16.16b
-//	aesmc	v25.16b,v25.16b
-//	aese	v26.16b,v16.16b
-//	aesmc	v26.16b,v26.16b
-//	ld1	{v16.4s},[x7],#16
-//	subs	w6,w6,#2
-//	aese	v0.16b,v17.16b
-//	aesmc	v0.16b,v0.16b
-//	aese	v1.16b,v17.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v17.16b
-//	aesmc	v24.16b,v24.16b
-//	aese	v25.16b,v17.16b
-//	aesmc	v25.16b,v25.16b
-//	aese	v26.16b,v17.16b
-//	aesmc	v26.16b,v26.16b
-//	ld1	{v17.4s},[x7],#16
-//	b.gt	Loop5x_xts_enc
-
-
 	aese	v0.16b,v16.16b
 	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v16.16b
@@ -458,10 +432,8 @@ Loop5x_xts_enc:
 	aese	v25.16b,v23.16b
 	aese	v26.16b,v23.16b
 
-    //eor	v4.16b,v7.16b,v6.16b
 	eor	v0.16b,v0.16b,v7.16b
 	eor	v0.16b,v0.16b,v6.16b
-    //    aese    v0.16b,v23.16b
     // The iv for first block of one iteration
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -473,7 +445,6 @@ Loop5x_xts_enc:
     eor	v1.16b,v1.16b,v7.16b
     eor	v1.16b,v1.16b,v8.16b
 	ld1	{v2.16b},[x0],#16
-    //  aese    v1.16b,v23.16b
     // The iv for second block
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -481,11 +452,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d8,x9
 	fmov	v8.d[1],x10
-	//eor	v17.16b,v7.16b,v9.16b
     eor	v24.16b,v24.16b,v7.16b
     eor	v24.16b,v24.16b,v9.16b
     ld1	{v3.16b},[x0],#16
-    //  aese    v24.16b,v23.16b
     // The iv for third block
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -493,11 +462,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d9,x9
 	fmov	v9.d[1],x10
-	//eor	v30.16b,v7.16b,v10.16b
     eor	v25.16b,v25.16b,v7.16b
     eor	v25.16b,v25.16b,v10.16b
 	ld1	{v27.16b},[x0],#16
-    //  aese    v25.16b,v23.16b
     // The iv for fourth block
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -505,11 +472,9 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d10,x9
 	fmov	v10.d[1],x10
-	//eor	v31.16b,v7.16b,v11.16b
     eor	v26.16b,v26.16b,v7.16b
     eor	v26.16b,v26.16b,v11.16b
 	ld1	{v28.16b},[x0],#16
-    //  aese    v26.16b,v23.16b
 
     // The iv for fifth block
 	extr	x22,x10,x10,#32
@@ -524,26 +489,12 @@ Loop5x_xts_enc:
     st1  {v0.16b,v1.16b},[x1],#32
     st1	{v24.16b,v25.16b},[x1],#32
     st1	{v26.16b},[x1],#16
-    //    vld1 {v16.4s},[x7],#16        // re-pre-load rndkey[0]
-	//eor	v4.16b,v4.16b,v0.16b
 	eor	v0.16b,v2.16b,v6.16b
-	//eor	v5.16b,v5.16b,v1.16b
 	eor	v1.16b,v3.16b,v8.16b
-	//eor	v17.16b,v17.16b,v24.16b
 	eor	v24.16b,v27.16b,v9.16b
-	//eor	v30.16b,v30.16b,v25.16b
 	eor	v25.16b,v28.16b,v10.16b
-	//eor	v31.16b,v31.16b,v26.16b
-    //st1  {v4.16b},[x1],#16
 	eor	v26.16b,v29.16b,v11.16b
-    //st1  {v5.16b},[x1],#16
 	mov	w6,w5
-	//st1	{v4.16b,v5.16b},[x1],#32
-	//st1	{v17.16b},[x1],#16
-//    vld1 {v17.4s},[x7],#16        // re-pre-load rndkey[1]
-//    vst1  {v30.16b},[x1],#16
-//    vst1  {v31.16b},[x1],#16
-	//st1	{v30.16b,v31.16b},[x1],#32
 	ld1	{v16.4s},[x7],#16        // re-pre-load rndkey[0]
 	ld1	{v17.4s},[x7],#16        // re-pre-load rndkey[1]
     add x12,x2,#0x50            // loop control for SLOTHY
@@ -591,15 +542,8 @@ Loop5x_enc_after:
 .align	4
 Lxts_enc_tail4x:
 	add	x0,x0,#16
-	//eor	v5.16b,v1.16b,v5.16b
-	//st1	{v5.16b},[x1],#16
     st1  {v1.16b},[x1],#16
-	//eor	v17.16b,v24.16b,v17.16b
-	//st1	{v17.16b},[x1],#16
     st1	{v24.16b,v25.16b},[x1],#32
-	//eor	v30.16b,v25.16b,v30.16b
-	//eor	v31.16b,v26.16b,v31.16b
-	//st1	{v30.16b,v31.16b},[x1],#32
     st1  {v26.16b},[x1],#16
 	b	Lxts_enc_done
 .align	4
@@ -670,49 +614,17 @@ Lxts_outer_enc_tail:
 	fmov	v6.d[1],x10
 	eor	v5.16b,v8.16b,v7.16b
 	csel	x6,x2,x6,lo   // x6, w6, is zero at this point
-//    aese    v0.16b,v17.16b
-//    aesmc   v0.16b,v0.16b
-//    aese    v1.16b,v17.16b
-//    aesmc   v1.16b,v1.16b
-//    aese    v24.16b,v17.16b
-//    aesmc   v24.16b,v24.16b
-//    veor    v17.16b,v9.16b,v7.16b
 
 	add	x6,x6,#0x20
 	add	x0,x0,x6
 	mov	x7,x3
 
-//    aese    v0.16b,v20.16b
-//    aesmc   v0.16b,v0.16b
-//    aese    v1.16b,v20.16b
-//    aesmc   v1.16b,v1.16b
-//    aese    v24.16b,v20.16b
-//    aesmc   v24.16b,v24.16b
-//    aese    v0.16b,v21.16b
-//    aesmc   v0.16b,v0.16b
-//    aese    v1.16b,v21.16b
-//    aesmc   v1.16b,v1.16b
-//    aese    v24.16b,v21.16b
-//    aesmc   v24.16b,v24.16b
-//    aese    v0.16b,v22.16b
-//    aesmc   v0.16b,v0.16b
-//    aese    v1.16b,v22.16b
-//    aesmc   v1.16b,v1.16b
-//    aese    v24.16b,v22.16b
-//    aesmc   v24.16b,v24.16b
-//    aese    v0.16b,v23.16b
-//    aese    v1.16b,v23.16b
-//    aese    v24.16b,v23.16b
 	ld1	{v27.16b},[x0],#16
 	add	w6,w5,#2
-//    vld1 {v16.4s},[x7],#16        // re-pre-load rndkey[0]
 	eor	v4.16b,v4.16b,v0.16b
 	eor	v5.16b,v5.16b,v1.16b
 	eor	v24.16b,v24.16b,v17.16b
-//    vld1 {v17.4s},[x7],#16        // re-pre-load rndkey[1]
 	ld1	{v16.4s,v17.4s},[x7],#32
-//    vst1  {v4.16b},[x1],#16
-//    vst1  {v5.16b},[x1],#16
 	st1	{v4.16b,v5.16b},[x1],#32
 	st1	{v24.16b},[x1],#16
 	cmn	x2,#0x30
@@ -843,8 +755,6 @@ Loop_final_enc:
 
 Lxts_abort:
 	ldp	x21,x22,[sp,#16]
-//	ldp	d8,d9,[sp,#32]
-//	ldp	d10,d11,[sp,#16]
 	ldp	x19,x20,[sp],#32
 Lxts_enc_final_abort:
     restore_vregs

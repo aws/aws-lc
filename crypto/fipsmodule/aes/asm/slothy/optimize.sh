@@ -110,10 +110,11 @@ if [ "$SKIP_EXISTING" = "" ]; then
     SKIP_EXISTING=0
 fi
 
+#    -l Loop_enc_iv_enc                                 \
+
 optimize_x5() {
     slothy-cli Arm_AArch64 $MODEL                      \
     ${INFILE}                                          \
-#    -l Loop_enc_iv_enc                                 \
     -l Loop5x_xts_enc                                  \
     -c inputs_are_outputs                              \
     -c sw_pipelining.enabled=true                      \
