@@ -145,8 +145,6 @@ Lxts_enc_big_size:
    // Encrypt input size > 16 bytes
 	stp	x19,x20,[sp,#-32]!
 	stp	x21,x22,[sp,#16]
-//	stp	d8,d9,[sp,#32]
-//	stp	d10,d11,[sp,#16]
 
     // tailcnt store the tail value of length%16.
 	and	x21,x2,#0xf
@@ -195,15 +193,8 @@ Loop_iv_enc:
 	ldr	w5,[x3,#240]       // next starting point
 	ld1	{v0.16b},[x0],x8
 
-	ld1	{v16.4s,v17.4s},[x3]         // load key schedule...
-//	sub	w5,w5,#6
-//	add	x7,x3,x5,lsl#4  // pointer to last 7 round keys
-//	ld1	{v18.4s,v19.4s},[x7],#32
-//	ld1	{v20.4s,v21.4s},[x7],#32
-//	ld1	{v22.4s,v23.4s},[x7],#32
-//	ld1	{v7.4s},[x7]
-
-	add	x7,x3,#32
+    mov x7, x3
+	ld1	{v16.4s,v17.4s},[x7], #32         // load key schedule...
     ld1 {v12.4s,v13.4s},[x7], #32
 	ld1	{v14.4s,v15.4s},[x7], #32
     ld1 {v4.4s,v5.4s},  [x7], #32
@@ -212,7 +203,6 @@ Loop_iv_enc:
 	ld1	{v22.4s,v23.4s},[x7], #32
 	ld1	{v7.4s},        [x7]
 
-//	sub	w5,w5,#2
 	sub	w5,w5,#8
 	add	x7,x3,#32
 	mov	w6,w5
@@ -222,10 +212,7 @@ Lxts_enc:
 	ld1	{v24.16b},[x0],#16
 	subs	x2,x2,#32           // bias
 	add	w6,w5,#2
-	//orr	v3.16b,v0.16b,v0.16b
-	//orr	v1.16b,v0.16b,v0.16b
 	orr	v28.16b,v0.16b,v0.16b
-	//orr	v27.16b,v24.16b,v24.16b
 	orr	v29.16b,v24.16b,v24.16b
 	b.lo	Lxts_inner_enc_tail    // when input size % 5 = 1 or 2
                                     // (with tail or not)
