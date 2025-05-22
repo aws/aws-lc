@@ -358,7 +358,7 @@ int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
   mem_buf_sync((BIO *)bio);
 
   if (out_contents != NULL) {
-    *out_contents = (b->data != NULL) ? (uint8_t *)&b->data[bbm->read_off] : NULL;
+    *out_contents = (uint8_t *)b->data;
   }
   if(out_len) {
     *out_len = b->length;
