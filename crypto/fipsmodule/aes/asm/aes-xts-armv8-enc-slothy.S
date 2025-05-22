@@ -143,10 +143,10 @@ Lxts_enc_round_loop:
 .align	4
 Lxts_enc_big_size:
    // Encrypt input size > 16 bytes
-	stp	x19,x20,[sp,#-64]!
-	stp	x21,x22,[sp,#48]
-	stp	d8,d9,[sp,#32]
-	stp	d10,d11,[sp,#16]
+	stp	x19,x20,[sp,#-32]!
+	stp	x21,x22,[sp,#16]
+//	stp	d8,d9,[sp,#32]
+//	stp	d10,d11,[sp,#16]
 
     // tailcnt store the tail value of length%16.
 	and	x21,x2,#0xf
@@ -484,7 +484,7 @@ Loop5x_xts_enc:
 	//eor	v17.16b,v7.16b,v9.16b
     eor	v24.16b,v24.16b,v7.16b
     eor	v24.16b,v24.16b,v9.16b
-	ld1	{v3.16b},[x0],#16
+    ld1	{v3.16b},[x0],#16
     //  aese    v24.16b,v23.16b
     // The iv for third block
 	extr	x22,x10,x10,#32
@@ -546,6 +546,8 @@ Loop5x_xts_enc:
 	//st1	{v30.16b,v31.16b},[x1],#32
 	ld1	{v16.4s},[x7],#16        // re-pre-load rndkey[0]
 	ld1	{v17.4s},[x7],#16        // re-pre-load rndkey[1]
+    add x12,x2,#0x50            // loop control for SLOTHY
+    subs x12,x12,#0x50
 	b.hs	Loop5x_xts_enc
 
 
@@ -840,10 +842,10 @@ Loop_final_enc:
 	st1	{v26.16b},[x1]
 
 Lxts_abort:
-	ldp	x21,x22,[sp,#48]
-	ldp	d8,d9,[sp,#32]
-	ldp	d10,d11,[sp,#16]
-	ldp	x19,x20,[sp],#64
+	ldp	x21,x22,[sp,#16]
+//	ldp	d8,d9,[sp,#32]
+//	ldp	d10,d11,[sp,#16]
+	ldp	x19,x20,[sp],#32
 Lxts_enc_final_abort:
     restore_vregs
     add sp, sp, #STACK_SIZE_VREGS
