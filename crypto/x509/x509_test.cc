@@ -4874,11 +4874,13 @@ TEST(X509Test, SignatureVerification) {
             Verify(leaf.valid.get(), {root.valid.get()},
                    {intermediate.bad_key_type.get()}, {}));
 
-  // Bad keys in the leaf are ignored. The leaf's key is used by the caller.
-  EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key.get(), {root.valid.get()},
-                              {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key_type.get(), {root.valid.get()},
-                              {intermediate.valid.get()}, {}));
+  // Bad keys in the leaf are rejected.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY,
+            Verify(leaf.bad_key.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY,
+            Verify(leaf.bad_key_type.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}));
 
   // At the time we go to verify signatures, it is possible that we have a
   // single-element certificate chain with a certificate that isn't self-signed.

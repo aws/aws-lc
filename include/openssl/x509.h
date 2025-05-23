@@ -2736,6 +2736,7 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
 #define X509_V_ERR_EE_KEY_TOO_SMALL 68
 #define X509_V_ERR_CA_KEY_TOO_SMALL 69
 #define X509_V_ERR_CA_MD_TOO_WEAK 70
+#define X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY 71
 
 // X509_STORE_CTX_get_error, after |X509_verify_cert| returns, returns
 // |X509_V_OK| if verification succeeded or an |X509_V_ERR_*| describing why
@@ -3086,7 +3087,7 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 // X509_CHECK_FLAG_NO_WILDCARDS disables wildcard matching for DNS names.
 #define X509_CHECK_FLAG_NO_WILDCARDS 0x2
 
-// X509_CHECK_FLAG_NEVER_CHECK_SUBJECT constrains host name patterns passed to |X509_check_host|
+// X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS constrains host name patterns passed to |X509_check_host|
 // starting with '.' to only match a single label / subdomain.
 //
 // For example, by default the host name '.example.com' would match a certificate DNS name like
