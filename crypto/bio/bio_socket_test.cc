@@ -574,6 +574,13 @@ TEST_P(BIODgramTest, SocketDatagramSetPeer) {
     GTEST_SKIP() << "IPv6 not supported";
     return;
   }
+#if defined(__MINGW32__)
+  if (addr_family == AF_UNIX) {
+    // Wine (is not an emulator) doesn't properly support Unix domain sockets
+    GTEST_SKIP() << "Unix domain sockets not supported";
+    return;
+  }
+#endif
   ASSERT_TRUE(server_bio) << LastSocketError();
   ASSERT_EQ(1, BIO_get_close(server_bio.get())) << LastSocketError();
 
