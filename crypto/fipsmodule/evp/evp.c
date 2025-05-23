@@ -70,6 +70,7 @@
 
 #include "../../evp_extra/internal.h"
 #include "../../pem/internal.h"
+#include "../../console/internal.h"
 #include "../../internal.h"
 #include "internal.h"
 

@@ -72,6 +72,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../console/internal.h"
 #include "../fipsmodule/evp/internal.h"
 
 

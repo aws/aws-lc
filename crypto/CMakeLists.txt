@@ -397,6 +397,7 @@ add_library(
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
   conf/conf.c
+  console/console.c
   crypto.c
   des/des.c
   dh_extra/params.c
@@ -453,7 +454,6 @@ add_library(
   pem/pem_info.c
   pem/pem_lib.c
   pem/pem_oth.c
-  pem/pem_passwd.c
   pem/pem_pk8.c
   pem/pem_pkey.c
   pem/pem_x509.c
@@ -760,6 +760,7 @@ if(BUILD_TESTING)
     cipher_extra/cipher_test.cc
     compiler_test.cc
     conf/conf_test.cc
+    console/console_test.cc
     constant_time_test.cc
     crypto_test.cc
     ecdh_extra/ecdh_test.cc
