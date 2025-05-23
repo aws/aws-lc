@@ -784,9 +784,12 @@ err:
 }
 
 int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
-  if (!buf || size < 0) {
+  if (!buf || size <= 0) {
     return 0;
   }
+
+  // Proactively zeroize |buf|
+  OPENSSL_cleanse(buf, size);
 
   if (userdata) {
     size_t len =  strlen((char *)userdata);

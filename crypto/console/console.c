@@ -85,6 +85,8 @@ static int discard_line_remainder(FILE *in) {
                 OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
                 ERR_add_error_data(2, "System error: ", strerror(errno));
                 clearerr(tty_in);
+            } else if(feof(in)) {
+                return 1;
             }
             return 0;
         }
@@ -230,7 +232,7 @@ int openssl_console_write(const char *str) {
         OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
         if (ferror(tty_out)) {
             ERR_add_error_data(2, "System error: ", strerror(errno));
-            clearerr(tty_in);
+            clearerr(tty_out);
         }
         return 0;
     }
@@ -246,6 +248,10 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
 
     intr_signal = 0;
     int phase = 0;
+
+    if (!buf || maxsize < minsize) {
+        return -1;
+    }
 
     assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex));
 
@@ -263,6 +269,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
         DWORD numread;
         // for now assuming UTF-8....
         WCHAR wresult[BUFSIZ];
+        OPENSSL_cleanse(wresult, sizeof(wresult));
 
         if (ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE),
                      wresult, maxsize, &numread, NULL)) {
@@ -271,7 +278,7 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
                 wresult[numread-2] = L'\n';
                 numread--;
             }
-            wresult[numread] = '\0';
+            wresult[numread] = 'L\0';
             if (WideCharToMultiByte(CP_UTF8, 0, wresult, -1, buf, maxsize + 1, NULL, 0) > 0) {
                 p = buf;
             }

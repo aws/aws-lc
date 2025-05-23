@@ -316,6 +316,12 @@ typedef int pem_password_cb(char *buf, int size, int rwflag, void *userdata);
 
 OPENSSL_EXPORT int PEM_get_EVP_CIPHER_INFO(char *header,
                                            EVP_CIPHER_INFO *cipher);
+
+// PEM_do_header decrypts PEM-encoded data using the cipher info in |cipher|.
+// It processes |data| of length |len| using a password obtained via |callback|
+// (or the default callback provided via |PEM_def_callback| if NULL) with callback
+// data |u|. It then updates |len| with decrypted length.
+// Returns 1 on success or if |cipher| is NULL, 0 on failure.
 OPENSSL_EXPORT int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data,
                                  long *len, pem_password_cb *callback, void *u);
 
@@ -357,6 +363,11 @@ OPENSSL_EXPORT int PEM_bytes_read_bio(unsigned char **pdata, long *plen,
 OPENSSL_EXPORT void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name,
                                        BIO *bp, void **x, pem_password_cb *cb,
                                        void *u);
+
+// PEM_ASN1_write_bio writes ASN.1 structure |x| encoded by |i2d| to BIO |bp| in PEM format
+// with name |name|. If |enc| is non-NULL, encrypts data using cipher with password from
+// |pass| and |pass_len|, or via |callback| with user data |u| (uses PEM_def_callback if
+// callback is NULL). Returns 1 on success, 0 on failure.
 OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
                                       BIO *bp, void *x, const EVP_CIPHER *enc,
                                       const unsigned char *pass, int pass_len,
@@ -411,6 +422,8 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                                   pem_password_cb *callback, void *u);
 
 // PEM_def_callback provides a password for PEM encryption/decryption operations.
+// This function is used as the default callback to provide a password for PEM
+// functions such as |PEM_do_header| and |PEM_ASN1_write_bio|.
 // If |userdata| is non-NULL, it treats |userdata| as a string and copies it
 // into |buf|, assuming |size| is sufficient. If |userdata| is NULL, it prompts
 // the user for a password using the prompt from EVP_get_pw_prompt() (or default

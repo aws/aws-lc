@@ -171,9 +171,17 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
   int ret = -1;
   char verify_buf[1024];
 
+  if (!buf || min_length <= 0 || min_length >= length) {
+    return -1;
+  }
+
   if (prompt == NULL) {
     prompt = EVP_get_pw_prompt();
   }
+
+  // Proactively zeroize |buf| and verify_buf
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
 
   // acquire write lock
   openssl_console_acquire_mutex();
@@ -202,7 +210,7 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
     ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
 
     if (ret == 0) {
-      if (strcmp(buf, verify_buf) != 0) {
+      if (strncmp(buf, verify_buf, length >= 1024 ? 1024 : length) != 0) {
         openssl_console_write("Verify failure\n");
         ret = -1;
       }
