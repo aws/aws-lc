@@ -259,10 +259,288 @@ Lxts_enc:
 	eor	v26.16b,v26.16b,v11.16b
 	sub	x2,x2,#32           // bias
 	mov	w6,w5
-  //  b       .Loop5x_xts_enc
 
 .align	4
 Loop5x_xts_enc:
+	aese	v0.16b,v16.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v16.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v16.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v16.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v16.16b
+	aesmc	v26.16b,v26.16b
+	subs	x12,x2,#0x50         // because Lxts_enc_tail4x
+
+	aese	v0.16b,v17.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v17.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v17.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v17.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v17.16b
+	aesmc	v26.16b,v26.16b
+	csel	x6,xzr,x12,gt    // borrow x6, w6, "gt" is not typo
+	mov	x7,x3
+
+	aese	v0.16b,v12.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v12.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v12.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v12.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v12.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v13.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v13.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v13.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v13.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v13.16b
+	aesmc	v26.16b,v26.16b
+
+   	aese	v0.16b,v14.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v14.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v14.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v14.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v14.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v15.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v15.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v15.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v15.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v15.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v4.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v4.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v4.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v4.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v4.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v5.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v5.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v5.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v5.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v5.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v18.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v18.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v18.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v18.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v18.16b
+	aesmc	v26.16b,v26.16b
+	add	x0,x0,x6  // x0 is adjusted in such way that
+                                // at exit from the loop v1.16b-v26.16b
+                                // are loaded with last "words"
+	//add	x6,x2,#0x60         // because Lxts_enc_tail4x
+
+	aese	v0.16b,v19.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v19.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v19.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v19.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v19.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v20.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v20.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v20.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v20.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v20.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v21.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v21.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v21.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v21.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v21.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v22.16b
+	aesmc	v0.16b,v0.16b
+	aese	v1.16b,v22.16b
+	aesmc	v1.16b,v1.16b
+	aese	v24.16b,v22.16b
+	aesmc	v24.16b,v24.16b
+	aese	v25.16b,v22.16b
+	aesmc	v25.16b,v25.16b
+	aese	v26.16b,v22.16b
+	aesmc	v26.16b,v26.16b
+
+	aese	v0.16b,v23.16b
+	aese	v1.16b,v23.16b
+	aese	v24.16b,v23.16b
+	aese	v25.16b,v23.16b
+	aese	v26.16b,v23.16b
+
+	eor	v0.16b,v0.16b,v7.16b
+	eor	v0.16b,v0.16b,v6.16b
+    // The iv for first block of one iteration
+	extr	x22,x10,x10,#32
+	extr	x10,x10,x9,#63
+	and	w11,w19,w22,asr#31
+	eor	x9,x11,x9,lsl#1
+	fmov	d6,x9
+	fmov	v6.d[1],x10
+    eor	v1.16b,v1.16b,v7.16b
+    eor	v1.16b,v1.16b,v8.16b
+	ld1	{v2.16b},[x0],#16
+    // The iv for second block
+	extr	x22,x10,x10,#32
+	extr	x10,x10,x9,#63
+	and	w11,w19,w22,asr#31
+	eor	x9,x11,x9,lsl#1
+	fmov	d8,x9
+	fmov	v8.d[1],x10
+    eor	v24.16b,v24.16b,v7.16b
+    eor	v24.16b,v24.16b,v9.16b
+    ld1	{v3.16b},[x0],#16
+    // The iv for third block
+	extr	x22,x10,x10,#32
+	extr	x10,x10,x9,#63
+	and	w11,w19,w22,asr#31
+	eor	x9,x11,x9,lsl#1
+	fmov	d9,x9
+	fmov	v9.d[1],x10
+    eor	v25.16b,v25.16b,v7.16b
+    eor	v25.16b,v25.16b,v10.16b
+	ld1	{v27.16b},[x0],#16
+    // The iv for fourth block
+	extr	x22,x10,x10,#32
+	extr	x10,x10,x9,#63
+	and	w11,w19,w22,asr#31
+	eor	x9,x11,x9,lsl#1
+	fmov	d10,x9
+	fmov	v10.d[1],x10
+    eor	v26.16b,v26.16b,v7.16b
+    eor	v26.16b,v26.16b,v11.16b
+	ld1	{v28.16b},[x0],#16
+
+    // The iv for fifth block
+	extr	x22,x10,x10,#32
+	extr	x10,x10,x9,#63
+	and	w11,w19,w22,asr #31
+	eor	x9,x11,x9,lsl #1
+	fmov	d11,x9
+	fmov	v11.d[1],x10
+
+	ld1	{v29.16b},[x0],#16
+
+	//cbz	x6,Lxts_enc_tail4x
+
+    //st1  {v0.16b,v1.16b},[x1],#32 // to model in slothy
+    //st1	{v24.16b,v25.16b},[x1],#32
+    stp q0, q1, [x1], #32
+    stp q24, q25, [x1], #32
+    st1	{v26.16b},[x1],#16
+	eor	v0.16b,v2.16b,v6.16b
+	eor	v1.16b,v3.16b,v8.16b
+	eor	v24.16b,v27.16b,v9.16b
+	eor	v25.16b,v28.16b,v10.16b
+	eor	v26.16b,v29.16b,v11.16b
+	//mov	w6,w5
+	ld1	{v16.4s},[x7],#16        // re-pre-load rndkey[0]
+	ld1	{v17.4s},[x7],#16        // re-pre-load rndkey[1]
+    subs x2,x2,#0x50
+	b.hs	Loop5x_xts_enc
+
+
+    // If left 4 blocks, borrow the five block's processing.
+    // This means if (x2 + 1 block) == 0, which is the case
+    // when input size % 5 = 4, continue processing and do
+    // another iteration in Loop5x_xts_enc which will exit from
+    // cbz  x6,.Lxts_enc_tail4x.
+    // Otherwise, this is the end of the loop continue processing
+    // 0, 1, 2 or 3 blocks (with or without tail) starting at
+    // Loop5x_enc_after
+	cmn	x2,#0x10
+	b.ne	Loop5x_enc_after
+//	orr	v11.16b,v10.16b,v10.16b
+//	orr	v10.16b,v9.16b,v9.16b
+//	orr	v9.16b,v8.16b,v8.16b
+//	orr	v8.16b,v6.16b,v6.16b
+//	fmov	x9,d11
+//	fmov	x10,v11.d[1]
+//	eor	v0.16b,v6.16b,v2.16b
+//	eor	v1.16b,v8.16b,v3.16b
+//	eor	v24.16b,v27.16b,v9.16b
+//	eor	v25.16b,v28.16b,v10.16b
+//	eor	v26.16b,v29.16b,v11.16b
+    b.eq  Lxts_enc_tail4x
+
+Loop5x_enc_after:
+	add	x2,x2,#0x50
+	cbz	x2,Lxts_enc_done     // no blocks left
+
+	add	w6,w5,#2
+	subs	x2,x2,#0x30
+	b.lo	Lxts_inner_enc_tail    // 1 or 2 blocks left
+                                    // (with tail or not)
+
+	eor	v0.16b,v6.16b,v27.16b         // 3 blocks left
+	eor	v1.16b,v8.16b,v28.16b
+	eor	v24.16b,v29.16b,v9.16b
+	b	Lxts_outer_enc_tail
+
+.align	4
+Lxts_enc_tail4x:
+	orr	v11.16b,v10.16b,v10.16b
+	orr	v10.16b,v9.16b,v9.16b
+	orr	v9.16b,v8.16b,v8.16b
+	orr	v8.16b,v6.16b,v6.16b
+	fmov	x9,d11
+	fmov	x10,v11.d[1]
+	eor	v0.16b,v6.16b,v2.16b
+	eor	v1.16b,v8.16b,v3.16b
+	eor	v24.16b,v27.16b,v9.16b
+	eor	v25.16b,v28.16b,v10.16b
+	eor	v26.16b,v29.16b,v11.16b
+
 	aese	v0.16b,v16.16b
 	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v16.16b
@@ -367,7 +645,7 @@ Loop5x_xts_enc:
 	add	x0,x0,x6  // x0 is adjusted in such way that
                                 // at exit from the loop v1.16b-v26.16b
                                 // are loaded with last "words"
-	add	x6,x2,#0x60         // because Lxts_enc_tail4x
+	//add	x6,x2,#0x60         // because Lxts_enc_tail4x
 
 	aese	v0.16b,v19.16b
 	aesmc	v0.16b,v0.16b
@@ -428,7 +706,6 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl#1
 	fmov	d6,x9
 	fmov	v6.d[1],x10
-	//eor	v5.16b,v7.16b,v8.16b
     eor	v1.16b,v1.16b,v7.16b
     eor	v1.16b,v1.16b,v8.16b
 	ld1	{v2.16b},[x0],#16
@@ -472,62 +749,7 @@ Loop5x_xts_enc:
 	fmov	v11.d[1],x10
 
 	ld1	{v29.16b},[x0],#16
-	cbz	x6,Lxts_enc_tail4x
-    st1  {v0.16b,v1.16b},[x1],#32
-    st1	{v24.16b,v25.16b},[x1],#32
-    st1	{v26.16b},[x1],#16
-	eor	v0.16b,v2.16b,v6.16b
-	eor	v1.16b,v3.16b,v8.16b
-	eor	v24.16b,v27.16b,v9.16b
-	eor	v25.16b,v28.16b,v10.16b
-	eor	v26.16b,v29.16b,v11.16b
-	mov	w6,w5
-	ld1	{v16.4s},[x7],#16        // re-pre-load rndkey[0]
-	ld1	{v17.4s},[x7],#16        // re-pre-load rndkey[1]
-    add x12,x2,#0x50            // loop control for SLOTHY
-    subs x12,x12,#0x50
-	b.hs	Loop5x_xts_enc
 
-
-    // If left 4 blocks, borrow the five block's processing.
-    // This means if (x2 + 1 block) == 0, which is the case
-    // when input size % 5 = 4, continue processing and do
-    // another iteration in Loop5x_xts_enc which will exit from
-    // cbz  x6,.Lxts_enc_tail4x.
-    // Otherwise, this is the end of the loop continue processing
-    // 0, 1, 2 or 3 blocks (with or without tail) starting at
-    // Loop5x_enc_after
-	cmn	x2,#0x10
-	b.ne	Loop5x_enc_after
-	orr	v11.16b,v10.16b,v10.16b
-	orr	v10.16b,v9.16b,v9.16b
-	orr	v9.16b,v8.16b,v8.16b
-	orr	v8.16b,v6.16b,v6.16b
-	fmov	x9,d11
-	fmov	x10,v11.d[1]
-	eor	v0.16b,v6.16b,v2.16b
-	eor	v1.16b,v8.16b,v3.16b
-	eor	v24.16b,v27.16b,v9.16b
-	eor	v25.16b,v28.16b,v10.16b
-	eor	v26.16b,v29.16b,v11.16b
-	b.eq	Loop5x_xts_enc
-
-Loop5x_enc_after:
-	add	x2,x2,#0x50
-	cbz	x2,Lxts_enc_done     // no blocks left
-
-	add	w6,w5,#2
-	subs	x2,x2,#0x30
-	b.lo	Lxts_inner_enc_tail    // 1 or 2 blocks left
-                                    // (with tail or not)
-
-	eor	v0.16b,v6.16b,v27.16b         // 3 blocks left
-	eor	v1.16b,v8.16b,v28.16b
-	eor	v24.16b,v29.16b,v9.16b
-	b	Lxts_outer_enc_tail
-
-.align	4
-Lxts_enc_tail4x:
 	add	x0,x0,#16
     st1  {v1.16b},[x1],#16
     st1	{v24.16b,v25.16b},[x1],#32
