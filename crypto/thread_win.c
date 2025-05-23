@@ -85,6 +85,7 @@ void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   ReleaseSRWLockExclusive(&lock->lock);
 }
 
+#if !defined(NDEBUG)
 int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
   assert(lock != NULL);
 
@@ -97,6 +98,7 @@ int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
 
   return 1;
 }
+#endif
 
 static SRWLOCK g_destructors_lock = SRWLOCK_INIT;
 static thread_local_destructor_t g_destructors[NUM_OPENSSL_THREAD_LOCALS];

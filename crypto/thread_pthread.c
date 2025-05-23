@@ -118,6 +118,7 @@ void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   }
 }
 
+#if !defined(NDEBUG)
 int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
   assert(lock != NULL);
 
@@ -136,6 +137,7 @@ int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
 
   return -1;
 }
+#endif
 
 void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
   if (pthread_once(once, init) != 0) {

@@ -84,6 +84,7 @@ static int discard_line_remainder(FILE *in) {
             if (ferror(in)) {
                 OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
                 ERR_add_error_data(2, "System error: ", strerror(errno));
+                clearerr(tty_in);
             }
             return 0;
         }
@@ -176,6 +177,7 @@ int openssl_console_open(void) {
 }
 
 int openssl_console_close(void) {
+    assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex));
     if (tty_in != stdin) {
         fclose(tty_in);
     }
@@ -228,6 +230,7 @@ int openssl_console_write(const char *str) {
         OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
         if (ferror(tty_out)) {
             ERR_add_error_data(2, "System error: ", strerror(errno));
+            clearerr(tty_in);
         }
         return 0;
     }
@@ -274,13 +277,17 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
             }
             OPENSSL_cleanse(wresult, sizeof(wresult));
         }
-    } else
-#endif
+    } else {
+        p = fgets(buf, maxsize, tty_in);
+    }
+#else
     p = fgets(buf, maxsize, tty_in);
+#endif
     if (p == NULL || feof(tty_in) || ferror(tty_in)) {
       OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
       if (ferror(tty_in)) {
         ERR_add_error_data(2, "System error: ", strerror(errno));
+        clearerr(tty_in);
       }
       ok = -1;
       goto error;
