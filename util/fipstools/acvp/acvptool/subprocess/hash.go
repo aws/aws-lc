@@ -33,7 +33,7 @@ type hashTestGroup struct {
 	ID        uint64  `json:"tgId"`
 	Type      string  `json:"testType"`
 	MaxOutLen *uint64 `json:"maxOutLen,omitempty"`
-	MinOutLen *uint64 `json:"minxOutLen,omitempty"`
+	MinOutLen *uint64 `json:"minOutLen,omitempty"`
 	Tests     []struct {
 		ID           uint64       `json:"tcId"`
 		BitLength    uint64       `json:"len"`
@@ -58,11 +58,13 @@ type hashTestGroupResponse struct {
 type hashTestResponse struct {
 	ID         uint64          `json:"tcId"`
 	DigestHex  string          `json:"md,omitempty"`
+	OutLen     uint64          `json:"outLen,omitempty"`
 	MCTResults []hashMCTResult `json:"resultsArray,omitempty"`
 }
 
 type hashMCTResult struct {
 	DigestHex string `json:"md"`
+	OutLen    uint64 `json:"outLen,omitempty"`
 }
 
 // hashPrimitive implements an ACVP algorithm by making requests to the
@@ -118,32 +120,55 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 					panic(h.algo + " hash operation failed: " + err.Error())
 				}
 
-				response.Tests = append(response.Tests, hashTestResponse{
+				testResponse := hashTestResponse{
 					ID:        test.ID,
 					DigestHex: hex.EncodeToString(result[0]),
-				})
+				}
+				if test.OutputLength != nil {
+					testResponse.OutLen = *test.OutputLength
+				}
+
+				response.Tests = append(response.Tests, testResponse)
 
 			case "MCT":
-				// MCT tests for conventional digest functions expect message
-				// and digest output lengths to be equivalent, however SHAKE
-				// does not have a predefined output length.
-				if len(msg) != h.size && !strings.HasPrefix(h.algo, "SHAKE") {
-					return nil, fmt.Errorf("MCT test case %d/%d contains message of length %d but the digest length is %d", group.ID, test.ID, len(msg), h.size)
-				}
-
 				testResponse := hashTestResponse{ID: test.ID}
+				if !strings.HasPrefix(h.algo, "SHAKE") {
+					if len(msg) != h.size {
+						return nil, fmt.Errorf("MCT test case %d/%d contains message of length %d but the digest length is %d", group.ID, test.ID, len(msg), h.size)
+					}
+					digest := msg
+					for i := 0; i < 100; i++ {
+						result, err := m.Transact(h.algo+"/MCT", 1, digest)
+						if err != nil {
+							panic(h.algo + " hash operation failed: " + err.Error())
+						}
 
-				digest := msg
-				for i := 0; i < 100; i++ {
-					result, err := m.Transact(h.algo+"/MCT", 1, digest)
-					if err != nil {
-						panic(h.algo + " hash operation failed: " + err.Error())
+						digest = result[0]
+						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), 0})
 					}
 
-					digest = result[0]
-					testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest)})
-				}
+				} else {
+					maxOutLenBytes := *group.MaxOutLen / 8
+					minOutLenBytes := *group.MinOutLen / 8
 
+					digest := msg
+					outlen := maxOutLenBytes
+
+					maxOutLenByteArr := uint32le(uint32(maxOutLenBytes))
+					minOutLenByteArr := uint32le(uint32(minOutLenBytes))
+					outLenByteArr := uint32le(uint32(outlen))
+
+					for i := 0; i < 100; i++ {
+						result, err := m.Transact(h.algo+"/MCT", 2, digest, maxOutLenByteArr, minOutLenByteArr, outLenByteArr)
+						if err != nil {
+							panic(h.algo + " hash operation failed: " + err.Error())
+						}
+
+						digest = result[0]
+						outLenByteArr = uint32le(uint32(binary.LittleEndian.Uint32(result[1])))
+						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), uint64(len(digest) * 8)})
+					}
+				}
 				response.Tests = append(response.Tests, testResponse)
 
 			case "LDT":
