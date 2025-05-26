@@ -365,7 +365,6 @@ Loop5x_xts_enc:
 	add	x0,x0,x6  // x0 is adjusted in such way that
                                 // at exit from the loop v1.16b-v26.16b
                                 // are loaded with last "words"
-	//add	x6,x2,#0x60         // because Lxts_enc_tail4x
 
 	aese	v0.16b,v19.16b
 	aesmc	v0.16b,v0.16b
@@ -428,7 +427,6 @@ Loop5x_xts_enc:
 	fmov	v6.d[1],x10
     eor	v1.16b,v1.16b,v7.16b
     eor	v1.16b,v1.16b,v8.16b
-    //	ld1	{v2.16b,v3.16b},[x0],#32
     ldp q2, q3, [x0], #0x50
 
     // The iv for second block
@@ -440,7 +438,6 @@ Loop5x_xts_enc:
 	fmov	v8.d[1],x10
     eor	v24.16b,v24.16b,v7.16b
     eor	v24.16b,v24.16b,v9.16b
-//    ld1	{v3.16b},[x0],#16
 
     // The iv for third block
 	extr	x22,x10,x10,#32
@@ -451,7 +448,6 @@ Loop5x_xts_enc:
 	fmov	v9.d[1],x10
     eor	v25.16b,v25.16b,v7.16b
     eor	v25.16b,v25.16b,v10.16b
-	//ld1	{v27.16b},[x0],#16
     ldr q27, [x0, #-0x30]
 
     // The iv for fourth block
@@ -463,7 +459,6 @@ Loop5x_xts_enc:
 	fmov	v10.d[1],x10
     eor	v26.16b,v26.16b,v7.16b
     eor	v26.16b,v26.16b,v11.16b
-	//ld1	{v28.16b,v29.16b},[x0],#32
     ldp	q28, q29,[x0, #-0x20]
 
     // The iv for fifth block
@@ -473,11 +468,7 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl #1
 	fmov	d11,x9
 	fmov	v11.d[1],x10
-//	ld1	{v29.16b},[x0],#16
 
-
-    //st1 {v0.16b, v1.16b}, [x1], #32 // to model in slothy
-    //st1	{v24.16b, v25.16b}, [x1], #32
     stp q0, q1, [x1], #0x50
     stp q24, q25, [x1, #-0x30]
     str	q26, [x1, #-0x10]
@@ -491,12 +482,8 @@ Loop5x_xts_enc:
 	b.hs	Loop5x_xts_enc
 
 
-    // If left 4 blocks, borrow the five block's processing.
-    // This means if (x2 + 1 block) == 0, which is the case
-    // when input size % 5 = 4, continue processing and do
-    // another iteration in Loop5x_xts_enc which will exit from
-    // cbz  x6,.Lxts_enc_tail4x.
-    // Otherwise, this is the end of the loop continue processing
+    // If left 4 blocks, continue from Lxts_enc_tail4x.
+    // Otherwise, continue processing
     // 0, 1, 2 or 3 blocks (with or without tail) starting at
     // Loop5x_enc_after
 	cmn	x2,#0x10
@@ -549,7 +536,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v17.16b
 	aesmc	v26.16b,v26.16b
 	csel	x6,xzr,x2,gt    // borrow x6, w6, "gt" is not typo
-	mov	x7,x3
 
 	aese	v1.16b,v12.16b
 	aesmc	v1.16b,v1.16b
@@ -616,7 +602,6 @@ Lxts_enc_tail4x:
 	add	x0,x0,x6  // x0 is adjusted in such way that
                                 // at exit from the loop v1.16b-v26.16b
                                 // are loaded with last "words"
-	//add	x6,x2,#0x60         // because Lxts_enc_tail4x
 
 	aese	v1.16b,v19.16b
 	aesmc	v1.16b,v1.16b
@@ -788,35 +773,6 @@ Lxts_outer_enc_tail:
 		aese	v24.16b,v19.16b
 		aesmc	v24.16b,v24.16b
 
-//	aese	v0.16b,v16.16b
-//	aesmc	v0.16b,v0.16b
-//	aese	v1.16b,v16.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v16.16b
-//	aesmc	v24.16b,v24.16b
-//	ld1	{v16.4s},[x7],#16
-//	subs	w6,w6,#2
-//	aese	v0.16b,v17.16b
-//	aesmc	v0.16b,v0.16b
-//	aese	v1.16b,v17.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v17.16b
-//	aesmc	v24.16b,v24.16b
-//	ld1	{v17.4s},[x7],#16
-//	b.gt	Lxts_outer_enc_tail
-//
-//	aese	v0.16b,v16.16b
-//	aesmc	v0.16b,v0.16b
-//	aese	v1.16b,v16.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v16.16b
-//	aesmc	v24.16b,v24.16b
-//	aese	v0.16b,v17.16b
-//	aesmc	v0.16b,v0.16b
-//	aese	v1.16b,v17.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v17.16b
-//	aesmc	v24.16b,v24.16b
 
 	aese	v0.16b,v20.16b
 	aesmc	v0.16b,v0.16b
@@ -941,29 +897,6 @@ Lxts_enc_tail_loop:
 		aesmc	v1.16b,v1.16b
 		aese	v24.16b,v19.16b
 		aesmc	v24.16b,v24.16b
-
-//	aese	v1.16b,v16.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v16.16b
-//	aesmc	v24.16b,v24.16b
-//	ld1	{v16.4s},[x7],#16
-//	subs	w6,w6,#2
-//	aese	v1.16b,v17.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v17.16b
-//	aesmc	v24.16b,v24.16b
-//	ld1	{v17.4s},[x7],#16
-//	b.gt	Lxts_enc_tail_loop
-//
-//	aese	v1.16b,v16.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v16.16b
-//	aesmc	v24.16b,v24.16b
-//	aese	v1.16b,v17.16b
-//	aesmc	v1.16b,v1.16b
-//	aese	v24.16b,v17.16b
-//	aesmc	v24.16b,v24.16b
-//
 
 	aese	v1.16b,v20.16b
 	aesmc	v1.16b,v1.16b
