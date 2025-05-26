@@ -285,7 +285,6 @@ Loop5x_xts_enc:
 	aese	v26.16b,v17.16b
 	aesmc	v26.16b,v26.16b
 	csel	x6,xzr,x12,gt    // borrow x6, w6, "gt" is not typo
-	mov	x7,x3
 
 	aese	v0.16b,v12.16b
 	aesmc	v0.16b,v0.16b
@@ -429,7 +428,9 @@ Loop5x_xts_enc:
 	fmov	v6.d[1],x10
     eor	v1.16b,v1.16b,v7.16b
     eor	v1.16b,v1.16b,v8.16b
-	ld1	{v2.16b},[x0],#16
+    //	ld1	{v2.16b,v3.16b},[x0],#32
+    ldp q2, q3, [x0], #0x50
+
     // The iv for second block
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -439,7 +440,8 @@ Loop5x_xts_enc:
 	fmov	v8.d[1],x10
     eor	v24.16b,v24.16b,v7.16b
     eor	v24.16b,v24.16b,v9.16b
-    ld1	{v3.16b},[x0],#16
+//    ld1	{v3.16b},[x0],#16
+
     // The iv for third block
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -449,7 +451,9 @@ Loop5x_xts_enc:
 	fmov	v9.d[1],x10
     eor	v25.16b,v25.16b,v7.16b
     eor	v25.16b,v25.16b,v10.16b
-	ld1	{v27.16b},[x0],#16
+	//ld1	{v27.16b},[x0],#16
+    ldr q27, [x0, #-0x30]
+
     // The iv for fourth block
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -459,7 +463,8 @@ Loop5x_xts_enc:
 	fmov	v10.d[1],x10
     eor	v26.16b,v26.16b,v7.16b
     eor	v26.16b,v26.16b,v11.16b
-	ld1	{v28.16b},[x0],#16
+	//ld1	{v28.16b,v29.16b},[x0],#32
+    ldp	q28, q29,[x0, #-0x20]
 
     // The iv for fifth block
 	extr	x22,x10,x10,#32
@@ -468,24 +473,20 @@ Loop5x_xts_enc:
 	eor	x9,x11,x9,lsl #1
 	fmov	d11,x9
 	fmov	v11.d[1],x10
+//	ld1	{v29.16b},[x0],#16
 
-	ld1	{v29.16b},[x0],#16
 
-	//cbz	x6,Lxts_enc_tail4x
-
-    st1 {v0.16b, v1.16b}, [x1], #32 // to model in slothy
-    st1	{v24.16b, v25.16b}, [x1], #32
-    //stp q0, q1, [x1], #32
-    //stp q24, q25, [x1], #32
-    st1	{v26.16b},[x1],#16
+    //st1 {v0.16b, v1.16b}, [x1], #32 // to model in slothy
+    //st1	{v24.16b, v25.16b}, [x1], #32
+    stp q0, q1, [x1], #0x50
+    stp q24, q25, [x1, #-0x30]
+    str	q26, [x1, #-0x10]
 	eor	v0.16b,v2.16b,v6.16b
 	eor	v1.16b,v3.16b,v8.16b
 	eor	v24.16b,v27.16b,v9.16b
 	eor	v25.16b,v28.16b,v10.16b
 	eor	v26.16b,v29.16b,v11.16b
-	//mov	w6,w5
-	ld1	{v16.4s},[x7],#16        // re-pre-load rndkey[0]
-	ld1	{v17.4s},[x7],#16        // re-pre-load rndkey[1]
+
     subs x2,x2,#0x50
 	b.hs	Loop5x_xts_enc
 
@@ -500,17 +501,6 @@ Loop5x_xts_enc:
     // Loop5x_enc_after
 	cmn	x2,#0x10
 	b.ne	Loop5x_enc_after
-//	orr	v11.16b,v10.16b,v10.16b
-//	orr	v10.16b,v9.16b,v9.16b
-//	orr	v9.16b,v8.16b,v8.16b
-//	orr	v8.16b,v6.16b,v6.16b
-//	fmov	x9,d11
-//	fmov	x10,v11.d[1]
-//	eor	v0.16b,v6.16b,v2.16b
-//	eor	v1.16b,v8.16b,v3.16b
-//	eor	v24.16b,v27.16b,v9.16b
-//	eor	v25.16b,v28.16b,v10.16b
-//	eor	v26.16b,v29.16b,v11.16b
     b.eq  Lxts_enc_tail4x
 
 Loop5x_enc_after:
@@ -709,15 +699,6 @@ Lxts_enc_tail4x:
     eor	v26.16b,v26.16b,v7.16b
     eor	v26.16b,v26.16b,v11.16b
 	ld1	{v28.16b},[x0],#16
-
-    // The iv for fifth block
-//	extr	x22,x10,x10,#32
-//	extr	x10,x10,x9,#63
-//	and	w11,w19,w22,asr #31
-//	eor	x9,x11,x9,lsl #1
-//	fmov	d11,x9
-//	fmov	v11.d[1],x10
-
 	ld1	{v29.16b},[x0],#16
 
 	add	x0,x0,#16
