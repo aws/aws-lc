@@ -529,21 +529,17 @@ Loop5x_enc_after:
 
 .align	4
 Lxts_enc_tail4x:
-// TODO: try commenting out v0 lines
 	orr	v11.16b,v10.16b,v10.16b
 	orr	v10.16b,v9.16b,v9.16b
 	orr	v9.16b,v8.16b,v8.16b
 	orr	v8.16b,v6.16b,v6.16b
 	fmov	x9,d11
 	fmov	x10,v11.d[1]
-	eor	v0.16b,v6.16b,v2.16b
 	eor	v1.16b,v8.16b,v3.16b
 	eor	v24.16b,v27.16b,v9.16b
 	eor	v25.16b,v28.16b,v10.16b
 	eor	v26.16b,v29.16b,v11.16b
 
-	aese	v0.16b,v16.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v16.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v16.16b
@@ -554,8 +550,6 @@ Lxts_enc_tail4x:
 	aesmc	v26.16b,v26.16b
 	subs	x2,x2,#0x50         // because Lxts_enc_tail4x
 
-	aese	v0.16b,v17.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v17.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v17.16b
@@ -567,8 +561,6 @@ Lxts_enc_tail4x:
 	csel	x6,xzr,x2,gt    // borrow x6, w6, "gt" is not typo
 	mov	x7,x3
 
-	aese	v0.16b,v12.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v12.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v12.16b
@@ -578,8 +570,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v12.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v13.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v13.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v13.16b
@@ -589,8 +579,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v13.16b
 	aesmc	v26.16b,v26.16b
 
-   	aese	v0.16b,v14.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v14.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v14.16b
@@ -600,8 +588,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v14.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v15.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v15.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v15.16b
@@ -611,8 +597,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v15.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v4.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v4.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v4.16b
@@ -622,8 +606,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v4.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v5.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v5.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v5.16b
@@ -633,8 +615,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v5.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v18.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v18.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v18.16b
@@ -648,8 +628,6 @@ Lxts_enc_tail4x:
                                 // are loaded with last "words"
 	//add	x6,x2,#0x60         // because Lxts_enc_tail4x
 
-	aese	v0.16b,v19.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v19.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v19.16b
@@ -659,8 +637,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v19.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v20.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v20.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v20.16b
@@ -670,8 +646,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v20.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v21.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v21.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v21.16b
@@ -681,8 +655,6 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v21.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v22.16b
-	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v22.16b
 	aesmc	v1.16b,v1.16b
 	aese	v24.16b,v22.16b
@@ -692,14 +664,11 @@ Lxts_enc_tail4x:
 	aese	v26.16b,v22.16b
 	aesmc	v26.16b,v26.16b
 
-	aese	v0.16b,v23.16b
 	aese	v1.16b,v23.16b
 	aese	v24.16b,v23.16b
 	aese	v25.16b,v23.16b
 	aese	v26.16b,v23.16b
 
-	eor	v0.16b,v0.16b,v7.16b
-	eor	v0.16b,v0.16b,v6.16b
     // The iv for first block of one iteration
 	extr	x22,x10,x10,#32
 	extr	x10,x10,x9,#63
@@ -742,12 +711,12 @@ Lxts_enc_tail4x:
 	ld1	{v28.16b},[x0],#16
 
     // The iv for fifth block
-	extr	x22,x10,x10,#32
-	extr	x10,x10,x9,#63
-	and	w11,w19,w22,asr #31
-	eor	x9,x11,x9,lsl #1
-	fmov	d11,x9
-	fmov	v11.d[1],x10
+//	extr	x22,x10,x10,#32
+//	extr	x10,x10,x9,#63
+//	and	w11,w19,w22,asr #31
+//	eor	x9,x11,x9,lsl #1
+//	fmov	d11,x9
+//	fmov	v11.d[1],x10
 
 	ld1	{v29.16b},[x0],#16
 
