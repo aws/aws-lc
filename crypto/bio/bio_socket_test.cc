@@ -13,6 +13,7 @@
 
 #include "../internal.h"
 #include "../test/test_util.h"
+#include "./internal.h"
 
 #if !defined(OPENSSL_WINDOWS)
 #include <arpa/inet.h>
@@ -61,10 +62,10 @@ struct SockaddrStorage {
   sockaddr_in ToIPv4() const {
     if (family() != AF_INET || len != sizeof(sockaddr_in)) {
       ADD_FAILURE() << LastSocketError();
-      return sockaddr_in(); // Initialize to zero
+      return sockaddr_in();  // Initialize to zero
     }
     // Make a copy so the compiler does not read this as an aliasing violation.
-    sockaddr_in ret; // Initialize to zero
+    sockaddr_in ret;  // Initialize to zero
     OPENSSL_memcpy(&ret, &storage, sizeof(ret));
     return ret;
   }
@@ -91,51 +92,61 @@ struct SockaddrStorage {
     return ret;
   }
 #endif
-  BIO_ADDR ToBIO_ADDR() const {
-    BIO_ADDR bap;
+  bssl::UniquePtr<BIO_ADDR> ToBIO_ADDR() const {
+    BIO_ADDR *bap = BIO_ADDR_new();
+    if (bap == nullptr) {
+      return nullptr;
+    }
     switch (family()) {
-      case AF_INET:
-        OPENSSL_memcpy(&bap.s_in, &storage, sizeof(sockaddr_in));
+      case AF_INET: {
+        const sockaddr_in *sock =
+            reinterpret_cast<const sockaddr_in *>(&storage);
+        if (1 != BIO_ADDR_rawmake(bap, AF_INET, &sock->sin_addr,
+                                  sizeof(sock->sin_addr), sock->sin_port)) {
+          BIO_ADDR_free(bap);
+          bap = nullptr;
+        }
         break;
+      }
+#ifdef AF_INET6
+      case AF_INET6: {
+        const sockaddr_in6 *sock =
+            reinterpret_cast<const sockaddr_in6 *>(&storage);
+        if (1 != BIO_ADDR_rawmake(bap, AF_INET6, &sock->sin6_addr,
+                                  sizeof(sock->sin6_addr), sock->sin6_port)) {
+          BIO_ADDR_free(bap);
+          bap = nullptr;
+        }
+        break;
+      }
+#endif
 #ifdef AWS_LC_HAS_AF_UNIX
-      case AF_UNIX:
-        OPENSSL_memcpy(&bap.s_un, &storage, sizeof(sockaddr_un));
+      case AF_UNIX: {
+        const sockaddr_un *sock =
+            reinterpret_cast<const sockaddr_un *>(&storage);
+        if (1 !=
+            BIO_ADDR_rawmake(
+                bap, AF_UNIX, &sock->sun_path,
+                OPENSSL_strnlen(sock->sun_path, sizeof(sock->sun_path)) + 1,
+                0)) {
+          BIO_ADDR_free(bap);
+          bap = nullptr;
+        }
+
         break;
+      }
 #endif
       default:
-        OPENSSL_memcpy(&bap.s_in6, &storage, sizeof(sockaddr_in6));
+        BIO_ADDR_free(bap);
+        bap = nullptr;
         break;
     }
-    return bap;
+    return bssl::UniquePtr<BIO_ADDR>(bap);
   }
 
   sockaddr_storage storage;
   socklen_t len;
 };
-
-static bool operator==(const BIO_ADDR &lhs, const BIO_ADDR &rhs) {
-  const sockaddr *lhs_sa = reinterpret_cast<const sockaddr *>(&lhs);
-  const sockaddr *rhs_sa = reinterpret_cast<const sockaddr *>(&rhs);
-  if (lhs_sa->sa_family != rhs_sa->sa_family) {
-    return false;
-  }
-
-  if (lhs_sa->sa_family == AF_INET) {
-    return !OPENSSL_memcmp(&lhs, &rhs, sizeof(sockaddr_in));
-  }
-#ifdef AF_INET6
-  if (lhs_sa->sa_family == AF_INET6) {
-    return !OPENSSL_memcmp(&lhs, &rhs, sizeof(sockaddr_in6));
-  }
-#endif
-#ifdef AWS_LC_HAS_AF_UNIX
-  if (lhs_sa->sa_family == AF_UNIX) {
-    return !OPENSSL_memcmp(&lhs, &rhs, sizeof(sockaddr_un));
-  }
-#endif
-
-  return 0;
-}
 
 class OwnedSocket {
  public:
@@ -190,6 +201,71 @@ static OwnedSocket Bind(const int family, const int type, const sockaddr *addr,
 
   return sock;
 }
+
+// Returns 0 when equal, otherwise returns 1.
+static int BIO_ADDR_cmp(const BIO_ADDR *a, const BIO_ADDR *b) {
+  if (a == b) {
+    return 0;
+  }
+  if (a == NULL || b == NULL) {
+    return 1;
+  }
+
+  // Compare address families
+  int family_a = BIO_ADDR_family(a);
+  int family_b = BIO_ADDR_family(b);
+  if (family_a == -1) {
+    return 1;
+  }
+  if (family_a != family_b) {
+    return 1;
+  }
+
+  if (family_a == AF_UNSPEC) {
+    return 0;
+  }
+
+  // Compare ports
+  if (BIO_ADDR_rawport(a) != BIO_ADDR_rawport(b)) {
+    return 1;
+  }
+
+  // Compare raw addresses
+  unsigned char addr_a[PATH_MAX] = {0};
+  unsigned char addr_b[PATH_MAX] = {0};
+  size_t len_a = sizeof(addr_a);
+  size_t len_b = sizeof(addr_b);
+
+  if (!BIO_ADDR_rawaddress(a, nullptr, &len_a)) {
+    return 1;
+  }
+  assert(len_a < sizeof(addr_a));
+  if (!BIO_ADDR_rawaddress(b, nullptr, &len_b)) {
+    return 1;
+  }
+  assert(len_b < sizeof(addr_b));
+
+  if (len_a != len_b) {
+    return 1;
+  }
+
+  len_a += 1;
+  len_b += 1;
+  if (!BIO_ADDR_rawaddress(a, addr_a, &len_a)) {
+    return 1;
+  }
+  if (!BIO_ADDR_rawaddress(b, addr_b, &len_b)) {
+    return 1;
+  }
+
+  if (len_a != len_b) {
+    return 1;
+  }
+
+  return OPENSSL_memcmp(addr_a, addr_b, len_a) != 0;
+}
+
+
 
 #ifdef AWS_LC_HAS_AF_UNIX
 static int prepare_unix_domain_socket(sockaddr_un *sun) {
@@ -524,8 +600,7 @@ static void test_puts_receive(bssl::UniquePtr<BIO> &sender_bio,
   static constexpr char kTestMessage[] = "test";
 
   // Send a message
-  ASSERT_EQ((int)strlen(kTestMessage),
-            BIO_puts(sender_bio.get(), kTestMessage))
+  ASSERT_EQ((int)strlen(kTestMessage), BIO_puts(sender_bio.get(), kTestMessage))
       << LastSocketError();
   // BIO_flush is a no-op, but test it anyway.
   ASSERT_EQ(1, BIO_flush(sender_bio.get())) << LastSocketError();
@@ -543,11 +618,7 @@ static void test_puts_receive(bssl::UniquePtr<BIO> &sender_bio,
   ASSERT_EQ(Bytes(buff), Bytes(kTestMessage));
 }
 
-class BIODgramTest : public testing::TestWithParam<int> {
-  // You can implement all the usual fixture class members here.
-  // To access the test parameter, call GetParam() from class
-  // TestWithParam<T>.
-};
+class BIODgramTest : public testing::TestWithParam<int> {};
 
 
 #if defined(AF_INET6)
@@ -595,16 +666,32 @@ TEST_P(BIODgramTest, SocketDatagramSetPeer) {
   ASSERT_TRUE(client_bio) << LastSocketError();
 
   // "Connect" the client to server
-  BIO_ADDR bio_server_addr = server_addr.ToBIO_ADDR();
-  ASSERT_EQ(1, BIO_dgram_set_peer(client_bio.get(), &bio_server_addr))
+  bssl::UniquePtr<BIO_ADDR> server_bio_addr = server_addr.ToBIO_ADDR();
+  ASSERT_TRUE(server_bio_addr);
+  if (addr_family == AF_UNIX) {
+    ASSERT_EQ(0, BIO_ADDR_rawport(server_bio_addr.get()));
+  } else {
+    ASSERT_LT(0, BIO_ADDR_rawport(server_bio_addr.get()));
+  }
+  ASSERT_EQ(1, BIO_dgram_set_peer(client_bio.get(), server_bio_addr.get()))
       << LastSocketError();
 
-  // Get peer
-  BIO_ADDR bio_server_addr_copy;
-  ASSERT_GT(BIO_dgram_get_peer(client_bio.get(), &bio_server_addr_copy), 0)
+  // Create a copy of the server address for comparison
+  bssl::UniquePtr<BIO_ADDR> bio_server_addr_copy(
+      BIO_ADDR_dup(server_bio_addr.get()));
+  ASSERT_TRUE(bio_server_addr_copy);
+
+  ASSERT_EQ(0, BIO_ADDR_cmp(bio_server_addr_copy.get(), server_bio_addr.get()))
       << LastSocketError();
 
-  ASSERT_EQ(bio_server_addr, bio_server_addr_copy) << LastSocketError();
+  // Get peer and verify it matches
+  bssl::UniquePtr<BIO_ADDR> peer_addr(BIO_ADDR_new());
+  ASSERT_GT(BIO_dgram_get_peer(client_bio.get(), peer_addr.get()), 0)
+      << LastSocketError();
+
+  ASSERT_EQ(0, BIO_ADDR_cmp(bio_server_addr_copy.get(), peer_addr.get()))
+      << LastSocketError();
+
 
   test_send_receive(client_bio, server_bio);
   ASSERT_EQ(0, BIO_dgram_send_timedout(client_bio.get()));
@@ -643,8 +730,14 @@ TEST_P(BIODgramTest, SocketDatagramSetConnected) {
   // "Connect" the client to server
   ASSERT_EQ(connect(client_fd, server_addr.addr(), server_addr.len), 0)
       << LastSocketError();
-  BIO_ADDR server_bio_addr = server_addr.ToBIO_ADDR();
-  ASSERT_EQ(1, BIO_ctrl_set_connected(client_bio.get(), &server_bio_addr))
+  bssl::UniquePtr<BIO_ADDR> server_bio_addr = server_addr.ToBIO_ADDR();
+  ASSERT_TRUE(server_bio_addr);
+  if (addr_family == AF_UNIX) {
+    ASSERT_EQ(0, BIO_ADDR_rawport(server_bio_addr.get()));
+  } else {
+    ASSERT_LT(0, BIO_ADDR_rawport(server_bio_addr.get()));
+  }
+  ASSERT_EQ(1, BIO_ctrl_set_connected(client_bio.get(), server_bio_addr.get()))
       << LastSocketError();
 
   test_send_receive(client_bio, server_bio);
@@ -666,7 +759,7 @@ TEST_P(BIODgramTest, SocketDatagramSetConnected) {
 #endif
 
 #if defined(__MINGW32__)
-// Mingw environments are inconsistent as to this behavior.
+  // Mingw environments are inconsistent as to this behavior.
   if (addr_family == AF_INET6) {
     return;
   }
@@ -698,11 +791,145 @@ TEST_P(BIODgramTest, SocketDatagramConnect) {
   ASSERT_TRUE(client_bio) << LastSocketError();
 
   // "Connect" the client to server
-  BIO_ADDR server_bio_addr = server_addr.ToBIO_ADDR();
-  ASSERT_EQ(1, BIO_ctrl_dgram_connect(client_bio.get(), &server_bio_addr))
+  bssl::UniquePtr<BIO_ADDR> server_bio_addr = server_addr.ToBIO_ADDR();
+  ASSERT_TRUE(server_bio_addr);
+  if (addr_family == AF_UNIX) {
+    ASSERT_EQ(0, BIO_ADDR_rawport(server_bio_addr.get()));
+  } else {
+    ASSERT_LT(0, BIO_ADDR_rawport(server_bio_addr.get()));
+  }
+  ASSERT_TRUE(server_bio_addr);
+  ASSERT_EQ(1, BIO_ctrl_dgram_connect(client_bio.get(), server_bio_addr.get()))
       << LastSocketError();
   ;
 
   test_send_receive(client_bio, server_bio);
   test_send_receive(server_bio, client_bio);
+}
+
+class BIOAddrTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    addr1 = BIO_ADDR_new();
+    addr2 = BIO_ADDR_new();
+    ASSERT_NE(addr1, nullptr);
+    ASSERT_NE(addr2, nullptr);
+  }
+
+  void TearDown() override {
+    BIO_ADDR_free(addr1);
+    BIO_ADDR_free(addr2);
+  }
+
+  BIO_ADDR *addr1;
+  BIO_ADDR *addr2;
+};
+
+// Tests for BIO_ADDR_copy
+TEST_F(BIOAddrTest, CopyNullDst) {
+  EXPECT_EQ(BIO_ADDR_copy(nullptr, addr1), 0);
+}
+
+TEST_F(BIOAddrTest, CopyNullSrc) {
+  EXPECT_EQ(BIO_ADDR_copy(addr1, nullptr), 0);
+}
+
+TEST_F(BIOAddrTest, CopyUnspecifiedAddress) {
+  // AF_UNSPEC is already set by default in a new BIO_ADDR
+  EXPECT_EQ(BIO_ADDR_copy(addr1, addr2), 1);
+  EXPECT_EQ(BIO_ADDR_cmp(addr1, addr2), 0);
+}
+
+TEST_F(BIOAddrTest, CopySpecifiedAddressIPv4) {
+  long addr = INADDR_LOOPBACK;
+  EXPECT_EQ(BIO_ADDR_rawmake(addr2, AF_INET, &addr, sizeof(in_addr), htons(443)), 1);
+
+  EXPECT_EQ(BIO_ADDR_copy(addr1, addr2), 1);
+  EXPECT_EQ(BIO_ADDR_cmp(addr1, addr2), 0);
+}
+
+#ifdef AF_INET6
+TEST_F(BIOAddrTest, CopySpecifiedAddressIPv6) {
+  EXPECT_EQ(BIO_ADDR_rawmake(addr2, AF_INET6, &in6addr_loopback,
+                             sizeof(in6addr_loopback), htons(443)),
+            1);
+  EXPECT_EQ(BIO_ADDR_copy(addr1, addr2), 1);
+  EXPECT_EQ(BIO_ADDR_cmp(addr1, addr2), 0);
+}
+#endif
+
+#ifdef AWS_LC_HAS_AF_UNIX
+TEST_F(BIOAddrTest, CopySpecifiedAddressUnix) {
+  const char *path = "/tmp/test.sock";
+
+  EXPECT_EQ(BIO_ADDR_rawmake(addr2, AF_UNIX, path,
+                             OPENSSL_strnlen(path, sizeof(sockaddr_un::sun_path)), 0),
+            1);
+  EXPECT_EQ(BIO_ADDR_copy(addr1, addr2), 1);
+  EXPECT_EQ(BIO_ADDR_cmp(addr1, addr2), 0);
+}
+#endif
+
+// Tests for BIO_ADDR_dup
+TEST_F(BIOAddrTest, DupNull) { EXPECT_EQ(BIO_ADDR_dup(nullptr), nullptr); }
+
+TEST_F(BIOAddrTest, DupUnspecifiedAddress) {
+  BIO_ADDR *dup = BIO_ADDR_dup(addr1);
+  ASSERT_NE(dup, nullptr);
+  EXPECT_EQ(BIO_ADDR_cmp(dup, addr1), 0);
+  BIO_ADDR_free(dup);
+}
+
+TEST_F(BIOAddrTest, DupSpecifiedAddressIPv4) {
+  uint32_t addr = INADDR_LOOPBACK;
+  EXPECT_EQ(BIO_ADDR_rawmake(addr1, AF_INET, &addr, sizeof(sockaddr_in::sin_addr), htons(443)), 1);
+
+  BIO_ADDR *dup = BIO_ADDR_dup(addr1);
+  ASSERT_NE(dup, nullptr);
+  EXPECT_EQ(BIO_ADDR_cmp(dup, addr1), 0);
+  BIO_ADDR_free(dup);
+}
+
+#ifdef AF_INET6
+TEST_F(BIOAddrTest, DupSpecifiedAddressIPv6) {
+  EXPECT_EQ(BIO_ADDR_rawmake(addr1, AF_INET6, &in6addr_loopback,
+                             sizeof(in6addr_loopback), htons(443)),
+            1);
+
+  BIO_ADDR *dup = BIO_ADDR_dup(addr1);
+  ASSERT_NE(dup, nullptr);
+  EXPECT_EQ(BIO_ADDR_cmp(dup, addr1), 0);
+  BIO_ADDR_free(dup);
+}
+#endif
+
+#ifdef AWS_LC_HAS_AF_UNIX
+TEST_F(BIOAddrTest, DupSpecifiedAddressUnix) {
+  const char *path = "/tmp/test.sock";
+  EXPECT_EQ(BIO_ADDR_rawmake(addr1, AF_UNIX, path,
+                             OPENSSL_strnlen(path, sizeof(sockaddr_un::sun_path)), 0),
+            1);
+
+  BIO_ADDR *dup = BIO_ADDR_dup(addr1);
+  ASSERT_NE(dup, nullptr);
+  EXPECT_EQ(BIO_ADDR_cmp(dup, addr1), 0);
+  BIO_ADDR_free(dup);
+}
+#endif
+
+// Tests for BIO_ADDR_clear
+TEST_F(BIOAddrTest, ClearAddress) {
+  uint32_t addr = INADDR_LOOPBACK;
+  EXPECT_EQ(BIO_ADDR_rawmake(addr1, AF_INET, &addr, 4, htons(443)), 1);
+
+  // Create a copy before clearing
+  BIO_ADDR *before_clear = BIO_ADDR_dup(addr1);
+  ASSERT_NE(before_clear, nullptr);
+
+  BIO_ADDR_clear(addr1);
+
+  EXPECT_EQ(BIO_ADDR_cmp(addr1, before_clear), 1);
+  EXPECT_EQ(addr1->sa.sa_family, AF_UNSPEC);
+
+  BIO_ADDR_free(before_clear);
 }
