@@ -37,6 +37,8 @@ TEST(CCRandomGenerateBytesTest, NotObviouslyBroken) {
 
   // |CCRandomGenerateBytes| supports bigger inputs.
   uint8_t buf4[1024] = {0}, buf5[1024] = {0};
+  EXPECT_EQ(CCRandomGenerateBytes(buf4, sizeof(buf4)), kCCSuccess);
+  EXPECT_EQ(CCRandomGenerateBytes(buf5, sizeof(buf5)), kCCSuccess);
   EXPECT_NE(Bytes(buf4), Bytes(buf5));
 }
 
