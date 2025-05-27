@@ -1467,7 +1467,7 @@ static STACK_OF(X509) *pkcs7_get0_certificates(const PKCS7 *p7) {
   }
 }
 
-static STACK_OF(X509) *pkcs7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
+STACK_OF(X509) *PKCS7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
                                           int flags) {
   GUARD_PTR(p7);
   STACK_OF(X509) *signers = NULL;
@@ -1671,7 +1671,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
     goto out;
   }
 
-  if ((signers = pkcs7_get0_signers(p7, certs, flags)) == NULL) {
+  if ((signers = PKCS7_get0_signers(p7, certs, flags)) == NULL) {
     goto out;
   }
 

@@ -599,6 +599,10 @@ int BIO_set_close(BIO *bio, int close_flag) {
   return (int)BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
 }
 
+int BIO_get_close(BIO *bio) {
+  return (int)BIO_ctrl(bio, BIO_CTRL_GET_CLOSE, 0, NULL);
+}
+
 OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio) {
   return bio->num_read;
 }

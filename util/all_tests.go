@@ -207,7 +207,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		if *mallocTestDebug {
 			cmd.Env = append(cmd.Env, "MALLOC_ABORT_ON_FAIL=1")
 		}
-		cmd.Env = append(cmd.Env, "_MALLOC_CHECK=1")
+		cmd.Env = append(cmd.Env, "MALLOC_CHECK_=1")
 	}
 
 	if err := cmd.Start(); err != nil {

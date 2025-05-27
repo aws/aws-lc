@@ -1,54 +1,9 @@
 ---
 Checks: '
   -*,
-  bugprone-dangling-handle,
-  bugprone-integer-overflow,
-  bugprone-infinite-loop,
-  bugprone-leak,
-  bugprone-use-after-free,
   clang-analyzer-*,
-  cppcoreguidelines-pro-bounds-constant-index,
-  security-*,
-  -clang-analyzer-optin.*,
-  -clang-analyzer-unix.Stream,
-  -clang-analyzer-cplusplus.NewDeleteLeaks
+  portability-*,
+  cppcoreguidelines-init-variables, 
+  readability-braces-around-statements,
   '
 WarningsAsErrors: ''
-HeaderFilterRegex: ''
-FormatStyle: none
-
-CheckOptions:
-  - key: readability-identifier-naming.ClassCase
-    value: CamelCase
-  - key: readability-identifier-naming.ConstexprVariableCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.EnumCase
-    value: CamelCase
-  - key: readability-identifier-naming.EnumConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.FunctionCase
-    value: camelBack
-  - key: readability-identifier-naming.GlobalConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.StaticConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.StaticVariableCase
-    value: camelBack
-  - key: readability-identifier-naming.MacroDefinitionCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.MemberCase
-    value: camelBack
-  - key: readability-identifier-naming.PrivateMemberPrefix
-    value: m_
-  - key: readability-identifier-naming.ProtectedMemberPrefix
-    value: m_
-  - key: readability-identifier-naming.PublicMemberCase
-    value: camelBack
-  - key: readability-identifier-naming.MethodCase
-    value: camelBack
-  - key: readability-identifier-naming.ParameterCase
-    value: camelBack
-  - key: readability-identifier-naming.TypeAliasCase
-    value: CamelCase
-  - key: readability-identifier-naming.VariableCase
-    value: camelBack

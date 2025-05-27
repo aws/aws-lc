@@ -456,7 +456,7 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
   // Generate a random salt if necessary.
   if (salt == NULL) {
     if (salt_len == 0) {
-      salt_len = PKCS5_SALT_LEN;
+      salt_len = PKCS12_SALT_LEN;
     }
 
     salt_buf = OPENSSL_malloc(salt_len);

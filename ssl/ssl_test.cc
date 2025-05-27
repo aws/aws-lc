@@ -1193,7 +1193,6 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
     false,
   },
 
-
   // The client lists PQ/hybrid groups as both first and second preferences.
   // The key share logic is implemented such that the client will always
   // attempt to send one hybrid key share and one classical key share.
@@ -13636,6 +13635,161 @@ TEST(SSLTest, MixContextAndConnection) {
   // It does not impact the other connection or the context.
   EXPECT_FALSE(SSL_CTX_get0_privatekey(ctx.get()));
   EXPECT_FALSE(SSL_get_privatekey(ssl2.get()));
+}
+
+static size_t test_ecc_privkey_calls = 0;
+
+static enum ssl_private_key_result_t test_ecc_privkey_complete(SSL *ssl,
+                                                           uint8_t *out,
+                                                           size_t *out_len,
+                                                           size_t max_out) {
+  test_ecc_privkey_calls += 1;
+  return ssl_private_key_success;
+}
+
+static enum ssl_private_key_result_t test_ecc_privkey_sign(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    uint16_t signature_algorithm, const uint8_t *in, size_t in_len) {
+  bssl::UniquePtr<EVP_PKEY> pkey(GetECDSATestKey());
+
+  if (EVP_PKEY_id(pkey.get()) !=
+      SSL_get_signature_algorithm_key_type(signature_algorithm)) {
+      return ssl_private_key_failure;
+  }
+
+  const EVP_MD *md = SSL_get_signature_algorithm_digest(signature_algorithm);
+  bssl::ScopedEVP_MD_CTX ctx;
+  EVP_PKEY_CTX *pctx = nullptr;
+  if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr,
+                          pkey.get())) {
+    return ssl_private_key_failure;
+  }
+
+  size_t len = 0;
+  if (!EVP_DigestSign(ctx.get(), nullptr, &len, in, in_len) || len > max_out) {
+    return ssl_private_key_failure;
+  }
+
+  *out_len = max_out;
+
+  if (!EVP_DigestSign(ctx.get(), out, out_len, in, in_len)) {
+    return ssl_private_key_failure;
+  }
+
+  return test_ecc_privkey_complete(ssl, out, out_len, max_out);
+}
+
+static enum ssl_private_key_result_t test_ecc_privkey_decrypt(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, const uint8_t *in,
+    size_t in_len) {
+  return ssl_private_key_failure;
+}
+
+static const SSL_PRIVATE_KEY_METHOD test_ecc_private_key_method = {
+    test_ecc_privkey_sign,
+    test_ecc_privkey_decrypt,
+    test_ecc_privkey_complete,
+};
+
+TEST(SSLTest, SSLPrivateKeyMethod) {
+  {
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+    bssl::UniquePtr<X509> ecdsa_cert(GetECDSATestCertificate());
+    bssl::UniquePtr<CRYPTO_BUFFER> ecdsa_leaf =
+        x509_to_buffer(ecdsa_cert.get());
+    std::vector<CRYPTO_BUFFER *> chain = {
+        ecdsa_leaf.get(),
+    };
+
+    // Index should be have been set to default, 0, but no key loaded
+    EXPECT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_RSA);
+    EXPECT_EQ(
+        server_ctx->cert->cert_private_keys[SSL_PKEY_RSA].privatekey.get(),
+        nullptr);
+    EXPECT_EQ(server_ctx->cert->key_method, nullptr);
+
+
+    // Load a certificate chain containg the leaf but set private key method
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+                                          chain.size(), nullptr,
+                                          &test_ecc_private_key_method));
+
+    // Should be initiall zero
+    ASSERT_EQ(test_ecc_privkey_calls, (size_t)0);
+
+    // Index must be ECC key now, but key_method must be set.
+    ASSERT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_ECC);
+    ASSERT_EQ(server_ctx->cert->key_method, &test_ecc_private_key_method);
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get(), ClientConfig(),
+                                       false));
+
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    ASSERT_EQ(test_ecc_privkey_calls, (size_t)1);
+
+    // Check the internal slot index to verify that the correct slot was used
+    // during the handshake.
+    ASSERT_EQ(server->config->cert->cert_private_key_idx, SSL_PKEY_ECC);
+    ASSERT_EQ(server->config->cert->key_method, &test_ecc_private_key_method);
+  }
+
+  {
+    size_t current_invoke_count = test_ecc_privkey_calls;
+
+    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+    // Index should be have been set to default, 0, but no key loaded
+    EXPECT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_RSA);
+    EXPECT_EQ(
+        server_ctx->cert->cert_private_keys[SSL_PKEY_RSA].privatekey.get(),
+        nullptr);
+    EXPECT_EQ(server_ctx->cert->key_method, nullptr);
+
+    bssl::UniquePtr<X509> ed_cert(GetED25519TestCertificate());
+    bssl::UniquePtr<EVP_PKEY> ed_key(GetED25519TestKey());
+    bssl::UniquePtr<CRYPTO_BUFFER> ed_leaf = x509_to_buffer(ed_cert.get());
+    std::vector<CRYPTO_BUFFER *> ed_chain = {
+        ed_leaf.get(),
+    };
+
+    // Load a certificate chain containg the leaf but set private key method
+    ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &ed_chain[0],
+                                          ed_chain.size(), ed_key.get(),
+                                          nullptr));
+
+    // Index must be ECC key now, but key_method must not be set.
+    ASSERT_EQ(server_ctx->cert->cert_private_key_idx, SSL_PKEY_ED25519);
+    ASSERT_EQ(server_ctx->cert->key_method, nullptr);
+
+    std::vector<uint16_t> sigalgs = {SSL_SIGN_ED25519};
+
+    ASSERT_TRUE(SSL_CTX_set_signing_algorithm_prefs(
+        client_ctx.get(), sigalgs.data(), sigalgs.size()));
+    ASSERT_TRUE(SSL_CTX_set_verify_algorithm_prefs(
+        client_ctx.get(), sigalgs.data(), sigalgs.size()));
+
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get(), ClientConfig(),
+                                       false));
+
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    // This should still be the same, as we didn't use the private key method
+    // functionality, so it shouldn't have incremented.
+    ASSERT_EQ(test_ecc_privkey_calls, current_invoke_count);
+
+    // Check the internal slot index to verify that the correct slot was used
+    // during the handshake and that key_method was not set.
+    ASSERT_EQ(server->config->cert->cert_private_key_idx, SSL_PKEY_ED25519);
+    ASSERT_EQ(server->config->cert->key_method, nullptr);
+  }
 }
 
 }  // namespace

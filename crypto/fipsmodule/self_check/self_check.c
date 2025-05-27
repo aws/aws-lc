@@ -61,11 +61,11 @@ static void hexdump(char buf[MAX_HEXDUMP_SIZE], const uint8_t *in, size_t in_len
 
 static int check_test_optional_abort(const void *expected, const void *actual,
                       size_t expected_len, const char *name, const bool call_fips_failure) {
+  char expected_hex[MAX_HEXDUMP_SIZE] = {0};
+  char actual_hex[MAX_HEXDUMP_SIZE] = {0};
+  char error_msg[MAX_ERROR_MSG_SIZE] = {0};
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
     assert(sizeof(name) < MAX_NAME);
-    char expected_hex[MAX_HEXDUMP_SIZE] = {0};
-    char actual_hex[MAX_HEXDUMP_SIZE] = {0};
-    char error_msg[MAX_ERROR_MSG_SIZE] = {0};
     hexdump(expected_hex, expected, expected_len);
     hexdump(actual_hex, actual, expected_len);
 
@@ -1508,13 +1508,13 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
 
   // Examples kMLDSAKeyGenSeed, kMLDSAKeyGenPublicKey, kMLDSAKeyGenPrivateKey from
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/prompt.json#L15
-  const uint8_t kMLDSAKeyGenSeed[MLDSA44_KEYGEN_SEED_BYTES] = {
+  static const uint8_t kMLDSAKeyGenSeed[MLDSA44_KEYGEN_SEED_BYTES] = {
     0x4B, 0xE7, 0xA0, 0x1A, 0x99, 0xA5, 0xE5, 0xBC, 0xFE, 0x3C, 0x06,
     0x78, 0x5D, 0x8E, 0x4E, 0xC6, 0x64, 0x08, 0x22, 0x27, 0xD8, 0x67,
     0x04, 0xE9, 0xE4, 0x48, 0x62, 0x62, 0x3A, 0x05, 0xC8, 0xB3
 };
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/expectedResults.json#L13
-  const uint8_t kMLDSAKeyGenPublicKey[MLDSA44_PUBLIC_KEY_BYTES] = {
+  static const uint8_t kMLDSAKeyGenPublicKey[MLDSA44_PUBLIC_KEY_BYTES] = {
     0xad, 0xb0, 0xb3, 0x34, 0x64, 0x81, 0x60, 0x91, 0xf2, 0xa9, 0x59, 0x77,
     0xc6, 0x7f, 0x08, 0x5f, 0xdc, 0x24, 0xb3, 0x78, 0x54, 0xd4, 0xdb, 0x0a,
     0x57, 0x7a, 0xe9, 0x40, 0x1e, 0x40, 0x81, 0x48, 0xd8, 0x91, 0x7d, 0x21,
@@ -1628,7 +1628,7 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
   };
 
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/expectedResults.json#L14
-  const uint8_t kMLDSAKeyGenPrivateKey[MLDSA44_PRIVATE_KEY_BYTES] = {
+  static const uint8_t kMLDSAKeyGenPrivateKey[MLDSA44_PRIVATE_KEY_BYTES] = {
     0xad, 0xb0, 0xb3, 0x34, 0x64, 0x81, 0x60, 0x91, 0xf2, 0xa9, 0x59, 0x77,
     0xc6, 0x7f, 0x08, 0x5f, 0xdc, 0x24, 0xb3, 0x78, 0x54, 0xd4, 0xdb, 0x0a,
     0x57, 0x7a, 0xe9, 0x40, 0x1e, 0x40, 0x81, 0x48, 0xcf, 0x19, 0x5e, 0x6d,
@@ -2280,8 +2280,8 @@ static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
   uint8_t private_key[MLDSA44_PRIVATE_KEY_BYTES] = {0};
 
   if (!ml_dsa_44_keypair_internal_no_self_test(public_key, private_key, kMLDSAKeyGenSeed) ||
-      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA keyGen public") ||
-      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA keyGen private")) {
+      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA-keyGen") ||
+      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA-keyGen")) {
     goto err;
   }
 
@@ -2537,7 +2537,7 @@ void boringssl_ensure_hasheddsa_self_test(void) {
 // These tests are run at process start when in FIPS mode. Note that the SHA256
 // and HMAC-SHA256 tests are also used from bcm.c, so they can't be static.
 
-int boringssl_self_test_sha256(void) {
+OPENSSL_NOINLINE int boringssl_self_test_sha256(void) {
   static const uint8_t kInput[16] = {
       0xff, 0x3b, 0x85, 0x7d, 0xa7, 0x23, 0x6a, 0x2b,
       0xaa, 0x0f, 0x39, 0x6b, 0x51, 0x52, 0x22, 0x17,
@@ -2576,7 +2576,7 @@ static OPENSSL_NOINLINE int boringssl_self_test_sha512(void) {
                     "SHA-512 KAT");
 }
 
-int boringssl_self_test_hmac_sha256(void) {
+OPENSSL_NOINLINE int boringssl_self_test_hmac_sha256(void) {
   static const uint8_t kInput[16] = {
       0xda, 0xd9, 0x12, 0x93, 0xdf, 0xcf, 0x2a, 0x7c,
       0x8e, 0xcd, 0x13, 0xfe, 0x35, 0x3f, 0xa7, 0x5b,

@@ -18,9 +18,16 @@
 #include <openssl/base.h>
 #include <openssl/poly1305.h>
 
+#include "../internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+static inline struct poly1305_state_st *poly1305_aligned_state(
+    poly1305_state *state) {
+  return align_pointer(state, 64);
+}
 
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
 #define OPENSSL_POLY1305_NEON

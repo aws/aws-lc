@@ -262,7 +262,7 @@ static enum leaf_cert_and_privkey_result_t do_leaf_cert_and_privkey_checks(
 // returns |leaf_cert_and_privkey_mismatch|. Otherwise it returns
 // |leaf_cert_and_privkey_ok|.
 static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
-    CRYPTO_BUFFER *leaf_buffer, EVP_PKEY *privkey) {
+    CRYPTO_BUFFER *leaf_buffer, EVP_PKEY *privkey, int *out_pubslot_idx) {
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(leaf_buffer, &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
@@ -270,7 +270,16 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return leaf_cert_and_privkey_error;
   }
-   return do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(), privkey);
+  enum leaf_cert_and_privkey_result_t result = do_leaf_cert_and_privkey_checks(
+      &cert_cbs, pubkey.get(), privkey);
+  if(out_pubslot_idx != nullptr) {
+    if(result == leaf_cert_and_privkey_ok) {
+      *out_pubslot_idx = ssl_get_certificate_slot_index(pubkey.get());
+    } else {
+      *out_pubslot_idx = -1;
+    }
+  }
+  return result;
 }
 
 static int cert_set_chain_and_key(
@@ -291,7 +300,9 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  switch (check_leaf_cert_and_privkey(leaf_buf, privkey)) {
+  int slot_idx = -1;
+
+  switch (check_leaf_cert_and_privkey(leaf_buf, privkey, &slot_idx)) {
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
@@ -300,27 +311,35 @@ static int cert_set_chain_and_key(
     case leaf_cert_and_privkey_ok:
       break;
   }
+  assert(slot_idx >= 0);
 
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
 
-  // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
-  int idx = ssl_get_certificate_slot_index(privkey);
-  assert(idx >= 0);
-  CERT_PKEY *cert_pkey = &cert->cert_private_keys[idx];
+  // Certificate slot validity already checked and set by
+  // |check_leaf_cert_and_privkey|.
+  CERT_PKEY *cert_pkey = &cert->cert_private_keys[slot_idx];
 
-  // Update certificate slot index once all checks have passed.
+  // If privatekey is currently set then reset it.
+  // We either set a new |privatekey| or |privkey_method|
+  // later below.
   if (cert_pkey->privatekey) {
     cert_pkey->privatekey.reset();
   }
-  cert_pkey->privatekey = UpRef(privkey);
-  cert->key_method = privkey_method;
+
+  if(privkey != nullptr) {
+    cert_pkey->privatekey = UpRef(privkey);
+  } else {
+    cert->key_method = privkey_method;
+  }
+
   if (cert_pkey->chain) {
     cert_pkey->chain.reset();
   }
   cert_pkey->chain = std::move(certs);
-  cert->cert_private_key_idx = idx;
+  cert->cert_private_key_idx = slot_idx;
+
   return 1;
 }
 

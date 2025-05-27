@@ -1941,6 +1941,10 @@ TEST(PKCS7Test, TestSigned) {
                       /*flags*/ 0));
   ASSERT_TRUE(p7);
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+
+  STACK_OF(X509) *signers = PKCS7_get0_signers(p7.get(), certs.get(), 0);
+  EXPECT_TRUE(signers);
+  sk_X509_free(signers);
   EXPECT_FALSE(PKCS7_is_detached(p7.get()));
 
   // attached, check |outdata|
@@ -2144,6 +2148,10 @@ iWjrtmwM/HRbFEg2THS9b/vkiTsNSRCR9goaq9KPqXuJJsjJIoMA8IBHSLVvFnLf
       PEM_read_bio_PKCS7(bio.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(pkcs7);
   ASSERT_TRUE(PKCS7_type_is_signed(pkcs7.get()));
+
+  STACK_OF(X509) *signers = PKCS7_get0_signers(pkcs7.get(), nullptr, 0);
+  EXPECT_TRUE(signers);
+  sk_X509_free(signers);
 
   // Set up trust store for verification.
   bssl::UniquePtr<X509_STORE> store(X509_STORE_new());

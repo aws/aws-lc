@@ -20,7 +20,6 @@
 #define SNAPSAFETY_STATE_NOT_SUPPORTED 0x02
 
 static CRYPTO_once_t aws_snapsafe_init = CRYPTO_ONCE_INIT;
-
 static volatile uint32_t *sgn_addr = NULL;
 static int snapsafety_state = 0;
 
