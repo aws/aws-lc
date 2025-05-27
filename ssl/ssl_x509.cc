@@ -1586,6 +1586,9 @@ int SSL_alert_from_verify_result(long result) {
     case X509_V_ERR_INVALID_PURPOSE:
       return SSL_AD_UNSUPPORTED_CERTIFICATE;
 
+    case X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY:
+      return SSL_AD_UNSUPPORTED_CERTIFICATE;
+
     default:
       return SSL_AD_CERTIFICATE_UNKNOWN;
   }
