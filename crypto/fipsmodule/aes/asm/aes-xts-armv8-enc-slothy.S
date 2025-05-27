@@ -56,8 +56,8 @@
 // A single AES round
 // Prevent SLOTHY from unfolding because uArchs tend to fuse AESMC+AESE
 .macro aesr data, key // @slothy:no-unfold
-        aese  \data, \key
-        aesmc \data, \data
+        aese  \data\().16b, \key\().16b
+        aesmc \data\().16b, \data\().16b
 .endm
 
 _aes_hw_slothy_xts_encrypt:
@@ -78,17 +78,14 @@ aes_hw_slothy_xts_encrypt:
 	ld1	{v1.16b},[x4],#16
 
 Loop_enc_iv_enc:
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr    v6, v0
 	ld1	{v0.4s},[x4],#16
-	aese	v6.16b,v1.16b
-	aesmc	v6.16b,v6.16b
+	aesr    v6, v1
 	ld1	{v1.4s},[x4],#16
 	subs	w6,w6,#2
 	cbnz	w6,Loop_enc_iv_enc
 
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr    v6, v0
 	ld1	{v0.4s},[x4]
 	aese	v6.16b,v1.16b
 	eor	v6.16b,v6.16b,v0.16b
@@ -99,41 +96,30 @@ Loop_enc_iv_enc:
 	ldr	w6,[x3,#240]
 	ld1	{v28.4s,v29.4s},[x3],#32       // load key schedule...
 
-	aese	v0.16b,v28.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v28
 	ld1	{v16.4s,v17.4s},[x3],#32         // load key schedule...
-	aese	v0.16b,v29.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v29
 	subs	w6,w6,#10     //// if rounds==10, jump to aes-128-xts processing
 //    b.eq    .Lxts_128_enc
 Lxts_enc_round_loop:
-	aese	v0.16b,v16.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v16
 	ld1	{v16.4s},[x3],#16            // load key schedule...
-	aese	v0.16b,v17.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v17
 	ld1	{v17.4s},[x3],#16            // load key schedule...
 	subs	w6,w6,#2          // bias
 	b.gt	Lxts_enc_round_loop
 //.Lxts_128_enc:
 	ld1	{v18.4s,v19.4s},[x3],#32       // load key schedule...
-	aese	v0.16b,v16.16b
-	aesmc	v0.16b,v0.16b
-	aese	v0.16b,v17.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v16
+	aesr    v0, v17
 	ld1	{v20.4s,v21.4s},[x3],#32       // load key schedule...
-	aese	v0.16b,v18.16b
-	aesmc	v0.16b,v0.16b
-	aese	v0.16b,v19.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v18
+	aesr    v0, v19
 	ld1	{v22.4s,v23.4s},[x3],#32       // load key schedule...
-	aese	v0.16b,v20.16b
-	aesmc	v0.16b,v0.16b
-	aese	v0.16b,v21.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v20
+	aesr    v0, v21
 	ld1	{v7.4s},[x3]
-	aese	v0.16b,v22.16b
-	aesmc	v0.16b,v0.16b
+	aesr    v0, v22
 	aese	v0.16b,v23.16b
 	eor	v0.16b,v0.16b,v7.16b
 	eor	v0.16b,v0.16b,v6.16b
@@ -162,17 +148,14 @@ Lxts_enc_big_size:
 	ld1	{v1.4s},[x4],#16
 
 Loop_iv_enc:
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr    v6, v0
 	ld1	{v0.4s},[x4],#16
 	subs	w6,w6,#2
-	aese	v6.16b,v1.16b
-	aesmc	v6.16b,v6.16b
+	aesr    v6, v1
 	ld1	{v1.4s},[x4],#16
 	b.gt	Loop_iv_enc
 
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr    v6, v0
 	ld1	{v0.4s},[x4]
 	aese	v6.16b,v1.16b
 	eor	v6.16b,v6.16b,v0.16b
@@ -262,153 +245,88 @@ Lxts_enc:
 
 .align	4
 Loop5x_xts_enc:
-	aese	v0.16b,v16.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v16.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v16.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v16.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v16.16b
-	aesmc	v26.16b,v26.16b
+    aesr    v0, v16
+    aesr    v1, v16
+	aesr    v24, v16
+	aesr    v25, v16
+	aesr    v26, v16
 	subs	x12,x2,#0x50         // because Lxts_enc_tail4x
 
-	aese	v0.16b,v17.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v17.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v17.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v17.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v17.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v17
+	aesr    v1, v17
+	aesr    v24, v17
+	aesr    v25, v17
+	aesr    v26, v17
 	csel	x6,xzr,x12,gt    // borrow x6, w6, "gt" is not typo
 
-	aese	v0.16b,v12.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v12.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v12.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v12.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v12.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v12
+	aesr    v1, v12
+	aesr    v24, v12
+	aesr    v25, v12
+	aesr    v26, v12
 
-	aese	v0.16b,v13.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v13.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v13.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v13.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v13.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v13
+	aesr    v1, v13
+	aesr    v24, v13
+	aesr    v25, v13
+	aesr    v26, v13
 
-   	aese	v0.16b,v14.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v14.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v14.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v14.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v14.16b
-	aesmc	v26.16b,v26.16b
+   	aesr    v0, v14
+	aesr    v1, v14
+	aesr    v24, v14
+	aesr    v25, v14
+	aesr    v26, v14
 
-	aese	v0.16b,v15.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v15.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v15.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v15.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v15.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v15
+	aesr    v1, v15
+	aesr    v24, v15
+	aesr    v25, v15
+	aesr    v26, v15
 
-	aese	v0.16b,v4.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v4.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v4.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v4.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v4.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v4
+	aesr    v1, v4
+	aesr    v24, v4
+	aesr    v25, v4
+	aesr    v26, v4
 
-	aese	v0.16b,v5.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v5.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v5.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v5.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v5.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v5
+	aesr    v1, v5
+	aesr    v24, v5
+	aesr    v25, v5
+	aesr    v26, v5
 
-	aese	v0.16b,v18.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v18.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v18.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v18.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v18.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v18
+	aesr    v1, v18
+	aesr    v24, v18
+	aesr    v25, v18
+	aesr    v26, v18
 	add	x0,x0,x6  // x0 is adjusted in such way that
                                 // at exit from the loop v1.16b-v26.16b
                                 // are loaded with last "words"
 
-	aese	v0.16b,v19.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v19.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v19.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v19.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v19.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v19
+	aesr    v1, v19
+	aesr    v24, v19
+	aesr    v25, v19
+	aesr    v26, v19
 
-	aese	v0.16b,v20.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v20.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v20.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v20.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v20.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v20
+	aesr    v1, v20
+	aesr    v24, v20
+	aesr    v25, v20
+	aesr    v26, v20
 
-	aese	v0.16b,v21.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v21.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v21.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v21.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v21.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v21
+	aesr    v1, v21
+	aesr    v24, v21
+	aesr    v25, v21
+	aesr    v26, v21
 
-	aese	v0.16b,v22.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v22.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v22.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v22.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v22.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v0, v22
+	aesr    v1, v22
+	aesr    v24, v22
+	aesr    v25, v22
+	aesr    v26, v22
 
 	aese	v0.16b,v23.16b
 	aese	v1.16b,v23.16b
@@ -517,127 +435,75 @@ Lxts_enc_tail4x:
 	eor	v25.16b,v28.16b,v10.16b
 	eor	v26.16b,v29.16b,v11.16b
 
-	aese	v1.16b,v16.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v16.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v16.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v16.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v16
+	aesr    v24, v16
+	aesr    v25, v16
+	aesr    v26, v16
 	subs	x2,x2,#0x50         // because Lxts_enc_tail4x
 
-	aese	v1.16b,v17.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v17.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v17.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v17.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v17
+	aesr    v24, v17
+	aesr    v25, v17
+	aesr    v26, v17
 	csel	x6,xzr,x2,gt    // borrow x6, w6, "gt" is not typo
 
-	aese	v1.16b,v12.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v12.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v12.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v12.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v12
+	aesr    v24, v12
+	aesr    v25, v12
+	aesr    v26, v12
 
-	aese	v1.16b,v13.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v13.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v13.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v13.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v13
+	aesr    v24, v13
+	aesr    v25, v13
+	aesr    v26, v13
 
-	aese	v1.16b,v14.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v14.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v14.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v14.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v14
+	aesr    v24, v14
+	aesr    v25, v14
+	aesr    v26, v14
 
-	aese	v1.16b,v15.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v15.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v15.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v15.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v15
+	aesr    v24, v15
+	aesr    v25, v15
+	aesr    v26, v15
 
-	aese	v1.16b,v4.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v4.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v4.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v4.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v4
+	aesr    v24, v4
+	aesr    v25, v4
+	aesr    v26, v4
 
-	aese	v1.16b,v5.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v5.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v5.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v5.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v5
+	aesr    v24, v5
+	aesr    v25, v5
+	aesr    v26, v5
 
-	aese	v1.16b,v18.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v18.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v18.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v18.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v18
+	aesr    v24, v18
+	aesr    v25, v18
+	aesr    v26, v18
 	add	x0,x0,x6  // x0 is adjusted in such way that
                                 // at exit from the loop v1.16b-v26.16b
                                 // are loaded with last "words"
 
-	aese	v1.16b,v19.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v19.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v19.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v19.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v19
+	aesr    v24, v19
+	aesr    v25, v19
+	aesr    v26, v19
 
-	aese	v1.16b,v20.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v20.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v20.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v20.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v20
+	aesr    v24, v20
+	aesr    v25, v20
+	aesr    v26, v20
 
-	aese	v1.16b,v21.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v21.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v21.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v21.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v21
+	aesr    v24, v21
+	aesr    v25, v21
+	aesr    v26, v21
 
-	aese	v1.16b,v22.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v22.16b
-	aesmc	v24.16b,v24.16b
-	aese	v25.16b,v22.16b
-	aesmc	v25.16b,v25.16b
-	aese	v26.16b,v22.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v1, v22
+	aesr    v24, v22
+	aesr    v25, v22
+	aesr    v26, v22
 
 	aese	v1.16b,v23.16b
 	aese	v24.16b,v23.16b
@@ -694,104 +560,65 @@ Lxts_enc_tail4x:
 .align	4
 Lxts_outer_enc_tail:
 		// First round with v16
-		aese	v0.16b,v16.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v16.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v16.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v16
+		aesr    v1, v16
+		aesr    v24, v16
 
 		// Second round with v17
-		aese	v0.16b,v17.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v17.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v17.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v17
+		aesr    v1, v17
+		aesr    v24, v17
 
 		// Third round with v12
-		aese	v0.16b,v12.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v12.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v12.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v12
+		aesr    v1, v12
+		aesr    v24, v12
 
 		// Fourth round with v13
-		aese	v0.16b,v13.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v13.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v13.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v13
+		aesr    v1, v13
+		aesr    v24, v13
 
 		// Fifth round with v14
-		aese	v0.16b,v14.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v14.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v14.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v14
+		aesr    v1, v14
+		aesr    v24, v14
 
 		// Sixth round with v15
-		aese	v0.16b,v15.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v15.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v15.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v15
+		aesr    v1, v15
+		aesr    v24, v15
 
 		// Seventh round with v4
-		aese	v0.16b,v4.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v4.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v4.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v4
+		aesr    v1, v4
+		aesr    v24, v4
 
 		// Eighth round with v5
-		aese	v0.16b,v5.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v5.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v5.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v5
+		aesr    v1, v5
+		aesr    v24, v5
 
 		// 9th round with v18
-		aese	v0.16b,v18.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v18.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v18.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v18
+		aesr    v1, v18
+		aesr    v24, v18
 
 		// 10th round with v19
-		aese	v0.16b,v19.16b
-		aesmc	v0.16b,v0.16b
-		aese	v1.16b,v19.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v19.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v0, v19
+		aesr    v1, v19
+		aesr    v24, v19
 
 
-	aese	v0.16b,v20.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v20.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v20.16b
-	aesmc	v24.16b,v24.16b
-	aese	v0.16b,v21.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v21.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v21.16b
-	aesmc	v24.16b,v24.16b
-	aese	v0.16b,v22.16b
-	aesmc	v0.16b,v0.16b
-	aese	v1.16b,v22.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v22.16b
-	aesmc	v24.16b,v24.16b
+	aesr    v0, v20
+	aesr    v1, v20
+	aesr    v24, v20
+	aesr    v0, v21
+	aesr    v1, v21
+	aesr    v24, v21
+	aesr    v0, v22
+	aesr    v1, v22
+	aesr    v24, v22
 	aese	v0.16b,v23.16b
 	aese	v1.16b,v23.16b
 	aese	v24.16b,v23.16b
@@ -839,79 +666,53 @@ Lxts_inner_enc_tail:
 	eor	v24.16b,v29.16b,v6.16b
 Lxts_enc_tail_loop:
 		// First round with v16
-		aese	v1.16b,v16.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v16.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v16
+		aesr    v24, v16
 
 		// Second round with v17
-		aese	v1.16b,v17.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v17.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v17
+		aesr    v24, v17
 
 		// Third round with v12
-		aese	v1.16b,v12.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v12.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v12
+		aesr    v24, v12
 
 		// Fourth round with v13
-		aese	v1.16b,v13.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v13.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v13
+		aesr    v24, v13
 
 		// Fifth round with v14
-		aese	v1.16b,v14.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v14.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v14
+		aesr    v24, v14
 
 		// Sixth round with v15
-		aese	v1.16b,v15.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v15.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v15
+		aesr    v24, v15
 
 		// Seventh round with v4
-		aese	v1.16b,v4.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v4.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v4
+		aesr    v24, v4
 
 		// Eighth round with v5
-		aese	v1.16b,v5.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v5.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v5
+		aesr    v24, v5
 
 		// 9th round with v18
-		aese	v1.16b,v18.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v18.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v18
+		aesr    v24, v18
 
 		// 10th round with v19
-		aese	v1.16b,v19.16b
-		aesmc	v1.16b,v1.16b
-		aese	v24.16b,v19.16b
-		aesmc	v24.16b,v24.16b
+		aesr    v1, v19
+		aesr    v24, v19
 
-	aese	v1.16b,v20.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v20.16b
-	aesmc	v24.16b,v24.16b
+	aesr    v1, v20
+	aesr    v24, v20
 	cmn	x2,#0x20
-	aese	v1.16b,v21.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v21.16b
-	aesmc	v24.16b,v24.16b
+	aesr    v1, v21
+	aesr    v24, v21
 	eor	v5.16b,v6.16b,v7.16b
-	aese	v1.16b,v22.16b
-	aesmc	v1.16b,v1.16b
-	aese	v24.16b,v22.16b
-	aesmc	v24.16b,v24.16b
+	aesr    v1, v22
+	aesr    v24, v22
 	eor	v17.16b,v8.16b,v7.16b
 	aese	v1.16b,v23.16b
 	aese	v24.16b,v23.16b
@@ -972,17 +773,14 @@ Lxts_enc_load_done:
 	sub	w6,w6,#2
 	ld1	{v1.16b},[x3],#16     // load key schedule...
 Loop_final_enc:
-	aese	v26.16b,v0.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v26, v0
 	ld1	{v0.4s},[x3],#16
 	subs	w6,w6,#2
-	aese	v26.16b,v1.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v26, v1
 	ld1	{v1.4s},[x3],#16
 	b.gt	Loop_final_enc
 
-	aese	v26.16b,v0.16b
-	aesmc	v26.16b,v26.16b
+	aesr    v26, v0
 	ld1	{v0.4s},[x3]
 	aese	v26.16b,v1.16b
 	eor	v26.16b,v26.16b,v0.16b
