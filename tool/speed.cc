@@ -2427,8 +2427,9 @@ static bool SpeedSelfTest(const std::string &selected) {
   results.Print("self-test");
   return true;
 }
+#endif
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#if AWSLC_API_VERSION >= 34
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -2464,7 +2465,6 @@ static bool SpeedJitter(std::string selected) {
   }
   return true;
 }
-#endif
 #endif
 
 static bool SpeedDHcheck(size_t prime_bit_length) {
@@ -3011,11 +3011,11 @@ bool Speed(const std::vector<std::string> &args) {
     if (!SpeedSelfTest(selected)) {
       return false;
     }
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#endif
+#if AWSLC_API_VERSION >= 34
     if (!SpeedJitter(selected)) {
       return false;
     }
-#endif
 #endif
   }
 
