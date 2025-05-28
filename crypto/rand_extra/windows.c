@@ -84,9 +84,4 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 }
 
 #endif  // WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP
-
-void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
-  CRYPTO_sysrand(out, requested);
-}
-
 #endif  // OPENSSL_RAND_WINDOWS

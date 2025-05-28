@@ -2988,7 +2988,6 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
 #if defined(INTERNAL_TOOL)
        !SpeedRandom(CRYPTO_sysrand, "CRYPTO_sysrand", selected) ||
-       !SpeedRandom(CRYPTO_sysrand_for_seed, "CRYPTO_sysrand_for_seed", selected) ||
        !SpeedHashToCurve(selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||

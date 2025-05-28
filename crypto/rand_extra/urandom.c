@@ -463,13 +463,6 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   }
 }
 
-void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
-  if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/1)) {
-    perror("entropy fill failed");
-    abort();
-  }
-}
-
 int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   if (fill_with_entropy(out, requested, /*block=*/0, /*seed=*/0)) {
     return 1;

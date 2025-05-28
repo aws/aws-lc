@@ -21,9 +21,7 @@ extern "C" {
 #endif
 
 // Functions:
-// CRYPTO_init_sysrand
 // CRYPTO_sysrand
-// CRYPTO_sysrand_for_seed
 // CRYPTO_sysrand_if_available
 // are the operating system entropy source interface used in the randomness
 // generation implementation.
@@ -32,17 +30,11 @@ extern "C" {
 // system.
 OPENSSL_EXPORT void CRYPTO_sysrand(uint8_t *buf, size_t len);
 
-// CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
-// operating system. It may draw from the |GRND_RANDOM| pool on Android,
-// depending on the vendor's configuration.
-OPENSSL_EXPORT void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
-
 #if defined(OPENSSL_RAND_URANDOM)
 // CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
 // operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
-// pool is initialized or if getrandom() is not available and not in FIPS mode.
-// Otherwise it will not block and will instead fill |buf| with all zeros and
-// return 0.
+// pool is initialized or if getrandom() is not available. Otherwise it will not
+// block and will instead fill |buf| with all zeros and return 0.
 int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len);
 #else
 OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
