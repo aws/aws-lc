@@ -455,20 +455,9 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   return 1;
 }
 
-void CRYPTO_init_sysrand(void) {
-  CRYPTO_once(&initialize_random_flavor_once, init_random_flavor_once);
-}
-
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/0)) {
-    perror("entropy fill failed");
-    abort();
-  }
-}
-
-void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
-  if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/1)) {
     perror("entropy fill failed");
     abort();
   }

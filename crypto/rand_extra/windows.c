@@ -37,8 +37,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
     !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 
-void CRYPTO_init_sysrand(void) {}
-
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   while (requested > 0) {
     ULONG output_bytes_this_pass = ULONG_MAX;
@@ -60,6 +58,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 // See: https://learn.microsoft.com/en-us/windows/win32/seccng/processprng
 typedef BOOL (WINAPI *ProcessPrngFunction)(PBYTE pbData, SIZE_T cbData);
 static ProcessPrngFunction g_processprng_fn = NULL;
+static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
 
 static void init_processprng(void) {
   HMODULE hmod = LoadLibraryW(L"bcryptprimitives");
@@ -72,13 +71,10 @@ static void init_processprng(void) {
   }
 }
 
-void CRYPTO_init_sysrand(void) {
-  static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-  CRYPTO_once(&once, init_processprng);
-}
-
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
-  CRYPTO_init_sysrand();
+
+  CRYPTO_once(&once, init_processprng);
+
   // On non-UWP configurations, use ProcessPrng instead of BCryptGenRandom
   // to avoid accessing resources that may be unavailable inside the
   // Chromium sandbox. See https://crbug.com/74242
@@ -88,9 +84,4 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 }
 
 #endif  // WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP
-
-void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
-  CRYPTO_sysrand(out, requested);
-}
-
 #endif  // OPENSSL_RAND_WINDOWS
