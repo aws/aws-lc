@@ -16,6 +16,8 @@
 
 #include <array>
 
+#if defined(GTEST_HAS_DEATH_TEST)
+
 static const size_t request_len = 64;
 static const size_t number_of_threads = 8;
 
@@ -825,3 +827,11 @@ TEST_F(randIsolatedTest, RngKatNoUbe) {
   EXPECT_EXIT(runTest(RngKatTestUtils::TestType::WithReseedNoPrAndUserPr),
               ::testing::ExitedWithCode(0), "");
 }
+
+#else // GTEST_HAS_DEATH_TEST
+
+TEST(randIsolatedTest, SkippedALL) {
+  GTEST_SKIP() << "All randIsolatedTest tests are not supported due to Death Tests not supported on this platform";
+}
+
+#endif

@@ -207,6 +207,14 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int
 // values. If |pkey| is NULL, it simply reports whether the type is known.
 OPENSSL_EXPORT int EVP_PKEY_set_type(EVP_PKEY *pkey, int type);
 
+// EVP_PKEY_set_type_str sets the type of |pkey| to the PEM type string given
+// by the first |len| bytes of |str|. It returns one if successful or zero if it
+// cannot find the PEM type among the |EVP_PKEY_*| values. If |pkey| is NULL,
+// it simply reports whether the type is known.
+OPENSSL_EXPORT int EVP_PKEY_set_type_str(EVP_PKEY *pkey,
+                                         const char *str,
+                                         int len);
+
 // EVP_PKEY_cmp_parameters compares the parameters of |a| and |b|. It returns
 // one if they match, zero if not, or a negative number of on error.
 //
@@ -503,6 +511,8 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 // function that results in a key suitable for use in symmetric
 // cryptography.
 
+// PKCS5_SALT_LEN is a deprecated constant as used by deprecated
+// EVP_BytesToKey() which cannot change.
 #define PKCS5_SALT_LEN 8
 
 // PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|

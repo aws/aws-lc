@@ -1,10 +1,18 @@
-{ pkgs }:
+{ pkgs, aws-lc }:
 pkgs.mkShell rec {
-  buildInputs = [ pkgs.cmake ];
-  packages = [ pkgs.nixfmt-classic pkgs.ninja pkgs.cmake pkgs.perl pkgs.go ];
+  buildInputs = [
+    pkgs.cmake
+    pkgs.nixfmt-classic
+    pkgs.ninja
+    pkgs.perl
+    pkgs.go
+    aws-lc
+  ];
+
   shellHook = ''
-    echo "Entering a devShell..."
-    export PS1="[awslc nix] $PS1"
+    # Set custom prompt with ANSI color
+    export PS1="\[\033[1;32m\][aws-lc]\[\033[0m\] $PS1"
+    echo -e "\033[1;32mEntering AWS-LC development shell...\033[0m"
     function clean {(set -e
       rm -rf ./build
     )}

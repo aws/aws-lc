@@ -62,6 +62,67 @@ j2kCAwG+LLpGNmNwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw5lmgITTEvXIj+8ls
 -----END CERTIFICATE-----
 )";
 
+static const char kX509CustomExtensionsCA[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBxzCCAW2gAwIBAgIFAQAAAAAwCgYIKoZIzj0EAwIwJjEPMA0GA1UECgwGQW1h
+em9uMRMwEQYDVQQpDAo0Mjk0OTY3Mjk2MCIYDzIwMjUwMzI5MjA0OTE5WhgPOTk5
+OTEyMzEyMzU5NTlaMCYxDzANBgNVBAoMBkFtYXpvbjETMBEGA1UEKQwKNDI5NDk2
+NzI5NjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABL3eDQzFx4cherBJdIQsxMzZ
+rCtzXBTB3f/rRMLrtjxpk2/6h3ZbE4t8MmDbwVepAKYQgT1bjPUFn+edG2U8kRej
+gYMwgYAwEgYDVR0TAQH/BAgwBgEB/wIBADBLBgNVHSMERDBCgBTMNuas7QD5hDXY
+KS7k0WDN6ckMFqEqpCgwJjEPMA0GA1UECgwGQW1hem9uMRMwEQYDVQQpDAo0Mjk0
+OTY3Mjk2MB0GA1UdDgQWBBTMNuas7QD5hDXYKS7k0WDN6ckMFjAKBggqhkjOPQQD
+AgNIADBFAiB3MJLK86+JyyoBr2s1Ugjvc7gWAHSk9OgXfyfsVmBV9gIhAPIUiYo8
+Jx+IbRyNj2WfeCbn8v3fob0wkGsKf1TSVcZ8
+-----END CERTIFICATE-----
+)";
+
+static const char kX509CustomExtensionsCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB6zCCAZGgAwIBAgIFAQAAAAAwCgYIKoZIzj0EAwIwJjEPMA0GA1UECgwGQW1h
+em9uMRMwEQYDVQQpDAo0Mjk0OTY3Mjk2MCIYDzIwMjUwMzI5MjA0OTE5WhgPOTk5
+OTEyMzEyMzU5NTlaMBExDzANBgNVBAoMBkFtYXpvbjBZMBMGByqGSM49AgEGCCqG
+SM49AwEHA0IABNbNswB+jmoICPKu567Odfq83s9P0N82kFYnyANgmztgHqoK7yIX
+0meBn5N9Y4m3wAmvokYeK7dU1oRSM397unmjgbwwgbkwDAYDVR0TAQH/BAIwADAO
+BgNVHQ8BAf8EBAMCB4AwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwEwFQYHK4E7gcR0
+BQEB/wQHcHJlc2VudDBLBgNVHSMERDBCgBTMNuas7QD5hDXYKS7k0WDN6ckMFqEq
+pCgwJjEPMA0GA1UECgwGQW1hem9uMRMwEQYDVQQpDAo0Mjk0OTY3Mjk2MB0GA1Ud
+DgQWBBRiexFm2K7Ou2dx4+c0LjQOsuqHJjAKBggqhkjOPQQDAgNIADBFAiAxH63Q
+eK26A9QPOkqi+5Hvrptpb9HRstSC6emJdaEB1QIhAKyhyLBPrG85QDoXrFcVZUA2
++StWnDVDGtgWM6tPz4Uw
+-----END CERTIFICATE-----
+)";
+
+static const char kX509MultipleCustomExtensionsCA[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIByDCCAW2gAwIBAgIFAQAAAAAwCgYIKoZIzj0EAwIwJjEPMA0GA1UECgwGQW1h
+em9uMRMwEQYDVQQpDAo0Mjk0OTY3Mjk2MCIYDzIwMjUwMzMwMjExMzA1WhgPOTk5
+OTEyMzEyMzU5NTlaMCYxDzANBgNVBAoMBkFtYXpvbjETMBEGA1UEKQwKNDI5NDk2
+NzI5NjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMhC2xZcc7UouUMo1xPMiq8E
+Z7DdWJq0I9nPunowEwidaif/YU6tjAPVFPmcRIhRYvZH6HWyNc0gztcfgAxa7tej
+gYMwgYAwEgYDVR0TAQH/BAgwBgEB/wIBADBLBgNVHSMERDBCgBRMh4uFf12IUZ1m
+v3WCstI0aqCBdKEqpCgwJjEPMA0GA1UECgwGQW1hem9uMRMwEQYDVQQpDAo0Mjk0
+OTY3Mjk2MB0GA1UdDgQWBBRMh4uFf12IUZ1mv3WCstI0aqCBdDAKBggqhkjOPQQD
+AgNJADBGAiEAyZK6Elt1iqVV1Rys4G8HmIE7/hRW3rbQWiNPd4FnANACIQCgbgki
+hQaJgNo+8hOTEOQZsRSaIbu+F2afe6ncp996RQ==
+-----END CERTIFICATE-----
+)";
+
+static const char kX509MultipleCustomExtensionsCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICAjCCAaigAwIBAgIFAQAAAAAwCgYIKoZIzj0EAwIwJjEPMA0GA1UECgwGQW1h
+em9uMRMwEQYDVQQpDAo0Mjk0OTY3Mjk2MCIYDzIwMjUwMzMwMjExMzA1WhgPOTk5
+OTEyMzEyMzU5NTlaMBExDzANBgNVBAoMBkFtYXpvbjBZMBMGByqGSM49AgEGCCqG
+SM49AwEHA0IABPVuvcRmJ8fqyZferbqGWP8Kd1yHHX+4gcglS5WV9Zt7T957fhNY
+QpimdCfV+KEJji8IwBc7vOk+1Db3ulQ0dZejgdMwgdAwDAYDVR0TAQH/BAIwADAO
+BgNVHQ8BAf8EBAMCB4AwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwEwFQYHK4E7gcR0
+BQEB/wQHcHJlc2VudDAVBgcrgTuBxHQGAQH/BAdwcmVzZW50MEsGA1UdIwREMEKA
+FEyHi4V/XYhRnWa/dYKy0jRqoIF0oSqkKDAmMQ8wDQYDVQQKDAZBbWF6b24xEzAR
+BgNVBCkMCjQyOTQ5NjcyOTYwHQYDVR0OBBYEFGt+Hy7qdE2lFnnjYPGqeVvJ4uPf
+MAoGCCqGSM49BAMCA0gAMEUCIQC4aXyPOO6asCwoG1pGGmODmAEMA2tAXXNp67Oo
+hDO90wIgETGPNCQIHlvUXAfDmZdUPh+PKkv6paVhWMTXrsh19LQ=
+-----END CERTIFICATE-----
+)";
 
 std::string GetTestData(const char *path);
 
@@ -5229,7 +5290,6 @@ TEST(X509Test, BER) {
   // to align with OpenSSL behavior.
   EXPECT_TRUE(CertFromPEM(kConstructedBitString));
   EXPECT_TRUE(CertFromPEM(kConstructedOctetString));
-
   // Indefinite lengths are forbidden in DER, but allowed in BER. AWS-LC has
   // reinstated indefinite BER support in the ASN1 macros to align with OpenSSL
   // behavior.
@@ -8208,4 +8268,142 @@ TEST(X509Test, Trust) {
   EXPECT_EQ(X509_V_OK, Verify(leaf.distrusted_server.get(), {root.normal.get()},
                               {intermediate.normal.get()}, {},
                               /*flags=*/0, set_server_trust));
+}
+
+// A brief validation against the |oids| expected to be done by the consumer.
+// This example simulates the consumer checking that the certificate has the
+// correct number of unknown extensions and there aren't any duplicates.
+static int verify_crit_oids_callback(X509_STORE_CTX *ctx, X509 *x509,
+                                     STACK_OF(ASN1_OBJECT) *oids) {
+  if (oids == nullptr) {
+    return 0;  // Fail if no OIDs provided
+  }
+  size_t known_oid_count = sk_ASN1_OBJECT_num(oids);
+  size_t unknown_ext_count = 0;
+  int last_pos = X509_get_ext_by_critical(x509, 1, -1);
+  while (last_pos >= 0) {
+    const X509_EXTENSION *ext = X509_get_ext(x509, last_pos);
+    if (!X509_supported_extension(ext)) {
+      unknown_ext_count++;
+    }
+    last_pos = X509_get_ext_by_critical(x509, 1, last_pos);
+  }
+  return known_oid_count == unknown_ext_count;
+}
+
+// Helper function to set up the basic verification context
+static void SetupVerificationContext(
+    X509_STORE_CTX *ctx, const std::vector<ASN1_OBJECT *> &custom_oids = {},
+    bool set_callback = false) {
+  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+  X509_VERIFY_PARAM_set_time_posix(param, 1745884800);  // Apr 28, 2025
+
+  for (const auto &oid : custom_oids) {
+    ASSERT_TRUE(X509_STORE_CTX_add_custom_crit_oid(ctx, oid));
+  }
+
+  if (set_callback) {
+    X509_STORE_CTX_set_verify_crit_oids(ctx, verify_crit_oids_callback);
+  }
+}
+
+TEST(X509Test, X509CustomExtensions) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kX509CustomExtensionsCert));
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<X509> ca(CertFromPEM(kX509CustomExtensionsCA));
+  ASSERT_TRUE(ca);
+
+  // Check that the cert has been marked as |EXFLAG_CRITICAL|.
+  EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+
+  bssl::UniquePtr<ASN1_OBJECT> custom_oid(OBJ_txt2obj("1.3.187.25204.5", 1));
+  ASSERT_TRUE(custom_oid);
+
+  // A typical call to |X509_verify_cert| without any set up would fail due to
+  // the unknown critical extensions.
+  auto typical_setup = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {}, false);
+  };
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {},
+                   /*flags=*/0, typical_setup));
+
+  // Unknown critical certificate extensions aren't enabled without the
+  // callback.
+  auto set_custom_ext_with_no_callback = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {custom_oid.get()}, false);
+  };
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {},
+                   /*flags=*/0, set_custom_ext_with_no_callback));
+
+  // Unknown critical certificate extensions aren't enabled, when only the
+  // callback is enabled, but no custom oids are set.
+  auto set_no_custom_ext_with_callback = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {}, true);
+  };
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {},
+                   /*flags=*/0, set_no_custom_ext_with_callback));
+
+  // This correctly sets up |ctx| with a custom critical extension and the
+  // |verify_crit_oids| callback.
+  auto set_custom_ext_with_callback = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {custom_oid.get()}, true);
+  };
+  EXPECT_EQ(X509_V_OK,
+            Verify(cert.get(), {ca.get()}, {}, {}, /*flags=*/0,
+                   set_custom_ext_with_callback));
+  // Check that |EXFLAG_CRITICAL| has been removed after validation.
+  EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+}
+
+TEST(X509Test, X509MultipleCustomExtensions) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kX509MultipleCustomExtensionsCert));
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<X509> ca(CertFromPEM(kX509MultipleCustomExtensionsCA));
+  ASSERT_TRUE(ca);
+
+  // Check that the cert has been marked as |EXFLAG_CRITICAL|.
+  EXPECT_TRUE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+
+  bssl::UniquePtr<ASN1_OBJECT> custom_oid(OBJ_txt2obj("1.3.187.25204.5", 1));
+  ASSERT_TRUE(custom_oid);
+  bssl::UniquePtr<ASN1_OBJECT> custom_oid2(OBJ_txt2obj("1.3.187.25204.6", 1));
+  ASSERT_TRUE(custom_oid2);
+
+  // The result should be |X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION| since only
+  // one custom critical extension was set. Both extensions are needed since the
+  // cert contains two unknown extensions.
+  auto set_single_custom_ext = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {custom_oid.get()}, true);
+  };
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {},
+                   /*flags=*/0, set_single_custom_ext));
+  auto set_other_custom_ext = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {custom_oid2.get()}, true);
+  };
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {},
+                   /*flags=*/0, set_other_custom_ext));
+
+  // Verification should not pass if all custom critical extensions are set, but
+  // the |verify_crit_oids| callback is not configured.
+  auto only_custom_exts_set = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {custom_oid.get(), custom_oid2.get()}, false);
+  };
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION,
+            Verify(cert.get(), {ca.get()}, {}, {},
+                   /*flags=*/0, only_custom_exts_set));
+
+  // Verification should only pass if all custom critical extensions are set, and
+  // the |verify_crit_oids| callback is configured.
+  auto set_custom_exts_with_callback = [&](X509_STORE_CTX *ctx) {
+    SetupVerificationContext(ctx, {custom_oid.get(), custom_oid2.get()}, true);
+  };
+  EXPECT_EQ(X509_V_OK, Verify(cert.get(), {ca.get()}, {}, {},
+                              /*flags=*/0, set_custom_exts_with_callback));
+  // Check that |EXFLAG_CRITICAL| has been removed after validation.
+  EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
 }

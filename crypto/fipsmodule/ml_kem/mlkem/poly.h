@@ -1,7 +1,17 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ */
+
 #ifndef MLK_POLY_H
 #define MLK_POLY_H
 
@@ -134,7 +144,7 @@ __contract__(
  *
  * Specification: Internal normalization required in `mlk_indcpa_keypair_derand`
  *                as part of matrix-vector multiplication
- *                [FIPS 203, Algorithm 13, K-PKE.KeyGen, L18].
+ *                @[FIPS203, Algorithm 13, K-PKE.KeyGen, L18].
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -164,7 +174,7 @@ __contract__(
  *            - a: Pointer to input polynomial
  *
  * Specification:
- * - Caches `b_1 * \gamma` in [FIPS 203, Algorithm 12, BaseCaseMultiply, L1]
+ * - Caches `b_1 * \gamma` in @[FIPS203, Algorithm 12, BaseCaseMultiply, L1]
  *
  ************************************************************/
 /*
@@ -192,7 +202,7 @@ __contract__(
  * Arguments:   - mlk_poly *r: pointer to input/output polynomial
  *
  * Specification: Normalizes on unsigned canoncial representatives
- *                ahead of calling [FIPS 203, Compress_d, Eq (4.7)].
+ *                ahead of calling @[FIPS203, Compress_d, Eq (4.7)].
  *                This is not made explicit in FIPS 203.
  *
  **************************************************/
@@ -225,8 +235,8 @@ __contract__(
  * not overflow. Otherwise, the behaviour of this function is undefined.
  *
  * Specification:
- * - [FIPS 203, 2.4.5, Arithmetic With Polynomials and NTT Representations]
- * - Used in [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L21]
+ * - @[FIPS203, 2.4.5, Arithmetic With Polynomials and NTT Representations]
+ * - Used in @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L21]
  *
  ************************************************************/
 /*
@@ -254,8 +264,8 @@ __contract__(
  *            - const mlk_poly *b: Pointer to second input polynomial
  *
  * Specification:
- * - [FIPS 203, 2.4.5, Arithmetic With Polynomials and NTT Representations]
- * - Used in [FIPS 203, Algorithm 15, K-PKE.Decrypt, L6]
+ * - @[FIPS203, 2.4.5, Arithmetic With Polynomials and NTT Representations]
+ * - Used in @[FIPS203, Algorithm 15, K-PKE.Decrypt, L6]
  *
  **************************************************/
 /*
@@ -291,7 +301,7 @@ __contract__(
  *
  * Arguments:   - mlk_poly *p: pointer to in/output polynomial
  *
- * Specification: Implements [FIPS 203, Algorithm 9, NTT]
+ * Specification: Implements @[FIPS203, Algorithm 9, NTT]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -320,7 +330,7 @@ __contract__(
  *
  * Arguments:   - uint16_t *a: pointer to in/output polynomial
  *
- * Specification: Implements composition of [FIPS 203, Algorithm 10, NTT^{-1}]
+ * Specification: Implements composition of @[FIPS203, Algorithm 10, NTT^{-1}]
  *                and elementwise modular multiplication with a suitable
  *                Montgomery factor introduced during the base multiplication.
  *
