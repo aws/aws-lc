@@ -37,14 +37,6 @@ OPENSSL_EXPORT void CRYPTO_sysrand(uint8_t *buf, size_t len);
 // depending on the vendor's configuration.
 OPENSSL_EXPORT void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
 
-#if defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
-// CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
-// from the operating system.
-void CRYPTO_init_sysrand(void);
-#else
-OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
-#endif  // defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
-
 #if defined(OPENSSL_RAND_URANDOM)
 // CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
 // operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
