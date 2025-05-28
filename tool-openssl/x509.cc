@@ -304,6 +304,14 @@ bool X509Tool(const args_list_t &args) {
       BIO_printf(output_bio.get(), "\n");
     }
 
+    if (subject_hash) {
+      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash(x509.get()));
+    }
+
+    if(subject_hash_old) {
+      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash_old(x509.get()));
+    }
+
     if (fingerprint) {
       unsigned int out_len;
       unsigned char md[EVP_MAX_MD_SIZE];
@@ -319,14 +327,6 @@ bool X509Tool(const args_list_t &args) {
         BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)out_len)
                                                       ? '\n' : ':');
       }
-    }
-
-    if (subject_hash) {
-      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash(x509.get()));
-    }
-
-    if(subject_hash_old) {
-      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash_old(x509.get()));
     }
 
     if (dates) {
