@@ -21,7 +21,7 @@
 #include <openssl/span.h>
 
 #include "internal.h"
-#include "../fipsmodule/rand/internal.h"
+#include "../fipsmodule/rand/entropy/internal.h"
 #include "../ube/fork_detect.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
@@ -207,17 +207,16 @@ TEST(RandTest, Threads) {
 
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST(RandTest, RdrandABI) {
-  if (!have_hw_rng_x86_64()) {
+  if (!have_hw_rng_x86_64_for_testing()) {
     fprintf(stderr, "rdrand not supported. Skipping.\n");
     return;
   }
 
   uint8_t buf[32];
-  CHECK_ABI_SEH(CRYPTO_rdrand, buf);
-  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, nullptr, 0);
-  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, buf, 8);
-  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, buf, 16);
-  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, buf, 24);
-  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, buf, 32);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, nullptr, 0);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 8);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 16);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 24);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 32);
 }
 #endif  // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
