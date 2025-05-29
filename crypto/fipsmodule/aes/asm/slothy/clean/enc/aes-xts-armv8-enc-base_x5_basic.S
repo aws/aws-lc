@@ -250,14 +250,15 @@ Loop5x_xts_enc:
 	aesr    v24.16b, v16.16b
 	aesr    v25.16b, v16.16b
 	aesr    v26.16b, v16.16b
-	subs	x12,x2,#0x50         // because Lxts_enc_tail4x
+	subs	x12,x2,#0x50         // @slothy:core=True
 
 	aesr    v0.16b, v17.16b
 	aesr    v1.16b, v17.16b
 	aesr    v24.16b, v17.16b
 	aesr    v25.16b, v17.16b
 	aesr    v26.16b, v17.16b
-	csel	x6,xzr,x12,gt    // borrow x6, w6, "gt" is not typo
+    // borrow x6, w6, "gt" is not typo
+	csel	x6,xzr,x12,gt    // @slothy:core=True
 
 	aesr    v0.16b, v12.16b
 	aesr    v1.16b, v12.16b
@@ -300,9 +301,10 @@ Loop5x_xts_enc:
 	aesr    v24.16b, v18.16b
 	aesr    v25.16b, v18.16b
 	aesr    v26.16b, v18.16b
-	add	x0,x0,x6  // x0 is adjusted in such way that
-                                // at exit from the loop v1.16b-v26.16b
-                                // are loaded with last "words"
+	add	x0,x0,x6  // @slothy:core=True
+                             // x0 is adjusted in such way that
+                             // at exit from the loop v1.16b-v26.16b
+                             // are loaded with last "words"
 
 	aesr    v0.16b, v19.16b
 	aesr    v1.16b, v19.16b

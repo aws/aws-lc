@@ -124,6 +124,7 @@ optimize_x5() {
     -c variable_size                                   \
     -c constraints.stalls_first_attempt=64             \
     -c reserved_regs="[x18--x30,sp]"                   \
+    -c selftest=False                                  \
     -o $OUTFILE                                        \
     ${SLOTHY_FLAGS} ${DRY_RUN_FLAGS}
 }
