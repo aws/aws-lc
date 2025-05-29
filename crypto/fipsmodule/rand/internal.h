@@ -55,38 +55,6 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t *personalization,
                                  size_t personalization_len);
 
-int rdrand(uint8_t *buf, const size_t len);
-
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
-
-// Certain operating environments will disable RDRAND for both security and
-// performance reasons. See initialization of CPU capability vector for details.
-// At the moment, we must implement this logic there because the CPU capability
-// vector does not carry CPU family/model information which is required to
-// determine restrictions.
-OPENSSL_INLINE int have_hw_rng_x86_64(void) {
-  return CRYPTO_is_RDRAND_capable();
-}
-
-// TODO only allow multiples of 8 from rdrand
-
-// CRYPTO_rdrand writes eight bytes of random data from the hardware RNG to
-// |out|. It returns one on success or zero on hardware failure.
-int CRYPTO_rdrand(uint8_t out[8]);
-
-// CRYPTO_rdrand_multiple8_buf fills |len| bytes at |buf| with random data from
-// the hardware RNG. The |len| argument must be a multiple of eight. It returns
-// one on success and zero on hardware failure.
-int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
-
-#else  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
-
-OPENSSL_INLINE int have_hw_rng_x86_64(void) {
-  return 0;
-}
-
-#endif  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
-
 #if defined(__cplusplus)
 }  // extern C
 #endif
