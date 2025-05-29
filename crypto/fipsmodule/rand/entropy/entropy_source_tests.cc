@@ -16,7 +16,7 @@
 TEST(EntropySourceHw, Aarch64) {
   uint8_t buf[MAX_MULTIPLE_FROM_RNG*8] = { 0 } ;
 
-#if !defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
+#if !defined(OPENSSL_AARCH64) || defined(OPENSSL_NO_ASM)
   ASSERT_FALSE(have_hw_rng_aarch64_for_testing());
   ASSERT_FALSE(rndr_multiple8(buf, 0));
   ASSERT_FALSE(rndr_multiple8(buf, 8));
@@ -43,7 +43,7 @@ TEST(EntropySourceHw, Aarch64) {
 TEST(EntropySourceHw, x86_64) {
   uint8_t buf[MAX_MULTIPLE_FROM_RNG*8] = { 0 } ;
 
-#if !defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+#if !defined(OPENSSL_X86_64) || defined(OPENSSL_NO_ASM)
   ASSERT_FALSE(have_hw_rng_x86_64_for_testing());
   ASSERT_FALSE(rdrand_multiple8(buf, 0));
   ASSERT_FALSE(rdrand_multiple8(buf, 8));
