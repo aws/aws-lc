@@ -175,12 +175,17 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
     return -1;
   }
 
+  // Enforce max length to 1024
+  if (length > 1024) {
+    length = 1024;
+  }
+
   if (prompt == NULL) {
     prompt = EVP_get_pw_prompt();
   }
 
   // Proactively zeroize |buf| and verify_buf
-  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(buf, length);
   OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
 
   // acquire write lock
@@ -198,7 +203,7 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
   // Read password with echo disabled, returns 1 on success, 0 on error, -2 on interrupt
   ret = openssl_console_read(buf, min_length, length, 0);
   if (ret != 0) {
-    OPENSSL_cleanse(buf, sizeof(buf));
+    OPENSSL_cleanse(buf, length);
     OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
     goto err;
   }
@@ -210,7 +215,7 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
     ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
 
     if (ret == 0) {
-      if (strncmp(buf, verify_buf, length >= 1024 ? 1024 : length) != 0) {
+      if (strncmp(buf, verify_buf, length) != 0) {
         openssl_console_write("Verify failure\n");
         ret = -1;
       }
