@@ -170,6 +170,102 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   return 1;
 }
 
+/*
+ * Sets up a PQDSA_KEY structure using both a seed and an expanded private key.
+ * This function is used when both the seed and expanded key are provided in the
+ * ASN.1 encoding.
+ *
+ * The function performs the following steps:
+ * 1. Generates a keypair from the provided seed.
+ * 2. Derives a public key from the provided expanded private key.
+ * 3. Compares the public keys from steps 1 and 2 to ensure consistency.
+ * 4. If consistent, stores the seed, expanded private key, and derived public key
+ *    in the PQDSA_KEY structure.
+ */
+int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed, CBS *expanded_key) {
+  // Check if the parsed lengths correspond with the expected lengths.
+  if (CBS_len(seed) != key->pqdsa->keygen_seed_len ||
+      CBS_len(expanded_key) != key->pqdsa->private_key_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
+  // first allocate buffers to store keypair from seed
+  uint8_t *seed_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
+  if (seed_public_key == NULL) {
+    return 0;
+  }
+
+  uint8_t *seed_private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  if (seed_private_key == NULL) {
+    OPENSSL_free(seed_public_key);
+    return 0;
+  }
+
+  // generate the key from the provided seed
+  if (!key->pqdsa->method->pqdsa_keygen_internal(seed_public_key,
+                                                 seed_private_key,
+                                                 CBS_data(seed))) {
+    OPENSSL_free(seed_public_key);
+    OPENSSL_free(seed_private_key);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // allocate buffers to store derived public key from the provided expanded private
+  uint8_t *expanded_public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
+  if (expanded_public_key == NULL) {
+    OPENSSL_free(seed_public_key);
+    OPENSSL_free(seed_private_key);
+    return 0;
+  }
+
+  // construct the public key from the expanded private key
+  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(expanded_public_key,
+                                                 CBS_data(expanded_key))) {
+    OPENSSL_free(seed_public_key);
+    OPENSSL_free(seed_private_key);
+    OPENSSL_free(expanded_public_key);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // compare public keys for consistency
+  if (CRYPTO_memcmp(seed_public_key, expanded_public_key,
+                    key->pqdsa->public_key_len) != 0) {
+    OPENSSL_free(seed_public_key);
+    OPENSSL_free(seed_private_key);
+    OPENSSL_free(expanded_public_key);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // copy expanded private key and public key
+  key->public_key = expanded_public_key;
+  OPENSSL_free(seed_public_key);
+  OPENSSL_free(seed_private_key);
+
+  key->private_key = OPENSSL_memdup(CBS_data(expanded_key),
+                                    key->pqdsa->private_key_len);
+  if (key->private_key == NULL) {
+    OPENSSL_free(key->public_key);
+    key->public_key = NULL;
+    return 0;
+  }
+
+  // copy seed into key struct
+  key->seed = OPENSSL_memdup(CBS_data(seed), key->pqdsa->keygen_seed_len);
+  if (key->seed == NULL) {
+    OPENSSL_free(key->private_key);
+    key->private_key = NULL;
+    OPENSSL_free(key->public_key);
+    key->public_key = NULL;
+    return 0;
+  }
+
+  return 1;
+}
+
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_44_method) {
   out->pqdsa_keygen = ml_dsa_44_keypair;
   out->pqdsa_keygen_internal = ml_dsa_44_keypair_internal;
