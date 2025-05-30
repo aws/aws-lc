@@ -217,21 +217,6 @@ void asn1_type_cleanup(ASN1_TYPE *a);
 // ASN.1 PrintableString, and zero otherwise.
 int asn1_is_printable(uint32_t value);
 
-// asn1_get_object_maybe_indefinite parses an ASN.1 header, including tag, class,
-// and length information. The tag number is written to |*out_tag|. The class is
-// written to |*out_class|. If the tag is not indefinite, the content length is
-// written to |*out_len|. |inp| is advanced past the header in the input buffer.
-//
-// If |indefinite_ok| is non-zero, indefinite-length encoding and universal tags
-// are allowed, otherwise these will produce errors.
-//
-// The return value may have the following bits set:
-//   * 0x80: error occurred while parsing.
-//   * 0x20: the encoding is constructed, not primitive.
-//   * 0x01: indefinite-length constructed encoding.
-int asn1_get_object_maybe_indefinite(const unsigned char **inp, long *out_len, int *out_tag,
-                        int *out_class, long in_len, int indefinite_ok);
-
 // asn1_bit_string_length returns the number of bytes in |str| and sets
 // |*out_padding_bits| to the number of padding bits.
 //

@@ -1,7 +1,17 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ */
+
 #ifndef MLK_POLY_K_H
 #define MLK_POLY_K_H
 
@@ -10,14 +20,14 @@
 #include "compress.h"
 #include "poly.h"
 
-/* Level namespacing
+/* Parameter set namespacing
  * This is to facilitate building multiple instances
- * of mlkem-native (e.g. with varying security levels)
+ * of mlkem-native (e.g. with varying parameter sets)
  * within a single compilation unit. */
-#define mlk_polyvec MLK_ADD_LEVEL(mlk_polyvec)
-#define mlk_polymat MLK_ADD_LEVEL(mlk_polymat)
-#define mlk_polyvec_mulcache MLK_ADD_LEVEL(mlk_polyvec_mulcache)
-/* End of level namespacing */
+#define mlk_polyvec MLK_ADD_PARAM_SET(mlk_polyvec)
+#define mlk_polymat MLK_ADD_PARAM_SET(mlk_polymat)
+#define mlk_polyvec_mulcache MLK_ADD_PARAM_SET(mlk_polyvec_mulcache)
+/* End of parameter set namespacing */
 
 typedef mlk_poly mlk_polyvec[MLKEM_K];
 typedef mlk_poly mlk_polymat[MLKEM_K * MLKEM_K];
@@ -37,8 +47,8 @@ typedef mlk_poly_mulcache mlk_polyvec_mulcache[MLKEM_K];
  *                  i.e. in [0,1,..,MLKEM_Q-1].
  *
  * Specification: Implements `ByteEncode_{d_u} (Compress_{d_u} (u))`
- *                in [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L22],
- *                with level-specific d_u defined in [FIPS 203, Table 2],
+ *                in @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L22],
+ *                with level-specific d_u defined in @[FIPS203, Table 2],
  *                and given by MLKEM_DU here.
  *
  **************************************************/
@@ -74,8 +84,8 @@ __contract__(
  * (non-negative and smaller than MLKEM_Q).
  *
  * Specification: Implements `Decompress_{d_u} (ByteDecode_{d_u} (u))`
- *                in [FIPS 203, Algorithm 15 (K-PKE.Decrypt), L3].
- *                with level-specific d_u defined in [FIPS 203, Table 2],
+ *                in @[FIPS203, Algorithm 15 (K-PKE.Decrypt), L3].
+ *                with level-specific d_u defined in @[FIPS203, Table 2],
  *                and given by MLKEM_DU here.
  *
  **************************************************/
@@ -110,8 +120,8 @@ __contract__(
  *                  i.e. in [0,1,..,MLKEM_Q-1].
  *
  * Specification: Implements `ByteEncode_{d_v} (Compress_{d_v} (v))`
- *                in [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L23].
- *                with level-specific d_v defined in [FIPS 203, Table 2],
+ *                in @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L23].
+ *                with level-specific d_v defined in @[FIPS203, Table 2],
  *                and given by MLKEM_DV here.
  *
  **************************************************/
@@ -148,8 +158,8 @@ __contract__(
  * (non-negative and smaller than MLKEM_Q).
  *
  * Specification: Implements `Decompress_{d_v} (ByteDecode_{d_v} (v))`
- *                in [FIPS 203, Algorithm 15 (K-PKE.Decrypt), L4].
- *                with level-specific d_v defined in [FIPS 203, Table 2],
+ *                in @[FIPS203, Algorithm 15 (K-PKE.Decrypt), L4].
+ *                with level-specific d_v defined in @[FIPS203, Table 2],
  *                and given by MLKEM_DV here.
  *
  **************************************************/
@@ -183,8 +193,8 @@ __contract__(
  *                                  i.e. in [0,1,..,MLKEM_Q-1].
  *
  * Specification: Implements `ByteEncode_{d_u} (Compress_{d_u} (u))`
- *                in [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L22].
- *                with level-specific d_u defined in [FIPS 203, Table 2],
+ *                in @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L22].
+ *                with level-specific d_u defined in @[FIPS203, Table 2],
  *                and given by MLKEM_DU here.
  *
  **************************************************/
@@ -212,8 +222,8 @@ __contract__(
  *                                  (of length MLKEM_POLYVECCOMPRESSEDBYTES_DU)
  *
  * Specification: Implements `Decompress_{d_u} (ByteDecode_{d_u} (u))`
- *                in [FIPS 203, Algorithm 15 (K-PKE.Decrypt), L3].
- *                with level-specific d_u defined in [FIPS 203, Table 2],
+ *                in @[FIPS203, Algorithm 15 (K-PKE.Decrypt), L3].
+ *                with level-specific d_u defined in @[FIPS203, Table 2],
  *                and given by MLKEM_DU here.
  *
  **************************************************/
@@ -239,10 +249,10 @@ __contract__(
  *              - const mlk_polyvec a: pointer to input vector of polynomials
  *                  Each polynomial must have coefficients in [0,..,q-1].
  *
- * Specification: Implements ByteEncode_12 [FIPS 203, Algorithm 5].
+ * Specification: Implements ByteEncode_12 @[FIPS203, Algorithm 5].
  *                Extended to vectors as per
- *                [FIPS 203, 2.4.8 Applying Algorithms to Arrays]
- *                and [FIPS 203, 2.4.6, Matrices and Vectors]
+ *                @[FIPS203, 2.4.8 Applying Algorithms to Arrays]
+ *                and @[FIPS203, 2.4.6, Matrices and Vectors]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -267,10 +277,10 @@ __contract__(
  *                 normalized in [0..4095].
  *              - uint8_t *r: pointer to input byte array
  *
- * Specification: Implements ByteDecode_12 [FIPS 203, Algorithm 6].
+ * Specification: Implements ByteDecode_12 @[FIPS203, Algorithm 6].
  *                Extended to vectors as per
- *                [FIPS 203, 2.4.8 Applying Algorithms to Arrays]
- *                and [FIPS 203, 2.4.6, Matrices and Vectors]
+ *                @[FIPS203, 2.4.8 Applying Algorithms to Arrays]
+ *                and @[FIPS203, 2.4.6, Matrices and Vectors]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -298,8 +308,8 @@ __contract__(
  * Arguments:   - mlk_polyvec r: pointer to in/output vector of polynomials
  *
  * Specification:
- * - Implements [FIPS 203, Algorithm 9, NTT]
- * - Extended to vectors as per [FIPS 203, 2.4.6, Matrices and Vectors]
+ * - Implements @[FIPS203, Algorithm 9, NTT]
+ * - Extended to vectors as per @[FIPS203, 2.4.6, Matrices and Vectors]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -329,8 +339,8 @@ __contract__(
  * Arguments:   - mlk_polyvec r: pointer to in/output vector of polynomials
  *
  * Specification:
- * - Implements [FIPS 203, Algorithm 10, NTT^{-1}]
- * - Extended to vectors as per [FIPS 203, 2.4.6, Matrices and Vectors]
+ * - Implements @[FIPS203, Algorithm 10, NTT^{-1}]
+ * - Extended to vectors as per @[FIPS203, 2.4.6, Matrices and Vectors]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -363,9 +373,9 @@ __contract__(
  *                  via mlk_polyvec_mulcache_compute().
  *
  * Specification: Implements
- *                - [FIPS 203, Section 2.4.7, Eq (2.14)]
- *                - [FIPS 203, Algorithm 11, MultiplyNTTs]
- *                - [FIPS 203, Algorithm 12, BaseCaseMultiply]
+ *                - @[FIPS203, Section 2.4.7, Eq (2.14)]
+ *                - @[FIPS203, Algorithm 11, MultiplyNTTs]
+ *                - @[FIPS203, Algorithm 12, BaseCaseMultiply]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -404,7 +414,7 @@ __contract__(
  *            - a: Pointer to input polynomial vector
  *
  * Specification:
- * - Caches `b_1 * \gamma` in [FIPS 203, Algorithm 12, BaseCaseMultiply, L1]
+ * - Caches `b_1 * \gamma` in @[FIPS203, Algorithm 12, BaseCaseMultiply, L1]
  *
  ************************************************************/
 /*
@@ -431,7 +441,7 @@ __contract__(
  * Arguments:   - mlk_polyvec r: pointer to input/output polynomial
  *
  * Specification: Normalizes on unsigned canoncial representatives
- *                ahead of calling [FIPS 203, Compress_d, Eq (4.7)].
+ *                ahead of calling @[FIPS203, Compress_d, Eq (4.7)].
  *                This is not made explicit in FIPS 203.
  *
  **************************************************/
@@ -470,8 +480,8 @@ __contract__(
  * ensures clause is required on this function.
  *
  * Specification:
- * - [FIPS 203, 2.4.5, Arithmetic With Polynomials and NTT Representations]
- * - Used in [FIPS 203, Algorithm 14 (K-PKE.Encrypt), L19]
+ * - @[FIPS203, 2.4.5, Arithmetic With Polynomials and NTT Representations]
+ * - Used in @[FIPS203, Algorithm 14 (K-PKE.Encrypt), L19]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -500,7 +510,7 @@ __contract__(
  *
  * Specification: Internal normalization required in `mlk_indcpa_keypair_derand`
  *                as part of matrix-vector multiplication
- *                [FIPS 203, Algorithm 13, K-PKE.KeyGen, L18].
+ *                @[FIPS203, Algorithm 13, K-PKE.KeyGen, L18].
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -528,11 +538,11 @@ __contract__(
  *
  * Specification:
  * Implements 4x `SamplePolyCBD_{eta1} (PRF_{eta1} (sigma, N))`:
- * - [FIPS 203, Algorithm 8, SamplePolyCBD_eta]
- * - [FIPS 203, Eq (4.3), PRF_eta]
+ * - @[FIPS203, Algorithm 8, SamplePolyCBD_eta]
+ * - @[FIPS203, Eq (4.3), PRF_eta]
  * - `SamplePolyCBD_{eta1} (PRF_{eta1} (sigma, N))` appears in
- *   [FIPS 203, Algorithm 13, K-PKE.KeyGen, L{9, 13}]
- *   [FIPS 203, Algorithm 14, K-PKE.Encrypt, L10]
+ *   @[FIPS203, Algorithm 13, K-PKE.KeyGen, L{9, 13}]
+ *   @[FIPS203, Algorithm 14, K-PKE.Encrypt, L10]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -582,10 +592,10 @@ __contract__(
  *
  * Specification:
  * Implements `SamplePolyCBD_{eta2} (PRF_{eta2} (sigma, N))`:
- * - [FIPS 203, Algorithm 8, SamplePolyCBD_eta]
- * - [FIPS 203, Eq (4.3), PRF_eta]
+ * - @[FIPS203, Algorithm 8, SamplePolyCBD_eta]
+ * - @[FIPS203, Eq (4.3), PRF_eta]
  * - `SamplePolyCBD_{eta2} (PRF_{eta2} (sigma, N))` appears in
- *   [FIPS 203, Algorithm 14, K-PKE.Encrypt, L14]
+ *   @[FIPS203, Algorithm 14, K-PKE.Encrypt, L14]
  *
  **************************************************/
 MLK_INTERNAL_API
@@ -617,10 +627,10 @@ __contract__(
  * Implements two instances each of
  * `SamplePolyCBD_{eta1} (PRF_{eta1} (sigma, N))` and
  * `SamplePolyCBD_{eta2} (PRF_{eta2} (sigma, N))`:
- * - [FIPS 203, Algorithm 8, SamplePolyCBD_eta]
- * - [FIPS 203, Eq (4.3), PRF_eta]
+ * - @[FIPS203, Algorithm 8, SamplePolyCBD_eta]
+ * - @[FIPS203, Eq (4.3), PRF_eta]
  * - `SamplePolyCBD_{eta2} (PRF_{eta2} (sigma, N))` appears in
- *   [FIPS 203, Algorithm 14, K-PKE.Encrypt, L14]
+ *   @[FIPS203, Algorithm 14, K-PKE.Encrypt, L14]
  *
  **************************************************/
 MLK_INTERNAL_API

@@ -67,6 +67,19 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#if defined(OPENSSL_WINDOWS)
+// Due to name conflicts, we must prevent "wincrypt.h" from being included
+#define NOCRYPT
+#include <winsock2.h>
+#include <ws2ipdef.h>
+#undef NOCRYPT
+#else
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -175,7 +188,7 @@ OPENSSL_EXPORT int BIO_flush(BIO *bio);
 // BIO_ctrl call the |bio| |callback_ex| if set with |BIO_CB_CTRL|, sends the 
 // control request |cmd| to |bio|, then calls |callback_ex| with |BIO_CB_CTRL| 
 // + |BIO_CB_RETURN|. The |cmd| argument should be one of the |BIO_C_*| values.
-OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg);
+OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ptr_ctrl acts like |BIO_ctrl| but passes the address of a |void*|
 // pointer as |parg| and returns the value that is written to it, or NULL if
@@ -189,7 +202,7 @@ OPENSSL_EXPORT long BIO_int_ctrl(BIO *bp, int cmd, long larg, int iarg);
 // BIO_reset resets |bio| to its initial state, the precise meaning of which
 // depends on the concrete type of |bio|. It returns one on success and zero
 // otherwise.
-OPENSSL_EXPORT int BIO_reset(BIO *bio);
+OPENSSL_EXPORT int BIO_reset(BIO *bio) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_eof returns non-zero when |bio| has reached end-of-file. The precise
 // meaning of which depends on the concrete type of |bio|. Note that in the
@@ -328,6 +341,9 @@ OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);
 // otherwise.
 OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
+// BIO_get_close returns the close flag for |bio|.
+OPENSSL_EXPORT int BIO_get_close(BIO *bio);
+
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
 OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
@@ -405,6 +421,11 @@ OPENSSL_EXPORT int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent);
 // by |indent| spaces. It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
                                unsigned indent);
+
+// BIO_dump writes a hex dump of |data| for |len| bytes to |bio|.
+// It returns the exact number of bytes written to |bio| on success, or a negative value on error.
+// If |len| is zero or |data| is NULL with |len| being zero, it returns 0.
+OPENSSL_EXPORT int BIO_dump(BIO *bio, const void *data, int len);
 
 // ERR_print_errors prints the current contents of the error stack to |bio|
 // using human readable strings where possible.
@@ -694,16 +715,35 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 
 // Datagram BIOs.
-//
-// TODO(fork): not implemented.
+
+  // Data structures
+typedef union bio_addr_st {
+    struct sockaddr sa;
+#ifdef AF_INET6
+    struct sockaddr_in6 s_in6;
+#endif
+    struct sockaddr_in s_in;
+#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS)
+    struct sockaddr_un s_un;
+#endif
+} BIO_ADDR;
+
+#define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
+#define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
+                                          * socket to be passed in */
+
+# define BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP 37 // flag whether the last
+# define BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP 38 // I/O operation tiemd out
 
 #define BIO_CTRL_DGRAM_QUERY_MTU 40  // as kernel for current MTU
-
+#define BIO_CTRL_DGRAM_GET_MTU 41 // get cached value for MTU
 #define BIO_CTRL_DGRAM_SET_MTU 42 /* set cached value for  MTU. want to use
-                                     this if asking the kernel fails */
+                                   * this if asking the kernel fails */
 
-#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
+#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceeded in
                                           the previous write operation. */
+
+#define BIO_CTRL_DGRAM_SET_PEER           44 // Destination for the data
 
 // BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
 // and depends on |timeval|, which is not 2038-clean on all platforms.
@@ -712,6 +752,45 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 #define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
 
+// BIO_s_datagram returns the datagram |BIO_METHOD|. A datagram BIO provides a wrapper
+// around datagram sockets.
+OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_new_dgram creates a new datagram BIO wrapping |fd|. If |close_flag| is
+// non-zero, then |fd| will be closed when the BIO is freed.
+OPENSSL_EXPORT BIO *BIO_new_dgram(int fd, int close_flag) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_ctrl_dgram_connect attempts to connect the datagram BIO to the specified
+// |peer| address. It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_ctrl_set_connected marks the datagram BIO as connected to the specified
+// |peer| address. This is used for handling DTLS connection-oriented BIOs.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_recv_timedout returns 1 if the most recent datagram receive
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_send_timedout returns 1 if the most recent datagram send
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO *bp) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_get_peer stores the address of the peer the datagram BIO is
+// connected to in |peer|. It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_get_mtu_overhead returns the number of bytes of overhead when sending
+// a datagram of the maximum size through |bp| to the specified |peer| address.
+// This is used for PMTU discovery in DTLS.
+OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO Pairs.
 //

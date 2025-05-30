@@ -474,6 +474,16 @@ TEST_F(X509ComparisonTest, X509ToolCompareFingerprintOpenSSL) {
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
+// Test against OpenSSL output "openssl x509 -in file -fingerprint -subject_hash -subject_hash_old"
+TEST_F(X509ComparisonTest, X509ToolCompareHashFingerprintOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path)       + " x509 -subject_hash -fingerprint -noout -in " + in_path + " > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -subject_hash -fingerprint -noout -in " + in_path + " > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
 // Test against OpenSSL output "openssl x509 -in file -noout -subject -fingerprint"
 TEST_F(X509ComparisonTest, X509ToolCompareSubjectFingerprintOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint > " + out_path_tool;
