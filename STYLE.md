@@ -1,3 +1,110 @@
+# AWS-LC Style Guide
+AWS-LC followings the #BoringSSL-Style-Guide conventions unless specified otherwise here.
+
+## Documentation
+This section provides a brief overview of how to use [Doxygen](https://www.doxygen.nl/manual/index.html) as well as the standard convensions we follow in our code.
+
+### General Syntax Guidelines
+
+#### Use C-Style Blocks
+Use the double asterisk C-style Doxygen blocks (`/** */`) instead of C++ lines (`///`) or comment block formats. The starting symbol `/**` and closing symbol `*/` should be on their own lines:
+```C
+/**
+ * ... Documentation ...
+ */
+```
+except when closing a member group:
+```C
+/** @} Member Group Name */
+```
+
+#### Use `@` for Commands
+Use `@` to prefix all commands instead of `\`.
+
+#### Explicitly use the `@brief` command.
+Instead of relying on Doxygen to generate a brief description, explicitly use the `@brief` command. For readability, this should end with a period and if there's further documentation, an empty line should follow the command in the block.
+```C
+/**
+ * @brief A short description.
+ */
+
+/**
+ * @brief A short description followed by details.
+ * 
+ * ... More documentation ...
+ */
+```
+
+#### Explicitly use the `@details` command.
+Instead of relying on Doxygen to decide what is the details section, the `@details` command should be used. The command should be on its own line.
+```C
+/**
+ * @details
+ * ... Detailed information...
+ */
+```
+
+#### Use backticks around inline code
+When including code inline, to get typewriter font, use backticks instead of the `@c` command. This should also be used when referncing the symbols being documented.
+```C
+/**
+ * @details
+ * `this_function` encodes...
+ */
+int this_function()
+```
+
+#### Use `@code`/`@endcode` for full lines of source code
+If your documentation includes full lines of code (such as examples), surround the line(s) by `@code`/`@endcode` for syntax highlighting and automatic generation of links to documentation for the symbols used. For readability, empty lines should surround the block and the commands should be on their own lines.
+```C
+/**
+ * @details
+ * ... Documentation ...
+ * 
+ * @code
+ * uint8_t dst = allocate(max_len);
+ * size_t len = encode_bytes(dst, src, src_len);
+ * @endcode
+ */
+```
+
+### Formatting Regular Text
+
+#### Use Underscores for Italic Text
+When documentation should be in italics, use the Markdown underscore syntax.
+```
+Roman text _italic text_ Roman text
+```
+
+#### Use Double Asterisks for Bold Text
+When documentation should be in bold, use the Markdown double asterisk syntax.
+```
+Roman text **bold text** Roman text
+```
+
+#### Lists
+For unordered lists, use `*` for each item, not `-` or `+`. For orded lists, use `1.` for each item. Do not use other numbers, allow them to be generated automatically. Nested lists should be indented by two spaces.
+```
+1. First enumerated point (level 1)
+1. Second enuemrated point (level 1)
+  * First unordered point (level 2)
+  * Second unordered point (level 2)
+1. Third enumerated point (level 1)
+```
+
+### All public headers must have API documentation
+All public headers (files in the `include` directory generally) must have the appropriate documentation. Besides documentation on the exported symbols, the file should have at least a brief description of its purpose.
+```C
+/**
+ * @file 
+ * @brief A short description.
+ * 
+ * @details
+ * A longer, optional description of the file's purpose.
+ */
+```
+In general, `@file` should not include the (optional name parameter)[https://www.doxygen.nl/manual/commands.html#cmdfile].
+
 # BoringSSL Style Guide
 
 BoringSSL usually follows the
@@ -183,43 +290,6 @@ For example,
      * ASN.1 object can be written. The |tag| argument will be used as the tag for
      * the object. It returns one on success or zero on error. */
     OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag);
-
-
-## Documentation
-
-All public symbols must have a documentation comment in their header
-file. The style is based on that of Go. The first sentence begins with
-the symbol name, optionally prefixed with "A" or "An". Apart from the
-initial mention of symbol, references to other symbols or parameter
-names should be surrounded by |pipes|.
-
-Documentation should be concise but completely describe the exposed
-behavior of the function. Pay special note to success/failure behaviors
-and caller obligations on object lifetimes. If this sacrifices
-conciseness, consider simplifying the function's behavior.
-
-    // EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
-    // will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
-    // zero otherwise.
-    OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
-                                              size_t len);
-
-Explicitly mention any surprising edge cases or deviations from common
-return value patterns in legacy functions.
-
-    // RSA_private_encrypt encrypts |flen| bytes from |from| with the private key in
-    // |rsa| and writes the encrypted data to |to|. The |to| buffer must have at
-    // least |RSA_size| bytes of space. It returns the number of bytes written, or
-    // -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
-    // values. If in doubt, |RSA_PKCS1_PADDING| is the most common.
-    //
-    // WARNING: this function is dangerous because it breaks the usual return value
-    // convention. Use |RSA_sign_raw| instead.
-    OPENSSL_EXPORT int RSA_private_encrypt(int flen, const uint8_t *from,
-                                           uint8_t *to, RSA *rsa, int padding);
-
-Document private functions in their `internal.h` header or, if static,
-where defined.
 
 
 ## Build logic
