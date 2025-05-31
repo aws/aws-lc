@@ -163,7 +163,7 @@ jobs:
         run: cmake --build ./build --target run_tests
   cross-mingw:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Install Tools
         run: |
@@ -174,9 +174,9 @@ jobs:
           sudo dpkg --add-architecture i386
           sudo mkdir -pm755 /etc/apt/keyrings
           sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
-          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get install --assume-yes --no-install-recommends build-essential cmake golang-go nasm clang wget mingw-w64
+          sudo apt-get install --assume-yes --no-install-recommends build-essential cmake golang-go nasm clang wget mingw-w64 binfmt-support
           sudo apt-get install --assume-yes --install-recommends winehq-stable wine-binfmt
           sudo update-binfmts --display
           sudo update-binfmts --disable
