@@ -1452,12 +1452,6 @@ func (d *delocation) isRIPRelative(node *node32) bool {
 	return node != nil && node.pegRule == ruleBaseIndexScale && d.contents(node) == "(%rip)"
 }
 
-type RelroRewrite struct {
-	isRelroRewrite bool
-	symbol string
-	mappedSymbol string
-}
-
 func (d *delocation) processIntelInstruction(statement, instruction *node32) (*node32, error) {
 	assertNodeType(instruction, ruleInstructionName)
 	instructionName := d.contents(instruction)
