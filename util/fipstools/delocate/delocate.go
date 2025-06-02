@@ -2189,7 +2189,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	// checksums in .file directives. If it does so, then this script needs
 	// to match that behaviour otherwise warnings result.
 	fileDirectivesContainMD5 := false
-	// TODO
+	// See delocation object definition.
 	relroLocalLabelToFuncMap := make(map[string]string)
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
