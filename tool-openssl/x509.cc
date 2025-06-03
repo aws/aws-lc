@@ -132,7 +132,7 @@ static bool handleSubject(X509 *x509, BIO *output_bio) {
 }
 
 static bool handleFingerprint(X509 *x509, BIO *output_bio) {
-  unsigned int out_len;
+  unsigned int out_len = 0;
   unsigned char md[EVP_MAX_MD_SIZE];
   const EVP_MD *digest = EVP_sha1();
 
@@ -171,7 +171,7 @@ static bool handleCheckend(X509 *x509, BIO *output_bio,
   bssl::UniquePtr<ASN1_TIME> current_time(
       ASN1_TIME_set(nullptr, std::time(nullptr)));
   ASN1_TIME *end_time = X509_getm_notAfter(x509);
-  int days_left, seconds_left;
+  int days_left = 0, seconds_left = 0;
 
   if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time.get(),
                       end_time)) {
