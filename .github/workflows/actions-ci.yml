@@ -244,6 +244,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   compiler-tests:
+    name: ${{ matrix.compiler }}, FIPS=${{ matrix.fips }}
     env:
       GOFLAGS: "-buildvcs=false"
     strategy:
@@ -290,20 +291,16 @@ jobs:
         run: |
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CXX=g++" >> $GITHUB_ENV
-      - name: Setup Build
-        if: matrix.fips == 0
+      - name: Setup ${{ (matrix.fips == 1 && '') || 'non-' }}FIPS Build
         run:
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release
-      - name: Setup FIPS Build
-        if: matrix.fips == 1
-        run:
-          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=1
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
   pedantic-tests:
+    name: pedantic - ${{ matrix.compiler }}, FIPS=${{ matrix.fips }}
     env:
       GOFLAGS: "-buildvcs=false"
     strategy:
