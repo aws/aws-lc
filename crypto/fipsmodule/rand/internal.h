@@ -87,7 +87,7 @@ struct ctr_drbg_state_st {
 // CTR_DRBG_init initialises |*drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of
 // entropy in |entropy| and, optionally, a personalization string up to
 // |CTR_DRBG_ENTROPY_LEN| bytes in length. It returns one on success and zero
-// on error.
+// on error. |entropy| and |personalization| must not alias.
 OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                                  const uint8_t *personalization,
