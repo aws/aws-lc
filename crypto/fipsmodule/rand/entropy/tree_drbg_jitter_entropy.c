@@ -31,7 +31,7 @@
 //          entropy_source
 //            interface
 //                |
-//   new_rand.c   |   tree_drbg_jitter_entropy.c
+//    rand.c      |   tree_drbg_jitter_entropy.c
 //                |
 //  front-end     |   tree-DRBG
 //  per-thread    |   per-thread
@@ -61,8 +61,6 @@
 //  - tree_jitter_get_seed
 
 
-// Placeholder right now until SP800-90C is ratified that might specify these
-// further.
 // TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE = 2^24
 #define TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE 0xFFFFFF
 // TREE_JITTER_THREAD_DRBG_MAX_GENERATE = 2^20

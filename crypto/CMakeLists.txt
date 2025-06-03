@@ -796,7 +796,7 @@ if(BUILD_TESTING)
     fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
-    fipsmodule/rand/new_rand_test.cc
+    fipsmodule/rand/rand_test.cc
     fipsmodule/rand/entropy/entropy_source_tests.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
@@ -822,7 +822,6 @@ if(BUILD_TESTING)
     pool/pool_test.cc
     rand_extra/ccrandomgeneratebytes_test.cc
     rand_extra/getentropy_test.cc
-    rand_extra/rand_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc
     rsa_extra/rsassa_pss_asn1_test.cc
