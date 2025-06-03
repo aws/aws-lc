@@ -1432,10 +1432,10 @@ static int internal_verify(X509_STORE_CTX *ctx) {
   // has a public key we actually support. Otherwise
   // we shouldn't consider the certificate okay.
   //
-  // This covers situtations like invalid curves or points.
+  // This covers situations like invalid curves or points.
   EVP_PKEY *pkey = X509_get0_pubkey(xs);
   if(pkey == NULL) {
-    ctx->error = X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY;
+    ctx->error = X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
     ctx->current_cert = xi;
     ok = 0;
     goto end;

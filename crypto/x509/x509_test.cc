@@ -4875,10 +4875,10 @@ TEST(X509Test, SignatureVerification) {
                    {intermediate.bad_key_type.get()}, {}));
 
   // Bad keys in the leaf are rejected.
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY,
+  EXPECT_EQ(X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
             Verify(leaf.bad_key.get(), {root.valid.get()},
                    {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_LEAF_PUBLIC_KEY,
+  EXPECT_EQ(X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
             Verify(leaf.bad_key_type.get(), {root.valid.get()},
                    {intermediate.valid.get()}, {}));
 
