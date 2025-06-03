@@ -269,12 +269,6 @@ jobs:
           - 'clang21'
         exclude:
           - fips: 1
-            compiler: 'gcc14'
-          - fips: 1
-            compiler: 'gcc15'
-          - fips: 1
-            compiler: 'gcc16'
-          - fips: 1
             compiler: 'clang20'
           - fips: 1
             compiler: 'clang21'
