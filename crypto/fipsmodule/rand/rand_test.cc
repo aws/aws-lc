@@ -3,18 +3,35 @@
 
 #include <gtest/gtest.h>
 
+
+#include <stdio.h>
+
 #include <openssl/ctrdrbg.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
+#include <openssl/span.h>
 
 #include "internal.h"
-
+#include "entropy/internal.h"
 #include "../../ube/internal.h"
 
+#include "../../test/abi_test.h"
 #include "../../test/ube_test.h"
 #include "../../test/test_util.h"
 
+#if defined(OPENSSL_THREADS)
+#include <array>
 #include <thread>
+#include <vector>
+#endif
+
+#if !defined(OPENSSL_WINDOWS)
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
 
@@ -29,7 +46,7 @@ static void test_all_exported_functions(size_t request_len, uint8_t *out_buf,
   ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(out_buf, request_len, user_pred_res));
 }
 
-class newRandTest : public::testing::Test {
+class randTest : public::testing::Test {
   private:
     UbeBase ube_base_;
 
@@ -75,7 +92,7 @@ static void randBasicTests(bool *returnFlag) {
   *returnFlag = true;
 }
 
-TEST_F(newRandTest, Basic) {
+TEST_F(randTest, Basic) {
   ASSERT_TRUE(threadTest(number_of_threads, randBasicTests));
 }
 
@@ -129,7 +146,7 @@ static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
   *returnFlag = true;
 }
 
-TEST_F(newRandTest, ReseedIntervalWhenUbeIsSupported) {
+TEST_F(randTest, ReseedIntervalWhenUbeIsSupported) {
   if (!UbeIsSupported()) {
     GTEST_SKIP() << "UBE detection is not supported";
   }
@@ -165,7 +182,7 @@ static void randReseedIntervalUbeNotSupportedTests(bool *returnFlag) {
   *returnFlag = true;
 }
 
-TEST_F(newRandTest, ReseedIntervalWhenUbeNotSupported) {
+TEST_F(randTest, ReseedIntervalWhenUbeNotSupported) {
 
   if (UbeIsSupported()) {
     GTEST_SKIP() << "UBE detection is supported";
@@ -203,7 +220,7 @@ static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_metho
   ASSERT_EQ(get_thread_generate_calls_since_seed(), 2ULL);
 }
 
-TEST_F(newRandTest, UbeDetectionMocked) {
+TEST_F(randTest, UbeDetectionMocked) {
 
   allowMockedUbe();
 
@@ -221,3 +238,184 @@ TEST_F(newRandTest, UbeDetectionMocked) {
 }
 
 #endif
+
+// These tests are, strictly speaking, flaky, but we use large enough buffers
+// that the probability of failing when we should pass is negligible.
+
+TEST_F(randTest, NotObviouslyBroken) {
+  static const uint8_t kZeros[256] = {0};
+
+  maybeDisableSomeForkDetectMechanisms();
+
+  uint8_t buf1[256], buf2[256];
+  RAND_bytes(buf1, sizeof(buf1));
+  RAND_bytes(buf2, sizeof(buf2));
+
+  EXPECT_NE(Bytes(buf1), Bytes(buf2));
+  EXPECT_NE(Bytes(buf1), Bytes(kZeros));
+  EXPECT_NE(Bytes(buf2), Bytes(kZeros));
+}
+
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+static bool ForkAndRand(bssl::Span<uint8_t> out) {
+  int pipefds[2];
+  if (pipe(pipefds) < 0) {
+    perror("pipe");
+    return false;
+  }
+
+  // This is a multi-threaded process, but GTest does not run tests concurrently
+  // and there currently are no threads, so this should be safe.
+  pid_t child = fork();
+  if (child < 0) {
+    perror("fork");
+    close(pipefds[0]);
+    close(pipefds[1]);
+    return false;
+  }
+
+  if (child == 0) {
+    // This is the child. Generate entropy and write it to the parent.
+    close(pipefds[0]);
+    RAND_bytes(out.data(), out.size());
+    while (!out.empty()) {
+      ssize_t ret = write(pipefds[1], out.data(), out.size());
+      if (ret < 0) {
+        if (errno == EINTR) {
+          continue;
+        }
+        perror("write");
+        _exit(1);
+      }
+      out = out.subspan(static_cast<size_t>(ret));
+    }
+    _exit(0);
+  }
+
+  // This is the parent. Read the entropy from the child.
+  close(pipefds[1]);
+  while (!out.empty()) {
+    ssize_t ret = read(pipefds[0], out.data(), out.size());
+    if (ret <= 0) {
+      if (ret == 0) {
+        fprintf(stderr, "Unexpected EOF from child.\n");
+      } else {
+        if (errno == EINTR) {
+          continue;
+        }
+        perror("read");
+      }
+      close(pipefds[0]);
+      return false;
+    }
+    out = out.subspan(static_cast<size_t>(ret));
+  }
+  close(pipefds[0]);
+
+  // Wait for the child to exit.
+  int status;
+  if (waitpid(child, &status, 0) < 0) {
+    perror("waitpid");
+    return false;
+  }
+  if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+    fprintf(stderr, "Child did not exit cleanly.\n");
+    return false;
+  }
+
+  return true;
+}
+
+TEST_F(randTest, Fork) {
+  static const uint8_t kZeros[16] = {0};
+
+  maybeDisableSomeForkDetectMechanisms();
+
+  // Draw a little entropy to initialize any internal PRNG buffering.
+  uint8_t byte;
+  RAND_bytes(&byte, 1);
+
+  // Draw entropy in two child processes and the parent process. This test
+  // intentionally uses smaller buffers than the others, to minimize the chance
+  // of sneaking by with a large enough buffer that we've since reseeded from
+  // the OS.
+  //
+  // All child processes should have different PRNGs, including the ones that
+  // disavow fork-safety. Although they are produced by fork, they themselves do
+  // not fork after that call.
+  uint8_t bufs[5][16];
+  ASSERT_TRUE(ForkAndRand(bufs[0]));
+  ASSERT_TRUE(ForkAndRand(bufs[1]));
+  ASSERT_TRUE(ForkAndRand(bufs[2]));
+  ASSERT_TRUE(ForkAndRand(bufs[3]));
+  RAND_bytes(bufs[4], sizeof(bufs[4]));
+
+  // All should be different and non-zero.
+  for (const auto &buf : bufs) {
+    EXPECT_NE(Bytes(buf), Bytes(kZeros));
+  }
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(bufs); i++) {
+    for (size_t j = 0; j < i; j++) {
+      EXPECT_NE(Bytes(bufs[i]), Bytes(bufs[j]))
+          << "buffers " << i << " and " << j << " matched";
+    }
+  }
+}
+#endif  // !OPENSSL_WINDOWS && !OPENSSL_IOS &&
+        // !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
+
+#if defined(OPENSSL_THREADS)
+static void RunConcurrentRands(size_t num_threads) {
+  static const uint8_t kZeros[256] = {0};
+
+  std::vector<std::array<uint8_t, 256>> bufs(num_threads);
+  std::vector<std::thread> threads(num_threads);
+
+  for (size_t i = 0; i < num_threads; i++) {
+    threads[i] =
+        std::thread([i, &bufs] { RAND_bytes(bufs[i].data(), bufs[i].size()); });
+  }
+  for (size_t i = 0; i < num_threads; i++) {
+    threads[i].join();
+  }
+
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_NE(Bytes(bufs[i]), Bytes(kZeros));
+    for (size_t j = i + 1; j < num_threads; j++) {
+      EXPECT_NE(Bytes(bufs[i]), Bytes(bufs[j]));
+    }
+  }
+}
+
+// Test that threads may concurrently draw entropy without tripping TSan.
+TEST_F(randTest, Threads) {
+  constexpr size_t kFewerThreads = 10;
+  constexpr size_t kMoreThreads = 20;
+
+  maybeDisableSomeForkDetectMechanisms();
+
+  // Draw entropy in parallel.
+  RunConcurrentRands(kFewerThreads);
+  // Draw entropy in parallel with higher concurrency than the previous maximum.
+  RunConcurrentRands(kMoreThreads);
+  // Draw entropy in parallel with lower concurrency than the previous maximum.
+  RunConcurrentRands(kFewerThreads);
+}
+#endif  // OPENSSL_THREADS
+
+#if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
+TEST_F(randTest, RdrandABI) {
+  if (!have_hw_rng_x86_64_for_testing()) {
+    fprintf(stderr, "rdrand not supported. Skipping.\n");
+    return;
+  }
+
+  uint8_t buf[32];
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, nullptr, 0);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 8);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 16);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 24);
+  CHECK_ABI_SEH(CRYPTO_rdrand_multiple8, buf, 32);
+}
+#endif  // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
