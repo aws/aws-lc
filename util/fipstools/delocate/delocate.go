@@ -1540,7 +1540,7 @@ Args:
 					symbol = localTargetName(d.relroLocalLabelToFuncMap[symbol])
 
 					// Transform the opcode and arguments
-					instructionName = "leaq"
+					instructionName = "leaq" // Unsed atm, since replacement string not used.
 					targetReg := d.contents(argNodes[1])
 					saveRegWrapper, tempReg := saveRegister(d.output, []string{targetReg})
 					wrappers = append(wrappers, saveRegWrapper)
