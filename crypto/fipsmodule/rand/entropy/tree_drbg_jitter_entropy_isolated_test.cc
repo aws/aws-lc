@@ -58,7 +58,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicInitialization) {
   }
 
   // Test only one seed occurs on initialization.
-  auto testFunc = [this]() {
+  auto testFunc = []() {
 
     struct entropy_source_t entropy_source = {};
     struct test_tree_drbg_t new_test_tree_drbg = {};
@@ -86,7 +86,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicInitialization) {
 TEST_F(treeDrbgJitterentropyTest, BasicThread) {
 
   // Test seeds are observed when spawning new threads.
-  auto testFunc = [this]() {
+  auto testFunc = []() {
 
     struct entropy_source_t entropy_source = {};
     struct test_tree_drbg_t new_test_tree_drbg = {};
@@ -111,7 +111,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicThread) {
     // Calling tree_jitter_initialize before thread test would set
     // |global_generate_calls_since_seed| equal to 2. We then expect an
     // additional |number_of_threads| thread-local tree-DRBGs to seed using the
-    // global tree-DRBG. 
+    // global tree-DRBG.
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == (number_of_threads+2)))
 
     exit(0);
@@ -127,7 +127,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
   }
 
   // Test reseeding happens as expected
-  auto testFunc = [this]() {
+  auto testFunc = []() {
 
     struct entropy_source_t entropy_source = {};
     struct test_tree_drbg_t new_test_tree_drbg = {};
