@@ -10,9 +10,6 @@
 #include <stddef.h>
 #if defined(OPENSSL_WINDOWS)
 typedef SSIZE_T ssize_t;
-#if !defined(__MINGW32__)
-#include <afunix.h>
-#endif
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
