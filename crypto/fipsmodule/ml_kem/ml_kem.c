@@ -34,7 +34,7 @@ typedef struct {
   const size_t expected_length;
 } output_buffer;
 
-// Ensure buffer is long enough and zero any extra memory
+// Ensure buffer is long enough
 static int check_buffer(const output_buffer data) {
   if (data.buffer == NULL || *data.length < data.expected_length) {
     return 0;
