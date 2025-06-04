@@ -92,7 +92,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicThread) {
     struct test_tree_drbg_t new_test_tree_drbg = {};
     TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
 
-    std::function<void(bool*)> threadFunc = [this](bool *result) {
+    std::function<void(bool*)> threadFunc = [](bool *result) {
       struct entropy_source_t entropy_source_thread = {};
       struct test_tree_drbg_t new_test_tree_drbg_thread = {};
 
