@@ -1017,6 +1017,7 @@ if(BUILD_TESTING)
   set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test${TEST_EXECUTABLE_EXT})
   set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init${TEST_EXECUTABLE_EXT})
   set(RANDOM_ISOLATED_EXEC rand_isolated_test${TEST_EXECUTABLE_EXT})
+  set(TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC tree_drbg_jitter_entropy_isolated_test${TEST_EXECUTABLE_EXT})
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
 

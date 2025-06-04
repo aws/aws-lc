@@ -61,11 +61,6 @@
 //  - tree_jitter_get_seed
 
 
-// TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE = 2^24
-#define TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE 0xFFFFFF
-// TREE_JITTER_THREAD_DRBG_MAX_GENERATE = 2^20
-#define TREE_JITTER_THREAD_DRBG_MAX_GENERATE 0xFFFFF
-
 struct tree_jitter_drbg_t {
   // is_global is 1 if this object is the per-process seed DRBG. Otherwise 0.
   uint8_t is_global;
@@ -77,8 +72,8 @@ struct tree_jitter_drbg_t {
   // invoked on |drbg| without a reseed.
   uint64_t max_generate_calls;
 
-  // reseed_calls_since_initialization is the number of reseed calls made of
-  // |drbg| since its initialization.
+  // reseed_calls_since_initialization is the number of seed/reseed calls made
+  // on |drbg| since its initialization.
   uint64_t reseed_calls_since_initialization;
 
   // generation_number caches the UBE generation number.
@@ -273,6 +268,7 @@ static void tree_jitter_initialize_once(void) {
   if (!CTR_DRBG_init(&(tree_jitter_drbg_global->drbg), seed_drbg, NULL, 0)) {
     abort();
   }
+  tree_jitter_drbg_global->reseed_calls_since_initialization += 1;
   OPENSSL_cleanse(seed_drbg, CTR_DRBG_ENTROPY_LEN);
 
   *global_seed_drbg_bss_get() = tree_jitter_drbg_global;
@@ -306,10 +302,10 @@ int tree_jitter_initialize(struct entropy_source_t *entropy_source) {
   if (!CTR_DRBG_init(&(tree_jitter_drbg->drbg), seed_drbg, NULL, 0)) {
     abort();
   }
+  tree_jitter_drbg->reseed_calls_since_initialization = 1;
   OPENSSL_cleanse(seed_drbg, CTR_DRBG_ENTROPY_LEN);
 
   tree_jitter_drbg->max_generate_calls = TREE_JITTER_THREAD_DRBG_MAX_GENERATE;
-  tree_jitter_drbg->reseed_calls_since_initialization = 0;
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
     tree_jitter_drbg->ube_protection = 0;
@@ -462,4 +458,72 @@ void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source) {
   }
 
   tree_jitter_zeroize_drbg(tree_jitter_drbg);
+}
+
+int get_thread_and_global_tree_drbg_calls_FOR_TESTING(
+  struct entropy_source_t *entropy_source,
+  struct test_tree_drbg_t *test_tree_drbg) {
+
+  if (test_tree_drbg == NULL || entropy_source == NULL) {
+    return 0;
+  }
+
+  int ret = 0;
+
+  CRYPTO_STATIC_MUTEX_lock_read(global_seed_drbg_lock_bss_get());
+  struct tree_jitter_drbg_t *global_tree_jitter_drbg = *global_seed_drbg_bss_get();
+
+  struct tree_jitter_drbg_t *thread_tree_jitter_drbg =
+    (struct tree_jitter_drbg_t *) entropy_source->state;
+
+  if (global_tree_jitter_drbg == NULL || thread_tree_jitter_drbg == NULL) {
+    goto out;
+  }
+
+  // Note that |drbg.reseed_counter| is initialized to 1.
+  test_tree_drbg->thread_generate_calls_since_seed = thread_tree_jitter_drbg->drbg.reseed_counter;
+  test_tree_drbg->thread_reseed_calls_since_initialization = thread_tree_jitter_drbg->reseed_calls_since_initialization;
+  test_tree_drbg->global_generate_calls_since_seed = global_tree_jitter_drbg->drbg.reseed_counter;
+  test_tree_drbg->global_reseed_calls_since_initialization = global_tree_jitter_drbg->reseed_calls_since_initialization;
+
+  ret = 1;
+
+out:
+  CRYPTO_STATIC_MUTEX_unlock_read(global_seed_drbg_lock_bss_get());
+  return ret;
+}
+
+OPENSSL_EXPORT int set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
+  struct entropy_source_t *entropy_source, uint64_t thread_reseed_calls,
+  uint64_t global_reseed_calls) {
+
+  if (entropy_source == NULL) {
+    return 0;
+  }
+
+  int ret = 0;
+
+  CRYPTO_STATIC_MUTEX_lock_write(global_seed_drbg_lock_bss_get());
+  struct tree_jitter_drbg_t *global_tree_jitter_drbg = *global_seed_drbg_bss_get();
+
+  struct tree_jitter_drbg_t *thread_tree_jitter_drbg =
+    (struct tree_jitter_drbg_t *) entropy_source->state;
+
+  if (global_tree_jitter_drbg == NULL || thread_tree_jitter_drbg == NULL) {
+    goto out;
+  }
+
+  if (thread_reseed_calls != 0) {
+    thread_tree_jitter_drbg->drbg.reseed_counter = thread_reseed_calls;
+  }
+
+  if (global_reseed_calls != 0) {
+    global_tree_jitter_drbg->drbg.reseed_counter = global_reseed_calls;
+  }
+
+  ret = 1;
+
+out:
+  CRYPTO_STATIC_MUTEX_unlock_write(global_seed_drbg_lock_bss_get());
+  return ret;
 }
