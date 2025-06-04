@@ -168,13 +168,43 @@ static bool extract_password(std::string& source) {
     return false;
 }
 
-// Securely erases sensitive data from a string
-static void secure_clear(std::string& str) {
-    if (!str.empty()) {
-        OPENSSL_cleanse(&str[0], str.size());
-        str.clear();
+// A wrapper class for sensitive string data that's automatically cleared on destruction
+class SensitiveString {
+public:
+    SensitiveString() = default;
+    explicit SensitiveString(const std::string& str) : data_(str) {}
+    ~SensitiveString() { clear(); }
+    
+    // Delete copy operations to prevent accidental exposure
+    SensitiveString(const SensitiveString&) = delete;
+    SensitiveString& operator=(const SensitiveString&) = delete;
+    
+    // Move operations
+    SensitiveString(SensitiveString&& other) noexcept : data_(std::move(other.data_)) {}
+    SensitiveString& operator=(SensitiveString&& other) noexcept {
+        if (this != &other) {
+            clear();
+            data_ = std::move(other.data_);
+        }
+        return *this;
     }
-}
+    
+    const std::string& str() const { return data_; }
+    std::string& str() { return data_; }
+    const char* c_str() const { return data_.c_str(); }
+    bool empty() const { return data_.empty(); }
+    size_t length() const { return data_.length(); }
+    
+    void clear() {
+        if (!data_.empty()) {
+            OPENSSL_cleanse(&data_[0], data_.size());
+            data_.clear();
+        }
+    }
+
+private:
+    std::string data_;
+};
 
 // Reads a private key from BIO in the specified format with optional password
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, 
@@ -233,15 +263,17 @@ static const argument_t kArguments[] = {
 };
 
 bool pkcs8Tool(const args_list_t& args) {
-    bool ret = false;
-    
     args_map_t parsed_args;
     args_list_t extra_args;
     bool help = false;
     std::string in_path, out_path;
-    std::string inform, outform;
+    std::string inform = "PEM", outform = "PEM";
     bool topk8 = false, nocrypt = false;
-    std::string passin_arg, passout_arg;
+    
+    // Sensitive strings will be automatically cleared on function exit
+    SensitiveString passin_arg;
+    SensitiveString passout_arg;
+    
     bssl::UniquePtr<BIO> in;
     bssl::UniquePtr<BIO> out;
     bssl::UniquePtr<EVP_PKEY> pkey;
@@ -250,27 +282,26 @@ bool pkcs8Tool(const args_list_t& args) {
     
     if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
         PrintUsage(kArguments);
-        goto err;
+        return false;
     }
 
     GetBoolArgument(&help, "-help", parsed_args);
     if (help) {
         PrintUsage(kArguments);
-        ret = true;
-        goto err;
+        return true;
     }
 
     GetString(&in_path, "-in", "", parsed_args);
     if (in_path.empty()) {
         fprintf(stderr, "Input file required\n");
-        goto err;
+        return false;
     }
     GetString(&out_path, "-out", "", parsed_args);
 
     GetString(&inform, "-inform", "PEM", parsed_args);
     GetString(&outform, "-outform", "PEM", parsed_args);
     if (!validate_format(inform) || !validate_format(outform)) {
-        goto err;
+        return false;
     }
 
     GetBoolArgument(&topk8, "-topk8", parsed_args);
@@ -278,34 +309,35 @@ bool pkcs8Tool(const args_list_t& args) {
 
     if (parsed_args.count("-v2") > 0 && !parsed_args["-v2"].empty() && 
         !validate_cipher(parsed_args["-v2"])) {
-        goto err;
+        return false;
     }
     if (parsed_args.count("-v2prf") > 0 && !parsed_args["-v2prf"].empty() && 
         !validate_prf(parsed_args["-v2prf"])) {
-        goto err;
+        return false;
     }
-    GetString(&passin_arg, "-passin", "", parsed_args);
-    GetString(&passout_arg, "-passout", "", parsed_args); 
-    if (!extract_password(passin_arg)) {
-        goto err;
+    
+    GetString(&passin_arg.str(), "-passin", "", parsed_args);
+    GetString(&passout_arg.str(), "-passout", "", parsed_args); 
+    if (!extract_password(passin_arg.str())) {
+        return false;
     }
-    if (!extract_password(passout_arg)) {
-        goto err;
+    if (!extract_password(passout_arg.str())) {
+        return false;
     }
     
     // Check for contradictory arguments
     if (nocrypt && !passin_arg.empty() && !passout_arg.empty()) {
         fprintf(stderr, "Error: -nocrypt cannot be used with both -passin and -passout\n");
-        goto err;
+        return false;
     }
     
     in.reset(BIO_new_file(in_path.c_str(), "rb"));
     if (!in) {
         fprintf(stderr, "Cannot open input file\n");
-        goto err;
+        return false;
     }
     if (!validate_bio_size(in.get())) {
-        goto err;
+        return false;
     }
     
     if (!out_path.empty()) {
@@ -315,7 +347,7 @@ bool pkcs8Tool(const args_list_t& args) {
     }
     if (!out) {
         fprintf(stderr, "Cannot open output file\n");
-        goto err;
+        return false;
     }
     
     pkey = read_private_key(
@@ -325,11 +357,12 @@ bool pkcs8Tool(const args_list_t& args) {
     );
     if (!pkey) {
         fprintf(stderr, "Unable to load private key\n");
-        goto err;
+        return false;
     }
 
+    bool result = false;
     if (!topk8) {
-        ret = (outform == "PEM") ?
+        result = (outform == "PEM") ?
             PEM_write_bio_PrivateKey(out.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr) :
             i2d_PrivateKey_bio(out.get(), pkey.get());
     } else {
@@ -338,26 +371,26 @@ bool pkcs8Tool(const args_list_t& args) {
             p8inf.reset(EVP_PKEY2PKCS8(pkey.get()));
             if (!p8inf) {
                 fprintf(stderr, "Error converting to PKCS#8\n");
-                goto err;
+                return false;
             }
             
-            ret = (outform == "PEM") ?
+            result = (outform == "PEM") ?
                 PEM_write_bio_PKCS8_PRIV_KEY_INFO(out.get(), p8inf.get()) :
                 i2d_PKCS8_PRIV_KEY_INFO_bio(out.get(), p8inf.get());
         } else {
             if (passout_arg.empty()) {
                 fprintf(stderr, "Password required for encryption\n");
-                goto err;
+                return false;
             }
             cipher = (parsed_args.count("-v2") == 0 || parsed_args["-v2"].empty()) ? 
                 EVP_aes_256_cbc() : EVP_get_cipherbyname(parsed_args["-v2"].c_str());
             if (outform == "PEM") {
-                ret = PEM_write_bio_PKCS8PrivateKey(
+                result = PEM_write_bio_PKCS8PrivateKey(
                     out.get(), pkey.get(), cipher,
                     passout_arg.c_str(), passout_arg.length(),
                     nullptr, nullptr);
             } else {
-                ret = i2d_PKCS8PrivateKey_bio(
+                result = i2d_PKCS8PrivateKey_bio(
                     out.get(), pkey.get(), cipher,
                     passout_arg.c_str(), passout_arg.length(),
                     nullptr, nullptr);
@@ -365,17 +398,11 @@ bool pkcs8Tool(const args_list_t& args) {
         }
     }
 
-    if (!ret) {
+    if (!result) {
         fprintf(stderr, "Error writing private key\n");
-        goto err;
+        return false;
     }
 
     BIO_flush(out.get());
-    ret = true;
-
-err:
-    secure_clear(passin_arg);
-    secure_clear(passout_arg);
-    
-    return ret;
+    return true;
 }
