@@ -148,9 +148,11 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 1))
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 2))
 
-    // Set reseed counter for thread-local tree-DRBG to max value + 1.
+    // Set reseed counter for thread-local tree-DRBG to max value + 1 (because
+    // the reseed interval condition uses strict inequality and
+    // drbg.reseed_counter is initialized to 1).
     TEST_IN_FORK_ASSERT_TRUE(set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
-      &entropy_source, tree_drbg_thread_reseed_limit+1, 0))
+      &entropy_source, tree_drbg_thread_reseed_limit + 1, 0))
     TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
     TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
     // Thread-local tree-DRBG should generate a seed from global tree-DRBG
@@ -164,7 +166,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
     // Set reseed counter for global tree-DRBG to max value + 1. Thread-local
     // tree-DRBG is unchanged
     TEST_IN_FORK_ASSERT_TRUE(set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
-      &entropy_source, 0, tree_drbg_global_reseed_limit+1))
+      &entropy_source, 0, tree_drbg_global_reseed_limit + 1))
     TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
     TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
     // We generated a seed from the tread-local tree-DRBG which should not
@@ -175,12 +177,12 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_reseed_calls_since_initialization == 2)) // unchanged
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_generate_calls_since_seed == 3)) // changed
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 1)) // unchanged
-    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == (tree_drbg_global_reseed_limit+1))) // changed
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == (tree_drbg_global_reseed_limit + 1))) // changed
 
     // Set reseed counter for both thread-local and global tree-DRBG to
     // max value + 1.
     TEST_IN_FORK_ASSERT_TRUE(set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
-      &entropy_source, tree_drbg_thread_reseed_limit+1, tree_drbg_global_reseed_limit+1))
+      &entropy_source, tree_drbg_thread_reseed_limit + 1, tree_drbg_global_reseed_limit + 1))
     TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
     TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
     // When generating a seed from from the thread-local tree-DRBG it should
@@ -191,6 +193,57 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_generate_calls_since_seed == 2)) // changed
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 2)) // changed
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 2)) // changed
+
+    // Try without calling zeroize thread-local tree-DRBG first.
+    tree_jitter_free_thread_drbg(&entropy_source);
+    exit(0);
+  };
+
+  EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
+TEST_F(treeDrbgJitterentropyTest, TreeDRBGThreadReseedInterval) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  // Test reseeding happens as expected
+  auto testFunc = []() {
+
+    struct entropy_source_t entropy_source = {0, 0};
+    struct test_tree_drbg_t new_test_tree_drbg = {0, 0, 0, 0};
+    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
+    const uint64_t tree_drbg_thread_reseed_limit = TREE_JITTER_THREAD_DRBG_MAX_GENERATE;
+
+    // Similar to initialization test above.
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_reseed_calls_since_initialization == 1))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_generate_calls_since_seed == 1))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 1))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 2))
+
+    // Must allow |tree_drbg_thread_reseed_limit| generate calls before
+    // reseeding. For the tree-DRBG, not having UBE detection does not trigger
+    // a pre-invocation reseed. Instead, prediction resistance is used. Hence,
+    // we do not need to cater for UBE in the logic below.
+    for (size_t i = 1; i <= tree_drbg_thread_reseed_limit; i++) {
+      TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
+      TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
+      TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_reseed_calls_since_initialization == 1))
+      TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_generate_calls_since_seed == (1 + i)))
+      TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 1))
+      TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 2))
+    }
+
+    // Now reseed should happen.
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
+    TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_reseed_calls_since_initialization == 2))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.thread_generate_calls_since_seed == 2)) // Because drbg.reseed_counter is initialized to 1
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 1))
+    TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 3))
 
     // Try without calling zeroize thread-local tree-DRBG first.
     tree_jitter_free_thread_drbg(&entropy_source);
