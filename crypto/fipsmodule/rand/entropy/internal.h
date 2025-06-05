@@ -15,6 +15,11 @@ extern "C" {
 
 #define ENTROPY_JITTER_MAX_NUM_TRIES (3)
 
+// TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE = 2^24
+#define TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE 0xFFFFFF
+// TREE_JITTER_THREAD_DRBG_MAX_GENERATE = 2^20
+#define TREE_JITTER_THREAD_DRBG_MAX_GENERATE 0xFFFFF
+
 struct entropy_source_t {
   void *state;
   const struct entropy_source_methods *methods;
@@ -113,6 +118,29 @@ OPENSSL_INLINE int have_hw_rng_x86_64(void) {
 }
 
 #endif  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+
+struct test_tree_drbg_t {
+  uint64_t thread_generate_calls_since_seed;
+  uint64_t thread_reseed_calls_since_initialization;
+  uint64_t global_generate_calls_since_seed;
+  uint64_t global_reseed_calls_since_initialization;
+};
+
+// get_thread_and_global_tree_drbg_calls_FOR_TESTING returns the number of
+// generate calls since seed/reseed for the tread-local and global tree-DRBG.
+// In addition, it returns the number of reseeds applied on the tread-local and
+// global tree-DRBG. These values of copied to |test_tree_drbg|.
+OPENSSL_EXPORT int get_thread_and_global_tree_drbg_calls_FOR_TESTING(
+  struct entropy_source_t *entropy_source,
+  struct test_tree_drbg_t *test_tree_drbg);
+
+// set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING sets the reseed
+// counter for either the tread-local and/or global tree-DRBG. If either of
+// |thread_reseed_calls| or |global_reseed_calls| are equal to 0, their
+// reseed counter is not set.
+OPENSSL_EXPORT int set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING(
+  struct entropy_source_t *entropy_source, uint64_t thread_reseed_calls,
+  uint64_t global_reseed_calls);
 
 #if defined(__cplusplus)
 }  // extern C

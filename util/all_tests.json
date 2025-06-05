@@ -127,6 +127,10 @@
     "cmd": ["crypto/rand_isolated_test"]
   },
   {
+    "comment": "Run tree-DRBG with Jitter Entropy tests in isolated process",
+    "cmd": ["crypto/tree_drbg_jitter_entropy_isolated_test"]
+  },
+  {
     "cmd": [
       "crypto/rwlock_static_init"
     ]

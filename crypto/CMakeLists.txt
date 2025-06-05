@@ -728,6 +728,7 @@ if(BUILD_TESTING)
 
   # Test randomness generation
   add_test_executable(${RANDOM_ISOLATED_EXEC} fipsmodule/rand/rand_isolated_test.cc)
+  add_test_executable(${TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC} fipsmodule/rand/entropy/tree_drbg_jitter_entropy_isolated_test.cc)
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
@@ -797,7 +798,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/rand_test.cc
-    fipsmodule/rand/entropy/entropy_source_tests.cc
+    fipsmodule/rand/entropy/entropy_source_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
