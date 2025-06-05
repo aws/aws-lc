@@ -1427,6 +1427,20 @@ static int internal_verify(X509_STORE_CTX *ctx) {
       xs = sk_X509_value(ctx->chain, n);
     }
   }
+
+  // Check that the final certificate subject (leaf)
+  // has a public key we actually support. Otherwise
+  // we shouldn't consider the certificate okay.
+  //
+  // This covers situations like invalid curves or points.
+  EVP_PKEY *pkey = X509_get0_pubkey(xs);
+  if(pkey == NULL) {
+    ctx->error = X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
+    ctx->current_cert = xi;
+    ok = 0;
+    goto end;
+  }
+
   ok = 1;
 end:
   return ok;
