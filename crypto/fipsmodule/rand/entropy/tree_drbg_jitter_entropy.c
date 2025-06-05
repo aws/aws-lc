@@ -163,6 +163,9 @@ static int tree_jitter_check_drbg_must_reseed(
     return 1;
   }
 
+  // drbg.reseed_counter is initialized to 1, incremented after a generate call
+  // on |drbg|. |max_generate_calls| is the maximum allowed invocation of the
+  // generate function on |drbg|.
   if (tree_jitter_drbg->drbg.reseed_counter > tree_jitter_drbg->max_generate_calls) {
     return 1;
   }

@@ -33,6 +33,10 @@ TEST(CTRDRBGTest, Basic) {
   CTR_DRBG_STATE drbg;
   ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0));
 
+  // This is an implicit assumption in random places in the code and is not
+  // always documented. Discovery is hard, so explicitly assert it's true.
+  ASSERT_EQ(drbg.reseed_counter, (uint64_t) 1);
+
   const uint8_t kReseed[CTR_DRBG_ENTROPY_LEN] = {
       0xfd, 0x85, 0xa8, 0x36, 0xbb, 0xa8, 0x50, 0x19, 0x88, 0x1e, 0x8c, 0x6b,
       0xad, 0x23, 0xc9, 0x06, 0x1a, 0xdc, 0x75, 0x47, 0x76, 0x59, 0xac, 0xae,
