@@ -24,8 +24,8 @@ BSSL_SRC_FOLDER="${SCRATCH_FOLDER}/boring-ssl"
 BSSL_BUILD_FOLDER="${SCRATCH_FOLDER}/boring-ssl-build"
 BSSL_CMD="${SCRATCH_FOLDER}/boring-ssl-build/bssl"
 
-SERVER_TIMEOUT_CMD="timeout --kill-after=60s 60s"
-CLIENT_TIMEOUT_CMD="timeout --kill-after=10s 10s"
+SERVER_TIMEOUT_CMD="timeout --preserve-status --kill-after=60s 60s"
+CLIENT_TIMEOUT_CMD="timeout --preserve-status --kill-after=10s 10s"
 
 rm -rf "${SCRATCH_FOLDER:?}"
 mkdir -p "$SCRATCH_FOLDER"
