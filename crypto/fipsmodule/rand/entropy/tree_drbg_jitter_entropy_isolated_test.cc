@@ -60,8 +60,8 @@ TEST_F(treeDrbgJitterentropyTest, BasicInitialization) {
   // Test only one seed occurs on initialization.
   auto testFunc = []() {
 
-    struct entropy_source_t entropy_source = {};
-    struct test_tree_drbg_t new_test_tree_drbg = {};
+    struct entropy_source_t entropy_source = {0, 0};
+    struct test_tree_drbg_t new_test_tree_drbg = {0, 0, 0, 0};
 
     TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
     TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(&entropy_source, &new_test_tree_drbg))
@@ -88,13 +88,13 @@ TEST_F(treeDrbgJitterentropyTest, BasicThread) {
   // Test seeds are observed when spawning new threads.
   auto testFunc = []() {
 
-    struct entropy_source_t entropy_source = {};
-    struct test_tree_drbg_t new_test_tree_drbg = {};
+    struct entropy_source_t entropy_source = {0, 0};
+    struct test_tree_drbg_t new_test_tree_drbg = {0, 0, 0, 0};
     TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
 
     std::function<void(bool*)> threadFunc = [](bool *result) {
-      struct entropy_source_t entropy_source_thread = {};
-      struct test_tree_drbg_t new_test_tree_drbg_thread = {};
+      struct entropy_source_t entropy_source_thread = {0, 0};
+      struct test_tree_drbg_t new_test_tree_drbg_thread = {0, 0, 0, 0};
 
       bool test = tree_jitter_initialize(&entropy_source_thread);
       test = test && get_tree_drbg_call(&entropy_source_thread, &new_test_tree_drbg_thread);
@@ -129,9 +129,9 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
   // Test reseeding happens as expected
   auto testFunc = []() {
 
-    struct entropy_source_t entropy_source = {};
-    struct test_tree_drbg_t new_test_tree_drbg = {};
-    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN] = {};
+    struct entropy_source_t entropy_source = {0, 0};
+    struct test_tree_drbg_t new_test_tree_drbg = {0, 0, 0, 0};
+    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
     const uint64_t tree_drbg_thread_reseed_limit = TREE_JITTER_THREAD_DRBG_MAX_GENERATE;
     const uint64_t tree_drbg_global_reseed_limit = TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE;
 
