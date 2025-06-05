@@ -76,6 +76,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicInitialization) {
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 2))
 
     tree_jitter_zeroize_thread_drbg(&entropy_source);
+    tree_jitter_free_thread_drbg(&entropy_source);
 
     exit(0);
   };
@@ -101,6 +102,8 @@ TEST_F(treeDrbgJitterentropyTest, BasicThread) {
       test = test && new_test_tree_drbg_thread.thread_reseed_calls_since_initialization == 1;
       test = test && new_test_tree_drbg_thread.global_reseed_calls_since_initialization == 1;
       *result = test;
+
+      tree_jitter_free_thread_drbg(&entropy_source_thread);
     };
 
     bool exit_code = threadTest(number_of_threads, threadFunc);
@@ -114,6 +117,8 @@ TEST_F(treeDrbgJitterentropyTest, BasicThread) {
     // global tree-DRBG.
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == (number_of_threads+2)))
 
+    tree_jitter_zeroize_thread_drbg(&entropy_source);
+    tree_jitter_free_thread_drbg(&entropy_source);
     exit(0);
   };
 
@@ -187,6 +192,8 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_reseed_calls_since_initialization == 2)) // changed
     TEST_IN_FORK_ASSERT_TRUE((new_test_tree_drbg.global_generate_calls_since_seed == 2)) // changed
 
+    // Try without calling zeroize thread-local tree-DRBG first.
+    tree_jitter_free_thread_drbg(&entropy_source);
     exit(0);
   };
 
