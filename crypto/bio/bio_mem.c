@@ -263,12 +263,10 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
           b->length = 0;
         }
         bbm->read_off = 0;
-      } else {
-        ret = -1;
       }
       break;
     case BIO_C_FILE_SEEK:
-      if (b->data == NULL || num < 0 || (size_t)num > b->max) {
+      if (num < 0 || (size_t)num > b->max) {
         ret = -1;
         break;
       }
