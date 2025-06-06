@@ -44,7 +44,7 @@ typedef struct
 typedef struct
 {
   int16_t coeffs[MLKEM_N >> 1];
-} mlk_poly_mulcache;
+} MLK_ALIGN mlk_poly_mulcache;
 
 /*************************************************
  * Name:        mlk_cast_uint16_to_int16

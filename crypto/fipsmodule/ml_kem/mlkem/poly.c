@@ -9,7 +9,7 @@
  * - [NeonNTT]
  *   Neon NTT: Faster Dilithium, Kyber, and Saber on Cortex-A72 and Apple M1
  *   Becker, Hwang, Kannwischer, Yang, Yang
- *   https://tches.iacr.org/index.php/TCHES/article/view/9295
+ *   https://eprint.iacr.org/2021/986
  *
  * - [REF]
  *   CRYSTALS-Kyber C reference implementation
@@ -283,12 +283,6 @@ MLK_INTERNAL_API
 void mlk_poly_mulcache_compute(mlk_poly_mulcache *x, const mlk_poly *a)
 {
   mlk_poly_mulcache_compute_native(x->coeffs, a->coeffs);
-  /*
-   * This bound is true for the AArch64 and AVX2 implementations,
-   * but not needed in the higher level bounds reasoning.
-   * It is thus omitted from the spec but checked here nonetheless.
-   */
-  mlk_assert_abs_bound(x, MLKEM_N / 2, MLKEM_Q);
 }
 #endif /* MLK_USE_NATIVE_POLY_MULCACHE_COMPUTE */
 

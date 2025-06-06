@@ -14,7 +14,7 @@
  * - [NeonNTT]
  *   Neon NTT: Faster Dilithium, Kyber, and Saber on Cortex-A72 and Apple M1
  *   Becker, Hwang, Kannwischer, Yang, Yang
- *   https://tches.iacr.org/index.php/TCHES/article/view/9295
+ *   https://eprint.iacr.org/2021/986
  *
  * - [REF]
  *   CRYSTALS-Kyber C reference implementation
