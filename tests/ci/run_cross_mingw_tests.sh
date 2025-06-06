@@ -69,6 +69,7 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   shard_gtest ${BUILD_ROOT}/crypto/mem_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/mem_set_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/rand_isolated_test.exe
+  shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init.exe
 
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test.exe
