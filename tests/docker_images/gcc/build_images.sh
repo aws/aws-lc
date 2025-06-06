@@ -18,7 +18,10 @@ if ! docker buildx inspect ${BUILDER_NAME}; then
 fi
 
 ## GCC-4.8
-docker buildx build --platform linux/amd64 -t aws-lc:gcc-4.8 "${SCRIPT_DIR}"/4.8 --load
+#docker buildx build --platform linux/amd64 -t aws-lc:gcc-4.8 "${SCRIPT_DIR}"/4.8 --load
+
+## GCC-15.1.0
+docker buildx build --platform linux/amd64 -t aws-lc:gcc-15.1.0 "${SCRIPT_DIR}"/15.1.0 --load
 
 docker buildx rm ${BUILDER_NAME}
 

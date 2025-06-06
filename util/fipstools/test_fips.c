@@ -62,23 +62,45 @@ int main(int argc, char **argv) {
   printf("Module version: %" PRIu32 "\n", module_version);
 #endif //BORINGSSL_FIPS_140_3
 
-  static const uint8_t kAESKey[16] = "BoringCrypto Key";
-  static const uint8_t kPlaintext[64] =
-      "BoringCryptoModule FIPS KAT Encryption and Decryption Plaintext!";
-  static const DES_cblock kDESKey1 = {"BCMDESK1"};
-  static const DES_cblock kDESKey2 = {"BCMDESK2"};
-  static const DES_cblock kDESKey3 = {"BCMDESK3"};
-  static const DES_cblock kDESIV = {"BCMDESIV"};
+  static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
+                                      'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
+
+  static const uint8_t kPlaintext[64] = {
+      'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r', 'y', 'p', 't', 'o', 'M',
+      'o', 'd', 'u', 'l', 'e', ' ', 'F', 'I', 'P', 'S', ' ', 'K', 'A',
+      'T', ' ', 'E', 'n', 'c', 'r', 'y', 'p', 't', 'i', 'o', 'n', ' ',
+      'a', 'n', 'd', ' ', 'D', 'e', 'c', 'r', 'y', 'p', 't', 'i', 'o',
+      'n', ' ', 'P', 'l', 'a', 'i', 'n', 't', 'e', 'x', 't', '!'};
+
+  static const DES_cblock kDESKey1 = {{'B', 'C', 'M', 'D', 'E', 'S', 'K', '1'}};
+
+  static const DES_cblock kDESKey2 = {{'B', 'C', 'M', 'D', 'E', 'S', 'K', '2'}};
+
+  static const DES_cblock kDESKey3 = {{'B', 'C', 'M', 'D', 'E', 'S', 'K', '3'}};
+
+  static const DES_cblock kDESIV = {{'B', 'C', 'M', 'D', 'E', 'S', 'I', 'V'}};
   static const uint8_t kPlaintextSHA256[32] = {
       0x37, 0xbd, 0x70, 0x53, 0x72, 0xfc, 0xd4, 0x03, 0x79, 0x70, 0xfb,
       0x06, 0x95, 0xb1, 0x2a, 0x82, 0x48, 0xe1, 0x3e, 0xf2, 0x33, 0xfb,
       0xef, 0x29, 0x81, 0x22, 0x45, 0x40, 0x43, 0x70, 0xce, 0x0f};
-  const uint8_t kDRBGEntropy[48] =
-      "DBRG Initial Entropy                            ";
-  const uint8_t kDRBGPersonalization[18] = "BCMPersonalization";
-  const uint8_t kDRBGAD[16] = "BCM DRBG AD     ";
-  const uint8_t kDRBGEntropy2[48] =
-      "DBRG Reseed Entropy                             ";
+  const uint8_t kDRBGEntropy[48] = {
+      'D', 'B', 'R', 'G', ' ', 'I', 'n', 'i', 't', 'i', 'a', 'l',
+      ' ', 'E', 'n', 't', 'r', 'o', 'p', 'y', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+
+  const uint8_t kDRBGPersonalization[18] = {'B', 'C', 'M', 'P', 'e', 'r',
+                                            's', 'o', 'n', 'a', 'l', 'i',
+                                            'z', 'a', 't', 'i', 'o', 'n'};
+
+  const uint8_t kDRBGAD[16] = {'B', 'C', 'M', ' ', 'D', 'R', 'B', 'G',
+                               ' ', 'A', 'D', ' ', ' ', ' ', ' ', ' '};
+
+  const uint8_t kDRBGEntropy2[48] = {
+      'D', 'B', 'R', 'G', ' ', 'R', 'e', 's', 'e', 'e', 'd', ' ',
+      'E', 'n', 't', 'r', 'o', 'p', 'y', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];

@@ -213,9 +213,6 @@ aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
 
 fetch_crt_python
 
-# Some systems install under "lib64" instead of "lib"
-ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
-
 mkdir -p ${PYTHON_SRC_FOLDER}
 pushd ${PYTHON_SRC_FOLDER}
 
