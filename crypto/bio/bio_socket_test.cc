@@ -574,7 +574,7 @@ TEST_P(BIODgramTest, SocketDatagramSetPeer) {
     GTEST_SKIP() << "IPv6 not supported";
     return;
   }
-#if defined(__MINGW32__)
+#if defined(__MINGW32__) && defined(AWS_LC_HAS_AF_UNIX)
   if (addr_family == AF_UNIX) {
     // Wine (is not an emulator) doesn't properly support Unix domain sockets
     GTEST_SKIP() << "Unix domain sockets not supported";

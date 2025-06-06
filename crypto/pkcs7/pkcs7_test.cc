@@ -2148,7 +2148,6 @@ iWjrtmwM/HRbFEg2THS9b/vkiTsNSRCR9goaq9KPqXuJJsjJIoMA8IBHSLVvFnLf
       PEM_read_bio_PKCS7(bio.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(pkcs7);
   ASSERT_TRUE(PKCS7_type_is_signed(pkcs7.get()));
-
   STACK_OF(X509) *signers = PKCS7_get0_signers(pkcs7.get(), nullptr, 0);
   EXPECT_TRUE(signers);
   sk_X509_free(signers);
