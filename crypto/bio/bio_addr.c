@@ -86,9 +86,8 @@ void BIO_ADDR_clear(BIO_ADDR *ap) {
 }
 
 int BIO_ADDR_family(const BIO_ADDR *ap) {
-  if (ap == NULL) {
-    return -1;
-  }
+  GUARD_PTR(ap);
+
   return ap->sa.sa_family;
 }
 
@@ -119,6 +118,7 @@ int BIO_ADDR_rawmake(BIO_ADDR *ap, int family, const void *where,
 #endif
 #ifdef AWS_LC_HAS_AF_UNIX
   if (family == AF_UNIX) {
+    GUARD_PTR(where);
     // wherelen is expected to be the length of the path string
     // not including the terminating NUL.
     if (wherelen + 1 > sizeof(ap->s_un.sun_path)) {
@@ -139,7 +139,6 @@ int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l) {
   const void *addrptr = NULL;
 
   GUARD_PTR(ap);
-  GUARD_PTR(l);
 
   if (ap->sa.sa_family == AF_INET) {
     len = sizeof(ap->s_in.sin_addr);
@@ -162,11 +161,14 @@ int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l) {
   if (addrptr == NULL) {
     return 0;
   }
-  *l = len;
+  if (l != NULL) {
+    *l = len;
+  }
 
   if (p != NULL) {
     OPENSSL_memcpy(p, addrptr, len);
     if (ap->sa.sa_family == AF_UNIX) {
+      // OpenSSL does not write the terminating NUL
       ((char *)p)[len] = '\0';
     }
   }
