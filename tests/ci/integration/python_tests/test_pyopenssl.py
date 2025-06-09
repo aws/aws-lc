@@ -1,9 +1,6 @@
 import sys
 
 assert sys.version_info.major == 3, "Only python 3 supported"
-if sys.version_info.minor >= 13:
-    print("PyOpenSSL import currently broken on mainline python >= 3.13.")
-    sys.exit()
 
 import OpenSSL
 from OpenSSL import SSL
