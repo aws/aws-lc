@@ -819,12 +819,14 @@ OPENSSL_EXPORT int BIO_ADDR_rawmake(BIO_ADDR *ap, int family, const void *where,
 // -1 on error.
 OPENSSL_EXPORT int BIO_ADDR_family(const BIO_ADDR *ap);
 
-// BIO_ADDR_rawaddress retrieves the raw address data from the BIO_ADDR.
-// The ap parameter specifies the BIO_ADDR to query. The address data is stored
-// in the buffer p. The l parameter contains the size of the buffer on input,
-// and on output contains the actual size of the address data. For AF_UNIX,
-// this is the length not including the NUL terminator. Returns 1 on success,
-// 0 on error.
+// BIO_ADDR_rawaddress retrieves the raw address data from a BIO_ADDR structure.
+// The address data from |ap| is copied into the buffer |p| if |p| is not NULL.
+// If |l| is not NULL, |*l| will be updated with the size of the address data.
+// For AF_INET, this is the 4-byte IPv4 address; for AF_INET6, the 16-byte IPv6
+// address; for AF_UNIX, the socket path. With AF_UNIX addresses, the buffer |p|
+// must be large enough for both the path and a NUL terminator. The function will
+// write the terminator to the buffer, but the length stored in |*l| excludes it.
+// Returns 1 on success, 0 if the address family is unsupported or |ap| is NULL.
 OPENSSL_EXPORT int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l);
 
 // BIO_ADDR_rawport returns the port number stored in the BIO_ADDR.
