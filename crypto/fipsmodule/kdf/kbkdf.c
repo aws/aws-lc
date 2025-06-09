@@ -80,6 +80,7 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
     // NIST.SP.800-108r1-upd1: Step 4b, Step 5
     // result := result || K(i)
     if (written > out_len - done) {
+      // Last block of output might not be a full block
       written = out_len - done;
     }
     OPENSSL_memcpy(out_key + done, out_key_i, written);
