@@ -57,16 +57,15 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 
   size_t done = 0;
 
-  for (uint32_t i = 0; i < n; i++) {
-    uint8_t out_key_i[EVP_MAX_MD_SIZE];
-    uint8_t counter[KBKDF_COUNTER_SIZE];
-    size_t todo;
+  uint8_t out_key_i[EVP_MAX_MD_SIZE];
+  uint8_t counter[KBKDF_COUNTER_SIZE];
+  uint32_t written;
 
+  for (uint32_t i = 0; i < n; i++) {
     // Increment the counter
     CRYPTO_store_u32_be(&counter[0], i + 1);
 
-    uint32_t written;
-
+    written = 0;
     // NIST.SP.800-108r1-upd1: Step 4a:
     // K(i) := PRF(K_IN, [i] || FixedInfo)
     // Note |hmac_ctx| has already been configured with the secret key
@@ -75,29 +74,22 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
         !HMAC_Update(hmac_ctx, info, info_len) ||
         !HMAC_Final(hmac_ctx, out_key_i, &written) ||
         written != h_output_bytes) {
-      OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
       goto err;
     }
 
     // NIST.SP.800-108r1-upd1: Step 4b, Step 5
     // result := result || K(i)
-    todo = h_output_bytes;
-    if (todo > out_len - done) {
-      todo = out_len - done;
+    if (written > out_len - done) {
+      written = out_len - done;
     }
-    OPENSSL_memcpy(out_key + done, out_key_i, todo);
-    done += todo;
-
-    // When we are finished clear the temporary buffer to cleanse key material
-    // from stack.
-    if (done == out_len) {
-      OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
-    }
+    OPENSSL_memcpy(out_key + done, out_key_i, written);
+    done += written;
   }
 
   ret = 1;
 
 err:
+  OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
   if (ret <= 0 && out_key && out_len > 0) {
     OPENSSL_cleanse(out_key, out_len);
   }
