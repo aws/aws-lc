@@ -1,0 +1,42 @@
+diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
+index 7fdd2be..7d8839f 100644
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -4503,14 +4505,14 @@ def server_callback(identity):
+             self.assertEqual(identity, client_identity)
+             return psk
+ 
+-        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
++        client_context, server_context, _ = testing_context()
++
+         client_context.check_hostname = False
+         client_context.verify_mode = ssl.CERT_NONE
+         client_context.minimum_version = ssl.TLSVersion.TLSv1_3
+         client_context.set_ciphers('PSK')
+         client_context.set_psk_client_callback(client_callback)
+ 
+-        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+         server_context.minimum_version = ssl.TLSVersion.TLSv1_3
+         server_context.set_ciphers('PSK')
+         server_context.set_psk_server_callback(server_callback, identity_hint)
+diff --git a/Modules/Setup b/Modules/Setup
+index e4acf6b..e4dd9b4 100644
+--- a/Modules/Setup
++++ b/Modules/Setup
+@@ -211,11 +211,11 @@ PYTHONPATH=$(COREPYTHONPATH)
+ #_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) -lcrypto
+ 
+ # To statically link OpenSSL:
+-# _ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
+-#     -l:libssl.a -Wl,--exclude-libs,libssl.a \
+-#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
+-# _hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
+-#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
++_ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
++    -l:libssl.a -Wl,--exclude-libs,libssl.a \
++    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
++_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
++    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
+ 
+ # The _tkinter module.
+ #
