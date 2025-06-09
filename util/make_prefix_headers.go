@@ -97,9 +97,9 @@ func writeCHeader(symbols []string, path string) error {
 
 #define BORINGSSL_PREFIX_SYMBOLS_H	
 
-#ifndef BORINGSSL_PREFIX
+#if !(defined(BORINGSSL_PREFIX) || defined(BORINGSSL_DISABLE_PREFIX))
 #define BORINGSSL_PREFIX %s
-#endif // BORINGSSL_PREFIX
+#endif // !(defined(BORINGSSL_PREFIX) || defined(BORINGSSL_DISABLE_PREFIX))
 
 `, *prefix); err != nil {
 		return err
@@ -160,9 +160,9 @@ func writeASMHeader(symbols []string, path string) error {
 
 #define BORINGSSL_PREFIX_SYMBOLS_ASM_H
 
-#ifndef BORINGSSL_PREFIX
+#if !(defined(BORINGSSL_PREFIX) || defined(BORINGSSL_DISABLE_PREFIX))
 #define BORINGSSL_PREFIX %s
-#endif // BORINGSSL_PREFIX
+#endif // !(defined(BORINGSSL_PREFIX) || defined(BORINGSSL_DISABLE_PREFIX))
 
 // On iOS and macOS, we need to treat assembly symbols differently from other
 // symbols. The linker expects symbols to be prefixed with an underscore.
@@ -221,9 +221,9 @@ func writeNASMHeader(symbols []string, path string) error {
 
 %%define BORINGSSL_PREFIX_SYMBOLS_NASM_INC
 
-%%ifndef BORINGSSL_PREFIX
+%%if !(defined(BORINGSSL_PREFIX) || defined(BORINGSSL_DISABLE_PREFIX))
 %%define BORINGSSL_PREFIX %s
-%%endif ; BORINGSSL_PREFIX
+%%endif ; !(defined(BORINGSSL_PREFIX) || defined(BORINGSSL_DISABLE_PREFIX))
 `, *prefix); err != nil {
 		return err
 	}
