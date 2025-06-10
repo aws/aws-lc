@@ -16,26 +16,21 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
+  HMAC_CTX hmac_ctx;
   int ret = 0;
-
-  HMAC_CTX *hmac_ctx = NULL;
 
   if (!out_key || out_len == 0 || !secret || secret_len == 0) {
     goto err;
   }
 
-  hmac_ctx = HMAC_CTX_new();
-  if (!hmac_ctx) {
-    goto err;
-  }
-
-  if (!HMAC_Init_ex(hmac_ctx, secret, secret_len, digest, NULL)) {
+  HMAC_CTX_init(&hmac_ctx);
+  if (!HMAC_Init_ex(&hmac_ctx, secret, secret_len, digest, NULL)) {
     goto err;
   }
 
   // Determine the length of the output in bytes of a single invocation of the
   // HMAC function.
-  size_t h_output_bytes = HMAC_size(hmac_ctx);
+  const size_t h_output_bytes = HMAC_size(&hmac_ctx);
   if (h_output_bytes == 0 || h_output_bytes > EVP_MAX_MD_SIZE) {
     goto err;
   }
@@ -71,18 +66,18 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
     // NIST.SP.800-108r1-upd1: Step 4a:
     // K(i) := PRF(K_IN, [i] || FixedInfo)
     // Note |hmac_ctx| has already been configured with the secret key
-    if (!HMAC_Init_ex(hmac_ctx, NULL, 0, NULL, NULL) ||
-        !HMAC_Update(hmac_ctx, &counter[0], KBKDF_COUNTER_SIZE) ||
-        !HMAC_Update(hmac_ctx, info, info_len) ||
-        !HMAC_Final(hmac_ctx, out_key_i, &written) ||
+    if (!HMAC_Init_ex(&hmac_ctx, NULL, 0, NULL, NULL) ||
+        !HMAC_Update(&hmac_ctx, &counter[0], KBKDF_COUNTER_SIZE) ||
+        !HMAC_Update(&hmac_ctx, info, info_len) ||
+        !HMAC_Final(&hmac_ctx, out_key_i, &written) ||
         written != h_output_bytes) {
       goto err;
     }
 
     // NIST.SP.800-108r1-upd1: Step 4b, Step 5
     // result := result || K(i)
+    // Ensure that we only copy |out_len| bytes in total from all chunks.
     if (written > out_len - done) {
-      // Last block of output might not be a full block
       written = out_len - done;
     }
     OPENSSL_memcpy(out_key + done, out_key_i, written);
@@ -96,7 +91,7 @@ err:
   if (ret <= 0 && out_key && out_len > 0) {
     OPENSSL_cleanse(out_key, out_len);
   }
-  HMAC_CTX_free(hmac_ctx);
+  HMAC_CTX_cleanup(&hmac_ctx);
   FIPS_service_indicator_unlock_state();
   if (ret) {
     KBKDF_ctr_hmac_verify_service_indicator(digest, secret_len);
