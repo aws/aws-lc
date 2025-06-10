@@ -2040,7 +2040,7 @@ TEST_P(HKDF_ServiceIndicatorTest, HKDFTest) {
 }
 
 TEST(HKDF_ServiceIndicatorTest, NegativeTests) {
-  FIPSStatus status = AWSLC_NOT_APPROVED;
+  FIPSStatus status = AWSLC_APPROVED;
 
   // Setting |out_len| to (256 * 254 + 1) implies n = 255 in |HKDF_expand|.
   // This should cause a failure and no service indicator set to approved.
@@ -2052,6 +2052,7 @@ TEST(HKDF_ServiceIndicatorTest, NegativeTests) {
                                kHKDF_info_tc1, sizeof(kHKDF_info_tc1))));
   EXPECT_EQ(status, AWSLC_NOT_APPROVED);
 
+  status = AWSLC_APPROVED;
   CALL_SERVICE_AND_CHECK_APPROVED(
     status, ASSERT_FALSE(HKDF_expand(output, (256 * 254 + 1), EVP_sha256(),
                                kHKDF_ikm_tc1, sizeof(kHKDF_ikm_tc1),
