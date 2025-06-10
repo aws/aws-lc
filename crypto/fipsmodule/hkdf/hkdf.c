@@ -30,7 +30,7 @@ int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
          size_t salt_len, const uint8_t *info, size_t info_len) {
   // https://tools.ietf.org/html/rfc5869#section-2
   uint8_t prk[EVP_MAX_MD_SIZE];
-  size_t prk_len;
+  size_t prk_len = 0;
   int ret = 0;
 
   // We have to avoid the underlying HKDF services updating the indicator
@@ -47,7 +47,7 @@ int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   ret = 1;
 
 out:
-  OPENSSL_cleanse(prk, prk_len);
+  OPENSSL_cleanse(prk, EVP_MAX_MD_SIZE);
   FIPS_service_indicator_unlock_state();
   if (ret == 1) {
     HKDF_verify_service_indicator(digest, salt, salt_len, info_len);
