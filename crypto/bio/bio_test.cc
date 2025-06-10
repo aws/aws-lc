@@ -1277,8 +1277,8 @@ TEST_P(BIOPairTest, TestCtrlCallback) {
 
   char buf[TEST_BUF_LEN];
   // Test BIO_ctrl. This is not normally called directly so we can use one of
-  // the macros such as BIO_reset to test it. Buffer is null so BIO_reset returns -1
-  ASSERT_EQ(BIO_reset(bio.get()), -1);
+  // the macros such as BIO_reset to test it
+  ASSERT_EQ(BIO_reset(bio.get()), 1);
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_CTRL);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_CTRL | BIO_CB_RETURN);
@@ -1287,9 +1287,9 @@ TEST_P(BIOPairTest, TestCtrlCallback) {
   ASSERT_EQ(param_argi_ex[0], BIO_CTRL_RESET);
   ASSERT_EQ(param_argi_ex[1], BIO_CTRL_RESET);
 
-  // BIO_ctrl of a memory bio sets ret to -1 when it calls the reset method
+  // BIO_ctrl of a memory bio sets ret to 1 when it calls the reset method
   ASSERT_EQ(param_ret_ex[0], 1);
-  ASSERT_EQ(param_ret_ex[1], -1);
+  ASSERT_EQ(param_ret_ex[1], 1);
 
   // processed is unused in ctrl
   ASSERT_EQ(param_processed_ex[0], 0u);
