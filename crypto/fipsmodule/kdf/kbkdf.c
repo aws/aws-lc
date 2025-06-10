@@ -4,8 +4,9 @@
 #include <openssl/kdf.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
+#include "internal.h"
 
 int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                    const uint8_t *secret, size_t secret_len,

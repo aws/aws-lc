@@ -8,9 +8,10 @@
 #include <openssl/kdf.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
-#include "../delocate.h"
 #include "../../internal.h"
+#include "../delocate.h"
+#include "../service_indicator/internal.h"
+#include "internal.h"
 
 static int sskdf_variant_digest_ctx_init(sskdf_variant_ctx *ctx,
                                          const EVP_MD *digest) {
