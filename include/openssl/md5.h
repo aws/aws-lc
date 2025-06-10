@@ -57,8 +57,6 @@
 #ifndef OPENSSL_HEADER_MD5_H
 #define OPENSSL_HEADER_MD5_H
 
-#ifndef FIPS_ONLY_BUILD
-
 #include <openssl/base.h>
 
 #if defined(__cplusplus)
@@ -107,7 +105,5 @@ struct md5_state_st {
 #if defined(__cplusplus)
 }  // extern C
 #endif
-
-#endif // FIPS_ONLY_BUILD
 
 #endif  // OPENSSL_HEADER_MD5_H
