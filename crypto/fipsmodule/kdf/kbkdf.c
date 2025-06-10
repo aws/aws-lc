@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/kdf.h>
+#include <openssl/mem.h>
+
 #include "internal.h"
+#include "../../internal.h"
 
 int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                    const uint8_t *secret, size_t secret_len,
@@ -55,11 +58,10 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
     goto err;
   }
 
-  size_t done = 0;
-
   uint8_t out_key_i[EVP_MAX_MD_SIZE];
   uint8_t counter[KBKDF_COUNTER_SIZE];
-  uint32_t written;
+  size_t done = 0;
+  uint32_t written = 0;
 
   for (uint32_t i = 0; i < n; i++) {
     // Increment the counter
