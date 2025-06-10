@@ -34,11 +34,13 @@ void EVP_CIPHER_do_all_sorted(void (*callback)(const EVP_CIPHER *cipher,
   callback(EVP_aes_128_gcm(), "AES-128-GCM", NULL, arg);
   callback(EVP_aes_192_gcm(), "AES-192-GCM", NULL, arg);
   callback(EVP_aes_256_gcm(), "AES-256-GCM", NULL, arg);
+#ifndef DISABLE_NON_FIPS
   callback(EVP_des_cbc(), "DES-CBC", NULL, arg);
   callback(EVP_des_ecb(), "DES-ECB", NULL, arg);
   callback(EVP_des_ede(), "DES-EDE", NULL, arg);
   callback(EVP_des_ede_cbc(), "DES-EDE-CBC", NULL, arg);
   callback(EVP_des_ede3_cbc(), "DES-EDE3-CBC", NULL, arg);
+#endif
   callback(EVP_rc2_cbc(), "RC2-CBC", NULL, arg);
   callback(EVP_rc4(), "RC4", NULL, arg);
   callback(EVP_chacha20_poly1305(), "CHACHA20-POLY1305", NULL, arg);

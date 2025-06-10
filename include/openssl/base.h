@@ -152,6 +152,12 @@ extern "C" {
 #define OPENSSL_EXPORT __attribute__((visibility("default")))
 #endif
 
+#if defined(DISABLE_NON_FIPS)
+#define OPENSSL_NON_FIPS_EXPORT __attribute__((visibility("hidden")))
+#else
+#define OPENSSL_NON_FIPS_EXPORT OPENSSL_EXPORT
+#endif
+
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
 
 #if !defined(OPENSSL_WARN_UNUSED_RESULT)

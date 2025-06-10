@@ -175,11 +175,11 @@ void DES_ede3_cbc_encrypt_ex(const uint8_t *in, uint8_t *out, size_t len,
 //
 // These functions are only exported for use in |decrepit|.
 
-OPENSSL_EXPORT void DES_decrypt3(uint32_t data[2], const DES_key_schedule *ks1,
+OPENSSL_NON_FIPS_EXPORT void DES_decrypt3(uint32_t data[2], const DES_key_schedule *ks1,
                                  const DES_key_schedule *ks2,
                                  const DES_key_schedule *ks3);
 
-OPENSSL_EXPORT void DES_encrypt3(uint32_t data[2], const DES_key_schedule *ks1,
+OPENSSL_NON_FIPS_EXPORT void DES_encrypt3(uint32_t data[2], const DES_key_schedule *ks1,
                                  const DES_key_schedule *ks2,
                                  const DES_key_schedule *ks3);
 

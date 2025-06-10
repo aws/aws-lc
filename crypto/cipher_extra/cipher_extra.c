@@ -92,11 +92,13 @@ static const struct {
     {NID_aes_256_ofb128, "aes-256-ofb", EVP_aes_256_ofb},
     {NID_aes_256_xts, "aes-256-xts", EVP_aes_256_xts},
     {NID_chacha20_poly1305, "chacha20-poly1305", EVP_chacha20_poly1305},
+#ifndef DISABLE_NON_FIPS
     {NID_des_cbc, "des-cbc", EVP_des_cbc},
     {NID_des_ecb, "des-ecb", EVP_des_ecb},
     {NID_des_ede_cbc, "des-ede-cbc", EVP_des_ede_cbc},
     {NID_des_ede_ecb, "des-ede", EVP_des_ede},
     {NID_des_ede3_cbc, "des-ede3-cbc", EVP_des_ede3_cbc},
+#endif
     {NID_rc2_cbc, "rc2-cbc", EVP_rc2_cbc},
     {NID_rc4, "rc4", EVP_rc4},
     {NID_bf_cbc, "bf-cbc", EVP_bf_cbc},
