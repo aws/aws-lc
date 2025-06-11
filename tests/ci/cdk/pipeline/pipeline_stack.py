@@ -193,6 +193,45 @@ class AwsLcCiPipeline(Stack):
             targets=[targets.CodePipeline(pipeline=base_pipeline)],
         )
 
+        # Pipeline is run everytime we push to main branch. Avoid unnecessary hold up if these updates are non-CI related
+        if not IS_DEV:
+            start_index = next(
+                (i for i, stage in enumerate(base_pipeline.stages) if stage.stage_name == "PromoteToProduction"), #TODO: Revert this
+                None
+            )
+
+            override_condition = {
+                "Conditions": [
+                    {
+                        "Result": "SKIP",
+                        "Rules": [
+                            {
+                                "Name": "Skip_Prod_Deployment",
+                                "RuleTypeId": {
+                                    "Category": "Rule",
+                                    "Owner": "AWS",
+                                    "Provider": "VariableCheck",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "Variable": "#{Staging-CiTests@PrebuildCheck.NEED_REBUILD}",
+                                    "Value": "0",
+                                    "Operator": "NE"
+                                },
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            l1_pipeline = base_pipeline.node.default_child
+
+            for i in range(start_index, int(base_pipeline.stage_count)):
+                l1_pipeline.add_override(
+                    f"Properties.Stages.{i}.BeforeEntry",
+                    override_condition
+                )
+
     def deploy_to_environment(
         self,
         deploy_environment_type: DeployEnvironmentType,
