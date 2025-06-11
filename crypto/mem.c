@@ -307,6 +307,11 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
 }
 
 void OPENSSL_cleanse(void *ptr, size_t len) {
+
+  if (ptr == NULL || len == 0) {
+    return;
+  }
+
 #if defined(OPENSSL_WINDOWS)
   SecureZeroMemory(ptr, len);
 #else
