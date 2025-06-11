@@ -13,7 +13,7 @@ from aws_cdk import (
     aws_events_targets as targets,
     aws_codebuild as codebuild,
 )
-from aws_cdk.pipelines import CodeBuildStep
+from aws_cdk.pipelines import CodeBuildStep, ManualApprovalStep
 from constructs import Construct
 
 from pipeline.ci_stage import CiStage
@@ -172,7 +172,12 @@ class AwsLcCiPipeline(Stack):
                 cross_account_role=cross_account_role,
             )
 
-            # TODO: add prod env
+            self.deploy_to_environment(
+                DeployEnvironmentType.PROD,
+                pipeline=pipeline,
+                source=source,
+                cross_account_role=cross_account_role,
+            )
 
         pipeline.build_pipeline()
 
@@ -233,6 +238,12 @@ class AwsLcCiPipeline(Stack):
                 actions=["sts:AssumeRole"],
             )
         )
+
+        if deploy_environment_type == DeployEnvironmentType.PROD:
+            pipeline.add_wave(
+                "PromoteToProduction",
+                pre=[ManualApprovalStep("PromoteToProduction")]
+            )
 
         setup_stage = SetupStage(
             self,
