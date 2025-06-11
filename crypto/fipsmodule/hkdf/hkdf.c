@@ -40,7 +40,7 @@ int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   if (!HKDF_extract(prk, &prk_len, digest, secret, secret_len, salt,
                     salt_len) ||
       !HKDF_expand(out_key, out_len, digest, prk, prk_len, info, info_len)) {
-    // HKDF_expand zeroizes |out_key| on failure.
+    // |HKDF_expand| zeroizes |out_key| on failure.
     goto out;
   }
 
