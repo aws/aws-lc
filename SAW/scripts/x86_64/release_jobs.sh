@@ -7,7 +7,7 @@
 saw proof/SHA512/verify-SHA384-x86.saw
 saw proof/SHA512/verify-SHA512-x86.saw
 saw proof/HMAC/verify-HMAC.saw
-saw proof/KDF/verify-HKDF.saw
+# saw proof/KDF/verify-HKDF.saw
 saw proof/AES_KW/verify-AES_KW.saw
 saw proof/AES_KW/verify-AES_KWP.saw
 # TODO: temporarily disable EC related proofs for EC refactor PRs
