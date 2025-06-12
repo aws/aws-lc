@@ -127,7 +127,6 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
     *out = true;
   }
 
-  // amazonq-ignore-next-line
   return true;
 }
 
