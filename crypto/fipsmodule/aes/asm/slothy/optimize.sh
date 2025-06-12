@@ -117,13 +117,18 @@ optimize_x5() {
     ${INFILE}                                          \
     -l Loop5x_xts_enc                                  \
     -c inputs_are_outputs                              \
-    -c sw_pipelining.enabled=true                      \
+    -c sw_pipelining.enabled=false                      \
+    -c sw_pipelining.optimize_preamble=false         \
+    -c sw_pipelining.optimize_postamble=false        \
     -c inputs_are_outputs                              \
     -c sw_pipelining.minimize_overlapping=False        \
     -c sw_pipelining.allow_post                        \
     -c variable_size                                   \
     -c constraints.stalls_first_attempt=64             \
     -c reserved_regs="[x18--x30,sp]"                   \
+    -c selftest=false                                  \
+    -c constraints.allow_reordering=true             \
+    -c constraints.allow_renaming=false             \
     -o $OUTFILE                                        \
     ${SLOTHY_FLAGS} ${DRY_RUN_FLAGS}
 }
