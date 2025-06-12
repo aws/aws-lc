@@ -63,6 +63,9 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 
+// TODO [childw] DELETEME
+#include "../../crypto/fipsmodule/sha/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -173,6 +176,11 @@ OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);
 // HMAC_MAX_PRECOMPUTED_KEY_SIZE is the largest precomputed key size, in bytes.
 #define HMAC_MAX_PRECOMPUTED_KEY_SIZE (2 * (EVP_MAX_MD_CHAINING_LENGTH))
 
+#define HMAC_SHA3_224_PRECOMPUTED_KEY_SIZE 2 * SHA3_224_CHAINING_LENGTH
+#define HMAC_SHA3_256_PRECOMPUTED_KEY_SIZE 2 * SHA3_256_CHAINING_LENGTH
+#define HMAC_SHA3_384_PRECOMPUTED_KEY_SIZE 2 * SHA3_384_CHAINING_LENGTH
+#define HMAC_SHA3_512_PRECOMPUTED_KEY_SIZE 2 * SHA3_512_CHAINING_LENGTH
+
 // HMAC_set_precomputed_key_export sets the context |ctx| to allow export of the
 // precomputed key using HMAC_get_precomputed_key. On entry, HMAC_CTX must have
 // been initialized via HMAC_Init_*, and neither HMAC_Update nor HMAC_Final
@@ -256,6 +264,7 @@ union md_ctx_union {
   SHA_CTX sha1;
   SHA256_CTX sha256;
   SHA512_CTX sha512;
+  KECCAK1600_CTX sha3;
 };
 
 struct hmac_ctx_st {

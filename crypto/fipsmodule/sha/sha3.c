@@ -275,6 +275,96 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   return 1;
 }
 
+int SHA3_224_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_224_DIGEST_BITLENGTH);
+}
+
+int SHA3_224_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_256_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_256_DIGEST_BITLENGTH);
+}
+
+int SHA3_256_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_384_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_384_DIGEST_BITLENGTH);
+}
+
+int SHA3_384_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_512_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_512_DIGEST_BITLENGTH);
+}
+
+int SHA3_512_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_224_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
+    return 1;
+}
+
+int SHA3_256_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
+    return 1;
+}
+
+int SHA3_384_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
+    return 1;
+}
+
+int SHA3_512_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
+    return 1;
+}
+
+int SHA3_224_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
+    return 1;
+}
+
+int SHA3_256_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
+    return 1;
+}
+
+int SHA3_384_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
+    return 1;
+}
+
+int SHA3_512_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
+    return 1;
+}
+
+
+
 /*
  * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
  */

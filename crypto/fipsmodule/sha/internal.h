@@ -37,6 +37,13 @@ extern "C" {
 #define SHA512_256_CHAINING_LENGTH 64
 
 
+#define SHA3_224_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
+#define SHA3_256_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
+#define SHA3_384_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
+#define SHA3_512_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
+
+
+
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define KECCAK1600_ROWS 5
@@ -60,6 +67,16 @@ extern "C" {
 
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
 #define SHA3_PAD_CHAR 0x06
+
+//#define SHA3_224_CBLOCK SHA3_BLOCKSIZE(SHA3_224_DIGEST_BITLENGTH)
+//#define SHA3_256_CBLOCK SHA3_BLOCKSIZE(SHA3_256_DIGEST_BITLENGTH)
+//#define SHA3_384_CBLOCK SHA3_BLOCKSIZE(SHA3_384_DIGEST_BITLENGTH)
+//#define SHA3_512_CBLOCK SHA3_BLOCKSIZE(SHA3_512_DIGEST_BITLENGTH)
+#define SHA3_224_CBLOCK EVP_MAX_MD_BLOCK_SIZE
+#define SHA3_256_CBLOCK EVP_MAX_MD_BLOCK_SIZE
+#define SHA3_384_CBLOCK EVP_MAX_MD_BLOCK_SIZE
+#define SHA3_512_CBLOCK EVP_MAX_MD_BLOCK_SIZE
+
 
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
@@ -348,6 +365,10 @@ OPENSSL_EXPORT int SHA512_224_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_224_CHAINING_LENGTH], uint64_t n);
 OPENSSL_EXPORT int SHA512_256_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_256_CHAINING_LENGTH], uint64_t n);
+OPENSSL_EXPORT int SHA3_224_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
+OPENSSL_EXPORT int SHA3_256_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
+OPENSSL_EXPORT int SHA3_384_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
+OPENSSL_EXPORT int SHA3_512_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
 
 // SHAx_get_state is a low-level function that exports the hash state in big
 // endian into |out_h| and the number of bits processed at this point in
@@ -374,6 +395,10 @@ OPENSSL_EXPORT int SHA512_224_get_state(
 OPENSSL_EXPORT int SHA512_256_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
     uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_224_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_256_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_384_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_512_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
 
 /*
  * SHA3/SHAKE single-shot APIs implement SHA3 functionalities on top
@@ -444,6 +469,56 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 // It then calls |Keccak1600_Squeeze| and returns 1 on success and 0 on failure.
 // When call-discipline is maintained, this function never fails.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
+
+// SHA3 truncated variants
+
+// SHA3_224_Init initialises |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_224_Init(KECCAK1600_CTX *sha);
+
+// SHA3_224_Update adds |len| bytes from |data| to |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_224_Update(KECCAK1600_CTX *sha, const void *data,
+                                     size_t len);
+
+// SHA512_224_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+OPENSSL_EXPORT int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *sha);
+
+// SHA3_256_Init initialises |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_256_Init(KECCAK1600_CTX *sha);
+
+// SHA3_256_Update adds |len| bytes from |data| to |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_256_Update(KECCAK1600_CTX *sha, const void *data,
+                                     size_t len);
+
+// SHA512_256_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+OPENSSL_EXPORT int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *sha);
+
+// SHA3_384_Init initialises |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_384_Init(KECCAK1600_CTX *sha);
+
+// SHA3_384_Update adds |len| bytes from |data| to |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_384_Update(KECCAK1600_CTX *sha, const void *data,
+                                     size_t len);
+
+// SHA512_384_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+OPENSSL_EXPORT int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *sha);
+
+// SHA3_512_Init initialises |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_512_Init(KECCAK1600_CTX *sha);
+
+// SHA3_512_Update adds |len| bytes from |data| to |sha| and returns 1.
+OPENSSL_EXPORT int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data,
+                                     size_t len);
+
+// SHA512_512_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+OPENSSL_EXPORT int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *sha);
 
 /*
  * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
