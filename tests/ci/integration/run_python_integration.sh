@@ -68,6 +68,7 @@ function python_run_tests() {
         test_audit \
         test_ftplib \
         test_hashlib \
+        test_hmac \
         test_httplib \
         test_imaplib \
         test_logging \
