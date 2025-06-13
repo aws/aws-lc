@@ -164,8 +164,9 @@ TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
     bssl::UniquePtr<BIO> out_bio(BIO_new_file(out_path, "rb"));
     ASSERT_TRUE(out_bio);
     bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(PEM_read_bio_PKCS8_PRIV_KEY_INFO(out_bio.get(), nullptr, nullptr, nullptr));
+    ASSERT_TRUE(p8inf) << "Failed to read PKCS8 structure";
     bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_PKCS82PKEY(p8inf.get()));
-    ASSERT_TRUE(parsed_key);
+    EXPECT_TRUE(parsed_key) << "Failed to convert PKCS8 to EVP_PKEY";
   }
 }
 
@@ -384,8 +385,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareUnencryptedOpenSSL) {
   trim(tool_output_str);
   trim(openssl_output_str);
   
-  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END));
-  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END)) << "Tool output has incorrect PEM boundaries";
+  EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END, PRIVATE_KEY_BEGIN, PRIVATE_KEY_END)) << "OpenSSL output has incorrect PEM boundaries";
 }
 
 // Test cross-compatibility: AWS-LC encrypts, OpenSSL decrypts
@@ -399,10 +400,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
   
   // Verify AWS-LC output has correct PKCS8 boundaries
   tool_output_str = ReadFileToString(out_path_tool);
-  ASSERT_FALSE(tool_output_str.empty());
+  ASSERT_FALSE(tool_output_str.empty()) << "AWS-LC output file is empty";
   trim(tool_output_str);
   std::cout << "AWS-LC output content:" << std::endl << tool_output_str << std::endl;
-  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "AWS-LC output has incorrect PEM boundaries";
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
   std::string decrypt_command = std::string(openssl_executable_path) + " pkcs8 -in " + out_path_tool + 
@@ -430,10 +431,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
   
   // Verify OpenSSL output has correct PKCS8 boundaries
   openssl_output_str = ReadFileToString(out_path_openssl);
-  ASSERT_FALSE(openssl_output_str.empty());
+  ASSERT_FALSE(openssl_output_str.empty()) << "OpenSSL output file is empty";
   trim(openssl_output_str);
   std::cout << "OpenSSL output content:" << std::endl << openssl_output_str << std::endl;
-  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "OpenSSL output has incorrect PEM boundaries";
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
   std::string decrypt_command = std::string(tool_executable_path) + " pkcs8 -in " + out_path_openssl + 
@@ -465,8 +466,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareEncryptedOpenSSL) {
   trim(openssl_output_str);
   
   // Verify both outputs have correct format
-  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
-  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "AWS-LC output has incorrect PEM boundaries";
+  EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "OpenSSL output has incorrect PEM boundaries";
   
   // Decrypt both outputs and verify they match the original key
   bssl::UniquePtr<EVP_PKEY> aws_lc_decrypted(DecryptPrivateKey(out_path_tool, "testpassword"));
@@ -500,10 +501,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
   
   // Verify AWS-LC output has correct PKCS8 boundaries
   tool_output_str = ReadFileToString(out_path_tool);
-  ASSERT_FALSE(tool_output_str.empty());
+  ASSERT_FALSE(tool_output_str.empty()) << "AWS-LC output file with PRF is empty";
   trim(tool_output_str);
   std::cout << "AWS-LC output content (with PRF):" << std::endl << tool_output_str << std::endl;
-  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "AWS-LC output with PRF has incorrect PEM boundaries";
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
   std::string decrypt_command = std::string(openssl_executable_path) + " pkcs8 -in " + out_path_tool + 
@@ -531,10 +532,10 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
   
   // Verify OpenSSL output has correct PKCS8 boundaries
   openssl_output_str = ReadFileToString(out_path_openssl);
-  ASSERT_FALSE(openssl_output_str.empty());
+  ASSERT_FALSE(openssl_output_str.empty()) << "OpenSSL output file with PRF is empty";
   trim(openssl_output_str);
   std::cout << "OpenSSL output content (with PRF):" << std::endl << openssl_output_str << std::endl;
-  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "OpenSSL output with PRF has incorrect PEM boundaries";
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
   std::string decrypt_command = std::string(tool_executable_path) + " pkcs8 -in " + out_path_openssl + 
@@ -565,8 +566,8 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2prfOpenSSL) {
   trim(tool_output_str);
   trim(openssl_output_str);
   
-  ASSERT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
-  ASSERT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END));
+  EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "AWS-LC output with PRF has incorrect PEM boundaries";
+  EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "OpenSSL output with PRF has incorrect PEM boundaries";
   
   // Decrypt both outputs and verify they match the original key
   bssl::UniquePtr<EVP_PKEY> aws_lc_decrypted(DecryptPrivateKey(out_path_tool, "testpassword"));
