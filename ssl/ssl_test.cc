@@ -42,6 +42,7 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
+#include "ssl_test_common.h"
 #include "../crypto/internal.h"
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
@@ -91,17 +92,6 @@ struct VersionParam {
   bool transfer_ssl;
 };
 
-struct SSLTestParam {
-  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to
-  // another SSL. After transfer, the encoded SSL is freed. The decoded one is
-  // used to exchange data. This flag is to replay existing tests with the
-  // transferred SSL. If false, the tests use the original server SSL. If true,
-  // the tests are replayed with the transferred server SSL. Note: SSL transfer
-  // works only with either TLS 1.2 or TLS 1.3 after handshake finished and all
-  // post-handshake messages have been flushed.
-  bool transfer_ssl;
-};
-
 static const size_t kTicketKeyLen = 48;
 
 // If true, after handshake finished, the test uses the transferred SSL.
@@ -122,8 +112,6 @@ static const SSLTestParam kSSLTestParams[] = {
     {!TRANSFER_SSL},
     {TRANSFER_SSL},
 };
-
-class SSLTest : public testing::TestWithParam<SSLTestParam> {};
 
 INSTANTIATE_TEST_SUITE_P(SSLTests, SSLTest, testing::ValuesIn(kSSLTestParams),
                          [](const testing::TestParamInfo<SSLTestParam> &i) {
@@ -2341,67 +2329,7 @@ TEST(SSLTest, Padding) {
   }
 }
 
-static bssl::UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  if (!bio) {
-    return nullptr;
-  }
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
-}
 
-static bssl::UniquePtr<X509> GetTestCertificate() {
-  static const char kCertPEM[] =
-      "-----BEGIN CERTIFICATE-----\n"
-      "MIICWDCCAcGgAwIBAgIJAPuwTC6rEJsMMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV\n"
-      "BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX\n"
-      "aWRnaXRzIFB0eSBMdGQwHhcNMTQwNDIzMjA1MDQwWhcNMTcwNDIyMjA1MDQwWjBF\n"
-      "MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50\n"
-      "ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKB\n"
-      "gQDYK8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92kWdGMdAQhLci\n"
-      "HnAjkXLI6W15OoV3gA/ElRZ1xUpxTMhjP6PyY5wqT5r6y8FxbiiFKKAnHmUcrgfV\n"
-      "W28tQ+0rkLGMryRtrukXOgXBv7gcrmU7G1jC2a7WqmeI8QIDAQABo1AwTjAdBgNV\n"
-      "HQ4EFgQUi3XVrMsIvg4fZbf6Vr5sp3Xaha8wHwYDVR0jBBgwFoAUi3XVrMsIvg4f\n"
-      "Zbf6Vr5sp3Xaha8wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQA76Hht\n"
-      "ldY9avcTGSwbwoiuIqv0jTL1fHFnzy3RHMLDh+Lpvolc5DSrSJHCP5WuK0eeJXhr\n"
-      "T5oQpHL9z/cCDLAKCKRa4uV0fhEdOWBqyR9p8y5jJtye72t6CuFUV5iqcpF4BH4f\n"
-      "j2VNHwsSrJwkD4QUGlUtH7vwnQmyCFxZMmWAJg==\n"
-      "-----END CERTIFICATE-----\n";
-  return CertFromPEM(kCertPEM);
-}
-
-static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
-  static const char kKeyPEM[] =
-      "-----BEGIN RSA PRIVATE KEY-----\n"
-      "MIICXgIBAAKBgQDYK8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92\n"
-      "kWdGMdAQhLciHnAjkXLI6W15OoV3gA/ElRZ1xUpxTMhjP6PyY5wqT5r6y8FxbiiF\n"
-      "KKAnHmUcrgfVW28tQ+0rkLGMryRtrukXOgXBv7gcrmU7G1jC2a7WqmeI8QIDAQAB\n"
-      "AoGBAIBy09Fd4DOq/Ijp8HeKuCMKTHqTW1xGHshLQ6jwVV2vWZIn9aIgmDsvkjCe\n"
-      "i6ssZvnbjVcwzSoByhjN8ZCf/i15HECWDFFh6gt0P5z0MnChwzZmvatV/FXCT0j+\n"
-      "WmGNB/gkehKjGXLLcjTb6dRYVJSCZhVuOLLcbWIV10gggJQBAkEA8S8sGe4ezyyZ\n"
-      "m4e9r95g6s43kPqtj5rewTsUxt+2n4eVodD+ZUlCULWVNAFLkYRTBCASlSrm9Xhj\n"
-      "QpmWAHJUkQJBAOVzQdFUaewLtdOJoPCtpYoY1zd22eae8TQEmpGOR11L6kbxLQsk\n"
-      "aMly/DOnOaa82tqAGTdqDEZgSNmCeKKknmECQAvpnY8GUOVAubGR6c+W90iBuQLj\n"
-      "LtFp/9ihd2w/PoDwrHZaoUYVcT4VSfJQog/k7kjE4MYXYWL8eEKg3WTWQNECQQDk\n"
-      "104Wi91Umd1PzF0ijd2jXOERJU1wEKe6XLkYYNHWQAe5l4J4MWj9OdxFXAxIuuR/\n"
-      "tfDwbqkta4xcux67//khAkEAvvRXLHTaa6VFzTaiiO8SaFsHV3lQyXOtMrBpB5jd\n"
-      "moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==\n"
-      "-----END RSA PRIVATE KEY-----\n";
-  return KeyFromPEM(kKeyPEM);
-}
-
-static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
-    const SSL_METHOD *method) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method));
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
-  if (!ctx || !cert || !key ||
-      !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
-      !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
-    return nullptr;
-  }
-  return ctx;
-}
 
 static bssl::UniquePtr<SSL_CTX> CreateContextWithCertificate(
     const SSL_METHOD *method, bssl::UniquePtr<X509> cert,
@@ -2577,34 +2505,7 @@ static bssl::UniquePtr<EVP_PKEY> GetChainTestKey() {
   return KeyFromPEM(kKeyPEM);
 }
 
-static bool CompleteHandshakes(SSL *client, SSL *server) {
-  // Drive both their handshakes to completion.
-  for (;;) {
-    int client_ret = SSL_do_handshake(client);
-    int client_err = SSL_get_error(client, client_ret);
-    if (client_err != SSL_ERROR_NONE && client_err != SSL_ERROR_WANT_READ &&
-        client_err != SSL_ERROR_WANT_WRITE &&
-        client_err != SSL_ERROR_PENDING_TICKET) {
-      fprintf(stderr, "Client error: %s\n", SSL_error_description(client_err));
-      return false;
-    }
 
-    int server_ret = SSL_do_handshake(server);
-    int server_err = SSL_get_error(server, server_ret);
-    if (server_err != SSL_ERROR_NONE && server_err != SSL_ERROR_WANT_READ &&
-        server_err != SSL_ERROR_WANT_WRITE &&
-        server_err != SSL_ERROR_PENDING_TICKET) {
-      fprintf(stderr, "Server error: %s\n", SSL_error_description(server_err));
-      return false;
-    }
-
-    if (client_ret == 1 && server_ret == 1) {
-      break;
-    }
-  }
-
-  return true;
-}
 
 static bool FlushNewSessionTickets(SSL *client, SSL *server) {
   // NewSessionTickets are deferred on the server to |SSL_write|, and clients do
@@ -2637,31 +2538,7 @@ static bool FlushNewSessionTickets(SSL *client, SSL *server) {
   }
 }
 
-// CreateClientAndServer creates a client and server |SSL| objects whose |BIO|s
-// are paired with each other. It does not run the handshake. The caller is
-// expected to configure the objects and drive the handshake as needed.
-static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
-                                  bssl::UniquePtr<SSL> *out_server,
-                                  SSL_CTX *client_ctx, SSL_CTX *server_ctx) {
-  bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
-  if (!client || !server) {
-    return false;
-  }
-  SSL_set_connect_state(client.get());
-  SSL_set_accept_state(server.get());
 
-  BIO *bio1, *bio2;
-  if (!BIO_new_bio_pair(&bio1, 0, &bio2, 0)) {
-    return false;
-  }
-  // SSL_set_bio takes ownership.
-  SSL_set_bio(client.get(), bio1, bio1);
-  SSL_set_bio(server.get(), bio2, bio2);
-
-  *out_client = std::move(client);
-  *out_server = std::move(server);
-  return true;
-}
 
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
@@ -3220,13 +3097,9 @@ TEST(SSLTest, GetClientCiphers1_2) {
   ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
 }
 
-static bssl::UniquePtr<SSL_SESSION> g_last_session;
 
-static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
-  // Save the most recent session.
-  g_last_session.reset(session);
-  return 1;
-}
+
+
 
 static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
     SSL_CTX *client_ctx, SSL_CTX *server_ctx,
@@ -3252,37 +3125,9 @@ static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
   return std::move(g_last_session);
 }
 
-static void SetUpExpectedNewCodePoint(SSL_CTX *ctx) {
-  SSL_CTX_set_select_certificate_cb(
-      ctx,
-      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
-        if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings, &data,
-                &len)) {
-          ADD_FAILURE() << "Could not find alps new codepoint.";
-          return ssl_select_cert_error;
-        }
-        return ssl_select_cert_success;
-      });
-}
 
-static void SetUpExpectedOldCodePoint(SSL_CTX *ctx) {
-  SSL_CTX_set_select_certificate_cb(
-      ctx,
-      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
-        if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings_old, &data,
-                &len)) {
-          ADD_FAILURE() << "Could not find alps old codepoint.";
-          return ssl_select_cert_error;
-        }
-        return ssl_select_cert_success;
-      });
-}
+
+
 
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
 // before configuring as a server.
@@ -7764,171 +7609,7 @@ TEST(SSLTest, CertCompression) {
   EXPECT_TRUE(SSL_get_app_data(server.get()) == XORCompressFunc);
 }
 
-void MoveBIOs(SSL *dest, SSL *src) {
-  BIO *rbio = SSL_get_rbio(src);
-  BIO_up_ref(rbio);
-  SSL_set0_rbio(dest, rbio);
 
-  BIO *wbio = SSL_get_wbio(src);
-  BIO_up_ref(wbio);
-  SSL_set0_wbio(dest, wbio);
-
-  SSL_set0_rbio(src, nullptr);
-  SSL_set0_wbio(src, nullptr);
-}
-
-void VerifyHandoff(bool use_new_alps_codepoint) {
-  static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
-  static const uint8_t proto[] = {'f', 'o', 'o'};
-  static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
-
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> handshaker_ctx(
-      CreateContextWithTestCertificate(TLS_method()));
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-  ASSERT_TRUE(handshaker_ctx);
-
-  if (!use_new_alps_codepoint) {
-    SetUpExpectedOldCodePoint(server_ctx.get());
-  } else {
-    SetUpExpectedNewCodePoint(server_ctx.get());
-  }
-
-  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_CLIENT);
-  SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
-  SSL_CTX_set_handoff_mode(server_ctx.get(), true);
-  uint8_t keys[48];
-  SSL_CTX_get_tlsext_ticket_keys(server_ctx.get(), &keys, sizeof(keys));
-  SSL_CTX_set_tlsext_ticket_keys(handshaker_ctx.get(), &keys, sizeof(keys));
-
-  for (bool early_data : {false, true}) {
-    SCOPED_TRACE(early_data);
-    for (bool is_resume : {false, true}) {
-      SCOPED_TRACE(is_resume);
-      bssl::UniquePtr<SSL> client, server;
-      ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
-                                        server_ctx.get()));
-      SSL_set_early_data_enabled(client.get(), early_data);
-
-      // Set up client ALPS settings.
-      SSL_set_alps_use_new_codepoint(client.get(), use_new_alps_codepoint);
-      ASSERT_TRUE(SSL_set_alpn_protos(client.get(), alpn, sizeof(alpn)) == 0);
-      ASSERT_TRUE(SSL_add_application_settings(client.get(), proto,
-                                              sizeof(proto), nullptr, 0));
-      if (is_resume) {
-        ASSERT_TRUE(g_last_session);
-        SSL_set_session(client.get(), g_last_session.get());
-        if (early_data) {
-          EXPECT_GT(g_last_session->ticket_max_early_data, 0u);
-        }
-      }
-
-
-      int client_ret = SSL_do_handshake(client.get());
-      int client_err = SSL_get_error(client.get(), client_ret);
-
-      uint8_t byte_written;
-      if (early_data && is_resume) {
-        ASSERT_EQ(client_err, 0);
-        EXPECT_TRUE(SSL_in_early_data(client.get()));
-        // Attempt to write early data.
-        byte_written = 43;
-        EXPECT_EQ(SSL_write(client.get(), &byte_written, 1), 1);
-      } else {
-        ASSERT_EQ(client_err, SSL_ERROR_WANT_READ);
-      }
-
-      int server_ret = SSL_do_handshake(server.get());
-      int server_err = SSL_get_error(server.get(), server_ret);
-      ASSERT_EQ(server_err, SSL_ERROR_HANDOFF);
-
-      ScopedCBB cbb;
-      Array<uint8_t> handoff;
-      SSL_CLIENT_HELLO hello;
-      ASSERT_TRUE(CBB_init(cbb.get(), 256));
-      ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get(), &hello));
-      ASSERT_TRUE(CBBFinishArray(cbb.get(), &handoff));
-
-      bssl::UniquePtr<SSL> handshaker(SSL_new(handshaker_ctx.get()));
-      ASSERT_TRUE(handshaker);
-      // Note split handshakes determines 0-RTT support, for both the current
-      // handshake and newly-issued tickets, entirely by |handshaker|. There is
-      // no need to call |SSL_set_early_data_enabled| on |server|.
-      SSL_set_early_data_enabled(handshaker.get(), 1);
-
-      // Set up handshaker ALPS settings.
-      SSL_set_alps_use_new_codepoint(handshaker.get(), use_new_alps_codepoint);
-      SSL_CTX_set_alpn_select_cb(
-          handshaker_ctx.get(),
-          [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
-              unsigned in_len, void *arg) -> int {
-            return SSL_select_next_proto(
-                        const_cast<uint8_t **>(out), out_len, in, in_len,
-                        alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
-                        ? SSL_TLSEXT_ERR_OK
-                        : SSL_TLSEXT_ERR_NOACK;
-          },
-          nullptr);
-      ASSERT_TRUE(SSL_add_application_settings(handshaker.get(), proto,
-                                              sizeof(proto), alps, sizeof(alps)));
-
-      ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
-
-      MoveBIOs(handshaker.get(), server.get());
-
-      int handshake_ret = SSL_do_handshake(handshaker.get());
-      int handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
-      ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
-
-      // Double-check that additional calls to |SSL_do_handshake| continue
-      // to get |SSL_ERROR_HANDBACK|.
-      handshake_ret = SSL_do_handshake(handshaker.get());
-      handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
-      ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
-
-      ScopedCBB cbb_handback;
-      Array<uint8_t> handback;
-      ASSERT_TRUE(CBB_init(cbb_handback.get(), 1024));
-      ASSERT_TRUE(SSL_serialize_handback(handshaker.get(), cbb_handback.get()));
-      ASSERT_TRUE(CBBFinishArray(cbb_handback.get(), &handback));
-
-      bssl::UniquePtr<SSL> server2(SSL_new(server_ctx.get()));
-      ASSERT_TRUE(server2);
-      ASSERT_TRUE(SSL_apply_handback(server2.get(), handback));
-
-      MoveBIOs(server2.get(), handshaker.get());
-      ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
-      EXPECT_EQ(is_resume, SSL_session_reused(client.get()));
-      // Verify application settings.
-      ASSERT_TRUE(SSL_has_application_settings(client.get()));
-
-      if (early_data && is_resume) {
-        // In this case, one byte of early data has already been written above.
-        EXPECT_TRUE(SSL_early_data_accepted(client.get()));
-      } else {
-        byte_written = 42;
-        EXPECT_EQ(SSL_write(client.get(), &byte_written, 1), 1);
-      }
-      uint8_t byte;
-      EXPECT_EQ(SSL_read(server2.get(), &byte, 1), 1);
-      EXPECT_EQ(byte_written, byte);
-
-      byte = 44;
-      EXPECT_EQ(SSL_write(server2.get(), &byte, 1), 1);
-      EXPECT_EQ(SSL_read(client.get(), &byte, 1), 1);
-      EXPECT_EQ(44, byte);
-    }
-  }
-}
-
-TEST(SSLTest, Handoff) {
-  for (bool use_new_alps_codepoint : {false, true}) {
-    SCOPED_TRACE(use_new_alps_codepoint);
-    VerifyHandoff(use_new_alps_codepoint);
-  }
-}
 
 TEST(SSLTest, HandoffDeclined) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -11156,108 +10837,7 @@ TEST(SSLTest, ALPNConfig) {
   check_alpn_proto({});
 }
 
-// This is a basic unit-test class to verify completing handshake successfully,
-// sending the correct codepoint extension and having correct application
-// setting on different combination of ALPS codepoint settings. More integration
-// tests on runner.go.
-class AlpsNewCodepointTest : public testing::Test {
- protected:
-  void SetUp() override {
-    client_ctx_.reset(SSL_CTX_new(TLS_method()));
-    server_ctx_ = CreateContextWithTestCertificate(TLS_method());
-    ASSERT_TRUE(client_ctx_);
-    ASSERT_TRUE(server_ctx_);
-  }
 
-  void SetUpApplicationSetting() {
-    static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
-    static const uint8_t proto[] = {'f', 'o', 'o'};
-    static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
-    // SSL_set_alpn_protos's return value is backwards. It returns zero on
-    // success and one on failure.
-    ASSERT_FALSE(SSL_set_alpn_protos(client_.get(), alpn, sizeof(alpn)));
-    SSL_CTX_set_alpn_select_cb(
-      server_ctx_.get(),
-      [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
-          unsigned in_len, void *arg) -> int {
-        return SSL_select_next_proto(
-                    const_cast<uint8_t **>(out), out_len, in, in_len,
-                    alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
-                    ? SSL_TLSEXT_ERR_OK
-                    : SSL_TLSEXT_ERR_NOACK;
-      },
-      nullptr);
-    ASSERT_TRUE(SSL_add_application_settings(client_.get(), proto,
-                                            sizeof(proto), nullptr, 0));
-    ASSERT_TRUE(SSL_add_application_settings(server_.get(), proto,
-                                            sizeof(proto), alps, sizeof(alps)));
-  }
-
-  bssl::UniquePtr<SSL_CTX> client_ctx_;
-  bssl::UniquePtr<SSL_CTX> server_ctx_;
-
-  bssl::UniquePtr<SSL> client_;
-  bssl::UniquePtr<SSL> server_;
-};
-
-TEST_F(AlpsNewCodepointTest, Enabled) {
-  SetUpExpectedNewCodePoint(server_ctx_.get());
-
-  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
-                                    server_ctx_.get()));
-
-  SSL_set_alps_use_new_codepoint(client_.get(), 1);
-  SSL_set_alps_use_new_codepoint(server_.get(), 1);
-
-  SetUpApplicationSetting();
-  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
-  ASSERT_TRUE(SSL_has_application_settings(client_.get()));
-}
-
-TEST_F(AlpsNewCodepointTest, Disabled) {
-  // Both client and server disable alps new codepoint.
-  SetUpExpectedOldCodePoint(server_ctx_.get());
-
-  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
-                                    server_ctx_.get()));
-
-  SSL_set_alps_use_new_codepoint(client_.get(), 0);
-  SSL_set_alps_use_new_codepoint(server_.get(), 0);
-
-  SetUpApplicationSetting();
-  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
-  ASSERT_TRUE(SSL_has_application_settings(client_.get()));
-}
-
-TEST_F(AlpsNewCodepointTest, ClientOnly) {
-  // If client set new codepoint but server doesn't set, server ignores it.
-  SetUpExpectedNewCodePoint(server_ctx_.get());
-
-  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
-                                    server_ctx_.get()));
-
-  SSL_set_alps_use_new_codepoint(client_.get(), 1);
-  SSL_set_alps_use_new_codepoint(server_.get(), 0);
-
-  SetUpApplicationSetting();
-  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
-  ASSERT_FALSE(SSL_has_application_settings(client_.get()));
-}
-
-TEST_F(AlpsNewCodepointTest, ServerOnly) {
-  // If client doesn't set new codepoint, while server set.
-  SetUpExpectedOldCodePoint(server_ctx_.get());
-
-  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
-                                    server_ctx_.get()));
-
-  SSL_set_alps_use_new_codepoint(client_.get(), 0);
-  SSL_set_alps_use_new_codepoint(server_.get(), 1);
-
-  SetUpApplicationSetting();
-  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
-  ASSERT_FALSE(SSL_has_application_settings(client_.get()));
-}
 
 // Test that the key usage checker can correctly handle issuerUID and
 // subjectUID. See https://crbug.com/1199744.

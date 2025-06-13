@@ -83,6 +83,8 @@ if(BUILD_TESTING)
     ssl_test.cc
     ssl_c_test.c
     ssl_key_share_test.cc
+    ssl_alps_tests.cc
+    ssl_test_common.cc
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
