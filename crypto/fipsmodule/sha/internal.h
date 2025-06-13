@@ -46,7 +46,6 @@ extern "C" {
 
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
-#define KECCAK1600_ROWS 5
 #define KECCAK1600_WIDTH 1600
 
 #define SHA3_224_CAPACITY_BYTES 56
@@ -98,19 +97,7 @@ extern "C" {
 // so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
-typedef struct keccak_st KECCAK1600_CTX;
-
-// The data buffer should have at least the maximum number of
-// block size bytes to fit any SHA3/SHAKE block length.
-struct keccak_st {
-  uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS];
-  size_t block_size;                               // cached ctx->digest->block_size
-  size_t md_size;                                  // output length, variable in XOF (SHAKE)
-  size_t buf_load;                                 // used bytes in below buffer
-  uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
-  uint8_t pad;                                     // padding character
-  uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
-};
+#define KECCAK1600_ROWS 5
 
 // KECCAK1600 x4 batched context structure
 typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];

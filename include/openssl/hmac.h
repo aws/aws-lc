@@ -63,9 +63,6 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 
-// TODO [childw] DELETEME
-#include "../../crypto/fipsmodule/sha/internal.h"
-
 #if defined(__cplusplus)
 extern "C" {
 #endif

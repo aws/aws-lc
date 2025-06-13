@@ -169,7 +169,7 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 // EVP_MAX_MD_SIZE is the largest digest size supported, in bytes.
 // Functions that output a digest generally require the buffer have
 // at least this much space.
-#define EVP_MAX_MD_SIZE 64  // SHA-512 is the longest so far.
+#define EVP_MAX_MD_SIZE 255 // TODO [childw]
 
 // EVP_MAX_MD_CHAINING_LENGTH is the largest chaining length supported, in
 // bytes. This constant is only for Merkle-Damgard-based hashed functions
