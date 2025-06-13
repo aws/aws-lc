@@ -36,7 +36,6 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/hpke.h>
-#include <openssl/hrss.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -49,7 +48,6 @@
 #include "internal.h"
 #include "../crypto/kyber/kem_kyber.h"
 #include "../crypto/fipsmodule/ec/internal.h"
-#include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 
 #if defined(OPENSSL_WINDOWS)
 // Windows defines struct timeval in winsock2.h.
