@@ -24,6 +24,9 @@ BSSL_SRC_FOLDER="${SCRATCH_FOLDER}/boring-ssl"
 BSSL_BUILD_FOLDER="${SCRATCH_FOLDER}/boring-ssl-build"
 BSSL_CMD="${SCRATCH_FOLDER}/boring-ssl-build/bssl"
 
+SERVER_TIMEOUT_CMD="timeout --preserve-status --kill-after=60s 60s"
+CLIENT_TIMEOUT_CMD="timeout --preserve-status --kill-after=10s 10s"
+
 rm -rf "${SCRATCH_FOLDER:?}"
 mkdir -p "$SCRATCH_FOLDER"
 
@@ -51,12 +54,11 @@ echo "s2n build succeeded. Found: ${S2NC_CMD} ${S2ND_CMD}"
 
 for GROUP in X25519MLKEM768 SecP256r1MLKEM768; do
   echo "TLS Handshake: aws-lc server (bssl) with s2n-tls client (s2nc) for group $GROUP"
-  ${AWS_LC_CMD} s_server -curves $GROUP -accept 45000 -debug \
+  ${SERVER_TIMEOUT_CMD} ${AWS_LC_CMD} s_server -curves $GROUP -accept 45000 -debug \
     &> "$AWS_LC_BUILD_FOLDER"/s_server_out &
   sleep 5 # to allow for the server to startup in the background thread
   S_PID=$!
-  # Relying on s2nc behavior that it exits after the first handshake
-  ${S2NC_CMD} -c default_pq -i localhost 45000 &> "$S2N_TLS_BUILD_FOLDER"/s2nc_out
+  ${CLIENT_TIMEOUT_CMD} ${S2NC_CMD} -c default_pq -i localhost 45000 &> "$S2N_TLS_BUILD_FOLDER"/s2nc_out &
   wait $S_PID || true
   cat "$AWS_LC_BUILD_FOLDER"/s_server_out
   cat "$S2N_TLS_BUILD_FOLDER"/s2nc_out
@@ -65,12 +67,10 @@ for GROUP in X25519MLKEM768 SecP256r1MLKEM768; do
   grep "KEM Group" "$S2N_TLS_BUILD_FOLDER"/s2nc_out | grep "$GROUP"
 
   echo "TLS Handshake: s2n-tls server (s2nd) with aws-lc client (bssl) for group $GROUP"
-  ${S2ND_CMD} -c default_pq -i localhost 45000 &> "$S2N_TLS_BUILD_FOLDER"/s2nd_out &
+  ${SERVER_TIMEOUT_CMD} ${S2ND_CMD} -c default_pq -i localhost 45000 &> "$S2N_TLS_BUILD_FOLDER"/s2nd_out &
   sleep 5 # to allow for the server to startup in the background thread
   S_PID=$!
-  # bssl s_client normally does not exit after a handshake, but when run as a background process
-  # seems to exit by closing the connection after the first handshake. Relying on that behavior here.
-  ${AWS_LC_CMD} s_client -curves $GROUP -connect localhost:45000 -debug \
+  ${CLIENT_TIMEOUT_CMD} ${AWS_LC_CMD} s_client -curves $GROUP -connect localhost:45000 -debug \
     &> "$AWS_LC_BUILD_FOLDER"/s_client_out &
   wait $S_PID || true
   cat "$S2N_TLS_BUILD_FOLDER"/s2nd_out
@@ -99,11 +99,11 @@ echo "BoringSSL build succeeded. Found ${BSSL_CMD}"
 # BoringSSL supports only X25519MLKEM768 but not SecP256r1MLKEM768 for key exchange
 for GROUP in X25519MLKEM768; do
   echo "TLS Handshake: aws-lc server (bssl) with boring-ssl client (bssl) for group $GROUP"
-  ${AWS_LC_CMD} s_server -curves $GROUP -accept 45000 -debug \
+  ${SERVER_TIMEOUT_CMD} ${AWS_LC_CMD} s_server -curves $GROUP -accept 45000 -debug \
     &> "$AWS_LC_BUILD_FOLDER"/s_server_out &
   sleep 5 # to allow for the server to startup in the background thread
   S_PID=$!
-  ${BSSL_CMD} s_client -curves $GROUP -connect localhost:45000 -debug \
+  ${CLIENT_TIMEOUT_CMD} ${BSSL_CMD} s_client -curves $GROUP -connect localhost:45000 -debug \
     &> "$BSSL_BUILD_FOLDER"/s_client_out &
   wait $S_PID || true
   cat "$AWS_LC_BUILD_FOLDER"/s_server_out
@@ -115,11 +115,11 @@ for GROUP in X25519MLKEM768; do
   grep "subject" "$BSSL_BUILD_FOLDER"/s_client_out | grep "BoringSSL"
 
   echo "TLS Handshake: boring-ssl server (bssl) with aws-lc client (bssl) for group $GROUP"
-  ${BSSL_CMD} s_server -curves $GROUP -accept 45000 -debug \
+  ${SERVER_TIMEOUT_CMD} ${BSSL_CMD} s_server -curves $GROUP -accept 45000 -debug \
     &> "$BSSL_BUILD_FOLDER"/s_server_out &
   sleep 5 # to allow for the server to startup in the background thread
   S_PID=$!
-  ${AWS_LC_CMD} s_client -curves $GROUP -connect localhost:45000 -debug \
+  ${CLIENT_TIMEOUT_CMD} ${AWS_LC_CMD} s_client -curves $GROUP -connect localhost:45000 -debug \
     &> "$AWS_LC_BUILD_FOLDER"/s_client_out &
   wait $S_PID || true
   cat "$BSSL_BUILD_FOLDER"/s_server_out
