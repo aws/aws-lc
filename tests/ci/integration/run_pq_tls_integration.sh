@@ -58,7 +58,7 @@ for GROUP in X25519MLKEM768 SecP256r1MLKEM768; do
     &> "$AWS_LC_BUILD_FOLDER"/s_server_out &
   sleep 5 # to allow for the server to startup in the background thread
   S_PID=$!
-  ${CLIENT_TIMEOUT_CMD} ${S2NC_CMD} -c default_pq -i localhost 45000 &> "$S2N_TLS_BUILD_FOLDER"/s2nc_out
+  ${CLIENT_TIMEOUT_CMD} ${S2NC_CMD} -c default_pq -i localhost 45000 &> "$S2N_TLS_BUILD_FOLDER"/s2nc_out &
   wait $S_PID || true
   cat "$AWS_LC_BUILD_FOLDER"/s_server_out
   cat "$S2N_TLS_BUILD_FOLDER"/s2nc_out
