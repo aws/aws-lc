@@ -74,7 +74,7 @@ aes_hw_slothy_xts_decrypt:
 	aesd	v0.16b,v29.16b
 	aesimc	v0.16b,v0.16b
 	subs	w6,w6,#10         // bias
-	b.eq	.Lxts_128_dec
+	// b.eq	.Lxts_128_dec
 .Lxts_dec_round_loop:
 	aesd	v0.16b,v16.16b
 	aesimc	v0.16b,v0.16b
@@ -84,7 +84,7 @@ aes_hw_slothy_xts_decrypt:
 	ld1	{v17.4s},[x3],#16            // load key schedule...
 	subs	w6,w6,#2          // bias
 	b.gt	.Lxts_dec_round_loop
-.Lxts_128_dec:
+//.Lxts_128_dec:
 	ld1	{v18.4s,v19.4s},[x3],#32       // load key schedule...
 	aesd	v0.16b,v16.16b
 	aesimc	v0.16b,v0.16b
