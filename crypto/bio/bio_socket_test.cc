@@ -574,6 +574,13 @@ TEST_P(BIODgramTest, SocketDatagramSetPeer) {
     GTEST_SKIP() << "IPv6 not supported";
     return;
   }
+#if defined(__MINGW32__) && defined(AWS_LC_HAS_AF_UNIX)
+  if (addr_family == AF_UNIX) {
+    // Wine (is not an emulator) doesn't properly support Unix domain sockets
+    GTEST_SKIP() << "Unix domain sockets not supported";
+    return;
+  }
+#endif
   ASSERT_TRUE(server_bio) << LastSocketError();
   ASSERT_EQ(1, BIO_get_close(server_bio.get())) << LastSocketError();
 
@@ -658,6 +665,12 @@ TEST_P(BIODgramTest, SocketDatagramSetConnected) {
       -1;
 #endif
 
+#if defined(__MINGW32__)
+// Mingw environments are inconsistent as to this behavior.
+  if (addr_family == AF_INET6) {
+    return;
+  }
+#endif
   ASSERT_EQ(expected_result,
             BIO_write(client_bio.get(), kTestMessage, sizeof(kTestMessage)))
       << LastSocketError();

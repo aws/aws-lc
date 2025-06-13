@@ -1,38 +1,35 @@
-from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_s3 as s3
+import typing
+
+from aws_cdk import (
+    Duration,
+    Stack,
+    aws_codebuild as codebuild,
+    aws_s3 as s3,
+    Environment,
+)
 from constructs import Construct
+
+from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
 from util.build_spec_loader import BuildSpecLoader
 from util.metadata import (
     GITHUB_PUSH_CI_BRANCH_TARGETS,
     GITHUB_REPO_NAME,
     GITHUB_REPO_OWNER,
+    PRE_PROD_ACCOUNT,
+    STAGING_GITHUB_REPO_OWNER,
+    STAGING_GITHUB_REPO_NAME,
 )
 
 
-class AwsLcGitHubX509CIStack(Stack):
+class AwsLcGitHubX509CIStack(AwsLcBaseCiStack):
     def __init__(
         self,
         scope: Construct,
         id: str,
+        env: typing.Union[Environment, typing.Dict[str, typing.Any]],
         **kwargs,
     ) -> None:
-        super().__init__(scope, id, **kwargs)
-
-        git_hub_source = codebuild.Source.git_hub(
-            owner=GITHUB_REPO_OWNER,
-            repo=GITHUB_REPO_NAME,
-            webhook=True,
-            webhook_filters=[
-                codebuild.FilterGroup.in_event_of(
-                    codebuild.EventAction.PULL_REQUEST_CREATED,
-                    codebuild.EventAction.PULL_REQUEST_UPDATED,
-                    codebuild.EventAction.PULL_REQUEST_REOPENED,
-                ),
-                codebuild.FilterGroup.in_event_of(
-                    codebuild.EventAction.PUSH
-                ).and_branch_is(GITHUB_PUSH_CI_BRANCH_TARGETS),
-            ],
-            webhook_triggers_batch_build=True,
-        )
+        super().__init__(scope, id, env=env, **kwargs)
 
         self.reports_bucket = s3.Bucket(
             self,
@@ -72,13 +69,13 @@ class AwsLcGitHubX509CIStack(Stack):
             noncurrent_version_expiration=Duration.days(1),
         )
 
-        self.codebuild_project = codebuild.Project(
+        self.project = codebuild.Project(
             self,
             id,
             project_name=id,
-            source=git_hub_source,
+            source=self.git_hub_source,
             build_spec=BuildSpecLoader.load(
-                "cdk/codebuild/github_ci_x509_omnibus.yaml"
+                "cdk/codebuild/github_ci_x509_omnibus.yaml", env
             ),
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_6_0,

@@ -3,7 +3,7 @@ Checks: '
   -*,
   clang-analyzer-*,
   portability-*,
-  -cppcoreguidelines-macro-to-enum,
-  -cppcoreguidelines-avoid-non-const-global-variables,
+  cppcoreguidelines-init-variables, 
+  readability-braces-around-statements,
   '
 WarningsAsErrors: ''

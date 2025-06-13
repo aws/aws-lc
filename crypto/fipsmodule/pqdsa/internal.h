@@ -83,6 +83,7 @@ void PQDSA_KEY_free(PQDSA_KEY *key);
 int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 
 int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in);
+int PQDSA_KEY_set_raw_keypair_from_both(PQDSA_KEY *key, CBS *seed, CBS *expanded_key);
 int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in);
 int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in);
 #if defined(__cplusplus)

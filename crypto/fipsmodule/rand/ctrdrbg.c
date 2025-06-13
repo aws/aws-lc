@@ -50,6 +50,12 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                   const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                   const uint8_t *personalization, size_t personalization_len) {
   SET_DIT_AUTO_RESET;
+
+  if (buffers_alias(entropy, CTR_DRBG_ENTROPY_LEN,
+                    personalization, personalization_len)) {
+    return 0;
+  }
+
   // Section 10.2.1.3.1
   if (personalization_len > CTR_DRBG_ENTROPY_LEN) {
     return 0;
@@ -124,6 +130,12 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
                     const uint8_t *additional_data,
                     size_t additional_data_len) {
   SET_DIT_AUTO_RESET;
+
+  if (buffers_alias(entropy, CTR_DRBG_ENTROPY_LEN,
+                    additional_data, additional_data_len)) {
+    return 0;
+  }
+
   // Section 10.2.1.4
   uint8_t entropy_copy[CTR_DRBG_ENTROPY_LEN];
 
