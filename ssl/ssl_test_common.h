@@ -25,6 +25,7 @@ BSSL_NAMESPACE_BEGIN
 
 extern UniquePtr<SSL_SESSION> g_last_session;
 
+bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out);
 
 struct VersionParam {
   uint16_t version;
@@ -109,6 +110,11 @@ UniquePtr<CRYPTO_BUFFER> GetChainTestCertificateBuffer();
 UniquePtr<X509> GetChainTestCertificate();
 UniquePtr<EVP_PKEY> GetChainTestKey();
 UniquePtr<X509> GetChainTestIntermediate();
+
+UniquePtr<X509> GetLeafSecret();
+UniquePtr<X509> GetLeafPublic();
+UniquePtr<EVP_PKEY> GetLeafKey();
+UniquePtr<X509> GetLeafRoot();
 
 bool ExpectSingleError(int lib, int reason);
 

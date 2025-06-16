@@ -11,6 +11,133 @@ BSSL_NAMESPACE_BEGIN
 
 UniquePtr<SSL_SESSION> g_last_session;
 
+bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  if (!bio) {
+    return false;
+  }
+  // Do not configure a reading BIO, but record what's written to a memory BIO.
+  BIO_up_ref(bio.get());
+  SSL_set_bio(ssl, nullptr /* rbio */, bio.get());
+  int ret = SSL_connect(ssl);
+  if (ret > 0) {
+    // SSL_connect should fail without a BIO to write to.
+    return false;
+  }
+  ERR_clear_error();
+
+  const uint8_t *client_hello;
+  size_t client_hello_len;
+  if (!BIO_mem_contents(bio.get(), &client_hello, &client_hello_len)) {
+    return false;
+  }
+
+  // We did not get far enough to write a ClientHello.
+  if (client_hello_len == 0) {
+    return false;
+  }
+
+  *out = std::vector<uint8_t>(client_hello, client_hello + client_hello_len);
+  return true;
+}
+
+
+// These test certificates generated with the following Go program.
+  /* clang-format off
+func main() {
+  notBefore := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
+  notAfter := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+  rootKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+  rootTemplate := &x509.Certificate{
+    SerialNumber:          big.NewInt(1),
+    Subject:               pkix.Name{CommonName: "Test CA"},
+    NotBefore:             notBefore,
+    NotAfter:              notAfter,
+    BasicConstraintsValid: true,
+    IsCA:                  true,
+  }
+  rootDER, _ := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey)
+  root, _ := x509.ParseCertificate(rootDER)
+  pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: rootDER})
+  leafKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+  leafKeyDER, _ := x509.MarshalPKCS8PrivateKey(leafKey)
+  pem.Encode(os.Stdout, &pem.Block{Type: "PRIVATE KEY", Bytes: leafKeyDER})
+  for i, name := range []string{"public.example", "secret.example"} {
+    leafTemplate := &x509.Certificate{
+      SerialNumber:          big.NewInt(int64(i) + 2),
+      Subject:               pkix.Name{CommonName: name},
+      NotBefore:             notBefore,
+      NotAfter:              notAfter,
+      BasicConstraintsValid: true,
+      DNSNames:              []string{name},
+    }
+    leafDER, _ := x509.CreateCertificate(rand.Reader, leafTemplate, root, &leafKey.PublicKey, rootKey)
+    pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: leafDER})
+  }
+}
+clang-format on */
+UniquePtr<X509> GetLeafRoot() {
+  bssl::UniquePtr<X509> root = CertFromPEM(R"(
+-----BEGIN CERTIFICATE-----
+MIIBRzCB7aADAgECAgEBMAoGCCqGSM49BAMCMBIxEDAOBgNVBAMTB1Rlc3QgQ0Ew
+IBcNMDAwMTAxMDAwMDAwWhgPMjA5OTAxMDEwMDAwMDBaMBIxEDAOBgNVBAMTB1Rl
+c3QgQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT5JUjrI1DAxSpEl88UkmJw
+tAJqxo/YrSFo9V3MkcNkfTixi5p6MUtO8DazhEgekBcd2+tBAWtl7dy0qpvTqx92
+ozIwMDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTw6ftkexAI6o4r5FntJIfL
+GU5F4zAKBggqhkjOPQQDAgNJADBGAiEAiiNowddQeHZaZFIygwe6RW5/WG4sUXWC
+dkyl9CQzRaYCIQCFS1EvwZbZtMny27fYm1eeYciY0TkJTEi34H1KwyzzIA==
+-----END CERTIFICATE-----
+)");
+  EXPECT_TRUE(root);
+  return root;
+}
+
+UniquePtr<EVP_PKEY> GetLeafKey() {
+  bssl::UniquePtr<EVP_PKEY> leaf_key = KeyFromPEM(R"(
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgj5WKHwHnziiyPauf
+7QukxTwtTyGZkk8qNdms4puJfxqhRANCAARNrkhxabALDlJrHtvkuDwvCWUF/oVC
+hr6PDITHi1lDlJzvVT4aXBH87sH2n2UV5zpx13NHkq1bIC8eRT8eOIe0
+-----END PRIVATE KEY-----
+)");
+  EXPECT_TRUE(leaf_key);
+  return leaf_key;
+}
+
+UniquePtr<X509> GetLeafPublic() {
+  bssl::UniquePtr<X509> leaf_public = CertFromPEM(R"(
+-----BEGIN CERTIFICATE-----
+MIIBaDCCAQ6gAwIBAgIBAjAKBggqhkjOPQQDAjASMRAwDgYDVQQDEwdUZXN0IENB
+MCAXDTAwMDEwMTAwMDAwMFoYDzIwOTkwMTAxMDAwMDAwWjAZMRcwFQYDVQQDEw5w
+dWJsaWMuZXhhbXBsZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABE2uSHFpsAsO
+Umse2+S4PC8JZQX+hUKGvo8MhMeLWUOUnO9VPhpcEfzuwfafZRXnOnHXc0eSrVsg
+Lx5FPx44h7SjTDBKMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAU8On7ZHsQCOqO
+K+RZ7SSHyxlOReMwGQYDVR0RBBIwEIIOcHVibGljLmV4YW1wbGUwCgYIKoZIzj0E
+AwIDSAAwRQIhANqZRhDR/+QL05hsWXMYEwaiHifd9iakKoFEhKFchcF3AiBRAeXw
+wRGGT6+iPmTYM6N5/IDyAb5B9Ke38O6lLEsUwA==
+-----END CERTIFICATE-----
+)");
+  EXPECT_TRUE(leaf_public);
+  return leaf_public;
+}
+
+UniquePtr<X509> GetLeafSecret() {
+  bssl::UniquePtr<X509> leaf_secret = CertFromPEM(R"(
+-----BEGIN CERTIFICATE-----
+MIIBaTCCAQ6gAwIBAgIBAzAKBggqhkjOPQQDAjASMRAwDgYDVQQDEwdUZXN0IENB
+MCAXDTAwMDEwMTAwMDAwMFoYDzIwOTkwMTAxMDAwMDAwWjAZMRcwFQYDVQQDEw5z
+ZWNyZXQuZXhhbXBsZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABE2uSHFpsAsO
+Umse2+S4PC8JZQX+hUKGvo8MhMeLWUOUnO9VPhpcEfzuwfafZRXnOnHXc0eSrVsg
+Lx5FPx44h7SjTDBKMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAU8On7ZHsQCOqO
+K+RZ7SSHyxlOReMwGQYDVR0RBBIwEIIOc2VjcmV0LmV4YW1wbGUwCgYIKoZIzj0E
+AwIDSQAwRgIhAPQdIz1xCFkc9WuSkxOxJDpywZiEp9SnKcxJ9nwrlRp3AiEA+O3+
+XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
+-----END CERTIFICATE-----
+)");
+  EXPECT_TRUE(leaf_secret);
+  return leaf_secret;
+}
+
 // Functions used by SSL encode/decode tests.
 static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx,
                                bssl::UniquePtr<SSL> *out) {
