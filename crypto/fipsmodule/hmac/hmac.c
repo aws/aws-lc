@@ -170,12 +170,12 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   // Since we search these linearly it helps (just a bit) to put the most common ones first.
   // This isn't based on hard metrics and will not make a significant different on performance.
   // FIXME: all hashes but SHA256 have been disabled to check first SHA256
-  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
-  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
-  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
   DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
+  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
   DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
   DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
+  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
+  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
   DEFINE_IN_PLACE_METHODS(EVP_sha512_224(), SHA512_224);
   DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
   DEFINE_IN_PLACE_METHODS(EVP_sha3_224(), SHA3_224);
