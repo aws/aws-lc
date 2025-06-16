@@ -749,5 +749,276 @@ TEST(SSLTest, IntermittentEmptyRead) {
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
 }
 
+enum ssl_test_ticket_aead_failure_mode {
+  ssl_test_ticket_aead_ok = 0,
+  ssl_test_ticket_aead_seal_fail,
+  ssl_test_ticket_aead_open_soft_fail,
+  ssl_test_ticket_aead_open_hard_fail,
+};
+
+struct ssl_test_ticket_aead_state {
+  unsigned retry_count = 0;
+  ssl_test_ticket_aead_failure_mode failure_mode = ssl_test_ticket_aead_ok;
+};
+
+static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
+                                             const CRYPTO_EX_DATA *from,
+                                             void **from_d, int index,
+                                             long argl, void *argp) {
+  abort();
+}
+
+static void ssl_test_ticket_aead_ex_index_free(void *parent, void *ptr,
+                                               CRYPTO_EX_DATA *ad, int index,
+                                               long argl, void *argp) {
+  delete reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
+}
+
+static CRYPTO_once_t g_ssl_test_ticket_aead_ex_index_once = CRYPTO_ONCE_INIT;
+static int g_ssl_test_ticket_aead_ex_index;
+
+static int ssl_test_ticket_aead_get_ex_index() {
+  CRYPTO_once(&g_ssl_test_ticket_aead_ex_index_once, [] {
+    g_ssl_test_ticket_aead_ex_index = SSL_get_ex_new_index(
+        0, nullptr, nullptr, ssl_test_ticket_aead_ex_index_dup,
+        ssl_test_ticket_aead_ex_index_free);
+  });
+  return g_ssl_test_ticket_aead_ex_index;
+}
+
+static size_t ssl_test_ticket_aead_max_overhead(SSL *ssl) { return 1; }
+
+static int ssl_test_ticket_aead_seal(SSL *ssl, uint8_t *out, size_t *out_len,
+                                     size_t max_out_len, const uint8_t *in,
+                                     size_t in_len) {
+  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(
+      SSL_get_ex_data(ssl, ssl_test_ticket_aead_get_ex_index()));
+
+  if (state->failure_mode == ssl_test_ticket_aead_seal_fail ||
+      max_out_len < in_len + 1) {
+    return 0;
+  }
+
+  OPENSSL_memmove(out, in, in_len);
+  out[in_len] = 0xff;
+  *out_len = in_len + 1;
+
+  return 1;
+}
+
+static ssl_ticket_aead_result_t ssl_test_ticket_aead_open(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out_len,
+    const uint8_t *in, size_t in_len) {
+  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(
+      SSL_get_ex_data(ssl, ssl_test_ticket_aead_get_ex_index()));
+
+  if (state->retry_count > 0) {
+    state->retry_count--;
+    return ssl_ticket_aead_retry;
+  }
+
+  switch (state->failure_mode) {
+    case ssl_test_ticket_aead_ok:
+      break;
+    case ssl_test_ticket_aead_seal_fail:
+      // If |seal| failed then there shouldn't be any ticket to try and
+      // decrypt.
+      abort();
+      break;
+    case ssl_test_ticket_aead_open_soft_fail:
+      return ssl_ticket_aead_ignore_ticket;
+    case ssl_test_ticket_aead_open_hard_fail:
+      return ssl_ticket_aead_error;
+  }
+
+  if (in_len == 0 || in[in_len - 1] != 0xff) {
+    return ssl_ticket_aead_ignore_ticket;
+  }
+
+  if (max_out_len < in_len - 1) {
+    return ssl_ticket_aead_error;
+  }
+
+  OPENSSL_memmove(out, in, in_len - 1);
+  *out_len = in_len - 1;
+  return ssl_ticket_aead_success;
+}
+
+static const SSL_TICKET_AEAD_METHOD kSSLTestTicketMethod = {
+    ssl_test_ticket_aead_max_overhead,
+    ssl_test_ticket_aead_seal,
+    ssl_test_ticket_aead_open,
+};
+
+static void ConnectClientAndServerWithTicketMethod(
+    bssl::UniquePtr<SSL> *out_client, bssl::UniquePtr<SSL> *out_server,
+    SSL_CTX *client_ctx, SSL_CTX *server_ctx, unsigned retry_count,
+    ssl_test_ticket_aead_failure_mode failure_mode, SSL_SESSION *session) {
+  bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
+  ASSERT_TRUE(client);
+  ASSERT_TRUE(server);
+  SSL_set_connect_state(client.get());
+  SSL_set_accept_state(server.get());
+
+  auto state = new ssl_test_ticket_aead_state;
+  state->retry_count = retry_count;
+  state->failure_mode = failure_mode;
+
+  ASSERT_GE(ssl_test_ticket_aead_get_ex_index(), 0);
+  ASSERT_TRUE(SSL_set_ex_data(server.get(), ssl_test_ticket_aead_get_ex_index(),
+                              state));
+
+  SSL_set_session(client.get(), session);
+
+  BIO *bio1, *bio2;
+  ASSERT_TRUE(BIO_new_bio_pair(&bio1, 0, &bio2, 0));
+
+  // SSL_set_bio takes ownership.
+  SSL_set_bio(client.get(), bio1, bio1);
+  SSL_set_bio(server.get(), bio2, bio2);
+
+  if (CompleteHandshakes(client.get(), server.get())) {
+    *out_client = std::move(client);
+    *out_server = std::move(server);
+  } else {
+    out_client->reset();
+    out_server->reset();
+  }
+}
+
+using TicketAEADMethodParam =
+    testing::tuple<uint16_t, unsigned, ssl_test_ticket_aead_failure_mode, bool>;
+
+class TicketAEADMethodTest
+    : public ::testing::TestWithParam<TicketAEADMethodParam> {};
+
+TEST_P(TicketAEADMethodTest, Resume) {
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+
+  const uint16_t version = testing::get<0>(GetParam());
+  const unsigned retry_count = testing::get<1>(GetParam());
+  const ssl_test_ticket_aead_failure_mode failure_mode =
+      testing::get<2>(GetParam());
+  const bool transfer_ssl = testing::get<3>(GetParam());
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_current_time_cb(client_ctx.get(), FrozenTimeCallback);
+  SSL_CTX_set_current_time_cb(server_ctx.get(), FrozenTimeCallback);
+  SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
+
+  SSL_CTX_set_ticket_aead_method(server_ctx.get(), &kSSLTestTicketMethod);
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_NO_FATAL_FAILURE(ConnectClientAndServerWithTicketMethod(
+      &client, &server, client_ctx.get(), server_ctx.get(), retry_count,
+      failure_mode, nullptr));
+  // Only transfer when the code is to test SSL transfer and the connection is
+  // finished successuflly.
+  if (transfer_ssl && server) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, server_ctx.get(), nullptr);
+  }
+  switch (failure_mode) {
+    case ssl_test_ticket_aead_ok:
+    case ssl_test_ticket_aead_open_hard_fail:
+    case ssl_test_ticket_aead_open_soft_fail:
+      ASSERT_TRUE(client);
+      break;
+    case ssl_test_ticket_aead_seal_fail:
+      EXPECT_FALSE(client);
+      return;
+  }
+  EXPECT_FALSE(SSL_session_reused(client.get()));
+  EXPECT_FALSE(SSL_session_reused(server.get()));
+
+  ASSERT_TRUE(FlushNewSessionTickets(client.get(), server.get()));
+  bssl::UniquePtr<SSL_SESSION> session = std::move(g_last_session);
+  ASSERT_NO_FATAL_FAILURE(ConnectClientAndServerWithTicketMethod(
+      &client, &server, client_ctx.get(), server_ctx.get(), retry_count,
+      failure_mode, session.get()));
+  // Do SSL transfer again.
+  // Only transfer when the code is to test SSL transfer and the connection is
+  // finished successuflly.
+  if (transfer_ssl && server) {
+    // |server| is reset to hold the transferred SSL.
+    TransferSSL(&server, server_ctx.get(), nullptr);
+  }
+  switch (failure_mode) {
+    case ssl_test_ticket_aead_ok:
+      ASSERT_TRUE(client);
+      EXPECT_TRUE(SSL_session_reused(client.get()));
+      EXPECT_TRUE(SSL_session_reused(server.get()));
+      break;
+    case ssl_test_ticket_aead_seal_fail:
+      abort();
+      break;
+    case ssl_test_ticket_aead_open_hard_fail:
+      EXPECT_FALSE(client);
+      break;
+    case ssl_test_ticket_aead_open_soft_fail:
+      ASSERT_TRUE(client);
+      EXPECT_FALSE(SSL_session_reused(client.get()));
+      EXPECT_FALSE(SSL_session_reused(server.get()));
+  }
+}
+
+static std::string TicketAEADMethodParamToString(
+    const testing::TestParamInfo<TicketAEADMethodParam> &params) {
+  std::string ret = GetVersionName(std::get<0>(params.param));
+  // GTest only allows alphanumeric characters and '_' in the parameter
+  // string. Additionally filter out the 'v' to get "TLS13" over "TLSv13".
+  for (auto it = ret.begin(); it != ret.end();) {
+    if (*it == '.' || *it == 'v') {
+      it = ret.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  char retry_count[256];
+  snprintf(retry_count, sizeof(retry_count), "%u", std::get<1>(params.param));
+  ret += "_";
+  ret += retry_count;
+  ret += "Retries_";
+  switch (std::get<2>(params.param)) {
+    case ssl_test_ticket_aead_ok:
+      ret += "OK";
+      break;
+    case ssl_test_ticket_aead_seal_fail:
+      ret += "SealFail";
+      break;
+    case ssl_test_ticket_aead_open_soft_fail:
+      ret += "OpenSoftFail";
+      break;
+    case ssl_test_ticket_aead_open_hard_fail:
+      ret += "OpenHardFail";
+      break;
+  }
+  if (std::get<3>(params.param)) {
+    ret += "_SSLTransfer";
+  }
+  return ret;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TicketAEADMethodTests, TicketAEADMethodTest,
+    testing::Combine(testing::Values(TLS1_2_VERSION, TLS1_3_VERSION),
+                     testing::Values(0, 1, 2),
+                     testing::Values(ssl_test_ticket_aead_ok,
+                                     ssl_test_ticket_aead_seal_fail,
+                                     ssl_test_ticket_aead_open_soft_fail,
+                                     ssl_test_ticket_aead_open_hard_fail),
+                     testing::Values(TRANSFER_SSL, !TRANSFER_SSL)),
+    TicketAEADMethodParamToString);
+
 
 BSSL_NAMESPACE_END

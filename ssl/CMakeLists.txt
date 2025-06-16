@@ -91,6 +91,8 @@ if(BUILD_TESTING)
     ssl_quic_test.cc
     ssl_hybrid_handshake_test.cc
     ssl_encoding_test.cc
+    ssl_ciphers_test.cc
+    ssl_handshake_test.cc
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
