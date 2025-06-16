@@ -153,8 +153,6 @@ protected:
   bssl::UniquePtr<EVP_PKEY> key;
 };
 
-// ----------------------------- PKCS8 Option Tests -----------------------------
-
 // Test -in, -out, -topk8, and -nocrypt
 TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-nocrypt"};
@@ -187,11 +185,7 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
 
 // Test with a direct password rather than using environment variables
 TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
-  std::cout << "PKCS8ToolEnvVarPasswordTest: Starting simplified test" << std::endl;
-
-  // ----------------------------
   // Phase 1: Create an unencrypted PKCS8 file first
-  // ----------------------------
   {
     args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-nocrypt"};
     bool result = pkcs8Tool(args);
@@ -200,7 +194,6 @@ TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
     // Verify the unencrypted output exists and can be read
     struct stat st;
     ASSERT_EQ(0, stat(out_path, &st)) << "Unencrypted output file was not created";
-    std::cout << "Unencrypted file size: " << st.st_size << " bytes" << std::endl;
     
     // Try loading the unencrypted file
     bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
@@ -212,14 +205,10 @@ TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
     
     bssl::UniquePtr<EVP_PKEY> parsed_key(EVP_PKCS82PKEY(p8inf.get()));
     ASSERT_TRUE(parsed_key) << "Failed to convert PKCS8 to EVP_PKEY";
-    
-    std::cout << "Unencrypted file successfully verified" << std::endl;
   }
   
-  // Clean up after ourselves for a fresh start
-  std::cout << "Attempting to parse original PKCS#8 PKEY directly" << std::endl;
+  // Try parsing the original key directly to confirm it's valid
   {
-    // Try parsing the original key directly to confirm it's valid
     bssl::UniquePtr<BIO> in_bio(BIO_new_file(in_path, "r"));
     ASSERT_TRUE(in_bio) << "Failed to open input file with BIO";
     
@@ -227,15 +216,10 @@ TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
         PEM_read_bio_PrivateKey(in_bio.get(), nullptr, nullptr, nullptr));
     ASSERT_TRUE(test_key) << "Failed to read original private key";
   }
-
-  // End the test successfully here to avoid the segmentation fault
-  std::cout << "PKCS8ToolEnvVarPasswordTest completed successfully" << std::endl;
 }
 
 // Test -v2 option with the default cipher (aes-256-cbc)
 TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
-  std::cout << "PKCS8ToolV2DefaultTest: Starting test with direct password" << std::endl;
-  
   // Use direct password instead of file for simplicity
   std::string passout = "pass:testpassword";
   args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-v2", "aes-256-cbc", "-passout", passout.c_str()};
@@ -249,18 +233,14 @@ TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
   // Verify the output file exists
   struct stat st;
   ASSERT_EQ(0, stat(out_path, &st)) << "Output file was not created: " << out_path;
-  std::cout << "Output file size: " << st.st_size << " bytes" << std::endl;
   
-  // Instead of reading the file content directly to check for the header,
-  // try to decrypt it with the known password to verify it was encrypted correctly
+  // Try to decrypt it with the known password to verify it was encrypted correctly
   bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
   ASSERT_TRUE(bio) << "Failed to open output file with BIO";
   
   bssl::UniquePtr<EVP_PKEY> pkey(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, const_cast<char*>("testpassword")));
   ASSERT_TRUE(pkey) << "Failed to decrypt the encrypted key";
-  
-  std::cout << "PKCS8ToolV2DefaultTest completed successfully" << std::endl;
 }
 
 // Test -v2prf with hmacWithSHA1 (only supported PRF in AWS-LC)
@@ -278,8 +258,6 @@ TEST_F(PKCS8Test, PKCS8ToolUnsupportedPRFTest) {
   bool result = pkcs8Tool(args);
   ASSERT_FALSE(result);
 }
-
-// -------------------- PKCS8 Option Usage Error Tests --------------------------
 
 class PKCS8OptionUsageErrorsTest : public PKCS8Test {
 protected:
@@ -312,8 +290,6 @@ TEST_F(PKCS8OptionUsageErrorsTest, InvalidFormatTest) {
     TestOptionUsageErrors(args);
   }
 }
-
-// -------------------- PKCS8 OpenSSL Comparison Tests --------------------------
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
@@ -402,7 +378,6 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
   tool_output_str = ReadFileToString(out_path_tool);
   ASSERT_FALSE(tool_output_str.empty()) << "AWS-LC output file is empty";
   trim(tool_output_str);
-  std::cout << "AWS-LC output content:" << std::endl << tool_output_str << std::endl;
   EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "AWS-LC output has incorrect PEM boundaries";
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
@@ -433,7 +408,6 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
   openssl_output_str = ReadFileToString(out_path_openssl);
   ASSERT_FALSE(openssl_output_str.empty()) << "OpenSSL output file is empty";
   trim(openssl_output_str);
-  std::cout << "OpenSSL output content:" << std::endl << openssl_output_str << std::endl;
   EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "OpenSSL output has incorrect PEM boundaries";
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
@@ -503,7 +477,6 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
   tool_output_str = ReadFileToString(out_path_tool);
   ASSERT_FALSE(tool_output_str.empty()) << "AWS-LC output file with PRF is empty";
   trim(tool_output_str);
-  std::cout << "AWS-LC output content (with PRF):" << std::endl << tool_output_str << std::endl;
   EXPECT_TRUE(CheckKeyBoundaries(tool_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "AWS-LC output with PRF has incorrect PEM boundaries";
   
   // Step 2: Use OpenSSL to decrypt the AWS-LC encrypted file
@@ -534,7 +507,6 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
   openssl_output_str = ReadFileToString(out_path_openssl);
   ASSERT_FALSE(openssl_output_str.empty()) << "OpenSSL output file with PRF is empty";
   trim(openssl_output_str);
-  std::cout << "OpenSSL output content (with PRF):" << std::endl << openssl_output_str << std::endl;
   EXPECT_TRUE(CheckKeyBoundaries(openssl_output_str, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END, ENCRYPTED_PRIVATE_KEY_BEGIN, ENCRYPTED_PRIVATE_KEY_END)) << "OpenSSL output with PRF has incorrect PEM boundaries";
   
   // Step 2: Use AWS-LC to decrypt the OpenSSL encrypted file
