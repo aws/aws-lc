@@ -10,9 +10,6 @@
 #include <stddef.h>
 #if defined(OPENSSL_WINDOWS)
 typedef SSIZE_T ssize_t;
-#if !defined(__MINGW32__)
-#include <afunix.h>
-#endif
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -167,7 +164,9 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   const int ret = result;
 
   if (!data->connected && ret >= 0) {
-    BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_PEER, 0, &peer);
+    if (1 != BIO_dgram_set_peer(bp, &peer)) {
+      // The operation does not fail if peer not set.
+    }
   }
 
   BIO_clear_retry_flags(bp);
@@ -327,7 +326,7 @@ static const BIO_METHOD methods_dgramp = {
 
 const BIO_METHOD *BIO_s_datagram(void) { return &methods_dgramp; }
 
-BIO *BIO_new_dgram(const int fd, const int close_flag) {
+BIO *BIO_new_dgram(int fd, int close_flag) {
   BIO *ret = BIO_new(BIO_s_datagram());
   if (ret == NULL) {
     return NULL;

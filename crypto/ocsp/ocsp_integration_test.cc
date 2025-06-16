@@ -182,7 +182,7 @@ static const IntegrationTestVector kIntegrationTestVectors[] = {
     // Connect to an unauthorized OCSP responder endpoint. This will
     // successfully get an OCSP response, but the OCSP response will not be
     // valid.
-    {"valid.rootca1.demo.amazontrust.com", "ocsp.comodoca.com", true, false, 0,
+    {"valid.rootca1.demo.amazontrust.com", "ocsp.sectigo.com", true, false, 0,
      0},
     // Connect to a non-OCSP responder endpoint. These should fail to get an
     // OCSP response, unless these hosts decide to become OCSP responders.

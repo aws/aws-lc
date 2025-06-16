@@ -534,6 +534,8 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 // function that results in a key suitable for use in symmetric
 // cryptography.
 
+// PKCS5_SALT_LEN is a deprecated constant as used by deprecated
+// EVP_BytesToKey() which cannot change.
 #define PKCS5_SALT_LEN 8
 
 // PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|

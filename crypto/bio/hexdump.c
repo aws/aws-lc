@@ -192,3 +192,35 @@ int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len, unsigned indent) {
 
   return 1;
 }
+
+int BIO_dump(BIO *bio, const void *data, int len) {
+  if (bio == NULL || data == NULL || len < 0) {
+    return -1;
+  }
+
+  // Use a temporary memory BIO to capture the formatted output
+  int ret = -1;
+  BIO *mbio = BIO_new(BIO_s_mem());
+  if (mbio == NULL) {
+    return -1;
+  }
+
+  // Generate the hexdump to the memory BIO
+  if (!BIO_hexdump(mbio, (const uint8_t *)data, (size_t)len, 0)) {
+    goto err;
+  }
+
+  // Get the formatted content
+  const uint8_t *contents = NULL;
+  size_t content_len = 0;
+  if (!BIO_mem_contents(mbio, &contents, &content_len)) {
+    goto err;
+  }
+
+  // Write to the original BIO and return the exact bytes written
+  ret = BIO_write(bio, contents, content_len);
+
+err:
+  BIO_free(mbio);
+  return ret;
+}

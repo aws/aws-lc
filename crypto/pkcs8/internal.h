@@ -81,6 +81,7 @@ int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
 #define PKCS12_KEY_ID 1
 #define PKCS12_IV_ID 2
 #define PKCS12_MAC_ID 3
+#define PKCS12_SALT_LEN 16
 
 // pkcs12_key_gen runs the PKCS#12 key derivation function as specified in
 // RFC 7292, appendix B. On success, it writes the resulting |out_len| bytes of
