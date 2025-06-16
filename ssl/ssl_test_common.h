@@ -116,6 +116,9 @@ UniquePtr<X509> GetLeafPublic();
 UniquePtr<EVP_PKEY> GetLeafKey();
 UniquePtr<X509> GetLeafRoot();
 
+UniquePtr<X509> GetED25519TestCertificate();
+UniquePtr<EVP_PKEY> GetED25519TestKey();
+
 bool ExpectSingleError(int lib, int reason);
 
 UniquePtr<X509> X509FromBuffer(
