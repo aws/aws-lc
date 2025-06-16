@@ -1,19 +1,19 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <thread>
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
-#include "ssl_test_common.h"
 #include "internal.h"
+#include "ssl_test_common.h"
 
 BSSL_NAMESPACE_BEGIN
 
 TEST(SSLTest, SelectNextProto) {
-  uint8_t *result;
-  uint8_t result_len;
+  uint8_t *result = nullptr;
+  uint8_t result_len = 0;
 
   // If there is an overlap, it should be returned.
   EXPECT_EQ(OPENSSL_NPN_NEGOTIATED,
@@ -231,7 +231,7 @@ static std::string SigAlgsToString(Span<const uint16_t> sigalgs) {
 }
 
 static void ExpectSigAlgsEqual(Span<const uint16_t> expected,
-                        Span<const uint16_t> actual) {
+                               Span<const uint16_t> actual) {
   bool matches = false;
   if (expected.size() == actual.size()) {
     matches = true;
@@ -425,7 +425,7 @@ TEST(SSLTest, GetCertificateThreads) {
   // Existing code expects |SSL_CTX_get0_certificate| to be callable from two
   // threads concurrently. It originally was an immutable operation. Now we
   // implement it with a thread-safe cache, so it is worth testing.
-  X509 *cert2_thread;
+  X509 *cert2_thread = nullptr;
   std::thread thread(
       [&] { cert2_thread = SSL_CTX_get0_certificate(ctx.get()); });
   X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
@@ -440,7 +440,7 @@ TEST(SSLTest, GetCertificateThreads) {
 #ifdef OPENSSL_THREADS
 
 static void SetValueOnFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
-                          int index, long argl, void *argp) {
+                           int index, long argl, void *argp) {
   if (ptr != nullptr) {
     *static_cast<long *>(ptr) = argl;
   }
@@ -578,7 +578,7 @@ static void WriteHelloRequest(SSL *server) {
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead.get(), EVP_aead_chacha20_poly1305(),
                                 key.data(), key.size(),
                                 EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
-  size_t len;
+  size_t len = 0;
   ASSERT_TRUE(EVP_AEAD_CTX_seal(aead.get(), record + 5, &len,
                                 sizeof(record) - 5, nonce.data(), nonce.size(),
                                 in, sizeof(in), ad, sizeof(ad)));
@@ -625,7 +625,7 @@ TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   ASSERT_NO_FATAL_FAILURE(WriteHelloRequest(server.get()));
 
   // |SSL_read| should pick up the HelloRequest.
-  uint8_t byte;
+  uint8_t byte = 0;
   ASSERT_EQ(-1, SSL_read(client.get(), &byte, 1));
   ASSERT_EQ(SSL_ERROR_WANT_RENEGOTIATE, SSL_get_error(client.get(), -1));
 
@@ -699,10 +699,10 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
     EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
               SSL_SIGN_RSA_PKCS1_SHA256);
 
-    int psig_nid;
+    int psig_nid = 0;
     EXPECT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &psig_nid));
     EXPECT_EQ(psig_nid, EVP_PKEY_RSA);
-    int digest_nid;
+    int digest_nid = 0;
     EXPECT_TRUE(SSL_get_peer_signature_nid(client.get(), &digest_nid));
     EXPECT_EQ(digest_nid, NID_sha256);
 
@@ -721,7 +721,7 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
 
   // Reading from the client will consume the HelloRequest, start a
   // renegotiation, and then block on a ServerHello from the server.
-  uint8_t byte;
+  uint8_t byte = 0;
   ASSERT_EQ(-1, SSL_read(client.get(), &byte, 1));
   ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client.get(), -1));
 
@@ -749,8 +749,8 @@ TEST(SSLTest, SSLGetSignatureData) {
   // Explicitly configure |SSL_VERIFY_PEER| so both the client and server
   // verify each other
   SSL_CTX_set_custom_verify(
-          ctx.get(), SSL_VERIFY_PEER,
-          [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
+      ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
 
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
@@ -769,13 +769,13 @@ TEST(SSLTest, SSLGetSignatureData) {
 
   // Both client and server verified each other, both have signed TLS messages
   // now
-  int client_digest, client_sigtype;
+  int client_digest = 0, client_sigtype = 0;
   ASSERT_TRUE(SSL_get_peer_signature_nid(server.get(), &client_digest));
   ASSERT_TRUE(SSL_get_peer_signature_type_nid(server.get(), &client_sigtype));
   ASSERT_EQ(client_sigtype, EVP_PKEY_EC);
   ASSERT_EQ(client_digest, NID_sha256);
 
-  int server_digest, server_sigtype;
+  int server_digest = 0, server_sigtype = 0;
   ASSERT_TRUE(SSL_get_peer_signature_nid(client.get(), &server_digest));
   ASSERT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &server_sigtype));
   ASSERT_EQ(server_sigtype, EVP_PKEY_EC);
@@ -909,7 +909,7 @@ TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
   ASSERT_TRUE(server);
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
-  BIO *bio1, *bio2;
+  BIO *bio1 = nullptr, *bio2 = nullptr;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
   SSL_set_bio(client.get(), bio1, bio1);
   SSL_set_bio(server.get(), bio2, bio2);
@@ -1325,4 +1325,3 @@ TEST(SSLTest, CanReleasePrivateKey) {
 }
 
 BSSL_NAMESPACE_END
-

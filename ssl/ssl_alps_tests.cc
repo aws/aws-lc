@@ -18,7 +18,7 @@ namespace {
 // setting on different combination of ALPS codepoint settings. More integration
 // tests on runner.go.
 class AlpsNewCodepointTest : public testing::Test {
-protected:
+ protected:
   void SetUp() override {
     client_ctx_.reset(SSL_CTX_new(TLS_method()));
     server_ctx_ = CreateContextWithTestCertificate(TLS_method());
@@ -34,20 +34,20 @@ protected:
     // success and one on failure.
     ASSERT_FALSE(SSL_set_alpn_protos(client_.get(), alpn, sizeof(alpn)));
     SSL_CTX_set_alpn_select_cb(
-      server_ctx_.get(),
-      [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
-          unsigned in_len, void *arg) -> int {
-        return SSL_select_next_proto(
-                    const_cast<uint8_t **>(out), out_len, in, in_len,
-                    alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
-                    ? SSL_TLSEXT_ERR_OK
-                    : SSL_TLSEXT_ERR_NOACK;
-      },
-      nullptr);
+        server_ctx_.get(),
+        [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+           unsigned in_len, void *arg) -> int {
+          return SSL_select_next_proto(const_cast<uint8_t **>(out), out_len, in,
+                                       in_len, alpn,
+                                       sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                     ? SSL_TLSEXT_ERR_OK
+                     : SSL_TLSEXT_ERR_NOACK;
+        },
+        nullptr);
     ASSERT_TRUE(SSL_add_application_settings(client_.get(), proto,
-                                            sizeof(proto), nullptr, 0));
-    ASSERT_TRUE(SSL_add_application_settings(server_.get(), proto,
-                                            sizeof(proto), alps, sizeof(alps)));
+                                             sizeof(proto), nullptr, 0));
+    ASSERT_TRUE(SSL_add_application_settings(
+        server_.get(), proto, sizeof(proto), alps, sizeof(alps)));
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx_;
@@ -169,7 +169,7 @@ void VerifyHandoff(bool use_new_alps_codepoint) {
       SSL_set_alps_use_new_codepoint(client.get(), use_new_alps_codepoint);
       ASSERT_TRUE(SSL_set_alpn_protos(client.get(), alpn, sizeof(alpn)) == 0);
       ASSERT_TRUE(SSL_add_application_settings(client.get(), proto,
-                                              sizeof(proto), nullptr, 0));
+                                               sizeof(proto), nullptr, 0));
       if (is_resume) {
         ASSERT_TRUE(g_last_session);
         SSL_set_session(client.get(), g_last_session.get());
@@ -182,7 +182,7 @@ void VerifyHandoff(bool use_new_alps_codepoint) {
       int client_ret = SSL_do_handshake(client.get());
       int client_err = SSL_get_error(client.get(), client_ret);
 
-      uint8_t byte_written;
+      uint8_t byte_written = 0;
       if (early_data && is_resume) {
         ASSERT_EQ(client_err, 0);
         EXPECT_TRUE(SSL_in_early_data(client.get()));
@@ -216,16 +216,16 @@ void VerifyHandoff(bool use_new_alps_codepoint) {
       SSL_CTX_set_alpn_select_cb(
           handshaker_ctx.get(),
           [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
-              unsigned in_len, void *arg) -> int {
-            return SSL_select_next_proto(
-                        const_cast<uint8_t **>(out), out_len, in, in_len,
-                        alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
-                        ? SSL_TLSEXT_ERR_OK
-                        : SSL_TLSEXT_ERR_NOACK;
+             unsigned in_len, void *arg) -> int {
+            return SSL_select_next_proto(const_cast<uint8_t **>(out), out_len,
+                                         in, in_len, alpn,
+                                         sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                       ? SSL_TLSEXT_ERR_OK
+                       : SSL_TLSEXT_ERR_NOACK;
           },
           nullptr);
-      ASSERT_TRUE(SSL_add_application_settings(handshaker.get(), proto,
-                                              sizeof(proto), alps, sizeof(alps)));
+      ASSERT_TRUE(SSL_add_application_settings(
+          handshaker.get(), proto, sizeof(proto), alps, sizeof(alps)));
 
       ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
 
@@ -264,7 +264,7 @@ void VerifyHandoff(bool use_new_alps_codepoint) {
         byte_written = 42;
         EXPECT_EQ(SSL_write(client.get(), &byte_written, 1), 1);
       }
-      uint8_t byte;
+      uint8_t byte = 0;
       EXPECT_EQ(SSL_read(server2.get(), &byte, 1), 1);
       EXPECT_EQ(byte_written, byte);
 
@@ -283,5 +283,5 @@ TEST(SSLTest, Handoff) {
   }
 }
 
-}
+}  // namespace
 BSSL_NAMESPACE_END

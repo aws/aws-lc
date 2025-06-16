@@ -5,10 +5,10 @@
 // Created by Smith, Justin on 6/16/25.
 //
 
-#include <thread>
 #include <openssl/ssl.h>
+#include <thread>
 #include "../crypto/test/test_util.h"
-#include  "ssl_test_common.h"
+#include "ssl_test_common.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -31,14 +31,15 @@ struct ECHConfigParams {
 
 // MakeECHConfig serializes an ECHConfig from |params| and writes it to
 // |*out|.
-static bool MakeECHConfig(std::vector<uint8_t> *out, const ECHConfigParams &params) {
+static bool MakeECHConfig(std::vector<uint8_t> *out,
+                          const ECHConfigParams &params) {
   uint16_t kem_id = params.kem_id == 0
                         ? EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(params.key))
                         : params.kem_id;
   std::vector<uint8_t> public_key = params.public_key;
   if (public_key.empty()) {
     public_key.resize(EVP_HPKE_MAX_PUBLIC_KEY_LENGTH);
-    size_t len;
+    size_t len = 0;
     if (!EVP_HPKE_KEY_public_key(params.key, public_key.data(), &len,
                                  public_key.size())) {
       return false;
@@ -80,8 +81,8 @@ static bool MakeECHConfig(std::vector<uint8_t> *out, const ECHConfigParams &para
 
 static bssl::UniquePtr<SSL_ECH_KEYS> MakeTestECHKeys(uint8_t config_id = 1) {
   bssl::ScopedEVP_HPKE_KEY key;
-  uint8_t *ech_config;
-  size_t ech_config_len;
+  uint8_t *ech_config = nullptr;
+  size_t ech_config_len = 0;
   if (!EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()) ||
       !SSL_marshal_ech_config(&ech_config, &ech_config_len, config_id,
                               key.get(), "public.example", 16)) {
@@ -99,8 +100,8 @@ static bssl::UniquePtr<SSL_ECH_KEYS> MakeTestECHKeys(uint8_t config_id = 1) {
 }
 
 static bool InstallECHConfigList(SSL *client, const SSL_ECH_KEYS *keys) {
-  uint8_t *ech_config_list;
-  size_t ech_config_list_len;
+  uint8_t *ech_config_list = nullptr;
+  size_t ech_config_list_len = 0;
   if (!SSL_ECH_KEYS_marshal_retry_configs(keys, &ech_config_list,
                                           &ech_config_list_len)) {
     return false;
@@ -142,8 +143,8 @@ TEST(SSLTest, MarshalECHConfig) {
       0x70, 0x6c, 0x65,
       // contents.extensions
       0x00, 0x00};
-  uint8_t *ech_config;
-  size_t ech_config_len;
+  uint8_t *ech_config = nullptr;
+  size_t ech_config_len = 0;
   ASSERT_TRUE(SSL_marshal_ech_config(&ech_config, &ech_config_len,
                                      /*config_id=*/1, key.get(),
                                      "public.example", 16));
@@ -153,8 +154,8 @@ TEST(SSLTest, MarshalECHConfig) {
   // Generate a second ECHConfig.
   bssl::ScopedEVP_HPKE_KEY key2;
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key2.get(), EVP_hpke_x25519_hkdf_sha256()));
-  uint8_t *ech_config2;
-  size_t ech_config2_len;
+  uint8_t *ech_config2 = nullptr;
+  size_t ech_config2_len = 0;
   ASSERT_TRUE(SSL_marshal_ech_config(&ech_config2, &ech_config2_len,
                                      /*config_id=*/2, key2.get(),
                                      "public.example", 16));
@@ -169,8 +170,8 @@ TEST(SSLTest, MarshalECHConfig) {
                                ech_config2_len, key2.get()));
 
   // The ECHConfigList should be correctly serialized.
-  uint8_t *ech_config_list;
-  size_t ech_config_list_len;
+  uint8_t *ech_config_list = nullptr;
+  size_t ech_config_list_len = 0;
   ASSERT_TRUE(SSL_ECH_KEYS_marshal_retry_configs(keys.get(), &ech_config_list,
                                                  &ech_config_list_len));
   bssl::UniquePtr<uint8_t> free_ech_config_list(ech_config_list);
@@ -200,8 +201,8 @@ TEST(SSLTest, ECHHasDuplicateConfigID) {
       bssl::ScopedEVP_HPKE_KEY key;
       ASSERT_TRUE(
           EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
-      uint8_t *ech_config;
-      size_t ech_config_len;
+      uint8_t *ech_config = nullptr;
+      size_t ech_config_len = 0;
       ASSERT_TRUE(SSL_marshal_ech_config(&ech_config, &ech_config_len, id,
                                          key.get(), "public.example", 16));
       bssl::UniquePtr<uint8_t> free_ech_config(ech_config);
@@ -222,7 +223,7 @@ TEST(SSLTest, ECHKeyConsistency) {
   bssl::ScopedEVP_HPKE_KEY key;
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
   uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
-  size_t public_key_len;
+  size_t public_key_len = 0;
   ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key, &public_key_len,
                                       sizeof(public_key)));
 
@@ -268,8 +269,8 @@ TEST(SSLTest, ECHKeyConsistency) {
 TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
   bssl::ScopedEVP_HPKE_KEY key;
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
-  uint8_t *ech_config;
-  size_t ech_config_len;
+  uint8_t *ech_config = nullptr;
+  size_t ech_config_len = 0;
   ASSERT_TRUE(SSL_marshal_ech_config(&ech_config, &ech_config_len,
                                      /*config_id=*/1, key.get(),
                                      "public.example", 16));
@@ -393,8 +394,8 @@ static bool GetECHLength(SSL_CTX *ctx, size_t *out_client_hello_len,
                          size_t *out_ech_len, size_t max_name_len,
                          const char *name) {
   bssl::ScopedEVP_HPKE_KEY key;
-  uint8_t *ech_config;
-  size_t ech_config_len;
+  uint8_t *ech_config = nullptr;
+  size_t ech_config_len = 0;
   if (!EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()) ||
       !SSL_marshal_ech_config(&ech_config, &ech_config_len,
                               /*config_id=*/1, key.get(), "public.example",
@@ -418,7 +419,7 @@ static bool GetECHLength(SSL_CTX *ctx, size_t *out_client_hello_len,
 
   std::vector<uint8_t> client_hello;
   SSL_CLIENT_HELLO parsed;
-  const uint8_t *unused;
+  const uint8_t *unused = nullptr;
   if (!GetClientHello(ssl.get(), &client_hello) ||
       !ssl_client_hello_init(
           ssl.get(), &parsed,
@@ -439,14 +440,14 @@ TEST(SSLTest, ECHPadding) {
   ASSERT_TRUE(ctx);
 
   // Sample lengths with max_name_len = 128 as baseline.
-  size_t client_hello_len_baseline, ech_len_baseline;
+  size_t client_hello_len_baseline = 0, ech_len_baseline = 0;
   ASSERT_TRUE(GetECHLength(ctx.get(), &client_hello_len_baseline,
                            &ech_len_baseline, 128, "example.com"));
 
   // Check that all name lengths under the server's maximum look the same.
   for (size_t name_len : {1, 2, 32, 64, 127, 128}) {
     SCOPED_TRACE(name_len);
-    size_t client_hello_len, ech_len;
+    size_t client_hello_len = 0, ech_len = 0;
     ASSERT_TRUE(GetECHLength(ctx.get(), &client_hello_len, &ech_len, 128,
                              std::string(name_len, 'a').c_str()));
     EXPECT_EQ(client_hello_len, client_hello_len_baseline);
@@ -454,7 +455,7 @@ TEST(SSLTest, ECHPadding) {
   }
 
   // When sending no SNI, we must still pad as if we are sending one.
-  size_t client_hello_len, ech_len;
+  size_t client_hello_len = 0, ech_len = 0;
   ASSERT_TRUE(
       GetECHLength(ctx.get(), &client_hello_len, &ech_len, 128, nullptr));
   EXPECT_EQ(client_hello_len, client_hello_len_baseline);
@@ -462,7 +463,7 @@ TEST(SSLTest, ECHPadding) {
 
   // Name lengths above the maximum do not get named-based padding, but the
   // overall input is padded to a multiple of 32.
-  size_t client_hello_len_baseline2, ech_len_baseline2;
+  size_t client_hello_len_baseline2 = 0, ech_len_baseline2 = 0;
   ASSERT_TRUE(GetECHLength(ctx.get(), &client_hello_len_baseline2,
                            &ech_len_baseline2, 128,
                            std::string(128 + 32, 'a').c_str()));
@@ -614,16 +615,16 @@ TEST(SSLTest, ECHThreads) {
   // Generate a pair of ECHConfigs.
   bssl::ScopedEVP_HPKE_KEY key1;
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key1.get(), EVP_hpke_x25519_hkdf_sha256()));
-  uint8_t *ech_config1;
-  size_t ech_config1_len;
+  uint8_t *ech_config1 = nullptr;
+  size_t ech_config1_len = 0;
   ASSERT_TRUE(SSL_marshal_ech_config(&ech_config1, &ech_config1_len,
                                      /*config_id=*/1, key1.get(),
                                      "public.example", 16));
   bssl::UniquePtr<uint8_t> free_ech_config1(ech_config1);
   bssl::ScopedEVP_HPKE_KEY key2;
   ASSERT_TRUE(EVP_HPKE_KEY_generate(key2.get(), EVP_hpke_x25519_hkdf_sha256()));
-  uint8_t *ech_config2;
-  size_t ech_config2_len;
+  uint8_t *ech_config2 = nullptr;
+  size_t ech_config2_len = 0;
   ASSERT_TRUE(SSL_marshal_ech_config(&ech_config2, &ech_config2_len,
                                      /*config_id=*/2, key2.get(),
                                      "public.example", 16));
@@ -710,7 +711,7 @@ static bool GetExtensionOrder(SSL_CTX *client_ctx, std::vector<uint16_t> *out,
         CBS_init(&extensions, client_hello->extensions,
                  client_hello->extensions_len);
         while (CBS_len(&extensions)) {
-          uint16_t type;
+          uint16_t type = 0;
           CBS body;
           if (!CBS_get_u16(&extensions, &type) ||
               !CBS_get_u16_length_prefixed(&extensions, &body)) {

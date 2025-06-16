@@ -26,8 +26,8 @@ bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
   }
   ERR_clear_error();
 
-  const uint8_t *client_hello;
-  size_t client_hello_len;
+  const uint8_t *client_hello = nullptr;
+  size_t client_hello_len = 0;
   if (!BIO_mem_contents(bio.get(), &client_hello, &client_hello_len)) {
     return false;
   }
@@ -43,7 +43,7 @@ bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
 
 
 // These test certificates generated with the following Go program.
-  /* clang-format off
+/* clang-format off
 func main() {
   notBefore := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
   notAfter := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -164,9 +164,9 @@ UniquePtr<EVP_PKEY> GetED25519TestKey() {
 static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx,
                                bssl::UniquePtr<SSL> *out) {
   // Encoding SSL to bytes.
-  size_t encoded_len;
+  size_t encoded_len = 0;
   bssl::UniquePtr<uint8_t> encoded;
-  uint8_t *encoded_raw;
+  uint8_t *encoded_raw = nullptr;
   ASSERT_TRUE(SSL_to_bytes(in, &encoded_raw, &encoded_len));
   ASSERT_TRUE(encoded_len) << "SSL_to_bytes failed. Error code: "
                            << ERR_reason_error_string(ERR_get_error());
@@ -209,7 +209,7 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to) {
 // 4. If |out| is not nullptr, |out| will hold the decoded SSL.
 //    Else, |in| will get reset to hold the decoded SSL.
 void TransferSSL(UniquePtr<SSL> *in, SSL_CTX *in_ctx,
-                        bssl::UniquePtr<SSL> *out) {
+                 bssl::UniquePtr<SSL> *out) {
   bssl::UniquePtr<SSL> decoded_ssl;
   EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl);
   if (!decoded_ssl) {
@@ -225,10 +225,9 @@ void TransferSSL(UniquePtr<SSL> *in, SSL_CTX *in_ctx,
 }
 
 bool ConnectClientAndServer(UniquePtr<SSL> *out_client,
-                                   UniquePtr<SSL> *out_server,
-                                   SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-                                   const ClientConfig &config,
-                                   bool shed_handshake_config) {
+                            UniquePtr<SSL> *out_server, SSL_CTX *client_ctx,
+                            SSL_CTX *server_ctx, const ClientConfig &config,
+                            bool shed_handshake_config) {
   bssl::UniquePtr<SSL> client, server;
   if (!CreateClientAndServer(&client, &server, client_ctx, server_ctx)) {
     return false;
@@ -242,7 +241,7 @@ bool ConnectClientAndServer(UniquePtr<SSL> *out_client,
   if (!config.servername.empty() &&
       !SSL_set_tlsext_host_name(client.get(), config.servername.c_str())) {
     return false;
-      }
+  }
   if (!config.verify_hostname.empty()) {
     if (!SSL_set1_host(client.get(), config.verify_hostname.c_str())) {
       return false;
@@ -263,7 +262,7 @@ bool ConnectClientAndServer(UniquePtr<SSL> *out_client,
 }
 
 void ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-                                SSL_SESSION *session, bool want_reused) {
+                         SSL_SESSION *session, bool want_reused) {
   UniquePtr<SSL> client, server;
   ClientConfig config;
   config.session = session;
@@ -276,9 +275,9 @@ void ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
   EXPECT_EQ(was_reused, want_reused);
 }
 
-UniquePtr<SSL_SESSION> CreateClientSession(
-    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-    const ClientConfig &config) {
+UniquePtr<SSL_SESSION> CreateClientSession(SSL_CTX *client_ctx,
+                                           SSL_CTX *server_ctx,
+                                           const ClientConfig &config) {
   g_last_session = nullptr;
   SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
 
@@ -289,7 +288,7 @@ UniquePtr<SSL_SESSION> CreateClientSession(
       !FlushNewSessionTickets(client.get(), server.get())) {
     fprintf(stderr, "Failed to connect client and server.\n");
     return nullptr;
-      }
+  }
 
   SSL_CTX_sess_set_new_cb(client_ctx, nullptr);
 
@@ -313,7 +312,7 @@ bool FlushNewSessionTickets(SSL *client, SSL *server) {
       fprintf(stderr, "Unexpected server result: %d %d\n", server_ret,
               server_err);
       return false;
-        }
+    }
 
     int client_ret = SSL_read(client, nullptr, 0);
     int client_err = SSL_get_error(client, client_ret);
@@ -341,8 +340,7 @@ int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
   return 1;
 }
 
-UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
-    const SSL_METHOD *method) {
+UniquePtr<SSL_CTX> CreateContextWithTestCertificate(const SSL_METHOD *method) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method));
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
@@ -350,7 +348,7 @@ UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
       !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
     return nullptr;
-      }
+  }
   return ctx;
 }
 
@@ -358,11 +356,10 @@ void SetUpExpectedNewCodePoint(SSL_CTX *ctx) {
   SSL_CTX_set_select_certificate_cb(
       ctx,
       [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
+        const uint8_t *data = nullptr;
+        size_t len = 0;
         if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings, &data,
-                &len)) {
+                client_hello, TLSEXT_TYPE_application_settings, &data, &len)) {
           ADD_FAILURE() << "Could not find alps new codepoint.";
           return ssl_select_cert_error;
         }
@@ -412,9 +409,9 @@ UniquePtr<EVP_PKEY> GetTestKey() {
 
 static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  char *name, *header;
-  uint8_t *data;
-  long data_len;
+  char *name = nullptr, *header = nullptr;
+  uint8_t *data = nullptr;
+  long data_len = 0;
   if (!PEM_read_bio(bio.get(), &name, &header, &data, &data_len)) {
     return nullptr;
   }
@@ -493,8 +490,7 @@ UniquePtr<X509> GetChainTestCertificate() {
   return X509FromBuffer(GetChainTestCertificateBuffer());
 }
 
-UniquePtr<X509> X509FromBuffer(
-    UniquePtr<CRYPTO_BUFFER> buffer) {
+UniquePtr<X509> X509FromBuffer(UniquePtr<CRYPTO_BUFFER> buffer) {
   if (!buffer) {
     return nullptr;
   }
@@ -594,8 +590,7 @@ void FrozenTimeCallback(const SSL *ssl, timeval *out_clock) {
   out_clock->tv_usec = 0;
 }
 
-bool ChainsEqual(STACK_OF(X509) *chain,
-                        const std::vector<X509 *> &expected) {
+bool ChainsEqual(STACK_OF(X509) *chain, const std::vector<X509 *> &expected) {
   if (sk_X509_num(chain) != expected.size()) {
     return false;
   }
@@ -622,8 +617,8 @@ UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem) {
 // are paired with each other. It does not run the handshake. The caller is
 // expected to configure the objects and drive the handshake as needed.
 bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
-                                  bssl::UniquePtr<SSL> *out_server,
-                                  SSL_CTX *client_ctx, SSL_CTX *server_ctx) {
+                           bssl::UniquePtr<SSL> *out_server,
+                           SSL_CTX *client_ctx, SSL_CTX *server_ctx) {
   UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
   if (!client || !server) {
     return false;
@@ -631,7 +626,7 @@ bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
-  BIO *bio1, *bio2;
+  BIO *bio1 = nullptr, *bio2 = nullptr;
   if (!BIO_new_bio_pair(&bio1, 0, &bio2, 0)) {
     return false;
   }
@@ -654,7 +649,7 @@ bool CompleteHandshakes(SSL *client, SSL *server) {
         client_err != SSL_ERROR_PENDING_TICKET) {
       fprintf(stderr, "Client error: %s\n", SSL_error_description(client_err));
       return false;
-        }
+    }
 
     int server_ret = SSL_do_handshake(server);
     int server_err = SSL_get_error(server, server_ret);
@@ -663,7 +658,7 @@ bool CompleteHandshakes(SSL *client, SSL *server) {
         server_err != SSL_ERROR_PENDING_TICKET) {
       fprintf(stderr, "Server error: %s\n", SSL_error_description(server_err));
       return false;
-        }
+    }
 
     if (client_ret == 1 && server_ret == 1) {
       break;
@@ -677,8 +672,8 @@ void SetUpExpectedOldCodePoint(SSL_CTX *ctx) {
   SSL_CTX_set_select_certificate_cb(
       ctx,
       [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
+        const uint8_t *data = nullptr;
+        size_t len = 0;
         if (!SSL_early_callback_ctx_extension_get(
                 client_hello, TLSEXT_TYPE_application_settings_old, &data,
                 &len)) {
@@ -690,4 +685,3 @@ void SetUpExpectedOldCodePoint(SSL_CTX *ctx) {
 }
 
 BSSL_NAMESPACE_END
-

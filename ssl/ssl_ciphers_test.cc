@@ -9,8 +9,8 @@
 
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
-#include "ssl_test_common.h"
 #include "internal.h"
+#include "ssl_test_common.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -368,28 +368,28 @@ static const CipherTest kTLSv13CipherTests[] = {
 };
 
 static const char *kBadRules[] = {
-  // Invalid brackets.
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256",
-  "RSA]",
-  "[[RSA]]",
-  // Operators inside brackets.
-  "[+RSA]",
-  // Unknown directive.
-  "@BOGUS",
-  "BOGUS",
-  // COMPLEMENTOFDEFAULT is empty.
-  "COMPLEMENTOFDEFAULT",
-  // Invalid command.
-  "?BAR",
-  // Special operators are not allowed if equi-preference groups are used.
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:+FOO",
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:!FOO",
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:-FOO",
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:@STRENGTH",
-  // Opcode supplied, but missing selector.
-  "+",
-  // Spaces are forbidden in equal-preference groups.
-  "[AES128-SHA | AES128-SHA256]",
+    // Invalid brackets.
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256",
+    "RSA]",
+    "[[RSA]]",
+    // Operators inside brackets.
+    "[+RSA]",
+    // Unknown directive.
+    "@BOGUS",
+    "BOGUS",
+    // COMPLEMENTOFDEFAULT is empty.
+    "COMPLEMENTOFDEFAULT",
+    // Invalid command.
+    "?BAR",
+    // Special operators are not allowed if equi-preference groups are used.
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:+FOO",
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:!FOO",
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:-FOO",
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:@STRENGTH",
+    // Opcode supplied, but missing selector.
+    "+",
+    // Spaces are forbidden in equal-preference groups.
+    "[AES128-SHA | AES128-SHA256]",
 };
 
 static const char *kMustNotIncludeNull[] = {
@@ -409,122 +409,119 @@ static const char *kMustNotInclude3DES[] = {
 };
 
 static const CurveTest kCurveTests[] = {
-  {
-    "P-256",
-    {SSL_GROUP_SECP256R1},
-  },
-  {
-    "P-256:P-384:P-521:X25519",
     {
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
-      SSL_GROUP_SECP521R1,
-      SSL_GROUP_X25519,
+        "P-256",
+        {SSL_GROUP_SECP256R1},
     },
-  },
-  {
-    "prime256v1:secp384r1:secp521r1:x25519",
     {
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
-      SSL_GROUP_SECP521R1,
-      SSL_GROUP_X25519,
+        "P-256:P-384:P-521:X25519",
+        {
+            SSL_GROUP_SECP256R1,
+            SSL_GROUP_SECP384R1,
+            SSL_GROUP_SECP521R1,
+            SSL_GROUP_X25519,
+        },
     },
-  },
-  {
-    "SecP256r1Kyber768Draft00:prime256v1:secp384r1:secp521r1:x25519",
     {
-      SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
-      SSL_GROUP_SECP521R1,
-      SSL_GROUP_X25519,
+        "prime256v1:secp384r1:secp521r1:x25519",
+        {
+            SSL_GROUP_SECP256R1,
+            SSL_GROUP_SECP384R1,
+            SSL_GROUP_SECP521R1,
+            SSL_GROUP_X25519,
+        },
     },
-  },
-  {
-    "X25519Kyber768Draft00:prime256v1:secp384r1",
     {
-      SSL_GROUP_X25519_KYBER768_DRAFT00,
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
+        "SecP256r1Kyber768Draft00:prime256v1:secp384r1:secp521r1:x25519",
+        {
+            SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+            SSL_GROUP_SECP256R1,
+            SSL_GROUP_SECP384R1,
+            SSL_GROUP_SECP521R1,
+            SSL_GROUP_X25519,
+        },
     },
-  },
-  {
-    "X25519:X25519Kyber768Draft00",
     {
-      SSL_GROUP_X25519,
-      SSL_GROUP_X25519_KYBER768_DRAFT00,
+        "X25519Kyber768Draft00:prime256v1:secp384r1",
+        {
+            SSL_GROUP_X25519_KYBER768_DRAFT00,
+            SSL_GROUP_SECP256R1,
+            SSL_GROUP_SECP384R1,
+        },
     },
-  },
-  {
-    "X25519:SecP256r1Kyber768Draft00:prime256v1",
     {
-      SSL_GROUP_X25519,
-      SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-      SSL_GROUP_SECP256R1,
+        "X25519:X25519Kyber768Draft00",
+        {
+            SSL_GROUP_X25519,
+            SSL_GROUP_X25519_KYBER768_DRAFT00,
+        },
     },
-  },
-  {
-    "SecP256r1MLKEM768:prime256v1:secp384r1:secp521r1:x25519",
     {
-      SSL_GROUP_SECP256R1_MLKEM768,
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
-      SSL_GROUP_SECP521R1,
-      SSL_GROUP_X25519,
+        "X25519:SecP256r1Kyber768Draft00:prime256v1",
+        {
+            SSL_GROUP_X25519,
+            SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+            SSL_GROUP_SECP256R1,
+        },
     },
-  },
-  {
-    "X25519MLKEM768:prime256v1:secp384r1",
     {
-      SSL_GROUP_X25519_MLKEM768,
-      SSL_GROUP_SECP256R1,
-      SSL_GROUP_SECP384R1,
+        "SecP256r1MLKEM768:prime256v1:secp384r1:secp521r1:x25519",
+        {
+            SSL_GROUP_SECP256R1_MLKEM768,
+            SSL_GROUP_SECP256R1,
+            SSL_GROUP_SECP384R1,
+            SSL_GROUP_SECP521R1,
+            SSL_GROUP_X25519,
+        },
     },
-  },
-  {
-    "X25519:X25519MLKEM768",
     {
-      SSL_GROUP_X25519,
-      SSL_GROUP_X25519_MLKEM768,
+        "X25519MLKEM768:prime256v1:secp384r1",
+        {
+            SSL_GROUP_X25519_MLKEM768,
+            SSL_GROUP_SECP256R1,
+            SSL_GROUP_SECP384R1,
+        },
     },
-  },
-  {
-    "X25519:SecP256r1MLKEM768:prime256v1",
     {
-      SSL_GROUP_X25519,
-      SSL_GROUP_SECP256R1_MLKEM768,
-      SSL_GROUP_SECP256R1,
+        "X25519:X25519MLKEM768",
+        {
+            SSL_GROUP_X25519,
+            SSL_GROUP_X25519_MLKEM768,
+        },
     },
-  },
-{
-  "SecP384r1MLKEM1024:X25519MLKEM768:SecP256r1MLKEM768",
-  {
-    SSL_GROUP_SECP384R1_MLKEM1024,
-    SSL_GROUP_X25519_MLKEM768,
-    SSL_GROUP_SECP256R1_MLKEM768,
-  },
-},
+    {
+        "X25519:SecP256r1MLKEM768:prime256v1",
+        {
+            SSL_GROUP_X25519,
+            SSL_GROUP_SECP256R1_MLKEM768,
+            SSL_GROUP_SECP256R1,
+        },
+    },
+    {
+        "SecP384r1MLKEM1024:X25519MLKEM768:SecP256r1MLKEM768",
+        {
+            SSL_GROUP_SECP384R1_MLKEM1024,
+            SSL_GROUP_X25519_MLKEM768,
+            SSL_GROUP_SECP256R1_MLKEM768,
+        },
+    },
 };
 
 
 
-
-
-
 static const char *kBadCurvesLists[] = {
-  "",
-  ":",
-  "::",
-  "P-256::X25519",
-  "RSA:P-256",
-  "P-256:RSA",
-  "X25519:P-256:",
-  ":X25519:P-256",
-  "kyber768_r3",
-  "x25519_kyber768:prime256v1",
-  "mlkem768",
-  "x25519_mlkem768:prime256v1",
+    "",
+    ":",
+    "::",
+    "P-256::X25519",
+    "RSA:P-256",
+    "P-256:RSA",
+    "X25519:P-256:",
+    ":X25519:P-256",
+    "kyber768_r3",
+    "x25519_kyber768:prime256v1",
+    "mlkem768",
+    "x25519_mlkem768:prime256v1",
 };
 
 static STACK_OF(SSL_CIPHER) *tls13_ciphers(const SSL_CTX *ctx) {
@@ -568,8 +565,7 @@ static bool CipherListsEqual(SSL_CTX *ctx,
   for (size_t i = 0; i < expected.size(); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     if (expected[i].id != SSL_CIPHER_get_id(cipher) ||
-        expected[i].in_group_flag !=
-            !!SSL_CTX_cipher_in_group(ctx, i)) {
+        expected[i].in_group_flag != !!SSL_CTX_cipher_in_group(ctx, i)) {
       return false;
     }
   }
@@ -966,14 +962,14 @@ TEST(SSLTest, CipherProperties) {
 }
 
 // Correct ID and name
-#define TLS13_AES_128_GCM_SHA256_BYTES  ((const unsigned char *)"\x13\x01")
+#define TLS13_AES_128_GCM_SHA256_BYTES ((const unsigned char *)"\x13\x01")
 #define TLS13_CHACHA20_POLY1305_SHA256_BYTES ((const unsigned char *)"\x13\x03")
 // Invalid ID
-#define TLS13_AES_256_GCM_SHA384_BYTES  ((const unsigned char *)"\x13\x13")
+#define TLS13_AES_256_GCM_SHA384_BYTES ((const unsigned char *)"\x13\x13")
 TEST(SSLTest, FindingCipher) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   // Configure only TLS 1.3.
@@ -985,17 +981,21 @@ TEST(SSLTest, FindingCipher) {
                                      server_ctx.get()));
 
   SCOPED_TRACE("TLS_AES_128_GCM_SHA256");
-  const SSL_CIPHER *cipher1 = SSL_CIPHER_find(server.get(), TLS13_AES_128_GCM_SHA256_BYTES);
+  const SSL_CIPHER *cipher1 =
+      SSL_CIPHER_find(server.get(), TLS13_AES_128_GCM_SHA256_BYTES);
   ASSERT_TRUE(cipher1);
   EXPECT_STREQ("TLS_AES_128_GCM_SHA256", SSL_CIPHER_standard_name(cipher1));
 
   SCOPED_TRACE("TLS_CHACHA20_POLY1305_SHA256");
-  const SSL_CIPHER *cipher2 = SSL_CIPHER_find(server.get(), TLS13_CHACHA20_POLY1305_SHA256_BYTES);
+  const SSL_CIPHER *cipher2 =
+      SSL_CIPHER_find(server.get(), TLS13_CHACHA20_POLY1305_SHA256_BYTES);
   ASSERT_TRUE(cipher2);
-  EXPECT_STREQ("TLS_CHACHA20_POLY1305_SHA256", SSL_CIPHER_standard_name(cipher2));
+  EXPECT_STREQ("TLS_CHACHA20_POLY1305_SHA256",
+               SSL_CIPHER_standard_name(cipher2));
 
   SCOPED_TRACE("TLS_AES_256_GCM_SHA384");
-  const SSL_CIPHER *cipher3 = SSL_CIPHER_find(client.get(), TLS13_AES_256_GCM_SHA384_BYTES);
+  const SSL_CIPHER *cipher3 =
+      SSL_CIPHER_find(client.get(), TLS13_AES_256_GCM_SHA384_BYTES);
   ASSERT_FALSE(cipher3);
 }
 
@@ -1003,7 +1003,7 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -1012,19 +1012,28 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256"));
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                      "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(),
+                                      "TLS_RSA_WITH_AES_128_CBC_SHA"));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify CTX ciphersuites
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_256_GCM_SHA384"));
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_256_GCM_SHA384"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                      "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(),
+                                      "TLS_RSA_WITH_AES_256_CBC_SHA"));
 
   // Ensure SSL object inherits initial CTX cipher suites
   STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
@@ -1033,8 +1042,10 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
   ASSERT_TRUE(server_ciphers);
   ASSERT_EQ(sk_SSL_CIPHER_num(client_ciphers), 2u);
   ASSERT_EQ(sk_SSL_CIPHER_num(server_ciphers), 2u);
-  const SSL_CIPHER *tls13_cipher = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
-  const SSL_CIPHER *tls12_cipher = SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_128_SHA & 0xFFFF);
+  const SSL_CIPHER *tls13_cipher =
+      SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
+  const SSL_CIPHER *tls12_cipher =
+      SSL_get_cipher_by_value(TLS1_CK_RSA_WITH_AES_128_SHA & 0xFFFF);
   ASSERT_TRUE(tls13_cipher);
   ASSERT_TRUE(tls12_cipher);
 
@@ -1062,7 +1073,7 @@ TEST(SSLTest, CheckSSLCipherInheritance) {
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Default) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   // Configure only TLS 1.3.
@@ -1072,16 +1083,20 @@ TEST(SSLTest, SSLGetCiphersReturnsTLS13Default) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
   bssl::UniquePtr<SSL> client, server;
-  // Have to ensure config is not shed per current implementation of SSL_get_ciphers.
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(), server_ctx.get(),
-    ClientConfig(), false));
+  // Have to ensure config is not shed per current implementation of
+  // SSL_get_ciphers.
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), ClientConfig(), false));
 
   // Ensure default TLS 1.3 Ciphersuites are present
-  const SSL_CIPHER *cipher1 = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
+  const SSL_CIPHER *cipher1 =
+      SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
   ASSERT_TRUE(cipher1);
-  const SSL_CIPHER *cipher2 = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
+  const SSL_CIPHER *cipher2 =
+      SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
   ASSERT_TRUE(cipher2);
-  const SSL_CIPHER *cipher3 = SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF);
+  const SSL_CIPHER *cipher3 =
+      SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF);
   ASSERT_TRUE(cipher3);
 
   STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
@@ -1100,7 +1115,7 @@ TEST(SSLTest, TLS13ConfigCiphers) {
   // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -1110,11 +1125,14 @@ TEST(SSLTest, TLS13ConfigCiphers) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
   // Restrict TLS 1.3 ciphersuite
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"));
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(
+      client_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(
+      server_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify ciphersuites on the SSL object, this modifies ssl->config
   ASSERT_TRUE(SSL_set_ciphersuites(client.get(), "TLS_AES_256_GCM_SHA384"));
@@ -1125,22 +1143,27 @@ TEST(SSLTest, TLS13ConfigCiphers) {
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_SHARED_CIPHER);
 
   bssl::UniquePtr<SSL> client2, server2;
-  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify ciphersuites on the SSL object, this modifies ssl->config
-  ASSERT_TRUE(SSL_set_ciphersuites(client2.get(), "TLS_CHACHA20_POLY1305_SHA256"));
-  ASSERT_TRUE(SSL_set_ciphersuites(server2.get(), "TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(
+      SSL_set_ciphersuites(client2.get(), "TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(
+      SSL_set_ciphersuites(server2.get(), "TLS_CHACHA20_POLY1305_SHA256"));
 
   ASSERT_TRUE(CompleteHandshakes(client2.get(), server2.get()));
-  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(client2.get())), (uint32_t)TLS1_3_CK_CHACHA20_POLY1305_SHA256);
-  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server2.get())), (uint32_t)TLS1_3_CK_CHACHA20_POLY1305_SHA256);
+  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(client2.get())),
+            (uint32_t)TLS1_3_CK_CHACHA20_POLY1305_SHA256);
+  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server2.get())),
+            (uint32_t)TLS1_3_CK_CHACHA20_POLY1305_SHA256);
 }
 
 TEST(SSLTest, TLS13ConfigCtxInteraction) {
   // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -1150,11 +1173,14 @@ TEST(SSLTest, TLS13ConfigCtxInteraction) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
   // Restrict TLS 1.3 ciphersuite on the SSL_CTX objects
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256"));
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify TLS 1.3 ciphersuites for client's SSL object, but not server
   ASSERT_TRUE(SSL_set_ciphersuites(client.get(), "TLS_AES_256_GCM_SHA384"));
@@ -1167,7 +1193,8 @@ TEST(SSLTest, TLS13ConfigCtxInteraction) {
   ERR_clear_error();
 
   bssl::UniquePtr<SSL> client2, server2;
-  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify TLS 1.3 ciphersuites for server2 SSL object, but not client
   ASSERT_TRUE(SSL_set_ciphersuites(server2.get(), "TLS_AES_256_GCM_SHA384"));
@@ -1182,7 +1209,7 @@ TEST(SSLTest, TLS12ConfigCiphers) {
   // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -1192,15 +1219,23 @@ TEST(SSLTest, TLS12ConfigCiphers) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
 
   // Restrict TLS 1.2 ciphersuite
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA:TLS_RSA_WITH_AES_256_GCM_SHA384"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA:TLS_RSA_WITH_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(
+      client_ctx.get(),
+      "TLS_RSA_WITH_AES_256_CBC_SHA:TLS_RSA_WITH_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(
+      server_ctx.get(),
+      "TLS_RSA_WITH_AES_256_CBC_SHA:TLS_RSA_WITH_AES_256_GCM_SHA384"));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
-  // Modify ciphersuites on the SSL object and introduce mismatch, this modifies ssl->config
-  ASSERT_TRUE(SSL_set_cipher_list(client.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
-  ASSERT_TRUE(SSL_set_cipher_list(server.get(), "TLS_RSA_WITH_AES_256_GCM_SHA384"));
+  // Modify ciphersuites on the SSL object and introduce mismatch, this modifies
+  // ssl->config
+  ASSERT_TRUE(
+      SSL_set_cipher_list(client.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  ASSERT_TRUE(
+      SSL_set_cipher_list(server.get(), "TLS_RSA_WITH_AES_256_GCM_SHA384"));
 
   // Handshake should fail as config objects have no shared cipher.
   ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
@@ -1209,22 +1244,28 @@ TEST(SSLTest, TLS12ConfigCiphers) {
   ERR_clear_error();
 
   bssl::UniquePtr<SSL> client2, server2;
-  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(),
+                                    server_ctx.get()));
 
-  // Modify ciphersuites on the SSL object with a new third cipher, this modifies ssl->config
-  ASSERT_TRUE(SSL_set_cipher_list(client2.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
-  ASSERT_TRUE(SSL_set_cipher_list(server2.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  // Modify ciphersuites on the SSL object with a new third cipher, this
+  // modifies ssl->config
+  ASSERT_TRUE(
+      SSL_set_cipher_list(client2.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
+  ASSERT_TRUE(
+      SSL_set_cipher_list(server2.get(), "TLS_RSA_WITH_AES_128_CBC_SHA"));
 
   ASSERT_TRUE(CompleteHandshakes(client2.get(), server2.get()));
-  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(client2.get())), (uint32_t)TLS1_CK_RSA_WITH_AES_128_SHA);
-  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server2.get())), (uint32_t)TLS1_CK_RSA_WITH_AES_128_SHA);
+  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(client2.get())),
+            (uint32_t)TLS1_CK_RSA_WITH_AES_128_SHA);
+  ASSERT_EQ(SSL_CIPHER_get_id(SSL_get_current_cipher(server2.get())),
+            (uint32_t)TLS1_CK_RSA_WITH_AES_128_SHA);
 }
 
 TEST(SSLTest, TLS12ConfigCtxInteraction) {
   // This configures SSL_CTX objects with default TLS 1.2 and 1.3 ciphersuites
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -1234,14 +1275,18 @@ TEST(SSLTest, TLS12ConfigCtxInteraction) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
 
   // Restrict TLS 1.2 ciphersuites on the SSL_CTX objects
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
-  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(), "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                      "TLS_RSA_WITH_AES_256_CBC_SHA"));
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(server_ctx.get(),
+                                      "TLS_RSA_WITH_AES_256_CBC_SHA"));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify TLS 1.2 ciphersuite for client's SSL object, but not server
-  ASSERT_TRUE(SSL_set_cipher_list(client.get(), "TLS_RSA_WITH_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(
+      SSL_set_cipher_list(client.get(), "TLS_RSA_WITH_AES_256_GCM_SHA384"));
 
   // Handshake should fail as client SSL config and server CTX objects have no
   // shared TLS 1.2 cipher.
@@ -1251,10 +1296,12 @@ TEST(SSLTest, TLS12ConfigCtxInteraction) {
   ERR_clear_error();
 
   bssl::UniquePtr<SSL> client2, server2;
-  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client2, &server2, client_ctx.get(),
+                                    server_ctx.get()));
 
   // Modify TLS 1.2 ciphersuites for server2 SSL object, but not client
-  ASSERT_TRUE(SSL_set_cipher_list(server2.get(), "TLS_RSA_WITH_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(
+      SSL_set_cipher_list(server2.get(), "TLS_RSA_WITH_AES_256_GCM_SHA384"));
 
   // Handshake should fail as server SSL config and client CTX objects have no
   // shared TLS 1.2 cipher.
@@ -1265,13 +1312,14 @@ TEST(SSLTest, TLS12ConfigCtxInteraction) {
 TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
   // Configure custom TLS 1.3 Ciphersuites
   SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256");
-  SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384");
+  SSL_CTX_set_ciphersuites(client_ctx.get(),
+                           "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384");
 
   // Configure only TLS 1.3.
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
@@ -1280,17 +1328,21 @@ TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
   bssl::UniquePtr<SSL> client, server;
-  // Have to ensure config is not shed per current implementation of SSL_get_ciphers.
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(), server_ctx.get(),
-    ClientConfig(), false));
+  // Have to ensure config is not shed per current implementation of
+  // SSL_get_ciphers.
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), ClientConfig(), false));
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
   // Ensure default TLS 1.3 Ciphersuites are present
-  const SSL_CIPHER *cipher1 = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
+  const SSL_CIPHER *cipher1 =
+      SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
   ASSERT_TRUE(cipher1);
-  const SSL_CIPHER *cipher2 = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
+  const SSL_CIPHER *cipher2 =
+      SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
   ASSERT_TRUE(cipher2);
-  const SSL_CIPHER *cipher3 = SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF);
+  const SSL_CIPHER *cipher3 =
+      SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF);
   ASSERT_TRUE(cipher3);
 
   STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
@@ -1307,16 +1359,17 @@ TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {
 
 TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
 
   // configure client to add fake ciphersuite
   SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
 
   // There will be no cipher match, handshake will not succeed.
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
-                                       "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(),
-                                               "TLS_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(
+      client_ctx.get(), "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(
+      SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256"));
 
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
@@ -1325,8 +1378,8 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server,
-                                    client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   const unsigned char *tmp = nullptr;
   // Handshake not completed, getting ciphers should fail
@@ -1337,7 +1390,7 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   // This should fail, but should be able to inspect client ciphers still
   ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
 
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t)0);
 
   const unsigned char expected_cipher_bytes[] = {0x13, 0x02, 0x13, 0x03};
   const unsigned char *p = nullptr;
@@ -1352,13 +1405,13 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
 
   // Sanity check for first cipher ID after grease value
-  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  uint16_t cipher_val = CRYPTO_load_u16_be(p + 2);
   ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
 
   // Check order and validity of the rest of the client cipher suites,
   // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
-            Bytes(p+2, sizeof(expected_cipher_bytes)));
+            Bytes(p + 2, sizeof(expected_cipher_bytes)));
 
   // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
   // (grease value should not be included). Even though the handshake fails,
@@ -1368,13 +1421,15 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
 
 TEST(SSLTest, GetClientCiphers1_3) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
 
   // configure client to add fake ciphersuite
   SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
 
   ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
-                                       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+                                       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_"
+                                       "SHA384:TLS_CHACHA20_POLY1305_SHA256"));
 
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
@@ -1382,8 +1437,8 @@ TEST(SSLTest, GetClientCiphers1_3) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server,
-                                    client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   const unsigned char *tmp = nullptr;
   // Handshake not completed, getting ciphers should fail
@@ -1393,9 +1448,10 @@ TEST(SSLTest, GetClientCiphers1_3) {
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t)0);
 
-  const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13,
+                                                 0x02, 0x13, 0x03};
   const unsigned char *p = nullptr;
 
   // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
@@ -1408,13 +1464,13 @@ TEST(SSLTest, GetClientCiphers1_3) {
   ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
 
   // Sanity check for first cipher ID after grease value
-  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  uint16_t cipher_val = CRYPTO_load_u16_be(p + 2);
   ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
 
   // Check order and validity of the rest of the client cipher suites,
   // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
-            Bytes(p+2, sizeof(expected_cipher_bytes)));
+            Bytes(p + 2, sizeof(expected_cipher_bytes)));
 
   // Parsed ciphersuite list should only have 3 valid ciphersuites as configured
   // (grease value should not be included)
@@ -1424,21 +1480,22 @@ TEST(SSLTest, GetClientCiphers1_3) {
 TEST(SSLTest, GetClientCiphers1_2) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+      CreateContextWithTestCertificate(TLS_method());
 
   // configure client to add fake ciphersuite
   SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
 
   ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
-                                      "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"));
+                                      "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:"
+                                      "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server,
-                                    client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   const unsigned char *tmp = nullptr;
   // Handshake not completed, getting ciphers should fail
@@ -1448,7 +1505,7 @@ TEST(SSLTest, GetClientCiphers1_2) {
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t)0);
 
   const unsigned char expected_cipher_bytes[] = {0xC0, 0x2C, 0xC0, 0x13};
   const unsigned char *p = nullptr;
@@ -1463,13 +1520,13 @@ TEST(SSLTest, GetClientCiphers1_2) {
   ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
 
   // Sanity check for first cipher ID after grease value
-  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  uint16_t cipher_val = CRYPTO_load_u16_be(p + 2);
   ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
 
   // Check order and validity of the rest of the client cipher suites,
   // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
-            Bytes(p+2, sizeof(expected_cipher_bytes)));
+            Bytes(p + 2, sizeof(expected_cipher_bytes)));
 
   // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
   // (grease value should not be included)
@@ -1495,21 +1552,21 @@ TEST(SSLTest, DISABLED_ApplyHandoffRemovesUnsupportedCiphers) {
   // and modify serialize_features() to emit only cipher 0x0A.
 
   uint8_t handoff[] = {
-    0x30, 0x81, 0x9a, 0x02, 0x01, 0x00, 0x04, 0x00, 0x04, 0x81, 0x82, 0x01,
-    0x00, 0x00, 0x7e, 0x03, 0x03, 0x30, 0x8e, 0x8f, 0x79, 0xd2, 0x87, 0x39,
-    0xc2, 0x23, 0x23, 0x13, 0xca, 0x3c, 0x80, 0x44, 0xfd, 0x80, 0x83, 0x62,
-    0x3c, 0xcc, 0xf8, 0x76, 0xd3, 0x62, 0xbb, 0x54, 0xe3, 0xc4, 0x39, 0x24,
-    0xa5, 0x00, 0x00, 0x1e, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30,
-    0xcc, 0xa9, 0xcc, 0xa8, 0xc0, 0x09, 0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14,
-    0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x35, 0x00, 0x0a, 0x01, 0x00,
-    0x00, 0x37, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00,
-    0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
-    0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00,
-    0x14, 0x00, 0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08,
-    0x05, 0x05, 0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01, 0x04, 0x02, 0x00,
-    0x0a, 0x04, 0x0a, 0x00, 0x15, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19, 0x00,
-    0x1d,
-};
+      0x30, 0x81, 0x9a, 0x02, 0x01, 0x00, 0x04, 0x00, 0x04, 0x81, 0x82, 0x01,
+      0x00, 0x00, 0x7e, 0x03, 0x03, 0x30, 0x8e, 0x8f, 0x79, 0xd2, 0x87, 0x39,
+      0xc2, 0x23, 0x23, 0x13, 0xca, 0x3c, 0x80, 0x44, 0xfd, 0x80, 0x83, 0x62,
+      0x3c, 0xcc, 0xf8, 0x76, 0xd3, 0x62, 0xbb, 0x54, 0xe3, 0xc4, 0x39, 0x24,
+      0xa5, 0x00, 0x00, 0x1e, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30,
+      0xcc, 0xa9, 0xcc, 0xa8, 0xc0, 0x09, 0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14,
+      0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x35, 0x00, 0x0a, 0x01, 0x00,
+      0x00, 0x37, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00,
+      0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
+      0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00,
+      0x14, 0x00, 0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08,
+      0x05, 0x05, 0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01, 0x04, 0x02, 0x00,
+      0x0a, 0x04, 0x0a, 0x00, 0x15, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19, 0x00,
+      0x1d,
+  };
 
   EXPECT_EQ(22u, sk_SSL_CIPHER_num(SSL_get_ciphers(server.get())));
   ASSERT_TRUE(
@@ -1558,4 +1615,3 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
 }
 
 BSSL_NAMESPACE_END
-

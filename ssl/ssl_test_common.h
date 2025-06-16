@@ -7,8 +7,8 @@
 
 #ifndef SSL_TEST_H
 #define SSL_TEST_H
-#include "openssl/base.h"
 #include "internal.h"
+#include "openssl/base.h"
 
 #include <gtest/gtest.h>
 
@@ -58,19 +58,19 @@ struct SSLTestParam {
 static const bool TRANSFER_SSL = true;
 
 static const SSLTestParam kSSLTestParams[] = {
-  {!TRANSFER_SSL},
-  {TRANSFER_SSL},
+    {!TRANSFER_SSL},
+    {TRANSFER_SSL},
 };
 
 static const VersionParam kAllVersions[] = {
-  {TLS1_VERSION, VersionParam::is_tls, "TLS1", !TRANSFER_SSL},
-  {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1", !TRANSFER_SSL},
-  {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2", !TRANSFER_SSL},
-  {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3", !TRANSFER_SSL},
-  {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1", !TRANSFER_SSL},
-  {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2", !TRANSFER_SSL},
-  {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2_SSL_TRANSFER", TRANSFER_SSL},
-  {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3_SSL_TRANSFER", TRANSFER_SSL},
+    {TLS1_VERSION, VersionParam::is_tls, "TLS1", !TRANSFER_SSL},
+    {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1", !TRANSFER_SSL},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2", !TRANSFER_SSL},
+    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3", !TRANSFER_SSL},
+    {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1", !TRANSFER_SSL},
+    {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2", !TRANSFER_SSL},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2_SSL_TRANSFER", TRANSFER_SSL},
+    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3_SSL_TRANSFER", TRANSFER_SSL},
 };
 
 uint16_t EpochFromSequence(uint64_t seq);
@@ -85,20 +85,20 @@ struct ClientConfig {
 };
 
 void ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-                                SSL_SESSION *session, bool want_reused);
+                         SSL_SESSION *session, bool want_reused);
 
 UniquePtr<SSL_SESSION> CreateClientSession(
     SSL_CTX *client_ctx, SSL_CTX *server_ctx,
     const ClientConfig &config = ClientConfig());
 
 void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx,
-                        bssl::UniquePtr<SSL> *out);
+                 bssl::UniquePtr<SSL> *out);
 
 bool ConnectClientAndServer(UniquePtr<SSL> *out_client,
-                                   UniquePtr<SSL> *out_server,
-                                   SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-                                   const ClientConfig &config = ClientConfig(),
-                                   bool shed_handshake_config = true);
+                            UniquePtr<SSL> *out_server, SSL_CTX *client_ctx,
+                            SSL_CTX *server_ctx,
+                            const ClientConfig &config = ClientConfig(),
+                            bool shed_handshake_config = true);
 
 bool FlushNewSessionTickets(SSL *client, SSL *server);
 
@@ -121,15 +121,13 @@ UniquePtr<EVP_PKEY> GetED25519TestKey();
 
 bool ExpectSingleError(int lib, int reason);
 
-UniquePtr<X509> X509FromBuffer(
-    UniquePtr<CRYPTO_BUFFER> buffer);
+UniquePtr<X509> X509FromBuffer(UniquePtr<CRYPTO_BUFFER> buffer);
 
 const char *GetVersionName(uint16_t version);
 
 void FrozenTimeCallback(const SSL *ssl, timeval *out_clock);
 
-bool ChainsEqual(STACK_OF(X509) *chain,
-                        const std::vector<X509 *> &expected);
+bool ChainsEqual(STACK_OF(X509) *chain, const std::vector<X509 *> &expected);
 
 int SaveLastSession(SSL *ssl, SSL_SESSION *session);
 
@@ -146,8 +144,8 @@ UniquePtr<EVP_PKEY> GetTestKey();
 UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem);
 
 bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
-                                  bssl::UniquePtr<SSL> *out_server,
-                                  SSL_CTX *client_ctx, SSL_CTX *server_ctx);
+                           bssl::UniquePtr<SSL> *out_server,
+                           SSL_CTX *client_ctx, SSL_CTX *server_ctx);
 
 bool CompleteHandshakes(SSL *client, SSL *server);
 
@@ -157,4 +155,4 @@ UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem);
 
 BSSL_NAMESPACE_END
 
-#endif //SSL_TEST_H
+#endif  // SSL_TEST_H

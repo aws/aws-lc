@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 
-#include <openssl/ssl.h>
-#include <openssl/rand.h>
 #include <openssl/hmac.h>
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
 #include <thread>
 
-#include "ssl_test_common.h"
 #include "internal.h"
+#include "ssl_test_common.h"
 
 #include "../crypto/test/test_util.h"
 
@@ -17,7 +17,8 @@ BSSL_NAMESPACE_BEGIN
 // SSLVersionTest executes its test cases under all available protocol versions.
 // Test cases call |Connect| to create a connection using context objects with
 // the protocol version fixed to the current version under test.
-class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam, int>> {
+class SSLVersionTest
+    : public ::testing::TestWithParam<::std::tuple<VersionParam, int>> {
  protected:
   SSLVersionTest() : cert_(GetTestCertificate()), key_(GetTestKey()) {}
 
@@ -64,9 +65,7 @@ class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam
     return connected;
   }
 
-  VersionParam getVersionParam() const {
-    return std::get<0>(GetParam());
-  }
+  VersionParam getVersionParam() const { return std::get<0>(GetParam()); }
 
   void TransferServerSSL() {
     if (!getVersionParam().transfer_ssl) {
@@ -82,13 +81,9 @@ class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam
     return getVersionParam().ssl_method == VersionParam::is_dtls;
   }
 
-  size_t read_ahead_buffer_size() const {
-    return std::get<1>(GetParam());
-  }
+  size_t read_ahead_buffer_size() const { return std::get<1>(GetParam()); }
 
-  bool enable_read_ahead() const {
-    return read_ahead_buffer_size() != 0;
-  }
+  bool enable_read_ahead() const { return read_ahead_buffer_size() != 0; }
 
   void CheckCounterInit() {
     EXPECT_EQ(SSL_CTX_sess_connect(client_ctx_.get()), 0);
@@ -122,12 +117,16 @@ class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam
   bssl::UniquePtr<EVP_PKEY> key_;
 };
 
-INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
-                          testing::Combine(::testing::ValuesIn(kAllVersions), testing::Values(0, 128, 512, 8192, 65535)),
-                          [](const testing::TestParamInfo<::std::tuple<VersionParam, int>>& test_info) {
-                            std::string test_name = std::string(std::get<0>(test_info.param).name) + "_BufferSize_";
-                            return test_name + std::to_string(std::get<1>(test_info.param));
-                          });
+INSTANTIATE_TEST_SUITE_P(
+    WithVersion, SSLVersionTest,
+    testing::Combine(::testing::ValuesIn(kAllVersions),
+                     testing::Values(0, 128, 512, 8192, 65535)),
+    [](const testing::TestParamInfo<::std::tuple<VersionParam, int>>
+           &test_info) {
+      std::string test_name =
+          std::string(std::get<0>(test_info.param).name) + "_BufferSize_";
+      return test_name + std::to_string(std::get<1>(test_info.param));
+    });
 
 TEST_P(SSLVersionTest, SequenceNumber) {
   CheckCounterInit();
@@ -186,7 +185,7 @@ TEST_P(SSLVersionTest, OneSidedShutdown) {
   ASSERT_EQ(SSL_shutdown(client_.get()), 0);
 
   // Reading from the server should consume the EOF.
-  uint8_t byte;
+  uint8_t byte = 0;
   ASSERT_EQ(SSL_read(server_.get(), &byte, 1), 0);
   ASSERT_EQ(SSL_get_error(server_.get(), 0), SSL_ERROR_ZERO_RETURN);
 
@@ -218,8 +217,8 @@ TEST_P(SSLVersionTest, WriteAfterShutdown) {
     ASSERT_EQ(SSL_shutdown(ssl), 0);
 
     // |ssl| should have written an alert to the transport.
-    const uint8_t *unused;
-    size_t len;
+    const uint8_t *unused = nullptr;
+    size_t len = 0;
     ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
     EXPECT_NE(0u, len);
     EXPECT_TRUE(BIO_reset(mem.get()));
@@ -264,8 +263,8 @@ TEST_P(SSLVersionTest, WriteAfterReadSentFatalAlert) {
     EXPECT_EQ(-1, SSL_read(ssl, buf, sizeof(buf)));
 
     // |ssl| should have written an alert to the transport.
-    const uint8_t *unused;
-    size_t len;
+    const uint8_t *unused = nullptr;
+    size_t len = 0;
     ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
     EXPECT_NE(0u, len);
     EXPECT_TRUE(BIO_reset(mem.get()));
@@ -329,8 +328,8 @@ TEST_P(SSLVersionTest, WriteAfterHandshakeSentFatalAlert) {
 
     // |ssl| should have written an alert (and, in the client's case, a
     // ClientHello) to the transport.
-    const uint8_t *unused;
-    size_t len;
+    const uint8_t *unused = nullptr;
+    size_t len = 0;
     ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
     EXPECT_NE(0u, len);
     EXPECT_TRUE(BIO_reset(mem.get()));
@@ -426,8 +425,8 @@ TEST_P(SSLVersionTest, RetainOnlySHA256OfCerts) {
   SSL_SESSION *session = SSL_get_session(server_.get());
   EXPECT_TRUE(SSL_SESSION_has_peer_sha256(session));
 
-  const uint8_t *peer_sha256;
-  size_t peer_sha256_len;
+  const uint8_t *peer_sha256 = nullptr;
+  size_t peer_sha256_len = 0;
   SSL_SESSION_get0_peer_sha256(session, &peer_sha256, &peer_sha256_len);
   EXPECT_EQ(Bytes(cert_sha256), Bytes(peer_sha256, peer_sha256_len));
 }
@@ -559,10 +558,6 @@ static void ExpectTicketKeyChanged(SSL_CTX *ctx, uint8_t *inout_key,
 
 
 
-
-
-
-
 static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
                                EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
                                int encrypt) {
@@ -586,8 +581,8 @@ static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
 }
 
 static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
-  const uint8_t *ticket;
-  size_t ticket_len;
+  const uint8_t *ticket = nullptr;
+  size_t ticket_len = 0;
   SSL_SESSION_get0_ticket(session, &ticket, &ticket_len);
   if (ticket_len < 16 + 16 + SHA256_DIGEST_LENGTH) {
     return false;
@@ -604,7 +599,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
   static const uint8_t kZeros[16] = {0};
   const uint8_t *iv = ticket + 16;
   bssl::ScopedEVP_CIPHER_CTX ctx;
-  int len1, len2;
+  int len1 = 0, len2 = 0;
   if (len > INT_MAX ||
       !EVP_DecryptInit_ex(ctx.get(), EVP_aes_128_cbc(), nullptr, kZeros, iv) ||
       !EVP_DecryptUpdate(ctx.get(), plaintext.get(), &len1, ciphertext,
@@ -882,8 +877,8 @@ TEST_P(SSLVersionTest, SNICallback) {
   EXPECT_EQ(X509_cmp(peer.get(), cert2.get()), 0);
 
   // The client should have received |server_ctx2|'s SCT list.
-  const uint8_t *data;
-  size_t len;
+  const uint8_t *data = nullptr;
+  size_t len = 0;
   SSL_get0_signed_cert_timestamp_list(client_.get(), &data, &len);
   EXPECT_EQ(Bytes(kSCTList), Bytes(data, len));
 
@@ -912,18 +907,23 @@ TEST_P(SSLVersionTest, Version) {
   EXPECT_EQ(strcmp(version_name, client_name), 0);
   EXPECT_EQ(strcmp(version_name, server_name), 0);
 
-  // Client/server version equality asserted above, assert equality for cipher here.
+  // Client/server version equality asserted above, assert equality for cipher
+  // here.
   ASSERT_TRUE(SSL_get_current_cipher(client_.get()));
   ASSERT_TRUE(SSL_get_current_cipher(server_.get()));
-  EXPECT_EQ(SSL_get_current_cipher(client_.get())->id, SSL_get_current_cipher(server_.get())->id);
+  EXPECT_EQ(SSL_get_current_cipher(client_.get())->id,
+            SSL_get_current_cipher(server_.get())->id);
   const uint16_t version = SSL_version(client_.get());
   if (version == TLS1_2_VERSION || version == TLS1_3_VERSION) {
     const char *version_str = SSL_get_version(client_.get());
-    EXPECT_STREQ(version_str, SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
-  } else if (version == DTLS1_2_VERSION) {    // ciphers don't differentiate D/TLS
-    EXPECT_STREQ("TLSv1.2", SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+    EXPECT_STREQ(version_str,
+                 SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  } else if (version == DTLS1_2_VERSION) {  // ciphers don't differentiate D/TLS
+    EXPECT_STREQ("TLSv1.2",
+                 SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
   } else {
-    EXPECT_STREQ("TLSv1/SSLv3", SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+    EXPECT_STREQ("TLSv1/SSLv3",
+                 SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
   }
 }
 
@@ -1006,7 +1006,7 @@ TEST_P(SSLVersionTest, SSLClientCiphers) {
   // Client ciphers ARE NOT SERIALIZED, so skip tests that rely on transfer or
   // serialization of |ssl| and accompanying objects under test.
   if (getVersionParam().transfer_ssl) {
-      return;
+    return;
   }
 
   EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
@@ -1018,7 +1018,8 @@ TEST_P(SSLVersionTest, SSLClientCiphers) {
   // The client should still have no view of the server's preferences, but the
   // server should have seen at least one cipher from the client.
   EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
-  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
+  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())),
+            (size_t)0);
 
   // With config shedding disabled, clearing |server| shouldn't error and
   // should reset server's client ciphers
@@ -1030,7 +1031,8 @@ TEST_P(SSLVersionTest, SSLClientCiphers) {
 
   // These should be unaffected by config shedding
   EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
-  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
+  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())),
+            (size_t)0);
 }
 
 
@@ -1257,7 +1259,7 @@ TEST_P(SSLVersionTest, SessionTicketThreads) {
     }
   }
 }
-#endif // OPENSSL_THREADS
+#endif  // OPENSSL_THREADS
 
 
 TEST_P(SSLVersionTest, SSLWriteRetry) {
@@ -1396,8 +1398,8 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
         // own SSLBuffer freeing up space for the write above
         ASSERT_EQ(ret, 2 * kChunkLen);
       } else {
-        // Otherwise, although the first half made it to the transport, the second
-        // half is blocked.
+        // Otherwise, although the first half made it to the transport, the
+        // second half is blocked.
         ASSERT_EQ(ret, -1);
         ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
         // Check the first half and make room for another record.
@@ -1405,9 +1407,10 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
         ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
         count--;
 
-        // Retrying with fewer bytes than previously attempted is an error. If the
-        // input length is less than the number of bytes successfully written, the
-        // check happens at a different point, with a different error.
+        // Retrying with fewer bytes than previously attempted is an error. If
+        // the input length is less than the number of bytes successfully
+        // written, the check happens at a different point, with a different
+        // error.
         //
         // TODO(davidben): Should these cases use the same error?
         ASSERT_EQ(
@@ -1461,13 +1464,13 @@ TEST_P(SSLVersionTest, RecordCallback) {
       // Sanity-check that the record header is plausible.
       CBS cbs;
       CBS_init(&cbs, reinterpret_cast<const uint8_t *>(buf), len);
-      uint8_t type;
-      uint16_t record_version, length;
+      uint8_t type = 0;
+      uint16_t record_version = 0, length = 0;
       ASSERT_TRUE(CBS_get_u8(&cbs, &type));
       ASSERT_TRUE(CBS_get_u16(&cbs, &record_version));
       EXPECT_EQ(record_version & 0xff00, version() & 0xff00);
       if (is_dtls()) {
-        uint16_t epoch;
+        uint16_t epoch = 0;
         ASSERT_TRUE(CBS_get_u16(&cbs, &epoch));
         EXPECT_TRUE(epoch == 0 || epoch == 1) << "Invalid epoch: " << epoch;
         ASSERT_TRUE(CBS_skip(&cbs, 6));
@@ -1577,7 +1580,7 @@ TEST_P(SSLVersionTest, SmallBuffer) {
     SSL_set_accept_state(server.get());
 
     // Use a tiny buffer.
-    BIO *bio1, *bio2;
+    BIO *bio1 = nullptr, *bio2 = nullptr;
     ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
 
     // SSL_set_bio takes ownership.
@@ -1704,7 +1707,7 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   EXPECT_EQ(0, SSL_pending(client_.get()));
   EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
-  size_t buf_len;
+  size_t buf_len = 0;
   ASSERT_EQ(1, SSL_write_ex(server_.get(), "hello", 5, &buf_len));
   ASSERT_EQ(buf_len, (size_t)5);
   ASSERT_EQ(1, SSL_write_ex(server_.get(), "world", 5, &buf_len));
@@ -1755,9 +1758,9 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
 
 TEST_P(SSLVersionTest, ReadAhead) {
   ASSERT_TRUE(Connect());
-  size_t buf_len;
+  size_t buf_len = 0;
   std::string test_string = "Hello, world!";
-  for (char & i : test_string) {
+  for (char &i : test_string) {
     ASSERT_EQ(1, SSL_write_ex(server_.get(), &i, 1, &buf_len));
   }
 
@@ -1820,7 +1823,7 @@ TEST_P(SSLVersionTest, FakeIDsForTickets) {
   ASSERT_TRUE(session);
 
   EXPECT_TRUE(SSL_SESSION_has_ticket(session.get()));
-  unsigned session_id_length;
+  unsigned session_id_length = 0;
   SSL_SESSION_get_id(session.get(), &session_id_length);
   EXPECT_NE(session_id_length, 0u);
 }
@@ -1871,8 +1874,9 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
     EXPECT_TRUE(SSL_get_peer_cert_chain(ssl));
     bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
     EXPECT_TRUE(peer);
-    STACK_OF(X509) *verified_chain= SSL_get0_verified_chain(ssl);
-    // This test sets a custom verifier callback which doesn't actually do any verification
+    STACK_OF(X509) *verified_chain = SSL_get0_verified_chain(ssl);
+    // This test sets a custom verifier callback which doesn't actually do any
+    // verification
     EXPECT_FALSE(verified_chain);
     EXPECT_TRUE(SSL_get_current_cipher(ssl));
     EXPECT_TRUE(SSL_get_group_id(ssl));
@@ -1905,14 +1909,16 @@ TEST_P(SSLVersionTest, SimpleVerifiedChain) {
 
   UniquePtr<SSL> client_ssl, server_ssl;
   ClientConfig config;
-  ASSERT_TRUE(ConnectClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(),
-                                     server_ctx_.get(), config));
+  ASSERT_TRUE(ConnectClientAndServer(
+      &client_ssl, &server_ssl, client_ctx_.get(), server_ctx_.get(), config));
 
   STACK_OF(X509) *client_chain = SSL_get_peer_full_cert_chain(client_ssl.get());
-  STACK_OF(X509) *verified_client_chain = SSL_get0_verified_chain(client_ssl.get());
+  STACK_OF(X509) *verified_client_chain =
+      SSL_get0_verified_chain(client_ssl.get());
   EXPECT_TRUE(verified_client_chain);
 
-  STACK_OF(X509) *verified_server_chain = SSL_get0_verified_chain(server_ssl.get());
+  STACK_OF(X509) *verified_server_chain =
+      SSL_get0_verified_chain(server_ssl.get());
   // The client didn't send a certificate so the server shouldn't have anything
   EXPECT_FALSE(verified_server_chain);
 
@@ -1952,18 +1958,20 @@ TEST_P(SSLVersionTest, VerifiedChain) {
 
   UniquePtr<SSL> client_ssl, server_ssl;
   ClientConfig config;
-  ASSERT_TRUE(ConnectClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(),
-                                     server_ctx_.get(), config));
+  ASSERT_TRUE(ConnectClientAndServer(
+      &client_ssl, &server_ssl, client_ctx_.get(), server_ctx_.get(), config));
 
   // The client didn't send a certificate so the server shouldn't have anything
-  STACK_OF(X509) *verified_client_chain = SSL_get0_verified_chain(server_ssl.get());
+  STACK_OF(X509) *verified_client_chain =
+      SSL_get0_verified_chain(server_ssl.get());
   EXPECT_FALSE(verified_client_chain);
   STACK_OF(X509) *client_chain = SSL_get_peer_full_cert_chain(server_ssl.get());
   EXPECT_FALSE(client_chain);
 
   // The server sent a chain that the client can verify, the client directly
   // trusts the server's certificate
-  STACK_OF(X509) *verified_server_chain = SSL_get0_verified_chain(client_ssl.get());
+  STACK_OF(X509) *verified_server_chain =
+      SSL_get0_verified_chain(client_ssl.get());
   EXPECT_EQ(sk_X509_num(verified_server_chain), 1UL);
   EXPECT_EQ(X509_cmp(sk_X509_value(verified_server_chain, 0), cert_.get()), 0);
 
@@ -1986,7 +1994,8 @@ TEST_P(SSLVersionTest, FailedHandshakeVerifiedChain) {
   ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
   UniquePtr<SSL> client_ssl, server_ssl;
 
-  ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(), server_ctx_.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(),
+                                    server_ctx_.get()));
   ASSERT_FALSE(CompleteHandshakes(client_ssl.get(), server_ssl.get()));
   EXPECT_NE(SSL_get_verify_result(client_ssl.get()), X509_V_OK);
 
@@ -1997,7 +2006,8 @@ TEST_P(SSLVersionTest, FailedHandshakeVerifiedChain) {
 
 
   // For a failed handshake SSL_get0_verified_chain will return null
-  STACK_OF(X509) *verified_client_chain = SSL_get0_verified_chain(client_ssl.get());
+  STACK_OF(X509) *verified_client_chain =
+      SSL_get0_verified_chain(client_ssl.get());
   EXPECT_FALSE(verified_client_chain);
 }
 
@@ -2285,7 +2295,7 @@ TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
 
 static Span<const uint8_t> SessionIDOf(const SSL *ssl) {
   const SSL_SESSION *session = SSL_get_session(ssl);
-  unsigned len;
+  unsigned len = 0;
   const uint8_t *data = SSL_SESSION_get_id(session, &len);
   return MakeConstSpan(data, len);
 }

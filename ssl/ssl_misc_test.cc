@@ -5,8 +5,8 @@
 
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
-#include "ssl_test_common.h"
 #include "internal.h"
+#include "ssl_test_common.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -130,67 +130,67 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd809"
      "8dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb2"
      "0302011da206040474657374a7030101ff020108020100a0030101ff"},
-     // In runner.go, the test case
-     // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
-     // below bytes by adding print statement on the output of |SSL_to_bytes| in
-     // bssl_shim.cc.
-     // We've bumped the buffer size in the |previous_client/server_finished|
-     // fields. This verifies that the original size is parsable and reencoded
-     // with the new size.
+    // In runner.go, the test case
+    // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
+    // below bytes by adding print statement on the output of |SSL_to_bytes| in
+    // bssl_shim.cc.
+    // We've bumped the buffer size in the |previous_client/server_finished|
+    // fields. This verifies that the original size is parsable and reencoded
+    // with the new size.
     {"308203883082038402010102020304020240003082036a020102040800000000000000000"
-      "408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38a6"
-      "b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3888"
-      "3d33f236a04020000020100020101040c000000000000000000000000020100040c000000"
-      "000000000000000000020100020100020100020100a04e304c02010102020304040213010"
-      "40004200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da1"
-      "04020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374a"
-      "b03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
-      "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c0000000000000000000000000"
-      "0000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c16b"
-      "43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a178c"
-      "e69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c02180000000000000000"
-      "0000000000000000b503020120b88201700482016c040000b20002a30056355452010000a"
-      "027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda1002a4"
-      "d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072ab33c30"
-      "e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6bb111867a"
-      "87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e9044e9094"
-      "9975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c6738010100a0"
-      "27abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2ea52d3401d31"
-      "10a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d18796c97e8320"
-      "4daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573bcf0252dc4d39"
-      "0baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af57173f864070fdce2"
-      "41be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204030013013016020"
-      "101020117040e300c0201010201000201000101ffbb233021020101020403001301301602"
-      "0101020117040e300c0201010201000201000101ff020108020100a0030101ff",
-      "308203f0308203ec0201010202030402024000308203d202010204080000000000000000"
-      "0408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38"
-      "a6b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3"
-      "8883d33f236a040200000201000201010440000000000000000000000000020100040c00"
-      "0000000000000000000000020100020100020100020100a04e304c020101020203040402"
-      "1301040004200b66320d0201000440000000000000000000000000020100020100020100"
-      "020100a04e304c0201010202030404021301040004200b66320d38c8fa1b0dfe9e37fcf2"
-      "bf0bafb43077fa020100020100020100020100a04e304c02010102020304040213010400"
-      "04200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da104"
-      "020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374ab"
-      "03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
-      "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c000000000000000000000000"
-      "00000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c1"
-      "6b43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a1"
-      "78ce69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c0218000000000000"
-      "00000000000000000000b503020120b88201700482016c040000b20002a3005635545201"
-      "0000a027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda"
-      "1002a4d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072"
-      "ab33c30e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6b"
-      "b111867a87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e"
-      "9044e90949975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c67"
-      "38010100a027abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2e"
-      "a52d3401d3110a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d1"
-      "8796c97e83204daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573"
-      "bcf0252dc4d390baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af571"
-      "73f864070fdce241be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204"
-      "030013013016020101020117040e300c0201010201000201000101ffbb23302102010102"
-      "04030013013016020101020117040e300c0201010201000201000101ff020108020100a0"
-      "030101ff"},
+     "408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38a6"
+     "b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3888"
+     "3d33f236a04020000020100020101040c000000000000000000000000020100040c000000"
+     "000000000000000000020100020100020100020100a04e304c02010102020304040213010"
+     "40004200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da1"
+     "04020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374a"
+     "b03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
+     "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c0000000000000000000000000"
+     "0000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c16b"
+     "43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a178c"
+     "e69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c02180000000000000000"
+     "0000000000000000b503020120b88201700482016c040000b20002a30056355452010000a"
+     "027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda1002a4"
+     "d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072ab33c30"
+     "e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6bb111867a"
+     "87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e9044e9094"
+     "9975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c6738010100a0"
+     "27abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2ea52d3401d31"
+     "10a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d18796c97e8320"
+     "4daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573bcf0252dc4d39"
+     "0baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af57173f864070fdce2"
+     "41be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204030013013016020"
+     "101020117040e300c0201010201000201000101ffbb233021020101020403001301301602"
+     "0101020117040e300c0201010201000201000101ff020108020100a0030101ff",
+     "308203f0308203ec0201010202030402024000308203d202010204080000000000000000"
+     "0408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38"
+     "a6b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3"
+     "8883d33f236a040200000201000201010440000000000000000000000000020100040c00"
+     "0000000000000000000000020100020100020100020100a04e304c020101020203040402"
+     "1301040004200b66320d0201000440000000000000000000000000020100020100020100"
+     "020100a04e304c0201010202030404021301040004200b66320d38c8fa1b0dfe9e37fcf2"
+     "bf0bafb43077fa020100020100020100020100a04e304c02010102020304040213010400"
+     "04200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da104"
+     "020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374ab"
+     "03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
+     "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c000000000000000000000000"
+     "00000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c1"
+     "6b43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a1"
+     "78ce69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c0218000000000000"
+     "00000000000000000000b503020120b88201700482016c040000b20002a3005635545201"
+     "0000a027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda"
+     "1002a4d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072"
+     "ab33c30e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6b"
+     "b111867a87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e"
+     "9044e90949975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c67"
+     "38010100a027abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2e"
+     "a52d3401d3110a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d1"
+     "8796c97e83204daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573"
+     "bcf0252dc4d390baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af571"
+     "73f864070fdce241be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204"
+     "030013013016020101020117040e300c0201010201000201000101ffbb23302102010102"
+     "04030013013016020101020117040e300c0201010201000201000101ff020108020100a0"
+     "030101ff"},
     // In runner.go, the test case
     // "TLS-ECH-Server-Cipher-HKDF-SHA256-AES-256-GCM-SSL_Transfer" is used
     // to generate below bytes by adding print statement on the output of
@@ -222,8 +222,8 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "86542c4a1e7ec44b0957bb315c17851bd8498b1d1131a79e19c66463e0566985ef55deb5"
      "48fe370058ba83566278d01b3a565075b8ef2a82bea17ae95fa91b7b3ffa611a7d8a6331"
      "00045a5a0000ba15301302010102040300130330080201010201050400bb153013020101"
-     "02040300130330080201010201050400020108020100a0030101ff", nullptr}
-};
+     "02040300130330080201010201050400020108020100a0030101ff",
+     nullptr}};
 
 class EncodeDecodeKATTest
     : public testing::TestWithParam<EncodeDecodeKATTestParam> {};
@@ -251,8 +251,8 @@ TEST_P(EncodeDecodeKATTest, RoundTrips) {
       SSL_from_bytes(input_bytes.data(), input_bytes.size(), server_ctx.get()));
   ASSERT_TRUE(ssl);
   // Check the ssl can be encoded successfully.
-  size_t encoded_len;
-  uint8_t *encoded;
+  size_t encoded_len = 0;
+  uint8_t *encoded = nullptr;
   ASSERT_TRUE(SSL_to_bytes(ssl.get(), &encoded, &encoded_len));
   bssl::UniquePtr<uint8_t> encoded_ptr;
   encoded_ptr.reset(encoded);
@@ -346,7 +346,7 @@ TEST(SSLTest, NameLists) {
     size_t num = t.func(nullptr, 0);
     EXPECT_GT(num, 0u);
 
-    std::vector<const char*> list(num);
+    std::vector<const char *> list(num);
     EXPECT_EQ(num, t.func(list.data(), list.size()));
 
     // Check the expected values are in the list.
@@ -374,8 +374,6 @@ TEST(SSLTest, NameLists) {
     }
   }
 }
-
-
 
 
 
@@ -497,7 +495,7 @@ static int XORDecompressFunc(SSL *ssl, CRYPTO_BUFFER **out,
     return 0;
   }
 
-  uint8_t *data;
+  uint8_t *data = nullptr;
   *out = CRYPTO_BUFFER_alloc(&data, uncompressed_len);
   if (*out == nullptr) {
     return 0;
@@ -537,9 +535,9 @@ TEST(SSLTest, CertCompression) {
 static size_t test_ecc_privkey_calls = 0;
 
 static enum ssl_private_key_result_t test_ecc_privkey_complete(SSL *ssl,
-                                                           uint8_t *out,
-                                                           size_t *out_len,
-                                                           size_t max_out) {
+                                                               uint8_t *out,
+                                                               size_t *out_len,
+                                                               size_t max_out) {
   test_ecc_privkey_calls += 1;
   return ssl_private_key_success;
 }
@@ -551,14 +549,13 @@ static enum ssl_private_key_result_t test_ecc_privkey_sign(
 
   if (EVP_PKEY_id(pkey.get()) !=
       SSL_get_signature_algorithm_key_type(signature_algorithm)) {
-      return ssl_private_key_failure;
+    return ssl_private_key_failure;
   }
 
   const EVP_MD *md = SSL_get_signature_algorithm_digest(signature_algorithm);
   bssl::ScopedEVP_MD_CTX ctx;
   EVP_PKEY_CTX *pctx = nullptr;
-  if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr,
-                          pkey.get())) {
+  if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr, pkey.get())) {
     return ssl_private_key_failure;
   }
 
@@ -709,9 +706,8 @@ TEST(SSLTest, IntermittentEmptyRead) {
     BIO_set_init(b, 1);
     return 1;
   }));
-  ASSERT_TRUE(BIO_meth_set_read(method.get(), [](BIO *, char *, int) -> int {
-    return 0;
-  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(),
+                                [](BIO *, char *, int) -> int { return 0; }));
   bssl::UniquePtr<BIO> rbio_empty(BIO_new(method.get()));
   ASSERT_TRUE(rbio_empty);
   BIO_set_flags(rbio_empty.get(), BIO_FLAGS_READ);
@@ -725,8 +721,8 @@ TEST(SSLTest, IntermittentEmptyRead) {
 
   // Server writes some data to the client
   const uint8_t write_data[] = {1, 2, 3};
-  int ret = SSL_write(server.get(), write_data, (int) sizeof(write_data));
-  EXPECT_EQ(ret, (int) sizeof(write_data));
+  int ret = SSL_write(server.get(), write_data, (int)sizeof(write_data));
+  EXPECT_EQ(ret, (int)sizeof(write_data));
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_NONE);
 
   uint8_t read_data[] = {0, 0, 0};
@@ -739,7 +735,7 @@ TEST(SSLTest, IntermittentEmptyRead) {
   // Reset client rbio, read should succeed
   SSL_set0_rbio(client.get(), client_rbio.release());
   ret = SSL_read(client.get(), read_data, sizeof(read_data));
-  EXPECT_EQ(ret, (int) sizeof(write_data));
+  EXPECT_EQ(ret, (int)sizeof(write_data));
   EXPECT_EQ(OPENSSL_memcmp(read_data, write_data, sizeof(write_data)), 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_NONE);
 
@@ -771,7 +767,7 @@ static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
 static void ssl_test_ticket_aead_ex_index_free(void *parent, void *ptr,
                                                CRYPTO_EX_DATA *ad, int index,
                                                long argl, void *argp) {
-  delete reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
+  delete reinterpret_cast<ssl_test_ticket_aead_state *>(ptr);
 }
 
 static CRYPTO_once_t g_ssl_test_ticket_aead_ex_index_once = CRYPTO_ONCE_INIT;
@@ -870,7 +866,7 @@ static void ConnectClientAndServerWithTicketMethod(
 
   SSL_set_session(client.get(), session);
 
-  BIO *bio1, *bio2;
+  BIO *bio1 = nullptr, *bio2 = nullptr;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 0, &bio2, 0));
 
   // SSL_set_bio takes ownership.

@@ -1,12 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <array>
 #include <gtest/gtest.h>
+#include <array>
 
 #include "../crypto/test/test_util.h"
-#include "ssl_test_common.h"
 #include "internal.h"
+#include "ssl_test_common.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -194,7 +194,7 @@ static const char kBadSessionTrailingData[] =
     "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGrgMEAQevAwQBBLADBAEFAAAA";
 
 static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
-  size_t len;
+  size_t len = 0;
   if (!EVP_DecodedLength(&len, strlen(in))) {
     fprintf(stderr, "EVP_DecodedLength failed\n");
     return false;
@@ -229,9 +229,9 @@ TEST(SSLTest, SessionEncoding) {
     ASSERT_TRUE(session) << "SSL_SESSION_from_bytes failed";
 
     // Verify the SSL_SESSION encoding round-trips.
-    size_t encoded_len;
+    size_t encoded_len = 0;
     bssl::UniquePtr<uint8_t> encoded;
-    uint8_t *encoded_raw;
+    uint8_t *encoded_raw = nullptr;
     ASSERT_TRUE(SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len))
         << "SSL_SESSION_to_bytes failed";
     encoded.reset(encoded_raw);
@@ -420,7 +420,7 @@ TEST(SSLTest, Padding) {
 
 
 TEST(SSLTest, SessionPrint) {
- static const std::array<std::string, 15> kExpectedTLS13{
+  static const std::array<std::string, 15> kExpectedTLS13{
       {"SSL-Session:", "    Protocol  :", "    Cipher    : ",
        "    Session-ID: ", "    Session-ID-ctx:", "    Resumption PSK:",
        "    PSK identity:", "    TLS session ticket lifetime hint:",
@@ -440,8 +440,8 @@ TEST(SSLTest, SessionPrint) {
       CreateSessionWithTicket(TLS1_3_VERSION, 10));
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   EXPECT_TRUE(SSL_SESSION_print(bio.get(), session.get()));
-  const uint8_t *out;
-  size_t outlen;
+  const uint8_t *out = nullptr;
+  size_t outlen = 0;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &outlen));
 
   // Iterate through |kExpectedTLS13| and verify that |SSL_SESSION_print| has

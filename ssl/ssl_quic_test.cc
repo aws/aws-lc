@@ -3,13 +3,13 @@
 
 #include <openssl/ssl.h>
 #include "../crypto/test/test_util.h"
-#include  "ssl_test_common.h"
+#include "ssl_test_common.h"
 
 BSSL_NAMESPACE_BEGIN
 
 template <typename T>
 class UnownedSSLExData {
-public:
+ public:
   UnownedSSLExData() {
     index_ = SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   }
@@ -23,7 +23,7 @@ public:
     return index_ >= 0 && SSL_set_ex_data(ssl, index_, t);
   }
 
-private:
+ private:
   int index_;
 };
 
@@ -645,7 +645,8 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   // The client should still have no view of the server's preferences, but the
   // server should have seen at least one cipher from the client.
   EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
-  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
+  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())),
+            (size_t)0);
 
   // Finish up the client and server handshakes.
   ASSERT_TRUE(CompleteHandshakesForQUIC());
@@ -1137,8 +1138,8 @@ TEST_F(QUICMethodTest, BadPostHandshake) {
 
 static void ExpectReceivedTransportParamsEqual(const SSL *ssl,
                                                Span<const uint8_t> expected) {
-  const uint8_t *received;
-  size_t received_len;
+  const uint8_t *received = nullptr;
+  size_t received_len = 0;
   SSL_get_peer_quic_transport_params(ssl, &received, &received_len);
   ASSERT_EQ(received_len, expected.size());
   EXPECT_EQ(Bytes(received, received_len), Bytes(expected));
@@ -1266,7 +1267,7 @@ TEST_F(QUICMethodTest, ForbidCrossProtocolResumptionServer) {
   g_last_session->is_quic = false;
   SSL_set_session(client.get(), g_last_session.get());
 
-  BIO *bio1, *bio2;
+  BIO *bio1 = nullptr, *bio2 = nullptr;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 0, &bio2, 0));
 
   // SSL_set_bio takes ownership.
@@ -1384,8 +1385,8 @@ TEST_F(QUICMethodTest, QuicCodePointDefault) {
   SSL_CTX_set_select_certificate_cb(
       server_ctx_.get(),
       [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
+        const uint8_t *data = nullptr;
+        size_t len = 0;
         if (!SSL_early_callback_ctx_extension_get(
                 client_hello, TLSEXT_TYPE_quic_transport_parameters, &data,
                 &len)) {
