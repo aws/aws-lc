@@ -169,7 +169,7 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 // EVP_MAX_MD_SIZE is the largest digest size supported, in bytes.
 // Functions that output a digest generally require the buffer have
 // at least this much space.
-#define EVP_MAX_MD_SIZE 255 // TODO [childw]
+#define EVP_MAX_MD_SIZE 255 // TODO [childw] FIXME
 
 // EVP_MAX_MD_CHAINING_LENGTH is the largest chaining length supported, in
 // bytes. This constant is only for Merkle-Damgard-based hashed functions
@@ -181,7 +181,7 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 
 // EVP_MAX_MD_BLOCK_SIZE is the largest digest block size supported, in
 // bytes.
-#define EVP_MAX_MD_BLOCK_SIZE 128  // SHA-512 is the longest so far.
+#define EVP_MAX_MD_BLOCK_SIZE 1600 // KECCAK is the longest so far. TODO [childw] FIXME
 
 // EVP_DigestFinal_ex finishes the digest in |ctx| and writes the output to
 // |md_out|. |EVP_MD_CTX_size| bytes are written, which is at most
