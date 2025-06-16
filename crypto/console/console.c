@@ -307,9 +307,13 @@ int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
         goto error;
     }
 
-    // Validate input length meets minimum requirement
+    // Validate that input meets the minimum length requirement. We accept buffers |buf| of any size
+    // but enforce a maximum password length of 1024 characters for compatibility with OpenSSL.
+    // Unlike OpenSSL's higher-level APIs which silently truncate buffers exceeding this limit,
+    // we explicitly check the password length after reading it from the user. This approach maintains
+    // OpenSSL compatibility while avoiding silent truncation.
     size_t input_len = strlen(buf);
-    if (input_len < (size_t)minsize) {
+    if (input_len < (size_t)minsize || input_len > (size_t)MAX_PASSWORD_LENGTH) {
         ok = -1;
     }
 

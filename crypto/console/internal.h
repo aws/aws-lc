@@ -1,6 +1,7 @@
 #include <openssl/base.h>
 
 #define MIN_LENGTH 4
+#define MAX_PASSWORD_LENGTH 1024
 
 #if defined(__cplusplus)
 extern "C" {

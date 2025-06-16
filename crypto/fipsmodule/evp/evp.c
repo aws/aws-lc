@@ -175,11 +175,6 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
     return -1;
   }
 
-  // Enforce max length to 1024
-  if (length > 1024) {
-    length = 1024;
-  }
-
   if (prompt == NULL) {
     prompt = EVP_get_pw_prompt();
   }
@@ -200,7 +195,10 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
     goto err;
   }
 
-  // Read password with echo disabled, returns 1 on success, 0 on error, -2 on interrupt
+  // Read password with echo disabled. Returns 0 on success.
+  // While |buf| and |length| are user-provided and can be arbitrarily large,
+  // passwords exceeding 1024 characters will be rejected with AWS-LC. OpenSSL
+  // handles this by silently truncating |length| before reading the password.
   ret = openssl_console_read(buf, min_length, length, 0);
   if (ret != 0) {
     OPENSSL_cleanse(buf, length);
