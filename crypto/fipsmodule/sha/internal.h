@@ -46,6 +46,7 @@ extern "C" {
 
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+#define KECCAK1600_ROWS 5
 #define KECCAK1600_WIDTH 1600
 
 #define SHA3_224_CAPACITY_BYTES 56
@@ -93,7 +94,6 @@ extern "C" {
 // so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
-#define KECCAK1600_ROWS 5
 
 // KECCAK1600 x4 batched context structure
 typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];
