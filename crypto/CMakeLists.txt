@@ -785,6 +785,7 @@ if(BUILD_TESTING)
     fipsmodule/evp/evp_ctx_test.cc
     fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
+    fipsmodule/ml_kem/ml_kem_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
     fipsmodule/pbkdf/pbkdf_test.cc
@@ -843,6 +844,7 @@ if(BUILD_TESTING)
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
   target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_compile_definitions(${CRYPTO_TEST_EXEC} PRIVATE AWS_LC_TEST_ENV)
   if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()

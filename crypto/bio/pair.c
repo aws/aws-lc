@@ -424,14 +424,11 @@ static long bio_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       break;
 
     case BIO_CTRL_EOF: {
-      BIO *other_bio = ptr;
-
-      if (other_bio) {
-        struct bio_bio_st *other_b = other_bio->ptr;
-        assert(other_b != NULL);
-        ret = other_b->len == 0 && other_b->closed;
-      } else {
-        ret = 1;
+      ret = 1;
+      if (b->peer) {
+        struct bio_bio_st *peer_b = b->peer->ptr;
+        assert(peer_b != NULL);
+        ret = peer_b->len == 0 && peer_b->closed;
       }
     } break;
 
