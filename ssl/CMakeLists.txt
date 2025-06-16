@@ -88,6 +88,7 @@ if(BUILD_TESTING)
     ssl_misc_test.cc
     ssl_version_test.cc
     ssl_ech_test.cc
+          ssl_quic_test.cc
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
