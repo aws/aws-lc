@@ -477,7 +477,7 @@ OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
 // returns 1 on success and 0 on failure. When call-discipline is
 // maintained and |bitlen| value corresponds to a SHA3 digest length
 // in bits, this function never fails.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
+int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
 // SHA3_Update checks |ctx| pointer and |len| value, calls |FIPS202_Update|
 // and returns 1 on success and 0 on failure. When call-discipline is
@@ -490,55 +490,45 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 // When call-discipline is maintained, this function never fails.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// SHA3 truncated variants
-
 // SHA3_224_Init initialises |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_224_Init(KECCAK1600_CTX *sha);
+int SHA3_224_Init(KECCAK1600_CTX *sha);
 
 // SHA3_224_Update adds |len| bytes from |data| to |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_224_Update(KECCAK1600_CTX *sha, const void *data,
-                                     size_t len);
+int SHA3_224_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
 // SHA512_224_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
-OPENSSL_EXPORT int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH],
-                                    KECCAK1600_CTX *sha);
+int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
 // SHA3_256_Init initialises |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_256_Init(KECCAK1600_CTX *sha);
+int SHA3_256_Init(KECCAK1600_CTX *sha);
 
 // SHA3_256_Update adds |len| bytes from |data| to |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_256_Update(KECCAK1600_CTX *sha, const void *data,
-                                     size_t len);
+int SHA3_256_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
 // SHA512_256_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
-OPENSSL_EXPORT int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH],
-                                    KECCAK1600_CTX *sha);
+int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
 // SHA3_384_Init initialises |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_384_Init(KECCAK1600_CTX *sha);
+int SHA3_384_Init(KECCAK1600_CTX *sha);
 
 // SHA3_384_Update adds |len| bytes from |data| to |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_384_Update(KECCAK1600_CTX *sha, const void *data,
-                                     size_t len);
+int SHA3_384_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
 // SHA512_384_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
-OPENSSL_EXPORT int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH],
-                                    KECCAK1600_CTX *sha);
+int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
 // SHA3_512_Init initialises |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_512_Init(KECCAK1600_CTX *sha);
+int SHA3_512_Init(KECCAK1600_CTX *sha);
 
 // SHA3_512_Update adds |len| bytes from |data| to |sha| and returns 1.
-OPENSSL_EXPORT int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data,
-                                     size_t len);
+int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
 // SHA512_512_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
-OPENSSL_EXPORT int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
-                                    KECCAK1600_CTX *sha);
+int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
 /*
  * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
