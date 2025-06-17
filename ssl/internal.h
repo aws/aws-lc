@@ -3936,8 +3936,8 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   uint16_t max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
   /* ClientHello callback.  Mostly for extensions, but not entirely. */
-  SSL_client_hello_cb_fn client_hello_cb;
-  void *client_hello_cb_arg;
+  SSL_client_hello_cb_fn client_hello_cb = NULL;
+  void *client_hello_cb_arg = NULL;
 
   // TLS extensions servername callback
   int (*servername_callback)(SSL *, int *, void *) = nullptr;

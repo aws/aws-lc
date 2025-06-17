@@ -718,7 +718,7 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
   /* Finished parsing the ClientHello, now we can start processing it */
   /* Give the ClientHello callback a crack at things */
   const SSL_CTX* sctx = ssl->ctx.get();
-  if (sctx->client_hello_cb != NULL) {
+  if (sctx != NULL && sctx->client_hello_cb != NULL) {
     int al = SSL_AD_INTERNAL_ERROR;
     /* A failure in the ClientHello callback terminates the connection. */
     switch (sctx->client_hello_cb(ssl, &al, sctx->client_hello_cb_arg)) {
