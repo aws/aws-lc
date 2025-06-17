@@ -38,14 +38,6 @@ extern "C" {
 #define SHA512_224_CHAINING_LENGTH 64
 #define SHA512_256_CHAINING_LENGTH 64
 
-// SHA3 does not support "chaining" in the way that merkle-daamgard
-// constructions do, but we still need to define the constants for
-// macro generated HMAC functions that expect them to be defined.
-#define SHA3_224_CHAINING_LENGTH 0
-#define SHA3_256_CHAINING_LENGTH 0
-#define SHA3_384_CHAINING_LENGTH 0
-#define SHA3_512_CHAINING_LENGTH 0
-
 
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
@@ -75,6 +67,14 @@ extern "C" {
 #define SHA3_256_CBLOCK SHA3_BLOCKSIZE(SHA3_256_DIGEST_BITLENGTH)
 #define SHA3_384_CBLOCK SHA3_BLOCKSIZE(SHA3_384_DIGEST_BITLENGTH)
 #define SHA3_512_CBLOCK SHA3_BLOCKSIZE(SHA3_512_DIGEST_BITLENGTH)
+
+// SHA3 does not support "chaining" in the way that merkle-daamgard
+// constructions do, but we still need to define the constants for
+// macro generated HMAC functions that expect them to be defined.
+#define SHA3_224_CHAINING_LENGTH 0
+#define SHA3_256_CHAINING_LENGTH 0
+#define SHA3_384_CHAINING_LENGTH 0
+#define SHA3_512_CHAINING_LENGTH 0
 
 
 // SHAKE constants, from NIST FIPS202.
@@ -477,7 +477,7 @@ OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
 // returns 1 on success and 0 on failure. When call-discipline is
 // maintained and |bitlen| value corresponds to a SHA3 digest length
 // in bits, this function never fails.
-int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
 // SHA3_Update checks |ctx| pointer and |len| value, calls |FIPS202_Update|
 // and returns 1 on success and 0 on failure. When call-discipline is
