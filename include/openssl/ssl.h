@@ -1099,6 +1099,18 @@ SSL_get0_peer_verify_algorithms(const SSL *ssl, const uint16_t **out_sigalgs);
 OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
     const SSL *ssl, const uint16_t **out_sigalgs);
 
+# define SSL_CLIENT_HELLO_SUCCESS 1
+# define SSL_CLIENT_HELLO_ERROR   0
+# define SSL_CLIENT_HELLO_RETRY   (-1)
+
+typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
+void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
+                                 void *arg);
+
+int SSL_client_hello_isv2(SSL *s);
+int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen);
+
 // SSL_certs_clear resets the private key, leaf certificate, and certificate
 // chain of |ssl|.
 OPENSSL_EXPORT void SSL_certs_clear(SSL *ssl);
