@@ -68,14 +68,6 @@ extern "C" {
 #define SHA3_384_CBLOCK SHA3_BLOCKSIZE(SHA3_384_DIGEST_BITLENGTH)
 #define SHA3_512_CBLOCK SHA3_BLOCKSIZE(SHA3_512_DIGEST_BITLENGTH)
 
-// SHA3 does not support "chaining" in the way that merkle-daamgard
-// constructions do, but we still need to define the constants for
-// macro generated HMAC functions that expect them to be defined.
-#define SHA3_224_CHAINING_LENGTH 0
-#define SHA3_256_CHAINING_LENGTH 0
-#define SHA3_384_CHAINING_LENGTH 0
-#define SHA3_512_CHAINING_LENGTH 0
-
 
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
@@ -373,14 +365,6 @@ OPENSSL_EXPORT int SHA512_224_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_224_CHAINING_LENGTH], uint64_t n);
 OPENSSL_EXPORT int SHA512_256_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_256_CHAINING_LENGTH], uint64_t n);
-OPENSSL_EXPORT int SHA3_224_Init_from_state(
-    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_224_CHAINING_LENGTH], uint64_t n);
-OPENSSL_EXPORT int SHA3_256_Init_from_state(
-    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_256_CHAINING_LENGTH], uint64_t n);
-OPENSSL_EXPORT int SHA3_384_Init_from_state(
-    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_384_CHAINING_LENGTH], uint64_t n);
-OPENSSL_EXPORT int SHA3_512_Init_from_state(
-    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_512_CHAINING_LENGTH], uint64_t n);
 
 // SHAx_get_state is a low-level function that exports the hash state in big
 // endian into |out_h| and the number of bits processed at this point in
@@ -406,18 +390,6 @@ OPENSSL_EXPORT int SHA512_224_get_state(
     uint64_t *out_n);
 OPENSSL_EXPORT int SHA512_256_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
-    uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_224_get_state(
-    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_224_CHAINING_LENGTH],
-    uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_256_get_state(
-    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_256_CHAINING_LENGTH],
-    uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_384_get_state(
-    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_384_CHAINING_LENGTH],
-    uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_512_get_state(
-    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_512_CHAINING_LENGTH],
     uint64_t *out_n);
 
 /*
