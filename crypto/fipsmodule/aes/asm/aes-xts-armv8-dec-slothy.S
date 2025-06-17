@@ -32,10 +32,50 @@
 
 .align	5
 
+#define STACK_BASE_VREGS 0
+#define STACK_SIZE_VREGS (4*16)
+
+.macro save_vregs
+    stp	d8,d9,[sp,#(STACK_BASE_VREGS + 16*0)]
+	stp	d10,d11,[sp,#(STACK_BASE_VREGS + 16*1)]
+.endm
+
+.macro save_regs
+    stp	x19,x20,[sp,#(STACK_BASE_VREGS + 16*2)]
+	stp	x21,x22,[sp,#(STACK_BASE_VREGS + 16*3)]
+.endm
+
+.macro restore_vregs
+	ldp	d8,d9,[sp,#(STACK_BASE_VREGS + 16*0)]
+	ldp	d10,d11,[sp,#(STACK_BASE_VREGS + 16*1)]
+.endm
+
+.macro restore_regs
+    ldp	x19,x20,[sp,#(STACK_BASE_VREGS + 16*2)]
+    ldp	x21,x22,[sp,#(STACK_BASE_VREGS + 16*3)]
+.endm
+
+// A single AES round
+// Prevent SLOTHY from unfolding because uArchs tend to fuse AESMC+AESE
+.macro aesr data, key // @slothy:no-unfold
+        aese  \data, \key
+        aesmc \data, \data
+.endm
+
+// A single AESD round
+// Prevent SLOTHY from unfolding because uArchs tend to fuse AESIMC+AESD
+.macro aesdr data, key // @slothy:no-unfold
+        aesd  \data, \key
+        aesimc \data, \data
+.endm
 
 _aes_hw_slothy_xts_decrypt:
 aes_hw_slothy_xts_decrypt:
 	// AARCH64_VALID_CALL_TARGET
+    sub sp, sp, #STACK_SIZE_VREGS
+    save_vregs
+	save_regs
+
 	cmp	x2,#16
     // Original input data size bigger than 16, jump to big size processing.
 	b.ne	.Lxts_dec_big_size
@@ -47,17 +87,14 @@ aes_hw_slothy_xts_decrypt:
 	ld1	{v1.16b},[x4],#16
 
 .Loop_dec_small_iv_enc:
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr	v6.16b,v0.16b
 	ld1	{v0.4s},[x4],#16
 	subs	w6,w6,#2
-	aese	v6.16b,v1.16b
-	aesmc	v6.16b,v6.16b
+	aesr	v6.16b,v1.16b
 	ld1	{v1.4s},[x4],#16
 	b.gt	.Loop_dec_small_iv_enc
 
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr	v6.16b,v0.16b
 	ld1	{v0.4s},[x4]
 	aese	v6.16b,v1.16b
 	eor	v6.16b,v6.16b,v0.16b
@@ -68,51 +105,36 @@ aes_hw_slothy_xts_decrypt:
 	ldr	w6,[x3,#240]
 	ld1	{v28.4s,v29.4s},[x3],#32       // load key schedule...
 
-	aesd	v0.16b,v28.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v28.16b
 	ld1	{v16.4s,v17.4s},[x3],#32         // load key schedule...
-	aesd	v0.16b,v29.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v29.16b
 	subs	w6,w6,#10         // bias
-	b.eq	.Lxts_128_dec
+	// b.eq	.Lxts_128_dec
 .Lxts_dec_round_loop:
-	aesd	v0.16b,v16.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v16.16b
 	ld1	{v16.4s},[x3],#16            // load key schedule...
-	aesd	v0.16b,v17.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v17.16b
 	ld1	{v17.4s},[x3],#16            // load key schedule...
 	subs	w6,w6,#2          // bias
 	b.gt	.Lxts_dec_round_loop
-.Lxts_128_dec:
+//.Lxts_128_dec:
 	ld1	{v18.4s,v19.4s},[x3],#32       // load key schedule...
-	aesd	v0.16b,v16.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v0.16b,v17.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v16.16b
+	aesdr	v0.16b,v17.16b
 	ld1	{v20.4s,v21.4s},[x3],#32       // load key schedule...
-	aesd	v0.16b,v18.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v0.16b,v19.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v18.16b
+	aesdr	v0.16b,v19.16b
 	ld1	{v22.4s,v23.4s},[x3],#32       // load key schedule...
-	aesd	v0.16b,v20.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v0.16b,v21.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v20.16b
+	aesdr	v0.16b,v21.16b
 	ld1	{v7.4s},[x3]
-	aesd	v0.16b,v22.16b
-	aesimc	v0.16b,v0.16b
+	aesdr	v0.16b,v22.16b
 	aesd	v0.16b,v23.16b
 	eor	v0.16b,v0.16b,v7.16b
 	eor	v0.16b,v6.16b,v0.16b
 	st1	{v0.16b},[x1]
-	b	.Lxts_dec_final_abort
+	b	.Lxts_dec_abort
 .Lxts_dec_big_size:
-	stp	x19,x20,[sp,#-64]!
-	stp	x21,x22,[sp,#48]
-	stp	d8,d9,[sp,#32]
-	stp	d10,d11,[sp,#16]
 
 	and	x21,x2,#0xf
 	and	x2,x2,#-16
@@ -128,17 +150,14 @@ aes_hw_slothy_xts_decrypt:
 	ld1	{v1.16b},[x4],#16
 
 .Loop_dec_iv_enc:
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr	v6.16b,v0.16b
 	ld1	{v0.4s},[x4],#16
 	subs	w6,w6,#2
-	aese	v6.16b,v1.16b
-	aesmc	v6.16b,v6.16b
+	aesr	v6.16b,v1.16b
 	ld1	{v1.4s},[x4],#16
 	b.gt	.Loop_dec_iv_enc
 
-	aese	v6.16b,v0.16b
-	aesmc	v6.16b,v6.16b
+	aesr	v6.16b,v0.16b
 	ld1	{v0.4s},[x4]
 	aese	v6.16b,v1.16b
 	eor	v6.16b,v6.16b,v0.16b
@@ -239,114 +258,69 @@ aes_hw_slothy_xts_decrypt:
 
 .align	4
 .Loop5x_xts_dec:
-	aesd	v0.16b,v16.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v16.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v16.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v16.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v16.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v16.16b
+	aesdr	v1.16b,v16.16b
+	aesdr	v24.16b,v16.16b
+	aesdr	v25.16b,v16.16b
+	aesdr	v26.16b,v16.16b
 	ld1	{v16.4s},[x7],#16        // load key schedule...
 	subs	w6,w6,#2
-	aesd	v0.16b,v17.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v17.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v17.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v17.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v17.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v17.16b
+	aesdr	v1.16b,v17.16b
+	aesdr	v24.16b,v17.16b
+	aesdr	v25.16b,v17.16b
+	aesdr	v26.16b,v17.16b
 	ld1	{v17.4s},[x7],#16        // load key schedule...
 	b.gt	.Loop5x_xts_dec
 
-	aesd	v0.16b,v16.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v16.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v16.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v16.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v16.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v16.16b
+	aesdr	v1.16b,v16.16b
+	aesdr	v24.16b,v16.16b
+	aesdr	v25.16b,v16.16b
+	aesdr	v26.16b,v16.16b
 	subs	x2,x2,#0x50         // because .Lxts_dec_tail4x
 
-	aesd	v0.16b,v17.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v17.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v17.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v17.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v17.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v17.16b
+	aesdr	v1.16b,v17.16b
+	aesdr	v24.16b,v17.16b
+	aesdr	v25.16b,v17.16b
+	aesdr	v26.16b,v17.16b
 	csel	x6,xzr,x2,gt    // borrow x6, w6, "gt" is not typo
 	mov	x7,x3
 
-	aesd	v0.16b,v18.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v18.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v18.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v18.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v18.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v18.16b
+	aesdr	v1.16b,v18.16b
+	aesdr	v24.16b,v18.16b
+	aesdr	v25.16b,v18.16b
+	aesdr	v26.16b,v18.16b
 	add	x0,x0,x6  // x0 is adjusted in such way that
                                 // at exit from the loop v1.16b-v26.16b
                                 // are loaded with last "words"
 	add	x6,x2,#0x60         // because .Lxts_dec_tail4x
 
-	aesd	v0.16b,v19.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v19.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v19.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v19.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v19.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v19.16b
+	aesdr	v1.16b,v19.16b
+	aesdr	v24.16b,v19.16b
+	aesdr	v25.16b,v19.16b
+	aesdr	v26.16b,v19.16b
 
-	aesd	v0.16b,v20.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v20.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v20.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v20.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v20.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v20.16b
+	aesdr	v1.16b,v20.16b
+	aesdr	v24.16b,v20.16b
+	aesdr	v25.16b,v20.16b
+	aesdr	v26.16b,v20.16b
 
-	aesd	v0.16b,v21.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v21.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v21.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v21.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v21.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v21.16b
+	aesdr	v1.16b,v21.16b
+	aesdr	v24.16b,v21.16b
+	aesdr	v25.16b,v21.16b
+	aesdr	v26.16b,v21.16b
 
-	aesd	v0.16b,v22.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v22.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v22.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v25.16b,v22.16b
-	aesimc	v25.16b,v25.16b
-	aesd	v26.16b,v22.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v0.16b,v22.16b
+	aesdr	v1.16b,v22.16b
+	aesdr	v24.16b,v22.16b
+	aesdr	v25.16b,v22.16b
+	aesdr	v26.16b,v22.16b
 
 	eor	v4.16b,v7.16b,v6.16b
 	aesd	v0.16b,v23.16b
@@ -469,29 +443,20 @@ aes_hw_slothy_xts_decrypt:
 	b	.Lxts_done
 .align	4
 .Lxts_outer_dec_tail:
-	aesd	v0.16b,v16.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v16.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v16.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v0.16b,v16.16b
+	aesdr	v1.16b,v16.16b
+	aesdr	v24.16b,v16.16b
 	ld1	{v16.4s},[x7],#16
 	subs	w6,w6,#2
-	aesd	v0.16b,v17.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v17.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v17.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v0.16b,v17.16b
+	aesdr	v1.16b,v17.16b
+	aesdr	v24.16b,v17.16b
 	ld1	{v17.4s},[x7],#16
 	b.gt	.Lxts_outer_dec_tail
 
-	aesd	v0.16b,v16.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v16.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v16.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v0.16b,v16.16b
+	aesdr	v1.16b,v16.16b
+	aesdr	v24.16b,v16.16b
 	eor	v4.16b,v6.16b,v7.16b
 	subs	x2,x2,#0x30
     // The iv for first block
@@ -506,12 +471,9 @@ aes_hw_slothy_xts_decrypt:
 	fmov	v6.d[1],x10
 	eor	v5.16b,v8.16b,v7.16b
 	csel	x6,x2,x6,lo   // x6, w6, is zero at this point
-	aesd	v0.16b,v17.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v17.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v17.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v0.16b,v17.16b
+	aesdr	v1.16b,v17.16b
+	aesdr	v24.16b,v17.16b
 	eor	v17.16b,v9.16b,v7.16b
     // The iv for second block
 	extr	x22,x10,x10,#32
@@ -534,24 +496,15 @@ aes_hw_slothy_xts_decrypt:
 	fmov	d9,x9
 	fmov	v9.d[1],x10
 
-	aesd	v0.16b,v20.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v20.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v20.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v0.16b,v21.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v21.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v21.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v0.16b,v22.16b
-	aesimc	v0.16b,v0.16b
-	aesd	v1.16b,v22.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v22.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v0.16b,v20.16b
+	aesdr	v1.16b,v20.16b
+	aesdr	v24.16b,v20.16b
+	aesdr	v0.16b,v21.16b
+	aesdr	v1.16b,v21.16b
+	aesdr	v24.16b,v21.16b
+	aesdr	v0.16b,v22.16b
+	aesdr	v1.16b,v22.16b
+	aesdr	v24.16b,v22.16b
 	ld1	{v27.16b},[x0],#16
 	aesd	v0.16b,v23.16b
 	aesd	v1.16b,v23.16b
@@ -582,41 +535,27 @@ aes_hw_slothy_xts_decrypt:
 	b.eq	.Lxts_dec_tail_loop
 	eor	v24.16b,v29.16b,v6.16b
 .Lxts_dec_tail_loop:
-	aesd	v1.16b,v16.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v16.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v1.16b,v16.16b
+	aesdr	v24.16b,v16.16b
 	ld1	{v16.4s},[x7],#16
 	subs	w6,w6,#2
-	aesd	v1.16b,v17.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v17.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v1.16b,v17.16b
+	aesdr	v24.16b,v17.16b
 	ld1	{v17.4s},[x7],#16
 	b.gt	.Lxts_dec_tail_loop
 
-	aesd	v1.16b,v16.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v16.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v1.16b,v17.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v17.16b
-	aesimc	v24.16b,v24.16b
-	aesd	v1.16b,v20.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v20.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v1.16b,v16.16b
+	aesdr	v24.16b,v16.16b
+	aesdr	v1.16b,v17.16b
+	aesdr	v24.16b,v17.16b
+	aesdr	v1.16b,v20.16b
+	aesdr	v24.16b,v20.16b
 	cmn	x2,#0x20
-	aesd	v1.16b,v21.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v21.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v1.16b,v21.16b
+	aesdr	v24.16b,v21.16b
 	eor	v5.16b,v6.16b,v7.16b
-	aesd	v1.16b,v22.16b
-	aesimc	v1.16b,v1.16b
-	aesd	v24.16b,v22.16b
-	aesimc	v24.16b,v24.16b
+	aesdr	v1.16b,v22.16b
+	aesdr	v24.16b,v22.16b
 	eor	v17.16b,v8.16b,v7.16b
 	aesd	v1.16b,v23.16b
 	aesd	v24.16b,v23.16b
@@ -653,17 +592,14 @@ aes_hw_slothy_xts_decrypt:
 	sub	w6,w6,#2
 	ld1	{v1.4s},[x3],#16
 .Loop_final_2nd_dec:
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v26.16b,v0.16b
 	ld1	{v0.4s},[x3],#16     // load key schedule...
 	subs	w6,w6,#2
-	aesd	v26.16b,v1.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v26.16b,v1.16b
 	ld1	{v1.4s},[x3],#16     // load key schedule...
 	b.gt	.Loop_final_2nd_dec
 
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v26.16b,v0.16b
 	ld1	{v0.4s},[x3]
 	aesd	v26.16b,v1.16b
 	eor	v26.16b,v26.16b,v0.16b
@@ -692,17 +628,14 @@ aes_hw_slothy_xts_decrypt:
 	sub	w6,w6,#2
 	ld1	{v1.16b},[x7],#16
 .Loop_final_dec:
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v26.16b,v0.16b
 	ld1	{v0.4s},[x7],#16     // load key schedule...
 	subs	w6,w6,#2
-	aesd	v26.16b,v1.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v26.16b,v1.16b
 	ld1	{v1.4s},[x7],#16     // load key schedule...
 	b.gt	.Loop_final_dec
 
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
+	aesdr	v26.16b,v0.16b
 	ld1	{v0.4s},[x7]
 	aesd	v26.16b,v1.16b
 	eor	v26.16b,v26.16b,v0.16b
@@ -710,12 +643,9 @@ aes_hw_slothy_xts_decrypt:
 	st1	{v26.16b},[x1]
 
 .Lxts_dec_abort:
-	ldp	x21,x22,[sp,#48]
-	ldp	d8,d9,[sp,#32]
-	ldp	d10,d11,[sp,#16]
-	ldp	x19,x20,[sp],#64
-
-.Lxts_dec_final_abort:
+	restore_vregs
+	restore_regs
+    add sp, sp, #STACK_SIZE_VREGS
 	ret
 
 #endif
