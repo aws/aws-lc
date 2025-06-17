@@ -10,7 +10,7 @@
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
-#include "ssl_test_common.h"
+#include "ssl_common_test.h"
 
 BSSL_NAMESPACE_BEGIN
 

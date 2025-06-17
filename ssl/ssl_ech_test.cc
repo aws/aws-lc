@@ -8,7 +8,7 @@
 #include <openssl/ssl.h>
 #include <thread>
 #include "../crypto/test/test_util.h"
-#include "ssl_test_common.h"
+#include "ssl_common_test.h"
 
 BSSL_NAMESPACE_BEGIN
 
