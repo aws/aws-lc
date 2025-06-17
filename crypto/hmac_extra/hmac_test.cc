@@ -87,6 +87,14 @@ static const EVP_MD *GetDigest(const std::string &name) {
     return EVP_sha512_224();
   } else if (name == "SHA512/256") {
     return EVP_sha512_256();
+  } else if (name == "SHA3/224") {
+    return EVP_sha3_224();
+  } else if (name == "SHA3/256") {
+    return EVP_sha3_256();
+  } else if (name == "SHA3/384") {
+    return EVP_sha3_384();
+  } else if (name == "SHA3/512") {
+    return EVP_sha3_512();
   }
   return nullptr;
 }
@@ -499,6 +507,26 @@ TEST(HMACTest, WycheproofSHA512_224) {
 TEST(HMACTest, WycheproofSHA512_256) {
   RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha512_256_test.txt",
                     EVP_sha512_256());
+}
+
+TEST(HMACTest, WycheproofSHA3_224) {
+  RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha3_224_test.txt",
+                    EVP_sha3_224());
+}
+
+TEST(HMACTest, WycheproofSHA3_256) {
+  RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha3_256_test.txt",
+                    EVP_sha3_256());
+}
+
+TEST(HMACTest, WycheproofSHA3_384) {
+  RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha3_384_test.txt",
+                    EVP_sha3_384());
+}
+
+TEST(HMACTest, WycheproofSHA3_512) {
+  RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha3_512_test.txt",
+                    EVP_sha3_512());
 }
 
 TEST(HMACTest, EVP_DigestVerify) {
