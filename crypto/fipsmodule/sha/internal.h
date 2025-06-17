@@ -38,12 +38,13 @@ extern "C" {
 #define SHA512_224_CHAINING_LENGTH 64
 #define SHA512_256_CHAINING_LENGTH 64
 
-
-#define SHA3_224_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
-#define SHA3_256_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
-#define SHA3_384_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
-#define SHA3_512_CHAINING_LENGTH EVP_MAX_MD_CHAINING_LENGTH
-
+// SHA3 does not support "chaining" in the way that merkle-daamgard
+// constructions do, but we still need to define the constants for
+// macro generated HMAC functions that expect them to be defined.
+#define SHA3_224_CHAINING_LENGTH 0
+#define SHA3_256_CHAINING_LENGTH 0
+#define SHA3_384_CHAINING_LENGTH 0
+#define SHA3_512_CHAINING_LENGTH 0
 
 
 // SHA3 constants, from NIST FIPS202.
@@ -110,7 +111,12 @@ struct keccak_ctx_st {
   uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
 };
 
-// TODO [childw]
+// To avoid externalizing KECCAK1600_CTX, we hard-code the context size in
+// hmac.h's |md_ctx_union| and use a compile time check here to make sure
+// |KECCAK1600_CTX|'s size never exceeds that of |md_ctx_union|. This means
+// that whenever a new field is added to |keccak_ctx_st| we must also update
+// the hard-coded size of |sha3| in hmac.h's |md_ctx_union| with the new
+// value given by |sizeof(keccaak_ctx_st)|.
 OPENSSL_STATIC_ASSERT(sizeof(KECCAK1600_CTX) <= sizeof(union md_ctx_union),
                       hmac_md_ctx_union_sha3_size_needs_update)
 
@@ -367,10 +373,14 @@ OPENSSL_EXPORT int SHA512_224_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_224_CHAINING_LENGTH], uint64_t n);
 OPENSSL_EXPORT int SHA512_256_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_256_CHAINING_LENGTH], uint64_t n);
-OPENSSL_EXPORT int SHA3_224_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
-OPENSSL_EXPORT int SHA3_256_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
-OPENSSL_EXPORT int SHA3_384_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
-OPENSSL_EXPORT int SHA3_512_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n);
+OPENSSL_EXPORT int SHA3_224_Init_from_state(
+    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_224_CHAINING_LENGTH], uint64_t n);
+OPENSSL_EXPORT int SHA3_256_Init_from_state(
+    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_256_CHAINING_LENGTH], uint64_t n);
+OPENSSL_EXPORT int SHA3_384_Init_from_state(
+    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_384_CHAINING_LENGTH], uint64_t n);
+OPENSSL_EXPORT int SHA3_512_Init_from_state(
+    KECCAK1600_CTX *ctx, const uint8_t h[SHA3_512_CHAINING_LENGTH], uint64_t n);
 
 // SHAx_get_state is a low-level function that exports the hash state in big
 // endian into |out_h| and the number of bits processed at this point in
@@ -397,10 +407,18 @@ OPENSSL_EXPORT int SHA512_224_get_state(
 OPENSSL_EXPORT int SHA512_256_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
     uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_224_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_256_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_384_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
-OPENSSL_EXPORT int SHA3_512_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_224_get_state(
+    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_224_CHAINING_LENGTH],
+    uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_256_get_state(
+    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_256_CHAINING_LENGTH],
+    uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_384_get_state(
+    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_384_CHAINING_LENGTH],
+    uint64_t *out_n);
+OPENSSL_EXPORT int SHA3_512_get_state(
+    KECCAK1600_CTX *ctx, uint8_t out_h[SHA3_512_CHAINING_LENGTH],
+    uint64_t *out_n);
 
 /*
  * SHA3/SHAKE single-shot APIs implement SHA3 functionalities on top

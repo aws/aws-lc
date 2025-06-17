@@ -173,6 +173,8 @@ OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);
 // HMAC_MAX_PRECOMPUTED_KEY_SIZE is the largest precomputed key size, in bytes.
 #define HMAC_MAX_PRECOMPUTED_KEY_SIZE (2 * (EVP_MAX_MD_CHAINING_LENGTH))
 
+// The below constants need to be defined, but they resolve to 0 as SHA3 doesn't have
+// reusable state in the way that merkle-daamgard constructions do.
 #define HMAC_SHA3_224_PRECOMPUTED_KEY_SIZE 2 * SHA3_224_CHAINING_LENGTH
 #define HMAC_SHA3_256_PRECOMPUTED_KEY_SIZE 2 * SHA3_256_CHAINING_LENGTH
 #define HMAC_SHA3_384_PRECOMPUTED_KEY_SIZE 2 * SHA3_384_CHAINING_LENGTH
@@ -255,7 +257,11 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 // Private functions
 typedef struct hmac_methods_st HmacMethods;
 
-// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+// We use a union to ensure that enough space is allocated and never actually
+// bother with the named members. We do not externalize SHA3 ctx definition,
+// so hard-code ctx size below and use a compile-time assertion where that ctx
+// is defined to ensure it does not exceed size bounded by |md_ctx_union|. This
+// is OK because union members are never referenced, they're only used for sizing.
 union md_ctx_union {
   MD5_CTX md5;
   SHA_CTX sha1;

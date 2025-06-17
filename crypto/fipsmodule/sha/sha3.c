@@ -331,36 +331,52 @@ int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
     return SHA3_Final(&out[0], ctx);
 }
 
-int SHA3_224_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
-    return 1;
+int SHA3_224_get_state(KECCAK1600_CTX *ctx,
+                       uint8_t out_h[SHA3_224_CHAINING_LENGTH],
+                       uint64_t *out_n) {
+    return 0;
 }
 
-int SHA3_256_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
-    return 1;
+int SHA3_256_get_state(KECCAK1600_CTX *ctx,
+                       uint8_t out_h[SHA3_256_CHAINING_LENGTH],
+                       uint64_t *out_n) {
+    return 0;
 }
 
-int SHA3_384_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
-    return 1;
+int SHA3_384_get_state(KECCAK1600_CTX *ctx,
+                       uint8_t out_h[SHA3_384_CHAINING_LENGTH],
+                       uint64_t *out_n) {
+    return 0;
 }
 
-int SHA3_512_get_state(KECCAK1600_CTX *ctx, uint8_t out_h[64], uint64_t *out_n) {
-    return 1;
+int SHA3_512_get_state(KECCAK1600_CTX *ctx,
+                       uint8_t out_h[SHA3_512_CHAINING_LENGTH],
+                       uint64_t *out_n) {
+    return 0;
 }
 
-int SHA3_224_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
-    return 1;
+int SHA3_224_Init_from_state(KECCAK1600_CTX *ctx,
+                             const uint8_t h[SHA3_224_CHAINING_LENGTH],
+                             uint64_t n) {
+    return 0;
 }
 
-int SHA3_256_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
-    return 1;
+int SHA3_256_Init_from_state(KECCAK1600_CTX *ctx,
+                             const uint8_t h[SHA3_256_CHAINING_LENGTH],
+                             uint64_t n) {
+    return 0;
 }
 
-int SHA3_384_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
-    return 1;
+int SHA3_384_Init_from_state(KECCAK1600_CTX *ctx,
+                             const uint8_t h[SHA3_384_CHAINING_LENGTH],
+                             uint64_t n) {
+    return 0;
 }
 
-int SHA3_512_Init_from_state(KECCAK1600_CTX *ctx, const uint8_t h[64], uint64_t n) {
-    return 1;
+int SHA3_512_Init_from_state(KECCAK1600_CTX *ctx,
+                             const uint8_t h[SHA3_512_CHAINING_LENGTH],
+                             uint64_t n) {
+    return 0;
 }
 
 
