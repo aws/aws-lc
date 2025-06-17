@@ -261,7 +261,7 @@ union md_ctx_union {
   SHA_CTX sha1;
   SHA256_CTX sha256;
   SHA512_CTX sha512;
-  KECCAK1600_CTX sha3;
+  uint8_t sha3[400];
 };
 
 struct hmac_ctx_st {

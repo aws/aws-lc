@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/hmac.h>
+
 #include "../../internal.h"
 #include "../cpucap/internal.h"
 
@@ -94,6 +96,23 @@ extern "C" {
 // so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
+typedef struct keccak_ctx_st KECCAK1600_CTX;
+
+// The data buffer should have at least the maximum number of
+// block size bytes to fit any SHA3/SHAKE block length.
+struct keccak_ctx_st {
+  uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS];
+  size_t block_size;                               // cached ctx->digest->block_size
+  size_t md_size;                                  // output length, variable in XOF (SHAKE)
+  size_t buf_load;                                 // used bytes in below buffer
+  uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
+  uint8_t pad;                                     // padding character
+  uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
+};
+
+// TODO [childw]
+OPENSSL_STATIC_ASSERT(sizeof(KECCAK1600_CTX) <= sizeof(union md_ctx_union),
+                      hmac_md_ctx_union_sha3_size_needs_update)
 
 // KECCAK1600 x4 batched context structure
 typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];

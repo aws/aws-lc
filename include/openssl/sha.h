@@ -292,21 +292,6 @@ OPENSSL_EXPORT int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH],
 OPENSSL_EXPORT uint8_t *SHA512_256(const uint8_t *data, size_t len,
                                    uint8_t out[SHA512_256_DIGEST_LENGTH]);
 
-typedef struct keccak_st KECCAK1600_CTX;
-
-// The data buffer should have at least the maximum number of
-// block size bytes to fit any SHA3/SHAKE block length.
-struct keccak_st {
-  uint64_t A[5][5];
-  size_t block_size;                               // cached ctx->digest->block_size
-  size_t md_size;                                  // output length, variable in XOF (SHAKE)
-  size_t buf_load;                                 // used bytes in below buffer
-  uint8_t buf[168];                 // should have at least the max data block size bytes
-  uint8_t pad;                                     // padding character
-  uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
-};
-
-
 
 #if defined(__cplusplus)
 }  // extern C
