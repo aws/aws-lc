@@ -9,7 +9,9 @@
 
 #include <stddef.h>
 #if defined(OPENSSL_WINDOWS)
+#if !defined(_SSIZE_T_DEFINED)
 typedef SSIZE_T ssize_t;
+#endif
 #if !defined(__MINGW32__)
 #include <afunix.h>
 #endif
@@ -81,7 +83,10 @@ BIO_ADDR *BIO_ADDR_dup(const BIO_ADDR *ap) {
 }
 
 void BIO_ADDR_clear(BIO_ADDR *ap) {
-  OPENSSL_cleanse(ap, sizeof(*ap));
+  if (ap == NULL) {
+    return;
+  }
+  OPENSSL_cleanse(ap, sizeof(BIO_ADDR));
   ap->sa.sa_family = AF_UNSPEC;
 }
 
@@ -93,7 +98,7 @@ int BIO_ADDR_family(const BIO_ADDR *ap) {
 
 int BIO_ADDR_rawmake(BIO_ADDR *ap, int family, const void *where,
                      size_t wherelen, unsigned short port) {
-
+  GUARD_PTR(ap);
   if (family == AF_INET) {
     if (wherelen != sizeof(struct in_addr)) {
       return 0;
