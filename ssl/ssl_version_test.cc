@@ -8,7 +8,7 @@
 #include <thread>
 
 #include "internal.h"
-#include "ssl_test_common.h"
+#include "ssl_common_test.h"
 
 #include "../crypto/test/test_util.h"
 

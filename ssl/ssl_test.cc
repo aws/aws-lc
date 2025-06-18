@@ -48,7 +48,7 @@
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
-#include "ssl_test_common.h"
+#include "ssl_common_test.h"
 
 #if defined(OPENSSL_WINDOWS)
 // Windows defines struct timeval in winsock2.h.
