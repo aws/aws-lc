@@ -11,6 +11,11 @@
 // mlkem512*, mlkem768*, mlkem1024*.
 #define MLK_CONFIG_NAMESPACE_PREFIX mlkem
 
+// Replace mlkem-native's FIPS 202 headers with glue code to
+// AWS-LC's own FIPS 202 implementation.
+#define MLK_CONFIG_FIPS202_CUSTOM_HEADER "../fips202_glue.h"
+#define MLK_CONFIG_FIPS202X4_CUSTOM_HEADER "../fips202x4_glue.h"
+
 // Everything is built in a single CU, so both internal and external
 // mlkem-native API can have internal linkage.
 #define MLK_CONFIG_INTERNAL_API_QUALIFIER static

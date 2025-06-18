@@ -23,7 +23,7 @@
  *
  * # Examples
  *
- * See [examples/mlkem_native_as_code_package], [examples/multilevel_build], and
+ * See [examples/basic], [examples/multilevel_build], and
  * [examples/multilevel_build_native] for examples of how to use this header.
  *
  * # Usage
