@@ -262,7 +262,7 @@ static uint32_t mlk_load32_littleendian(const uint8_t x[4])
   return r;
 }
 
-/* Reference: `cbd2()` in the reference implementation @[REF]o. */
+/* Reference: `cbd2()` in the reference implementation @[REF]. */
 MLK_INTERNAL_API
 void mlk_poly_cbd2(mlk_poly *r, const uint8_t buf[2 * MLKEM_N / 4])
 {
@@ -313,7 +313,7 @@ static uint32_t mlk_load24_littleendian(const uint8_t x[3])
   return r;
 }
 
-/* Reference: `cbd3()` in the reference implementation @[REF]o. */
+/* Reference: `cbd3()` in the reference implementation @[REF]. */
 MLK_INTERNAL_API
 void mlk_poly_cbd3(mlk_poly *r, const uint8_t buf[3 * MLKEM_N / 4])
 {

@@ -5,8 +5,6 @@
 
 // Include level-independent code
 #define MLK_CONFIG_FILE "../mlkem_native_config.h"
-#define MLK_CONFIG_FIPS202_CUSTOM_HEADER "../fips202_glue.h"
-#define MLK_CONFIG_FIPS202X4_CUSTOM_HEADER "../fips202x4_glue.h"
 #define MLK_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS
 
 // MLKEM-512
