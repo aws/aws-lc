@@ -362,6 +362,7 @@ add_library(
   asn1/posix_time.c
   base64/base64.c
   bio/bio.c
+  bio/bio_addr.c
   bio/bio_mem.c
   bio/connect.c
   bio/dgram.c
