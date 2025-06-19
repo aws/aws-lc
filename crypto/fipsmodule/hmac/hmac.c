@@ -536,6 +536,11 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
     return 0;
   }
 
+  if (NULL == ctx->methods->get_state) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
+    return 0;
+  }
+
   const size_t chaining_length = ctx->methods->chaining_length;
   size_t actual_out_len = chaining_length * 2;
   assert(actual_out_len <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
@@ -617,6 +622,11 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
   // We require precomputed_key to be non-NULL, since here md changed
   if (NULL == precomputed_key) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
+  if (NULL == methods->init_from_state) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }
 
