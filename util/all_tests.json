@@ -52,14 +52,14 @@
     "target_arch": "x86"
   },
   {
-    "comment": "Run snapsafe detection test suite",
-    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafeGenerationTest.*"],
+    "comment": "Run snapsafe permissions test suite",
+    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafePermissionTest.*"],
     "skip_valgrind": true,
     "shard": false
   },
   {
-    "comment": "Run snapsafe permissions test suite",
-    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafePermissionTest.*"],
+    "comment": "Run snapsafe detection test suite",
+    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafeGenerationTest.*"],
     "skip_valgrind": true,
     "shard": false
   },

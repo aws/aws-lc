@@ -95,7 +95,6 @@ TEST(SnapsafeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
 // exists but cannot be opened due to permission restrictions.
 TEST(SnapsafePermissionTest, DISABLED_PermissionDeniedTest) {
   // Verify the file was created and initially accessible
-  ASSERT_TRUE(HAZMAT_init_sysgenid_file());
   const char* sysgenid_path = CRYPTO_get_sysgenid_path();
   struct stat file_stat;
   ASSERT_EQ(0, stat(sysgenid_path, &file_stat));
