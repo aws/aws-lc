@@ -146,7 +146,6 @@ int openssl_console_open(void) {
     }
 
 #if !defined(OPENSSL_WINDOWS)
-    // Unix/Linux path
     if ((tty_in = fopen(DEV_TTY, "r")) == NULL) {
         tty_in = stdin;
     }
@@ -163,7 +162,6 @@ int openssl_console_open(void) {
           }
     }
 #else
-    // Windows path
     DWORD console_mode;
     HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
 
