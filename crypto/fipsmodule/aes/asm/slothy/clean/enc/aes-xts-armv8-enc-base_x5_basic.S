@@ -496,18 +496,17 @@ Lxts_enc_tail3x:
         aese  v1.16b,v23.16b
         aese  v24.16b,v23.16b
 
-        eor  v30.16b,v6.16b,v7.16b
-        eor  v11.16b,v9.16b,v7.16b
+        eor  v0.16b,v0.16b,v7.16b
+        eor  v0.16b,v0.16b,v6.16b
         // The iv for tail
         fmov  x9,d9
         fmov  x10,v9.d[1]
         tweak d6,v6.d[1]
-        eor  v10.16b,v8.16b,v7.16b
-
-        eor  v30.16b,v30.16b,v0.16b
-        eor  v31.16b,v10.16b,v1.16b
-        eor  v24.16b,v24.16b,v11.16b
-        st1  {v30.16b,v31.16b},[x1],#32
+        eor  v1.16b,v1.16b,v7.16b
+        eor  v1.16b,v1.16b,v8.16b
+        eor  v24.16b,v24.16b,v7.16b
+        eor  v24.16b,v24.16b,v9.16b
+        st1  {v0.16b,v1.16b},[x1],#32
         st1  {v24.16b},[x1],#16
         b Lxts_enc_done  // done processing three blocks
 
@@ -561,18 +560,18 @@ Lxts_enc_tail2x:
         aesr    v1.16b, v21.16b
         aesr    v24.16b, v21.16b
 
-        eor  v5.16b,v6.16b,v7.16b
         aesr    v1.16b, v22.16b
         aesr    v24.16b, v22.16b
-        eor  v17.16b,v8.16b,v7.16b
         aese  v1.16b,v23.16b
         aese  v24.16b,v23.16b
 
-        eor  v5.16b,v5.16b,v1.16b
-        st1  {v5.16b},[x1],#16
-        eor  v17.16b,v17.16b,v24.16b
-        orr  v6.16b,v8.16b,v8.16b
-        st1  {v17.16b},[x1],#16
+        eor  v1.16b,v1.16b,v7.16b
+        eor  v1.16b,v1.16b,v6.16b
+        st1  {v1.16b},[x1],#16
+        eor  v24.16b,v24.16b,v7.16b
+        eor  v24.16b,v24.16b,v8.16b
+        st1  {v24.16b},[x1],#16
+
         // The iv for tail
         fmov  x9,d8
         fmov  x10,v8.d[1]
@@ -614,12 +613,12 @@ Lxts_enc_tail1x:
 
         aesr    v24.16b, v20.16b
         aesr    v24.16b, v21.16b
-        eor  v5.16b,v6.16b,v7.16b
         aesr    v24.16b, v22.16b
         aese  v24.16b,v23.16b
 
-        eor  v5.16b,v5.16b,v24.16b
-        st1  {v5.16b},[x1],#16
+        eor  v24.16b,v24.16b,v7.16b
+        eor  v24.16b,v24.16b,v6.16b
+        st1  {v24.16b},[x1],#16
         // tweak for tail
         fmov  x9,d6
         fmov  x10,v6.d[1]
