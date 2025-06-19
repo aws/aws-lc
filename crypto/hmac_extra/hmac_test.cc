@@ -332,9 +332,12 @@ TEST(HMACTest, TestVectorsPrecomputedKey) {
     // call precomputed-key functions.
     bssl::ScopedHMAC_CTX ctx;
     if (GetPrecomputedKeySize(digest_str) <= 0) {
+        ASSERT_TRUE(
+            HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+        ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
         ASSERT_FALSE(HMAC_set_precomputed_key_export(ctx.get()));
         size_t len;
-        ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), mac.get(), &len));
+        ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), key.data(), &len));
         ASSERT_FALSE(HMAC_Init_from_precomputed_key(ctx.get(), key.data(), key.size(), digest));
         return;
     }

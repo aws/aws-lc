@@ -515,7 +515,8 @@ void HMAC_CTX_reset(HMAC_CTX *ctx) {
 }
 
 int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
-  if (NULL == ctx->methods->get_state) {
+  GUARD_PTR(ctx);
+  if (ctx->methods != NULL && ctx->methods->get_state == NULL) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }
@@ -524,12 +525,14 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
     // HMAC_set_precomputed_key_export can only be called after Hmac_Init_*
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_NOT_CALLED_JUST_AFTER_INIT);
     return 0;
-  }  ctx->state = HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY;
+  }
+  ctx->state = HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY;
   return 1;
 }
 
 int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
-  if (NULL == ctx->methods->get_state) {
+  GUARD_PTR(ctx);
+  if (ctx->methods != NULL && ctx->methods->get_state == NULL) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }
@@ -591,12 +594,6 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
                                    const uint8_t *precomputed_key,
                                    size_t precomputed_key_len,
                                    const EVP_MD *md) {
-  const HmacMethods *methods = ctx->methods;
-  if (NULL == methods->init_from_state) {
-    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
-    return 0;
-  }
-
   if (HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
       HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state) {
     ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
@@ -614,6 +611,12 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
   // See HMAC_Init_ex
 
   if (!hmac_ctx_set_md_methods(ctx, md)) {
+    return 0;
+  }
+
+  const HmacMethods *methods = ctx->methods;
+  if (methods != NULL && ctx->methods->init_from_state == NULL) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }
 
