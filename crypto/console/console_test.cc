@@ -23,7 +23,7 @@
 class PemPasswdTest : public testing::Test {
  protected:
   void SetUp() override {
-    setenv("OPENSSL_CONSOLE_TEST_MODE", "1", 1);
+    setenv("AWSLC_CONSOLE_NO_TTY_DETECT", "1", 1);
 
     // Save original file descriptors
     original_stdin = dup(fileno(stdin));
@@ -45,7 +45,7 @@ class PemPasswdTest : public testing::Test {
   }
 
   void TearDown() override {
-    unsetenv("OPENSSL_CONSOLE_TEST_MODE");
+    unsetenv("AWSLC_CONSOLE_NO_TTY_DETECT");
 
     // Close console for each test
     ASSERT_TRUE(openssl_console_close());

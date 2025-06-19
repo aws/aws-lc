@@ -137,7 +137,7 @@ int openssl_console_open(void) {
     assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex));
 
     // Check for test environment variable first (platform-independent)
-    const char* test_mode = getenv("OPENSSL_CONSOLE_TEST_MODE");
+    const char* test_mode = getenv("AWSLC_CONSOLE_NO_TTY_DETECT");
     if (test_mode != NULL) {
         tty_in = stdin;
         tty_out = stderr;
