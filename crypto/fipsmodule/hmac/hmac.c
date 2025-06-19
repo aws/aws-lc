@@ -521,6 +521,10 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_NOT_CALLED_JUST_AFTER_INIT);
     return 0;
   }
+  if (NULL == ctx->methods->get_state) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
+    return 0;
+  }
   ctx->state = HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY;
   return 1;
 }

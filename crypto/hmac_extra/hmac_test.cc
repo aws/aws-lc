@@ -318,10 +318,6 @@ TEST(HMACTest, TestVectorsPrecomputedKey) {
     ASSERT_TRUE(t->GetBytes(&output, "Output"));
     ASSERT_EQ(EVP_MD_size(digest), output.size());
 
-    if (GetPrecomputedKeySize(digest_str) <= 0) {
-        GTEST_SKIP() << digest_str << " doesn't support pre-computed keys";
-    }
-
     // Test using the one-shot API.
     const unsigned expected_mac_len = EVP_MD_size(digest);
     std::unique_ptr<uint8_t[]> mac(new uint8_t[expected_mac_len]);
@@ -331,6 +327,18 @@ TEST(HMACTest, TestVectorsPrecomputedKey) {
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
 
+    // Digests that do not support pre-computed keys will have a non-positive
+    // pre-computed key size. In this case, assert that we can't successfully
+    // call precomputed-key functions.
+    bssl::ScopedHMAC_CTX ctx;
+    if (GetPrecomputedKeySize(digest_str) <= 0) {
+        ASSERT_FALSE(HMAC_set_precomputed_key_export(ctx.get()));
+        size_t len;
+        ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), mac.get(), &len));
+        ASSERT_FALSE(HMAC_Init_from_precomputed_key(ctx.get(), key.data(), key.size(), digest));
+        return;
+    }
+
     // Test using the one-shot API with precompute
     ASSERT_TRUE(HMAC_with_precompute(digest, key.data(), key.size(),
                                      input.data(), input.size(), mac.get(),
@@ -339,7 +347,6 @@ TEST(HMACTest, TestVectorsPrecomputedKey) {
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
 
     // Test using HMAC_CTX.
-    bssl::ScopedHMAC_CTX ctx;
     ASSERT_TRUE(
         HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
     ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
