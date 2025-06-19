@@ -23,7 +23,11 @@
 class PemPasswdTest : public testing::Test {
  protected:
   void SetUp() override {
+#if defined(OPENSSL_WINDOWS)
+    _putenv_s("AWSLC_CONSOLE_NO_TTY_DETECT", "1");
+#else
     setenv("AWSLC_CONSOLE_NO_TTY_DETECT", "1", 1);
+#endif
 
     // Save original file descriptors
     original_stdin = dup(fileno(stdin));
@@ -45,7 +49,11 @@ class PemPasswdTest : public testing::Test {
   }
 
   void TearDown() override {
+#if defined(OPENSSL_WINDOWS)
+    _putenv_s("AWSLC_CONSOLE_NO_TTY_DETECT", ""); 
+#else
     unsetenv("AWSLC_CONSOLE_NO_TTY_DETECT");
+#endif
 
     // Close console for each test
     ASSERT_TRUE(openssl_console_close());
