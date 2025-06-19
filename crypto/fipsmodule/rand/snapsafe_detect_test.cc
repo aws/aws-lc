@@ -94,20 +94,17 @@ TEST(SnapsafeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
 // This test verifies that AWS-LC properly handles the case where /dev/sysgenid
 // exists but cannot be opened due to permission restrictions.
 TEST(SnapsafePermissionTest, DISABLED_PermissionDeniedTest) {
-  ASSERT_TRUE(HAZMAT_init_sysgenid_file());
-
   // Verify the file was created and initially accessible
+  ASSERT_TRUE(HAZMAT_init_sysgenid_file());
   const char* sysgenid_path = CRYPTO_get_sysgenid_path();
   struct stat file_stat;
   ASSERT_EQ(0, stat(sysgenid_path, &file_stat));
 
-  // Change permissions to make the file unreadable
+  // Make file unreadable by anyone
   ASSERT_EQ(0, chmod(sysgenid_path, 0000));
 
-  // Should return 1 because the file exists (stat() succeeds)
+  // There is support, but it's not active due to read failure
   EXPECT_EQ(1, CRYPTO_get_snapsafe_supported());
-
-  // Should return 0 because initialization failed (open() failed)
   EXPECT_EQ(0, CRYPTO_get_snapsafe_active());
 
   // Should return 0 (failure) and set generation number to 0
