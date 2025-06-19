@@ -163,9 +163,9 @@ OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t len
 
 #define USE_SLOTHY_XTS
 #if defined(USE_SLOTHY_XTS)
-void aes_hw_slothy_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key1, const AES_KEY *key2,
-                        const uint8_t iv[16]);
+// void aes_hw_slothy_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+//                         const AES_KEY *key1, const AES_KEY *key2,
+//                         const uint8_t iv[16]);
 void aes_hw_slothy_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
                         const AES_KEY *key1, const AES_KEY *key2,
                         const uint8_t iv[16]);

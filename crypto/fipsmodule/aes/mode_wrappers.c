@@ -166,7 +166,7 @@ void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 
 #if defined(HWAES_XTS)
 #if defined(USE_SLOTHY_XTS)
-#define aes_hw_xts_encrypt aes_hw_slothy_xts_encrypt
+// #define aes_hw_xts_encrypt aes_hw_slothy_xts_encrypt
 #define aes_hw_xts_decrypt aes_hw_slothy_xts_decrypt
 #endif
 int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
