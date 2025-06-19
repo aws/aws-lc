@@ -136,7 +136,17 @@ int openssl_console_open(void) {
     is_a_tty = 1;
     assert(CRYPTO_STATIC_MUTEX_is_write_locked(&console_global_mutex));
 
+    // Check for test environment variable first (platform-independent)
+    const char* test_mode = getenv("OPENSSL_CONSOLE_TEST_MODE");
+    if (test_mode != NULL) {
+        tty_in = stdin;
+        tty_out = stderr;
+        is_a_tty = 0;
+        return 1;
+    }
+
 #if !defined(OPENSSL_WINDOWS)
+    // Unix/Linux path
     if ((tty_in = fopen(DEV_TTY, "r")) == NULL) {
         tty_in = stdin;
     }
@@ -153,6 +163,7 @@ int openssl_console_open(void) {
           }
     }
 #else
+    // Windows path
     DWORD console_mode;
     HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
 

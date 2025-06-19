@@ -23,6 +23,8 @@
 class PemPasswdTest : public testing::Test {
  protected:
   void SetUp() override {
+    setenv("OPENSSL_CONSOLE_TEST_MODE", "1", 1);
+
     // Save original file descriptors
     original_stdin = dup(fileno(stdin));
     original_stderr = dup(fileno(stderr));
@@ -43,6 +45,8 @@ class PemPasswdTest : public testing::Test {
   }
 
   void TearDown() override {
+    unsetenv("OPENSSL_CONSOLE_TEST_MODE");
+
     // Close console for each test
     ASSERT_TRUE(openssl_console_close());
     openssl_console_release_mutex();
