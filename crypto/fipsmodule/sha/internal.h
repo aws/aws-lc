@@ -68,7 +68,6 @@ extern "C" {
 #define SHA3_384_CBLOCK SHA3_BLOCKSIZE(SHA3_384_DIGEST_BITLENGTH)
 #define SHA3_512_CBLOCK SHA3_BLOCKSIZE(SHA3_512_DIGEST_BITLENGTH)
 
-
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define SHAKE_PAD_CHAR 0x1F
@@ -468,7 +467,7 @@ int SHA3_224_Init(KECCAK1600_CTX *sha);
 // SHA3_224_Update adds |len| bytes from |data| to |sha| and returns 1.
 int SHA3_224_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
-// SHA512_224_Final adds the final padding to |sha| and writes the resulting
+// SHA3_224_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
 int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
@@ -478,7 +477,7 @@ int SHA3_256_Init(KECCAK1600_CTX *sha);
 // SHA3_256_Update adds |len| bytes from |data| to |sha| and returns 1.
 int SHA3_256_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
-// SHA512_256_Final adds the final padding to |sha| and writes the resulting
+// SHA3_256_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
 int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
@@ -488,7 +487,7 @@ int SHA3_384_Init(KECCAK1600_CTX *sha);
 // SHA3_384_Update adds |len| bytes from |data| to |sha| and returns 1.
 int SHA3_384_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
-// SHA512_384_Final adds the final padding to |sha| and writes the resulting
+// SHA3_384_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
 int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
@@ -498,7 +497,7 @@ int SHA3_512_Init(KECCAK1600_CTX *sha);
 // SHA3_512_Update adds |len| bytes from |data| to |sha| and returns 1.
 int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
 
-// SHA512_512_Final adds the final padding to |sha| and writes the resulting
+// SHA3_512_Final adds the final padding to |sha| and writes the resulting
 // digest to |out|. It returns one on success and zero on programmer error.
 int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
