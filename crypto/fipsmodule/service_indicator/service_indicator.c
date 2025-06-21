@@ -414,6 +414,10 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
     case NID_sha512:
     case NID_sha512_224:
     case NID_sha512_256:
+    case NID_sha3_224:
+    case NID_sha3_256:
+    case NID_sha3_384:
+    case NID_sha3_512:
       FIPS_service_indicator_update_state();
       break;
     default:

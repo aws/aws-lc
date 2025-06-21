@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/hmac.h>
+
 #include "../../internal.h"
 #include "../cpucap/internal.h"
 
@@ -61,6 +63,11 @@ extern "C" {
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
 #define SHA3_PAD_CHAR 0x06
 
+#define SHA3_224_CBLOCK SHA3_BLOCKSIZE(SHA3_224_DIGEST_BITLENGTH)
+#define SHA3_256_CBLOCK SHA3_BLOCKSIZE(SHA3_256_DIGEST_BITLENGTH)
+#define SHA3_384_CBLOCK SHA3_BLOCKSIZE(SHA3_384_DIGEST_BITLENGTH)
+#define SHA3_512_CBLOCK SHA3_BLOCKSIZE(SHA3_512_DIGEST_BITLENGTH)
+
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define SHAKE_PAD_CHAR 0x1F
@@ -81,11 +88,11 @@ extern "C" {
 // so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
-typedef struct keccak_st KECCAK1600_CTX;
+typedef struct keccak_ctx_st KECCAK1600_CTX;
 
 // The data buffer should have at least the maximum number of
 // block size bytes to fit any SHA3/SHAKE block length.
-struct keccak_st {
+struct keccak_ctx_st {
   uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS];
   size_t block_size;                               // cached ctx->digest->block_size
   size_t md_size;                                  // output length, variable in XOF (SHAKE)
@@ -94,6 +101,15 @@ struct keccak_st {
   uint8_t pad;                                     // padding character
   uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
 };
+
+// To avoid externalizing KECCAK1600_CTX, we hard-code the context size in
+// hmac.h's |md_ctx_union| and use a compile time check here to make sure
+// |KECCAK1600_CTX|'s size never exceeds that of |md_ctx_union|. This means
+// that whenever a new field is added to |keccak_ctx_st| we must also update
+// the hard-coded size of |sha3| in hmac.h's |md_ctx_union| with the new
+// value given by |sizeof(keccaak_ctx_st)|.
+OPENSSL_STATIC_ASSERT(sizeof(KECCAK1600_CTX) <= sizeof(union md_ctx_union),
+                      hmac_md_ctx_union_sha3_size_needs_update)
 
 // KECCAK1600 x4 batched context structure
 typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];
@@ -444,6 +460,46 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 // It then calls |Keccak1600_Squeeze| and returns 1 on success and 0 on failure.
 // When call-discipline is maintained, this function never fails.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
+
+// SHA3_224_Init initialises |sha| and returns 1.
+int SHA3_224_Init(KECCAK1600_CTX *sha);
+
+// SHA3_224_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_224_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_224_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// SHA3_256_Init initialises |sha| and returns 1.
+int SHA3_256_Init(KECCAK1600_CTX *sha);
+
+// SHA3_256_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_256_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_256_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// SHA3_384_Init initialises |sha| and returns 1.
+int SHA3_384_Init(KECCAK1600_CTX *sha);
+
+// SHA3_384_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_384_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_384_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// SHA3_512_Init initialises |sha| and returns 1.
+int SHA3_512_Init(KECCAK1600_CTX *sha);
+
+// SHA3_512_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_512_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
 
 /*
  * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
