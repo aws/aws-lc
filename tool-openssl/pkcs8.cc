@@ -96,7 +96,6 @@ static bool validate_prf(const std::string& prf_name) {
 // Updates source string to contain the actual password
 static bool extract_password(std::string& source) {
     // TODO Prompt user for password via EVP_read_pw_string 
-    // EVP_read_pw_string not currently implemented in AWS-LC
     if (source.empty()) {
         return true;
     }
