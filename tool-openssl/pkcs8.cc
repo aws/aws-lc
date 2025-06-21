@@ -167,43 +167,18 @@ static bool extract_password(std::string& source) {
     return false;
 }
 
-// A wrapper class for sensitive string data that's automatically cleared on destruction
-class SensitiveString {
-public:
-    SensitiveString() = default;
-    explicit SensitiveString(const std::string& str) : data_(str) {}
-    ~SensitiveString() { clear(); }
-    
-    // Delete copy operations to prevent accidental exposure
-    SensitiveString(const SensitiveString&) = delete;
-    SensitiveString& operator=(const SensitiveString&) = delete;
-    
-    // Move operations
-    SensitiveString(SensitiveString&& other) noexcept : data_(std::move(other.data_)) {}
-    SensitiveString& operator=(SensitiveString&& other) noexcept {
-        if (this != &other) {
-            clear();
-            data_ = std::move(other.data_);
-        }
-        return *this;
+// Custom deleter for sensitive strings that clears memory before deletion
+static void SensitiveStringDeleter(std::string* str) {
+    if (str && !str->empty()) {
+        OPENSSL_cleanse(&(*str)[0], str->size());
+        str->clear();
     }
-    
-    const std::string& str() const { return data_; }
-    std::string& str() { return data_; }
-    const char* c_str() const { return data_.c_str(); }
-    bool empty() const { return data_.empty(); }
-    size_t length() const { return data_.length(); }
-    
-    void clear() {
-        if (!data_.empty()) {
-            OPENSSL_cleanse(&data_[0], data_.size());
-            data_.clear();
-        }
-    }
+    delete str;
+}
 
-private:
-    std::string data_;
-};
+BSSL_NAMESPACE_BEGIN
+BORINGSSL_MAKE_DELETER(std::string, SensitiveStringDeleter)
+BSSL_NAMESPACE_END
 
 // Reads a private key from BIO in the specified format with optional password
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, 
@@ -270,8 +245,8 @@ bool pkcs8Tool(const args_list_t& args) {
     bool topk8 = false, nocrypt = false;
     
     // Sensitive strings will be automatically cleared on function exit
-    SensitiveString passin_arg;
-    SensitiveString passout_arg;
+    bssl::UniquePtr<std::string> passin_arg(new std::string());
+    bssl::UniquePtr<std::string> passout_arg(new std::string());
     
     bssl::UniquePtr<BIO> in;
     bssl::UniquePtr<BIO> out;
@@ -315,17 +290,17 @@ bool pkcs8Tool(const args_list_t& args) {
         return false;
     }
     
-    GetString(&passin_arg.str(), "-passin", "", parsed_args);
-    GetString(&passout_arg.str(), "-passout", "", parsed_args); 
-    if (!extract_password(passin_arg.str())) {
+    GetString(passin_arg.get(), "-passin", "", parsed_args);
+    GetString(passout_arg.get(), "-passout", "", parsed_args); 
+    if (!extract_password(*passin_arg)) {
         return false;
     }
-    if (!extract_password(passout_arg.str())) {
+    if (!extract_password(*passout_arg)) {
         return false;
     }
     
     // Check for contradictory arguments
-    if (nocrypt && !passin_arg.empty() && !passout_arg.empty()) {
+    if (nocrypt && !passin_arg->empty() && !passout_arg->empty()) {
         fprintf(stderr, "Error: -nocrypt cannot be used with both -passin and -passout\n");
         return false;
     }
@@ -351,7 +326,7 @@ bool pkcs8Tool(const args_list_t& args) {
     
     pkey = read_private_key(
         in.get(),
-        passin_arg.empty() ? nullptr : passin_arg.c_str(),
+        passin_arg->empty() ? nullptr : passin_arg->c_str(),
         inform
     );
     if (!pkey) {
@@ -366,7 +341,7 @@ bool pkcs8Tool(const args_list_t& args) {
             i2d_PrivateKey_bio(out.get(), pkey.get());
     } else {
         // If passout is provided, always encrypt the output regardless of nocrypt
-        if (nocrypt && passout_arg.empty()) {
+        if (nocrypt && passout_arg->empty()) {
             p8inf.reset(EVP_PKEY2PKCS8(pkey.get()));
             if (!p8inf) {
                 fprintf(stderr, "Error converting to PKCS#8\n");
@@ -377,7 +352,7 @@ bool pkcs8Tool(const args_list_t& args) {
                 PEM_write_bio_PKCS8_PRIV_KEY_INFO(out.get(), p8inf.get()) :
                 i2d_PKCS8_PRIV_KEY_INFO_bio(out.get(), p8inf.get());
         } else {
-            if (passout_arg.empty()) {
+            if (passout_arg->empty()) {
                 fprintf(stderr, "Password required for encryption\n");
                 return false;
             }
@@ -386,12 +361,12 @@ bool pkcs8Tool(const args_list_t& args) {
             if (outform == "PEM") {
                 result = PEM_write_bio_PKCS8PrivateKey(
                     out.get(), pkey.get(), cipher,
-                    passout_arg.c_str(), passout_arg.length(),
+                    passout_arg->c_str(), passout_arg->length(),
                     nullptr, nullptr);
             } else {
                 result = i2d_PKCS8PrivateKey_bio(
                     out.get(), pkey.get(), cipher,
-                    passout_arg.c_str(), passout_arg.length(),
+                    passout_arg->c_str(), passout_arg->length(),
                     nullptr, nullptr);
             }
         }
