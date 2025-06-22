@@ -5,6 +5,7 @@
 
 /*
  * WARNING: This file is auto-generated from scripts/autogen
+ *          in the mlkem-native repository.
  *          Do not modify it directly.
  */
 
@@ -68,6 +69,12 @@
 #include "verify.c"
 
 
+#if defined(MLK_CONFIG_USE_NATIVE_BACKEND_ARITH)
+#if defined(MLK_SYS_AARCH64)
+#include "native/aarch64/src/aarch64_zetas.c"
+#include "native/aarch64/src/rej_uniform_table.c"
+#endif
+#endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
 
 /* Macro #undef's
@@ -310,4 +317,47 @@
 #undef __loop__
 
 
+#if defined(MLK_CONFIG_USE_NATIVE_BACKEND_ARITH)
+/* mlkem/src/native/api.h */
+#undef MLK_INVNTT_BOUND
+#undef MLK_NATIVE_API_H
+#undef MLK_NTT_BOUND
+/* mlkem/src/native/meta.h */
+#undef MLK_NATIVE_META_H
+#if defined(MLK_SYS_AARCH64)
+/*
+ * Undefine macros from native code (Arith, AArch64)
+ */
+/* mlkem/src/native/aarch64/meta.h */
+#undef MLK_ARITH_BACKEND_AARCH64
+#undef MLK_NATIVE_AARCH64_META_H
+#undef MLK_USE_NATIVE_INTT
+#undef MLK_USE_NATIVE_NTT
+#undef MLK_USE_NATIVE_POLYVEC_BASEMUL_ACC_MONTGOMERY_CACHED
+#undef MLK_USE_NATIVE_POLY_MULCACHE_COMPUTE
+#undef MLK_USE_NATIVE_POLY_REDUCE
+#undef MLK_USE_NATIVE_POLY_TOBYTES
+#undef MLK_USE_NATIVE_POLY_TOMONT
+#undef MLK_USE_NATIVE_REJ_UNIFORM
+/* mlkem/src/native/aarch64/src/arith_native_aarch64.h */
+#undef MLK_NATIVE_AARCH64_SRC_ARITH_NATIVE_AARCH64_H
+#undef mlk_aarch64_invntt_zetas_layer12345
+#undef mlk_aarch64_invntt_zetas_layer67
+#undef mlk_aarch64_ntt_zetas_layer12345
+#undef mlk_aarch64_ntt_zetas_layer67
+#undef mlk_aarch64_zetas_mulcache_native
+#undef mlk_aarch64_zetas_mulcache_twisted_native
+#undef mlk_intt_asm
+#undef mlk_ntt_asm
+#undef mlk_poly_mulcache_compute_asm
+#undef mlk_poly_reduce_asm
+#undef mlk_poly_tobytes_asm
+#undef mlk_poly_tomont_asm
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k2
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k3
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k4
+#undef mlk_rej_uniform_asm
+#undef mlk_rej_uniform_table
+#endif /* MLK_SYS_AARCH64 */
+#endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 #endif /* !MLK_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS */
