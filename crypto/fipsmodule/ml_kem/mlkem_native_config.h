@@ -9,7 +9,7 @@
 // Namespacing: All symbols are of the form mlkem*. Level-specific
 // symbols are further prefixed with their security level, e.g.
 // mlkem512*, mlkem768*, mlkem1024*.
-#define MLK_CONFIG_NAMESPACE_PREFIX mlkem
+#define MLK_CONFIG_NAMESPACE_PREFIX mlkem_native
 
 // Replace mlkem-native's FIPS 202 headers with glue code to
 // AWS-LC's own FIPS 202 implementation.
@@ -66,6 +66,12 @@ static MLK_INLINE void mlk_randombytes(void *ptr, size_t len) {
 
 #if defined(OPENSSL_NO_ASM)
 #define MLK_CONFIG_NO_ASM
+#endif
+
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
+#define MLK_CONFIG_USE_NATIVE_BACKEND_ARITH
+#define MLK_CONFIG_ARITH_BACKEND_FILE "../aarch64/meta.h"
 #endif
 
 #endif // MLkEM_NATIVE_CONFIG_H
