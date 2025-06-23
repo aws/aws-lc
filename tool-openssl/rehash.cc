@@ -336,9 +336,9 @@ static const argument_t kArguments[] = {
 };
 
 bool RehashTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args,
+  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
     kArguments) || extra_args.size() > 1) {
     PrintUsage(kArguments);
     return false;
@@ -347,7 +347,7 @@ bool RehashTool(const args_list_t &args) {
   std::string directory_path;
   bool help = false;
 
-  GetBoolArgument(&help, "-help", parsed_args);
+  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
 
   if (help) {
     fprintf(stderr, "Usage: openssl rehash [cert-directory]\n" \
