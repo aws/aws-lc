@@ -3062,12 +3062,16 @@ int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **o
   }
 
   CBS cbs;
-  if (!ssl_client_hello_get_extension(&client_hello, &cbs, (uint16_t)type)) {
+  if (!ssl_client_hello_get_extension(&client_hello, &cbs, static_cast<uint16_t>(type))) {
     return 0;  // Extension not found
   }
 
-  *out = CBS_data(&cbs);
-  *outlen = CBS_len(&cbs);
+  if (out != nullptr) {
+    *out = CBS_data(&cbs);
+  }
+  if (outlen != nullptr) {
+    *outlen = CBS_len(&cbs);
+  }
   return 1;  // Success
 }
 
