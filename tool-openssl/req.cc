@@ -7,6 +7,8 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <algorithm>
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include "../tool/internal.h"
@@ -455,9 +457,9 @@ static bool generate_serial(X509 *cert) {
 }
 
 bool reqTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
@@ -467,16 +469,16 @@ bool reqTool(const args_list_t &args) {
   unsigned int days;
   bool help = false, new_flag = false, x509_flag = false, nodes = false;
 
-  GetBoolArgument(&help, "-help", parsed_args);
-  GetBoolArgument(&new_flag, "-new", parsed_args);
-  GetBoolArgument(&x509_flag, "-x509", parsed_args);
-  GetBoolArgument(&nodes, "-nodes", parsed_args);
+  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
+  ordered_args::GetBoolArgument(&new_flag, "-new", parsed_args);
+  ordered_args::GetBoolArgument(&x509_flag, "-x509", parsed_args);
+  ordered_args::GetBoolArgument(&nodes, "-nodes", parsed_args);
 
-  GetString(&newkey, "-newkey", "", parsed_args);
-  GetUnsigned(&days, "-days", 30u, parsed_args);
-  GetString(&subj, "-subj", "", parsed_args);
-  GetString(&keyout, "-keyout", "", parsed_args);
-  GetString(&out, "-out", "", parsed_args);
+  ordered_args::GetString(&newkey, "-newkey", "", parsed_args);
+  ordered_args::GetUnsigned(&days, "-days", 30u, parsed_args);
+  ordered_args::GetString(&subj, "-subj", "", parsed_args);
+  ordered_args::GetString(&keyout, "-keyout", "", parsed_args);
+  ordered_args::GetString(&out, "-out", "", parsed_args);
 
   if (help) {
     PrintUsage(kArguments);
