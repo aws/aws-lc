@@ -1123,6 +1123,7 @@ OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
 // - SSL_CLIENT_HELLO_ERROR to abort the handshake with alert |*al|
 // - SSL_CLIENT_HELLO_RETRY to pause the handshake (not fully supported)
 typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
+
 // SSL_CTX_set_client_hello_cb configures a callback that is called when a
 // ClientHello message is received. This can be used to select certificates,
 // adjust settings, or otherwise make decisions about the connection before
@@ -1140,11 +1141,9 @@ typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
 OPENSSL_EXPORT void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
                                  void *arg);
 
-// SSL_client_hello_isv2 returns one if the current client hello was in SSLv2 format
-// and zero otherwise. This function can only be called from within a client hello
-// callback (see |SSL_CTX_set_client_hello_cb|) or during server certificate selection 
-// (see |SSL_CTX_set_select_certificate_cb|).
+// SSL_client_hello_isv2 always returns zero as SSLv2 is not supported.
 OPENSSL_EXPORT int SSL_client_hello_isv2(SSL *s);
+
 // SSL_client_hello_get0_ext searches the extensions in the ClientHello for an
 // extension of the given type. If found, it sets |*out| to point to the
 // extension contents (not including the type and length bytes) and |*outlen|
