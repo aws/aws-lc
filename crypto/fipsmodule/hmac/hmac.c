@@ -615,7 +615,7 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
   }
 
   const HmacMethods *methods = ctx->methods;
-  if (methods != NULL && ctx->methods->init_from_state == NULL) {
+  if (ctx->methods->init_from_state == NULL) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }

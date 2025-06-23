@@ -87,13 +87,13 @@ static const EVP_MD *GetDigest(const std::string &name) {
     return EVP_sha512_224();
   } else if (name == "SHA512/256") {
     return EVP_sha512_256();
-  } else if (name == "SHA3/224") {
+  } else if (name == "SHA3-224") {
     return EVP_sha3_224();
-  } else if (name == "SHA3/256") {
+  } else if (name == "SHA3-256") {
     return EVP_sha3_256();
-  } else if (name == "SHA3/384") {
+  } else if (name == "SHA3-384") {
     return EVP_sha3_384();
-  } else if (name == "SHA3/512") {
+  } else if (name == "SHA3-512") {
     return EVP_sha3_512();
   }
   return nullptr;
