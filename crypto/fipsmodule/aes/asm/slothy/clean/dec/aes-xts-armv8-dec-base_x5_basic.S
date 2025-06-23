@@ -13,46 +13,46 @@
 #include <openssl/arm_arch.h>
 .arch   armv8-a+crypto
 .text
-.globl	aes_hw_slothy_xts_decrypt
-.hidden	aes_hw_slothy_xts_decrypt
-.type	aes_hw_slothy_xts_decrypt,%function
+.globl    aes_hw_slothy_xts_decrypt
+.hidden    aes_hw_slothy_xts_decrypt
+.type    aes_hw_slothy_xts_decrypt,%function
 #elif defined(__APPLE__)
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
 #include <openssl/arm_arch.h>
 .text
-.globl	_aes_hw_slothy_xts_decrypt
-.private_extern	_aes_hw_slothy_xts_decrypt
+.globl    _aes_hw_slothy_xts_decrypt
+.private_extern    _aes_hw_slothy_xts_decrypt
 #else
 #error Unknown configuration
 #endif
 
 #if __ARM_MAX_ARCH__ >= 8
 
-.align	5
+.align    5
 
 #define STACK_BASE_VREGS 0
 #define STACK_SIZE_VREGS (4*16)
 
 .macro save_vregs
-    stp	d8,d9,[sp,#(STACK_BASE_VREGS + 16*0)]
-    stp	d10,d11,[sp,#(STACK_BASE_VREGS + 16*1)]
+        stp    d8,d9,[sp,#(STACK_BASE_VREGS + 16*0)]
+        stp    d10,d11,[sp,#(STACK_BASE_VREGS + 16*1)]
 .endm
 
 .macro save_regs
-    stp	x19,x20,[sp,#(STACK_BASE_VREGS + 16*2)]
-    stp	x21,x22,[sp,#(STACK_BASE_VREGS + 16*3)]
+        stp    x19,x20,[sp,#(STACK_BASE_VREGS + 16*2)]
+        stp    x21,x22,[sp,#(STACK_BASE_VREGS + 16*3)]
 .endm
 
 .macro restore_vregs
-    ldp	d8,d9,[sp,#(STACK_BASE_VREGS + 16*0)]
-    ldp	d10,d11,[sp,#(STACK_BASE_VREGS + 16*1)]
+        ldp    d8,d9,[sp,#(STACK_BASE_VREGS + 16*0)]
+        ldp    d10,d11,[sp,#(STACK_BASE_VREGS + 16*1)]
 .endm
 
 .macro restore_regs
-    ldp	x19,x20,[sp,#(STACK_BASE_VREGS + 16*2)]
-    ldp	x21,x22,[sp,#(STACK_BASE_VREGS + 16*3)]
+        ldp    x19,x20,[sp,#(STACK_BASE_VREGS + 16*2)]
+        ldp    x21,x22,[sp,#(STACK_BASE_VREGS + 16*3)]
 .endm
 
 // A single AES round
@@ -80,14 +80,14 @@
 
 _aes_hw_slothy_xts_decrypt:
 aes_hw_slothy_xts_decrypt:
-	// AARCH64_VALID_CALL_TARGET
-    sub sp, sp, #STACK_SIZE_VREGS
-    save_vregs
-	save_regs
+        // AARCH64_VALID_CALL_TARGET
+        sub sp, sp, #STACK_SIZE_VREGS
+        save_vregs
+        save_regs
 
-	cmp	x2,#16
-    // Original input data size bigger than 16, jump to big size processing.
-	b.lt	Lxts_dec_abort
+        cmp    x2,#16
+        // Original input data size bigger than 16, jump to big size processing.
+        b.lt    Lxts_dec_abort
 
 .align 5
 Lxts_dec_big_size:  // decrypt input size >= 16 bytes
@@ -633,89 +633,89 @@ Lxts_dec_tail1x:
         b  Lxts_dec_done
 
 Lxts_dec_done:
-	tst	x21,#0xf
-	b.eq	Lxts_dec_abort
+        tst    x21,#0xf
+        b.eq    Lxts_dec_abort
         // Processing the last 1 block and a tail with cipher stealing.
         // At this point, we know there is 1 block+tail
         // We need two tweaks, one is already calculated and stored in v6
         // We use it to calculate v8
-        mov	x7,x3
+        mov    x7,x3
 
         fmov  x9,d6
         fmov  x10,v6.d[1]
         tweak d8,v8.d[1]
 
-	ld1	{v0.4s},[x0],#16
+        ld1    {v0.4s},[x0],#16
 
-    // Decrypt the second to last block
+// Decrypt the second to last block
 .Lxts_dec_1st_done:
-	eor	v26.16b,v0.16b,v8.16b
-	ldr	w6,[x3,#240]
-	ld1	{v0.4s},[x3],#16
-	sub	w6,w6,#2
-	ld1	{v1.4s},[x3],#16
+        eor    v26.16b,v0.16b,v8.16b
+        ldr    w6,[x3,#240]
+        ld1    {v0.4s},[x3],#16
+        sub    w6,w6,#2
+        ld1    {v1.4s},[x3],#16
 .Loop_final_2nd_dec:
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
-	ld1	{v0.4s},[x3],#16     // load key schedule...
-	subs	w6,w6,#2
-	aesd	v26.16b,v1.16b
-	aesimc	v26.16b,v26.16b
-	ld1	{v1.4s},[x3],#16     // load key schedule...
-	b.gt	.Loop_final_2nd_dec
+        aesd    v26.16b,v0.16b
+        aesimc    v26.16b,v26.16b
+        ld1    {v0.4s},[x3],#16     // load key schedule...
+        subs    w6,w6,#2
+        aesd    v26.16b,v1.16b
+        aesimc    v26.16b,v26.16b
+        ld1    {v1.4s},[x3],#16     // load key schedule...
+        b.gt    .Loop_final_2nd_dec
 
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
-	ld1	{v0.4s},[x3]
-	aesd	v26.16b,v1.16b
-	eor	v26.16b,v26.16b,v0.16b
-	eor	v26.16b,v26.16b,v8.16b
-	st1	{v26.16b},[x1]
+        aesd    v26.16b,v0.16b
+        aesimc    v26.16b,v26.16b
+        ld1    {v0.4s},[x3]
+        aesd    v26.16b,v1.16b
+        eor    v26.16b,v26.16b,v0.16b
+        eor    v26.16b,v26.16b,v8.16b
+        st1    {v26.16b},[x1]
 
-	mov	x20,x0
-	add	x13,x1,#16
+        mov    x20,x0
+        add    x13,x1,#16
 
-    // Composite the tailcnt "16 byte not aligned block" into the last second plain blocks
-    // to get the last encrypted block.
+        // Composite the tailcnt "16 byte not aligned block" into the last second plain blocks
+        // to get the last encrypted block.
 .composite_dec_loop:
-	subs	x21,x21,#1
-	ldrb	w15,[x1,x21]
-	ldrb	w14,[x20,x21]
-	strb	w15,[x13,x21]
-	strb	w14,[x1,x21]
-	b.gt	.composite_dec_loop
+        subs    x21,x21,#1
+        ldrb    w15,[x1,x21]
+        ldrb    w14,[x20,x21]
+        strb    w15,[x13,x21]
+        strb    w14,[x1,x21]
+        b.gt    .composite_dec_loop
 .Lxts_dec_load_done:
-	ld1	{v26.16b},[x1]
-	eor	v26.16b,v26.16b,v6.16b
+        ld1    {v26.16b},[x1]
+        eor    v26.16b,v26.16b,v6.16b
 
-    // Decrypt the composite block to get the last second plain text block
-	ldr	w6,[x7,#240]
-	ld1	{v0.16b},[x7],#16
-	sub	w6,w6,#2
-	ld1	{v1.16b},[x7],#16
+        // Decrypt the composite block to get the last second plain text block
+        ldr    w6,[x7,#240]
+        ld1    {v0.16b},[x7],#16
+        sub    w6,w6,#2
+        ld1    {v1.16b},[x7],#16
 .Loop_final_dec:
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
-	ld1	{v0.4s},[x7],#16     // load key schedule...
-	subs	w6,w6,#2
-	aesd	v26.16b,v1.16b
-	aesimc	v26.16b,v26.16b
-	ld1	{v1.4s},[x7],#16     // load key schedule...
-	b.gt	.Loop_final_dec
+        aesd    v26.16b,v0.16b
+        aesimc    v26.16b,v26.16b
+        ld1    {v0.4s},[x7],#16     // load key schedule...
+        subs    w6,w6,#2
+        aesd    v26.16b,v1.16b
+        aesimc    v26.16b,v26.16b
+        ld1    {v1.4s},[x7],#16     // load key schedule...
+        b.gt    .Loop_final_dec
 
-	aesd	v26.16b,v0.16b
-	aesimc	v26.16b,v26.16b
-	ld1	{v0.4s},[x7]
-	aesd	v26.16b,v1.16b
-	eor	v26.16b,v26.16b,v0.16b
-	eor	v26.16b,v26.16b,v6.16b
-	st1	{v26.16b},[x1]
+        aesd    v26.16b,v0.16b
+        aesimc    v26.16b,v26.16b
+        ld1    {v0.4s},[x7]
+        aesd    v26.16b,v1.16b
+        eor    v26.16b,v26.16b,v0.16b
+        eor    v26.16b,v26.16b,v6.16b
+        st1    {v26.16b},[x1]
 
 Lxts_dec_abort:
-	restore_vregs
-	restore_regs
-    add sp, sp, #STACK_SIZE_VREGS
-	ret
+        restore_vregs
+        restore_regs
+        add sp, sp, #STACK_SIZE_VREGS
+        ret
 
 #endif
 #endif  // !OPENSSL_NO_ASM && defined(__AARCH64EL__) && defined(__APPLE__)
