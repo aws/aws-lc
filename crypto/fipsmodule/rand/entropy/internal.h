@@ -131,7 +131,7 @@ struct test_tree_drbg_t {
 // In addition, it returns the number of reseeds applied on the tread-local and
 // global tree-DRBG. These values of copied to |test_tree_drbg|.
 OPENSSL_EXPORT int get_thread_and_global_tree_drbg_calls_FOR_TESTING(
-  struct entropy_source_t *entropy_source,
+  const struct entropy_source_t *entropy_source,
   struct test_tree_drbg_t *test_tree_drbg);
 
 // set_thread_and_global_tree_drbg_reseed_counter_FOR_TESTING sets the reseed

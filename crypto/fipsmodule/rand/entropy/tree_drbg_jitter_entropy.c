@@ -157,7 +157,7 @@ static int tree_jitter_check_drbg_must_reseed(
   struct tree_jitter_drbg_t *tree_jitter_drbg) {
 
   uint64_t current_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1 &&
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1 &&
       current_generation_number != tree_jitter_drbg->generation_number) {
     tree_jitter_drbg->generation_number = current_generation_number;
     return 1;
@@ -464,7 +464,7 @@ void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source) {
 }
 
 int get_thread_and_global_tree_drbg_calls_FOR_TESTING(
-  struct entropy_source_t *entropy_source,
+  const struct entropy_source_t *entropy_source,
   struct test_tree_drbg_t *test_tree_drbg) {
 
   if (test_tree_drbg == NULL || entropy_source == NULL) {

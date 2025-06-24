@@ -42,7 +42,7 @@ class treeDrbgJitterentropyTest : public::testing::Test {
 };
 
 
-static bool get_tree_drbg_call(struct entropy_source_t *entropy_source,
+static bool get_tree_drbg_call(const struct entropy_source_t *entropy_source,
   struct test_tree_drbg_t *test_tree_drbg) {
   if (get_thread_and_global_tree_drbg_calls_FOR_TESTING(
     entropy_source, test_tree_drbg)) {
@@ -200,6 +200,75 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
   };
 
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
+}
+
+static bool assertReseed(const struct entropy_source_t *entropy_source,
+  size_t expected_count, std::function<bool()> func, const char *error_text = "") {
+
+  struct test_tree_drbg_t cached_test_tree_drbg = {0, 0, 0, 0};
+  TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(entropy_source, &cached_test_tree_drbg))
+
+  if (!func()) {
+    return false;
+  }
+
+  struct test_tree_drbg_t test_tree_drbg = {0, 0, 0, 0};
+  TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(entropy_source, &test_tree_drbg))
+
+  if (cached_test_tree_drbg.thread_reseed_calls_since_initialization + expected_count != test_tree_drbg.thread_reseed_calls_since_initialization ||
+      cached_test_tree_drbg.global_reseed_calls_since_initialization + expected_count != test_tree_drbg.global_reseed_calls_since_initialization) {
+    std::cerr << "Tree-DRBG expected count mismatch " << error_text << '\n'
+              << "  Thread DRBG: expected=" << (cached_test_tree_drbg.thread_reseed_calls_since_initialization + expected_count)
+              << ", actual=" << test_tree_drbg.thread_reseed_calls_since_initialization << '\n'
+              << "  Global DRBG: expected=" << (cached_test_tree_drbg.global_reseed_calls_since_initialization + expected_count)
+              << ", actual=" << test_tree_drbg.global_reseed_calls_since_initialization << '\n';
+    return false;
+  }
+
+  return true;
+}
+
+TEST_F(treeDrbgJitterentropyTest, BasicFork) {
+
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
+
+  auto testSingleFork = [this]() {
+    struct entropy_source_t entropy_source = {0, 0};
+    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
+
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
+
+    bool exit_code = forkAndRunTest(
+      [this, entropy_source]() {
+        // In child. If UBE detection is supported, we expect a reseed.
+        // No UBE detection is handled via prediction resistance.
+        size_t expect_reseed = 0;
+        if (UbeIsSupported()) {
+          expect_reseed = 1;
+        }
+
+        return assertReseed(&entropy_source, expect_reseed, [this, entropy_source]() {
+          uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
+          return tree_jitter_get_seed(&entropy_source, child_out);
+        }, "child");
+      },
+      [this, entropy_source]() {
+        // In child. If UBE detection is supported, we expect a reseed.
+        // No UBE detection is handled via prediction resistance.
+        return assertReseed(&entropy_source, 0, [entropy_source]() {
+          uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
+          return tree_jitter_get_seed(&entropy_source, child_out);
+        }, "parent");
+      }
+    );
+
+    exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testSingleFork(), ::testing::ExitedWithCode(0), "");
 }
 
 TEST_F(treeDrbgJitterentropyTest, TreeDRBGThreadReseedInterval) {
