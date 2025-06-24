@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "ssl_test_common.h"
+#include "ssl_common_test.h"
 #include <openssl/ssl.h>
 
 #include <gtest/gtest.h>

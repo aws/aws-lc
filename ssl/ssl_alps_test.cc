@@ -5,7 +5,7 @@
 #include "openssl/ssl.h"
 
 #include "internal.h"
-#include "ssl_test_common.h"
+#include "ssl_common_test.h"
 
 #include <gtest/gtest.h>
 
