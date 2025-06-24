@@ -170,6 +170,7 @@ struct hmac_method_array_st {
 // Use |idx-1| because DEFINE_IN_PLACE_METHODS has already incremented it.
 #define DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_MD, HASH_NAME)  {            \
     DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME);                              \
+    assert(idx-1 >= 0);                                                      \
     out->methods[idx-1].chaining_length = HASH_NAME##_CHAINING_LENGTH;       \
     out->methods[idx-1].init_from_state =                                    \
         AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state;                     \
