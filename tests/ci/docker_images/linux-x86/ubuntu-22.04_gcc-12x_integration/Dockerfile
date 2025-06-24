@@ -18,6 +18,7 @@ RUN set -ex && \
     binutils-dev \
     build-essential \
     clang-format \
+    dnsutils \
     doxygen \
     gcovr \
     gettext \
@@ -27,10 +28,12 @@ RUN set -ex && \
     groff \
     iproute2 \
     lcov \
+    ldnsutils \
     libcap-dev \
     libcurl4-openssl-dev \
     libev-dev \
     libevent-dev \
+    libexpat1-dev \
     libfstrm-dev \
     libftdi-dev \
     libgcrypt20-dev \
@@ -60,6 +63,7 @@ RUN set -ex && \
     libuv1-dev \
     libyaml-dev \
     net-tools \
+    netcat-openbsd \
     openjdk-11-jdk \
     openssl \
     pandoc \
@@ -72,9 +76,11 @@ RUN set -ex && \
     python3-six \
     python3-sphinx \
     ruby \
+    splint \
     uthash-dev \
     uuid-dev \
-    vim-common && \
+    vim-common \
+    xxd && \
     # Download and install Ruby using the version from ARG
     cd /tmp && \
     wget https://cache.ruby-lang.org/pub/ruby/$(echo ${RUBY_VERSION} | cut -d. -f1-2)/ruby-${RUBY_VERSION}.tar.gz && \
