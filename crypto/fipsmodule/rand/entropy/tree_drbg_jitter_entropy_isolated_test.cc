@@ -22,6 +22,8 @@ static const size_t number_of_threads = 8;
 class treeDrbgJitterentropyTest : public::testing::Test {
   private:
     UbeBase ube_base_;
+    static std::atomic<bool> checked;
+    static std::mutex operation_mutex;
 
   protected:
     void SetUp() override {
@@ -38,6 +40,16 @@ class treeDrbgJitterentropyTest : public::testing::Test {
 
     void allowMockedUbe() const {
       ube_base_.allowMockedUbe();
+    }
+
+  public:
+    static bool checkAfterOperation(std::function<void()> operation) {
+      std::lock_guard<std::mutex> lock(operation_mutex);
+      operation();  // Your specific operation here
+
+      // Then try to do the check (only first thread will succeed)
+      bool expected = false;
+      return checked.compare_exchange_strong(expected, true);
     }
 };
 
@@ -202,25 +214,27 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
-static bool assertReseed(const struct entropy_source_t *entropy_source,
-  size_t expected_count, std::function<bool()> func, const char *error_text = "") {
+static bool assertSeedOrReseed(const struct entropy_source_t *entropy_source,
+  size_t expect_reseed_thread, size_t expect_reseed_global,
+  std::function<bool()> func, const char *error_text = "") {
 
   struct test_tree_drbg_t cached_test_tree_drbg = {0, 0, 0, 0};
   TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(entropy_source, &cached_test_tree_drbg))
 
   if (!func()) {
+
     return false;
   }
 
   struct test_tree_drbg_t test_tree_drbg = {0, 0, 0, 0};
   TEST_IN_FORK_ASSERT_TRUE(get_tree_drbg_call(entropy_source, &test_tree_drbg))
 
-  if (cached_test_tree_drbg.thread_reseed_calls_since_initialization + expected_count != test_tree_drbg.thread_reseed_calls_since_initialization ||
-      cached_test_tree_drbg.global_reseed_calls_since_initialization + expected_count != test_tree_drbg.global_reseed_calls_since_initialization) {
+  if (cached_test_tree_drbg.thread_reseed_calls_since_initialization + expect_reseed_thread != test_tree_drbg.thread_reseed_calls_since_initialization ||
+      cached_test_tree_drbg.global_reseed_calls_since_initialization + expect_reseed_global != test_tree_drbg.global_reseed_calls_since_initialization) {
     std::cerr << "Tree-DRBG expected count mismatch " << error_text << '\n'
-              << "  Thread DRBG: expected=" << (cached_test_tree_drbg.thread_reseed_calls_since_initialization + expected_count)
+              << "  Thread DRBG: expected=" << (cached_test_tree_drbg.thread_reseed_calls_since_initialization + expect_reseed_thread)
               << ", actual=" << test_tree_drbg.thread_reseed_calls_since_initialization << '\n'
-              << "  Global DRBG: expected=" << (cached_test_tree_drbg.global_reseed_calls_since_initialization + expected_count)
+              << "  Global DRBG: expected=" << (cached_test_tree_drbg.global_reseed_calls_since_initialization + expect_reseed_global)
               << ", actual=" << test_tree_drbg.global_reseed_calls_since_initialization << '\n';
     return false;
   }
@@ -234,7 +248,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
     GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
   }
 
-  auto testSingleFork = [this]() {
+  auto testFuncSingleFork = [this]() {
     struct entropy_source_t entropy_source = {0, 0};
     uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
 
@@ -250,15 +264,70 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
           expect_reseed = 1;
         }
 
-        return assertReseed(&entropy_source, expect_reseed, [entropy_source]() {
+        return assertSeedOrReseed(&entropy_source, expect_reseed, expect_reseed, [entropy_source]() {
           uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
           return tree_jitter_get_seed(&entropy_source, child_out);
         }, "child");
       },
       [entropy_source]() {
-        // In child. If UBE detection is supported, we expect a reseed.
-        // No UBE detection is handled via prediction resistance.
-        return assertReseed(&entropy_source, 0, [entropy_source]() {
+        // In Parent we expect no reseed, even if UBE detection is not supported.
+        return assertSeedOrReseed(&entropy_source, 0, 0, [entropy_source]() {
+          uint8_t parent_out[CTR_DRBG_ENTROPY_LEN];
+          return tree_jitter_get_seed(&entropy_source, parent_out);
+        }, "parent");
+      }
+    );
+
+    exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFuncSingleFork(), ::testing::ExitedWithCode(0), "");
+
+  auto testFuncSingleForkThenThread = [this]() {
+    struct entropy_source_t entropy_source = {0, 0};
+    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
+
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
+
+    bool exit_code = forkAndRunTest(
+      [this, entropy_source]() {
+        // In child. Spawn a number of threads before generating randomness.
+        // If fork detection is supported, we expect a seed in each thread.
+        // If fork detection is not enabled, we also expect a seed in each
+        // thread.
+        std::function<void(bool*)> threadFunc = [this, entropy_source](bool *result) {
+
+          struct entropy_source_t thread_entropy_source = {0, 0};
+          TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&thread_entropy_source))
+
+          // No expected reseed increment because |thread_entropy_source| is
+          // fresh.
+          *result = assertSeedOrReseed(&thread_entropy_source, 0, 0, [thread_entropy_source]() {
+              uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
+              return tree_jitter_get_seed(&thread_entropy_source, child_out);
+            }, "child");
+        };
+
+        if (!threadTest(number_of_threads, threadFunc)) {
+          return false;
+        }
+
+        // Now back to original thread.
+        size_t expect_reseed = 0;
+        if (UbeIsSupported()) {
+          expect_reseed = 1;
+        }
+
+        // Global would have been reseeded above.
+        return assertSeedOrReseed(&entropy_source, expect_reseed, 0, [entropy_source]() {
+          uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
+          return tree_jitter_get_seed(&entropy_source, child_out);
+        }, "child");
+      },
+      [entropy_source]() {
+        // In Parent we expect no reseed, even if UBE detection is not supported.
+        return assertSeedOrReseed(&entropy_source, 0, 0, [entropy_source]() {
           uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
           return tree_jitter_get_seed(&entropy_source, child_out);
         }, "parent");
@@ -268,7 +337,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
     exit(exit_code ? 0 : 1);
   };
 
-  EXPECT_EXIT(testSingleFork(), ::testing::ExitedWithCode(0), "");
+  EXPECT_EXIT(testFuncSingleForkThenThread(), ::testing::ExitedWithCode(0), "");
 }
 
 TEST_F(treeDrbgJitterentropyTest, TreeDRBGThreadReseedInterval) {
