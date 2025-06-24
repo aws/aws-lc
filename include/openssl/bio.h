@@ -74,10 +74,7 @@
 #include <ws2ipdef.h>
 #undef NOCRYPT
 #else
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
 #endif
 
 #if defined(__cplusplus)
