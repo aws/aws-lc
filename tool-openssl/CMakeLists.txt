@@ -12,6 +12,7 @@ add_executable(
     pkcs8.cc
     rehash.cc
     req.cc
+    ordered_args.cc
     rsa.cc
     s_client.cc
     tool.cc
@@ -95,6 +96,7 @@ if(BUILD_TESTING)
         rsa.cc
         rsa_test.cc
         s_client.cc
+        ordered_args.cc
         verify.cc
         verify_test.cc
         x509.cc
@@ -117,5 +119,6 @@ if(BUILD_TESTING)
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
     target_include_directories(tool_openssl_test BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests tool_openssl_test)
+    add_dependencies(tool_openssl_test openssl)
     set_test_location(tool_openssl_test)
 endif()

@@ -82,6 +82,17 @@ if(BUILD_TESTING)
     span_test.cc
     ssl_test.cc
     ssl_c_test.c
+    ssl_key_share_test.cc
+    ssl_alps_test.cc
+    ssl_common_test.cc
+    ssl_misc_test.cc
+    ssl_version_test.cc
+    ssl_ech_test.cc
+    ssl_quic_test.cc
+    ssl_hybrid_handshake_test.cc
+    ssl_encoding_test.cc
+    ssl_ciphers_test.cc
+    ssl_handshake_test.cc
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)

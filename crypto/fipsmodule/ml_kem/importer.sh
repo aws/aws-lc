@@ -74,7 +74,7 @@ echo "Pull source code from remote repository..."
 
 # Copy mlkem-native source tree -- C-only, no FIPS-202
 mkdir $SRC
-cp $TMP/mlkem/* $SRC
+cp $TMP/mlkem/src/* $SRC
 
 # We use the custom `mlkem_native_config.h`, so can remove the default one
 rm $SRC/config.h
@@ -86,11 +86,17 @@ cp $TMP/.clang-format $SRC
 # The static simplification is not necessary, but improves readability
 # by removing directives related to native backends that are irrelevant
 # for the C-only import.
-unifdef -DMLK_CONFIG_MONOBUILD_CUSTOM_FIPS202                          \
-        -UMLK_CONFIG_MONOBUILD_WITH_NATIVE_ARITH                       \
-        -UMLK_CONFIG_MONOBUILD_WITH_NATIVE_FIPS202                     \
-        $TMP/examples/monolithic_build/mlkem_native_monobuild.c \
+unifdef -DMLK_CONFIG_FIPS202_CUSTOM_HEADER                             \
+        -UMLK_CONFIG_USE_NATIVE_BACKEND_ARITH                          \
+        -UMLK_CONFIG_USE_NATIVE_BACKEND_FIPS202                        \
+        $TMP/mlkem/mlkem_native.c                                      \
         > $SRC/mlkem_native_bcm.c
+
+# Copy mlkem-native header
+# This is only needed for access to the various macros defining key sizes.
+# The function declarations itself are all visible in ml_kem.c by virtue
+# of everything being inlined into that file.
+cp $TMP/mlkem/mlkem_native.h $SRC
 
 # Modify include paths to match position of mlkem_native_bcm.c
 # In mlkem-native, the include path is "mlkem/*", while here we
@@ -102,7 +108,7 @@ else
   SED_I=(-i)
 fi
 echo "Fixup include paths"
-sed "${SED_I[@]}" 's/#include "mlkem\/\([^"]*\)"/#include "\1"/' $SRC/mlkem_native_bcm.c
+sed "${SED_I[@]}" 's/#include "src\/\([^"]*\)"/#include "\1"/' $SRC/mlkem_native_bcm.c
 
 echo "Remove temporary artifacts ..."
 rm -rf $TMP
