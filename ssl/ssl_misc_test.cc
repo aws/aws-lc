@@ -1036,17 +1036,21 @@ TEST(SSLTest, GetTrafficSecrets) {
                                      server_ctx.get()));
 
   // Test getting traffic secrets
-  uint8_t client_read_secret[SSL_MAX_MD_SIZE];
-  uint8_t client_write_secret[SSL_MAX_MD_SIZE];
-  uint8_t server_read_secret[SSL_MAX_MD_SIZE];
-  uint8_t server_write_secret[SSL_MAX_MD_SIZE];
-  size_t client_read_len, client_write_len, server_read_len, server_write_len;
+  uint8_t client_read_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t client_write_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t server_read_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t server_write_secret[SSL_MAX_MD_SIZE] = {0};
+  size_t client_read_len = 0, client_write_len = 0, server_read_len = 0,
+         server_write_len = 0;
 
   // First check the lengths
   ASSERT_TRUE(SSL_get_read_traffic_secret(client.get(), nullptr, &client_read_len));
   ASSERT_TRUE(SSL_get_write_traffic_secret(client.get(), nullptr, &client_write_len));
   ASSERT_TRUE(SSL_get_read_traffic_secret(server.get(), nullptr, &server_read_len));
   ASSERT_TRUE(SSL_get_write_traffic_secret(server.get(), nullptr, &server_write_len));
+
+  ASSERT_EQ(client_read_len, server_write_len);
+  ASSERT_EQ(client_write_len, server_read_len);
 
   // Get the actual secrets
   ASSERT_TRUE(SSL_get_read_traffic_secret(client.get(), client_read_secret, &client_read_len));
@@ -1055,24 +1059,26 @@ TEST(SSLTest, GetTrafficSecrets) {
   ASSERT_TRUE(SSL_get_write_traffic_secret(server.get(), server_write_secret, &server_write_len));
 
   // Client's read secret should match server's write secret
-  ASSERT_EQ(client_read_len, server_write_len);
   ASSERT_EQ(0, OPENSSL_memcmp(client_read_secret, server_write_secret, client_read_len));
-
   // Client's write secret should match server's read secret
-  ASSERT_EQ(client_write_len, server_read_len);
   ASSERT_EQ(0, OPENSSL_memcmp(client_write_secret, server_read_secret, client_write_len));
 
   // Test error cases
   bssl::UniquePtr<SSL> unconnected(SSL_new(client_ctx.get()));
   ASSERT_TRUE(unconnected);
-  size_t unused;
-  ASSERT_EQ(0, SSL_get_read_traffic_secret(unconnected.get(), nullptr, &unused));
-  ASSERT_EQ(0, SSL_get_write_traffic_secret(unconnected.get(), nullptr, &unused));
+  size_t unused = 0;
+  ASSERT_FALSE(SSL_get_read_traffic_secret(unconnected.get(), nullptr, &unused));
+  ASSERT_FALSE(SSL_get_write_traffic_secret(unconnected.get(), nullptr, &unused));
 
   // Test buffer too small
   uint8_t small_buffer[1];
   size_t actual_size = sizeof(small_buffer);
-  ASSERT_EQ(0, SSL_get_read_traffic_secret(client.get(), small_buffer, &actual_size));
+  ASSERT_FALSE(SSL_get_read_traffic_secret(client.get(), small_buffer, &actual_size));
+  ASSERT_FALSE(SSL_get_write_traffic_secret(client.get(), small_buffer, &actual_size));
+
+  // Passing null buffers and null size
+  ASSERT_FALSE(SSL_get_read_traffic_secret(client.get(), nullptr, nullptr));
+  ASSERT_FALSE(SSL_get_write_traffic_secret(client.get(), nullptr, nullptr));
 }
 
 BSSL_NAMESPACE_END
