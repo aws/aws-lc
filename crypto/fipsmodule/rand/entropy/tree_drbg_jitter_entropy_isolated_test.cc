@@ -250,12 +250,12 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
           expect_reseed = 1;
         }
 
-        return assertReseed(&entropy_source, expect_reseed, [this, entropy_source]() {
+        return assertReseed(&entropy_source, expect_reseed, [entropy_source]() {
           uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
           return tree_jitter_get_seed(&entropy_source, child_out);
         }, "child");
       },
-      [this, entropy_source]() {
+      [entropy_source]() {
         // In child. If UBE detection is supported, we expect a reseed.
         // No UBE detection is handled via prediction resistance.
         return assertReseed(&entropy_source, 0, [entropy_source]() {
