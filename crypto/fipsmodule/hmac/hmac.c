@@ -113,9 +113,9 @@ struct hmac_methods_st {
   OPENSSL_STATIC_ASSERT(sizeof(HASH_CTX) <= sizeof(union md_ctx_union),       \
                         HASH_NAME##_has_overlarge_context_t)
 
-// For merkle-daamgard constructions, we also define functions for  manipulating
-// hash state |h| to calculate or use precomputed keys. These are not applicable
-// to Keccak/SHA3.
+// For merkle-damgard constructions, we also define functions for importing and
+// exporting hash state for precomputed keys. These are not applicable to
+// Keccak/SHA3.
 #define MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(HASH_NAME, HASH_CTX, HASH_CBLOCK) \
   MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_CTX, HASH_CBLOCK);                  \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state(                 \
@@ -153,8 +153,8 @@ struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
 };
 
-// This macro does not set any values for precomputed keys or state |h|, and
-// as such is suitable for use with Keccak/SHA3.
+// This macro does not set any values for precomputed keys for portable state,
+// and as such is suitable for use with Keccak/SHA3.
 #define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)  {                        \
     out->methods[idx].evp_md = EVP_MD;                                       \
     out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;           \
@@ -532,7 +532,8 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
 
 int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   GUARD_PTR(ctx);
-  if (ctx->methods != NULL && ctx->methods->get_state == NULL) {
+  GUARD_PTR(ctx->methods);
+  if (ctx->methods->get_state == NULL) {
     OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
     return 0;
   }
