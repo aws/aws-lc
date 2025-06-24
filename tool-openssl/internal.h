@@ -6,14 +6,11 @@
 
 #include <openssl/digest.h>
 #include <memory>
-=======
 #include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
 #include "../tool/internal.h"
-
-=======
 #if !defined(O_BINARY)
 #define O_BINARY 0
 #endif
