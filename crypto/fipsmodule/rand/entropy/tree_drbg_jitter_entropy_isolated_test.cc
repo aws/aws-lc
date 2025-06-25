@@ -353,6 +353,142 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
 
   EXPECT_EXIT(testFuncSingleForkThenThread(), ::testing::ExitedWithCode(0), "");
 
+  // Test reseed is observed when forking and then forking again before
+  // generating any randomness.
+  auto testFuncDoubleFork = [this]() {
+    struct entropy_source_t entropy_source = {0, 0};
+    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
+
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
+
+    bool exit_code = forkAndRunTest(
+      [this, entropy_source]() {
+
+        // Fork again. In both child and parent we expect a reseed if UBE
+        // detection is supported.
+        bool exit_code_child = forkAndRunTest(
+          [this, entropy_source]() {
+            size_t expect_reseed = 0;
+            if (UbeIsSupported()) {
+              expect_reseed = 1;
+            }
+
+            TEST_IN_FORK_ASSERT_TRUE(
+              assertSeedOrReseed(&entropy_source, expect_reseed, expect_reseed, [entropy_source]() {
+                uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
+                return tree_jitter_get_seed(&entropy_source, child_out);
+              }, "child-child")
+            )
+
+            return true;
+          },
+          [this, entropy_source]() {
+            size_t expect_reseed = 0;
+            if (UbeIsSupported()) {
+              expect_reseed = 1;
+            }
+
+            TEST_IN_FORK_ASSERT_TRUE(
+              assertSeedOrReseed(&entropy_source, expect_reseed, expect_reseed, [entropy_source]() {
+                uint8_t child_out[CTR_DRBG_ENTROPY_LEN];
+                return tree_jitter_get_seed(&entropy_source, child_out);
+              }, "child-parent")
+            )
+
+            return true;
+          }
+        );
+
+        return exit_code_child;
+      },
+      [entropy_source]() {
+        // In Parent we expect no reseed, even if UBE detection is not supported.
+        TEST_IN_FORK_ASSERT_TRUE(
+          assertSeedOrReseed(&entropy_source, 0, 0, [entropy_source]() {
+            uint8_t parent_out[CTR_DRBG_ENTROPY_LEN];
+            return tree_jitter_get_seed(&entropy_source, parent_out);
+          }, "parent")
+        )
+
+        return true;
+      }
+    );
+
+    tree_jitter_free_thread_drbg(&entropy_source);
+    exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFuncDoubleFork(), ::testing::ExitedWithCode(0), "");
+
+  // Test reseed is observed when forking, generate randomness, and then fork
+  // again.
+  auto testFuncForkGenerateFork = [this]() {
+
+    struct entropy_source_t entropy_source = {0, 0};
+    uint8_t seed_out[CTR_DRBG_ENTROPY_LEN];
+
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&entropy_source))
+    TEST_IN_FORK_ASSERT_TRUE(tree_jitter_get_seed(&entropy_source, seed_out))
+
+    bool exit_code = forkAndRunTest(
+      [this, entropy_source]() {
+
+        size_t expect_reseed = 0;
+        if (UbeIsSupported()) {
+          expect_reseed = 1;
+        }
+
+        TEST_IN_FORK_ASSERT_TRUE(
+          assertSeedOrReseed(&entropy_source, expect_reseed, expect_reseed, [entropy_source]() {
+            uint8_t parent_out[CTR_DRBG_ENTROPY_LEN];
+            return tree_jitter_get_seed(&entropy_source, parent_out);
+          }, "child-parent")
+        )
+
+        bool exit_code_child = forkAndRunTest(
+          [this, entropy_source]() {
+            size_t expect_reseed_child = 0;
+            if (UbeIsSupported()) {
+              expect_reseed_child = 1;
+            }
+            TEST_IN_FORK_ASSERT_TRUE(
+              assertSeedOrReseed(&entropy_source, expect_reseed_child, expect_reseed_child, [entropy_source]() {
+                uint8_t parent_out[CTR_DRBG_ENTROPY_LEN];
+                return tree_jitter_get_seed(&entropy_source, parent_out);
+              }, "child-child")
+            )
+            return true;
+          },
+          [entropy_source]() {
+            TEST_IN_FORK_ASSERT_TRUE(
+              assertSeedOrReseed(&entropy_source, 0, 0, [entropy_source]() {
+                uint8_t parent_out[CTR_DRBG_ENTROPY_LEN];
+                return tree_jitter_get_seed(&entropy_source, parent_out);
+              }, "child-parent")
+            )
+            return true;
+          }
+        );
+
+        return exit_code_child;
+      },
+      [entropy_source]() {
+        TEST_IN_FORK_ASSERT_TRUE(
+          assertSeedOrReseed(&entropy_source, 0, 0, [entropy_source]() {
+            uint8_t parent_out[CTR_DRBG_ENTROPY_LEN];
+            return tree_jitter_get_seed(&entropy_source, parent_out);
+          }, "parent")
+        )
+
+        return true;
+      }
+    );
+
+    exit(exit_code ? 0 : 1);
+  };
+
+  EXPECT_EXIT(testFuncForkGenerateFork(), ::testing::ExitedWithCode(0), "");
 }
 
 #endif // !defined(OPENSSL_WINDOWS)
