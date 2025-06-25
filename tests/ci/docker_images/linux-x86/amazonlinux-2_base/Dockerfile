@@ -19,6 +19,7 @@ RUN set -ex && \
     yum -y update && yum install -y \
     cmake \
     cmake3 \
+    make \
     ninja-build \
     perl \
     which \

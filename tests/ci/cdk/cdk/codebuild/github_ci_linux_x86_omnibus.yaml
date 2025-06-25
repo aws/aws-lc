@@ -358,6 +358,20 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_fips_tests.sh"
 
+    - identifier: amazonlinux2_gcc7x_make_build_x86_64
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
+        variables:
+          GOPROXY: https://proxy.golang.org,direct
+      phases:
+      build:
+        commands:
+          - yum remove -y ninja-build
+          - ./tests/ci/run_posix_tests.sh
+
     - identifier: amazonlinux2_clang7x_x86_64
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
