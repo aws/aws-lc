@@ -139,12 +139,12 @@ function python_run_3rd_party_tests() {
     echo installing other OpenSSL-dependent modules...
     install_crt_python
     python -m pip install 'boto3[crt]'
-    # cffi install is busted on release candidates >= 3.13, so allow install
-    # failure for cryptography and pyopenssl on those versions for now.
+    # cffi install is busted on newer release candidates, so allow install
+    # failure for cryptography and pyopenssl on >= 3.14 for now.
     python -m pip install 'cryptography' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
     python -m pip install 'pyopenssl' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
         python ${test}
@@ -212,9 +212,6 @@ aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DFIPS=${FIPS}
 
 fetch_crt_python
-
-# Some systems install under "lib64" instead of "lib"
-ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
 
 mkdir -p ${PYTHON_SRC_FOLDER}
 pushd ${PYTHON_SRC_FOLDER}
