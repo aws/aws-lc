@@ -4480,7 +4480,7 @@ OPENSSL_EXPORT int SSL_generate_key_block(const SSL *ssl, uint8_t *out,
 // to call this function during a handshake, or if |ssl| was negotiated with
 // TLS 1.2 or lower.
 //
-// If |secret| is NULL then |*out_secret_len| is
+// If |secret| is NULL then |*out_len| is
 // set to the maximum number of output bytes. Otherwise, on entry,
 // |*out_len| must contain the length of the |secret| buffer. If the call
 // is successful, the read traffic secret is written to |secret| and |*out_len|
