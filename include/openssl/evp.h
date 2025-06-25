@@ -917,7 +917,9 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx,
                                                     int bits);
 
 // EVP_PKEY_CTX_set_rsa_keygen_pubexp sets |e| as the public exponent for key
-// generation. Returns one on success or zero on error.
+// generation. Returns one on success or zero on error. On success, |ctx| takes
+// ownership of |e|. The library will then call |BN_free| on |e| when |ctx| is
+// destroyed.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx,
                                                       BIGNUM *e);
 
