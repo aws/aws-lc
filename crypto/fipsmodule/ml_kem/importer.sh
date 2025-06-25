@@ -130,7 +130,7 @@ for file in $SRC/native/aarch64/src/*.S; do
   mv "$tmp_file" "$file"
 
   # Replace common.h include and assembly macros
-  sed "${SED_I[@]}" 's/#include "\.\.\/\.\.\/\.\.\/common\.h"/#include "_internal_s2n_bignum.h"/' "$file"
+  sed "${SED_I[@]}" 's/#include "\.\.\/\.\.\/\.\.\/common\.h"/#include <openssl\/boringssl_prefix_symbols_asm.h>\n#include "_internal_s2n_bignum.h"/' "$file"
 
   func_name=$(grep -o '\.global MLK_ASM_NAMESPACE(\([^)]*\))' "$file" | sed 's/\.global MLK_ASM_NAMESPACE(\([^)]*\))/\1/')
   if [ -n "$func_name" ]; then

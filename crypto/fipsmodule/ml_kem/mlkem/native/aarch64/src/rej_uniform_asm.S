@@ -18,6 +18,7 @@
  *
  * Returns number of sampled 16-bit integers (at most MLKEM_N).
  **************************************************/
+#include <openssl/boringssl_prefix_symbols_asm.h>
 #include "_internal_s2n_bignum.h"
 
 /*

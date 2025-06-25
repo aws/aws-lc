@@ -326,12 +326,6 @@ if((ARCH STREQUAL "aarch64") AND UNIX)
 
   list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_AARCH64_ASM_SOURCES})
 
-  if(BORINGSSL_PREFIX)
-    # NOTE: mlkem-native has its own symbol prefixing, but AWS-LC's post-hoc prefixing
-    # is compatible with that.
-    set_source_files_properties(${MLKEM_NATIVE_AARCH64_ASM_SOURCES} PROPERTIES COMPILE_FLAGS "--include=\"${AWSLC_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h\"")
-  endif()
-
 endif()
 
 

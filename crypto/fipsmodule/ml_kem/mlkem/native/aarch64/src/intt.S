@@ -21,6 +21,7 @@
 
 /* AArch64 ML-KEM inverse NTT following @[NeonNTT] and @[SLOTHY_Paper]. */
 
+#include <openssl/boringssl_prefix_symbols_asm.h>
 #include "_internal_s2n_bignum.h"
 
 /*
