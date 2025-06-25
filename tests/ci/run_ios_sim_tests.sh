@@ -101,11 +101,13 @@ shard_gtest ${BUILD_ROOT}/crypto/mem_test.app/mem_test
 shard_gtest ${BUILD_ROOT}/crypto/mem_set_test.app/mem_set_test
 shard_gtest ${BUILD_ROOT}/crypto/rand_isolated_test.app/rand_isolated_test
 shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test.app/tree_drbg_jitter_entropy_isolated_test
-shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init.app/rwlock_static_init
 
 shard_gtest ${BUILD_ROOT}/ssl/ssl_test.app/ssl_test
 # TODO: This test is failing on iOS simulator
 #${BUILD_ROOT}/ssl/integration_test.app/integration_test
+
+# Does not use GoogleTest
+${BUILD_ROOT}/crypto/rwlock_static_init.app/rwlock_static_init
 
 # Due to its special linkage, this does not use GoogleTest
 ${BUILD_ROOT}/crypto/dynamic_loading_test.app/dynamic_loading_test
