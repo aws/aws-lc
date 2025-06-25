@@ -468,7 +468,6 @@ int get_thread_and_global_tree_drbg_calls_FOR_TESTING(
   struct test_tree_drbg_t *test_tree_drbg) {
 
   if (test_tree_drbg == NULL || entropy_source == NULL) {
-    fprintf(stderr, "something is NULL\n");
     return 0;
   }
 
@@ -481,7 +480,6 @@ int get_thread_and_global_tree_drbg_calls_FOR_TESTING(
     (struct tree_jitter_drbg_t *) entropy_source->state;
 
   if (global_tree_jitter_drbg == NULL || thread_tree_jitter_drbg == NULL) {
-    fprintf(stderr, "more something is NULL\n");
     goto out;
   }
 
