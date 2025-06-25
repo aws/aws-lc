@@ -235,6 +235,8 @@ static bool assertSeedOrReseed(const struct entropy_source_t *entropy_source,
     expect_reseed_thread, expect_reseed_global, error_text);
 }
 
+#if !defined(OPENSSL_WINDOWS)
+
 TEST_F(treeDrbgJitterentropyTest, BasicFork) {
 
   if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
@@ -352,6 +354,8 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
   EXPECT_EXIT(testFuncSingleForkThenThread(), ::testing::ExitedWithCode(0), "");
 
 }
+
+#endif // !defined(OPENSSL_WINDOWS)
 
 TEST_F(treeDrbgJitterentropyTest, TreeDRBGThreadReseedInterval) {
 
