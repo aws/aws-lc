@@ -201,6 +201,8 @@ TEST_F(treeDrbgJitterentropyTest, BasicReseed) {
   EXPECT_EXIT(testFunc(), ::testing::ExitedWithCode(0), "");
 }
 
+#if !defined(OPENSSL_WINDOWS)
+
 static bool veryifySeedOrReseed(const struct test_tree_drbg_t *test_tree_drbg,
   const struct test_tree_drbg_t *cached_test_tree_drbg,
   size_t expect_reseed_thread, size_t expect_reseed_global,
@@ -234,8 +236,6 @@ static bool assertSeedOrReseed(const struct entropy_source_t *entropy_source,
   return veryifySeedOrReseed(&test_tree_drbg, &cached_test_tree_drbg,
     expect_reseed_thread, expect_reseed_global, error_text);
 }
-
-#if !defined(OPENSSL_WINDOWS)
 
 TEST_F(treeDrbgJitterentropyTest, BasicFork) {
 
