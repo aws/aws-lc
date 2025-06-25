@@ -279,6 +279,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
       }
     );
 
+    tree_jitter_free_thread_drbg(&entropy_source);
     exit(exit_code ? 0 : 1);
   };
 
@@ -309,6 +310,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
             }, "child")
           )
 
+          tree_jitter_free_thread_drbg(&thread_entropy_source);
           *result = true;
         };
 
@@ -343,6 +345,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
       }
     );
 
+    tree_jitter_free_thread_drbg(&entropy_source);
     exit(exit_code ? 0 : 1);
   };
 
