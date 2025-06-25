@@ -298,7 +298,7 @@ TEST_F(treeDrbgJitterentropyTest, BasicFork) {
         // If fork detection is not enabled, we also expect a seed in each
         // thread. However, this seed should occur when calling
         // tree_jitter_initialize.
-        std::function<void(bool*)> threadFunc = [this, entropy_source](bool *result) {
+        std::function<void(bool*)> threadFunc = [](bool *result) {
 
           struct entropy_source_t thread_entropy_source = {0, 0};
           TEST_IN_FORK_ASSERT_TRUE(tree_jitter_initialize(&thread_entropy_source))
