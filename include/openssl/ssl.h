@@ -4475,6 +4475,38 @@ OPENSSL_EXPORT size_t SSL_get_key_block_len(const SSL *ssl);
 OPENSSL_EXPORT int SSL_generate_key_block(const SSL *ssl, uint8_t *out,
                                           size_t out_len);
 
+// SSL_get_read_traffic_secret retrives |ssl|'s read traffic key for the current
+// connection state. This is only valid for TLS 1.3 connections. It is an error
+// to call this function during a handshake, or if |ssl| was negotiated with
+// TLS 1.2 or lower.
+//
+// If |secret| is NULL then |*out_len| is
+// set to the maximum number of output bytes. Otherwise, on entry,
+// |*out_len| must contain the length of the |secret| buffer. If the call
+// is successful, the read traffic secret is written to |secret| and |*out_len|
+// is set to its length.
+//
+// It returns one on success, or zero on error.
+OPENSSL_EXPORT int SSL_get_read_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len);
+
+// SSL_get_write_traffic_secret retrieves |ssl|'s write traffic key for the
+// current connection state. This is only valid for TLS 1.3 connections. It is
+// an error to call this function during a handshake, or if |ssl| was negotiated
+// with TLS 1.2 or lower.
+//
+// If |secret| is NULL then |*out_len| is
+// set to the maximum number of output bytes. Otherwise, on entry,
+// |*out_len| must contain the length of the |secret| buffer. If the call
+// is successful, the write traffic secret is written to |secret| and |*out_len|
+// is set to its length.
+//
+// It returns one on success, or zero on error.
+OPENSSL_EXPORT int SSL_get_write_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len);
+
 // SSL_get_read_sequence returns, in TLS, the expected sequence number of the
 // next incoming record in the current epoch. In DTLS, it returns the maximum
 // sequence number received in the current epoch and includes the epoch number
