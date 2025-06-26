@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/target.h>
 #include <openssl/type_check.h>
 
 
@@ -66,20 +67,115 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
   pthread_rwlock_destroy((pthread_rwlock_t *) lock);
 }
 
+#ifdef __MINGW32__
+
+#ifndef MIN
+#define MINGW_AWSLC_MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
+#else
+#define MINGW_AWSLC_MIN(X,Y) MIN(X,Y)
+#endif
+
+// MINGW implements nanosleep on X86_64 but not on other architectures.
+// Prefer using nanosleep because of its higher resolution.
+// https://gist.github.com/scivision/dbbbf33c2faf5a16f31fd6d144adc314 claims
+// that MINGW only implements nanpsleep on X86, but not Arm64. The linked
+// MINGW source code
+// https://github.com/mingw-w64/mingw-w64/blob/master/mingw-w64-libraries/winpthreads/src/nanosleep.c
+// does not seem to exclude any platforms though. But since this code is only
+// really needed for X86 in the first place, avoid creating more availability
+// risks.
+#if defined(OPENSSL_X86_64)
+#include <time.h>
+// One second in nanoseconds.
+#define MINGW_ONE_SECOND INT64_C(1000000000)
+// 250 milliseconds in nanoseconds.
+#define MINGW_MILLISECONDS_250 INT64_C(
+#define MINGW_INITIAL_BACKOFF_DELAY 1
+
+static void mingw_do_backoff(long *backoff) {
+
+  // Exponential backoff.
+  //
+  // iteration          delay
+  // ---------    -----------------
+  //    1         10          nsec
+  //    2         100         nsec
+  //    3         1,000       nsec
+  //    4         10,000      nsec
+  //    5         100,000     nsec
+  //    6         1,000,000   nsec
+  //    7         10,000,000  nsec
+  //    8         99,999,999  nsec
+  //    9         99,999,999  nsec
+  //    ...
+
+  struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
+
+  // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
+  // field in |timespec| can hold.
+  *backoff = MINGW_AWSLC_MIN((*backoff) * 10, MINGW_ONE_SECOND - 1);
+  // |nanosleep| can mutate |sleep_time|. Hence, we use |backoff| for state.
+  sleep_time.tv_nsec = *backoff;
+
+  nanosleep(&sleep_time, &sleep_time);
+}
+
+#else // defined(OPENSSL_X86_64)
+
+#include <windows.h>
+// 10 milliseconds.
+#define MINGW_MILLISECONDS_10 INT64_C(10)
+#define MINGW_INITIAL_BACKOFF_DELAY 1
+
+static void mingw_do_backoff(long *backoff) {
+
+  // Additive backoff.
+  //
+  // iteration     delay
+  // ---------    -------
+  //    1         1    ms
+  //    2         2    ms
+  //    3         3    ms
+  //    4         4    ms
+  //    5         5    ms
+  //    6         6    ms
+  //    7         7    ms
+  //    8         8    ms
+  //    9         9    ms
+  //    10        10   ms
+  //    10        10   ms
+  //    ...
+
+  // Cap backoff at 10ms.
+  *backoff = MINGW_AWSLC_MIN((*backoff) + 1, MINGW_MILLISECONDS_10);
+  Sleep((int)*backoff);
+}
+#endif // defined(OPENSSL_X86_64)
+
+#endif // __MINGW32__
+
 // Some MinGW pthreads implementations might fail on first use of
 // locks initialized using PTHREAD_RWLOCK_INITIALIZER.
 // See: https://sourceforge.net/p/mingw-w64/bugs/883/
 typedef int (*pthread_rwlock_func_ptr)(pthread_rwlock_t *);
 static int rwlock_EINVAL_fallback_retry(const pthread_rwlock_func_ptr func_ptr, pthread_rwlock_t* lock) {
+
   int result = EINVAL;
 #ifdef __MINGW32__
-  const int MAX_ATTEMPTS = 10;
+  const int MAX_ATTEMPTS = 50;
   int attempt_num = 0;
+  long backoff = MINGW_INITIAL_BACKOFF_DELAY;
   do {
     sched_yield();
     attempt_num += 1;
     result = func_ptr(lock);
+    mingw_do_backoff(&backoff);
   } while(result == EINVAL && attempt_num < MAX_ATTEMPTS);
+
+  // To aid in debugging
+  if (result == EINVAL && attempt_num >= MAX_ATTEMPTS) {
+    fprintf(stderr, "ERROR: rwlock_EINVAL_fallback_retry() failed after %i attempts\n", MAX_ATTEMPTS);
+  }
 #endif
   return result;
 }
