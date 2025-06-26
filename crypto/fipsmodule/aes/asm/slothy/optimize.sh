@@ -118,7 +118,7 @@ optimize_x5() {
     ${INFILE}                                          \
     -l Loop5x_xts_enc                                  \
     -c inputs_are_outputs                              \
-    -c sw_pipelining.enabled=false                      \
+    -c sw_pipelining.enabled=true                      \
     -c sw_pipelining.optimize_preamble=false         \
     -c sw_pipelining.optimize_postamble=false        \
     -c inputs_are_outputs                              \
@@ -126,7 +126,7 @@ optimize_x5() {
     -c sw_pipelining.allow_post                        \
     -c variable_size                                   \
     -c constraints.stalls_first_attempt=64             \
-    -c reserved_regs="[x18,x23--x30,w19,x2,x3,x21,sp]" \
+    -c reserved_regs="[x18,x23--x30,w19,x2,x3,x21,x0,x1,x4,x5,sp]" \
     -c selftest=false                                  \
     -c constraints.allow_reordering=true             \
     -c constraints.allow_renaming=true             \
