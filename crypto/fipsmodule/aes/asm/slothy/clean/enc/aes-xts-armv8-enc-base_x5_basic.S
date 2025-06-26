@@ -123,8 +123,6 @@ Loop_iv_enc:
         mov   w19, #0x87
         tweak d8, v8.d[1]
 
-        ld1 {v0.16b}, [x0], #16              // the first block
-
         mov x7, x3
         ld1 {v16.4s,v17.4s},[x7], #32         // load key schedule
         ld1 {v12.4s,v13.4s},[x7], #32
@@ -134,66 +132,53 @@ Loop_iv_enc:
         ld1 {v20.4s,v21.4s},[x7], #32
         ld1 {v22.4s,v23.4s},[x7], #32
         ld1 {v7.4s},        [x7]
-        add x7, x3, #32
 
 // Encryption
 Lxts_enc:
         cmp x2, #16
-        orr  v29.16b,v0.16b,v0.16b
         b.lo Lxts_enc_tail1x   // when input = 1 with tail
 
-        ld1  {v1.16b},[x0],#16  // the second block
         subs  x2,x2,#32           // bias
-        orr  v28.16b,v0.16b,v0.16b
-        orr  v29.16b,v1.16b,v1.16b
         b.lo  Lxts_enc_tail2x    // when input size  = 2
 
         // The iv for third block
         tweak d9,v9.d[1]
 
-        orr  v27.16b,v0.16b,v0.16b
-        orr  v28.16b,v1.16b,v1.16b
-        ld1  {v24.16b},[x0],#16 // the third block
-        orr  v29.16b,v24.16b,v24.16b
         cmp  x2,#16
         b.lo  Lxts_enc_tail3x
 
         // The iv for fourth block
         tweak d10,v10.d[1]
 
-        orr  v3.16b,v0.16b,v0.16b
-        orr  v27.16b,v1.16b,v1.16b
-        orr  v28.16b,v24.16b,v24.16b
-        ld1  {v25.16b},[x0],#16  // the fourth block
-        orr  v29.16b,v25.16b,v25.16b
         subs x2,x2,#32
         b.lo  Lxts_enc_tail4x
 
         // The iv for fifth block
         tweak d11,v11.d[1]
 
-        ld1  {v26.16b},[x0],#16    // the fifth block
+.align  4
+Loop5x_xts_enc:
+        ldp q0, q1, [x0], #0x50
+        ldp q24, q25, [x0, #-0x30]
+        ldr q26, [x0, #-0x10]
+
         eor  v0.16b,v0.16b,v6.16b          // before encryption, xor with iv
         eor  v1.16b,v1.16b,v8.16b
         eor  v24.16b,v24.16b,v9.16b
         eor  v25.16b,v25.16b,v10.16b
         eor  v26.16b,v26.16b,v11.16b
 
-.align  4
-Loop5x_xts_enc:
         aesr    v0.16b, v16.16b
         aesr    v1.16b, v16.16b
         aesr    v24.16b, v16.16b
         aesr    v25.16b, v16.16b
         aesr    v26.16b, v16.16b
-        subs  x12,x2,#0x50       // @slothy:core  // because Lxts_enc_tail4x
 
         aesr    v0.16b, v17.16b
         aesr    v1.16b, v17.16b
         aesr    v24.16b, v17.16b
         aesr    v25.16b, v17.16b
         aesr    v26.16b, v17.16b
-        csel  x6,xzr,x12,gt    // borrow x6, w6, "gt" is not typo
 
         aesr    v0.16b, v12.16b
         aesr    v1.16b, v12.16b
@@ -236,9 +221,6 @@ Loop5x_xts_enc:
         aesr    v24.16b, v18.16b
         aesr    v25.16b, v18.16b
         aesr    v26.16b, v18.16b
-        add  x0,x0,x6  // x0 is adjusted in such way that
-                       // at exit from the loop v1.16b-v26.16b
-                       // are loaded with last "words"
 
         aesr    v0.16b, v19.16b
         aesr    v1.16b, v19.16b
@@ -276,7 +258,6 @@ Loop5x_xts_enc:
         tweak d6,v6.d[1]
         eor  v1.16b,v1.16b,v7.16b
         eor  v1.16b,v1.16b,v8.16b
-        ldp q2, q3, [x0], #0x50
 
         // The iv for second block
         tweak d8,v8.d[1]
@@ -287,27 +268,20 @@ Loop5x_xts_enc:
         tweak d9,v9.d[1]
         eor  v25.16b,v25.16b,v7.16b
         eor  v25.16b,v25.16b,v10.16b
-        ldr q27, [x0, #-0x30]
 
         // The iv for fourth block
         tweak d10,v10.d[1]
         eor  v26.16b,v26.16b,v7.16b
         eor  v26.16b,v26.16b,v11.16b
-        ldp  q28, q29,[x0, #-0x20]
 
         // The iv for fifth block
         tweak d11,v11.d[1]
 
         stp q0, q1, [x1], #0x50
         stp q24, q25, [x1, #-0x30]
-        str  q26, [x1, #-0x10]
-        eor  v0.16b,v2.16b,v6.16b
-        eor  v1.16b,v3.16b,v8.16b
-        eor  v24.16b,v27.16b,v9.16b
-        eor  v25.16b,v28.16b,v10.16b
-        eor  v26.16b,v29.16b,v11.16b
+        str q26, [x1, #-0x10]
 
-        subs x2,x2,#0x50
+        subs x2,x2,#0x50 // @slothy:core
         b.hs  Loop5x_xts_enc
 
 Loop5x_enc_after:
@@ -327,108 +301,116 @@ Loop5x_enc_after:
 
 .align  4
 Lxts_enc_tail4x:
-        eor  v1.16b,v6.16b,v3.16b
-        eor  v24.16b,v27.16b,v8.16b
-        eor  v25.16b,v28.16b,v9.16b
-        eor  v26.16b,v29.16b,v10.16b
+        ld1  {v0.16b}, [x0],#16              // the first block
+        ld1  {v1.16b}, [x0],#16  // the second block
+        ld1  {v24.16b},[x0],#16 // the third block
+        ld1  {v25.16b},[x0],#16  // the fourth block
 
+        eor  v0.16b,v0.16b,v6.16b
+        eor  v1.16b,v1.16b,v8.16b
+        eor  v24.16b,v24.16b,v9.16b
+        eor  v25.16b,v25.16b,v10.16b
+
+        aesr    v0.16b, v16.16b
         aesr    v1.16b, v16.16b
         aesr    v24.16b, v16.16b
         aesr    v25.16b, v16.16b
-        aesr    v26.16b, v16.16b
 
+        aesr    v0.16b, v17.16b
         aesr    v1.16b, v17.16b
         aesr    v24.16b, v17.16b
         aesr    v25.16b, v17.16b
-        aesr    v26.16b, v17.16b
 
+        aesr    v0.16b, v12.16b
         aesr    v1.16b, v12.16b
         aesr    v24.16b, v12.16b
         aesr    v25.16b, v12.16b
-        aesr    v26.16b, v12.16b
 
+        aesr    v0.16b, v13.16b
         aesr    v1.16b, v13.16b
         aesr    v24.16b, v13.16b
         aesr    v25.16b, v13.16b
-        aesr    v26.16b, v13.16b
 
+        aesr    v0.16b, v14.16b
         aesr    v1.16b, v14.16b
         aesr    v24.16b, v14.16b
         aesr    v25.16b, v14.16b
-        aesr    v26.16b, v14.16b
 
+        aesr    v0.16b, v15.16b
         aesr    v1.16b, v15.16b
         aesr    v24.16b, v15.16b
         aesr    v25.16b, v15.16b
-        aesr    v26.16b, v15.16b
 
+        aesr    v0.16b, v4.16b
         aesr    v1.16b, v4.16b
         aesr    v24.16b, v4.16b
         aesr    v25.16b, v4.16b
-        aesr    v26.16b, v4.16b
 
+        aesr    v0.16b, v5.16b
         aesr    v1.16b, v5.16b
         aesr    v24.16b, v5.16b
         aesr    v25.16b, v5.16b
-        aesr    v26.16b, v5.16b
 
+        aesr    v0.16b, v18.16b
         aesr    v1.16b, v18.16b
         aesr    v24.16b, v18.16b
         aesr    v25.16b, v18.16b
-        aesr    v26.16b, v18.16b
 
+        aesr    v0.16b, v19.16b
         aesr    v1.16b, v19.16b
         aesr    v24.16b, v19.16b
         aesr    v25.16b, v19.16b
-        aesr    v26.16b, v19.16b
 
+        aesr    v0.16b, v20.16b
         aesr    v1.16b, v20.16b
         aesr    v24.16b, v20.16b
         aesr    v25.16b, v20.16b
-        aesr    v26.16b, v20.16b
 
+        aesr    v0.16b, v21.16b
         aesr    v1.16b, v21.16b
         aesr    v24.16b, v21.16b
         aesr    v25.16b, v21.16b
-        aesr    v26.16b, v21.16b
 
+        aesr    v0.16b, v22.16b
         aesr    v1.16b, v22.16b
         aesr    v24.16b, v22.16b
         aesr    v25.16b, v22.16b
-        aesr    v26.16b, v22.16b
 
+        aese  v0.16b,v23.16b
         aese  v1.16b,v23.16b
         aese  v24.16b,v23.16b
         aese  v25.16b,v23.16b
-        aese  v26.16b,v23.16b
+
+        eor  v0.16b,v0.16b,v7.16b
+        eor  v0.16b,v0.16b,v6.16b
 
         eor  v1.16b,v1.16b,v7.16b
-        eor  v1.16b,v1.16b,v6.16b
+        eor  v1.16b,v1.16b,v8.16b
+
+        eor  v24.16b,v24.16b,v7.16b
+        eor  v24.16b,v24.16b,v9.16b
+
+        eor  v25.16b,v25.16b,v7.16b
+        eor  v25.16b,v25.16b,v10.16b
+
+        st1  {v0.16b,v1.16b},[x1],#32
+        st1  {v24.16b,v25.16b},[x1],#32
 
         // The iv for tail
         fmov  x9,d10
         fmov  x10,v10.d[1]
         tweak d6,v6.d[1]
 
-        eor  v24.16b,v24.16b,v7.16b
-        eor  v24.16b,v24.16b,v8.16b
-
-        eor  v25.16b,v25.16b,v7.16b
-        eor  v25.16b,v25.16b,v9.16b
-
-        eor  v26.16b,v26.16b,v7.16b
-        eor  v26.16b,v26.16b,v10.16b
-
-        st1  {v1.16b},[x1],#16
-        st1  {v24.16b,v25.16b},[x1],#32
-        st1  {v26.16b},[x1],#16
         b  Lxts_enc_done
 
 .align  4
 Lxts_enc_tail3x:
-        eor  v0.16b,v6.16b,v27.16b         // 3 blocks left
-        eor  v1.16b,v8.16b,v28.16b
-        eor  v24.16b,v29.16b,v9.16b
+        ld1  {v0.16b,v1.16b}, [x0],#32
+        ld1  {v24.16b}, [x0],#16
+        
+        eor  v0.16b,v0.16b,v6.16b
+        eor  v1.16b,v1.16b,v8.16b
+        eor  v24.16b,v24.16b,v9.16b
 
         // First round with v16
         aesr    v0.16b, v16.16b
@@ -498,79 +480,85 @@ Lxts_enc_tail3x:
 
         eor  v0.16b,v0.16b,v7.16b
         eor  v0.16b,v0.16b,v6.16b
-        // The iv for tail
-        fmov  x9,d9
-        fmov  x10,v9.d[1]
-        tweak d6,v6.d[1]
         eor  v1.16b,v1.16b,v7.16b
         eor  v1.16b,v1.16b,v8.16b
         eor  v24.16b,v24.16b,v7.16b
         eor  v24.16b,v24.16b,v9.16b
+
         st1  {v0.16b,v1.16b},[x1],#32
         st1  {v24.16b},[x1],#16
+
+        // The iv for tail
+        fmov  x9,d9
+        fmov  x10,v9.d[1]
+        tweak d6,v6.d[1]
+
         b Lxts_enc_done  // done processing three blocks
 
 Lxts_enc_tail2x:
-        eor  v1.16b,v28.16b,v6.16b
-        eor  v24.16b,v29.16b,v8.16b
+        ld1  {v0.16b,v1.16b},[x0],#32  // the first block
+
+        eor  v0.16b,v0.16b,v6.16b
+        eor  v1.16b,v1.16b,v8.16b
 
         // First round with v16
+        aesr    v0.16b, v16.16b
         aesr    v1.16b, v16.16b
-        aesr    v24.16b, v16.16b
 
         // Second round with v17
+        aesr    v0.16b, v17.16b
         aesr    v1.16b, v17.16b
-        aesr    v24.16b, v17.16b
 
         // Third round with v12
+        aesr    v0.16b, v12.16b
         aesr    v1.16b, v12.16b
-        aesr    v24.16b, v12.16b
 
         // Fourth round with v13
+        aesr    v0.16b, v13.16b
         aesr    v1.16b, v13.16b
-        aesr    v24.16b, v13.16b
 
         // Fifth round with v14
+        aesr    v0.16b, v14.16b
         aesr    v1.16b, v14.16b
-        aesr    v24.16b, v14.16b
 
         // Sixth round with v15
+        aesr    v0.16b, v15.16b
         aesr    v1.16b, v15.16b
-        aesr    v24.16b, v15.16b
 
         // Seventh round with v4
+        aesr    v0.16b, v4.16b
         aesr    v1.16b, v4.16b
-        aesr    v24.16b, v4.16b
 
         // Eighth round with v5
+        aesr    v0.16b, v5.16b
         aesr    v1.16b, v5.16b
-        aesr    v24.16b, v5.16b
 
         // 9th round with v18
+        aesr    v0.16b, v18.16b
         aesr    v1.16b, v18.16b
-        aesr    v24.16b, v18.16b
 
         // 10th round with v19
+        aesr    v0.16b, v19.16b
         aesr    v1.16b, v19.16b
-        aesr    v24.16b, v19.16b
 
+        aesr    v0.16b, v20.16b
         aesr    v1.16b, v20.16b
-        aesr    v24.16b, v20.16b
 
+        aesr    v0.16b, v21.16b
         aesr    v1.16b, v21.16b
-        aesr    v24.16b, v21.16b
 
+        aesr    v0.16b, v22.16b
         aesr    v1.16b, v22.16b
-        aesr    v24.16b, v22.16b
-        aese  v1.16b,v23.16b
-        aese  v24.16b,v23.16b
 
+        aese  v0.16b,v23.16b
+        aese  v1.16b,v23.16b
+
+        eor  v0.16b,v0.16b,v7.16b
+        eor  v0.16b,v0.16b,v6.16b
         eor  v1.16b,v1.16b,v7.16b
-        eor  v1.16b,v1.16b,v6.16b
-        st1  {v1.16b},[x1],#16
-        eor  v24.16b,v24.16b,v7.16b
-        eor  v24.16b,v24.16b,v8.16b
-        st1  {v24.16b},[x1],#16
+        eor  v1.16b,v1.16b,v8.16b
+
+        st1  {v0.16b,v1.16b},[x1],#32
 
         // The iv for tail
         fmov  x9,d8
@@ -579,46 +567,49 @@ Lxts_enc_tail2x:
         b  Lxts_enc_done
 
 Lxts_enc_tail1x:
-        eor  v24.16b,v29.16b,v6.16b
+        ld1  {v0.16b}, [x0],#16  // the first block
+
+        eor  v0.16b,v0.16b,v6.16b
 
         // First round with v16
-        aesr    v24.16b, v16.16b
+        aesr    v0.16b, v16.16b
 
         // Second round with v17
-        aesr    v24.16b, v17.16b
+        aesr    v0.16b, v17.16b
 
         // Third round with v12
-        aesr    v24.16b, v12.16b
+        aesr    v0.16b, v12.16b
 
         // Fourth round with v13
-        aesr    v24.16b, v13.16b
+        aesr    v0.16b, v13.16b
 
         // Fifth round with v14
-        aesr    v24.16b, v14.16b
+        aesr    v0.16b, v14.16b
 
         // Sixth round with v15
-        aesr    v24.16b, v15.16b
+        aesr    v0.16b, v15.16b
 
         // Seventh round with v4
-        aesr    v24.16b, v4.16b
+        aesr    v0.16b, v4.16b
 
         // Eighth round with v5
-        aesr    v24.16b, v5.16b
+        aesr    v0.16b, v5.16b
 
         // 9th round with v18
-        aesr    v24.16b, v18.16b
+        aesr    v0.16b, v18.16b
 
         // 10th round with v19
-        aesr    v24.16b, v19.16b
+        aesr    v0.16b, v19.16b
 
-        aesr    v24.16b, v20.16b
-        aesr    v24.16b, v21.16b
-        aesr    v24.16b, v22.16b
-        aese  v24.16b,v23.16b
+        aesr    v0.16b, v20.16b
+        aesr    v0.16b, v21.16b
+        aesr    v0.16b, v22.16b
+        aese  v0.16b,v23.16b
 
-        eor  v24.16b,v24.16b,v7.16b
-        eor  v24.16b,v24.16b,v6.16b
-        st1  {v24.16b},[x1],#16
+        eor  v0.16b,v0.16b,v7.16b
+        eor  v0.16b,v0.16b,v6.16b
+        st1  {v0.16b},[x1],#16
+
         // tweak for tail
         fmov  x9,d6
         fmov  x10,v6.d[1]
