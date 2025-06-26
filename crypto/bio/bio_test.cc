@@ -19,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include <openssl/bio.h>
-#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -29,23 +28,7 @@
 #include "../test/file_util.h"
 #include "../test/test_util.h"
 
-#if !defined(OPENSSL_WINDOWS)
-#include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#else
-#include <io.h>
-#include <fcntl.h>
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <winsock2.h>
-#include <ws2tcpip.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#endif
 
 #if !defined(OPENSSL_WINDOWS)
 static const int kOpenReadOnlyBinary = O_RDONLY;
@@ -590,7 +573,7 @@ TEST(BIOTest, FileMode) {
   bio.reset(BIO_new_file(temp.path().c_str(), "r"));
   ASSERT_TRUE(bio);
   // NOTE: Our behavior here aligns with OpenSSL which is to |_setmode| the file
-  // to binary. BoringSSL would |expect_text_mode| below because it respects 
+  // to binary. BoringSSL would |expect_text_mode| below because it respects
   // default mode on Windows which is text and doesn't call |_setmode| (unless
   // |BIO_FP_TEXT| is set, which is not the case here).
   expect_binary_mode(bio.get());
