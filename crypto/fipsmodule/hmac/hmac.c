@@ -183,7 +183,6 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   int idx = 0;
   // Since we search these linearly it helps (just a bit) to put the most common ones first.
   // This isn't based on hard metrics and will not make a significant different on performance.
-  // FIXME: all hashes but SHA256 have been disabled to check first SHA256
   DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha256(), SHA256);
   DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha1(), SHA1);
   DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha384(), SHA384);
