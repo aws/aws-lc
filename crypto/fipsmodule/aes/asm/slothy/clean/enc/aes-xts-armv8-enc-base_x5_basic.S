@@ -186,7 +186,7 @@ Loop5x_xts_enc:
         aesr    v24.16b, v16.16b
         aesr    v25.16b, v16.16b
         aesr    v26.16b, v16.16b
-        subs  x12,x2,#0x50         // because Lxts_enc_tail4x
+        subs  x12,x2,#0x50       // @slothy:core  // because Lxts_enc_tail4x
 
         aesr    v0.16b, v17.16b
         aesr    v1.16b, v17.16b

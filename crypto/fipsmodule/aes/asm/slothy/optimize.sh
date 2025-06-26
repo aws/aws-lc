@@ -125,10 +125,10 @@ optimize_x5() {
     -c sw_pipelining.allow_post                        \
     -c variable_size                                   \
     -c constraints.stalls_first_attempt=64             \
-    -c reserved_regs="[x18--x30,sp]"                   \
+    -c reserved_regs="[x18,x23--x30,w19,x3,x21,v2,v3,v27,v28,v29,sp]"            \
     -c selftest=false                                  \
     -c constraints.allow_reordering=true             \
-    -c constraints.allow_renaming=false             \
+    -c constraints.allow_renaming=true             \
     -o $OUTFILE                                        \
     ${SLOTHY_FLAGS} ${DRY_RUN_FLAGS}
 }
