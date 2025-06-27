@@ -143,3 +143,43 @@ HMAC = SHA512/256
 Input = "My test data"
 Key = "123456"
 Output = 2ed564c398a4fab30a1c4e071fd0f5b3c8a548d2e75ec3237ca5334071a63f40
+
+HMAC = SHA3-224
+Input = "My test data"
+Key =
+Output = 66df248e29b1b84555c3da7f621fa0b0d243e8aad2ae622c22f0092a
+
+HMAC = SHA3-224
+Input = "My test data"
+Key = "123456"
+Output = 43e3747b2309db263d7459de1c7fab297bc2bea07094250929f96188
+
+HMAC = SHA3-256
+Input = "My test data"
+Key =
+Output = 12d3bcdc06f5ced61d733c0a20c76f46baf92b7caaf6bc86fdd144a21fba615c
+
+HMAC = SHA3-256
+Input = "My test data"
+Key = "123456"
+Output = ecaa490c869d169113d0835cdac6279e8284f1ff59d641fb324cb9fe4b016b58
+
+HMAC = SHA3-384
+Input = "My test data"
+Key =
+Output = 1266631f77771aa72dde81298a2ea5e91826368166e71e9f267db9eadcf8cfee04107b7cce997b3ebdd4f9e4c641f8b7
+
+HMAC = SHA3-384
+Input = "My test data"
+Key = "123456"
+Output = eac6e7cec6ac024e76401cb80022d420e81de64bc7e9fdf8e8b84c3d1c73221cf8e4b8414dae22f90a4e1200bbfe2499
+
+HMAC = SHA3-512
+Input = "My test data"
+Key =
+Output = 12293bc8f75ebee6cee0ab6f8a5a9c7c6f68980007288b0c5db1ed18c724061314d1d92d2862b5d23e0de7636b5bca399c2e3679b095666eee092febc183530d
+
+HMAC = SHA3-512
+Input = "My test data"
+Key = "123456"
+Output = 9ff5227f4e2aa2e80fcf8567bd8c055bb132c00973e922c9448fc885712b5f56c5fb4bd4480e1eb593c209bf31f44ed8e9a602e6765d08c25803f129ea5b8cc4

@@ -319,6 +319,10 @@ set(
   third_party/wycheproof_testvectors/hmac_sha512_test.txt
   third_party/wycheproof_testvectors/hmac_sha512_224_test.txt
   third_party/wycheproof_testvectors/hmac_sha512_256_test.txt
+  third_party/wycheproof_testvectors/hmac_sha3_224_test.txt
+  third_party/wycheproof_testvectors/hmac_sha3_256_test.txt
+  third_party/wycheproof_testvectors/hmac_sha3_384_test.txt
+  third_party/wycheproof_testvectors/hmac_sha3_512_test.txt
   third_party/wycheproof_testvectors/kwp_test.txt
   third_party/wycheproof_testvectors/kw_test.txt
   third_party/wycheproof_testvectors/primality_test.txt
