@@ -362,6 +362,7 @@ add_library(
   asn1/posix_time.c
   base64/base64.c
   bio/bio.c
+  bio/bio_addr.c
   bio/bio_mem.c
   bio/connect.c
   bio/dgram.c
@@ -397,6 +398,7 @@ add_library(
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
   conf/conf.c
+  console/console.c
   crypto.c
   des/des.c
   dh_extra/params.c
@@ -759,6 +761,7 @@ if(BUILD_TESTING)
     cipher_extra/cipher_test.cc
     compiler_test.cc
     conf/conf_test.cc
+    console/console_test.cc
     constant_time_test.cc
     crypto_test.cc
     ecdh_extra/ecdh_test.cc

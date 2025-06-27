@@ -68,10 +68,12 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   shard_gtest ${BUILD_ROOT}/crypto/urandom_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/mem_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/mem_set_test.exe
-  shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init.exe
 
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test.exe
   shard_gtest ${BUILD_ROOT}/ssl/integration_test.exe
+
+  # Does not use GoogleTest
+  ${BUILD_ROOT}/crypto/rwlock_static_init.exe
 
   # Due to its special linkage, this does not use GoogleTest
   ${BUILD_ROOT}/crypto/dynamic_loading_test.exe
