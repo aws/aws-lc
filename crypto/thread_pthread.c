@@ -85,19 +85,19 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
 // really needed for X86 in the first place, avoid creating more availability
 // risks.
 #if defined(OPENSSL_X86_64)
+
 #include <time.h>
-// One second in nanoseconds.
-#define MINGW_ONE_SECOND INT64_C(1000000000)
-// 250 milliseconds in nanoseconds.
-#define MINGW_MILLISECONDS_250 INT64_C(
-#define MINGW_INITIAL_BACKOFF_DELAY 1
+
+// 100ms second in nanoseconds.
+#define MINGW_MILLISECONDS_100 INT64_C(100000000)
+#define MINGW_INITIAL_BACKOFF_DELAY 10
 
 static void mingw_do_backoff(long *backoff) {
 
   // Exponential backoff.
   //
   // iteration          delay
-  // ---------    -----------------
+  // ---------    ----------------
   //    1         10          nsec
   //    2         100         nsec
   //    3         1,000       nsec
@@ -105,15 +105,13 @@ static void mingw_do_backoff(long *backoff) {
   //    5         100,000     nsec
   //    6         1,000,000   nsec
   //    7         10,000,000  nsec
-  //    8         99,999,999  nsec
-  //    9         99,999,999  nsec
+  //    8         100,000,000 nsec
+  //    9         100,000,000 nsec
   //    ...
-
   struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 0 };
 
-  // Cap backoff at 99,999,999  nsec, which is the maximum value the nanoseconds
-  // field in |timespec| can hold.
-  *backoff = MINGW_AWSLC_MIN((*backoff) * 10, MINGW_ONE_SECOND - 1);
+  // Cap backoff at 100,000,000 nsec (100ms).
+  *backoff = MINGW_AWSLC_MIN((*backoff) * 10, MINGW_MILLISECONDS_100);
   // |nanosleep| can mutate |sleep_time|. Hence, we use |backoff| for state.
   sleep_time.tv_nsec = *backoff;
 
@@ -123,8 +121,9 @@ static void mingw_do_backoff(long *backoff) {
 #else // defined(OPENSSL_X86_64)
 
 #include <windows.h>
-// 10 milliseconds.
-#define MINGW_MILLISECONDS_10 INT64_C(10)
+
+// 100 milliseconds.
+#define MINGW_MILLISECONDS_100 INT64_C(100)
 #define MINGW_INITIAL_BACKOFF_DELAY 1
 
 static void mingw_do_backoff(long *backoff) {
@@ -134,20 +133,20 @@ static void mingw_do_backoff(long *backoff) {
   // iteration     delay
   // ---------    -------
   //    1         1    ms
-  //    2         2    ms
-  //    3         3    ms
-  //    4         4    ms
-  //    5         5    ms
-  //    6         6    ms
-  //    7         7    ms
-  //    8         8    ms
-  //    9         9    ms
-  //    10        10   ms
-  //    10        10   ms
+  //    2         10   ms
+  //    3         20   ms
+  //    4         30   ms
+  //    5         40   ms
+  //    6         50   ms
+  //    7         60   ms
+  //    8         70   ms
+  //    9         80   ms
+  //    10        90   ms
+  //    11        100  ms
   //    ...
 
-  // Cap backoff at 10ms.
-  *backoff = MINGW_AWSLC_MIN((*backoff) + 1, MINGW_MILLISECONDS_10);
+  // Cap backoff at 100ms.
+  *backoff = MINGW_AWSLC_MIN((*backoff) + 10, MINGW_MILLISECONDS_100);
   Sleep((int)*backoff);
 }
 #endif // defined(OPENSSL_X86_64)
@@ -162,7 +161,8 @@ static int rwlock_EINVAL_fallback_retry(const pthread_rwlock_func_ptr func_ptr, 
 
   int result = EINVAL;
 #ifdef __MINGW32__
-  const int MAX_ATTEMPTS = 50;
+  // This will be about 1 second of total backoff.
+  const int MAX_ATTEMPTS = 20;
   int attempt_num = 0;
   long backoff = MINGW_INITIAL_BACKOFF_DELAY;
   do {
