@@ -21,10 +21,12 @@ if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
     shard_gtest ${BUILD_ROOT}/crypto/rand_isolated_test
     shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test
-    shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init
 
     shard_gtest ${BUILD_ROOT}/ssl/ssl_test
     shard_gtest ${BUILD_ROOT}/ssl/integration_test
+
+    # Does not use GoogleTest
+    ${BUILD_ROOT}/crypto/rwlock_static_init
 
     # Due to its special linkage, this does not use GoogleTest
     ${BUILD_ROOT}/crypto/dynamic_loading_test
