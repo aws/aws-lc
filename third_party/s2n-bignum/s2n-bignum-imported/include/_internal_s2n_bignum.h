@@ -1,3 +1,5 @@
+// Auto-added during import for AWS-LC symbol prefixing support
+#include <openssl/boringssl_prefix_symbols_asm.h>
 
 #ifdef __APPLE__
 #   define S2N_BN_SYMBOL(NAME) _##NAME
