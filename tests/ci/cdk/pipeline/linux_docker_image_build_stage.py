@@ -81,7 +81,7 @@ class LinuxDockerImageBuildStage(Stage):
                 input=input,
                 commands=[
                     "cd tests/ci/cdk/pipeline/scripts",
-                    './copy_images.sh --repos "${ECR_REPOS} --platform linux"',
+                    './copy_images.sh --repos "${ECR_REPOS}" --platform linux',
                     "export NEED_REBUILD=1",
                 ],
                 env={
