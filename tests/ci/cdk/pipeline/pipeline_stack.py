@@ -196,7 +196,7 @@ class AwsLcCiPipeline(Stack):
         # Pipeline is run everytime we push to main branch. Avoid unnecessary hold up if these updates are non-CI related
         if not IS_DEV:
             start_index = next(
-                (i for i, stage in enumerate(base_pipeline.stages) if stage.stage_name == "PromoteToProduction"), #TODO: Revert this
+                (i for i, stage in enumerate(base_pipeline.stages) if stage.stage_name == "PromoteToProduction"),
                 None
             )
 
