@@ -16,10 +16,10 @@ static const argument_t kArguments[] = {
 };
 
 bool genrsaTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
   
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
+  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
     return false;
   }
@@ -27,12 +27,48 @@ bool genrsaTool(const args_list_t &args) {
   std::string out_path;
   bool help = false;
   
-  GetBoolArgument(&help, "-help", parsed_args);
-  GetString(&out_path, "-out", "", parsed_args);
+  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
+  ordered_args::GetString(&out_path, "-out", "", parsed_args);
 
   if (help) {
     PrintUsage(kArguments);
     return true;
+  }
+
+  // Enforce OpenSSL-compatible argument order: options must come before positional arguments
+  // Check if any positional arguments (numbits) appear before the last option
+  if (!extra_args.empty() && !parsed_args.empty()) {
+    // Find the position of the numbits argument in the original args
+    size_t numbits_pos = SIZE_MAX;
+    for (size_t i = 0; i < args.size(); i++) {
+      if (args[i] == extra_args[0]) {
+        numbits_pos = i;
+        break;
+      }
+    }
+    
+    // Find the position of the last option in the original args
+    size_t last_option_pos = 0;
+    for (const auto& parsed_arg : parsed_args) {
+      for (size_t i = 0; i < args.size(); i++) {
+        if (args[i] == parsed_arg.first) {
+          // For options with values, the option position includes the value
+          size_t option_end_pos = i;
+          if (!parsed_arg.second.empty()) {
+            option_end_pos = i + 1; // Account for the option value
+          }
+          last_option_pos = std::max(last_option_pos, option_end_pos);
+          break;
+        }
+      }
+    }
+    
+    // If numbits appears before the last option, it's an error
+    if (numbits_pos != SIZE_MAX && numbits_pos < last_option_pos) {
+      fprintf(stderr, "Error: Key size must be specified after all options\n");
+      fprintf(stderr, "Usage: genrsa [options] numbits\n");
+      return false;
+    }
   }
 
   unsigned bits = 2048;
