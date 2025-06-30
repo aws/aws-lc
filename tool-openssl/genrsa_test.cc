@@ -56,12 +56,12 @@ protected:
   }
 };
 
-// ----------------------------- Basic Functionality Tests -----------------------------
+// ----------------------------- Basic Functionality Tests (Direct Function Calls) -----------------------------
 
 TEST_F(GenRSATest, DefaultKeyGeneration) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool;
-  int result = system(command.c_str());
-  ASSERT_EQ(result, 0);
+  args_list_t args = {"-out", out_path_tool};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
   
   std::string key_content = ReadFileToString(out_path_tool);
   ASSERT_FALSE(key_content.empty());
@@ -70,9 +70,9 @@ TEST_F(GenRSATest, DefaultKeyGeneration) {
 }
 
 TEST_F(GenRSATest, CustomKeySize4096) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool + " 4096";
-  int result = system(command.c_str());
-  ASSERT_EQ(result, 0);
+  args_list_t args = {"-out", out_path_tool, "4096"};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
   
   std::string key_content = ReadFileToString(out_path_tool);
   ASSERT_FALSE(key_content.empty());
@@ -81,9 +81,9 @@ TEST_F(GenRSATest, CustomKeySize4096) {
 }
 
 TEST_F(GenRSATest, CustomKeySize1024) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool + " 1024";
-  int result = system(command.c_str());
-  ASSERT_EQ(result, 0);
+  args_list_t args = {"-out", out_path_tool, "1024"};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
   
   std::string key_content = ReadFileToString(out_path_tool);
   ASSERT_FALSE(key_content.empty());
@@ -91,29 +91,37 @@ TEST_F(GenRSATest, CustomKeySize1024) {
   ASSERT_TRUE(ValidateRSAKey(key_content, 1024));
 }
 
-// ----------------------------- Error Handling Tests -----------------------------
+// ----------------------------- Error Handling Tests (Direct Function Calls) -----------------------------
 
 TEST_F(GenRSATest, InvalidKeySize) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool + " invalid";
-  int result = system(command.c_str());
-  ASSERT_NE(result, 0);
+  args_list_t args = {"-out", out_path_tool, "invalid"};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);
 }
 
 TEST_F(GenRSATest, ZeroKeySize) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool + " 0";
-  int result = system(command.c_str());
-  ASSERT_NE(result, 0);
+  args_list_t args = {"-out", out_path_tool, "0"};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);
 }
 
 TEST_F(GenRSATest, InvalidOutputPath) {
-  std::string command = "./tool-openssl/openssl genrsa -out /nonexistent/directory/key.pem";
-  int result = system(command.c_str());
-  ASSERT_NE(result, 0);
+  args_list_t args = {"-out", "/nonexistent/directory/key.pem"};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);
 }
 
 TEST_F(GenRSATest, HelpOption) {
-  int result = system("./tool-openssl/openssl genrsa -help");
-  ASSERT_EQ(result, 0);
+  args_list_t args = {"-help"};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);  // Help should succeed
+}
+
+TEST_F(GenRSATest, ArgumentOrderValidation) {
+  // Test that key size must come after options (OpenSSL compatibility)
+  args_list_t args = {"2048", "-out", out_path_tool};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);  // Should fail due to incorrect argument order
 }
 
 // ----------------------------- OpenSSL Cross-Compatibility Tests -----------------------------
@@ -255,9 +263,9 @@ TEST_F(GenRSAComparisonTest, ArgumentOrderCompatibility) {
 // ----------------------------- PEM Format Validation Tests -----------------------------
 
 TEST_F(GenRSATest, PEMFormatStructure) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool;
-  int result = system(command.c_str());
-  ASSERT_EQ(result, 0);
+  args_list_t args = {"-out", out_path_tool};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
   
   std::string key_content = ReadFileToString(out_path_tool);
   ASSERT_FALSE(key_content.empty());
@@ -284,9 +292,9 @@ TEST_F(GenRSATest, PEMFormatStructure) {
 // ----------------------------- RSA Key Component Validation Tests -----------------------------
 
 TEST_F(GenRSATest, KeyComponentsValidation) {
-  std::string command = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool;
-  int result = system(command.c_str());
-  ASSERT_EQ(result, 0);
+  args_list_t args = {"-out", out_path_tool};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
   
   std::string key_content = ReadFileToString(out_path_tool);
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(key_content.c_str(), key_content.length()));
@@ -318,14 +326,14 @@ TEST_F(GenRSATest, KeyUniqueness) {
   char out_path2[PATH_MAX];
   ASSERT_GT(createTempFILEpath(out_path2), 0u);
   
-  std::string command1 = std::string("./tool-openssl/openssl genrsa -out ") + out_path_tool;
-  std::string command2 = std::string("./tool-openssl/openssl genrsa -out ") + out_path2;
+  args_list_t args1 = {"-out", out_path_tool};
+  args_list_t args2 = {"-out", out_path2};
   
-  int result1 = system(command1.c_str());
-  int result2 = system(command2.c_str());
+  bool result1 = genrsaTool(args1);
+  bool result2 = genrsaTool(args2);
   
-  ASSERT_EQ(result1, 0);
-  ASSERT_EQ(result2, 0);
+  ASSERT_TRUE(result1);
+  ASSERT_TRUE(result2);
   
   std::string key1 = ReadFileToString(out_path_tool);
   std::string key2 = ReadFileToString(out_path2);
@@ -336,5 +344,28 @@ TEST_F(GenRSATest, KeyUniqueness) {
   
   RemoveFile(out_path2);
 }
+
+// ----------------------------- Parameterized Tests for Key Sizes -----------------------------
+
+class GenRSAKeySizeTest : public GenRSATest, public ::testing::WithParamInterface<unsigned> {};
+
+TEST_P(GenRSAKeySizeTest, VariousKeySizes) {
+  unsigned key_size = GetParam();
+  args_list_t args = {"-out", out_path_tool, std::to_string(key_size)};
+  
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
+  
+  std::string key_content = ReadFileToString(out_path_tool);
+  ASSERT_FALSE(key_content.empty());
+  ASSERT_TRUE(IsPEMPrivateKey(key_content));
+  ASSERT_TRUE(ValidateRSAKey(key_content, key_size));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  KeySizes,
+  GenRSAKeySizeTest,
+  ::testing::Values(1024, 2048, 3072, 4096)
+);
 
 
