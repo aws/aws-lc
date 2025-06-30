@@ -93,7 +93,7 @@ aes_hw_slothy_xts_encrypt:
 Lxts_enc_big_size:  // Encrypt input size >= 16 bytes
         and  x21, x2, #0xf    // store the tail value of length%16
         and  x2, x2, #-16    // len &= 0x1..110000, now divisible by 16
-        subs x2, x2, #16
+        // subs x2, x2, #16
 
         // Firstly, encrypt the iv with key2, as the first iv of XEX.
         ldr  w6, [x4,#240]
@@ -135,22 +135,22 @@ Loop_iv_enc:
 
 // Encryption
 Lxts_enc:
-        cmp x2, #16
+        cmp x2,#32
         b.lo Lxts_enc_tail1x   // when input = 1 with tail
 
-        subs  x2,x2,#32           // bias
+        cmp x2,#48
         b.lo  Lxts_enc_tail2x    // when input size  = 2
 
         // The iv for third block
         tweak d9,v9.d[1]
 
-        cmp  x2,#16
+        cmp x2,#64
         b.lo  Lxts_enc_tail3x
 
         // The iv for fourth block
         tweak d10,v10.d[1]
 
-        subs x2,x2,#32
+        cmp x2,#80
         b.lo  Lxts_enc_tail4x
 
         // The iv for fifth block
@@ -282,22 +282,27 @@ Loop5x_xts_enc:
         str q26, [x1, #-0x10]
 
         subs x2,x2,#0x50 // @slothy:core
+
+        cmp x2,#0x50
+        b.lo Loop5x_enc_after
+
         b.hs  Loop5x_xts_enc
 
 Loop5x_enc_after:
-        cmn  x2,#0x10
-        b.eq  Lxts_enc_tail4x  // 4 blocks left
+        cmp x2,#0x0
+        b.eq  Lxts_enc_done
 
-        add  x2,x2,#0x50
-        cbz  x2,Lxts_enc_done     // no blocks left
+        cmp x2,#0x10
+        b.eq Lxts_enc_tail1x
 
-        subs  x2,x2,#0x20
-        b.lo  Lxts_enc_tail1x    // 1 block left
+        cmp x2,#0x20
+        b.eq Lxts_enc_tail2x
 
-        subs x2,x2,#0x10
-        b.lo Lxts_enc_tail2x  // 2 blocks left
+        cmp x2,#0x30
+        b.eq Lxts_enc_tail3x
 
-        b  Lxts_enc_tail3x  // 3 blocks left
+        cmp x2,#0x40
+        b.eq Lxts_enc_tail4x
 
 .align  4
 Lxts_enc_tail4x:
