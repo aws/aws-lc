@@ -9,7 +9,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/x509.h>
 
-#include "../../test/test_util.h"
+#include "../test/test_util.h"
 #include "../internal.h"
 
 #define MESSAGE_LEN 8 * 1024
@@ -67,17 +67,31 @@ TEST_P(BIOMessageDigestTest, Basic) {
   EXPECT_TRUE(BIO_get_md_ctx(bio_md.get(), &ctx_tmp));
   EXPECT_EQ(EVP_MD_type(md), EVP_MD_CTX_type(ctx_tmp));
   EXPECT_EQ(md, EVP_MD_CTX_md(ctx_tmp));  // for static *EVP_MD_CTX, ptrs equal
+
+  // The following should fail due to the passing of NULL as the argument.
   EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_C_GET_MD, 0, nullptr));
+  EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_C_SET_MD, 0, nullptr));
+  EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_C_GET_MD_CTX, 0, nullptr));
+
+  // The following should fail due to no support for the underlying |BIO_ctrl|
+  // implementations.
   EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_C_SET_MD_CTX, 0, nullptr));
   EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_C_DO_STATE_MACHINE, 0, nullptr));
   EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_CTRL_DUP, 0, nullptr));
   EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_CTRL_GET_CALLBACK, 0, nullptr));
   EXPECT_FALSE(BIO_ctrl(bio_md.get(), BIO_CTRL_SET_CALLBACK, 0, nullptr));
+
+  // More error cases.
   EXPECT_FALSE(BIO_read(bio_md.get(), buf, 0));
   EXPECT_FALSE(BIO_write(bio_md.get(), buf, 0));
   EXPECT_EQ(0UL, BIO_number_read(bio_md.get()));
   EXPECT_EQ(0UL, BIO_number_written(bio_md.get()));
   EXPECT_FALSE(BIO_gets(bio_md.get(), (char *)buf, EVP_MD_size(md) - 1));
+
+  // Briefly test |BIO_get_md|.
+  EVP_MD *get_md = NULL;
+  EXPECT_TRUE(BIO_get_md(bio_md.get(), &get_md));
+  EXPECT_EQ(md, get_md);
 
   // Pre-initialization IO should fail, but |BIO_get_md_ctx| should do init
   bio_md.reset(BIO_new(BIO_f_md()));
