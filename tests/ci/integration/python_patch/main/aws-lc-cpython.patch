@@ -19,3 +19,31 @@ index a066982..3d7fbc3 100644
  
  # The _tkinter module.
  #
+diff --git a/configure b/configure
+index 029bf52..3fada48 100755
+--- a/configure
++++ b/configure
+@@ -30873,7 +30873,6 @@ main (void)
+       OBJ_nid2sn(NID_md5);
+       OBJ_nid2sn(NID_sha1);
+       OBJ_nid2sn(NID_sha3_512);
+-      OBJ_nid2sn(NID_blake2b512);
+       EVP_PBE_scrypt(NULL, 0, NULL, 0, 2, 8, 1, 0, NULL, 0);
+
+   ;
+diff --git a/Lib/test/test_hashlib.py b/Lib/test/test_hashlib.py
+index b83ae181718b7a..ff52e73100e373 100644
+--- a/Lib/test/test_hashlib.py
++++ b/Lib/test/test_hashlib.py
+@@ -274,7 +274,10 @@ def test_clinic_signature(self):
+                 with self.assertWarnsRegex(DeprecationWarning,
+                                            DEPRECATED_STRING_PARAMETER):
+                     hashlib.new(digest_name, string=b'')
+-                if self._hashlib:
++                # when using a combination of libcrypto and interned hash
++                # implementations, we need to make sure that _hashlib contains
++                # the constructor we're testing
++                if self._hashlib and digest_name in self._hashlib._constructors:
+                     self._hashlib.new(digest_name, b'')
+                     self._hashlib.new(digest_name, data=b'')
+                     with self.assertWarnsRegex(DeprecationWarning,
