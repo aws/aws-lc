@@ -14,6 +14,7 @@
 
 DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
+DEFINE_STATIC_MUTEX(global_entropy_source_lock)
 
 static int entropy_get_prediction_resistance(
   const struct entropy_source_t *entropy_source,
@@ -132,6 +133,8 @@ int have_hw_rng_x86_64_for_testing(void) {
 void override_entropy_source_method_FOR_TESTING(
   const struct entropy_source_methods *override_entropy_source_methods) {
 
+  CRYPTO_STATIC_MUTEX_lock_write(global_entropy_source_lock_bss_get());
   *allow_entropy_source_methods_override_bss_get() = 1;
   *entropy_source_methods_override_bss_get() = override_entropy_source_methods;
+  CRYPTO_STATIC_MUTEX_unlock_write(global_entropy_source_lock_bss_get());
 }

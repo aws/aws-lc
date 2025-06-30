@@ -40,6 +40,11 @@ struct entropy_source_methods {
 // get_entropy_source will return an entropy source configured for the platform.
 struct entropy_source_t * get_entropy_source(void);
 
+// override_entropy_source_method_FOR_TESTING will override the global
+// entropy source that is assigned when calling |get_entropy_source|.
+// |override_entropy_source_method_FOR_TESTING| can be called multiple times but
+// it's designed to allow overriding the entropy source for testing purposes at
+// the start of a process.
 OPENSSL_EXPORT void override_entropy_source_method_FOR_TESTING(
   const struct entropy_source_methods *override_entropy_source_methods);
 
