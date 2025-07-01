@@ -14,6 +14,8 @@
 
 #include <openssl/target.h>
 
+#include "../internal.h"
+
 // Methods to detect fork events aren't generally portable over our supported
 // platforms. Fork detection is therefore an opt-in. Capture the opt-in logic
 // below that categorizes a platform targets as either having
@@ -42,6 +44,7 @@
 
 #include "fork_detect.h"
 
+static struct CRYPTO_STATIC_MUTEX ignore_testing_lock = CRYPTO_STATIC_MUTEX_INIT;
 static int ignore_wipeonfork = 0;
 static int ignore_inheritzero = 0;
 
@@ -64,10 +67,14 @@ static volatile char *fork_detect_addr = NULL;
 static uint64_t fork_generation = 0;
 
 static int ignore_all_fork_detection(void) {
+
+  CRYPTO_STATIC_MUTEX_lock_read(&ignore_testing_lock);
   if (ignore_wipeonfork == 1 &&
       ignore_inheritzero == 1) {
+    CRYPTO_STATIC_MUTEX_unlock_read(&ignore_testing_lock);
     return 1;
   }
+  CRYPTO_STATIC_MUTEX_unlock_read(&ignore_testing_lock);
   return 0;
 }
 
@@ -138,21 +145,30 @@ static int init_fork_detect_inheritzero(void *addr, long page_size) {
 #endif // defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
 
 // We assume that a method in this function is sufficient to detect fork events.
-// Returns 1 if a method sufficient for fork detection successfully
+// Returns 1 if a method is sufficient for fork detection successfully
 // initializes. Otherwise returns 0.
 static int init_fork_detect_methods_sufficient(void *addr, long page_size) {
 
+  // No sufficient method found.
+  int ret = 0;
+
+  CRYPTO_STATIC_MUTEX_lock_read(&ignore_testing_lock);
+
   if (ignore_wipeonfork != 1 &&
       init_fork_detect_wipeonfork(addr, page_size) == 1) {
-    return 1;
+    ret = 1;
+    goto out;
   }
 
   if (ignore_inheritzero != 1 &&
       init_fork_detect_inheritzero(addr, page_size) == 1) {
-    return 1;
+    ret = 1;
+    goto out;
   }
 
-  return 0;
+out:
+  CRYPTO_STATIC_MUTEX_unlock_read(&ignore_testing_lock);
+  return ret;
 }
 
 // Best-effort attempt to initialize fork detection methods that provides
@@ -273,9 +289,13 @@ uint64_t CRYPTO_get_fork_generation(void) { return 0; }
 #endif // defined(AWSLC_FORK_DETECTION_SUPPORTED)
 
 void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);
   ignore_wipeonfork = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ignore_testing_lock);
 }
 
 void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);
   ignore_inheritzero = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ignore_testing_lock);
 }
