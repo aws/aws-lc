@@ -17,7 +17,7 @@ static const argument_t kArguments[] = {
 
 bool genrsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
-  args_list_t extra_args;
+  args_list_t extra_args{};
   
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
@@ -73,8 +73,9 @@ bool genrsaTool(const args_list_t &args) {
 
   unsigned bits = 2048;
   if (!extra_args.empty()) {
-    char *endptr;
-    unsigned long parsed_bits = strtoul(extra_args[0].c_str(), &endptr, 10);
+    char *endptr = nullptr;
+    unsigned long parsed_bits = 0;
+    parsed_bits = strtoul(extra_args[0].c_str(), &endptr, 10);
     if (*endptr != '\0' || parsed_bits == 0 || parsed_bits > UINT_MAX) {
       fprintf(stderr, "Error: Invalid key size '%s'\n", extra_args[0].c_str());
       return false;

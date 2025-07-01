@@ -6,7 +6,6 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/err.h>
-#include <fstream>
 #include <string>
 #include <cstdio>
 #include <sys/stat.h>
@@ -32,16 +31,23 @@ protected:
   // Validate RSA key from PEM content
   bool ValidateRSAKey(const std::string& pem_content, unsigned expected_bits) {
     bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_content.c_str(), pem_content.length()));
-    if (!bio) return false;
+    if (!bio) {
+      return false;
+    }
     
     bssl::UniquePtr<RSA> rsa(PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
-    if (!rsa) return false;
+    if (!rsa) {
+      return false;
+    }
     
-    int key_bits = RSA_bits(rsa.get());
-    if (static_cast<unsigned>(key_bits) != expected_bits) return false;
+    int key_bits = 0;
+    key_bits = RSA_bits(rsa.get());
+    if (static_cast<unsigned>(key_bits) != expected_bits) {
+      return false;
+    }
     
     // Verify key components exist
-    const BIGNUM *n, *e, *d;
+    const BIGNUM *n = nullptr, *e = nullptr, *d = nullptr;
     RSA_get0_key(rsa.get(), &n, &e, &d);
     
     return n != nullptr && e != nullptr && d != nullptr;
@@ -59,7 +65,7 @@ protected:
 // ----------------------------- Basic Functionality Tests (Direct Function Calls) -----------------------------
 
 TEST_F(GenRSATest, DefaultKeyGeneration) {
-  args_list_t args = {"-out", out_path_tool};
+  args_list_t args{"-out", out_path_tool};
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);
   
@@ -70,7 +76,7 @@ TEST_F(GenRSATest, DefaultKeyGeneration) {
 }
 
 TEST_F(GenRSATest, CustomKeySize4096) {
-  args_list_t args = {"-out", out_path_tool, "4096"};
+  args_list_t args{"-out", out_path_tool, "4096"};
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);
   
@@ -81,7 +87,7 @@ TEST_F(GenRSATest, CustomKeySize4096) {
 }
 
 TEST_F(GenRSATest, CustomKeySize1024) {
-  args_list_t args = {"-out", out_path_tool, "1024"};
+  args_list_t args{"-out", out_path_tool, "1024"};
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);
   
@@ -94,32 +100,32 @@ TEST_F(GenRSATest, CustomKeySize1024) {
 // ----------------------------- Error Handling Tests (Direct Function Calls) -----------------------------
 
 TEST_F(GenRSATest, InvalidKeySize) {
-  args_list_t args = {"-out", out_path_tool, "invalid"};
+  args_list_t args{"-out", out_path_tool, "invalid"};
   bool result = genrsaTool(args);
   ASSERT_FALSE(result);
 }
 
 TEST_F(GenRSATest, ZeroKeySize) {
-  args_list_t args = {"-out", out_path_tool, "0"};
+  args_list_t args{"-out", out_path_tool, "0"};
   bool result = genrsaTool(args);
   ASSERT_FALSE(result);
 }
 
 TEST_F(GenRSATest, InvalidOutputPath) {
-  args_list_t args = {"-out", "/nonexistent/directory/key.pem"};
+  args_list_t args{"-out", "/nonexistent/directory/key.pem"};
   bool result = genrsaTool(args);
   ASSERT_FALSE(result);
 }
 
 TEST_F(GenRSATest, HelpOption) {
-  args_list_t args = {"-help"};
+  args_list_t args{"-help"};
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);  // Help should succeed
 }
 
 TEST_F(GenRSATest, ArgumentOrderValidation) {
   // Test that key size must come after options (OpenSSL compatibility)
-  args_list_t args = {"2048", "-out", out_path_tool};
+  args_list_t args{"2048", "-out", out_path_tool};
   bool result = genrsaTool(args);
   ASSERT_FALSE(result);  // Should fail due to incorrect argument order
 }
@@ -160,10 +166,14 @@ protected:
   // Validate RSA key from PEM content (handles both formats)
   bool ValidateRSAKey(const std::string& pem_content, unsigned expected_bits) {
     bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_content.c_str(), pem_content.length()));
-    if (!bio) return false;
+    if (!bio) {
+      return false;
+    }
     
     bssl::UniquePtr<RSA> rsa(PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
-    if (!rsa) return false;
+    if (!rsa) {
+      return false;
+    }
     
     return static_cast<unsigned>(RSA_bits(rsa.get())) == expected_bits;
   }
@@ -263,7 +273,7 @@ TEST_F(GenRSAComparisonTest, ArgumentOrderCompatibility) {
 // ----------------------------- PEM Format Validation Tests -----------------------------
 
 TEST_F(GenRSATest, PEMFormatStructure) {
-  args_list_t args = {"-out", out_path_tool};
+  args_list_t args{"-out", out_path_tool};
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);
   
@@ -292,7 +302,7 @@ TEST_F(GenRSATest, PEMFormatStructure) {
 // ----------------------------- RSA Key Component Validation Tests -----------------------------
 
 TEST_F(GenRSATest, KeyComponentsValidation) {
-  args_list_t args = {"-out", out_path_tool};
+  args_list_t args{"-out", out_path_tool};
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);
   
@@ -304,7 +314,7 @@ TEST_F(GenRSATest, KeyComponentsValidation) {
   ASSERT_TRUE(rsa);
   
   // Check all key components
-  const BIGNUM *n, *e, *d, *p, *q, *dmp1, *dmq1, *iqmp;
+  const BIGNUM *n = nullptr, *e = nullptr, *d = nullptr, *p = nullptr, *q = nullptr, *dmp1 = nullptr, *dmq1 = nullptr, *iqmp = nullptr;
   RSA_get0_key(rsa.get(), &n, &e, &d);
   RSA_get0_factors(rsa.get(), &p, &q);
   RSA_get0_crt_params(rsa.get(), &dmp1, &dmq1, &iqmp);
@@ -326,8 +336,8 @@ TEST_F(GenRSATest, KeyUniqueness) {
   char out_path2[PATH_MAX];
   ASSERT_GT(createTempFILEpath(out_path2), 0u);
   
-  args_list_t args1 = {"-out", out_path_tool};
-  args_list_t args2 = {"-out", out_path2};
+  args_list_t args1{"-out", out_path_tool};
+  args_list_t args2{"-out", out_path2};
   
   bool result1 = genrsaTool(args1);
   bool result2 = genrsaTool(args2);
@@ -351,7 +361,7 @@ class GenRSAKeySizeTest : public GenRSATest, public ::testing::WithParamInterfac
 
 TEST_P(GenRSAKeySizeTest, VariousKeySizes) {
   unsigned key_size = GetParam();
-  args_list_t args = {"-out", out_path_tool, std::to_string(key_size)};
+  args_list_t args{"-out", out_path_tool, std::to_string(key_size)};
   
   bool result = genrsaTool(args);
   ASSERT_TRUE(result);

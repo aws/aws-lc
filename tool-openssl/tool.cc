@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  args_list_t args;
+  args_list_t args{};
   for (int i = starting_arg; i < argc; i++) {
     args.emplace_back(argv[i]);
   }
