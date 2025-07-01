@@ -708,13 +708,16 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 // can be used.
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
 
-// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|.
+// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|. It returns
+// one on success and zero on error.
 OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
 
-// BIO_set_md set's |b|'s EVP_MD* to |md|.
+// BIO_set_md set's |b|'s EVP_MD* to |md|. It returns one on success and zero on
+// error.
 OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
 
-// BIO_set_md set's |*md| to |b|'s |EVP_MD*|.
+// BIO_get_md set's |*md| to |b|'s |EVP_MD*|. It returns one on success and zero
+// on error.
 OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
 
 

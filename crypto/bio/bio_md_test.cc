@@ -51,6 +51,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
   bssl::UniquePtr<BIO> bio_md;
   bssl::UniquePtr<BIO> bio_mem;
   bssl::UniquePtr<EVP_MD_CTX> ctx;
+  EVP_MD *get_md = nullptr;
 
   OPENSSL_memset(message, 'A', sizeof(message));
   OPENSSL_memset(buf, '\0', sizeof(buf));
@@ -61,6 +62,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
   // Simple initialization and error cases
   bio_md.reset(BIO_new(BIO_f_md()));
   ASSERT_TRUE(bio_md);
+  EXPECT_FALSE(BIO_get_md(bio_md.get(), &get_md));
   EXPECT_FALSE(BIO_reset(bio_md.get()));
   EXPECT_TRUE(BIO_set_md(bio_md.get(), md));
   EVP_MD_CTX *ctx_tmp;  // |bio_md| owns the context, we just take a ref here
@@ -89,7 +91,6 @@ TEST_P(BIOMessageDigestTest, Basic) {
   EXPECT_FALSE(BIO_gets(bio_md.get(), (char *)buf, EVP_MD_size(md) - 1));
 
   // Briefly test |BIO_get_md|.
-  EVP_MD *get_md = NULL;
   EXPECT_TRUE(BIO_get_md(bio_md.get(), &get_md));
   EXPECT_EQ(md, get_md);
 
