@@ -353,6 +353,12 @@ if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing ADX, AVX2 and AVX512 optimisations")
 endif()
 
+# Disable export of non-FIPS algorithms
+option(DISABLE_NON_FIPS "Disable non-FIPS algorithms" OFF)
+if (DISABLE_NON_FIPS)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DDISABLE_NON_FIPS")
+endif()
+
 if (GCC)
   # All versions of GCC that AWS-LC supports has this warning
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wredundant-decls")
