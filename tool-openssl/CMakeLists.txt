@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    pkey.cc
     rehash.cc
     req.cc
     ordered_args.cc
@@ -86,6 +87,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        pkey.cc
+        pkey_test.cc
         rehash.cc
         rehash_test.cc
         req.cc
