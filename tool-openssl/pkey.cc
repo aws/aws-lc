@@ -68,7 +68,7 @@ static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int
 }
 
 
-bool PKeyTool(const args_list_t &args) {
+bool pkeyTool(const args_list_t &args) {
   args_map_t parsed_args;
   args_list_t extra_args;
   if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
@@ -185,8 +185,18 @@ bool PKeyTool(const args_list_t &args) {
     return false;
   }
 
+  if (!noout) {
+    if (pubout || pubin) {
+      if (!WritePublicKey(pkey.get(), output_bio, output_format)) {
+        return false;
+      }
+    } else {
+      if (!WritePrivateKey(pkey.get(), output_bio, output_format)) {
+        return false;
+      }
+    }
+  }
 
-  // Output key text if requested
   if (textpub) {
     if (EVP_PKEY_print_public(output_bio.get(), pkey.get(), 0, nullptr) <= 0) {
       fprintf(stderr, "Error: unable to print public key components\n");
@@ -198,19 +208,6 @@ bool PKeyTool(const args_list_t &args) {
       fprintf(stderr, "Error: unable to print private key components\n");
       ERR_print_errors_fp(stderr);
       return false;
-    }
-  }
-
-  // Output the key if not suppressed
-  if (!noout) {
-    if (pubout || pubin) {
-      if (!WritePublicKey(pkey.get(), output_bio, output_format)) {
-        return false;
-      }
-    } else {
-      if (!WritePrivateKey(pkey.get(), output_bio, output_format)) {
-        return false;
-      }
     }
   }
 
