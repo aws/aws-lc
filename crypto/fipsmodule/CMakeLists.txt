@@ -291,6 +291,20 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_16.S
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_32.S
     )
+
+    # ML-KEM core arithmetic
+    list(APPEND BCM_ASM_SOURCES
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_basemul_k2.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_basemul_k3.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_basemul_k4.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_intt.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_mulcache_compute.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_ntt.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_poly_reduce.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_poly_tobytes.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_poly_tomont.S
+                ${S2N_BIGNUM_DIR}/mlkem/mlkem_rej_uniform_VARIABLE_TIME.S)
+
   endif()
 
   if(BORINGSSL_PREFIX)
