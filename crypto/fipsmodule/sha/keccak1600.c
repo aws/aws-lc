@@ -103,8 +103,8 @@ static uint64_t ROL64(uint64_t val, int offset)
  // This implementation is a variant of KECCAK_1X (see OpenSSL)
  // This implementation allows to take temporary storage
  // out of round procedure and simplify references to it by alternating
- // it with actual data (see round loop below). 
- // It ensures best compiler interpretation to assembly and provides best 
+ // it with actual data (see round loop below).
+ // It ensures best compiler interpretation to assembly and provides best
  // instruction per processed byte ratio at minimal round unroll factor.
 static void Round(uint64_t R[KECCAK1600_ROWS][KECCAK1600_ROWS], uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], size_t i)
 {
@@ -338,66 +338,88 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]);
  // 72, but can also be (1600 - 448)/8 = 144. All this means that message
  // padding and intermediate sub-block buffering, byte- or bitwise, is
  // caller's responsibility.
+
+// KeccakF1600_XORBytes XORs |len| bytes from |inp| into the Keccak state |A|.
+// |len| must be a multiple of 8.
+static void KeccakF1600_XORBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len)
+{
+    uint64_t *A_flat = (uint64_t *)A;
+    size_t w = len / 8;
+
+    assert(len <= SHA3_MAX_BLOCKSIZE);
+    assert((len % 8) == 0);
+
+    for (size_t i = 0; i < w; i++) {
+        uint64_t Ai = (uint64_t)inp[0]       | (uint64_t)inp[1] << 8  |
+                      (uint64_t)inp[2] << 16 | (uint64_t)inp[3] << 24 |
+                      (uint64_t)inp[4] << 32 | (uint64_t)inp[5] << 40 |
+                      (uint64_t)inp[6] << 48 | (uint64_t)inp[7] << 56;
+        inp += 8;
+        A_flat[i] ^= BitInterleave(Ai);
+    }
+}
+
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len,
                    size_t r)
 {
-    uint64_t *A_flat = (uint64_t *)A;
-    size_t i, w = r / 8;
-
     assert(r < (25 * sizeof(A[0][0])) && (r % 8) == 0);
 
     while (len >= r) {
-        for (i = 0; i < w; i++) {
-            uint64_t Ai = (uint64_t)inp[0]       | (uint64_t)inp[1] << 8  |
-                          (uint64_t)inp[2] << 16 | (uint64_t)inp[3] << 24 |
-                          (uint64_t)inp[4] << 32 | (uint64_t)inp[5] << 40 |
-                          (uint64_t)inp[6] << 48 | (uint64_t)inp[7] << 56;
-            inp += 8;
-
-            A_flat[i] ^= BitInterleave(Ai);
-        }
+        KeccakF1600_XORBytes(A, inp, r);
         KeccakF1600(A);
+        inp += r;
         len -= r;
     }
 
     return len;
 }
 
-void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int padded)
-// Keccak1600_Squeeze can be called multiple times to incrementally 
+// KeccakF1600_ExtractBytes extracts |len| bytes from the Keccak state |A| into |out|.
+static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len)
 {
     uint64_t *A_flat = (uint64_t *)A;
-    size_t i, w = r / 8;
+    assert(len <= SHA3_MAX_BLOCKSIZE);
+    size_t i = 0;
 
+    while (len != 0) {
+        uint64_t Ai = BitDeinterleave(A_flat[i]);
+
+        if (len < 8) {
+            for (size_t j = 0; j < len; j++) {
+                *out++ = (uint8_t)Ai;
+                Ai >>= 8;
+            }
+            return;
+        }
+
+        out[0] = (uint8_t)(Ai);
+        out[1] = (uint8_t)(Ai >> 8);
+        out[2] = (uint8_t)(Ai >> 16);
+        out[3] = (uint8_t)(Ai >> 24);
+        out[4] = (uint8_t)(Ai >> 32);
+        out[5] = (uint8_t)(Ai >> 40);
+        out[6] = (uint8_t)(Ai >> 48);
+        out[7] = (uint8_t)(Ai >> 56);
+        out += 8;
+        len -= 8;
+        i++;
+    }
+}
+
+void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int padded)
+{
     assert(r < (25 * sizeof(A[0][0])) && (r % 8) == 0);
 
     while (len != 0) {
         if (padded) {
-            KeccakF1600(A); 
+            KeccakF1600(A);
         }
         padded = 1;
-        for (i = 0; i < w && len != 0; i++) {
-            uint64_t Ai = BitDeinterleave(A_flat[i]);
 
-            if (len < 8) {
-                for (i = 0; i < len; i++) {
-                    *out++ = (uint8_t)Ai;
-                    Ai >>= 8;
-                }
-                return;
-            }
-
-            out[0] = (uint8_t)(Ai);
-            out[1] = (uint8_t)(Ai >> 8);
-            out[2] = (uint8_t)(Ai >> 16);
-            out[3] = (uint8_t)(Ai >> 24);
-            out[4] = (uint8_t)(Ai >> 32);
-            out[5] = (uint8_t)(Ai >> 40);
-            out[6] = (uint8_t)(Ai >> 48);
-            out[7] = (uint8_t)(Ai >> 56);
-            out += 8;
-            len -= 8;
-        }
+        size_t extract_len = len < r ? len : r;
+        KeccakF1600_ExtractBytes(A, out, extract_len);
+        out += extract_len;
+        len -= extract_len;
     }
 }
 
@@ -468,3 +490,103 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS])
 }
 
 #endif // !KECCAK1600_ASM
+
+// KeccakF1600_XORBytes_x4 XORs |len| bytes from |inp0|, |inp1|, |inp2|, |inp3|
+// into the four Keccak states in |A|. |len| must be a multiple of 8.
+static void KeccakF1600_XORBytes_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                             const uint8_t *inp0, const uint8_t *inp1,
+                             const uint8_t *inp2, const uint8_t *inp3,
+                             size_t len)
+{
+    KeccakF1600_XORBytes(A[0], inp0, len);
+    KeccakF1600_XORBytes(A[1], inp1, len);
+    KeccakF1600_XORBytes(A[2], inp2, len);
+    KeccakF1600_XORBytes(A[3], inp3, len);
+}
+
+// KeccakF1600_ExtractBytes_x4 extracts |len| bytes from the four Keccak states in |A|
+// into |out0|, |out1|, |out2|, |out3|.
+static void KeccakF1600_ExtractBytes_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                                 uint8_t *out0, uint8_t *out1,
+                                 uint8_t *out2, uint8_t *out3,
+                                 size_t len)
+{
+    KeccakF1600_ExtractBytes(A[0], out0, len);
+    KeccakF1600_ExtractBytes(A[1], out1, len);
+    KeccakF1600_ExtractBytes(A[2], out2, len);
+    KeccakF1600_ExtractBytes(A[3], out3, len);
+}
+
+static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS])
+{
+    KeccakF1600(A[0]);
+    KeccakF1600(A[1]);
+    KeccakF1600(A[2]);
+    KeccakF1600(A[3]);
+}
+
+// One-shot absorb + finalize. Note that in contract to non-batched Keccak,
+// this does _not_ run a Keccak permutation at the end, allowing for a uniform
+// implementation of Keccak1600_Squeezeblocks_x4() without `padded` parameter
+// as in the non-batched implementation.
+void Keccak1600_Absorb_once_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+			       const uint8_t *inp0, const uint8_t *inp1,
+			       const uint8_t *inp2, const uint8_t *inp3,
+			       size_t len, size_t r, uint8_t p)
+{
+    assert(r <= SHA3_MAX_BLOCKSIZE);
+
+    while (len >= r) {
+        KeccakF1600_XORBytes_x4(A, inp0, inp1, inp2, inp3, r);
+        Keccak1600_x4(A);
+        inp0 += r;
+        inp1 += r;
+        inp2 += r;
+        inp3 += r;
+        len -= r;
+    }
+
+    // Build 8-byte aligned final blocks for each input
+    alignas(16) uint8_t final[4][SHA3_MAX_BLOCKSIZE] = {{0}};
+
+    // Copy the remainder bytes to final blocks
+    OPENSSL_memcpy(final[0], inp0, len);
+    OPENSSL_memcpy(final[1], inp1, len);
+    OPENSSL_memcpy(final[2], inp2, len);
+    OPENSSL_memcpy(final[3], inp3, len);
+
+    if (len == r - 1) {
+	p |= 128;
+    } else {
+	final[0][r - 1] |= 128;
+	final[1][r - 1] |= 128;
+	final[2][r - 1] |= 128;
+	final[3][r - 1] |= 128;
+    }
+
+    final[0][len] |= p;
+    final[1][len] |= p;
+    final[2][len] |= p;
+    final[3][len] |= p;
+
+    KeccakF1600_XORBytes_x4(A, final[0], final[1], final[2], final[3], r);
+
+    // Clean up final blocks to avoid stack leakage
+    OPENSSL_cleanse(final, sizeof(final));
+}
+
+void Keccak1600_Squeezeblocks_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out0, uint8_t *out1,
+			   uint8_t *out2, uint8_t *out3,
+			   size_t num_blocks, size_t r)
+{
+    while (num_blocks != 0) {
+	Keccak1600_x4(A);
+        KeccakF1600_ExtractBytes_x4(A, out0, out1, out2, out3, r);
+
+        out0 += r;
+        out1 += r;
+        out2 += r;
+        out3 += r;
+	num_blocks--;
+    }
+}
