@@ -14,8 +14,6 @@
 
 #include <openssl/target.h>
 
-#include "../internal.h"
-
 // Methods to detect fork events aren't generally portable over our supported
 // platforms. Fork detection is therefore an opt-in. Capture the opt-in logic
 // below that categorizes a platform targets as either having
@@ -43,6 +41,7 @@
 #endif
 
 #include "fork_detect.h"
+#include "../internal.h"
 
 static struct CRYPTO_STATIC_MUTEX ignore_testing_lock = CRYPTO_STATIC_MUTEX_INIT;
 static int ignore_wipeonfork = 0;

@@ -36,21 +36,31 @@
 static CRYPTO_once_t ube_state_initialize_once = CRYPTO_ONCE_INIT;
 static CRYPTO_once_t ube_detection_unavailable_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX ube_lock = CRYPTO_STATIC_MUTEX_INIT;
+// Locking for testing-specific code. Don't use |ube_lock| to avoid any
+// potential for deadlocks.
+static struct CRYPTO_STATIC_MUTEX ube_testing_lock = CRYPTO_STATIC_MUTEX_INIT;
 static uint8_t ube_detection_unavailable = 0;
 static uint8_t allow_mocked_detection = 0;
 
 static uint64_t override_fork_generation_number = 0;
 void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   override_fork_generation_number = fork_gn;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
+
 static uint32_t override_snapsafe_generation_number = 0;
 void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   override_snapsafe_generation_number = snapsafe_gn;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
 static int get_snapsafe_generation_number(uint32_t *gn) {
   if (allow_mocked_detection == 1) {
+    CRYPTO_STATIC_MUTEX_lock_read(&ube_testing_lock);
     *gn = override_snapsafe_generation_number;
+    CRYPTO_STATIC_MUTEX_unlock_read(&ube_testing_lock);
     return 1;
   }
 
@@ -59,7 +69,9 @@ static int get_snapsafe_generation_number(uint32_t *gn) {
 
 static int get_fork_generation_number(uint64_t *gn) {
   if (allow_mocked_detection == 1) {
+    CRYPTO_STATIC_MUTEX_lock_read(&ube_testing_lock);
     *gn = override_fork_generation_number;
+    CRYPTO_STATIC_MUTEX_unlock_read(&ube_testing_lock);
     return 1;
   }
 
@@ -186,6 +198,13 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // saves work in case the UBE detection is not supported. The check below
   // must be done after attempting to initialize the UBE state. Because
   // initialization might fail and we can short-circuit here.
+  //
+  // |ube_detection_unavailable| and |allow_mocked_detection| are both global
+  // variables that can be mutated in multiple threads. They are uint8_t typed
+  // though and we assume read and write to them is atomic. This path is hot.
+  // The assumption avoids us having to acquire (up to) two read locks that
+  // would probably never be contended anyway. That would not block other
+  // threads, but cost cycles regardless.
   if (ube_detection_unavailable == 1 &&
       allow_mocked_detection != 1) {
     return 0;
@@ -242,12 +261,22 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   return 1;
 }
 
+// Synchronize writing to |allow_mocked_detection|. But only to more easily
+// reason about ordering. They are supposed to only be used in testing code
+// and called, initially, from a single-threaded process at initialization time.
+// We generally don't care about any contention that might happen.
+
 void allow_mocked_ube_detection_FOR_TESTING(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   allow_mocked_detection = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
 void disable_mocked_ube_detection_FOR_TESTING(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   allow_mocked_detection = 0;
+  CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
+
   set_fork_generation_number_FOR_TESTING(0);
   set_snapsafe_generation_number_FOR_TESTING(0);
 }
