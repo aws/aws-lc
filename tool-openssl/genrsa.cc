@@ -9,11 +9,79 @@
 #include <openssl/rsa.h>
 #include "internal.h"
 
+// Static constants
+static const unsigned kDefaultKeySize = 2048;
+static const char kUsageFormat[] = "Usage: genrsa [options] numbits\n";
+
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "-out", kOptionalArgument, "Output file to write the key to" },
   { "", kOptionalArgument, "Key size in bits (default: 2048)" }
 };
+
+// Helper function to validate argument order (OpenSSL compatibility)
+static bool ValidateArgumentOrder(const args_list_t &args, 
+                                  const ordered_args::ordered_args_map_t &parsed_args,
+                                  const args_list_t &extra_args) {
+  if (extra_args.empty() || parsed_args.empty()) {
+    return true;  // No validation needed
+  }
+
+  // Find the position of the numbits argument in the original args
+  size_t numbits_pos = SIZE_MAX;
+  for (size_t i = 0; i < args.size(); i++) {
+    if (args[i] == extra_args[0]) {
+      numbits_pos = i;
+      break;
+    }
+  }
+  
+  // Find the position of the last option in the original args
+  size_t last_option_pos = 0;
+  for (const auto& parsed_arg : parsed_args) {
+    for (size_t i = 0; i < args.size(); i++) {
+      if (args[i] == parsed_arg.first) {
+        // For options with values, the option position includes the value
+        size_t option_end_pos = i;
+        if (!parsed_arg.second.empty()) {
+          option_end_pos = i + 1; // Account for the option value
+        }
+        last_option_pos = std::max(last_option_pos, option_end_pos);
+        break;
+      }
+    }
+  }
+  
+  // If numbits appears before the last option, it's an error
+  if (numbits_pos != SIZE_MAX && numbits_pos < last_option_pos) {
+    fprintf(stderr, "Error: Key size must be specified after all options\n");
+    fprintf(stderr, "%s", kUsageFormat);
+    return false;
+  }
+  
+  return true;
+}
+
+// Helper function to parse and validate key size
+static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
+  bits = kDefaultKeySize;  // Set default
+  
+  if (extra_args.empty()) {
+    return true;  // Use default
+  }
+  
+  const std::string& bits_str = extra_args[0];
+  char *endptr = nullptr;
+  unsigned long parsed_bits = strtoul(bits_str.c_str(), &endptr, 10);
+  
+  if (*endptr != '\0' || parsed_bits == 0 || parsed_bits > UINT_MAX) {
+    fprintf(stderr, "Error: Invalid key size '%s'\n", bits_str.c_str());
+    return false;
+  }
+  
+  bits = static_cast<unsigned>(parsed_bits);
+  return true;
+}
 
 bool genrsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
@@ -35,52 +103,15 @@ bool genrsaTool(const args_list_t &args) {
     return true;
   }
 
-  // Enforce OpenSSL-compatible argument order: options must come before positional arguments
-  // Check if any positional arguments (numbits) appear before the last option
-  if (!extra_args.empty() && !parsed_args.empty()) {
-    // Find the position of the numbits argument in the original args
-    size_t numbits_pos = SIZE_MAX;
-    for (size_t i = 0; i < args.size(); i++) {
-      if (args[i] == extra_args[0]) {
-        numbits_pos = i;
-        break;
-      }
-    }
-    
-    // Find the position of the last option in the original args
-    size_t last_option_pos = 0;
-    for (const auto& parsed_arg : parsed_args) {
-      for (size_t i = 0; i < args.size(); i++) {
-        if (args[i] == parsed_arg.first) {
-          // For options with values, the option position includes the value
-          size_t option_end_pos = i;
-          if (!parsed_arg.second.empty()) {
-            option_end_pos = i + 1; // Account for the option value
-          }
-          last_option_pos = std::max(last_option_pos, option_end_pos);
-          break;
-        }
-      }
-    }
-    
-    // If numbits appears before the last option, it's an error
-    if (numbits_pos != SIZE_MAX && numbits_pos < last_option_pos) {
-      fprintf(stderr, "Error: Key size must be specified after all options\n");
-      fprintf(stderr, "Usage: genrsa [options] numbits\n");
-      return false;
-    }
+  // Validate argument order (OpenSSL compatibility)
+  if (!ValidateArgumentOrder(args, parsed_args, extra_args)) {
+    return false;
   }
 
-  unsigned bits = 2048;
-  if (!extra_args.empty()) {
-    char *endptr = nullptr;
-    unsigned long parsed_bits = 0;
-    parsed_bits = strtoul(extra_args[0].c_str(), &endptr, 10);
-    if (*endptr != '\0' || parsed_bits == 0 || parsed_bits > UINT_MAX) {
-      fprintf(stderr, "Error: Invalid key size '%s'\n", extra_args[0].c_str());
-      return false;
-    }
-    bits = static_cast<unsigned>(parsed_bits);
+  // Parse and validate key size
+  unsigned bits;
+  if (!ParseKeySize(extra_args, bits)) {
+    return false;
   }
 
   bssl::UniquePtr<RSA> rsa(RSA_new());
