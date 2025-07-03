@@ -5,16 +5,18 @@
 #define TEST_UTIL_H
 
 #include <gtest/gtest.h>
-#include <string>
-#include <vector>
+#include <sys/stat.h>
+#include <cctype>
+#include <cstring>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <string>
-#include <iostream>
-#include <cctype>
+#include <vector>
+#include "../crypto/test/test_util.h"
 
-
-// Helper function to trim whitespace from both ends of a string to test comparison output
+// Helper function to trim whitespace from both ends of a string to test
+// comparison output
 static inline std::string &trim(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
       return !std::isspace(static_cast<unsigned char>(ch));
@@ -25,16 +27,27 @@ static inline std::string &trim(std::string &s) {
   return s;
 }
 
-
 // Helper function to read file content into a string
 inline std::string ReadFileToString(const std::string& file_path) {
-  std::ifstream file_stream(file_path, std::ios::binary);
-  if (!file_stream) {
+  if (file_path.empty()) {
     return "";
   }
-  std::ostringstream buffer;
-  buffer << file_stream.rdbuf();
-  return buffer.str();
+  
+  // Check if file exists first
+  struct stat stat_buffer;
+  if (stat(file_path.c_str(), &stat_buffer) != 0) {
+    return "";
+  }
+
+  std::ifstream file_stream(file_path, std::ios::binary);
+  if (!file_stream.is_open()) {
+    return "";
+  }
+  
+  std::ostringstream output_buffer;
+  output_buffer << file_stream.rdbuf();
+  
+  return output_buffer.str();
 }
 
 inline void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command,
