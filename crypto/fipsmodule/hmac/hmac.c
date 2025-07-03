@@ -96,10 +96,6 @@ struct hmac_methods_st {
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *, const void *,     \
                                                     size_t);                  \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);        \
-  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state(                 \
-      void *, const uint8_t *, uint64_t);                                     \
-  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state(void *, uint8_t *,     \
-                                                       uint64_t *);           \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                \
     return HASH_NAME##_Init((HASH_CTX *)ctx);                                 \
   }                                                                           \
@@ -110,6 +106,18 @@ struct hmac_methods_st {
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *out, void *ctx) { \
     return HASH_NAME##_Final(out, (HASH_CTX *)ctx);                           \
   }                                                                           \
+  OPENSSL_STATIC_ASSERT(HASH_CBLOCK % 8 == 0,                                 \
+                        HASH_NAME##_has_blocksize_not_divisible_by_eight_t)   \
+  OPENSSL_STATIC_ASSERT(HASH_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,                 \
+                        HASH_NAME##_has_overlarge_blocksize_t)                \
+  OPENSSL_STATIC_ASSERT(sizeof(HASH_CTX) <= sizeof(union md_ctx_union),       \
+                        HASH_NAME##_has_overlarge_context_t)
+
+// For merkle-damgard constructions, we also define functions for importing and
+// exporting hash state for precomputed keys. These are not applicable to
+// Keccak/SHA3.
+#define MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(HASH_NAME, HASH_CTX, HASH_CBLOCK) \
+  MD_TRAMPOLINES_EXPLICIT(HASH_NAME, HASH_CTX, HASH_CBLOCK);                  \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state(                 \
       void *ctx, const uint8_t *h, uint64_t n) {                              \
     return HASH_NAME##_Init_from_state((HASH_CTX *)ctx, h, n);                \
@@ -118,46 +126,56 @@ struct hmac_methods_st {
       void *ctx, uint8_t *out_h, uint64_t *out_n) {                           \
     return HASH_NAME##_get_state((HASH_CTX *)ctx, out_h, out_n);              \
   }                                                                           \
-  OPENSSL_STATIC_ASSERT(HASH_CBLOCK % 8 == 0,                                 \
-                        HASH_NAME##_has_blocksize_not_divisible_by_eight_t)   \
-  OPENSSL_STATIC_ASSERT(HASH_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,                 \
-                        HASH_NAME##_has_overlarge_blocksize_t)                \
   OPENSSL_STATIC_ASSERT(HMAC_##HASH_NAME##_PRECOMPUTED_KEY_SIZE ==            \
                             2 * HASH_NAME##_CHAINING_LENGTH,                  \
                         HASH_NAME##_has_incorrect_precomputed_key_size)       \
   OPENSSL_STATIC_ASSERT(HMAC_##HASH_NAME##_PRECOMPUTED_KEY_SIZE <=            \
                             HMAC_MAX_PRECOMPUTED_KEY_SIZE,                    \
                         HASH_NAME##_has_too_large_precomputed_key_size)       \
-  OPENSSL_STATIC_ASSERT(sizeof(HASH_CTX) <= sizeof(union md_ctx_union),       \
-                        HASH_NAME##_has_overlarge_context_t)
 
 // The maximum number of HMAC implementations
-#define HMAC_METHOD_MAX 8
+#define HMAC_METHOD_MAX 12
 
-MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA256, SHA256_CTX, SHA256_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA512_224, SHA512_CTX, SHA512_CBLOCK)
-MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(MD5, MD5_CTX, MD5_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA1, SHA_CTX, SHA_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA224, SHA256_CTX, SHA256_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA256, SHA256_CTX, SHA256_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA384, SHA512_CTX, SHA512_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA512, SHA512_CTX, SHA512_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA512_224, SHA512_CTX, SHA512_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT_PRECOMPUTED(SHA512_256, SHA512_CTX, SHA512_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT(SHA3_224, KECCAK1600_CTX, SHA3_224_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT(SHA3_256, KECCAK1600_CTX, SHA3_256_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT(SHA3_384, KECCAK1600_CTX, SHA3_384_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT(SHA3_512, KECCAK1600_CTX, SHA3_512_CBLOCK)
 
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
 };
 
+// This macro does not set any values for precomputed keys for portable state,
+// and as such is suitable for use with Keccak/SHA3.
 #define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)  {                        \
     out->methods[idx].evp_md = EVP_MD;                                       \
-    out->methods[idx].chaining_length = HASH_NAME##_CHAINING_LENGTH;         \
     out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;           \
     out->methods[idx].update = AWS_LC_TRAMPOLINE_##HASH_NAME##_Update;       \
     out->methods[idx].finalize = AWS_LC_TRAMPOLINE_##HASH_NAME##_Final;      \
-    out->methods[idx].init_from_state =                                      \
-        AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state;                     \
-    out->methods[idx].get_state = AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state; \
+    out->methods[idx].chaining_length = 0UL;                                 \
+    out->methods[idx].init_from_state = NULL;                                \
+    out->methods[idx].get_state = NULL;                                      \
     idx++;                                                                   \
     assert(idx <= HMAC_METHOD_MAX);                                          \
+  }
+
+// Use |idx-1| because DEFINE_IN_PLACE_METHODS has already incremented it.
+#define DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_MD, HASH_NAME)  {            \
+    DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME);                              \
+    assert(idx-1 >= 0);                                                      \
+    out->methods[idx-1].chaining_length = HASH_NAME##_CHAINING_LENGTH;       \
+    out->methods[idx-1].init_from_state =                                    \
+        AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state;                     \
+    out->methods[idx-1].get_state =                                          \
+        AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state;                           \
   }
 
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
@@ -165,15 +183,18 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   int idx = 0;
   // Since we search these linearly it helps (just a bit) to put the most common ones first.
   // This isn't based on hard metrics and will not make a significant different on performance.
-  // FIXME: all hashes but SHA256 have been disabled to check first SHA256
-  DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
-  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
-  DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
-  DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
-  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
-  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
-  DEFINE_IN_PLACE_METHODS(EVP_sha512_224(), SHA512_224);
-  DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha256(), SHA256);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha1(), SHA1);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha384(), SHA384);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha512(), SHA512);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_md5(), MD5);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha224(), SHA224);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha512_224(), SHA512_224);
+  DEFINE_IN_PLACE_METHODS_PRECOMPUTED(EVP_sha512_256(), SHA512_256);
+  DEFINE_IN_PLACE_METHODS(EVP_sha3_224(), SHA3_224);
+  DEFINE_IN_PLACE_METHODS(EVP_sha3_256(), SHA3_256);
+  DEFINE_IN_PLACE_METHODS(EVP_sha3_384(), SHA3_384);
+  DEFINE_IN_PLACE_METHODS(EVP_sha3_512(), SHA3_512);
 }
 
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
@@ -494,6 +515,11 @@ void HMAC_CTX_reset(HMAC_CTX *ctx) {
 }
 
 int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
+  GUARD_PTR(ctx);
+  if (ctx->methods != NULL && ctx->methods->get_state == NULL) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
+    return 0;
+  }
   if (HMAC_STATE_INIT_NO_DATA != ctx->state &&
       HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
     // HMAC_set_precomputed_key_export can only be called after Hmac_Init_*
@@ -505,6 +531,13 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
 }
 
 int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
+  GUARD_PTR(ctx);
+  GUARD_PTR(ctx->methods);
+  if (ctx->methods->get_state == NULL) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
+    return 0;
+  }
+
   if (HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
     OPENSSL_PUT_ERROR(EVP, HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED);
     return 0;
@@ -583,6 +616,10 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
   }
 
   const HmacMethods *methods = ctx->methods;
+  if (ctx->methods->init_from_state == NULL) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST);
+    return 0;
+  }
 
   const size_t chaining_length = methods->chaining_length;
   const size_t block_size = EVP_MD_block_size(methods->evp_md);

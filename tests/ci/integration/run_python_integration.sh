@@ -68,6 +68,7 @@ function python_run_tests() {
         test_audit \
         test_ftplib \
         test_hashlib \
+        test_hmac \
         test_httplib \
         test_imaplib \
         test_logging \
@@ -139,12 +140,12 @@ function python_run_3rd_party_tests() {
     echo installing other OpenSSL-dependent modules...
     install_crt_python
     python -m pip install 'boto3[crt]'
-    # cffi install is busted on release candidates >= 3.13, so allow install
-    # failure for cryptography and pyopenssl on those versions for now.
+    # cffi install is busted on newer release candidates, so allow install
+    # failure for cryptography and pyopenssl on >= 3.14 for now.
     python -m pip install 'cryptography' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
     python -m pip install 'pyopenssl' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
         python ${test}

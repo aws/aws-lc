@@ -6,7 +6,11 @@
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/kdf.h>
+#include <openssl/mem.h>
+
+#include "../../internal.h"
 #include "../delocate.h"
+#include "../service_indicator/internal.h"
 #include "internal.h"
 
 static int sskdf_variant_digest_ctx_init(sskdf_variant_ctx *ctx,
@@ -218,7 +222,7 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
 
   // h_output_bytes is the length in bytes of output of the SSKDF variant
   // auxilary function (EVP_DigestFinal or HMAC_Final)
-  size_t h_output_bytes = variant->h_output_bytes(ctx);
+  const size_t h_output_bytes = variant->h_output_bytes(ctx);
   if (h_output_bytes == 0 || h_output_bytes > EVP_MAX_MD_SIZE) {
     goto err;
   }
@@ -237,16 +241,15 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
     goto err;
   }
 
+  // TODO(awslc): Abstract buffer size, if we ever need to support KMAC this
+  // could be variable. Currently sufficient for HMAC and digest variants
+  uint8_t out_key_i[EVP_MAX_MD_SIZE];
+  uint8_t counter[SSKDF_COUNTER_SIZE];
   size_t done = 0;
+  size_t todo = h_output_bytes;
 
   // NIST.SP.800-56Cr2 Step 6
   for (uint32_t i = 0; i < n; i++) {
-    // TODO(awslc): Abstract buffer size, if we ever need to support KMAC this
-    // could be variable. Currently sufficient for HMAC and digest variants
-    uint8_t out_key_i[EVP_MAX_MD_SIZE];
-    uint8_t counter[SSKDF_COUNTER_SIZE];
-    size_t todo;
-
     // NIST.SP.800-56Cr2: Step 6.1
     // Increment the big-endian counter by one.
     CRYPTO_store_u32_be(&counter[0], i + 1);
@@ -255,7 +258,6 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
     // Compute out_key_i = H(counter || secret || info)
     if (!variant->compute(ctx, &out_key_i[0], h_output_bytes, counter, secret,
                           secret_len, info, info_len)) {
-      OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
       goto err;
     }
 
@@ -269,17 +271,12 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
     }
     OPENSSL_memcpy(out_key + done, out_key_i, todo);
     done += todo;
-
-    // When we are finished clear the temporary buffer to cleanse key material
-    // from stack.
-    if (done == out_len) {
-      OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
-    }
   }
 
   ret = 1;
 
 err:
+  OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
   if (ret <= 0 && out_key && out_len > 0) {
     OPENSSL_cleanse(out_key, out_len);
   }

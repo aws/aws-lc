@@ -142,6 +142,29 @@ OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 // EVP_MD_name calls |EVP_MD_get0_name|
 OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
 
+// EVP Password Utility Functions
+
+// EVP_get_pw_prompt returns an internal pointer to static memory containing
+// the default prompt. In AWS-LC, this default is hardcoded. In OpenSSL,
+// the default prompt must be configured by a user and is otherwise NULL.
+OPENSSL_EXPORT char *EVP_get_pw_prompt(void);
+
+// EVP_read_pw_string writes the prompt to /dev/tty, or, if that could not be opened,
+// to standard output, turns echo off, and reads an input string from /dev/tty, or,
+// if that could not be opened, from standard input. If |prompt| is NULL, the default
+// prompt is used. The user input is returned in |buf|, which must have space for at
+// least length bytes. If verify is set, the user is asked for the password twice and
+// unless the two copies match, an error is returned.
+// Returns 0 on success, -1 on error, or -2 on out-of-band events (Interrupt, Cancel, ...).
+OPENSSL_EXPORT int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify);
+
+// EVP_read_pw_string_min implements the functionality for |EVP_read_pw_string|. It
+// additionally checks that the password is at least |min_length| bytes long.
+// Returns 0 on success, -1 on error, or -2 on out-of-band events (Interrupt, Cancel, ...).
+OPENSSL_EXPORT int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                                          const char *prompt, int verify);
+
+
 // Getting and setting concrete public key types.
 //
 // The following functions get and set the underlying public key in an
@@ -894,7 +917,9 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx,
                                                     int bits);
 
 // EVP_PKEY_CTX_set_rsa_keygen_pubexp sets |e| as the public exponent for key
-// generation. Returns one on success or zero on error.
+// generation. Returns one on success or zero on error. On success, |ctx| takes
+// ownership of |e|. The library will then call |BN_free| on |e| when |ctx| is
+// destroyed.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx,
                                                       BIGNUM *e);
 
