@@ -1396,7 +1396,7 @@ TEST(RSATest, PrintBio) {
   BIO_mem_contents(bio.get(), &data, &len);
 
   const char *expected = ""
-      "    Private-Key: (512 bit)\n"
+      "    Private-Key: (512 bit, 2 primes)\n"
       "    modulus:\n"
       "        00:aa:36:ab:ce:88:ac:fd:ff:55:52:3c:7f:c4:52:\n"
       "        3f:90:ef:a0:0d:f3:77:4a:25:9f:2e:62:b4:c5:d9:\n"
