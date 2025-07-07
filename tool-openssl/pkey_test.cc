@@ -302,13 +302,6 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareOutformDEROpenSSL) {
   std::string openssl_command = std::string(openssl_executable_path) + " pkey -in " + in_path + " -outform DER -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  // Compare file sizes - DER files should be binary identical or at least same size
-  struct stat tool_stat, openssl_stat;
-  stat(out_path_tool, &tool_stat);
-  stat(out_path_openssl, &openssl_stat);
-  
-  ASSERT_EQ(tool_stat.st_size, openssl_stat.st_size);
 }
 
 // Test against OpenSSL output "openssl pkey -in file -pubin -pubout"
