@@ -815,7 +815,7 @@ int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
   int min_len = rwflag ? MIN_LENGTH : 0;
 
   int ret = EVP_read_pw_string_min(buf, min_len, size, prompt, rwflag);
-  if (ret != 0 || size > INT_MAX) {
+  if (ret != 0) {
     return 0;
   }
 
