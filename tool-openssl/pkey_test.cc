@@ -13,7 +13,9 @@
 // Helper function to create a test key
 static EVP_PKEY* CreateTestKey() {
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (!pkey) return nullptr;
+  if (!pkey) {
+    return nullptr;
+  }
   
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> bn(BN_new());
