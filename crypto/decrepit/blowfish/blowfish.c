@@ -138,6 +138,8 @@ void BF_decrypt(uint32_t *data, const BF_KEY *key) {
   data[0] = r & 0xffffffffL;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+
 void BF_ecb_encrypt(const uint8_t *in, uint8_t *out,
                     const BF_KEY *key, int encrypt) {
   uint32_t d[2];
@@ -597,6 +599,8 @@ static int bf_cfb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   ctx->num = num;
   return 1;
 }
+
+OPENSSL_END_ALLOW_DEPRECATED
 
 static const EVP_CIPHER bf_ecb = {
     .nid = NID_bf_ecb,
