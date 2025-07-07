@@ -504,9 +504,9 @@ void BF_set_key(BF_KEY *key, size_t len, const uint8_t *data) {
   }
 }
 
-static void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                             const BF_KEY *schedule, uint8_t *ivec, int *num,
-                             int encrypt) {
+void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                      const BF_KEY *schedule, uint8_t *ivec, int *num,
+                      int encrypt) {
   uint32_t v0, v1, t;
   int n = *num;
   size_t l = length;
