@@ -41,7 +41,7 @@ struct rand_thread_local_state {
   // process exit.
   CRYPTO_MUTEX state_clear_lock;
 };
-OPENSSL_STATIC_ASSERT((sizeof((struct rand_thread_local_state*)0)->generate_calls_since_seed) * 8 >= 48, value_can_overflow);
+OPENSSL_STATIC_ASSERT((sizeof((struct rand_thread_local_state*)0)->generate_calls_since_seed) * 8 >= 48, value_can_overflow)
 
 DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
 DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
