@@ -9,7 +9,6 @@
 #include <openssl/rsa.h>
 #include "internal.h"
 
-// Static constants
 static const unsigned kDefaultKeySize = 2048;
 static const char kUsageFormat[] = "Usage: genrsa [options] numbits\n";
 
@@ -19,15 +18,13 @@ static const argument_t kArguments[] = {
   { "", kOptionalArgument, "Key size in bits (default: 2048)" }
 };
 
-// Helper function to validate argument order (OpenSSL compatibility)
 static bool ValidateArgumentOrder(const args_list_t &args, 
                                   const ordered_args::ordered_args_map_t &parsed_args,
                                   const args_list_t &extra_args) {
   if (extra_args.empty() || parsed_args.empty()) {
-    return true;  // No validation needed
+    return true;
   }
 
-  // Find the position of the numbits argument in the original args
   size_t numbits_pos = SIZE_MAX;
   for (size_t i = 0; i < args.size(); i++) {
     if (args[i] == extra_args[0]) {
@@ -36,15 +33,13 @@ static bool ValidateArgumentOrder(const args_list_t &args,
     }
   }
   
-  // Find the position of the last option in the original args
   size_t last_option_pos = 0;
   for (const auto& parsed_arg : parsed_args) {
     for (size_t i = 0; i < args.size(); i++) {
       if (args[i] == parsed_arg.first) {
-        // For options with values, the option position includes the value
         size_t option_end_pos = i;
         if (!parsed_arg.second.empty()) {
-          option_end_pos = i + 1; // Account for the option value
+          option_end_pos = i + 1;
         }
         last_option_pos = std::max(last_option_pos, option_end_pos);
         break;
@@ -52,7 +47,6 @@ static bool ValidateArgumentOrder(const args_list_t &args,
     }
   }
   
-  // If numbits appears before the last option, it's an error
   if (numbits_pos != SIZE_MAX && numbits_pos < last_option_pos) {
     fprintf(stderr, "Error: Key size must be specified after all options\n");
     fprintf(stderr, "%s", kUsageFormat);
@@ -62,12 +56,11 @@ static bool ValidateArgumentOrder(const args_list_t &args,
   return true;
 }
 
-// Helper function to parse and validate key size
 static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
-  bits = kDefaultKeySize;  // Set default
+  bits = kDefaultKeySize;
   
   if (extra_args.empty()) {
-    return true;  // Use default
+    return true;
   }
   
   const std::string& bits_str = extra_args[0];
@@ -83,46 +76,36 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
   return true;
 }
 
-bool genrsaTool(const args_list_t &args) {
-  ordered_args::ordered_args_map_t parsed_args;
-  args_list_t extra_args{};
-  
+static bool ParseArguments(const args_list_t &args, 
+                          ordered_args::ordered_args_map_t &parsed_args,
+                          args_list_t &extra_args,
+                          std::string &out_path,
+                          bool &help) {
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
     return false;
   }
-
-  std::string out_path;
-  bool help = false;
   
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
+  
+  return true;
+}
 
-  if (help) {
-    PrintUsage(kArguments);
-    return true;
-  }
-
-  // Validate argument order (OpenSSL compatibility)
-  if (!ValidateArgumentOrder(args, parsed_args, extra_args)) {
-    return false;
-  }
-
-  // Parse and validate key size
-  unsigned bits;
-  if (!ParseKeySize(extra_args, bits)) {
-    return false;
-  }
-
+static bssl::UniquePtr<RSA> GenerateRSAKey(unsigned bits) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
   
   if (!BN_set_word(e.get(), RSA_F4) ||
       !RSA_generate_key_ex(rsa.get(), bits, e.get(), NULL)) {
     ERR_print_errors_fp(stderr);
-    return false;
+    return nullptr;
   }
+  
+  return rsa;
+}
 
+static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
   bssl::UniquePtr<BIO> bio;
   if (out_path.empty()) {
     bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
@@ -130,17 +113,53 @@ bool genrsaTool(const args_list_t &args) {
     bio.reset(BIO_new_file(out_path.c_str(), "w"));
     if (!bio) {
       fprintf(stderr, "Error: Could not open output file '%s'\n", out_path.c_str());
-      return false;
+      return nullptr;
     }
   }
+  return bio;
+}
 
-  if (!PEM_write_bio_RSAPrivateKey(bio.get(), rsa.get(), NULL /* cipher */,
-                                   NULL /* key */, 0 /* key len */,
-                                   NULL /* password callback */,
-                                   NULL /* callback arg */)) {
+static bool WriteRSAKeyToBIO(BIO *bio, RSA *rsa) {
+  if (!PEM_write_bio_RSAPrivateKey(bio, rsa, NULL, NULL, 0, NULL, NULL)) {
     ERR_print_errors_fp(stderr);
     return false;
   }
-
   return true;
+}
+
+bool genrsaTool(const args_list_t &args) {
+  ordered_args::ordered_args_map_t parsed_args;
+  args_list_t extra_args{};
+  std::string out_path;
+  bool help = false;
+  
+  if (!ParseArguments(args, parsed_args, extra_args, out_path, help)) {
+    return false;
+  }
+
+  if (help) {
+    PrintUsage(kArguments);
+    return true;
+  }
+
+  if (!ValidateArgumentOrder(args, parsed_args, extra_args)) {
+    return false;
+  }
+
+  unsigned bits;
+  if (!ParseKeySize(extra_args, bits)) {
+    return false;
+  }
+
+  bssl::UniquePtr<RSA> rsa = GenerateRSAKey(bits);
+  if (!rsa) {
+    return false;
+  }
+
+  bssl::UniquePtr<BIO> bio = CreateOutputBIO(out_path);
+  if (!bio) {
+    return false;
+  }
+
+  return WriteRSAKeyToBIO(bio.get(), rsa.get());
 }
