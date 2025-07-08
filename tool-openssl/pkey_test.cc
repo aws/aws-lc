@@ -187,6 +187,16 @@ TEST_F(PKeyOptionUsageErrorsTest, InvalidFormatOptionsTest) {
 
 class PKeyComparisonTest : public ::testing::Test {
 protected:
+  // Helper method to normalize key headers by removing algorithm prefixes
+  // (e.g., "RSA Private-Key:" -> "Private-Key:")
+  void normalizeKeyHeader(std::string& str, const std::string& keyType) {
+    size_t pos = str.find(keyType + "-Key:");
+    if (pos != std::string::npos && pos > 0) {
+      size_t prefixStart = 0; 
+      str.erase(prefixStart, pos - prefixStart);
+    }
+  }
+
   void SetUp() override {
     // Skip gtests if env variables not set
     tool_executable_path = getenv("AWSLC_TOOL_PATH");
@@ -245,6 +255,10 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareTextOpenSSL) {
   tool_output_str.erase(remove_if(tool_output_str.begin(), tool_output_str.end(), isspace), tool_output_str.end());
   openssl_output_str.erase(remove_if(openssl_output_str.begin(), openssl_output_str.end(), isspace), openssl_output_str.end());
 
+  // Normalize algorithm prefixes before "Private-Key:"
+  normalizeKeyHeader(tool_output_str, "Private");
+  normalizeKeyHeader(openssl_output_str, "Private");
+
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
@@ -258,6 +272,10 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareTextPubOpenSSL) {
   // OpenSSL versions may have slight formatting differences, so we remove whitespace for comparison
   tool_output_str.erase(remove_if(tool_output_str.begin(), tool_output_str.end(), isspace), tool_output_str.end());
   openssl_output_str.erase(remove_if(openssl_output_str.begin(), openssl_output_str.end(), isspace), openssl_output_str.end());
+
+  // Normalize algorithm prefixes before "Public-Key:"
+  normalizeKeyHeader(tool_output_str, "Public");
+  normalizeKeyHeader(openssl_output_str, "Public");
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
