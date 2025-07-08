@@ -80,6 +80,7 @@ function codebuild_build_status_check() {
     elif [[ ${build_batch_status} == "IN_PROGRESS" ]]; then
       echo "${i}: Wait 5 min for build job finish."
       sleep 300
+    # if the build runs for too long, AWS sessions may expire and need to be refreshed
     elif echo "${build_batch_status}" | grep -q "ExpiredTokenException"; then
       refresh_session
     else
@@ -102,6 +103,7 @@ function start_windows_img_build() {
       --filters "Name=tag:${WIN_EC2_TAG_KEY},Values=${WIN_EC2_TAG_VALUE}" \
       --query 'Reservations[0].Instances[0].InstanceId' \
       --output text 2>&1)
+    # if the build runs for too long, AWS sessions may expire and need to be refreshed
     if echo "${instance_id}" | grep -q "RequestExpired"; then
       refresh_session
     elif [[ "${instance_id}" == "null" ]]; then
@@ -151,7 +153,8 @@ function win_docker_img_build_status_check() {
     elif [[ ${command_run_status} == "InProgress" ]]; then
       echo "${i}: Wait 5 min for build job finish."
       sleep 300
-    elif echo "${command_run_status}" | grep -q "RequestExpired"; then
+    # if the build runs for too long, AWS sessions may expire and need to be refreshed
+    elif echo "${command_run_status}" | grep -q "ExpiredTokenException"; then
       refresh_session
     else
       echo "SSM commands ${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID} returns: ${command_run_status}. Exiting..."
