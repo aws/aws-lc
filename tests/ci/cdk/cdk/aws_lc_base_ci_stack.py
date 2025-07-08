@@ -51,7 +51,7 @@ class AwsLcBaseCiStack(Stack):
                     codebuild.EventAction.PULL_REQUEST_REOPENED,
                 # Temporarily allowlist the webhook to members of the Github team:
                 # https://github.com/orgs/aws/teams/aws-lc-dev.
-                ).and_actor_account_is('(549813|3589880|11924508|25055813|38119460|41167468|50673096|66388554|69484052|103147162|107728331)'),
+                ).and_actor_account_is('(549813|3589880|11924508|25055813|38119460|41167468|50673096|66388554|69484052|103147162|107728331|159580656)'),
                 codebuild.FilterGroup.in_event_of(
                     codebuild.EventAction.PUSH
                 ).and_branch_is(GITHUB_PUSH_CI_BRANCH_TARGETS),
