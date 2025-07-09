@@ -2335,7 +2335,9 @@ TEST_P(SSLVersionTest, PeerTmpKey) {
     EVP_PKEY *key = nullptr;
 
     if (getVersionParam().version == TLS1_3_VERSION) {
-        // TLS 1.3 default should be using X5519MLKEM768 as the key exchange.
+        // TLS 1.3 default should be using X25519MLKEM768 as the key exchange.
+        // We expect SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE because there is no EVP_PKEY type
+        // for hybrid keys, only individual X25519 or MLKEM768 keys.
         ERR_clear_error();
         EXPECT_FALSE(SSL_get_peer_tmp_key(ssl, &key));
         ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
