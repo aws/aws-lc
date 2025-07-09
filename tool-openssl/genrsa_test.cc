@@ -13,7 +13,12 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
-class GenRSATest : public ::testing::Test, public ::testing::WithParamInterface<unsigned> {
+// Define standard key sizes for testing
+const std::vector<unsigned> kStandardKeySizes = {1024, 2048, 3072, 4096};
+const unsigned kDefaultKeySize = 2048;
+
+// Base test fixture with common functionality
+class GenRSATestBase : public ::testing::Test {
 protected:
   void SetUp() override {
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
@@ -79,158 +84,70 @@ protected:
            (content.find("-----BEGIN PRIVATE KEY-----") != std::string::npos &&
             content.find("-----END PRIVATE KEY-----") != std::string::npos);
   }
+  
+  // Generate a key with the specified size and validate it
+  void GenerateAndValidateKey(unsigned key_size) {
+    args_list_t args{"-out", out_path_tool, std::to_string(key_size)};
+    
+    bool result = genrsaTool(args);
+    ASSERT_TRUE(result);
+    
+    std::string key_content = ReadFileToString(out_path_tool);
+    ASSERT_FALSE(key_content.empty());
+    ASSERT_TRUE(IsPEMPrivateKey(key_content));
+    ASSERT_TRUE(ValidateRSAKey(key_content, key_size));
+  }
+  
+  // Test cross-compatibility with OpenSSL for a specific key size
+  void TestCrossCompatibility(unsigned key_size) {
+    SkipIfNoCrossCompatibilityTools();
+    
+    std::string key_size_str = std::to_string(key_size);
+    
+    // Test that both tools handle various key sizes identically
+    std::string tool_cmd = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool + " " + key_size_str;
+    std::string openssl_cmd = std::string(openssl_executable_path) + " genrsa -out " + out_path_openssl + " " + key_size_str;
+    
+    int tool_result = system(tool_cmd.c_str());
+    int openssl_result = system(openssl_cmd.c_str());
+    
+    ASSERT_EQ(tool_result, 0) << "AWS-LC genrsa " << key_size << " command failed";
+    ASSERT_EQ(openssl_result, 0) << "OpenSSL genrsa " << key_size << " command failed";
+    
+    std::string tool_output = ReadFileToString(out_path_tool);
+    std::string openssl_output = ReadFileToString(out_path_openssl);
+    
+    ASSERT_TRUE(IsPEMPrivateKey(tool_output));
+    ASSERT_TRUE(IsPEMPrivateKey(openssl_output));
+    ASSERT_TRUE(ValidateRSAKey(tool_output, key_size));
+    ASSERT_TRUE(ValidateRSAKey(openssl_output, key_size));
+  }
 };
 
-// ----------------------------- Parameterized Tests for Key Generation -----------------------------
+// Non-parameterized test fixture
+class GenRSATest : public GenRSATestBase {};
 
-TEST_P(GenRSATest, KeyGeneration_VariousKeySizes) {
-  unsigned key_size = GetParam();
-  args_list_t args{"-out", out_path_tool, std::to_string(key_size)};
-  
-  bool result = genrsaTool(args);
-  ASSERT_TRUE(result);
+// Parameterized test fixture
+class GenRSAParamTest : public GenRSATestBase, 
+                        public ::testing::WithParamInterface<unsigned> {};
+
+// ----------------------------- Parameterized Tests -----------------------------
+
+// Test key generation with various key sizes
+TEST_P(GenRSAParamTest, KeyGeneration) {
+  GenerateAndValidateKey(GetParam());
+}
+
+// Test cross-compatibility with OpenSSL for various key sizes
+TEST_P(GenRSAParamTest, CrossCompatibility) {
+  TestCrossCompatibility(GetParam());
+}
+
+// Test PEM format structure with various key sizes
+TEST_P(GenRSAParamTest, PEMFormatStructure) {
+  GenerateAndValidateKey(GetParam());
   
   std::string key_content = ReadFileToString(out_path_tool);
-  ASSERT_FALSE(key_content.empty());
-  ASSERT_TRUE(IsPEMPrivateKey(key_content));
-  ASSERT_TRUE(ValidateRSAKey(key_content, key_size));
-}
-
-TEST_P(GenRSATest, CrossCompatibility_ArgumentCompatibility) {
-  if (!HasCrossCompatibilityTools()) {
-    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    return;
-  }
-  
-  unsigned key_size = GetParam();
-  std::string key_size_str = std::to_string(key_size);
-  
-  // Test that both tools handle various key sizes identically
-  std::string tool_cmd = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool + " " + key_size_str;
-  std::string openssl_cmd = std::string(openssl_executable_path) + " genrsa -out " + out_path_openssl + " " + key_size_str;
-  
-  int tool_result = system(tool_cmd.c_str());
-  int openssl_result = system(openssl_cmd.c_str());
-  
-  ASSERT_EQ(tool_result, 0) << "AWS-LC genrsa " << key_size << " command failed";
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL genrsa " << key_size << " command failed";
-  
-  std::string tool_output = ReadFileToString(out_path_tool);
-  std::string openssl_output = ReadFileToString(out_path_openssl);
-  
-  ASSERT_TRUE(IsPEMPrivateKey(tool_output));
-  ASSERT_TRUE(IsPEMPrivateKey(openssl_output));
-  ASSERT_TRUE(ValidateRSAKey(tool_output, key_size));
-  ASSERT_TRUE(ValidateRSAKey(openssl_output, key_size));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-  KeySizes,
-  GenRSATest,
-  ::testing::Values(1024, 2048, 3072, 4096)
-);
-
-// ----------------------------- Non-Parameterized Tests -----------------------------
-
-TEST_F(GenRSATest, DirectCall_DefaultKeyGeneration) {
-  args_list_t args{"-out", out_path_tool};
-  bool result = genrsaTool(args);
-  ASSERT_TRUE(result);
-  
-  std::string key_content = ReadFileToString(out_path_tool);
-  ASSERT_FALSE(key_content.empty());
-  ASSERT_TRUE(IsPEMPrivateKey(key_content));
-  ASSERT_TRUE(ValidateRSAKey(key_content, 2048));
-}
-
-TEST_F(GenRSATest, DirectCall_HelpOption) {
-  args_list_t args{"-help"};
-  bool result = genrsaTool(args);
-  ASSERT_TRUE(result);  // Help should succeed
-}
-
-TEST_F(GenRSATest, DirectCall_ArgumentOrderValidation) {
-  // Test that key size must come after options (OpenSSL compatibility)
-  args_list_t args{"2048", "-out", out_path_tool};
-  bool result = genrsaTool(args);
-  ASSERT_FALSE(result);  // Should fail due to incorrect argument order
-}
-
-TEST_F(GenRSATest, ErrorHandling_InvalidKeySize) {
-  args_list_t args{"-out", out_path_tool, "invalid"};
-  bool result = genrsaTool(args);
-  ASSERT_FALSE(result);
-}
-
-TEST_F(GenRSATest, ErrorHandling_ZeroKeySize) {
-  args_list_t args{"-out", out_path_tool, "0"};
-  bool result = genrsaTool(args);
-  ASSERT_FALSE(result);
-}
-
-TEST_F(GenRSATest, ErrorHandling_InvalidOutputPath) {
-  args_list_t args{"-out", "/nonexistent/directory/key.pem"};
-  bool result = genrsaTool(args);
-  ASSERT_FALSE(result);
-}
-
-TEST_F(GenRSATest, CrossCompatibility_OpenSSLCanReadOurKeys) {
-  if (!HasCrossCompatibilityTools()) {
-    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    return;
-  }
-  
-  // Generate key with our tool
-  std::string gen_command = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool;
-  int gen_result = system(gen_command.c_str());
-  ASSERT_EQ(gen_result, 0);
-  
-  // Verify OpenSSL can read and process our key
-  std::string verify_command = std::string(openssl_executable_path) + " rsa -in " + out_path_tool + " -check -noout";
-  int verify_result = system(verify_command.c_str());
-  ASSERT_EQ(verify_result, 0);
-}
-
-TEST_F(GenRSATest, CrossCompatibility_ArgumentOrderCompatibility) {
-  if (!HasCrossCompatibilityTools()) {
-    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    return;
-  }
-  
-  // Test that both tools enforce the same argument order: [options] numbits
-  
-  // Test correct order (should work for both)
-  std::string awslc_correct = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool + " 2048";
-  std::string openssl_correct = std::string(openssl_executable_path) + " genrsa -out " + out_path_openssl + " 2048";
-  
-  int awslc_result = system(awslc_correct.c_str());
-  int openssl_result = system(openssl_correct.c_str());
-  
-  ASSERT_EQ(awslc_result, 0);
-  ASSERT_EQ(openssl_result, 0);
-  
-  // Clean up for next test
-  RemoveFile(out_path_tool);
-  RemoveFile(out_path_openssl);
-  
-  // Test incorrect order - both tools should have matching behavior (both fail)
-  std::string awslc_incorrect = std::string(awslc_executable_path) + " genrsa 2048 -out " + out_path_tool;
-  std::string openssl_incorrect = std::string(openssl_executable_path) + " genrsa 2048 -out " + out_path_openssl;
-  
-  int awslc_incorrect_result = system(awslc_incorrect.c_str());
-  int openssl_incorrect_result = system(openssl_incorrect.c_str());
-  
-  // Both tools should have identical behavior for incorrect order
-  ASSERT_EQ(awslc_incorrect_result, openssl_incorrect_result);
-}
-
-TEST_F(GenRSATest, Validation_PEMFormatStructure) {
-  args_list_t args{"-out", out_path_tool};
-  bool result = genrsaTool(args);
-  ASSERT_TRUE(result);
-  
-  std::string key_content = ReadFileToString(out_path_tool);
-  ASSERT_FALSE(key_content.empty());
   
   // Check PEM structure
   ASSERT_TRUE(key_content.find("-----BEGIN RSA PRIVATE KEY-----") != std::string::npos);
@@ -251,10 +168,9 @@ TEST_F(GenRSATest, Validation_PEMFormatStructure) {
   ASSERT_GT(content_between.length(), 100u);
 }
 
-TEST_F(GenRSATest, Validation_KeyComponentsValidation) {
-  args_list_t args{"-out", out_path_tool};
-  bool result = genrsaTool(args);
-  ASSERT_TRUE(result);
+// Test key components validation with various key sizes
+TEST_P(GenRSAParamTest, KeyComponentsValidation) {
+  GenerateAndValidateKey(GetParam());
   
   std::string key_content = ReadFileToString(out_path_tool);
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(key_content.c_str(), key_content.length()));
@@ -282,12 +198,14 @@ TEST_F(GenRSATest, Validation_KeyComponentsValidation) {
   ASSERT_EQ(BN_get_word(e), static_cast<unsigned long>(RSA_F4));
 }
 
-TEST_F(GenRSATest, Validation_KeyUniqueness) {
+// Test key uniqueness with various key sizes
+TEST_P(GenRSAParamTest, KeyUniqueness) {
   char out_path2[PATH_MAX];
   ASSERT_GT(createTempFILEpath(out_path2), 0u);
   
-  args_list_t args1{"-out", out_path_tool};
-  args_list_t args2{"-out", out_path2};
+  unsigned key_size = GetParam();
+  args_list_t args1{"-out", out_path_tool, std::to_string(key_size)};
+  args_list_t args2{"-out", out_path2, std::to_string(key_size)};
   
   bool result1 = genrsaTool(args1);
   bool result2 = genrsaTool(args2);
@@ -305,3 +223,105 @@ TEST_F(GenRSATest, Validation_KeyUniqueness) {
   RemoveFile(out_path2);
 }
 
+// Instantiate the parameterized tests with standard key sizes
+INSTANTIATE_TEST_SUITE_P(
+  StandardKeySizes,
+  GenRSAParamTest,
+  ::testing::ValuesIn(kStandardKeySizes)
+);
+
+// ----------------------------- Non-Parameterized Tests -----------------------------
+
+// Test default key generation (no key size specified)
+TEST_F(GenRSATest, DefaultKeyGeneration) {
+  args_list_t args{"-out", out_path_tool};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);
+  
+  std::string key_content = ReadFileToString(out_path_tool);
+  ASSERT_FALSE(key_content.empty());
+  ASSERT_TRUE(IsPEMPrivateKey(key_content));
+  ASSERT_TRUE(ValidateRSAKey(key_content, kDefaultKeySize));
+}
+
+// Test help option
+TEST_F(GenRSATest, HelpOption) {
+  args_list_t args{"-help"};
+  bool result = genrsaTool(args);
+  ASSERT_TRUE(result);  // Help should succeed
+}
+
+// Test argument order validation
+TEST_F(GenRSATest, ArgumentOrderValidation) {
+  // Test that key size must come after options (OpenSSL compatibility)
+  args_list_t args{"2048", "-out", out_path_tool};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);  // Should fail due to incorrect argument order
+}
+
+// Test error handling for invalid key size
+TEST_F(GenRSATest, InvalidKeySize) {
+  args_list_t args{"-out", out_path_tool, "invalid"};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);
+}
+
+// Test error handling for zero key size
+TEST_F(GenRSATest, ZeroKeySize) {
+  args_list_t args{"-out", out_path_tool, "0"};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);
+}
+
+// Test error handling for invalid output path
+TEST_F(GenRSATest, InvalidOutputPath) {
+  args_list_t args{"-out", "/nonexistent/directory/key.pem"};
+  bool result = genrsaTool(args);
+  ASSERT_FALSE(result);
+}
+
+// Test that OpenSSL can read our keys
+TEST_F(GenRSATest, OpenSSLCanReadOurKeys) {
+  SkipIfNoCrossCompatibilityTools();
+  
+  // Generate key with our tool
+  std::string gen_command = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool;
+  int gen_result = system(gen_command.c_str());
+  ASSERT_EQ(gen_result, 0);
+  
+  // Verify OpenSSL can read and process our key
+  std::string verify_command = std::string(openssl_executable_path) + " rsa -in " + out_path_tool + " -check -noout";
+  int verify_result = system(verify_command.c_str());
+  ASSERT_EQ(verify_result, 0);
+}
+
+// Test argument order compatibility with OpenSSL
+TEST_F(GenRSATest, ArgumentOrderCompatibility) {
+  SkipIfNoCrossCompatibilityTools();
+  
+  // Test that both tools enforce the same argument order: [options] numbits
+  
+  // Test correct order (should work for both)
+  std::string awslc_correct = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool + " 2048";
+  std::string openssl_correct = std::string(openssl_executable_path) + " genrsa -out " + out_path_openssl + " 2048";
+  
+  int awslc_result = system(awslc_correct.c_str());
+  int openssl_result = system(openssl_correct.c_str());
+  
+  ASSERT_EQ(awslc_result, 0);
+  ASSERT_EQ(openssl_result, 0);
+  
+  // Clean up for next test
+  RemoveFile(out_path_tool);
+  RemoveFile(out_path_openssl);
+  
+  // Test incorrect order - both tools should have matching behavior (both fail)
+  std::string awslc_incorrect = std::string(awslc_executable_path) + " genrsa 2048 -out " + out_path_tool;
+  std::string openssl_incorrect = std::string(openssl_executable_path) + " genrsa 2048 -out " + out_path_openssl;
+  
+  int awslc_incorrect_result = system(awslc_incorrect.c_str());
+  int openssl_incorrect_result = system(openssl_incorrect.c_str());
+  
+  // Both tools should have identical behavior for incorrect order
+  ASSERT_EQ(awslc_incorrect_result, openssl_incorrect_result);
+}
