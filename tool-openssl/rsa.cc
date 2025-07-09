@@ -40,13 +40,6 @@ static bool handleModulus(RSA *rsa, ScopedFILE &out_file) {
   return true;
 }
 
-static bool ProcessArgument(const std::string &arg_name, RSA *rsa, ScopedFILE &out_file) {
-  if (arg_name == "-modulus") {
-    return handleModulus(rsa, out_file);
-  }
-  return true;
-}
-
 // Map arguments using tool/args.cc
 bool rsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
@@ -98,16 +91,9 @@ bool rsaTool(const args_list_t &args) {
     }
   }
 
-  // Process arguments in the order they were provided
-  for (const auto &arg_pair : parsed_args) {
-    const std::string &arg_name = arg_pair.first;
-
-    // Skip non-output arguments
-    if (arg_name == "-in" || arg_name == "-out" || arg_name == "-noout" || arg_name == "-help") {
-      continue;
-    }
-
-    if (!ProcessArgument(arg_name, rsa.get(), out_file)) {
+  // The "rsa" command does not order output based on parameters:
+  if (ordered_args::HasArgument(parsed_args, "-modulus")) {
+    if (!handleModulus(rsa.get(), out_file)) {
       return false;
     }
   }
