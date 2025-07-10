@@ -42,9 +42,10 @@ static bool handleModulus(RSA *rsa, ScopedFILE &out_file) {
 
 // Map arguments using tool/args.cc
 bool rsaTool(const args_list_t &args) {
-  ordered_args::ordered_args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
@@ -53,10 +54,10 @@ bool rsaTool(const args_list_t &args) {
   std::string in_path, out_path;
   bool noout = false, help = false;
 
-  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
-  ordered_args::GetString(&in_path, "-in", "", parsed_args);
-  ordered_args::GetString(&out_path, "-out", "", parsed_args);
-  ordered_args::GetBoolArgument(&noout, "-noout", parsed_args);
+  GetBoolArgument(&help, "-help", parsed_args);
+  GetString(&in_path, "-in", "", parsed_args);
+  GetString(&out_path, "-out", "", parsed_args);
+  GetBoolArgument(&noout, "-noout", parsed_args);
 
   // Display rsa tool option summary
   if (help) {
@@ -92,7 +93,7 @@ bool rsaTool(const args_list_t &args) {
   }
 
   // The "rsa" command does not order output based on parameters:
-  if (ordered_args::HasArgument(parsed_args, "-modulus")) {
+  if (HasArgument(parsed_args, "-modulus")) {
     if (!handleModulus(rsa.get(), out_file)) {
       return false;
     }

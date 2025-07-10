@@ -174,14 +174,15 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
 }
 
 bool VerifyTool(const args_list_t &args) {
-  ordered_args::ordered_args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
     return false;
   }
 
-  if (ordered_args::HasArgument(parsed_args, "-help") || parsed_args.size() == 0) {
+  if (HasArgument(parsed_args, "-help") || parsed_args.size() == 0) {
     fprintf(stderr,
             "Usage: verify [options] [cert.pem...]\n"
             "Certificates must be in PEM format. They can be specified in one or more files.\n"
@@ -192,7 +193,7 @@ bool VerifyTool(const args_list_t &args) {
   }
 
   std::string cafile;
-  ordered_args::GetString(&cafile, "-CAfile", "", parsed_args);
+  GetString(&cafile, "-CAfile", "", parsed_args);
 
   bssl::UniquePtr<X509_STORE> store(setup_verification_store(cafile));
   // Initialize certificate verification store
@@ -207,7 +208,7 @@ bool VerifyTool(const args_list_t &args) {
   int ret = 1;
 
   std::string chain_file;
-  ordered_args::GetString(&chain_file, "-untrusted", "", parsed_args);
+  GetString(&chain_file, "-untrusted", "", parsed_args);
   const char *chain = chain_file.empty() ? NULL : chain_file.c_str();
 
   // No additional file or certs provided, read from stdin
