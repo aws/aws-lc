@@ -116,6 +116,10 @@ that improve the experience for consumers on these platforms.
 | OpenBSD   | x86-64      |
 | FreeBSD   | x86-64      |
 
+### FIPS Compliance
+
+For information about FIPS compliance, building AWS-LC in FIPS mode, and platform limitations, see [crypto/fipsmodule/FIPS.md](crypto/fipsmodule/FIPS.md).
+
 ### Post-Quantum Cryptography
 
 Details on the post-quantum algorithms supported by AWS-LC can be found at [PQREADME](https://github.com/aws/aws-lc/tree/main/crypto/fipsmodule/PQREADME.md).
@@ -188,5 +192,3 @@ Security via our
 Please do **not** create a public GitHub issue.
 
 If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
-
-
