@@ -100,7 +100,7 @@ class WindowsDockerImageBuildStack(Stack):
 
         # Define Windows EC2 instance, where the SSM document will be executed.
         machine_image = ec2.MachineImage.latest_windows(
-            ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_FULL_BASE
+            ec2.WindowsVersion.WINDOWS_SERVER_2022_ENGLISH_FULL_BASE
         )
         vpc = ec2.Vpc(
             scope=self,
