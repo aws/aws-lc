@@ -5,6 +5,7 @@
 
 /*
  * WARNING: This file is auto-generated from scripts/autogen
+ *          in the mlkem-native repository.
  *          Do not modify it directly.
  */
 
