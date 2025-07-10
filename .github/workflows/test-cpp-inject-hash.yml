@@ -1,0 +1,35 @@
+name: Test C++ inject_hash Implementation
+
+on:
+  push:
+    branches: [ implement-inject-hash-clean ]
+  pull_request:
+    branches: [ inject-hash-cpp-experiment ]
+
+jobs:
+  test-cpp-inject-hash:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+        
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build cmake
+        
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install ninja cmake
+        
+    - name: Build and Test
+      run: |
+        chmod +x tests/ci/run_inject_hash_cpp.sh
+        ./tests/ci/run_inject_hash_cpp.sh
