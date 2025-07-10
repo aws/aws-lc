@@ -51,9 +51,10 @@ static bool ProcessArgument(const std::string &arg_name, X509_CRL *crl) {
 }
 
 bool CRLTool(const args_list_t &args) {
-  ordered_args::ordered_args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
@@ -62,9 +63,9 @@ bool CRLTool(const args_list_t &args) {
   std::string in;
   bool help = false, noout = false;
 
-  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
-  ordered_args::GetString(&in, "-in", "", parsed_args);
-  ordered_args::GetBoolArgument(&noout, "-noout", parsed_args);
+  GetBoolArgument(&help, "-help", parsed_args);
+  GetString(&in, "-in", "", parsed_args);
+  GetBoolArgument(&noout, "-noout", parsed_args);
 
   // Display crl tool option summary
   if (help) {
