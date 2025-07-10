@@ -45,13 +45,6 @@ protected:
     return awslc_executable_path != nullptr && openssl_executable_path != nullptr;
   }
   
-  // Skip test if cross-compatibility tools aren't available
-  void SkipIfNoCrossCompatibilityTools() {
-    if (!HasCrossCompatibilityTools()) {
-      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    }
-  }
-  
   // Validate RSA key from PEM content
   bool ValidateRSAKey(const std::string& pem_content, unsigned expected_bits) {
     bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_content.c_str(), pem_content.length()));
@@ -100,7 +93,10 @@ protected:
   
   // Test cross-compatibility with OpenSSL for a specific key size
   void TestCrossCompatibility(unsigned key_size) {
-    SkipIfNoCrossCompatibilityTools();
+    if (!HasCrossCompatibilityTools()) {
+      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
+      return;
+    }
     
     std::string key_size_str = std::to_string(key_size);
     
@@ -282,7 +278,10 @@ TEST_F(GenRSATest, InvalidOutputPath) {
 
 // Test that OpenSSL can read our keys
 TEST_F(GenRSATest, OpenSSLCanReadOurKeys) {
-  SkipIfNoCrossCompatibilityTools();
+  if (!HasCrossCompatibilityTools()) {
+    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
+    return;
+  }
   
   // Generate key with our tool
   std::string gen_command = std::string(awslc_executable_path) + " genrsa -out " + out_path_tool;
@@ -297,7 +296,10 @@ TEST_F(GenRSATest, OpenSSLCanReadOurKeys) {
 
 // Test argument order compatibility with OpenSSL
 TEST_F(GenRSATest, ArgumentOrderCompatibility) {
-  SkipIfNoCrossCompatibilityTools();
+  if (!HasCrossCompatibilityTools()) {
+    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
+    return;
+  }
   
   // Test that both tools enforce the same argument order: [options] numbits
   
