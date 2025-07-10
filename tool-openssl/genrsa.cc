@@ -7,6 +7,7 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <cstdlib>
+#include <cstring>
 #include "internal.h"
 
 static const unsigned kDefaultKeySize = 2048;
