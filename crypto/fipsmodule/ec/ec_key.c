@@ -292,6 +292,38 @@ void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
   }
 }
 
+static int ec_key_gen_pct(const EC_KEY *key) {
+
+  // SP 800-56Arev3 Section 5.6.2.1.4 option ‘b’
+  //
+  // Technically, not needed for ECDH in non-FIPS. However, other APIs use this
+  // function for validations e.g. the EVP private key parsing. This part is
+  // also open for optimization later.
+  if (key->priv_key != NULL) {
+    EC_JACOBIAN point;
+    if (!ec_point_mul_scalar_base(key->group, &point,
+          &key->priv_key->scalar)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
+      return 0;
+    }
+  
+    // Leaking this comparison only leaks whether |key|'s public key was
+    // correct.
+    //
+    // |ec_GFp_simple_points_equal| is quite expensive (relatively). If we were
+    // sure that points aren't in jacobian, but in affine representation, then
+    // the comparison reduces to simple byte array equality. The current
+    // comparison function does a non-negligible amount of field arithmetic.
+    if (!constant_time_declassify_int(ec_GFp_simple_points_equal(
+          key->group, &point, &key->pub_key->raw))) {
+      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_PRIVATE_KEY);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 int EC_KEY_check_key(const EC_KEY *eckey) {
   if (!eckey || !eckey->group || !eckey->pub_key) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
@@ -309,69 +341,14 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     return 0;
   }
 
-  // Check the public and private keys match.
-  //
-  // NOTE: this is a FIPS pair-wise consistency check for the ECDH case. See SP
-  // 800-56Ar3, page 36.
-  if (eckey->priv_key != NULL) {
-    EC_JACOBIAN point;
-    if (!ec_point_mul_scalar_base(eckey->group, &point,
-                                  &eckey->priv_key->scalar)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
-      return 0;
-    }
-    // Leaking this comparison only leaks whether |eckey|'s public key was
-    // correct.
-    if (!constant_time_declassify_int(ec_GFp_simple_points_equal(
-            eckey->group, &point, &eckey->pub_key->raw))) {
-      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_PRIVATE_KEY);
-      return 0;
-    }
+  if (!ec_key_gen_pct(eckey)) {
+    return 0;
   }
 
   return 1;
 }
 
-static int EVP_EC_KEY_check_fips(EC_KEY *key) {
-  uint8_t msg[16] = {0};
-  size_t msg_len = 16;
-  int ret = 0;
-  uint8_t* sig_der = NULL;
-  EVP_PKEY *evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  const EVP_MD *hash = EVP_sha256();
-  size_t sign_len;
-  if (!evp_pkey ||
-      !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
-      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
-    goto err;
-  }
-  sig_der = OPENSSL_malloc(sign_len);
-  if (!sig_der ||
-      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
-    goto err;
-  }
-  if (boringssl_fips_break_test("ECDSA_PWCT")) {
-    msg[0] = ~msg[0];
-  }
-  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
-    goto err;
-  }
-  ret = 1;
-err:
-  EVP_PKEY_free(evp_pkey);
-  EVP_MD_CTX_cleanse(&ctx);
-  OPENSSL_free(sig_der);
-  return ret;
-}
-
 int EC_KEY_check_fips(const EC_KEY *key) {
-  // We have to avoid the underlying |EVP_DigestSign| and |EVP_DigestVerify|
-  // services in |EVP_EC_KEY_check_fips| updating the indicator state, so we
-  // lock the state here.
   FIPS_service_indicator_lock_state();
   int ret = 0;
 
@@ -412,13 +389,6 @@ int EC_KEY_check_fips(const EC_KEY *key) {
     BN_free(x);
     BN_free(y);
     if (check_ret == 0) {
-      goto end;
-    }
-  }
-
-  if (key->priv_key) {
-    if (!EVP_EC_KEY_check_fips((EC_KEY*)key)) {
-      OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       goto end;
     }
   }
