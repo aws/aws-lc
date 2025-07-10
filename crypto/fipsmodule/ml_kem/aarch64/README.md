@@ -1,0 +1,1 @@
+This directory contains an AArch64 arithmetic backend for mlkem-native. The core assembly routines are imported from [s2n-bignum](https://github.com/awslabs/s2n-bignum/).

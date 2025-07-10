@@ -26,6 +26,11 @@
 
 #include "./ml_kem.h"
 
+// AArch64 backend
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
+#include "aarch64/constants.c"
+#endif
+
 typedef struct {
   uint8_t *buffer;
   size_t *length;
@@ -92,7 +97,7 @@ int ml_kem_512_keypair_deterministic_no_self_test(uint8_t *public_key  /* OUT */
   if (!check_buffer(pkey) || !check_buffer(skey)) {
     return 1;
   }
-  const int res = mlkem512_keypair_derand(pkey.buffer, skey.buffer, seed);
+  const int res = mlkem_native512_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
   /* PCT failure is the only failure condition for key generation. */
   if (res != 0) {
@@ -110,7 +115,7 @@ int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
                        size_t *secret_len  /* IN_OUT */) {
   output_buffer pkey = {public_key, public_len, MLKEM512_PUBLIC_KEY_BYTES};
   output_buffer skey = {secret_key, secret_len, MLKEM512_SECRET_KEY_BYTES};
-  return ml_kem_common_keypair(mlkem512_keypair, pkey, skey);
+  return ml_kem_common_keypair(mlkem_native512_keypair, pkey, skey);
 }
 
 int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -131,7 +136,7 @@ int ml_kem_512_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       
                                                       const uint8_t *seed       /* IN */) {
   output_buffer ctext = {ciphertext, ciphertext_len, MLKEM512_CIPHERTEXT_BYTES};
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM512_SHARED_SECRET_LEN};
-  return ml_kem_common_encapsulate_deterministic(mlkem512_enc_derand, ctext, ss, public_key, seed);
+  return ml_kem_common_encapsulate_deterministic(mlkem_native512_enc_derand, ctext, ss, public_key, seed);
 }
 
 int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
@@ -141,7 +146,7 @@ int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
                            const uint8_t *public_key /* IN */) {
   output_buffer ctext = {ciphertext, ciphertext_len, MLKEM512_CIPHERTEXT_BYTES};
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM512_SHARED_SECRET_LEN};
-  return ml_kem_common_encapsulate(mlkem512_enc, ctext, ss, public_key);
+  return ml_kem_common_encapsulate(mlkem_native512_enc, ctext, ss, public_key);
 }
 
 int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
@@ -157,7 +162,7 @@ int ml_kem_512_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                         const uint8_t *ciphertext /* IN  */,
                                         const uint8_t *secret_key /* IN  */) {
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM512_SHARED_SECRET_LEN};
-  return ml_kem_common_decapsulate(mlkem512_dec, ss, ciphertext, secret_key);
+  return ml_kem_common_decapsulate(mlkem_native512_dec, ss, ciphertext, secret_key);
 }
 
 
@@ -181,7 +186,7 @@ int ml_kem_768_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */,
   if (!check_buffer(pkey) || !check_buffer(skey)) {
     return 1;
   }
-  const int res = mlkem768_keypair_derand(pkey.buffer, skey.buffer, seed);
+  const int res = mlkem_native768_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
   /* PCT failure is the only failure condition for key generation. */
   if (res != 0) {
@@ -199,7 +204,7 @@ int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
                        size_t *secret_len  /* IN_OUT */) {
   output_buffer pkey = {public_key, public_len, MLKEM768_PUBLIC_KEY_BYTES};
   output_buffer skey = {secret_key, secret_len, MLKEM768_SECRET_KEY_BYTES};
-  return ml_kem_common_keypair(mlkem768_keypair, pkey, skey);
+  return ml_kem_common_keypair(mlkem_native768_keypair, pkey, skey);
 }
 
 int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -220,7 +225,7 @@ int ml_kem_768_encapsulate_deterministic_no_self_test(uint8_t *ciphertext       
                                                       const uint8_t *seed       /* IN */) {
   output_buffer ctext = {ciphertext, ciphertext_len, MLKEM768_CIPHERTEXT_BYTES};
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM768_SHARED_SECRET_LEN};
-  return ml_kem_common_encapsulate_deterministic(mlkem768_enc_derand, ctext, ss, public_key, seed);
+  return ml_kem_common_encapsulate_deterministic(mlkem_native768_enc_derand, ctext, ss, public_key, seed);
 }
 
 int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
@@ -230,7 +235,7 @@ int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
                            const uint8_t *public_key /* IN */) {
   output_buffer ctext = {ciphertext, ciphertext_len, MLKEM768_CIPHERTEXT_BYTES};
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM768_SHARED_SECRET_LEN};
-  return ml_kem_common_encapsulate(mlkem768_enc, ctext, ss, public_key);
+  return ml_kem_common_encapsulate(mlkem_native768_enc, ctext, ss, public_key);
 }
 
 int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
@@ -246,7 +251,7 @@ int ml_kem_768_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                         const uint8_t *ciphertext /* IN */,
                                         const uint8_t *secret_key /* IN */) {
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM768_SHARED_SECRET_LEN};
-  return ml_kem_common_decapsulate(mlkem768_dec, ss, ciphertext, secret_key);
+  return ml_kem_common_decapsulate(mlkem_native768_dec, ss, ciphertext, secret_key);
 }
 
 int ml_kem_1024_keypair_deterministic(uint8_t *public_key /* OUT */,
@@ -268,7 +273,7 @@ int ml_kem_1024_keypair_deterministic_no_self_test(uint8_t *public_key /* OUT */
   if (!check_buffer(pkey) || !check_buffer(skey)) {
     return 1;
   }
-  const int res = mlkem1024_keypair_derand(pkey.buffer, skey.buffer, seed);
+  const int res = mlkem_native1024_keypair_derand(pkey.buffer, skey.buffer, seed);
 #if defined(AWSLC_FIPS)
   /* PCT failure is the only failure condition for key generation. */
   if (res != 0) {
@@ -286,7 +291,7 @@ int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
                         size_t *secret_len  /* IN_OUT */) {
   output_buffer pkey = {public_key, public_len, MLKEM1024_PUBLIC_KEY_BYTES};
   output_buffer skey = {secret_key, secret_len, MLKEM1024_SECRET_KEY_BYTES};
-  return ml_kem_common_keypair(mlkem1024_keypair, pkey, skey);
+  return ml_kem_common_keypair(mlkem_native1024_keypair, pkey, skey);
 }
 
 int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -307,7 +312,7 @@ int ml_kem_1024_encapsulate_deterministic_no_self_test(uint8_t *ciphertext      
                                                        const uint8_t *seed       /* IN */) {
   output_buffer ctext = {ciphertext, ciphertext_len, MLKEM1024_CIPHERTEXT_BYTES};
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM1024_SHARED_SECRET_LEN};
-  return ml_kem_common_encapsulate_deterministic(mlkem1024_enc_derand, ctext, ss, public_key, seed);
+  return ml_kem_common_encapsulate_deterministic(mlkem_native1024_enc_derand, ctext, ss, public_key, seed);
 }
 
 int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
@@ -317,7 +322,7 @@ int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
                             const uint8_t *public_key /* IN */) {
   output_buffer ctext = {ciphertext, ciphertext_len, MLKEM1024_CIPHERTEXT_BYTES};
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM1024_SHARED_SECRET_LEN};
-  return ml_kem_common_encapsulate(mlkem1024_enc, ctext, ss, public_key);
+  return ml_kem_common_encapsulate(mlkem_native1024_enc, ctext, ss, public_key);
 }
 
 int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
@@ -333,7 +338,7 @@ int ml_kem_1024_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                          const uint8_t *ciphertext /* IN */,
                                          const uint8_t *secret_key /* IN */) {
   output_buffer ss = {shared_secret, shared_secret_len, MLKEM1024_SHARED_SECRET_LEN};
-  return ml_kem_common_decapsulate(mlkem1024_dec, ss, ciphertext, secret_key);
+  return ml_kem_common_decapsulate(mlkem_native1024_dec, ss, ciphertext, secret_key);
 }
 
 int ml_kem_common_keypair(int (*keypair)(uint8_t * public_key, uint8_t *secret_key),
