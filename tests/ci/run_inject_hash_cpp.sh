@@ -16,13 +16,24 @@ mkdir -p build
 cd build
 
 # Configure
-cmake -GNinja \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DFIPS=1 \
-    -DFIPS_SHARED=1 \
-    -DBUILD_SHARED_LIBS=1 \
-    -DUSE_CPP_INJECT_HASH=ON \
-    ..
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DFIPS=1 \
+        -DFIPS_SHARED=1 \
+        -DBUILD_SHARED_LIBS=1 \
+        -DUSE_CPP_INJECT_HASH=ON \
+        -DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk \
+        ..
+else
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DFIPS=1 \
+        -DFIPS_SHARED=1 \
+        -DBUILD_SHARED_LIBS=1 \
+        -DUSE_CPP_INJECT_HASH=ON \
+        ..
+fi
 
 # First try to build just inject_hash_cpp
 echo "Building inject_hash_cpp..."
@@ -44,3 +55,4 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 else
     ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.so -in-object ./crypto/libcrypto.so
 fi
+
