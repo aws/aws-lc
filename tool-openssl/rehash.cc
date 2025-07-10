@@ -336,9 +336,10 @@ static const argument_t kArguments[] = {
 };
 
 bool RehashTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args,
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
     kArguments) || extra_args.size() > 1) {
     PrintUsage(kArguments);
     return false;
