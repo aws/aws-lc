@@ -1214,7 +1214,7 @@ TEST(EVPExtraTest, Print) {
   Exponent: 65537 (0x10001)
 )");
   EXPECT_EQ(PrintToString(rsa.get(), /*indent=*/2, &EVP_PKEY_print_private),
-            R"(  Private-Key: (1024 bit)
+            R"(  Private-Key: (1024 bit, 2 primes)
   modulus:
       00:f8:b8:6c:83:b4:bc:d9:a8:57:c0:a5:b4:59:76:
       8c:54:1d:79:eb:22:52:04:7e:d3:37:eb:41:fd:83:
