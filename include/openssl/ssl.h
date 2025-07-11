@@ -1136,8 +1136,8 @@ typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
 // The callback function is passed the |SSL| object, a pointer to an alert value,
 // and the argument provided when the callback was set. It should return either
 // SSL_CLIENT_HELLO_SUCCESS, SSL_CLIENT_HELLO_ERROR, or SSL_CLIENT_HELLO_RETRY.
-// Note that SSL_CLIENT_HELLO_RETRY is not properly supported in the current
-// implementation.
+// Note that SSL_CLIENT_HELLO_RETRY is not fully supported; it is treated the
+// same as SSL_CLIENT_HELLO_ERROR.
 OPENSSL_EXPORT void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
                                  void *arg);
 
