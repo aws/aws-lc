@@ -14,27 +14,6 @@ const std::string PRIVATE_KEY_END = "-----END PRIVATE KEY-----";
 const std::string ENCRYPTED_PRIVATE_KEY_BEGIN = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
 const std::string ENCRYPTED_PRIVATE_KEY_END = "-----END ENCRYPTED PRIVATE KEY-----";
 
-// Function to create an RSA key pair wrapped in EVP_PKEY
-static EVP_PKEY* CreateTestKey(int key_bits) {
-    bssl::UniquePtr<BIGNUM> bn(BN_new());
-    if (!bn || !BN_set_word(bn.get(), RSA_F4)) {
-        return nullptr;
-    }
-    
-    bssl::UniquePtr<RSA> rsa(RSA_new());
-    if (!rsa || !RSA_generate_key_ex(rsa.get(), key_bits, bn.get(), nullptr)) {
-        return nullptr;
-    }
-    
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    if (!pkey || !EVP_PKEY_assign_RSA(pkey, rsa.release())) {
-        EVP_PKEY_free(pkey);
-        return nullptr;
-    }
-    
-    return pkey;
-}
-
 // Function to check PEM boundary markers in content
 static bool CheckKeyBoundaries(const std::string &content,
                         const std::string &begin1, const std::string &end1, 

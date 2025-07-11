@@ -11,7 +11,7 @@
 #include <cctype>
 
 // Helper function to create a test key
-static EVP_PKEY* CreateTestKey() {
+EVP_PKEY* CreateTestKey(int key_bits) {
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   if (!pkey) {
     return nullptr;
@@ -20,7 +20,7 @@ static EVP_PKEY* CreateTestKey() {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
-      !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
+      !RSA_generate_key_ex(rsa.get(), key_bits, bn.get(), nullptr) ||
       !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
     return nullptr;
   }
@@ -36,7 +36,7 @@ protected:
     ASSERT_GT(createTempFILEpath(der_key_path), 0u);
     
     // Create and save a private key in PEM format
-    bssl::UniquePtr<EVP_PKEY> pkey(CreateTestKey());
+    bssl::UniquePtr<EVP_PKEY> pkey(CreateTestKey(2048));
     ASSERT_TRUE(pkey);
     
     ScopedFILE in_file(fopen(in_path, "wb"));
@@ -211,7 +211,7 @@ protected:
     ASSERT_GT(createTempFILEpath(der_key_path), 0u);
     
     // Create and save a private key
-    pkey.reset(CreateTestKey());
+    pkey.reset(CreateTestKey(2048));
     ASSERT_TRUE(pkey);
     
     ScopedFILE in_file(fopen(in_path, "wb"));
