@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    genrsa.cc
     pkcs8.cc
     rehash.cc
     req.cc
@@ -87,6 +88,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        genrsa.cc
+        genrsa_test.cc
         pkcs8.cc
         pkcs8_test.cc
         rehash.cc
