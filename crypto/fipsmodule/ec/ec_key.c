@@ -300,9 +300,20 @@ static int ec_key_gen_pct(const EC_KEY *key) {
   // function for validations e.g. the EVP private key parsing. This part is
   // also open for optimization later.
   if (key->priv_key != NULL) {
+
+    EC_SCALAR *priv_key_scalar = &key->priv_key->scalar;
+
+    EC_SCALAR priv_key_scalar_bit_flipped = {0};
+    if (boringssl_fips_break_test("EC_PWCT")) {
+      OPENSSL_memcpy(&priv_key_scalar_bit_flipped, priv_key_scalar,
+        sizeof(priv_key_scalar->words));
+      priv_key_scalar_bit_flipped.words[0] ^= 0x1;
+      priv_key_scalar = &priv_key_scalar_bit_flipped;
+    }
+
     EC_JACOBIAN point;
     if (!ec_point_mul_scalar_base(key->group, &point,
-          &key->priv_key->scalar)) {
+          priv_key_scalar)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       return 0;
     }
