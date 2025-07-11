@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_HKDF_H
 
 #include <openssl/base.h>
+#include <openssl/kdf.h>
 
 #if defined(__cplusplus)
 extern "C" {
