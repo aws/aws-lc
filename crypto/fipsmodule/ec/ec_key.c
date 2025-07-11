@@ -80,6 +80,7 @@
 
 #include "internal.h"
 #include "../delocate.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 
@@ -292,18 +293,19 @@ void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
   }
 }
 
+// ec_key_gen_pct computes the PCT: SP 800-56Arev3 Section 5.6.2.1.4 option ‘b’.
+// Should only be used for NIST P-curves.
 static int ec_key_gen_pct(const EC_KEY *key) {
 
-  // SP 800-56Arev3 Section 5.6.2.1.4 option ‘b’
-  //
-  // Technically, not needed for ECDH in non-FIPS. However, other APIs use this
-  // function for validations e.g. the EVP private key parsing. This part is
-  // also open for optimization later.
   if (key->priv_key != NULL) {
 
     EC_SCALAR *priv_key_scalar = &key->priv_key->scalar;
 
-    EC_SCALAR priv_key_scalar_bit_flipped = {0};
+    // In theory, we could just flip a bit in the existing private key. The
+    // test below is supposed to hard abort and the code-path is only active
+    // during testing the break KAT framework. But prefer to keep it local to
+    // the PCT to isolate errors.
+    EC_SCALAR priv_key_scalar_bit_flipped = {{0}};
     if (boringssl_fips_break_test("EC_PWCT")) {
       OPENSSL_memcpy(&priv_key_scalar_bit_flipped, priv_key_scalar,
         sizeof(priv_key_scalar->words));
@@ -321,10 +323,10 @@ static int ec_key_gen_pct(const EC_KEY *key) {
     // Leaking this comparison only leaks whether |key|'s public key was
     // correct.
     //
-    // |ec_GFp_simple_points_equal| is quite expensive (relatively). If we were
-    // sure that points aren't in jacobian, but in affine representation, then
-    // the comparison reduces to simple byte array equality. The current
-    // comparison function does a non-negligible amount of field arithmetic.
+    // |ec_GFp_simple_points_equal| is quite expensive (relatively); The current
+    // comparison function does a non-negligible amount of field arithmetic If
+    // we were sure that points aren't in jacobian, but in affine
+    // representation, then the comparison reduces to fast byte array equality.
     if (!constant_time_declassify_int(ec_GFp_simple_points_equal(
           key->group, &point, &key->pub_key->raw))) {
       OPENSSL_PUT_ERROR(EC, EC_R_INVALID_PRIVATE_KEY);
@@ -352,6 +354,12 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     return 0;
   }
 
+  // Many code-paths end up in |EC_KEY_check_key|. For example, ECDH operations.
+  // Technically, the PCT is not needed for ECDH in non-FIPS. However, other
+  // APIs use this function for validations e.g. the EVP private key parsing (to
+  // validate that public key is indeed generate from the private key) and there
+  // is currently no way to distinguish the code-paths at this level. This could
+  // be optimized.
   if (!ec_key_gen_pct(eckey)) {
     return 0;
   }
@@ -360,8 +368,12 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
 }
 
 int EC_KEY_check_fips(const EC_KEY *key) {
-  FIPS_service_indicator_lock_state();
+
   int ret = 0;
+
+  // Nothing obvious will falsely increment the service indicator. But lock to
+  // be safe.
+  FIPS_service_indicator_lock_state();
 
   if (EC_KEY_is_opaque(key)) {
     // Opaque keys can't be checked.
@@ -408,7 +420,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
 end:
   FIPS_service_indicator_unlock_state();
   if(ret){
-    EC_KEY_keygen_verify_service_indicator((EC_KEY*)key);
+    EC_KEY_keygen_verify_service_indicator(key);
   }
   return ret;
 }
@@ -508,8 +520,8 @@ int EC_KEY_generate_key(EC_KEY *key) {
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   int ret = 0;
 
-  // We have to verify both |EC_KEY_generate_key| and |EC_KEY_check_fips| both
-  // succeed before updating the indicator state, so we lock the state here.
+  // At least |EC_KEY_check_fips| will certainly update the service indicator.
+  // Hence, must lock here.
   FIPS_service_indicator_lock_state();
 
   boringssl_ensure_ecc_self_test();
