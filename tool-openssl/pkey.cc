@@ -64,9 +64,11 @@ static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int
 
 
 bool pkeyTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
@@ -74,11 +76,10 @@ bool pkeyTool(const args_list_t &args) {
 
   std::string in_path, out_path, inform, outform;
   bool pubin = false, pubout = false;
-  bool noout = false, text = false, textpub = false, help = false;
+  bool noout = false, text = false, textpub = false;
   int input_format = FORMAT_PEM;
   int output_format = FORMAT_PEM;
 
-  GetBoolArgument(&help, "-help", parsed_args);
   GetString(&in_path, "-in", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&inform, "-inform", "", parsed_args);
@@ -90,7 +91,7 @@ bool pkeyTool(const args_list_t &args) {
   GetBoolArgument(&textpub, "-text_pub", parsed_args);
 
   // Display pkey tool option summary
-  if (help) {
+  if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
     return false;
   }
