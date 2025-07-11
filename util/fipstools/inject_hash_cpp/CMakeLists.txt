@@ -9,6 +9,13 @@ if(USE_CPP_INJECT_HASH)
         ${CMAKE_SOURCE_DIR}/include
     )
 
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(inject_hash_cpp PRIVATE
+            -Wno-overloaded-virtual
+            -Wno-unused-parameter
+        )
+    endif()
+
     target_link_libraries(inject_hash_cpp PRIVATE
         LIEF::LIEF
     )
