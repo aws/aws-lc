@@ -191,7 +191,7 @@ bool genrsaTool(const args_list_t &args) {
     return false;
   }
 
-  unsigned bits;
+  unsigned bits = 0;
   if (!ParseKeySize(extra_args, bits)) {
     return false;
   }
