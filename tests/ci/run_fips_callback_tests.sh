@@ -59,7 +59,7 @@ function run_all_break_tests() {
     unset FIPS_CALLBACK_TEST_EXPECTED_FAILURE
   done
 
-  for TEST in RSA_PWCT ECDSA_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
+  for TEST in RSA_PWCT EC_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
       export FIPS_CALLBACK_TEST_EXPECTED_FAILURE="${TEST}"
       export BORINGSSL_FIPS_BREAK_TEST="${TEST}"
       $original_test --gtest_filter=FIPSCallback.PWCT
