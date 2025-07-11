@@ -270,9 +270,65 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
 
   Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
   ctx->state = KECCAK1600_STATE_FINAL;
-  
+
   FIPS_service_indicator_update_state();
   return 1;
+}
+
+int SHA3_224_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_224_DIGEST_BITLENGTH);
+}
+
+int SHA3_224_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_256_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_256_DIGEST_BITLENGTH);
+}
+
+int SHA3_256_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_384_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_384_DIGEST_BITLENGTH);
+}
+
+int SHA3_384_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
+}
+
+int SHA3_512_Init(KECCAK1600_CTX *ctx) {
+    return SHA3_Init(ctx, SHA3_512_DIGEST_BITLENGTH);
+}
+
+int SHA3_512_Update(KECCAK1600_CTX *ctx, const void *data,
+                                     size_t len) {
+    return SHA3_Update(ctx, data, len);
+}
+
+int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH],
+                                    KECCAK1600_CTX *ctx) {
+    return SHA3_Final(&out[0], ctx);
 }
 
 /*

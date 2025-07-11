@@ -69,11 +69,16 @@ typedef unsigned short u_short;
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/un.h>
+#include <unistd.h>
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
+#include <ws2ipdef.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 typedef int socklen_t;
+#if !defined(_SSIZE_T_DEFINED)
+typedef SSIZE_T ssize_t;
+#endif
 #endif
 #endif  // !OPENSSL_NO_SOCK
 

@@ -7,22 +7,6 @@
 
 #include <openssl/mem.h>
 
-#include <stddef.h>
-#if defined(OPENSSL_WINDOWS)
-#if !defined(_SSIZE_T_DEFINED)
-typedef SSIZE_T ssize_t;
-#endif
-#if !defined(__MINGW32__)
-#include <afunix.h>
-#endif
-#else
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
-
 #include "../internal.h"
 #include "./internal.h"
 

@@ -19,6 +19,7 @@ static const std::array<Tool, 11> kTools = {{
     {"crl", CRLTool},
     {"dgst", dgstTool},
     {"md5", md5Tool},
+    {"pkcs8", pkcs8Tool},
     {"pkey", pkeyTool},
     {"rehash", RehashTool},
     {"req", reqTool},
