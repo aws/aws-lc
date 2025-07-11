@@ -24,6 +24,7 @@ bool IsNumeric(const std::string& str);
 
 X509* CreateAndSignX509Certificate();
 X509_CRL* createTestCRL();
+bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 
 bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path);
 

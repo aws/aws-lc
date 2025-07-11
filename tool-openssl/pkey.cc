@@ -7,9 +7,8 @@
 #include "internal.h"
 #include <string>
 
-// Define format constants
 #define FORMAT_PEM 1
-#define FORMAT_ASN1 2
+#define FORMAT_DER 2
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
@@ -25,16 +24,8 @@ static const argument_t kArguments[] = {
   { "", kOptionalArgument, "" }
 };
 
-static bool isCharUpperCaseEqual(char a, char b) {
-  return ::toupper(a) == ::toupper(b);
-}
-
-static bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
-  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
-}
-
 static bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int output_format) {
-  if (output_format == FORMAT_ASN1) {
+  if (output_format == FORMAT_DER) {
     if (!i2d_PrivateKey_bio(output_bio.get(), pkey)) {
       fprintf(stderr, "Error: error writing private key in DER format\n");
       ERR_print_errors_fp(stderr);
@@ -51,20 +42,24 @@ static bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, in
 }
 
 static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int output_format) {
-  if (output_format == FORMAT_ASN1) {
+  if (output_format == FORMAT_DER) {
     if (!i2d_PUBKEY_bio(output_bio.get(), pkey)) {
-      fprintf(stderr, "Error: error writing public key in DER format\n");
+      fprintf(stderr, "Error: failed to write public key in DER format\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-  } else {
+    return true;
+  } else if (output_format == FORMAT_PEM) {
     if (!PEM_write_bio_PUBKEY(output_bio.get(), pkey)) {
-      fprintf(stderr, "Error: error writing public key in PEM format\n");
+      fprintf(stderr, "Error: failed to write public key in PEM format\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
+    return true;
   }
-  return true;
+
+  fprintf(stderr, "Error: unsupported output format\n");
+  return false;
 }
 
 
@@ -103,7 +98,7 @@ bool pkeyTool(const args_list_t &args) {
   // Check input format
   if (!inform.empty()) {
     if (isStringUpperCaseEqual(inform, "DER")) {
-      input_format = FORMAT_ASN1;
+      input_format = FORMAT_DER;
     } else if (isStringUpperCaseEqual(inform, "PEM")) {
       input_format = FORMAT_PEM;
     } else {
@@ -115,8 +110,8 @@ bool pkeyTool(const args_list_t &args) {
   // Check output format
   if (!outform.empty()) {
     if (isStringUpperCaseEqual(outform, "DER")) {
-      output_format = FORMAT_ASN1;
-    } else if (isStringUpperCaseEqual(outform, "PEM")) {
+      output_format = FORMAT_DER;
+      } else if (isStringUpperCaseEqual(outform, "PEM")) {
       output_format = FORMAT_PEM;
     } else {
       fprintf(stderr, "Error: '-outform' option must specify a valid encoding DER|PEM\n");
@@ -154,7 +149,10 @@ bool pkeyTool(const args_list_t &args) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
     output_bio.reset(BIO_new(BIO_s_file()));
-    BIO_write_filename(output_bio.get(), out_path.c_str());
+    if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
+      fprintf(stderr, "Error: failed to open output file '%s'\n", out_path.c_str());
+      return false;
+    }
   }
 
   if (!output_bio) {
@@ -165,13 +163,13 @@ bool pkeyTool(const args_list_t &args) {
   // Load the key
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (pubin) {
-    if (input_format == FORMAT_ASN1) {
+    if (input_format == FORMAT_DER) {
       pkey.reset(d2i_PUBKEY_fp(in_file.get(), nullptr));
     } else {
       pkey.reset(PEM_read_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
     }
   } else {
-    if (input_format == FORMAT_ASN1) {
+    if (input_format == FORMAT_DER) {
       pkey.reset(d2i_PrivateKey_fp(in_file.get(), nullptr));
     } else {
       pkey.reset(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));

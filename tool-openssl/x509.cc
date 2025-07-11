@@ -46,7 +46,7 @@ static bool isCharUpperCaseEqual(char a, char b) {
   return ::toupper(a) ==  ::toupper(b);
 }
 
-static bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
+bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
   return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
 }
 
