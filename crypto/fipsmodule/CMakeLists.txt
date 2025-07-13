@@ -291,6 +291,42 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_16.S
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_32.S
     )
+
+    #
+    # Keccak assembly from s2n-bignum/mlkem-native
+    #
+
+    # Check if assembler supports SHA3 extension
+    # (gcc supports it since gcc8, clang supports it since clang7)
+    include(CheckCSourceCompiles)
+    set(CMAKE_REQUIRED_FLAGS_BACKUP "${CMAKE_REQUIRED_FLAGS}")
+    set(CMAKE_REQUIRED_FLAGS "-march=armv8.4-a+sha3")
+    check_c_source_compiles("
+        int main(void) {
+            __asm__(\"eor3 v0.16b, v1.16b, v2.16b, v3.16b\");
+            __asm__(\"bcax v0.16b, v1.16b, v2.16b, v3.16b\");
+            __asm__(\"rax1 v0.2d,  v1.2d,  v2.2d         \");
+            __asm__(\"xar  v0.2d,  v1.2d,  v2.2d,  #0x2a \");
+            return 0;
+        }
+    " MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS_BACKUP}")
+
+    if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+        add_definitions(-DMY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+    endif()
+
+    # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native
+    list(APPEND BCM_ASM_SOURCES
+                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
+    )
+
+    # SIMD Keccak-x1 assembly from s2n-bignum/mlkem-native, using SHA3 extension
+    if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+        list(APPEND BCM_ASM_SOURCES ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S)
+        set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S
+                                    PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
+    endif()
   endif()
 
 endif()

@@ -254,6 +254,22 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
     (ARMV8_DIT | ARMV8_DIT_ALLOWED);
 }
 
+OPENSSL_INLINE int CRYPTO_is_Neoverse_N1(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_N1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_Neoverse_V1(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_Neoverse_V2(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_Apple_M(void) {
+  return (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
+}
+
 // This function is used only for testing; hence, not inlined
 OPENSSL_EXPORT int CRYPTO_is_ARMv8_DIT_capable_for_testing(void);
 
