@@ -8,6 +8,7 @@
  */
 
 #include <assert.h>
+#include "internal.h"
 
 #if defined(__x86_64__) || defined(__aarch64__) || \
     defined(__mips64) || defined(__ia64) || defined(__loongarch_lp64) || \
@@ -20,16 +21,6 @@
 #else
 # define BIT_INTERLEAVE (sizeof(void *) < 8)
 #endif
-
-#if !defined(KECCAK1600_ASM)
-
-static const uint8_t rhotates[KECCAK1600_ROWS][KECCAK1600_ROWS] = {
-    {  0,  1, 62, 28, 27 },
-    { 36, 44,  6, 55, 20 },
-    {  3, 10, 43, 25, 39 },
-    { 41, 45, 15, 21,  8 },
-    { 18,  2, 61, 56, 14 }
-};
 
 static const uint64_t iotas[] = {
     BIT_INTERLEAVE ? 0x0000000000000001ULL : 0x0000000000000001ULL,
@@ -56,6 +47,16 @@ static const uint64_t iotas[] = {
     BIT_INTERLEAVE ? 0x8000008800000000ULL : 0x8000000000008080ULL,
     BIT_INTERLEAVE ? 0x0000800000000001ULL : 0x0000000080000001ULL,
     BIT_INTERLEAVE ? 0x8000808200000000ULL : 0x8000000080008008ULL
+};
+
+#if !defined(KECCAK1600_ASM)
+
+static const uint8_t rhotates[KECCAK1600_ROWS][KECCAK1600_ROWS] = {
+    {  0,  1, 62, 28, 27 },
+    { 36, 44,  6, 55, 20 },
+    {  3, 10, 43, 25, 39 },
+    { 41, 45, 15, 21,  8 },
+    { 18,  2, 61, 56, 14 }
 };
 
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
@@ -222,7 +223,7 @@ static void Round(uint64_t R[KECCAK1600_ROWS][KECCAK1600_ROWS], uint64_t A[KECCA
 #endif
 }
 
-static void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS])
+static void KeccakF1600_c(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS])
 {
     uint64_t T[KECCAK1600_ROWS][KECCAK1600_ROWS];
     size_t i;
@@ -250,6 +251,7 @@ static void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS])
     A[4][0] = ~A[4][0];
 #endif
 }
+#endif // !KECCAK1600_ASM
 
 static uint64_t BitInterleave(uint64_t Ai)
 {
@@ -323,6 +325,9 @@ static uint64_t BitDeinterleave(uint64_t Ai)
     return Ai;
 }
 
+// Forward declaration for KeccakF1600 function
+void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]);
+
  // Keccak1600_Absorb can be called multiple times; at each invocation the
  // largest multiple of |r| out of |len| bytes are processed. The
  // remaining amount of bytes is returned. This is done to spare caller
@@ -394,21 +399,79 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
     }
 }
 
-#else
+#if defined(KECCAK1600_ASM)
 
-size_t Keccak1600_Absorb_hw(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len,
-                       size_t r);
+// Double-check that bit-interleaving is not used on AArch64
+#if BIT_INTERLEAVE != 0
+#error Bit-interleaving of Keccak1600 states should be disabled for AArch64
+#endif
 
-size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len,
-                   size_t r) {
-    return Keccak1600_Absorb_hw(A, inp, len, r);
+#if defined(KECCAK1600_S2N_BIGNUM_ASM)
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
+
+// Dispatch logic for Keccak-x1 on AArch64:
+//
+// 1. If ASM is disabled, we use the C implementation.
+// 2. If ASM is enabled:
+//   - For Neoverse N1, V1, V2, we use scalar Keccak assembly from s2n-bignum,
+//     leveraging lazy rotations from https://eprint.iacr.org/2022/1243.
+//   - For Arm-based Apple CPUs, we use Neon Keccak assembly from s2n-bignum,
+//     leveraging the AArch64 SHA3 extension.
+//   - Otherwise, fall back to scalar Keccak implementation from OpenSSL,
+//     not using lazy rotations.
+//
+// Lazy rotations improve performance by up to 10% on CPUs with free
+// Barrel shifting, which includes Neoverse N1, V1, and V2. Not all
+// CPUs have free Barrel shifting (e.g. Apple M1 or Cortex-A72), so we
+// don't use it by default.
+//
+// Neoverse V1 and V2 do support SHA3 instructions, but they are only
+// implemented on 1/4 of Neon units, and are thus slower than a scalar
+// implementation.
+
+static int keccak_use_s2n_bignum_main(void) {
+    if (((OPENSSL_armcap_P & (ARMV8_NEOVERSE_N1 |
+			      ARMV8_NEOVERSE_V1 |
+			      ARMV8_NEOVERSE_V2)) != 0))
+    {
+	return 1;
+    }
+
+    return 0;
 }
 
-size_t Keccak1600_Squeeze_hw(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *out, size_t len,
-                        size_t r, int padded);
+#if defined(__ARM_FEATURE_SHA3)
+static int keccak_use_s2n_bignum_alt(void) {
+    return (CRYPTO_is_ARMv8_SHA3_capable() &&
+	    (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0);
+}
+#endif // __ARM_FEATURE_SHA3
+#endif // KECCAK1600_S2N_BIGNUM_ASM
 
-void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *out, size_t len, size_t r, int padded) {
-    Keccak1600_Squeeze_hw(A, out, len, r, padded);
+// Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
+extern void KeccakF1600_hw(uint64_t state[25]);
+
+void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
+#if defined(KECCAK1600_S2N_BIGNUM_ASM)
+#if defined(__ARM_FEATURE_SHA3)
+    if (keccak_use_s2n_bignum_alt()) {
+        sha3_keccak_f1600_alt((uint64_t *)A, iotas);
+    } else
+#endif // __ARM_FEATURE_SHA3
+    if (keccak_use_s2n_bignum_main()) {
+        sha3_keccak_f1600((uint64_t *)A, iotas);
+    } else
+#endif // KECCAK1600_S2N_BIGNUM_ASM
+    {
+	KeccakF1600_hw((uint64_t *) A);
+    }
+}
+
+#else // KECCAK1600_ASM
+
+void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS])
+{
+    KeccakF1600_c(A);
 }
 
 #endif // !KECCAK1600_ASM
