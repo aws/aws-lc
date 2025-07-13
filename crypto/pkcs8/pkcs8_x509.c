@@ -706,7 +706,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
       }
     }
     if (!mac_ok) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INCORRECT_PASSWORD);
+      OPENSSL_PUT_ERROR(PKCS12, PKCS12_R_MAC_VERIFY_FAILURE);
       goto err;
     }
   }
