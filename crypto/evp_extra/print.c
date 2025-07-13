@@ -151,7 +151,9 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
 
   const char *s, *str;
   if (include_private && rsa->d) {
-    if (BIO_printf(out, "Private-Key: (%d bit)\n", mod_len) <= 0) {
+    // AWS-LC supports only standard two-prime RSA. Print prime count for
+    // OpenSSL compatibility in key format output.
+    if (BIO_printf(out, "Private-Key: (%d bit, %d primes)\n", mod_len, 2) <= 0) {
       return 0;
     }
     str = "modulus:";
