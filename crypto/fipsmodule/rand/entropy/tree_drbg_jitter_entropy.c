@@ -308,6 +308,7 @@ int tree_jitter_initialize(struct entropy_source_t *entropy_source) {
   tree_jitter_drbg->reseed_calls_since_initialization = 1;
   OPENSSL_cleanse(seed_drbg, CTR_DRBG_ENTROPY_LEN);
 
+  tree_jitter_drbg->is_global = 0;
   tree_jitter_drbg->max_generate_calls = TREE_JITTER_THREAD_DRBG_MAX_GENERATE;
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
