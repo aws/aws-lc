@@ -93,7 +93,7 @@ bool pkeyTool(const args_list_t &args) {
   // Display pkey tool option summary
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   // Check input format

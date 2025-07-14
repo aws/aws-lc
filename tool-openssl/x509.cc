@@ -252,7 +252,7 @@ bool X509Tool(const args_list_t &args) {
   // Display x509 tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
