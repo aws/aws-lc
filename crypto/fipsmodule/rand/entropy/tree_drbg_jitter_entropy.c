@@ -369,7 +369,7 @@ static void tree_jitter_free_global_drbg(void) {
   CRYPTO_STATIC_MUTEX_unlock_write(global_seed_drbg_lock_bss_get());
 }
 
-// tree_jitter_zeroize_thread_drbg frees the thread-local seed DRBG
+// tree_jitter_free_thread_drbg frees the thread-local seed DRBG
 // associated with the entropy source |entropy_source|.
 void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source) {
 
@@ -420,7 +420,7 @@ static void tree_jitter_zeroize_drbg(
   tree_jitter_drbg->reseed_calls_since_initialization += 1;
 }
 
-// tree_jitter_zeroize_thread_drbg is similar to |tree_jitter_zeroize_drbg| but
+// tree_jitter_zeroize_global_drbg is similar to |tree_jitter_zeroize_drbg| but
 // also handles synchronizing access to the global seed DRBG
 static void tree_jitter_zeroize_global_drbg(void) {
 
