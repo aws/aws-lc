@@ -18,7 +18,7 @@ struct rand_thread_local_state {
   CTR_DRBG_STATE drbg;
 
   // generate_calls_since_seed is the number of generate calls made on |drbg|
-  // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
+  // since it was last (re)seeded. Must be bounded by |kCtrDrbgReseedInterval|.
   uint64_t generate_calls_since_seed;
 
   // reseed_calls_since_initialization is the number of reseed calls made on
