@@ -8,4 +8,4 @@
 
 // Intentionally empty.
 
-// Prevent compiler fall-through picking up "ui.h" from the system path.
+// Prevent compiler fall-through picking up "openssl/ui.h" from the system path.

@@ -3601,7 +3601,6 @@ OPENSSL_EXPORT int SSL_get_write_traffic_secret(
 
 // No-op function for compatibility with OpenSSL.
 int SSL_verify_client_post_handshake(SSL *ssl) {
-  (void)ssl;
   return 0;
 }
 
