@@ -751,6 +751,9 @@ void SSL_set_verify_result(SSL *ssl, long arg) {
 
 long SSL_get_verify_result(const SSL *ssl) {
   check_ssl_x509_method(ssl);
+  if (SSL_get_session(ssl) == nullptr) {
+    return X509_V_ERR_INVALID_CALL;
+  }
   return ssl->verify_result;
 }
 
