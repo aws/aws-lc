@@ -110,6 +110,9 @@ extern "C" {
 #define PEM_TYPE_MIC_CLEAR 30
 #define PEM_TYPE_CLEAR 40
 
+// For compatibility with OpenSSL. First argument ignored.
+#define PEMerr(f, r) OPENSSL_PUT_ERROR(PEM, (r))
+
 // These macros make the PEM_read/PEM_write functions easier to maintain and
 // write. Now they are all implemented with either:
 // IMPLEMENT_PEM_rw(...) or IMPLEMENT_PEM_rw_cb(...)
