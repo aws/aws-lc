@@ -351,7 +351,8 @@ static void tree_jitter_free_global_drbg(void) {
   CRYPTO_STATIC_MUTEX_lock_write(global_seed_drbg_lock_bss_get());
 
   struct tree_jitter_drbg_t *global_tree_jitter_drbg = *global_seed_drbg_bss_get();
-  if (*global_seed_drbg_bss_get() == NULL) {
+  if (global_tree_jitter_drbg == NULL) {
+    CRYPTO_STATIC_MUTEX_unlock_write(global_seed_drbg_lock_bss_get());
     return;
   }
 
@@ -426,7 +427,8 @@ static void tree_jitter_zeroize_global_drbg(void) {
   CRYPTO_STATIC_MUTEX_lock_write(global_seed_drbg_lock_bss_get());
 
   struct tree_jitter_drbg_t *tree_jitter_drbg = *global_seed_drbg_bss_get();
-  if (*global_seed_drbg_bss_get() == NULL) {
+  if (tree_jitter_drbg == NULL) {
+    CRYPTO_STATIC_MUTEX_unlock_write(global_seed_drbg_lock_bss_get());
     return;
   }
 
