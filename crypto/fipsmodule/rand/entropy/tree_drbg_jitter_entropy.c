@@ -47,7 +47,7 @@
 // +-----------+  |  +-----------+
 //                |
 //
-// Memory life-cycle: The thread-local DRBGs has the same storage duration as
+// Memory life-cycle: The thread-local DRBGs have the same storage duration as
 // their corresponding thread-local frontend DRBGs. The per-process DRBG and
 // Jitter Entropy instance has a storage duration that extends to the duration
 // of AWS-LC being loaded into the process. The per-process memory is lazily
@@ -135,7 +135,7 @@ static void tree_jitter_get_root_seed(
 // bytes for prediction resistance and returns them in |pred_resistance|.
 // However, it only generate bytes if |tree_jitter_drbg| meets the conditions:
 // 1) is not the global seed DRBG 2) is not protected from UBEs. If bytes are
-// generated, |pre_resistance_len| is set to RAND_PRED_RESISTANCE_LEN and is
+// generated, |pred_resistance_len| is set to RAND_PRED_RESISTANCE_LEN and is
 // otherwise not mutated.
 static void tree_jitter_drbg_maybe_get_pred_resistance(
   struct tree_jitter_drbg_t *tree_jitter_drbg,
@@ -403,7 +403,7 @@ void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source) {
 //
 // One could override the DRBG states with zero's. However, doing the small
 // extra work to use random data (from the OS source) ensures that even if some
-// output where to escape from the randomness generation, it will still be sound
+// output were to escape from the randomness generation, it will still be sound
 // practically.
 
 // tree_jitter_zeroize_drbg zeroizes the DRBG state configured in
