@@ -307,8 +307,9 @@ BSSL_NAMESPACE_END
 #define PKCS8_R_UNSUPPORTED_OPTIONS 132
 #define PKCS8_R_AMBIGUOUS_FRIENDLY_NAME 133
 
-
-// PKCS#12 Error code defined for compatibility
-#define PKCS12_R_MAC_VERIFY_FAILURE 113
+// PKCS12_R_MAC_VERIFY_FAILURE is an error code defined for
+// compatability. It points to our equivalent for this OpenSSL error,
+// |PKCS8_R_INCORRECT_PASSWORD|
+#define PKCS12_R_MAC_VERIFY_FAILURE PKCS8_R_INCORRECT_PASSWORD
 
 #endif  // OPENSSL_HEADER_PKCS8_H
