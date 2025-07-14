@@ -40,8 +40,8 @@ static int entropy_get_extra_entropy(
 
 // - Tree DRBG with Jitter Entropy as root for seeding.
 // - OS as personalization string source.
-// - If run-time is on an x86_64 or Arm64 CPU and it supports rdrand,
-//   respectively, rndr, use it as a source for prediction resistance.
+// - If run-time is on an x86_64 or Arm64 CPU and it supports rdrand
+//   or rndr respectively, use it as a source for prediction resistance.
 //   Otherwise, no source.
 DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_methods) {
   out->initialize = tree_jitter_initialize;
