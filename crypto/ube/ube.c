@@ -32,6 +32,9 @@
 // This file implements and manages the general machinery to detect an UBE. This
 // should be used by the rest of the code-base to implement proper randomization
 // of unique states before usage.
+//
+// ATTENTION: Before attempting to re-write this logic and add more mechanisms
+// review P269907867 carefully. 
 
 static CRYPTO_once_t ube_state_initialize_once = CRYPTO_ONCE_INIT;
 static CRYPTO_once_t ube_detection_unavailable_once = CRYPTO_ONCE_INIT;
@@ -179,6 +182,9 @@ static int ube_get_detection_generation_numbers(
 // |current_detection_gn| before calling this function.
 //
 // Returns 1 if UBE has been detected and 0 if no UBE has been detected.
+//
+// ATTENTION: Before attempting to re-write this logic and add more mechanisms
+// review P269907867 carefully.
 static int ube_is_detected(struct detection_gn *current_detection_gn) {
 
   if (ube_global_state.cached_fork_gn != current_detection_gn->current_fork_gn ||

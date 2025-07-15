@@ -59,9 +59,9 @@ static int ignore_inheritzero = 0;
 static CRYPTO_once_t fork_detect_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
 
-// This pointer is |volatile| because the value pointed to may be changed by
-// external forces (i.e. the kernel wiping the page) thus the compiler must not
-// assume that it has exclusive access to it.
+// This value (pointed to) is |volatile| because the value pointed to may be
+// changed by external forces (i.e. the kernel wiping the page) thus the
+// compiler must not assume that it has exclusive access to it.
 static volatile char *fork_detect_addr = NULL;
 static uint64_t fork_generation = 0;
 

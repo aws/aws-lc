@@ -117,7 +117,7 @@ enum random_state_t {
 // If |random_flavor_state| has been initialized, we assume it stays
 // initialized forever. That is, we assume "entropy depletion" does not exist.
 // See e.g. https://www.nccgroup.com/us/research-blog/on-linux-s-random-number-generation/
-// for an exposè on entropy depletion.
+// for an exposé on entropy depletion.
 //
 // If a consumer requests a non-blocking read of randomness from
 // |random_flavor|, the state |random_flavor_state| is not checked before
