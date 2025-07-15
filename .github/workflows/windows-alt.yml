@@ -228,3 +228,25 @@ jobs:
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
+  cygwin:
+    name: cygwin - ${{ matrix.generator }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        generator:
+          - 'Unix Makefiles'
+          - Ninja
+    steps:
+      - run: git config --global core.autocrlf input
+      - uses: actions/checkout@v4
+      - uses: cygwin/cygwin-install-action@master
+        with:
+          packages: perl,go,gcc-core,gcc-g++,make,cmake,cygwin-devel,binutils,ninja,nasm
+      - name: Setup CMake
+        shell: bash
+        run:
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -G "${{ matrix.generator }}"
+      - name: Run tests
+        shell: bash
+        run: cmake --build ./build --target run_tests
