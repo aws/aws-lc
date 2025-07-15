@@ -12,7 +12,7 @@ index 9e68deb..f63d238 100644
  #include <openssl/chacha.h>
  #else
 diff --git a/src/event/quic/ngx_event_quic.h b/src/event/quic/ngx_event_quic.h
-index d95d3d8..ef7cb0c 100644
+index bab085f..595e88d 100644
 --- a/src/event/quic/ngx_event_quic.h
 +++ b/src/event/quic/ngx_event_quic.h
 @@ -18,7 +18,7 @@
@@ -25,11 +25,11 @@ index d95d3d8..ef7cb0c 100644
  
  #else
 diff --git a/src/event/quic/ngx_event_quic_protection.c b/src/event/quic/ngx_event_quic_protection.c
-index 885843d..90a1d98 100644
+index 885843d..832eccd 100644
 --- a/src/event/quic/ngx_event_quic_protection.c
 +++ b/src/event/quic/ngx_event_quic_protection.c
 @@ -33,7 +33,7 @@ static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
- 
+
  static ngx_int_t ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out,
      const u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
 -#ifndef OPENSSL_IS_BORINGSSL
@@ -39,7 +39,7 @@ index 885843d..90a1d98 100644
  #endif
 @@ -58,7 +58,7 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers)
      switch (id) {
- 
+
      case TLS1_3_CK_AES_128_GCM_SHA256:
 -#ifdef OPENSSL_IS_BORINGSSL
 +#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
@@ -48,7 +48,7 @@ index 885843d..90a1d98 100644
          ciphers->c = EVP_aes_128_gcm();
 @@ -69,7 +69,7 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers)
          break;
- 
+
      case TLS1_3_CK_AES_256_GCM_SHA384:
 -#ifdef OPENSSL_IS_BORINGSSL
 +#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
@@ -57,7 +57,7 @@ index 885843d..90a1d98 100644
          ciphers->c = EVP_aes_256_gcm();
 @@ -80,12 +80,12 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers)
          break;
- 
+
      case TLS1_3_CK_CHACHA20_POLY1305_SHA256:
 -#ifdef OPENSSL_IS_BORINGSSL
 +#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
@@ -79,32 +79,14 @@ index 885843d..90a1d98 100644
      case TLS1_3_CK_AES_128_CCM_SHA256:
          ciphers->c = EVP_aes_128_ccm();
          ciphers->hp = EVP_aes_128_ctr();
-@@ -263,7 +263,7 @@ static ngx_int_t
- ngx_hkdf_expand(u_char *out_key, size_t out_len, const EVP_MD *digest,
-     const uint8_t *prk, size_t prk_len, const u_char *info, size_t info_len)
- {
--#ifdef OPENSSL_IS_BORINGSSL
-+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
- 
-     if (HKDF_expand(out_key, out_len, digest, prk, prk_len, info, info_len)
-         == 0)
-@@ -325,7 +325,7 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
-     const u_char *secret, size_t secret_len, const u_char *salt,
-     size_t salt_len)
- {
--#ifdef OPENSSL_IS_BORINGSSL
-+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
- 
-     if (HKDF_extract(out_key, out_len, digest, secret, secret_len, salt,
-                      salt_len)
 @@ -388,7 +388,7 @@ ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
      ngx_quic_md_t *key, ngx_int_t enc, ngx_log_t *log)
  {
- 
+
 -#ifdef OPENSSL_IS_BORINGSSL
 +#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
      EVP_AEAD_CTX  *ctx;
- 
+
      ctx = EVP_AEAD_CTX_new(cipher, key->data, key->len,
 @@ -448,7 +448,7 @@ static ngx_int_t
  ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out, const u_char *nonce,
@@ -126,11 +108,11 @@ index 885843d..90a1d98 100644
          != 1)
 @@ -484,7 +484,7 @@ ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out, const u_char *nonce,
  }
- 
- 
+
+
 -#ifndef OPENSSL_IS_BORINGSSL
 +#if !defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_IS_AWSLC)
- 
+
  static ngx_int_t
  ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out,
 @@ -563,7 +563,7 @@ void
@@ -166,8 +148,8 @@ index fddc608..85cc7f0 100644
 +++ b/src/event/quic/ngx_event_quic_protection.h
 @@ -22,7 +22,7 @@
  #define NGX_QUIC_MAX_MD_SIZE          48
- 
- 
+
+
 -#ifdef OPENSSL_IS_BORINGSSL
 +#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
  #define ngx_quic_cipher_t             EVP_AEAD
@@ -180,7 +162,7 @@ index e961c80..0ffdcff 100644
 @@ -968,7 +968,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
      }
  #endif
- 
+
 -#ifdef OPENSSL_IS_BORINGSSL
 +#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
      if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
