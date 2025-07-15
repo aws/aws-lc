@@ -4,8 +4,14 @@ if(POLICY CMP0091)
 cmake_policy(SET CMP0091 NEW)
 endif()
 
+set(SOFTWARE_NAME "awslc")
+set(SOFTWARE_VERSION "1.54.0")
+set(ABI_VERSION 0)
+set(CRYPTO_LIB_NAME "crypto")
+set(SSL_LIB_NAME "ssl")
+
 # Defer enabling C and CXX languages.
-project(AWSLC NONE)
+project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -32,7 +38,22 @@ option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
+option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" OFF)
 include(cmake/go.cmake)
+
+if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+  set(PERFORM_SONAME_BUILD 1)
+else()
+  set(PERFORM_SONAME_BUILD 0)
+endif()
+
+message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
+message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
+
+if(PERFORM_SONAME_BUILD)
+  set(CRYPTO_LIB_NAME "crypto-${SOFTWARE_NAME}")
+  set(SSL_LIB_NAME "ssl-${SOFTWARE_NAME}")
+endif()
 
 enable_language(C)
 
@@ -1280,9 +1301,6 @@ FILE(STRINGS "include/openssl/opensslv.h"
 if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
   message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
 endif()
-
-# TODO: Find a way to make this automatically align with OPENSSL_VERSION_NUMBER in base.h.
-set(VERSION 1.1.1)
 
 # AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
 # the downstream integration may build with the system's OpenSSL version instead.
