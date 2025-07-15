@@ -41,7 +41,7 @@ bool SClientTool(const args_list_t &args) {
   if(args_map.count("help")) {
     fprintf(stderr, "Usage: s_client [options] [host:port]\n");
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   return DoClient(args_map, true);

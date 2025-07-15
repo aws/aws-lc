@@ -359,7 +359,7 @@ bool RehashTool(const args_list_t &args) {
       "removes any existing symbolic links that match the regex \n" \
       "[0-9a-f]{8}.([r])?[0-9]+ in that directory. \n");
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   if (extra_args.empty()) { // No directory path provided on command line
