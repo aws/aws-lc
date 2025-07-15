@@ -335,27 +335,6 @@ index b9163ae..61dafbf 100644
  class TestPostHandshakeAuth(unittest.TestCase):
      def test_pha_setter(self):
          protocols = [
-diff --git a/Modules/Setup b/Modules/Setup
-index 02cfb67..04cd90a 100644
---- a/Modules/Setup
-+++ b/Modules/Setup
-@@ -211,10 +211,12 @@ _symtable symtablemodule.c
- 
- # Socket module helper for SSL support; you must comment out the other
- # socket line above, and possibly edit the SSL variable:
--#SSL=/usr/local/ssl
--#_ssl _ssl.c \
--#	-DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \
--#	-L$(SSL)/lib -lssl -lcrypto
-+SSL=AWS_LC_INSTALL_PLACEHOLDER
-+_ssl _ssl.c \
-+    -DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \
-+    -L$(SSL)/lib \
-+    -l:libssl.a -Wl,--exclude-libs,libssl.a \
-+    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
- 
- # The crypt module is now disabled by default because it breaks builds
- # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
 index 5e0be34..c4cb8e4 100644
 --- a/Modules/_ssl.c

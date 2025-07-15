@@ -209,7 +209,7 @@ mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
-    -DBUILD_SHARED_LIBS=0 \
+    -DBUILD_SHARED_LIBS=ON \
     -DFIPS=${FIPS}
 
 fetch_crt_python
@@ -220,6 +220,8 @@ pushd ${PYTHON_SRC_FOLDER}
 # Some environments disable IPv6 by default
 which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
+
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 # NOTE: As we add more versions to support, we may want to parallelize here
 for branch in "$@"; do

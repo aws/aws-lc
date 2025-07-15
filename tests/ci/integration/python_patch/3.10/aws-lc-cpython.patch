@@ -346,42 +346,6 @@ index a1a581a..6f42437 100644
  HAS_KEYLOG = hasattr(ssl.SSLContext, 'keylog_filename')
  requires_keylog = unittest.skipUnless(
      HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
-diff --git a/Modules/Setup b/Modules/Setup
-index 87c6a15..1a7257c 100644
---- a/Modules/Setup
-+++ b/Modules/Setup
-@@ -208,8 +208,8 @@ _symtable symtablemodule.c
- 
- # Socket module helper for SSL support; you must comment out the other
- # socket line above, and edit the OPENSSL variable:
--# OPENSSL=/path/to/openssl/directory
--# _ssl _ssl.c \
-+OPENSSL=AWS_LC_INSTALL_PLACEHOLDER
-+#_ssl _ssl.c \
- #     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
- #     -lssl -lcrypto
- #_hashlib _hashopenssl.c \
-@@ -217,13 +217,13 @@ _symtable symtablemodule.c
- #     -lcrypto
- 
- # To statically link OpenSSL:
--# _ssl _ssl.c \
--#     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
--#     -l:libssl.a -Wl,--exclude-libs,libssl.a \
--#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
--#_hashlib _hashopenssl.c \
--#     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
--#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
-+_ssl _ssl.c \
-+     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
-+     -l:libssl.a -Wl,--exclude-libs,libssl.a \
-+     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
-+_hashlib _hashopenssl.c \
-+     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
-+     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
- 
- # The crypt module is now disabled by default because it breaks builds
- # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_hashopenssl.c b/Modules/_hashopenssl.c
 index 35addf4..77a12c6 100644
 --- a/Modules/_hashopenssl.c

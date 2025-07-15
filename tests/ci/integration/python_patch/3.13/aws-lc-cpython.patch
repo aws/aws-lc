@@ -101,27 +101,6 @@ index 7fdd2be..7d8839f 100644
  HAS_KEYLOG = hasattr(ssl.SSLContext, 'keylog_filename')
  requires_keylog = unittest.skipUnless(
      HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
-diff --git a/Modules/Setup b/Modules/Setup
-index e4acf6b..e4dd9b4 100644
---- a/Modules/Setup
-+++ b/Modules/Setup
-@@ -211,11 +211,11 @@ PYTHONPATH=$(COREPYTHONPATH)
- #_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) -lcrypto
- 
- # To statically link OpenSSL:
--# _ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
--#     -l:libssl.a -Wl,--exclude-libs,libssl.a \
--#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
--# _hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
--#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
-+_ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
-+    -l:libssl.a -Wl,--exclude-libs,libssl.a \
-+    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
-+_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
-+    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
- 
- # The _tkinter module.
- #
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
 index a7a278d..3e29a2b 100644
 --- a/Modules/_ssl.c
