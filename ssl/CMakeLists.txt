@@ -53,6 +53,15 @@ target_include_directories(ssl PUBLIC
   $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+set_target_properties(ssl PROPERTIES
+    OUTPUT_NAME "${SSL_LIB_NAME}")
+
+if(PERFORM_SONAME_BUILD)
+  set_target_properties(ssl PROPERTIES
+      VERSION "${SOFTWARE_VERSION}"
+      SOVERSION "${ABI_VERSION}")
+endif()
+
 if(BUILD_TESTING)
   # ocsp_integration_test.cc does integration tests with the Amazon Trust
   # Services OCSP responder. This is ran as its own test executable because
@@ -111,7 +120,9 @@ endif()
 install(TARGETS ssl
         EXPORT ssl-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          NAMELINK_SKIP
 )
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
@@ -136,3 +147,13 @@ install(EXPORT ssl-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
+
+if(PERFORM_SONAME_BUILD)
+install(CODE "
+set(TGT lib${SSL_LIB_NAME}.so.${ABI_VERSION})
+set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so)
+message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
+"
+COMPONENT Development)
+endif()

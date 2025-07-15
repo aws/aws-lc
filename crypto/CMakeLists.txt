@@ -611,6 +611,15 @@ function(build_libcrypto name module_source)
   target_include_directories(${name} PUBLIC
           $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
           $<INSTALL_INTERFACE:include>)
+
+  set_target_properties(${name} PROPERTIES
+    OUTPUT_NAME "${CRYPTO_LIB_NAME}")
+
+  if(PERFORM_SONAME_BUILD)
+    set_target_properties(${name} PROPERTIES
+      VERSION "${SOFTWARE_VERSION}"
+      SOVERSION "${ABI_VERSION}")
+  endif()
 endfunction()
 
 if(FIPS_SHARED)
@@ -900,7 +909,9 @@ endif()
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        LIBRARY
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          NAMELINK_SKIP)
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
   install (FILES $<TARGET_FILE_DIR:crypto>/crypto.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -924,3 +935,13 @@ install(EXPORT crypto-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
+
+if(PERFORM_SONAME_BUILD)
+install(CODE "
+set(TGT lib${CRYPTO_LIB_NAME}.so.${ABI_VERSION})
+set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so)
+message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
+"
+  COMPONENT Development)
+endif()
