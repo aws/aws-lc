@@ -3036,14 +3036,12 @@ void SSL_set_msg_callback_arg(SSL *ssl, void *arg) {
 }
 
 void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
-                                 void *arg)
-{
+                                 void *arg) {
   c->client_hello_cb = cb;
   c->client_hello_cb_arg = arg;
 }
 
-int SSL_client_hello_isv2(SSL *s)
-{
+int SSL_client_hello_isv2(SSL *s) {
   // SSLv2 not supported
   return 0;
 }

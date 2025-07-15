@@ -1121,7 +1121,7 @@ OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
 // The callback should return one of:
 // - SSL_CLIENT_HELLO_SUCCESS to continue the handshake
 // - SSL_CLIENT_HELLO_ERROR to abort the handshake with alert |*al|
-// - SSL_CLIENT_HELLO_RETRY to pause the handshake (not fully supported)
+// - SSL_CLIENT_HELLO_RETRY (not supported) is handled like SSL_CLIENT_HELLO_ERROR
 typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
 
 // SSL_CTX_set_client_hello_cb configures a callback that is called when a
