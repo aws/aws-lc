@@ -391,8 +391,6 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
               : ssl_verify_invalid;
   }
 
-  ssl->verify_result = hs->new_session->verify_result;
-
   if (ret == ssl_verify_invalid) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
@@ -413,6 +411,8 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
       ret = ssl_verify_invalid;
     }
   }
+
+  ssl->verify_result = hs->new_session->verify_result;
 
   return ret;
 }
