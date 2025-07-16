@@ -50,21 +50,6 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
   return true;
 }
 
-static bool ParseArguments(const args_list_t &args,
-                           ordered_args::ordered_args_map_t &parsed_args,
-                           args_list_t &extra_args, std::string &out_path,
-                           bool &help) {
-  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
-                                                   args, kArguments)) {
-    return false;
-  }
-
-  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
-  ordered_args::GetString(&out_path, "-out", "", parsed_args);
-
-  return true;
-}
-
 static bssl::UniquePtr<RSA> GenerateRSAKey(unsigned bits) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
@@ -114,13 +99,17 @@ bool genrsaTool(const args_list_t &args) {
     }
   };
 
-  if (!ParseArguments(args, parsed_args, extra_args, out_path, help)) {
+  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
+                                                   args, kArguments)) {
     bio.reset(BIO_new_fp(stderr, BIO_NOCLOSE));
     if (bio) {
       DisplayHelp(bio.get());
     }
     return false;
   }
+
+  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
+  ordered_args::GetString(&out_path, "-out", "", parsed_args);
 
   // Simple validation that numbits is after all options
   // This works because ParseOrderedKeyValueArguments processes args in order
