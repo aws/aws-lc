@@ -11,79 +11,24 @@
 #include "internal.h"
 
 static const unsigned kDefaultKeySize = 2048;
+static const unsigned kMinKeySize = 1;
+static const char kKeyArgName[] = "key_size";
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display this summary"},
     {"-out", kOptionalArgument, "Output file to write the key to"},
     {"", kOptionalArgument, ""}};
 
-// Helper function to find an option in the kArguments array by name
-static const argument_t* FindOptionByName(const char* option_name) {
-  for (size_t i = 0; kArguments[i].name[0] != '\0' || i == 0; i++) {
-    if (strcmp(kArguments[i].name, option_name) == 0) {
-      return &kArguments[i];
-    }
-  }
-  return nullptr; // Return nullptr if option not found
-}
-
 static void DisplayHelp(BIO *bio) {
   BIO_printf(bio, "Usage: genrsa [options] numbits\n\n");
+  BIO_printf(bio, "Options:\n");
 
-  BIO_printf(bio, "General options:\n");
-  const argument_t* help_option = FindOptionByName("-help");
-  if (help_option) {
-    BIO_printf(bio, " -help               %s\n\n", help_option->description);
+  for (size_t i = 0; kArguments[i].name[0] != '\0'; i++) {
+    BIO_printf(bio, " %-20s %s\n", kArguments[i].name,
+               kArguments[i].description);
   }
-
-  BIO_printf(bio, "Output options:\n");
-  const argument_t* out_option = FindOptionByName("-out");
-  if (out_option) {
-    BIO_printf(bio, " -out outfile        %s\n\n", out_option->description);
-  }
-
-  BIO_printf(bio, "Parameters:\n");
-  BIO_printf(bio, " numbits             Size of key in bits (default: %u)\n",
+  BIO_printf(bio, "\n numbits  Size of key in bits (default: %u)\n",
              kDefaultKeySize);
-}
-
-static bool ValidateArgumentOrder(
-    const args_list_t &args,
-    const ordered_args::ordered_args_map_t &parsed_args,
-    const args_list_t &extra_args) {
-  if (extra_args.empty() || parsed_args.empty()) {
-    return true;
-  }
-
-  size_t numbits_pos = SIZE_MAX;
-  for (size_t i = 0; i < args.size(); i++) {
-    if (args[i] == extra_args[0]) {
-      numbits_pos = i;
-      break;
-    }
-  }
-
-  size_t last_option_pos = 0;
-  for (const auto &parsed_arg : parsed_args) {
-    for (size_t i = 0; i < args.size(); i++) {
-      if (args[i] == parsed_arg.first) {
-        size_t option_end_pos = i;
-        if (!parsed_arg.second.empty()) {
-          option_end_pos = i + 1;
-        }
-        last_option_pos = std::max(last_option_pos, option_end_pos);
-        break;
-      }
-    }
-  }
-
-  if (numbits_pos != SIZE_MAX && numbits_pos < last_option_pos) {
-    fprintf(stderr, "Error: Key size must be specified after all options\n");
-    fprintf(stderr, "Usage: genrsa [options] numbits\n");
-    return false;
-  }
-
-  return true;
 }
 
 static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
@@ -93,16 +38,15 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
     return true;
   }
 
-  const std::string &bits_str = extra_args[0];
-  char *endptr = nullptr;
-  unsigned long parsed_bits = strtoul(bits_str.c_str(), &endptr, 10);
+  ordered_args::ordered_args_map_t temp_args;
+  temp_args.push_back(std::make_pair(kKeyArgName, extra_args[0]));
 
-  if (*endptr != '\0' || parsed_bits == 0 || parsed_bits > UINT_MAX) {
-    fprintf(stderr, "Error: Invalid key size '%s'\n", bits_str.c_str());
+  if (!ordered_args::GetUnsigned(&bits, kKeyArgName, 0, temp_args) ||
+      bits < kMinKeySize) {
+    fprintf(stderr, "Error: Invalid key size '%s'\n", extra_args[0].c_str());
     return false;
   }
 
-  bits = static_cast<unsigned>(parsed_bits);
   return true;
 }
 
@@ -178,6 +122,24 @@ bool genrsaTool(const args_list_t &args) {
     return false;
   }
 
+  // Simple validation that numbits is after all options
+  // This works because ParseOrderedKeyValueArguments processes args in order
+  for (size_t i = 0; i < args.size(); i++) {
+    if (i < args.size() - 1 && !extra_args.empty() &&
+        args[i] == extra_args[0]) {
+      // Found the numbits argument, check if any options come after it
+      for (size_t j = i + 1; j < args.size(); j++) {
+        if (::IsFlag(args[j])) {
+          fprintf(stderr,
+                  "Error: Key size must be specified after all options\n");
+          fprintf(stderr, "Usage: genrsa [options] numbits\n");
+          return false;
+        }
+      }
+      break;
+    }
+  }
+
   if (help) {
     bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
     if (!bio) {
@@ -185,10 +147,6 @@ bool genrsaTool(const args_list_t &args) {
     }
     DisplayHelp(bio.get());
     return true;
-  }
-
-  if (!ValidateArgumentOrder(args, parsed_args, extra_args)) {
-    return false;
   }
 
   unsigned bits = 0;
