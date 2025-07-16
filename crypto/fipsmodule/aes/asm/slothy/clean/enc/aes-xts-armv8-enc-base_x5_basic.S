@@ -35,9 +35,22 @@
 
 .align  4
 
+#define STACK_SIZE_GPRS  (2*16)
+#define STACK_SIZE_VREGS (4*16)
+#define STACK_SIZE  (STACK_SIZE_GPRS + STACK_SIZE_VREGS)
 
-#define STACK_BASE_VREGS 0
-#define STACK_SIZE_VREGS (6*16)
+#define STACK_BASE_GPRS  (0)
+#define STACK_BASE_VREGS (STACK_SIZE_GPRS)
+
+.macro save_regs
+        stp  x19, x20, [sp, #(STACK_BASE_GPRS + 16*0)]
+     	stp  x21, x22, [sp, #(STACK_BASE_GPRS + 16*1)]
+.endm
+
+.macro restore_regs
+        ldp  x19, x20, [sp, #(STACK_BASE_GPRS + 16*0)]
+        ldp  x21, x22, [sp, #(STACK_BASE_GPRS + 16*1)]
+.endm
 
 .macro save_vregs
     	stp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
@@ -46,21 +59,11 @@
         stp d14, d15, [sp, #(STACK_BASE_VREGS + 16*3)]
 .endm
 
-.macro save_regs
-        stp  x19, x20, [sp, #(STACK_BASE_VREGS + 16*4)]
-     	stp  x21, x22, [sp, #(STACK_BASE_VREGS + 16*5)]
-.endm
-
 .macro restore_vregs
         ldp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
         ldp d10, d11, [sp, #(STACK_BASE_VREGS + 16*1)]
         ldp d12, d13, [sp, #(STACK_BASE_VREGS + 16*2)]
         ldp d14, d15, [sp, #(STACK_BASE_VREGS + 16*3)]
-.endm
-
-.macro restore_regs
-        ldp  x19, x20, [sp, #(STACK_BASE_VREGS + 16*4)]
-        ldp  x21, x22, [sp, #(STACK_BASE_VREGS + 16*5)]
 .endm
 
 // A single AES round
@@ -83,7 +86,7 @@ _aes_hw_slothy_xts_encrypt:
 aes_hw_slothy_xts_encrypt:
   # AARCH64_VALID_CALL_TARGET
 
-        sub sp, sp, #STACK_SIZE_VREGS
+        sub sp, sp, #STACK_SIZE
         save_vregs
         save_regs
 
@@ -666,7 +669,7 @@ Lxts_abort:
 
 Lxts_enc_final_abort:
         restore_vregs
-        add sp, sp, #STACK_SIZE_VREGS
+        add sp, sp, #STACK_SIZE
         ret
 
 #endif
