@@ -324,6 +324,12 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
+if(FIPS)
+  add_library(generated_err_data OBJECT err_data.c)
+  target_include_directories(generated_err_data PRIVATE ${PROJECT_SOURCE_DIR}/include)
+endif()
+
+
 set(CRYPTO_ARCH_OBJECTS "")
 if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
@@ -616,6 +622,7 @@ endfunction()
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
+  add_subdirectory(fips_hashing)
   if(MSVC)
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
@@ -653,6 +660,8 @@ if(FIPS_SHARED)
     endif()
 
     if(USE_CPP_INJECT_HASH)
+    # add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash_cpp 
+    #                   ${CMAKE_BINARY_DIR}/util/fipstools/inject_hash_cpp)
     # Add dependency on C++ implementation
     add_dependencies(crypto inject_hash_cpp)
     

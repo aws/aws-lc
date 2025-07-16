@@ -18,6 +18,7 @@ if(USE_CPP_INJECT_HASH)
 
     target_link_libraries(inject_hash_cpp PRIVATE
         LIEF::LIEF
+        fips_hashing
     )
 
     set_target_properties(inject_hash_cpp PROPERTIES
