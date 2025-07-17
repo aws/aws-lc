@@ -73,6 +73,22 @@ ls -la ${SRC}
 echo "Remove temporary artifacts ..."
 rm -rf ${TMP}
 
+echo "Adding ASM prefix header include to _internal_s2n_bignum.h ..."
+INTERNAL_HEADER="${SRC}/include/_internal_s2n_bignum.h"
+if [ ! -f "${INTERNAL_HEADER}" ]; then
+  echo "Error: ${INTERNAL_HEADER} not found"
+  exit 1
+fi
+
+# Create a temporary file with the prefix include at the top
+TEMP_FILE=$(mktemp)
+echo '// Auto-added during import for AWS-LC symbol prefixing support' > "${TEMP_FILE}"
+echo '#include <openssl/boringssl_prefix_symbols_asm.h>' >> "${TEMP_FILE}"
+echo '' >> "${TEMP_FILE}"
+cat "${INTERNAL_HEADER}" >> "${TEMP_FILE}"
+mv "${TEMP_FILE}" "${INTERNAL_HEADER}"
+echo "Added ASM prefix header include to ${INTERNAL_HEADER}"
+
 echo "Generating META.yml file ..."
 cat <<EOF > META.yml
 name: ${SRC}

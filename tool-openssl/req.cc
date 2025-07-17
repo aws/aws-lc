@@ -480,7 +480,7 @@ bool reqTool(const args_list_t &args) {
 
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   if (!new_flag && !x509_flag && newkey.empty()) {

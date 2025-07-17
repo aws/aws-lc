@@ -4475,6 +4475,38 @@ OPENSSL_EXPORT size_t SSL_get_key_block_len(const SSL *ssl);
 OPENSSL_EXPORT int SSL_generate_key_block(const SSL *ssl, uint8_t *out,
                                           size_t out_len);
 
+// SSL_get_read_traffic_secret retrives |ssl|'s read traffic key for the current
+// connection state. This is only valid for TLS 1.3 connections. It is an error
+// to call this function during a handshake, or if |ssl| was negotiated with
+// TLS 1.2 or lower.
+//
+// If |secret| is NULL then |*out_len| is
+// set to the maximum number of output bytes. Otherwise, on entry,
+// |*out_len| must contain the length of the |secret| buffer. If the call
+// is successful, the read traffic secret is written to |secret| and |*out_len|
+// is set to its length.
+//
+// It returns one on success, or zero on error.
+OPENSSL_EXPORT int SSL_get_read_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len);
+
+// SSL_get_write_traffic_secret retrieves |ssl|'s write traffic key for the
+// current connection state. This is only valid for TLS 1.3 connections. It is
+// an error to call this function during a handshake, or if |ssl| was negotiated
+// with TLS 1.2 or lower.
+//
+// If |secret| is NULL then |*out_len| is
+// set to the maximum number of output bytes. Otherwise, on entry,
+// |*out_len| must contain the length of the |secret| buffer. If the call
+// is successful, the write traffic secret is written to |secret| and |*out_len|
+// is set to its length.
+//
+// It returns one on success, or zero on error.
+OPENSSL_EXPORT int SSL_get_write_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len);
+
 // SSL_get_read_sequence returns, in TLS, the expected sequence number of the
 // next incoming record in the current epoch. In DTLS, it returns the maximum
 // sequence number received in the current epoch and includes the epoch number
@@ -5890,6 +5922,11 @@ struct ssl_comp_st {
 
 DEFINE_STACK_OF(SSL_COMP)
 
+// PHA No-ops [Deprecated].
+
+// SSL_verify_client_post_handshake is a no-op function for compatibility with
+// OpenSSL. It always returns 0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_verify_client_post_handshake(SSL *ssl);
 
 // FFDH Ciphersuite No-ops [Deprecated].
 //
@@ -6068,7 +6105,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB doesnt_exist
+#define SSL_CTRL_GET_TLSEXT_STATUS_REQ_TYPE doesnt_exist
 #define SSL_CTRL_GET_TLSEXT_TICKET_KEYS doesnt_exist
 #define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_MODE doesnt_exist
@@ -6091,6 +6128,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_DH doesnt_exist

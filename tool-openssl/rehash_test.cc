@@ -175,7 +175,7 @@ TEST_F(RehashTest, EntryCollision) {
 TEST_F(RehashTest, RehashHelp) {
   args_list_t args = {"-help"};
   bool result = RehashTool(args);
-  ASSERT_FALSE(result);
+  ASSERT_TRUE(result);
 }
 
 TEST_F(RehashTest, InvalidDirectory) {

@@ -67,19 +67,6 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
-#if defined(OPENSSL_WINDOWS)
-// Due to name conflicts, we must prevent "wincrypt.h" from being included
-#define NOCRYPT
-#include <winsock2.h>
-#include <ws2ipdef.h>
-#undef NOCRYPT
-#else
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -714,6 +701,26 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 #endif  // !OPENSSL_NO_SOCK
 
 
+// Message digest BIOs
+
+// BIO_f_md provides a filter |BIO| that digests any data passed through it.
+// The BIO must be initialized with |BIO_set_md| or |BIO_get_md_ctx| before it
+// can be used.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
+
+// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|. It returns
+// one on success and zero on error.
+OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
+
+// BIO_set_md set's |b|'s EVP_MD* to |md|. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
+
+// BIO_get_md set's |*md| to |b|'s |EVP_MD*|. It returns one on success and zero
+// on error.
+OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
+
+
 // Datagram BIOs.
 
 #define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
@@ -779,11 +786,6 @@ OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUS
 // BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
 // It returns 1 on success and a non-positive value on error.
 OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
-
-// BIO_dgram_get_mtu_overhead returns the number of bytes of overhead when sending
-// a datagram of the maximum size through |bp| to the specified |peer| address.
-// This is used for PMTU discovery in DTLS.
-OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ADDR_new allocates and initializes a new BIO_ADDR structure.
 // Returns the new BIO_ADDR structure on success, NULL on error.

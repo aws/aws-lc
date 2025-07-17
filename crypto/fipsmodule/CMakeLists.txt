@@ -293,14 +293,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     )
   endif()
 
-  if(BORINGSSL_PREFIX)
-    # s2n-bignum is third-party code and therefore doesn't have an explicit
-    # definition of symbol prefixes under the prefix build. Inject prefix
-    # definitions instead. One could set this property for just the s2n-bignum
-    # source. But for simplicity, do it for all. The pre-processor will remove
-    # any duplicate header files.
-    set_source_files_properties(${BCM_ASM_SOURCES} PROPERTIES COMPILE_FLAGS "--include=\"${AWSLC_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h\"")
-  endif()
 endif()
 
 if(FIPS_DELOCATE)

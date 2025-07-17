@@ -68,6 +68,7 @@ function python_run_tests() {
         test_audit \
         test_ftplib \
         test_hashlib \
+        test_hmac \
         test_httplib \
         test_imaplib \
         test_logging \
@@ -206,9 +207,18 @@ cd ${SCRATCH_FOLDER}
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
+# Link AWS-LC dynamically against CPython's main, statically against
+# versioned releases.
+if [[ "${1}" == "main" ]]; then
+    BUILD_SHARED_LIBS="ON"
+    export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
+else
+    BUILD_SHARED_LIBS="OFF"
+fi
+
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
-    -DBUILD_SHARED_LIBS=0 \
+    -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS} \
     -DFIPS=${FIPS}
 
 fetch_crt_python
@@ -219,6 +229,8 @@ pushd ${PYTHON_SRC_FOLDER}
 # Some environments disable IPv6 by default
 which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
+
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 # NOTE: As we add more versions to support, we may want to parallelize here
 for branch in "$@"; do
