@@ -696,6 +696,7 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
     EXPECT_EQ(SSL_CIPHER_get_id(cipher),
               uint32_t{TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256});
     EXPECT_EQ(SSL_get_group_id(client.get()), SSL_GROUP_X25519);
+    EXPECT_EQ(SSL_get_negotiated_group(client.get()), NID_X25519);
     EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
               SSL_SIGN_RSA_PKCS1_SHA256);
 
