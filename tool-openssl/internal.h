@@ -5,8 +5,8 @@
 #define TOOL_OPENSSL_INTERNAL_H
 
 #include <openssl/digest.h>
-#include <memory>
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,13 +24,40 @@ struct Tool {
 
 bool IsNumeric(const std::string &str);
 
-X509* CreateAndSignX509Certificate();
-X509_CRL* createTestCRL();
+X509 *CreateAndSignX509Certificate();
+X509_CRL *createTestCRL();
 bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
+
+// Password handling namespace
+namespace password {
+// Custom deleter for sensitive strings that clears memory before deletion
+// This ensures passwords are securely removed from memory when no longer needed
+void SensitiveStringDeleter(std::string *str);
+
+// Handles both passin and passout options, with optimization for when the same source is used
+// for both. Either passin_arg or passout_arg can be nullptr if only one password is needed.
+// Returns true on success, false on failure.
+bool HandlePassOptions(bssl::UniquePtr<std::string> *passin_arg,
+                      bssl::UniquePtr<std::string> *passout_arg);
+
+// Extracts password from various sources (direct input, file, environment)
+// Takes a secure string as input and returns a secure string with the extracted
+// password. Supports formats:
+// - pass:password (direct password)
+// - file:/path/to/file (password from file)
+// - env:VAR_NAME (password from environment variable)
+bssl::UniquePtr<std::string> ExtractPassword(
+    const bssl::UniquePtr<std::string> &source);
+}  // namespace password
+
+// Custom deleter used for -passin -passout options
+BSSL_NAMESPACE_BEGIN
+BORINGSSL_MAKE_DELETER(std::string, password::SensitiveStringDeleter)
+BSSL_NAMESPACE_END
 
 bool LoadPrivateKeyAndSignCertificate(X509 *x509,
                                       const std::string &signkey_path);
-EVP_PKEY* CreateTestKey(int key_bits);
+EVP_PKEY *CreateTestKey(int key_bits);
 
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
