@@ -238,6 +238,10 @@ mechanism is ignored.
 Snapshots taken on active hosts can potentially be unsafe to use.
 See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
 
+# FIPS Mode
+
+For more details on building AWS-LC in FIPS mode, see the [crypto/fipsmodule/FIPS.md](crypto/fipsmodule/FIPS.md).
+
 # Data Independent Timing on AArch64
 
 The functions described in this section are still experimental.

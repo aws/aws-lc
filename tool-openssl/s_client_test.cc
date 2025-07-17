@@ -23,7 +23,7 @@ TEST(SClientTest, SClientNoConnect) {
 TEST(SClientTest, SClientHelp) {
   args_list_t args = {"-help"};
   bool result = SClientTool(args);
-  ASSERT_FALSE(result);
+  ASSERT_TRUE(result);
 }
 
 // Test -connect, -verify, -showcerts

@@ -14,6 +14,14 @@ NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entro
 
 1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
 
+## Platform Limitations
+
+When building AWS-LC in FIPS mode, please be aware of the following platform limitations:
+
+- Static FIPS builds are only supported on Linux platforms
+- Shared library FIPS builds are supported on both Linux and Windows
+- Windows Debug builds are not supported with FIPS
+
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
@@ -180,4 +188,3 @@ Initially the known-good value will be incorrect. Another script (`inject_hash.g
 The utility in `util/fipstools/break-hash.go` can be used to corrupt the FIPS module inside a binary and thus trigger a failure of the integrity test. Note that the binary must not be stripped, otherwise the utility will not be able to find the FIPS module.
 
 ![build process](./intcheck2.png)
-

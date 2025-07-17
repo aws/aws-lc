@@ -7,6 +7,7 @@ from cdk.aws_lc_analytics_stack import AwsLcGitHubAnalyticsStack
 from cdk.aws_lc_android_ci_stack import AwsLcAndroidCIStack
 from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
+from cdk.aws_lc_github_ci_x509_stack import AwsLcGitHubX509CIStack
 from cdk.aws_lc_github_fuzz_ci_stack import AwsLcGitHubFuzzCIStack
 
 
@@ -96,4 +97,12 @@ def add_ci_stacks(
         env=env,
         ignore_failure=False,
         stack_name="aws-lc-ci-windows-x86",
+    )
+
+    AwsLcGitHubX509CIStack(
+        scope,
+        "aws-lc-ci-x509",
+        env=env,
+        ignore_failure=True,
+        stack_name="aws-lc-ci-x509",
     )
