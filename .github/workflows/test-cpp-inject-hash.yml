@@ -2,7 +2,7 @@ name: Test C++ inject_hash Implementation
 
 on:
   push:
-    branches: [ hmac_and_sha_func ]
+    branches: [ hmac_sha_implementation ]
   pull_request:
     branches: [ inject-hash-cpp-experiment ]
 
