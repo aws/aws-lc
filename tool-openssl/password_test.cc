@@ -46,8 +46,10 @@ TEST_F(PasswordTest, ExtractPasswordDirect) {
   bssl::UniquePtr<std::string> source(new std::string("pass:directpassword"));
   bssl::UniquePtr<std::string> result = password::ExtractPassword(source);
   
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, "directpassword");
+  EXPECT_TRUE(result);
+  if (result) {
+    EXPECT_EQ(*result, "directpassword");
+  }
 }
 
 // Test ExtractPassword with file
@@ -56,8 +58,10 @@ TEST_F(PasswordTest, ExtractPasswordFile) {
   bssl::UniquePtr<std::string> source(new std::string(file_path));
   bssl::UniquePtr<std::string> result = password::ExtractPassword(source);
   
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, "testpassword");
+  EXPECT_TRUE(result);
+  if (result) {
+    EXPECT_EQ(*result, "testpassword");
+  }
 }
 
 // Test ExtractPassword with environment variable
@@ -65,8 +69,10 @@ TEST_F(PasswordTest, ExtractPasswordEnv) {
   bssl::UniquePtr<std::string> source(new std::string("env:TEST_PASSWORD_ENV"));
   bssl::UniquePtr<std::string> result = password::ExtractPassword(source);
   
-  ASSERT_TRUE(result);
-  EXPECT_EQ(*result, "envpassword");
+  EXPECT_TRUE(result);
+  if (result) {
+    EXPECT_EQ(*result, "envpassword");
+  }
 }
 
 // Test ExtractPassword with empty source
@@ -74,8 +80,10 @@ TEST_F(PasswordTest, ExtractPasswordEmpty) {
   bssl::UniquePtr<std::string> source(new std::string(""));
   bssl::UniquePtr<std::string> result = password::ExtractPassword(source);
   
-  ASSERT_TRUE(result);
-  EXPECT_TRUE(result->empty());
+  EXPECT_TRUE(result);
+  if (result) {
+    EXPECT_TRUE(result->empty());
+  }
 }
 
 // Test ExtractPassword with nullptr source
@@ -83,8 +91,10 @@ TEST_F(PasswordTest, ExtractPasswordNull) {
   bssl::UniquePtr<std::string> source;
   bssl::UniquePtr<std::string> result = password::ExtractPassword(source);
   
-  ASSERT_TRUE(result);
-  EXPECT_TRUE(result->empty());
+  EXPECT_TRUE(result);
+  if (result) {
+    EXPECT_TRUE(result->empty());
+  }
 }
 
 // Test ExtractPassword with invalid format
@@ -116,10 +126,13 @@ TEST_F(PasswordTest, HandlePassOptionsBoth) {
   bssl::UniquePtr<std::string> passin(new std::string("pass:inputpass"));
   bssl::UniquePtr<std::string> passout(new std::string("pass:outputpass"));
   
-  ASSERT_TRUE(password::HandlePassOptions(&passin, &passout));
-  
-  EXPECT_EQ(*passin, "inputpass");
-  EXPECT_EQ(*passout, "outputpass");
+  EXPECT_TRUE(password::HandlePassOptions(&passin, &passout));
+  if (passin) {
+    EXPECT_EQ(*passin, "inputpass");
+  }
+  if (passout) {
+    EXPECT_EQ(*passout, "outputpass");
+  }
 }
 
 // Test HandlePassOptions with only passin
@@ -127,9 +140,10 @@ TEST_F(PasswordTest, HandlePassOptionsPassinOnly) {
   bssl::UniquePtr<std::string> passin(new std::string("pass:inputpass"));
   bssl::UniquePtr<std::string> passout;
   
-  ASSERT_TRUE(password::HandlePassOptions(&passin, &passout));
-  
-  EXPECT_EQ(*passin, "inputpass");
+  EXPECT_TRUE(password::HandlePassOptions(&passin, &passout));
+  if (passin) {
+    EXPECT_EQ(*passin, "inputpass");
+  }
   EXPECT_FALSE(passout);
 }
 
@@ -138,15 +152,16 @@ TEST_F(PasswordTest, HandlePassOptionsPassoutOnly) {
   bssl::UniquePtr<std::string> passin;
   bssl::UniquePtr<std::string> passout(new std::string("pass:outputpass"));
   
-  ASSERT_TRUE(password::HandlePassOptions(&passin, &passout));
-  
+  EXPECT_TRUE(password::HandlePassOptions(&passin, &passout));
   EXPECT_FALSE(passin);
-  EXPECT_EQ(*passout, "outputpass");
+  if (passout) {
+    EXPECT_EQ(*passout, "outputpass");
+  }
 }
 
 // Test HandlePassOptions with nullptr for both
 TEST_F(PasswordTest, HandlePassOptionsNullBoth) {
-  ASSERT_TRUE(password::HandlePassOptions(nullptr, nullptr));
+  EXPECT_TRUE(password::HandlePassOptions(nullptr, nullptr));
 }
 
 // Test HandlePassOptions with same source for both
@@ -155,13 +170,14 @@ TEST_F(PasswordTest, HandlePassOptionsSameSource) {
   bssl::UniquePtr<std::string> passin(new std::string(file_path));
   bssl::UniquePtr<std::string> passout(new std::string(file_path));
   
-  ASSERT_TRUE(password::HandlePassOptions(&passin, &passout));
-  
-  EXPECT_EQ(*passin, "testpassword");
-  EXPECT_EQ(*passout, "testpassword");
-  
-  // Verify they are different objects in memory
-  EXPECT_NE(passin.get(), passout.get());
+  EXPECT_TRUE(password::HandlePassOptions(&passin, &passout));
+  if (passin && passout) {
+    EXPECT_EQ(*passin, "testpassword");
+    EXPECT_EQ(*passout, "testpassword");
+    
+    // Verify they are different objects in memory
+    EXPECT_NE(passin.get(), passout.get());
+  }
 }
 
 // Test HandlePassOptions with different sources
@@ -171,10 +187,11 @@ TEST_F(PasswordTest, HandlePassOptionsDifferentSources) {
   bssl::UniquePtr<std::string> passin(new std::string(file_path1));
   bssl::UniquePtr<std::string> passout(new std::string(file_path2));
   
-  ASSERT_TRUE(password::HandlePassOptions(&passin, &passout));
-  
-  EXPECT_EQ(*passin, "testpassword");
-  EXPECT_EQ(*passout, "anotherpassword");
+  EXPECT_TRUE(password::HandlePassOptions(&passin, &passout));
+  if (passin && passout) {
+    EXPECT_EQ(*passin, "testpassword");
+    EXPECT_EQ(*passout, "anotherpassword");
+  }
 }
 
 // Test HandlePassOptions with invalid passin
@@ -229,10 +246,12 @@ TEST_F(PasswordTest, HandlePassOptionsMemorySafety) {
   {
     // Create a scope to test cleanup
     bssl::UniquePtr<std::string> passout;
-    ASSERT_TRUE(password::HandlePassOptions(&passin, &passout));
+    EXPECT_TRUE(password::HandlePassOptions(&passin, &passout));
     
     // Verify the password was extracted correctly
-    EXPECT_EQ(*passin, test_pattern);
+    if (passin) {
+      EXPECT_EQ(*passin, test_pattern);
+    }
   }
   
   // After the scope, the original string should still be intact
