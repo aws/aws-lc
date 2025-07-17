@@ -19,8 +19,6 @@ if(FIPS)
   )
 
   SET_TARGET_PROPERTIES(fips_hashing PROPERTIES LINKER_LANGUAGE C)
-  target_include_directories(fips_hashing PUBLIC 
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  )
+  target_include_directories(fips_hashing PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 endif()
 

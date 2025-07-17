@@ -183,10 +183,6 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
   out->ctrl_str = hmac_ctrl_str;
 }
 
-int used_for_hmac(EVP_MD_CTX *ctx) {
-  return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
-}
-
 HMAC_KEY *HMAC_KEY_new(void) {
   HMAC_KEY *key = OPENSSL_zalloc(sizeof(HMAC_KEY));
   if (key == NULL) {

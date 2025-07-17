@@ -39,11 +39,24 @@ fi
 echo "Building inject_hash_cpp..."
 ninja inject_hash_cpp
 
-# Test inject_hash_cpp basic functionality
-echo "Testing inject_hash_cpp basic functionality..."
-./util/fipstools/inject_hash_cpp/inject_hash_cpp --version || echo "Version check failed"
-./util/fipstools/inject_hash_cpp/inject_hash_cpp --help || echo "Help check failed"
+# Test 1: Check if executable runs
+echo "Test 1: Basic execution"
+if ./util/fipstools/inject_hash_cpp/inject_hash_cpp; then
+    echo "Should have failed without arguments"
+else
+    echo "Correctly failed without arguments"
+fi
 
+# Test 2: Check -in-object parameter
+echo "Test 2: Testing with test file"
+touch test.bin
+if ./util/fipstools/inject_hash_cpp/inject_hash_cpp -in-object test.bin; then
+    echo "Successfully processed test file"
+else
+    echo "Failed to process test file"
+fi
+
+echo "=== Tests Complete ==="
 # Build everything
 echo "Building full project..."
 ninja

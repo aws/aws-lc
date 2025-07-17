@@ -2,17 +2,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <openssl/hmac.h>    // This already has HMAC function declarations
-#include <openssl/evp.h>     // This has EVP_MD and related declarations
-
-// extern "C" {
-//     // Declare functions we're getting from fips_hashing
-//     int HMAC_Init(HMAC_CTX *ctx, const void *key, size_t len, const EVP_MD *md);
-//     int HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, size_t len);
-//     int HMAC_Final(HMAC_CTX *ctx, unsigned char *out, unsigned int *len);
-//     size_t HMAC_size(const HMAC_CTX *ctx);
-//     const EVP_MD *EVP_sha256(void);
-// }
+#include <openssl/hmac.h>  
+#include <openssl/digest.h>
+#include <openssl/sha.h>
 
 int main(int argc, char** argv) {
     std::cout << "\n=== C++ inject_hash starting ===" << std::endl;
@@ -40,10 +32,8 @@ int main(int argc, char** argv) {
         std::cerr << "LIEF parser failed to load: " << binary_path << std::endl;
         return 1;
                 }
-
-
-
-
+    std::cout << "LIEF parser loaded successfully" << std::endl;
+    
     uint8_t zero_key[64] = {0};
     HMAC_CTX ctx;
 
@@ -66,11 +56,6 @@ int main(int argc, char** argv) {
         printf("%02x", calculate_hash[i]);
     } 
     std::cout << std::endl;     
-
-    std::cout << "\nReceived arguments:" << std::endl;
-    for (int i = 1; i < argc; i++) {
-        std::cout << "  Arg " << i << ": " << argv[i] << std::endl;
-    }
 
     std::cout << "=== C++ inject_hash completed ===" << std::endl;
     return 0;
