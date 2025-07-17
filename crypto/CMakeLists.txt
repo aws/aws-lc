@@ -324,6 +324,12 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
+if(FIPS)
+  add_library(generated_err_data OBJECT err_data.c)
+  target_include_directories(generated_err_data PRIVATE ${PROJECT_SOURCE_DIR}/include)
+endif()
+
+
 set(CRYPTO_ARCH_OBJECTS "")
 if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
@@ -616,6 +622,7 @@ endfunction()
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
+  add_subdirectory(fips_hashing)
   if(MSVC)
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
@@ -652,6 +659,22 @@ if(FIPS_SHARED)
       set(INJECT_HASH_APPLE_FLAG "-apple")
     endif()
 
+    if(USE_CPP_INJECT_HASH)
+    # add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash_cpp 
+    #                   ${CMAKE_BINARY_DIR}/util/fipstools/inject_hash_cpp)
+    # Add dependency on C++ implementation
+    add_dependencies(crypto inject_hash_cpp)
+    
+    # C++ implementation for hash injection
+    add_custom_command(
+      TARGET crypto POST_BUILD
+      COMMAND ${CMAKE_BINARY_DIR}/util/fipstools/inject_hash_cpp/inject_hash_cpp
+      -o $<TARGET_FILE:crypto>
+      -in-object $<TARGET_FILE:crypto>
+      ${INJECT_HASH_APPLE_FLAG}
+      WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+    )
+  else()
     add_custom_command(
       TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
@@ -659,7 +682,7 @@ if(FIPS_SHARED)
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
-
+    endif()
     # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
     # binaries to run. This applies to both executables and dylibs. An ad-hoc
     # signature is sufficient, and the linker will automatically apply one when
