@@ -37,7 +37,7 @@ bool rsaTool(const args_list_t &args) {
   // Display rsa tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   // Check for required option -in

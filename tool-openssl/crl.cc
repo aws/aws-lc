@@ -36,7 +36,7 @@ bool CRLTool(const args_list_t &args) {
   // Display crl tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   // Read from stdin if no -in path provided
