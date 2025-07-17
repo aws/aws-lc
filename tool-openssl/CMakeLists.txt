@@ -90,6 +90,7 @@ if(BUILD_TESTING)
         dgst.cc
         dgst_test.cc
         password.cc
+        password_test.cc
         pkcs8.cc
         pkcs8_test.cc
         pkey.cc
