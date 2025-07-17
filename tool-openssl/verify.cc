@@ -185,7 +185,7 @@ bool VerifyTool(const args_list_t &args) {
             "If no files are specified, the tool will read from stdin.\n\n"
             "Valid options are:\n");
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   std::string cafile = parsed_args["-CAfile"];

@@ -44,16 +44,12 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
   return true;
 }
 
-static bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
-  if (a.size() != b.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < a.size(); ++i) {
-    if (::toupper(a[i]) != ::toupper(b[i])) {
-      return false;
-    }
-  }
-  return true;
+static bool isCharUpperCaseEqual(char a, char b) {
+  return ::toupper(a) ==  ::toupper(b);
+}
+
+bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
+  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
 }
 
 bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path) {
@@ -256,7 +252,7 @@ bool X509Tool(const args_list_t &args) {
   // Display x509 tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
