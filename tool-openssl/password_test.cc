@@ -6,6 +6,9 @@
 #include <openssl/mem.h>
 #include <openssl/bio.h>
 #include <string>
+#ifdef _WIN32
+#include <stdlib.h>  // for _putenv_s
+#endif
 #include "internal.h"
 #include "test_util.h"
 
@@ -28,13 +31,25 @@ protected:
     BIO_flush(pass_bio2.get());
     
     // Set up environment variable for testing
+#ifdef _WIN32
+    // Windows version
+    _putenv_s("TEST_PASSWORD_ENV", "envpassword");
+#else
+    // POSIX version
     setenv("TEST_PASSWORD_ENV", "envpassword", 1);
+#endif
   }
   
   void TearDown() override {
     RemoveFile(pass_path);
     RemoveFile(pass_path2);
+#ifdef _WIN32
+    // Windows version - setting to empty string removes the variable
+    _putenv_s("TEST_PASSWORD_ENV", "");
+#else
+    // POSIX version
     unsetenv("TEST_PASSWORD_ENV");
+#endif
   }
   
   char pass_path[PATH_MAX] = {};
