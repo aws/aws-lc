@@ -681,3 +681,7 @@ int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
   HMAC_CTX_init(dest);
   return HMAC_CTX_copy_ex(dest, src);
 }
+
+int used_for_hmac(EVP_MD_CTX *ctx) {
+  return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
+}
