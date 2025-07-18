@@ -473,6 +473,7 @@ $L$SEH_info_gcm_gmult_ssse3_0:
 	DB	$L$SEH_prolog_gcm_gmult_ssse3_2-$L$SEH_begin_gcm_gmult_ssse3_1
 	DB	66
 
+ALIGN	4
 $L$SEH_info_gcm_ghash_ssse3_0:
 	DB	1
 	DB	$L$SEH_prolog_gcm_ghash_ssse3_5-$L$SEH_begin_gcm_ghash_ssse3_1
