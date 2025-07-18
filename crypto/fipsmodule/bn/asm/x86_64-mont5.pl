@@ -3746,17 +3746,17 @@ $code.=<<___;
 	.rva	.LSEH_info_bn_gather5
 
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_bn_mul_mont_gather5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_body,.Lmul_epilogue		# HandlerData[]
-.align	8
+.align	4
 .LSEH_info_bn_mul4x_mont_gather5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul4x_prologue,.Lmul4x_body,.Lmul4x_epilogue		# HandlerData[]
-.align	8
+.align	4
 .LSEH_info_bn_power5:
 	.byte	9,0,0,0
 	.rva	mul_handler
@@ -3764,12 +3764,12 @@ $code.=<<___;
 ___
 $code.=<<___ if ($addx);
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-.align	8
+.align	4
 .LSEH_info_bn_mulx4x_mont_gather5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmulx4x_prologue,.Lmulx4x_body,.Lmulx4x_epilogue	# HandlerData[]
-.align	8
+.align	4
 .LSEH_info_bn_powerx5:
 	.byte	9,0,0,0
 	.rva	mul_handler
@@ -3777,12 +3777,12 @@ $code.=<<___ if ($addx);
 #endif
 ___
 $code.=<<___;
-.align	8
+.align	4
 .LSEH_info_bn_gather5:
 	.byte	0x01,0x0b,0x03,0x0a
 	.byte	0x0b,0x01,0x21,0x00	# sub	rsp,0x108
 	.byte	0x04,0xa3,0x00,0x00	# lea	r10,(rsp)
-.align	8
+.align	4
 ___
 }
 

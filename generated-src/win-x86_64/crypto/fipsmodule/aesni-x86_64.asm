@@ -3702,19 +3702,22 @@ ALIGN	4
 	DD	aes_hw_set_encrypt_key wrt ..imagebase
 	DD	$L$SEH_end_set_encrypt_key wrt ..imagebase
 	DD	$L$SEH_info_key wrt ..imagebase
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_ecb:
 	DB	9,0,0,0
 	DD	ecb_ccm64_se_handler wrt ..imagebase
 	DD	$L$ecb_enc_body wrt ..imagebase,$L$ecb_enc_ret wrt ..imagebase
+ALIGN	4
 $L$SEH_info_ctr32:
 	DB	9,0,0,0
 	DD	ctr_xts_se_handler wrt ..imagebase
 	DD	$L$ctr32_body wrt ..imagebase,$L$ctr32_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_cbc:
 	DB	9,0,0,0
 	DD	cbc_se_handler wrt ..imagebase
+ALIGN	4
 $L$SEH_info_key:
 	DB	0x01,0x04,0x01,0x00
 	DB	0x04,0x02,0x00,0x00

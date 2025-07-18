@@ -1888,21 +1888,24 @@ ALIGN	4
 	DD	$L$SEH_begin_ChaCha20_ctr32_avx2 wrt ..imagebase
 	DD	$L$SEH_end_ChaCha20_ctr32_avx2 wrt ..imagebase
 	DD	$L$SEH_info_ChaCha20_ctr32_avx2 wrt ..imagebase
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_ChaCha20_ctr32_nohw:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 
+ALIGN	4
 $L$SEH_info_ChaCha20_ctr32_ssse3:
 	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$ssse3_body wrt ..imagebase,$L$ssse3_epilogue wrt ..imagebase
 
+ALIGN	4
 $L$SEH_info_ChaCha20_ctr32_ssse3_4x:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$4x_body wrt ..imagebase,$L$4x_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_ChaCha20_ctr32_avx2:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase

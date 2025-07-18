@@ -790,8 +790,8 @@ ALIGN	4
 	DD	$L$SEH_end_md5_block_asm_data_order wrt ..imagebase
 	DD	$L$SEH_info_md5_block_asm_data_order wrt ..imagebase
 
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_md5_block_asm_data_order:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase

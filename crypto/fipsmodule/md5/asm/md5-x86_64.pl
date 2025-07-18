@@ -375,7 +375,7 @@ se_handler:
 	.rva	.LSEH_info_md5_block_asm_data_order
 
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_md5_block_asm_data_order:
 	.byte	9,0,0,0
 	.rva	se_handler

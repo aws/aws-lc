@@ -665,11 +665,12 @@ rsaz_def_handler:
     .rva    .LSEH_info_rsaz_amm52x20_x2_ifma256
 
 .section    .xdata
-.align  8
+.align  4
 .LSEH_info_rsaz_amm52x20_x1_ifma256:
     .byte   9,0,0,0
     .rva    rsaz_def_handler
     .rva    .Lrsaz_amm52x20_x1_ifma256_body,.Lrsaz_amm52x20_x1_ifma256_epilogue
+.align	4
 .LSEH_info_rsaz_amm52x20_x2_ifma256:
     .byte   9,0,0,0
     .rva    rsaz_def_handler
