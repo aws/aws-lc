@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Keep parity with the upstream tags at https://hub.docker.com/_/microsoft-windows-servercore
-FROM aws-lc/windows_base:2019
+FROM aws-lc/windows-2022:base
 
 SHELL ["cmd", "/S", "/C"]
 RUN `

@@ -81,6 +81,7 @@ if(BUILD_TESTING)
     ../crypto/test/file_util.cc
     span_test.cc
     ssl_test.cc
+    ssl_client_hello_test.cc
     ssl_c_test.c
     ssl_key_share_test.cc
     ssl_alps_test.cc

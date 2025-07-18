@@ -1099,6 +1099,62 @@ SSL_get0_peer_verify_algorithms(const SSL *ssl, const uint16_t **out_sigalgs);
 OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
     const SSL *ssl, const uint16_t **out_sigalgs);
 
+// SSL_CLIENT_HELLO_SUCCESS indicates that the ClientHello processing was
+// successful. The handshake will continue normally.
+# define SSL_CLIENT_HELLO_SUCCESS 1
+// SSL_CLIENT_HELLO_ERROR indicates that a fatal error occurred while processing
+// the ClientHello. The callback should set |*al| to a TLS alert value to return
+// to the client. The handshake will be aborted.
+# define SSL_CLIENT_HELLO_ERROR   0
+// SSL_CLIENT_HELLO_RETRY indicates that the handshake should be paused and the
+// server should retry when it can continue.
+//
+// WARNING: The current implementation does not properly support
+// SSL_CLIENT_HELLO_RETRY and attempting to use it will result in handshake
+// failure.
+# define SSL_CLIENT_HELLO_RETRY   (-1)
+
+// SSL_client_hello_cb_fn is a callback function that is called when a ClientHello
+// is received. The callback may inspect the ClientHello and make decisions 
+// about the connection based on its contents.
+//
+// The callback should return one of:
+// - SSL_CLIENT_HELLO_SUCCESS to continue the handshake
+// - SSL_CLIENT_HELLO_ERROR to abort the handshake with alert |*al|
+// - SSL_CLIENT_HELLO_RETRY (not supported) is handled like SSL_CLIENT_HELLO_ERROR
+typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
+
+// SSL_CTX_set_client_hello_cb configures a callback that is called when a
+// ClientHello message is received. This can be used to select certificates,
+// adjust settings, or otherwise make decisions about the connection before
+// the handshake proceeds.
+//
+// The callback is invoked before most ClientHello processing and before the
+// decision whether to resume a session is made. It may inspect the ClientHello
+// and configure the connection accordingly.
+//
+// The callback function is passed the |SSL| object, a pointer to an alert value,
+// and the argument provided when the callback was set. It should return either
+// SSL_CLIENT_HELLO_SUCCESS, SSL_CLIENT_HELLO_ERROR, or SSL_CLIENT_HELLO_RETRY.
+// Note that SSL_CLIENT_HELLO_RETRY is not fully supported; it is treated the
+// same as SSL_CLIENT_HELLO_ERROR.
+OPENSSL_EXPORT void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
+                                 void *arg);
+
+// SSL_client_hello_isv2 always returns zero as SSLv2 is not supported.
+OPENSSL_EXPORT int SSL_client_hello_isv2(SSL *s);
+
+// SSL_client_hello_get0_ext searches the extensions in the ClientHello for an
+// extension of the given type. If found, it sets |*out| to point to the
+// extension contents (not including the type and length bytes) and |*outlen|
+// to the length of the extension contents. If not found, it returns zero.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen);
+
 // SSL_certs_clear resets the private key, leaf certificate, and certificate
 // chain of |ssl|.
 OPENSSL_EXPORT void SSL_certs_clear(SSL *ssl);
