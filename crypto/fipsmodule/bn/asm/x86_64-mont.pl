@@ -1540,20 +1540,22 @@ $code.=<<___ if ($addx);
 ___
 $code.=<<___;
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_bn_mul_mont_nohw:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_epilogue	# HandlerData[]
+.align	4
 .LSEH_info_bn_mul4x_mont:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul4x_body,.Lmul4x_epilogue	# HandlerData[]
+.align	4
 .LSEH_info_bn_sqr8x_mont:
 	.byte	9,0,0,0
 	.rva	sqr_handler
 	.rva	.Lsqr8x_prologue,.Lsqr8x_body,.Lsqr8x_epilogue		# HandlerData[]
-.align	8
+.align	4
 ___
 $code.=<<___ if ($addx);
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
@@ -1561,7 +1563,7 @@ $code.=<<___ if ($addx);
 	.byte	9,0,0,0
 	.rva	sqr_handler
 	.rva	.Lmulx4x_prologue,.Lmulx4x_body,.Lmulx4x_epilogue	# HandlerData[]
-.align	8
+.align	4
 #endif
 ___
 }

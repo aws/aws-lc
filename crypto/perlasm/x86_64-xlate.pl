@@ -1188,7 +1188,7 @@ ____
 					my $qualifiers = "";
 					if ($$line=~/\.([prx])data/) {
 					    $qualifiers = "rdata align=";
-					    $qualifiers .= $1 eq "p"? 4 : 8;
+					    $qualifiers .= ($1 eq "p" || $1 eq "x")? 4 : 8;
 					} elsif ($$line=~/\.CRT\$/i) {
 					    $qualifiers = "rdata align=8";
 					}

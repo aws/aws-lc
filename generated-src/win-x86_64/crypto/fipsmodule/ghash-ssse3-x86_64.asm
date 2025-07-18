@@ -457,7 +457,7 @@ ALIGN	4
 	DD	$L$SEH_info_gcm_ghash_ssse3_0 wrt ..imagebase
 
 
-section	.xdata rdata align=8
+section	.xdata rdata align=4
 ALIGN	4
 $L$SEH_info_gcm_gmult_ssse3_0:
 	DB	1

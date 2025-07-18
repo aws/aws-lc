@@ -619,7 +619,7 @@ ALIGN	4
 	DD	$L$SEH_info_abi_test_bad_unwind_epilog_0 wrt ..imagebase
 
 
-section	.xdata rdata align=8
+section	.xdata rdata align=4
 ALIGN	4
 $L$SEH_info_abi_test_trampoline_0:
 	DB	1
