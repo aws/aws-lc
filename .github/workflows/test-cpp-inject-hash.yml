@@ -43,7 +43,7 @@ jobs:
       env:
         BUILD_TYPE: ${{ matrix.build-type }}
       run: |
-        chmod +x tests/ci/run_inject_hash_cpp.sh
         ./tests/ci/run_inject_hash_cpp.sh
+        
 
         

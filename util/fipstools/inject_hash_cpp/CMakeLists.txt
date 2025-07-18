@@ -21,9 +21,4 @@ if(USE_CPP_INJECT_HASH)
     target_link_libraries(inject_hash_cpp PRIVATE
         LIEF::LIEF
     )
-
-    set_target_properties(inject_hash_cpp PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-    )
 endif()

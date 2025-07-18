@@ -47,6 +47,7 @@ else
     fi
 fi
 
+ninja 
 
 # Test actual FIPS injection
 # echo "Testing FIPS injection..."

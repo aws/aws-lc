@@ -393,7 +393,7 @@ if(FIPS_DELOCATE)
  if(USE_CPP_INJECT_HASH)
     add_custom_command(
         OUTPUT bcm.o
-        COMMAND ./inject_hash_cpp
+        COMMAND ../../util/fipstools/inject_hash_cpp/inject_hash_cpp
         -o bcm.o
         -in-archive $<TARGET_FILE:bcm_hashunset>
         DEPENDS bcm_hashunset inject_hash_cpp
