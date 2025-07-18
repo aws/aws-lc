@@ -16,8 +16,11 @@
 
 #include <openssl/ssl.h>
 #include <openssl/tls1.h>
+#include <openssl/mem.h>
 
 #include "ssl_common_test.h"
+
+#include <memory>
 
 BSSL_NAMESPACE_BEGIN
 
@@ -343,6 +346,103 @@ TEST(SSLClientHelloTest, ClientHelloKnownExtensions) {
   EXPECT_TRUE(results.found_supported_groups);
   EXPECT_GT(results.signature_algorithms_len, 0u);
   EXPECT_GT(results.supported_groups_len, 0u);
+}
+
+int callback_SSL_client_hello_get1_extensions_present_impl(
+    SSL *ssl, int *al, void *arg, bool expect_session_ticket) {
+  auto *called = static_cast<bool *>(arg);
+  *called = true;
+
+  int *extensions = nullptr;
+  size_t extensions_len = 0;
+  if (!SSL_client_hello_get1_extensions_present(ssl, &extensions,
+                                                &extensions_len)) {
+    ADD_FAILURE() << "SSL_client_hello_get1_extensions_present failed";
+    return SSL_CLIENT_HELLO_ERROR;
+  }
+
+  EXPECT_GT(extensions_len, 0u);
+  EXPECT_NE(nullptr, extensions);
+
+  // Verify a few common extensions are present
+  bool found_supported_groups = false;
+  bool found_session_ticket = false;
+  for (size_t i = 0; i < extensions_len; i++) {
+    if (extensions[i] == TLSEXT_TYPE_supported_groups) {
+      found_supported_groups = true;
+    }
+    if (extensions[i] == TLSEXT_TYPE_session_ticket) {
+      found_session_ticket = true;
+    }
+  }
+  EXPECT_TRUE(found_supported_groups);
+  EXPECT_TRUE(found_session_ticket == expect_session_ticket);
+
+  OPENSSL_free(extensions);
+
+  return SSL_CLIENT_HELLO_SUCCESS;
+}
+
+// Global variable to store the expect_session_ticket value
+bool g_expect_session_ticket = false;
+int callback_wrapper(SSL *ssl, int *al, void *arg) {
+  return callback_SSL_client_hello_get1_extensions_present_impl(
+      ssl, al, arg, g_expect_session_ticket);
+}
+
+
+// Test SSL_client_hello_get1_extensions_present with a client hello that has
+// extensions.
+TEST(SSLClientHelloTest, ExtensionsPresent) {
+  UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  g_expect_session_ticket = true;
+
+  SSL_CTX_set_info_callback(
+      client_ctx.get(), [](const SSL *ssl, int type, int val) {
+        if (type == SSL_CB_HANDSHAKE_START) {
+          ASSERT_TRUE(
+              SSL_set_tlsext_host_name(const_cast<SSL *>(ssl), "example.com"));
+        }
+      });
+
+  bool callback_called = false;
+  SSL_CTX_set_client_hello_cb(server_ctx.get(), callback_wrapper,
+                              &callback_called);
+
+  UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_TRUE(callback_called);
+}
+
+// Test SSL_client_hello_get1_extensions_present with a client hello that has
+// no session ticket extension.
+TEST(SSLClientHelloTest, NoTicketExtensionPresent) {
+  UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  g_expect_session_ticket = false;
+  // Disable all extensions on the client to simulate a "no extensions" scenario
+  // Note: This is a bit artificial as the library might add some extensions
+  // by default. We rely on the callback to check the result.
+  SSL_CTX_set_options(client_ctx.get(), SSL_OP_NO_TICKET);
+
+  bool callback_called = false;
+  SSL_CTX_set_client_hello_cb(server_ctx.get(), callback_wrapper,
+                              &callback_called);
+
+  UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+  EXPECT_TRUE(callback_called);
 }
 
 }  // namespace
