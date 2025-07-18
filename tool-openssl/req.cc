@@ -7,6 +7,8 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <algorithm>
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include "../tool/internal.h"
@@ -455,9 +457,10 @@ static bool generate_serial(X509 *cert) {
 }
 
 bool reqTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
