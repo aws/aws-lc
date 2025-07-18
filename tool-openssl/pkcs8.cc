@@ -15,9 +15,6 @@
 // Maximum size for crypto files to prevent loading excessively large files (1MB)
 static constexpr long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
 
-// Maximum length limit for sensitive strings like passwords (4KB)
-static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
-
 // Checks if BIO size is within allowed limits
 static bool validate_bio_size(BIO* bio, long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
     if (!bio) {
@@ -92,93 +89,7 @@ static bool validate_prf(const std::string& prf_name) {
     return true;
 }
 
-// Extracts password from various sources (direct input, file, environment)
-// Updates source string to contain the actual password
-static bool extract_password(std::string& source) {
-    // TODO Prompt user for password via EVP_read_pw_string 
-    if (source.empty()) {
-        return true;
-    }
-
-    if (source.compare(0, 5, "pass:") == 0) {
-        std::string password = source.substr(5); 
-        if (password.length() > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
-            fprintf(stderr, "Password exceeds maximum allowed length\n");
-            return false;
-        }
-        source = password;
-        return true;
-    }
-
-    if (source.compare(0, 5, "file:") == 0) {
-        std::string path = source.substr(5);
-        bssl::UniquePtr<BIO> bio(BIO_new_file(path.c_str(), "r"));
-        if (!bio) {
-            fprintf(stderr, "Cannot open password file\n");
-            return false;
-        }
-        char buf[DEFAULT_MAX_SENSITIVE_STRING_LENGTH] = {};
-        int len = BIO_gets(bio.get(), buf, sizeof(buf));
-        if (len <= 0) {
-            OPENSSL_cleanse(buf, sizeof(buf));
-            fprintf(stderr, "Cannot read password file\n");
-            return false;
-        }
-        const bool possible_truncation = (static_cast<size_t>(len) == DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 1 && 
-                                        buf[len - 1] != '\n' && buf[len - 1] != '\r');
-        if (possible_truncation) {
-            OPENSSL_cleanse(buf, sizeof(buf));
-            fprintf(stderr, "Password file content too long\n");
-            return false;
-        }
-        size_t buf_len = len;
-        while (buf_len > 0 && (buf[buf_len-1] == '\n' || buf[buf_len-1] == '\r')) {
-            buf[--buf_len] = '\0';
-        }
-        source = buf; 
-        OPENSSL_cleanse(buf, sizeof(buf));
-        return true;
-    }
-
-    if (source.compare(0, 4, "env:") == 0) {
-        std::string env_var = source.substr(4);
-        if (env_var.empty()) {
-            fprintf(stderr, "Empty environment variable name\n");
-            return false;
-        }
-        const char* env_val = getenv(env_var.c_str());
-        if (!env_val) {
-            fprintf(stderr, "Environment variable '%s' not set\n", env_var.c_str());
-            return false;
-        }
-        size_t env_val_len = strlen(env_val);
-        if (env_val_len == 0) {
-            fprintf(stderr, "Environment variable '%s' is empty\n", env_var.c_str());
-            return false;
-        }
-        if (env_val_len > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
-            fprintf(stderr, "Environment variable value too long\n");
-            return false;
-        }
-        source = std::string(env_val);
-        return true;
-    }
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
-    return false;
-}
-
-// Custom deleter for sensitive strings that clears memory before deletion
-static void SensitiveStringDeleter(std::string* str) {
-    if (str && !str->empty()) {
-        OPENSSL_cleanse(&(*str)[0], str->size());
-        str->clear();
-    }
-    delete str;
-}
-
-BSSL_NAMESPACE_BEGIN
-BORINGSSL_MAKE_DELETER(std::string, SensitiveStringDeleter)
-BSSL_NAMESPACE_END
+// The SensitiveStringDeleter is now defined in password.cc
 
 // Reads a private key from BIO in the specified format with optional password
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO* in_bio, const char* passin, 
@@ -292,10 +203,9 @@ bool pkcs8Tool(const args_list_t& args) {
     
     GetString(passin_arg.get(), "-passin", "", parsed_args);
     GetString(passout_arg.get(), "-passout", "", parsed_args); 
-    if (!extract_password(*passin_arg)) {
-        return false;
-    }
-    if (!extract_password(*passout_arg)) {
+    
+    // Use the common password handling function
+    if (!password::HandlePassOptions(&passin_arg, &passout_arg)) {
         return false;
     }
     
