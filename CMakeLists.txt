@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.5..3.31)
 
-
-####################
 if(USE_CPP_INJECT_HASH)
     # Configure LIEF build options first
     set(LIEF_PYTHON_API OFF CACHE BOOL "")
@@ -24,7 +22,6 @@ if(USE_CPP_INJECT_HASH)
     # Make LIEF headers available
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/lief/include)
 endif()
-###################
 
 if(POLICY CMP0091)
 cmake_policy(SET CMP0091 NEW)

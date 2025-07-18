@@ -12,7 +12,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-      # Don't cancel all jobs if one fails
+        build-type: ['shared']
+        include:
+          - os: ubuntu-latest
+            build-type: 'static'
       fail-fast: false
         
     steps:
@@ -37,6 +40,8 @@ jobs:
         brew install ninja cmake perl go
         
     - name: Build and Test
+      env:
+        BUILD_TYPE: ${{ matrix.build-type }}
       run: |
         chmod +x tests/ci/run_inject_hash_cpp.sh
         ./tests/ci/run_inject_hash_cpp.sh

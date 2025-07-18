@@ -6,6 +6,7 @@ int main(int argc, char** argv) {
     std::cout << "\n=== C++ inject_hash starting ===" << std::endl;
     std::cout << "Testing LIEF integration..." << std::endl;
 
+    // only for testing purposes
     const char* binary_path = nullptr;
     for (int i = 1; i < argc - 1; i++) {
         if (strcmp(argv[i], "-in-object") == 0) {
@@ -26,12 +27,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << "\nReceived arguments:" << std::endl;
-    for (int i = 1; i < argc; i++) {
-        std::cout << "  Arg " << i << ": " << argv[i] << std::endl;
-    }
-
     std::cout << "=== C++ inject_hash completed ===" << std::endl;
     return 0;
 }
+
 

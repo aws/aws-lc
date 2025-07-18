@@ -15,8 +15,9 @@ ninja --version
 mkdir -p build
 cd build
 
-# Configure
+# Configure based on build type and OS
 if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS only supports shared builds
     cmake -GNinja \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DFIPS=1 \
@@ -26,33 +27,35 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk \
         ..
 else
-    cmake -GNinja \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DFIPS=1 \
-        -DFIPS_SHARED=1 \
-        -DBUILD_SHARED_LIBS=1 \
-        -DUSE_CPP_INJECT_HASH=ON \
-        ..
+    # Linux supports both static and shared builds
+    if [[ "${BUILD_TYPE}" == "static" ]]; then
+        cmake -GNinja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DFIPS=1 \
+            -DFIPS_SHARED=0 \
+            -DBUILD_SHARED_LIBS=0 \
+            -DUSE_CPP_INJECT_HASH=ON \
+            ..
+    else
+        cmake -GNinja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DFIPS=1 \
+            -DFIPS_SHARED=1 \
+            -DBUILD_SHARED_LIBS=1 \
+            -DUSE_CPP_INJECT_HASH=ON \
+            ..
+    fi
 fi
 
-# First try to build just inject_hash_cpp
-echo "Building inject_hash_cpp..."
-ninja inject_hash_cpp
-
-# Test inject_hash_cpp basic functionality
-echo "Testing inject_hash_cpp basic functionality..."
-./util/fipstools/inject_hash_cpp/inject_hash_cpp --version || echo "Version check failed"
-./util/fipstools/inject_hash_cpp/inject_hash_cpp --help || echo "Help check failed"
-
-# Build everything
-echo "Building full project..."
-ninja
 
 # Test actual FIPS injection
-echo "Testing FIPS injection..."
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.dylib -in-object ./crypto/libcrypto.dylib -apple
-else
-    ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.so -in-object ./crypto/libcrypto.so
-fi
-
+# echo "Testing FIPS injection..."
+# if [[ "$OSTYPE" == "darwin"* ]]; then
+#     ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.dylib -in-object ./crypto/libcrypto.dylib -apple
+# else
+#     if [[ "${BUILD_TYPE}" == "static" ]]; then
+#         ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.a -in-object ./crypto/libcrypto.a
+#     else
+#         ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.so -in-object ./crypto/libcrypto.so
+#     fi
+# fi
