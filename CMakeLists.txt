@@ -4,8 +4,15 @@ if(POLICY CMP0091)
 cmake_policy(SET CMP0091 NEW)
 endif()
 
+set(SOFTWARE_NAME "awslc")
+set(SOFTWARE_VERSION "1.55.0")
+set(ABI_VERSION 0)
+set(CRYPTO_LIB_NAME "crypto")
+set(SSL_LIB_NAME "ssl")
+set(OPENSSL_VERSION_NUMBER "0x1010107f")
+
 # Defer enabling C and CXX languages.
-project(AWSLC NONE)
+project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -24,6 +31,19 @@ if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
 endif()
 
+function(target_add_awslc_include_paths target_name scope)
+  if(ARGC EQUAL 2 OR ARGC GREATER 2)
+    set(include_prefix_headers ARG2)
+  else()
+    set(include_prefix_headers true)
+  endif()
+  add_dependencies(${target_name} boringssl_prefix_symbols)
+  target_include_directories(${target_name} BEFORE ${scope}
+    $<$<BOOL:include_prefix_headers>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+endfunction()
+
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
@@ -32,7 +52,22 @@ option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
+option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" OFF)
 include(cmake/go.cmake)
+
+if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+  set(PERFORM_SONAME_BUILD 1)
+else()
+  set(PERFORM_SONAME_BUILD 0)
+endif()
+
+message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
+message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
+
+if(PERFORM_SONAME_BUILD)
+  set(CRYPTO_LIB_NAME "crypto-${SOFTWARE_NAME}")
+  set(SSL_LIB_NAME "ssl-${SOFTWARE_NAME}")
+endif()
 
 enable_language(C)
 
@@ -148,6 +183,7 @@ install(DIRECTORY include/openssl
         PATTERN boringssl_prefix_symbols.h EXCLUDE
         PATTERN boringssl_prefix_symbols_asm.h EXCLUDE
         PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
+        PATTERN "*.in" EXCLUDE
 )
 
 if (TEST_SYSGENID_PATH)
@@ -182,9 +218,7 @@ if (NOT PERL_EXECUTABLE)
   message(STATUS "Perl not found. Disabling some code generation and using pre-generated code in generated-src/")
 endif()
 
-if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
-  set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
-endif()
+set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
 
 if(USE_CUSTOM_LIBCXX)
   set(BORINGSSL_ALLOW_CXX_RUNTIME 1)
@@ -278,11 +312,13 @@ else()
   install(DIRECTORY include/openssl
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           COMPONENT Development
+          FILES_MATCHING
           PATTERN boringssl_prefix_symbols.h
           PATTERN boringssl_prefix_symbols_asm.h
           PATTERN boringssl_prefix_symbols_nasm.inc
   )
 endif()
+
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
@@ -1266,24 +1302,6 @@ if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
 
-# Parse |OPENSSL_VERSION_NUMBER| in both files and make sure they match.
-# |OPENSSL_VERSION_NUMBER| exists in `opensslv.h` only to support
-# MySQL's CMake build.
-FILE(STRINGS "include/openssl/base.h"
-      BASE_VERSION_NUMBER
-      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
-      )
-FILE(STRINGS "include/openssl/opensslv.h"
-      OPENSSLV_VERSION_NUMBER
-      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
-      )
-if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
-  message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
-endif()
-
-# TODO: Find a way to make this automatically align with OPENSSL_VERSION_NUMBER in base.h.
-set(VERSION 1.1.1)
-
 # AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
 # the downstream integration may build with the system's OpenSSL version instead.
 # Consider adjusting the PKG_CONFIG_PATH environment to get around this.
@@ -1299,3 +1317,6 @@ foreach(in_file ${OPENSSL_PKGCONFIGS})
   configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endforeach()
+
+configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
+configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
