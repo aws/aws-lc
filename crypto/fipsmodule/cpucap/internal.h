@@ -232,8 +232,12 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_SHA512) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA3_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA3) != 0;
+}
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
-  return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
+  return (CRYPTO_is_ARMv8_SHA3_capable() &&
           ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0));

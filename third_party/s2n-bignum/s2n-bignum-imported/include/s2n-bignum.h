@@ -1083,6 +1083,9 @@ extern void sm2_montjmixadd_alt(uint64_t p3[S2N_BIGNUM_STATIC 12],const uint64_t
 extern void sm2_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 12],const uint64_t scalar[S2N_BIGNUM_STATIC 4],const uint64_t point[S2N_BIGNUM_STATIC 12]);
 extern void sm2_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 12],const uint64_t scalar[S2N_BIGNUM_STATIC 4],const uint64_t point[S2N_BIGNUM_STATIC 12]);
 
+extern void sha3_keccak_f1600(uint64_t A[S2N_BIGNUM_STATIC 25], const uint64_t rc[S2N_BIGNUM_STATIC 24]);
+extern void sha3_keccak_f1600_alt(uint64_t A[S2N_BIGNUM_STATIC 25], const uint64_t rc[S2N_BIGNUM_STATIC 24]);
+
 // Reverse the bytes in a single word
 // Input a; output function return
 extern uint64_t word_bytereverse (uint64_t a);
