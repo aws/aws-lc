@@ -13,6 +13,12 @@ int main(int argc, char** argv) {
             binary_path = argv[i + 1];
             break;
         }
+        else if ((strcmp(argv[i], "-in-archive") == 0))
+        {
+            binary_path = argv[i + 1];
+            break;
+        }
+        
     }
 
     if (binary_path) {
