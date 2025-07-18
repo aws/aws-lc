@@ -1124,6 +1124,18 @@ OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
 // - SSL_CLIENT_HELLO_RETRY (not supported) is handled like SSL_CLIENT_HELLO_ERROR
 typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
 
+/* SSL_client_hello_get1_extensions_present searches the extensions in the
+ * ClientHello for all present extensions. If found, it allocates an array of
+ * int and sets |*out| to point to the array and |*outlen| to the number of
+ * extensions. The caller is responsible for releasing the array with
+ * OPENSSL_free. If no extensions are found, it sets |*out| to NULL and
+ * |*outlen| to 0.
+ *
+ * This function can only be called from within a client hello callback (see
+ * |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+ * |SSL_CTX_set_select_certificate_cb|). */
+OPENSSL_EXPORT int SSL_client_hello_get1_extensions_present(SSL *s, int **out, size_t *outlen);
+
 // SSL_CTX_set_client_hello_cb configures a callback that is called when a
 // ClientHello message is received. This can be used to select certificates,
 // adjust settings, or otherwise make decisions about the connection before
