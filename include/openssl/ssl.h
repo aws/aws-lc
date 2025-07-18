@@ -5984,6 +5984,16 @@ DEFINE_STACK_OF(SSL_COMP)
 // OpenSSL. It always returns 0.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_verify_client_post_handshake(SSL *ssl);
 
+// SSL_CTX_set_post_handshake_auth is a no-op function for compatibility with
+// OpenSSL. PHA is not supported in AWS-LC. Calls with val == 1 have no effect;
+// the "post_handshake_auth" extension is never sent.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_post_handshake_auth(SSL_CTX *ctx, int val);
+
+// SSL_set_post_handshake_auth is a no-op function for compatibility with
+// OpenSSL. PHA is not supported in AWS-LC. Calls with val == 1 have no effect;
+// the "post_handshake_auth" extension is never sent.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_post_handshake_auth(SSL *ssl, int val);
+
 // FFDH Ciphersuite No-ops [Deprecated].
 //
 // AWS-LC does not support the use of FFDH cipher suites in libssl. The

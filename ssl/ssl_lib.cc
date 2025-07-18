@@ -3642,3 +3642,13 @@ int SSL_verify_client_post_handshake(SSL *ssl) {
   return 0;
 }
 
+// No-op function for compatibility with OpenSSL.
+void SSL_CTX_set_post_handshake_auth(SSL_CTX *ctx, int val) {
+  // No internal flag is set, as there is no PHA handling in AWS-LC.
+}
+
+// No-op function for compatibility with OpenSSL.
+void SSL_set_post_handshake_auth(SSL *ssl, int val) {
+  // No internal flag is set, as there is no PHA handling in AWS-LC.
+}
+
