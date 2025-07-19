@@ -93,11 +93,18 @@ bool genrsaTool(const args_list_t &args) {
   bool help = false;
   bssl::UniquePtr<BIO> bio;
 
-  auto cleanup = [&bio]() {
-    if (bio && bio.get()) {
-      BIO_flush(bio.get());
+  // Define a cleanup guard that will ensure proper BIO cleanup on all exit paths
+  struct BIOCleanupGuard {
+    bssl::UniquePtr<BIO>& bio_ref;
+    ~BIOCleanupGuard() {
+      if (bio_ref && bio_ref.get()) {
+        BIO_flush(bio_ref.get());
+        // Explicitly reset to ensure file handle is closed
+        // This is especially important on Windows
+        bio_ref.reset();
+      }
     }
-  };
+  } bio_guard{bio};
 
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
                                                    args, kArguments)) {
@@ -154,8 +161,8 @@ bool genrsaTool(const args_list_t &args) {
   }
 
   bool result = WriteRSAKeyToBIO(bio.get(), rsa.get());
-
-  cleanup();
-
   return result;
+  
+  // No need for explicit cleanup - the BIOCleanupGuard's destructor
+  // will handle it automatically when the function exits
 }
