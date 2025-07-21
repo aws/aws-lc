@@ -3145,7 +3145,7 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
   size_t num_extensions = 0;
   size_t i = 0;
   while (CBS_len(&extensions) > 0) {
-    uint16_t type;
+    uint16_t type = 0;
     CBS body;
     if (!CBS_get_u16(&extensions, &type) ||
         !CBS_get_u16_length_prefixed(&extensions, &body)) {
