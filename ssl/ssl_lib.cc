@@ -3083,18 +3083,55 @@ int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **o
 
 int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
                                              size_t *outlen) {
+  size_t num_extensions = 0;
+
+  // Count the number of extensions so we can allocate
+  if (1 != SSL_client_hello_get_extension_order(s, nullptr, &num_extensions)) {
+    return 0;
+  }
+
+  if (num_extensions == 0) {
+    return 1;
+  }
+
+  // Allocate a uint16_t for each extension
+  uint16_t *exts =
+      static_cast<uint16_t *>(OPENSSL_zalloc(sizeof(uint16_t) * num_extensions));
+  if (exts == nullptr) {
+    return 0;
+  }
+
+  // Collect the type for each extension
+  if (1 != SSL_client_hello_get_extension_order(s, exts, &num_extensions)) {
+    OPENSSL_free(exts);
+    return 0;
+  }
+
+  // Allocate the int array needed by caller.
+  int *ext_types =
+    static_cast<int *>(OPENSSL_zalloc(sizeof(int) * num_extensions));
+  if (ext_types == nullptr) {
+    OPENSSL_free(exts);
+    return 0;
+  }
+
+  // Cast each uint16_t type to an int
+  for (size_t i = 0; i < num_extensions; i++) {
+    ext_types[i] = exts[i];
+  }
+  OPENSSL_free(exts);
+
+  *out = ext_types;
+  *outlen = num_extensions;
+
+  return 1;
+}
+
+int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts) {
   GUARD_PTR(s);
   GUARD_PTR(s->s3);
   SSL_HANDSHAKE *hs = s->s3->hs.get();
   GUARD_PTR(hs);
-
-  if (out == nullptr || outlen == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  *out = nullptr;
-  *outlen = 0;
 
   SSLMessage msg_unused;
   SSL_CLIENT_HELLO client_hello;
@@ -3104,49 +3141,28 @@ int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
 
   CBS extensions;
   CBS_init(&extensions, client_hello.extensions, client_hello.extensions_len);
+
   size_t num_extensions = 0;
-  CBS extensions_copy = extensions;
-
-  // Count the number of extensions so we can allocate
-  while (CBS_len(&extensions_copy) > 0) {
-    uint16_t type;
-    CBS body;
-    if (!CBS_get_u16(&extensions_copy, &type) ||
-        !CBS_get_u16_length_prefixed(&extensions_copy, &body)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return 0;
-    }
-    num_extensions++;
-  }
-
-  if (num_extensions == 0) {
-    return 1;
-  }
-
-  // Allocate an int for each extension
-  int *ext_types =
-      static_cast<int *>(OPENSSL_malloc(sizeof(int) * num_extensions));
-  if (ext_types == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  // Store the type for each extension
   size_t i = 0;
   while (CBS_len(&extensions) > 0) {
     uint16_t type;
     CBS body;
     if (!CBS_get_u16(&extensions, &type) ||
         !CBS_get_u16_length_prefixed(&extensions, &body)) {
-      OPENSSL_free(ext_types);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return 0;
     }
-    ext_types[i++] = type;
+    if (exts != nullptr) {
+      // num_exts is an in/out param. Return error if insufficient size.
+      if (i >= *num_exts) {
+        return 0;
+      }
+      // Store the type for each extension
+      exts[i++] = type;
+    }
+    num_extensions++;
   }
-
-  *out = ext_types;
-  *outlen = num_extensions;
+  *num_exts = num_extensions;
 
   return 1;
 }
