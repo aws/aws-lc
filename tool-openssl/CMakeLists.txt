@@ -11,6 +11,7 @@ add_executable(
     dgst.cc
     pkcs8.cc
     pkey.cc
+    pkeyutl.cc
     rehash.cc
     req.cc
     ordered_args.cc
