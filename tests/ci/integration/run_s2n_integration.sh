@@ -88,6 +88,6 @@ s2n_tls_prepare_new_build
 
 s2n_tls_build -DBUILD_SHARED_LIBS=1 -DS2N_INTERN_LIBCRYPTO=1
 # Sanity check that libcrypto does not appear in the .dynamic ELF section.
-ldd ${S2N_TLS_BUILD_FOLDER}/lib/libs2n.so | grep -q libcrypto && fail "libs2n.so declares a dynamic dependency on libcrypto which should not happen with interned s2n-tls+aws-lc"
+${S2N_TLS_BUILD_FOLDER}/lib/libs2n.so | grep -q libcrypto && fail "libs2n.so declares a dynamic dependency on libcrypto which should not happen with interned s2n-tls+aws-lc"
 s2n_tls_run_tests
 s2n_tls_prepare_new_build

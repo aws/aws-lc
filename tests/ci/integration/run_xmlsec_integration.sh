@@ -39,8 +39,7 @@ function xmlsec_build() {
   make -j install
 
   local xmlsec_executable="${XMLSEC_SRC_FOLDER}/build/exec-install/lib/libxmlsec1-openssl.so"
-  ldd ${xmlsec_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${xmlsec_executable}" crypto || exit 1
 }
 
 function xmlsec_run_tests() {

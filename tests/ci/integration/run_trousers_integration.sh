@@ -37,7 +37,7 @@ function trousers_build() {
   sh ./bootstrap.sh
   CFLAGS="-Werror=implicit-function-declaration -Wno-deprecated" ./configure --with-gui=none --prefix="${TROUSERS_INSTALL_FOLDER}" --with-openssl="${AWS_LC_INSTALL_FOLDER}"
   make -j "$NUM_CPU_THREADS" install
-  ldd --function-relocs "${TROUSERS_INSTALL_FOLDER}/sbin/tcsd" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${TROUSERS_INSTALL_FOLDER}/sbin/tcsd" crypto || exit 1
 }
 
 

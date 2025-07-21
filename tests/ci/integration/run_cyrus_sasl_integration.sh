@@ -43,8 +43,7 @@ function cyrus_build() {
 
   # Assert Cyrus-SASL was built with AWS-LC
   local cyrus_executable="${CYRUS_SRC_FOLDER}/build/exec-install/lib/libsasl2.so"
-  ldd ${cyrus_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${cyrus_executable} crypto || exit 1
 }
 
 # TO-DO: Setup Kerberos and DB, then use sample client and server programs to test GSSAPI

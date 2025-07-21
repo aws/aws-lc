@@ -72,4 +72,4 @@ ntp_run_tests
 
 popd
 
-ldd "${NTP_SRC_FOLDER}/ntpd/ntpd" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${NTP_SRC_FOLDER}/ntpd/ntpd" crypto || exit 1
