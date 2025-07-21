@@ -36,6 +36,7 @@ function bind9_build() {
     -Dcmocka=enabled \
     -Dstats-xml=enabled \
     -Dleak-detection=enabled \
+    -Djemalloc=disabled \
     -Dtracing=disabled
 
   meson compile -C "$BIND9_BUILD_FOLDER"
@@ -59,7 +60,6 @@ ls
 
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DBUILD_SHARED_LIBS=1
 export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-export LD_PRELOAD=libjemalloc.so.2
 
 # Build bind9 from source.
 pushd ${BIND9_SRC_FOLDER}
