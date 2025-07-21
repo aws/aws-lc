@@ -1124,17 +1124,33 @@ OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
 // - SSL_CLIENT_HELLO_RETRY (not supported) is handled like SSL_CLIENT_HELLO_ERROR
 typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
 
-/* SSL_client_hello_get1_extensions_present searches the extensions in the
- * ClientHello for all present extensions. If found, it allocates an array of
- * int and sets |*out| to point to the array and |*outlen| to the number of
- * extensions. The caller is responsible for releasing the array with
- * OPENSSL_free. If no extensions are found, it sets |*out| to NULL and
- * |*outlen| to 0.
- *
- * This function can only be called from within a client hello callback (see
- * |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
- * |SSL_CTX_set_select_certificate_cb|). */
+// SSL_client_hello_get1_extensions_present iterates over the extensions in the
+// ClientHello. If any are found, it allocates an array of int and sets |*out|
+// to point to this array and |*outlen| to the number of extensions. The ints
+// in the array correspond to the type of each extension. The caller is
+// responsible for releasing the array with OPENSSL_free. If no extensions are
+// found, it sets |*out| to NULL and |*outlen| to 0. The function returns 1 on
+// success and returns 0 on error.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
 OPENSSL_EXPORT int SSL_client_hello_get1_extensions_present(SSL *s, int **out, size_t *outlen);
+
+// SSL_client_hello_get_extension_order iterates over the extensions in the
+// ClientHello. If |exts| is not null, the type for each extension will be
+// stored in |exts| and |*num_exts| should be the size of storage
+// allocated for |exts|; the function will return an error if |*num_exts| is
+// too small. On success, the function will return 1 and will set |*num_exts| to
+// the number of extensions. The caller may pass |exts| as null to obtain the
+// number of extensions. If no ClientHello extensions are found, the
+// function returns 1 and sets |*num_exts| to 0. The functions returns 0 on
+// error.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts);
 
 // SSL_CTX_set_client_hello_cb configures a callback that is called when a
 // ClientHello message is received. This can be used to select certificates,
