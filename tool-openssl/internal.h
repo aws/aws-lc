@@ -34,9 +34,9 @@ namespace password {
 // This ensures passwords are securely removed from memory when no longer needed
 void SensitiveStringDeleter(std::string *str);
 
-// Handles both passin and passout options, with optimization for when the same source is used
-// for both. Either passin_arg or passout_arg can be nullptr if only one password is needed.
-// Returns true on success, false on failure.
+// Handles both passin and passout options for OpenSSL CLI commands.
+// Either passin_arg or passout_arg can be nullptr if only one password is needed.
+// Returns true on success, false on failure with error printed to stderr.
 bool HandlePassOptions(bssl::UniquePtr<std::string> *passin_arg,
                       bssl::UniquePtr<std::string> *passout_arg);
 

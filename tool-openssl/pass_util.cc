@@ -33,36 +33,20 @@ bool HandlePassOptions(bssl::UniquePtr<std::string> *passin_arg,
   
   // Handle passout if provided
   if (passout_arg && *passout_arg) {
-    // Check if both arguments point to the same source and passin was already processed
-    bool same_source = (passin_arg && *passin_arg && passout_arg && *passout_arg && 
-                       **passin_arg == **passout_arg);
-    
-    if (same_source) {
-      // Create a new string to avoid sharing the same memory
-      bssl::UniquePtr<std::string> extracted_passout(
-          new std::string(**passin_arg));
-      *passout_arg = std::move(extracted_passout);
-    } else {
-      // Extract output password separately
-      bssl::UniquePtr<std::string> extracted_passout = ExtractPassword(*passout_arg);
-      if (!extracted_passout) {
-        return false;
-      }
-      *passout_arg = std::move(extracted_passout);
+    bssl::UniquePtr<std::string> extracted_passout = ExtractPassword(*passout_arg);
+    if (!extracted_passout) {
+      return false;
     }
+    *passout_arg = std::move(extracted_passout);
   }
   
   return true;
 }
 
 bssl::UniquePtr<std::string> ExtractPassword(const bssl::UniquePtr<std::string>& source) {
-    // Create a new string and wrap it in a UniquePtr
-    std::string* str = new std::string();
-    bssl::UniquePtr<std::string> result(str);
-    
     // Empty source means empty password
     if (!source || source->empty()) {
-        return result;
+        return bssl::UniquePtr<std::string>(new std::string());
     }
 
     const std::string& source_str = *source;
@@ -72,10 +56,9 @@ bssl::UniquePtr<std::string> ExtractPassword(const bssl::UniquePtr<std::string>&
         std::string password = source_str.substr(5); 
         if (password.length() > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
             fprintf(stderr, "Password exceeds maximum allowed length\n");
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
-        *str = std::move(password);
-        return result;
+        return bssl::UniquePtr<std::string>(new std::string(std::move(password)));
     }
 
     // Password from file: file:/path/to/file
@@ -84,27 +67,27 @@ bssl::UniquePtr<std::string> ExtractPassword(const bssl::UniquePtr<std::string>&
         bssl::UniquePtr<BIO> bio(BIO_new_file(path.c_str(), "r"));
         if (!bio) {
             fprintf(stderr, "Cannot open password file\n");
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
         char buf[DEFAULT_MAX_SENSITIVE_STRING_LENGTH] = {};
         int len = BIO_gets(bio.get(), buf, sizeof(buf));
         if (len <= 0) {
             OPENSSL_cleanse(buf, sizeof(buf));
             fprintf(stderr, "Cannot read password file\n");
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
         const bool possible_truncation = (static_cast<size_t>(len) == DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 1 && 
                                         buf[len - 1] != '\n' && buf[len - 1] != '\r');
         if (possible_truncation) {
             OPENSSL_cleanse(buf, sizeof(buf));
             fprintf(stderr, "Password file content too long\n");
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
         size_t buf_len = len;
         while (buf_len > 0 && (buf[buf_len-1] == '\n' || buf[buf_len-1] == '\r')) {
             buf[--buf_len] = '\0';
         }
-        *str = std::string(buf);
+        bssl::UniquePtr<std::string> result(new std::string(buf, buf_len));
         OPENSSL_cleanse(buf, sizeof(buf));
         return result;
     }
@@ -114,29 +97,28 @@ bssl::UniquePtr<std::string> ExtractPassword(const bssl::UniquePtr<std::string>&
         std::string env_var = source_str.substr(4);
         if (env_var.empty()) {
             fprintf(stderr, "Empty environment variable name\n");
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
         const char* env_val = getenv(env_var.c_str());
         if (!env_val) {
             fprintf(stderr, "Environment variable '%s' not set\n", env_var.c_str());
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
         size_t env_val_len = strlen(env_val);
         if (env_val_len == 0) {
             fprintf(stderr, "Environment variable '%s' is empty\n", env_var.c_str());
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
         if (env_val_len > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
             fprintf(stderr, "Environment variable value too long\n");
-            return bssl::UniquePtr<std::string>();
+            return nullptr;
         }
-        *str = std::string(env_val);
-        return result;
+        return bssl::UniquePtr<std::string>(new std::string(env_val));
     }
 
     // Invalid format
     fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
-    return bssl::UniquePtr<std::string>();
+    return nullptr;
 }
 
 } // namespace password
