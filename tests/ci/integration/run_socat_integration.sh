@@ -64,5 +64,5 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${LD_LIBRARY_PATH:-}"
 build_and_test_socat
 
-ldd "${SOCAT_SRC}/socat" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${SOCAT_SRC}/socat" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${SOCAT_SRC}/socat" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${SOCAT_SRC}/socat" ssl || exit 1

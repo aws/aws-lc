@@ -130,10 +130,10 @@ fi
 
 popd
 
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" crypto || exit 1

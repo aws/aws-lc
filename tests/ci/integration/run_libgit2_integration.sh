@@ -47,7 +47,7 @@ function libgit2_patch_build() {
 function libgit2_build_shared() {
   cmake -B "${LIBGIT2_BUILD_FOLDER}" -DBUILD_SHARED_LIBS=ON -DLINK_WITH_STATIC_LIBRARIES=OFF -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBGIT2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DUSE_SSH=exec -DUSE_HTTPS=openssl -DUSE_SHA1=HTTPS -DUSE_SHA256=HTTPS -DCMAKE_C_STANDARD=99 -DUSE_AUTH_NTLM=builtin
   cmake --build "${LIBGIT2_BUILD_FOLDER}" --target install
-  ldd "${LIBGIT2_INSTALL_FOLDER}/bin/git2" | grep "${AWS_LC_INSTALL_FOLDER}" | grep "libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${LIBGIT2_INSTALL_FOLDER}/bin/git2" crypto || exit 1
 }
 
 function libgit2_build_static() {

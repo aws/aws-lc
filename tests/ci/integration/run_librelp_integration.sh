@@ -62,5 +62,5 @@ librelp_run_tests
 
 popd
 
-ldd "${LIBRELP_SRC_FOLDER}/src/.libs/librelp.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${LIBRELP_SRC_FOLDER}/src/.libs/librelp.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${LIBRELP_SRC_FOLDER}/src/.libs/librelp.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${LIBRELP_SRC_FOLDER}/src/.libs/librelp.so" ssl || exit 1

@@ -34,5 +34,5 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
 build_and_test_libevent
 
-ldd "${LIBEVENT_SRC}/build/lib/libevent_openssl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${LIBEVENT_SRC}/build/lib/libevent_openssl.so" crypto || exit 1
 popd

@@ -46,6 +46,7 @@ function install_aws_lc() {
 
     ${CMAKE_COMMAND} --fresh -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS}
     ${CMAKE_COMMAND} --build ${BUILD_DIR} --target install
+    cp ${BUILD_DIR}/check-linkage.sh "${SCRATCH_DIR}/${1}-check-linkage.sh"
 }
 
 # create installation with shared libssl.so/libcrypto.so
@@ -109,27 +110,28 @@ build_myapp() {
     cmake --build ${BUILD_DIR}
     ldd ${BUILD_DIR}/myapp
 
-    test_lib_use ${BUILD_DIR}/myapp libssl ${EXPECT_USE_LIB_TYPE}
-    test_lib_use ${BUILD_DIR}/myapp libcrypto ${EXPECT_USE_LIB_TYPE}
+    local LINKAGE_CHECKER="${SCRATCH_DIR}/${2}-check-linkage.sh"
+
+    test_lib_use "${LINKAGE_CHECKER}" ${BUILD_DIR}/myapp ssl ${EXPECT_USE_LIB_TYPE}
+    test_lib_use "${LINKAGE_CHECKER}" ${BUILD_DIR}/myapp crypto ${EXPECT_USE_LIB_TYPE}
 }
 
 # test that app is using expected library
 test_lib_use() {
-    local APP=$1 # app to examine
-    local LIB_NAME=$2 # name of lib that app should be using, without file extension
-    local EXPECT_USE_LIB_TYPE=$3 # (".so" or ".a") expected type of lib that app should be using
+    local LINKAGE_CHECKER=$1
+    local APP=$2 # app to examine
+    local LIB_NAME=$3 # name of lib that app should be using, without file extension
+    local EXPECT_USE_LIB_TYPE=$4 # (".so" or ".a") expected type of lib that app should be using
 
-    local LDD_OUTPUT=$(ldd ${APP})
-    echo "${LDD_OUTPUT}" | grep "${LIB_NAME}" || echo "No matches found"
-
-    if echo "${LDD_OUTPUT}" | grep -q ${LIB_NAME}.so; then
+    if ${LINKAGE_CHECKER} ${APP} ${LIB_NAME}; then
         local ACTUAL_USE_LIB_TYPE=.so
     else
         local ACTUAL_USE_LIB_TYPE=.a
+        echo "No matches found"
     fi
 
     if [ ${ACTUAL_USE_LIB_TYPE} != ${EXPECT_USE_LIB_TYPE} ]; then
-        fail "used ${LIB_NAME}${ACTUAL_USE_LIB_TYPE}, but expected to use ${LIB_NAME}${EXPECT_USE_LIB_TYPE}"
+        fail "used lib${LIB_NAME}${ACTUAL_USE_LIB_TYPE}, but expected to use lib${LIB_NAME}${EXPECT_USE_LIB_TYPE}"
     fi
 }
 

@@ -38,7 +38,7 @@ function tcpdump_build() {
   autoreconf -fi
   ./configure --prefix="${TCPDUMP_INSTALL_FOLDER}" --with-crypto="${AWS_LC_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}" install
-  ldd "${TCPDUMP_INSTALL_FOLDER}/bin/tcpdump" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${TCPDUMP_INSTALL_FOLDER}/bin/tcpdump" crypto || exit 1
 }
 
 function tcpdump_run_tests() {

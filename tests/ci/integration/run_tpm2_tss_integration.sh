@@ -42,8 +42,8 @@ pushd "${SCRATCH_FOLDER}"
 function curl_build() {
   cmake -DCMAKE_DEBUG_POSTFIX='' -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="${AWS_LC_INSTALL_FOLDER}" -DCMAKE_INSTALL_PREFIX="${CURL_INSTALL_FOLDER}" -B "${CURL_BUILD_FOLDER}" -S "${CURL_SRC_FOLDER}"
   cmake --build "${CURL_BUILD_FOLDER}" --target install -j "${NUM_CPU_THREADS}"
-  ldd "${CURL_INSTALL_FOLDER}/lib/libcurl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-  ldd "${CURL_INSTALL_FOLDER}/lib/libcurl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${CURL_INSTALL_FOLDER}/lib/libcurl.so" crypto || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${CURL_INSTALL_FOLDER}/lib/libcurl.so" ssl || exit 1
 }
 
 function tpm2_tss_build() {
@@ -53,7 +53,7 @@ function tpm2_tss_build() {
   ./configure --enable-unit --with-crypto=ossl --prefix="${TPM2_TSS_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}" all VERBOSE=1
   make -j "${NUM_CPU_THREADS}" check VERBOSE=1
-  ldd "${TPM2_TSS_SRC_FOLDER}/test/unit/.libs/fapi-get-web-cert" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${TPM2_TSS_SRC_FOLDER}/test/unit/.libs/fapi-get-web-cert" crypto || exit 1
   make -j "${NUM_CPU_THREADS}" install
 }
 
