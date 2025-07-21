@@ -68,7 +68,7 @@ static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
   if (out_path.empty()) {
     bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
-    bio.reset(BIO_new_file(out_path.c_str(), "w"));
+    bio.reset(BIO_new_file(out_path.c_str(), "wb"));
     if (!bio) {
       fprintf(stderr, "Error: Could not open output file '%s'\n",
               out_path.c_str());
