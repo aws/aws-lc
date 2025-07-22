@@ -516,6 +516,17 @@ batch:
         variables:
           DOCKER_ENTRYPOINT: SAW/scripts/aarch64/docker_entrypoint.sh
 
+    # NSym proofs on platform AArch64
+    - identifier: ubuntu2204_clang14x_formal_verification_nsym_aarch64
+      buildspec: ./tests/ci/codebuild/common/run_fv_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64_latest
+        variables:
+          DOCKER_ENTRYPOINT: NSym/scripts/docker_entrypoint.sh
+
     # Build and test aws-lc without Perl/Go.
     - identifier: amazonlinux2_gcc7x_x86_64_minimal
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
