@@ -947,7 +947,6 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     ssl->session = std::move(session);
     ssl->s3->session_reused = true;
     hs->can_release_private_key = true;
-    ssl->verify_result = ssl->session->verify_result;
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, nullptr);

@@ -155,7 +155,6 @@
 #include <openssl/rand.h>
 
 #include "../crypto/internal.h"
-#include "../crypto/x509/internal.h"
 #include "internal.h"
 
 #if defined(OPENSSL_WINDOWS)
@@ -688,7 +687,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->permute_extensions = ctx->permute_extensions;
   ssl->config->aes_hw_override = ctx->aes_hw_override;
   ssl->config->aes_hw_override_value = ctx->aes_hw_override_value;
-  ssl->verify_result = X509_V_OK;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
