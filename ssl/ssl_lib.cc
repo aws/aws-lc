@@ -3083,6 +3083,9 @@ int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **o
 
 int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
                                              size_t *outlen) {
+  GUARD_PTR(s);
+  GUARD_PTR(out);
+  GUARD_PTR(outlen);
   size_t num_extensions = 0;
 
   // Count the number of extensions so we can allocate
@@ -3091,6 +3094,8 @@ int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
   }
 
   if (num_extensions == 0) {
+    *out = nullptr;
+    *outlen = 0;
     return 1;
   }
 
