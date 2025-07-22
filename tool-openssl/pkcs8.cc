@@ -209,14 +209,14 @@ bool pkcs8Tool(const args_list_t &args) {
 
   // Extract passwords if provided
   if (!passin_arg->empty()) {
-    if (!password::ExtractPassword(passin_arg)) {
+    if (!pass_util::ExtractPassword(passin_arg)) {
       fprintf(stderr, "Error extracting input password\n");
       return false;
     }
   }
 
   if (!passout_arg->empty()) {
-    if (!password::ExtractPassword(passout_arg)) {
+    if (!pass_util::ExtractPassword(passout_arg)) {
       fprintf(stderr, "Error extracting output password\n");
       return false;
     }

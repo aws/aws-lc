@@ -28,41 +28,34 @@ X509 *CreateAndSignX509Certificate();
 X509_CRL *createTestCRL();
 bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 
-// Password handling namespace
-namespace password {
-/**
- * Custom deleter for sensitive strings that securely clears memory before
- * deletion. This ensures passwords are securely removed from memory when no
- * longer needed, preventing potential exposure in memory dumps or swap files.
- *
- * @param str Pointer to the string to be securely deleted
- */
+// Password extracting utility for -passin and -passout options
+namespace pass_util {
+// Custom deleter for sensitive strings that securely clears memory before
+// deletion. This ensures passwords are securely removed from memory when no
+// longer needed, preventing potential exposure in memory dumps or swap files.
 void SensitiveStringDeleter(std::string *str);
-// Supports multiple password source formats with secure memory handling.
-//
+
+// Extracts password from a source string, modifying it in place if successful.
 // source: Password source string in one of the following formats:
 //   - pass:password (direct password, e.g., "pass:mypassword")
 //   - file:/path/to/file (password from file)
 //   - env:VAR_NAME (password from environment variable)
-//   The source string will be replaced with the extracted password if successful.
+// The source string will be replaced with the extracted password if successful.
 // Returns bool indicating success or failure:
 //   - true: Password was successfully extracted and stored in source
 //   - false: Error occurred, error message printed to stderr
-//
 // Error cases:
-// - Invalid format string (missing or unknown prefix)
-// - File access errors (file not found, permission denied)
-// - Environment variable not set
-// - Memory allocation failures
+//   - Invalid format string (missing or unknown prefix)
+//   - File access errors (file not found, permission denied)
+//   - Environment variable not set
+//   - Memory allocation failures
 bool ExtractPassword(bssl::UniquePtr<std::string> &source);
-bssl::UniquePtr<std::string> ExtractPassword(
-    const bssl::UniquePtr<std::string> &source);
 
-}  // namespace password
+}  // namespace pass_util
 
 // Custom deleter used for -passin -passout options
 BSSL_NAMESPACE_BEGIN
-BORINGSSL_MAKE_DELETER(std::string, password::SensitiveStringDeleter)
+BORINGSSL_MAKE_DELETER(std::string, pass_util::SensitiveStringDeleter)
 BSSL_NAMESPACE_END
 
 bool LoadPrivateKeyAndSignCertificate(X509 *x509,

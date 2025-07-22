@@ -11,7 +11,7 @@
 // Maximum length limit for sensitive strings like passwords (4KB)
 static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
 
-namespace password {
+namespace pass_util {
 
 void SensitiveStringDeleter(std::string *str) {
   if (str && !str->empty()) {
@@ -103,4 +103,4 @@ bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
   return false;
 }
 
-}  // namespace password
+}  // namespace pass_util

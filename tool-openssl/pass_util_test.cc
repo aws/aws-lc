@@ -80,7 +80,7 @@ class PasswordSourceTest
 TEST_P(PasswordSourceTest, ExtractPassword) {
   const auto &params = GetParam();
   bssl::UniquePtr<std::string> source(new std::string(params.source));
-  bool result = password::ExtractPassword(source);
+  bool result = pass_util::ExtractPassword(source);
 
   if (params.should_succeed) {
     ASSERT_TRUE(result) << "ExtractPassword failed for " << params.description;
@@ -128,7 +128,7 @@ TEST_F(PasswordTest, SensitiveStringDeleter) {
       << "Buffer doesn't contain expected password data";
 
   // Call the deleter
-  password::SensitiveStringDeleter(str);
+  pass_util::SensitiveStringDeleter(str);
 
   // The original string content should still be intact for comparison
   EXPECT_EQ(original_content, test_password)
