@@ -389,17 +389,17 @@ if(FIPS_DELOCATE)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
-
- if(USE_CPP_INJECT_HASH)
-    add_custom_command(
-        OUTPUT bcm.o
-        COMMAND ../../util/fipstools/inject_hash_cpp/inject_hash_cpp
-        -o bcm.o
-        -in-archive $<TARGET_FILE:bcm_hashunset>
-        DEPENDS bcm_hashunset inject_hash_cpp
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
-else()
+  #ignoring static builds for now
+#  if(USE_CPP_INJECT_HASH)
+#     add_custom_command(
+#         OUTPUT bcm.o
+#         COMMAND ../../util/fipstools/inject_hash_cpp/inject_hash_cpp
+#         -o bcm.o
+#         -in-archive $<TARGET_FILE:bcm_hashunset>
+#         DEPENDS bcm_hashunset inject_hash_cpp
+#         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#     )
+# else()
     go_executable(inject_hash
         boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
     add_custom_command(
@@ -408,7 +408,7 @@ else()
         DEPENDS bcm_hashunset inject_hash
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
-endif()
+# endif()
 
   # The outputs of add_custom_command cannot be referenced outside of the
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target

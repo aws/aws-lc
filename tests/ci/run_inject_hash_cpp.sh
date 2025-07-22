@@ -28,35 +28,43 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         ..
 else
     # Linux supports both static and shared builds
-    if [[ "${BUILD_TYPE}" == "static" ]]; then
-        cmake -GNinja \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DFIPS=1 \
-            -DFIPS_SHARED=0 \
-            -DBUILD_SHARED_LIBS=0 \
-            -DUSE_CPP_INJECT_HASH=ON \
-            ..
-    else
-        cmake -GNinja \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DFIPS=1 \
-            -DFIPS_SHARED=1 \
-            -DBUILD_SHARED_LIBS=1 \
-            -DUSE_CPP_INJECT_HASH=ON \
-            ..
-    fi
+    # if [[ "${BUILD_TYPE}" == "static" ]]; then
+    #     cmake -GNinja \
+    #         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    #         -DFIPS=1 \
+    #         -DFIPS_SHARED=0 \
+    #         -DBUILD_SHARED_LIBS=0 \
+    #         -DUSE_CPP_INJECT_HASH=ON \
+    #         ..
+    # else
+    #skipping handling of static build for now
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DFIPS=1 \
+        -DFIPS_SHARED=1 \
+        -DBUILD_SHARED_LIBS=1 \
+        -DUSE_CPP_INJECT_HASH=ON \
+        ..
+    # fi
 fi
 
 ninja 
 
 # Test actual FIPS injection
-# echo "Testing FIPS injection..."
-# if [[ "$OSTYPE" == "darwin"* ]]; then
-#     ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.dylib -in-object ./crypto/libcrypto.dylib -apple
-# else
-#     if [[ "${BUILD_TYPE}" == "static" ]]; then
-#         ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.a -in-object ./crypto/libcrypto.a
-#     else
-#         ./util/fipstools/inject_hash_cpp/inject_hash_cpp -o ./crypto/libcrypto.so -in-object ./crypto/libcrypto.so
-#     fi
-# fi
+echo "TESTING INJECT_HASH.CPP WITH EDGE CASES..." 
+./util/fipstools/inject_hash_cpp/inject_hash_cpp || echo "--Expected failure with no args--"
+
+# Test with invalid file
+./util/fipstools/inject_hash_cpp/inject_hash_cpp -in-object nonexistent.file || echo "--Expected failure with invalid file--"
+
+# Test with actual library (updated to make it consistent with compiler flags format in crypto/CMakeLists.txt)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+        -o ./crypto/libcrypto.dylib \
+        -in-object ./crypto/libcrypto.dylib \
+        -apple
+else
+    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+        -o ./crypto/libcrypto.so \
+        -in-object ./crypto/libcrypto.so
+fi

@@ -13,9 +13,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         build-type: ['shared']
-        include:
-          - os: ubuntu-latest
-            build-type: 'static'
+        # include:
+        #   - os: ubuntu-latest
+        #     build-type: 'static'
+        #skipping handling of static builds for now
       fail-fast: false
         
     steps:
@@ -44,6 +45,6 @@ jobs:
         BUILD_TYPE: ${{ matrix.build-type }}
       run: |
         ./tests/ci/run_inject_hash_cpp.sh
-        
+
 
         

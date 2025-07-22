@@ -1,34 +1,61 @@
 #include <LIEF/LIEF.hpp>
 #include <iostream>
 #include <string>
+#include <cstring>
+
+static void print_usage() {
+    std::cout << "Usage: inject_hash_cpp -o output_file -in-object input_file [-apple]" << std::endl;
+}
 
 int main(int argc, char** argv) {
     std::cout << "\n=== C++ inject_hash starting ===" << std::endl;
-    std::cout << "Testing LIEF integration..." << std::endl;
 
-    // only for testing purposes
-    const char* binary_path = nullptr;
+    // Parse command line arguments
+    const char* input_file = nullptr;
+    const char* output_file = nullptr;
+    bool is_apple = false;
+
     for (int i = 1; i < argc - 1; i++) {
         if (strcmp(argv[i], "-in-object") == 0) {
-            binary_path = argv[i + 1];
-            break;
+            input_file = argv[i + 1];
+            i++; // Skip next argument
+        }
+        else if (strcmp(argv[i], "-o") == 0) {
+            output_file = argv[i + 1];
+            i++; // Skip next argument
+        }
+        else if (strcmp(argv[i], "-apple") == 0) {
+            is_apple = true;
         }
     }
 
-    if (binary_path) {
-        if (auto binary = LIEF::Parser::parse(binary_path)) {
-            std::cout << "✅ LIEF parser successfully loaded: " << binary_path << std::endl;
-        } else {
-            std::cerr << "❌ LIEF parser failed to load: " << binary_path << std::endl;
-            return 1;
-        }
+    // Validate arguments
+    if (!input_file || !output_file) {
+        std::cerr << "❌ Missing required arguments" << std::endl;
+        print_usage();
+        return 1;
+    }
+
+    std::cout << "Input file:  " << input_file << std::endl;
+    std::cout << "Output file: " << output_file << std::endl;
+    if (is_apple) {
+        std::cout << "Platform: macOS" << std::endl;
+    }
+
+    // Parse binary
+    std::cout << "\nParsing binary..." << std::endl;
+    if (auto binary = LIEF::Parser::parse(input_file)) {
+        std::cout << "✅ LIEF parser successfully loaded: " << input_file << std::endl;
+        
+
+        // TODO: Add hash calculation and injection
+        
     } else {
-        std::cerr << "❌ No binary path provided" << std::endl;
+        std::cerr << "❌ LIEF parser failed to load: " << input_file << std::endl;
         return 1;
     }
 
     std::cout << "=== C++ inject_hash completed ===" << std::endl;
     return 0;
 }
-
 
