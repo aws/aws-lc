@@ -61,7 +61,7 @@ mkdir -p "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER"
 git clone --depth 1 https://repo.or.cz/socat.git "$SOCAT_SRC"
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_SHARED_LIBS=1 -DBUILD_TESTING=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 build_and_test_socat
 
 ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${SOCAT_SRC}/socat" crypto || exit 1

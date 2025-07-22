@@ -9,14 +9,18 @@ source tests/ci/common_posix_setup.sh
 # Set up environment.
 
 # SYS_ROOT
+#  |
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - NTP_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  |
+#  - SCRATCH_FOLDER
+#    |
+#    - NTP_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/../NTP_BUILD_ROOT"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+SCRATCH_FOLDER="${SYS_ROOT}/NTP_BUILD_ROOT"
 NTP_WEBSITE_URL="https://downloads.nwtime.org/ntp/"
 
 # - curl fetches the HTML content of the website,

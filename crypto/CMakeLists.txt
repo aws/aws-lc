@@ -26,7 +26,6 @@ function(msbuild_aarch64_asm)
               --target=arm64-pc-windows-msvc
               /c
               /I "${AWSLC_BINARY_DIR}/symbol_prefix_include"
-              /I "${AWSLC_SOURCE_DIR}/generated-src/include"
               /I "${AWSLC_SOURCE_DIR}/include"
               /o "${OBJ_FILE}"
               "${ASM_FILE}"
@@ -584,32 +583,55 @@ add_library(
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 target_add_awslc_include_paths(crypto_objects PRIVATE)
 
-function(build_libcrypto name module_source)
+function(build_libcrypto)
+  set(options SET_OUTPUT_NAME)
+  set(oneValueArgs NAME)
+  set(multiValueArgs MODULE_SOURCE)
+
+  if(CMAKE_VERSION VERSION_LESS "3.7")
+    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  else()
+    cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unparsed arguments to build_libcrypto: ${arg_UNPARSED_ARGUMENTS}")
+  endif()
+
+  if(arg_KEYWORDS_MISSING_VALUES)
+    message(FATAL_ERROR "Missing value(s) for keyword(s) to build_libcrypto: ${arg_KEYWORDS_MISSING_VALUES}")
+  endif()
+
+  if(NOT DEFINED arg_NAME OR NOT DEFINED arg_MODULE_SOURCE)
+    message(FATAL_ERROR "NAME, MODULE_SOURCE are required arguments to build_libcrypto")
+  endif()
+
   if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
     # If the jitter cpu entropy source is enabled add an object dependency to
     # the libcrypto target.
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+    add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE} $<TARGET_OBJECTS:jitterentropy>)
   else()
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+    add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE})
   endif()
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
-    add_dependencies(${name} bcm_o_target)
+    add_dependencies(${arg_NAME} bcm_o_target)
   endif()
   if(WIN32)
-    target_link_libraries(${name} PUBLIC ws2_32)
+    target_link_libraries(${arg_NAME} PUBLIC ws2_32)
   endif()
   if(NOT WIN32 AND NOT ANDROID)
-    target_link_libraries(${name} PUBLIC pthread)
+    target_link_libraries(${arg_NAME} PUBLIC pthread)
   endif()
 
-  target_add_awslc_include_paths(${name} PUBLIC)
+  target_add_awslc_include_paths(${arg_NAME} PUBLIC)
 
-  set_target_properties(${name} PROPERTIES
-    OUTPUT_NAME "${CRYPTO_LIB_NAME}")
+  if(arg_SET_OUTPUT_NAME)
+    set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")
+  endif()
 
   if(PERFORM_SONAME_BUILD)
-    set_target_properties(${name} PROPERTIES
+    set_target_properties(${arg_NAME} PROPERTIES
       VERSION "${SOFTWARE_VERSION}"
       SOVERSION "${ABI_VERSION}")
   endif()
@@ -621,7 +643,7 @@ if(FIPS_SHARED)
   if(MSVC)
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
-    build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
+    build_libcrypto(NAME precrypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
     target_add_awslc_include_paths(fips_empty_main PRIVATE)
@@ -642,11 +664,11 @@ if(FIPS_SHARED)
     )
     target_add_awslc_include_paths(generated_fipsmodule PRIVATE)
 
-    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
+    build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:generated_fipsmodule> SET_OUTPUT_NAME)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
     # the hash directly into the final library.
-    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
     endif()
@@ -684,7 +706,7 @@ if(FIPS_SHARED)
 
   endif()
 else()
-  build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+  build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
 endif()
 
 # CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
