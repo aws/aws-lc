@@ -69,8 +69,8 @@ bind9_run_tests
 
 # Iterate through all of bind's vended artifacts.
 for libname in dns ns isc isccc isccfg; do
-  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib/.libs/lib${libname}.so" crypto || exit 1
-  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib/.libs/lib${libname}.so" ssl || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib${libname}.so" crypto || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib${libname}.so" ssl || exit 1
 done
 
 popd

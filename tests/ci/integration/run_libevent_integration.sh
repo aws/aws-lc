@@ -31,7 +31,7 @@ git clone --depth 1 https://github.com/libevent/libevent.git
 
 # Test with shared AWS-LC libraries
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${AWS_LC_INSTALL_FOLDER}/lib"
 build_and_test_libevent
 
 ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${LIBEVENT_SRC}/build/lib/libevent_openssl.so" crypto || exit 1
