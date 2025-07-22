@@ -3167,6 +3167,20 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
   return 1;
 }
 
+unsigned int SSL_client_hello_get0_legacy_version(SSL *s) {
+  GUARD_PTR(s);
+  GUARD_PTR(s->s3);
+  SSL_HANDSHAKE *hs = s->s3->hs.get();
+  GUARD_PTR(hs);
+
+  SSLMessage msg_unused;
+  SSL_CLIENT_HELLO client_hello;
+  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+    return 0;
+  }
+  return client_hello.version;
+}
+
 void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
                                  void (*cb)(const SSL *ssl, const char *line)) {
   ctx->keylog_callback = cb;
