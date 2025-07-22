@@ -30,24 +30,34 @@ bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 
 // Password handling namespace
 namespace password {
-// Custom deleter for sensitive strings that clears memory before deletion
-// This ensures passwords are securely removed from memory when no longer needed
+/**
+ * Custom deleter for sensitive strings that securely clears memory before
+ * deletion. This ensures passwords are securely removed from memory when no
+ * longer needed, preventing potential exposure in memory dumps or swap files.
+ *
+ * @param str Pointer to the string to be securely deleted
+ */
 void SensitiveStringDeleter(std::string *str);
-
-// Handles both passin and passout options for OpenSSL CLI commands.
-// Either passin_arg or passout_arg can be nullptr if only one password is needed.
-// Returns true on success, false on failure with error printed to stderr.
-bool HandlePassOptions(bssl::UniquePtr<std::string> *passin_arg,
-                      bssl::UniquePtr<std::string> *passout_arg);
-
-// Extracts password from various sources (direct input, file, environment)
-// Takes a secure string as input and returns a secure string with the extracted
-// password. Supports formats:
-// - pass:password (direct password)
-// - file:/path/to/file (password from file)
-// - env:VAR_NAME (password from environment variable)
+// Supports multiple password source formats with secure memory handling.
+//
+// source: Password source string in one of the following formats:
+//   - pass:password (direct password, e.g., "pass:mypassword")
+//   - file:/path/to/file (password from file)
+//   - env:VAR_NAME (password from environment variable)
+//   The source string will be replaced with the extracted password if successful.
+// Returns bool indicating success or failure:
+//   - true: Password was successfully extracted and stored in source
+//   - false: Error occurred, error message printed to stderr
+//
+// Error cases:
+// - Invalid format string (missing or unknown prefix)
+// - File access errors (file not found, permission denied)
+// - Environment variable not set
+// - Memory allocation failures
+bool ExtractPassword(bssl::UniquePtr<std::string> &source);
 bssl::UniquePtr<std::string> ExtractPassword(
     const bssl::UniquePtr<std::string> &source);
+
 }  // namespace password
 
 // Custom deleter used for -passin -passout options
