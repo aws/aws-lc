@@ -1172,6 +1172,15 @@ OPENSSL_EXPORT void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_
 // SSL_client_hello_isv2 always returns zero as SSLv2 is not supported.
 OPENSSL_EXPORT int SSL_client_hello_isv2(SSL *s);
 
+
+// SSL_client_hello_get0_legacy_version provides the value of the
+// "legacy_version" field in the client hello.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT unsigned int SSL_client_hello_get0_legacy_version(SSL *s);
+
 // SSL_client_hello_get0_ext searches the extensions in the ClientHello for an
 // extension of the given type. If found, it sets |*out| to point to the
 // extension contents (not including the type and length bytes) and |*outlen|
