@@ -1308,6 +1308,10 @@ bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id);
 // true. Otherwise, it returns false.
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 
+// ssl_group_id_to_nid returns the NID corresponding to |group_id| or
+// |NID_undef| if unknown.
+int ssl_group_id_to_nid(uint16_t group_id);
+
 
 // Handshake messages.
 
@@ -3934,6 +3938,10 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // Maximum amount of data to send in one fragment. actual record size can be
   // more than this due to padding and MAC overheads.
   uint16_t max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
+
+  /* ClientHello callback.  Mostly for extensions, but not entirely. */
+  SSL_client_hello_cb_fn client_hello_cb = NULL;
+  void *client_hello_cb_arg = NULL;
 
   // TLS extensions servername callback
   int (*servername_callback)(SSL *, int *, void *) = nullptr;

@@ -2148,6 +2148,14 @@ uint16_t SSL_get_group_id(const SSL *ssl) {
   return session->group_id;
 }
 
+int SSL_get_negotiated_group(const SSL *ssl) {
+  uint16_t group_id = SSL_get_group_id(ssl);
+  if (group_id == 0) {
+    return NID_undef;
+  }
+  return ssl_group_id_to_nid(group_id);
+}
+
 int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) { return 1; }
 
 int SSL_set_tmp_dh(SSL *ssl, const DH *dh) { return 1; }
@@ -3033,6 +3041,44 @@ void SSL_set_msg_callback(SSL *ssl,
 
 void SSL_set_msg_callback_arg(SSL *ssl, void *arg) {
   ssl->msg_callback_arg = arg;
+}
+
+void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
+                                 void *arg) {
+  c->client_hello_cb = cb;
+  c->client_hello_cb_arg = arg;
+}
+
+int SSL_client_hello_isv2(SSL *s) {
+  // SSLv2 not supported
+  return 0;
+}
+
+int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen) {
+  GUARD_PTR(s);
+  GUARD_PTR(s->s3);
+  SSL_HANDSHAKE* hs = s->s3->hs.get();
+  GUARD_PTR(hs);
+
+  SSLMessage msg_unused;
+  SSL_CLIENT_HELLO client_hello;
+  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+    return 0;
+  }
+
+  CBS cbs;
+  if (!ssl_client_hello_get_extension(&client_hello, &cbs, static_cast<uint16_t>(type))) {
+    return 0;  // Extension not found
+  }
+
+  if (out != nullptr) {
+    *out = CBS_data(&cbs);
+  }
+  if (outlen != nullptr) {
+    *outlen = CBS_len(&cbs);
+  }
+  return 1;  // Success
 }
 
 void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
