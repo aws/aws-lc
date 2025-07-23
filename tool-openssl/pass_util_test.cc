@@ -12,8 +12,11 @@
 #include "internal.h"
 #include "test_util.h"
 
-// Base test fixture for password tests
-class PasswordTest : public ::testing::Test {
+// Maximum length limit for sensitive strings like passwords (4KB)
+static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
+
+// Base test fixture for pass_util tests
+class PassUtilTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Create temporary files for testing
@@ -63,21 +66,21 @@ class PasswordTest : public ::testing::Test {
   char pass_path2[PATH_MAX] = {};
 };
 
-// Parameters for password source tests
-struct PasswordSourceParams {
+// Parameters for pass_util source tests
+struct PassUtilSourceParams {
   std::string source;
   std::string expected;
   bool should_succeed;
   std::string description;
 };
 
-// Parameterized test fixture for password source tests
-class PasswordSourceTest
-    : public PasswordTest,
-      public ::testing::WithParamInterface<PasswordSourceParams> {};
+// Parameterized test fixture for pass_util source tests
+class PassUtilSourceTest
+    : public PassUtilTest,
+      public ::testing::WithParamInterface<PassUtilSourceParams> {};
 
 // Test password extraction from various sources
-TEST_P(PasswordSourceTest, ExtractPassword) {
+TEST_P(PassUtilSourceTest, ExtractPassword) {
   const auto &params = GetParam();
   bssl::UniquePtr<std::string> source(new std::string(params.source));
   bool result = pass_util::ExtractPassword(source);
@@ -95,21 +98,126 @@ TEST_P(PasswordSourceTest, ExtractPassword) {
 
 // Instantiate password source test cases
 INSTANTIATE_TEST_SUITE_P(
-    PasswordSources, PasswordSourceTest,
+    PassUtilSources, PassUtilSourceTest,
     ::testing::Values(
-        PasswordSourceParams{"pass:directpassword", "directpassword", true,
+        PassUtilSourceParams{"pass:directpassword", "directpassword", true,
                              "direct password"},
-        PasswordSourceParams{"", "", true, "empty source"},
-        PasswordSourceParams{"env:TEST_PASSWORD_ENV", "envpassword", true,
+        PassUtilSourceParams{"pass:", "", true, "empty password with pass: prefix"},
+        PassUtilSourceParams{"", "", false, "empty source without prefix"},
+        PassUtilSourceParams{"env:TEST_PASSWORD_ENV", "envpassword", true,
                              "environment variable"},
-        PasswordSourceParams{"invalid:format", "", false, "invalid format"},
-        PasswordSourceParams{"file:/non/existent/file", "", false,
+        PassUtilSourceParams{"file:/non/existent/file", "", false,
                              "non-existent file"},
-        PasswordSourceParams{"env:NON_EXISTENT_ENV_VAR", "", false,
+        PassUtilSourceParams{"env:NON_EXISTENT_ENV_VAR", "", false,
                              "non-existent env var"}));
 
+// Test edge cases for file-based passwords
+TEST_F(PassUtilTest, FileEdgeCases) {
+  // Test file truncation
+  {
+    ScopedFILE file(fopen(pass_path, "wb"));
+    ASSERT_TRUE(file) << "Failed to open password file";
+    // Write a very long string that exceeds DEFAULT_MAX_SENSITIVE_STRING_LENGTH
+    std::string long_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'A');
+    ASSERT_GT(fprintf(file.get(), "%s", long_pass.c_str()), 0);
+  }
+  
+  bssl::UniquePtr<std::string> source(new std::string(std::string("file:") + pass_path));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long file content";
+
+  // Test empty file
+  {
+    ScopedFILE file(fopen(pass_path, "wb"));
+    ASSERT_TRUE(file) << "Failed to open password file";
+    // Write nothing, creating an empty file
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on empty file";
+
+  // Test file with only newlines
+  {
+    ScopedFILE file(fopen(pass_path, "wb"));
+    ASSERT_TRUE(file) << "Failed to open password file";
+    ASSERT_GT(fprintf(file.get(), "\n\n\n"), 0);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  bool result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with empty password from newline-only file";
+  EXPECT_TRUE(source->empty()) << "Password should be empty from newline-only file";
+}
+
+// Test edge cases for environment variable passwords
+TEST_F(PassUtilTest, EnvVarEdgeCases) {
+  // Test empty environment variable
+#ifdef _WIN32
+  _putenv_s("TEST_EMPTY_PASSWORD", "");
+#else
+  setenv("TEST_EMPTY_PASSWORD", "", 1);
+#endif
+  
+  bssl::UniquePtr<std::string> source(new std::string("env:TEST_EMPTY_PASSWORD"));
+  bool result = pass_util::ExtractPassword(source);
+  EXPECT_FALSE(result) << "Should fail on empty environment variable";
+
+  // Test maximum length environment variable
+  std::string long_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'B');
+#ifdef _WIN32
+  _putenv_s("TEST_LONG_PASSWORD", long_pass.c_str());
+#else
+  setenv("TEST_LONG_PASSWORD", long_pass.c_str(), 1);
+#endif
+
+  source.reset(new std::string("env:TEST_LONG_PASSWORD"));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long environment variable";
+
+  // Test non-existent environment variable
+  source.reset(new std::string("env:NON_EXISTENT_VAR_NAME_12345"));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on non-existent environment variable";
+
+#ifdef _WIN32
+  _putenv_s("TEST_EMPTY_PASSWORD", "");
+  _putenv_s("TEST_LONG_PASSWORD", "");
+#else
+  unsetenv("TEST_EMPTY_PASSWORD");
+  unsetenv("TEST_LONG_PASSWORD");
+#endif
+}
+
+// Test edge cases for direct passwords
+TEST_F(PassUtilTest, DirectPasswordEdgeCases) {
+  // Test maximum length direct password
+  std::string long_pass = "pass:" + std::string(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'C');
+  bssl::UniquePtr<std::string> source(new std::string(long_pass));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long direct password";
+
+  // Test empty direct password
+  source.reset(new std::string("pass:"));
+  bool result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with empty direct password";
+  EXPECT_TRUE(source->empty()) << "Password should be empty";
+
+  // Test invalid format strings
+  const char* invalid_formats[] = {
+    "pass",           // Missing colon
+    "pass:test:123",  // Multiple colons
+    ":password",      // Missing prefix
+    "invalid:pass",   // Invalid prefix
+    "file:",         // Empty file path
+    "env:",          // Empty environment variable
+    "",              // Empty string
+  };
+
+  for (const char* fmt : invalid_formats) {
+    source.reset(new std::string(fmt));
+    EXPECT_FALSE(pass_util::ExtractPassword(source)) 
+        << "Should fail on invalid format: " << fmt;
+  }
+}
+
 // Test SensitiveStringDeleter properly clears memory
-TEST_F(PasswordTest, SensitiveStringDeleter) {
+TEST_F(PassUtilTest, SensitiveStringDeleter) {
   const char *test_password = "sensitive_data_to_be_cleared";
   std::string *str = new std::string(test_password);
 

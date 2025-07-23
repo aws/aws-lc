@@ -21,17 +21,28 @@ void SensitiveStringDeleter(std::string *str) {
 }
 
 bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
-  // Empty source means empty password
-  if (!source || source->empty()) {
-    source.reset(new std::string());
-    return true;
+  // Empty source pointer is invalid
+  if (!source) {
+    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    return false;
   }
 
   const std::string &source_str = *source;
 
+  // Empty string without prefix is invalid
+  if (source_str.empty()) {
+    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    return false;
+  }
+
   // Direct password: pass:password
   if (source_str.compare(0, 5, "pass:") == 0) {
     std::string password = source_str.substr(5);
+    // Check for additional colons in password portion
+    if (password.find(':') != std::string::npos) {
+      fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+      return false;
+    }
     if (password.length() > DEFAULT_MAX_SENSITIVE_STRING_LENGTH) {
       fprintf(stderr, "Password exceeds maximum allowed length\n");
       return false;
