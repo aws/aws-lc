@@ -14,47 +14,87 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     run_build \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DFIPS=1 \
-        -DFIPS_SHARED=1 \
         -DBUILD_SHARED_LIBS=1 \
-        -DUSE_CPP_INJECT_HASH=ON \
-        -DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+        -DUSE_CPP_INJECT_HASH=ON 
 else
-    # Linux supports both static and shared builds
-    # if [[ "${BUILD_TYPE}" == "static" ]]; then
-    #     run_build \
-    #         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    #         -DFIPS=1 \
-    #         -DFIPS_SHARED=0 \
-    #         -DBUILD_SHARED_LIBS=0 \
-    #         -DUSE_CPP_INJECT_HASH=ON
-    # else
-    #skipping handling of static build for now
     run_build \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DFIPS=1 \
-        -DFIPS_SHARED=1 \
         -DBUILD_SHARED_LIBS=1 \
         -DUSE_CPP_INJECT_HASH=ON
-    # fi
 fi
 
 cd "${BUILD_ROOT}"
 
-# Test actual FIPS injection
+# Function to run test and check result
+run_test() {
+    local test_name="$1"
+    local expected_to_fail="$2"
+    shift 2
+    local command=("$@")
+    
+    echo "Running test: ${test_name}"
+    if "${command[@]}"; then
+        if [[ "${expected_to_fail}" == "true" ]]; then
+            echo "Test '${test_name}' was expected to fail but succeeded"
+            return 1
+        else
+            echo "Test '${test_name}' passed as expected"
+            return 0
+        fi
+    else
+        if [[ "${expected_to_fail}" == "true" ]]; then
+            echo "Test '${test_name}' failed as expected"
+            return 0
+        else
+            echo "Test '${test_name}' failed unexpectedly"
+            return 1
+        fi
+    fi
+}
+
+# Initialize error counter
+ERRORS=0
+
 echo "TESTING INJECT_HASH.CPP WITH EDGE CASES..." 
-./util/fipstools/inject_hash_cpp/inject_hash_cpp || echo "--Expected failure with no args--"
 
-# Test with invalid file
-./util/fipstools/inject_hash_cpp/inject_hash_cpp -in-object nonexistent.file -o nonexistent.file || echo "--Expected failure with invalid file--"
+# Test 1: No arguments (should fail)
+run_test "No arguments test" true \
+    ./util/fipstools/inject_hash_cpp/inject_hash_cpp
+((ERRORS+=$?))
 
-# Test with actual library
-if [[ "$OSTYPE" == "darwin"* ]]; then
+# Test 2: Invalid file (should fail)
+run_test "Invalid file test" true \
     ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+    -in-object nonexistent.file -o nonexistent.file
+((ERRORS+=$?))
+
+# Test 3: Actual library (should succeed)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    run_test "Valid library test (macOS)" false \
+        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
         -o ./crypto/libcrypto.dylib \
         -in-object ./crypto/libcrypto.dylib \
         -apple
+    ((ERRORS+=$?))
 else
-    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+    run_test "Valid library test (Linux)" false \
+        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
         -o ./crypto/libcrypto.so \
         -in-object ./crypto/libcrypto.so
+    ((ERRORS+=$?))
 fi
+
+# Print test summary
+echo "=== Test Summary ==="
+echo "Total errors: ${ERRORS}"
+
+# Exit with error if any tests failed
+if [ ${ERRORS} -gt 0 ]; then
+    echo "❌ One or more tests failed"
+    exit 1
+else
+    echo "✅ All tests passed"
+    exit 0
+fi
+

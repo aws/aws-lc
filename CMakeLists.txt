@@ -1,26 +1,30 @@
 cmake_minimum_required(VERSION 3.5..3.31)
 
 if(USE_CPP_INJECT_HASH)
-    # Configure LIEF build options first
-    set(LIEF_PYTHON_API OFF CACHE BOOL "")
-    set(LIEF_EXAMPLES OFF CACHE BOOL "")
+    # Configure LIEF build options first :  check LIEF_BUILD_OPTIONS at : https://lief.re/doc/latest/installation.html#cmake-integration
+    set(LIEF_PYTHON_API OFF CACHE BOOL "") # disabling LIEF's Python API
+    # Disabling examples and tests as we only need the core library
+    set(LIEF_EXAMPLES OFF CACHE BOOL "") 
     set(LIEF_TESTS OFF CACHE BOOL "")
+    # disabling LIEF's documentation generation
     set(LIEF_DOC OFF CACHE BOOL "")
+    # enabling installation of LIEF
     set(LIEF_INSTALL ON CACHE BOOL "")
+    # enabling static library build of LIEF 
     set(LIEF_STATIC ON CACHE BOOL "")
+    
+    #enabling ELF and Macho formats only (LIEF supports mutiple binary formats)
     set(LIEF_ELF ON CACHE BOOL "Enable ELF format")
-    set(LIEF_PE ON CACHE BOOL "Enable PE format")
     set(LIEF_MACHO ON CACHE BOOL "Enable MACHO format")
+    set(LIEF_PE OFF CACHE BOOL "Enable PE format")
     set(LIEF_DEX OFF CACHE BOOL "Disable DEX format")
     set(LIEF_VDEX OFF CACHE BOOL "Disable VDEX format")
     set(LIEF_ART OFF CACHE BOOL "Disable ART format")
     set(LIEF_OAT OFF CACHE BOOL "Disable OAT format")
-    
-    # Add LIEF subdirectory
+
     add_subdirectory(third_party/lief)
     
-    # Make LIEF headers available
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/lief/include)
+
 endif()
 
 if(POLICY CMP0091)
