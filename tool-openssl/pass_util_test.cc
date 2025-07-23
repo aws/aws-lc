@@ -113,16 +113,28 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Test edge cases for file-based passwords
 TEST_F(PassUtilTest, FileEdgeCases) {
-  // Test file truncation
+  // Test file truncation - exactly at buffer size - 1 without newline
+  {
+    ScopedFILE file(fopen(pass_path, "wb"));
+    ASSERT_TRUE(file) << "Failed to open password file";
+    // Write string that fills buffer exactly to truncation point (4095 bytes)
+    std::string truncated_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 1, 'A');
+    ASSERT_GT(fprintf(file.get(), "%s", truncated_pass.c_str()), 0);
+  }
+  
+  bssl::UniquePtr<std::string> source(new std::string(std::string("file:") + pass_path));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on truncated file";
+
+  // Test file exceeding maximum length
   {
     ScopedFILE file(fopen(pass_path, "wb"));
     ASSERT_TRUE(file) << "Failed to open password file";
     // Write a very long string that exceeds DEFAULT_MAX_SENSITIVE_STRING_LENGTH
-    std::string long_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'A');
+    std::string long_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'B');
     ASSERT_GT(fprintf(file.get(), "%s", long_pass.c_str()), 0);
   }
   
-  bssl::UniquePtr<std::string> source(new std::string(std::string("file:") + pass_path));
+  source.reset(new std::string(std::string("file:") + pass_path));
   EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long file content";
 
   // Test empty file
@@ -146,6 +158,21 @@ TEST_F(PassUtilTest, FileEdgeCases) {
   bool result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed with empty password from newline-only file";
   EXPECT_TRUE(source->empty()) << "Password should be empty from newline-only file";
+
+  // Test file at buffer size - 1 with newline (should not trigger truncation)
+  {
+    ScopedFILE file(fopen(pass_path, "wb"));
+    ASSERT_TRUE(file) << "Failed to open password file";
+    // Write string that fills buffer to truncation point but with newline
+    std::string non_truncated_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 2, 'C');
+    ASSERT_GT(fprintf(file.get(), "%s\n", non_truncated_pass.c_str()), 0);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed when file is at max length but has newline";
+  EXPECT_EQ(source->length(), DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 2) 
+      << "Password should not include newline and should be max length - 2";
 }
 
 // Test edge cases for environment variable passwords
