@@ -4,5 +4,5 @@ includedir=@includedir_for_pc_file@
 
 Name: AWS-LC
 Description: AWS-LC (OpenSSL SHIM)
-Version: @VERSION@
+Version: 1.1.1
 Requires: libssl libcrypto
