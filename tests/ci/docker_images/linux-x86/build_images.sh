@@ -53,7 +53,6 @@ docker build -t fedora-31:clang-9x -f fedora-31_clang-9x/Dockerfile ../dependenc
 ./ubuntu-20.04_clang-10x_formal-verification-saw-x86_64/create_image.sh ubuntu-20.04:clang-10x_formal-verification-saw-x86_64
 ./ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm/create_image.sh ubuntu-20.04:clang-10x_formal-verification-saw-x86_64-aes-gcm
 ./ubuntu-20.04_clang-10x_formal-verification-saw-aarch64/create_image.sh ubuntu-20.04:clang-10x_formal-verification-saw-aarch64
-./ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64/create_image.sh ubuntu-22.04:clang-14x_formal-verification-nsym-aarch64
 
 ###########################################################
 # Build older unofficial docker image that uses gcc 4.1.3 #
