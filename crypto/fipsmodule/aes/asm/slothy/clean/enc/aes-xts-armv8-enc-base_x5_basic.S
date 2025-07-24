@@ -87,13 +87,15 @@ aes_hw_slothy_xts_encrypt:
         save_vregs
         save_regs
 
+        mov x8, #0x50
+        udiv x8, x2, x8 // Number of 5x-unrolled iterations
+
         cmp   x2, #16 // AES-XTS needs at least one block
         b.lt  Lxts_abort
 .align  4
 Lxts_enc_big_size:  // Encrypt input size >= 16 bytes
         and  x21, x2, #0xf    // store the tail value of length%16
         and  x2, x2, #-16    // len &= 0x1..110000, now divisible by 16
-        // subs x2, x2, #16
 
         // Firstly, encrypt the iv with key2, as the first iv of XEX.
         ldr  w6, [x4,#240]
@@ -281,10 +283,9 @@ Loop5x_xts_enc:
         stp q24, q25, [x1, #-0x30]
         str q26, [x1, #-0x10]
 
-        subs x2,x2,#0x50 // @slothy:core
-
-        cmp x2, #0x50
-        b.hs  Loop5x_xts_enc
+        sub x2, x2, #0x50
+        subs x8,x8,#1
+        cbnz x8, Loop5x_xts_enc
 
 Loop5x_enc_after:
         cmp  x2,#0x40
@@ -409,7 +410,7 @@ Lxts_enc_tail4x:
 Lxts_enc_tail3x:
         ld1  {v0.16b,v1.16b}, [x0],#32
         ld1  {v24.16b}, [x0],#16
-        
+
         eor  v0.16b,v0.16b,v6.16b
         eor  v1.16b,v1.16b,v8.16b
         eor  v24.16b,v24.16b,v9.16b
