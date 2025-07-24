@@ -72,6 +72,15 @@ struct PassUtilSourceParams {
   std::string expected;
   bool should_succeed;
   std::string description;
+
+  // Default constructor that initializes all members
+  PassUtilSourceParams() 
+      : source(""), expected(""), should_succeed(false), description("") {}
+
+  // Constructor that initializes all members
+  PassUtilSourceParams(std::string src, std::string exp, bool succeed, std::string desc)
+      : source(std::move(src)), expected(std::move(exp)), 
+        should_succeed(succeed), description(std::move(desc)) {}
 };
 
 // Parameterized test fixture for pass_util source tests
