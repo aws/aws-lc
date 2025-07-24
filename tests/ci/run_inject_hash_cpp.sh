@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exo pipefail
+set -xo pipefail
 
 # Get directory containing this script
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
@@ -53,7 +53,7 @@ run_test() {
     fi
 }
 
-# Initialize error counter
+#  error counter
 ERRORS=0
 
 echo "TESTING INJECT_HASH.CPP WITH EDGE CASES..." 
@@ -86,15 +86,14 @@ else
 fi
 
 # Print test summary
-echo "=== Test Summary ==="
+echo "=== Summary ==="
 echo "Total errors: ${ERRORS}"
 
-# Exit with error if any tests failed
 if [ ${ERRORS} -gt 0 ]; then
-    echo "❌ One or more tests failed"
+    echo "One or more tests failed"
     exit 1
 else
-    echo "✅ All tests passed"
+    echo "All tests passed"
     exit 0
 fi
 
