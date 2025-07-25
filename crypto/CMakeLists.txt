@@ -653,9 +653,7 @@ if(FIPS_SHARED)
     endif()
 
     if(USE_CPP_INJECT_HASH)
-      # Add dependency on C++ implementation
       add_dependencies(crypto inject_hash_cpp)
-      # C++ implementation for hash injection
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND ${CMAKE_BINARY_DIR}/util/fipstools/inject_hash_cpp/inject_hash_cpp

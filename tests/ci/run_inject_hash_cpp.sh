@@ -8,22 +8,13 @@ cd "${DIR}/../.."
 # Source common setup
 source tests/ci/common_posix_setup.sh
 
-# Build AWS-LC with C++ inject_hash
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS only supports shared builds
-    run_build \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DFIPS=1 \
-        -DBUILD_SHARED_LIBS=1 \
-        -DUSE_CPP_INJECT_HASH=ON 
-else
-    run_build \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DFIPS=1 \
-        -DBUILD_SHARED_LIBS=1 \
-        -DUSE_CPP_INJECT_HASH=ON
-fi
 
+run_build \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DFIPS=1 \
+    -DBUILD_SHARED_LIBS=1 \
+    -DUSE_CPP_INJECT_HASH=ON 
+    
 cd "${BUILD_ROOT}"
 
 # Function to run test and check result

@@ -8,8 +8,8 @@ if(USE_CPP_INJECT_HASH)
     set(LIEF_TESTS OFF CACHE BOOL "")
     # disabling LIEF's documentation generation
     set(LIEF_DOC OFF CACHE BOOL "")
-    # enabling installation of LIEF
-    set(LIEF_INSTALL ON CACHE BOOL "")
+    # disabling installation of LIEF
+    set(LIEF_INSTALL OFF CACHE BOOL "")
     # enabling static library build of LIEF 
     set(LIEF_STATIC ON CACHE BOOL "")
     
