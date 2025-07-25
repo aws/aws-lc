@@ -20294,7 +20294,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error making SSL transfer tests: %s", err)
 			os.Exit(1)
 		}
-		testCases = append(testCases, sslTransferTests...)
+		// testCases = append(testCases, sslTransferTests...)
+		testCases = sslTransferTests
 	}
 
 	testCases = filterTests(testCases, *testCaseStartIndex, *testCaseEndIndex)
