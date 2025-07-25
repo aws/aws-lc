@@ -389,7 +389,7 @@ if(FIPS_DELOCATE)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
-
+  #ignoring static build for .cpp implementation for now 
   go_executable(inject_hash
                 boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
