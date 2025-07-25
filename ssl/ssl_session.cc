@@ -802,7 +802,7 @@ void ssl_set_session(SSL *ssl, SSL_SESSION *session) {
   ssl->session = UpRef(session);
 
   if (ssl->session) {
-    ssl->verify_result = session->verify_result;
+    ssl->verify_result = ssl->session->verify_result;
   }
 }
 
