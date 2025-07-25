@@ -83,6 +83,10 @@ NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str, ossl_ssize_t len) {
   const unsigned char *p;
   size_t spki_len;
   NETSCAPE_SPKI *spki;
+
+  if (!str || (str[0] == 0)) {
+    return NULL;
+  }
   if (len <= 0) {
     len = strlen(str);
   }
