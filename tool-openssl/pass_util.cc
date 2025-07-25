@@ -32,6 +32,56 @@ static PasswordSource DetectSource(const bssl::UniquePtr<std::string> &source) {
   return PasswordSource::NONE;
 }
 
+// Helper function to validate password sources and detect same-file case
+static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
+                          bssl::UniquePtr<std::string> *passout = nullptr,
+                          bool *same_file = nullptr) {
+  // Validate passin
+  if (!passin) {
+    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    return false;
+  }
+  
+  // Validate passout if provided
+  if (passout && !*passout) {
+    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    return false;
+  }
+  
+  // Validate passin format (if not empty)
+  if (!passin->empty()) {
+    PasswordSource passin_type = DetectSource(passin);
+    if (passin_type == PasswordSource::NONE) {
+      fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+      return false;
+    }
+  }
+  
+  // Validate passout format (if provided and not empty)
+  if (passout && *passout && !(*passout)->empty()) {
+    PasswordSource passout_type = DetectSource(*passout);
+    if (passout_type == PasswordSource::NONE) {
+      fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+      return false;
+    }
+    
+    // Detect same-file case if requested
+    if (same_file && !passin->empty()) {
+      PasswordSource passin_type = DetectSource(passin);
+      *same_file = (passin_type == PasswordSource::FILE &&
+                    passout_type == PasswordSource::FILE &&
+                    *passin == **passout);
+    }
+  }
+  
+  // Initialize same_file to false if not detected
+  if (same_file && (!passout || !*passout)) {
+    *same_file = false;
+  }
+  
+  return true;
+}
+
 // Extract password directly provided with pass: prefix
 static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
   // Check for additional colons in password portion after prefix
@@ -162,55 +212,33 @@ void SensitiveStringDeleter(std::string *str) {
 }
 
 bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
-  // Empty source pointer is invalid
-  if (!source) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+  // Use ValidateSource for all validation
+  if (!ValidateSource(source)) {
     return false;
   }
 
-  // Empty string without prefix is invalid
+  // Handle empty source (invalid for single password)
   if (source->empty()) {
     fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
     return false;
   }
 
-  // Use DetectSource to identify the password source type
+  // Extract the password
   PasswordSource type = DetectSource(source);
-  if (type == PasswordSource::NONE) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
-    return false;
-  }
-
-  // Use the helper function to extract the password
   return ExtractPasswordFromSource(source, type);
 }
 
 bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
                       bssl::UniquePtr<std::string> &passout) {
-  // Validate input parameters
-  if (!passin || !passout) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
-    return false;
-  }
-
-  // Detect password sources BEFORE any modification
-  PasswordSource passin_type = DetectSource(passin);
-  PasswordSource passout_type = DetectSource(passout);
-  
-  // Check for same file case using original values
-  bool same_file = (passin_type == PasswordSource::FILE &&
-                    passout_type == PasswordSource::FILE &&
-                    *passin == *passout);
-
-  // Handle invalid source formats
-  if ((!passin->empty() && passin_type == PasswordSource::NONE) ||
-      (!passout->empty() && passout_type == PasswordSource::NONE)) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+  // Use ValidateSource for all validation and same-file detection
+  bool same_file = false;
+  if (!ValidateSource(passin, &passout, &same_file)) {
     return false;
   }
 
   // Extract passin (always from first line)
   if (!passin->empty()) {
+    PasswordSource passin_type = DetectSource(passin);
     if (!ExtractPasswordFromSource(passin, passin_type, false)) {
       return false;
     }
@@ -218,6 +246,7 @@ bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
 
   // Extract passout (from first line if different files, second line if same file)
   if (!passout->empty()) {
+    PasswordSource passout_type = DetectSource(passout);
     if (!ExtractPasswordFromSource(passout, passout_type, same_file)) {
       return false;
     }
