@@ -8,4 +8,9 @@ if(FIPS AND BUILD_TESTING)
   target_include_directories(test_fips BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   add_subdirectory(inject_hash/macho_parser/tests)
+
+  if(USE_CPP_INJECT_HASH)
+    add_subdirectory(inject_hash_cpp)
+  endif()
+  
 endif()

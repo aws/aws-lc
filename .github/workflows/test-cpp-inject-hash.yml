@@ -1,0 +1,59 @@
+name: Test C++ inject_hash Implementation
+
+on:
+  push:
+    branches: [ implement-inject-hash-clean ]
+  pull_request:
+    branches: [ inject-hash-cpp-experiment ]
+
+jobs:
+  test-cpp-inject-hash:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        build-type: ['shared']
+        # include:
+        #   - os: ubuntu-latest
+        #     build-type: 'static'
+        #skipping handling of static builds for now
+      fail-fast: false
+        
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+        
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.20'
+        
+    - name: Install Dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build cmake perl golang
+        
+    - name: Install Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install ninja cmake perl go
+        
+    - name: Build and Test (Linux)
+      if: runner.os == 'Linux'
+      env:
+        BUILD_TYPE: ${{ matrix.build-type }}
+      run: |
+        ./tests/ci/run_inject_hash_cpp.sh
+
+    - name: Build and Test (macOS)
+      if: runner.os == 'macOS'
+      env:
+        BUILD_TYPE: ${{ matrix.build-type }}
+        SDKROOT: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+        DEVELOPER_DIR: /Library/Developer/CommandLineTools
+      run: |
+        ./tests/ci/run_inject_hash_cpp.sh
+
+    

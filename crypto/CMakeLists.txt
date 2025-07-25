@@ -652,14 +652,25 @@ if(FIPS_SHARED)
       set(INJECT_HASH_APPLE_FLAG "-apple")
     endif()
 
-    add_custom_command(
-      TARGET crypto POST_BUILD
-      COMMAND ${GO_EXECUTABLE} run
-      ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
-    )
-
+    if(USE_CPP_INJECT_HASH)
+      add_dependencies(crypto inject_hash_cpp)
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${CMAKE_BINARY_DIR}/util/fipstools/inject_hash_cpp/inject_hash_cpp
+        -o $<TARGET_FILE:crypto>
+        -in-object $<TARGET_FILE:crypto>
+        ${INJECT_HASH_APPLE_FLAG}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+      )
+      else()
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${GO_EXECUTABLE} run
+        ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+        -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+      )
+    endif()
     # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
     # binaries to run. This applies to both executables and dylibs. An ad-hoc
     # signature is sufficient, and the linker will automatically apply one when
