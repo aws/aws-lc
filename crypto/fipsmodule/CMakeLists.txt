@@ -389,16 +389,16 @@ if(FIPS_DELOCATE)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
-  
-    #ignoring static builds for now as archive files require a seperate parser to extract .o files from it. The lief parser does not support archive files.
-    go_executable(inject_hash
-        boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
-    add_custom_command(
-        OUTPUT bcm.o
-        COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
-        DEPENDS bcm_hashunset inject_hash
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
+
+     #ignoring static builds for now as archive files require a seperate parser to extract .o files from it. The lief parser does not support archive files.
+  go_executable(inject_hash
+      boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+  add_custom_command(
+      OUTPUT bcm.o
+      COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+      DEPENDS bcm_hashunset inject_hash
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
 # endif()
 
   # The outputs of add_custom_command cannot be referenced outside of the

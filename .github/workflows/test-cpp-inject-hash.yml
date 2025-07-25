@@ -1,8 +1,8 @@
-name: Test C++ inject_hash Implementation
+name: Test C++ inject_hash Implementation with LIEF, HMAC and SHA-256 integrated.
 
 on:
   push:
-    branches: [ implement-inject-hash-clean ]
+    branches: [ hmac-sha-lief-integration ]
   pull_request:
     branches: [ inject-hash-cpp-experiment ]
 
@@ -17,6 +17,7 @@ jobs:
         #   - os: ubuntu-latest
         #     build-type: 'static'
         #skipping handling of static builds for now
+      # Don't cancel all jobs if one fails
       fail-fast: false
         
     steps:
@@ -39,11 +40,27 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install ninja cmake perl go
-        
+
     - name: Build and Test (Linux)
       if: runner.os == 'Linux'
       env:
         BUILD_TYPE: ${{ matrix.build-type }}
+      run: |
+        ./tests/ci/run_inject_hash_cpp.sh
+        
+<<<<<<< HEAD
+    - name: Build and Test (Linux)
+      if: runner.os == 'Linux'
+      env:
+        BUILD_TYPE: ${{ matrix.build-type }}
+=======
+    - name: Build and Test
+      if: runner.os == 'macOS'
+      env:
+        BUILD_TYPE: ${{ matrix.build-type }}
+        SDKROOT: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+        DEVELOPER_DIR: /Library/Developer/CommandLineTools
+>>>>>>> b0a3c1800 (parser using internal.h)
       run: |
         ./tests/ci/run_inject_hash_cpp.sh
 

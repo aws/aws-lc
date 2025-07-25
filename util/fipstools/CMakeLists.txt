@@ -10,7 +10,6 @@ if(FIPS AND BUILD_TESTING)
   add_subdirectory(inject_hash/macho_parser/tests)
 
   if(USE_CPP_INJECT_HASH)
-    add_subdirectory(inject_hash_cpp)
+      add_subdirectory(inject_hash_cpp)
   endif()
-  
-endif()
+  endif()

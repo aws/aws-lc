@@ -10,7 +10,8 @@ if(USE_CPP_INJECT_HASH)
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}    # Add this line to find tool/internal.h
     )
-    
+
+
     # due to aws-lc's nature of converting every warning into an error,
     # we need to disable some warnings that are coming from the LIEF submodule
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

@@ -12,7 +12,6 @@ if(USE_CPP_INJECT_HASH)
     set(LIEF_INSTALL ON CACHE BOOL "")
     # enabling static library build of LIEF 
     set(LIEF_STATIC ON CACHE BOOL "")
-    
     #enabling ELF and Macho formats only (LIEF supports mutiple binary formats)
     set(LIEF_ELF ON CACHE BOOL "Enable ELF format")
     set(LIEF_MACHO ON CACHE BOOL "Enable MACHO format")
@@ -23,9 +22,10 @@ if(USE_CPP_INJECT_HASH)
     set(LIEF_OAT OFF CACHE BOOL "Disable OAT format")
 
     add_subdirectory(third_party/lief)
-    
+
 
 endif()
+
 
 if(POLICY CMP0091)
 cmake_policy(SET CMP0091 NEW)
