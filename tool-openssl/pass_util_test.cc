@@ -5,6 +5,7 @@
 #include <openssl/base.h>
 #include <openssl/bio.h>
 #include <openssl/mem.h>
+#include <openssl/pem.h>
 #include <string>
 #ifdef _WIN32
 #include <stdlib.h>  // for _putenv_s
@@ -12,54 +13,68 @@
 #include "internal.h"
 #include "test_util.h"
 
-// Maximum length limit for sensitive strings like passwords (4KB)
-static constexpr size_t DEFAULT_MAX_SENSITIVE_STRING_LENGTH = 4096;
+// Use PEM_BUFSIZE (defined in openssl/pem.h) for password buffer size testing
+// to match the implementation in pass_util.cc
+
+namespace {
+// Helper functions to encapsulate common operations
+void WriteTestFile(const char* path, const char* content, bool preserve_newlines = false) {
+  ScopedFILE file(fopen(path, "wb"));
+  ASSERT_TRUE(file) << "Failed to open file: " << path;
+  if (content) {
+    if (preserve_newlines) {
+      // Write content exactly as provided, including newlines
+      ASSERT_GT(fprintf(file.get(), "%s", content), 0)
+          << "Failed to write to file: " << path;
+    } else {
+      // Write content without trailing newline
+      size_t bytes_written = fwrite(content, 1, strlen(content), file.get());
+      ASSERT_GT(bytes_written, 0u)  // Compare with unsigned 0
+          << "Failed to write to file: " << path;
+    }
+  }
+}
+
+void SetTestEnvVar(const char* name, const char* value) {
+#ifdef _WIN32
+  _putenv_s(name, value);
+#else
+  setenv(name, value, 1);
+#endif
+}
+
+void UnsetTestEnvVar(const char* name) {
+#ifdef _WIN32
+  _putenv_s(name, "");
+#else
+  unsetenv(name);
+#endif
+}
+}  // namespace
 
 // Base test fixture for pass_util tests
 class PassUtilTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // Create temporary files for testing
+    // Create temporary files for testing using utility from crypto/test/test_util.h
     ASSERT_GT(createTempFILEpath(pass_path), 0u)
         << "Failed to create first temp file path";
     ASSERT_GT(createTempFILEpath(pass_path2), 0u)
         << "Failed to create second temp file path";
 
-    // Write test passwords to files using ScopedFILE
-    {
-      ScopedFILE file1(fopen(pass_path, "wb"));
-      ASSERT_TRUE(file1) << "Failed to open first password file";
-      ASSERT_GT(fprintf(file1.get(), "testpassword"), 0)
-          << "Failed to write first password";
-    }
+    // Write test passwords using helper function
+    WriteTestFile(pass_path, "testpassword");
+    WriteTestFile(pass_path2, "anotherpassword");
 
-    {
-      ScopedFILE file2(fopen(pass_path2, "wb"));
-      ASSERT_TRUE(file2) << "Failed to open second password file";
-      ASSERT_GT(fprintf(file2.get(), "anotherpassword"), 0)
-          << "Failed to write second password";
-    }
-
-    // Set up environment variable for testing
-#ifdef _WIN32
-    // Windows version
-    _putenv_s("TEST_PASSWORD_ENV", "envpassword");
-#else
-    // POSIX version
-    setenv("TEST_PASSWORD_ENV", "envpassword", 1);
-#endif
+    // Set up environment variable using helper function
+    SetTestEnvVar("TEST_PASSWORD_ENV", "envpassword");
   }
 
   void TearDown() override {
+    // Use RemoveFile from tool-openssl/test_util.h
     RemoveFile(pass_path);
     RemoveFile(pass_path2);
-#ifdef _WIN32
-    // Windows version - setting to empty string removes the variable
-    _putenv_s("TEST_PASSWORD_ENV", "");
-#else
-    // POSIX version
-    unsetenv("TEST_PASSWORD_ENV");
-#endif
+    UnsetTestEnvVar("TEST_PASSWORD_ENV");
   }
 
   char pass_path[PATH_MAX] = {};
@@ -124,11 +139,8 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_F(PassUtilTest, FileEdgeCases) {
   // Test file truncation - exactly at buffer size - 1 without newline
   {
-    ScopedFILE file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(file) << "Failed to open password file";
-    // Write string that fills buffer exactly to truncation point (4095 bytes)
-    std::string truncated_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 1, 'A');
-    ASSERT_GT(fprintf(file.get(), "%s", truncated_pass.c_str()), 0);
+    std::string truncated_pass(PEM_BUFSIZE - 1, 'A');
+    WriteTestFile(pass_path, truncated_pass.c_str());
   }
   
   bssl::UniquePtr<std::string> source(new std::string(std::string("file:") + pass_path));
@@ -136,11 +148,8 @@ TEST_F(PassUtilTest, FileEdgeCases) {
 
   // Test file exceeding maximum length
   {
-    ScopedFILE file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(file) << "Failed to open password file";
-    // Write a very long string that exceeds DEFAULT_MAX_SENSITIVE_STRING_LENGTH
-    std::string long_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'B');
-    ASSERT_GT(fprintf(file.get(), "%s", long_pass.c_str()), 0);
+    std::string long_pass(PEM_BUFSIZE + 10, 'B');
+    WriteTestFile(pass_path, long_pass.c_str());
   }
   
   source.reset(new std::string(std::string("file:") + pass_path));
@@ -148,62 +157,46 @@ TEST_F(PassUtilTest, FileEdgeCases) {
 
   // Test empty file
   {
-    ScopedFILE file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(file) << "Failed to open password file";
-    // Write nothing, creating an empty file
+    WriteTestFile(pass_path, "");
   }
   
   source.reset(new std::string(std::string("file:") + pass_path));
   EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on empty file";
 
-  // Test file with only newlines
+  // Test file with only newlines - should fail like OpenSSL with empty password error
   {
-    ScopedFILE file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(file) << "Failed to open password file";
-    ASSERT_GT(fprintf(file.get(), "\n\n\n"), 0);
+    WriteTestFile(pass_path, "\n\n\n", true);  // preserve_newlines = true
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on newline-only file (empty password)";
+
+  // Test file at buffer size - 1 with newline (should not trigger truncation)
+  {
+    std::string non_truncated_pass(PEM_BUFSIZE - 2, 'C');
+    std::string content = non_truncated_pass + "\n";
+    WriteTestFile(pass_path, content.c_str(), true);  // preserve_newlines = true
   }
   
   source.reset(new std::string(std::string("file:") + pass_path));
   bool result = pass_util::ExtractPassword(source);
-  EXPECT_TRUE(result) << "Should succeed with empty password from newline-only file";
-  EXPECT_TRUE(source->empty()) << "Password should be empty from newline-only file";
-
-  // Test file at buffer size - 1 with newline (should not trigger truncation)
-  {
-    ScopedFILE file(fopen(pass_path, "wb"));
-    ASSERT_TRUE(file) << "Failed to open password file";
-    // Write string that fills buffer to truncation point but with newline
-    std::string non_truncated_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 2, 'C');
-    ASSERT_GT(fprintf(file.get(), "%s\n", non_truncated_pass.c_str()), 0);
-  }
-  
-  source.reset(new std::string(std::string("file:") + pass_path));
-  result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed when file is at max length but has newline";
-  EXPECT_EQ(source->length(), DEFAULT_MAX_SENSITIVE_STRING_LENGTH - 2) 
+  EXPECT_EQ(source->length(), static_cast<size_t>(PEM_BUFSIZE - 2)) 
       << "Password should not include newline and should be max length - 2";
 }
 
 // Test edge cases for environment variable passwords
 TEST_F(PassUtilTest, EnvVarEdgeCases) {
   // Test empty environment variable
-#ifdef _WIN32
-  _putenv_s("TEST_EMPTY_PASSWORD", "");
-#else
-  setenv("TEST_EMPTY_PASSWORD", "", 1);
-#endif
+  SetTestEnvVar("TEST_EMPTY_PASSWORD", "");
   
   bssl::UniquePtr<std::string> source(new std::string("env:TEST_EMPTY_PASSWORD"));
   bool result = pass_util::ExtractPassword(source);
   EXPECT_FALSE(result) << "Should fail on empty environment variable";
 
   // Test maximum length environment variable
-  std::string long_pass(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'B');
-#ifdef _WIN32
-  _putenv_s("TEST_LONG_PASSWORD", long_pass.c_str());
-#else
-  setenv("TEST_LONG_PASSWORD", long_pass.c_str(), 1);
-#endif
+  std::string long_pass(PEM_BUFSIZE + 10, 'B');
+  SetTestEnvVar("TEST_LONG_PASSWORD", long_pass.c_str());
 
   source.reset(new std::string("env:TEST_LONG_PASSWORD"));
   EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long environment variable";
@@ -212,19 +205,14 @@ TEST_F(PassUtilTest, EnvVarEdgeCases) {
   source.reset(new std::string("env:NON_EXISTENT_VAR_NAME_12345"));
   EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on non-existent environment variable";
 
-#ifdef _WIN32
-  _putenv_s("TEST_EMPTY_PASSWORD", "");
-  _putenv_s("TEST_LONG_PASSWORD", "");
-#else
-  unsetenv("TEST_EMPTY_PASSWORD");
-  unsetenv("TEST_LONG_PASSWORD");
-#endif
+  UnsetTestEnvVar("TEST_EMPTY_PASSWORD");
+  UnsetTestEnvVar("TEST_LONG_PASSWORD");
 }
 
 // Test edge cases for direct passwords
 TEST_F(PassUtilTest, DirectPasswordEdgeCases) {
   // Test maximum length direct password
-  std::string long_pass = "pass:" + std::string(DEFAULT_MAX_SENSITIVE_STRING_LENGTH + 10, 'C');
+  std::string long_pass = "pass:" + std::string(PEM_BUFSIZE + 10, 'C');
   bssl::UniquePtr<std::string> source(new std::string(long_pass));
   EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long direct password";
 

@@ -51,6 +51,14 @@ void SensitiveStringDeleter(std::string *str);
 //   - Memory allocation failures
 bool ExtractPassword(bssl::UniquePtr<std::string> &source);
 
+// Same process as ExtractPassword but used for -passin and -passout within same
+// tool. Special handling:
+// - If same file is used for both passwords, reads first line for passin
+//   and second line for passout in a single file operation matching OpenSSL
+//   behavior
+bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
+                      bssl::UniquePtr<std::string> &passout);
+
 }  // namespace pass_util
 
 // Custom deleter used for -passin -passout options
