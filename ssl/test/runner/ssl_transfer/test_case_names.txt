@@ -639,6 +639,8 @@ Server-VerifyDefault-ECDSA_P256_SHA256-TLS12
 Server-VerifyDefault-ECDSA_P256_SHA256-TLS13
 Server-VerifyDefault-ECDSA_P384_SHA384-TLS12
 Server-VerifyDefault-ECDSA_P384_SHA384-TLS13
+Server-VerifyDefault-ECDSA_P521_SHA512-TLS12
+Server-VerifyDefault-ECDSA_P521_SHA512-TLS13
 Server-VerifyDefault-RSA_PKCS1_SHA1-TLS12
 Server-VerifyDefault-RSA_PKCS1_SHA256-TLS12
 Server-VerifyDefault-RSA_PKCS1_SHA384-TLS12
