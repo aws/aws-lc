@@ -69,24 +69,14 @@ type result struct {
 	Error  error
 }
 
-// sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
-// is true.
-var sdeCPUs = []string{
-
+// Default list of CPU codes that are compatible with MSVC
+var defaultCPUs = []string{
 	"p4p", // Pentium4 Prescott
 	"mrm", // Merom
 	"pnr", // Penryn
-	"nhm", // Nehalem
-	"wsm", // Westmere
-	"snb", // Sandy Bridge
-	"ivb", // Ivy Bridge
 	"hsw", // Haswell
 	"bdw", // Broadwell
 	"slt", // Saltwell
-	"slm", // Silvermont
-	"glm", // Goldmont
-	"glp", // Goldmont Plus
-	"tnt", // Tremont
 	"skl", // Skylake
 	"cnl", // Cannon Lake
 	"icl", // Ice Lake
@@ -95,7 +85,42 @@ var sdeCPUs = []string{
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
 	"tgl", // Tiger Lake
+    "snb", // Sandy Bridge
+    "ivb", // Ivy Bridge
 }
+
+// CPUs that are NOT compatible with MSVC
+var cpusWithoutAVX = []string{
+    "slm", // Silvermont
+    "glm", // Goldmont
+    "glp", // Goldmont Plus
+	"nhm", // Nehalem
+	"tnt", // Tremont
+	"wsm", // Westmere
+}
+
+var sdeCPUs []string
+
+func initSDECPUs() {
+    sdeCPUs = append([]string{}, defaultCPUs...)
+	if (runtime.GOOS == "windows") {
+	    cmd := exec.Command("cmd", "/C", "ver")
+	    output, err := cmd.Output()
+        if err != nil {
+            return
+        }
+
+        verOutput := strings.ToLower(string(output))
+
+        // Windows Server 2022 (or 10.0.20348) may natively use some AVX instructions that old CPUs do not have
+        if !strings.Contains(verOutput, "10.0.20348") {
+            sdeCPUs = append(sdeCPUs, cpusWithoutAVX...)
+        } else {
+            fmt.Printf("Running on Windows 2022. Removing old CPUs lacking AVX instructions that Windows 2022 may use.\n")
+        }
+	}
+}
+
 
 func targetArchMatchesRuntime(target string) bool {
 	if (target == "") ||
@@ -360,6 +385,9 @@ func (t test) getGTestShards() ([]test, error) {
 func main() {
 	flag.Parse()
 	setWorkingDirectory()
+
+	// Initialize sdeCPUs now that flags are parsed
+	initSDECPUs()
 
 	testCases, err := testconfig.ParseTestConfig("util/all_tests.json")
 	if err != nil {
