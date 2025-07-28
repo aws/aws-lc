@@ -20,7 +20,7 @@ add_executable(
   transport_common.cc
 )
 
-target_add_awslc_include_paths(bssl PRIVATE)
+target_add_awslc_include_paths(TARGET bssl SCOPE PRIVATE)
 target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)

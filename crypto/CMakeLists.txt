@@ -581,7 +581,7 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
-target_add_awslc_include_paths(crypto_objects PRIVATE)
+target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
 
 function(build_libcrypto)
   set(options SET_OUTPUT_NAME)
@@ -624,7 +624,7 @@ function(build_libcrypto)
     target_link_libraries(${arg_NAME} PUBLIC pthread)
   endif()
 
-  target_add_awslc_include_paths(${arg_NAME} PUBLIC)
+  target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
 
   if(arg_SET_OUTPUT_NAME)
     set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")
@@ -646,7 +646,7 @@ if(FIPS_SHARED)
     build_libcrypto(NAME precrypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
-    target_add_awslc_include_paths(fips_empty_main PRIVATE)
+    target_add_awslc_include_paths(TARGET fips_empty_main SCOPE PRIVATE)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
@@ -662,7 +662,7 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
-    target_add_awslc_include_paths(generated_fipsmodule PRIVATE)
+    target_add_awslc_include_paths(TARGET generated_fipsmodule SCOPE PRIVATE)
 
     build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:generated_fipsmodule> SET_OUTPUT_NAME)
   else()
@@ -746,10 +746,10 @@ if(BUILD_TESTING)
   # Below tests are added as new executables to be executed in single process.
   # mem_test.cc tests memory overrides via defining strong symbols.
   add_test_executable(${MEM_TEST_EXEC} mem_test.cc)
-  target_add_awslc_include_paths(${MEM_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${MEM_TEST_EXEC} SCOPE PRIVATE)
   # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
-  target_add_awslc_include_paths(${MEM_SET_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${MEM_SET_TEST_EXEC} SCOPE PRIVATE)
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
@@ -761,7 +761,7 @@ if(BUILD_TESTING)
   set_test_location(${RANDOM_TEST_EXEC})
 
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  target_add_awslc_include_paths(${RANDOM_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${RANDOM_TEST_EXEC} SCOPE PRIVATE)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
@@ -865,7 +865,7 @@ if(BUILD_TESTING)
   set_test_location(${CRYPTO_TEST_EXEC})
 
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
-  target_add_awslc_include_paths(${CRYPTO_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${CRYPTO_TEST_EXEC} SCOPE PRIVATE)
   target_compile_definitions(${CRYPTO_TEST_EXEC} PRIVATE AWS_LC_TEST_ENV)
   if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
@@ -903,7 +903,7 @@ if(BUILD_TESTING)
   set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
   target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  target_add_awslc_include_paths(${RWLOCK_STATIC_INIT_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${RWLOCK_STATIC_INIT_TEST_EXEC} SCOPE PRIVATE)
   if(MSVC)
     target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
   else()

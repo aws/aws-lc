@@ -47,7 +47,7 @@ target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 
 target_link_libraries(ssl crypto)
 
-target_add_awslc_include_paths(ssl PUBLIC)
+target_add_awslc_include_paths(TARGET ssl SCOPE PUBLIC)
 
 set_target_properties(ssl PROPERTIES
     OUTPUT_NAME "${SSL_LIB_NAME}")
@@ -76,7 +76,7 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${INTEGRATION_TEST_EXEC}
           boringssl_gtest_main ssl )
-  target_add_awslc_include_paths(${INTEGRATION_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${INTEGRATION_TEST_EXEC} SCOPE PRIVATE)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
   set_test_location(${INTEGRATION_TEST_EXEC})
 
@@ -102,7 +102,7 @@ if(BUILD_TESTING)
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
-  target_add_awslc_include_paths(${SSL_TEST_EXEC} PRIVATE)
+  target_add_awslc_include_paths(TARGET ${SSL_TEST_EXEC} SCOPE PRIVATE)
   set_test_location(${SSL_TEST_EXEC})
 
   if(WIN32)
