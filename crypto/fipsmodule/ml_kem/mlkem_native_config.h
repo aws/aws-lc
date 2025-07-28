@@ -4,7 +4,9 @@
 #ifndef MLK_CONFIG_H
 #define MLK_CONFIG_H
 
+#if !defined(__ASSEMBLER__)
 #include "../../internal.h"
+#endif
 
 // Namespacing: All symbols are of the form mlkem*. Level-specific
 // symbols are further prefixed with their security level, e.g.
@@ -67,5 +69,9 @@ static MLK_INLINE void mlk_randombytes(void *ptr, size_t len) {
 #if defined(OPENSSL_NO_ASM)
 #define MLK_CONFIG_NO_ASM
 #endif
+
+// Enable AArch64 arithmetic backend and set path
+#define MLK_CONFIG_USE_NATIVE_BACKEND_ARITH
+#define MLK_CONFIG_ARITH_BACKEND_FILE "../mlkem_native_backend.h"
 
 #endif // MLkEM_NATIVE_CONFIG_H
