@@ -10,24 +10,6 @@
 #include "../crypto/test/test_util.h"
 #include <cctype>
 
-// Helper function to create a test key
-EVP_PKEY* CreateTestKey(int key_bits) {
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (!pkey) {
-    return nullptr;
-  }
-  
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
-      !RSA_generate_key_ex(rsa.get(), key_bits, bn.get(), nullptr) ||
-      !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
-    return nullptr;
-  }
-  
-  return pkey.release();
-}
-
 class PKeyUtlTest : public ::testing::Test {
 protected:
   void SetUp() override {
