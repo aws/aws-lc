@@ -12,6 +12,7 @@
 {"Wrapper": "modulewrapper", "In": "vectors/CMAC-AES.bz2", "Out": "expected/CMAC-AES.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ctrDRBG.bz2", "Out": "expected/ctrDRBG.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ECDSA.bz2", "Out": "expected/ECDSA.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/ECDSA-KeyGen.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ECDSA-SigGen.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA-1.bz2", "Out": "expected/HMAC-SHA-1.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA2-224.bz2", "Out": "expected/HMAC-SHA2-224.bz2"},
@@ -28,7 +29,14 @@
 {"Wrapper": "modulewrapper", "In": "vectors/kdf-components.bz2", "Out": "expected/kdf-components.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/RSA.bz2", "Out": "expected/RSA.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/RSA-SigGen.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/RSA-KeyGen.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/TLS-1.2-KDF.bz2", "Out": "expected/TLS-1.2-KDF.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/PBKDF.bz2", "Out": "expected/PBKDF.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/KDA-HKDF.bz2", "Out": "expected/KDA-HKDF.bz2"}
+{"Wrapper": "modulewrapper", "In": "vectors/KDA-HKDF.bz2", "Out": "expected/KDA-HKDF.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/KDA-OneStep.bz2", "Out": "expected/KDA-OneStep.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/ML-KEM.bz2", "Out": "expected/ML-KEM.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA.bz2", "Out": "expected/EDDSA.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA-KeyGen.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA-SigGen.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/ML-DSA.bz2", "Out": "expected/ML-DSA.bz2"}
 ]

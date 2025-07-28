@@ -1194,8 +1194,8 @@ TEST(ASN1Test, AdjTime) {
   struct tm tm1, tm2;
   int days, secs;
 
-  OPENSSL_posix_to_tm(0, &tm1);
-  OPENSSL_posix_to_tm(0, &tm2);
+  EXPECT_TRUE(OPENSSL_posix_to_tm(0, &tm1));
+  EXPECT_TRUE(OPENSSL_posix_to_tm(0, &tm2));
   // Test values that are too large and should be rejected.
   EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MIN, INT_MIN));
   EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MAX, INT_MAX));
@@ -2291,61 +2291,161 @@ TEST(ASN1Test, PrintASN1Object) {
             std::string(reinterpret_cast<const char *>(bio_data), bio_len));
 }
 
-TEST(ASN1Test, GetObject) {
-  // The header is valid, but there are not enough bytes for the length.
-  static const uint8_t kTruncated[] = {0x30, 0x01};
-  const uint8_t *ptr = kTruncated;
+const struct GetObjectTestData {
+  std::vector<uint8_t> in;
+  const int expected_return;
+  const int expected_tag;
+  const int expected_class;
+  const int expected_length;
+} kGetObjectTests[] = {
+    // OpenSSL succeeds for all test cases below.
+    // The header is valid, but there are not enough bytes for the length.
+    {{0x30, 0x01}, 0x80, 0, 0, 0},
+    {{0x30, 0x80, 0x00, 0x00}, 0x21, 0x10, 0, 0},
+    {{0x00, 0x00}, 0x00, 0x00, 0x00, 0},
+    {{0x01, 0x00}, 0x00, 0x01, 0x00, 0},
+    {{0x41, 0x00}, 0x00, 0x01, 0x40, 0},
+    {{0x81, 0x00}, 0x00, 0x01, 0x80, 0},
+    {{0xC1, 0x00}, 0x00, 0x01, 0xC0, 0},
+    {{0x1F, 0x20, 0x00}, 0x00, 0x20, 0x00, 0},
+      // Rejected to avoid ambiguity with V_ASN1_NEG. Ruby has a test case expecting this to succeed.
+    {{0x1F, 0xC0, 0x20, 0x00}, 0x80, 0x00, 0x00, 0},
+    {{0x41, 0x02, 0xAB, 0xCD}, 0x00, 0x01, 0x40, 2},
+    {{0x61, 0x00}, 0x20, 0x01, 0x40, 0},
+    {{0x61, 0x80, 0xC2, 0x02, 0xAB, 0xCD, 0x00, 0x00}, 0x21, 0x01, 0x40, 0},
+};
+
+static void verifyGetObject(const GetObjectTestData& t) {
   long length;
   int tag;
   int tag_class;
-  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
-                                  sizeof(kTruncated)));
 
-  static const uint8_t kIndefinite[] = {0x30, 0x80, 0x00, 0x00};
-  ptr = kIndefinite;
-  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
-                                  sizeof(kIndefinite)));
+  SCOPED_TRACE(Bytes(t.in));
+  const uint8_t *ptr = t.in.data();
+  EXPECT_EQ(t.expected_return,
+            ASN1_get_object(&ptr, &length, &tag, &tag_class, t.in.size()));
+  if (!(t.expected_return & 0x80)) {
+    EXPECT_EQ(t.expected_length, length);
+    EXPECT_EQ(t.expected_tag, tag);
+    EXPECT_EQ(t.expected_class, tag_class);
+  }
 }
 
-template <typename T>
-void ExpectNoParse(T *(*d2i)(T **, const uint8_t **, long),
-                   const std::vector<uint8_t> &in) {
-  SCOPED_TRACE(Bytes(in));
-  const uint8_t *ptr = in.data();
-  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
-  EXPECT_FALSE(obj);
+TEST(ASN1Test, GetObject) {
+  for (const auto &t : kGetObjectTests) {
+    verifyGetObject(t);
+  }
+
+  {
+    GetObjectTestData test_case{ {0x41, 0x81, 0x80}, 0x00, 0x01, 0x40, 128 };
+    for(int i = 0; i < 64; i++) {
+      test_case.in.push_back(0xAB);
+      test_case.in.push_back(0xCD);
+    }
+    verifyGetObject(test_case);
+  }
+
+  {
+    GetObjectTestData test_case{ {0x41, 0x82, 0x01, 0x00}, 0x00, 0x01, 0x40, 256 };
+    for(int i = 0; i < 128; i++) {
+      test_case.in.push_back(0xAB);
+      test_case.in.push_back(0xCD);
+    }
+    verifyGetObject(test_case);
+  }
+
 }
 
 // The zero tag, constructed or primitive, is reserved and should rejected by
 // the parser.
 TEST(ASN1Test, ZeroTag) {
-  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
-  ExpectNoParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x02, 0x00, 0x00});
-  ExpectNoParse(d2i_ASN1_SET_ANY, {0x31, 0x02, 0x00, 0x00});
-  // SEQUENCE {
-  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
-  //   [UNIVERSAL 0 PRIMITIVE] {}
-  // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00});
-  // SEQUENCE {
-  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
-  //   [UNIVERSAL 0 CONSTRUCTED] {}
-  // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00});
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x00}, true);
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00},
+              false);  // OpenSSL also rejects this.
   // SEQUENCE {
   //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
   //   [UNIVERSAL 0 PRIMITIVE] { "a" }
   // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61});
+  ExpectParse(d2i_X509_ALGOR,
+              {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+               0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61},
+              true);
+
+
+  // The following test cases are rejected by OpenSSL with their type specific
+  // counterparts. They are parsable with |d2i_ASN1_TYPE| however, and we test
+  // that later.
+  const std::vector<uint8_t> zero_tag_sequence = {0x30, 0x02, 0x00, 0x00};
+  const std::vector<uint8_t> zero_tag_set_any = {0x31, 0x02, 0x00, 0x00};
+  // Taken from OpenSSL's test/asn1_decode_test.c.
+  const std::vector<uint8_t> openssl_t_invalid_zero = {0x31, 0x02, 0x00, 0x00};
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] {}
+  // }
+  const std::vector<uint8_t> universal_0_primitive_empty = {
+      0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+      0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00};
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, zero_tag_sequence, false);
+  ExpectParse(d2i_ASN1_SET_ANY, zero_tag_set_any, false);
+  ExpectParse(d2i_X509_ALGOR, universal_0_primitive_empty, false);
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, openssl_t_invalid_zero, false);
+  // Test that the equivalent test cases are parsable with |ASN1_TYPE| (like
+  // OpenSSL).
+  ExpectParse(d2i_ASN1_TYPE, zero_tag_sequence, true);
+  ExpectParse(d2i_ASN1_TYPE, zero_tag_set_any, true);
+  ExpectParse(d2i_ASN1_TYPE, universal_0_primitive_empty, true);
+  ExpectParse(d2i_ASN1_TYPE, openssl_t_invalid_zero, true);
+
+
+  // TODO: Change expectation of below to true. Below use BER constructed
+  //       strings and will still fail until we revert a70edd4.
+
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 CONSTRUCTED] {}
+  // }
+  ExpectParse(d2i_X509_ALGOR,
+              {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+               0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00},
+              true);
+
+  ExpectParse(d2i_ASN1_TYPE, {0x20, 0x00}, true);
+  ExpectParse(d2i_ASN1_TYPE, {0x20, 0x00}, true);
+}
+
+TEST(ASN1Test, IndefiniteLength) {
+  // Indefinite lengths are more common across container types.
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x80, 0x02, 0x01, 0x2a, 0x00, 0x00},
+              true);
+  ExpectParse(d2i_ASN1_SET_ANY,
+              {0x31, 0x80, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02, 0x00, 0x00},
+              true);
+
+  // constructed [APPLICATION 31] with an invalid indefinite length ending.
+  ExpectParse(d2i_ASN1_TYPE, {0x7f, 0x1f, 0x80, 0x01, 0x01, 0x02, 0x00}, false);
+  // Nested constructed [APPLICATION 31] within another constructed
+  // [APPLICATION 31] with indefinite lengths.
+  ExpectParse(d2i_ASN1_TYPE,
+              {0x7f, 0x1f, 0x80, 0x7f, 0x1f, 0x80, 0x03, 0x01, 0x02, 0x00, 0x00,
+               0x00, 0x00},
+              true);
+
+  // The ones below use constructed form. This is indicated with (0x20 | 0x??)
+  // in the first byte.
+  ExpectParse(
+      d2i_ASN1_BIT_STRING,
+      {0x23, 0x80, 0x03, 0x02, 0x00, 0xFF, 0x03, 0x02, 0x00, 0xAA, 0x00, 0x00},
+      true);
+  ExpectParse(
+      d2i_ASN1_OCTET_STRING,
+      {0x24, 0x80, 0x04, 0x02, 0x12, 0x34, 0x04, 0x02, 0x56, 0x78, 0x00, 0x00},
+      true);
+  // |ASN1_INTEGER|s only have primitive encoding. They do not have constructed
+  // forms.
+  ExpectParse(d2i_ASN1_INTEGER,
+            {0x22, 0x80, 0x02, 0x01, 0x12, 0x02, 0x01, 0x34, 0x00, 0x00},
+            false);
 }
 
 // Exhaustively test POSIX time conversions for every day across the millenium.
@@ -2462,9 +2562,13 @@ TEST(ASN1Test, ASN1Dup) {
             0);
 
   bssl::UniquePtr<EVP_PKEY> evp_pkey(EVP_PKEY_new());
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  ASSERT_FALSE(EVP_PKEY_get0(evp_pkey.get()));
   X509_PUBKEY *tmp_key = nullptr;
   ASSERT_TRUE(evp_pkey);
   ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key.get()));
+  ASSERT_EQ(key.get(), EVP_PKEY_get0(evp_pkey.get()));
+  OPENSSL_END_ALLOW_DEPRECATED
   ASSERT_TRUE(X509_PUBKEY_set(&tmp_key, evp_pkey.get()));
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey(tmp_key);
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey_copy((X509_PUBKEY *)ASN1_dup(
@@ -2474,6 +2578,91 @@ TEST(ASN1Test, ASN1Dup) {
       ASN1_STRING_cmp(X509_PUBKEY_get0_public_key(x509_pubkey.get()),
                       X509_PUBKEY_get0_public_key(x509_pubkey_copy.get())),
       0);
+}
+
+static std::tuple<int, int, int, int, int, int> TimeToTuple(const tm &t) {
+  return std::make_tuple(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min,
+                         t.tm_sec);
+}
+
+TEST(ASN1Test, TimeOverflow) {
+  // Input time is out of range and may overflow internal calculations to shift
+  // |tm_year| and |tm_mon| to a more normal value.
+  tm overflow_year;
+  OPENSSL_memset(&overflow_year, 0, sizeof(overflow_year));
+  overflow_year.tm_year = INT_MAX - 1899;
+  overflow_year.tm_mday = 1;
+  tm overflow_month;
+  OPENSSL_memset(&overflow_month, 0, sizeof(overflow_month));
+  overflow_month.tm_mon = INT_MAX;
+  overflow_month.tm_mday = 1;
+  int64_t posix_u64;
+  EXPECT_FALSE(OPENSSL_tm_to_posix(&overflow_year, &posix_u64));
+  EXPECT_FALSE(OPENSSL_tm_to_posix(&overflow_month, &posix_u64));
+  time_t posix;
+  EXPECT_FALSE(OPENSSL_timegm(&overflow_year, &posix));
+  EXPECT_FALSE(OPENSSL_timegm(&overflow_month, &posix));
+  EXPECT_FALSE(
+      OPENSSL_gmtime_adj(&overflow_year, /*offset_day=*/0, /*offset_sec=*/0));
+  EXPECT_FALSE(
+      OPENSSL_gmtime_adj(&overflow_month, /*offset_day=*/0, /*offset_sec=*/0));
+  int days, secs;
+  EXPECT_FALSE(
+      OPENSSL_gmtime_diff(&days, &secs, &overflow_year, &overflow_year));
+  EXPECT_FALSE(
+      OPENSSL_gmtime_diff(&days, &secs, &overflow_month, &overflow_month));
+
+  // Input time is in range, but even adding one second puts it out of range.
+  tm max_time;
+  OPENSSL_memset(&max_time, 0, sizeof(max_time));
+  max_time.tm_year = 9999 - 1900;
+  max_time.tm_mon = 12 - 1;
+  max_time.tm_mday = 31;
+  max_time.tm_hour = 23;
+  max_time.tm_min = 59;
+  max_time.tm_sec = 59;
+  tm copy = max_time;
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/0));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(max_time));
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/1));
+
+  // Likewise for the earliest representable time.
+  tm min_time;
+  OPENSSL_memset(&min_time, 0, sizeof(min_time));
+  min_time.tm_year = 0 - 1900;
+  min_time.tm_mon = 1 - 1;
+  min_time.tm_mday = 1;
+  min_time.tm_hour = 0;
+  min_time.tm_min = 0;
+  min_time.tm_sec = 0;
+  copy = min_time;
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/0));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(min_time));
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, /*offset_sec=*/-1));
+
+  // Test we can offset between the minimum and maximum times.
+  const int64_t kValidTimeRange = 315569519999;
+  copy = min_time;
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, kValidTimeRange));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(max_time));
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/0, -kValidTimeRange));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(min_time));
+
+  // The second offset may even exceed kValidTimeRange if it is canceled out by
+  // offset_day.
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/-1,
+                                 kValidTimeRange + 24 * 3600));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(max_time));
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&copy, /*offset_day=*/1,
+                                 -kValidTimeRange - 24 * 3600));
+  EXPECT_EQ(TimeToTuple(copy), TimeToTuple(min_time));
+
+  // Make sure the internal calculations for |OPENSSL_gmtime_adj| stay in
+  // bounds.
+  copy = max_time;
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MAX, LONG_MAX));
+  copy = min_time;
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&copy, INT_MIN, LONG_MIN));
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of

@@ -18,8 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         cmake:
-          - { version: "3.2", url: "https://cmake.org/files/v3.2/cmake-3.2.3.tar.gz", hash: "a1ebcaf6d288eb4c966714ea457e3b9677cdfde78820d0f088712d7320850297" }
+          - { version: "3.5", url: "https://cmake.org/files/v3.5/cmake-3.5.0.tar.gz", hash: "92c83ad8a4fd6224cf6319a60b399854f55b38ebe9d297c942408b792b1a9efa" }
           - { version: "3.28", url: "https://cmake.org/files/v3.28/cmake-3.28.1.tar.gz", hash: "15e94f83e647f7d620a140a7a5da76349fc47a1bfed66d0f5cdee8e7344079ad" }
+          - { version: "4.0", url: "https://cmake.org/files/v4.0/cmake-4.0.0.tar.gz", hash: "ddc54ad63b87e153cf50be450a6580f1b17b4881de8941da963ff56991a4083b" }
         generator:
           - "Unix Makefiles"
           - "Ninja"

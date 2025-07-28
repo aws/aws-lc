@@ -234,6 +234,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                    CRYPTO_load_u64_be(gcm_key + 8)};
 
 #if defined(GHASH_ASM_X86_64)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (crypto_gcm_avx512_enabled()) {
     gcm_init_avx512(out_table, H);
     *out_mult = gcm_gmult_avx512;
@@ -241,6 +242,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_is_avx = 1;
     return;
   }
+#endif
   if (crypto_gcm_clmul_enabled()) {
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       gcm_init_avx(out_table, H);
@@ -335,7 +337,7 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->ares = 0;
   ctx->mres = 0;
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled()) {
     gcm_setiv_avx512(key, ctx, iv, len);
     return;
@@ -421,6 +423,15 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
 
   // Process the remainder.
   if (len != 0) {
+    // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
+    // .../aws-lc/crypto/fipsmodule/modes/gcm.c:428:18: error: writing 1 byte into
+    // a region of size 0 [-Werror=stringop-overflow=]
+    // 428 | ctx->Xi[i] ^= aad[i];
+    //     | ~~~~~~~~~~~^~~~~~~~~
+    if (len > 16) {
+      abort();
+      return 0;
+    }
     n = (unsigned int)len;
     for (size_t i = 0; i < len; ++i) {
       ctx->Xi[i] ^= aad[i];
@@ -621,7 +632,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
     aes_gcm_encrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
@@ -682,6 +693,14 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     (*ctx->gcm_key.block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
     CRYPTO_store_u32_be(ctx->Yi + 12, ctr);
+    // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
+    // .../aws-lc/crypto/fipsmodule/modes/gcm.c:688:18: error: writing 1 byte into a region of size 0 [-Werror=stringop-overflow=]
+    // 688 |       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
+    //     |                  ^~
+    if ((n + len) > 16) {
+      abort();
+      return 0;
+    }
     while (len--) {
       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
       ++n;
@@ -715,7 +734,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
     aes_gcm_decrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
@@ -778,6 +797,15 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     (*ctx->gcm_key.block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
     CRYPTO_store_u32_be(ctx->Yi + 12, ctr);
+    // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
+    // aws-lc/crypto/fipsmodule/modes/gcm.c:785:18: error: writing 1 byte into a
+    // region of size 0 [-Werror=stringop-overflow=]
+    // 785 | ctx->Xi[n] ^= c;
+    //     | ~~~~~~~~~~~^~~~
+    if ((n + len) > 16) {
+      abort();
+      return 0;
+    }
     while (len--) {
       uint8_t c = in[n];
       ctx->Xi[n] ^= c;

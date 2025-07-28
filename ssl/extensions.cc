@@ -392,6 +392,7 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
     SSL_SIGN_RSA_PSS_RSAE_SHA384,
     SSL_SIGN_RSA_PKCS1_SHA384,
 
+    SSL_SIGN_ECDSA_SECP521R1_SHA512,
     SSL_SIGN_RSA_PSS_RSAE_SHA512,
     SSL_SIGN_RSA_PKCS1_SHA512,
 
@@ -1473,16 +1474,19 @@ bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
   }
 
   // Check that the protocol name is one of the ones we advertised.
-  CBS client_protocol_name_list =
-          MakeConstSpan(hs->config->alpn_client_proto_list),
-      client_protocol_name;
-  while (CBS_len(&client_protocol_name_list) > 0) {
-    if (!CBS_get_u8_length_prefixed(&client_protocol_name_list,
-                                    &client_protocol_name)) {
+  return ssl_alpn_list_contains_protocol(hs->config->alpn_client_proto_list,
+                                         protocol);
+}
+
+bool ssl_alpn_list_contains_protocol(Span<const uint8_t> list,
+                                     Span<const uint8_t> protocol) {
+  CBS cbs = list, candidate;
+  while (CBS_len(&cbs) > 0) {
+    if (!CBS_get_u8_length_prefixed(&cbs, &candidate)) {
       return false;
     }
 
-    if (client_protocol_name == protocol) {
+    if (candidate == protocol) {
       return true;
     }
   }
@@ -2309,6 +2313,7 @@ static bool ext_key_share_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
+                                         Array<uint8_t> *out_peer_key,
                                          uint8_t *out_alert, CBS *contents) {
   CBS peer_key;
   uint16_t group_id;
@@ -2330,7 +2335,9 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
     key_share = hs->key_shares[1].get();
   }
 
-  if (!key_share->Finish(out_secret, out_alert, peer_key)) {
+  if (!key_share->Finish(out_secret, out_alert, peer_key) ||
+      // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+      !out_peer_key->CopyFrom(peer_key)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
@@ -2752,7 +2759,7 @@ static bool ext_quic_transport_params_add_serverhello_legacy(SSL_HANDSHAKE *hs,
 
 // Delegated credentials.
 //
-// https://tools.ietf.org/html/draft-ietf-tls-subcerts
+// https://www.rfc-editor.org/rfc/rfc9345.html
 
 static bool ext_delegated_credential_add_clienthello(
     const SSL_HANDSHAKE *hs, CBB *out, CBB *out_compressible,
@@ -2779,7 +2786,6 @@ static bool ext_delegated_credential_parse_clienthello(SSL_HANDSHAKE *hs,
     return false;
   }
 
-  hs->delegated_credential_requested = true;
   return true;
 }
 
@@ -4134,7 +4140,7 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
   if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get()) ||
+    if (ssl_public_key_supports_legacy_signature_algorithm(out, hs) ||
         ssl_cert_private_keys_supports_legacy_signature_algorithm(out, hs)) {
       return true;
     }
@@ -4144,7 +4150,7 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
 
   Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
   if (ssl_signing_with_dc(hs)) {
-    sigalgs = MakeConstSpan(&dc->expected_cert_verify_algorithm, 1);
+    sigalgs = MakeConstSpan(&dc->dc_cert_verify_algorithm, 1);
   } else if (!cert->sigalgs.empty()) {
     sigalgs = cert->sigalgs;
   }

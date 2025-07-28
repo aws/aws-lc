@@ -64,10 +64,6 @@ function nginx_patch_build() {
 # * SSL_Conf Command
 # * Stateful session resumption (Session Caches)
 function nginx_patch_tests() {
-  for patchfile in $(find -L "${NGINX_PATCH_TEST_FOLDER}" -type f -name '*.patch'); do
-    echo "Apply patch $patchfile..."
-    patch -p1 --quiet -i "$patchfile"
-  done
   # http_listen.t tries to open port 8182, but this port isn't available within the
   # docker container from CI configurations. This isn't related to ssl functionality, so
   # we skip/remove it.

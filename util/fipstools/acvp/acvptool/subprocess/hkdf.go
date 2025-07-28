@@ -122,9 +122,9 @@ type hkdfTestResponse struct {
 	Passed *bool  `json:"testPassed,omitempty"`
 }
 
-type hkdf struct{}
+type kdaHkdfMode struct{}
 
-func (k *hkdf) Process(vectorSet []byte, m Transactable) (any, error) {
+func (k *kdaHkdfMode) ProcessKDA(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed hkdfTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

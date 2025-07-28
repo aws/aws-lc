@@ -69,8 +69,73 @@ extern "C" {
 
 typedef struct bn_blinding_st BN_BLINDING;
 
+struct rsa_meth_st {
+    void *app_data;
+
+    int (*init)(RSA *rsa);
+    int (*finish)(RSA *rsa);
+
+    // size returns the size of the RSA modulus in bytes.
+    size_t (*size)(const RSA *rsa);
+
+    // Set via |RSA_meth_set_sign|. The default behavior for |sign| is
+    // implemented in |RSA_sign|. If custom functionality is provided, |sign|
+    // will be invoked within |RSA_sign|.
+    int (*sign)(int type, const uint8_t *m, unsigned int m_length,
+                uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
+
+    // Set via |RSA_meth_set_priv_enc|. |sign_raw| is equivalent to the
+    // |priv_enc| field of OpenSSL's |RSA_METHOD| struct. The default behavior
+    // for |sign_raw| is implemented in |RSA_sign_raw|. If custom
+    // functionality is provided, |sign_raw| will be invoked within
+    // |RSA_sign_raw|.
+    int (*sign_raw)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                    int padding);
+
+    // Set via |RSA_meth_set_pub_dec|. |verify_raw| is equivalent to the
+    // |pub_dec| field of OpenSSL's |RSA_METHOD| struct. The default behavior
+    // for |verify_raw| is implemented in |RSA_verify_raw|. If custom
+    // functionality is provided, |verify_raw| will be invoked within
+    // |RSA_verify_raw|.
+    int (*verify_raw)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                      int padding);
+
+    // Set via |RSA_meth_set_priv_dec|. |decrypt| is equivalent to the
+    // |priv_dec| field of OpenSSL's |RSA_METHOD| struct. The default behavior
+    // for |decrypt| is implemented in |RSA_decrypt|. If custom
+    // functionality is provided, |decrypt| will be invoked within
+    // |RSA_decrypt|.
+    int (*decrypt)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                   int padding);
+
+    // Set via |RSA_meth_set_pub_enc|. |encrypt| is equivalent to the
+    // |pub_enc| field of OpenSSL's |RSA_METHOD| struct. The default behavior
+    // for |encrypt| is implemented in |RSA_encrypt|. If custom
+    // functionality is provided, |encrypt| will be invoked within
+    // |RSA_encrypt|.
+    int (*encrypt)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                   int padding);
+
+    // private_transform takes a big-endian integer from |in|, calculates the
+    // d'th power of it, modulo the RSA modulus and writes the result as a
+    // big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
+    // |len| is always equal to |RSA_size(rsa)|. If the result of the transform
+    // can be represented in fewer than |len| bytes, then |out| must be zero
+    // padded on the left.
+    //
+    // It returns one on success and zero otherwise.
+    //
+    // RSA decrypt and sign operations will call this, thus an ENGINE might wish
+    // to override it in order to avoid having to implement the padding
+    // functionality demanded by those, higher level, operations.
+    int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
+                             size_t len);
+
+    int flags;
+};
+
 struct rsa_st {
-  RSA_METHOD *meth;
+  const RSA_METHOD *meth;
 
   BIGNUM *n;
   BIGNUM *e;
@@ -127,8 +192,6 @@ struct rsa_st {
 #define RSA_PKCS1_PADDING_SIZE 11
 
 // Default implementations of RSA operations.
-
-const RSA_METHOD *RSA_default_method(void);
 
 size_t rsa_default_size(const RSA *rsa);
 int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,

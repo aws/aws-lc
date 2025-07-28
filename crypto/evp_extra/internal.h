@@ -7,20 +7,10 @@
 #include <openssl/base.h>
 #include "../fipsmodule/evp/internal.h"
 
-#include "../dilithium/sig_dilithium.h"
-
-typedef struct {
-  // key is the concatenation of the private seed and public key. It is stored
-  // as a single 64-bit array to allow passing to |ED25519_sign|. If
-  // |has_private| is false, the first 32 bytes are uninitialized and the public
-  // key is in the last 32 bytes.
-  uint8_t key[64];
-  char has_private;
-} ED25519_KEY;
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 
 #define PKCS8_VERSION_ONE 0
 #define PKCS8_VERSION_TWO 1
-#define ED25519_PUBLIC_KEY_OFFSET 32
 
 typedef struct {
   uint8_t pub[32];
@@ -28,33 +18,30 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
-#ifdef ENABLE_DILITHIUM
-
-typedef struct {
-  uint8_t *pub;
-  uint8_t *priv;
-} DILITHIUM3_KEY;
-
-#endif
-
+extern const size_t asn1_evp_pkey_methods_size;
+extern const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[];
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
-#ifdef ENABLE_DILITHIUM
-extern const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth;
-#endif
+extern const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD ed25519ph_asn1_meth;
 
-extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
-extern const EVP_PKEY_METHOD dilithium3_pkey_meth;
-extern const EVP_PKEY_METHOD kem_pkey_meth;
 extern const EVP_PKEY_METHOD hmac_pkey_meth;
+extern const EVP_PKEY_METHOD dh_pkey_meth;
+extern const EVP_PKEY_METHOD dsa_pkey_meth;
+extern const EVP_PKEY_METHOD pqdsa_pkey_meth;
+
+// evp_pkey_set_method behaves like |EVP_PKEY_set_type|, but takes a pointer to
+// a method table. This avoids depending on every |EVP_PKEY_ASN1_METHOD|.
+void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method);
 
 // Returns a reference to the list |non_fips_pkey_evp_methods|. The list has
 // size |NON_FIPS_EVP_PKEY_METHODS|.

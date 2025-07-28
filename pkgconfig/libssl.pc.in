@@ -1,6 +1,6 @@
 prefix=@CMAKE_INSTALL_PREFIX@
-libdir=${prefix}/lib
-includedir=${prefix}/include
+libdir=@libdir_for_pc_file@
+includedir=@includedir_for_pc_file@
 
 Name: AWS-LC-libssl
 Description: AWS-LC (OpenSSL SHIM)

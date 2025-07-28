@@ -60,6 +60,7 @@
 // code, above, is incompatible with the |aes_hw_*| functions.
 
 void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  SET_DIT_AUTO_RESET;
   if (hwaes_capable()) {
     aes_hw_encrypt(in, out, key);
   } else if (vpaes_capable()) {
@@ -70,6 +71,7 @@ void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 }
 
 void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  SET_DIT_AUTO_RESET;
   if (hwaes_capable()) {
     aes_hw_decrypt(in, out, key);
   } else if (vpaes_capable()) {
@@ -80,6 +82,7 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 }
 
 int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
+  SET_DIT_AUTO_RESET;
   if (bits != 128 && bits != 192 && bits != 256) {
     return -2;
   }
@@ -93,6 +96,7 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
 }
 
 int AES_set_decrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
+  SET_DIT_AUTO_RESET;
   if (bits != 128 && bits != 192 && bits != 256) {
     return -2;
   }

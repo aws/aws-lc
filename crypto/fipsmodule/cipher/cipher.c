@@ -104,6 +104,7 @@ void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx) {
 }
 
 int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
+  SET_DIT_AUTO_RESET;
   if (in == NULL || in->cipher == NULL) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INPUT_NOT_INITIALIZED);
     return 0;
@@ -145,6 +146,7 @@ int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx) {
 int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                       ENGINE *engine, const uint8_t *key, const uint8_t *iv,
                       int enc) {
+  SET_DIT_AUTO_RESET;
   GUARD_PTR(ctx);
   if (enc == -1) {
     enc = ctx->encrypt;
@@ -262,6 +264,7 @@ static int block_remainder(const EVP_CIPHER_CTX *ctx, int len) {
 
 int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
+  SET_DIT_AUTO_RESET;
   GUARD_PTR(ctx);
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
@@ -354,6 +357,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  SET_DIT_AUTO_RESET;
   int n;
   unsigned int i, b, bl;
   GUARD_PTR(ctx);
@@ -408,6 +412,7 @@ out:
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
+  SET_DIT_AUTO_RESET;
   GUARD_PTR(ctx);
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
@@ -474,6 +479,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
+  SET_DIT_AUTO_RESET;
   int i, n;
   unsigned int b;
   *out_len = 0;
@@ -482,7 +488,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
   // |ctx->cipher->cipher| calls the static aes encryption function way under
   // the hood instead of |EVP_Cipher|, so the service indicator does not need
   // locking here.
- 
+
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -546,6 +552,7 @@ out:
 
 int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                size_t in_len) {
+  SET_DIT_AUTO_RESET;
   GUARD_PTR(ctx);
   GUARD_PTR(ctx->cipher);
   const int ret = ctx->cipher->cipher(ctx, out, in, in_len);
@@ -682,18 +689,32 @@ int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *c, unsigned key_len) {
   return 1;
 }
 
-int EVP_CIPHER_nid(const EVP_CIPHER *cipher) { return cipher->nid; }
+int EVP_CIPHER_nid(const EVP_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return cipher->nid;
+  }
+  return 0;
+}
 
 unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
-  return cipher->block_size;
+  if (cipher != NULL) {
+    return cipher->block_size;
+  }
+  return 0;
 }
 
 unsigned EVP_CIPHER_key_length(const EVP_CIPHER *cipher) {
-  return cipher->key_len;
+  if (cipher != NULL) {
+    return cipher->key_len;
+  }
+  return 0;
 }
 
 unsigned EVP_CIPHER_iv_length(const EVP_CIPHER *cipher) {
-  return cipher->iv_len;
+  if (cipher != NULL) {
+    return cipher->iv_len;
+  }
+  return 0;
 }
 
 uint32_t EVP_CIPHER_flags(const EVP_CIPHER *cipher) {

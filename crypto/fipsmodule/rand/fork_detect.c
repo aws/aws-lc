@@ -155,7 +155,7 @@ void CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing(void) {
   *g_ignore_madv_wipeonfork_bss_get() = 1;
 }
 
-#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
+#elif defined(OPENSSL_WINDOWS)
 
 // These platforms are guaranteed not to fork, and therefore do not require
 // fork detection support. Returning a constant non zero value makes BoringSSL

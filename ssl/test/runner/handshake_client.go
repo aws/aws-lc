@@ -521,7 +521,7 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		channelIDSupported:        c.config.ChannelID != nil,
 		extendedMasterSecret:      maxVersion >= VersionTLS10,
 		srtpProtectionProfiles:    c.config.SRTPProtectionProfiles,
-		srtpMasterKeyIdentifier:   c.config.Bugs.SRTPMasterKeyIdentifer,
+		srtpMasterKeyIdentifier:   c.config.Bugs.SRTPMasterKeyIdentifier,
 		customExtension:           c.config.Bugs.CustomExtension,
 		omitExtensions:            c.config.Bugs.OmitExtensions,
 		emptyExtensions:           c.config.Bugs.EmptyExtensions,
@@ -936,7 +936,7 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 	return nil
 }
 
-func (hs *clientHandshakeState) checkECHConfirmation(msg any, hello *clientHelloMsg, finishedHash *finishedHash) bool {
+func (hs *clientHandshakeState) checkECHConfirmation(msg interface{}, hello *clientHelloMsg, finishedHash *finishedHash) bool {
 	var offset int
 	var raw, label []byte
 	if hrr, ok := msg.(*helloRetryRequestMsg); ok {
@@ -961,7 +961,7 @@ func (hs *clientHandshakeState) checkECHConfirmation(msg any, hello *clientHello
 	return bytes.Equal(confirmation, raw[offset:offset+echAcceptConfirmationLength])
 }
 
-func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
+func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	c := hs.c
 
 	// The first message may be a ServerHello or HelloRetryRequest.
@@ -1183,7 +1183,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		return err
 	}
 
-	var chainToSend *Certificate
+	var chainToSend *CertificateChain
 	var certReq *certificateRequestMsg
 	if c.didResume {
 		// Copy over authentication from the session.
@@ -1691,7 +1691,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	var chainToSend *Certificate
+	var chainToSend *CertificateChain
 	var certRequested bool
 	certReq, ok := msg.(*certificateRequestMsg)
 	if ok {
@@ -1769,7 +1769,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		// Determine the hash to sign.
-		privKey := c.config.Certificates[0].PrivateKey
+		privKey := c.config.Chains[0].PrivateKey
 
 		if certVerify.hasSignatureAlgorithm {
 			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
@@ -1803,7 +1803,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 // delegatedCredentialSignedMessage returns the bytes that are signed in order
 // to authenticate a delegated credential.
 func delegatedCredentialSignedMessage(credBytes []byte, algorithm signatureAlgorithm, leafDER []byte) []byte {
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
+	// https://www.rfc-editor.org/rfc/rfc9345.html#section-4
 	ret := make([]byte, 64, 128)
 	for i := range ret {
 		ret[i] = 0x20
@@ -1919,7 +1919,7 @@ func (hs *clientHandshakeState) establishKeys() error {
 
 	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV :=
 		keysFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.hello.random, hs.serverHello.random, hs.suite.macLen, hs.suite.keyLen, hs.suite.ivLen(c.vers))
-	var clientCipher, serverCipher any
+	var clientCipher, serverCipher interface{}
 	var clientHash, serverHash macFunction
 	if hs.suite.cipher != nil {
 		clientCipher = hs.suite.cipher(clientKey, clientIV, false /* not for reading */)
@@ -2403,18 +2403,18 @@ func (hs *clientHandshakeState) writeServerHash(msg []byte) {
 // selectClientCertificate selects a certificate for use with the given
 // certificate, or none if none match. It may return a particular certificate or
 // nil on success, or an error on internal error.
-func selectClientCertificate(c *Conn, certReq *certificateRequestMsg) (*Certificate, error) {
-	if len(c.config.Certificates) == 0 {
+func selectClientCertificate(c *Conn, certReq *certificateRequestMsg) (*CertificateChain, error) {
+	if len(c.config.Chains) == 0 {
 		return nil, nil
 	}
 
 	// The test is assumed to have configured the certificate it meant to
 	// send.
-	if len(c.config.Certificates) > 1 {
+	if len(c.config.Chains) > 1 {
 		return nil, errors.New("tls: multiple certificates configured")
 	}
 
-	return &c.config.Certificates[0], nil
+	return &c.config.Chains[0], nil
 }
 
 // clientSessionCacheKey returns a key used to cache sessionTickets that could

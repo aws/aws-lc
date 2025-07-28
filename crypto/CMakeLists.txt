@@ -1,5 +1,50 @@
+
+# Function to handle assembly files for ARM64 targets when using MSBuild (the "Visual Studio" generator)
+# This function is necessary because MSBuild ignores ARM64 assembly file dependencies
+include(CMakeParseArguments)
+function(msbuild_aarch64_asm)
+  set(options "")
+  set(oneValueArgs TARGET OUTPUT_OBJECTS)
+  set(multiValueArgs ASM_FILES)
+
+  cmake_parse_arguments(MSBUILD_AARCH64_ASM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
+
+  # Set the output directory for object files
+  set(OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/${MSBUILD_AARCH64_ASM_TARGET}.dir/$<CONFIG>")
+
+  # Initialize list to store assembled object files
+  set(ASSEMBLED_OBJECTS "")
+
+  foreach(ASM_FILE ${MSBUILD_AARCH64_ASM_ASM_FILES})
+    # Get the filename without extension
+    get_filename_component(ASM_NAME ${ASM_FILE} NAME_WE)
+    set(OBJ_FILE "${OBJ_DIR}/${ASM_NAME}.obj")
+
+    add_custom_command(
+      OUTPUT ${OBJ_FILE}
+      COMMAND "${CMAKE_ASM_COMPILER}"
+              --target=arm64-pc-windows-msvc
+              /c
+              /I "${AWSLC_BINARY_DIR}/symbol_prefix_include/"
+              /I "${AWSLC_SOURCE_DIR}/include"
+              /o "${OBJ_FILE}"
+              "${ASM_FILE}"
+      DEPENDS ${ASM_FILE}
+      COMMENT "Assembling ${ASM_FILE}"
+    )
+
+    # Mark the generated object file as an external object
+    set_source_files_properties(${OBJ_FILE} PROPERTIES EXTERNAL_OBJECT TRUE)
+
+    list(APPEND ASSEMBLED_OBJECTS ${OBJ_FILE})
+  endforeach()
+
+  # Set the output variable in the parent scope
+  set(${MSBUILD_AARCH64_ASM_OUTPUT_OBJECTS} ${ASSEMBLED_OBJECTS} PARENT_SCOPE)
+endfunction()
+
 if(NOT OPENSSL_NO_ASM)
-  if(UNIX)
+  if(NOT WIN32)
     if(ARCH STREQUAL "aarch64")
       # The "armx" Perl scripts look for "64" in the style argument
       # in order to decide whether to generate 32- or 64-bit asm.
@@ -18,7 +63,7 @@ if(NOT OPENSSL_NO_ASM)
       set(PERLASM_STYLE linux64le)
     else()
       if(ARCH STREQUAL "x86")
-        set(PERLASM_FLAGS "-fPIC -DOPENSSL_IA32_SSE2")
+        set(PERLASM_FLAGS "-fPIC")
       endif()
       if(APPLE)
         set(PERLASM_STYLE macosx)
@@ -64,9 +109,14 @@ if(NOT OPENSSL_NO_ASM)
         set(PERLASM_STYLE nasm)
       else()
         set(PERLASM_STYLE win32n)
-        set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
       endif()
-      set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
+      find_program(NASM_EXECUTABLE nasm)
+      set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
+        # Provide debug in the default format
+        set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -g")
+      endif()
 
       # On Windows, we use the NASM output.
       set(ASM_EXT asm)
@@ -90,19 +140,25 @@ if(PERL_EXECUTABLE)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
     endif()
 
+    set(PERL_COMMAND "${PERL_EXECUTABLE}")
+    list(APPEND PERL_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+    list(APPEND PERL_COMMAND "${PERLASM_STYLE}")
+    list(APPEND PERL_COMMAND "${dest}")
+    list(APPEND PERL_COMMAND ${PERLASM_FLAGS})
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${dest} ${PERLASM_FLAGS}
+      COMMAND ${PERL_COMMAND}
       DEPENDS
       ${src}
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
-      ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86asm.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86gas.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86masm.pl
+      ${AWSLC_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
       WORKING_DIRECTORY .
     )
   endfunction()
@@ -130,7 +186,7 @@ else()
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-arm/crypto/)
   elseif(APPLE)
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/mac-${ARCH}/crypto/)
-  elseif(UNIX)
+  elseif(NOT WIN32)
     if(${ARCH} STREQUAL "generic")
       message(STATUS "Detected generic linux platform. No assembly files will be included.")
     else()
@@ -251,6 +307,7 @@ if(GO_EXECUTABLE)
     err/engine.errordata
     err/evp.errordata
     err/hkdf.errordata
+    err/hmac.errordata
     err/obj.errordata
     err/ocsp.errordata
     err/pem.errordata
@@ -267,16 +324,9 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
-set(DILITHIUM_SOURCES)
-if(ENABLE_DILITHIUM)
-  set(
-    DILITHIUM_SOURCES
-
-    dilithium/dilithium3r3_ref.c
-    dilithium/p_dilithium3.c
-    dilithium/p_dilithium3_asn1.c
-    dilithium/sig_dilithium3.c
-  )
+set(CRYPTO_ARCH_OBJECTS "")
+if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+  msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
 endif()
 
 add_library(
@@ -312,12 +362,15 @@ add_library(
   asn1/posix_time.c
   base64/base64.c
   bio/bio.c
+  bio/bio_addr.c
   bio/bio_mem.c
   bio/connect.c
+  bio/dgram.c
   bio/errno.c
   bio/fd.c
   bio/file.c
   bio/hexdump.c
+  bio/md.c
   bio/pair.c
   bio/printf.c
   bio/socket.c
@@ -346,16 +399,12 @@ add_library(
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
   conf/conf.c
+  console/console.c
   crypto.c
-  curve25519/curve25519.c
-  curve25519/curve25519_nohw.c
-  curve25519/curve25519_s2n_bignum_asm.c
-  curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
-  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -367,13 +416,15 @@ add_library(
   err_data.c
   engine/engine.c
   evp_extra/evp_asn1.c
+  evp_extra/p_dh.c
+  evp_extra/p_dh_asn1.c
+  evp_extra/p_dsa.c
   evp_extra/p_dsa_asn1.c
   evp_extra/p_ec_asn1.c
-  evp_extra/p_ed25519.c
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
-  evp_extra/p_kem.c
   evp_extra/p_kem_asn1.c
+  evp_extra/p_pqdsa_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
@@ -384,8 +435,6 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kem/kem.c
-  kem/kem_methods.c
   kyber/kyber512r3_ref.c
   kyber/kyber768r3_ref.c
   kyber/kyber1024r3_ref.c
@@ -393,8 +442,6 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
-  ml_kem/ml_kem_512_ipd.c
-  ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
@@ -413,7 +460,9 @@ add_library(
   pem/pem_pkey.c
   pem/pem_x509.c
   pem/pem_xaux.c
+  pkcs7/bio/cipher.c
   pkcs7/pkcs7.c
+  pkcs7/pkcs7_asn1.c
   pkcs7/pkcs7_x509.c
   pkcs8/pkcs8.c
   pkcs8/pkcs8_x509.c
@@ -425,10 +474,7 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
-  rand_extra/fuchsia.c
   rand_extra/rand_extra.c
-  rand_extra/pq_custom_randombytes.c
-  rand_extra/trusty.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -440,6 +486,7 @@ add_library(
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
+  spake25519/spake25519.c
   thread.c
   thread_none.c
   thread_pthread.c
@@ -530,13 +577,14 @@ add_library(
   decrepit/x509/x509_decrepit.c
 
   ${CRYPTO_ARCH_SOURCES}
+  ${CRYPTO_ARCH_OBJECTS}
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 # For the prefix build, the object files need the prefix header files to build.
 add_dependencies(crypto_objects boringssl_prefix_symbols)
-target_include_directories(crypto_objects BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-target_include_directories(crypto_objects PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(crypto_objects BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+target_include_directories(crypto_objects PRIVATE ${AWSLC_SOURCE_DIR}/include)
 
 function(build_libcrypto name module_source)
   if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
@@ -550,7 +598,6 @@ function(build_libcrypto name module_source)
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)
   endif()
-  SET_TARGET_PROPERTIES(${name} PROPERTIES LINKER_LANGUAGE C)
   if(WIN32)
     target_link_libraries(${name} PUBLIC ws2_32)
   endif()
@@ -559,10 +606,10 @@ function(build_libcrypto name module_source)
   endif()
 
   add_dependencies(${name} boringssl_prefix_symbols)
-  target_include_directories(${name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${name} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   target_include_directories(${name} PUBLIC
-          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+          $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
@@ -575,14 +622,14 @@ if(FIPS_SHARED)
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
-    target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
-    target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+    target_include_directories(fips_empty_main PRIVATE ${AWSLC_SOURCE_DIR}/include)
+    target_include_directories(fips_empty_main BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
-            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            DEPENDS fips_empty_main ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
     add_library(
       generated_fipsmodule
@@ -590,11 +637,11 @@ if(FIPS_SHARED)
       OBJECT
 
       generated_fips_shared_support.c
-      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+      ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
     add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
-    target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
-    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+    target_include_directories(generated_fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
+    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
@@ -608,13 +655,9 @@ if(FIPS_SHARED)
     add_custom_command(
       TARGET crypto POST_BUILD
       COMMAND ${GO_EXECUTABLE} run
-      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-      # go_executable isn't used (as it doesn't get built), but we list this
-      # dependency anyway in case it starts working in some CMake version.
-      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
 
     # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
@@ -632,11 +675,11 @@ if(FIPS_SHARED)
     #
     # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
     # because if NO_ASM build flag is defined then ARCH is set to "generic".
-    if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+    if (APPLE AND CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND codesign -s - $<TARGET_FILE:crypto>
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
       )
     endif()
 
@@ -645,7 +688,13 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
-if(NOT ANDROID)
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads. Additionally, the Threads
+# package does not work with Android, but Android does not require any extra
+# parameters to link pthreads.
+if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android)$")
   find_package(Threads REQUIRED)
   target_link_libraries(crypto PUBLIC Threads::Threads)
 endif()
@@ -670,8 +719,9 @@ if(BUILD_TESTING)
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
     target_link_libraries(${executable_name} boringssl_gtest_main)
     add_dependencies(${executable_name} boringssl_prefix_symbols)
-    target_include_directories(${executable_name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+    target_include_directories(${executable_name} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
+    set_test_location(${executable_name})
   endmacro()
 
   # Below tests are added as new executables to be executed in single process.
@@ -687,10 +737,11 @@ if(BUILD_TESTING)
     ${RANDOM_TEST_EXEC}
     fipsmodule/rand/urandom_test.cc
   )
+  set_test_location(${RANDOM_TEST_EXEC})
 
   add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  target_include_directories(${RANDOM_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${RANDOM_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
@@ -700,7 +751,9 @@ if(BUILD_TESTING)
     abi_self_test.cc
     asn1/asn1_test.cc
     base64/base64_test.cc
+    bio/bio_md_test.cc
     bio/bio_test.cc
+    bio/bio_socket_test.cc
     blake2/blake2_test.cc
     buf/buf_test.cc
     bytestring/bytestring_test.cc
@@ -709,39 +762,46 @@ if(BUILD_TESTING)
     cipher_extra/cipher_test.cc
     compiler_test.cc
     conf/conf_test.cc
+    console/console_test.cc
     constant_time_test.cc
     crypto_test.cc
-    curve25519/ed25519_test.cc
-    curve25519/spake25519_test.cc
-    curve25519/x25519_test.cc
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
+    des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+    evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
+    fips_callback_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
     fipsmodule/bn/bn_assert_test.cc
     fipsmodule/cmac/cmac_test.cc
+    fipsmodule/curve25519/ed25519_test.cc
+    fipsmodule/curve25519/x25519_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/evp/evp_ctx_test.cc
+    fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
+    fipsmodule/ml_kem/ml_kem_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
     fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/rand/snapsafe_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
+    fipsmodule/cpucap/cpu_aarch64_dit_test.cc
     fipsmodule/hkdf/hkdf_test.cc
     fipsmodule/sshkdf/sshkdf_test.cc
     hpke/hpke_test.cc
@@ -752,6 +812,7 @@ if(BUILD_TESTING)
     obj/obj_test.cc
     ocsp/ocsp_test.cc
     pem/pem_test.cc
+    pkcs7/bio/bio_cipher_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc
     pkcs8/pkcs12_test.cc
@@ -765,6 +826,8 @@ if(BUILD_TESTING)
     self_test.cc
     stack/stack_test.cc
     siphash/siphash_test.cc
+    spake25519/spake25519_test.cc
+    test/file_util.cc
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc
@@ -779,10 +842,12 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
   )
+  set_test_location(${CRYPTO_TEST_EXEC})
 
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
-  target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_compile_definitions(${CRYPTO_TEST_EXEC} PRIVATE AWS_LC_TEST_ENV)
   if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()
@@ -794,9 +859,10 @@ if(BUILD_TESTING)
 
   add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
+  set_test_location(${DYNAMIC_LOADING_TEST_EXEC})
 
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
-  target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   set(DYNAMIC_LINKER_LIB "")
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE OR ANDROID)
@@ -818,9 +884,10 @@ if(BUILD_TESTING)
   message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
   add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
   add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+  set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
   target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
   if(MSVC)
     target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
   else()

@@ -46,6 +46,10 @@ int RAND_egd(const char *path) {
   return 255;
 }
 
+int RAND_egd_bytes(const char *path, int bytes) {
+  return bytes;
+}
+
 int RAND_poll(void) {
   return 1;
 }

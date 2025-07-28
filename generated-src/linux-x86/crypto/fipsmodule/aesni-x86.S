@@ -866,7 +866,8 @@ aes_hw_ctr32_encrypt_blocks:
 	andl	$-16,%esp
 	movl	%ebp,80(%esp)
 	cmpl	$1,%eax
-	je	.L039ctr32_one_shortcut
+	jb	.L039ctr32_ret
+	je	.L040ctr32_one_shortcut
 	movdqu	(%ebx),%xmm7
 	movl	$202182159,(%esp)
 	movl	$134810123,4(%esp)
@@ -904,7 +905,7 @@ aes_hw_ctr32_encrypt_blocks:
 	pshufd	$192,%xmm0,%xmm2
 	pshufd	$128,%xmm0,%xmm3
 	cmpl	$6,%eax
-	jb	.L040ctr32_tail
+	jb	.L041ctr32_tail
 	pxor	%xmm6,%xmm7
 	shll	$4,%ecx
 	movl	$16,%ebx
@@ -913,9 +914,9 @@ aes_hw_ctr32_encrypt_blocks:
 	subl	%ecx,%ebx
 	leal	32(%edx,%ecx,1),%edx
 	subl	$6,%eax
-	jmp	.L041ctr32_loop6
+	jmp	.L042ctr32_loop6
 .align	16
-.L041ctr32_loop6:
+.L042ctr32_loop6:
 	pshufd	$64,%xmm0,%xmm4
 	movdqa	32(%esp),%xmm0
 	pshufd	$192,%xmm1,%xmm5
@@ -969,14 +970,14 @@ aes_hw_ctr32_encrypt_blocks:
 	leal	96(%edi),%edi
 	pshufd	$128,%xmm0,%xmm3
 	subl	$6,%eax
-	jnc	.L041ctr32_loop6
+	jnc	.L042ctr32_loop6
 	addl	$6,%eax
-	jz	.L042ctr32_ret
+	jz	.L039ctr32_ret
 	movdqu	(%ebp),%xmm7
 	movl	%ebp,%edx
 	pxor	32(%esp),%xmm7
 	movl	240(%ebp),%ecx
-.L040ctr32_tail:
+.L041ctr32_tail:
 	por	%xmm7,%xmm2
 	cmpl	$2,%eax
 	jb	.L043ctr32_one
@@ -1007,9 +1008,9 @@ aes_hw_ctr32_encrypt_blocks:
 	movups	%xmm4,32(%edi)
 	movups	%xmm5,48(%edi)
 	movups	%xmm6,64(%edi)
-	jmp	.L042ctr32_ret
+	jmp	.L039ctr32_ret
 .align	16
-.L039ctr32_one_shortcut:
+.L040ctr32_one_shortcut:
 	movups	(%ebx),%xmm2
 	movl	240(%edx),%ecx
 .L043ctr32_one:
@@ -1027,7 +1028,7 @@ aes_hw_ctr32_encrypt_blocks:
 	movups	(%esi),%xmm6
 	xorps	%xmm2,%xmm6
 	movups	%xmm6,(%edi)
-	jmp	.L042ctr32_ret
+	jmp	.L039ctr32_ret
 .align	16
 .L044ctr32_two:
 	call	_aesni_encrypt2
@@ -1037,7 +1038,7 @@ aes_hw_ctr32_encrypt_blocks:
 	xorps	%xmm6,%xmm3
 	movups	%xmm2,(%edi)
 	movups	%xmm3,16(%edi)
-	jmp	.L042ctr32_ret
+	jmp	.L039ctr32_ret
 .align	16
 .L045ctr32_three:
 	call	_aesni_encrypt3
@@ -1050,7 +1051,7 @@ aes_hw_ctr32_encrypt_blocks:
 	xorps	%xmm7,%xmm4
 	movups	%xmm3,16(%edi)
 	movups	%xmm4,32(%edi)
-	jmp	.L042ctr32_ret
+	jmp	.L039ctr32_ret
 .align	16
 .L046ctr32_four:
 	call	_aesni_encrypt4
@@ -1066,7 +1067,7 @@ aes_hw_ctr32_encrypt_blocks:
 	xorps	%xmm0,%xmm5
 	movups	%xmm4,32(%edi)
 	movups	%xmm5,48(%edi)
-.L042ctr32_ret:
+.L039ctr32_ret:
 	pxor	%xmm0,%xmm0
 	pxor	%xmm1,%xmm1
 	pxor	%xmm2,%xmm2

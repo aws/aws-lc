@@ -18,12 +18,14 @@ package subprocess
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // Transactable provides an interface to allow test injection of transactions
@@ -63,8 +65,8 @@ type pendingRead struct {
 }
 
 // New returns a new Subprocess middle layer that runs the given binary.
-func New(path string) (*Subprocess, error) {
-	cmd := exec.Command(path)
+func New(path string, arg ...string) (*Subprocess, error) {
+	cmd := exec.Command(path, arg...)
 	cmd.Stderr = os.Stderr
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -137,15 +139,23 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ctrDRBG":           &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}},
 		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
 		"KDF":               &kdfPrimitive{},
-		"KDA":               &hkdf{},
-		"TLS-v1.3":          &tls13{},
-		"CMAC-AES":          &keyedMACPrimitive{"CMAC-AES"},
-		"RSA":               &rsa{},
-		"kdf-components":    &kdfComp{"kdf-components"},
-		"TLS-v1.2":          &kdfComp{"TLS-v1.2"},
-		"KAS-ECC-SSC":       &kas{},
-		"KAS-FFC-SSC":       &kasDH{},
-		"PBKDF":             &pbkdf{},
+		"KDA": &kdaPrimitive{
+			modes: map[string]kdaModePrimitive{
+				"HKDF":    &kdaHkdfMode{},
+				"OneStep": &kdaOneStepMode{},
+			},
+		},
+		"TLS-v1.3":       &tls13{},
+		"CMAC-AES":       &keyedMACPrimitive{"CMAC-AES"},
+		"RSA":            &rsa{},
+		"kdf-components": &kdfComp{"kdf-components"},
+		"TLS-v1.2":       &kdfComp{"TLS-v1.2"},
+		"KAS-ECC-SSC":    &kas{},
+		"KAS-FFC-SSC":    &kasDH{},
+		"PBKDF":          &pbkdf{},
+		"ML-KEM":         &mlKem{},
+		"EDDSA":          &eddsa{},
+		"ML-DSA":         &mlDsa{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 
@@ -199,6 +209,10 @@ func (m *Subprocess) enqueueRead(pending pendingRead) error {
 	}
 
 	return nil
+}
+
+func (m *Subprocess) PID() int {
+	return m.cmd.Process.Pid
 }
 
 // TransactAsync performs a single request--response pair with the subprocess.
@@ -373,7 +387,7 @@ func (m *Subprocess) Config() ([]byte, error) {
 }
 
 // Process runs a set of test vectors and returns the result.
-func (m *Subprocess) Process(algorithm string, vectorSet []byte) (any, error) {
+func (m *Subprocess) Process(algorithm string, vectorSet []byte) (interface{}, error) {
 	prim, ok := m.primitives[algorithm]
 	if !ok {
 		return nil, fmt.Errorf("unknown algorithm %q", algorithm)
@@ -386,11 +400,47 @@ func (m *Subprocess) Process(algorithm string, vectorSet []byte) (any, error) {
 }
 
 type primitive interface {
-	Process(vectorSet []byte, t Transactable) (any, error)
+	Process(vectorSet []byte, t Transactable) (interface{}, error)
 }
 
 func uint32le(n uint32) []byte {
 	var ret [4]byte
 	binary.LittleEndian.PutUint32(ret[:], n)
 	return ret[:]
+}
+
+type hexEncodedByteString []byte
+
+func (h *hexEncodedByteString) MarshalJSON() ([]byte, error) {
+	if h == nil || *h == nil {
+		return []byte("null"), nil
+	}
+	hexStr := strings.ToUpper(hex.EncodeToString(*h))
+	return json.Marshal(hexStr)
+}
+
+func (h *hexEncodedByteString) UnmarshalJSON(jsonBytes []byte) error {
+	var jsonValue interface{}
+	if err := json.Unmarshal(jsonBytes, &jsonValue); err != nil {
+		return err
+	}
+
+	switch v := jsonValue.(type) {
+	case string:
+		if len(v) == 0 {
+			*h = nil
+			return nil
+		}
+		bv, err := hex.DecodeString(v)
+		if err != nil {
+			return err
+		}
+		*h = bv
+	case nil:
+		*h = nil
+	default:
+		return fmt.Errorf("HexEncodedBytes doesn't support json type: %T", jsonValue)
+	}
+
+	return nil
 }

@@ -26,13 +26,13 @@
 
 
 // See comment above the typedef of CRYPTO_refcount_t about these tests.
-static_assert(alignof(CRYPTO_refcount_t) == alignof(_Atomic CRYPTO_refcount_t),
-              "_Atomic alters the needed alignment of a reference count");
-static_assert(sizeof(CRYPTO_refcount_t) == sizeof(_Atomic CRYPTO_refcount_t),
-              "_Atomic alters the size of a reference count");
+OPENSSL_STATIC_ASSERT(alignof(CRYPTO_refcount_t) == alignof(_Atomic CRYPTO_refcount_t),
+              _Atomic_alters_the_needed_alignment_of_a_reference_count)
+OPENSSL_STATIC_ASSERT(sizeof(CRYPTO_refcount_t) == sizeof(_Atomic CRYPTO_refcount_t),
+              _Atomic_alters_the_size_of_a_reference_count)
 
-static_assert((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
-              "CRYPTO_REFCOUNT_MAX is incorrect");
+OPENSSL_STATIC_ASSERT((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
+              CRYPTO_REFCOUNT_MAX_is_incorrect)
 
 void CRYPTO_refcount_inc(CRYPTO_refcount_t *in_count) {
   _Atomic CRYPTO_refcount_t *count = (_Atomic CRYPTO_refcount_t *) in_count;

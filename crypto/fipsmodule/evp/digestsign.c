@@ -57,6 +57,7 @@
 
 #include <openssl/err.h>
 
+#include "../pqdsa/internal.h"
 #include "../delocate.h"
 #include "../digest/internal.h"
 #include "internal.h"
@@ -78,13 +79,25 @@ DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
 }
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
-  return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
-                          : (ctx->pctx->pmeth->verify != NULL);
+  // Pre-hash modes of ML-DSA that uses an external mu calculation differs from
+  // other signing algorithms, so we specifically check for NIDs of type NID_MLDSAXX.
+  if (ctx->pctx->pkey->type == EVP_PKEY_PQDSA &&
+      ctx->pctx->pkey->pkey.pqdsa_key != NULL) {
+    int nid = ctx->pctx->pkey->pkey.pqdsa_key->pqdsa->nid;
+
+    if (nid == NID_MLDSA44 || nid == NID_MLDSA65 || nid == NID_MLDSA87) {
+      return 0;
+    }
+  }
+
+    return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
+                            : (ctx->pctx->pmeth->verify != NULL);
 }
 
-static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
-  CHECK(HMAC_Update(&hctx->ctx, data, count));
+  // HMAC_Update returns 1 on success and 0 on failure.
+  return HMAC_Update(&hctx->ctx, data, count);
 }
 
 static int HMAC_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *out_sig,
@@ -157,15 +170,18 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
 
 int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type,
                        ENGINE *e, EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   return do_sigver_init(ctx, pctx, type, e, pkey, evp_sign);
 }
 
 int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                          const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   return do_sigver_init(ctx, pctx, type, e, pkey, evp_verify);
 }
 
 int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_sign) && !used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -175,6 +191,7 @@ int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
 }
 
 int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_verify) || used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -185,6 +202,7 @@ int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
 
 int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
                         size_t *out_sig_len) {
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_sign) && !used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -230,6 +248,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
 }
 
 int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len) {
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_verify) || used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -258,9 +277,11 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len) {
 
 int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
                    const uint8_t *data, size_t data_len) {
+  GUARD_PTR(ctx->pctx);
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+  SET_DIT_AUTO_RESET;
   int ret = 0;
 
   if (uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) {
@@ -280,12 +301,14 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   }
 
   // This is executed when |uses_prehash| is not true, which is the case for
-  // Ed25519 and Dilithium.
+  // Ed25519 and ML-DSA when in pure mode.
   ret = ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
                                        data_len);
 end:
   FIPS_service_indicator_unlock_state();
-  if (ret > 0) {
+  if (ret > 0 && out_sig != NULL) {
+    // Indicator should only be set if we performed crypto, don't set if we only
+    // performed a size check.
     EVP_DigestSign_verify_service_indicator(ctx);
   }
   return ret;
@@ -293,9 +316,11 @@ end:
 
 int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
                      const uint8_t *data, size_t len) {
+  GUARD_PTR(ctx->pctx);
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
+  SET_DIT_AUTO_RESET;
   int ret = 0;
 
   if (uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) {
@@ -310,7 +335,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   }
 
   // This is executed when |uses_prehash| is not true, which is the case for
-  // Ed25519 and Dilithium.
+  // Ed25519 and ML-DSA when in pure mode.
   ret = ctx->pctx->pmeth->verify_message(ctx->pctx, sig, sig_len, data, len);
 
 end:
@@ -322,19 +347,32 @@ end:
 }
 
 void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
-    // |pctx| could be null, so we have to deal with the cleanup job here.
-    if (!(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
-      EVP_PKEY_CTX_free(ctx->pctx);
-    }
+  SET_DIT_AUTO_RESET;
+  // |pctx| could be null, so we have to deal with the cleanup job here.
+  if (!(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
+    EVP_PKEY_CTX_free(ctx->pctx);
+  }
 
-    ctx->pctx = pctx;
-    ctx->pctx_ops = EVP_MD_pctx_ops();
+  ctx->pctx = pctx;
+  ctx->pctx_ops = EVP_MD_pctx_ops();
 
-    if (pctx != NULL) {
-      // make sure |pctx| is not freed when destroying |EVP_MD_CTX|
-      ctx->flags |= EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
-    } else {
-      // if |pctx| is null, we remove the flag.
-      ctx->flags &= ~EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
-    }
+  if (pctx != NULL) {
+    // make sure |pctx| is not freed when destroying |EVP_MD_CTX|
+    ctx->flags |= EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
+  } else {
+    // if |pctx| is null, we remove the flag.
+    ctx->flags &= ~EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
+  }
+}
+
+EVP_PKEY_CTX *EVP_MD_CTX_get_pkey_ctx(const EVP_MD_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
+  if(ctx == NULL) {
+    return NULL;
+  }
+  return ctx->pctx;
+}
+
+EVP_PKEY_CTX *EVP_MD_CTX_pkey_ctx(const EVP_MD_CTX *ctx) {
+  return EVP_MD_CTX_get_pkey_ctx(ctx);
 }

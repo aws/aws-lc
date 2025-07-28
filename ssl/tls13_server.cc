@@ -78,7 +78,9 @@ static bool resolve_ecdhe_secret(SSL_HANDSHAKE *hs,
     if (!key_share ||  //
         !CBB_init(public_key.get(), 32) ||
         !key_share->Accept(public_key.get(), &secret, &alert, peer_key) ||
-        !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
+        !CBBFinishArray(public_key.get(), &hs->ecdh_public_key) ||
+        // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+        !ssl->s3->peer_key.CopyFrom(peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return false;
     }
@@ -108,9 +110,14 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
   return 1;
 }
 
-static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl, uint16_t group_id) {
+static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl) {
   STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
-  if (ssl->ctx->tls13_cipher_list &&
+  // First check config, otherwise fallback to ctx preferences.
+  if (ssl->config && ssl->config->tls13_cipher_list &&
+      ssl->config->tls13_cipher_list.get()->ciphers &&
+      sk_SSL_CIPHER_num(ssl->config->tls13_cipher_list.get()->ciphers.get()) > 0) {
+    tls13_ciphers = ssl->config->tls13_cipher_list.get()->ciphers.get();
+  } else if (ssl->ctx->tls13_cipher_list &&
       ssl->ctx->tls13_cipher_list.get()->ciphers &&
       sk_SSL_CIPHER_num(ssl->ctx->tls13_cipher_list.get()->ciphers.get()) > 0) {
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
@@ -120,7 +127,7 @@ static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl, uint16_t group_id) 
                                  ssl->config->aes_hw_override
                                      ? ssl->config->aes_hw_override_value
                                      : EVP_has_aes_hardware(),
-                                 ssl_protocol_version(ssl), group_id, tls13_ciphers);
+                                 ssl_protocol_version(ssl), tls13_ciphers);
 }
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
@@ -225,13 +232,6 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
                  client_hello.session_id_len);
   hs->session_id_len = client_hello.session_id_len;
 
-  uint16_t group_id;
-  if (!tls1_get_shared_group(hs, &group_id)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_GROUP);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-    return ssl_hs_error;
-  }
-
   if (!ssl_parse_client_cipher_list(ssl, &client_hello, &ssl->client_cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -239,7 +239,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   // Negotiate the cipher suite.
-  hs->new_cipher = choose_tls13_cipher(ssl, group_id);
+  hs->new_cipher = choose_tls13_cipher(ssl);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -579,7 +579,6 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
 
   ScopedCBB cbb;
   CBB body, session_id, extensions;
-  uint16_t group_id;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, TLS1_2_VERSION) ||
       !CBB_add_bytes(&body, kHelloRetryRequest, SSL3_RANDOM_SIZE) ||
@@ -587,14 +586,13 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
       !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
       !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
-      !tls1_get_shared_group(hs, &group_id) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !CBB_add_u16(&extensions, TLSEXT_TYPE_supported_versions) ||
       !CBB_add_u16(&extensions, 2 /* length */) ||
       !CBB_add_u16(&extensions, ssl->version) ||
       !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
       !CBB_add_u16(&extensions, 2 /* length */) ||
-      !CBB_add_u16(&extensions, group_id)) {
+      !CBB_add_u16(&extensions, hs->new_session->group_id)) {
     return ssl_hs_error;
   }
   if (hs->ech_is_inner) {

@@ -25,6 +25,9 @@
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -177,10 +180,10 @@ TEST(ECTest, Encoding) {
   ASSERT_TRUE(y_hex);
 
   EXPECT_STREQ(
-      "c81561ecf2e54edefe6617db1c7a34a70744ddb261f269b83dacfcd2ade5a681",
+      "C81561ECF2E54EDEFE6617DB1C7A34A70744DDB261F269B83DACFCD2ADE5A681",
       x_hex.get());
   EXPECT_STREQ(
-      "e0e2afa3f9b6abe4c698ef6495f1be49a3196c5056acb3763fe4507eec596e88",
+      "E0E2AFA3F9B6ABE4C698EF6495F1BE49A3196C5056ACB3763FE4507EEC596E88",
       y_hex.get());
 }
 
@@ -209,6 +212,19 @@ static const uint8_t kP224PublicKey_compressed_0x02[] = {
   0xc5, 0x82, 0x78, 0x85
 };
 
+static const uint8_t kP224PublicKey_hybrid_0x02[] = {
+  /* uncompressed */
+  0x06,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0xe0, 0x43, 0xae, 0x7b, 0xae, 0xa3, 0x77, 0x28, 0x60, 0x39, 0xc0, 0x7c,
+  0x04, 0x1b, 0x7a, 0x3b, 0x5d, 0x76, 0x96, 0xda, 0xdd, 0xa7, 0x05, 0x1a,
+  0xd6, 0x45, 0xa3, 0xea
+};
+
 static const uint8_t kP224PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
@@ -228,6 +244,19 @@ static const uint8_t kP224PublicKey_compressed_0x03[] = {
   0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
   0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
   0xc5, 0x82, 0x78, 0x85
+};
+
+static const uint8_t kP224PublicKey_hybrid_0x03[] = {
+  /* uncompressed */
+  0x07,
+  /* x-coordinate */
+  0xd6, 0xf5, 0xf0, 0x6e, 0xf4, 0xc5, 0x56, 0x0a, 0xff, 0x8f, 0x49, 0x90,
+  0xef, 0xdb, 0xa5, 0x9a, 0xf8, 0xa8, 0xd3, 0x77, 0x0d, 0x80, 0x14, 0x6a,
+  0xc5, 0x82, 0x78, 0x85,
+  /* y-coordinate */
+  0x1f, 0xbc, 0x51, 0x84, 0x51, 0x5c, 0x88, 0xd7, 0x9f, 0xc6, 0x3f, 0x83,
+  0xfb, 0xe4, 0x85, 0xc3, 0xa2, 0x89, 0x69, 0x25, 0x22, 0x58, 0xfa, 0xe5,
+  0x29, 0xba, 0x5c, 0x17
 };
 
 static const uint8_t kP256PublicKey_uncompressed_0x02[] = {
@@ -251,6 +280,19 @@ static const uint8_t kP256PublicKey_compressed_0x02[] = {
   0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b
 };
 
+static const uint8_t kP256PublicKey_hybrid_0x02[] = {
+  /* uncompressed */
+  0x06,
+  /* x-coordinate */
+  0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
+  0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
+  0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b,
+  /* y-coordinate */
+  0xc9, 0x53, 0x67, 0xc0, 0xd2, 0x90, 0x46, 0x86, 0x61, 0x8b, 0xf6, 0xf2,
+  0xd9, 0x0b, 0x7c, 0xcb, 0x31, 0xb0, 0xb4, 0x8c, 0x60, 0xc0, 0x28, 0x55,
+  0x6d, 0x1d, 0x3a, 0xbf, 0xdc, 0xd3, 0x1e, 0x42
+};
+
 static const uint8_t kP256PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
@@ -270,6 +312,19 @@ static const uint8_t kP256PublicKey_compressed_0x03[] = {
   0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
   0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
   0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b
+};
+
+static const uint8_t kP256PublicKey_hybrid_0x03[] = {
+  /* uncompressed */
+  0x07,
+  /* x-coordinate */
+  0xe1, 0x5a, 0x44, 0x72, 0x91, 0xf0, 0x84, 0xfe, 0x88, 0x7a, 0x6c, 0x2c,
+  0x03, 0x22, 0x9a, 0xf3, 0x04, 0x8a, 0x5d, 0xfe, 0x84, 0x73, 0x70, 0xc9,
+  0x3f, 0x92, 0x72, 0x9b, 0x31, 0xc5, 0x5f, 0x7b,
+  /* y-coordinate */
+  0x36, 0xac, 0x98, 0x3e, 0x2d, 0x6f, 0xb9, 0x7a, 0x9e, 0x74, 0x09, 0x0d,
+  0x26, 0xf4, 0x83, 0x34, 0xce, 0x4f, 0x4b, 0x74, 0x9f, 0x3f, 0xd7, 0xaa,
+  0x92, 0xe2, 0xc5, 0x40, 0x23, 0x2c, 0xe1, 0xbd
 };
 
 static const uint8_t kP384PublicKey_uncompressed_0x02[] = {
@@ -296,6 +351,21 @@ static const uint8_t kP384PublicKey_compressed_0x02[] = {
   0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d
 };
 
+static const uint8_t kP384PublicKey_hybrid_0x02[] = {
+  /* uncompressed */
+  0x06,
+  /* x-coordinate */
+  0xe4, 0xe7, 0x0e, 0x43, 0xc6, 0xd0, 0x43, 0x46, 0xdd, 0xd7, 0x62, 0xa6,
+  0x14, 0x17, 0x6d, 0x22, 0x78, 0xb0, 0x47, 0xc5, 0xec, 0x28, 0x64, 0x84,
+  0x65, 0xf2, 0xa3, 0x90, 0xf6, 0xdd, 0x6b, 0xba, 0x54, 0xb9, 0x0b, 0x1e,
+  0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d,
+  /* y-coordinate */
+  0x06, 0x9d, 0x5d, 0x8c, 0x95, 0x31, 0xad, 0xa9, 0xe7, 0xea, 0x2a, 0x66,
+  0xac, 0x5f, 0xe6, 0xe4, 0xe0, 0x4e, 0x0d, 0x77, 0x5b, 0xa0, 0x71, 0xd7,
+  0xc2, 0xbf, 0x5a, 0x00, 0xf1, 0x7c, 0xc0, 0x0b, 0xf4, 0x29, 0xfa, 0x4d,
+  0xf3, 0x07, 0x3d, 0x93, 0xa8, 0xb2, 0xb3, 0xd1, 0xf2, 0x32, 0x31, 0xde
+};
+
 static const uint8_t kP384PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
@@ -318,6 +388,21 @@ static const uint8_t kP384PublicKey_compressed_0x03[] = {
   0x14, 0x17, 0x6d, 0x22, 0x78, 0xb0, 0x47, 0xc5, 0xec, 0x28, 0x64, 0x84,
   0x65, 0xf2, 0xa3, 0x90, 0xf6, 0xdd, 0x6b, 0xba, 0x54, 0xb9, 0x0b, 0x1e,
   0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d
+};
+
+static const uint8_t kP384PublicKey_hybrid_0x03[] = {
+  /* uncompressed */
+  0x07,
+  /* x-coordinate */
+  0xe4, 0xe7, 0x0e, 0x43, 0xc6, 0xd0, 0x43, 0x46, 0xdd, 0xd7, 0x62, 0xa6,
+  0x14, 0x17, 0x6d, 0x22, 0x78, 0xb0, 0x47, 0xc5, 0xec, 0x28, 0x64, 0x84,
+  0x65, 0xf2, 0xa3, 0x90, 0xf6, 0xdd, 0x6b, 0xba, 0x54, 0xb9, 0x0b, 0x1e,
+  0x62, 0xb3, 0x91, 0x85, 0xf8, 0xf3, 0x95, 0xf6, 0x65, 0x73, 0x6d, 0x1d,
+  /* y-coordinate */
+  0xf9, 0x62, 0xa2, 0x73, 0x6a, 0xce, 0x52, 0x56, 0x18, 0x15, 0xd5, 0x99,
+  0x53, 0xa0, 0x19, 0x1b, 0x1f, 0xb1, 0xf2, 0x88, 0xa4, 0x5f, 0x8e, 0x28,
+  0x3d, 0x40, 0xa5, 0xff, 0x0e, 0x83, 0x3f, 0xf3, 0x0b, 0xd6, 0x05, 0xb1,
+  0x0c, 0xf8, 0xc2, 0x6c, 0x57, 0x4d, 0x4c, 0x2f, 0x0d, 0xcd, 0xce, 0x21
 };
 
 static const uint8_t kP521PublicKey_uncompressed_0x02[] = {
@@ -350,6 +435,25 @@ static const uint8_t kP521PublicKey_compressed_0x02[] = {
   0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b
 };
 
+static const uint8_t kP521PublicKey_hybrid_0x02[] = {
+  /* uncompressed */
+  0x06,
+  /* x-coordinate */
+  0x01, 0x03, 0x7e, 0x95, 0xff, 0x8e, 0x40, 0x31, 0xe0, 0xb0, 0x36, 0x1c,
+  0x58, 0xc0, 0x62, 0x61, 0x39, 0x56, 0xaa, 0x30, 0x77, 0x0c, 0xed, 0x17,
+  0x15, 0xed, 0x1b, 0x4d, 0x34, 0x29, 0x33, 0x0f, 0xac, 0x2f, 0xc5, 0xc9,
+  0x3a, 0x69, 0xf7, 0x98, 0x63, 0x3a, 0x15, 0x75, 0x5e, 0x2d, 0xb8, 0x65,
+  0x09, 0x87, 0xf5, 0x75, 0x85, 0xcd, 0xe3, 0x51, 0x6b, 0x6d, 0xd0, 0xfc,
+  0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b,
+  /* y-coordinate */
+  0x00, 0xe4, 0x45, 0x33, 0xe8, 0x7f, 0xa9, 0x74, 0x64, 0xcd, 0x2b, 0x7d,
+  0xc0, 0xcd, 0x65, 0xb9, 0x27, 0xc6, 0xc6, 0x2e, 0xe7, 0x33, 0x68, 0x86,
+  0x72, 0xa2, 0x05, 0xf7, 0x4b, 0xd8, 0x2c, 0x51, 0x1b, 0x89, 0xb0, 0xb9,
+  0xb8, 0x06, 0x0d, 0xb1, 0x30, 0xf0, 0x11, 0x92, 0x9e, 0x63, 0x86, 0x8c,
+  0x57, 0xaa, 0xb5, 0x2a, 0xae, 0xec, 0xf2, 0xe1, 0xc0, 0x93, 0x62, 0xd1,
+  0x1c, 0x5d, 0x57, 0x90, 0x0a, 0x3c
+};
+
 static const uint8_t kP521PublicKey_uncompressed_0x03[] = {
   /* uncompressed */
   0x04,
@@ -378,6 +482,25 @@ static const uint8_t kP521PublicKey_compressed_0x03[] = {
   0x3a, 0x69, 0xf7, 0x98, 0x63, 0x3a, 0x15, 0x75, 0x5e, 0x2d, 0xb8, 0x65,
   0x09, 0x87, 0xf5, 0x75, 0x85, 0xcd, 0xe3, 0x51, 0x6b, 0x6d, 0xd0, 0xfc,
   0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b
+};
+
+static const uint8_t kP521PublicKey_hybrid_0x03[] = {
+  /* uncompressed */
+  0x07,
+  /* x-coordinate */
+  0x01, 0x03, 0x7e, 0x95, 0xff, 0x8e, 0x40, 0x31, 0xe0, 0xb0, 0x36, 0x1c,
+  0x58, 0xc0, 0x62, 0x61, 0x39, 0x56, 0xaa, 0x30, 0x77, 0x0c, 0xed, 0x17,
+  0x15, 0xed, 0x1b, 0x4d, 0x34, 0x29, 0x33, 0x0f, 0xac, 0x2f, 0xc5, 0xc9,
+  0x3a, 0x69, 0xf7, 0x98, 0x63, 0x3a, 0x15, 0x75, 0x5e, 0x2d, 0xb8, 0x65,
+  0x09, 0x87, 0xf5, 0x75, 0x85, 0xcd, 0xe3, 0x51, 0x6b, 0x6d, 0xd0, 0xfc,
+  0x9f, 0x5f, 0xb4, 0xf8, 0xe7, 0x7b,
+  /* y-coordinate */
+  0x01, 0x1b, 0xba, 0xcc, 0x17, 0x80, 0x56, 0x8b, 0x9b, 0x32, 0xd4, 0x82,
+  0x3f, 0x32, 0x9a, 0x46, 0xd8, 0x39, 0x39, 0xd1, 0x18, 0xcc, 0x97, 0x79,
+  0x8d, 0x5d, 0xfa, 0x08, 0xb4, 0x27, 0xd3, 0xae, 0xe4, 0x76, 0x4f, 0x46,
+  0x47, 0xf9, 0xf2, 0x4e, 0xcf, 0x0f, 0xee, 0x6d, 0x61, 0x9c, 0x79, 0x73,
+  0xa8, 0x55, 0x4a, 0xd5, 0x51, 0x13, 0x0d, 0x1e, 0x3f, 0x6c, 0x9d, 0x2e,
+  0xe3, 0xa2, 0xa8, 0x6f, 0xf5, 0xc3
 };
 
 static const uint8_t ksecp256k1PublicKey_uncompressed_0x02[] = {
@@ -430,250 +553,194 @@ struct ECPublicKeyTestInput {
   size_t expected_output_key_len;
   int nid;
 } kDecodeAndEncodeInputs[] = {
-  /* Test 1: decode uncompressed |EC_KEY|, and then encode with the same |conv_form|. */
-  {
-    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
-    NID_secp256k1
-  },
-  {
-    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
-    NID_secp256k1
-  },
-  /* Test 2: decode compressed |EC_KEY|, and then encode with the same |conv_form|. */
-  {
-    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
-    NID_secp256k1
-  },
-  {
-    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
-    NID_secp256k1
-  },
-  /* Test 3: decode compressed |EC_KEY|, and then encode with uncompressed |conv_form|. */
-  {
-    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
-    POINT_CONVERSION_UNCOMPRESSED,
-    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
-    NID_secp256k1
-  },
-  {
-    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
-    POINT_CONVERSION_UNCOMPRESSED,
-    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
-    NID_secp256k1
-  },
-  /* Test 4: decode uncompressed |EC_KEY|, and then encode with compressed |conv_form|. */
-  {
-    kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_uncompressed_0x02, sizeof(ksecp256k1PublicKey_uncompressed_0x02),
-    POINT_CONVERSION_COMPRESSED,
-    ksecp256k1PublicKey_compressed_0x02, sizeof(ksecp256k1PublicKey_compressed_0x02),
-    NID_secp256k1
-  },
-  {
-    kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
-    NID_secp224r1
-  },
-  {
-    kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
-    NID_X9_62_prime256v1
-  },
-  {
-    kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
-    NID_secp384r1
-  },
-  {
-    kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
-    NID_secp521r1
-  },
-  {
-    ksecp256k1PublicKey_uncompressed_0x03, sizeof(ksecp256k1PublicKey_uncompressed_0x03),
-    POINT_CONVERSION_COMPRESSED,
-    ksecp256k1PublicKey_compressed_0x03, sizeof(ksecp256k1PublicKey_compressed_0x03),
-    NID_secp256k1
-  }
+    // Test 1: decode uncompressed |EC_KEY|, and then encode with the same
+    // |conv_form|.
+    {kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP224PublicKey_uncompressed_0x02,
+     sizeof(kP224PublicKey_uncompressed_0x02), NID_secp224r1},
+    {kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP256PublicKey_uncompressed_0x02,
+     sizeof(kP256PublicKey_uncompressed_0x02), NID_X9_62_prime256v1},
+    {kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP384PublicKey_uncompressed_0x02,
+     sizeof(kP384PublicKey_uncompressed_0x02), NID_secp384r1},
+    {kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP521PublicKey_uncompressed_0x02,
+     sizeof(kP521PublicKey_uncompressed_0x02), NID_secp521r1},
+    {ksecp256k1PublicKey_uncompressed_0x02,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, ksecp256k1PublicKey_uncompressed_0x02,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x02), NID_secp256k1},
+    {kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP224PublicKey_uncompressed_0x03,
+     sizeof(kP224PublicKey_uncompressed_0x03), NID_secp224r1},
+    {kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP256PublicKey_uncompressed_0x03,
+     sizeof(kP256PublicKey_uncompressed_0x03), NID_X9_62_prime256v1},
+    {kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP384PublicKey_uncompressed_0x03,
+     sizeof(kP384PublicKey_uncompressed_0x03), NID_secp384r1},
+    {kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP521PublicKey_uncompressed_0x03,
+     sizeof(kP521PublicKey_uncompressed_0x03), NID_secp521r1},
+    {ksecp256k1PublicKey_uncompressed_0x03,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, ksecp256k1PublicKey_uncompressed_0x03,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x03), NID_secp256k1},
+    // Test 2: decode compressed |EC_KEY|, and then encode with the same
+    // |conv_form|.
+    {kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP224PublicKey_compressed_0x02,
+     sizeof(kP224PublicKey_compressed_0x02), NID_secp224r1},
+    {kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP256PublicKey_compressed_0x02,
+     sizeof(kP256PublicKey_compressed_0x02), NID_X9_62_prime256v1},
+    {kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP384PublicKey_compressed_0x02,
+     sizeof(kP384PublicKey_compressed_0x02), NID_secp384r1},
+    {kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP521PublicKey_compressed_0x02,
+     sizeof(kP521PublicKey_compressed_0x02), NID_secp521r1},
+    {ksecp256k1PublicKey_compressed_0x02,
+     sizeof(ksecp256k1PublicKey_compressed_0x02), POINT_CONVERSION_COMPRESSED,
+     ksecp256k1PublicKey_compressed_0x02,
+     sizeof(ksecp256k1PublicKey_compressed_0x02), NID_secp256k1},
+    {kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP224PublicKey_compressed_0x03,
+     sizeof(kP224PublicKey_compressed_0x03), NID_secp224r1},
+    {kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP256PublicKey_compressed_0x03,
+     sizeof(kP256PublicKey_compressed_0x03), NID_X9_62_prime256v1},
+    {kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP384PublicKey_compressed_0x03,
+     sizeof(kP384PublicKey_compressed_0x03), NID_secp384r1},
+    {kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP521PublicKey_compressed_0x03,
+     sizeof(kP521PublicKey_compressed_0x03), NID_secp521r1},
+    {ksecp256k1PublicKey_compressed_0x03,
+     sizeof(ksecp256k1PublicKey_compressed_0x03), POINT_CONVERSION_COMPRESSED,
+     ksecp256k1PublicKey_compressed_0x03,
+     sizeof(ksecp256k1PublicKey_compressed_0x03), NID_secp256k1},
+    // Test 3: decode compressed |EC_KEY|, and then encode with uncompressed
+    // |conv_form|.
+    {kP224PublicKey_compressed_0x02, sizeof(kP224PublicKey_compressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP224PublicKey_uncompressed_0x02,
+     sizeof(kP224PublicKey_uncompressed_0x02), NID_secp224r1},
+    {kP256PublicKey_compressed_0x02, sizeof(kP256PublicKey_compressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP256PublicKey_uncompressed_0x02,
+     sizeof(kP256PublicKey_uncompressed_0x02), NID_X9_62_prime256v1},
+    {kP384PublicKey_compressed_0x02, sizeof(kP384PublicKey_compressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP384PublicKey_uncompressed_0x02,
+     sizeof(kP384PublicKey_uncompressed_0x02), NID_secp384r1},
+    {kP521PublicKey_compressed_0x02, sizeof(kP521PublicKey_compressed_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP521PublicKey_uncompressed_0x02,
+     sizeof(kP521PublicKey_uncompressed_0x02), NID_secp521r1},
+    {ksecp256k1PublicKey_compressed_0x02,
+     sizeof(ksecp256k1PublicKey_compressed_0x02), POINT_CONVERSION_UNCOMPRESSED,
+     ksecp256k1PublicKey_uncompressed_0x02,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x02), NID_secp256k1},
+    {kP224PublicKey_compressed_0x03, sizeof(kP224PublicKey_compressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP224PublicKey_uncompressed_0x03,
+     sizeof(kP224PublicKey_uncompressed_0x03), NID_secp224r1},
+    {kP256PublicKey_compressed_0x03, sizeof(kP256PublicKey_compressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP256PublicKey_uncompressed_0x03,
+     sizeof(kP256PublicKey_uncompressed_0x03), NID_X9_62_prime256v1},
+    {kP384PublicKey_compressed_0x03, sizeof(kP384PublicKey_compressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP384PublicKey_uncompressed_0x03,
+     sizeof(kP384PublicKey_uncompressed_0x03), NID_secp384r1},
+    {kP521PublicKey_compressed_0x03, sizeof(kP521PublicKey_compressed_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP521PublicKey_uncompressed_0x03,
+     sizeof(kP521PublicKey_uncompressed_0x03), NID_secp521r1},
+    {ksecp256k1PublicKey_compressed_0x03,
+     sizeof(ksecp256k1PublicKey_compressed_0x03), POINT_CONVERSION_UNCOMPRESSED,
+     ksecp256k1PublicKey_uncompressed_0x03,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x03), NID_secp256k1},
+    // Test 4: decode uncompressed |EC_KEY|, and then encode with compressed
+    // |conv_form|.
+    {kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP224PublicKey_compressed_0x02,
+     sizeof(kP224PublicKey_compressed_0x02), NID_secp224r1},
+    {kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP256PublicKey_compressed_0x02,
+     sizeof(kP256PublicKey_compressed_0x02), NID_X9_62_prime256v1},
+    {kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP384PublicKey_compressed_0x02,
+     sizeof(kP384PublicKey_compressed_0x02), NID_secp384r1},
+    {kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_COMPRESSED, kP521PublicKey_compressed_0x02,
+     sizeof(kP521PublicKey_compressed_0x02), NID_secp521r1},
+    {ksecp256k1PublicKey_uncompressed_0x02,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x02), POINT_CONVERSION_COMPRESSED,
+     ksecp256k1PublicKey_compressed_0x02,
+     sizeof(ksecp256k1PublicKey_compressed_0x02), NID_secp256k1},
+    {kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP224PublicKey_compressed_0x03,
+     sizeof(kP224PublicKey_compressed_0x03), NID_secp224r1},
+    {kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP256PublicKey_compressed_0x03,
+     sizeof(kP256PublicKey_compressed_0x03), NID_X9_62_prime256v1},
+    {kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP384PublicKey_compressed_0x03,
+     sizeof(kP384PublicKey_compressed_0x03), NID_secp384r1},
+    {kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_COMPRESSED, kP521PublicKey_compressed_0x03,
+     sizeof(kP521PublicKey_compressed_0x03), NID_secp521r1},
+    {ksecp256k1PublicKey_uncompressed_0x03,
+     sizeof(ksecp256k1PublicKey_uncompressed_0x03), POINT_CONVERSION_COMPRESSED,
+     ksecp256k1PublicKey_compressed_0x03,
+     sizeof(ksecp256k1PublicKey_compressed_0x03), NID_secp256k1},
+    // Test 5: decode uncompressed |EC_KEY|, and then encode with
+    // |POINT_CONVERSION_HYBRID|.
+    {kP224PublicKey_uncompressed_0x02, sizeof(kP224PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_HYBRID, kP224PublicKey_hybrid_0x02,
+     sizeof(kP224PublicKey_hybrid_0x02), NID_secp224r1},
+    {kP224PublicKey_uncompressed_0x03, sizeof(kP224PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_HYBRID, kP224PublicKey_hybrid_0x03,
+     sizeof(kP224PublicKey_hybrid_0x03), NID_secp224r1},
+    {kP256PublicKey_uncompressed_0x02, sizeof(kP256PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_HYBRID, kP256PublicKey_hybrid_0x02,
+     sizeof(kP256PublicKey_hybrid_0x02), NID_X9_62_prime256v1},
+    {kP256PublicKey_uncompressed_0x03, sizeof(kP256PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_HYBRID, kP256PublicKey_hybrid_0x03,
+     sizeof(kP256PublicKey_hybrid_0x03), NID_X9_62_prime256v1},
+    {kP384PublicKey_uncompressed_0x02, sizeof(kP384PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_HYBRID, kP384PublicKey_hybrid_0x02,
+     sizeof(kP384PublicKey_hybrid_0x02), NID_secp384r1},
+    {kP384PublicKey_uncompressed_0x03, sizeof(kP384PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_HYBRID, kP384PublicKey_hybrid_0x03,
+     sizeof(kP384PublicKey_hybrid_0x03), NID_secp384r1},
+    {kP521PublicKey_uncompressed_0x02, sizeof(kP521PublicKey_uncompressed_0x02),
+     POINT_CONVERSION_HYBRID, kP521PublicKey_hybrid_0x02,
+     sizeof(kP521PublicKey_hybrid_0x02), NID_secp521r1},
+    {kP521PublicKey_uncompressed_0x03, sizeof(kP521PublicKey_uncompressed_0x03),
+     POINT_CONVERSION_HYBRID, kP521PublicKey_hybrid_0x03,
+     sizeof(kP521PublicKey_hybrid_0x03), NID_secp521r1},
+    // Test 5: decode hybrid |EC_KEY|, and then encode with
+    // |POINT_CONVERSION_UNCOMPRESSED|.
+    {kP224PublicKey_hybrid_0x02, sizeof(kP224PublicKey_hybrid_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP224PublicKey_uncompressed_0x02,
+     sizeof(kP224PublicKey_uncompressed_0x02), NID_secp224r1},
+    {kP224PublicKey_hybrid_0x03, sizeof(kP224PublicKey_hybrid_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP224PublicKey_uncompressed_0x03,
+     sizeof(kP224PublicKey_uncompressed_0x03), NID_secp224r1},
+    {kP256PublicKey_hybrid_0x02, sizeof(kP256PublicKey_hybrid_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP256PublicKey_uncompressed_0x02,
+     sizeof(kP256PublicKey_uncompressed_0x02), NID_X9_62_prime256v1},
+    {kP256PublicKey_hybrid_0x03, sizeof(kP256PublicKey_hybrid_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP256PublicKey_uncompressed_0x03,
+     sizeof(kP256PublicKey_uncompressed_0x03), NID_X9_62_prime256v1},
+    {kP384PublicKey_hybrid_0x02, sizeof(kP384PublicKey_hybrid_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP384PublicKey_uncompressed_0x02,
+     sizeof(kP384PublicKey_uncompressed_0x02), NID_secp384r1},
+    {kP384PublicKey_hybrid_0x03, sizeof(kP384PublicKey_hybrid_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP384PublicKey_uncompressed_0x03,
+     sizeof(kP384PublicKey_uncompressed_0x03), NID_secp384r1},
+    {kP521PublicKey_hybrid_0x02, sizeof(kP521PublicKey_hybrid_0x02),
+     POINT_CONVERSION_UNCOMPRESSED, kP521PublicKey_uncompressed_0x02,
+     sizeof(kP521PublicKey_uncompressed_0x02), NID_secp521r1},
+    {kP521PublicKey_hybrid_0x03, sizeof(kP521PublicKey_hybrid_0x03),
+     POINT_CONVERSION_UNCOMPRESSED, kP521PublicKey_uncompressed_0x03,
+     sizeof(kP521PublicKey_uncompressed_0x03), NID_secp521r1},
 };
 
 class ECPublicKeyTest : public testing::TestWithParam<ECPublicKeyTestInput> {};
@@ -682,38 +749,111 @@ class ECPublicKeyTest : public testing::TestWithParam<ECPublicKeyTestInput> {};
 // |i2o_ECPublicKey|.
 TEST_P(ECPublicKeyTest, DecodeAndEncode) {
   const auto &param = GetParam();
-  const auto input_key = param.input_key;
-  const auto input_key_len = param.input_key_len;
-  const auto encode_conv_form = param.encode_conv_form;
-  const auto expected_output_key = param.expected_output_key;
-  const auto expected_output_key_len = param.expected_output_key_len;
-  const auto nid = param.nid;
+
   // Generate |ec_key|.
   EC_KEY *ec_key = EC_KEY_new();
   ASSERT_TRUE(ec_key);
   bssl::UniquePtr<EC_KEY> ec_key_ptr(ec_key);
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(param.nid);
   ASSERT_TRUE(group);
   ASSERT_TRUE(EC_KEY_set_group(ec_key, group));
-  const uint8_t *inp = &input_key[0];
+  const uint8_t *inp = &param.input_key[0];
   // Decoding an EC point.
-  o2i_ECPublicKey(&ec_key, &inp, input_key_len);
+  o2i_ECPublicKey(&ec_key, &inp, param.input_key_len);
   // On successful exit of |o2i_ECPublicKey|, |*inp| is advanced by |len| bytes.
-  ASSERT_EQ(&input_key[0] + input_key_len, inp);
+  ASSERT_EQ(&param.input_key[0] + param.input_key_len, inp);
   // Set |conv_form| of |ec_key|.
-  EC_KEY_set_conv_form(ec_key, encode_conv_form);
+  EC_KEY_set_conv_form(ec_key, param.encode_conv_form);
   // Encoding |ec_key| to bytes.
   // The 1st call of |i2o_ECPublicKey| is to tell the number of bytes in the
   // result, whether written or not.
   size_t len1 = i2o_ECPublicKey(ec_key, nullptr);
-  ASSERT_EQ(len1, expected_output_key_len);
-  uint8_t* p = nullptr;
+  ASSERT_EQ(len1, param.expected_output_key_len);
+  uint8_t *p = nullptr;
   // The 2nd call of |i2o_ECPublicKey| is to write the number of bytes specified
   // by |len1|.
   size_t len2 = i2o_ECPublicKey(ec_key, &p);
-  EXPECT_EQ(len2, expected_output_key_len);
-  EXPECT_EQ(Bytes(expected_output_key, expected_output_key_len), Bytes(p, len2));
+  EXPECT_EQ(len2, param.expected_output_key_len);
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(p, len2));
+
+  // All the above should succeed, but |ec_key|'s assigned reference to the
+  // |EC_GROUP| is one of the default static methods. Since these are static,
+  // both references to |group| should retain the default
+  // |POINT_CONVERSION_UNCOMPRESSED|. We don't encourage relying on |EC_GROUP|
+  // to retain any information regarding the |conv_form|, but
+  // |EC_GROUP_new_by_curve_name_mutable| is available for this specific
+  // use-case.
+  EXPECT_EQ(EC_KEY_get_conv_form(ec_key), param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(EC_KEY_get0_group(ec_key)),
+            POINT_CONVERSION_UNCOMPRESSED);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(group),
+            POINT_CONVERSION_UNCOMPRESSED);
+
   OPENSSL_free(p);
+}
+
+TEST_P(ECPublicKeyTest, DecodeAndEncodeMutable) {
+  const auto &param = GetParam();
+
+  EC_KEY *ec_key = EC_KEY_new();
+  ASSERT_TRUE(ec_key);
+  bssl::UniquePtr<EC_KEY> ec_key_ptr(ec_key);
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name_mutable(param.nid));
+  ASSERT_TRUE(group);
+
+  ASSERT_TRUE(EC_KEY_set_group(ec_key, group.get()));
+  const uint8_t *inp = &param.input_key[0];
+  o2i_ECPublicKey(&ec_key, &inp, param.input_key_len);
+  ASSERT_EQ(&param.input_key[0] + param.input_key_len, inp);
+
+  // Set |conv_form| of |ec_key|.
+  EC_KEY_set_conv_form(ec_key, param.encode_conv_form);
+
+  size_t len1 = i2o_ECPublicKey(ec_key, nullptr);
+  ASSERT_EQ(len1, param.expected_output_key_len);
+  uint8_t *p = nullptr;
+  size_t len2 = i2o_ECPublicKey(ec_key, &p);
+  EXPECT_EQ(len2, param.expected_output_key_len);
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(p, len2));
+
+  // All the above should succeed, but the original |conv_form| for |group|
+  // should not be changed with |EC_KEY_set_conv_form|. The |group| reference
+  // assigned to |EC_KEY| was duplicated with |EC_GROUP_dup|, and is a different
+  // pointer reference from |group|.
+  // |group| should retain the default |POINT_CONVERSION_UNCOMPRESSED|.
+  EXPECT_EQ(EC_KEY_get_conv_form(ec_key), param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(EC_KEY_get0_group(ec_key)),
+            param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(group.get()),
+            POINT_CONVERSION_UNCOMPRESSED);
+
+  OPENSSL_free(p);
+}
+
+TEST_P(ECPublicKeyTest, MutableECGroup) {
+  const auto &param = GetParam();
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name_mutable(param.nid));
+  ASSERT_TRUE(group);
+
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point.get());
+  ASSERT_TRUE(EC_POINT_oct2point(group.get(), point.get(), param.input_key,
+                                 param.input_key_len, nullptr));
+
+  EC_GROUP_set_point_conversion_form(group.get(), param.encode_conv_form);
+
+  // Use the saved conversion form in |group|. This should only work with
+  // |EC_GROUP_new_by_curve_name_mutable|.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(serialized));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECPublicKeyTest,
@@ -939,56 +1079,58 @@ TEST(ECTest, SpecifiedCurve) {
   EXPECT_EQ(Bytes(kECKeyWithoutPublic), Bytes(out.data(), out.size()));
 }
 
+// An arbitrary curve which is identical to P-256.
+static const uint8_t kP256P[] = {
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+};
+static const uint8_t kP256A[] = {
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc,
+};
+static const uint8_t kP256B[] = {
+    0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7, 0xb3, 0xeb, 0xbd,
+    0x55, 0x76, 0x98, 0x86, 0xbc, 0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53,
+    0xb0, 0xf6, 0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b,
+};
+static const uint8_t kP256X[] = {
+    0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47, 0xf8, 0xbc, 0xe6,
+    0xe5, 0x63, 0xa4, 0x40, 0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb,
+    0x33, 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96,
+};
+static const uint8_t kP256Y[] = {
+    0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b, 0x8e, 0xe7, 0xeb,
+    0x4a, 0x7c, 0x0f, 0x9e, 0x16, 0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31,
+    0x5e, 0xce, 0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5,
+};
+static const uint8_t kP256Order[] = {
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17,
+    0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
+};
+
 TEST(ECTest, ArbitraryCurve) {
   // Make a P-256 key and extract the affine coordinates.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
-  // Make an arbitrary curve which is identical to P-256.
-  static const uint8_t kP[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  };
-  static const uint8_t kA[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc,
-  };
-  static const uint8_t kB[] = {
-      0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7, 0xb3, 0xeb, 0xbd,
-      0x55, 0x76, 0x98, 0x86, 0xbc, 0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53,
-      0xb0, 0xf6, 0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b,
-  };
-  static const uint8_t kX[] = {
-      0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47, 0xf8, 0xbc, 0xe6,
-      0xe5, 0x63, 0xa4, 0x40, 0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb,
-      0x33, 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96,
-  };
-  static const uint8_t kY[] = {
-      0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b, 0x8e, 0xe7, 0xeb,
-      0x4a, 0x7c, 0x0f, 0x9e, 0x16, 0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31,
-      0x5e, 0xce, 0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5,
-  };
-  static const uint8_t kOrder[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17,
-      0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
-  };
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
   ASSERT_TRUE(ctx);
-  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
   ASSERT_TRUE(p);
-  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kA, sizeof(kA), nullptr));
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
   ASSERT_TRUE(a);
-  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kB, sizeof(kB), nullptr));
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
   ASSERT_TRUE(b);
-  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kX, sizeof(kX), nullptr));
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
   ASSERT_TRUE(gx);
-  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kY, sizeof(kY), nullptr));
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
   ASSERT_TRUE(gy);
-  bssl::UniquePtr<BIGNUM> order(BN_bin2bn(kOrder, sizeof(kOrder), nullptr));
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
   ASSERT_TRUE(order);
 
   bssl::UniquePtr<EC_GROUP> group(
@@ -1044,27 +1186,8 @@ TEST(ECTest, ArbitraryCurve) {
   ASSERT_TRUE(EC_GROUP_set_generator(group2.get(), generator2.get(),
                                      order.get(), BN_value_one()));
 
-  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
-  EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), NULL));
-
-  bssl::UniquePtr<BIGNUM> converted_generator1(EC_POINT_point2bn(
-      group.get(), generator.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator1);
-
-  bssl::UniquePtr<BIGNUM> converted_generator2(EC_POINT_point2bn(
-      group2.get(), generator2.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, BN_cmp(converted_generator1.get(), converted_generator2.get()));
-
-  bssl::UniquePtr<BIGNUM> converted_generator3(EC_POINT_point2bn(
-      group.get(), generator.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator3);
-
-  bssl::UniquePtr<BIGNUM> converted_generator4(EC_POINT_point2bn(
-      group2.get(), generator2.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator4);
-  EXPECT_EQ(0, BN_cmp(converted_generator3.get(), converted_generator4.get()));
-
+  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), nullptr));
+  EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), nullptr));
 
   // group3 uses the wrong generator.
   bssl::UniquePtr<EC_GROUP> group3(
@@ -1118,6 +1241,102 @@ TEST(ECTest, ArbitraryCurve) {
 
   EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
   EXPECT_EQ(0, EC_GROUP_cmp(group5.get(), group.get(), NULL));
+}
+
+TEST(ECTest, BIGNUMConvert) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
+  ASSERT_TRUE(gy);
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
+  ASSERT_TRUE(order);
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+  // Make a second instance of |group|.
+  bssl::UniquePtr<EC_GROUP> group2(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group2);
+  bssl::UniquePtr<EC_POINT> generator2(EC_POINT_new(group2.get()));
+  ASSERT_TRUE(generator2);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group2.get(), generator2.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group2.get(), generator2.get(),
+                                     order.get(), BN_value_one()));
+
+  // Convert |EC_POINT| to |BIGNUM| in uncompressed format with
+  // |EC_POINT_point2bn| and ensure results are the same.
+  bssl::UniquePtr<BIGNUM> converted_bignum(
+      EC_POINT_point2bn(group.get(), EC_GROUP_get0_generator(group.get()),
+                        POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum);
+  bssl::UniquePtr<BIGNUM> converted_bignum2(
+      EC_POINT_point2bn(group2.get(), EC_GROUP_get0_generator(group2.get()),
+                        POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum2);
+  EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
+
+  // Convert |BIGNUM| back to |EC_POINTS| with |EC_POINT_bn2point| and ensure
+  // output is identical to the original.
+  bssl::UniquePtr<EC_POINT> converted_generator(
+      EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator);
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), EC_GROUP_get0_generator(group.get()),
+                            converted_generator.get(), nullptr));
+  bssl::UniquePtr<EC_POINT> converted_generator2(EC_POINT_bn2point(
+      group2.get(), converted_bignum2.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
+                            converted_generator2.get(), nullptr));
+
+  // Convert |EC_POINT|s in compressed format with |EC_POINT_point2bn| and
+  // ensure results are the same.
+  converted_bignum.reset(
+      EC_POINT_point2bn(group.get(), EC_GROUP_get0_generator(group.get()),
+                        POINT_CONVERSION_COMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum);
+  converted_bignum2.reset(
+      EC_POINT_point2bn(group2.get(), EC_GROUP_get0_generator(group2.get()),
+                        POINT_CONVERSION_COMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum2);
+  EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
+
+  // Convert |BIGNUM| back to |EC_POINTS| with |EC_POINT_bn2point| and ensure
+  // output is identical to the original.
+  converted_generator.reset(
+      EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator);
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), EC_GROUP_get0_generator(group.get()),
+                            converted_generator.get(), nullptr));
+  converted_generator2.reset(EC_POINT_bn2point(
+      group2.get(), converted_bignum2.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
+                            converted_generator2.get(), nullptr));
+
+  // Test specific openssl/openssl#10329 case for |BN_zero|.
+  bssl::UniquePtr<BIGNUM> zero(BN_new());
+  BN_zero(zero.get());
+  bssl::UniquePtr<EC_POINT> infinity(
+      EC_POINT_bn2point(group.get(), zero.get(), nullptr, nullptr));
+  ASSERT_TRUE(infinity);
 }
 
 TEST(ECTest, SetKeyWithoutGroup) {
@@ -1279,7 +1498,7 @@ TEST(ECTest, SmallGroupOrder) {
 #else
 // AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
 // GTEST issue: https://github.com/google/googletest/issues/1496.
-#if !defined(OPENSSL_ANDROID)
+#if !defined(OPENSSL_ANDROID) && !defined(AWSLC_FIPS_FAILURE_CALLBACK)
 
 TEST(ECDeathTest, SmallGroupOrderAndDie) {
   // Make a P-224 key and corrupt the group order to be small in order to fail
@@ -1337,22 +1556,32 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
 #endif
 #endif
 
-class ECCurveTest : public testing::TestWithParam<int> {
+struct CurveParam {
+  int nid;
+  bool mutable_group;
+};
+
+class ECCurveTest : public testing::TestWithParam<CurveParam> {
  public:
-  const EC_GROUP *group() const { return group_; }
+  EC_GROUP *group() const { return group_.get(); }
 
   void SetUp() override {
-    group_ = EC_GROUP_new_by_curve_name(GetParam());
-    ASSERT_TRUE(group_);
+    if(GetParam().mutable_group) {
+      group_.reset(EC_GROUP_new_by_curve_name_mutable(GetParam().nid));
+      ASSERT_TRUE(group_);
+    } else {
+      group_.reset(EC_GROUP_new_by_curve_name(GetParam().nid));
+      ASSERT_TRUE(group_);
+    }
   }
 
  private:
-  const EC_GROUP *group_{};
+  bssl::UniquePtr<EC_GROUP> group_{};
 };
 
 TEST_P(ECCurveTest, SetAffine) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1394,7 +1623,7 @@ TEST_P(ECCurveTest, SetAffine) {
 }
 
 TEST_P(ECCurveTest, IsOnCurve) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1418,12 +1647,12 @@ TEST_P(ECCurveTest, IsOnCurve) {
 }
 
 TEST_P(ECCurveTest, Compare) {
-  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key1);
   ASSERT_TRUE(EC_KEY_generate_key(key1.get()));
   const EC_POINT *pub1 = EC_KEY_get0_public_key(key1.get());
 
-  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_generate_key(key2.get()));
   const EC_POINT *pub2 = EC_KEY_get0_public_key(key2.get());
@@ -1474,13 +1703,13 @@ TEST_P(ECCurveTest, Compare) {
 
 TEST_P(ECCurveTest, GenerateFIPS) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key_fips(key.get()));
 }
 
 TEST_P(ECCurveTest, AddingEqualPoints) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1649,7 +1878,7 @@ TEST_P(ECCurveTest, MulNonMinimal) {
 
 // Test that EC_KEY_set_private_key rejects invalid values.
 TEST_P(ECCurveTest, SetInvalidPrivateKey) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
 
   bssl::UniquePtr<BIGNUM> bn(BN_dup(BN_value_one()));
@@ -1762,42 +1991,86 @@ TEST_P(ECCurveTest, GPlusMinusG) {
   EXPECT_TRUE(EC_POINT_is_at_infinity(group(), sum.get()));
 }
 
-// Test that we refuse to encode or decode the point at infinity.
+// Test that checks we encode or decode the point at infinity like OpenSSl.
 TEST_P(ECCurveTest, EncodeInfinity) {
-  // The point at infinity is encoded as a single zero byte, but we do not
-  // support it.
+  // The point at infinity is encoded as a single zero byte in OpenSSL, and we
+  // are forced to support it.
   static const uint8_t kInfinity[] = {0};
   bssl::UniquePtr<EC_POINT> inf(EC_POINT_new(group()));
   ASSERT_TRUE(inf);
-  EXPECT_FALSE(EC_POINT_oct2point(group(), inf.get(), kInfinity,
-                                  sizeof(kInfinity), nullptr));
+  EXPECT_TRUE(EC_POINT_oct2point(group(), inf.get(), kInfinity,
+                                 sizeof(kInfinity), nullptr));
 
-  // Encoding it also fails.
+  // Encoding it should succeed and set to 0.
   ASSERT_TRUE(EC_POINT_set_to_infinity(group(), inf.get()));
   uint8_t buf[128];
+  // Tweak buf[0] to another value to ensure that it's set to 0.
+  buf[0] = 1;
   EXPECT_EQ(
-      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+      1u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
                              buf, sizeof(buf), nullptr));
+  EXPECT_EQ(buf[0], 0);
 
-  // Measuring the length of the encoding also fails.
+  // Measuring the length of the encoding should succeed.
   EXPECT_EQ(
-      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+      1u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
                              nullptr, 0, nullptr));
 }
 
-static std::vector<int> AllCurves() {
+TEST_P(ECCurveTest, ECGroupConvForm) {
+  bssl::UniquePtr<BIGNUM> one(BN_new());
+  ASSERT_TRUE(one);
+  ASSERT_TRUE(BN_set_word(one.get(), 1));
+
+  // Ruby depends on |EC_GROUP| to save the used compression format, so we
+  // replicate that scenario. This won't work with our default static curves.
+  bssl::UniquePtr<EC_GROUP> group2(EC_GROUP_dup(group()));
+  EC_GROUP_set_point_conversion_form(group2.get(), POINT_CONVERSION_COMPRESSED);
+
+  // Compute g × 1.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group()));
+  ASSERT_TRUE(point);
+  ASSERT_TRUE(
+      EC_POINT_mul(group(), point.get(), one.get(), nullptr, nullptr, nullptr));
+
+  // Serialize the points.
+  std::vector<uint8_t> group1_serialized;
+  std::vector<uint8_t> group2_serialized;
+  ASSERT_TRUE(EncodeECPoint(&group1_serialized, group(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group())));
+  ASSERT_TRUE(EncodeECPoint(&group2_serialized, group2.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group2.get())));
+
+  if (GetParam().mutable_group) {
+    EXPECT_NE(Bytes(group1_serialized), Bytes(group2_serialized));
+  } else {
+    // |EC_GROUP_set_point_conversion_form| is a no-op when using our default
+    // static groups.
+    EXPECT_EQ(Bytes(group1_serialized), Bytes(group2_serialized));
+  }
+}
+
+static std::vector<CurveParam> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
   EC_get_builtin_curves(curves.data(), num_curves);
-  std::vector<int> nids;
-  for (const auto& curve : curves) {
-    nids.push_back(curve.nid);
+  std::vector<CurveParam> nids;
+  for (const auto &curve : curves) {
+    // Curve test parameter to use static groups.
+    CurveParam curve_param = { curve.nid, false };
+    nids.push_back(curve_param);
+
+    // Curve test parameter to use mutable groups.
+    curve_param.mutable_group = true;
+    nids.push_back(curve_param);
   }
   return nids;
 }
 
-static std::string CurveToString(const testing::TestParamInfo<int> &params) {
-  return OBJ_nid2sn(params.param);
+static std::string CurveToString(
+    const testing::TestParamInfo<CurveParam> &params) {
+  return std::string(OBJ_nid2sn(params.param.nid)) +
+         std::string(params.param.mutable_group ? "_mutable" : "_static_curve");
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECCurveTest, testing::ValuesIn(AllCurves()),
@@ -2354,4 +2627,205 @@ TEST(ECTest, FelemBytes) {
     ASSERT_TRUE(test_group);
     ASSERT_EQ(test_group.get()->field.N.width, expected_felem_words);
   }
+}
+
+static ECDSA_SIG * ecdsa_sign_sig(const unsigned char *dgst, int dgstlen,
+                                  const BIGNUM *in_kinv, const BIGNUM *in_r,
+                                  EC_KEY *ec) {
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 1, (void*)"ecdsa_sign_sig");
+  return nullptr;
+}
+
+static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
+                      unsigned char *sig, unsigned int *siglen,
+                      const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ec) {
+
+  ECDSA_SIG *ret = ECDSA_do_sign(dgst, dgstlen, ec);
+  if (!ret) {
+    *siglen = 0;
+    return 0;
+  }
+
+  CBB cbb;
+  CBB_init_fixed(&cbb, sig, ECDSA_size(ec));
+  size_t len;
+  if (!ECDSA_SIG_marshal(&cbb, ret) ||
+      !CBB_finish(&cbb, nullptr, &len)) {
+    ECDSA_SIG_free(ret);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
+    *siglen = 0;
+    return 0;
+  }
+
+  *siglen = (unsigned)len;
+
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 0, (void*)"ecdsa_sign");
+
+  ECDSA_SIG_free(ret);
+  return 1;
+}
+
+static void openvpn_extkey_ec_finish(EC_KEY *ec)
+{
+  const EC_KEY_METHOD *ec_meth = EC_KEY_get_method(ec);
+  EC_KEY_METHOD_free((EC_KEY_METHOD *) ec_meth);
+}
+
+TEST(ECTest, ECKEYMETHOD) {
+  bssl::UniquePtr<EC_KEY> ec(EC_KEY_new());
+  ASSERT_TRUE(ec.get());
+
+  EC_KEY_METHOD *ec_method;
+  ec_method = EC_KEY_METHOD_new(EC_KEY_OpenSSL());
+  ASSERT_TRUE(ec_method);
+  // We zero initialize the default struct
+  ASSERT_FALSE(ec_method->finish && ec_method->sign);
+
+  // Can only set these fields
+  EC_KEY_METHOD_set_init(ec_method, NULL, openvpn_extkey_ec_finish,
+                         NULL, NULL, NULL, NULL);
+  ASSERT_TRUE(ec_method->finish);
+  //  Checking Sign
+  EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, NULL, NULL);
+  ASSERT_TRUE(ec_method->sign);
+
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group.get());
+  ASSERT_TRUE(EC_KEY_set_group(ec.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec.get()));
+
+  // Should get freed with EC_KEY once assigned through
+  // |openvpn_extkey_ec_finish|
+  ASSERT_TRUE(EC_KEY_set_method(ec.get(), ec_method));
+  ASSERT_TRUE(EC_KEY_check_key(ec.get()));
+
+  bssl::UniquePtr<EVP_PKEY> ec_key(EVP_PKEY_new());
+  ASSERT_TRUE(ec_key.get());
+  EVP_PKEY_assign_EC_KEY(ec_key.get(), ec.get());
+  // EVP_PKEY_assign_EC_KEY doesn't up the reference, so do that here for proper test cleanup
+  ASSERT_TRUE(EC_KEY_up_ref(ec.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(EVP_PKEY_CTX_new(ec_key.get(), NULL));
+  ASSERT_TRUE(ec_key_ctx.get());
+
+  // Do a signature, should call custom openvpn_extkey_ec_finish
+  uint8_t digest[20];
+  ASSERT_TRUE(RAND_bytes(digest, 20));
+  CONSTTIME_DECLASSIFY(digest, 20);
+  std::vector<uint8_t> signature(ECDSA_size(ec.get()));
+  size_t sig_len = ECDSA_size(ec.get());
+  ASSERT_TRUE(EVP_PKEY_sign_init(ec_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_sign(ec_key_ctx.get(), signature.data(),
+                            &sig_len, digest, 20));
+  signature.resize(sig_len);
+
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec.get(), 0))
+               , "ecdsa_sign");
+  // Verify the signature
+  EXPECT_TRUE(ECDSA_verify(0, digest, 20, signature.data(), signature.size(),
+                           ec.get()));
+
+  // Now test the sign_sig pointer
+  EC_KEY_METHOD_set_sign(ec_method, NULL, NULL, ecdsa_sign_sig);
+  ASSERT_TRUE(ec_method->sign_sig && !ec_method->sign);
+
+  ECDSA_do_sign(digest, 20, ec.get());
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec.get(), 1)),
+               "ecdsa_sign_sig");
+
+  // Flags
+  ASSERT_FALSE(EC_KEY_is_opaque(ec.get()));
+  EC_KEY_METHOD_set_flags(ec_method, ECDSA_FLAG_OPAQUE);
+  ASSERT_TRUE(EC_KEY_is_opaque(ec.get()));
+}
+
+TEST(ECTest, ECEngine) {
+  ENGINE *engine = ENGINE_new();
+  ASSERT_TRUE(engine);
+  ASSERT_FALSE(ENGINE_get_EC(engine));
+
+  EC_KEY_METHOD *eng_funcs = EC_KEY_METHOD_new(NULL);
+  ASSERT_TRUE(eng_funcs);
+  EC_KEY_METHOD_set_sign(eng_funcs, NULL, NULL, ecdsa_sign_sig);
+
+  ASSERT_TRUE(ENGINE_set_EC(engine, eng_funcs));
+  ASSERT_TRUE(ENGINE_get_EC(engine));
+
+  EC_KEY *key = EC_KEY_new_method(engine);
+  ASSERT_TRUE(key);
+
+  // Call custom Engine implementation
+  ECDSA_do_sign(NULL, 0, key);
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(key, 1))
+  , "ecdsa_sign_sig");
+
+  EC_KEY_free(key);
+  ENGINE_free(engine);
+  EC_KEY_METHOD_free(eng_funcs);
+}
+
+TEST(ECTest, ECPKParmatersBio) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_p256()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_p256());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_secp256k1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_secp256k1());
+}
+
+TEST(ECTest, MutableCustomECGroup) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
+  ASSERT_TRUE(gy);
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
+  ASSERT_TRUE(order);
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+
+  // Initialize an |EC_POINT| on the corresponding curve.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(EC_POINT_oct2point(
+      group.get(), point.get(), kP256PublicKey_uncompressed_0x02,
+      sizeof(kP256PublicKey_uncompressed_0x02), nullptr));
+
+  EC_GROUP_set_point_conversion_form(group.get(), POINT_CONVERSION_COMPRESSED);
+
+  // Use the saved conversion form in |group|. This should only work with
+  // |EC_GROUP_new_by_curve_name_mutable|.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(kP256PublicKey_compressed_0x02,
+                  sizeof(kP256PublicKey_compressed_0x02)),
+            Bytes(serialized));
+
+  serialized.clear();
+  EC_GROUP_set_point_conversion_form(group.get(),
+                                     POINT_CONVERSION_UNCOMPRESSED);
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(kP256PublicKey_uncompressed_0x02,
+                  sizeof(kP256PublicKey_uncompressed_0x02)),
+            Bytes(serialized));
 }

@@ -14,32 +14,16 @@
 extern "C" {
 #endif
 
-// OCSP reason codes identify the reason for the certificate revocation.
+// CRLReason does not have a status assigned to the value 7.
 //
-//  CRLReason ::= ENUMERATED {
-//        unspecified             (0),
-//        keyCompromise           (1),
-//        cACompromise            (2),
-//        affiliationChanged      (3),
-//        superseded              (4),
-//        cessationOfOperation    (5),
-//        -- value 7 is not used
-//        certificateHold         (6),
-//        removeFromCRL           (8),
-//        privilegeWithdrawn      (9),
-//        aACompromise            (10) }
+// See Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1.
+#define OCSP_UNASSIGNED_REVOKED_STATUS 7
+
+// OCSPResponseStatus does not have a status assigned to the value 4.
 //
-// Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
-#define OCSP_REVOKED_STATUS_UNSPECIFIED 0
-#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
-#define OCSP_REVOKED_STATUS_CACOMPROMISE 2
-#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3
-#define OCSP_REVOKED_STATUS_SUPERSEDED 4
-#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5
-#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6
-#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8
-#define OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN 9
-#define OCSP_REVOKED_STATUS_AACOMPROMISE 10
+// See Reason Code RFC:
+// https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+#define OCSP_UNASSIGNED_RESPONSE_STATUS 4
 
 // OCSP Request ASN.1 specification:
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
@@ -250,10 +234,19 @@ struct ocsp_basic_response_st {
   STACK_OF(X509) *certs;
 };
 
-DECLARE_ASN1_FUNCTIONS(OCSP_ONEREQ)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPDATA)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
+DECLARE_ASN1_FUNCTIONS(OCSP_RESPBYTES)
+DECLARE_ASN1_FUNCTIONS(OCSP_REVOKEDINFO)
+
+// OCSP_get_default_digest sets the default digest according to |signer|.
+// This exists because OpenSSL sets the default to |EVP_sha256| when passing
+// NULL for |type| in |EVP_DigestSignInit| when using certain key types. We wish
+// to avoid this general behavior for all |EVP_DigestSign*| operations, so we
+// only set the default digest from the OCSP layer. |dgst| represents the user's
+// self-defined digest type, if it's non-NULL, |dgst| is directly returned.
+const EVP_MD *OCSP_get_default_digest(const EVP_MD *dgst, EVP_PKEY *signer);
 
 // Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
 OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
@@ -264,21 +257,10 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
 int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
                           const ASN1_ITEM *it);
 
-// Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
-int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
-
-OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
-                              const ASN1_BIT_STRING *issuerKey,
-                              const ASN1_INTEGER *serialNumber);
-
 // Returns the internal memory BIO of the |OCSP_REQ_CTX|. For AWS-LC, this is
 // only used for testing if contents of |OCSP_REQ_CTX| have been written
 // correctly.
 OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
-
-// --- OCSP compare functions ---
-// Compares certificate id issuers, returns 0 on equal.
-int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 
 // OCSP extension functions
@@ -292,13 +274,12 @@ OPENSSL_EXPORT int OCSP_REQUEST_get_ext_by_NID(OCSP_REQUEST *req, int nid,
 // by its position in the extension list.
 OPENSSL_EXPORT X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc);
 
-// OCSP_BASICRESP_get_ext_by_NID returns the index of an extension from an
-// |OCSP_BASICRESP| by its NID. Returns -1 if not found.
-int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid, int lastpos);
+// OCSP_BASICRESP_add_ext adds a copy of |ex| to the extension list in
+// |*bs|. It returns 1 on success and 0 on error. The new extension is
+// inserted at index |loc|, shifting extensions to the right. If |loc| is -1 or
+// out of bounds, the new extension is appended to the list.
+int OCSP_BASICRESP_add_ext(OCSP_BASICRESP *bs, X509_EXTENSION *ex, int loc);
 
-// OCSP_BASICRESP_get_ext retrieves an |X509_EXTENSION| from an |OCSP_BASICRESP|
-// by its position in the extension list.
-X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc);
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 #define OCSP_MAX_RESP_LENGTH (100 * 1024)

@@ -6,18 +6,28 @@ A submodule of AWS-LC, referred to here as the “FIPS module”, is periodicall
 
 NIST has awarded the FIPS module of AWS-LC its validation certificate as a Federal Information Processing Standards (FIPS) 140-3, level 1, cryptographic module.
 
-1. AWS-LC-FIPS v1.0: certificate [#4631](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4631), [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf)
+* AWS-LC-FIPS v1.0: certificate [#4631](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4631) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf)
+* AWS-LC-FIPS v2.0 (dynamic library): certificate [#4759](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4759) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4759.pdf)
+* AWS-LC-FIPS v2.0 (static library): certificate [#4816](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816) - [security policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf)
 
 NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entropy Source.
 
 1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
 
+## Platform Limitations
+
+When building AWS-LC in FIPS mode, please be aware of the following platform limitations:
+
+- Static FIPS builds are only supported on Linux platforms
+- Shared library FIPS builds are supported on both Linux and Windows
+- Windows Debug builds are not supported with FIPS
+
 ### Modules in Process
 
-The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.  
-
-* AWS-LC-FIPS v2.0 (dynamic library): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [Draft security policy](https://github.com/aws/aws-lc/blob/fips-2022-11-02/crypto/fipsmodule/policydocs/DRAFT-140-3-AmazonSecurityPolicy-2.0.0-dynamic.pdf)
-* AWS-LC-FIPS v2.0 (static library): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [Draft security policy](https://github.com/aws/aws-lc/blob/fips-2022-11-02/crypto/fipsmodule/policydocs/DRAFT-140-3-AmazonSecurityPolicy-2.0.0-static.pdf)
+The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
+* AWS-LC Cryptographic Module (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-NetOS-dynamic.pdf)
+* AWS-LC-FIPS v3.0 (static): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-static.pdf)
+* AWS-LC-FIPS v3.0 (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-dynamic.pdf)
 
 ## RNG design
 
@@ -37,16 +47,55 @@ The AWS-LC-FIPS v2.0 module uses passive entropy by default and the specific ent
 
 ## Breaking known-answer and continuous tests
 
-Each known-answer test (KAT) uses a unique, random input value. `util/fipstools/break-kat.go` contains a listing of those values and can be used to corrupt a given test in a binary. Since changes to the KAT input values will invalidate the integrity test, `BORINGSSL_FIPS_BREAK_TESTS` can be defined in `fips_break_tests.h` to disable it for the purposes of testing.
+Each known-answer test (KAT) uses a unique, random input value. `util/fipstools/break-kat.go` contains a listing of those values and can be used to corrupt a given test in a binary. Since changes to the KAT input values will invalidate the integrity test, `BORINGSSL_FIPS_BREAK_TESTS` can be defined using CMake CMAKE_C_FLAGS to disable it for the purposes of testing.
 
 Some FIPS tests cannot be broken by replacing a known string in the binary. For those, when `BORINGSSL_FIPS_BREAK_TESTS` is defined, the environment variable `BORINGSSL_FIPS_BREAK_TEST` can be set to one of a number of values in order to break the corresponding test:
 
 1. `RSA_PWCT`
-2. `ECDSA_PWCT`
+2. `EC_PWCT`
+3. `EDDSA_PWCT`
+4. `MLKEM_PWCT`
+5. `MLDSA_PWCT`
 
 ## Running ACVP tests
 
 See `util/fipstools/acvp/ACVP.md` for details of how ACVP testing is done.
+
+## Service Indicator
+
+[FIPS 140-3 Implementation Guidance](https://csrc.nist.gov/Projects/cryptographic-module-validation-program/fips-140-3-ig-announcements),
+Sec 2.4.C provides guidance on an Approved Security Service Indicator.
+This indicator is used to inform the operator they are utilizing an approved cryptographic algorithm, security
+function, or process in an approved manner.  In AWS-LC, we implemented a service indicator, that should be
+checked at runtime, to indicate whether an API is used in an approved way with approved parameters.
+This approach allows AWS-LC to offer both approved and non-approved algorithms.
+Other cryptographic libraries may satisfy this requirement by returning an error code
+or generally disabling all non-approved algorithm.
+
+The service indicator is a  per-thread global struct which contains a counter and a lock.
+When an approved service is called in an approved manner with approved parameters, the counter is incremented.
+When the counter should be prevented from changing, the lock is set. In order to determine whether
+a invoked service is approved, the user would retrieve the current value of the counter,
+call an API, then check if the new counter value is not equal to the previous value.
+
+The following code snippet from `service_indicator.h` shows the macro which performs the sequence of calls mentioned above.
+
+```c++
+#define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
+  do {                                                              \
+    (approved) = AWSLC_NOT_APPROVED;                                \
+    int before = FIPS_service_indicator_before_call();              \
+    func;                                                           \
+    int after = FIPS_service_indicator_after_call();                \
+    if (before != after) {                                          \
+        assert(before + 1 == after);                                \
+        (approved) = AWSLC_APPROVED;                                \
+    }                                                               \
+ }                                                                  \
+ while(0)
+```
+Please review the correct [FIPS Security Policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf)
+to determine which APIs, algorithms, and parameters are approved.
 
 ## Integrity Test
 
@@ -58,7 +107,7 @@ We describe below how we build C and assembly code in order to produce a binary 
 
 ### Linux Shared build
 
-First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is `[bcm.c](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/bcm.c)`). This, along with some assembly sources, comprise the FIPS module.
+First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is [`bcm.c`](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/bcm.c)). This, along with some assembly sources, comprise the FIPS module.
 
 The object files resulting from compiling/assembling those files are linked in partial-linking mode with a [linker script](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/gcc_fips_shared.lds) that causes the linker to insert symbols marking the beginning and end of the text and rodata sections. The linker script also discards other types of data sections to ensure that no unhashed data is used by the module.
 
@@ -139,4 +188,3 @@ Initially the known-good value will be incorrect. Another script (`inject_hash.g
 The utility in `util/fipstools/break-hash.go` can be used to corrupt the FIPS module inside a binary and thus trigger a failure of the integrity test. Note that the binary must not be stripped, otherwise the utility will not be able to find the FIPS module.
 
 ![build process](./intcheck2.png)
-

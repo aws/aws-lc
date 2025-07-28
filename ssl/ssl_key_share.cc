@@ -33,8 +33,8 @@
 
 #include "internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/kem/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
+#include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "../crypto/kyber/kem_kyber.h"
 
 BSSL_NAMESPACE_BEGIN
@@ -87,7 +87,7 @@ class ECKeyShare : public SSLKeyShare {
         !EC_POINT_oct2point(group_, peer_point.get(), peer_key.data(),
                             peer_key.size(), /*ctx=*/nullptr)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return false;
     }
 
@@ -153,7 +153,7 @@ class X25519KeyShare : public SSLKeyShare {
 
     if (peer_key.size() != 32 ||
         !X25519(secret.data(), private_key_, peer_key.data())) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
@@ -286,7 +286,7 @@ class KEMKeyShare : public SSLKeyShare {
       EVP_PKEY_kem_new_raw_public_key(nid_, peer_key.begin(), peer_key.size()));
 
     if (!pkey) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -387,7 +387,7 @@ class KEMKeyShare : public SSLKeyShare {
                               &secret_bytes_written, ciphertext,
                               peer_key.size()) ||
                               secret_bytes_written != secret_len) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_KEM_CIPHERTEXT);
+      OPENSSL_PUT_ERROR(SSL, SSL_AD_ILLEGAL_PARAMETER);
       return false;
     }
 
@@ -504,7 +504,7 @@ class HybridKeyShare : public SSLKeyShare {
         // Verify that |peer_key| contains enough data
         if (peer_key_read_index + component_key_size > peer_key.size()) {
           CBB_cleanup(&hybrid_shared_secret);
-          *out_alert = SSL_AD_DECODE_ERROR;
+          *out_alert = SSL_AD_ILLEGAL_PARAMETER;
           OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HYBRID_KEYSHARE);
           return false;
         }
@@ -612,7 +612,7 @@ class HybridKeyShare : public SSLKeyShare {
       // Final validation that |peer_key| was the correct size
       if (peer_key_index != peer_key.size()) {
         CBB_cleanup(&hybrid_shared_secret);
-        *out_alert = SSL_AD_DECODE_ERROR;
+        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         return false;
       }
@@ -636,8 +636,17 @@ class HybridKeyShare : public SSLKeyShare {
      case SSL_GROUP_SECP256R1:
        *out = 1 + (2 * EC_P256R1_FIELD_ELEM_BYTES);
        return true;
+     case SSL_GROUP_SECP384R1:
+       *out = 1 + (2 * EC_P384R1_FIELD_ELEM_BYTES);
+       return true;
      case SSL_GROUP_KYBER768_R3:
        *out = KYBER768_R3_PUBLIC_KEY_BYTES;
+       return true;
+     case SSL_GROUP_MLKEM768:
+       *out = MLKEM768_PUBLIC_KEY_BYTES;
+       return true;
+    case SSL_GROUP_MLKEM1024:
+       *out = MLKEM1024_PUBLIC_KEY_BYTES;
        return true;
      case SSL_GROUP_X25519:
        *out = 32;
@@ -653,8 +662,17 @@ class HybridKeyShare : public SSLKeyShare {
      case SSL_GROUP_SECP256R1:
        *out = 1 + (2 * EC_P256R1_FIELD_ELEM_BYTES);
        return true;
+     case SSL_GROUP_SECP384R1:
+       *out = 1 + (2 * EC_P384R1_FIELD_ELEM_BYTES);
+       return true;
      case SSL_GROUP_KYBER768_R3:
        *out = KYBER768_R3_CIPHERTEXT_BYTES;
+       return true;
+     case SSL_GROUP_MLKEM768:
+       *out = MLKEM768_CIPHERTEXT_BYTES;
+       return true;
+     case SSL_GROUP_MLKEM1024:
+       *out = MLKEM1024_CIPHERTEXT_BYTES;
        return true;
      case SSL_GROUP_X25519:
        *out = 32;
@@ -678,14 +696,23 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_X25519, SSL_GROUP_X25519, "X25519", "x25519"},
     {NID_SecP256r1Kyber768Draft00, SSL_GROUP_SECP256R1_KYBER768_DRAFT00, "SecP256r1Kyber768Draft00", ""},
     {NID_X25519Kyber768Draft00, SSL_GROUP_X25519_KYBER768_DRAFT00, "X25519Kyber768Draft00", ""},
+    {NID_SecP256r1MLKEM768, SSL_GROUP_SECP256R1_MLKEM768, "SecP256r1MLKEM768", ""},
+    {NID_X25519MLKEM768, SSL_GROUP_X25519_MLKEM768, "X25519MLKEM768", ""},
+    {NID_SecP384r1MLKEM1024, SSL_GROUP_SECP384R1_MLKEM1024, "SecP384r1MLKEM1024", ""},
 };
 
 CONSTEXPR_ARRAY uint16_t kPQGroups[] = {
     SSL_GROUP_KYBER512_R3,
     SSL_GROUP_KYBER768_R3,
     SSL_GROUP_KYBER1024_R3,
+    SSL_GROUP_MLKEM512,
+    SSL_GROUP_MLKEM768,
+    SSL_GROUP_MLKEM1024,
     SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    SSL_GROUP_X25519_KYBER768_DRAFT00
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    SSL_GROUP_X25519_MLKEM768,
+    SSL_GROUP_SECP384R1_MLKEM1024,
 };
 
 CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
@@ -696,14 +723,36 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
       SSL_GROUP_KYBER768_R3,          // component_group_ids[1]
     },
   },
-
   {
     SSL_GROUP_X25519_KYBER768_DRAFT00,     // group_id
     {
       SSL_GROUP_X25519,               // component_group_ids[0]
       SSL_GROUP_KYBER768_R3,          // component_group_ids[1]
     },
-  }
+  },
+  {
+    SSL_GROUP_SECP256R1_MLKEM768,     // group_id
+    {
+      SSL_GROUP_SECP256R1,         // component_group_ids[0]
+      SSL_GROUP_MLKEM768,          // component_group_ids[1]
+    },
+  },
+  {
+    SSL_GROUP_X25519_MLKEM768,     // group_id
+    {
+      // Note: MLKEM768 is sent first due to FIPS requirements.
+      // For more details, see https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
+      SSL_GROUP_MLKEM768,          // component_group_ids[0]
+      SSL_GROUP_X25519,            // component_group_ids[1]
+    },
+  },
+  {
+    SSL_GROUP_SECP384R1_MLKEM1024,     // group_id
+    {
+      SSL_GROUP_SECP384R1,         // component_group_ids[0]
+      SSL_GROUP_MLKEM1024,         // component_group_ids[1]
+    },
+  },
 };
 
 } // namespace
@@ -740,6 +789,20 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP256R1_KYBER768_DRAFT00);
     case SSL_GROUP_X25519_KYBER768_DRAFT00:
       return MakeUnique<HybridKeyShare>(SSL_GROUP_X25519_KYBER768_DRAFT00);
+    case SSL_GROUP_MLKEM768:
+      // MLKEM768, as a standalone group, is not a NamedGroup; however, we
+      // need to create MLKEM768 key shares as part of hybrid groups.
+      return MakeUnique<KEMKeyShare>(NID_MLKEM768, SSL_GROUP_MLKEM768);
+    case SSL_GROUP_MLKEM1024:
+      // MLKEM1024, as a standalone group, is not a NamedGroup; however, we
+      // need to create MLKEM1024 key shares as part of hybrid groups.
+      return MakeUnique<KEMKeyShare>(NID_MLKEM1024, SSL_GROUP_MLKEM1024);
+    case SSL_GROUP_SECP256R1_MLKEM768:
+      return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP256R1_MLKEM768);
+    case SSL_GROUP_X25519_MLKEM768:
+      return MakeUnique<HybridKeyShare>(SSL_GROUP_X25519_MLKEM768);
+    case SSL_GROUP_SECP384R1_MLKEM1024:
+      return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP384R1_MLKEM1024);
     default:
       return nullptr;
   }
@@ -762,6 +825,17 @@ bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {
   return false;
 }
 
+bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id) {
+  GUARD_PTR(out_nid);
+  for (const auto &group : kNamedGroups) {
+    if (group.group_id == group_id) {
+      *out_nid = group.nid;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) {
   for (const auto &group : kNamedGroups) {
     if (len == strlen(group.name) &&
@@ -776,6 +850,15 @@ bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) 
     }
   }
   return false;
+}
+
+int ssl_group_id_to_nid(uint16_t group_id) {
+  for (const auto &group : kNamedGroups) {
+    if (group.group_id == group_id) {
+      return group.nid;
+    }
+  }
+  return NID_undef;
 }
 
 BSSL_NAMESPACE_END

@@ -561,10 +561,15 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       if (!p2) {
         return 0;
       }
+#if defined(AWSLC_FIPS)
+      if (BN_get_word(p2) != RSA_F4) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+        return 0;
+      }
+#endif
       BN_free(rctx->pub_exp);
       rctx->pub_exp = p2;
       return 1;
-
     case EVP_PKEY_CTRL_RSA_OAEP_MD:
     case EVP_PKEY_CTRL_GET_RSA_OAEP_MD:
       if (rctx->pad_mode != RSA_PKCS1_OAEP_PADDING) {
@@ -649,6 +654,7 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   int ret = 0;
   RSA *rsa = NULL;
   RSA_PKEY_CTX *rctx = ctx->data;
+  BN_GENCB *pkey_ctx_cb = NULL;
 
   // In FIPS mode, the public exponent is set within |RSA_generate_key_fips|
   if (!is_fips_build() && !rctx->pub_exp) {
@@ -662,15 +668,24 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     goto end;
   }
 
+  if (ctx->pkey_gencb) {
+    pkey_ctx_cb = BN_GENCB_new();
+    if (pkey_ctx_cb == NULL) {
+      goto end;
+    }
+    evp_pkey_set_cb_translate(pkey_ctx_cb, ctx);
+  }
+
   // In FIPS build, |RSA_generate_key_fips| updates the service indicator so lock it here
   FIPS_service_indicator_lock_state();
-  if ((!is_fips_build() && !RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, NULL)) ||
-      ( is_fips_build() && !RSA_generate_key_fips(rsa, rctx->nbits, NULL)) ||
+  if ((!is_fips_build() &&
+       !RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, pkey_ctx_cb)) ||
+      (is_fips_build() &&
+       !RSA_generate_key_fips(rsa, rctx->nbits, pkey_ctx_cb)) ||
       !rsa_set_pss_param(rsa, ctx)) {
     FIPS_service_indicator_unlock_state();
     goto end;
   }
-
   FIPS_service_indicator_unlock_state();
 
   if (pkey_ctx_is_pss(ctx)) {
@@ -678,11 +693,115 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   } else {
     ret = EVP_PKEY_assign_RSA(pkey, rsa);
   }
+
 end:
+  BN_GENCB_free(pkey_ctx_cb);
   if (!ret && rsa) {
     RSA_free(rsa);
   }
   return ret;
+}
+
+static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                             const char *value) {
+  if (value == NULL) {
+    OPENSSL_PUT_ERROR(EVP, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+  if (strcmp(type, "rsa_padding_mode") == 0) {
+    // "sslv23" and "x931" are not supported
+    int pm;
+
+    if (strcmp(value, "pkcs1") == 0) {
+      pm = RSA_PKCS1_PADDING;
+    } else if (strcmp(value, "none") == 0) {
+      pm = RSA_NO_PADDING;
+    // OpenSSL also supports the typo.
+    } else if (strcmp(value, "oeap") == 0) {
+      pm = RSA_PKCS1_OAEP_PADDING;
+    } else if (strcmp(value, "oaep") == 0) {
+      pm = RSA_PKCS1_OAEP_PADDING;
+    } else if (strcmp(value, "pss") == 0) {
+      pm = RSA_PKCS1_PSS_PADDING;
+    } else {
+      OPENSSL_PUT_ERROR(EVP, RSA_R_UNKNOWN_PADDING_TYPE);
+      return -2;
+    }
+    return EVP_PKEY_CTX_set_rsa_padding(ctx, pm);
+  }
+
+  if (strcmp(type, "rsa_pss_saltlen") == 0) {
+    // "max" and "auto" are not supported
+    long saltlen;
+
+    if (!strcmp(value, "digest")) {
+      saltlen = RSA_PSS_SALTLEN_DIGEST;
+    } else {
+      char* str_end;
+      saltlen = strtol(value, &str_end, 10);
+      if(str_end == value || saltlen < 0 || saltlen > INT_MAX) {
+        OPENSSL_PUT_ERROR(EVP, RSA_R_INTERNAL_ERROR);
+        return -2;
+      }
+    }
+    return EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, (int)saltlen);
+  }
+
+  if (strcmp(type, "rsa_keygen_bits") == 0) {
+    char* str_end;
+    long nbits = strtol(value, &str_end, 10);
+    if (str_end == value || nbits <= 0 || nbits > INT_MAX) {
+      OPENSSL_PUT_ERROR(EVP, RSA_R_INTERNAL_ERROR);
+      return -2;
+    }
+    return EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, (int)nbits);
+  }
+
+  if (strcmp(type, "rsa_keygen_pubexp") == 0) {
+    int ret;
+
+    BIGNUM *pubexp = NULL;
+    if (!BN_asc2bn(&pubexp, value)) {
+      return -2;
+    }
+    ret = EVP_PKEY_CTX_set_rsa_keygen_pubexp(ctx, pubexp);
+    if (ret <= 0) {
+      BN_free(pubexp);
+    }
+    return ret;
+  }
+
+  if (strcmp(type, "rsa_mgf1_md") == 0) {
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    return EVP_PKEY_CTX_md(ctx, EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
+                           EVP_PKEY_CTRL_RSA_MGF1_MD, value);
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
+
+  // rsa_pss_keygen_XXX options are not supported
+
+  if (strcmp(type, "rsa_oaep_md") == 0) {
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    return EVP_PKEY_CTX_md(ctx, EVP_PKEY_OP_TYPE_CRYPT,
+                           EVP_PKEY_CTRL_RSA_OAEP_MD, value);
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
+  if (strcmp(type, "rsa_oaep_label") == 0) {
+    size_t lablen = 0;
+
+    uint8_t *lab = OPENSSL_hexstr2buf(value, &lablen);
+    if (lab == NULL) {
+      return 0;
+    }
+
+    int ret = EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, lab, lablen);
+    if (ret <= 0) {
+      OPENSSL_free(lab);
+    }
+    return ret;
+  }
+
+  return -2;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pkey_meth) {
@@ -703,6 +822,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pkey_meth) {
     out->derive = NULL;
     out->paramgen = NULL;
     out->ctrl = pkey_rsa_ctrl;
+    out->ctrl_str = pkey_rsa_ctrl_str;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
@@ -723,6 +843,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
     out->derive = NULL;
     out->paramgen = NULL;
     out->ctrl = pkey_rsa_ctrl;
+    out->ctrl_str = pkey_rsa_ctrl_str;
 }
 
 int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {

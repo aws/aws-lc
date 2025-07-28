@@ -651,7 +651,6 @@ aes_hw_ctr32_encrypt_blocks:
 	ld1	{v7.4s},[x7]
 	add	x7,x3,#32
 	mov	w6,w5
-	csel	x12,xzr,x12,lo
 
 	// ARM Cortex-A57 and Cortex-A72 cores running in 32-bit mode are
 	// affected by silicon errata #1742098 [0] and #1655431 [1],
@@ -771,11 +770,12 @@ Loop3x_ctr32:
 
 	adds	x2,x2,#3
 	b.eq	Lctr32_done
-	cmp	x2,#1
-	mov	x12,#16
-	csel	x12,xzr,x12,eq
 
 Lctr32_tail:
+	cmp	x2,#1
+	b.lt	Lctr32_done	// if len = 0, go to done
+	mov	x12,#16
+	csel	x12,xzr,x12,eq
 	aese	v0.16b,v16.16b
 	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v16.16b
@@ -816,11 +816,10 @@ Lctr32_tail:
 	aese	v0.16b,v23.16b
 	aese	v1.16b,v23.16b
 
-	cmp	x2,#1
 	eor	v2.16b,v2.16b,v0.16b
 	eor	v3.16b,v3.16b,v1.16b
 	st1	{v2.16b},[x1],#16
-	b.eq	Lctr32_done
+	cbz	x12,Lctr32_done  // if step = 0 (len = 1), go to done
 	st1	{v3.16b},[x1]
 
 Lctr32_done:

@@ -37,15 +37,25 @@ OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 // Obscure functions.
 
 #if !defined(OPENSSL_WINDOWS)
-// RAND_enable_fork_unsafe_buffering enables efficient buffered reading of
-// /dev/urandom. It adds an overhead of a few KB of memory per thread. It must
-// be called before the first call to |RAND_bytes|.
+// RAND_enable_fork_unsafe_buffering indicates that clones of the address space,
+// e.g. via |fork|, will never call into BoringSSL. It may be used to disable
+// BoringSSL's more expensive fork-safety measures. However, calling this
+// function and then using BoringSSL across |fork| calls will leak secret keys.
+// |fd| must be -1.
 //
-// |fd| must be -1. We no longer support setting the file descriptor with this
-// function.
+// WARNING: This function affects BoringSSL for the entire address space. Thus
+// this function should never be called by library code, only by code with
+// global knowledge of the application's use of BoringSSL.
 //
-// It has an unusual name because the buffer is unsafe across calls to |fork|.
-// Hence, this function should never be called by libraries.
+// Do not use this function unless a performance issue was measured with the
+// default behavior. BoringSSL can efficiently detect forks on most platforms,
+// in which case this function is a no-op and is unnecessary. In particular,
+// Linux kernel versions 4.14 or later provide |MADV_WIPEONFORK|. Future
+// versions of BoringSSL will remove this functionality when older kernels are
+// sufficiently rare.
+//
+// This function has an unusual name because it historically controlled internal
+// buffers, but no longer does.
 OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
 #endif
 
@@ -103,6 +113,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_add(const void *buf, int num,
 
 // RAND_egd returns 255.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd(const char *);
+
+// RAND_egd_bytes returns |bytes|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd_bytes(const char *, int bytes);
 
 // RAND_poll returns one.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_poll(void);

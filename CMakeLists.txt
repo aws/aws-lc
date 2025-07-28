@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5..3.31)
+
+if(POLICY CMP0091)
+cmake_policy(SET CMP0091 NEW)
+endif()
 
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
@@ -7,6 +11,10 @@ if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
   # the CMake generators prefer gcc, even on Windows.
   set(CMAKE_GENERATOR_CC cl)
+endif()
+
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
 endif()
 
 include(sources.cmake)
@@ -19,10 +27,11 @@ endif()
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
-option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
+option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
+(DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 include(cmake/go.cmake)
 
 enable_language(C)
@@ -52,22 +61,72 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   endif()
 endif()
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
+  # Determine if the host is running an illumos distribution:
+  execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if (UNAME_O STREQUAL "illumos")
+    set(HOST_ILLUMOS 1)
+  endif()
+
+  if (UNAME_O STREQUAL "Solaris")
+    set(HOST_SOLARIS 1)
+  endif()
+
+  if (HOST_ILLUMOS)
+    #
+    # illumos systems require linking libsocket and libnsl to get various
+    # networking routines sometimes found in libc on other platforms:
+    #
+    if(NOT BUILD_SHARED_LIBS)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lsocket -lnsl")
+    else()
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsocket -lnsl")
+    endif()
+  endif()
+endif()
+
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
 if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
 endif()
 
-if(CMAKE_VERSION VERSION_GREATER "3.1.0")
-  if (NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 11)
+if(ENABLE_CLANG_TIDY)
+  find_program(CLANG_TIDY_CMD NAMES clang-tidy)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+
+  if(NOT CLANG_TIDY_CMD)
+    message(WARNING "clang-tidy is not found!")
+    set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
+  else()
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_CMD}")
+    set(CLANG_TIDY_EXTRA_ARGS
+            "-extra-arg=-Wno-unknown-warning-option"
+    )
+    set(CMAKE_C_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
   endif()
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  if (NOT DEFINED CMAKE_C_STANDARD)
+endif()
+
+if (NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 11)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if (NOT DEFINED CMAKE_C_STANDARD)
+  try_compile(
+          RESULT
+          ${AWSLC_BINARY_DIR}
+          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/c11.c"
+          COMPILE_DEFINITIONS -c -std=c11)
+  if(RESULT)
+    set(CMAKE_C_STANDARD 11)
+  else()
     set(CMAKE_C_STANDARD 99)
-  endif ()
-  set(CMAKE_C_STANDARD_REQUIRED ON)
+  endif()
 endif ()
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(CLANG 1)
@@ -75,7 +134,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-if (UNIX AND NOT APPLE)
+if (NOT WIN32 AND NOT APPLE)
   include(GNUInstallDirs)
 elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib")
@@ -91,19 +150,18 @@ install(DIRECTORY include/openssl
         PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
 )
 
-if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
-  # However, ninja will still find them in $PATH if we just name them.
-  if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
-    set(PERL_EXECUTABLE "perl")
-  endif()
-else()
-  if(NOT DISABLE_PERL)
-    find_package(Perl)
-  endif()
+if (TEST_SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
+  add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
+  add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
 endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+if(NOT DISABLE_PERL)
+  find_package(Perl REQUIRED)
+endif()
+
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
   find_package(PkgConfig QUIET)
   if (PkgConfig_FOUND)
     pkg_check_modules(LIBUNWIND libunwind-generic)
@@ -126,11 +184,6 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
-endif()
-
-
-if(ENABLE_DILITHIUM)
-  add_definitions(-DENABLE_DILITHIUM)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -162,10 +215,13 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
 endforeach()
 
 if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
+
+  message(STATUS "Prefix build configured: building headers using prefix \"${BORINGSSL_PREFIX}\" and symbols file \"${BORINGSSL_PREFIX_SYMBOLS}\"")
+
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
-    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${AWSLC_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
   endif()
 
   add_custom_command(
@@ -174,15 +230,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
            symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
     COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl -prefix ${BORINGSSL_PREFIX} ${BORINGSSL_PREFIX_SYMBOLS_PATH}
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
-    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E remove
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h.bak
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h.bak
@@ -203,10 +250,12 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   )
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
 
+  message(STATUS "Prefix build configured: performing build using prefix \"${BORINGSSL_PREFIX}\" and headers path \"${BORINGSSL_PREFIX_HEADERS}\"")
+
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
   else()
-    set(BORINGSSL_PREFIX_HEADERS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${AWSLC_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
   endif()
 
   file(COPY ${BORINGSSL_PREFIX_HEADERS_PATH}/openssl/boringssl_prefix_symbols.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl)
@@ -242,7 +291,7 @@ endif()
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
           RESULT
-          ${PROJECT_BINARY_DIR}
+          ${AWSLC_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
@@ -282,23 +331,26 @@ endmacro()
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 
-# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# Some assemblers know about AVX but not ADX, AVX2 or AVX512 instructions, e.g. gcc 4.8.2.
 # This flag can be set to handle such cases.
-# Note that the flag's name has "512AVX" instead of "AVX512" so that it doesn't
-# include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match it
-# in the Perl files checks.
+# Note:
+# * Although this flag name implies an effect on AVX512 instructions, it's also
+#   intended to avoid generating ADX and AVX2 instructions.
+# * This flag name has "512AVX" instead of "AVX512" so that it doesn't
+#   include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match
+#   to it in the Perl files checks.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing all AVX optimisations")
 endif()
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing ADX, AVX2 and AVX512 optimisations")
 endif()
 
 if (GCC)
@@ -340,9 +392,12 @@ endif ()
 if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
-  if (NOT CMAKE_C_STANDARD)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  endif ()
+  if (NOT CMAKE_VERSION VERSION_GREATER "3.1.0")
+    message(STATUS "Adding CMAKE_C_FLAGS -std=c${CMAKE_C_STANDARD}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c${CMAKE_C_STANDARD}")
+  else()
+    message(STATUS "Setting CMAKE_C_STANDARD=${CMAKE_C_STANDARD}")
+  endif()
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))
@@ -356,16 +411,21 @@ if(GCC OR CLANG)
     else()
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra")
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
+      if(CLANG AND MINGW)
+        set(C_CXX_FLAGS "${C_CXX_FLAGS} -fms-extensions")
+      endif()
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result -Wno-overlength-strings")
-    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-c11-extensions -Wvla -Wtype-limits -Wno-unused-parameter")
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
-  if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
+  if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8") OR
+     (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS "13"))
     # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
+    # Also suppress for all clang versions supporting this warning.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 
@@ -691,18 +751,20 @@ if(FIPS)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
-    message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
+  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
+    message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
   if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
     message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
   endif()
 
+  string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
+  if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
+    message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
+  endif ()
+
   add_definitions(-DBORINGSSL_FIPS)
-  if(FIPS_BREAK_TEST)
-    add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
-  endif()
   # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
     if(BUILD_SHARED_LIBS)
@@ -727,8 +789,6 @@ endif()
 
 if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DBORINGSSL_CONSTANT_TIME_VALIDATION)
-  # Asserts will often test secret data.
-  add_definitions(-DNDEBUG)
 endif()
 
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
@@ -755,10 +815,25 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
+if(HOST_ILLUMOS OR HOST_SOLARIS)
+  #
+  # CMAKE_SYSTEM_PROCESSOR unfortunately comes from the output of "uname -p",
+  # which on illumos systems emits "i386".  Instead, use the value from
+  # "isainfo -n", which prints "the name of the native instruction set used by
+  # portable applications"; e.g., "amd64".
+  #
+  execute_process(COMMAND /usr/bin/isainfo -n OUTPUT_VARIABLE
+    CMAKE_SYSTEM_PROCESSOR_LOWER OUTPUT_STRIP_TRAILING_WHITESPACE)
+else()
+  # Some consumers might use upper-case (e.g.) "X86" or "X86_64".
+  # Matching below is based on lower-case.
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+endif()
+
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "x86_64|amd64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building in Docker, where the host-level architecture is 64-bit
@@ -768,9 +843,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   else()
     set(ARCH "x86")
   endif()
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "x86|i386|i686")
   set(ARCH "x86")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building on an 64-bit CPU where the OS is 32-bit.
@@ -779,19 +854,35 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
   else()
     set(ARCH "arm")
   endif()
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "^arm*")
   set(ARCH "arm")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "riscv64")
   set(ARCH "riscv64")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "s390x")
   set(ARCH "s390x")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "loongarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
   set(ARCH "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+# If target ARCH is 32-bit x86, ensure SSE2 is enabled since it's used by the optimized assembly.
+# To build for targets that do not support SSE2, use the `OPENSSL_NO_ASM` flag.
+if(ARCH STREQUAL "x86" AND NOT OPENSSL_NO_SSE2_FOR_TESTING)
+  # Most compilers enable SSE2 in 32-bit x86 by default, but in some cases GCC and Clang don't.
+  # See: https://github.com/aws/aws-lc/commit/6fe8dcbe96e580ea85233fdb98a142e42951b70b
+  if(GCC OR CLANG)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -msse2")
+  endif()
+endif()
+
+if(ENABLE_DATA_INDEPENDENT_TIMING)
+  add_definitions(-DENABLE_AUTO_SET_RESET_DIT)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -909,32 +1000,43 @@ if(BUILD_TESTING)
         DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   else()
-    file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+    add_custom_command(
+        OUTPUT crypto_test_data.cc
+        COMMAND ${CMAKE_COMMAND} -E tar "jxvf" ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        DEPENDS  ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
   endif()
   add_library(crypto_test_data OBJECT crypto_test_data.cc)
 
   # sets tests to compile an so executable file for testing in our Android app CI.
   if(ANDROIDTESTRUNNER)
-    set(CRYPTO_TEST_EXEC crypto_test.so)
-    set(RANDOM_TEST_EXEC urandom_test.so)
-    set(SSL_TEST_EXEC ssl_test.so)
-    set(MEM_TEST_EXEC mem_test.so)
-    set(MEM_SET_TEST_EXEC mem_set_test.so)
-    set(INTEGRATION_TEST_EXEC integration_test.so)
-    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test.so)
-    set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init.so)
-  else()
-    set(CRYPTO_TEST_EXEC crypto_test)
-    set(RANDOM_TEST_EXEC urandom_test)
-    set(SSL_TEST_EXEC ssl_test)
-    set(MEM_TEST_EXEC mem_test)
-    set(MEM_SET_TEST_EXEC mem_set_test)
-    set(INTEGRATION_TEST_EXEC integration_test)
-    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test)
-    set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init)
+    set(TEST_EXECUTABLE_EXT ".so")
   endif()
 
+  set(CRYPTO_TEST_EXEC crypto_test${TEST_EXECUTABLE_EXT})
+  set(RANDOM_TEST_EXEC urandom_test${TEST_EXECUTABLE_EXT})
+  set(SSL_TEST_EXEC ssl_test${TEST_EXECUTABLE_EXT})
+  set(MEM_TEST_EXEC mem_test${TEST_EXECUTABLE_EXT})
+  set(MEM_SET_TEST_EXEC mem_set_test${TEST_EXECUTABLE_EXT})
+  set(INTEGRATION_TEST_EXEC integration_test${TEST_EXECUTABLE_EXT})
+  set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test${TEST_EXECUTABLE_EXT})
+  set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init${TEST_EXECUTABLE_EXT})
+
   add_subdirectory(util/fipstools/acvp/modulewrapper)
+
+  macro(set_test_location executable_name)
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+      message(NOTICE "Location  for ${executable_name} is: ${CMAKE_CURRENT_BINARY_DIR}")
+      # Set the output directory for the executable
+      set_target_properties(${executable_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}"
+      )
+    endif()
+  endmacro()
 endif()
 
 add_subdirectory(crypto)
@@ -942,6 +1044,7 @@ if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   if(BUILD_TOOL)
     add_subdirectory(tool)
+    add_subdirectory(tool-openssl)
   endif()
 endif()
 add_subdirectory(util/fipstools)
@@ -961,7 +1064,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
-  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${PROJECT_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${AWSLC_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()
@@ -988,11 +1091,11 @@ if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
       if(MSVC)
-        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool.exe)
-        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper.exe)
+        set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper.exe)
       else()
-        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
-        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
+        set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper)
       endif()
 
       # Read util/go_fips_tests.txt into a CMake variable.
@@ -1011,7 +1114,7 @@ if(BUILD_TESTING)
       # us hash anywhere from 1-8 gigabytes of memory, so running multiple at the same time cause a
       # failure on most machines due to a lack of memory.
       set(acvp_sha_test_commands)
-      file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      file(GLOB acvp_sha_tests "${AWSLC_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
       foreach(test_path ${acvp_sha_tests})
         get_filename_component(test_name ${test_path} NAME)
         list(APPEND acvp_sha_test_commands
@@ -1027,18 +1130,20 @@ if(BUILD_TESTING)
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
         acvp_tests
+        COMMAND ${CMAKE_COMMAND} -E echo
+        COMMAND ${CMAKE_COMMAND} -E echo "Running ACVP tests"
         COMMAND ${GO_EXECUTABLE} run check_expected.go
                   -tool ${ACVP_TOOL}
                   -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                   -tests tests.json
         ${acvp_sha_test_commands}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
         DEPENDS build_acvp_tool
         ${MAYBE_USES_TERMINAL})
 
@@ -1055,7 +1160,7 @@ if(BUILD_TESTING)
       add_custom_target(
         macho_parser_tests
         COMMAND ./util/fipstools/inject_hash/macho_parser/tests/test_macho_parser
-        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
         DEPENDS test_macho_parser
       )
       add_dependencies(fips_specific_tests_if_any macho_parser_tests)
@@ -1074,37 +1179,46 @@ if(BUILD_TESTING)
     if(BUILD_LIBSSL)
       add_custom_target(
           run_ssl_runner_tests
+          COMMAND ${CMAKE_COMMAND} -E echo "Running SSL tests"
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
           run_ssl_runner_tests_valgrind
+          COMMAND ${CMAKE_COMMAND} -E echo "Running SSL tests"
           COMMAND cd ssl/test/runner &&
           ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim> -valgrind
           ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
           run_tests
+          COMMAND ${CMAKE_COMMAND} -E echo
+          COMMAND ${CMAKE_COMMAND} -E echo "Running Go tests"
           COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
+          COMMAND ${CMAKE_COMMAND} -E echo
+          COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                 ${PROJECT_BINARY_DIR}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                 ${AWSLC_BINARY_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(
           run_tests
+          COMMAND ${CMAKE_COMMAND} -E echo "Running Go tests"
           COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
+          COMMAND ${CMAKE_COMMAND} -E echo
+          COMMAND ${CMAKE_COMMAND} -E echo "Running unit tests"
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${PROJECT_BINARY_DIR} -ssl-tests=false
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                  ${AWSLC_BINARY_DIR} -ssl-tests=false
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
       )
@@ -1113,16 +1227,16 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir="tests/ci"
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                ${AWSLC_BINARY_DIR} -valgrind=true -valgrind-supp-dir="tests/ci"
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
 
     add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${PROJECT_BINARY_DIR} -sde=true -sde-path="$ENV{SDEROOT}/sde"
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                ${AWSLC_BINARY_DIR} -sde=true -sde-path="$ENV{SDEROOT}/sde"
+        WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
   else()
@@ -1132,7 +1246,7 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
@@ -1140,7 +1254,7 @@ if(BUILD_TESTING)
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )
@@ -1174,8 +1288,13 @@ set(VERSION 1.1.1)
 # the downstream integration may build with the system's OpenSSL version instead.
 # Consider adjusting the PKG_CONFIG_PATH environment to get around this.
 file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
+
+include(cmake/JoinPaths.cmake)
+join_paths(libdir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
+join_paths(includedir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
+
 foreach(in_file ${OPENSSL_PKGCONFIGS})
-  file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
+  file(RELATIVE_PATH in_file ${AWSLC_SOURCE_DIR} ${in_file})
   string(REPLACE ".in" "" pc_file ${in_file})
   configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)

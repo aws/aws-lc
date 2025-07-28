@@ -136,21 +136,16 @@ err:
 }
 
 
+// DH_check confirms that the Diffie-Hellman parameters dh are valid.
 int DH_check(const DH *dh, int *out_flags) {
   *out_flags = 0;
   if (!dh_check_params_fast(dh)) {
     return 0;
   }
 
-  // Check that p is a safe prime and if g is 2, 3 or 5, check that it is a
-  // suitable generator where:
-  //   for 2, p mod 24 == 11
-  //   for 3, p mod 12 == 5
-  //   for 5, p mod 10 == 3 or 7
-  // should hold.
+  // Check that p is a safe prime.
   int ok = 0, r, q_good = 0;
   BN_CTX *ctx = NULL;
-  BN_ULONG l;
   BIGNUM *t1 = NULL, *t2 = NULL;
 
   ctx = BN_CTX_new();
@@ -203,24 +198,6 @@ int DH_check(const DH *dh, int *out_flags) {
     if (!BN_is_one(t2)) {
       *out_flags |= DH_CHECK_INVALID_Q_VALUE;
     }
-  } else if (BN_is_word(dh->g, DH_GENERATOR_2)) {
-    l = BN_mod_word(dh->p, 24);
-    if (l == (BN_ULONG)-1) {
-      goto err;
-    }
-    if (l != 11) {
-      *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
-    }
-  } else if (BN_is_word(dh->g, DH_GENERATOR_5)) {
-    l = BN_mod_word(dh->p, 10);
-    if (l == (BN_ULONG)-1) {
-      goto err;
-    }
-    if (l != 3 && l != 7) {
-      *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
-    }
-  } else {
-    *out_flags |= DH_CHECK_UNABLE_TO_CHECK_GENERATOR;
   }
 
   r = BN_is_prime_ex(dh->p, BN_prime_checks_for_validation, ctx, NULL);

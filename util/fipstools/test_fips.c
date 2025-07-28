@@ -22,16 +22,21 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/curve25519.h>
 #include <openssl/des.h>
 #include <openssl/dh.h>
-#include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/kdf.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
+#include "../../crypto/fipsmodule/evp/internal.h"
+#include "../../crypto/fipsmodule/kem/internal.h"
+#include "../../crypto/fipsmodule/pqdsa/internal.h"
 #include "../../crypto/fipsmodule/rand/internal.h"
 #include "../../crypto/internal.h"
 
@@ -57,23 +62,45 @@ int main(int argc, char **argv) {
   printf("Module version: %" PRIu32 "\n", module_version);
 #endif //BORINGSSL_FIPS_140_3
 
-  static const uint8_t kAESKey[16] = "BoringCrypto Key";
-  static const uint8_t kPlaintext[64] =
-      "BoringCryptoModule FIPS KAT Encryption and Decryption Plaintext!";
-  static const DES_cblock kDESKey1 = {"BCMDESK1"};
-  static const DES_cblock kDESKey2 = {"BCMDESK2"};
-  static const DES_cblock kDESKey3 = {"BCMDESK3"};
-  static const DES_cblock kDESIV = {"BCMDESIV"};
+  static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
+                                      'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
+
+  static const uint8_t kPlaintext[64] = {
+      'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r', 'y', 'p', 't', 'o', 'M',
+      'o', 'd', 'u', 'l', 'e', ' ', 'F', 'I', 'P', 'S', ' ', 'K', 'A',
+      'T', ' ', 'E', 'n', 'c', 'r', 'y', 'p', 't', 'i', 'o', 'n', ' ',
+      'a', 'n', 'd', ' ', 'D', 'e', 'c', 'r', 'y', 'p', 't', 'i', 'o',
+      'n', ' ', 'P', 'l', 'a', 'i', 'n', 't', 'e', 'x', 't', '!'};
+
+  static const DES_cblock kDESKey1 = {{'B', 'C', 'M', 'D', 'E', 'S', 'K', '1'}};
+
+  static const DES_cblock kDESKey2 = {{'B', 'C', 'M', 'D', 'E', 'S', 'K', '2'}};
+
+  static const DES_cblock kDESKey3 = {{'B', 'C', 'M', 'D', 'E', 'S', 'K', '3'}};
+
+  static const DES_cblock kDESIV = {{'B', 'C', 'M', 'D', 'E', 'S', 'I', 'V'}};
   static const uint8_t kPlaintextSHA256[32] = {
       0x37, 0xbd, 0x70, 0x53, 0x72, 0xfc, 0xd4, 0x03, 0x79, 0x70, 0xfb,
       0x06, 0x95, 0xb1, 0x2a, 0x82, 0x48, 0xe1, 0x3e, 0xf2, 0x33, 0xfb,
       0xef, 0x29, 0x81, 0x22, 0x45, 0x40, 0x43, 0x70, 0xce, 0x0f};
-  const uint8_t kDRBGEntropy[48] =
-      "DBRG Initial Entropy                            ";
-  const uint8_t kDRBGPersonalization[18] = "BCMPersonalization";
-  const uint8_t kDRBGAD[16] = "BCM DRBG AD     ";
-  const uint8_t kDRBGEntropy2[48] =
-      "DBRG Reseed Entropy                             ";
+  const uint8_t kDRBGEntropy[48] = {
+      'D', 'B', 'R', 'G', ' ', 'I', 'n', 'i', 't', 'i', 'a', 'l',
+      ' ', 'E', 'n', 't', 'r', 'o', 'p', 'y', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+
+  const uint8_t kDRBGPersonalization[18] = {'B', 'C', 'M', 'P', 'e', 'r',
+                                            's', 'o', 'n', 'a', 'l', 'i',
+                                            'z', 'a', 't', 'i', 'o', 'n'};
+
+  const uint8_t kDRBGAD[16] = {'B', 'C', 'M', ' ', 'D', 'R', 'B', 'G',
+                               ' ', 'A', 'D', ' ', ' ', ' ', ' ', ' '};
+
+  const uint8_t kDRBGEntropy2[48] = {
+      'D', 'B', 'R', 'G', ' ', 'R', 'e', 's', 'e', 'e', 'd', ' ',
+      'E', 'n', 't', 'r', 'o', 'p', 'y', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];
@@ -276,9 +303,9 @@ int main(int argc, char **argv) {
 
   DES_key_schedule des1, des2, des3;
   DES_cblock des_iv;
-  DES_set_key(&kDESKey1, &des1);
-  DES_set_key(&kDESKey2, &des2);
-  DES_set_key(&kDESKey3, &des3);
+  DES_set_key_unchecked(&kDESKey1, &des1);
+  DES_set_key_unchecked(&kDESKey2, &des2);
+  DES_set_key_unchecked(&kDESKey3, &des3);
 
   /* 3DES Encryption */
   memcpy(&des_iv, &kDESIV, sizeof(des_iv));
@@ -393,6 +420,67 @@ int main(int argc, char **argv) {
 
   ECDSA_SIG_free(sig);
   EC_KEY_free(ec_key);
+
+  /* Ed25519 */
+  printf("About to Ed25519 sign ");
+  hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
+  uint8_t ed_public_key[ED25519_PUBLIC_KEY_LEN];
+  uint8_t ed_private_key[ED25519_PRIVATE_KEY_LEN];
+  ED25519_keypair(ed_public_key, ed_private_key);
+  uint8_t ed_signature[ED25519_SIGNATURE_LEN];
+  if (!ED25519_sign(ed_signature,kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_private_key) ||
+    !ED25519_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature, ed_public_key)) {
+    printf("ED25519 Sign/Verify PWCT failed.\n");
+    goto err;
+  }
+  printf("got signature ");
+  hexdump(ed_signature, sizeof(ed_signature));
+
+  /* Ed25519ph */
+  printf("About to Ed25519ph sign ");
+  hexdump(kPlaintextSHA256, sizeof(kPlaintextSHA256));
+  uint8_t ed25519_ph_context[32] = {
+    0xfe, 0x52, 0xbb, 0xd2, 0x45, 0x54, 0x46, 0xad, 0xa5, 0x24, 0x6b, 0x5a,
+    0xf3, 0xba, 0x82, 0x93, 0x9c, 0xed, 0xa6, 0xa1, 0x8f, 0x59, 0xd3, 0x37,
+    0x48, 0xde, 0x40, 0x7a, 0xfe, 0x31, 0x48, 0xd1
+  };
+  if (!ED25519ph_sign(ed_signature, kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_private_key, ed25519_ph_context, sizeof(ed25519_ph_context)) ||
+    !ED25519ph_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), ed_signature, ed_public_key, ed25519_ph_context, sizeof(ed25519_ph_context))) {
+    printf("ED25519ph Sign/Verify PWCT failed.\n");
+    goto err;
+  }
+  printf("got signature ");
+  hexdump(ed_signature, sizeof(ed_signature));
+
+  /* ML-KEM */
+  printf("About to Generate ML-KEM key\n");
+  EVP_PKEY *kem_raw = NULL;
+  EVP_PKEY_CTX *kem_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
+  if (kem_ctx == NULL || !EVP_PKEY_CTX_kem_set_params(kem_ctx, NID_MLKEM512) ||
+    !EVP_PKEY_keygen_init(kem_ctx) ||
+    !EVP_PKEY_keygen(kem_ctx, &kem_raw)) {
+    printf("ML-KEM keygen failed.\n");
+    goto err;
+  }
+  printf("Generated public key: ");
+  hexdump(kem_raw->pkey.kem_key->public_key, kem_raw->pkey.kem_key->kem->public_key_len);
+  EVP_PKEY_free(kem_raw);
+  EVP_PKEY_CTX_free(kem_ctx);
+
+  /* ML-DSA */
+  printf("About to Generate ML-DSA key\n");
+  EVP_PKEY *dsa_raw = NULL;
+  EVP_PKEY_CTX *dsa_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, NULL);
+  if (dsa_ctx == NULL || !EVP_PKEY_CTX_pqdsa_set_params(dsa_ctx, NID_MLDSA44) ||
+    !EVP_PKEY_keygen_init(dsa_ctx) ||
+    !EVP_PKEY_keygen(dsa_ctx, &dsa_raw)) {
+    printf("ML-DSA keygen failed.\n");
+    goto err;
+    }
+  printf("Generated public key: ");
+  hexdump(dsa_raw->pkey.pqdsa_key->public_key, dsa_raw->pkey.pqdsa_key->pqdsa->public_key_len);
+  EVP_PKEY_free(dsa_raw);
+  EVP_PKEY_CTX_free(dsa_ctx);
 
   /* DBRG */
   CTR_DRBG_STATE drbg;

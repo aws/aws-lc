@@ -26,8 +26,8 @@ openssl x509 -req -in ocsp.csr -CA ca_cert.pem -CAkey ca_key.pem -days 0 -CAcrea
 ```
 
 ## Server Cert
-* server_cert.pem
-* server_key.pem
+* rsa_cert.pem
+* rsa_key.pem
 
 The leaf cert/key. OCSP responses will be generated for this cert.
 
@@ -38,22 +38,34 @@ DER formatted OCSP response for the Server Cert.
 
 ## Generating a OCSP request for the leaf cert
 ```
-openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -reqout ocsp_request.der
+openssl ocsp -issuer ca_cert.pem -cert rsa_cert.pem -reqout ocsp_request.der
 ```
 ```
-openssl ocsp -no_nonce -issuer ca_cert.pem -cert server_cert.pem -reqout ocsp_request_no_nonce.der
+openssl ocsp -no_nonce -issuer ca_cert.pem -cert rsa_cert.pem -reqout ocsp_request_no_nonce.der
 ```
 OCSP Request signing is optional, and these requests aren't usually signed in the wild.
 
 ## Generating a signed OCSP request for the leaf cert
 ```
-openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_signed.der
+openssl ocsp -issuer ca_cert.pem -cert rsa_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_signed.der
 ```
 ```
-openssl ocsp -sha256 -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_signed_sha256.der
+openssl ocsp -sha256 -issuer ca_cert.pem -cert rsa_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_signed_sha256.der
 ```
 ```
-openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -sign_other ca_cert.pem -reqout ocsp_request_attached_cert.der
+openssl ocsp -issuer ca_cert.pem -cert rsa_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -sign_other ca_cert.pem -reqout ocsp_request_attached_cert.der
+```
+## Generating a OCSP request signed by the wrong signer
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer server_ecdsa_cert.pem -signkey server_ecdsa_key.pem -no_certs -reqout ocsp_request_wrong_signer.der
+```
+
+## Generating a OCSP request signed by an expired signer
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_expired_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_expired_signer.der
+```
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_expired_cert.pem -signkey ocsp_key.pem -no_certs -reqout ocsp_request_expired_signer_no_certs.der
 ```
 
 ## Generating a new OCSP response for the leaf cert
@@ -87,14 +99,14 @@ openssl ocsp -CAfile ca_cert.pem \
       -url http://127.0.0.1:8889 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
-      -sha1 -cert server_cert.pem -respout ocsp_response.der
+      -sha1 -cert rsa_cert.pem -respout ocsp_response.der
 
 # Without nextUpdate
 openssl ocsp -CAfile ca_cert.pem \                                                                                                                                                                          
       -url http://127.0.0.1:8890 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
-      -sha1 -cert server_cert.pem -respout ocsp_response_no_next_update.der
+      -sha1 -cert rsa_cert.pem -respout ocsp_response_no_next_update.der
 ```
 
 ## Recreate revoked OCSP responses
@@ -116,7 +128,7 @@ openssl ocsp -CAfile ca_cert.pem \
       -url http://127.0.0.1:8889 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
-      -sha1 -cert server_cert.pem -respout ocsp_revoked_response.der
+      -sha1 -cert rsa_cert.pem -respout ocsp_revoked_response.der
 ```
 
 ## Recreate unknown cert status OCSP responses
@@ -138,7 +150,7 @@ openssl ocsp -CAfile ca_cert.pem \
       -url http://127.0.0.1:8889 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
-      -sha1 -cert server_cert.pem -respout ocsp_unknown_response.der
+      -sha1 -cert rsa_cert.pem -respout ocsp_unknown_response.der
 ```
 
 
@@ -148,8 +160,8 @@ openssl ocsp -CAfile ca_cert.pem \
 ```
 openssl ocsp -port 8889 -text -CA ca_cert.pem \                                                                                                                                                             
       -index certs_revoked.txt \
-      -rkey server_ecdsa_key.pem \
-      -rsigner server_ecdsa_cert.pem \
+      -rkey ecdsa_key.pem \
+      -rsigner ecdsa_cert.pem \
       -nrequest 1 \
       -ndays $(( 365 * 10 ))
 ```
@@ -161,7 +173,7 @@ openssl ocsp -CAfile ca_cert.pem \
       -url http://127.0.0.1:8889 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
-      -sha1 -cert server_cert.pem -respout ocsp_response_wrong_signer.der
+      -sha1 -cert rsa_cert.pem -respout ocsp_response_wrong_signer.der
 ```
 
 ## Recreate expired signer OCSP responses
@@ -181,7 +193,7 @@ openssl ocsp -CAfile ca_cert.pem \
       -url http://127.0.0.1:8890 \
       -issuer ca_cert.pem \
       -verify_other ocsp_expired_cert.pem \
-      -sha1 -cert server_cert.pem -respout ocsp_response_expired_signer.der
+      -sha1 -cert rsa_cert.pem -respout ocsp_response_expired_signer.der
 ```
 
 ## For SHA-256 OCSP responses
@@ -203,7 +215,7 @@ openssl ocsp -CAfile ca_cert.pem \
       -url http://127.0.0.1:8889 \
       -issuer ca_cert.pem \
       -verify_other ocsp_cert.pem \
-      -sha256 -cert server_cert.pem -respout ocsp_response_sha256.der
+      -sha256 -cert rsa_cert.pem -respout ocsp_response_sha256.der
 ```
 
 

@@ -8,27 +8,25 @@
 #include "internal.h"
 
 static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
-  &ed25519_pkey_meth,
   &x25519_pkey_meth,
-#ifdef ENABLE_DILITHIUM
-  &dilithium3_pkey_meth,
-#endif
-  &kem_pkey_meth,
+  &dh_pkey_meth,
+  &dsa_pkey_meth
 };
 
-static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
+const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
   &rsa_asn1_meth,
   &rsa_pss_asn1_meth,
   &ec_asn1_meth,
   &dsa_asn1_meth,
   &ed25519_asn1_meth,
   &x25519_asn1_meth,
-#ifdef ENABLE_DILITHIUM
-  &dilithium3_asn1_meth,
-#endif
+  &pqdsa_asn1_meth,
   &kem_asn1_meth,
-  &hmac_asn1_meth
+  &hmac_asn1_meth,
+  &dh_asn1_meth,
+  &ed25519ph_asn1_meth
 };
+const size_t asn1_evp_pkey_methods_size = sizeof(asn1_evp_pkey_methods)/sizeof(asn1_evp_pkey_methods[0]);
 
 OPENSSL_STATIC_ASSERT(
   NON_FIPS_EVP_PKEY_METHODS == OPENSSL_ARRAY_SIZE(non_fips_pkey_evp_methods),

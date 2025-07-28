@@ -52,7 +52,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 $addx = 1;
-for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
+for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
 # int bn_mul_mont_gather5(
 $rp="%rdi";	# BN_ULONG *rp,
@@ -83,6 +83,7 @@ $code=<<___;
 .align	64
 bn_mul_mont_gather5:
 .cfi_startproc
+	_CET_ENDBR
 	mov	${num}d,${num}d
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
@@ -90,8 +91,10 @@ bn_mul_mont_gather5:
 	jnz	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	mov	8(%r11),%r11d
+#endif
 ___
 $code.=<<___;
 	jmp	.Lmul4x_enter
@@ -473,9 +476,11 @@ bn_mul4x_mont_gather5:
 .Lmul4x_enter:
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
 	je	.Lmulx4x_enter
+#endif
 ___
 $code.=<<___;
 	push	%rbx
@@ -1102,15 +1107,18 @@ $code.=<<___;
 .align	32
 bn_power5:
 .cfi_startproc
+	_CET_ENDBR
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	mov	8(%r11),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
 	je	.Lpowerx5_enter
+#endif
 ___
 $code.=<<___;
 	push	%rbx
@@ -1244,6 +1252,7 @@ $code.=<<___;
 bn_sqr8x_internal:
 __bn_sqr8x_internal:
 .cfi_startproc
+	_CET_ENDBR
 	##############################################################
 	# Squaring part:
 	#
@@ -2109,6 +2118,7 @@ if ($addx) {{{
 my $bp="%rdx";	# restore original value
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .type	bn_mulx4x_mont_gather5,\@function,6
 .align	32
 bn_mulx4x_mont_gather5:
@@ -2741,6 +2751,7 @@ bn_powerx5:
 bn_sqrx8x_internal:
 __bn_sqrx8x_internal:
 .cfi_startproc
+	_CET_ENDBR
 	##################################################################
 	# Squaring part:
 	#
@@ -3436,6 +3447,7 @@ __bn_postx4x_internal:
 	ret
 .cfi_endproc
 .size	__bn_postx4x_internal,.-__bn_postx4x_internal
+#endif
 ___
 }
 }}}
@@ -3452,6 +3464,7 @@ $code.=<<___;
 .align	16
 bn_scatter5:
 .cfi_startproc
+	_CET_ENDBR
 	cmp	\$0, $num
 	jz	.Lscatter_epilogue
 
@@ -3482,6 +3495,7 @@ bn_scatter5:
 bn_gather5:
 .cfi_startproc
 .LSEH_begin_bn_gather5:			# Win64 thing, but harmless in other cases
+	_CET_ENDBR
 	# I can't trust assembler to use specific encoding:-(
 	.byte	0x4c,0x8d,0x14,0x24			#lea    (%rsp),%r10
 .cfi_def_cfa_register	%r10
@@ -3716,6 +3730,7 @@ mul_handler:
 	.rva	.LSEH_info_bn_power5
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	.rva	.LSEH_begin_bn_mulx4x_mont_gather5
 	.rva	.LSEH_end_bn_mulx4x_mont_gather5
 	.rva	.LSEH_info_bn_mulx4x_mont_gather5
@@ -3723,6 +3738,7 @@ $code.=<<___ if ($addx);
 	.rva	.LSEH_begin_bn_powerx5
 	.rva	.LSEH_end_bn_powerx5
 	.rva	.LSEH_info_bn_powerx5
+#endif
 ___
 $code.=<<___;
 	.rva	.LSEH_begin_bn_gather5
@@ -3747,6 +3763,7 @@ $code.=<<___;
 	.rva	.Lpower5_prologue,.Lpower5_body,.Lpower5_epilogue	# HandlerData[]
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .align	8
 .LSEH_info_bn_mulx4x_mont_gather5:
 	.byte	9,0,0,0
@@ -3757,6 +3774,7 @@ $code.=<<___ if ($addx);
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lpowerx5_prologue,.Lpowerx5_body,.Lpowerx5_epilogue	# HandlerData[]
+#endif
 ___
 $code.=<<___;
 .align	8

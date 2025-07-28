@@ -33,10 +33,10 @@ type wycheproofTest struct {
 	Header           []string       `json:"header"`
 	// encoding/json does not support collecting unused keys, so we leave
 	// everything past this point as generic.
-	TestGroups []map[string]any `json:"testGroups"`
+	TestGroups []map[string]interface{} `json:"testGroups"`
 }
 
-func sortedKeys(m map[string]any) []string {
+func sortedKeys(m map[string]interface{}) []string {
 	keys := make([]string, 0, len(m))
 	for k, _ := range m {
 		keys = append(keys, k)
@@ -45,8 +45,8 @@ func sortedKeys(m map[string]any) []string {
 	return keys
 }
 
-func printAttribute(w io.Writer, key string, valueAny any, isInstruction bool) error {
-	switch value := valueAny.(type) {
+func printAttribute(w io.Writer, key string, valueI interface{}, isInstruction bool) error {
+	switch value := valueI.(type) {
 	case float64:
 		if float64(int(value)) != value {
 			panic(key + "was not an integer.")
@@ -73,14 +73,14 @@ func printAttribute(w io.Writer, key string, valueAny any, isInstruction bool) e
 				return err
 			}
 		}
-	case map[string]any:
+	case map[string]interface{}:
 		for _, k := range sortedKeys(value) {
 			if err := printAttribute(w, key+"."+k, value[k], isInstruction); err != nil {
 				return err
 			}
 		}
 	default:
-		panic(fmt.Sprintf("Unknown type for %q: %T", key, valueAny))
+		panic(fmt.Sprintf("Unknown type for %q: %T", key, valueI))
 	}
 	return nil
 }
@@ -154,9 +154,9 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 			}
 		}
 		fmt.Fprintf(f, "\n")
-		tests := group["tests"].([]any)
-		for _, testAny := range tests {
-			test := testAny.(map[string]any)
+		tests := group["tests"].([]interface{})
+		for _, testI := range tests {
+			test := testI.(map[string]interface{})
 			if _, err := fmt.Fprintf(f, "# tcId = %d\n", int(test["tcId"].(float64))); err != nil {
 				return err
 			}
@@ -173,10 +173,10 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 					return err
 				}
 			}
-			if flagsAny, ok := test["flags"]; ok {
+			if flagsI, ok := test["flags"]; ok {
 				var flags []string
-				for _, flagAny := range flagsAny.([]any) {
-					flag := flagAny.(string)
+				for _, flagI := range flagsI.([]interface{}) {
+					flag := flagI.(string)
 					flags = append(flags, flag)
 				}
 				if len(flags) != 0 {
@@ -226,6 +226,10 @@ var defaultInputs = []string{
 	"hmac_sha512_test.json",
 	"hmac_sha512_224_test.json",
 	"hmac_sha512_256_test.json",
+	"hmac_sha3_224_test.json",
+	"hmac_sha3_256_test.json",
+	"hmac_sha3_384_test.json",
+	"hmac_sha3_512_test.json",
 	"kw_test.json",
 	"kwp_test.json",
 	"primality_test.json",

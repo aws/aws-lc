@@ -121,7 +121,7 @@ static int x25519_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
   return 1;
 }
 
-static int x25519_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int x25519_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // See RFC 8410, section 4.
 
   // The parameters must be omitted. Public keys have length 32.
@@ -159,7 +159,7 @@ static int x25519_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   return OPENSSL_memcmp(a_key->pub, b_key->pub, 32) == 0;
 }
 
-static int x25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int x25519_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   // See RFC 8410, section 7.
 
   // Parameters must be empty. The key is a 32-byte value wrapped in an extra
@@ -252,6 +252,10 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_meth = {
     EVP_PKEY_X25519,
     {0x2b, 0x65, 0x6e},
     3,
+
+    "X25519",
+    "OpenSSL X25519 algorithm",
+
     x25519_pub_decode,
     x25519_pub_encode,
     x25519_pub_cmp,

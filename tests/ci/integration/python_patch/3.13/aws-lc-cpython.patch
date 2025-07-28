@@ -1,0 +1,219 @@
+diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
+index 9d853d2..656f109 100644
+--- a/Lib/test/test_httplib.py
++++ b/Lib/test/test_httplib.py
+@@ -2073,7 +2073,7 @@ def test_host_port(self):
+ 
+     def test_tls13_pha(self):
+         import ssl
+-        if not ssl.HAS_TLSv1_3:
++        if not ssl.HAS_TLSv1_3 or "AWS-LC" in ssl.OPENSSL_VERSION:
+             self.skipTest('TLS 1.3 support required')
+         # just check status of PHA flag
+         h = client.HTTPSConnection('localhost', 443)
+diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
+index 7fdd2be..7d8839f 100644
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -43,6 +43,7 @@
+ from ssl import Purpose, TLSVersion, _TLSContentType, _TLSMessageType, _TLSAlertType
+ 
+ Py_DEBUG_WIN32 = support.Py_DEBUG and sys.platform == 'win32'
++Py_OPENSSL_IS_AWSLC = "AWS-LC" in ssl.OPENSSL_VERSION
+ 
+ PROTOCOLS = sorted(ssl._PROTOCOL_NAMES)
+ HOST = socket_helper.HOST
+@@ -4424,14 +4426,14 @@ def test_session_handling(self):
+     def test_psk(self):
+         psk = bytes.fromhex('deadbeef')
+ 
+-        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
++        client_context, server_context, _ = testing_context()
++
+         client_context.check_hostname = False
+         client_context.verify_mode = ssl.CERT_NONE
+         client_context.maximum_version = ssl.TLSVersion.TLSv1_2
+         client_context.set_ciphers('PSK')
+         client_context.set_psk_client_callback(lambda hint: (None, psk))
+ 
+-        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+         server_context.maximum_version = ssl.TLSVersion.TLSv1_2
+         server_context.set_ciphers('PSK')
+         server_context.set_psk_server_callback(lambda identity: psk)
+@@ -4503,14 +4505,14 @@ def server_callback(identity):
+             self.assertEqual(identity, client_identity)
+             return psk
+ 
+-        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
++        client_context, server_context, _ = testing_context()
++
+         client_context.check_hostname = False
+         client_context.verify_mode = ssl.CERT_NONE
+         client_context.minimum_version = ssl.TLSVersion.TLSv1_3
+         client_context.set_ciphers('PSK')
+         client_context.set_psk_client_callback(client_callback)
+ 
+-        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+         server_context.minimum_version = ssl.TLSVersion.TLSv1_3
+         server_context.set_ciphers('PSK')
+         server_context.set_psk_server_callback(server_callback, identity_hint)
+@@ -4521,7 +4523,10 @@ def server_callback(identity):
+                 s.connect((HOST, server.port))
+ 
+ 
+-@unittest.skipUnless(has_tls_version('TLSv1_3'), "Test needs TLS 1.3")
++@unittest.skipUnless(
++    has_tls_version('TLSv1_3') and not Py_OPENSSL_IS_AWSLC,
++    "Test needs TLS 1.3; AWS-LC doesn't support PHA"
++)
+ class TestPostHandshakeAuth(unittest.TestCase):
+     def test_pha_setter(self):
+         protocols = [
+@@ -4835,6 +4840,31 @@ def test_internal_chain_server(self):
+                 self.assertEqual(res, b'\x02\n')
+ 
+ 
++@unittest.skipUnless(Py_OPENSSL_IS_AWSLC, "Only test this against AWS-LC")
++class TestPostHandshakeAuthAwsLc(unittest.TestCase):
++    def test_pha(self):
++        protocols = [
++            ssl.PROTOCOL_TLS_SERVER, ssl.PROTOCOL_TLS_CLIENT
++        ]
++        for protocol in protocols:
++            client_ctx, server_ctx, hostname = testing_context()
++            client_ctx.load_cert_chain(SIGNED_CERTFILE)
++            self.assertEqual(client_ctx.post_handshake_auth, None)
++            with self.assertRaises(AttributeError):
++                client_ctx.post_handshake_auth = True
++            with self.assertRaises(AttributeError):
++                server_ctx.post_handshake_auth = True
++
++            with ThreadedEchoServer(context=server_ctx) as server:
++                with client_ctx.wrap_socket(
++                    socket.socket(),
++                    server_hostname=hostname
++                ) as ssock:
++                    ssock.connect((HOST, server.port))
++                    with self.assertRaises(NotImplementedError):
++                        ssock.verify_client_post_handshake()
++
++
+ HAS_KEYLOG = hasattr(ssl.SSLContext, 'keylog_filename')
+ requires_keylog = unittest.skipUnless(
+     HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
+diff --git a/Modules/Setup b/Modules/Setup
+index e4acf6b..e4dd9b4 100644
+--- a/Modules/Setup
++++ b/Modules/Setup
+@@ -211,11 +211,11 @@ PYTHONPATH=$(COREPYTHONPATH)
+ #_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) -lcrypto
+ 
+ # To statically link OpenSSL:
+-# _ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
+-#     -l:libssl.a -Wl,--exclude-libs,libssl.a \
+-#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
+-# _hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
+-#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
++_ssl _ssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
++    -l:libssl.a -Wl,--exclude-libs,libssl.a \
++    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
++_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) \
++    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
+ 
+ # The _tkinter module.
+ #
+diff --git a/Modules/_ssl.c b/Modules/_ssl.c
+index a7a278d..3e29a2b 100644
+--- a/Modules/_ssl.c
++++ b/Modules/_ssl.c
+@@ -186,6 +186,11 @@ extern const SSL_METHOD *TLSv1_2_method(void);
+ #endif
+ 
+ 
++#if !defined(SSL_VERIFY_POST_HANDSHAKE) || !defined(TLS1_3_VERSION) || defined(OPENSSL_NO_TLS1_3)
++  #define PY_SSL_NO_POST_HS_AUTH
++#endif
++
++
+ enum py_ssl_error {
+     /* these mirror ssl.h */
+     PY_SSL_ERROR_NONE,
+@@ -230,7 +235,7 @@ enum py_proto_version {
+     PY_PROTO_TLSv1 = TLS1_VERSION,
+     PY_PROTO_TLSv1_1 = TLS1_1_VERSION,
+     PY_PROTO_TLSv1_2 = TLS1_2_VERSION,
+-#ifdef TLS1_3_VERSION
++#if defined(TLS1_3_VERSION)
+     PY_PROTO_TLSv1_3 = TLS1_3_VERSION,
+ #else
+     PY_PROTO_TLSv1_3 = 0x304,
+@@ -292,7 +297,7 @@ typedef struct {
+      */
+     unsigned int hostflags;
+     int protocol;
+-#ifdef TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+     int post_handshake_auth;
+ #endif
+     PyObject *msg_cb;
+@@ -870,7 +875,7 @@ newPySSLSocket(PySSLContext *sslctx, PySocketSockObject *sock,
+     SSL_set_mode(self->ssl,
+                  SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
+ 
+-#ifdef TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+     if (sslctx->post_handshake_auth == 1) {
+         if (socket_type == PY_SSL_SERVER) {
+             /* bpo-37428: OpenSSL does not ignore SSL_VERIFY_POST_HANDSHAKE.
+@@ -1014,6 +1019,7 @@ _ssl__SSLSocket_do_handshake_impl(PySSLSocket *self)
+     } while (err.ssl == SSL_ERROR_WANT_READ ||
+              err.ssl == SSL_ERROR_WANT_WRITE);
+     Py_XDECREF(sock);
++
+     if (ret < 1)
+         return PySSL_SetError(self, __FILE__, __LINE__);
+     if (PySSL_ChainExceptions(self) < 0)
+@@ -2836,7 +2842,7 @@ static PyObject *
+ _ssl__SSLSocket_verify_client_post_handshake_impl(PySSLSocket *self)
+ /*[clinic end generated code: output=532147f3b1341425 input=42b5bb1f0981eda1]*/
+ {
+-#ifdef TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+     int err = SSL_verify_client_post_handshake(self->ssl);
+     if (err == 0)
+         return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
+@@ -3217,7 +3223,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
+     X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
+     X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);
+ 
+-#ifdef TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+     self->post_handshake_auth = 0;
+     SSL_CTX_set_post_handshake_auth(self->ctx, self->post_handshake_auth);
+ #endif
+@@ -3861,14 +3867,14 @@ _ssl__SSLContext_check_hostname_set_impl(PySSLContext *self, PyObject *value)
+ 
+ static PyObject *
+ get_post_handshake_auth(PySSLContext *self, void *c) {
+-#if TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+     return PyBool_FromLong(self->post_handshake_auth);
+ #else
+     Py_RETURN_NONE;
+ #endif
+ }
+ 
+-#if TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+ static int
+ set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
+     if (arg == NULL) {
+@@ -5146,7 +5152,7 @@ static PyGetSetDef context_getsetlist[] = {
+ #endif
+     _SSL__SSLCONTEXT_OPTIONS_GETSETDEF
+     {"post_handshake_auth", (getter) get_post_handshake_auth,
+-#ifdef TLS1_3_VERSION
++#if !defined(PY_SSL_NO_POST_HS_AUTH)
+                             (setter) set_post_handshake_auth,
+ #else
+                             NULL,

@@ -66,7 +66,7 @@
 #include "internal.h"
 
 
-static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int dsa_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // See RFC 3279, section 2.3.2.
 
   // Parameters may or may not be present.
@@ -95,8 +95,9 @@ static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     goto err;
   }
 
-  EVP_PKEY_assign_DSA(out, dsa);
-  return 1;
+  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+    return 1;
+  }
 
 err:
   DSA_free(dsa);
@@ -126,7 +127,7 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+static int dsa_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS *pubkey) {
   // See PKCS#11, v2.40, section 2.5.
   if(pubkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -168,9 +169,10 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
     goto err;
   }
 
-  BN_CTX_free(ctx);
-  EVP_PKEY_assign_DSA(out, dsa);
-  return 1;
+  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+    BN_CTX_free(ctx);
+    return 1;
+  }
 
 err:
   BN_CTX_free(ctx);
@@ -260,6 +262,9 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   // 1.2.840.10040.4.1
   {0x2a, 0x86, 0x48, 0xce, 0x38, 0x04, 0x01}, 7,
 
+  "DSA",
+  "OpenSSL DSA method",
+
   dsa_pub_decode,
   dsa_pub_encode,
   dsa_pub_cmp,
@@ -284,15 +289,3 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
 
   int_dsa_free,
 };
-
-int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx, int nbits) {
-  // BoringSSL does not support DSA in |EVP_PKEY_CTX|.
-  OPENSSL_PUT_ERROR(EVP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}
-
-int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx, int qbits) {
-  // BoringSSL does not support DSA in |EVP_PKEY_CTX|.
-  OPENSSL_PUT_ERROR(EVP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}

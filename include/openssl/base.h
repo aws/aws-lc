@@ -114,7 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 29
+#define AWSLC_API_VERSION 34
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.28.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.56.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -147,12 +147,28 @@ extern "C" {
 #else  // defined(BORINGSSL_SHARED_LIBRARY)
 
 #if defined(OPENSSL_WINDOWS)
-#define OPENSSL_EXPORT __declspec(dllexport)
+#define OPENSSL_EXPORT
 #else
 #define OPENSSL_EXPORT __attribute__((visibility("default")))
 #endif
 
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
+
+#if !defined(OPENSSL_WARN_UNUSED_RESULT)
+// This should only affect internal usage of functions
+#if defined(BORINGSSL_IMPLEMENTATION) || defined(AWS_LC_TEST_ENV)
+#if defined(__GNUC__) || defined(__clang__)
+# define OPENSSL_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
+#elif defined(_MSC_VER)
+# define OPENSSL_WARN_UNUSED_RESULT _Check_return_
+#else
+# define OPENSSL_WARN_UNUSED_RESULT
+#endif
+#else
+// The macro is ignored by consumers
+# define OPENSSL_WARN_UNUSED_RESULT
+#endif
+#endif
 
 #if defined(_MSC_VER)
 
@@ -199,6 +215,13 @@ extern "C" {
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
 #endif
 
+// OPENSSL_CLANG_PRAGMA emits a pragma on clang and nothing on other compilers.
+#if defined(__clang__)
+#define OPENSSL_CLANG_PRAGMA(arg) _Pragma(arg)
+#else
+#define OPENSSL_CLANG_PRAGMA(arg)
+#endif
+
 // OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers.
 #if defined(_MSC_VER)
 #define OPENSSL_MSVC_PRAGMA(arg) __pragma(arg)
@@ -239,6 +262,12 @@ extern "C" {
 // (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
 // clang's -Wunused-function.
 #define OPENSSL_INLINE static inline OPENSSL_UNUSED
+#endif
+
+#if defined(OPENSSL_WINDOWS)
+#define OPENSSL_NOINLINE __declspec(noinline)
+#else
+#define OPENSSL_NOINLINE __attribute__((noinline))
 #endif
 
 // ossl_ssize_t is a signed type which is large enough to fit the size of any
@@ -325,7 +354,7 @@ typedef struct dsa_st DSA;
 typedef struct ec_group_st EC_GROUP;
 typedef struct ec_key_st EC_KEY;
 typedef struct ec_point_st EC_POINT;
-typedef struct ecdsa_method_st ECDSA_METHOD;
+typedef struct ec_key_method_st EC_KEY_METHOD;
 typedef struct ecdsa_sig_st ECDSA_SIG;
 typedef struct engine_st ENGINE;
 typedef struct env_md_ctx_st EVP_MD_CTX;
@@ -343,12 +372,25 @@ typedef struct evp_hpke_key_st EVP_HPKE_KEY;
 typedef struct evp_kem_st EVP_KEM;
 typedef struct kem_key_st KEM_KEY;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
+typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
+typedef struct evp_pkey_ctx_signature_context_params_st EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
+typedef struct pqdsa_key_st PQDSA_KEY;
 typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
+typedef struct pkcs7_digest_st PKCS7_DIGEST;
+typedef struct pkcs7_enc_content_st PKCS7_ENC_CONTENT;
+typedef struct pkcs7_encrypt_st PKCS7_ENCRYPT;
+typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
+typedef struct pkcs7_issuer_and_serial_st PKCS7_ISSUER_AND_SERIAL;
+typedef struct pkcs7_recip_info_st PKCS7_RECIP_INFO;
+typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
+typedef struct pkcs7_signed_st PKCS7_SIGNED;
+typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
+typedef struct pkcs7_st PKCS7;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
 typedef struct private_key_st X509_PKEY;

@@ -401,3 +401,8 @@ TEST(ConfTest, ParseList) {
     EXPECT_EQ(result, t.expected);
   }
 }
+
+TEST(ConfTest, NoopString) {
+  bssl::UniquePtr<char> string(CONF_get1_default_config_file());
+  EXPECT_STREQ("No support for Config files in AWS-LC.", string.get());
+}

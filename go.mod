@@ -1,7 +1,7 @@
 module boringssl.googlesource.com/boringssl
 
 // When this changes update /cmake/go.cmake minimum_go_version and /BUILDING.md
-go 1.18
+go 1.17
 
 require (
 	golang.org/x/crypto v0.10.0

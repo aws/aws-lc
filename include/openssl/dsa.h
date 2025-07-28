@@ -70,6 +70,8 @@
 extern "C" {
 #endif
 
+#define OPENSSL_DSA_MAX_MODULUS_BITS 10000
+
 
 // DSA contains functions for signing and verifying with the Digital Signature
 // Algorithm.
@@ -80,6 +82,12 @@ extern "C" {
 
 
 // Allocation and destruction.
+//
+// A |DSA| object represents a DSA key or group parameters. A given object may
+// be used concurrently on multiple threads by non-mutating functions, provided
+// no other thread is concurrently calling a mutating function. Unless otherwise
+// documented, functions which take a |const| pointer are non-mutating and
+// functions which take a non-|const| pointer are mutating.
 
 // DSA_new returns a new, empty DSA object or NULL on error.
 OPENSSL_EXPORT DSA *DSA_new(void);
@@ -88,7 +96,8 @@ OPENSSL_EXPORT DSA *DSA_new(void);
 // reference count drops to zero.
 OPENSSL_EXPORT void DSA_free(DSA *dsa);
 
-// DSA_up_ref increments the reference count of |dsa| and returns one.
+// DSA_up_ref increments the reference count of |dsa| and returns one. It does
+// not mutate |dsa| for thread-safety purposes and may be used concurrently.
 OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
 // DSA_print prints a textual representation of |dsa| to |bio|. It returns one
@@ -180,8 +189,8 @@ OPENSSL_EXPORT DSA *DSAparams_dup(const DSA *dsa);
 // Key generation.
 
 // DSA_generate_key generates a public/private key pair in |dsa|, which must
-// already have parameters setup. It returns one on success and zero on
-// error.
+// already have parameters setup. Only supports generating up to |OPENSSL_DSA_MAX_MODULUS_BITS|
+// bit keys. It returns one on success and zero on error.
 OPENSSL_EXPORT int DSA_generate_key(DSA *dsa);
 
 
@@ -225,7 +234,7 @@ OPENSSL_EXPORT DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len,
 //
 // TODO(fork): deprecate.
 OPENSSL_EXPORT int DSA_do_verify(const uint8_t *digest, size_t digest_len,
-                                 DSA_SIG *sig, const DSA *dsa);
+                                 const DSA_SIG *sig, const DSA *dsa);
 
 // DSA_do_check_signature sets |*out_valid| to zero. Then it verifies that |sig|
 // is a valid signature, by the public key in |dsa| of the hash in |digest|
@@ -234,7 +243,7 @@ OPENSSL_EXPORT int DSA_do_verify(const uint8_t *digest, size_t digest_len,
 // It returns one if it was able to verify the signature as valid or invalid,
 // and zero on error.
 OPENSSL_EXPORT int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
-                                          size_t digest_len, DSA_SIG *sig,
+                                          size_t digest_len, const DSA_SIG *sig,
                                           const DSA *dsa);
 
 

@@ -23,10 +23,10 @@ function build_aws_lc_fips {
   run_build \
       -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
       -DFIPS=1 \
-      -DENABLE_DILITHIUM=ON \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DBUILD_SHARED_LIBS=1 \
-      -DBUILD_TESTING=OFF
+      -DBUILD_TESTING=OFF \
+      -DENABLE_FIPS_ENTROPY_CPU_JITTER=1
   pushd "$BUILD_ROOT"
   ninja install
   popd
@@ -44,25 +44,11 @@ function build_aws_lc_branch {
     cmake -GNinja \
         -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-${branch}" \
         -DFIPS=1 \
-        -DENABLE_DILITHIUM=ON \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DBUILD_SHARED_LIBS=1
     ninja install
     popd
     rm -rf "${scratch_folder}/aws-lc-${branch}"
-}
-
-function build_openssl {
-    branch=$1
-    echo "building OpenSSL ${branch}"
-    git clone --depth 1 --branch "${branch}" "${openssl_url}" "${scratch_folder}/openssl-${branch}"
-    pushd "${scratch_folder}/openssl-${branch}"
-    mkdir -p "${install_dir}/openssl-${branch}"
-    ./config --prefix="${install_dir}/openssl-${branch}" --openssldir="${install_dir}/openssl-${branch}" -d
-    make "-j${NUM_CPU_THREADS}" > /dev/null
-    make install_sw
-    popd
-    rm -rf "${scratch_folder}/openssl-${branch}"
 }
 
 function build_boringssl {
@@ -83,34 +69,38 @@ function build_boringssl {
 # has changes in speed.cc that could affect the comparison of the FIPS to non-FIPS, or if new
 # algorithms have been added to speed.cc
 build_aws_lc_fips
-"${BUILD_ROOT}/tool/bssl" speed -timeout_ms 10
+"${BUILD_ROOT}/tool/bssl" speed -timeout_ms 10 -chunks 1,2,16,256,20000
 
 build_aws_lc_branch fips-2021-10-20
 build_aws_lc_branch fips-2022-11-02
-build_openssl $openssl_1_0_2_branch
-build_openssl $openssl_1_1_1_branch
-build_openssl $openssl_3_1_branch
-build_openssl $openssl_3_2_branch
-build_openssl $openssl_master_branch
+build_aws_lc_branch fips-2024-09-27
+build_openssl_no_debug $openssl_1_0_2_branch
+build_openssl_no_debug $openssl_1_1_1_branch
+build_openssl_no_debug $openssl_3_1_branch
+build_openssl_no_debug $openssl_3_2_branch
+build_openssl_no_debug $openssl_master_branch
 build_boringssl
 
-run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=14 -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON -DBENCHMARK_LIBS="\
+run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_STANDARD=11 -DBENCHMARK_LIBS="\
 aws-lc-fips-2021:${install_dir}/aws-lc-fips-2021-10-20;\
 aws-lc-fips-2022:${install_dir}/aws-lc-fips-2022-11-02;\
+aws-lc-fips-2024:${install_dir}/aws-lc-fips-2024-09-27;\
 open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
 open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
 open31:${install_dir}/openssl-${openssl_3_1_branch};\
 open32:${install_dir}/openssl-${openssl_3_2_branch};\
 openmaster:${install_dir}/openssl-${openssl_master_branch};\
 boringssl:${install_dir}/boringssl;"
-LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2021-10-20/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2021" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2022/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_0_2_branch}/lib" "${BUILD_ROOT}/tool/open102" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_1_1_branch}/lib" "${BUILD_ROOT}/tool/open111" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_1_branch}/lib" "${BUILD_ROOT}/tool/open31" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_2_branch}/lib" "${BUILD_ROOT}/tool/open32" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_master_branch}/lib" "${BUILD_ROOT}/tool/openmaster" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/boringssl" "${BUILD_ROOT}/tool/boringssl" -timeout_ms 10
+
+LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2021-10-20/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2021" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2022-11-02/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2024-09-27/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_0_2_branch}/lib" "${BUILD_ROOT}/tool/open102" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_1_1_branch}/lib" "${BUILD_ROOT}/tool/open111" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_1_branch}/lib64" "${BUILD_ROOT}/tool/open31" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_2_branch}/lib64" "${BUILD_ROOT}/tool/open32" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_master_branch}/lib64" "${BUILD_ROOT}/tool/openmaster" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/boringssl" "${BUILD_ROOT}/tool/boringssl" -timeout_ms 10 -chunks 1,2,16,256,20000
 
 echo "Testing ossl_bm with OpenSSL 1.0 with the legacy build option"
 run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-${openssl_1_0_2_branch}" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo

@@ -26,24 +26,23 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
-#include "internal.h"
 #include "../internal.h"
+#include "internal.h"
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
 
 int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
   int ret = 0;
   const size_t initial_certs_len = sk_X509_num(out_certs);
   STACK_OF(CRYPTO_BUFFER) *raw = sk_CRYPTO_BUFFER_new_null();
-  if (raw == NULL ||
-      !PKCS7_get_raw_certificates(raw, cbs, NULL)) {
+  if (raw == NULL || !PKCS7_get_raw_certificates(raw, cbs, NULL)) {
     goto err;
   }
 
   for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(raw); i++) {
     CRYPTO_BUFFER *buf = sk_CRYPTO_BUFFER_value(raw, i);
     X509 *x509 = X509_parse_from_buffer(buf);
-    if (x509 == NULL ||
-        !sk_X509_push(out_certs, x509)) {
+    if (x509 == NULL || !sk_X509_push(out_certs, x509)) {
       X509_free(x509);
       goto err;
     }
@@ -186,8 +185,7 @@ static int pkcs7_bundle_certificates_cb(CBB *out, const void *arg) {
     uint8_t *buf;
     int len = i2d_X509(x509, NULL);
 
-    if (len < 0 ||
-        !CBB_add_space(&certificates, &buf, len) ||
+    if (len < 0 || !CBB_add_space(&certificates, &buf, len) ||
         i2d_X509(x509, &buf) < 0) {
       return 0;
     }
@@ -219,8 +217,7 @@ static int pkcs7_bundle_crls_cb(CBB *out, const void *arg) {
     uint8_t *buf;
     int len = i2d_X509_CRL(crl, NULL);
 
-    if (len < 0 ||
-        !CBB_add_space(&crl_data, &buf, len) ||
+    if (len < 0 || !CBB_add_space(&crl_data, &buf, len) ||
         i2d_X509_CRL(crl, &buf) < 0) {
       return 0;
     }
@@ -236,133 +233,49 @@ int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
                                /*signer_infos_cb=*/NULL, crls);
 }
 
-static PKCS7 *pkcs7_new(CBS *cbs) {
-  PKCS7 *ret = OPENSSL_zalloc(sizeof(PKCS7));
-  if (ret == NULL) {
-    return NULL;
-  }
-  ret->type = OBJ_nid2obj(NID_pkcs7_signed);
-  ret->d.sign = OPENSSL_malloc(sizeof(PKCS7_SIGNED));
-  if (ret->d.sign == NULL) {
-    goto err;
-  }
-  ret->d.sign->cert = sk_X509_new_null();
-  ret->d.sign->crl = sk_X509_CRL_new_null();
-  CBS copy = *cbs, copy2 = *cbs;
-  if (ret->d.sign->cert == NULL || ret->d.sign->crl == NULL ||
-      !PKCS7_get_certificates(ret->d.sign->cert, &copy) ||
-      !PKCS7_get_CRLs(ret->d.sign->crl, cbs)) {
-    goto err;
-  }
-
-  if (sk_X509_num(ret->d.sign->cert) == 0) {
-    sk_X509_free(ret->d.sign->cert);
-    ret->d.sign->cert = NULL;
-  }
-
-  if (sk_X509_CRL_num(ret->d.sign->crl) == 0) {
-    sk_X509_CRL_free(ret->d.sign->crl);
-    ret->d.sign->crl = NULL;
-  }
-
-  ret->ber_len = CBS_len(&copy2) - CBS_len(cbs);
-  ret->ber_bytes = OPENSSL_memdup(CBS_data(&copy2), ret->ber_len);
-  if (ret->ber_bytes == NULL) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  PKCS7_free(ret);
-  return NULL;
-}
-
-PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
-                 size_t len) {
-  CBS cbs;
-  CBS_init(&cbs, *inp, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  if (ret == NULL) {
-    return NULL;
-  }
-  *inp = CBS_data(&cbs);
-  if (out != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
-}
-
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
-  // Use a generous bound, to allow for PKCS#7 files containing large root sets.
-  static const size_t kMaxSize = 4 * 1024 * 1024;
-  uint8_t *data;
+  GUARD_PTR(bio);
+  uint8_t *data = NULL;
   size_t len;
-  if (!BIO_read_asn1(bio, &data, &len, kMaxSize)) {
+  // Read BIO contents into newly allocated buffer
+  if (!BIO_read_asn1(bio, &data, &len, INT_MAX)) {
     return NULL;
   }
-
-  CBS cbs;
-  CBS_init(&cbs, data, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
+  const uint8_t *ptr = data;
+  // d2i_PKCS7 handles indefinite-length BER properly, so use it instead of
+  // ASN1_item_d2i_bio
+  PKCS7 *ret = d2i_PKCS7(out, &ptr, len);
   OPENSSL_free(data);
-  if (out != NULL && ret != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
   return ret;
-}
-
-int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
-  if (p7->ber_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
-    return -1;
-  }
-
-  if (out == NULL) {
-    return (int)p7->ber_len;
-  }
-
-  if (*out == NULL) {
-    *out = OPENSSL_memdup(p7->ber_bytes, p7->ber_len);
-    if (*out == NULL) {
-      return -1;
-    }
-  } else {
-    OPENSSL_memcpy(*out, p7->ber_bytes, p7->ber_len);
-    *out += p7->ber_len;
-  }
-  return (int)p7->ber_len;
 }
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
-  return BIO_write_all(bio, p7->ber_bytes, p7->ber_len);
+  return ASN1_item_i2d_bio(ASN1_ITEM_rptr(PKCS7), bio, (void *)p7);
 }
 
-void PKCS7_free(PKCS7 *p7) {
-  if (p7 == NULL) {
-    return;
-  }
-
-  OPENSSL_free(p7->ber_bytes);
-  ASN1_OBJECT_free(p7->type);
-  // We only supported signed data.
-  if (p7->d.sign != NULL) {
-    sk_X509_pop_free(p7->d.sign->cert, X509_free);
-    sk_X509_CRL_pop_free(p7->d.sign->crl, X509_CRL_free);
-    OPENSSL_free(p7->d.sign);
-  }
-  OPENSSL_free(p7);
+int PKCS7_type_is_data(const PKCS7 *p7) {
+  return OBJ_obj2nid(p7->type) == NID_pkcs7_data;
 }
 
-// We only support signed data, so these getters are no-ops.
-int PKCS7_type_is_data(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_digest(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_encrypted(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_enveloped(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_signed(const PKCS7 *p7) { return 1; }
-int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7) { return 0; }
+int PKCS7_type_is_digest(const PKCS7 *p7) {
+  return OBJ_obj2nid(p7->type) == NID_pkcs7_digest;
+}
+
+int PKCS7_type_is_encrypted(const PKCS7 *p7) {
+  return OBJ_obj2nid(p7->type) == NID_pkcs7_encrypted;
+}
+
+int PKCS7_type_is_enveloped(const PKCS7 *p7) {
+  return OBJ_obj2nid(p7->type) == NID_pkcs7_enveloped;
+}
+
+int PKCS7_type_is_signed(const PKCS7 *p7) {
+  return OBJ_obj2nid(p7->type) == NID_pkcs7_signed;
+}
+
+int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7) {
+  return OBJ_obj2nid(p7->type) == NID_pkcs7_signedAndEnveloped;
+}
 
 // write_sha256_ai writes an AlgorithmIdentifier for SHA-256 to
 // |digest_algos_set|.
@@ -440,8 +353,7 @@ static int write_signer_info(CBB *out, const void *arg) {
       &serial_bytes);
 
   CBB seq, issuer_and_serial, signing_algo, null, signature;
-  if (subject_len < 0 ||
-      serial_len < 0 ||
+  if (subject_len < 0 || serial_len < 0 ||
       !CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE) ||
       // version
       !CBB_add_asn1_uint64(&seq, 1) ||
@@ -464,6 +376,93 @@ out:
   OPENSSL_free(subject_bytes);
   OPENSSL_free(serial_bytes);
   return ret;
+}
+
+static int pkcs7_add_signature(PKCS7 *p7, X509 *x509, EVP_PKEY *pkey) {
+  // OpenSSL's docs say that this defaults to SHA1, but appears to actually
+  // default to SHA256 in 1.1.x and 3.x for RSA, DSA, and EC(DSA).
+  // https://linux.die.net/man/3/pkcs7_sign
+  // https://github.com/openssl/openssl/blob/79c98fc6ccab49f02528e06cc046ac61f841a753/crypto/rsa/rsa_ameth.c#L438
+  const EVP_MD *digest = EVP_sha256();
+  PKCS7_SIGNER_INFO *si = NULL;
+
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_DSA:
+    case EVP_PKEY_EC:
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_DEFAULT_DIGEST);
+      goto err;
+  }
+
+  // We add the signer's info below, including the static |digest|. We delegate
+  // initialization of the |digest| into an |EVP_MD_CTX| to |BIO_f_md|.
+  if ((si = PKCS7_SIGNER_INFO_new()) == NULL ||
+      !PKCS7_SIGNER_INFO_set(si, x509, pkey, digest) ||
+      !PKCS7_add_signer(p7, si)) {  // |p7| takes ownership of |si| here
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_DATASIGN);
+    goto err;
+  }
+  return 1;
+err:
+  PKCS7_SIGNER_INFO_free(si);
+  return 0;
+}
+
+static int pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert, EVP_PKEY *pkey) {
+  if (!X509_check_private_key(signcert, pkey)) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
+    return 0;
+  }
+
+  if (!pkcs7_add_signature(p7, signcert, pkey)) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNATURE_ERROR);
+    return 0;
+  }
+
+  if (!PKCS7_add_certificate(p7, signcert)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static PKCS7 *pkcs7_do_general_sign(X509 *sign_cert, EVP_PKEY *pkey,
+                                    struct stack_st_X509 *certs, BIO *data,
+                                    int flags) {
+  PKCS7 *ret = NULL;
+  if ((ret = PKCS7_new()) == NULL || !PKCS7_set_type(ret, NID_pkcs7_signed) ||
+      !PKCS7_content_new(ret, NID_pkcs7_data)) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
+    goto err;
+  }
+
+  if (!pkcs7_sign_add_signer(ret, sign_cert, pkey)) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNER_ERROR);
+    goto err;
+  }
+
+  for (size_t i = 0; i < sk_X509_num(certs); i++) {
+    if (!PKCS7_add_certificate(ret, sk_X509_value(certs, i))) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNER_ERROR);
+      goto err;
+    }
+  }
+
+  if ((flags & PKCS7_DETACHED) && PKCS7_type_is_data(ret->d.sign->contents)) {
+    ASN1_OCTET_STRING_free(ret->d.sign->contents->d.data);
+    ret->d.sign->contents->d.data = NULL;
+  }
+
+  if (!pkcs7_final(ret, data)) {
+    goto err;
+  }
+
+  return ret;
+err:
+  PKCS7_free(ret);
+  return NULL;
 }
 
 PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
@@ -490,8 +489,8 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
     // sign-file.c from the Linux kernel.
     const size_t signature_max_len = EVP_PKEY_size(pkey);
     struct signer_info_data si_data = {
-      .sign_cert = sign_cert,
-      .signature = OPENSSL_malloc(signature_max_len),
+        .sign_cert = sign_cert,
+        .signature = OPENSSL_malloc(signature_max_len),
     };
 
     if (!si_data.signature ||
@@ -503,6 +502,10 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
       goto out;
     }
     OPENSSL_free(si_data.signature);
+  } else if (sign_cert != NULL && pkey != NULL && data != NULL &&
+             !(flags & PKCS7_NOCERTS)) {
+    ret = pkcs7_do_general_sign(sign_cert, pkey, certs, data, flags);
+    goto out;
   } else {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     goto out;
@@ -512,12 +515,83 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
     goto out;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, der, len);
-  ret = pkcs7_new(&cbs);
+  const uint8_t *const_der = der;
+  ret = d2i_PKCS7(NULL, &const_der, len);
 
 out:
   CBB_cleanup(&cbb);
   OPENSSL_free(der);
   return ret;
 }
+
+int PKCS7_add_certificate(PKCS7 *p7, X509 *x509) {
+  STACK_OF(X509) **sk;
+
+  if (p7 == NULL || x509 == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+      sk = &(p7->d.sign->cert);
+      break;
+    case NID_pkcs7_signedAndEnveloped:
+      sk = &(p7->d.signed_and_enveloped->cert);
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+      return 0;
+  }
+
+  if (*sk == NULL) {
+    *sk = sk_X509_new_null();
+  }
+  if (*sk == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
+    return 0;
+  }
+
+  if (!sk_X509_push(*sk, x509)) {
+    return 0;
+  }
+  X509_up_ref(x509);
+  return 1;
+}
+
+int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl) {
+  STACK_OF(X509_CRL) **sk;
+
+  if (p7 == NULL || crl == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+      sk = &(p7->d.sign->crl);
+      break;
+    case NID_pkcs7_signedAndEnveloped:
+      sk = &(p7->d.signed_and_enveloped->crl);
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+      return 0;
+  }
+
+  if (*sk == NULL) {
+    *sk = sk_X509_CRL_new_null();
+  }
+  if (*sk == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
+    return 0;
+  }
+
+  if (!sk_X509_CRL_push(*sk, crl)) {
+    return 0;
+  }
+  X509_CRL_up_ref(crl);
+  return 1;
+}
+
+OPENSSL_END_ALLOW_DEPRECATED

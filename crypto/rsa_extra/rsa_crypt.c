@@ -75,7 +75,9 @@ static void rand_nonzero(uint8_t *out, size_t len) {
   RAND_bytes(out, len);
 
   for (size_t i = 0; i < len; i++) {
-    while (out[i] == 0) {
+    // Zero values are replaced, and the distribution of zero and non-zero bytes
+    // is public, so leaking this is safe.
+    while (constant_time_declassify_int(out[i] == 0)) {
       RAND_bytes(out + i, 1);
     }
   }
@@ -383,6 +385,23 @@ int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
+  if(rsa->meth && rsa->meth->encrypt) {
+    // In OpenSSL, the RSA_METHOD |encrypt| or |pub_enc| operation does not
+    // directly take and initialize an |out_len| parameter. Instead, it returns
+    // the number of bytes written to |out| or a negative number for error.
+    // Our wrapping functions like |RSA_encrypt| diverge from this paradigm and
+    // expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->encrypt((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      *out_len = 0;
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
+  }
+
   if (rsa->n == NULL || rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -539,8 +558,20 @@ err:
 
 int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->decrypt) {
-    return rsa->meth->decrypt(rsa, out_len, out, max_out, in, in_len, padding);
+  if (rsa->meth && rsa->meth->decrypt) {
+    // In OpenSSL, the RSA_METHOD |decrypt| operation does not directly take
+    // and initialize an |out_len| parameter. Instead, it returns the number
+    // of bytes written to |out| or a negative number for error. Our wrapping
+    // functions like |RSA_decrypt| diverge from this paradigm and expect
+    // an |out_len| parameter. To remain compatible with this new paradigm and
+    // OpenSSL, we initialize |out_len| based on the return value here.
+    int ret = rsa->meth->decrypt((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      *out_len = 0;
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
   }
 
   return rsa_default_decrypt(rsa, out_len, out, max_out, in, in_len, padding);

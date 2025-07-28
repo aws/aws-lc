@@ -424,14 +424,11 @@ static long bio_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       break;
 
     case BIO_CTRL_EOF: {
-      BIO *other_bio = ptr;
-
-      if (other_bio) {
-        struct bio_bio_st *other_b = other_bio->ptr;
-        assert(other_b != NULL);
-        ret = other_b->len == 0 && other_b->closed;
-      } else {
-        ret = 1;
+      ret = 1;
+      if (b->peer) {
+        struct bio_bio_st *peer_b = b->peer->ptr;
+        assert(peer_b != NULL);
+        ret = peer_b->len == 0 && peer_b->closed;
       }
     } break;
 
@@ -464,6 +461,14 @@ int BIO_new_bio_pair(BIO** bio1_p, size_t writebuf1_len,
 
   *bio1_p = bio1;
   *bio2_p = bio2;
+  return 1;
+}
+
+int BIO_destroy_bio_pair(BIO *b) {
+  if (b == NULL) {
+    return 0;
+  }
+  bio_destroy_pair(b);
   return 1;
 }
 

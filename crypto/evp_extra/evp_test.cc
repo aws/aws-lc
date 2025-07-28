@@ -51,15 +51,16 @@
  * ====================================================================
  */
 
-#include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/ec_key.h>
 #include <openssl/evp.h>
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../fipsmodule/evp/internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
@@ -73,9 +74,11 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <gtest/gtest.h>
 
+#include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
+#include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
@@ -268,6 +271,60 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   return true;
 }
 
+static bool GetOptionalBignum(FileTest *t, bssl::UniquePtr<BIGNUM> *out,
+                              const std::string &key) {
+  if (!t->HasAttribute(key)) {
+    *out = nullptr;
+    return true;
+  }
+
+  std::vector<uint8_t> bytes;
+  if (!t->GetBytes(&bytes, key)) {
+    return false;
+  }
+
+  out->reset(BN_bin2bn(bytes.data(), bytes.size(), nullptr));
+  return *out != nullptr;
+}
+
+static bool ImportDHKey(FileTest *t, KeyMap *key_map) {
+  bssl::UniquePtr<BIGNUM> p, q, g, pub_key, priv_key;
+  if (!GetOptionalBignum(t, &p, "P") ||  //
+      !GetOptionalBignum(t, &q, "Q") ||  //
+      !GetOptionalBignum(t, &g, "G") ||
+      !GetOptionalBignum(t, &pub_key, "Public") ||
+      !GetOptionalBignum(t, &priv_key, "Private")) {
+    return false;
+  }
+
+  bssl::UniquePtr<DH> dh(DH_new());
+  if (dh == nullptr || !DH_set0_pqg(dh.get(), p.get(), q.get(), g.get())) {
+    return false;
+  }
+  // |DH_set0_pqg| takes ownership on success.
+  p.release();
+  q.release();
+  g.release();
+
+  if (!DH_set0_key(dh.get(), pub_key.get(), priv_key.get())) {
+    return false;
+  }
+  // |DH_set0_key| takes ownership on success.
+  pub_key.release();
+  priv_key.release();
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (pkey == nullptr || !EVP_PKEY_set1_DH(pkey.get(), dh.get())) {
+    return false;
+  }
+
+  // Save the key for future tests.
+  const std::string &key_name = t->GetParameter();
+  EXPECT_EQ(0u, key_map->count(key_name)) << "Duplicate key: " << key_name;
+  (*key_map)[key_name] = std::move(pkey);
+  return true;
+}
+
 // SetupContext configures |ctx| based on attributes in |t|, with the exception
 // of the signing digest which must be configured externally.
 static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
@@ -320,6 +377,9 @@ static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
     if (!EVP_PKEY_derive_set_peer(ctx, derive_peer_key)) {
       return false;
     }
+  }
+  if (t->HasAttribute("DiffieHellmanPad") && !EVP_PKEY_CTX_set_dh_pad(ctx, 1)) {
+    return false;
   }
   return true;
 }
@@ -423,6 +483,10 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
     return ImportKey(t, key_map, EVP_parse_public_key, EVP_marshal_public_key);
   }
 
+  if (t->GetType() == "DHKey") {
+    return ImportDHKey(t, key_map);
+  }
+
   // Load the key.
   const std::string &key_name = t->GetParameter();
   if (key_map->count(key_name) == 0) {
@@ -520,7 +584,8 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       return false;
     }
     actual.resize(len);
-    VerifyEVPSignOut(key_name, input, actual, output, ctx.get(), len);
+    VerifyEVPSignOut(key_name, std::move(input), std::move(actual),
+      std::move(output), ctx.get(), len);
     return true;
   }
 
@@ -662,6 +727,9 @@ static void RunWycheproofVerifyTest(const char *path) {
     if (EVP_PKEY_id(key.get()) == EVP_PKEY_DSA) {
       // DSA is deprecated and is not usable via EVP.
       DSA *dsa = EVP_PKEY_get0_DSA(key.get());
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
+      ASSERT_EQ(dsa, EVP_PKEY_get0(key.get()));
+      OPENSSL_END_ALLOW_DEPRECATED
       uint8_t digest[EVP_MAX_MD_SIZE];
       unsigned digest_len;
       ASSERT_TRUE(
@@ -1022,6 +1090,9 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
   size_t private_key_size, int key_type, int curve_nid) {
 
   EVP_PKEY *pkey = NULL;
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  EXPECT_FALSE(EVP_PKEY_get0(pkey));
+  OPENSSL_END_ALLOW_DEPRECATED
 
   if (NID_X25519 == curve_nid) {
     pkey = EVP_PKEY_new_raw_private_key(curve_nid, nullptr, private_key,
@@ -1037,7 +1108,11 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
     BN_free(private_key_bn);
     pkey = EVP_PKEY_new();
     EXPECT_TRUE(pkey);
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    EXPECT_FALSE(EVP_PKEY_get0(pkey));
     EXPECT_TRUE(EVP_PKEY_assign(pkey, key_type, (EC_KEY *) ec_key));
+    EXPECT_EQ(ec_key, EVP_PKEY_get0(pkey));
+    OPENSSL_END_ALLOW_DEPRECATED
   }
 
   return pkey;
@@ -1238,14 +1313,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       p224_test_data, p256_test_data, p384_test_data, p521_test_data};
 
     uint8_t *output = nullptr;
-    size_t output_size = 0;
     uint8_t *shared_secret = nullptr;
-    size_t shared_secret_size = 0;
     EVP_PKEY_CTX *pkey_ctx = nullptr;
     EVP_PKEY *pkey_public = nullptr;
     EVP_PKEY *pkey_private = nullptr;
 
     for (ectlsencodedpoint_test_data test_data : test_data_all) {
+      size_t output_size = 0;
+      size_t shared_secret_size = 0;
 
       pkey_private = instantiate_and_set_private_key(test_data.private_key,
         test_data.private_key_size, test_data.key_type, test_data.curve_nid);
@@ -1285,8 +1360,6 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       EVP_PKEY_CTX_free(pkey_ctx);
       EVP_PKEY_free(pkey_public);
       EVP_PKEY_free(pkey_private);
-      output_size = 0;
-      shared_secret_size = 0;
     }
 
     // Above tests explore the happy path. Now test that some invalid
@@ -1393,4 +1466,355 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     EXPECT_EQ(ERR_R_EVP_LIB,
       ERR_GET_REASON(ERR_peek_last_error()));
     ERR_clear_error();
+}
+
+TEST(EVPTest, PKEY_set_type_str) {
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  /* Test case 1: Assign RSA algorithm */
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "RSA", 3));
+  ASSERT_EQ(pkey->type, EVP_PKEY_RSA);
+
+  /* Test case 2: Assign EC algorithm */
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "EC", 2));
+  ASSERT_EQ(pkey->type, EVP_PKEY_EC);
+
+  /* Test case 3: Assign non-existent algorithm */
+  ASSERT_FALSE(EVP_PKEY_set_type_str(pkey.get(), "Nonsense", 8));
+}
+
+TEST(EVPTest, PKEY_asn1_find) {
+  int pkey_id, pkey_base_id, pkey_flags;
+  const char *pinfo, *pem_str;
+
+  /* Test case 1: Find RSA algorithm */
+  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_RSA);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("RSA", pem_str);
+  ASSERT_STREQ("OpenSSL RSA method", pinfo);
+
+  /* Test case 2: Find EC algorithm */
+  ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_EC);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_EC);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("EC", pem_str);
+  ASSERT_STREQ("OpenSSL EC algorithm", pinfo);
+
+  /* Test case 3: Find non-existent algorithm */
+  ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_NONE);
+  ASSERT_FALSE(ameth);
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+}
+
+TEST(EVPTest, PKEY_asn1_find_str) {
+  int pkey_id, pkey_base_id, pkey_flags;
+  const char *pinfo, *pem_str;
+
+  /* Test case 1: Find RSA algorithm */
+  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find_str(NULL, "RSA", 3);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("RSA", pem_str);
+  ASSERT_STREQ("OpenSSL RSA method", pinfo);
+
+  /* Test case 2: Find EC algorithm */
+  ameth = EVP_PKEY_asn1_find_str(NULL, "EC", 2);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_EC);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("EC", pem_str);
+  ASSERT_STREQ("OpenSSL EC algorithm", pinfo);
+
+  /* Test case 3: Find non-existent algorithm */
+  ameth = EVP_PKEY_asn1_find_str(NULL, "Nonsense", 8);
+  ASSERT_FALSE(ameth);
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+}
+
+TEST(EVPTest, ED25519PH) {
+  const uint8_t message[] = {0x72, 0x61, 0x63, 0x63, 0x6f, 0x6f, 0x6e};
+  const uint8_t context[] = {0x73, 0x6e, 0x65, 0x61, 0x6b, 0x79};
+  const uint8_t message_sha512[] = {
+      0x50, 0xcf, 0x03, 0x79, 0x8c, 0xb2, 0xfb, 0x0f, 0xf1, 0x3d, 0xc6,
+      0x4c, 0x7c, 0xf0, 0x89, 0x8f, 0xfe, 0x90, 0x9d, 0xfd, 0xa5, 0x22,
+      0xdd, 0x22, 0xf4, 0x10, 0x8f, 0xa0, 0x1b, 0x8f, 0x29, 0x15, 0x98,
+      0x60, 0xf2, 0x80, 0x0e, 0x7c, 0x93, 0x3c, 0x7c, 0x6e, 0x4c, 0xb1,
+      0xf9, 0x3f, 0x33, 0xbe, 0x43, 0xa3, 0xd4, 0x1c, 0x86, 0x92, 0x2b,
+      0x32, 0xaf, 0x89, 0xa2, 0xa4, 0xa3, 0xe2, 0xf1, 0x92};
+
+  bssl::UniquePtr<EVP_PKEY> pkey(nullptr);
+  bssl::UniquePtr<EVP_PKEY> pubkey(nullptr);
+  bssl::ScopedCBB marshalled_private_key;
+  bssl::ScopedCBB marshalled_public_key;
+  uint8_t signature[ED25519_SIGNATURE_LEN] = {0};
+  size_t signature_len = ED25519_SIGNATURE_LEN;
+  uint8_t working_signature[ED25519_SIGNATURE_LEN] = {0};
+  size_t working_signature_len = ED25519_SIGNATURE_LEN;
+
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519PH, nullptr));
+    ASSERT_FALSE(EVP_PKEY_keygen_init(ctx.get()));
+  }
+
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    EVP_PKEY *pkey_ptr = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey_ptr));
+    ASSERT_NE(pkey_ptr, nullptr);
+    pkey.reset(pkey_ptr);  // now owns pkey_ptr
+    // marshal the keys
+    ASSERT_TRUE(CBB_init(marshalled_private_key.get(), 0));
+    ASSERT_TRUE(CBB_init(marshalled_public_key.get(), 0));
+    ASSERT_TRUE(
+        EVP_marshal_private_key(marshalled_private_key.get(), pkey.get()));
+    ASSERT_TRUE(
+        EVP_marshal_public_key(marshalled_public_key.get(), pkey.get()));
+  }
+
+  {
+    uint8_t raw_key[ED25519_PRIVATE_KEY_SEED_LEN];
+    size_t raw_key_len = sizeof(raw_key);
+    ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), raw_key, &raw_key_len));
+
+    EVP_PKEY *rk = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519PH, nullptr, raw_key, raw_key_len);
+    ASSERT_TRUE(rk);
+    pkey.reset(rk);
+    ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pkey.get()));
+
+    bssl::ScopedCBB temp;
+    ASSERT_TRUE(CBB_init(temp.get(), 0));
+    ASSERT_FALSE(EVP_marshal_private_key(temp.get(), pkey.get()));
+  }
+
+  {
+    uint8_t raw_key[ED25519_PUBLIC_KEY_LEN];
+    size_t raw_key_len = sizeof(raw_key);
+    ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), raw_key, &raw_key_len));
+    
+    EVP_PKEY *rk = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519PH, nullptr, raw_key, raw_key_len);
+    ASSERT_TRUE(rk);
+    pubkey.reset(rk);
+    ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pubkey.get()));
+
+    bssl::ScopedCBB temp;
+    ASSERT_TRUE(CBB_init(temp.get(), 0));
+    ASSERT_FALSE(EVP_marshal_public_key(temp.get(), pubkey.get()));
+  }
+
+  // prehash signature w/ context gen and verify
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    EVP_PKEY_CTX *pctx = nullptr;
+
+    ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
+                                   pkey.get()));
+
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set_signature_context(pctx, context, sizeof(context)));
+    const uint8_t *sctx = NULL;
+    size_t sctx_len = 0;
+    ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pctx, &sctx, &sctx_len));
+    ASSERT_TRUE(sctx);
+    ASSERT_NE(sctx, context);
+    ASSERT_EQ(Bytes(context, sizeof(context)), Bytes(sctx, sctx_len));
+
+    ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), &message[0], 3));
+    ASSERT_TRUE(
+        EVP_DigestSignUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
+    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature,
+                                    &signature_len));
+    ASSERT_EQ(signature_len, (size_t)ED25519_SIGNATURE_LEN);
+
+    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
+                                     pubkey.get()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set_signature_context(pctx, context, sizeof(context)));
+    ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), &message[0], 3));
+    ASSERT_TRUE(
+        EVP_DigestVerifyUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
+    ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(),
+                                      signature, signature_len));
+  }
+
+  // prehash signature gen and verify w/ context using EVP_PKEY_sign and
+  // EVP_PKEY_verify directly
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx.get());
+    ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(ctx.get(), context,
+                                                   sizeof(context)));
+    ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature, &working_signature_len, message_sha512, sizeof(message_sha512)));
+    ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
+    
+    ctx.reset(EVP_PKEY_CTX_new(pubkey.get(), nullptr));
+    ASSERT_TRUE(ctx.get());
+    ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_signature_context(ctx.get(), context,
+                                                   sizeof(context)));
+    ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), working_signature,
+                                working_signature_len, message_sha512,
+                                sizeof(message_sha512)));
+
+    ASSERT_EQ(Bytes(signature, signature_len),
+              Bytes(working_signature, working_signature_len));
+  }
+
+  // prehash signature gen and verify
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    EVP_PKEY_CTX *pctx;
+
+    ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
+                                   pkey.get()));
+
+    const uint8_t *sctx = NULL;
+    size_t sctx_len = 0;
+    ASSERT_TRUE(EVP_PKEY_CTX_get0_signature_context(pctx, &sctx, &sctx_len));
+    ASSERT_EQ(sctx, nullptr);
+    ASSERT_EQ(sctx_len, (size_t)0);
+
+    ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), &message[0], 3));
+    ASSERT_TRUE(
+        EVP_DigestSignUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
+    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), working_signature,
+                                    &working_signature_len));
+    ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
+
+    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha512(),
+                                     nullptr, pubkey.get()));
+    ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), message, 3));
+    ASSERT_TRUE(
+        EVP_DigestVerifyUpdate(md_ctx.get(), &message[3], sizeof(message) - 3));
+    ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), working_signature,
+                                      working_signature_len));
+  }
+
+  // Pre-hash signature w/ context should not match Pre-hash signature w/o context
+  ASSERT_NE(Bytes(signature, signature_len),
+            Bytes(working_signature, working_signature_len));
+
+
+  // prehash signature gen and verify with EVP_PKEY_sign and EVP_PKEY_verify directly
+  {
+    OPENSSL_memcpy(signature, working_signature, working_signature_len);
+    signature_len = working_signature_len;
+
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx.get());
+    ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), working_signature, &working_signature_len, message_sha512, sizeof(message_sha512)));
+    ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
+
+    ctx.reset(EVP_PKEY_CTX_new(pubkey.get(), nullptr));
+    ASSERT_TRUE(ctx.get());
+    ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), working_signature, working_signature_len, message_sha512, sizeof(message_sha512)));
+
+    ASSERT_EQ(Bytes(signature, signature_len),
+              Bytes(working_signature, working_signature_len));
+  }
+
+  
+  {
+    CBS cbs;
+    CBS_init(&cbs, CBB_data(marshalled_private_key.get()),
+             CBB_len(marshalled_private_key.get()));
+    EVP_PKEY *parsed = EVP_parse_private_key(&cbs);
+    ASSERT_TRUE(parsed);
+    pkey.reset(parsed);
+    ASSERT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(pkey.get()));
+  }
+
+  {
+    CBS cbs;
+    CBS_init(&cbs, CBB_data(marshalled_public_key.get()),
+             CBB_len(marshalled_public_key.get()));
+    EVP_PKEY *parsed = EVP_parse_public_key(&cbs);
+    ASSERT_TRUE(parsed);
+    pubkey.reset(parsed);
+    ASSERT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(pubkey.get()));
+  }
+
+  // pure signature gen and verify
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr,
+                                   pkey.get()));
+    ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), working_signature,
+                               &working_signature_len, message, sizeof(message)));
+    ASSERT_EQ(working_signature_len, (size_t)ED25519_SIGNATURE_LEN);
+
+    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, nullptr, nullptr,
+                                     pubkey.get()));
+    ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), working_signature,
+                                 working_signature_len, message, sizeof(message)));
+  }
+
+  // pure signature shouldn't match a pre-hash signature w/o context
+  ASSERT_NE(Bytes(signature, signature_len),
+            Bytes(working_signature, working_signature_len));
+}
+
+TEST(EVPTest, Ed25519phTestVectors) {
+  FileTestGTest("crypto/fipsmodule/curve25519/ed25519ph_tests.txt", [](FileTest *t) {
+    std::vector<uint8_t> seed, q, message, context, expected_signature;
+    ASSERT_TRUE(t->GetBytes(&seed, "SEED"));
+    ASSERT_EQ(32u, seed.size());
+    ASSERT_TRUE(t->GetBytes(&q, "Q"));
+    ASSERT_EQ(32u, q.size());
+    ASSERT_TRUE(t->GetBytes(&message, "MESSAGE"));
+    ASSERT_TRUE(t->GetBytes(&expected_signature, "SIGNATURE"));
+    ASSERT_EQ(64u, expected_signature.size());
+
+    if (t->HasAttribute("CONTEXT")) {
+        t->GetBytes(&context, "CONTEXT");
+    } else {
+        context = std::vector<uint8_t>();
+    }
+
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519PH, nullptr, seed.data(), seed.size()));
+    bssl::UniquePtr<EVP_PKEY> pubkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519PH, nullptr, q.data(), q.size()));
+    ASSERT_TRUE(pkey.get());
+    ASSERT_TRUE(pubkey.get());
+    ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pkey.get()));
+    ASSERT_EQ(EVP_PKEY_ED25519PH, EVP_PKEY_id(pubkey.get()));
+
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    EVP_PKEY_CTX *pctx = nullptr;
+    uint8_t signature[ED25519_SIGNATURE_LEN] = {};
+    size_t signature_len = ED25519_SIGNATURE_LEN;
+
+    ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
+                                   pkey.get()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set_signature_context(pctx, context.data(), context.size()));
+    ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), message.data(), message.size()));
+    ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature,
+                                    &signature_len));
+    ASSERT_EQ(signature_len, (size_t)ED25519_SIGNATURE_LEN);
+    ASSERT_EQ(Bytes(expected_signature), Bytes(signature, signature_len));
+
+    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, EVP_sha512(), nullptr,
+                                     pubkey.get()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set_signature_context(pctx, context.data(), context.size()));
+    ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), message.data(), message.size()));
+    ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature,
+                                      signature_len));
+  });
 }

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -72,6 +72,7 @@ type result struct {
 // sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
 // is true.
 var sdeCPUs = []string{
+
 	"p4p", // Pentium4 Prescott
 	"mrm", // Merom
 	"pnr", // Penryn
@@ -93,21 +94,19 @@ var sdeCPUs = []string{
 	"clx", // Cascade Lake
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
-	"knl", // Knights landing
-	"knm", // Knights mill
 	"tgl", // Tiger Lake
 }
 
 func targetArchMatchesRuntime(target string) bool {
 	if (target == "") ||
-	   (target == "x86" && runtime.GOARCH == "amd64") ||
-		 (target == "arm" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")) {
+		(target == "x86" && runtime.GOARCH == "amd64") ||
+		(target == "arm" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")) {
 		return true
 	}
 	return false
 }
 
-func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exec.Cmd {
+func valgrindOf(ctx context.Context, dbAttach bool, supps []string, path string, args ...string) (context.Context, *exec.Cmd) {
 	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--trace-children=yes", "--quiet"}
 	for _, supp := range supps {
 		valgrindArgs = append(valgrindArgs, "--suppressions="+*valgrindSuppDir+"/"+supp)
@@ -118,26 +117,26 @@ func valgrindOf(dbAttach bool, supps []string, path string, args ...string) *exe
 	valgrindArgs = append(valgrindArgs, path)
 	valgrindArgs = append(valgrindArgs, args...)
 
-	return exec.Command("valgrind", valgrindArgs...)
+	return ctx, exec.CommandContext(ctx, "valgrind", valgrindArgs...)
 }
 
-func callgrindOf(path string, args ...string) *exec.Cmd {
+func callgrindOf(ctx context.Context, path string, args ...string) (context.Context, *exec.Cmd) {
 	valgrindArgs := []string{"-q", "--tool=callgrind", "--dump-instr=yes", "--collect-jumps=yes", "--callgrind-out-file=" + *buildDir + "/callgrind/callgrind.out.%p"}
 	valgrindArgs = append(valgrindArgs, path)
 	valgrindArgs = append(valgrindArgs, args...)
 
-	return exec.Command("valgrind", valgrindArgs...)
+	return ctx, exec.CommandContext(ctx, "valgrind", valgrindArgs...)
 }
 
-func gdbOf(path string, args ...string) *exec.Cmd {
+func gdbOf(ctx context.Context, path string, args ...string) (context.Context, *exec.Cmd) {
 	xtermArgs := []string{"-e", "gdb", "--args"}
 	xtermArgs = append(xtermArgs, path)
 	xtermArgs = append(xtermArgs, args...)
 
-	return exec.Command("xterm", xtermArgs...)
+	return ctx, exec.CommandContext(ctx, "xterm", xtermArgs...)
 }
 
-func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
+func sdeOf(ctx context.Context, cpu, path string, args ...string) (context.Context, context.CancelFunc, *exec.Cmd) {
 	sdeArgs := []string{"-" + cpu}
 	// The kernel's vdso code for gettimeofday sometimes uses the RDTSCP
 	// instruction. Although SDE has a -chip_check_vsyscall flag that
@@ -152,9 +151,9 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 
 	// TODO(CryptoAlg-2154):SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
 	// Current workaround is to manually cancel the run after 20 minutes and check the output.
-	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1800*time.Second)
 
-	return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
+	return ctx, cancel, exec.CommandContext(ctx, *sdePath, sdeArgs...)
 }
 
 var (
@@ -164,7 +163,7 @@ var (
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
-	prog := path.Join(*buildDir, test.Cmd[0])
+	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
 	if *useSDE {
 		// SDE is neither compatible with the unwind tester nor automatically
@@ -173,23 +172,20 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	}
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc
-	cancelled := false
-	if *useValgrind {
-		cmd = valgrindOf(false, test.ValgrindSupp, prog, args...)
-	} else if *useCallgrind {
-		cmd = callgrindOf(prog, args...)
-	} else if *useGDB {
-		cmd = gdbOf(prog, args...)
-	} else if *useSDE {
-		cmd, cancel = sdeOf(test.cpu, prog, args...)
-		defer cancel()
 
-		cmd.Cancel = func() error {
-			cancelled = true
-			return cmd.Process.Kill()
-		}
+	ctx := context.Background()
+
+	if *useValgrind {
+		ctx, cmd = valgrindOf(ctx, false, test.ValgrindSupp, prog, args...)
+	} else if *useCallgrind {
+		ctx, cmd = callgrindOf(ctx, prog, args...)
+	} else if *useGDB {
+		ctx, cmd = gdbOf(ctx, prog, args...)
+	} else if *useSDE {
+		ctx, cancel, cmd = sdeOf(ctx, test.cpu, prog, args...)
+		defer cancel()
 	} else {
-		cmd = exec.Command(prog, args...)
+		cmd = exec.CommandContext(ctx, prog, args...)
 	}
 	if test.Env != nil || test.numShards != 0 {
 		cmd.Env = make([]string, len(os.Environ()))
@@ -211,7 +207,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		if *mallocTestDebug {
 			cmd.Env = append(cmd.Env, "MALLOC_ABORT_ON_FAIL=1")
 		}
-		cmd.Env = append(cmd.Env, "_MALLOC_CHECK=1")
+		cmd.Env = append(cmd.Env, "MALLOC_CHECK_=1")
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -219,7 +215,8 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
 			switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
 			case 88:
 				return false, errMoreMallocs
@@ -227,14 +224,20 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 				fmt.Print(string(outBuf.Bytes()))
 				return false, errTestSkipped
 			}
-			if cancelled {
-				return testPass(outBuf), errTestHanging
+			select {
+			case <-ctx.Done():
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					return testPass(outBuf), errTestHanging
+				} else if ctx.Err() != nil {
+					return false, ctx.Err()
+				}
+			default:
+				// Nothing
 			}
 		}
 		fmt.Print(string(outBuf.Bytes()))
 		return false, err
 	}
-
 
 	return testPass(outBuf), nil
 }
@@ -435,7 +438,7 @@ func main() {
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
 				fmt.Printf("%s\n", test.longName())
-				fmt.Printf("%s was left hanging without finishing.\n", args[0])
+				fmt.Printf("%s did not finish. Try increasing timeout.\n", args[0])
 				failed = append(failed, test)
 				testOutput.AddResult(test.longName(), "FAIL")
 			} else {
@@ -480,5 +483,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("\nAll tests passed!\n")
+	fmt.Printf("All unit tests passed!\n")
 }

@@ -12,6 +12,7 @@
 
 _md5_block_asm_data_order:
 
+_CET_ENDBR
 	pushq	%rbp
 
 	pushq	%rbx
@@ -204,7 +205,7 @@ L$loop:
 	andl	%ebx,%r12d
 	andl	%ecx,%r11d
 	movl	24(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%eax
 	movl	%ecx,%r11d
 	addl	%r12d,%eax
 	movl	%ecx,%r12d
@@ -215,7 +216,7 @@ L$loop:
 	andl	%eax,%r12d
 	andl	%ebx,%r11d
 	movl	44(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%edx
 	movl	%ebx,%r11d
 	addl	%r12d,%edx
 	movl	%ebx,%r12d
@@ -226,7 +227,7 @@ L$loop:
 	andl	%edx,%r12d
 	andl	%eax,%r11d
 	movl	0(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ecx
 	movl	%eax,%r11d
 	addl	%r12d,%ecx
 	movl	%eax,%r12d
@@ -237,7 +238,7 @@ L$loop:
 	andl	%ecx,%r12d
 	andl	%edx,%r11d
 	movl	20(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ebx
 	movl	%edx,%r11d
 	addl	%r12d,%ebx
 	movl	%edx,%r12d
@@ -248,7 +249,7 @@ L$loop:
 	andl	%ebx,%r12d
 	andl	%ecx,%r11d
 	movl	40(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%eax
 	movl	%ecx,%r11d
 	addl	%r12d,%eax
 	movl	%ecx,%r12d
@@ -259,7 +260,7 @@ L$loop:
 	andl	%eax,%r12d
 	andl	%ebx,%r11d
 	movl	60(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%edx
 	movl	%ebx,%r11d
 	addl	%r12d,%edx
 	movl	%ebx,%r12d
@@ -270,7 +271,7 @@ L$loop:
 	andl	%edx,%r12d
 	andl	%eax,%r11d
 	movl	16(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ecx
 	movl	%eax,%r11d
 	addl	%r12d,%ecx
 	movl	%eax,%r12d
@@ -281,7 +282,7 @@ L$loop:
 	andl	%ecx,%r12d
 	andl	%edx,%r11d
 	movl	36(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ebx
 	movl	%edx,%r11d
 	addl	%r12d,%ebx
 	movl	%edx,%r12d
@@ -292,7 +293,7 @@ L$loop:
 	andl	%ebx,%r12d
 	andl	%ecx,%r11d
 	movl	56(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%eax
 	movl	%ecx,%r11d
 	addl	%r12d,%eax
 	movl	%ecx,%r12d
@@ -303,7 +304,7 @@ L$loop:
 	andl	%eax,%r12d
 	andl	%ebx,%r11d
 	movl	12(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%edx
 	movl	%ebx,%r11d
 	addl	%r12d,%edx
 	movl	%ebx,%r12d
@@ -314,7 +315,7 @@ L$loop:
 	andl	%edx,%r12d
 	andl	%eax,%r11d
 	movl	32(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ecx
 	movl	%eax,%r11d
 	addl	%r12d,%ecx
 	movl	%eax,%r12d
@@ -325,7 +326,7 @@ L$loop:
 	andl	%ecx,%r12d
 	andl	%edx,%r11d
 	movl	52(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ebx
 	movl	%edx,%r11d
 	addl	%r12d,%ebx
 	movl	%edx,%r12d
@@ -336,7 +337,7 @@ L$loop:
 	andl	%ebx,%r12d
 	andl	%ecx,%r11d
 	movl	8(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%eax
 	movl	%ecx,%r11d
 	addl	%r12d,%eax
 	movl	%ecx,%r12d
@@ -347,7 +348,7 @@ L$loop:
 	andl	%eax,%r12d
 	andl	%ebx,%r11d
 	movl	28(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%edx
 	movl	%ebx,%r11d
 	addl	%r12d,%edx
 	movl	%ebx,%r12d
@@ -358,7 +359,7 @@ L$loop:
 	andl	%edx,%r12d
 	andl	%eax,%r11d
 	movl	48(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ecx
 	movl	%eax,%r11d
 	addl	%r12d,%ecx
 	movl	%eax,%r12d
@@ -369,7 +370,7 @@ L$loop:
 	andl	%ecx,%r12d
 	andl	%edx,%r11d
 	movl	0(%rsi),%r10d
-	orl	%r11d,%r12d
+	addl	%r11d,%ebx
 	movl	%edx,%r11d
 	addl	%r12d,%ebx
 	movl	%edx,%r12d

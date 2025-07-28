@@ -86,16 +86,6 @@ static void __asan_poison_memory_region(const void *addr, size_t size) {}
 static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #endif
 
-// Windows doesn't really support weak symbols as of May 2019, and Clang on
-// Windows will emit strong symbols instead. See
-// https://bugs.llvm.org/show_bug.cgi?id=37598
-#if defined(__ELF__) && defined(__GNUC__)
-#define WEAK_SYMBOL_FUNC(rettype, name, args) \
-  rettype name args __attribute__((weak));
-#else
-#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
-#endif
-
 #define AWSLC_FILE ""
 #define AWSLC_LINE 0
 
@@ -131,6 +121,18 @@ WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_alloc, (size_t size))
 WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr))
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr))
 WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_realloc, (void *ptr, size_t size))
+
+// Control function for crypto memory debugging Always returns 0 in AWS-LC
+// |mode| Unused parameter AWS-LC doesn't support |CRYPTO_MDEBUG|
+// Always returns 0
+int CRYPTO_mem_ctrl(int mode) {
+  #if defined (OPENSSL_NO_CRYPTO_MDEBUG)
+    (void)mode;  // Silence unused parameter warning
+    return 0;
+  #else
+    #error "Must compile with OPENSSL_NO_CRYPTO_MDEBUG defined."
+  #endif
+}
 
 // Below can be customized by |CRYPTO_set_mem_functions| only once.
 static void *(*malloc_impl)(size_t, const char *, int) = NULL;
@@ -305,6 +307,11 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
 }
 
 void OPENSSL_cleanse(void *ptr, size_t len) {
+
+  if (ptr == NULL || len == 0) {
+    return;
+  }
+
 #if defined(OPENSSL_WINDOWS)
   SecureZeroMemory(ptr, len);
 #else
@@ -379,13 +386,8 @@ char *OPENSSL_strdup(const char *s) {
   if (s == NULL) {
     return NULL;
   }
-  const size_t len = strlen(s) + 1;
-  char *ret = OPENSSL_malloc(len);
-  if (ret == NULL) {
-    return NULL;
-  }
-  OPENSSL_memcpy(ret, s, len);
-  return ret;
+  // Copy the NUL terminator.
+  return OPENSSL_memdup(s, strlen(s) + 1);
 }
 
 int OPENSSL_isalpha(int c) {
@@ -412,6 +414,36 @@ int OPENSSL_fromxdigit(uint8_t *out, int c) {
     return 1;
   }
   return 0;
+}
+
+uint8_t *OPENSSL_hexstr2buf(const char *str, size_t *len) {
+  if (str == NULL || len == NULL) {
+    return NULL;
+  }
+
+  const size_t slen = OPENSSL_strnlen(str, INT16_MAX);
+  if (slen % 2 != 0) {
+    return NULL;
+  }
+
+  const size_t buflen = slen / 2;
+  uint8_t *buf = OPENSSL_zalloc(buflen);
+  if (buf == NULL) {
+    return NULL;
+  }
+
+  for (size_t i = 0; i < buflen; i++) {
+    uint8_t hi, lo;
+    if (!OPENSSL_fromxdigit(&hi, str[2 * i]) ||
+        !OPENSSL_fromxdigit(&lo, str[2 * i + 1])) {
+      OPENSSL_free(buf);
+      return NULL;
+    }
+    buf[i] = (hi << 4) | lo;
+  }
+
+  *len = buflen;
+  return buf;
 }
 
 int OPENSSL_isalnum(int c) { return OPENSSL_isalpha(c) || OPENSSL_isdigit(c); }

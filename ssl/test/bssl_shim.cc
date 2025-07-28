@@ -31,6 +31,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include <assert.h>
+#include <errno.h>
 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -986,6 +987,11 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     int ssl_err = SSL_get_error(ssl.get(), -1);
     if (ssl_err != SSL_ERROR_NONE) {
       fprintf(stderr, "SSL error: %s\n", SSL_error_description(ssl_err));
+      if (ssl_err == SSL_ERROR_SYSCALL) {
+        int err = errno;
+        fprintf(stderr, "Error occurred: errno = %d, description = %s\n", err, strerror(err));
+
+      }
     }
     return false;
   }
@@ -1418,6 +1424,12 @@ class StderrDelimiter {
 };
 
 int main(int argc, char **argv) {
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+  if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
+
   // To distinguish ASan's output from ours, add a trailing message to stderr.
   // Anything following this line will be considered an error.
   StderrDelimiter delimiter;

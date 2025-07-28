@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: PPC64 Build/Test
@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: PPC32 Build/Test
@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: PPC32 Build/Test
@@ -47,7 +47,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: PPC64LE Build/Test
@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: RISC-V 64 Build/Test
@@ -76,7 +76,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: armv6 Build/Test
@@ -86,7 +86,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: loongarch64 Build/Test
@@ -97,7 +97,7 @@ jobs:
     steps:
       - name: Install qemu
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: s390x Build/Test
@@ -109,3 +109,17 @@ jobs:
         env:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh s390x s390x-ibm-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
+  ios-aarch64:
+    if: github.repository_owner == 'aws'
+    name: iOS aarch64 cross-platform build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - run: |
+          brew install llvm bash
+      - name: iOS Simulator Runner
+        run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
+

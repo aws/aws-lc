@@ -136,6 +136,17 @@ Things which do not work:
   Callbacks such as `SSL_CTX_set_custom_verify` will only run on the initial
   handshake.
 
+#### TLS Server Renegotiation Behavior
+To optimize client compatibility, the server implementation allows clients to perform an initial handshake 
+with either the `TLS_EMPTY_RENEGOTIATION_INFO_SCSV` set and/or with the initial ClientHello containing the
+`renegotiation_info` extension with empty info. In this circumstance initial handshake proceeds and the server
+will respond with an empty `renegotiation_info` per [RFC 5746](https://www.rfc-editor.org/rfc/rfc5746).
+If such a client attempts renegotiation after the initial handshake it will receive a TLS protocol alert from the
+server indicating that renegotiation is not supported. **Note:** Some clients, like OpenSSL's `s_client` command,
+may incorrectly report renegotiation as being supported possibly with a message like
+"Secure Renegotiation IS supported". This is inaccurate, and any attempt by a client will result in a TLS protocol alert
+as previously described.
+
 ### Lowercase hexadecimal
 
 BoringSSL's `BN_bn2hex` function uses lowercase hexadecimal digits instead of
@@ -287,6 +298,32 @@ In order to use buffers, the application code also needs to implement its own ce
 
 Once those changes have been completed, the whole of the OpenSSL X.509 and ASN.1 code should be eliminated by the linker if BoringSSL is linked statically.
 
+Using [`CRYPTO_BUFFER`](https://commondatastorage.googleapis.com/chromium-boringssl-docs/pool.h.html) instead of `X509` or `X509_NAME` can also have some side effects, leading to a difference in behavior from OpenSSL. For example, when calling `SSL_CTX_set_client_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list)`, OpenSSL stores a reference to `|name_list|`, transferring ownership while leaving the passed-in parameter untouched. In contrast, AWS-LC stores `|name_list|` as a stack of type `CRYPTO_BUFFER`, which results in creating a copy and freeing the passed-in list. This can lead to errors in applications that expect access to the passed-in list after calling such functions.
+
 ### Asynchronous and opaque private keys
 
 OpenSSL offers the ENGINE API for implementing opaque private keys (i.e. private keys where software only has oracle access because the secrets are held in special hardware or on another machine). While the ENGINE API has been mostly removed from BoringSSL, it is still possible to support opaque keys in this way. However, when using such keys with TLS and BoringSSL, you should strongly prefer using `SSL_PRIVATE_KEY_METHOD` via `SSL[_CTX]_set_private_key_method`. This allows a handshake to be suspended while the private operation is in progress. It also supports more forms of opaque key as it exposes higher-level information about the operation to be performed.
+
+## X.509 Certificate Auto-Chaining Disabled by Default
+A TLS client or server leaf certificate may be optionally loaded into the `SSL` or `SSL_CTX` with one or
+more CA certificates (chain certificates) used to establish the authenticity of the leaf certificate. This can be
+done through several avenues such as `SSL_use_certificate_chain_file`/`SSL_CTX_use_certificate_chain_file` or through a
+a more verbose setup using `SSL_use_certificate_file`/`SSL_CTX_use_certificate_file` followed by
+`SSL_add0_chain_cert`/`SSL_CTX_add0_chain_cert` as just one example. **Note:** there are other certificate loading
+functions that have not been listed here.
+
+By default AWS-LC does not perform X.509 certificate auto-chaining when constructing the TLS client or server
+certificate to be sent over the TLS connection as part of a `Certificate` message frame. AWS-LC TLS
+client or server will only send an explicitly loaded certificate chain for a client or server certificate using,
+for example, the method calls shown earlier. This means that a leaf certificate will be sent without an accompanying
+chain if one was not provided. This differs from the default OpenSSL behavior, specifically when a single leaf
+certificate is provided without the accompanying chain. In such an instance OpenSSL will attempt to construct the chain
+of certificates from the configured trust store necessary to establish the authenticity of the leaf certificate, and
+will send that construct chain over the wire.
+
+This behavior can be re-enabled in AWS-LC by clearing the `SSL_MODE_NO_AUTO_CHAIN` configuration flag.
+See [configuration-differences](docs/porting/configuration-differences.md).
+
+### Effect on Integrations
+The default behavior of not performing auto-chaining can have impact to higher-level integrations like CPython or Ruby
+if using software builds that utilize AWS-LC for the underlying TLS implementation.

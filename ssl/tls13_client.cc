@@ -420,8 +420,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   uint16_t version;
   if (!supported_versions.present ||
       !CBS_get_u16(&supported_versions.data, &version) ||
-      CBS_len(&supported_versions.data) != 0 ||
-      version != ssl->version) {
+      CBS_len(&supported_versions.data) != 0 || version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
@@ -497,15 +496,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   // Resolve ECDHE and incorporate it into the secret.
   Array<uint8_t> dhe_secret;
   alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &alert,
-                                           &key_share.data)) {
+  if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &ssl->s3->peer_key,
+                                           &alert, &key_share.data)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
   if (!tls13_advance_key_schedule(hs, dhe_secret) ||
-      !ssl_hash_message(hs, msg) ||
-      !tls13_derive_handshake_secrets(hs)) {
+      !ssl_hash_message(hs, msg) || !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
 
@@ -1076,8 +1074,9 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
       !CBS_get_u32(body, &session->ticket_age_add) ||
       !CBS_get_u8_length_prefixed(body, &ticket_nonce) ||
       !CBS_get_u16_length_prefixed(body, &ticket) ||
+      CBS_len(&ticket) == 0 ||  //
       !session->ticket.CopyFrom(ticket) ||
-      !CBS_get_u16_length_prefixed(body, &extensions) ||
+      !CBS_get_u16_length_prefixed(body, &extensions) ||  //
       CBS_len(body) != 0) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);

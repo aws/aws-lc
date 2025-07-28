@@ -1,0 +1,20 @@
+--- ./servers/slapd/main.c	2024-01-29 18:53:15.000000000 +0000
++++ ./servers/slapd/main.c	2024-01-29 18:22:49.300948791 +0000
+@@ -43,6 +43,8 @@
+ #include "slapi/slapi.h"
+ #endif
+ 
++#include <openssl/crypto.h>
++
+ #ifdef LDAP_SIGCHLD
+ static RETSIGTYPE wait4child( int sig );
+ #endif
+@@ -764,6 +766,8 @@
+ 
+ 	if ( version ) {
+ 		fprintf( stderr, "%s\n", Versionstr );
++		fprintf( stderr, "COMPILE OPENSSL VERSION: %s\n", OPENSSL_VERSION_TEXT);
++		fprintf( stderr, "RUNTIME OPENSSL VERSION: %s\n", OpenSSL_version(OPENSSL_VERSION));
+ 		if ( version > 2 ) {
+ 			if ( slap_oinfo[0].ov_type ) {
+ 				fprintf( stderr, "Included static overlays:\n");

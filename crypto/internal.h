@@ -115,6 +115,8 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#include "fipsmodule/rand/snapsafe_detect.h"
+
 #include <assert.h>
 #include <string.h>
 
@@ -139,7 +141,8 @@
 #endif
 
 #if defined(OPENSSL_THREADS) && \
-    (!defined(OPENSSL_WINDOWS) || defined(__MINGW32__))
+    (!defined(OPENSSL_WINDOWS) || \
+        (defined(__MINGW32__) && !defined(__clang__)))
 #include <pthread.h>
 #define OPENSSL_PTHREADS
 #endif
@@ -151,6 +154,8 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
+
+#include <stdbool.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -196,12 +201,28 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_FALLTHROUGH
 #endif
 
-// For convenience in testing 64-bit generic code, we allow disabling SSE2
-// intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. x86_64 always has SSE2
-// available, so we would otherwise need to test such code on a non-x86_64
-// platform.
-#if defined(__SSE2__) && !defined(OPENSSL_NO_SSE2_FOR_TESTING)
+// GCC-like compilers indicate SSE2 with |__SSE2__|. MSVC leaves the caller to
+// know that x86_64 has SSE2, and uses _M_IX86_FP to indicate SSE2 on x86.
+// https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170
+#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
+    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
 #define OPENSSL_SSE2
+#endif
+
+#if defined(OPENSSL_X86) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SSE2)
+#error \
+    "x86 assembly requires SSE2. Build with -msse2 (recommended), or disable assembly optimizations with -DOPENSSL_NO_ASM."
+#endif
+
+// For convenience in testing the fallback code, we allow disabling SSE2
+// intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. We require SSE2 on x86 and
+// x86_64, so we would otherwise need to test such code on a non-x86 platform.
+//
+// This does not remove the above requirement for SSE2 support with assembly
+// optimizations. It only disables some intrinsics-based optimizations so that
+// we can test the fallback code on CI.
+#if defined(OPENSSL_SSE2) && defined(OPENSSL_NO_SSE2_FOR_TESTING)
+#undef OPENSSL_SSE2
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -454,6 +475,42 @@ static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
                                       (crypto_word_t)(b)));
 }
 
+// constant_time_select_array_w applies |constant_time_select_w| on each
+// corresponding pair of elements of a and b.
+static inline void constant_time_select_array_w(
+        crypto_word_t *c, crypto_word_t *a, crypto_word_t *b,
+        crypto_word_t mask, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    c[i] = constant_time_select_w(mask, a[i], b[i]);
+  }
+}
+
+static inline void constant_time_select_array_8(
+        uint8_t *c, uint8_t *a, uint8_t *b, uint8_t mask, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    c[i] = constant_time_select_8(mask, a[i], b[i]);
+  }
+}
+
+// constant_time_select_entry_from_table_w selects the idx-th entry from table.
+static inline void constant_time_select_entry_from_table_w(
+        crypto_word_t *out, crypto_word_t *table,
+        size_t idx, size_t num_entries, size_t entry_size) {
+  for (size_t i = 0; i < num_entries; i++) {
+    crypto_word_t mask = constant_time_eq_w(i, idx);
+    constant_time_select_array_w(out, &table[i * entry_size], out, mask, entry_size);
+  }
+}
+
+static inline void constant_time_select_entry_from_table_8(
+        uint8_t *out, uint8_t *table, size_t idx,
+        size_t num_entries, size_t entry_size) {
+  for (size_t i = 0; i < num_entries; i++) {
+    uint8_t mask = (uint8_t)(constant_time_eq_w(i, idx));
+    constant_time_select_array_8(out, &table[i * entry_size], out, mask, entry_size);
+  }
+}
+
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
 
 // CONSTTIME_SECRET takes a pointer and a number of bytes and marks that region
@@ -498,6 +555,12 @@ static inline int constant_time_declassify_int(int v) {
   return value_barrier_u32(v);
 }
 
+// declassify_assert behaves like |assert| but declassifies the result of
+// evaluating |expr|. This allows the assertion to branch on the (presumably
+// public) result, but still ensures that values leading up to the computation
+// were secret.
+#define declassify_assert(expr) assert(constant_time_declassify_int(expr))
+
 
 // Thread-safe initialisation.
 
@@ -526,10 +589,18 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 // Reference counting.
 
-// Automatically enable C11 atomics if implemented.
-#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
-    !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L
+#include <stdatomic.h>
+// CRYPTO_refcount_t is a |uint32_t|
+#define AWS_LC_ATOMIC_LOCK_FREE ATOMIC_LONG_LOCK_FREE
+#else
+#define AWS_LC_ATOMIC_LOCK_FREE 0
+#endif
+
+// Automatically enable C11 atomics if implemented and lock free
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) && \
+    AWS_LC_ATOMIC_LOCK_FREE == 2
 #define OPENSSL_C11_ATOMIC
 #endif
 
@@ -633,6 +704,15 @@ OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_read(
 // CRYPTO_STATIC_MUTEX_unlock_write unlocks |lock| for writing.
 OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_write(
     struct CRYPTO_STATIC_MUTEX *lock);
+
+#if !defined(NDEBUG)
+// CRYPTO_STATIC_MUTEX_is_write_locked checks whether |lock| has an active write
+// lock. If it does, the function returns 1. If it doesn't, it returns 0. Returns -1
+// on any other error. Note that due to the concurrent nature of locks, the result
+// may be stale by the time it is used.
+OPENSSL_EXPORT int CRYPTO_STATIC_MUTEX_is_write_locked(
+    struct CRYPTO_STATIC_MUTEX *lock);
+#endif
 
 #if defined(__cplusplus)
 extern "C++" {
@@ -1103,13 +1183,13 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
                                        uint32_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
   return CRYPTO_GENERIC_ADDC(x, y, carry, out_carry);
 }
 
 static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
                                        uint64_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
   return CRYPTO_GENERIC_ADDC(x, y, carry, out_carry);
 }
 
@@ -1117,7 +1197,7 @@ static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
 
 static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
                                        uint32_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
   uint64_t ret = carry;
   ret += (uint64_t)x + y;
   *out_carry = (uint32_t)(ret >> 32);
@@ -1126,7 +1206,7 @@ static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
 
 static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
                                        uint64_t *out_carry) {
-  assert(carry <= 1);
+  declassify_assert(carry <= 1);
 #if defined(BORINGSSL_HAS_UINT128)
   uint128_t ret = carry;
   ret += (uint128_t)x + y;
@@ -1155,13 +1235,13 @@ static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
 
 static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
                                        uint32_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   return CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow);
 }
 
 static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
                                        uint64_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   return CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow);
 }
 
@@ -1169,7 +1249,7 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
                                        uint32_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   uint32_t ret = x - y - borrow;
   *out_borrow = (x < y) | ((x == y) & borrow);
   return ret;
@@ -1177,7 +1257,7 @@ static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
 
 static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
                                        uint64_t *out_borrow) {
-  assert(borrow <= 1);
+  declassify_assert(borrow <= 1);
   uint64_t ret = x - y - borrow;
   *out_borrow = (x < y) | ((x == y) & borrow);
   return ret;
@@ -1197,23 +1277,28 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 // FIPS functions.
 
-#if defined(AWSLC_FIPS)
-#define MAX_KEYGEN_ATTEMPTS  5
-#else
-#define MAX_KEYGEN_ATTEMPTS  1
-#endif
-
 #if defined(BORINGSSL_FIPS)
 
-// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
-#if defined(_MSC_VER)
-__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+// AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
+// fails. The behavior depends on how AWS-LC is built:
+// - When AWS-LC is not in FIPS mode it prints |message| to |stderr|.
+// - If AWS-LC is built with FIPS it prints |message| to |stderr| and prevents
+//     any further cryptographic operations by the current process.
+// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
+//      application does not define the AWS_LC_fips_failure_callback function
+//      the normal behavior FIPS behavior is used.
+// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
+//      application defines the AWS_LC_fips_failure_callback function that
+//      function is called with |message|.
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+void AWS_LC_FIPS_failure(const char* message);
 #else
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#if defined(_MSC_VER)
+__declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
+#else
+void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
-
+#endif
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.
 // Call |BORINGSSL_self_test| to run every self test.
@@ -1234,6 +1319,26 @@ void boringssl_ensure_ecc_self_test(void);
 // if unsuccessful.
 void boringssl_ensure_ffdh_self_test(void);
 
+// boringssl_ensure_ml_kem_self_test checks whether the ML-KEM self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ml_kem_self_test(void);
+
+// boringssl_ensure_ml_dsa_self_test checks whether the ML-DSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ml_dsa_self_test(void);
+
+// boringssl_ensure_eddsa_self_test checks whether the EdDSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_eddsa_self_test(void);
+
+// boringssl_ensure_hasheddsa_self_test checks whether the HashEdDSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_hasheddsa_self_test(void);
+
 #else
 
 // Outside of FIPS mode, the lazy tests are no-ops.
@@ -1241,13 +1346,20 @@ void boringssl_ensure_ffdh_self_test(void);
 OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ml_kem_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
+
+// Outside of FIPS mode AWS_LC_FIPS_failure simply logs the message to stderr
+void AWS_LC_FIPS_failure(const char* message);
 
 #endif  // FIPS
 
-// boringssl_self_test_sha256 performs a SHA-256 KAT.
+// boringssl_self_test_sha256 performs a SHA-256 KAT
 int boringssl_self_test_sha256(void);
 
-// boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
+  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
 int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
@@ -1281,6 +1393,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_data_order_shaext
 //   7: aes_gcm_encrypt_avx512
+//   8: RSAZ_mod_exp_avx512_x2
 // On AARCH64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
@@ -1307,11 +1420,9 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
     OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
 
 
-// Experimental Safety Macros
+// Experimental safety macros inspired by s2n-tls.
 
-// Inspired by s2n-tls
-
-// __AWS_LC_ENSURE checks if |cond| is true nothing happens, else |action| is called
+// If |cond| is false |action| is invoked, otherwise nothing happens.
 #define __AWS_LC_ENSURE(cond, action) \
     do {                           \
         if (!(cond)) {             \
@@ -1322,12 +1433,24 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 #define AWS_LC_ERROR 0
 #define AWS_LC_SUCCESS 1
 
-// RESULT_GUARD_PTR checks |ptr|: if it is null it adds ERR_R_PASSED_NULL_PARAMETER
-// to the error queue and returns 0, if it is not null nothing happens.
+// GUARD_PTR checks |ptr|: if it is NULL it adds |ERR_R_PASSED_NULL_PARAMETER|
+// to the error queue and returns 0, if it is not NULL nothing happens.
+//
 // NOTE: this macro should only be used with functions that return 0 (for error)
 // and 1 (for success).
 #define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
                                        return AWS_LC_ERROR)
+
+
+// Windows doesn't really support weak symbols as of May 2019, and Clang on
+// Windows will emit strong symbols instead. See
+// https://bugs.llvm.org/show_bug.cgi?id=37598
+#if defined(__ELF__) && defined(__GNUC__)
+#define WEAK_SYMBOL_FUNC(rettype, name, args) \
+rettype name args __attribute__((weak));
+#else
+#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
+#endif
 
 #if defined(__cplusplus)
 }  // extern C

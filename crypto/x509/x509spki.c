@@ -60,6 +60,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/x509.h>
+#include "internal.h"
 
 int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *x, EVP_PKEY *pkey) {
   if ((x == NULL) || (x->spkac == NULL)) {
@@ -68,7 +69,7 @@ int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *x, EVP_PKEY *pkey) {
   return (X509_PUBKEY_set(&(x->spkac->pubkey), pkey));
 }
 
-EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *x) {
+EVP_PKEY *NETSCAPE_SPKI_get_pubkey(const NETSCAPE_SPKI *x) {
   if ((x == NULL) || (x->spkac == NULL)) {
     return NULL;
   }
@@ -130,4 +131,48 @@ char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki) {
   EVP_EncodeBlock((unsigned char *)b64_str, der_spki, der_len);
   OPENSSL_free(der_spki);
   return b64_str;
+}
+
+int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki) {
+  if (out == NULL || spki == NULL || spki->spkac == NULL ||
+      spki->spkac->pubkey == NULL || spki->sig_algor == NULL ||
+      spki->sig_algor->algorithm == NULL || spki->signature == NULL ||
+      spki->signature->data == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  BIO_printf(out, "Netscape SPKI:\n");
+
+  // Print out public key algorithm and contents.
+  ASN1_OBJECT *spkioid;
+  X509_PUBKEY_get0_param(&spkioid, NULL, NULL, NULL, spki->spkac->pubkey);
+  int spkioid_nid = OBJ_obj2nid(spkioid);
+  BIO_printf(out, "  Public Key Algorithm: %s\n",
+             (spkioid_nid == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(spkioid_nid));
+  EVP_PKEY *pkey = X509_PUBKEY_get0(spki->spkac->pubkey);
+  if (pkey == NULL) {
+    BIO_printf(out, "  Unable to load public key\n");
+  } else {
+    EVP_PKEY_print_public(out, pkey, 4, NULL);
+  }
+
+  ASN1_IA5STRING *chal = spki->spkac->challenge;
+  if (chal != NULL && chal->length != 0) {
+    BIO_printf(out, "  Challenge String: %.*s\n", chal->length, chal->data);
+  }
+
+  // Print out signature algorithm and contents.
+  BIO_printf(out, "  Signature Algorithm: %s",
+             (OBJ_obj2nid(spki->sig_algor->algorithm) == NID_undef)
+                 ? "UNKNOWN"
+                 : OBJ_nid2ln(OBJ_obj2nid(spki->sig_algor->algorithm)));
+  for (int i = 0; i < spki->signature->length; i++) {
+    if ((i % 18) == 0) {
+      BIO_printf(out, "\n      ");
+    }
+    BIO_printf(out, "%02x%s", (unsigned char)spki->signature->data[i],
+               ((i + 1) == spki->signature->length) ? "" : ":");
+  }
+  BIO_write(out, "\n", 1);
+  return 1;
 }

@@ -3,13 +3,14 @@
 
 #include <gtest/gtest.h>
 #include <ctime>
+#include <fstream>
 
 #include <openssl/ocsp.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
-#include "../internal.h"
 #include "../../tool/transport_common.h"
+#include "../internal.h"
 #include "../test/test_util.h"
 #include "internal.h"
 
@@ -28,7 +29,8 @@ static void isCertificateExpiring(X509 *cert) {
   if (X509_cmp_time_posix(X509_get_notAfter(cert), warning_time) < 0) {
     fprintf(stdout, "\n\n\n\n");
     X509_NAME_print_ex_fp(stdout, X509_get_subject_name(cert), 0, 0);
-    fprintf(stdout, " WILL EXPIRE IN A YEAR, PLEASE REPLACE ME WITH THE NEW"
+    fprintf(stdout,
+            " WILL EXPIRE IN A YEAR, PLEASE REPLACE ME WITH THE NEW"
             " EXPECTED ROOT CERTIFICATE FROM THE ENDPOINT.\n\n\n\n");
   }
 }
@@ -47,8 +49,8 @@ static X509_STORE *SetupTrustStore() {
 }
 
 static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
-                            X509 *certificate,
-                            OCSP_REQUEST *request) {
+                                      X509 *certificate,
+                                      OCSP_REQUEST *request) {
   // Connect to OCSP Host. Connect to the defined OCSP responder if specified.
   // Otherwise, we connect to the OCSP responder specified in the cert.
   char *host = nullptr;
@@ -74,9 +76,8 @@ static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
   // Set up an |OCSP_REQ_CTX| to be sent out.
   bssl::UniquePtr<OCSP_REQ_CTX> ocsp_ctx(
       OCSP_sendreq_new(http_bio.get(), "/", nullptr, -1));
-  OCSP_REQ_CTX_add1_header(
-      ocsp_ctx.get(), "Host",
-      ocsp_responder_host ? ocsp_responder_host : host);
+  OCSP_REQ_CTX_add1_header(ocsp_ctx.get(), "Host",
+                           ocsp_responder_host ? ocsp_responder_host : host);
   OCSP_REQ_CTX_set1_req(ocsp_ctx.get(), request);
 
   // Try connecting to the OCSP responder endpoint with a timeout of 8 seconds.
@@ -181,7 +182,7 @@ static const IntegrationTestVector kIntegrationTestVectors[] = {
     // Connect to an unauthorized OCSP responder endpoint. This will
     // successfully get an OCSP response, but the OCSP response will not be
     // valid.
-    {"valid.rootca1.demo.amazontrust.com", "ocsp.comodoca.com", true, false, 0,
+    {"valid.rootca1.demo.amazontrust.com", "ocsp.sectigo.com", true, false, 0,
      0},
     // Connect to a non-OCSP responder endpoint. These should fail to get an
     // OCSP response, unless these hosts decide to become OCSP responders.
@@ -203,7 +204,7 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   // certificate chain the endpoint uses.
   int sock = -1;
   ASSERT_TRUE(InitSocketLibrary());
-  ASSERT_TRUE(Connect(&sock, t.url_host));
+  ASSERT_TRUE(Connect(&sock, t.url_host, false));
   ASSERT_TRUE(SSL_library_init());
   bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ssl_ctx);
@@ -256,4 +257,287 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
 
   bio.release();
   cert_id.release();
+}
+
+#define VALID 'V'
+#define REVOKED 'R'
+
+struct Certificate {
+  char statusFlag;             // Certificate status flag (V, R, E)
+  std::string expirationDate;  // Expiration date in [YY]YYMMDDHHMMSSZ format
+  std::string revocationDate;  // Revocation date in [YY]YYMMDDHHMMSSZ format
+                               // (empty if not revoked)
+  std::string serialNumber;    // Serial number in hex
+  std::string fileName;        // Certificate filename or 'unknown'
+  std::string subjectDN;       // Certificate subject DN
+};
+
+static std::vector<const Certificate *> parse_ca_database(
+    const std::string &filename) {
+  std::vector<const Certificate *> certificates;
+
+  std::string db = GetTestData(filename.c_str());
+  std::istringstream stream(db);
+  std::string line;
+  while (std::getline(stream, line)) {
+    std::istringstream iss(line);
+    auto *cert = new Certificate;
+
+    // Parsing status flag
+    iss >> cert->statusFlag;
+    iss.ignore();  // Ignore the space after the flag
+
+    // Parsing expiration date
+    iss >> cert->expirationDate;
+    iss.ignore();
+
+    // Parsing revocation date. This only exists if the cert is revoked.
+    if (cert->statusFlag == REVOKED) {
+      iss >> cert->revocationDate;
+      iss.ignore();
+    }
+
+    // Parsing serial number
+    iss >> cert->serialNumber;
+    iss.ignore();
+
+    iss >> cert->fileName;
+    iss.ignore();
+
+    // Parsing the subject DN (remaining part of the line)
+    std::getline(iss, cert->subjectDN);
+
+    certificates.push_back(cert);
+  }
+
+  return certificates;
+}
+
+static const Certificate *lookup_serial_number(
+    const std::vector<const Certificate *> &certificates,
+    ASN1_INTEGER *serial_number) {
+  bssl::UniquePtr<BIGNUM> bnser(ASN1_INTEGER_to_BN(serial_number, nullptr));
+  bssl::UniquePtr<char> asciiHex(BN_bn2hex(bnser.get()));
+
+  for (auto &cert : certificates) {
+    if (cert->serialNumber == asciiHex.get()) {
+      return cert;
+    }
+  }
+  return nullptr;
+}
+
+// Replicate basic functionalities of an OCSP responder.
+static bool LocalMockOCSPResponder(BIO *bio, const X509 *ca_cert,
+                                   const std::string &ca_txt_db) {
+  std::vector<const Certificate *> certificates =
+      parse_ca_database("crypto/ocsp/test/aws/" + ca_txt_db);
+
+  // Set up OCSP responder server credentials
+  bssl::UniquePtr<X509> signer_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ocsp_cert.pem").c_str())
+          .c_str()));
+  EXPECT_TRUE(signer_cert);
+  bssl::UniquePtr<EVP_PKEY> signer_key(EVP_PKEY_new());
+  bssl::UniquePtr<RSA> rsa(RSAFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ocsp_key.pem").c_str())
+          .c_str()));
+  EXPECT_TRUE(rsa);
+  EXPECT_TRUE(EVP_PKEY_set1_RSA(signer_key.get(), rsa.get()));
+
+  // Read request from |bio|.
+  bssl::UniquePtr<OCSP_REQUEST> request(d2i_OCSP_REQUEST_bio(bio, nullptr));
+  EXPECT_TRUE(request);
+
+  // Set up an |OCSP_BASICRESP| to send back to the requester.
+  bssl::UniquePtr<OCSP_BASICRESP> basic_response(OCSP_BASICRESP_new());
+  EXPECT_TRUE(basic_response);
+
+  bssl::UniquePtr<ASN1_TIME> this_update(
+      ASN1_GENERALIZEDTIME_set(nullptr, std::time(nullptr)));
+  EXPECT_TRUE(this_update);
+  bssl::UniquePtr<ASN1_TIME> next_update(
+      ASN1_GENERALIZEDTIME_set(nullptr, std::time(nullptr) + 3600));
+  EXPECT_TRUE(next_update);
+
+  int onereq_count = OCSP_request_onereq_count(request.get());
+  // Examine each certificate id in the request.
+  for (int i = 0; i < onereq_count; i++) {
+    ASN1_OBJECT *cid_md_oid;
+    ASN1_INTEGER *serial;
+
+    OCSP_ONEREQ *one = OCSP_request_onereq_get0(request.get(), i);
+    OCSP_CERTID *cid = OCSP_onereq_get0_id(one);
+    EXPECT_TRUE(OCSP_id_get0_info(nullptr, &cid_md_oid, nullptr, &serial, cid));
+    const EVP_MD *cid_md = EVP_get_digestbyobj(cid_md_oid);
+    EXPECT_TRUE(cid_md);
+
+    // In a typical OCSP responder, this would loop over every |ca_cert|
+    // available to compare, but we only use 1 here for testing simplicity.
+    bssl::UniquePtr<OCSP_CERTID> ca_id(
+        OCSP_cert_to_id(cid_md, nullptr, ca_cert));
+    EXPECT_TRUE(ca_id);
+
+    if (OCSP_id_issuer_cmp(ca_id.get(), cid) != 0) {
+      EXPECT_TRUE(OCSP_basic_add1_status(basic_response.get(), cid,
+                                         V_OCSP_CERTSTATUS_UNKNOWN, 0, nullptr,
+                                         this_update.get(), next_update.get()));
+      continue;
+    }
+
+    // Look for the certificate in our certs database.
+    const Certificate *cert_info = lookup_serial_number(certificates, serial);
+    if (cert_info == nullptr) {
+      EXPECT_TRUE(OCSP_basic_add1_status(basic_response.get(), cid,
+                                         V_OCSP_CERTSTATUS_UNKNOWN, 0, nullptr,
+                                         this_update.get(), next_update.get()));
+    } else if (cert_info->statusFlag == VALID) {
+      EXPECT_TRUE(OCSP_basic_add1_status(basic_response.get(), cid,
+                                         V_OCSP_CERTSTATUS_GOOD, 0, nullptr,
+                                         this_update.get(), next_update.get()));
+    } else if (cert_info->statusFlag == REVOKED) {
+      bssl::UniquePtr<ASN1_TIME> revoked_time(ASN1_UTCTIME_new());
+      EXPECT_TRUE(ASN1_UTCTIME_set_string(revoked_time.get(),
+                                          cert_info->revocationDate.c_str()));
+      EXPECT_TRUE(OCSP_basic_add1_status(
+          basic_response.get(), cid, V_OCSP_CERTSTATUS_REVOKED,
+          OCSP_REVOKED_STATUS_UNSPECIFIED, revoked_time.get(),
+          this_update.get(), next_update.get()));
+    }
+  }
+
+  // This can return 1 or 2 depending on the existence of the request's nonce.
+  // Either are correct.
+  int nonce_copy_status = OCSP_copy_nonce(basic_response.get(), request.get());
+  EXPECT_TRUE(nonce_copy_status == 1 || nonce_copy_status == 2);
+
+  // Do the actual sign.
+  EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
+                              signer_key.get(), EVP_sha256(), nullptr, 0));
+
+  // Write response to |bio| to send back to client.
+  bssl::UniquePtr<OCSP_RESPONSE> response(OCSP_response_create(
+      OCSP_RESPONSE_STATUS_SUCCESSFUL, basic_response.get()));
+  EXPECT_TRUE(response);
+  EXPECT_TRUE(i2d_OCSP_RESPONSE_bio(bio, response.get()));
+
+  for (auto &cert : certificates) {
+    delete cert;
+  }
+  return true;
+}
+
+struct RoundTripTestVector {
+  const char *ca_txt_db;
+  // cert that we're checking the revocation status for.
+  const char *ocsp_request_cert;
+  // OCSP nonces are optional, so we test both scenarios.
+  bool add_nonce;
+  int expected_cert_status;
+};
+
+static const RoundTripTestVector kRoundTripTestVectors[] = {
+    {"certs.txt", "rsa_cert", true, V_OCSP_CERTSTATUS_GOOD},
+    {"certs_revoked.txt", "rsa_cert", true, V_OCSP_CERTSTATUS_REVOKED},
+    {"certs_unknown.txt", "rsa_cert", true, V_OCSP_CERTSTATUS_UNKNOWN},
+    {"certs.txt", "ecdsa_cert", true, V_OCSP_CERTSTATUS_GOOD},
+    {"certs_revoked.txt", "ecdsa_cert", true, V_OCSP_CERTSTATUS_REVOKED},
+    {"certs_unknown.txt", "ecdsa_cert", true, V_OCSP_CERTSTATUS_UNKNOWN},
+    {"certs.txt", "rsa_cert", false, V_OCSP_CERTSTATUS_GOOD},
+    {"certs_revoked.txt", "rsa_cert", false, V_OCSP_CERTSTATUS_REVOKED},
+    {"certs_unknown.txt", "rsa_cert", false, V_OCSP_CERTSTATUS_UNKNOWN},
+    {"certs.txt", "ecdsa_cert", false, V_OCSP_CERTSTATUS_GOOD},
+    {"certs_revoked.txt", "ecdsa_cert", false, V_OCSP_CERTSTATUS_REVOKED},
+    {"certs_unknown.txt", "ecdsa_cert", false, V_OCSP_CERTSTATUS_UNKNOWN},
+};
+
+class OCSPRoundTripTest : public testing::TestWithParam<RoundTripTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPRoundTripTest,
+                         testing::ValuesIn(kRoundTripTestVectors));
+
+// Test a round trip of an OCSP request from an OCSP client <-> OCSP response
+// from an OCSP responder. The contents of this test replicate how an OCSP
+// client would communicate against an OCSP server.
+TEST_P(OCSPRoundTripTest, OCSPRoundTrip) {
+  const RoundTripTestVector &t = GetParam();
+
+  // Set up a |BIO| to communicate with the OCSP responder.
+  bssl::UniquePtr<BIO> communication(BIO_new(BIO_s_mem()));
+
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+
+  // Create OCSP request and request revocation status of |certificate|.
+  bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
+  ASSERT_TRUE(request);
+  bssl::UniquePtr<X509> certificate = CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/" +
+                              std::string(t.ocsp_request_cert) + ".pem")
+                      .c_str())
+          .c_str());
+  ASSERT_TRUE(certificate);
+  OCSP_CERTID *cert_id =
+      OCSP_cert_to_id(EVP_sha1(), certificate.get(), ca_cert.get());
+  EXPECT_TRUE(cert_id);
+  ASSERT_TRUE(OCSP_request_add0_id(request.get(), cert_id));
+  if (t.add_nonce) {
+    ASSERT_TRUE(OCSP_request_add1_nonce(request.get(), nullptr, 0));
+  }
+  EXPECT_TRUE(i2d_OCSP_REQUEST_bio(communication.get(), request.get()));
+
+  // Send OCSP request to local mock OCSP responder.
+  ASSERT_TRUE(
+      LocalMockOCSPResponder(communication.get(), ca_cert.get(), t.ca_txt_db));
+
+  // Parse |response| from local mock OCSP responder.
+  bssl::UniquePtr<OCSP_RESPONSE> response(
+      d2i_OCSP_RESPONSE_bio(communication.get(), nullptr));
+  ASSERT_TRUE(response);
+
+  // Do verifications and check revocation status if the response was
+  // successful.
+  if (OCSP_response_status(response.get()) == OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    bssl::UniquePtr<OCSP_BASICRESP> basic_response(
+        OCSP_response_get1_basic(response.get()));
+    ASSERT_TRUE(basic_response);
+
+    // Verifies the OCSP responder's signature on the OCSP response data.
+    bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+    X509_STORE_add_cert(trust_store.get(), ca_cert.get());
+    EXPECT_EQ(OCSP_basic_verify(basic_response.get(),
+                                CertsToStack({certificate.get()}).get(),
+                                trust_store.get(), 0),
+              1);
+
+    if (t.add_nonce) {
+      EXPECT_EQ(OCSP_check_nonce(request.get(), basic_response.get()),
+                OCSP_NONCE_EQUAL);
+    } else {
+      EXPECT_EQ(OCSP_check_nonce(request.get(), basic_response.get()),
+                OCSP_NONCE_BOTH_ABSENT);
+    }
+
+    // Checks revocation status of the response.
+    int status = -1, revocation_reason = -1;
+    ASN1_GENERALIZEDTIME *this_update = nullptr, *next_update = nullptr,
+                         *revocation_time = nullptr;
+    EXPECT_TRUE(OCSP_resp_find_status(basic_response.get(), cert_id, &status,
+                                      &revocation_reason, &revocation_time,
+                                      &this_update, &next_update));
+    EXPECT_EQ(status, t.expected_cert_status);
+
+    // We just got an OCSP response, so this should never be out of date.
+    EXPECT_TRUE(OCSP_check_validity(this_update, next_update, 0, -1));
+    if (status == V_OCSP_CERTSTATUS_REVOKED) {
+      EXPECT_TRUE(revocation_time);
+      EXPECT_GE(revocation_reason, OCSP_REVOKED_STATUS_UNSPECIFIED);
+      EXPECT_LE(revocation_reason, OCSP_REVOKED_STATUS_AACOMPROMISE);
+      EXPECT_NE(revocation_reason, OCSP_UNASSIGNED_REVOKED_STATUS);
+    } else {
+      EXPECT_FALSE(revocation_time);
+      EXPECT_EQ(revocation_reason, -1);
+    }
+  }
 }

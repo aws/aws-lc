@@ -105,9 +105,10 @@ OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 
 // BIO_read calls the |bio| |callback_ex| if set with |BIO_CB_READ|, attempts to
 // read |len| bytes into |data|, then calls |callback_ex| with
-// |BIO_CB_READ|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_read returns the
-// value from calling the |callback_ex|, otherwise |BIO_read| returns the number
-// of bytes read, zero on EOF, or a negative number on error.
+// |BIO_CB_READ|+|BIO_CB_RETURN|. If |len| is less than or equal to zero, the
+// function does nothing and return zero. If |callback_ex| is set BIO_read
+// returns the value from calling the |callback_ex|, otherwise |BIO_read|
+// returns the number of bytes read, zero on EOF, or a negative number on error.
 OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 
 // BIO_read_ex calls |BIO_read| and stores the number of bytes read in
@@ -119,11 +120,16 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
                                size_t *read_bytes);
 
-// BIO_gets reads a line from |bio| and writes at most |size| bytes into |buf|.
-// It returns the number of bytes read or a negative number on error. This
-// function's output always includes a trailing NUL byte, so it will read at
-// most |size - 1| bytes.
+// BIO_gets calls |callback_ex| from |bio| if set with |BIO_CB_GETS|, attempts
+// to read a line from |bio| and writes at most |size| bytes into |buf|. Then it
+// calls |callback_ex| with |BIO_CB_GETS|+|BIO_CB_RETURN|. If |size| is less
+// than or equal to zero, the function does nothing and returns zero.
+// If |callback_ex| is set, |BIO_gets| returns the value from calling
+// |callback_ex|, otherwise |BIO_gets| returns the number of bytes read, or a
+// negative number on error.
 //
+// This function's output always includes a trailing NUL byte, so it will read
+// at most |size - 1| bytes.
 // If the function read a complete line, the output will include the newline
 // character, '\n'. If no newline was found before |size - 1| bytes or EOF, it
 // outputs the bytes which were available.
@@ -131,9 +137,10 @@ OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 
 // BIO_write call the |bio| |callback_ex| if set with |BIO_CB_WRITE|, writes
 // |len| bytes from |data| to |bio|, then calls |callback_ex| with
-// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_write returns the
-// value from calling the |callback_ex|, otherwise |BIO_write| returns the
-// number of bytes written, or a negative number on error.
+// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |len| is less than or equal to zero, the
+// function does nothing and return zero. If |callback_ex| is set BIO_write
+// returns the value from calling the |callback_ex|, otherwise |BIO_write|
+// returns the number of bytes written, or a negative number on error.
 OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);
 
 // BIO_write_ex calls |BIO_write| and stores the number of bytes written in
@@ -146,8 +153,13 @@ OPENSSL_EXPORT int BIO_write_ex(BIO *bio, const void *data, size_t data_len,
 // It returns one if all bytes were successfully written and zero on error.
 OPENSSL_EXPORT int BIO_write_all(BIO *bio, const void *data, size_t len);
 
-// BIO_puts writes a NUL terminated string from |buf| to |bio|. It returns the
-// number of bytes written or a negative number on error.
+// BIO_puts calls the |bio| |callback_ex| if set with |BIO_CB_PUTS|, attempts 
+// to write a NUL terminated string from |buf| to |bio|, then calls
+// |callback_ex| with |BIO_CB_PUTS|+|BIO_CB_RETURN|. If |callback_ex| is set
+// BIO_puts returns the value from calling the |callback_ex|, otherwise
+// |BIO_puts| returns the number of bytes written, or a negative number on 
+// error. Unless the application defines a custom bputs method, this will 
+// delegate to using bwrite.
 OPENSSL_EXPORT int BIO_puts(BIO *bio, const char *buf);
 
 // BIO_flush flushes any buffered output. It returns one on success and zero
@@ -160,9 +172,10 @@ OPENSSL_EXPORT int BIO_flush(BIO *bio);
 // These are generic functions for sending control requests to a BIO. In
 // general one should use the wrapper functions like |BIO_get_close|.
 
-// BIO_ctrl sends the control request |cmd| to |bio|. The |cmd| argument should
-// be one of the |BIO_C_*| values.
-OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg);
+// BIO_ctrl call the |bio| |callback_ex| if set with |BIO_CB_CTRL|, sends the 
+// control request |cmd| to |bio|, then calls |callback_ex| with |BIO_CB_CTRL| 
+// + |BIO_CB_RETURN|. The |cmd| argument should be one of the |BIO_C_*| values.
+OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ptr_ctrl acts like |BIO_ctrl| but passes the address of a |void*|
 // pointer as |parg| and returns the value that is written to it, or NULL if
@@ -176,7 +189,7 @@ OPENSSL_EXPORT long BIO_int_ctrl(BIO *bp, int cmd, long larg, int iarg);
 // BIO_reset resets |bio| to its initial state, the precise meaning of which
 // depends on the concrete type of |bio|. It returns one on success and zero
 // otherwise.
-OPENSSL_EXPORT int BIO_reset(BIO *bio);
+OPENSSL_EXPORT int BIO_reset(BIO *bio) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_eof returns non-zero when |bio| has reached end-of-file. The precise
 // meaning of which depends on the concrete type of |bio|. Note that in the
@@ -282,6 +295,17 @@ typedef long (*BIO_callback_fn_ex)(BIO *bio, int oper, const char *argp,
                                    size_t len, int argi, long argl, int bio_ret,
                                    size_t *processed);
 
+  // |BIO_callback_fn_ex| parameters have the following meaning:
+  //    |bio| the bio that made the call
+  //    |oper| the operation being performed, may be or'd with |BIO_CB_RETURN|
+  //    |argp| and |argl| depends on the value of oper
+  //    |argi| is used to hold len value for |BIO_CB_READ|, |BIO_CB_WRITE|, and
+  //    |BIO_CB_GETS|
+  //    |bio_ret| is the return value from the BIO method itself,
+  //    or value of processed where applicable
+typedef long (*BIO_callback_fn)(BIO *bio, int oper, const char *argp,
+    int argi, long argl, long bio_ret);
+
 
 // BIO_callback_ctrl allows the callback function to be manipulated. The |cmd|
 // arg will generally be |BIO_CTRL_SET_CALLBACK| but arbitrary command values
@@ -304,16 +328,24 @@ OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);
 // otherwise.
 OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
+// BIO_get_close returns the close flag for |bio|.
+OPENSSL_EXPORT int BIO_get_close(BIO *bio);
+
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
 
 // BIO_number_written returns the number of bytes that have been written to
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
+
+// BIO_set_callback sets the legacy |callback| for |bio|. When both |callback| and
+// |callback_ex| are set, |callback_ex| will be used. Added for compatibility with
+// existing applications.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void BIO_set_callback(BIO *bio, BIO_callback_fn callback);
 
 // BIO_set_callback_arg sets the callback |arg| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
@@ -377,6 +409,11 @@ OPENSSL_EXPORT int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent);
 OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
                                unsigned indent);
 
+// BIO_dump writes a hex dump of |data| for |len| bytes to |bio|.
+// It returns the exact number of bytes written to |bio| on success, or a negative value on error.
+// If |len| is zero or |data| is NULL with |len| being zero, it returns 0.
+OPENSSL_EXPORT int BIO_dump(BIO *bio, const void *data, int len);
+
 // ERR_print_errors prints the current contents of the error stack to |bio|
 // using human readable strings where possible.
 OPENSSL_EXPORT void ERR_print_errors(BIO *bio);
@@ -425,9 +462,11 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 // don't depend on this in new code.
 OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len);
 
-// BIO_mem_contents sets |*out_contents| to point to the current contents of
-// |bio| and |*out_len| to contain the length of that data. It returns one on
-// success and zero otherwise.
+// BIO_mem_contents sets |*out_contents|, if not null, to point to the current
+// contents of|bio| and |*out_len|, if not null, to contain the length of
+// that data.
+//
+// It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
                                     const uint8_t **out_contents,
                                     size_t *out_len);
@@ -436,9 +475,9 @@ OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
 // and returns the length of the data. Despite being a macro, this function
 // should always take |char *| as a value and nothing else.
 //
-// WARNING: don't use this, use |BIO_mem_contents|. A return value of zero from
-// this function can mean either that it failed or that the memory buffer is
-// empty.
+// WARNING: don't use this, use |BIO_mem_contents|. A negative return value
+// or zero from this function can mean either that it failed or that the
+// memory buffer is empty.
 #define BIO_get_mem_data(bio, contents) BIO_ctrl(bio, BIO_CTRL_INFO, 0, \
                                                 (char *)(contents))
 // BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of
@@ -552,22 +591,26 @@ OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
 
 // BIO_read_filename opens |filename| for reading and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|
-// will be closed when |bio| is freed.
+// will be closed when |bio| is freed. On Windows, the file is opened in binary
+// mode.
 OPENSSL_EXPORT int BIO_read_filename(BIO *bio, const char *filename);
 
 // BIO_write_filename opens |filename| for writing and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|
-// will be closed when |bio| is freed.
+// will be closed when |bio| is freed. On Windows, the file is opened in binary
+// mode.
 OPENSSL_EXPORT int BIO_write_filename(BIO *bio, const char *filename);
 
 // BIO_append_filename opens |filename| for appending and sets the result as
 // the |FILE| for |bio|. It returns one on success and zero otherwise. The
-// |FILE| will be closed when |bio| is freed.
+// |FILE| will be closed when |bio| is freed. On Windows, the file is opened in
+// binary mode.
 OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 
 // BIO_rw_filename opens |filename| for reading and writing and sets the result
 // as the |FILE| for |bio|. It returns one on success and zero otherwise. The
-// |FILE| will be closed when |bio| is freed.
+// |FILE| will be closed when |bio| is freed. On Windows, the file is opened in
+// binary mode.
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
 
 // BIO_tell returns the file offset of |bio|, or a negative number on error or
@@ -658,17 +701,44 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 #endif  // !OPENSSL_NO_SOCK
 
 
+// Message digest BIOs
+
+// BIO_f_md provides a filter |BIO| that digests any data passed through it.
+// The BIO must be initialized with |BIO_set_md| or |BIO_get_md_ctx| before it
+// can be used.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
+
+// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|. It returns
+// one on success and zero on error.
+OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
+
+// BIO_set_md set's |b|'s EVP_MD* to |md|. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
+
+// BIO_get_md set's |*md| to |b|'s |EVP_MD*|. It returns one on success and zero
+// on error.
+OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
+
+
 // Datagram BIOs.
-//
-// TODO(fork): not implemented.
+
+#define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
+#define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
+                                          * socket to be passed in */
+
+# define BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP 37 // flag whether the last
+# define BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP 38 // I/O operation tiemd out
 
 #define BIO_CTRL_DGRAM_QUERY_MTU 40  // as kernel for current MTU
-
+#define BIO_CTRL_DGRAM_GET_MTU 41 // get cached value for MTU
 #define BIO_CTRL_DGRAM_SET_MTU 42 /* set cached value for  MTU. want to use
-                                     this if asking the kernel fails */
+                                   * this if asking the kernel fails */
 
-#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
+#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceeded in
                                           the previous write operation. */
+
+#define BIO_CTRL_DGRAM_SET_PEER           44 // Destination for the data
 
 // BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
 // and depends on |timeval|, which is not 2038-clean on all platforms.
@@ -677,6 +747,95 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 
 #define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
 
+
+#if !defined(OPENSSL_NO_SOCK)
+
+typedef union bio_addr_st BIO_ADDR;
+
+// BIO_s_datagram returns the datagram |BIO_METHOD|. A datagram BIO provides a wrapper
+// around datagram sockets.
+OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_new_dgram creates a new datagram BIO wrapping |fd|. If |close_flag| is
+// non-zero, then |fd| will be closed when the BIO is freed.
+OPENSSL_EXPORT BIO *BIO_new_dgram(int fd, int close_flag) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_ctrl_dgram_connect attempts to connect the datagram BIO to the specified
+// |peer| address. It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_ctrl_dgram_connect(BIO *bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_ctrl_set_connected marks the datagram BIO as connected to the specified
+// |peer| address. This is used for handling DTLS connection-oriented BIOs.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_ctrl_set_connected(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_recv_timedout returns 1 if the most recent datagram receive
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_recv_timedout(BIO* bp) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_send_timedout returns 1 if the most recent datagram send
+// operation on |bp| timed out, and a non-positive value otherwise. Any error
+// for this socket gets reset by this call.
+OPENSSL_EXPORT int BIO_dgram_send_timedout(BIO *bp) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_get_peer stores the address of the peer the datagram BIO is
+// connected to in |peer|. It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_ADDR_new allocates and initializes a new BIO_ADDR structure.
+// Returns the new BIO_ADDR structure on success, NULL on error.
+OPENSSL_EXPORT BIO_ADDR *BIO_ADDR_new(void);
+
+// BIO_ADDR_copy copies the contents of the BIO_ADDR structure from src to dst.
+// Returns 1 on success, 0 on error.
+OPENSSL_EXPORT int BIO_ADDR_copy(BIO_ADDR *dst, const BIO_ADDR *src);
+
+// BIO_ADDR_dup creates a copy of the BIO_ADDR.
+// Returns the new BIO_ADDR structure on success, NULL on error.
+OPENSSL_EXPORT BIO_ADDR *BIO_ADDR_dup(const BIO_ADDR *ap);
+
+// BIO_ADDR_free releases all resources associated with the BIO_ADDR structure.
+// If 'ap' is NULL, no action occurs.
+OPENSSL_EXPORT void BIO_ADDR_free(BIO_ADDR *ap);
+
+// BIO_ADDR_clear zeros the contents of the BIO_ADDR structure but does not free it.
+// If 'ap' is NULL, no action occurs.
+OPENSSL_EXPORT void BIO_ADDR_clear(BIO_ADDR *ap);
+
+// BIO_ADDR_rawmake sets up a BIO_ADDR with the provided values. |family| is
+// the Address family (e.g., AF_INET, AF_INET6). |where| is a pointer to the
+// address data. |wherelen| is the length of the address data. For AF_UNIX,
+// |wherelen| is expected to be the length of the path string not including the
+// terminating NUL. |port| is the port number in host byte order. Returns 1 on
+// success, 0 on error.
+OPENSSL_EXPORT int BIO_ADDR_rawmake(BIO_ADDR *ap, int family, const void *where,
+                                   size_t wherelen, unsigned short port);
+
+// BIO_ADDR_family returns the address family of the BIO_ADDR.
+// Returns the address family (e.g., AF_INET, AF_INET6) on success,
+// -1 on error.
+OPENSSL_EXPORT int BIO_ADDR_family(const BIO_ADDR *ap);
+
+// BIO_ADDR_rawaddress retrieves the raw address data from a BIO_ADDR structure.
+// The address data from |ap| is copied into the buffer |p| if |p| is not NULL.
+// If |l| is not NULL, |*l| will be updated with the size of the address data.
+// For AF_INET, this is the 4-byte IPv4 address; for AF_INET6, the 16-byte IPv6
+// address; for AF_UNIX, the socket path. With AF_UNIX addresses, the buffer |p|
+// must be large enough for both the path and a NUL terminator. The function will
+// write the terminator to the buffer, but the length stored in |*l| excludes it.
+// Returns 1 on success, 0 if the address family is unsupported or |ap| is NULL.
+OPENSSL_EXPORT int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l);
+
+// BIO_ADDR_rawport returns the port number stored in the BIO_ADDR.
+// Returns the port number in host byte order.
+OPENSSL_EXPORT unsigned short BIO_ADDR_rawport(const BIO_ADDR *ap);
+
+#endif // !defined(OPENSSL_NO_SOCK)
 
 // BIO Pairs.
 //
@@ -689,6 +848,11 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 // |writebuf2| for |*out2|. It returns one on success and zero on error.
 OPENSSL_EXPORT int BIO_new_bio_pair(BIO **out1, size_t writebuf1, BIO **out2,
                                     size_t writebuf2);
+
+// BIO_destroy_bio_pair destroys the connection between |b| and |b->ptr->peer|.
+// It disconnects both BIOs, resets their state, but does not free their memory.
+// It always returns one to indicate success.
+OPENSSL_EXPORT int BIO_destroy_bio_pair(BIO *b);
 
 // BIO_ctrl_get_read_request returns the number of bytes that the other side of
 // |bio| tried (unsuccessfully) to read.
@@ -883,8 +1047,8 @@ OPENSSL_EXPORT void BIO_set_shutdown(BIO *bio, int shutdown);
 // BIO_get_shutdown returns the method-specific "shutdown" bit.
 OPENSSL_EXPORT int BIO_get_shutdown(BIO *bio);
 
-// BIO_meth_set_puts returns one. |BIO_puts| is implemented with |BIO_write| in
-// BoringSSL.
+// BIO_meth_set_puts sets the implementation of |BIO_puts| for |method| and 
+// returns 1.
 OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
                                      int (*puts)(BIO *, const char *));
 
@@ -917,36 +1081,36 @@ OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 // or change the data in any way.
 #define BIO_FLAGS_MEM_RDONLY 0x200
 
-// These are the 'types' of BIOs
-#define BIO_TYPE_NONE 0
-#define BIO_TYPE_MEM (1 | 0x0400)
-#define BIO_TYPE_FILE (2 | 0x0400)
-#define BIO_TYPE_FD (4 | 0x0400 | 0x0100)
-#define BIO_TYPE_SOCKET (5 | 0x0400 | 0x0100)
-#define BIO_TYPE_NULL (6 | 0x0400)
-#define BIO_TYPE_SSL (7 | 0x0200)
-#define BIO_TYPE_MD (8 | 0x0200)                 // passive filter
-#define BIO_TYPE_BUFFER (9 | 0x0200)             // filter
-#define BIO_TYPE_CIPHER (10 | 0x0200)            // filter
-#define BIO_TYPE_BASE64 (11 | 0x0200)            // filter
-#define BIO_TYPE_CONNECT (12 | 0x0400 | 0x0100)  // socket - connect
-#define BIO_TYPE_ACCEPT (13 | 0x0400 | 0x0100)   // socket for accept
-#define BIO_TYPE_PROXY_CLIENT (14 | 0x0200)      // client proxy BIO
-#define BIO_TYPE_PROXY_SERVER (15 | 0x0200)      // server proxy BIO
-#define BIO_TYPE_NBIO_TEST (16 | 0x0200)         // server proxy BIO
-#define BIO_TYPE_NULL_FILTER (17 | 0x0200)
-#define BIO_TYPE_BER (18 | 0x0200)         // BER -> bin filter
-#define BIO_TYPE_BIO (19 | 0x0400)         // (half a) BIO pair
-#define BIO_TYPE_LINEBUFFER (20 | 0x0200)  // filter
-#define BIO_TYPE_DGRAM (21 | 0x0400 | 0x0100)
-#define BIO_TYPE_ASN1 (22 | 0x0200)  // filter
-#define BIO_TYPE_COMP (23 | 0x0200)  // filter
-
 // BIO_TYPE_DESCRIPTOR denotes that the |BIO| responds to the |BIO_C_SET_FD|
 // (|BIO_set_fd|) and |BIO_C_GET_FD| (|BIO_get_fd|) control hooks.
 #define BIO_TYPE_DESCRIPTOR 0x0100  // socket, fd, connect or accept
 #define BIO_TYPE_FILTER 0x0200
 #define BIO_TYPE_SOURCE_SINK 0x0400
+
+// These are the 'types' of BIOs
+#define BIO_TYPE_NONE 0
+#define BIO_TYPE_MEM (1 | BIO_TYPE_SOURCE_SINK)
+#define BIO_TYPE_FILE (2 | BIO_TYPE_SOURCE_SINK)
+#define BIO_TYPE_FD (4 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_SOCKET (5 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_NULL (6 | BIO_TYPE_SOURCE_SINK)
+#define BIO_TYPE_SSL (7 | BIO_TYPE_FILTER)
+#define BIO_TYPE_MD (8 | BIO_TYPE_FILTER)
+#define BIO_TYPE_BUFFER (9 | BIO_TYPE_FILTER)
+#define BIO_TYPE_CIPHER (10 | BIO_TYPE_FILTER)
+#define BIO_TYPE_BASE64 (11 | BIO_TYPE_FILTER)
+#define BIO_TYPE_CONNECT (12 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_ACCEPT (13 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_PROXY_CLIENT (14 | BIO_TYPE_FILTER)
+#define BIO_TYPE_PROXY_SERVER (15 | BIO_TYPE_FILTER)
+#define BIO_TYPE_NBIO_TEST (16 | BIO_TYPE_FILTER)
+#define BIO_TYPE_NULL_FILTER (17 | BIO_TYPE_FILTER)
+#define BIO_TYPE_BER (18 | BIO_TYPE_FILTER)       // BER -> bin filter
+#define BIO_TYPE_BIO (19 | BIO_TYPE_SOURCE_SINK)  // (half a) BIO pair
+#define BIO_TYPE_LINEBUFFER (20 | BIO_TYPE_FILTER)
+#define BIO_TYPE_DGRAM (21 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_ASN1 (22 | BIO_TYPE_FILTER)
+#define BIO_TYPE_COMP (23 | BIO_TYPE_FILTER)
 
 // BIO_TYPE_START is the first user-allocated |BIO| type. No pre-defined type,
 // flag bits aside, may exceed this value.
@@ -957,7 +1121,6 @@ struct bio_method_st {
   const char *name;
   int (*bwrite)(BIO *, const char *, int);
   int (*bread)(BIO *, char *, int);
-  // TODO(fork): remove bputs.
   int (*bputs)(BIO *, const char *);
   int (*bgets)(BIO *, char *, int);
   long (*ctrl)(BIO *, int, long, void *);
@@ -970,11 +1133,29 @@ struct bio_st {
   const BIO_METHOD *method;
   CRYPTO_EX_DATA ex_data;
 
-  // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
+  // If set, |BIO_read|, |BIO_write|, |BIO_free|, |BIO_gets|, |BIO_puts|,
+  // and |BIO_ctrl| execute |callback_ex|.
   // Callbacks are only called with for the following events: |BIO_CB_READ|,
   // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
-  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
+  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
+  // |BIO_CB_PUTS|+|BIO_CB_RETURN|, |BIO_CB_GETS|,
+  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|, 
+  // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
+
+  // Legacy callback function that handles the same events as |callback_ex| but without
+  // length and processed parameters.
+  // When both callbacks are set, |callback_ex| will be used.
+  // Handles |BIO_read|, |BIO_write|, |BIO_free|, |BIO_gets|, |BIO_puts|,
+  // and |BIO_ctrl| operations.
+  // Callbacks are only called with for the following events: |BIO_CB_READ|,
+  // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
+  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
+  // |BIO_CB_PUTS|+|BIO_CB_RETURN|, |BIO_CB_GETS|,
+  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|,
+  // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
+  BIO_callback_fn callback;
+
   // Optional callback argument, only intended for applications use.
   char *cb_arg;
 
@@ -995,7 +1176,7 @@ struct bio_st {
   // next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
   // to |next_bio|.
   BIO *next_bio;  // used by filter BIOs
-  size_t num_read, num_write;
+  uint64_t num_read, num_write;
 };
 
 #define BIO_C_SET_CONNECT 100
@@ -1008,6 +1189,7 @@ struct bio_st {
 #define BIO_C_GET_FILE_PTR 107
 #define BIO_C_SET_FILENAME 108
 #define BIO_C_SET_SSL 109
+#define BIO_C_GET_SSL 110
 #define BIO_C_SET_MD 111
 #define BIO_C_GET_MD 112
 #define BIO_C_GET_CIPHER_STATUS 113
@@ -1061,6 +1243,10 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(BIO, BIO_free)
 BORINGSSL_MAKE_UP_REF(BIO, BIO_up_ref)
 BORINGSSL_MAKE_DELETER(BIO_METHOD, BIO_meth_free)
+
+#if !defined(OPENSSL_NO_SOCK)
+BORINGSSL_MAKE_DELETER(BIO_ADDR, BIO_ADDR_free)
+#endif
 
 BSSL_NAMESPACE_END
 

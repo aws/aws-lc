@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/evp.h>
+#include <openssl/experimental/kem_deterministic_api.h>
 
 #include <string.h>
 
@@ -72,19 +73,16 @@ DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[2] = EVP_PKEY_ec_pkey_meth();
   out->methods[3] = EVP_PKEY_hkdf_pkey_meth();
   out->methods[4] = EVP_PKEY_hmac_pkey_meth();
+  out->methods[5] = EVP_PKEY_ed25519_pkey_meth();
+  out->methods[6] = EVP_PKEY_kem_pkey_meth();
+  out->methods[7] = EVP_PKEY_pqdsa_pkey_meth();
+  out->methods[8] = EVP_PKEY_ed25519ph_pkey_meth();
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
 
-  // First try the fips public key methods. At a later stage, we might want to
-  // reorder these such that we go through the list with the most used public
-  // key method first.
-  // Currently, ED25519 and x25519 in the non-fips list are likely not more popular
-  // than RSA and ECC in the fips list. They may make their way in the fips list when
-  // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186-draft.pdf
-  // and
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5-draft.pdf
-  // are finalised.
+  // First we search through the FIPS public key methods. We assume these are
+  // the most popular.
   const struct fips_evp_pkey_methods *const fips_methods = AWSLC_fips_evp_pkey_methods();
   for (size_t i = 0; i < FIPS_EVP_PKEY_METHODS; i++) {
     if (fips_methods->methods[i]->pkey_id == type) {
@@ -148,6 +146,7 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
 }
 
 EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e) {
+  SET_DIT_AUTO_RESET;
   return evp_pkey_ctx_new(pkey, e, -1);
 }
 
@@ -156,6 +155,7 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e) {
 }
 
 void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (ctx == NULL) {
     return;
   }
@@ -168,6 +168,7 @@ void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx) {
 }
 
 EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (!ctx->pmeth || !ctx->pmeth->copy) {
     return NULL;
   }
@@ -201,10 +202,14 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx) {
   return ret;
 }
 
-EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx) { return ctx->pkey; }
+EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
+  return ctx->pkey;
+}
 
 int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
                       int p1, void *p2) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->ctrl) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
     return 0;
@@ -228,6 +233,7 @@ int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
 }
 
 int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (ctx == NULL || ctx->pmeth == NULL ||
       (ctx->pmeth->sign == NULL && ctx->pmeth->sign_message == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -244,6 +250,7 @@ int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
 
 int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
                   const uint8_t *digest, size_t digest_len) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->sign) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -256,6 +263,7 @@ int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
 }
 
 int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (ctx == NULL || ctx->pmeth == NULL ||
       (ctx->pmeth->verify == NULL && ctx->pmeth->verify_message == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -271,6 +279,7 @@ int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx) {
 
 int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t sig_len,
                     const uint8_t *digest, size_t digest_len) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->verify) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -293,6 +302,7 @@ int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx) {
 
 int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                      const uint8_t *in, size_t inlen) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->encrypt) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -305,6 +315,7 @@ int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
 }
 
 int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->decrypt) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -315,6 +326,7 @@ int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx) {
 
 int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                      const uint8_t *in, size_t inlen) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->decrypt) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -327,6 +339,7 @@ int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
 }
 
 int EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->verify_recover) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -337,6 +350,7 @@ int EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx) {
 
 int EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
                             const uint8_t *sig, size_t sig_len) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->verify_recover) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -349,6 +363,7 @@ int EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
 }
 
 int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->derive) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -358,6 +373,7 @@ int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx) {
 }
 
 int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer) {
+  SET_DIT_AUTO_RESET;
   int ret;
   if (!ctx || !ctx->pmeth ||
       !(ctx->pmeth->derive || ctx->pmeth->encrypt || ctx->pmeth->decrypt) ||
@@ -418,6 +434,7 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer) {
 }
 
 int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *out_key_len) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->derive) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -430,6 +447,7 @@ int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *out_key_len) {
 }
 
 int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -438,10 +456,58 @@ int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
+int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
+                                  EVP_PKEY **out_pkey,
+                                  const uint8_t *seed,
+                                  size_t *seed_len) {
+  int ret = 0;
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen_deterministic) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
+  }
+  if (ctx->operation != EVP_PKEY_OP_KEYGEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    goto end;
+  }
+
+  if ((out_pkey == NULL) != (seed == NULL)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    goto end;
+  }
+
+  // Caller is performing a size check.
+  if (out_pkey == NULL && seed == NULL) {
+    if (!ctx->pmeth->keygen_deterministic(ctx, NULL, NULL, seed_len)) {
+      goto end;
+    }
+    ret = 1;
+    goto end;
+  }
+
+  if (!*out_pkey) {
+    *out_pkey = EVP_PKEY_new();
+    if (!*out_pkey) {
+      OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
+      goto end;
+    }
+  }
+
+  if (!ctx->pmeth->keygen_deterministic(ctx, *out_pkey, seed, seed_len)) {
+    EVP_PKEY_free(*out_pkey);
+    *out_pkey = NULL;
+    goto end;
+  }
+
+  ret = 1;
+end:
+  return ret;
+}
+
 int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
   // We have to avoid potential underlying services updating the indicator state,
   // so we lock the state here.
   FIPS_service_indicator_lock_state();
+  SET_DIT_AUTO_RESET;
   int ret = 0;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -480,6 +546,7 @@ end:
 }
 
 int EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->paramgen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -489,6 +556,7 @@ int EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx) {
 }
 
 int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
+  SET_DIT_AUTO_RESET;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->paramgen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -518,26 +586,144 @@ int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
   return 1;
 }
 
-int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
-                         uint8_t *ciphertext, size_t *ciphertext_len,
-                         uint8_t *shared_secret, size_t *shared_secret_len) {
-  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate == NULL) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
+int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
+                                       uint8_t *ciphertext,
+                                       size_t *ciphertext_len,
+                                       uint8_t *shared_secret,
+                                       size_t *shared_secret_len,
+                                       const uint8_t *seed,
+                                       size_t *seed_len) {
+  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate_deterministic == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
   }
 
-  return ctx->pmeth->encapsulate(ctx, ciphertext, ciphertext_len,
-                                 shared_secret, shared_secret_len);
+  return ctx->pmeth->encapsulate_deterministic(ctx, ciphertext, ciphertext_len,
+                                               shared_secret, shared_secret_len,
+                                               seed, seed_len);
 }
 
-int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
-                         uint8_t *shared_secret, size_t *shared_secret_len,
-                         uint8_t *ciphertext, size_t ciphertext_len) {
-  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->decapsulate == NULL) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
+int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
+                         size_t *ciphertext_len, uint8_t *shared_secret,
+                         size_t *shared_secret_len) {
+  SET_DIT_AUTO_RESET;
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
+  int ret = 0;
+  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
   }
 
-  return ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
-                                 ciphertext, ciphertext_len);
+  if (!ctx->pmeth->encapsulate(ctx, ciphertext, ciphertext_len, shared_secret,
+                               shared_secret_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret && ciphertext != NULL && shared_secret != NULL) {
+    EVP_PKEY_encapsulate_verify_service_indicator(ctx);
+  }
+  return ret;
+}
+
+int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx, uint8_t *shared_secret,
+                         size_t *shared_secret_len, const uint8_t *ciphertext,
+                         size_t ciphertext_len) {
+  SET_DIT_AUTO_RESET;
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
+  int ret = 0;
+  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->decapsulate == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
+  }
+
+  if (!ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
+                               ciphertext, ciphertext_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret && shared_secret != NULL) {
+    EVP_PKEY_decapsulate_verify_service_indicator(ctx);
+  }
+  return ret;
+}
+
+int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd, const char *md) {
+  const EVP_MD *m;
+
+  if (md == NULL || (m = EVP_get_digestbyname(md)) == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
+    return 0;
+  }
+  return EVP_PKEY_CTX_ctrl(ctx, -1, optype, cmd, 0, (void *)m);
+}
+
+int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *name,
+                          const char *value) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->ctrl_str) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
+    return -2;
+  }
+  if (strcmp(name, "digest") == 0) {
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    return EVP_PKEY_CTX_md(ctx, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_MD, value);
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
+  return ctx->pmeth->ctrl_str(ctx, name, value);
+}
+
+
+static int trans_cb(int a, int b, BN_GENCB *gcb) {
+  EVP_PKEY_CTX *ctx = BN_GENCB_get_arg(gcb);
+  ctx->keygen_info[0] = a;
+  ctx->keygen_info[1] = b;
+  return ctx->pkey_gencb(ctx);
+}
+
+
+void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx) {
+  BN_GENCB_set(cb, trans_cb, ctx);
+}
+
+void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb) {
+  if (ctx == NULL) {
+    return;
+  }
+  ctx->pkey_gencb = cb;
+}
+
+void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data) {
+  if (ctx == NULL) {
+    return;
+  }
+  ctx->app_data = data;
+}
+
+void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    return NULL;
+  }
+  return ctx->app_data;
+}
+
+int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx) {
+  GUARD_PTR(ctx);
+  if (idx == -1) {
+    return EVP_PKEY_CTX_KEYGEN_INFO_COUNT;
+  }
+  if (idx < 0 || idx >= EVP_PKEY_CTX_KEYGEN_INFO_COUNT ||
+      (ctx->operation != EVP_PKEY_OP_KEYGEN &&
+       ctx->operation != EVP_PKEY_OP_PARAMGEN)) {
+    return 0;
+  }
+  return ctx->keygen_info[idx];
 }

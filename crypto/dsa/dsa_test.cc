@@ -236,6 +236,30 @@ TEST(DSATest, Generate) {
                           sig_len, dsa.get()));
 }
 
+TEST(DSATest, GenerateParamsTooLarge) {
+  bssl::UniquePtr<DSA> dsa(DSA_new());
+  ASSERT_TRUE(dsa);
+  EXPECT_FALSE(DSA_generate_parameters_ex(
+      dsa.get(), 10001, /*seed=*/nullptr, /*seed_len=*/0,
+      /*out_counter=*/nullptr, /*out_h=*/nullptr,
+      /*cb=*/nullptr));
+}
+
+TEST(DSATest, GenerateKeyTooLarge) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
+  ASSERT_TRUE(dsa);
+  bssl::UniquePtr<BIGNUM> large_p(BN_new());
+  ASSERT_TRUE(large_p);
+  ASSERT_TRUE(BN_set_bit(large_p.get(), 10001));
+  ASSERT_TRUE(BN_set_bit(large_p.get(), 0));
+  ASSERT_TRUE(DSA_set0_pqg(dsa.get(), /*p=*/large_p.get(), /*q=*/nullptr,
+                           /*g=*/nullptr));
+  large_p.release();  // |DSA_set0_pqg| takes ownership on success.
+
+  // Don't generate DSA keys if the group is too large.
+  EXPECT_FALSE(DSA_generate_key(dsa.get()));
+}
+
 TEST(DSATest, Verify) {
   bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
   ASSERT_TRUE(dsa);
@@ -267,9 +291,8 @@ TEST(DSATest, InvalidGroup) {
   static const uint8_t kDigest[32] = {0};
   EXPECT_FALSE(
       DSA_sign(0, kDigest, sizeof(kDigest), sig.data(), &sig_len, dsa.get()));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_DSA, ERR_GET_LIB(err));
-  EXPECT_EQ(DSA_R_INVALID_PARAMETERS, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_DSA, DSA_R_INVALID_PARAMETERS));
 }
 
 // Signing and verifying should cleanly fail when the DSA object is empty.

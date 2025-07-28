@@ -138,6 +138,8 @@ void BF_decrypt(uint32_t *data, const BF_KEY *key) {
   data[0] = r & 0xffffffffL;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+
 void BF_ecb_encrypt(const uint8_t *in, uint8_t *out,
                     const BF_KEY *key, int encrypt) {
   uint32_t d[2];
@@ -225,8 +227,13 @@ void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
     l2n(xor0, ivec);
     l2n(xor1, ivec);
   }
-  tin0 = tin1 = tout0 = tout1 = xor0 = xor1 = 0;
-  tin[0] = tin[1] = 0;
+  OPENSSL_cleanse(&tin0, sizeof(tin0));
+  OPENSSL_cleanse(&tin1, sizeof(tin1));
+  OPENSSL_cleanse(&tout0, sizeof(tout0));
+  OPENSSL_cleanse(&tout1, sizeof(tout1));
+  OPENSSL_cleanse(&xor0, sizeof(xor0));
+  OPENSSL_cleanse(&xor1, sizeof(xor1));
+  OPENSSL_cleanse(&tin, sizeof(tin));
 }
 
 static const BF_KEY bf_init = {
@@ -499,9 +506,9 @@ void BF_set_key(BF_KEY *key, size_t len, const uint8_t *data) {
   }
 }
 
-static void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                             const BF_KEY *schedule, uint8_t *ivec, int *num,
-                             int encrypt) {
+void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                      const BF_KEY *schedule, uint8_t *ivec, int *num,
+                      int encrypt) {
   uint32_t v0, v1, t;
   int n = *num;
   size_t l = length;
@@ -593,31 +600,39 @@ static int bf_cfb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
+OPENSSL_END_ALLOW_DEPRECATED
+
 static const EVP_CIPHER bf_ecb = {
-    NID_bf_ecb,          BF_BLOCK /* block_size */,
-    16 /* key_size */,   BF_BLOCK /* iv_len */,
-    sizeof(BF_KEY),      EVP_CIPH_ECB_MODE | EVP_CIPH_VARIABLE_LENGTH,
-    NULL /* app_data */, bf_init_key,
-    bf_ecb_cipher,       NULL /* cleanup */,
-    NULL /* ctrl */,
+    .nid = NID_bf_ecb,
+    .block_size = BF_BLOCK,
+    .key_len = 16,
+    .iv_len = BF_BLOCK,
+    .ctx_size = sizeof(BF_KEY),
+    .flags = EVP_CIPH_ECB_MODE | EVP_CIPH_VARIABLE_LENGTH,
+    .init = bf_init_key,
+    .cipher = bf_ecb_cipher,
 };
 
 static const EVP_CIPHER bf_cbc = {
-    NID_bf_cbc,          BF_BLOCK /* block_size */,
-    16 /* key_size */,   BF_BLOCK /* iv_len */,
-    sizeof(BF_KEY),      EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH,
-    NULL /* app_data */, bf_init_key,
-    bf_cbc_cipher,       NULL /* cleanup */,
-    NULL /* ctrl */,
+    .nid = NID_bf_cbc,
+    .block_size = BF_BLOCK,
+    .key_len = 16,
+    .iv_len = BF_BLOCK,
+    .ctx_size = sizeof(BF_KEY),
+    .flags = EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH,
+    .init = bf_init_key,
+    .cipher = bf_cbc_cipher,
 };
 
 static const EVP_CIPHER bf_cfb = {
-    NID_bf_cfb64,        1 /* block_size */,
-    16 /* key_size */,   BF_BLOCK /* iv_len */,
-    sizeof(BF_KEY),      EVP_CIPH_CFB_MODE | EVP_CIPH_VARIABLE_LENGTH,
-    NULL /* app_data */, bf_init_key,
-    bf_cfb_cipher,       NULL /* cleanup */,
-    NULL /* ctrl */,
+    .nid = NID_bf_cfb64,
+    .block_size = 1,
+    .key_len = 16,
+    .iv_len = BF_BLOCK,
+    .ctx_size = sizeof(BF_KEY),
+    .flags = EVP_CIPH_CFB_MODE | EVP_CIPH_VARIABLE_LENGTH,
+    .init = bf_init_key,
+    .cipher = bf_cfb_cipher,
 };
 
 const EVP_CIPHER *EVP_bf_ecb(void) { return &bf_ecb; }

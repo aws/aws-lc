@@ -240,11 +240,11 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Absorb_hw
-.private_extern	_SHA3_Absorb_hw
+.globl	_Keccak1600_Absorb_hw
+.private_extern	_Keccak1600_Absorb_hw
 
 .align	5
-_SHA3_Absorb_hw:
+_Keccak1600_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -473,11 +473,11 @@ Labsorbed:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Squeeze_hw
-.private_extern	_SHA3_Squeeze_hw
+.globl	_Keccak1600_Squeeze_hw
+.private_extern	_Keccak1600_Squeeze_hw
 
 .align	5
-_SHA3_Squeeze_hw:
+_Keccak1600_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -489,6 +489,8 @@ _SHA3_Squeeze_hw:
 	mov	x20,x1
 	mov	x21,x2
 	mov	x22,x3
+	cmp	x4, #0				// x4 = 'padded' argument; if !=0, perform Keccak first
+	bne	Lnext_block
 Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	x21,#8
@@ -501,6 +503,7 @@ Loop_squeeze:
 	beq	Lsqueeze_done
 	subs	x3,x3,#8
 	bhi	Loop_squeeze
+Lnext_block:
 	mov	x0,x19
 	bl	KeccakF1600
 	mov	x0,x19
@@ -669,11 +672,11 @@ KeccakF1600_cext:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Absorb_cext
-.private_extern	_SHA3_Absorb_cext
+.globl	_Keccak1600_Absorb_cext
+.private_extern	_Keccak1600_Absorb_cext
 
 .align	5
-_SHA3_Absorb_cext:
+_Keccak1600_Absorb_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
@@ -887,11 +890,11 @@ Labsorbed_ce:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Squeeze_cext
-.private_extern	_SHA3_Squeeze_cext
+.globl	_Keccak1600_Squeeze_cext
+.private_extern	_Keccak1600_Squeeze_cext
 
 .align	5
-_SHA3_Squeeze_cext:
+_Keccak1600_Squeeze_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0

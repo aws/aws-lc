@@ -4,6 +4,7 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text	
 .globl	aes_hw_xts_encrypt_avx512
 .hidden aes_hw_xts_encrypt_avx512
@@ -427,7 +428,7 @@ aes_hw_xts_encrypt_avx512:
 	vmovdqu8	%zmm1,(%rsi)
 	vmovdqu	%xmm2,64(%rsi)
 	addq	$0x50,%rsi
-	movdqa	%xmm2,%xmm8
+	vmovdqa	%xmm2,%xmm8
 	vextracti32x4	$0x1,%zmm10,%xmm0
 	andq	$0xf,%rdx
 	je	.L_ret_hEgxyDlCngwrfFe
@@ -3270,7 +3271,7 @@ aes_hw_xts_decrypt_avx512:
 	vmovdqu8	64(%rdi),%zmm2
 	vmovdqu8	128(%rdi),%zmm3
 	vmovdqu8	192(%rdi),%zmm4
-	vmovdqu8	240(%rdi),%zmm5
+	vmovdqu8	240(%rdi),%xmm5
 	addq	$0x100,%rdi
 	vpxorq	%zmm9,%zmm1,%zmm1
 	vpxorq	%zmm10,%zmm2,%zmm2
@@ -5225,4 +5226,5 @@ shufb_15_7:
 .byte	0xff, 0xff, 0xff, 0xff, 0xff
 
 .text	
+#endif
 #endif

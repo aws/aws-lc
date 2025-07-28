@@ -32,6 +32,7 @@ util/bot/yasm-win32.exe
 
 tests/ci/.env
 tests/ci/cdk/cdk.context.json
+tests/ci/lambda/target
 test_build_dir/
 cmake-build-debug/
 symbols.txt
@@ -42,3 +43,4 @@ symbols.txt
 .cache/
 /CMakePresets.json
 /compile_commands.json
+/scratch

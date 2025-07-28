@@ -79,8 +79,11 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
   if (!(ASN1_OCTET_STRING_set(cid->issuerKeyHash, md, i))) {
     goto err;
   }
-  if (ASN1_STRING_copy(cid->serialNumber, serialNumber) == 0) {
-    goto err;
+  // Only copy |serialNumber| if available. This may be empty.
+  if (serialNumber != NULL) {
+    if (ASN1_STRING_copy(cid->serialNumber, serialNumber) == 0) {
+      goto err;
+    }
   }
   return cid;
 
@@ -94,6 +97,7 @@ int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
+
   if (a->hashAlgorithm == NULL || b->hashAlgorithm == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;

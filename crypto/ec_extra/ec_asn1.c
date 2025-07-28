@@ -56,14 +56,15 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/bytestring.h>
+#include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "../fipsmodule/ec/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
 
 
@@ -76,19 +77,15 @@ static const CBS_ASN1_TAG kPublicKeyTag =
 // acceptable groups, so parsers don't have to pull in all four.
 typedef const EC_GROUP *(*ec_group_func)(void);
 static const ec_group_func kAllGroups[] = {
-    &EC_group_p224,
-    &EC_group_p256,
-    &EC_group_p384,
-    &EC_group_p521,
-	&EC_group_secp256k1,
+    &EC_group_p224, &EC_group_p256,      &EC_group_p384,
+    &EC_group_p521, &EC_group_secp256k1,
 };
 
 EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
   CBS ec_private_key, private_key;
   uint64_t version;
   if (!CBS_get_asn1(cbs, &ec_private_key, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&ec_private_key, &version) ||
-      version != 1 ||
+      !CBS_get_asn1_uint64(&ec_private_key, &version) || version != 1 ||
       !CBS_get_asn1(&ec_private_key, &private_key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
     return NULL;
@@ -151,8 +148,7 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
         !CBS_get_asn1(&child, &public_key, CBS_ASN1_BITSTRING) ||
         // As in a SubjectPublicKeyInfo, the byte-encoded public key is then
         // encoded as a BIT STRING with bits ordered as in the DER encoding.
-        !CBS_get_u8(&public_key, &padding) ||
-        padding != 0 ||
+        !CBS_get_u8(&public_key, &padding) || padding != 0 ||
         // Explicitly check |public_key| is non-empty to save the conversion
         // form later.
         CBS_len(&public_key) == 0 ||
@@ -264,16 +260,14 @@ static int parse_explicit_prime_curve(CBS *in,
   int has_cofactor;
   uint64_t version;
   if (!CBS_get_asn1(in, &params, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&params, &version) ||
-      version != 1 ||
+      !CBS_get_asn1_uint64(&params, &version) || version != 1 ||
       !CBS_get_asn1(&params, &field_id, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&field_id, &field_type, CBS_ASN1_OBJECT) ||
       CBS_len(&field_type) != sizeof(kPrimeField) ||
       OPENSSL_memcmp(CBS_data(&field_type), kPrimeField, sizeof(kPrimeField)) !=
           0 ||
       !CBS_get_asn1(&field_id, &out->prime, CBS_ASN1_INTEGER) ||
-      !CBS_is_unsigned_asn1_integer(&out->prime) ||
-      CBS_len(&field_id) != 0 ||
+      !CBS_is_unsigned_asn1_integer(&out->prime) || CBS_len(&field_id) != 0 ||
       !CBS_get_asn1(&params, &curve, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&curve, &out->a, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&curve, &out->b, CBS_ASN1_OCTETSTRING) ||
@@ -292,8 +286,7 @@ static int parse_explicit_prime_curve(CBS *in,
 
   if (has_cofactor) {
     // We only support prime-order curves so the cofactor must be one.
-    if (CBS_len(&cofactor) != 1 ||
-        CBS_data(&cofactor)[0] != 1) {
+    if (CBS_len(&cofactor) != 1 || CBS_data(&cofactor)[0] != 1) {
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return 0;
     }
@@ -484,9 +477,7 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
     return NULL;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, *inp, (size_t)len);
-  const EC_GROUP *group = EC_KEY_parse_parameters(&cbs);
+  EC_GROUP *group = d2i_ECPKParameters(NULL, inp, len);
   if (group == NULL) {
     return NULL;
   }
@@ -501,8 +492,28 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
     EC_KEY_free(*out_key);
     *out_key = ret;
   }
-  *inp = CBS_data(&cbs);
   return ret;
+}
+
+EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
+                             long len) {
+  if (inp == NULL || len < 0) {
+    return NULL;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  EC_GROUP *group = EC_KEY_parse_parameters(&cbs);
+  if (group == NULL) {
+    return NULL;
+  }
+
+  if (out_group != NULL) {
+    EC_GROUP_free(*out_group);
+    *out_group = group;
+  }
+  *inp = CBS_data(&cbs);
+  return group;
 }
 
 int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
@@ -511,13 +522,55 @@ int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
     return -1;
   }
 
+  return i2d_ECPKParameters(key->group, outp);
+}
+
+int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp) {
+  if (group == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
-      !EC_KEY_marshal_curve_name(&cbb, key->group)) {
+  if (!CBB_init(&cbb, 0) || !EC_KEY_marshal_curve_name(&cbb, group)) {
     CBB_cleanup(&cbb);
     return -1;
   }
   return CBB_finish_i2d(&cbb, outp);
+}
+
+EC_GROUP *d2i_ECPKParameters_bio(BIO *bio, EC_GROUP **out_group) {
+  if (bio == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  uint8_t *data;
+  size_t len;
+  if (!BIO_read_asn1(bio, &data, &len, INT_MAX)) {
+    return NULL;
+  }
+  const uint8_t *ptr = data;
+  EC_GROUP *ret = d2i_ECPKParameters(out_group, &ptr, len);
+  OPENSSL_free(data);
+  return ret;
+}
+
+int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group) {
+  if (bio == NULL || group == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  uint8_t *out = NULL;
+  int len = i2d_ECPKParameters(group, &out);
+  if (out == NULL) {
+    return 0;
+  }
+
+  int ret = BIO_write_all(bio, out, len);
+  OPENSSL_free(out);
+  return ret;
 }
 
 EC_KEY *o2i_ECPublicKey(EC_KEY **keyp, const uint8_t **inp, long len) {
@@ -573,8 +626,8 @@ size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 }
 
 static size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
-                                 point_conversion_form_t form,
-                                 uint8_t **pbuf, BN_CTX *ctx) {
+                                 point_conversion_form_t form, uint8_t **pbuf,
+                                 BN_CTX *ctx) {
   size_t len;
   uint8_t *buf;
 
@@ -613,4 +666,57 @@ BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
   OPENSSL_free(buf);
 
   return ret;
+}
+
+EC_POINT *EC_POINT_bn2point(const EC_GROUP *group, const BIGNUM *bn,
+                            EC_POINT *point, BN_CTX *ctx) {
+  if (group == NULL || bn == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  // Allocate buffer and length.
+  size_t buf_len = BN_num_bytes(bn);
+  if (buf_len == 0) {
+    // See https://github.com/openssl/openssl/issues/10258.
+    buf_len = 1;
+  }
+  uint8_t *buf = OPENSSL_malloc(buf_len);
+  if (buf == NULL) {
+    return NULL;
+  }
+
+  if (BN_bn2bin_padded(buf, buf_len, bn) < 0) {
+    OPENSSL_free(buf);
+    return NULL;
+  }
+
+  // Use the user-provided |point| if there is one. Otherwise, we allocate a new
+  // |EC_POINT| if |point| is NULL.
+  EC_POINT *ret;
+  if (point != NULL) {
+    ret = point;
+  } else {
+    ret = EC_POINT_new(group);
+    if (ret == NULL) {
+      OPENSSL_free(buf);
+      return NULL;
+    }
+  }
+
+  if (!EC_POINT_oct2point(group, ret, buf, buf_len, ctx)) {
+    if (ret != point) {
+      // If the user did not provide a |point|, we free the |EC_POINT| we
+      // allocated.
+      EC_POINT_free(ret);
+      ret = NULL;
+    }
+  }
+
+  OPENSSL_free(buf);
+  return ret;
+}
+
+int ECPKParameters_print(BIO *bio, const EC_GROUP *group, int offset) {
+  return 1;
 }

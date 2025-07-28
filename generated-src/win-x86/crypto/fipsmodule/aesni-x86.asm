@@ -833,7 +833,8 @@ L$038pic:
 	and	esp,-16
 	mov	DWORD [80+esp],ebp
 	cmp	eax,1
-	je	NEAR L$039ctr32_one_shortcut
+	jb	NEAR L$039ctr32_ret
+	je	NEAR L$040ctr32_one_shortcut
 	movdqu	xmm7,[ebx]
 	mov	DWORD [esp],202182159
 	mov	DWORD [4+esp],134810123
@@ -871,7 +872,7 @@ db	102,15,56,0,202
 	pshufd	xmm2,xmm0,192
 	pshufd	xmm3,xmm0,128
 	cmp	eax,6
-	jb	NEAR L$040ctr32_tail
+	jb	NEAR L$041ctr32_tail
 	pxor	xmm7,xmm6
 	shl	ecx,4
 	mov	ebx,16
@@ -880,9 +881,9 @@ db	102,15,56,0,202
 	sub	ebx,ecx
 	lea	edx,[32+ecx*1+edx]
 	sub	eax,6
-	jmp	NEAR L$041ctr32_loop6
+	jmp	NEAR L$042ctr32_loop6
 align	16
-L$041ctr32_loop6:
+L$042ctr32_loop6:
 	pshufd	xmm4,xmm0,64
 	movdqa	xmm0,[32+esp]
 	pshufd	xmm5,xmm1,192
@@ -936,14 +937,14 @@ db	102,15,56,0,202
 	lea	edi,[96+edi]
 	pshufd	xmm3,xmm0,128
 	sub	eax,6
-	jnc	NEAR L$041ctr32_loop6
+	jnc	NEAR L$042ctr32_loop6
 	add	eax,6
-	jz	NEAR L$042ctr32_ret
+	jz	NEAR L$039ctr32_ret
 	movdqu	xmm7,[ebp]
 	mov	edx,ebp
 	pxor	xmm7,[32+esp]
 	mov	ecx,DWORD [240+ebp]
-L$040ctr32_tail:
+L$041ctr32_tail:
 	por	xmm2,xmm7
 	cmp	eax,2
 	jb	NEAR L$043ctr32_one
@@ -974,9 +975,9 @@ L$040ctr32_tail:
 	movups	[32+edi],xmm4
 	movups	[48+edi],xmm5
 	movups	[64+edi],xmm6
-	jmp	NEAR L$042ctr32_ret
+	jmp	NEAR L$039ctr32_ret
 align	16
-L$039ctr32_one_shortcut:
+L$040ctr32_one_shortcut:
 	movups	xmm2,[ebx]
 	mov	ecx,DWORD [240+edx]
 L$043ctr32_one:
@@ -994,7 +995,7 @@ db	102,15,56,221,209
 	movups	xmm6,[esi]
 	xorps	xmm6,xmm2
 	movups	[edi],xmm6
-	jmp	NEAR L$042ctr32_ret
+	jmp	NEAR L$039ctr32_ret
 align	16
 L$044ctr32_two:
 	call	__aesni_encrypt2
@@ -1004,7 +1005,7 @@ L$044ctr32_two:
 	xorps	xmm3,xmm6
 	movups	[edi],xmm2
 	movups	[16+edi],xmm3
-	jmp	NEAR L$042ctr32_ret
+	jmp	NEAR L$039ctr32_ret
 align	16
 L$045ctr32_three:
 	call	__aesni_encrypt3
@@ -1017,7 +1018,7 @@ L$045ctr32_three:
 	xorps	xmm4,xmm7
 	movups	[16+edi],xmm3
 	movups	[32+edi],xmm4
-	jmp	NEAR L$042ctr32_ret
+	jmp	NEAR L$039ctr32_ret
 align	16
 L$046ctr32_four:
 	call	__aesni_encrypt4
@@ -1033,7 +1034,7 @@ L$046ctr32_four:
 	xorps	xmm5,xmm0
 	movups	[32+edi],xmm4
 	movups	[48+edi],xmm5
-L$042ctr32_ret:
+L$039ctr32_ret:
 	pxor	xmm0,xmm0
 	pxor	xmm1,xmm1
 	pxor	xmm2,xmm2

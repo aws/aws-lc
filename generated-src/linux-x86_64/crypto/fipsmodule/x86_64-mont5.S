@@ -15,13 +15,16 @@
 .align	64
 bn_mul_mont_gather5:
 .cfi_startproc	
+_CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
 	testl	$7,%r9d
 	jnz	.Lmul_enter
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
+#endif
 	jmp	.Lmul4x_enter
 
 .align	16
@@ -460,9 +463,11 @@ bn_mul4x_mont_gather5:
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
 .Lmul4x_enter:
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	andl	$0x80108,%r11d
 	cmpl	$0x80108,%r11d
 	je	.Lmulx4x_enter
+#endif
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -1093,13 +1098,16 @@ mul4x_internal:
 .align	32
 bn_power5:
 .cfi_startproc	
+_CET_ENDBR
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
 	andl	$0x80108,%r11d
 	cmpl	$0x80108,%r11d
 	je	.Lpowerx5_enter
+#endif
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -1232,6 +1240,7 @@ bn_power5:
 bn_sqr8x_internal:
 __bn_sqr8x_internal:
 .cfi_startproc	
+_CET_ENDBR
 
 
 
@@ -2064,6 +2073,7 @@ __bn_post4x_internal:
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	__bn_post4x_internal,.-__bn_post4x_internal
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .type	bn_mulx4x_mont_gather5,@function
 .align	32
 bn_mulx4x_mont_gather5:
@@ -2744,6 +2754,7 @@ bn_powerx5:
 bn_sqrx8x_internal:
 __bn_sqrx8x_internal:
 .cfi_startproc	
+_CET_ENDBR
 
 
 
@@ -3410,12 +3421,14 @@ __bn_postx4x_internal:
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	__bn_postx4x_internal,.-__bn_postx4x_internal
+#endif
 .globl	bn_scatter5
 .hidden bn_scatter5
 .type	bn_scatter5,@function
 .align	16
 bn_scatter5:
 .cfi_startproc	
+_CET_ENDBR
 	cmpl	$0,%esi
 	jz	.Lscatter_epilogue
 
@@ -3447,6 +3460,7 @@ bn_scatter5:
 bn_gather5:
 .cfi_startproc	
 .LSEH_begin_bn_gather5:
+_CET_ENDBR
 
 .byte	0x4c,0x8d,0x14,0x24
 .cfi_def_cfa_register	%r10

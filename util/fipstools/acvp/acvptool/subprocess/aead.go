@@ -63,7 +63,7 @@ type aeadTestResponse struct {
 	IVHex         string  `json:"iv,omitempty"`
 }
 
-func (a *aead) Process(vectorSet []byte, m Transactable) (any, error) {
+func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed aeadVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -92,14 +92,14 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (any, error) {
 		// We automatically assume the IV is given (external) if the IV generation method is not defined.
 		var external_iv bool = true
 		if group.IvGen != "" {
-		    switch group.IvGen {
-		    case "external":
-		        external_iv = true
-		    case "internal":
-		        external_iv = false
-		    default:
-		        return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
-		    }
+			switch group.IvGen {
+			case "external":
+				external_iv = true
+			case "internal":
+				external_iv = false
+			default:
+				return nil, fmt.Errorf("test group %d has unknown iv generation method %q", group.ID, group.IvGen)
+			}
 		}
 
 		op := a.algo + "/seal"
@@ -198,21 +198,21 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (any, error) {
 					testResp.CiphertextHex = &ciphertextHex
 				} else {
 					if external_iv {
-					    ciphertext := result[0][:len(result[0])-tagBytes]
-					    ciphertextHex := hex.EncodeToString(ciphertext)
-					    testResp.CiphertextHex = &ciphertextHex
-					    tag := result[0][len(result[0])-tagBytes:]
-					    testResp.TagHex = hex.EncodeToString(tag)
+						ciphertext := result[0][:len(result[0])-tagBytes]
+						ciphertextHex := hex.EncodeToString(ciphertext)
+						testResp.CiphertextHex = &ciphertextHex
+						tag := result[0][len(result[0])-tagBytes:]
+						testResp.TagHex = hex.EncodeToString(tag)
 					} else {
-					    // internal IV length is always 12 bytes long
-					    var ivBytes int = 12
-					    ciphertext := result[0][:len(result[0])-(tagBytes+ivBytes)]
-					    ciphertextHex := hex.EncodeToString(ciphertext)
-					    testResp.CiphertextHex = &ciphertextHex
-					    tag := result[0][len(result[0])-(tagBytes+ivBytes):len(result[0])-ivBytes]
-					    testResp.TagHex = hex.EncodeToString(tag)
-					    iv := result[0][len(result[0])-ivBytes:]
-					    testResp.IVHex = hex.EncodeToString(iv)
+						// internal IV length is always 12 bytes long
+						var ivBytes int = 12
+						ciphertext := result[0][:len(result[0])-(tagBytes+ivBytes)]
+						ciphertextHex := hex.EncodeToString(ciphertext)
+						testResp.CiphertextHex = &ciphertextHex
+						tag := result[0][len(result[0])-(tagBytes+ivBytes) : len(result[0])-ivBytes]
+						testResp.TagHex = hex.EncodeToString(tag)
+						iv := result[0][len(result[0])-ivBytes:]
+						testResp.IVHex = hex.EncodeToString(iv)
 					}
 				}
 			} else {

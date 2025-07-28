@@ -75,6 +75,27 @@ int SHA1_Init(SHA_CTX *sha) {
   return 1;
 }
 
+int SHA1_Init_from_state(SHA_CTX *sha, const uint8_t h[SHA1_CHAINING_LENGTH],
+                         uint64_t n) {
+  if (n % ((uint64_t)SHA_CBLOCK * 8) != 0) {
+    // n is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  OPENSSL_memset(sha, 0, sizeof(SHA_CTX));
+
+  const size_t out_words = SHA1_CHAINING_LENGTH / 4;
+  for (size_t i = 0; i < out_words; i++) {
+    sha->h[i] = CRYPTO_load_u32_be(h);
+    h += 4;
+  }
+
+  sha->Nh = n >> 32;
+  sha->Nl = n & 0xffffffff;
+
+  return 1;
+}
+
 uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   // We have to verify that all the SHA services actually succeed before
   // updating the indicator state, so we lock the state here.
@@ -91,8 +112,8 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   return out;
 }
 
-#if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+#if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
+static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
                                   size_t num);
 #endif
 
@@ -116,6 +137,24 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
   CRYPTO_store_u32_be(out + 12, c->h[3]);
   CRYPTO_store_u32_be(out + 16, c->h[4]);
   FIPS_service_indicator_update_state();
+  return 1;
+}
+
+int SHA1_get_state(SHA_CTX *ctx, uint8_t out_h[SHA1_CHAINING_LENGTH],
+                   uint64_t *out_n) {
+  if (ctx->Nl % ((uint64_t)SHA_CBLOCK * 8) != 0) {
+    // ctx->Nl is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  const size_t out_words = SHA1_CHAINING_LENGTH / 4;
+  for (size_t i = 0; i < out_words; i++) {
+    CRYPTO_store_u32_be(out_h, ctx->h[i]);
+    out_h += 4;
+  }
+
+  *out_n = (((uint64_t)ctx->Nh) << 32) + ctx->Nl;
+
   return 1;
 }
 
@@ -196,9 +235,11 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
 *         <appro@fy.chalmers.se> */
 #define X(i)  XX##i
 
-#if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                                  size_t num) {
+#if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
+
+#if !defined(SHA1_ASM_NOHW)
+static void sha1_block_data_order_nohw(uint32_t state[5], const uint8_t *data,
+                                       size_t num) {
   register uint32_t A, B, C, D, E, T;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
       XX11, XX12, XX13, XX14, XX15;
@@ -345,7 +386,44 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
     E = state[4];
   }
 }
+#endif  // !SHA1_ASM_NOHW
+
+static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
+                                  size_t num) {
+#if defined(SHA1_ASM_HW)
+  if (sha1_hw_capable()) {
+    sha1_block_data_order_hw(state, data, num);
+    return;
+  }
 #endif
+#if defined(SHA1_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  if (sha1_avx2_capable()) {
+    sha1_block_data_order_avx2(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA1_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  if (sha1_avx_capable()) {
+    sha1_block_data_order_avx(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA1_ASM_SSSE3)
+  if (sha1_ssse3_capable()) {
+    sha1_block_data_order_ssse3(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA1_ASM_NEON)
+  if (CRYPTO_is_NEON_capable()) {
+    sha1_block_data_order_neon(state, data, num);
+    return;
+  }
+#endif
+  sha1_block_data_order_nohw(state, data, num);
+}
+
+#endif  // !SHA1_ASM && !SHA1_ALTIVEC
 
 #undef Xupdate
 #undef K_00_19

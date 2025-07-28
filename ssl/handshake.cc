@@ -135,7 +135,6 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       cert_request(false),
       certificate_status_expected(false),
       ocsp_stapling_requested(false),
-      delegated_credential_requested(false),
       should_ack_sni(false),
       in_false_start(false),
       in_early_data(false),
@@ -254,8 +253,9 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
     return 1;
   }
 
-  // Clients must accept NewSessionTicket, so allow the default size.
-  return kMaxMessageLen;
+  // Clients must accept NewSessionTicket, so allow the default size or
+  // max_cert_list, whichever is greater.
+  return std::max(kMaxMessageLen, size_t{ssl->max_cert_list});
 }
 
 bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg) {

@@ -83,7 +83,7 @@ static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
     return 0;
   }
   *out = copy;
-  CONSTTIME_SECRET(copy->d, sizeof(BN_ULONG) * width);
+  bn_secret(copy);
 
   return 1;
 }
@@ -182,8 +182,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
           goto err;
         }
         rsa->iqmp_mont = iqmp_mont;
-        CONSTTIME_SECRET(rsa->iqmp_mont->d,
-                         sizeof(BN_ULONG) * rsa->iqmp_mont->width);
+        bn_secret(rsa->iqmp_mont);
       }
     }
   }
@@ -413,6 +412,23 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
+  if(rsa->meth && rsa->meth->verify_raw) {
+    // In OpenSSL, the RSA_METHOD |verify_raw| or |pub_dec| operation does
+    // not directly take and initialize an |out_len| parameter. Instead, it
+    // returns the size of the recovered plaintext or negative number for error.
+    // Our wrapping functions like |RSA_verify_raw| diverge from this paradigm
+    // and expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      *out_len = 0;
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
+  }
+
   if (rsa->n == NULL || rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -546,7 +562,9 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  if (BN_ucmp(f, rsa->n) >= 0) {
+  // The input to the RSA private transform may be secret, but padding is
+  // expected to construct a value within range, so we can leak this comparison.
+  if (constant_time_declassify_int(BN_ucmp(f, rsa->n) >= 0)) {
     // Usually the padding functions would catch this.
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
@@ -694,13 +712,15 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(rsa->dmq1 != NULL);
   assert(rsa->iqmp != NULL);
 
-  BIGNUM *r1, *m1;
+  BIGNUM *r1, *r2, *m1;
   int ret = 0;
 
   BN_CTX_start(ctx);
   r1 = BN_CTX_get(ctx);
+  r2 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
   if (r1 == NULL ||
+      r2 == NULL ||
       m1 == NULL) {
     goto err;
   }
@@ -718,16 +738,15 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
-  assert(BN_ucmp(I, n) < 0);
+  declassify_assert(BN_ucmp(I, n) < 0);
 
-  if (// |m1| is the result modulo |q|.
-      !mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
-      !BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1_fixed, q, ctx,
-                                 rsa->mont_q) ||
+  if (!mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
+      !mod_montgomery(r2, I, p, rsa->mont_p, q, ctx) ||
+      // |m1| is the result modulo |q|.
       // |r0| is the result modulo |p|.
-      !mod_montgomery(r1, I, p, rsa->mont_p, q, ctx) ||
-      !BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1_fixed, p, ctx,
-                                 rsa->mont_p) ||
+      !BN_mod_exp_mont_consttime_x2(m1, r1, rsa->dmq1_fixed, q, rsa->mont_q,
+                                    r0, r2, rsa->dmp1_fixed, p, rsa->mont_p,
+				    ctx) ||
       // Compute r0 = r0 - m1 mod p. |m1| is reduced mod |q|, not |p|, so we
       // just run |mod_montgomery| again for simplicity. This could be more
       // efficient with more cases: if |p > q|, |m1| is already reduced. If
@@ -754,7 +773,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // bound the width slightly higher, so fix it. This trips constant-time checks
   // because a naive data flow analysis does not realize the excess words are
   // publicly zero.
-  assert(BN_cmp(r0, n) < 0);
+  declassify_assert(BN_cmp(r0, n) < 0);
   bn_assert_fits_in_bytes(r0, BN_num_bytes(n));
   if (!bn_resize_words(r0, n->width)) {
     goto err;
@@ -926,20 +945,25 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     // retrying. That is, we reject a negligible fraction of primes that are
     // within the FIPS bound, but we will never accept a prime outside the
     // bound, ensuring the resulting RSA key is the right size.
-    if (BN_cmp(out, sqrt2) <= 0) {
+    //
+    // Values over the threshold are discarded, so it is safe to leak this
+    // comparison.
+    if (constant_time_declassify_int(BN_cmp(out, sqrt2) <= 0)) {
       continue;
     }
 
     // RSA key generation's bottleneck is discarding composites. If it fails
     // trial division, do not bother computing a GCD or performing Miller-Rabin.
     if (!bn_odd_number_is_obviously_composite(out)) {
-      // Check gcd(out-1, e) is one (steps 4.5 and 5.6).
+      // Check gcd(out-1, e) is one (steps 4.5 and 5.6). Leaking the final
+      // result of this comparison is safe because, if not relatively prime, the
+      // value will be discarded.
       int relatively_prime;
-      if (!BN_sub(tmp, out, BN_value_one()) ||
+      if (!bn_usub_consttime(tmp, out, BN_value_one()) ||
           !bn_is_relatively_prime(&relatively_prime, tmp, e, ctx)) {
         goto err;
       }
-      if (relatively_prime) {
+      if (constant_time_declassify_int(relatively_prime)) {
         // Test |out| for primality (steps 4.5.1 and 5.6.1).
         int is_probable_prime;
         if (!BN_primality_test(&is_probable_prime, out,
@@ -1097,8 +1121,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     }
 
     // Retry if |rsa->d| <= 2^|prime_bits|. See appendix B.3.1's guidance on
-    // values for d.
-  } while (BN_cmp(rsa->d, pow2_prime_bits) <= 0);
+    // values for d. When we retry, p and q are discarded, so it is safe to leak
+    // this comparison.
+  } while (constant_time_declassify_int(BN_cmp(rsa->d, pow2_prime_bits) <= 0));
 
   assert(BN_num_bits(pm1) == (unsigned)prime_bits);
   assert(BN_num_bits(qm1) == (unsigned)prime_bits);
@@ -1111,6 +1136,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     goto bn_err;
   }
   bn_set_minimal_width(rsa->n);
+
+  // |rsa->n| is computed from the private key, but is public.
+  bn_declassify(rsa->n);
 
   // Sanity-check that |rsa->n| has the specified size. This is implied by
   // |generate_prime|'s bounds.
@@ -1163,55 +1191,49 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           const BIGNUM *e_value, BN_GENCB *cb,
                                           int check_fips) {
   boringssl_ensure_rsa_self_test();
+  SET_DIT_AUTO_RESET;
 
   RSA *tmp = NULL;
   uint32_t err;
   int ret = 0;
-  int failures;
-  int num_attempts = 0;
 
+  // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
+  // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
+  // should just adjust the retry limit, but FIPS 186-4 prescribes that value
+  // and thus results in unnecessary complexity.
+  int failures = 0;
   do {
-    // The inner do-while loop can be considered as one invocation of RSA
-    // key generation:
-    // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
-    // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
-    // should just adjust the retry limit, but FIPS 186-4 prescribes that value
-    // and thus results in unnecessary complexity.
-    failures = 0;
-    do {
-      ERR_clear_error();
-      // Generate into scratch space, to avoid leaving partial work on failure.
-      tmp = RSA_new();
-      if (tmp == NULL) {
-        goto out;
-      }
-
-      if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
-        break;
-      }
-
-      err = ERR_peek_error();
-      RSA_free(tmp);
-      tmp = NULL;
-      failures++;
-
-      // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
-      // failure in |BN_GENCB_call| is still fatal.
-    } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
-             ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
-
-    // Perform PCT test in the case of FIPS
-    if (tmp) {
-      if (check_fips && !RSA_check_fips(tmp)) {
-        RSA_free(tmp);
-        tmp = NULL;
-      }
+    ERR_clear_error();
+    // Generate into scratch space, to avoid leaving partial work on failure.
+    tmp = RSA_new();
+    if (tmp == NULL) {
+      goto out;
     }
-    num_attempts++;
-  } while ((tmp == NULL) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
 
+    if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
+      break;
+    }
+
+    err = ERR_peek_error();
+    RSA_free(tmp);
+    tmp = NULL;
+    failures++;
+
+    // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
+    // failure in |BN_GENCB_call| is still fatal.
+  } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
+            ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
   if (tmp == NULL) {
     goto out;
+  }
+
+  // Perform PCT test in the case of FIPS
+  if(check_fips && !RSA_check_fips(tmp)) {
+    RSA_free(tmp);
+#if defined(AWSLC_FIPS)
+    AWS_LC_FIPS_failure("RSA keygen checks failed");
+#endif
+    return ret;
   }
 
   rsa_invalidate_key(rsa);
@@ -1235,11 +1257,6 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
 
 out:
   RSA_free(tmp);
-#if defined(AWSLC_FIPS)
-  if (ret == 0) {
-    BORINGSSL_FIPS_abort();
-  }
-#endif
   return ret;
 }
 
@@ -1250,19 +1267,22 @@ int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e_value,
 }
 
 int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
-  // FIPS 186-4 allows 2048-bit and 3072-bit RSA keys (1024-bit and 1536-bit
-  // primes, respectively) with the prime generation method we use.
-  // Subsequently, IG A.14 stated that larger modulus sizes can be used and ACVP
-  // testing supports 4096 bits.
-  if (bits != 2048 && bits != 3072 && bits != 4096) {
+  // FIPS 186-5 Section 5.1:
+  // This standard specifies the use of a modulus whose bit length is an even
+  // integer and greater than or equal to 2048 bits. Furthermore, this standard
+  // specifies that p and q be of the same bit length – namely, half the bit
+  // length of n
+  if (bits < 2048 || bits % 128 != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
 
   BIGNUM *e = BN_new();
+  FIPS_service_indicator_lock_state();
   int ret = e != NULL &&
             BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
+  FIPS_service_indicator_unlock_state();
   BN_free(e);
   if(ret) {
     // Approved key size check step is already done at start of function.
@@ -1271,10 +1291,9 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   return ret;
 }
 
-DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
+DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_get_default_method) {
   // All of the methods are NULL to make it easier for the compiler/linker to
   // drop unused functions. The wrapper functions will select the appropriate
   // |rsa_default_*| implementation.
   OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
-  out->common.is_static = 1;
 }

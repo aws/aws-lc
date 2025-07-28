@@ -170,7 +170,7 @@ static void check_ssl_ctx_x509_method(const SSL_CTX *ctx) {
 
 // x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
 // contents of |x509|.
-static UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509) {
+UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509) {
   uint8_t *buf = NULL;
   int cert_len = i2d_X509(x509, &buf);
   if (cert_len <= 0) {
@@ -195,7 +195,7 @@ static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
 
 // ssl_cert_set_chain sets elements 1.. of |cert->chain| to the serialised
 // forms of elements of |chain|. It returns one on success or zero on error, in
-// which case no change to |cert->chain| is made. It preverses the existing
+// which case no change to |cert->chain| is made. It preserves the existing
 // leaf from |cert->chain|, if any.
 static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {

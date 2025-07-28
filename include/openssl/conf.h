@@ -94,6 +94,9 @@ struct conf_value_st {
 DEFINE_STACK_OF(CONF_VALUE)
 DECLARE_LHASH_OF(CONF_VALUE)
 
+struct conf_st {
+  LHASH_OF(CONF_VALUE) *data;
+};
 
 // NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
 // argument must be NULL.
@@ -141,6 +144,10 @@ OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
 // file options, thus loading from |filename| always succeeds by doing nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int CONF_modules_load_file(
     const char *filename, const char *appname, unsigned long flags);
+
+// CONF_get1_default_config_file returns a fixed dummy string. AWS-LC is defined
+// to have no config file options.
+OPENSSL_EXPORT OPENSSL_DEPRECATED char *CONF_get1_default_config_file(void);
 
 // CONF_modules_free does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_free(void);

@@ -1,13 +1,5 @@
-if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Go won't be found.
-  # However, ninja will still find them in $PATH if we just name them.
-  if(NOT DISABLE_GO AND NOT GO_EXECUTABLE)
-    set(GO_EXECUTABLE "go")
-  endif()
-else()
-  if(NOT DISABLE_GO)
-    find_program(GO_EXECUTABLE go)
-  endif()
+if(NOT DISABLE_GO)
+find_program(GO_EXECUTABLE go)
 endif()
 
 if(NOT GO_EXECUTABLE AND NOT DISABLE_GO)
@@ -22,7 +14,7 @@ elseif(NOT DISABLE_GO)
   string(REGEX MATCH "([0-9]+\\.)*[0-9]+" go_version ${go_version_output})
 
   # This should track /go.mod and /BUILDING.md
-  set(minimum_go_version "1.18")
+  set(minimum_go_version "1.17.13")
   if(go_version VERSION_LESS minimum_go_version)
     message(FATAL_ERROR "Go compiler version must be at least ${minimum_go_version}. Found version ${go_version}")
   else()

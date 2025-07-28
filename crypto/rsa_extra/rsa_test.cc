@@ -65,6 +65,7 @@
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/evp.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -722,8 +723,6 @@ TEST(RSATest, BadExponent) {
   ERR_clear_error();
 }
 
-#if !defined(AWSLC_FIPS)
-
 // Attempting to generate an excessively small key should fail.
 TEST(RSATest, GenerateSmallKey) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -733,29 +732,9 @@ TEST(RSATest, GenerateSmallKey) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
   EXPECT_FALSE(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
-  EXPECT_EQ(RSA_R_KEY_SIZE_TOO_SMALL, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_KEY_SIZE_TOO_SMALL));
 }
-
-#else
-// AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
-// GTEST issue: https://github.com/google/googletest/issues/1496.
-#if !defined(OPENSSL_ANDROID)
-
-// Attempting to generate an excessively small key should fail.
-// In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
-TEST(RSADeathTest, GenerateSmallKeyAndDie) {
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  ASSERT_TRUE(e);
-  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
-
-  ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr), "");
-}
-#endif
-#endif
 
 // Attempting to generate an funny RSA key length should round down.
 TEST(RSATest, RoundKeyLengths) {
@@ -1071,6 +1050,141 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
 }
 
+static int rsa_priv_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_enc");
+  return 0;
+}
+
+static int rsa_priv_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_dec");
+  return 0;
+}
+
+static int rsa_pub_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_enc");
+  return 0;
+}
+
+static int rsa_pub_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_dec");
+  return 0;
+}
+
+static int extkey_rsa_finish (RSA *rsa) {
+  const RSA_METHOD *meth = RSA_get_method(rsa);
+  RSA_meth_free((RSA_METHOD *)meth);
+  return 1;
+}
+
+TEST(RSATest, RSAMETHOD) {
+  RSA *key = RSA_new();
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  ASSERT_TRUE(RSA_generate_key_ex(key, 2048, e.get(), nullptr));
+  ASSERT_TRUE(RSA_check_key(key));
+
+  // This implementation hides the key material specified by
+  // |RSA_METHOD_FLAG_NO_CHECK|
+  RSA_METHOD *rsa_meth = RSA_meth_new(NULL, RSA_METHOD_FLAG_NO_CHECK);
+  ASSERT_TRUE(rsa_meth);
+
+  ASSERT_TRUE(RSA_meth_set_pub_enc(rsa_meth, rsa_pub_enc));
+  ASSERT_TRUE(RSA_meth_set_pub_dec(rsa_meth, rsa_pub_dec));
+  ASSERT_TRUE(RSA_meth_set_priv_enc(rsa_meth, rsa_priv_enc));
+  ASSERT_TRUE(RSA_meth_set_priv_dec(rsa_meth, rsa_priv_dec));
+  ASSERT_TRUE(RSA_meth_set_init(rsa_meth, nullptr));
+  ASSERT_TRUE(RSA_meth_set_finish(rsa_meth, extkey_rsa_finish));
+  ASSERT_TRUE(RSA_meth_set0_app_data(rsa_meth, nullptr));
+
+  ASSERT_TRUE(rsa_meth->decrypt && rsa_meth->encrypt && rsa_meth->sign_raw &&
+  rsa_meth->verify_raw);
+
+  // rsa_meth will now be freed with key when rsa_meth->finish is called
+  // in RSA_free
+  ASSERT_TRUE(RSA_set_method(key, rsa_meth));
+  ASSERT_TRUE(RSA_is_opaque(key));
+
+  bssl::UniquePtr<EVP_PKEY> rsa_key(EVP_PKEY_new());
+  ASSERT_TRUE(rsa_key.get());
+  // key will now be freed with rsa_key
+  EVP_PKEY_assign_RSA(rsa_key.get(), key);
+  bssl::UniquePtr<EVP_PKEY_CTX> rsa_key_ctx(EVP_PKEY_CTX_new(rsa_key.get(), NULL));
+  ASSERT_TRUE(rsa_key_ctx.get());
+
+  // Encrypt Decrypt Operations (pub_enc & priv_dec)
+  size_t out_len = EVP_PKEY_size(rsa_key.get());
+  uint8_t in, out;
+  ASSERT_TRUE(EVP_PKEY_encrypt_init(rsa_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_encrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_pub_enc");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
+  ASSERT_TRUE(EVP_PKEY_decrypt_init(rsa_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_decrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_dec");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
+  ASSERT_TRUE(EVP_PKEY_verify_recover_init(rsa_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len,
+                                      nullptr, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_pub_dec");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
+  // This operation is not plumbed through EVP_PKEY API in OpenSSL or AWS-LC
+  ASSERT_TRUE(RSA_sign_raw(key, &out_len, &out, 0, nullptr, 0, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_enc");
+}
+
+TEST(RSATest, RSAEngine) {
+  ENGINE *engine = ENGINE_new();
+  ASSERT_TRUE(engine);
+  ASSERT_FALSE(ENGINE_get_RSA(engine));
+
+  RSA_METHOD *eng_funcs = RSA_meth_new(NULL, 0);
+  ASSERT_TRUE(eng_funcs);
+  ASSERT_TRUE(RSA_meth_set_priv_dec(eng_funcs, rsa_priv_dec));
+
+  ASSERT_TRUE(ENGINE_set_RSA(engine, eng_funcs));
+  ASSERT_TRUE(ENGINE_get_RSA(engine));
+
+  RSA *key = RSA_new_method(engine);
+  ASSERT_TRUE(key);
+
+  size_t out_len = 16;
+  uint8_t in, out;
+  // Call custom Engine implementation
+  ASSERT_TRUE(RSA_decrypt(key, &out_len, &out, out_len, &in, 0, 0));
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_dec");
+
+  RSA_free(key);
+  ENGINE_free(engine);
+  RSA_meth_free(eng_funcs);
+}
+
 #if !defined(AWSLC_FIPS)
 
 TEST(RSATest, KeygenFail) {
@@ -1172,114 +1286,30 @@ TEST(RSATest, KeygenFailOnce) {
 }
 
 #else
+
 // AWSLCAndroidTestRunner does not take tests that do |ASSERT_DEATH| very well.
 // GTEST issue: https://github.com/google/googletest/issues/1496.
 #if !defined(OPENSSL_ANDROID)
 
-// In the case of a FIPS build, expect abort() when |RSA_generate_key_ex| fails.
+// In the case of a FIPS build, expect abort() when PWCTs in
+// |RSA_generate_key_fips| fail.
 TEST(RSADeathTest, KeygenFailAndDie) {
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
+  const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  if (!value || strcmp(value, "RSA_PWCT") != 0) {
+    GTEST_SKIP() << "Skipping BORINGSSL_FIPS_BREAK_TESTS RSA_PWCT Test.";
+  }
 
-  // Cause RSA key generation after a prime has been generated, to test that
-  // |rsa| is left alone.
-  BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int, BN_GENCB *) -> int { return event != 3; },
-               nullptr);
+  // Test that all supported key lengths abort when PWCTs fail.
+  for (const size_t bits : {2048, 3072, 4096}) {
+    SCOPED_TRACE(bits);
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    ASSERT_TRUE(rsa);
 
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  ASSERT_TRUE(e);
-  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
-
-  // Key generation should fail.
-  ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
-
-  // Failed key generations do not leave garbage in |rsa|.
-  EXPECT_FALSE(rsa->n);
-  EXPECT_FALSE(rsa->e);
-  EXPECT_FALSE(rsa->d);
-  EXPECT_FALSE(rsa->p);
-  EXPECT_FALSE(rsa->q);
-  EXPECT_FALSE(rsa->dmp1);
-  EXPECT_FALSE(rsa->dmq1);
-  EXPECT_FALSE(rsa->iqmp);
-  EXPECT_FALSE(rsa->mont_n);
-  EXPECT_FALSE(rsa->mont_p);
-  EXPECT_FALSE(rsa->mont_q);
-  EXPECT_FALSE(rsa->d_fixed);
-  EXPECT_FALSE(rsa->dmp1_fixed);
-  EXPECT_FALSE(rsa->dmq1_fixed);
-  EXPECT_FALSE(rsa->iqmp_mont);
-  EXPECT_FALSE(rsa->private_key_frozen);
-
-  // Failed key generations leave the previous contents alone.
-  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
-  uint8_t *der;
-  size_t der_len;
-  ASSERT_TRUE(RSA_private_key_to_bytes(&der, &der_len, rsa.get()));
-  bssl::UniquePtr<uint8_t> delete_der(der);
-
-  ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb),"");
-
-  uint8_t *der2;
-  size_t der2_len;
-  ASSERT_TRUE(RSA_private_key_to_bytes(&der2, &der2_len, rsa.get()));
-  bssl::UniquePtr<uint8_t> delete_der2(der2);
-  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
-
-  // Generating a key over an existing key works, despite any cached state.
-  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
-  EXPECT_TRUE(RSA_check_key(rsa.get()));
-
-  bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
-  ASSERT_TRUE(rsa_pkey);
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
-  bssl::UniquePtr<EVP_PKEY_CTX> rsa_key_ctx(
-          EVP_PKEY_CTX_new(rsa_pkey.get(), NULL));
-  ASSERT_TRUE(rsa_key_ctx);
-  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx.get()));
-  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx.get())));
-
-  uint8_t *der3;
-  size_t der3_len;
-  ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
-  bssl::UniquePtr<uint8_t> delete_der3(der3);
-  EXPECT_NE(Bytes(der, der_len), Bytes(der3, der3_len));
+    ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_fips(rsa.get(), bits, nullptr),
+                              "");
+  }
 }
 #endif
-
-// This is not a death test. It's similar to the test KeygenFailOnce
-// in the non-FIPS case, with the following differences:
-// - the callback gets called again in the outer loop,
-// ADD_FAILURE() is removed.
-// - On subsequent retries (in FIPS, MAX_KEYGEN_ATTEMPTS > 1),
-// |RSA_generate_key_ex| succeeds.
-TEST(RSATest, KeygenFailOnceThenSucceed) {
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-
-  // Cause only the first iteration of RSA key generation to fail.
-  bool failed = false;
-  BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 return 0;
-               },
-               &failed);
-
-  // Although key generation internally retries, the external behavior of
-  // |BN_GENCB| is preserved.
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  ASSERT_TRUE(e);
-  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
-  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
-}
 
 #endif
 
@@ -1468,7 +1498,7 @@ TEST(RSATest, PrintBio) {
   BIO_mem_contents(bio.get(), &data, &len);
 
   const char *expected = ""
-      "    Private-Key: (512 bit)\n"
+      "    Private-Key: (512 bit, 2 primes)\n"
       "    modulus:\n"
       "        00:aa:36:ab:ce:88:ac:fd:ff:55:52:3c:7f:c4:52:\n"
       "        3f:90:ef:a0:0d:f3:77:4a:25:9f:2e:62:b4:c5:d9:\n"
@@ -1543,10 +1573,13 @@ TEST(RSATest, MissingParameters) {
   std::vector<uint8_t> out(RSA_size(sample.get()));
   EXPECT_FALSE(RSA_sign(NID_sha256, kZeros, sizeof(kZeros), out.data(), &len_u,
                         rsa.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
+
   size_t len;
   EXPECT_FALSE(RSA_decrypt(rsa.get(), &len, out.data(), out.size(),
                            kOAEPCiphertext1, sizeof(kOAEPCiphertext1) - 1,
                            RSA_PKCS1_OAEP_PADDING));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
 
   // A private key without e cannot perform public key operations.
   rsa.reset(RSA_new_private_key_no_e(RSA_get0_n(sample.get()),
@@ -1554,8 +1587,11 @@ TEST(RSATest, MissingParameters) {
   ASSERT_TRUE(rsa);
   EXPECT_FALSE(RSA_verify(NID_sha256, kZeros, sizeof(kZeros), sig.data(),
                           sig.size(), rsa.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
+
   EXPECT_FALSE(RSA_encrypt(rsa.get(), &len, out.data(), out.size(), kPlaintext,
-                           kPlaintextLen, RSA_PKCS1_OAEP_PADDING));
+                           sizeof(kPlaintext), RSA_PKCS1_OAEP_PADDING));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
 }
 
 TEST(RSATest, Negative) {

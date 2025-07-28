@@ -6,21 +6,20 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
 
 
-EXTERN	OPENSSL_ia32cap_P
-
-global	bn_mul_mont
+global	bn_mul_mont_nohw
 
 ALIGN	16
-bn_mul_mont:
+bn_mul_mont_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_bn_mul_mont:
+$L$SEH_begin_bn_mul_mont_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -30,23 +29,10 @@ $L$SEH_begin_bn_mul_mont:
 
 
 
+_CET_ENDBR
 	mov	r9d,r9d
 	mov	rax,rsp
 
-	test	r9d,3
-	jnz	NEAR $L$mul_enter
-	cmp	r9d,8
-	jb	NEAR $L$mul_enter
-	lea	r11,[OPENSSL_ia32cap_P]
-	mov	r11d,DWORD[8+r11]
-	cmp	rdx,rsi
-	jne	NEAR $L$mul4x_enter
-	test	r9d,7
-	jz	NEAR $L$sqr8x_enter
-	jmp	NEAR $L$mul4x_enter
-
-ALIGN	16
-$L$mul_enter:
 	push	rbx
 
 	push	rbp
@@ -280,7 +266,8 @@ $L$mul_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	DB	0F3h,0C3h		;repret
 
-$L$SEH_end_bn_mul_mont:
+$L$SEH_end_bn_mul_mont_nohw:
+global	bn_mul4x_mont
 
 ALIGN	16
 bn_mul4x_mont:
@@ -297,13 +284,10 @@ $L$SEH_begin_bn_mul4x_mont:
 
 
 
+_CET_ENDBR
 	mov	r9d,r9d
 	mov	rax,rsp
 
-$L$mul4x_enter:
-	and	r11d,0x80100
-	cmp	r11d,0x80100
-	je	NEAR $L$mulx4x_enter
 	push	rbx
 
 	push	rbp
@@ -729,9 +713,12 @@ $L$mul4x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_bn_mul4x_mont:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 EXTERN	bn_sqrx8x_internal
+%endif
 EXTERN	bn_sqr8x_internal
 
+global	bn_sqr8x_mont
 
 ALIGN	32
 bn_sqr8x_mont:
@@ -748,9 +735,10 @@ $L$SEH_begin_bn_sqr8x_mont:
 
 
 
+_CET_ENDBR
+	mov	r9d,r9d
 	mov	rax,rsp
 
-$L$sqr8x_enter:
 	push	rbx
 
 	push	rbp
@@ -825,11 +813,9 @@ DB	102,72,15,110,209
 	pxor	xmm0,xmm0
 DB	102,72,15,110,207
 DB	102,73,15,110,218
-	lea	rax,[OPENSSL_ia32cap_P]
-	mov	eax,DWORD[8+rax]
-	and	eax,0x80100
-	cmp	eax,0x80100
-	jne	NEAR $L$sqr8x_nox
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+	test	rdx,rdx
+	jz	NEAR $L$sqr8x_nox
 
 	call	bn_sqrx8x_internal
 
@@ -845,6 +831,7 @@ DB	102,72,15,126,207
 
 ALIGN	32
 $L$sqr8x_nox:
+%endif
 	call	bn_sqr8x_internal
 
 
@@ -934,6 +921,8 @@ $L$sqr8x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_bn_sqr8x_mont:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+global	bn_mulx4x_mont
 
 ALIGN	32
 bn_mulx4x_mont:
@@ -950,9 +939,9 @@ $L$SEH_begin_bn_mulx4x_mont:
 
 
 
+_CET_ENDBR
 	mov	rax,rsp
 
-$L$mulx4x_enter:
 	push	rbx
 
 	push	rbp
@@ -1304,6 +1293,7 @@ $L$mulx4x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_bn_mulx4x_mont:
+%endif
 	DB	77,111,110,116,103,111,109,101,114,121,32,77,117,108,116,105
 	DB	112,108,105,99,97,116,105,111,110,32,102,111,114,32,120,56
 	DB	54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83
@@ -1444,9 +1434,9 @@ $L$common_seh_tail:
 
 section	.pdata rdata align=4
 ALIGN	4
-	DD	$L$SEH_begin_bn_mul_mont wrt ..imagebase
-	DD	$L$SEH_end_bn_mul_mont wrt ..imagebase
-	DD	$L$SEH_info_bn_mul_mont wrt ..imagebase
+	DD	$L$SEH_begin_bn_mul_mont_nohw wrt ..imagebase
+	DD	$L$SEH_end_bn_mul_mont_nohw wrt ..imagebase
+	DD	$L$SEH_info_bn_mul_mont_nohw wrt ..imagebase
 
 	DD	$L$SEH_begin_bn_mul4x_mont wrt ..imagebase
 	DD	$L$SEH_end_bn_mul4x_mont wrt ..imagebase
@@ -1455,12 +1445,14 @@ ALIGN	4
 	DD	$L$SEH_begin_bn_sqr8x_mont wrt ..imagebase
 	DD	$L$SEH_end_bn_sqr8x_mont wrt ..imagebase
 	DD	$L$SEH_info_bn_sqr8x_mont wrt ..imagebase
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	DD	$L$SEH_begin_bn_mulx4x_mont wrt ..imagebase
 	DD	$L$SEH_end_bn_mulx4x_mont wrt ..imagebase
 	DD	$L$SEH_info_bn_mulx4x_mont wrt ..imagebase
+%endif
 section	.xdata rdata align=8
 ALIGN	8
-$L$SEH_info_bn_mul_mont:
+$L$SEH_info_bn_mul_mont_nohw:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul_body wrt ..imagebase,$L$mul_epilogue wrt ..imagebase
@@ -1473,11 +1465,13 @@ $L$SEH_info_bn_sqr8x_mont:
 	DD	sqr_handler wrt ..imagebase
 	DD	$L$sqr8x_prologue wrt ..imagebase,$L$sqr8x_body wrt ..imagebase,$L$sqr8x_epilogue wrt ..imagebase
 ALIGN	8
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 $L$SEH_info_bn_mulx4x_mont:
 	DB	9,0,0,0
 	DD	sqr_handler wrt ..imagebase
 	DD	$L$mulx4x_prologue wrt ..imagebase,$L$mulx4x_body wrt ..imagebase,$L$mulx4x_epilogue wrt ..imagebase
 ALIGN	8
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

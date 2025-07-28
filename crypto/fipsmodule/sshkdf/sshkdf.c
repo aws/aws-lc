@@ -21,6 +21,7 @@ int SSHKDF(const EVP_MD *evp_md,
            char type,
            uint8_t *out, size_t out_len)
 {
+  SET_DIT_AUTO_RESET;
   EVP_MD_CTX *md = NULL;
   uint8_t digest[EVP_MAX_MD_SIZE];
   unsigned int digest_size = 0;

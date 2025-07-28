@@ -28,10 +28,6 @@ extern "C" {
 
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
-#elif defined(OPENSSL_FUCHSIA)
-#define OPENSSL_RAND_FUCHSIA
-#elif defined(OPENSSL_TRUSTY)
-#define OPENSSL_RAND_TRUSTY
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
 #else
@@ -45,12 +41,12 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
 // CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
 // system.
-void CRYPTO_sysrand(uint8_t *buf, size_t len);
+OPENSSL_EXPORT void CRYPTO_sysrand(uint8_t *buf, size_t len);
 
 // CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
 // operating system. It may draw from the |GRND_RANDOM| pool on Android,
 // depending on the vendor's configuration.
-void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
+OPENSSL_EXPORT void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
 
 #if defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
 // CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
@@ -91,7 +87,7 @@ struct ctr_drbg_state_st {
 // CTR_DRBG_init initialises |*drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of
 // entropy in |entropy| and, optionally, a personalization string up to
 // |CTR_DRBG_ENTROPY_LEN| bytes in length. It returns one on success and zero
-// on error.
+// on error. |entropy| and |personalization| must not alias.
 OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                                  const uint8_t *personalization,

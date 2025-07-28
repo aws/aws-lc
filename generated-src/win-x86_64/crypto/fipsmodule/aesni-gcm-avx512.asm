@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64

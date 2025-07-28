@@ -24,6 +24,8 @@
 #include <string>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <openssl/span.h>
 
 #include "../internal.h"
@@ -73,14 +75,33 @@ std::string EncodeHex(bssl::Span<const uint8_t> in);
 // |X509*|.
 bssl::UniquePtr<X509> CertFromPEM(const char *pem);
 
+// CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509),
+// bumping the reference counts for each certificate in question.
+bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs);
+
+// RSAFromPEM parses the given, NUL-terminated pem block and returns an
+// |RSA*|.
+bssl::UniquePtr<RSA> RSAFromPEM(const char *pem);
+
+// kReferenceTime is the reference time used by certs created by |MakeTestCert|.
+// It is the unix timestamp for Sep 27th, 2016.
+static const int64_t kReferenceTime = 1474934400;
+
+// MakeTestCert creates an X509 certificate for use in testing. It is configured
+// to be valid from 1 day prior |kReferenceTime| until 1 day after
+// |kReferenceTime|.
+bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
+                                          const char *subject, EVP_PKEY *key,
+                                          bool is_ca);
+
 // unique_ptr will automatically call fclose on the file descriptior when the
 // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
 // to avoid a double-free condition.
-struct FileCloser {
+struct TempFileCloser {
   void operator()(FILE *f) const { fclose(f); }
 };
 
-using TempFILE = std::unique_ptr<FILE, FileCloser>;
+using TempFILE = std::unique_ptr<FILE, TempFileCloser>;
 
 #if defined(OPENSSL_WINDOWS)
 #include <windows.h>
@@ -94,6 +115,7 @@ using TempFILE = std::unique_ptr<FILE, FileCloser>;
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
+size_t createTempDirPath(char buffer[PATH_MAX]);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {
@@ -102,5 +124,26 @@ typedef struct {
 
 void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
                            int index, long argl, void *argp);
+// ErrorEquals asserts that |err| is an error with library |lib| and reason
+// |reason|.
+testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
+
+// ExpectParse does a d2i parse using the corresponding template and function
+// pointer.
+template <typename T>
+void ExpectParse(T *(*d2i)(T **, const uint8_t **, long),
+                   const std::vector<uint8_t> &in, bool expected) {
+  SCOPED_TRACE(Bytes(in));
+  const uint8_t *ptr = in.data();
+  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
+  if (expected) {
+    EXPECT_TRUE(obj);
+  } else {
+    EXPECT_FALSE(obj);
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+    ERR_clear_error();
+  }
+}
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H

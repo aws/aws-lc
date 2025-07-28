@@ -2,9 +2,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -ex
+set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
+source tests/ci/gtest_util.sh
 
 function static_linux_supported() {
   if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
@@ -33,19 +34,25 @@ if static_linux_supported || static_openbsd_supported; then
 
   echo "Testing AWS-LC static breakable release build"
   run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
-  cd $SRC_ROOT
-  MODULE_HASH=$(./util/fipstools/test-break-kat.sh |\
-                    (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
+  ./util/fipstools/test-break-kat.sh
+  ./util/fipstools/test-runtime-pwct.sh
+  export BORINGSSL_FIPS_BREAK_TEST="RSA_PWCT"
+  ${BUILD_ROOT}/crypto/crypto_test --gtest_filter="RSADeathTest.KeygenFailAndDie"
+  unset BORINGSSL_FIPS_BREAK_TEST
+
+  MODULE_HASH=$(go run util/fipstools/break-hash.go "${BUILD_ROOT}/util/fipstools/test_fips" ./libcrypto.so | \
+    egrep "Hash of module was:.* ([a-f0-9]*)")
 
   echo "Testing AWS-LC static breakable release build while keeping local symbols"
   echo "to check that module hash didn't change."
   run_build -DFIPS=1 -DKEEP_ASM_LOCAL_SYMBOLS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
-  cd $SRC_ROOT
-  ./util/fipstools/test-break-kat.sh || grep -i hash
-  MODULE_HASH_LOCALSYMS=$(./util/fipstools/test-break-kat.sh |\
-                              (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
+  MODULE_HASH_LOCALSYMS=$(go run util/fipstools/break-hash.go "${BUILD_ROOT}/util/fipstools/test_fips" ./libcrypto.so | \
+                            egrep "Hash of module was:.* ([a-f0-9]*)")
   if [ "$MODULE_HASH" == "$MODULE_HASH_LOCALSYMS" ]; then
     echo "Module hash didn't change"
+  else
+    echo "Module hashed changed with local symbols unexpectedly"
+    exit 1
   fi
 
   # These build parameters may be needed by our aws-lc-fips-sys Rust package
@@ -53,6 +60,11 @@ if static_linux_supported || static_openbsd_supported; then
 
   echo "Testing AWS-LC static library in FIPS Release mode with FIPS entropy source method CPU Jitter."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
+
+  echo "Testing AWS-LC static library in FIPS Debug with SysGenId."
+  TEST_SYSGENID_PATH=$(mktemp)
+  dd if=/dev/zero of="${TEST_SYSGENID_PATH}" bs=1 count=4096
+  fips_build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051

@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/acvp"
+	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/katemitter"
 	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/subprocess"
 )
 
@@ -50,6 +51,8 @@ var (
 	fetchFlag       = flag.String("fetch", "", "Name of primitive to fetch vectors for")
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
 	wrapperPath     = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
+	waitForDebugger = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
+	katFilePath     = flag.String("kat-out", "", "Writes a KAT file out if with test information for use with AWS-LC's file-based test framework. Support is limited, so if you don't see content it's likely not plumbed in.")
 )
 
 type Config struct {
@@ -80,7 +83,7 @@ func isCommentLine(line []byte) bool {
 	return false
 }
 
-func jsonFromFile(out any, filename string) error {
+func jsonFromFile(out interface{}, filename string) error {
 	in, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -131,7 +134,7 @@ func TOTP(secret []byte) string {
 type Middle interface {
 	Close()
 	Config() ([]byte, error)
-	Process(algorithm string, vectorSet []byte) (any, error)
+	Process(algorithm string, vectorSet []byte) (interface{}, error)
 }
 
 func loadCachedSessionTokens(server *acvp.Server, cachePath string) error {
@@ -198,7 +201,7 @@ func looksLikeVectorSetHeader(element json.RawMessage) bool {
 
 // processFile reads a file containing vector sets, at least in the format
 // preferred by our lab, and writes the results to stdout.
-func processFile(filename string, supportedAlgos []map[string]any, middle Middle) error {
+func processFile(filename string, supportedAlgos []map[string]interface{}, middle Middle) error {
 	jsonBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return err
@@ -267,7 +270,7 @@ func processFile(filename string, supportedAlgos []map[string]any, middle Middle
 			return fmt.Errorf("while processing vector set #%d: %s", i+1, err)
 		}
 
-		group := map[string]any{
+		group := map[string]interface{}{
 			"vsId":       commonFields.ID,
 			"testGroups": replyGroups,
 			"algorithm":  algo,
@@ -529,24 +532,40 @@ func uploadFromFile(file string, config *Config, sessionTokensCacheDir string) {
 func main() {
 	flag.Parse()
 
-	middle, err := subprocess.New(*wrapperPath)
+	var args []string
+	if *waitForDebugger {
+		args = append(args, "--wait-for-debugger")
+	}
+
+	middle, err := subprocess.New(*wrapperPath, args...)
 	if err != nil {
 		log.Fatalf("failed to initialise middle: %s", err)
 	}
 	defer middle.Close()
+
+	if *waitForDebugger {
+		log.Printf("attach to process %d to continue", middle.PID())
+	}
 
 	configBytes, err := middle.Config()
 	if err != nil {
 		log.Fatalf("failed to get config from middle: %s", err)
 	}
 
-	var supportedAlgos []map[string]any
+	var supportedAlgos []map[string]interface{}
 	if err := json.Unmarshal(configBytes, &supportedAlgos); err != nil {
 		log.Fatalf("failed to parse configuration from Middle: %s", err)
 	}
 
+	if len(*katFilePath) > 0 {
+		if err := katemitter.EmitToFile(*katFilePath); err != nil {
+			log.Fatalf("failed to start kat emitter: %v", err)
+		}
+		defer katemitter.Close()
+	}
+
 	if *dumpRegcap {
-		nonTestAlgos := make([]map[string]any, 0, len(supportedAlgos))
+		nonTestAlgos := make([]map[string]interface{}, 0, len(supportedAlgos))
 		for _, algo := range supportedAlgos {
 			if value, ok := algo["acvptoolTestOnly"]; ok {
 				testOnly, ok := value.(bool)
@@ -560,9 +579,9 @@ func main() {
 			nonTestAlgos = append(nonTestAlgos, algo)
 		}
 
-		regcap := []map[string]any{
-			{"acvVersion": "1.0"},
-			{"algorithms": nonTestAlgos},
+		regcap := []map[string]interface{}{
+			map[string]interface{}{"acvVersion": "1.0"},
+			map[string]interface{}{"algorithms": nonTestAlgos},
 		}
 		regcapBytes, err := json.MarshalIndent(regcap, "", "    ")
 		if err != nil {
@@ -615,7 +634,7 @@ func main() {
 		}
 	}
 
-	var algorithms []map[string]any
+	var algorithms []map[string]interface{}
 	for _, supportedAlgo := range supportedAlgos {
 		algoInterface, ok := supportedAlgo["algorithm"]
 		if !ok {

@@ -144,7 +144,7 @@ The following table contains the differences in libssl configuration options AWS
   </td>
  </tr>
  <tr>
-  <td rowspan=10>
+  <td rowspan=13>
   <p>
     <span>
       <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L794-L797">
@@ -178,6 +178,21 @@ The following table contains the differences in libssl configuration options AWS
   <p><span>
     <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5561-L5564">
       SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>OFF</span></p>
+  </td>
+  <td>
+  <p><span>NO-OP</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>
+    <a href="">
+      SSL_OP_CRYPTOPRO_TLSEXT_BUG
     </a>
   </span></p>
   </td>
@@ -271,6 +286,36 @@ The following table contains the differences in libssl configuration options AWS
   <p><span>
     <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5597-L5599">
       SSL_OP_NO_SSLv3
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>ON</span></p>
+  </td>
+  <td>
+  <p><span>NO-OP</span></p>
+  </td>
+ </tr>
+  <tr>
+  <td>
+  <p><span>
+    <a href="">
+      SSL_OP_SAFARI_ECDHE_ECDSA_BUG
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>ON</span></p>
+  </td>
+  <td>
+  <p><span>NO-OP</span></p>
+  </td>
+ </tr>
+  <tr>
+  <td>
+  <p><span>
+    <a href="">
+      SSL_OP_TLSEXT_PADDING
     </a>
   </span></p>
   </td>

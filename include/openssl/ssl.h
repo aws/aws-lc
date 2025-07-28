@@ -166,24 +166,6 @@ struct timeval;
 extern "C" {
 #endif
 
-#if defined(__cplusplus)
-// enums can be predeclared, but only in C++ and only if given an explicit type.
-// C doesn't support setting an explicit type for enums thus a #define is used
-// to do this only for C++. However, the ABI type between C and C++ need to have
-// equal sizes, which is confirmed in a unittest.
-#define BORINGSSL_ENUM_INT : int
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT;
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT;
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
-enum ssl_verify_result_t BORINGSSL_ENUM_INT;
-#else
-#define BORINGSSL_ENUM_INT
-#endif
-
 
 // SSL implementation.
 
@@ -1117,6 +1099,62 @@ SSL_get0_peer_verify_algorithms(const SSL *ssl, const uint16_t **out_sigalgs);
 OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
     const SSL *ssl, const uint16_t **out_sigalgs);
 
+// SSL_CLIENT_HELLO_SUCCESS indicates that the ClientHello processing was
+// successful. The handshake will continue normally.
+# define SSL_CLIENT_HELLO_SUCCESS 1
+// SSL_CLIENT_HELLO_ERROR indicates that a fatal error occurred while processing
+// the ClientHello. The callback should set |*al| to a TLS alert value to return
+// to the client. The handshake will be aborted.
+# define SSL_CLIENT_HELLO_ERROR   0
+// SSL_CLIENT_HELLO_RETRY indicates that the handshake should be paused and the
+// server should retry when it can continue.
+//
+// WARNING: The current implementation does not properly support
+// SSL_CLIENT_HELLO_RETRY and attempting to use it will result in handshake
+// failure.
+# define SSL_CLIENT_HELLO_RETRY   (-1)
+
+// SSL_client_hello_cb_fn is a callback function that is called when a ClientHello
+// is received. The callback may inspect the ClientHello and make decisions 
+// about the connection based on its contents.
+//
+// The callback should return one of:
+// - SSL_CLIENT_HELLO_SUCCESS to continue the handshake
+// - SSL_CLIENT_HELLO_ERROR to abort the handshake with alert |*al|
+// - SSL_CLIENT_HELLO_RETRY (not supported) is handled like SSL_CLIENT_HELLO_ERROR
+typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
+
+// SSL_CTX_set_client_hello_cb configures a callback that is called when a
+// ClientHello message is received. This can be used to select certificates,
+// adjust settings, or otherwise make decisions about the connection before
+// the handshake proceeds.
+//
+// The callback is invoked before most ClientHello processing and before the
+// decision whether to resume a session is made. It may inspect the ClientHello
+// and configure the connection accordingly.
+//
+// The callback function is passed the |SSL| object, a pointer to an alert value,
+// and the argument provided when the callback was set. It should return either
+// SSL_CLIENT_HELLO_SUCCESS, SSL_CLIENT_HELLO_ERROR, or SSL_CLIENT_HELLO_RETRY.
+// Note that SSL_CLIENT_HELLO_RETRY is not fully supported; it is treated the
+// same as SSL_CLIENT_HELLO_ERROR.
+OPENSSL_EXPORT void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
+                                 void *arg);
+
+// SSL_client_hello_isv2 always returns zero as SSLv2 is not supported.
+OPENSSL_EXPORT int SSL_client_hello_isv2(SSL *s);
+
+// SSL_client_hello_get0_ext searches the extensions in the ClientHello for an
+// extension of the given type. If found, it sets |*out| to point to the
+// extension contents (not including the type and length bytes) and |*outlen|
+// to the length of the extension contents. If not found, it returns zero.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen);
+
 // SSL_certs_clear resets the private key, leaf certificate, and certificate
 // chain of |ssl|.
 OPENSSL_EXPORT void SSL_certs_clear(SSL *ssl);
@@ -1257,6 +1295,24 @@ OPENSSL_EXPORT int SSL_set_signing_algorithm_prefs(SSL *ssl,
                                                    const uint16_t *prefs,
                                                    size_t num_prefs);
 
+// SSL_CTX_use_cert_and_key sets |x509|, |privatekey|, and |chain| on |ctx|.
+// The |privatekey| argument must be the private key of the certificate |x509|.
+// If the override argument is 0, then |x509|, |privatekey|, and |chain| are
+// set only if all were not previously set. If override is non-0, then the
+// certificate, private key and chain certs are always set. |privatekey| and
+// |x509| are not copied or duplicated, their reference counts are incremented.
+// In OpenSSL, a shallow copy of |chain| is stored with a reference count
+// increment for all |X509| objects in the chain. In AWS-LC,
+// we represent X509 chains as a CRYPTO_BUFFER stack. Therefore, we create a
+// an internal copy and leave the |chain| parameter untouched. This means,
+// changes to |chain| after this function is called will not update in |ctx|.
+// This is different from OpenSSL which stores a reference to the X509
+// certificates in the |chain| object.
+//
+// Returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509,
+                                            EVP_PKEY *privatekey,
+                                            STACK_OF(X509) *chain, int override);
 
 // Certificate and private key convenience functions.
 
@@ -1277,8 +1333,9 @@ OPENSSL_EXPORT int SSL_set_chain_and_key(
     const SSL_PRIVATE_KEY_METHOD *privkey_method);
 
 // SSL_CTX_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
-// |SSL_CTX_set_chain_and_key|. Reference counts are not incremented by this
-// call. The return value may be |NULL| if no chain has been set.
+// |SSL_set_chain_and_key|, unless they have been discarded. Reference counts
+// are not incremented by this call. The return value may be |NULL| if no chain
+// has been set.
 //
 // (Note: if a chain was configured by non-|CRYPTO_BUFFER|-based functions then
 // the return value is undefined and, even if not NULL, the stack itself may
@@ -1346,10 +1403,15 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 // reads the contents of |file| as a PEM-encoded leaf certificate followed
 // optionally by the certificate chain to send to the peer. It returns one on
 // success and zero on failure.
+//
+// WARNING: If the input contains "TRUSTED CERTIFICATE" PEM blocks, this
+// function parses auxiliary properties as in |d2i_X509_AUX|. Passing untrusted
+// input to this function allows an attacker to influence those properties. See
+// |d2i_X509_AUX| for details.
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
-// SSL_CTX_use_certificate_chain_file configures certificates for |ssl|. It
+// SSL_use_certificate_chain_file configures certificates for |ssl|. It
 // reads the contents of |file| as a PEM-encoded leaf certificate followed
 // optionally by the certificate chain to send to the peer. It returns one on
 // success and zero on failure.
@@ -1377,10 +1439,10 @@ OPENSSL_EXPORT void *SSL_CTX_get_default_passwd_cb_userdata(const SSL_CTX *ctx);
 
 // Custom private keys.
 
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT {
+enum ssl_private_key_result_t {
   ssl_private_key_success,
   ssl_private_key_retry,
-  ssl_private_key_failure,
+  ssl_private_key_failure
 };
 
 // ssl_private_key_method_st (aka |SSL_PRIVATE_KEY_METHOD|) describes private
@@ -1683,23 +1745,27 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
 //
-// TLS 1.3 ciphers do not participate in this mechanism and instead have a
-// built-in preference order. Functions to set cipher lists do not affect TLS
-// 1.3, and functions to query the cipher list do not include TLS 1.3
-// ciphers.
+// Note: TLS 1.3 ciphersuites are only configurable via
+// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
+// no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
 #define SSL_DEFAULT_CIPHER_LIST "ALL"
 
+
 // SSL_CTX_set_strict_cipher_list configures the cipher list for |ctx|,
 // evaluating |str| as a cipher string and returning error if |str| contains
-// anything meaningless. It returns one on success and zero on failure.
+// anything meaningless. It updates |ctx->cipher_list| with any values in
+// |ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
                                                   const char *str);
 
 // SSL_CTX_set_cipher_list configures the cipher list for |ctx|, evaluating
-// |str| as a cipher string. It returns one on success and zero on failure.
+// |str| as a cipher string. It updates |ctx->cipher_list| with any values in
+// |ctx->tls13_cipher_list|. It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_CTX_set_strict_cipher_list|. This function tolerates
 // garbage inputs, unless an empty cipher list results. However, an empty
@@ -1713,16 +1779,34 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
 // SSL_set_strict_cipher_list configures the cipher list for |ssl|, evaluating
 // |str| as a cipher string and returning error if |str| contains anything
-// meaningless. It returns one on success and zero on failure.
+// meaningless.
+// It updates the cipher list |ssl->config->cipher_list| with any configured
+// TLS 1.3 cipher suites by first checking |ssl->config->tls13_cipher_list| and
+// otherwise falling back to |ssl->ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 
-// SSL_CTX_set_ciphersuites configure the available TLSv1.3 ciphersuites for
-// |ctx|, evaluating |str| as a cipher string. It returns one on success and
+// SSL_CTX_set_ciphersuites configures the available TLSv1.3 ciphersuites on
+// |ctx|, evaluating |str| as a cipher string. It updates |ctx->cipher_list|
+// with any values in |ctx->tls13_cipher_list|. It returns one on success and
 // zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
+// SSL_set_ciphersuites configures the available TLSv1.3 ciphersuites on
+// |ssl|, evaluating |str| as a cipher string. It updates
+// |ssl->config->cipher_list| with any values in
+// |ssl->config->tls13_cipher_list|. It returns one on success and zero on
+// failure.
+OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
+
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
-// a cipher string. It returns one on success and zero on failure.
+// a cipher string. It updates the cipher list |ssl->config->cipher_list| with
+// any configured TLS 1.3 cipher suites by first checking
+// |ssl->config->tls13_cipher_list| and otherwise falling back to
+// |ssl->ctx->tls13_cipher_list|.
+//
+// It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_set_strict_cipher_list|. This function tolerates garbage
 // inputs, unless an empty cipher list results. However, an empty string which
@@ -1731,7 +1815,7 @@ OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
 
 // SSL_CTX_get_ciphers returns the cipher list for |ctx|, in order of
-// preference.
+// preference. This includes TLS 1.3 and 1.2 and below cipher suites.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
 
 // SSL_CTX_cipher_in_group returns one if the |i|th cipher (see
@@ -1740,10 +1824,19 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i);
 
 // SSL_get_ciphers returns the cipher list for |ssl|, in order of preference.
+// This includes TLS 1.3 and 1.2 and below cipher suites.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 
 // Connection information.
+
+// SSL_in_connect_init returns 1 if |ssl| is a client and has a pending
+// handshake. Otherwise, it returns 0.
+OPENSSL_EXPORT int SSL_in_connect_init(const SSL *ssl);
+
+// SSL_in_accept_init returns 1 if |ssl| is a server and has a pending
+// handshake. Otherwise, it returns 0.
+OPENSSL_EXPORT int SSL_in_accept_init(const SSL *ssl);
 
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
 // and has no pending handshake. It returns zero otherwise.
@@ -2533,7 +2626,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 
 // ssl_ticket_aead_result_t enumerates the possible results from decrypting a
 // ticket with an |SSL_TICKET_AEAD_METHOD|.
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT {
+enum ssl_ticket_aead_result_t {
   // ssl_ticket_aead_success indicates that the ticket was successfully
   // decrypted.
   ssl_ticket_aead_success,
@@ -2546,7 +2639,7 @@ enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT {
   ssl_ticket_aead_ignore_ticket,
   // ssl_ticket_aead_error indicates that a fatal error occured and the
   // handshake should be terminated.
-  ssl_ticket_aead_error,
+  ssl_ticket_aead_error
 };
 
 // ssl_ticket_aead_method_st (aka |SSL_TICKET_AEAD_METHOD|) contains methods
@@ -2652,6 +2745,10 @@ OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
 // failure.
 OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
+// SSL_get_negotiated_group returns the NID of the group used by |ssl|'s most
+// recently completed handshake, or |NID_undef| if not applicable.
+OPENSSL_EXPORT int SSL_get_negotiated_group(const SSL *ssl);
+
 // SSL_GROUP_* define TLS group IDs.
 #define SSL_GROUP_SECP224R1 21
 #define SSL_GROUP_SECP256R1 23
@@ -2659,18 +2756,32 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
 
+// SSL_GROUP_SECP256R1_KYBER768_DRAFT00 is defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
 #define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
 
+// SSL_GROUP_X25519_KYBER768_DRAFT00 is defined at
 // https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
-// PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
-// community consensus and are defined at
+// The following are defined at
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
+#define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
+#define SSL_GROUP_X25519_MLKEM768 0x11EC
+#define SSL_GROUP_SECP384R1_MLKEM1024 0x11ED
+
+// The following PQ and hybrid group IDs are not yet standardized. Current IDs
+// are driven by community consensus and are defined at:
 // https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
 #define SSL_GROUP_KYBER512_R3 0x023A
 #define SSL_GROUP_KYBER768_R3 0x023C
 #define SSL_GROUP_KYBER1024_R3 0x023D
+
+// The following are defined at
+// https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
+#define SSL_GROUP_MLKEM512  0x0200
+#define SSL_GROUP_MLKEM768  0x0201
+#define SSL_GROUP_MLKEM1024 0x0202
 
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
 // completed handshake, or 0 if not applicable.
@@ -2679,6 +2790,17 @@ OPENSSL_EXPORT uint16_t SSL_get_group_id(const SSL *ssl);
 // SSL_get_group_name returns a human-readable name for the group specified by
 // the given TLS group ID, or NULL if the group is unknown.
 OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
+
+// SSL_get_peer_tmp_key sets |*out_key| to the temporary key provided by the
+// peer that was during the key exchange. If |ssl| is the server, the client's
+// temporary key is returned; if |ssl| is the client, the server's temporary key
+// is returned. It returns 1 on success and 0 if otherwise.
+OPENSSL_EXPORT int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
+// SSL_get_server_tmp_key is a backwards compatible alias to
+// |SSL_get_peer_tmp_key| in OpenSSL. Note that this means the client's
+// temporary key is being set to |*out_key| instead, if |ssl| is the server.
+OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 //
@@ -2807,16 +2929,19 @@ OPENSSL_EXPORT size_t SSL_get_all_group_names(const char **out, size_t max_out);
 #define SSL_VERIFY_PEER_IF_NO_OBC 0x04
 
 // SSL_CTX_set_verify configures certificate verification behavior. |mode| is
-// one of the |SSL_VERIFY_*| values defined above. |callback|, if not NULL, is
-// used to customize certificate verification, but is deprecated. See
-// |X509_STORE_CTX_set_verify_cb| for details.
+// one of the |SSL_VERIFY_*| values defined above. |callback| should be NULL.
 //
-// The callback may use |SSL_get_ex_data_X509_STORE_CTX_idx| with
-// |X509_STORE_CTX_get_ex_data| to look up the |SSL| from |store_ctx|.
+// If |callback| is non-NULL, it is called as in |X509_STORE_CTX_set_verify_cb|,
+// which is a deprecated and fragile mechanism to run the default certificate
+// verification process, but suppress individual errors in it. See
+// |X509_STORE_CTX_set_verify_cb| for details, If set, the callback may use
+// |SSL_get_ex_data_X509_STORE_CTX_idx| with |X509_STORE_CTX_get_ex_data| to
+// look up the |SSL| from |store_ctx|.
 //
-// WARNING: |callback| should be NULL. This callback does not replace the
-// default certificate verification process and is, instead, called multiple
-// times in the course of that process. It is very difficult to implement this
+// WARNING: |callback| is not suitable for implementing custom certificate
+// check, accepting all certificates, or extracting the certificate after
+// verification. It does not replace the default process and is called multiple
+// times throughout that process. It is also very difficult to implement this
 // callback safely, without inadvertently relying on implementation details or
 // making incorrect assumptions about when the callback is called.
 //
@@ -2824,43 +2949,38 @@ OPENSSL_EXPORT size_t SSL_get_all_group_names(const char **out, size_t max_out);
 // |SSL_CTX_set_cert_verify_callback| to customize certificate verification.
 // Those callbacks can inspect the peer-sent chain, call |X509_verify_cert| and
 // inspect the result, or perform other operations more straightforwardly.
-//
-// TODO(crbug.com/boringssl/426): We cite |X509_STORE_CTX_set_verify_cb| but
-// haven't documented it yet. Later that will have a more detailed warning about
-// why one should not use this callback.
 OPENSSL_EXPORT void SSL_CTX_set_verify(
     SSL_CTX *ctx, int mode, int (*callback)(int ok, X509_STORE_CTX *store_ctx));
 
 // SSL_set_verify configures certificate verification behavior. |mode| is one of
-// the |SSL_VERIFY_*| values defined above. |callback|, if not NULL, is used to
-// customize certificate verification, but is deprecated. See the behavior of
-// |X509_STORE_CTX_set_verify_cb|.
+// the |SSL_VERIFY_*| values defined above. |callback| should be NULL.
 //
-// The callback may use |SSL_get_ex_data_X509_STORE_CTX_idx| with
-// |X509_STORE_CTX_get_ex_data| to look up the |SSL| from |store_ctx|.
+// If |callback| is non-NULL, it is called as in |X509_STORE_CTX_set_verify_cb|,
+// which is a deprecated and fragile mechanism to run the default certificate
+// verification process, but suppress individual errors in it. See
+// |X509_STORE_CTX_set_verify_cb| for details, If set, the callback may use
+// |SSL_get_ex_data_X509_STORE_CTX_idx| with |X509_STORE_CTX_get_ex_data| to
+// look up the |SSL| from |store_ctx|.
 //
-// WARNING: |callback| should be NULL. This callback does not replace the
-// default certificate verification process and is, instead, called multiple
-// times in the course of that process. It is very difficult to implement this
+// WARNING: |callback| is not suitable for implementing custom certificate
+// check, accepting all certificates, or extracting the certificate after
+// verification. It does not replace the default process and is called multiple
+// times throughout that process. It is also very difficult to implement this
 // callback safely, without inadvertently relying on implementation details or
 // making incorrect assumptions about when the callback is called.
 //
-// Instead, use |SSL_set_custom_verify| or |SSL_CTX_set_cert_verify_callback| to
+// Instead, use |SSL_set_custom_verify| or |SSL_set_cert_verify_callback| to
 // customize certificate verification. Those callbacks can inspect the peer-sent
 // chain, call |X509_verify_cert| and inspect the result, or perform other
 // operations more straightforwardly.
-//
-// TODO(crbug.com/boringssl/426): We cite |X509_STORE_CTX_set_verify_cb| but
-// haven't documented it yet. Later that will have a more detailed warning about
-// why one should not use this callback.
 OPENSSL_EXPORT void SSL_set_verify(SSL *ssl, int mode,
                                    int (*callback)(int ok,
                                                    X509_STORE_CTX *store_ctx));
 
-enum ssl_verify_result_t BORINGSSL_ENUM_INT {
+enum ssl_verify_result_t {
   ssl_verify_ok,
   ssl_verify_invalid,
-  ssl_verify_retry,
+  ssl_verify_retry
 };
 
 // SSL_CTX_set_custom_verify configures certificate verification. |mode| is one
@@ -2999,19 +3119,17 @@ OPENSSL_EXPORT void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store);
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 
-// SSL_CTX_set_default_verify_paths loads the OpenSSL system-default trust
-// anchors into |ctx|'s store. It returns one on success and zero on failure.
+// SSL_CTX_set_default_verify_paths calls |X509_STORE_set_default_paths| on
+// |ctx|'s store. See that function for details.
+//
+// Using this function is not recommended. In OpenSSL, these defaults are
+// determined by OpenSSL's install prefix. There is no corresponding concept for
+// BoringSSL. Future versions of BoringSSL may change or remove this
+// functionality.
 OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
 
-// SSL_CTX_load_verify_locations loads trust anchors into |ctx|'s store from
-// |ca_file| and |ca_dir|, either of which may be NULL. If |ca_file| is passed,
-// it is opened and PEM-encoded CA certificates are read. If |ca_dir| is passed,
-// it is treated as a directory in OpenSSL's hashed directory format. It returns
-// one on success and zero on failure.
-//
-// See
-// https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_load_verify_locations.html
-// for documentation on the directory format.
+// SSL_CTX_load_verify_locations calls |X509_STORE_load_locations| on |ctx|'s
+// store. See that function for details.
 OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
                                                  const char *ca_file,
                                                  const char *ca_dir);
@@ -3115,12 +3233,12 @@ OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
 // configure this list.
 
 // SSL_set_client_CA_list sets |ssl|'s client certificate CA list to
-// |name_list|. It takes ownership of |name_list|.
+// |name_list|. It takes ownership of and frees |name_list|.
 OPENSSL_EXPORT void SSL_set_client_CA_list(SSL *ssl,
                                            STACK_OF(X509_NAME) *name_list);
 
 // SSL_CTX_set_client_CA_list sets |ctx|'s client certificate CA list to
-// |name_list|. It takes ownership of |name_list|.
+// |name_list|. It takes ownership of and frees |name_list|.
 OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
                                                STACK_OF(X509_NAME) *name_list);
 
@@ -3283,7 +3401,8 @@ OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
 
 // SSL_CTX_set_alpn_select_cb sets a callback function on |ctx| that is called
 // during ClientHello processing in order to select an ALPN protocol from the
-// client's list of offered protocols.
+// client's list of offered protocols. |SSL_select_next_proto| is an optional
+// utility function which may be useful in implementing this callback.
 //
 // The callback is passed a wire-format (i.e. a series of non-empty, 8-bit
 // length-prefixed strings) ALPN protocol list in |in|. To select a protocol,
@@ -3452,7 +3571,8 @@ OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(
 // set to point to the selected protocol (which may be within |in|). The length
 // of the protocol name must be written into |*out_len|. The server's advertised
 // protocols are provided in |in| and |in_len|. The callback can assume that
-// |in| is syntactically valid.
+// |in| is syntactically valid. |SSL_select_next_proto| is an optional utility
+// function which may be useful in implementing this callback.
 //
 // The client must select a protocol. It is fatal to the connection if this
 // callback returns a value other than |SSL_TLSEXT_ERR_OK|.
@@ -3475,21 +3595,45 @@ OPENSSL_EXPORT void SSL_get0_next_proto_negotiated(const SSL *ssl,
                                                    const uint8_t **out_data,
                                                    unsigned *out_len);
 
-// SSL_select_next_proto implements the standard protocol selection. It is
-// expected that this function is called from the callback set by
+// SSL_select_next_proto implements the standard protocol selection for either
+// ALPN servers or NPN clients. It is expected that this function is called from
+// the callback set by |SSL_CTX_set_alpn_select_cb| or
 // |SSL_CTX_set_next_proto_select_cb|.
 //
-// |peer| and |supported| must be vectors of 8-bit, length-prefixed byte strings
-// containing the peer and locally-configured protocols, respectively. The
-// length byte itself is not included in the length. A byte string of length 0
-// is invalid. No byte string may be truncated. |supported| is assumed to be
-// non-empty.
-//
-// This function finds the first protocol in |peer| which is also in
-// |supported|. If one was found, it sets |*out| and |*out_len| to point to it
-// and returns |OPENSSL_NPN_NEGOTIATED|. Otherwise, it returns
+// |peer| and |supported| contain the peer and locally-configured protocols,
+// respectively. This function finds the first protocol in |peer| which is also
+// in |supported|. If one was found, it sets |*out| and |*out_len| to point to
+// it and returns |OPENSSL_NPN_NEGOTIATED|. Otherwise, it returns
 // |OPENSSL_NPN_NO_OVERLAP| and sets |*out| and |*out_len| to the first
 // supported protocol.
+//
+// In ALPN, the server should only select protocols among those that the client
+// offered. Thus, if this function returns |OPENSSL_NPN_NO_OVERLAP|, the caller
+// should ignore |*out| and return |SSL_TLSEXT_ERR_ALERT_FATAL| from
+// |SSL_CTX_set_alpn_select_cb|'s callback to indicate there was no match.
+//
+// In NPN, the client may either select one of the server's protocols, or an
+// "opportunistic" protocol as described in Section 6 of
+// draft-agl-tls-nextprotoneg-03. When this function returns
+// |OPENSSL_NPN_NO_OVERLAP|, |*out| implicitly selects the first supported
+// protocol for use as the opportunistic protocol. The caller may use it,
+// ignore it and select a different opportunistic protocol, or ignore it and
+// select no protocol (empty string).
+//
+// |peer| and |supported| must be vectors of 8-bit, length-prefixed byte
+// strings. The length byte itself is not included in the length. A byte string
+// of length 0 is invalid. No byte string may be truncated. |supported| must be
+// non-empty; a caller that supports no ALPN/NPN protocols should skip
+// negotiating the extension, rather than calling this function. If any of these
+// preconditions do not hold, this function will return |OPENSSL_NPN_NO_OVERLAP|
+// and set |*out| and |*out_len| to an empty buffer for robustness, but callers
+// are not recommended to rely on this. An empty buffer is not a valid output
+// for |SSL_CTX_set_alpn_select_cb|'s callback.
+//
+// WARNING: |*out| and |*out_len| may alias either |peer| or |supported| and may
+// not be used after one of those buffers is modified or released. Additionally,
+// this function is not const-correct for compatibility reasons. Although |*out|
+// is a non-const pointer, callers may not modify the buffer though |*out|.
 OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
                                          const uint8_t *peer, unsigned peer_len,
                                          const uint8_t *supported,
@@ -3671,27 +3815,24 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 //
 // *** EXPERIMENTAL — PRONE TO CHANGE ***
 //
-// draft-ietf-tls-subcerts is a proposed extension for TLS 1.3 and above that
-// allows an end point to use its certificate to delegate credentials for
-// authentication. If the peer indicates support for this extension, then this
-// host may use a delegated credential to sign the handshake. Once issued,
-// credentials can't be revoked. In order to mitigate the damage in case the
-// credential secret key is compromised, the credential is only valid for a
-// short time (days, hours, or even minutes). This library implements draft-03
-// of the protocol spec.
+// Delegated credentials (RFC 9345) allow a TLS 1.3 end point to use its
+// certificate to issue new credentials for authentication. If the peer
+// indicates support for this extension, then this host may use a delegated
+// credential to sign the handshake. Once issued, credentials can't be revoked.
+// In order to mitigate the damage in case the credential secret key is
+// compromised, the credential is only valid for a short time (days, hours, or
+// even minutes).
 //
-// The extension ID has not been assigned; we're using 0xff02 for the time
-// being. Currently only the server side is implemented.
+// Currently only the server side is implemented.
 //
 // Servers configure a DC for use in the handshake via
 // |SSL_set1_delegated_credential|. It must be signed by the host's end-entity
-// certificate as defined in draft-ietf-tls-subcerts-03.
+// certificate as defined in RFC 9345.
 
 // SSL_set1_delegated_credential configures the delegated credential (DC) that
 // will be sent to the peer for the current connection. |dc| is the DC in wire
 // format, and |pkey| or |key_method| is the corresponding private key.
-// Currently (as of draft-03), only servers may configure a DC to use in the
-// handshake.
+// Currently, only servers may configure a DC to use in the handshake.
 //
 // The DC will only be used if the protocol version is correct and the signature
 // scheme is supported by the peer. If not, the DC will not be negotiated and
@@ -3772,11 +3913,11 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT {
+enum ssl_encryption_level_t {
   ssl_encryption_initial = 0,
   ssl_encryption_early_data,
   ssl_encryption_handshake,
-  ssl_encryption_application,
+  ssl_encryption_application
 };
 
 // ssl_quic_method_st (aka |SSL_QUIC_METHOD|) describes custom QUIC hooks.
@@ -4043,7 +4184,7 @@ OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 // An ssl_early_data_reason_t describes why 0-RTT was accepted or rejected.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
+enum ssl_early_data_reason_t {
   // The handshake has not progressed far enough for the 0-RTT status to be
   // known.
   ssl_early_data_unknown = 0,
@@ -4077,7 +4218,7 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   // The value of the largest entry.
   ssl_early_data_unsupported_with_custom_extension = 15,
   ssl_early_data_reason_max_value =
-      ssl_early_data_unsupported_with_custom_extension,
+      ssl_early_data_unsupported_with_custom_extension
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
@@ -4174,7 +4315,7 @@ OPENSSL_EXPORT void SSL_get0_ech_retry_configs(
 // to the size of the buffer. The caller must call |OPENSSL_free| on |*out| to
 // release the memory. On failure, it returns zero.
 //
-// The |config_id| field is a single byte identifer for the ECHConfig. Reusing
+// The |config_id| field is a single byte identifier for the ECHConfig. Reusing
 // config IDs is allowed, but if multiple ECHConfigs with the same config ID are
 // active at a time, server load may increase. See
 // |SSL_ECH_KEYS_has_duplicate_config_id|.
@@ -4394,6 +4535,38 @@ OPENSSL_EXPORT size_t SSL_get_key_block_len(const SSL *ssl);
 OPENSSL_EXPORT int SSL_generate_key_block(const SSL *ssl, uint8_t *out,
                                           size_t out_len);
 
+// SSL_get_read_traffic_secret retrives |ssl|'s read traffic key for the current
+// connection state. This is only valid for TLS 1.3 connections. It is an error
+// to call this function during a handshake, or if |ssl| was negotiated with
+// TLS 1.2 or lower.
+//
+// If |secret| is NULL then |*out_len| is
+// set to the maximum number of output bytes. Otherwise, on entry,
+// |*out_len| must contain the length of the |secret| buffer. If the call
+// is successful, the read traffic secret is written to |secret| and |*out_len|
+// is set to its length.
+//
+// It returns one on success, or zero on error.
+OPENSSL_EXPORT int SSL_get_read_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len);
+
+// SSL_get_write_traffic_secret retrieves |ssl|'s write traffic key for the
+// current connection state. This is only valid for TLS 1.3 connections. It is
+// an error to call this function during a handshake, or if |ssl| was negotiated
+// with TLS 1.2 or lower.
+//
+// If |secret| is NULL then |*out_len| is
+// set to the maximum number of output bytes. Otherwise, on entry,
+// |*out_len| must contain the length of the |secret| buffer. If the call
+// is successful, the write traffic secret is written to |secret| and |*out_len|
+// is set to its length.
+//
+// It returns one on success, or zero on error.
+OPENSSL_EXPORT int SSL_get_write_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len);
+
 // SSL_get_read_sequence returns, in TLS, the expected sequence number of the
 // next incoming record in the current epoch. In DTLS, it returns the maximum
 // sequence number received in the current epoch and includes the epoch number
@@ -4590,12 +4763,12 @@ OPENSSL_EXPORT void SSL_CTX_set_current_time_cb(
 // such as HTTP/1.1, and not others, such as HTTP/2.
 OPENSSL_EXPORT void SSL_set_shed_handshake_config(SSL *ssl, int enable);
 
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
+enum ssl_renegotiate_mode_t {
   ssl_renegotiate_never = 0,
   ssl_renegotiate_once,
   ssl_renegotiate_freely,
   ssl_renegotiate_ignore,
-  ssl_renegotiate_explicit,
+  ssl_renegotiate_explicit
 };
 
 // SSL_set_renegotiate_mode configures how |ssl|, a client, reacts to
@@ -4727,7 +4900,7 @@ struct ssl_early_callback_ctx {
 
 // ssl_select_cert_result_t enumerates the possible results from selecting a
 // certificate with |select_certificate_cb|.
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT {
+enum ssl_select_cert_result_t {
   // ssl_select_cert_success indicates that the certificate selection was
   // successful.
   ssl_select_cert_success = 1,
@@ -4736,7 +4909,7 @@ enum ssl_select_cert_result_t BORINGSSL_ENUM_INT {
   ssl_select_cert_retry = 0,
   // ssl_select_cert_error indicates that a fatal error occured and the
   // handshake should be terminated.
-  ssl_select_cert_error = -1,
+  ssl_select_cert_error = -1
 };
 
 // SSL_early_callback_ctx_extension_get searches the extensions in
@@ -4900,6 +5073,18 @@ OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
 // peer. If not applicable, it returns zero.
 OPENSSL_EXPORT uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl);
 
+// SSL_get_peer_signature_nid sets |psig_nid| to the NID of the digest used by
+// the peer to sign their TLS messages. Returns one on success and zero on
+// failure.
+OPENSSL_EXPORT int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid);
+
+// SSL_get_peer_signature_type_nid sets |psigtype_nid| to the signature type
+// used by the peer to sign their TLS messages. The signature type is the NID of
+// the public key type used for signing. Returns one on success and zero on
+// failure.
+OPENSSL_EXPORT int SSL_get_peer_signature_type_nid(const SSL *ssl,
+                                                   int *psigtype_nid);
+
 // SSL_get_client_random writes up to |max_out| bytes of the most recent
 // handshake's client_random to |out| and returns the number of bytes written.
 // If |max_out| is zero, it returns the size of the client_random.
@@ -4969,6 +5154,15 @@ OPENSSL_EXPORT int SSL_used_hello_retry_request(const SSL *ssl);
 // https://bugs.openjdk.java.net/browse/JDK-8213202
 OPENSSL_EXPORT void SSL_set_jdk11_workaround(SSL *ssl, int enable);
 
+// SSL_set_check_client_certificate_type configures whether the client, in
+// TLS 1.2 and below, will check its certificate against the server's requested
+// certificate types.
+//
+// By default, this option is enabled. If disabled, certificate selection within
+// the library may not function correctly. This flag is provided temporarily in
+// case of compatibility issues. It will be removed sometime after June 2024.
+OPENSSL_EXPORT void SSL_set_check_client_certificate_type(SSL *ssl, int enable);
+
 
 // SSL Stat Counters.
 
@@ -5016,6 +5210,42 @@ OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 // SSL_CTX_sess_cache_full returns the number of sessions that were removed
 // because the maximum session cache size was exceeded.
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
+
+
+// SSL BIO methods
+
+// BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
+// that this has quite different behaviour from the version in OpenSSL (notably
+// that it doesn't try to auto renegotiate). There is also no current support
+// for the |BIO_set_ssl*| related functions in OpenSSL or |BIO_puts| with this
+// BIO type within AWS-LC.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
+
+// BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must
+// have been created using |BIO_f_ssl|. If |take_owership| is true, |bio| will
+// call |SSL_free| on |ssl| when closed. It returns one on success or something
+// other than one on error.
+OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
+
+// BIO_get_ssl assigns the internal |SSL| of |bio| to |*ssl|. |*ssl| should
+// not be freed. It returns one on success or something other than one on error.
+OPENSSL_EXPORT long BIO_get_ssl(BIO *bio, SSL **ssl);
+
+// BIO_new_ssl_connect uses |ctx| to return a newly allocated BIO chain with
+// |BIO_new_ssl|, followed by a connect BIO.
+//
+// Note: This allocates a |BIO| with |BIO_f_ssl| to the user, so the same
+// caveats hold true for this function as well. See |BIO_f_ssl| for more
+// details.
+OPENSSL_EXPORT BIO *BIO_new_ssl_connect(SSL_CTX *ctx);
+
+// BIO_new_ssl returns a newly allocated SSL BIO created with |ctx|. A client
+// SSL is created if |client| is non-zero, and a server is created if otherwise.
+//
+// Note: This allocates a |BIO| with |BIO_f_ssl| to the user, so the same
+// caveats hold true for this function as well. See |BIO_f_ssl| for more
+// details.
+OPENSSL_EXPORT BIO *BIO_new_ssl(SSL_CTX *ctx, int client);
 
 
 // Deprecated functions.
@@ -5305,15 +5535,14 @@ OPENSSL_EXPORT int SSL_want(const SSL *ssl);
 
 // SSL_get_finished writes up to |count| bytes of the Finished message sent by
 // |ssl| to |buf|. It returns the total untruncated length or zero if none has
-// been sent yet. At TLS 1.3 and later, it returns zero.
+// been sent yet.
 //
 // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 
 // SSL_get_peer_finished writes up to |count| bytes of the Finished message
 // received from |ssl|'s peer to |buf|. It returns the total untruncated length
-// or zero if none has been received yet. At TLS 1.3 and later, it returns
-// zero.
+// or zero if none has been received yet.
 //
 // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,
@@ -5415,19 +5644,6 @@ OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
 
 // SSL_enable_tls_channel_id calls |SSL_set_tls_channel_id_enabled|.
 OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
-
-// BIO_f_ssl returns a |BIO_METHOD| that can wrap an |SSL*| in a |BIO*|. Note
-// that this has quite different behaviour from the version in OpenSSL (notably
-// that it doesn't try to auto renegotiate).
-//
-// IMPORTANT: if you are not curl, don't use this.
-OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
-
-// BIO_set_ssl sets |ssl| as the underlying connection for |bio|, which must
-// have been created using |BIO_f_ssl|. If |take_owership| is true, |bio| will
-// call |SSL_free| on |ssl| when closed. It returns one on success or something
-// other than one on error.
-OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
 
 // SSL_get_session returns a non-owning pointer to |ssl|'s session. For
 // historical reasons, which session it returns depends on |ssl|'s state.
@@ -5558,6 +5774,11 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
   SSL_GROUP_SECP256R1_KYBER768_DRAFT00
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
+// TLSEXT_nid_unknown is a constant used in OpenSSL for
+// |SSL_get_negotiated_group| to return an unrecognized group. AWS-LC never
+// returns this value, but we define this constant for compatibility.
+#define TLSEXT_nid_unknown 0x1000000
+
 // SSL_get_curve_id calls |SSL_get_group_id|.
 OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 
@@ -5620,6 +5841,14 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // unpatched clients and servers and is intentionally not supported in AWS-LC.
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 
+// SSL_OP_CRYPTOPRO_TLSEXT_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL lets the server add a server-hello extension from early version of
+// the cryptopro draft, when the GOST ciphersuite is negotiated. Required for
+// interoperability with CryptoPro CSP 3.x.
+//
+// Note: AWS-LC does not support GOST ciphersuites.
+#define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
+
 // SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS is ON by default in AWS-LC. This
 // disables a countermeasure against a SSL 3.0/TLS 1.0 protocol vulnerability
 // affecting CBC ciphers, which cannot be handled by some broken SSL
@@ -5644,7 +5873,7 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // This always starts a new session when performing renegotiation as a server
 // (i.e., session resumption requests are only accepted in the initial
 // handshake).
-// There is no support for renegototiation for a server in AWS-LC
+// There is no support for renegototiation for a server in AWS-LC.
 #define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
 
 // SSL_OP_NO_SSLv2 is ON by default in AWS-LC. There is no support for SSLv2 in
@@ -5655,6 +5884,18 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // AWS-LC
 #define SSL_OP_NO_SSLv3 0
 
+// SSL_OP_SAFARI_ECDHE_ECDSA_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL lets the application not prefer ECDHE-ECDSA ciphers when the client
+// appears to be Safari on OSX.
+//
+// Note: OS X 10.8..10.8.3 broke support for ECDHE-ECDSA ciphers.
+#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG 0
+
+// SSL_OP_TLSEXT_PADDING is OFF by default in AWS-LC. Turning this ON in OpenSSL
+// adds a padding extension to ensure the ClientHello size is never between 256
+// and 511 bytes in length. This is needed as a workaround for F5 terminators.
+#define SSL_OP_TLSEXT_PADDING 0
+
 // SSL_OP_TLS_ROLLBACK_BUG is OFF by default in AWS-LC. Turning this ON in
 // OpenSSL disables version rollback attack detection and is intentionally not
 // supported in AWS-LC.
@@ -5664,6 +5905,22 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // OpenSSL only requests a client certificate on the initial TLS handshake and
 // is intentionally not supported in AWS-LC.
 #define SSL_VERIFY_CLIENT_ONCE 0
+
+// SSL_OP_TLSEXT_PADDING is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL adds a padding extension to ensure the ClientHello size is never
+// between 256 and 511 bytes in length. This is needed as a workaround for some
+// implementations.
+#define SSL_OP_TLSEXT_PADDING 0
+
+// SSL_OP_SAFARI_ECDHE_ECDSA_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL defers ECDHE-ECDSA ciphers when the client appears to be Safari on
+// OSX. OSX 10.8 ~ 10.8.3 has broken support for ECDHE-ECDSA ciphers.
+#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG 0
+
+// SSL_OP_CRYPTOPRO_TLSEXT_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL adds the server-hello extension from the early version of cryptopro
+// draft when GOST ciphersuite is negotiated (which we don't support).
+#define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
 
 // The following have no effect in both AWS-LC and OpenSSL.
 #define SSL_OP_EPHEMERAL_RSA 0
@@ -5730,16 +5987,16 @@ struct ssl_comp_st {
 
 DEFINE_STACK_OF(SSL_COMP)
 
+// PHA No-ops [Deprecated].
+
+// SSL_verify_client_post_handshake is a no-op function for compatibility with
+// OpenSSL. It always returns 0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_verify_client_post_handshake(SSL *ssl);
 
 // FFDH Ciphersuite No-ops [Deprecated].
 //
 // AWS-LC does not support the use of FFDH cipher suites in libssl. The
 // following functions are only provided as no-ops for easier compatibility.
-
-// SSL_get_server_tmp_key returns zero. This was deprecated as part of the
-// removal of |EVP_PKEY_DH|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
-    SSL *ssl, EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
 //
@@ -5906,6 +6163,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_GET_CLIENT_CERT_TYPES doesnt_exist
 #define SSL_CTRL_GET_EXTRA_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
+#define SSL_CTRL_GET_NEGOTIATED_GROUP doesnt_exist
 #define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_GET_READ_AHEAD doesnt_exist
 #define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
@@ -5913,7 +6171,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB doesnt_exist
+#define SSL_CTRL_GET_TLSEXT_STATUS_REQ_TYPE doesnt_exist
 #define SSL_CTRL_GET_TLSEXT_TICKET_KEYS doesnt_exist
 #define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_MODE doesnt_exist
@@ -5936,6 +6194,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_DH doesnt_exist
@@ -6002,6 +6262,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_get0_chain_certs SSL_get0_chain_certs
 #define SSL_get_max_cert_list SSL_get_max_cert_list
 #define SSL_get_mode SSL_get_mode
+#define SSL_get_negotiated_group SSL_get_negotiated_group
 #define SSL_get_options SSL_get_options
 #define SSL_get_secure_renegotiation_support \
   SSL_get_secure_renegotiation_support
@@ -6023,6 +6284,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_set_tmp_ecdh SSL_set_tmp_ecdh
 #define SSL_set_tmp_rsa SSL_set_tmp_rsa
 #define SSL_total_renegotiations SSL_total_renegotiations
+#define SSL_in_connect_init SSL_in_connect_init
+#define SSL_in_accept_init SSL_in_accept_init
 
 #endif  // !defined(BORINGSSL_PREFIX)
 
@@ -6370,6 +6633,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_OUTER_EXTENSION 320
 #define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
 #define SSL_R_INVALID_ALPS_CODEPOINT 322
+#define SSL_R_NOT_REPLACING_CERTIFICATE 323
 #define SSL_R_SERIALIZATION_UNSUPPORTED 500
 #define SSL_R_SERIALIZATION_INVALID_SSL 501
 #define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502

@@ -16,7 +16,6 @@ package subprocess
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 )
@@ -36,30 +35,30 @@ type ecdsaTestGroup struct {
 	HashAlgo             string `json:"hashAlg,omitEmpty"`
 	ComponentTest        bool   `json:"componentTest"`
 	Tests                []struct {
-		ID     uint64 `json:"tcId"`
-		QxHex  string `json:"qx,omitempty"`
-		QyHex  string `json:"qy,omitempty"`
-		RHex   string `json:"r,omitempty"`
-		SHex   string `json:"s,omitempty"`
-		MsgHex string `json:"message,omitempty"`
+		ID  uint64               `json:"tcId"`
+		Qx  hexEncodedByteString `json:"qx,omitempty"`
+		Qy  hexEncodedByteString `json:"qy,omitempty"`
+		R   hexEncodedByteString `json:"r,omitempty"`
+		S   hexEncodedByteString `json:"s,omitempty"`
+		Msg hexEncodedByteString `json:"message,omitempty"`
 	} `json:"tests"`
 }
 
 type ecdsaTestGroupResponse struct {
-	ID    uint64              `json:"tgId"`
-	Tests []ecdsaTestResponse `json:"tests"`
-	QxHex string              `json:"qx,omitempty"`
-	QyHex string              `json:"qy,omitempty"`
+	ID    uint64               `json:"tgId"`
+	Tests []ecdsaTestResponse  `json:"tests"`
+	Qx    hexEncodedByteString `json:"qx,omitempty"`
+	Qy    hexEncodedByteString `json:"qy,omitempty"`
 }
 
 type ecdsaTestResponse struct {
-	ID     uint64 `json:"tcId"`
-	DHex   string `json:"d,omitempty"`
-	QxHex  string `json:"qx,omitempty"`
-	QyHex  string `json:"qy,omitempty"`
-	RHex   string `json:"r,omitempty"`
-	SHex   string `json:"s,omitempty"`
-	Passed *bool  `json:"testPassed,omitempty"` // using pointer so value is not omitted when it is false
+	ID     uint64               `json:"tcId"`
+	D      hexEncodedByteString `json:"d,omitempty"`
+	Qx     hexEncodedByteString `json:"qx,omitempty"`
+	Qy     hexEncodedByteString `json:"qy,omitempty"`
+	R      hexEncodedByteString `json:"r,omitempty"`
+	S      hexEncodedByteString `json:"s,omitempty"`
+	Passed *bool                `json:"testPassed,omitempty"` // using pointer so value is not omitted when it is false
 }
 
 // ecdsa implements an ACVP algorithm by making requests to the
@@ -72,7 +71,7 @@ type ecdsa struct {
 	primitives map[string]primitive
 }
 
-func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
+func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed ecdsaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -83,8 +82,6 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 	// https://pages.nist.gov/ACVP/draft-fussell-acvp-ecdsa.html#name-test-vectors
 	// for details about the tests.
 	for _, group := range parsed.Groups {
-		group := group
-
 		if _, ok := e.curves[group.Curve]; !ok {
 			return nil, fmt.Errorf("curve %q in test group %d not supported", group.Curve, group.ID)
 		}
@@ -92,13 +89,10 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 		response := ecdsaTestGroupResponse{
 			ID: group.ID,
 		}
+
 		var sigGenPrivateKey []byte
-		var qxHex []byte
-		var qyHex []byte
 
 		for _, test := range group.Tests {
-			test := test
-
 			var testResp ecdsaTestResponse
 
 			switch parsed.Mode {
@@ -110,20 +104,12 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 				if err != nil {
 					return nil, fmt.Errorf("key generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				testResp.DHex = hex.EncodeToString(result[0])
-				testResp.QxHex = hex.EncodeToString(result[1])
-				testResp.QyHex = hex.EncodeToString(result[2])
+				testResp.D = result[0]
+				testResp.Qx = result[1]
+				testResp.Qy = result[2]
 
 			case "keyVer":
-				qx, err := hex.DecodeString(test.QxHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode qx in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				qy, err := hex.DecodeString(test.QyHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode qy in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				result, err := m.Transact(e.algo+"/"+"keyVer", 1, []byte(group.Curve), qx, qy)
+				result, err := m.Transact(e.algo+"/"+"keyVer", 1, []byte(group.Curve), test.Qx, test.Qy)
 				if err != nil {
 					return nil, fmt.Errorf("key verification failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
@@ -154,39 +140,31 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 					}
 
 					sigGenPrivateKey = result[0]
-					qxHex = result[1]
-					qyHex = result[2]
-					response.QxHex = hex.EncodeToString(qxHex)
-					response.QyHex = hex.EncodeToString(qyHex)
+					response.Qx = result[1]
+					response.Qy = result[2]
 				}
 
-				msg, err := hex.DecodeString(test.MsgHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode message hex in test case %d/%d: %s", group.ID, test.ID, err)
-				}
 				op := e.algo + "/" + "sigGen"
 				if group.ComponentTest {
-					if len(msg) != h.size {
-						return nil, fmt.Errorf("test case %d/%d contains message %q of length %d, but expected length %d", group.ID, test.ID, test.MsgHex, len(msg), h.size)
+					if len(test.Msg) != h.size {
+						return nil, fmt.Errorf("test case %d/%d contains message %q of length %d, but expected length %d", group.ID, test.ID, test.Msg, len(test.Msg), h.size)
 					}
 					op += "/componentTest"
 				}
-				result, err := m.Transact(op, 2, []byte(group.Curve), sigGenPrivateKey, []byte(group.HashAlgo), msg)
+				result, err := m.Transact(op, 2, []byte(group.Curve), sigGenPrivateKey, []byte(group.HashAlgo), test.Msg)
 				if err != nil {
 					return nil, fmt.Errorf("signature generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				rHex := result[0]
-				sHex := result[1]
-				testResp.RHex = hex.EncodeToString(rHex)
-				testResp.SHex = hex.EncodeToString(sHex)
+				testResp.R = result[0]
+				testResp.S = result[1]
 				// Ask the subprocess to verify the generated signature for this test case.
-				ver_result, ver_err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), msg, qxHex, qyHex, rHex, sHex)
+				ver_result, ver_err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), test.Msg, response.Qx, response.Qy, testResp.R, testResp.S)
 				if ver_err != nil {
-					return nil, fmt.Errorf("After signature generation, signature verification failed for test case %d/%d: %s", group.ID, test.ID, ver_err)
+					return nil, fmt.Errorf("after signature generation, signature verification failed for test case %d/%d: %s", group.ID, test.ID, ver_err)
 				}
 				// ver_result[0] should be a single byte. The value should be one in this case.
 				if !bytes.Equal(ver_result[0], []byte{01}) {
-					return nil, fmt.Errorf("After signature generation, signature verification returned unexpected result: %q for test case %d/%d.", ver_result[0], group.ID, test.ID)
+					return nil, fmt.Errorf("after signature generation, signature verification returned unexpected result: %q for test case %d/%d", ver_result[0], group.ID, test.ID)
 				}
 
 			case "sigVer":
@@ -196,27 +174,7 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 					return nil, fmt.Errorf("unsupported hash algorithm %q in test group %d", group.HashAlgo, group.ID)
 				}
 
-				msg, err := hex.DecodeString(test.MsgHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode message hex in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				qx, err := hex.DecodeString(test.QxHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode qx in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				qy, err := hex.DecodeString(test.QyHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode qy in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				r, err := hex.DecodeString(test.RHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode R in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				s, err := hex.DecodeString(test.SHex)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode S in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				result, err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), msg, qx, qy, r, s)
+				result, err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), test.Msg, test.Qx, test.Qy, test.R, test.S)
 				if err != nil {
 					return nil, fmt.Errorf("signature verification failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}

@@ -28,8 +28,8 @@ type keyAgreement interface {
 	// In the case that the key agreement protocol doesn't use a
 	// ServerKeyExchange message, generateServerKeyExchange can return nil,
 	// nil.
-	generateServerKeyExchange(*Config, *Certificate, *clientHelloMsg, *serverHelloMsg, uint16) (*serverKeyExchangeMsg, error)
-	processClientKeyExchange(*Config, *Certificate, *clientKeyExchangeMsg, uint16) ([]byte, error)
+	generateServerKeyExchange(*Config, *CertificateChain, *clientHelloMsg, *serverHelloMsg, uint16) (*serverKeyExchangeMsg, error)
+	processClientKeyExchange(*Config, *CertificateChain, *clientKeyExchangeMsg, uint16) ([]byte, error)
 
 	// On the client side, the next two methods are called in order.
 
@@ -84,7 +84,7 @@ type cipherSuite struct {
 	ka     func(version uint16) keyAgreement
 	// flags is a bitmask of the suite* values, above.
 	flags  int
-	cipher func(key, iv []byte, isRead bool) any
+	cipher func(key, iv []byte, isRead bool) interface{}
 	mac    func(version uint16, macKey []byte) macFunction
 	aead   func(version uint16, key, fixedNonce []byte) *tlsAead
 }
@@ -155,11 +155,11 @@ func ivLen3DES(vers uint16) int {
 
 type nullCipher struct{}
 
-func cipherNull(key, iv []byte, isRead bool) any {
+func cipherNull(key, iv []byte, isRead bool) interface{} {
 	return nullCipher{}
 }
 
-func cipher3DES(key, iv []byte, isRead bool) any {
+func cipher3DES(key, iv []byte, isRead bool) interface{} {
 	block, _ := des.NewTripleDESCipher(key)
 	if isRead {
 		return cipher.NewCBCDecrypter(block, iv)
@@ -167,7 +167,7 @@ func cipher3DES(key, iv []byte, isRead bool) any {
 	return cipher.NewCBCEncrypter(block, iv)
 }
 
-func cipherAES(key, iv []byte, isRead bool) any {
+func cipherAES(key, iv []byte, isRead bool) interface{} {
 	block, _ := aes.NewCipher(key)
 	if isRead {
 		return cipher.NewCBCDecrypter(block, iv)

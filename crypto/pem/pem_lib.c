@@ -70,16 +70,16 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
 #include "../internal.h"
+#include "../console/internal.h"
+#include "../fipsmodule/evp/internal.h"
 
-
-#define MIN_LENGTH 4
 
 static int load_iv(char **fromp, unsigned char *to, size_t num);
 static int check_pem(const char *nm, const char *name);
 
-// PEM_proc_type appends a Proc-Type header to |buf|, determined by |type|.
-static void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
+void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
   const char *str;
 
   if (type == PEM_TYPE_ENCRYPTED) {
@@ -97,9 +97,7 @@ static void PEM_proc_type(char buf[PEM_BUFSIZE], int type) {
   OPENSSL_strlcat(buf, "\n", PEM_BUFSIZE);
 }
 
-// PEM_dek_info appends a DEK-Info header to |buf|, with an algorithm of |type|
-// and a single parameter, specified by hex-encoding |len| bytes from |str|.
-static void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
+void PEM_dek_info(char buf[PEM_BUFSIZE], const char *type, size_t len,
                          char *str) {
   static const unsigned char map[17] = "0123456789ABCDEF";
 
@@ -144,6 +142,13 @@ static int check_pem(const char *nm, const char *name) {
     return !strcmp(nm, PEM_STRING_PKCS8) || !strcmp(nm, PEM_STRING_PKCS8INF) ||
            !strcmp(nm, PEM_STRING_RSA) || !strcmp(nm, PEM_STRING_EC) ||
            !strcmp(nm, PEM_STRING_DSA);
+  }
+
+  // These correspond with the PEM strings that have "PARAMETERS".
+  if (!strcmp(name, PEM_STRING_PARAMETERS)) {
+    return !strcmp(nm, PEM_STRING_ECPARAMETERS) ||
+           !strcmp(nm, PEM_STRING_DSAPARAMS) ||
+           !strcmp(nm, PEM_STRING_DHPARAMS);
   }
 
   // Permit older strings
@@ -261,23 +266,24 @@ err:
 }
 
 int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp, void *x,
-                   const EVP_CIPHER *enc, unsigned char *kstr, int klen,
-                   pem_password_cb *callback, void *u) {
+                   const EVP_CIPHER *enc, const unsigned char *pass,
+                   int pass_len, pem_password_cb *callback, void *u) {
   BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
   if (b == NULL) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
     return 0;
   }
-  int ret = PEM_ASN1_write_bio(i2d, name, b, x, enc, kstr, klen, callback, u);
+  int ret =
+      PEM_ASN1_write_bio(i2d, name, b, x, enc, pass, pass_len, callback, u);
   BIO_free(b);
   return ret;
 }
 
 int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
-                       const EVP_CIPHER *enc, unsigned char *kstr, int klen,
-                       pem_password_cb *callback, void *u) {
+                       const EVP_CIPHER *enc, const unsigned char *pass,
+                       int pass_len, pem_password_cb *callback, void *u) {
   EVP_CIPHER_CTX ctx;
-  int dsize = 0, i, j, ret = 0;
+  int i, j, ret = 0;
   unsigned char *p, *data = NULL;
   const char *objstr = NULL;
   char buf[PEM_BUFSIZE];
@@ -293,9 +299,10 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     }
   }
 
-  if ((dsize = i2d(x, NULL)) < 0) {
+  int dsize = i2d(x, NULL);
+  if (dsize < 0) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
-    dsize = 0;
+    OPENSSL_cleanse(&dsize, sizeof(dsize));
     goto err;
   }
   // dzise + 8 bytes are needed
@@ -310,17 +317,16 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
   if (enc != NULL) {
     const unsigned iv_len = EVP_CIPHER_iv_length(enc);
 
-    if (kstr == NULL) {
-      klen = 0;
+    if (pass == NULL) {
       if (!callback) {
         callback = PEM_def_callback;
       }
-      klen = (*callback)(buf, PEM_BUFSIZE, 1, u);
-      if (klen <= 0) {
+      pass_len = (*callback)(buf, PEM_BUFSIZE, 1, u);
+      if (pass_len <= 0) {
         OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
         goto err;
       }
-      kstr = (unsigned char *)buf;
+      pass = (const unsigned char *)buf;
     }
     assert(iv_len <= sizeof(iv));
     if (!RAND_bytes(iv, iv_len)) {  // Generate a salt
@@ -328,11 +334,11 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     }
     // The 'iv' is used as the iv and as a salt.  It is NOT taken from
     // the BytesToKey function
-    if (!EVP_BytesToKey(enc, EVP_md5(), iv, kstr, klen, 1, key, NULL)) {
+    if (!EVP_BytesToKey(enc, EVP_md5(), iv, pass, pass_len, 1, key, NULL)) {
       goto err;
     }
 
-    if (kstr == (unsigned char *)buf) {
+    if (pass == (const unsigned char *)buf) {
       OPENSSL_cleanse(buf, PEM_BUFSIZE);
     }
 
@@ -375,7 +381,7 @@ err:
 
 int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
                   pem_password_cb *callback, void *u) {
-  int i = 0, j, o, klen;
+  int i = 0, j, o, pass_len;
   long len;
   EVP_CIPHER_CTX ctx;
   unsigned char key[EVP_MAX_KEY_LENGTH];
@@ -387,18 +393,17 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
     return 1;
   }
 
-  klen = 0;
   if (!callback) {
     callback = PEM_def_callback;
   }
-  klen = callback(buf, PEM_BUFSIZE, 0, u);
-  if (klen <= 0) {
+  pass_len = callback(buf, PEM_BUFSIZE, 0, u);
+  if (pass_len <= 0) {
     OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_PASSWORD_READ);
     return 0;
   }
 
   if (!EVP_BytesToKey(cipher->cipher, EVP_md5(), &(cipher->iv[0]),
-                      (unsigned char *)buf, klen, 1, key, NULL)) {
+                      (unsigned char *)buf, pass_len, 1, key, NULL)) {
     return 0;
   }
 
@@ -546,7 +551,7 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
     goto err;
   }
 
-  i = strlen(header);
+  i = (header != NULL) ? strlen(header) : 0;
   if (i > 0) {
     if ((BIO_write(bp, header, i) != i) || (BIO_write(bp, "\n", 1) != 1)) {
       goto err;
@@ -779,13 +784,40 @@ err:
 }
 
 int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
-  if (!buf || !userdata || size < 0) {
+  if (!buf || size <= 0) {
     return 0;
   }
-  size_t len = strlen((char *)userdata);
-  if (len >= (size_t)size) {
+
+  // Proactively zeroize |buf|
+  OPENSSL_cleanse(buf, size);
+
+  if (userdata) {
+    size_t len =  strlen((char *)userdata);
+    if (len >= (size_t)size) {
+      return 0;
+    }
+    OPENSSL_strlcpy(buf, userdata, (size_t)size);
+    return (int)len;
+  }
+
+  const char *prompt = EVP_get_pw_prompt();
+  if (prompt == NULL) {
+    prompt = "Enter PEM pass phrase:";
+  }
+
+  /*
+     * rwflag == 0 means decryption
+     * rwflag == 1 means encryption
+     *
+     * We assume that for encryption, we want a minimum length, while for
+     * decryption, we cannot know any minimum length, so we assume zero.
+     */
+  int min_len = rwflag ? MIN_LENGTH : 0;
+
+  int ret = EVP_read_pw_string_min(buf, min_len, size, prompt, rwflag);
+  if (ret != 0) {
     return 0;
   }
-  OPENSSL_strlcpy(buf, userdata, (size_t)size);
-  return (int)len;
+
+  return (int)OPENSSL_strnlen(buf, size);
 }

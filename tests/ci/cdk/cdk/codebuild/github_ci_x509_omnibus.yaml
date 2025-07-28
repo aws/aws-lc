@@ -1,0 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+
+    - identifier: x509_limbo_report
+      buildspec: ./tests/ci/codebuild/common/run_x509_limbo_reports_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_x509_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_x509_limbo.sh"

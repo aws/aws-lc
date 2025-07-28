@@ -17,6 +17,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 
 #if defined(OPENSSL_WINDOWS)
@@ -95,6 +96,12 @@ static tool_func_t FindTool(const std::string &name) {
 }
 
 int main(int argc, char **argv) {
+  unsigned long build_version = OPENSSL_VERSION_NUMBER;
+  unsigned long runtime_version = OpenSSL_version_num();
+  if (build_version != runtime_version) {
+    fprintf(stderr, "Incorrect version number detected, built with 0x%lx, loaded 0x%lx at runtime.", build_version, runtime_version);
+    return 1;
+  }
 #if defined(OPENSSL_WINDOWS)
   // Read and write in binary mode. This makes bssl on Windows consistent with
   // bssl on other platforms, and also makes it consistent with MSYS's commands

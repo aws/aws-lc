@@ -5,7 +5,6 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
 .text	
-
 .globl	_gcm_init_clmul
 .private_extern _gcm_init_clmul
 
@@ -13,6 +12,7 @@
 _gcm_init_clmul:
 
 
+_CET_ENDBR
 L$_init_clmul:
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
@@ -173,6 +173,7 @@ L$_init_clmul:
 .p2align	4
 _gcm_gmult_clmul:
 
+_CET_ENDBR
 L$_gmult_clmul:
 	movdqu	(%rdi),%xmm0
 	movdqa	L$bswap_mask(%rip),%xmm5
@@ -228,6 +229,7 @@ L$_gmult_clmul:
 _gcm_ghash_clmul:
 
 
+_CET_ENDBR
 L$_ghash_clmul:
 	movdqa	L$bswap_mask(%rip),%xmm10
 
@@ -240,14 +242,8 @@ L$_ghash_clmul:
 	jz	L$odd_tail
 
 	movdqu	16(%rsi),%xmm6
-	leaq	_OPENSSL_ia32cap_P(%rip),%rax
-	movl	4(%rax),%eax
 	cmpq	$0x30,%rcx
 	jb	L$skip4x
-
-	andl	$71303168,%eax
-	cmpl	$4194304,%eax
-	je	L$skip4x
 
 	subq	$0x30,%rcx
 	movq	$0xA040608020C0E000,%rax
@@ -616,6 +612,7 @@ L$done:
 .p2align	5
 _gcm_init_avx:
 
+_CET_ENDBR
 	vzeroupper
 
 	vmovdqu	(%rsi),%xmm2
@@ -727,6 +724,7 @@ L$init_start_avx:
 .p2align	5
 _gcm_gmult_avx:
 
+_CET_ENDBR
 	jmp	L$_gmult_clmul
 
 
@@ -736,6 +734,7 @@ _gcm_gmult_avx:
 .p2align	5
 _gcm_ghash_avx:
 
+_CET_ENDBR
 	vzeroupper
 
 	vmovdqu	(%rdi),%xmm10

@@ -179,6 +179,85 @@ static int pkey_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   }
 }
 
+static int pkey_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                              const char *value) {
+  if (strcmp(type, "mode") == 0) {
+    int mode;
+
+    if (strcmp(value, "EXTRACT_AND_EXPAND") == 0) {
+      mode = EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND;
+    } else if (strcmp(value, "EXTRACT_ONLY") == 0) {
+      mode = EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY;
+    } else if (strcmp(value, "EXPAND_ONLY") == 0) {
+      mode = EVP_PKEY_HKDEF_MODE_EXPAND_ONLY;
+    } else {
+      return 0;
+    }
+
+    return EVP_PKEY_CTX_hkdf_mode(ctx, mode);
+  }
+
+  if (strcmp(type, "md") == 0) {
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    return EVP_PKEY_CTX_md(ctx, EVP_PKEY_OP_DERIVE, EVP_PKEY_CTRL_HKDF_MD,
+                           value);
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
+
+  if (strcmp(type, "salt") == 0) {
+    // What if the salt contains a 0-byte?
+    const size_t saltlen = OPENSSL_strnlen(value, INT16_MAX);
+    return EVP_PKEY_CTX_set1_hkdf_salt(ctx, (const uint8_t *)value, saltlen);
+  }
+
+  if (strcmp(type, "hexsalt") == 0) {
+    size_t hex_saltlen = 0;
+    uint8_t *salt = OPENSSL_hexstr2buf(value, &hex_saltlen);
+    if (salt == NULL) {
+      return 0;
+    }
+    int result = EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, hex_saltlen);
+    OPENSSL_free(salt);
+    return result;
+  }
+
+  if (strcmp(type, "key") == 0) {
+    // What if the key contains a 0-byte?
+    const size_t keylen = OPENSSL_strnlen(value, INT16_MAX);
+    return EVP_PKEY_CTX_set1_hkdf_key(ctx, (const uint8_t *)value, keylen);
+  }
+
+  if (strcmp(type, "hexkey") == 0) {
+    size_t hex_keylen = 0;
+    uint8_t *key = OPENSSL_hexstr2buf(value, &hex_keylen);
+    if (key == NULL) {
+      return 0;
+    }
+    int result = EVP_PKEY_CTX_set1_hkdf_key(ctx, key, hex_keylen);
+    OPENSSL_free(key);
+    return result;
+  }
+
+  if (strcmp(type, "info") == 0) {
+    // What if info contains a 0-byte?
+    const size_t infolen = OPENSSL_strnlen(value, INT16_MAX);
+    return EVP_PKEY_CTX_add1_hkdf_info(ctx, (const uint8_t *)value, infolen);
+  }
+
+  if (strcmp(type, "hexinfo") == 0) {
+    size_t hex_infolen = 0;
+    uint8_t *info = OPENSSL_hexstr2buf(value, &hex_infolen);
+    if (info == NULL) {
+      return 0;
+    }
+    int result = EVP_PKEY_CTX_add1_hkdf_info(ctx, info, hex_infolen);
+    OPENSSL_free(info);
+    return result;
+  }
+
+  return -2;
+}
+
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hkdf_pkey_meth) {
     out->pkey_id = EVP_PKEY_HKDF;
     out->init = pkey_hkdf_init;
@@ -197,6 +276,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hkdf_pkey_meth) {
     out->derive = pkey_hkdf_derive;
     out->paramgen = NULL; /* paramgen */
     out->ctrl = pkey_hkdf_ctrl;
+    out->ctrl_str = pkey_hkdf_ctrl_str;
 }
 
 int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode) {
@@ -211,6 +291,7 @@ int EVP_PKEY_CTX_set_hkdf_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
 
 int EVP_PKEY_CTX_set1_hkdf_key(EVP_PKEY_CTX *ctx, const uint8_t *key,
                                size_t key_len) {
+  SET_DIT_AUTO_RESET;
   CBS cbs;
   CBS_init(&cbs, key, key_len);
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_HKDF, EVP_PKEY_OP_DERIVE,

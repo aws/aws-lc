@@ -219,34 +219,15 @@ K256:
 .word	0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 .size	K256,.-K256
 .word	0				@ terminator
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.LOPENSSL_armcap:
-.word	OPENSSL_armcap_P-.Lsha256_block_data_order
-#endif
 .align	5
 
-.global	sha256_block_data_order
-.type	sha256_block_data_order,%function
-sha256_block_data_order:
-.Lsha256_block_data_order:
-	adr	r3,.Lsha256_block_data_order
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-	ldr	r12,.LOPENSSL_armcap
-	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
-#ifdef	__APPLE__
-	ldr	r12,[r12]
-#endif
-	tst	r12,#ARMV8_SHA256
-	bne	.LARMv8
-	tst	r12,#ARMV7_NEON
-	bne	.LNEON
-#endif
+.global	sha256_block_data_order_nohw
+.type	sha256_block_data_order_nohw,%function
+sha256_block_data_order_nohw:
 	add	$len,$inp,$len,lsl#6	@ len to point at the end of inp
 	stmdb	sp!,{$ctx,$inp,$len,r4-r11,lr}
 	ldmia	$ctx,{$A,$B,$C,$D,$E,$F,$G,$H}
-	@ TODO(davidben): When the OPENSSL_armcap logic above is removed,
-	@ replace this with a simple ADR.
-	sub	$Ktbl,r3,#256+32	@ K256
+	adr	$Ktbl,K256
 	sub	sp,sp,#16*4		@ alloca(X[16])
 .Loop:
 # if __ARM_ARCH>=7
@@ -300,7 +281,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	sha256_block_data_order,.-sha256_block_data_order
+.size	sha256_block_data_order_nohw,.-sha256_block_data_order_nohw
 ___
 ######################################################################
 # NEON stuff
@@ -493,7 +474,6 @@ $code.=<<___;
 .align	5
 .skip	16
 sha256_block_data_order_neon:
-.LNEON:
 	stmdb	sp!,{r4-r12,lr}
 
 	sub	$H,sp,#16*4+16
@@ -637,23 +617,23 @@ $code.=<<___;
 #  define INST(a,b,c,d)	.byte	a,b,c,d
 # endif
 
-.LK256_shortcut_armv8:
+.LK256_shortcut_hw:
 @ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
 #if defined(__thumb2__)
-.word	K256-(.LK256_add_armv8+4)
+.word	K256-(.LK256_add_hw+4)
 #else
-.word	K256-(.LK256_add_armv8+8)
+.word	K256-(.LK256_add_hw+8)
 #endif
 
-.type	sha256_block_data_order_armv8,%function
+.global	sha256_block_data_order_hw
+.type	sha256_block_data_order_hw,%function
 .align	5
-sha256_block_data_order_armv8:
-.LARMv8:
+sha256_block_data_order_hw:
 	@ K256 is too far to reference from one ADR command in Thumb mode. In
 	@ Arm mode, we could make it fit by aligning the ADR offset to a 64-byte
-	@ boundary. For simplicity, just load the offset from .LK256_shortcut_armv8.
-	ldr	$Ktbl,.LK256_shortcut_armv8
-.LK256_add_armv8:
+	@ boundary. For simplicity, just load the offset from .LK256_shortcut_hw.
+	ldr	$Ktbl,.LK256_shortcut_hw
+.LK256_add_hw:
 	add	$Ktbl,pc,$Ktbl
 
 	vld1.32	{$ABCD,$EFGH},[$ctx]
@@ -718,17 +698,13 @@ $code.=<<___;
 	vst1.32		{$ABCD,$EFGH},[$ctx]
 
 	ret		@ bx lr
-.size	sha256_block_data_order_armv8,.-sha256_block_data_order_armv8
+.size	sha256_block_data_order_hw,.-sha256_block_data_order_hw
 #endif
 ___
 }}}
 $code.=<<___;
 .asciz  "SHA256 block transform for ARMv4/NEON/ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.comm   OPENSSL_armcap_P,4,4
-.hidden OPENSSL_armcap_P
-#endif
 ___
 
 open SELF,$0;

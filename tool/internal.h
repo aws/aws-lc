@@ -113,10 +113,16 @@ typedef struct argument_t {
 typedef std::vector<std::string> args_list_t;
 typedef std::map<std::string, std::string> args_map_t;
 
+bool IsFlag(const std::string& arg);
+
 // ParseKeyValueArguments converts the list of strings |args| ["-filter", "RSA", "-Timeout", "10"] into a map in
 // |out_args| of key value pairs {"-filter": "RSA", "-Timeout": "10"}. It uses |templates| to determine what arguments
-// are option or required.
-bool ParseKeyValueArguments(args_map_t *out_args, const args_list_t &args, const argument_t *templates);
+// are option or required. Any extra arguments that don't look like an unknown flag argument (prefixed by "-" or "--")
+// will be appended to extra_args in the order they appear in.
+bool ParseKeyValueArguments(args_map_t &out_args,
+                            args_list_t &extra_args,
+                            const args_list_t &args,
+                            const argument_t *templates);
 
 // PrintUsage prints the description from the list of templates in |templates| to stderr.
 void PrintUsage(const argument_t *templates);
@@ -134,6 +140,12 @@ bool GetBoolArgument(bool *out, const std::string &arg_name, const args_map_t &a
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
 bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
+
+// DoClient is a common function used to support the s_client option in both
+// bssl and openssl tools. It takes an additional parameter |tool| to indicate
+// which tool's s_client is being invoked. A value of true indicates openssl
+// and false indicates the internal bssl tool.
+bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client);
 
 bool Ciphers(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);

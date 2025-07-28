@@ -74,6 +74,10 @@ static const nid_triple kTriples[] = {
     {NID_sha256WithRSAEncryption, NID_sha256, NID_rsaEncryption},
     {NID_sha384WithRSAEncryption, NID_sha384, NID_rsaEncryption},
     {NID_sha512WithRSAEncryption, NID_sha512, NID_rsaEncryption},
+    // RSA ITU-T X.509. These are rare and we map them to the more
+    // common |NID_rsaEncryption| instead for simplicity.
+    {NID_md5WithRSA, NID_md5, NID_rsaEncryption},
+    {NID_sha1WithRSA, NID_sha1, NID_rsaEncryption},
     // DSA.
     {NID_dsaWithSHA1, NID_sha1, NID_dsa},
     {NID_dsaWithSHA1_2, NID_sha1, NID_dsa_2},
@@ -89,7 +93,9 @@ static const nid_triple kTriples[] = {
     // digest "undef" indicates the caller should handle this explicitly.
     {NID_rsassaPss, NID_undef, NID_rsaEncryption},
     {NID_ED25519, NID_undef, NID_ED25519},
-    {NID_DILITHIUM3_R3, NID_undef, NID_DILITHIUM3_R3},
+    {NID_MLDSA44, NID_undef, NID_MLDSA44},
+    {NID_MLDSA65, NID_undef, NID_MLDSA65},
+    {NID_MLDSA87, NID_undef, NID_MLDSA87},
 };
 
 int OBJ_find_sigid_algs(int sign_nid, int *out_digest_nid, int *out_pkey_nid) {

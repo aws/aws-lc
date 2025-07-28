@@ -69,6 +69,8 @@
 #include <openssl/thread.h>
 
 #include "../../evp_extra/internal.h"
+#include "../../pem/internal.h"
+#include "../../console/internal.h"
 #include "../../internal.h"
 #include "internal.h"
 
@@ -105,6 +107,7 @@ static void free_it(EVP_PKEY *pkey) {
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey == NULL) {
     return;
   }
@@ -118,11 +121,13 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_up_ref(EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   CRYPTO_refcount_inc(&pkey->references);
   return 1;
 }
 
 int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey->ameth && pkey->ameth->pkey_opaque) {
     return pkey->ameth->pkey_opaque(pkey);
   }
@@ -130,6 +135,7 @@ int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
+  SET_DIT_AUTO_RESET;
   if (a->type != b->type) {
     return -1;
   }
@@ -152,11 +158,83 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   return -2;
 }
 
-int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  if (to->type == EVP_PKEY_NONE) {
-    if (!EVP_PKEY_set_type(to, from->type)) {
-      return 0;
+char *EVP_get_pw_prompt(void) {
+    return (char*)"Enter PEM passphrase:";
+}
+
+int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify) {
+  return EVP_read_pw_string_min(buf, 0, length, prompt, verify);
+}
+
+int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                           const char *prompt, int verify) {
+  int ret = -1;
+  char verify_buf[1024];
+
+  if (!buf || min_length <= 0 || min_length >= length) {
+    return -1;
+  }
+
+  if (prompt == NULL) {
+    prompt = EVP_get_pw_prompt();
+  }
+
+  // Proactively zeroize |buf| and verify_buf
+  OPENSSL_cleanse(buf, length);
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+
+  // acquire write lock
+  openssl_console_acquire_mutex();
+
+  if (!openssl_console_open()) {
+    goto err;
+  }
+
+  // Write initial password prompt
+  if (!openssl_console_write(prompt)) {
+    goto err;
+  }
+
+  // Read password with echo disabled. Returns 0 on success.
+  // While |buf| and |length| are user-provided and can be arbitrarily large,
+  // passwords exceeding 1024 characters will be rejected with AWS-LC. OpenSSL
+  // handles this by silently truncating |length| before reading the password.
+  ret = openssl_console_read(buf, min_length, length, 0);
+  if (ret != 0) {
+    OPENSSL_cleanse(buf, length);
+    OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+    goto err;
+  }
+
+  if (verify) {
+    openssl_console_write("Verifying - ");
+    openssl_console_write(prompt);
+
+    ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
+
+    if (ret == 0) {
+      if (strncmp(buf, verify_buf, length) != 0) {
+        openssl_console_write("Verify failure\n");
+        ret = -1;
+      }
+    } else {
+      OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+      goto err;
     }
+  }
+
+  openssl_console_close();
+
+err:
+  openssl_console_release_mutex();
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+  return ret;
+}
+
+int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
+  SET_DIT_AUTO_RESET;
+  if (to->type == EVP_PKEY_NONE) {
+    evp_pkey_set_method(to, from->ameth);
   } else if (to->type != from->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
     return 0;
@@ -186,6 +264,7 @@ int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
 }
 
 int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey->ameth && pkey->ameth->param_missing) {
     return pkey->ameth->param_missing(pkey);
   }
@@ -193,6 +272,7 @@ int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_size(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey && pkey->ameth && pkey->ameth->pkey_size) {
     return pkey->ameth->pkey_size(pkey);
   }
@@ -200,6 +280,7 @@ int EVP_PKEY_size(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_bits(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey && pkey->ameth && pkey->ameth->pkey_bits) {
     return pkey->ameth->pkey_bits(pkey);
   }
@@ -207,6 +288,7 @@ int EVP_PKEY_bits(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_id(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   return pkey->type;
 }
 
@@ -250,23 +332,50 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   return NULL;
 }
 
-static void evp_pkey_set_method(EVP_PKEY *pkey,
-                                const EVP_PKEY_ASN1_METHOD *method) {
+void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
   free_it(pkey);
   pkey->ameth = method;
   pkey->type = pkey->ameth->pkey_id;
 }
 
-int EVP_PKEY_type(int nid) {
-  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(nid);
-  if (meth == NULL) {
-    return NID_undef;
+static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
+  if (pkey && pkey->pkey.ptr) {
+    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
+    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
+    // behavior.
+    free_it(pkey);
   }
-  return meth->pkey_id;
+
+  const EVP_PKEY_ASN1_METHOD *ameth = NULL;
+
+  if (str != NULL) {
+    ameth = EVP_PKEY_asn1_find_str(NULL, str, len);
+  } else {
+    ameth = evp_pkey_asn1_find(type);
+  }
+
+  if (ameth == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    ERR_add_error_dataf("algorithm %d", type);
+    return 0;
+  }
+
+  if (pkey) {
+    evp_pkey_set_method(pkey, ameth);
+  }
+
+  return 1;
+}
+
+int EVP_PKEY_type(int nid) {
+  // In OpenSSL, this was used to map between type aliases. BoringSSL supports
+  // no type aliases, so this function is just the identity.
+  return nid;
 }
 
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
                                size_t mac_key_len) {
+  SET_DIT_AUTO_RESET;
   // Only |EVP_PKEY_HMAC| is supported as of now.
   if (type != EVP_PKEY_HMAC) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -308,6 +417,7 @@ err:
 }
 
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
+  SET_DIT_AUTO_RESET;
   if (EVP_PKEY_assign_RSA(pkey, key)) {
     RSA_up_ref(key);
     return 1;
@@ -316,6 +426,7 @@ int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
+  SET_DIT_AUTO_RESET;
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
@@ -324,6 +435,7 @@ int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey->type != EVP_PKEY_RSA && pkey->type != EVP_PKEY_RSA_PSS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
     return NULL;
@@ -332,6 +444,7 @@ RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
 }
 
 RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   RSA *rsa = EVP_PKEY_get0_RSA(pkey);
   if (rsa != NULL) {
     RSA_up_ref(rsa);
@@ -340,6 +453,7 @@ RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
+  SET_DIT_AUTO_RESET;
   if (EVP_PKEY_assign_DSA(pkey, key)) {
     DSA_up_ref(key);
     return 1;
@@ -348,6 +462,7 @@ int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
 }
 
 int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
+  SET_DIT_AUTO_RESET;
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
@@ -356,6 +471,7 @@ int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
 }
 
 DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey->type != EVP_PKEY_DSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DSA_KEY);
     return NULL;
@@ -364,6 +480,7 @@ DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
 }
 
 DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   DSA *dsa = EVP_PKEY_get0_DSA(pkey);
   if (dsa != NULL) {
     DSA_up_ref(dsa);
@@ -372,6 +489,7 @@ DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
+  SET_DIT_AUTO_RESET;
   if (EVP_PKEY_assign_EC_KEY(pkey, key)) {
     EC_KEY_up_ref(key);
     return 1;
@@ -380,6 +498,7 @@ int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 }
 
 int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
+  SET_DIT_AUTO_RESET;
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
@@ -388,6 +507,7 @@ int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 }
 
 EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   if (pkey->type != EVP_PKEY_EC) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
     return NULL;
@@ -396,6 +516,7 @@ EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
 }
 
 EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
   if (ec_key != NULL) {
     EC_KEY_up_ref(ec_key);
@@ -403,13 +524,11 @@ EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
   return ec_key;
 }
 
-DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) { return NULL; }
-DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey) { return NULL; }
-
 int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
-  // This function can only be used to assign RSA, DSA, and EC keys. Other key
-  // types have internal representations which are not exposed through the
+  // This function can only be used to assign RSA, DSA, EC, and DH keys. Other
+  // key types have internal representations which are not exposed through the
   // public API.
+  SET_DIT_AUTO_RESET;
   switch (type) {
     case EVP_PKEY_RSA:
       return EVP_PKEY_assign_RSA(pkey, key);
@@ -417,6 +536,8 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
       return EVP_PKEY_assign_DSA(pkey, key);
     case EVP_PKEY_EC:
       return EVP_PKEY_assign_EC_KEY(pkey, key);
+    case EVP_PKEY_DH:
+      return EVP_PKEY_assign_DH(pkey, key);
     default:
       if (!EVP_PKEY_set_type(pkey, type)) {
         return 0;
@@ -427,39 +548,44 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
 }
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
-  if (pkey && pkey->pkey.ptr) {
-    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
-    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
-    // behavior.
-    free_it(pkey);
-  }
+  SET_DIT_AUTO_RESET;
+  return pkey_set_type(pkey, type, NULL, -1);
+}
 
-  const EVP_PKEY_ASN1_METHOD *ameth = evp_pkey_asn1_find(type);
-  if (ameth == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    ERR_add_error_dataf("algorithm %d", type);
-    return 0;
-  }
-
-  if (pkey) {
-    evp_pkey_set_method(pkey, ameth);
-  }
-
-  return 1;
+int EVP_PKEY_set_type_str(EVP_PKEY *pkey, const char *str, int len) {
+  SET_DIT_AUTO_RESET;
+  return pkey_set_type(pkey, EVP_PKEY_NONE, str, len);
 }
 
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                        const uint8_t *in, size_t len) {
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
-    goto err;
+  SET_DIT_AUTO_RESET;
+  // To avoid pulling in all key types, look for specifically the key types that
+  // support |set_priv_raw|.
+  const EVP_PKEY_ASN1_METHOD *method;
+  switch (type) {
+    case EVP_PKEY_X25519:
+      method = &x25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519:
+      method = &ed25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519PH:
+      method = &ed25519ph_asn1_meth;
+      break;
+    case EVP_PKEY_HMAC:
+      method = &hmac_asn1_meth;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+      return 0;
   }
 
-  if (ret->ameth->set_priv_raw == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   if (!ret->ameth->set_priv_raw(ret, in, len, NULL, 0)) {
     goto err;
@@ -474,16 +600,29 @@ err:
 
 EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
                                       const uint8_t *in, size_t len) {
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
-    goto err;
+  // To avoid pulling in all key types, look for specifically the key types that
+  // support |set_pub_raw|.
+  const EVP_PKEY_ASN1_METHOD *method;
+  switch (type) {
+    case EVP_PKEY_X25519:
+      method = &x25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519:
+      method = &ed25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519PH:
+      method = &ed25519ph_asn1_meth;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+      return 0;
   }
 
-  if (ret->ameth->set_pub_raw == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   if (!ret->ameth->set_pub_raw(ret, in, len)) {
     goto err;
@@ -498,6 +637,7 @@ err:
 
 int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
                                  size_t *out_len) {
+  SET_DIT_AUTO_RESET;
   if (pkey == NULL ||
       pkey->ameth == NULL ||
       pkey->ameth->get_priv_raw == NULL) {
@@ -510,6 +650,7 @@ int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
 
 int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
                                 size_t *out_len) {
+  SET_DIT_AUTO_RESET;
   if (pkey == NULL ||
       pkey->ameth == NULL ||
       pkey->ameth->get_pub_raw == NULL) {
@@ -521,6 +662,7 @@ int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
+  SET_DIT_AUTO_RESET;
   if (a->type != b->type) {
     return -1;
   }
@@ -533,22 +675,54 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
+  SET_DIT_AUTO_RESET;
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_MD, 0,
                            (void *)md);
 }
 
 int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
+  SET_DIT_AUTO_RESET;
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
                            0, (void *)out_md);
 }
 
+int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                       const uint8_t *context,
+                                       size_t context_len) {
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
+  return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+}
+
+int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
+                                        const uint8_t **context,
+                                        size_t *context_len) {
+  GUARD_PTR(context);
+  GUARD_PTR(context_len);
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {NULL, 0};
+  if (!EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                         EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params)) {
+    return 0;
+  }
+  *context = params.context;
+  *context_len = params.context_len;
+  return 1;
+}
+
+
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
-  // Node references, but never calls this function, so for now we return NULL.
-  // If other projects require complete support, call |EVP_PKEY_get0_RSA|, etc.,
-  // rather than reading |pkey->pkey.ptr| directly. This avoids problems if our
-  // internal representation does not match the type the caller expects from
-  // OpenSSL.
-  return NULL;
+  SET_DIT_AUTO_RESET;
+  GUARD_PTR(pkey);
+  switch (pkey->type) {
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_RSA_PSS:
+    case EVP_PKEY_DSA:
+    case EVP_PKEY_EC:
+    case EVP_PKEY_DH:
+      return pkey->pkey.ptr;
+    default:
+      return NULL;
+  }
 }
 
 void OpenSSL_add_all_algorithms(void) {}
@@ -562,6 +736,7 @@ void OpenSSL_add_all_digests(void) {}
 void EVP_cleanup(void) {}
 
 int EVP_PKEY_base_id(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
   // OpenSSL has two notions of key type because it supports multiple OIDs for
   // the same algorithm: NID_rsa vs NID_rsaEncryption and five distinct spelling
   // of DSA. We do not support these, so the base ID is simply the ID.
@@ -714,7 +889,7 @@ err:
 
 int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
                                     size_t len) {
-
+  SET_DIT_AUTO_RESET;
   if (NULL == pkey) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     goto err;
@@ -828,7 +1003,7 @@ err:
 }
 
 size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
-
+  SET_DIT_AUTO_RESET;
   if (NULL == pkey) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     goto err;

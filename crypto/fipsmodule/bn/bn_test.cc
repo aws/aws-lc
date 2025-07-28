@@ -831,6 +831,55 @@ static void TestModExp(BIGNUMFileTest *t, BN_CTX *ctx) {
   }
 }
 
+static void TestModExp2(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a1 = t->GetBIGNUM("A1");
+  bssl::UniquePtr<BIGNUM> e1 = t->GetBIGNUM("E1");
+  bssl::UniquePtr<BIGNUM> m1 = t->GetBIGNUM("M1");
+  bssl::UniquePtr<BIGNUM> mod_exp1 = t->GetBIGNUM("ModExp1");
+  ASSERT_TRUE(a1);
+  ASSERT_TRUE(e1);
+  ASSERT_TRUE(m1);
+  ASSERT_TRUE(mod_exp1);
+
+  bssl::UniquePtr<BIGNUM> a2 = t->GetBIGNUM("A2");
+  bssl::UniquePtr<BIGNUM> e2 = t->GetBIGNUM("E2");
+  bssl::UniquePtr<BIGNUM> m2 = t->GetBIGNUM("M2");
+  bssl::UniquePtr<BIGNUM> mod_exp2 = t->GetBIGNUM("ModExp2");
+  ASSERT_TRUE(a2);
+  ASSERT_TRUE(e2);
+  ASSERT_TRUE(m2);
+  ASSERT_TRUE(mod_exp2);
+
+  bssl::UniquePtr<BIGNUM> ret1(BN_new());
+  ASSERT_TRUE(ret1);
+
+  bssl::UniquePtr<BIGNUM> ret2(BN_new());
+  ASSERT_TRUE(ret2);
+
+  ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
+  ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
+
+  BN_MONT_CTX *mont1 = NULL;
+  BN_MONT_CTX *mont2 = NULL;
+
+  ASSERT_TRUE(mont1 = BN_MONT_CTX_new());
+  ASSERT_TRUE(BN_MONT_CTX_set(mont1, m1.get(), ctx));
+  ASSERT_TRUE(mont2 = BN_MONT_CTX_new());
+  ASSERT_TRUE(BN_MONT_CTX_set(mont2, m2.get(), ctx));
+
+  ASSERT_TRUE(BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), mont1,
+                                           ret2.get(), a2.get(), e2.get(), m2.get(), mont2,
+					   ctx));
+
+  EXPECT_BIGNUMS_EQUAL("A1 ^ E1 (mod M1) (constant-time)", mod_exp1.get(),
+		       ret1.get());
+  EXPECT_BIGNUMS_EQUAL("A2 ^ E2 (mod M2) (constant-time)", mod_exp2.get(),
+		       ret2.get());
+
+  BN_MONT_CTX_free(mont1);
+  BN_MONT_CTX_free(mont2);
+}
+
 static void TestExp(BIGNUMFileTest *t, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
   bssl::UniquePtr<BIGNUM> e = t->GetBIGNUM("E");
@@ -881,9 +930,7 @@ static void TestNotModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
   EXPECT_FALSE(BN_mod_sqrt(ret.get(), not_mod_square.get(), p.get(), ctx))
       << "BN_mod_sqrt unexpectedly succeeded.";
 
-  uint32_t err = ERR_peek_error();
-  EXPECT_EQ(ERR_LIB_BN, ERR_GET_LIB(err));
-  EXPECT_EQ(BN_R_NOT_A_SQUARE, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_peek_error(), ERR_LIB_BN, BN_R_NOT_A_SQUARE));
   ERR_clear_error();
 }
 
@@ -1002,6 +1049,7 @@ static void RunBNFileTest(FileTest *t, BN_CTX *ctx) {
       {"ModMul", TestModMul},
       {"ModSquare", TestModSquare},
       {"ModExp", TestModExp},
+      {"ModExp2", TestModExp2},
       {"Exp", TestExp},
       {"ModSqrt", TestModSqrt},
       {"NotModSquare", TestNotModSquare},
@@ -1050,6 +1098,11 @@ TEST_F(BNTest, GCDTestVectors) {
 
 TEST_F(BNTest, ModExpTestVectors) {
   FileTestGTest("crypto/fipsmodule/bn/test/mod_exp_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ModExp2TestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
@@ -2629,7 +2682,7 @@ TEST_F(BNTest, NonMinimal) {
     EXPECT_FALSE(BN_is_pow2(ten.get()));
 
     bssl::UniquePtr<char> hex(BN_bn2hex(ten.get()));
-    EXPECT_STREQ("0a", hex.get());
+    EXPECT_STREQ("0A", hex.get());
     hex.reset(BN_bn2hex(zero.get()));
     EXPECT_STREQ("0", hex.get());
 
@@ -2642,7 +2695,7 @@ TEST_F(BNTest, NonMinimal) {
     // TODO(davidben): |BN_print| removes leading zeros within a byte, while
     // |BN_bn2hex| rounds up to a byte, except for zero which it prints as
     // "0". Fix this discrepancy?
-    EXPECT_EQ(Bytes("a"), Bytes(ptr, len));
+    EXPECT_EQ(Bytes("A"), Bytes(ptr, len));
 
     bio.reset(BIO_new(BIO_s_mem()));
     ASSERT_TRUE(bio);
@@ -2826,6 +2879,68 @@ TEST_F(BNTest, FormatWord) {
 #endif
 }
 
+TEST_F(BNTest, GetMinimalWidth) {
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  ASSERT_TRUE(bn);
+
+  // Zero needs 0 words
+  BN_zero(bn.get());
+  EXPECT_EQ(0, BN_get_minimal_width(bn.get()));
+
+  // 1 needs 1 word
+  ASSERT_TRUE(BN_one(bn.get()));
+  EXPECT_EQ(1, BN_get_minimal_width(bn.get()));
+
+  // Test negative numbers
+  ASSERT_TRUE(BN_set_word(bn.get(), 1));
+  BN_set_negative(bn.get(), 1);
+  EXPECT_EQ(1, BN_get_minimal_width(bn.get()));
+
+  // Test powers of two
+  ASSERT_TRUE(BN_set_word(bn.get(), 1));
+  for (size_t i = 0; i < 256; i++) {
+    // For 2^i, we need ceil((i+1)/BN_BITS2) words
+    int expected_words = (i + BN_BITS2) / BN_BITS2;
+    EXPECT_EQ(expected_words, BN_get_minimal_width(bn.get()))
+        << "Failed for 2^" << i;
+    ASSERT_TRUE(BN_lshift1(bn.get(), bn.get()));
+  }
+
+  // Test values near word boundaries
+  // For 32-bit: word = 32 bits
+  // For 64-bit: word = 64 bits
+  struct {
+    const char* hex;
+    int expected_32bit;
+    int expected_64bit;
+  } kTests[] = {
+    // 8-bit number
+    {"ff", 1, 1},
+    // 32-bit number
+    {"ffffffff", 1, 1},
+    // 33-bit number
+    {"100000000", 2, 1},
+    // 64-bit number
+    {"ffffffff00000000", 2, 1},
+    // 64-bit number
+    {"ffffffffffffffff", 2, 1},
+    // 65-bit number
+    {"10000000000000000", 3, 2},
+    // Multiple word number
+    {"ffffffffffffffffffffffffffffffff", 4, 2},
+  };
+
+  for (const auto& test : kTests) {
+    SCOPED_TRACE(test.hex);
+    HexToBIGNUM(&bn, test.hex);
+#if defined(OPENSSL_32_BIT)
+    EXPECT_EQ(test.expected_32bit, BN_get_minimal_width(bn.get()));
+#elif defined(OPENSSL_64_BIT)
+    EXPECT_EQ(test.expected_64bit, BN_get_minimal_width(bn.get()));
+#endif
+  }
+}
+
 #if defined(OPENSSL_BN_ASM_MONT) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, BNMulMontABI) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
@@ -2843,10 +2958,48 @@ TEST_F(BNTest, BNMulMontABI) {
     a[0] = 1;
     b[0] = 42;
 
+#if defined(OPENSSL_X86_64)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    if (bn_mulx4x_mont_capable(words)) {
+      CHECK_ABI(bn_mulx4x_mont, r.data(), a.data(), b.data(), mont->N.d,
+                mont->n0, words);
+      CHECK_ABI(bn_mulx4x_mont, r.data(), a.data(), a.data(), mont->N.d,
+                mont->n0, words);
+    }
+#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    if (bn_mul4x_mont_capable(words)) {
+      CHECK_ABI(bn_mul4x_mont, r.data(), a.data(), b.data(), mont->N.d,
+                mont->n0, words);
+      CHECK_ABI(bn_mul4x_mont, r.data(), a.data(), a.data(), mont->N.d,
+                mont->n0, words);
+    }
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), b.data(), mont->N.d,
+              mont->n0, words);
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), a.data(), mont->N.d,
+              mont->n0, words);
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    if (bn_sqr8x_mont_capable(words)) {
+      CHECK_ABI(bn_sqr8x_mont, r.data(), a.data(), bn_mulx_adx_capable(),
+                mont->N.d, mont->n0, words);
+    }
+#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#elif defined(OPENSSL_ARM)
+    if (bn_mul8x_mont_neon_capable(words)) {
+      CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), b.data(), mont->N.d,
+                mont->n0, words);
+      CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), a.data(), mont->N.d,
+                mont->n0, words);
+    }
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), b.data(), mont->N.d,
+              mont->n0, words);
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), a.data(), mont->N.d,
+              mont->n0, words);
+#else
     CHECK_ABI(bn_mul_mont, r.data(), a.data(), b.data(), mont->N.d, mont->n0,
               words);
     CHECK_ABI(bn_mul_mont, r.data(), a.data(), a.data(), mont->N.d, mont->n0,
               words);
+#endif
   }
 }
 #endif   // OPENSSL_BN_ASM_MONT && SUPPORTS_ABI_TEST
@@ -2930,5 +3083,64 @@ TEST_F(BNTest, RSAZABI) {
   CHECK_ABI(rsaz_1024_scatter5_avx2, aligned_table, aligned_rsaz3, 7);
   CHECK_ABI(rsaz_1024_gather5_avx2, aligned_rsaz1, aligned_table, 7);
   CHECK_ABI(rsaz_1024_red2norm_avx2, norm, aligned_rsaz1);
+
+#ifdef RSAZ_512_ENABLED
+  if (CRYPTO_is_AVX512IFMA_capable()) {
+	  
+#define TWOK (40 * 2)
+#define TWOK_TABLE (2 * 20 * (1<<5))
+#define THREEK (64 * 2)
+#define THREEK_TABLE (2 * 32 * (1<<5))
+#define FOURK (80 * 2)
+#define FOURK_TABLE (2 * 40 * (1<<5))
+
+    int storage_bytes =
+      ((TWOK * 2)   + // res2 / red_y2
+       TWOK_TABLE   + // red_table2k
+      (THREEK * 2)  + // res3 / red_y3
+      THREEK_TABLE  + // red_table3k
+      (FOURK * 2)   + // res4 / red_y4
+       FOURK_TABLE) * // red_table4k
+      sizeof(uint64_t);
+
+    uint64_t *storage = (uint64_t*)OPENSSL_malloc(storage_bytes);
+
+    uint64_t *res2, *res3, *res4,
+      *red_y2, *red_y3, *red_y4,
+      *red_table2k, *red_table3k, *red_table4k;
+
+    res2 = storage;
+    red_y2 = storage + TWOK;
+    red_table2k = red_y2 + TWOK;
+    res3 = red_table2k + TWOK_TABLE;
+    red_y3 = res3 + THREEK;
+    red_table3k = red_y3 + THREEK;
+    res4 = red_table3k + THREEK_TABLE;
+    red_y4 = res4 + FOURK;
+    red_table4k = red_y4 + FOURK;
+
+    uint64_t a = 0;
+    uint64_t b = 0;
+    uint64_t m = 0;
+    uint64_t k0 = 0;
+    uint64_t k2[2] = {0};
+    int idx1 = 0;
+    int idx2 = 0;
+
+    CHECK_ABI(rsaz_amm52x20_x1_ifma256, res2, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x20_x2_ifma256, res2, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x20_win5, red_y2, red_table2k, idx1, idx2);
+
+    CHECK_ABI(rsaz_amm52x30_x1_ifma256, res3, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x30_x2_ifma256, res3, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x30_win5, red_y3, red_table3k, idx1, idx2);
+
+    CHECK_ABI(rsaz_amm52x40_x1_ifma256, res4, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x40_x2_ifma256, res4, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x40_win5, red_y4, red_table4k, idx1, idx2);
+
+    OPENSSL_free(storage);
+  }
+#endif // RSAZ_512_ENABLED
 }
 #endif   // RSAZ_ENABLED && SUPPORTS_ABI_TEST

@@ -63,6 +63,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -113,6 +114,19 @@ OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_TYPE)
 
 static void asn1_put_length(unsigned char **pp, int length);
 
+// |ASN1_get_object| parses an ASN.1 header, including tag, class, and length
+// information. The tag number is written to |*out_tag|. The class is written to
+// |*out_class|. If the tag is not indefinite, the content length is written to
+// |*out_len|. If the tag indicates the indefinite form, |*out_len| is set to 0.
+// |inp| is advanced past the header in the input buffer.
+//
+// Indefinite-length encoding and universal tags are always allowed to align
+// with OpenSSL behavior.
+//
+// The return value may have the following bits set:
+//   * 0x80: error occurred while parsing.
+//   * 0x20: the encoding is constructed, not primitive.
+//   * 0x01: indefinite-length constructed encoding.
 int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
                     int *out_class, long in_len) {
   if (in_len < 0) {
@@ -131,9 +145,12 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
   int indefinite;
   CBS cbs, body;
   CBS_init(&cbs, *inp, (size_t)in_len);
-  if (!CBS_get_any_ber_asn1_element(&cbs, &body, &tag, &header_len,
-                                    /*out_ber_found=*/NULL, &indefinite) ||
-      indefinite || !CBS_skip(&body, header_len) ||
+
+  int ber_found_temp;
+  if (!cbs_get_any_asn1_element(&cbs, &body, &tag, &header_len, &ber_found_temp,
+                                &indefinite, /*ber_ok=*/1,
+                                /*universal_tag_ok=*/1) ||
+      !CBS_skip(&body, header_len) ||
       // Bound the length to comfortably fit in an int. Lengths in this
       // module often switch between int and long without overflow checks.
       CBS_len(&body) > INT_MAX / 2) {
@@ -143,16 +160,20 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
 
   // Convert between tag representations.
   int tag_class = (tag & CBS_ASN1_CLASS_MASK) >> CBS_ASN1_TAG_SHIFT;
-  int constructed = (tag & CBS_ASN1_CONSTRUCTED) >> CBS_ASN1_TAG_SHIFT;
+  int constructed = (indefinite ? 1 : 0) |
+                    ((tag & CBS_ASN1_CONSTRUCTED) >> CBS_ASN1_TAG_SHIFT);
   int tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
 
   // To avoid ambiguity with V_ASN1_NEG, impose a limit on universal tags.
   if (tag_class == V_ASN1_UNIVERSAL && tag_number > V_ASN1_MAX_UNIVERSAL) {
+    // Ruby's OpenSSL::test_basic_asn1data has an assertion that violates this
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
     return 0x80;
   }
 
   *inp = CBS_data(&body);
+  // If |indefinite|, |header_len| and |CBS_len(&body)| were equal prior to the
+  // |CBS_skip(&body, header_len)| call above and |CBS_len(&body)| is now zero.
   *out_len = CBS_len(&body);
   *out_tag = tag_number;
   *out_class = tag_class;

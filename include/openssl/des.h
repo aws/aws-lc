@@ -77,6 +77,8 @@ typedef struct DES_cblock_st {
   uint8_t bytes[8];
 } DES_cblock;
 
+typedef struct DES_cblock_st const_DES_cblock;
+
 typedef struct DES_ks {
   uint32_t subkeys[16][2];
 } DES_key_schedule;
@@ -91,11 +93,22 @@ typedef struct DES_ks {
 #define DES_CBC_MODE 0
 #define DES_PCBC_MODE 1
 
-// DES_set_key performs a key schedule and initialises |schedule| with |key|.
-OPENSSL_EXPORT void DES_set_key(const DES_cblock *key,
-                                DES_key_schedule *schedule);
+// DES_is_weak_key checks if |key| is a weak or semi-weak key, see SP 800-67r2
+// section 3.3.2
+OPENSSL_EXPORT int DES_is_weak_key(const DES_cblock *key);
 
-// DES_key_sched calls |DES_set_key| and returns 1.
+// DES_set_key checks that |key| is not weak and the parity before calling
+// |DES_set_key_unchecked|. The key schedule is always initialized, the checks
+// only affect the return value:
+// 0: key is not weak and has odd parity
+// -1: key is not odd
+// -2: key is a weak key, the parity might also be even
+OPENSSL_EXPORT int DES_set_key(const DES_cblock *key, DES_key_schedule *schedule);
+
+// DES_set_key_unchecked performs a key schedule and initialises |schedule| with |key|.
+OPENSSL_EXPORT void DES_set_key_unchecked(const DES_cblock *key, DES_key_schedule *schedule);
+
+// DES_key_sched calls |DES_set_key|.
 OPENSSL_EXPORT int DES_key_sched(const DES_cblock *key, DES_key_schedule *schedule);
 
 // DES_set_odd_parity sets the parity bits (the least-significant bits in each
@@ -144,18 +157,6 @@ OPENSSL_EXPORT void DES_ede2_cbc_encrypt(const uint8_t *in, uint8_t *out,
                                          const DES_key_schedule *ks1,
                                          const DES_key_schedule *ks2,
                                          DES_cblock *ivec, int enc);
-
-// Private functions.
-//
-// These functions are deprecated.
-
-OPENSSL_EXPORT void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
-                                 const DES_key_schedule *ks2,
-                                 const DES_key_schedule *ks3);
-
-OPENSSL_EXPORT void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
-                                 const DES_key_schedule *ks2,
-                                 const DES_key_schedule *ks3);
 
 
 #if defined(__cplusplus)

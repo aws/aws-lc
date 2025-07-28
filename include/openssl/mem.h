@@ -80,23 +80,23 @@ extern "C" {
 // private data. The resulting pointer must be freed with |OPENSSL_free|. In
 // the case of a malloc failure, prior to returning NULL |OPENSSL_malloc| will
 // push |ERR_R_MALLOC_FAILURE| onto the openssl error stack.
-OPENSSL_EXPORT void *OPENSSL_malloc(size_t size);
+OPENSSL_EXPORT void *OPENSSL_malloc(size_t size) OPENSSL_WARN_UNUSED_RESULT;
 
 // OPENSSL_zalloc behaves like |OPENSSL_malloc| except it also initializes the
 // resulting memory to zero.
-OPENSSL_EXPORT void *OPENSSL_zalloc(size_t size);
+OPENSSL_EXPORT void *OPENSSL_zalloc(size_t size) OPENSSL_WARN_UNUSED_RESULT;
 
 // OPENSSL_calloc is similar to a regular |calloc|, but allocates data with
 // |OPENSSL_malloc|. On overflow, it will push |ERR_R_OVERFLOW| onto the error
 // queue.
-OPENSSL_EXPORT void *OPENSSL_calloc(size_t num, size_t size);
+OPENSSL_EXPORT void *OPENSSL_calloc(size_t num, size_t size) OPENSSL_WARN_UNUSED_RESULT;
 
 // OPENSSL_realloc returns a pointer to a buffer of |new_size| bytes that
 // contains the contents of |ptr|. Unlike |realloc|, a new buffer is always
 // allocated and the data at |ptr| is always wiped and freed. Memory is
 // allocated with |OPENSSL_malloc| and must be freed with |OPENSSL_free|.
 // If |ptr| is null |OPENSSL_malloc| is called instead.
-OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
+OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size) OPENSSL_WARN_UNUSED_RESULT;
 #endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 
 // OPENSSL_free does nothing if |ptr| is NULL. Otherwise it zeros out the
@@ -113,7 +113,7 @@ OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
-OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
+OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len) OPENSSL_WARN_UNUSED_RESULT;
 
 // OPENSSL_hash32 implements the 32 bit, FNV-1a hash.
 OPENSSL_EXPORT uint32_t OPENSSL_hash32(const void *ptr, size_t len);
@@ -144,6 +144,13 @@ OPENSSL_EXPORT int OPENSSL_isxdigit(int c);
 // by OPENSSL_isxdigit, and sets |out| to the corresponding value. Otherwise
 // zero is returned.
 OPENSSL_EXPORT int OPENSSL_fromxdigit(uint8_t *out, int c);
+
+// OPENSSL_hexstr2buf allocates and returns a buffer containing the bytes
+// represented by the hexadecimal string |str|. |str| must be a NULL terminated
+// string of hex characters. The length of the buffer is stored in |*len|.
+// |len| must not be NULL. The caller must free the returned
+// buffer with |OPENSSL_free|. If |str| is malformed, NULL is returned.
+OPENSSL_EXPORT uint8_t *OPENSSL_hexstr2buf(const char *str, size_t *len);
 
 // OPENSSL_isalnum is a locale-independent, ASCII-only version of isalnum(3), It
 // only recognizes what |OPENSSL_isalpha| and |OPENSSL_isdigit| recognize.

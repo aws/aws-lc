@@ -62,6 +62,8 @@
 #include <openssl/evp.h>
 #include <openssl/obj.h>
 
+#include "../fipsmodule/pqdsa/internal.h"
+#include "../fipsmodule/evp/internal.h"
 #include "internal.h"
 
 // Restrict the digests that are allowed in X509 certificates
@@ -96,11 +98,9 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
     return X509_ALGOR_set0(algor, OBJ_nid2obj(NID_ED25519), V_ASN1_UNDEF, NULL);
   }
 
-#ifdef ENABLE_DILITHIUM
-  if (EVP_PKEY_id(pkey) == EVP_PKEY_DILITHIUM3) {
-    return X509_ALGOR_set0(algor, OBJ_nid2obj(NID_DILITHIUM3_R3), V_ASN1_UNDEF, NULL);
+  if (EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) {
+    return X509_ALGOR_set0(algor, OBJ_nid2obj(pkey->pkey.pqdsa_key->pqdsa->nid), V_ASN1_UNDEF, NULL);
   }
-#endif
 
   // Default behavior: look up the OID for the algorithm/hash pair and encode
   // that.
@@ -141,7 +141,9 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
   // when |sigalg_nid| is |NID_rsassaPss|.
   if (pkey_nid != EVP_PKEY_id(pkey) &&
       !(sigalg_nid == NID_rsassaPss && pkey_nid == NID_rsaEncryption &&
-        EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS)) {
+        EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) &&
+       !(sigalg_nid == NID_MLDSA65 && pkey_nid == NID_MLDSA65 &&
+        EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA)) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }
@@ -157,11 +159,8 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
     if (sigalg_nid == NID_rsassaPss) {
       return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
     }
-#ifdef ENABLE_DILITHIUM
-    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_DILITHIUM3_R3) {
-#else
-    if (sigalg_nid == NID_ED25519) {
-#endif
+
+    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_MLDSA65) {
       if (sigalg->parameter != NULL) {
         OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PARAMETER);
         return 0;

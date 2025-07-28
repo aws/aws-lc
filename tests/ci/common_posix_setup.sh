@@ -76,6 +76,20 @@ function build_and_test {
   run_cmake_custom_target 'run_tests'
 }
 
+function test_c_rehash {
+  if [ -f "${BUILD_ROOT}/tool-openssl/c_rehash_test" ]; then
+    "${BUILD_ROOT}/tool-openssl/c_rehash_test"
+    local test_result=$?
+    if [ $test_result -ne 0 ]; then
+        echo "c_rehash test failed with exit code ${test_result}"
+        exit 1
+    fi
+  else
+    echo "c_rehash test script not found in ${BUILD_ROOT}/tool-openssl/"
+    exit 1
+  fi
+}
+
 function generate_symbols_file {
   # read_symbols.go currently only support static libraries
   if [ ! -f  "$BUILD_ROOT"/crypto/libcrypto.a ]; then
@@ -94,16 +108,7 @@ function generate_symbols_file {
 function verify_symbols_prefixed {
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
-  # For grep's basic regular expression language the meta-characters (e.g. "?",
-  # "|", etc.) are interpreted as literal characters. To keep their
-  # meta-character semantics, they must be escaped with "\".
-  # Deciphering the pattern "^_\?\(bignum\|curve25519_x25519\)":
-  #  * "^": anchor at start of line.
-  #  * "_\?": might contain underscore.
-  #  * "\(bignum\|curve25519_x25519\)": match string of either "bignum" or "curve25519_x25519".
-  # Recall that the option "-v" reverse the pattern matching. So, we are really
-  # filtering out lines that contain either "bignum" or "curve25519_x25519".
-  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?\(bignum\|curve25519_x25519\|edwards25519\)' >  "$SRC_ROOT"/symbols_final.txt
+  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt >  "$SRC_ROOT"/symbols_final.txt
   # Now filter out every line that has the unique prefix $CUSTOM_PREFIX. If we
   # have any lines left, then some symbol(s) weren't prefixed, unexpectedly.
   if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then
@@ -172,10 +177,9 @@ function aws_lc_build() {
   INSTALL_FOLDER=${3}
 
   echo "Building AWS-LC to ${BUILD_FOLDER} and installing to ${INSTALL_FOLDER} with CFlags "${@:4}""
-  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "${@:4}"
-  ninja -C ${BUILD_FOLDER} install
+  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "-DCMAKE_INSTALL_LIBDIR=lib" "${@:4}"
+  ${CMAKE_COMMAND} --build ${BUILD_FOLDER} -- install
   ls -R ${INSTALL_FOLDER}
-  rm -rf "${BUILD_FOLDER:?}"/*
 }
 
 function print_executable_information {
@@ -201,6 +205,32 @@ function sde_getenforce_check {
   else
     echo "SELinux should be turned off to allow sde pin to work." && exit 1;
   fi
+}
+
+function build_openssl {
+    branch=$1
+    echo "building OpenSSL ${branch}"
+    git clone --depth 1 --branch "${branch}" "${openssl_url}" "${scratch_folder}/openssl-${branch}"
+    pushd "${scratch_folder}/openssl-${branch}"
+    mkdir -p "${install_dir}/openssl-${branch}"
+    ./config --prefix="${install_dir}/openssl-${branch}" --openssldir="${install_dir}/openssl-${branch}" -d
+    make "-j${NUM_CPU_THREADS}" > /dev/null
+    make install_sw
+    popd
+    rm -rf "${scratch_folder}/openssl-${branch}"
+}
+
+function build_openssl_no_debug {
+    branch=$1
+    echo "building OpenSSL ${branch}"
+    git clone --depth 1 --branch "${branch}" "${openssl_url}" "${scratch_folder}/openssl-${branch}"
+    pushd "${scratch_folder}/openssl-${branch}"
+    mkdir -p "${install_dir}/openssl-${branch}"
+    ./config --prefix="${install_dir}/openssl-${branch}" --openssldir="${install_dir}/openssl-${branch}"
+    make "-j${NUM_CPU_THREADS}" > /dev/null
+    make install_sw
+    popd
+    rm -rf "${scratch_folder}/openssl-${branch}"
 }
 
 print_executable_information "cmake" "--version" "CMake version"

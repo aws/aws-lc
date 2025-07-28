@@ -1,6 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+. .\common.ps1
+
 $ECS_REPO=$args[0]
 
 if ($args[0] -eq $null) {
@@ -10,12 +12,6 @@ if ($args[0] -eq $null) {
 
 Write-Host "$ECS_REPO"
 
-docker tag vs2015 ${ECS_REPO}:vs2015_latest
-docker tag vs2015 ${ECS_REPO}:vs2015-$(Get-Date -UFormat %Y-%m-%d-%H)
-docker push ${ECS_REPO}:vs2015_latest
-docker push ${ECS_REPO}:vs2015-$(Get-Date -UFormat %Y-%m-%d-%H)
-
-docker tag vs2017 ${ECS_REPO}:vs2017_latest
-docker tag vs2017 ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
-docker push ${ECS_REPO}:vs2017_latest
-docker push ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
+Tag-And-Push-Image "windows-2022:vs2015" "${ECS_REPO}:windows-2022_vs2015"
+Tag-And-Push-Image "windows-2022:vs2017" "${ECS_REPO}:windows-2022_vs2017"
+Tag-And-Push-Image "windows-2022:vs2022" "${ECS_REPO}:windows-2022_vs2022"

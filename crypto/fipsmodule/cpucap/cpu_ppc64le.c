@@ -68,7 +68,15 @@ static void handle_cpu_env(unsigned long *out, const char *in) {
 extern uint8_t OPENSSL_cpucap_initialized;
 
 void OPENSSL_cpuid_setup(void) {
+#if defined(AT_HWCAP2)
+#if defined(OPENSSL_LINUX)
   OPENSSL_ppc64le_hwcap2 = getauxval(AT_HWCAP2);
+#elif defined(OPENSSL_FREEBSD)
+  elf_aux_info(AT_HWCAP2, &OPENSSL_ppc64le_hwcap2, sizeof(OPENSSL_ppc64le_hwcap2));
+#else
+  OPENSSL_ppc64le_hwcap2 = 0;
+#endif
+#endif
   OPENSSL_cpucap_initialized = 1;
 
   // OPENSSL_ppccap is a 64-bit hex string which may start with "0x".

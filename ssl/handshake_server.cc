@@ -715,6 +715,26 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // Finished parsing the ClientHello, now we can start processing it.
+  // Give the ClientHello callback a crack at things
+  const SSL_CTX* sctx = ssl->ctx.get();
+  if (sctx != NULL && sctx->client_hello_cb != NULL) {
+    int al = SSL_AD_INTERNAL_ERROR;
+    // A failure in the ClientHello callback terminates the connection.
+    switch (sctx->client_hello_cb(ssl, &al, sctx->client_hello_cb_arg)) {
+      case SSL_CLIENT_HELLO_SUCCESS:
+        break;
+      case SSL_CLIENT_HELLO_RETRY:
+        // This case is treated as failure.
+        OPENSSL_FALLTHROUGH;
+      case SSL_CLIENT_HELLO_ERROR:
+      default:
+        OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, al);
+        return ssl_hs_error;
+    }
+  }
+
   // Run the early callback.
   if (ssl->ctx->select_certificate_cb != NULL) {
     switch (ssl->ctx->select_certificate_cb(&client_hello)) {
@@ -793,11 +813,13 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  // Load |hs->local_pubkey| from the cert prematurely. The certificate could be
-  // subject to change once we negotiate signature algorithms later. If it
-  // changes to another leaf certificate the server and client has support for,
-  // we reload it.
-  if (!ssl_handshake_load_local_pubkey(hs)) {
+  // Load |hs->local_pubkey| from the cert (if present) prematurely. The
+  // certificate could be subject to change once we negotiate signature
+  // algorithms later. If it changes to another leaf certificate the server and
+  // client has support for, we reload it. The public key may only be absent if
+  // PSK is enabled on the server, as indicated by presense of a callback.
+  if (!ssl_handshake_load_local_pubkey(hs) &&
+      !(hs->local_pubkey == nullptr && hs->config->psk_server_callback)) {
     return ssl_hs_error;
   }
 
@@ -1532,7 +1554,9 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_shares[0]->Finish(&premaster_secret, &alert, peer_key)) {
+    if (!hs->key_shares[0]->Finish(&premaster_secret, &alert, peer_key) ||
+        // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+        !ssl->s3->peer_key.CopyFrom(peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }

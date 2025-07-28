@@ -20,6 +20,9 @@ import os
 import subprocess
 import sys
 import json
+import tarfile
+import time
+import bz2
 from string import Template
 
 # OS_ARCH_COMBOS maps from OS and platform to the OpenSSL assembly "style" for
@@ -30,11 +33,11 @@ OS_ARCH_COMBOS = [
     ('linux', 'arm', 'linux32', [], 'S'),
     ('linux', 'aarch64', 'linux64', [], 'S'),
     ('linux', 'ppc64le', 'linux64le', [], 'S'),
-    ('linux', 'x86', 'elf', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
+    ('linux', 'x86', 'elf', ['-fPIC'], 'S'),
     ('linux', 'x86_64', 'elf', [], 'S'),
-    ('mac', 'x86', 'macosx', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
+    ('mac', 'x86', 'macosx', ['-fPIC'], 'S'),
     ('mac', 'x86_64', 'macosx', [], 'S'),
-    ('win', 'x86', 'win32n', ['-DOPENSSL_IA32_SSE2'], 'asm'),
+    ('win', 'x86', 'win32n', [], 'asm'),
     ('win', 'x86_64', 'nasm', [], 'asm'),
     ('win', 'aarch64', 'win64', [], 'S'),
 ]
@@ -181,6 +184,37 @@ def ExtractVariablesFromCMakeFile(cmakefile):
     raise ValueError('Unfinished set command')
   return variables
 
+def create_deterministic_tar_bz2(input_file, output_file):
+  # Use a fixed timestamp (Unix epoch)
+  fixed_time = 0  # January 1, 1970, 00:00:00 UTC
+
+  # An object to hold the tar content
+  tar_data = io.BytesIO()
+
+  with tarfile.open(fileobj=tar_data, mode="w:", format=tarfile.PAX_FORMAT) as tar:
+    # Ensure consistent metadata across platforms
+    tarinfo = tarfile.TarInfo(name=os.path.basename(input_file))
+    tarinfo.mtime = fixed_time
+    tarinfo.mode = 0o644
+    tarinfo.uid = 0
+    tarinfo.gid = 0
+    tarinfo.uname = ""
+    tarinfo.gname = ""
+
+    with open(input_file, "rb") as file:
+      file_data = file.read()
+      tarinfo.size = len(file_data)
+      tar.addfile(tarinfo, io.BytesIO(file_data))
+
+  # Obtain content for compression
+  tar_content = tar_data.getvalue()
+
+  # Use a consistent compression level
+  bz2_data = bz2.compress(tar_content, compresslevel=9)
+
+  with open(output_file, 'wb') as output:
+    output.write(bz2_data)
+
 def main():
   cmake = ExtractVariablesFromCMakeFile(os.path.join(SRC_DIR, 'sources.cmake'))
 
@@ -193,12 +227,18 @@ def main():
                           cwd=os.path.join(SRC_DIR, 'crypto', 'err'),
                           stdout=err_data)
 
+  ctd_path = os.path.join(DEST_DIR, 'crypto_test_data.cc')
+  ctd_gz_path = os.path.join(DEST_DIR, 'crypto_test_data.cc.tar.bz2')
+
   # Generate crypto_test_data.cc
-  with open(os.path.join(DEST_DIR, 'crypto_test_data.cc'), 'w+') as out:
+  with open(ctd_path, 'w+') as out:
     subprocess.check_call(
         ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
         cwd=SRC_DIR,
         stdout=out)
+
+  create_deterministic_tar_bz2(ctd_path, ctd_gz_path)
+  os.remove(ctd_path)
 
   WriteAsmFiles(ReadPerlAsmOperations())
 

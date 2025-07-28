@@ -68,29 +68,114 @@
 
 #include "../internal.h"
 
-#define HAS_CALLBACK(b) ((b)->callback_ex != NULL)
+// |callback_fn_wrap_ex| adapts the legacy callback interface |BIO_callback_fn| to the
+// extended callback interface |BIO_callback_fn_ex|. This function should only be
+// called when |callback_ex| is not available and the legacy callback is set.
+//
+// The extended interface parameters |len| and |processed| are mapped to the legacy
+// interface parameters |argi| and |bio_ret| respectively.
+//
+// Returns -1 on NULL |BIO| or callback, otherwise returns the result of the legacy
+// callback.
+static long callback_fn_wrap_ex(BIO *bio, int oper, const char *argp,
+                              size_t len, int argi, long argl, int bio_ret,
+                              size_t *processed) {
+  assert(bio != NULL);
+  assert(bio->callback != NULL);
+  assert(bio->callback_ex == NULL);
 
-// Helper function to create a placeholder |processed| that the callback can
-// modify and return to the caller. Used only in callbacks that pass in
-// |processed|.
-static int call_bio_callback_with_processed(BIO *bio, const int oper,
-                                        const void *buf, int len, int ret) {
-  if (HAS_CALLBACK(bio)) {
-    size_t processed = 0;
-    // The original BIO return value can be an error value (less than 0) or
-    // the number of bytes read/written
-    if (ret > 0) {
-      processed = ret;
+  /* Strip off any BIO_CB_RETURN flag */
+  int bareoper = oper & ~BIO_CB_RETURN;
+
+  if (bareoper == BIO_CB_READ || bareoper == BIO_CB_WRITE
+    || bareoper == BIO_CB_GETS) {
+    /* In this case |len| is set, and should be used instead of |argi| */
+    if (len > INT_MAX) {
+      return -1;
     }
-    // Pass the original BIO's return value to the callback. If the callback
-    // is successful return processed from the callback, if the callback is
-    // not successful return the callback's return value.
-    ret = (int)bio->callback_ex(bio, oper, buf, len, 0, 0L, ret, &processed);
-    if (ret > 0) {
-      // BIO will only read int |len| bytes so this is a safe cast
+
+    argi = (int)len;
+  }
+
+  if (bio_ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+    if (*processed > INT_MAX) {
+      return -1;
+    }
+
+    bio_ret = *processed;
+  }
+
+
+  long ret = bio->callback(bio, oper, argp, argi, argl, bio_ret);
+
+  if (ret > 0 && (oper & BIO_CB_RETURN) && bareoper != BIO_CB_CTRL) {
+    *processed = (size_t)ret;
+    ret = 1;
+  }
+
+  return ret;
+}
+
+// |get_callback| returns the appropriate callback function for a given |BIO|, preferring
+// the extended interface |callback_ex| over the legacy interface.
+//
+// When only the legacy callback is available, it is wrapped in the extended format
+// via |callback_fn_wrap_ex| to provide a consistent interface. The extended callback
+// provides additional parameters for length and bytes processed tracking.
+//
+// Returns the |callback_ex| function if available, a wrapped legacy callback if only
+// |callback| is set, or NULL if no callbacks are set.
+static BIO_callback_fn_ex get_callback(BIO *bio) {
+  assert(bio != NULL);
+
+  if (bio->callback_ex != NULL) {
+    return bio->callback_ex;
+  }
+  if (bio->callback != NULL) {
+    // Wrap old-style callback in extended format
+    return callback_fn_wrap_ex;
+  }
+  return NULL;
+}
+
+// Helper function to handle return values from |BIO_read|, |BIO_write|,
+// |BIO_gets|, and |BIO_puts| operations.
+static int handle_callback_return(BIO *bio, int oper, const void *buf,
+int len, int ret) {
+
+  size_t processed = 0;
+
+  if (ret > 0) {
+    if (oper == BIO_CB_READ || oper == BIO_CB_GETS) {
+      bio->num_read += ret;
+    } else if (oper == BIO_CB_WRITE || oper == BIO_CB_PUTS) {
+      bio->num_write += ret;
+    }
+    // |callback_ex| receives the number of bytes processed via the |processed| parameter,
+    // while the legacy callback receives this information through both |argi| and |ret|.
+    // When using the legacy callback, the |processed| value will be mapped back to |ret|.
+    processed = ret;
+    ret = 1;
+  }
+
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, oper | BIO_CB_RETURN, buf, len, 0, 0L, ret, &processed);
+    if (callback_ret > INT_MAX || callback_ret < INT_MIN) {
+      return -1;
+    }
+    ret = (int)callback_ret;
+  }
+
+
+  if (ret > 0) {
+    if (processed > INT_MAX) {
+      ret = -1; // Value too large to represent as int
+    } else {
       ret = (int)processed;
     }
   }
+
   return ret;
 }
 
@@ -107,6 +192,7 @@ BIO *BIO_new(const BIO_METHOD *method) {
   ret->shutdown = 1;
   ret->references = 1;
   ret->callback_ex = NULL;
+  ret->callback = NULL;
   CRYPTO_new_ex_data(&ret->ex_data);
 
   if (method->create != NULL && !method->create(ret)) {
@@ -130,10 +216,15 @@ int BIO_free(BIO *bio) {
     if (bio->method != NULL && bio->method->destroy != NULL) {
       bio->method->destroy(bio);
     }
-    if (HAS_CALLBACK(bio)) {
-      int ret = (int)bio->callback_ex(bio, BIO_CB_FREE, NULL, 0, 0, 0L, 1L, NULL);
+
+    BIO_callback_fn_ex cb = get_callback(bio);
+    if (cb != NULL) {
+      long ret = cb(bio, BIO_CB_FREE, NULL, 0, 0, 0L, 1L, NULL);
       if (ret <= 0) {
-        return ret;
+        if (ret >= INT_MIN) {
+          return (int)ret;
+        }
+        return INT_MIN;
       }
     }
 
@@ -157,33 +248,33 @@ void BIO_free_all(BIO *bio) {
 }
 
 int BIO_read(BIO *bio, void *buf, int len) {
-  int ret = 0;
+
   if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
-    return -2;
-  }
-  if (HAS_CALLBACK(bio)) {
-    ret = (int)bio->callback_ex(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-  if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
   }
   if (len <= 0) {
     return 0;
   }
-  ret = bio->method->bread(bio, buf, len);
-  if (ret > 0) {
-    bio->num_read += ret;
+
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
+    }
   }
 
-  ret = call_bio_callback_with_processed(bio, BIO_CB_READ | BIO_CB_RETURN, buf,
-                                         len, ret);
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+  int ret = bio->method->bread(bio, buf, len);
 
-  return ret;
+  return handle_callback_return(bio, BIO_CB_READ, buf, len, ret);
 }
 
 int BIO_read_ex(BIO *bio, void *data, size_t data_len, size_t *read_bytes) {
@@ -212,30 +303,18 @@ int BIO_gets(BIO *bio, char *buf, int len) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
-  if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
-    return -2;
-  }
   if (len <= 0) {
     return 0;
   }
-  int ret = bio->method->bgets(bio, buf, len);
-  if (ret > 0) {
-    bio->num_read += ret;
-  }
-  return ret;
-}
 
-int BIO_write(BIO *bio, const void *in, int inl) {
-  int ret = 0;
-  if (bio == NULL || bio->method == NULL || bio->method->bwrite == NULL) {
-    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
-    return -2;
-  }
-  if (HAS_CALLBACK(bio)) {
-    ret = (int)bio->callback_ex(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
-    if (ret <= 0) {
-      return ret;
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
     }
   }
 
@@ -243,18 +322,39 @@ int BIO_write(BIO *bio, const void *in, int inl) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
   }
+  int ret = bio->method->bgets(bio, buf, len);
+
+  return handle_callback_return(bio, BIO_CB_GETS, buf, len, ret);
+}
+
+int BIO_write(BIO *bio, const void *in, int inl) {
+
+  if (bio == NULL || bio->method == NULL || bio->method->bwrite == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
+  }
   if (inl <= 0) {
     return 0;
   }
-  ret = bio->method->bwrite(bio, in, inl);
-  if (ret > 0) {
-    bio->num_write += ret;
+
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
+    }
   }
 
-  ret = call_bio_callback_with_processed(bio, BIO_CB_WRITE | BIO_CB_RETURN, in,
-                                         inl, ret);
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+  int ret = bio->method->bwrite(bio, in, inl);
 
-  return ret;
+  return handle_callback_return(bio, BIO_CB_WRITE, in, inl, ret);
 }
 
 int BIO_write_ex(BIO *bio, const void *data, size_t data_len, size_t *written_bytes) {
@@ -299,13 +399,43 @@ int BIO_write_all(BIO *bio, const void *data, size_t len) {
 }
 
 int BIO_puts(BIO *bio, const char *in) {
-  size_t len = strlen(in);
-  if (len > INT_MAX) {
-    // |BIO_write| and the return value both assume the string fits in |int|.
-    OPENSSL_PUT_ERROR(BIO, ERR_R_OVERFLOW);
-    return -1;
+  // Check for bwrites here since we use that if bputs is NULL
+  if (bio == NULL || bio->method == NULL || (bio->method->bwrite == NULL &&
+                                            bio->method->bputs == NULL)) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
   }
-  return BIO_write(bio, in, (int)len);
+
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    long callback_ret = cb(bio, BIO_CB_PUTS, in, 0, 0, 0L, 1L, NULL);
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
+    }
+  }
+
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+  int ret = 0;
+
+  if (bio->method->bputs != NULL) {
+    ret = bio->method->bputs(bio, in);
+  } else {
+    const size_t len = strlen(in);
+    if (len > INT_MAX) {
+      // |BIO_write| and the return value both assume the string fits in |int|.
+      OPENSSL_PUT_ERROR(BIO, ERR_R_OVERFLOW);
+      return -1;
+    }
+    ret = bio->method->bwrite(bio, in, len);
+  }
+
+  return handle_callback_return(bio, BIO_CB_PUTS, in, 0, ret);
 }
 
 int BIO_flush(BIO *bio) {
@@ -321,8 +451,26 @@ long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
+  long ret = 0;
 
-  return bio->method->ctrl(bio, cmd, larg, parg);
+  BIO_callback_fn_ex cb = get_callback(bio);
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_CTRL, parg, 0, cmd, larg, 1L, NULL);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+
+  ret = bio->method->ctrl(bio, cmd, larg, parg);
+
+  cb = get_callback(bio);
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_CTRL | BIO_CB_RETURN, parg, 0, cmd, larg,
+                         ret, NULL);
+  }
+
+  return ret;
 }
 
 char *BIO_ptr_ctrl(BIO *b, int cmd, long larg) {
@@ -451,11 +599,15 @@ int BIO_set_close(BIO *bio, int close_flag) {
   return (int)BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
 }
 
-OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio) {
+int BIO_get_close(BIO *bio) {
+  return (int)BIO_ctrl(bio, BIO_CTRL_GET_CLOSE, 0, NULL);
+}
+
+OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio) {
   return bio->num_read;
 }
 
-OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio) {
+OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio) {
   return bio->num_write;
 }
 
@@ -838,7 +990,7 @@ void BIO_set_shutdown(BIO *bio, int shutdown) { bio->shutdown = shutdown; }
 int BIO_get_shutdown(BIO *bio) { return bio->shutdown; }
 
 int BIO_meth_set_puts(BIO_METHOD *method, int (*puts)(BIO *, const char *)) {
-  // Ignore the parameter. We implement |BIO_puts| using |BIO_write|.
+  method->bputs = puts;
   return 1;
 }
 
@@ -848,6 +1000,10 @@ int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *) {
 
 void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback) {
   bio->callback_ex = callback;
+}
+
+void BIO_set_callback(BIO *bio, BIO_callback_fn callback) {
+  bio->callback = callback;
 }
 
 void BIO_set_callback_arg(BIO *bio, char *arg) {

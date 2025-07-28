@@ -224,6 +224,7 @@ static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
   CBB *cbb, uint32_t mask_k, uint32_t mask_a, uint16_t max_version,
   uint16_t min_version, bool *any_enabled) {
   *any_enabled = false;
+
   for (const SSL_CIPHER *cipher : ciphers) {
     // Skip disabled ciphers
     if ((cipher->algorithm_mkey & mask_k) ||
@@ -259,49 +260,33 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     return false;
   }
 
-  // Add TLS 1.3 ciphers.
-  if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
-    // Use the configured TLSv1.3 ciphers list.
-    STACK_OF(SSL_CIPHER) *ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
-    bool any_enabled = false;
-    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
-      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
-      return false;
-    }
-    // If all ciphers were disabled, return the error to the caller.
-    if (!any_enabled) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
-      return false;
-    }
-  } else if (hs->max_version >= TLS1_3_VERSION) {
-    // Use the built in TLSv1.3 ciphers. Order ChaCha20-Poly1305 relative to
-    // AES-GCM based on hardware support.
-    const bool has_aes_hw = ssl->config->aes_hw_override
-                                ? ssl->config->aes_hw_override_value
-                                : EVP_has_aes_hardware();
-
-    if (!has_aes_hw &&
-        !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
-      return false;
-    }
-    if (!CBB_add_u16(&child, TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff) ||
-        !CBB_add_u16(&child, TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff)) {
-      return false;
-    }
-    if (has_aes_hw &&
-        !CBB_add_u16(&child, TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
-      return false;
-    }
-  }
-
+  // Add all ciphers unless TLS 1.3 only connection
   if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
     bool any_enabled = false;
     if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
       mask_a, hs->max_version, hs->min_version, &any_enabled)) {
       return false;
     }
+
     // If all ciphers were disabled, return the error to the caller.
-    if (!any_enabled && hs->max_version < TLS1_3_VERSION) {
+    if (!any_enabled) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+      return false;
+    }
+  } else if (hs->max_version >= TLS1_3_VERSION) {
+    // Only TLS 1.3 ciphers
+    STACK_OF(SSL_CIPHER) *ciphers = (ssl->config && ssl->config->tls13_cipher_list) ?
+      ssl->config->tls13_cipher_list->ciphers.get() : ssl->ctx->tls13_cipher_list->ciphers.get();
+
+    bool any_enabled = false;
+
+    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
+      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+      return false;
+    }
+
+    // If all ciphers were disabled, return the error to the caller.
+    if (!any_enabled) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
       return false;
     }
@@ -1163,7 +1148,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Save the group and peer public key for later.
     hs->new_session->group_id = group_id;
-    if (!hs->peer_key.CopyFrom(point)) {
+    if (!ssl->s3->peer_key.CopyFrom(point)) {
       return ssl_hs_error;
     }
   } else if (!(alg_k & SSL_kPSK)) {
@@ -1379,16 +1364,40 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_has_certificate(hs)) {
+  if (!ssl_on_certificate_selected(hs)) {
+    return ssl_hs_error;
+  }
+
+  if (ssl_has_certificate(hs)) {
+    if (hs->config->check_client_certificate_type) {
+      // Check the certificate types advertised by the peer.
+      uint8_t cert_type;
+      switch (EVP_PKEY_id(hs->local_pubkey.get())) {
+        case EVP_PKEY_RSA:
+          cert_type = SSL3_CT_RSA_SIGN;
+          break;
+        case EVP_PKEY_EC:
+        case EVP_PKEY_ED25519:
+          cert_type = TLS_CT_ECDSA_SIGN;
+          break;
+        default:
+          OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+          return ssl_hs_error;
+      }
+      if (std::find(hs->certificate_types.begin(), hs->certificate_types.end(),
+                    cert_type) == hs->certificate_types.end()) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+        return ssl_hs_error;
+      }
+    }
+  } else {
     // Without a client certificate, the handshake buffer may be released.
     hs->transcript.FreeBuffer();
   }
 
-  if (!ssl_on_certificate_selected(hs) ||
-      !ssl_output_cert_chain(hs)) {
+  if (!ssl_output_cert_chain(hs)) {
     return ssl_hs_error;
   }
-
 
   hs->state = state_send_client_key_exchange;
   return ssl_hs_ok;
@@ -1508,7 +1517,8 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     bssl::UniquePtr<SSLKeyShare> key_share =
         SSLKeyShare::Create(hs->new_session->group_id);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!key_share || !key_share->Accept(&child, &pms, &alert, hs->peer_key)) {
+    if (!key_share ||
+        !key_share->Accept(&child, &pms, &alert, ssl->s3->peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
@@ -1516,8 +1526,8 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // The peer key can now be discarded.
-    hs->peer_key.Reset();
+    // The peer key could be discarded, but we preserve it since OpenSSL
+    // allows the user to observe it with |SSL_get_peer_tmp_key|.
   } else if (alg_k & SSL_kPSK) {
     // For plain PSK, other_secret is a block of 0s with the same length as
     // the pre-shared key.

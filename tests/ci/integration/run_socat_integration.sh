@@ -24,6 +24,11 @@ function build_and_test_socat() {
   autoconf
   ./configure --enable-openssl-base="$AWS_LC_INSTALL_FOLDER"
   make -j "$NUM_CPU_THREADS"
+  # See: t/V1497389456.
+  # socat decreased the test wait time to 3 milliseconds, which causes failures when additional warnings/logs are written.
+  # Extending the wait time to 50 milliseconds is just right for us.
+  # Use Perl so the command will fail if no replacement performed:
+  perl -pi -e 'BEGIN{$x=0} $x=1 if s/MICROS=\${MILLIs}000/MICROS=50000/; END{exit 1 if !$x}' ./test.sh
   # test 146 OPENSSLLISTENDSA: fails because AWS-LC doesn't support FFDH ciphersuites which are needed for DSA
   # test 216 UDP6MULTICAST_UNIDIR: known flaky test in socat with newer kernels
   # test 309 OPENSSLRENEG1: AWS-LC doesn't support renegotiation by default, it can be enabled by calling SSL_set_renegotiate_mode

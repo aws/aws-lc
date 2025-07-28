@@ -67,9 +67,9 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 $addx = 1;
-for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
+for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
-# int bn_mul_mont(
+# int bn_mul_mont_nohw(
 $rp="%rdi";	# BN_ULONG *rp,
 $ap="%rsi";	# const BN_ULONG *ap,
 $bp="%rdx";	# const BN_ULONG *bp,
@@ -89,34 +89,15 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.extern	OPENSSL_ia32cap_P
-
-.globl	bn_mul_mont
-.type	bn_mul_mont,\@function,6
+.globl	bn_mul_mont_nohw
+.type	bn_mul_mont_nohw,\@function,6
 .align	16
-bn_mul_mont:
+bn_mul_mont_nohw:
 .cfi_startproc
+	_CET_ENDBR
 	mov	${num}d,${num}d
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
-	test	\$3,${num}d
-	jnz	.Lmul_enter
-	cmp	\$8,${num}d
-	jb	.Lmul_enter
-___
-$code.=<<___ if ($addx);
-	leaq	OPENSSL_ia32cap_P(%rip),%r11
-	mov	8(%r11),%r11d
-___
-$code.=<<___;
-	cmp	$ap,$bp
-	jne	.Lmul4x_enter
-	test	\$7,${num}d
-	jz	.Lsqr8x_enter
-	jmp	.Lmul4x_enter
-
-.align	16
-.Lmul_enter:
 	push	%rbx
 .cfi_push	%rbx
 	push	%rbp
@@ -351,27 +332,21 @@ $code.=<<___;
 .Lmul_epilogue:
 	ret
 .cfi_endproc
-.size	bn_mul_mont,.-bn_mul_mont
+.size	bn_mul_mont_nohw,.-bn_mul_mont_nohw
 ___
 {{{
 my @A=("%r10","%r11");
 my @N=("%r13","%rdi");
 $code.=<<___;
+.globl	bn_mul4x_mont
 .type	bn_mul4x_mont,\@function,6
 .align	16
 bn_mul4x_mont:
 .cfi_startproc
+	_CET_ENDBR
 	mov	${num}d,${num}d
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
-.Lmul4x_enter:
-___
-$code.=<<___ if ($addx);
-	and	\$0x80100,%r11d
-	cmp	\$0x80100,%r11d
-	je	.Lmulx4x_enter
-___
-$code.=<<___;
 	push	%rbx
 .cfi_push	%rbx
 	push	%rbp
@@ -809,10 +784,10 @@ ___
 }}}
 {{{
 ######################################################################
-# void bn_sqr8x_mont(
+# int bn_sqr8x_mont(
 my $rptr="%rdi";	# const BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
-my $bptr="%rdx";	# not used
+my $mulx_adx_capable="%rdx"; # Different than upstream!
 my $nptr="%rcx";	# const BN_ULONG *nptr,
 my $n0  ="%r8";		# const BN_ULONG *n0);
 my $num ="%r9";		# int num, has to be divisible by 8
@@ -823,18 +798,22 @@ my @A1=("%r12","%r13");
 my ($a0,$a1,$ai)=("%r14","%r15","%rbx");
 
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .extern	bn_sqrx8x_internal		# see x86_64-mont5 module
+#endif
 ___
 $code.=<<___;
 .extern	bn_sqr8x_internal		# see x86_64-mont5 module
 
+.globl	bn_sqr8x_mont
 .type	bn_sqr8x_mont,\@function,6
 .align	32
 bn_sqr8x_mont:
 .cfi_startproc
+	_CET_ENDBR
+	mov	${num}d,${num}d
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
-.Lsqr8x_enter:
 	push	%rbx
 .cfi_push	%rbx
 	push	%rbp
@@ -911,11 +890,9 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-	leaq	OPENSSL_ia32cap_P(%rip),%rax
-	mov	8(%rax),%eax
-	and	\$0x80100,%eax
-	cmp	\$0x80100,%eax
-	jne	.Lsqr8x_nox
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+	test	$mulx_adx_capable,$mulx_adx_capable
+	jz	.Lsqr8x_nox
 
 	call	bn_sqrx8x_internal	# see x86_64-mont5 module
 					# %rax	top-most carry
@@ -931,6 +908,7 @@ $code.=<<___ if ($addx);
 
 .align	32
 .Lsqr8x_nox:
+#endif
 ___
 $code.=<<___;
 	call	bn_sqr8x_internal	# see x86_64-mont5 module
@@ -1027,13 +1005,15 @@ if ($addx) {{{
 my $bp="%rdx";	# original value
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.globl	bn_mulx4x_mont
 .type	bn_mulx4x_mont,\@function,6
 .align	32
 bn_mulx4x_mont:
 .cfi_startproc
+	_CET_ENDBR
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
-.Lmulx4x_enter:
 	push	%rbx
 .cfi_push	%rbx
 	push	%rbp
@@ -1388,6 +1368,7 @@ $code.=<<___;
 	ret
 .cfi_endproc
 .size	bn_mulx4x_mont,.-bn_mulx4x_mont
+#endif
 ___
 }}}
 $code.=<<___;
@@ -1538,9 +1519,9 @@ sqr_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_bn_mul_mont
-	.rva	.LSEH_end_bn_mul_mont
-	.rva	.LSEH_info_bn_mul_mont
+	.rva	.LSEH_begin_bn_mul_mont_nohw
+	.rva	.LSEH_end_bn_mul_mont_nohw
+	.rva	.LSEH_info_bn_mul_mont_nohw
 
 	.rva	.LSEH_begin_bn_mul4x_mont
 	.rva	.LSEH_end_bn_mul4x_mont
@@ -1551,14 +1532,16 @@ sqr_handler:
 	.rva	.LSEH_info_bn_sqr8x_mont
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	.rva	.LSEH_begin_bn_mulx4x_mont
 	.rva	.LSEH_end_bn_mulx4x_mont
 	.rva	.LSEH_info_bn_mulx4x_mont
+#endif
 ___
 $code.=<<___;
 .section	.xdata
 .align	8
-.LSEH_info_bn_mul_mont:
+.LSEH_info_bn_mul_mont_nohw:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_epilogue	# HandlerData[]
@@ -1573,11 +1556,13 @@ $code.=<<___;
 .align	8
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .LSEH_info_bn_mulx4x_mont:
 	.byte	9,0,0,0
 	.rva	sqr_handler
 	.rva	.Lmulx4x_prologue,.Lmulx4x_body,.Lmulx4x_epilogue	# HandlerData[]
 .align	8
+#endif
 ___
 }
 

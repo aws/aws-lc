@@ -527,7 +527,8 @@ static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
 }
 
 ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
-    : method(ssl_method->method),
+    : RefCounted(CheckSubClass()),
+      method(ssl_method->method),
       x509_method(ssl_method->x509_method),
       retain_only_sha256_of_client_certs(false),
       quiet_shutdown(false),
@@ -585,7 +586,17 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return nullptr;
   }
 
-  if (!SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
+  const bool has_aes_hw = ret->aes_hw_override ? ret->aes_hw_override_value :
+                                                 EVP_has_aes_hardware();
+  const char *cipher_rule;
+  if (has_aes_hw) {
+    cipher_rule = TLS13_DEFAULT_CIPHER_LIST_AES_HW;
+  } else {
+    cipher_rule = TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW;
+  }
+
+  if (!SSL_CTX_set_ciphersuites(ret.get(), cipher_rule) ||
+      !SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
       // Lock the SSL_CTX to the specified version, for compatibility with
       // legacy uses of SSL_METHOD.
       !SSL_CTX_set_max_proto_version(ret.get(), method->version) ||
@@ -606,17 +617,14 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 }
 
 int SSL_CTX_up_ref(SSL_CTX *ctx) {
-  CRYPTO_refcount_inc(&ctx->references);
+  ctx->UpRefInternal();
   return 1;
 }
 
 void SSL_CTX_free(SSL_CTX *ctx) {
-  if (ctx == NULL || !CRYPTO_refcount_dec_and_test_zero(&ctx->references)) {
-    return;
+  if (ctx != nullptr) {
+    ctx->DecRefInternal();
   }
-
-  ctx->~ssl_ctx_st();
-  OPENSSL_free(ctx);
 }
 
 ssl_st::ssl_st(SSL_CTX *ctx_arg)
@@ -687,6 +695,15 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return nullptr;
   }
 
+  if (ctx->cipher_list) {
+    ssl->config->cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    ssl->config->cipher_list->Init(*ctx->cipher_list.get());
+  }
+  if (ctx->tls13_cipher_list) {
+    ssl->config->tls13_cipher_list = MakeUnique<SSLCipherPreferenceList>();
+    ssl->config->tls13_cipher_list->Init(*ctx->tls13_cipher_list.get());
+  }
+
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint.reset(
         OPENSSL_strdup(ctx->psk_identity_hint.get()));
@@ -729,7 +746,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       permute_extensions(false),
       conf_max_version_use_default(true),
       conf_min_version_use_default(true),
-      alps_use_new_codepoint(false) {
+      alps_use_new_codepoint(false),
+      check_client_certificate_type(true) {
   assert(ssl);
 }
 
@@ -950,7 +968,7 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
 int SSL_process_quic_post_handshake(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
-  if (SSL_in_init(ssl)) {
+  if (ssl->quic_method == nullptr || (SSL_in_init(ssl) != 0)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -1614,13 +1632,6 @@ const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
   return ssl->config->cert->sid_ctx;
 }
 
-void SSL_certs_clear(SSL *ssl) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl_cert_clear_certs(ssl->config->cert.get());
-}
-
 int SSL_get_fd(const SSL *ssl) { return SSL_get_rfd(ssl); }
 
 int SSL_get_rfd(const SSL *ssl) {
@@ -1703,8 +1714,7 @@ static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -1718,8 +1728,7 @@ size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
 }
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -2139,6 +2148,14 @@ uint16_t SSL_get_group_id(const SSL *ssl) {
   return session->group_id;
 }
 
+int SSL_get_negotiated_group(const SSL *ssl) {
+  uint16_t group_id = SSL_get_group_id(ssl);
+  if (group_id == 0) {
+    return NID_undef;
+  }
+  return ssl_group_id_to_nid(group_id);
+}
+
 int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) { return 1; }
 
 int SSL_set_tmp_dh(SSL *ssl, const DH *dh) { return 1; }
@@ -2158,13 +2175,12 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
   if (ssl == NULL) {
     return NULL;
   }
-  if (ssl->config == NULL) {
-    assert(ssl->config);
-    return NULL;
+
+  if (ssl->config && ssl->config->cipher_list) {
+    return ssl->config->cipher_list->ciphers.get();
   }
 
-  return ssl->config->cipher_list ? ssl->config->cipher_list->ciphers.get()
-                                  : ssl->ctx->cipher_list->ciphers.get();
+  return ssl->ctx->cipher_list->ciphers.get();
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
@@ -2188,17 +2204,25 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
+  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
                                 false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
+  if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
                                 true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
@@ -2208,17 +2232,48 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
+  if (!ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
                                 false /* not strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
+                                        ssl->ctx->tls13_cipher_list;
+
+  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
+
+  if (!ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
                                 false /* not strict */,
-                                true /* only configure TLSv1.3 ciphers */);
+                                true /* only configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  return update_cipher_list(ctx->cipher_list, ctx->cipher_list, ctx->tls13_cipher_list);
+}
+
+int SSL_set_ciphersuites(SSL *ssl, const char *str) {
+  if (!ssl->config) {
+    return 0;
+  }
+  const bool has_aes_hw = ssl->config->aes_hw_override
+                              ? ssl->config->aes_hw_override_value
+                              : EVP_has_aes_hardware();
+  if (!ssl_create_cipher_list(&ssl->config->tls13_cipher_list,
+                                has_aes_hw, str, false /* not strict */,
+                                true /* configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &ciphers = ssl->config->cipher_list ? ssl->config->cipher_list :
+                                          ssl->ctx->cipher_list;
+
+  return update_cipher_list(ssl->config->cipher_list, ciphers, ssl->config->tls13_cipher_list);
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
@@ -2228,9 +2283,16 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   const bool has_aes_hw = ssl->config->aes_hw_override
                               ? ssl->config->aes_hw_override_value
                               : EVP_has_aes_hardware();
-  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
-                                true /* strict */,
-                                false /* don't configure TLSv1.3 ciphers */);
+  if (!ssl_create_cipher_list(&ssl->config->cipher_list,
+                                has_aes_hw, str, true /* strict */,
+                                false /* don't configure TLSv1.3 ciphers */)) {
+    return 0;
+  }
+
+  UniquePtr<SSLCipherPreferenceList> &tls13_ciphers = ssl->config->tls13_cipher_list ? ssl->config->tls13_cipher_list :
+                                        ssl->ctx->tls13_cipher_list;
+
+  return update_cipher_list(ssl->config->cipher_list, ssl->config->cipher_list, tls13_ciphers);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {
@@ -2351,34 +2413,49 @@ int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
 int SSL_select_next_proto(uint8_t **out, uint8_t *out_len, const uint8_t *peer,
                           unsigned peer_len, const uint8_t *supported,
                           unsigned supported_len) {
-  const uint8_t *result;
-  int status;
+  *out = nullptr;
+  *out_len = 0;
 
-  // For each protocol in peer preference order, see if we support it.
-  for (unsigned i = 0; i < peer_len;) {
-    for (unsigned j = 0; j < supported_len;) {
-      if (peer[i] == supported[j] &&
-          OPENSSL_memcmp(&peer[i + 1], &supported[j + 1], peer[i]) == 0) {
-        // We found a match
-        result = &peer[i];
-        status = OPENSSL_NPN_NEGOTIATED;
-        goto found;
-      }
-      j += supported[j];
-      j++;
-    }
-    i += peer[i];
-    i++;
+  // Both |peer| and |supported| must be valid protocol lists, but |peer| may be
+  // empty in NPN.
+  auto peer_span = MakeConstSpan(peer, peer_len);
+  auto supported_span = MakeConstSpan(supported, supported_len);
+  if ((!peer_span.empty() && !ssl_is_valid_alpn_list(peer_span)) ||
+      !ssl_is_valid_alpn_list(supported_span)) {
+    return OPENSSL_NPN_NO_OVERLAP;
   }
 
-  // There's no overlap between our protocols and the peer's list.
-  result = supported;
-  status = OPENSSL_NPN_NO_OVERLAP;
+  // For each protocol in peer preference order, see if we support it.
+  CBS cbs = peer_span, proto;
+  while (CBS_len(&cbs) != 0) {
+    if (!CBS_get_u8_length_prefixed(&cbs, &proto) || CBS_len(&proto) == 0) {
+      return OPENSSL_NPN_NO_OVERLAP;
+    }
 
-found:
-  *out = (uint8_t *)result + 1;
-  *out_len = result[0];
-  return status;
+    if (ssl_alpn_list_contains_protocol(MakeConstSpan(supported, supported_len),
+                                        proto)) {
+      // This function is not const-correct for compatibility with existing
+      // callers.
+      *out = const_cast<uint8_t *>(CBS_data(&proto));
+      // A u8 length prefix will fit in |uint8_t|.
+      *out_len = static_cast<uint8_t>(CBS_len(&proto));
+      return OPENSSL_NPN_NEGOTIATED;
+    }
+  }
+
+  // There's no overlap between our protocols and the peer's list. In ALPN, the
+  // caller is expected to fail the connection with no_application_protocol. In
+  // NPN, the caller is expected to opportunistically select the first protocol.
+  // See draft-agl-tls-nextprotoneg-04, section 6.
+  cbs = supported_span;
+  if (!CBS_get_u8_length_prefixed(&cbs, &proto) || CBS_len(&proto) == 0) {
+    return OPENSSL_NPN_NO_OVERLAP;
+  }
+
+  // See above.
+  *out = const_cast<uint8_t *>(CBS_data(&proto));
+  *out_len = static_cast<uint8_t>(CBS_len(&proto));
+  return OPENSSL_NPN_NO_OVERLAP;
 }
 
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
@@ -2643,7 +2720,51 @@ const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
 
 const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
-int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
+int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
+  GUARD_PTR(ssl);
+  GUARD_PTR(ssl->s3);
+  GUARD_PTR(out_key);
+
+  SSL_SESSION *session = SSL_get_session(ssl);
+  uint16_t nid;
+  if (!session || !ssl_group_id_to_nid(&nid, session->group_id)) {
+    return 0;
+  }
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (!ret) {
+    return 0;
+  }
+
+  // Assign key type based on the session's key exchange |nid|.
+  if (nid == EVP_PKEY_X25519) {
+    if (!EVP_PKEY_set_type(ret.get(), EVP_PKEY_X25519)) {
+      return 0;
+    }
+  } else {
+    EC_KEY *key = EC_KEY_new_by_curve_name(nid);
+    if (!key) {
+      // We only support ECDHE for temporary keys, so fail if an unrecognized
+      // key exchange is used.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
+      return 0;
+    }
+    if (!EVP_PKEY_assign_EC_KEY(ret.get(), key)) {
+      return 0;
+    }
+  }
+
+  if (!EVP_PKEY_set1_tls_encodedpoint(ret.get(), ssl->s3->peer_key.data(),
+                                      ssl->s3->peer_key.size())) {
+    return 0;
+  }
+  EVP_PKEY_up_ref(ret.get());
+  *out_key = ret.get();
+  return 1;
+}
+
+int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
+  return SSL_get_peer_tmp_key(ssl, out_key);
+}
 
 void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode) {
   ctx->quiet_shutdown = (mode != 0);
@@ -2922,6 +3043,44 @@ void SSL_set_msg_callback_arg(SSL *ssl, void *arg) {
   ssl->msg_callback_arg = arg;
 }
 
+void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_fn cb,
+                                 void *arg) {
+  c->client_hello_cb = cb;
+  c->client_hello_cb_arg = arg;
+}
+
+int SSL_client_hello_isv2(SSL *s) {
+  // SSLv2 not supported
+  return 0;
+}
+
+int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **out,
+                              size_t *outlen) {
+  GUARD_PTR(s);
+  GUARD_PTR(s->s3);
+  SSL_HANDSHAKE* hs = s->s3->hs.get();
+  GUARD_PTR(hs);
+
+  SSLMessage msg_unused;
+  SSL_CLIENT_HELLO client_hello;
+  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+    return 0;
+  }
+
+  CBS cbs;
+  if (!ssl_client_hello_get_extension(&client_hello, &cbs, static_cast<uint16_t>(type))) {
+    return 0;  // Extension not found
+  }
+
+  if (out != nullptr) {
+    *out = CBS_data(&cbs);
+  }
+  if (outlen != nullptr) {
+    *outlen = CBS_len(&cbs);
+  }
+  return 1;  // Success
+}
+
 void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
                                  void (*cb)(const SSL *ssl, const char *line)) {
   ctx->keylog_callback = cb;
@@ -2947,6 +3106,14 @@ int SSL_can_release_private_key(const SSL *ssl) {
 
   // Otherwise, this is determined by the current handshake.
   return !ssl->s3->hs || ssl->s3->hs->can_release_private_key;
+}
+
+int SSL_in_connect_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && !SSL_is_server(ssl);
+}
+
+int SSL_in_accept_init(const SSL *ssl) {
+  return SSL_in_init(ssl) && SSL_is_server(ssl);
 }
 
 int SSL_is_init_finished(const SSL *ssl) { return !SSL_in_init(ssl); }
@@ -3047,6 +3214,41 @@ uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
   return session->peer_signature_algorithm;
 }
 
+int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid) {
+  GUARD_PTR(psig_nid);
+
+  uint16_t sig_alg = SSL_get_peer_signature_algorithm(ssl);
+  if (sig_alg == 0) {
+    return 0;
+  }
+
+  const EVP_MD *digest_type = SSL_get_signature_algorithm_digest(sig_alg);
+  if (digest_type == NULL) {
+    return 0;
+  }
+
+  *psig_nid = EVP_MD_nid(digest_type);
+  return 1;
+}
+
+int SSL_get_peer_signature_type_nid(const SSL *ssl, int *psigtype_nid) {
+  GUARD_PTR(psigtype_nid);
+
+  uint16_t sig_alg = SSL_get_peer_signature_algorithm(ssl);
+  if (sig_alg == 0) {
+    return 0;
+  }
+
+  int sig_type = SSL_get_signature_algorithm_key_type(sig_alg);
+
+  if (sig_type == EVP_PKEY_NONE) {
+    return 0;
+  }
+
+  *psigtype_nid = sig_type;
+  return 1;
+}
+
 size_t SSL_get_client_random(const SSL *ssl, uint8_t *out, size_t max_out) {
   if (max_out == 0) {
     return sizeof(ssl->s3->client_random);
@@ -3127,6 +3329,13 @@ void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
     return;
   }
   ssl->config->jdk11_workaround = !!enable;
+}
+
+void SSL_set_check_client_certificate_type(SSL *ssl, int enable) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->check_client_certificate_type = !!enable;
 }
 
 void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy) {
@@ -3379,3 +3588,65 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
   }
   return ssl->all_client_cipher_suites_len;
 }
+
+OPENSSL_EXPORT int SSL_get_read_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len)  {
+  if (SSL_in_init(ssl) || ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  GUARD_PTR(out_len);
+
+  if (secret == nullptr) {
+    *out_len = ssl->s3->read_traffic_secret_len;
+    return 1;
+  }
+
+  if (ssl->s3->read_traffic_secret_len > *out_len) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  OPENSSL_memcpy(secret, ssl->s3->read_traffic_secret,
+                 ssl->s3->read_traffic_secret_len);
+
+  *out_len = ssl->s3->read_traffic_secret_len;
+
+  return 1;
+}
+
+OPENSSL_EXPORT int SSL_get_write_traffic_secret(
+    const SSL *ssl,
+    uint8_t *secret, size_t *out_len)  {
+  if (SSL_in_init(ssl) || ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  GUARD_PTR(out_len);
+
+  if (secret == nullptr) {
+    *out_len = ssl->s3->write_traffic_secret_len;
+    return 1;
+  }
+
+  if (ssl->s3->write_traffic_secret_len > *out_len) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  OPENSSL_memcpy(secret, ssl->s3->write_traffic_secret,
+                 ssl->s3->write_traffic_secret_len);
+
+  *out_len = ssl->s3->write_traffic_secret_len;
+
+  return 1;
+}
+
+// No-op function for compatibility with OpenSSL.
+int SSL_verify_client_post_handshake(SSL *ssl) {
+  return 0;
+}
+

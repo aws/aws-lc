@@ -121,6 +121,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
+#include <openssl/bio.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -595,12 +596,14 @@ static void dtls1_update_mtu(SSL *ssl) {
   // |SSL_set_mtu|. Does this need to be so complex?
   if (ssl->d1->mtu < dtls1_min_mtu() &&
       !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
-    long mtu = BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+    long const mtu = BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_QUERY_MTU, 0, nullptr);
     if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
       ssl->d1->mtu = (unsigned)mtu;
     } else {
       ssl->d1->mtu = kDefaultMTU;
-      BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL);
+      if (1 != BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, nullptr)) {
+        // Ignore failure: BIO_CTRL_DGRAM_SET_MTU isn't supported
+      }
     }
   }
 

@@ -121,14 +121,16 @@
 
 #if !defined(OPENSSL_NO_ASM) &&                          \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) || \
-     defined(OPENSSL_OPENBSD)) &&                        \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
     defined(OPENSSL_AARCH64)
 
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 
 #define BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE 1
 
-OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 1; }
+OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) {
+  return CRYPTO_is_NEON_capable();
+}
 
 #else
 
@@ -143,17 +145,12 @@ static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width
 #if defined(BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE)
 
   int table_height = 1 << window;
-  if (CRYPTO_is_NEON_capable()) {
-    if (width == 32) {
-      bignum_copy_row_from_table_32_neon(dest, table, table_height, rowidx);
-    } else if (width == 16) {
-      bignum_copy_row_from_table_16_neon(dest, table, table_height, rowidx);
-    } else if (width % 8 == 0) {
-      bignum_copy_row_from_table_8n_neon(dest, table, table_height, width,
-                                         rowidx);
-    } else {
-      bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
-    }
+  if (width == 32) {
+    bignum_copy_row_from_table_32(dest, table, table_height, rowidx);
+  } else if (width == 16) {
+    bignum_copy_row_from_table_16(dest, table, table_height, rowidx);
+  } else if (width % 8 == 0) {
+    bignum_copy_row_from_table_8n(dest, table, table_height, width, rowidx);
   } else {
     bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
   }
@@ -945,7 +942,9 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
-  if (a->neg || BN_ucmp(a, m) >= 0) {
+  // |a| is secret, but it is required to be in range, so these comparisons may
+  // be leaked.
+  if (a->neg || constant_time_declassify_int(BN_ucmp(a, m) >= 0)) {
     OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
     return 0;
   }
@@ -1056,7 +1055,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   // Prepare a^1 in the Montgomery domain.
   assert(!a->neg);
-  assert(BN_ucmp(a, m) < 0);
+  declassify_assert(BN_ucmp(a, m) < 0);
   if (!BN_to_montgomery(&am, a, mont, ctx) ||
       !bn_resize_words(&am, top)) {
     goto err;
@@ -1251,6 +1250,104 @@ err:
     OPENSSL_cleanse(powerbuf, powerbuf_len);
   }
   OPENSSL_free(powerbuf_free);
+  return ret;
+}
+
+
+// This is a variant of modular exponentiation optimization that does
+// parallel 2-primes exponentiation using 256-bit (AVX512VL)
+// AVX512_IFMA ISA in 52-bit binary redundant representation. If such
+// instructions are not available, or input data size is not
+// supported, it falls back to two BN_mod_exp_mont_consttime() calls.
+//
+// Computes `rr = a^p mod m` using montgomery multiplication.
+//
+// rr[i]      - Result
+// a[i]       - Base
+// p[i]       - Exponent
+// m[i]       - Modulus
+// in_mont[i] - Montgomery multiplication context
+// ctx        - Bignum context.
+//
+// The width of each base, exponent, and modulus must match and the
+// contexts are expected to be initialized.
+int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
+                                 const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
+                                 BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
+                                 const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
+                                 BN_CTX *ctx)
+{
+  int ret = 0;
+
+#ifdef RSAZ_512_ENABLED
+  if (CRYPTO_is_AVX512IFMA_capable() &&
+     (((a1->width == 16) && (p1->width == 16) && (BN_num_bits(m1) == 1024) &&
+       (a2->width == 16) && (p2->width == 16) && (BN_num_bits(m2) == 1024)) ||
+      ((a1->width == 24) && (p1->width == 24) && (BN_num_bits(m1) == 1536) &&
+       (a2->width == 24) && (p2->width == 24) && (BN_num_bits(m2) == 1536)) ||
+      ((a1->width == 32) && (p1->width == 32) && (BN_num_bits(m1) == 2048) &&
+       (a2->width == 32) && (p2->width == 32) && (BN_num_bits(m2) == 2048)))) {
+
+    int widthn = a1->width;
+
+    if (!bn_wexpand(rr1, widthn)) {
+        return ret;
+    }
+    if (!bn_wexpand(rr2, widthn)) {
+        return ret;
+    }
+    
+    /*  Ensure that montgomery contexts are initialized */
+    if (in_mont1 == NULL) {
+        return ret;
+    }
+
+    if (in_mont2 == NULL) {
+	return ret;
+    }
+
+
+    if (!BN_is_odd(m1) || !BN_is_odd(m2)) {
+      OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+      return 0;
+    }
+    if (m1->neg || m2->neg) {
+      OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+      return 0;
+    }
+    if ((a1->neg || BN_ucmp(a1, m1) >= 0) ||
+	(a2->neg || BN_ucmp(a2, m2) >= 0)) {
+      OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+      return 0;
+    }
+
+    int mod_bits = BN_num_bits(m1);
+    ret = RSAZ_mod_exp_avx512_x2(rr1->d, a1->d, p1->d, m1->d,
+                                 in_mont1->RR.d, in_mont1->n0[0],
+                                 rr2->d, a2->d, p2->d, m2->d,
+                                 in_mont2->RR.d, in_mont2->n0[0],
+                                 mod_bits);
+
+    rr1->width = widthn;
+    rr1->neg = 0;
+
+    rr2->width = widthn;
+    rr2->neg = 0;
+  } else {
+    // rr1 = a1^p1 mod m1
+    ret = BN_mod_exp_mont_consttime(rr1, a1, p1, m1, ctx, in_mont1);
+    // rr2 = a2^p2 mod m2
+    ret &= BN_mod_exp_mont_consttime(rr2, a2, p2, m2, ctx, in_mont2);
+  }
+
+#else
+
+  /* rr1 = a1^p1 mod m1 */
+  ret = BN_mod_exp_mont_consttime(rr1, a1, p1, m1, ctx, in_mont1);
+  /* rr2 = a2^p2 mod m2 */
+  ret &= BN_mod_exp_mont_consttime(rr2, a2, p2, m2, ctx, in_mont2);
+
+#endif
   return ret;
 }
 

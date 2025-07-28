@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <string.h>
+#include "../internal.h"
 #include "internal.h"
 
-#define SIGNER_IN_CERTSTACK 2
-#define SIGNER_IN_BASICRESP 1
+#define SIGNER_IN_PROVIDED_CERTS 2
+#define SIGNER_IN_OCSP_CERTS 1
 #define SIGNER_NOT_FOUND 0
 
 // Set up |X509_STORE_CTX| to verify signer and returns cert chain if verify is
@@ -57,7 +58,7 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   signer = ocsp_find_signer_sk(certs, rid);
   if (signer != NULL) {
     *psigner = signer;
-    return SIGNER_IN_CERTSTACK;
+    return SIGNER_IN_PROVIDED_CERTS;
   }
 
   // look in certs stack the responder may have included in |OCSP_BASICRESP|,
@@ -65,7 +66,7 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   signer = ocsp_find_signer_sk(bs->certs, rid);
   if (signer != NULL && !IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN)) {
     *psigner = signer;
-    return SIGNER_IN_BASICRESP;
+    return SIGNER_IN_OCSP_CERTS;
   }
   // Maybe lookup from store if by subject name.
 
@@ -340,8 +341,10 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
     goto end;
   }
-  if ((ret == SIGNER_IN_CERTSTACK) &&
+  if ((ret == SIGNER_IN_PROVIDED_CERTS) &&
       IS_OCSP_FLAG_SET(flags, OCSP_TRUSTOTHER)) {
+    // We skip verification if the flag to trust |certs| is set and the signer
+    // is found within that stack.
     flags |= OCSP_NOVERIFY;
   }
 
@@ -386,5 +389,111 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
 end:
   sk_X509_pop_free(chain, X509_free);
   sk_X509_free(untrusted);
+  return ret;
+}
+
+// ocsp_req_find_signer assigns |*psigner| to the signing certificate and
+// returns |SIGNER_IN_OCSP_CERTS| if it was found within |req| or returns
+// |SIGNER_IN_TRUSTED_CERTS| if it was found within |certs|. It returns
+// |SIGNER_NOT_FOUND| if the signing certificate is not found.
+static int ocsp_req_find_signer(X509 **psigner, OCSP_REQUEST *req,
+                                X509_NAME *nm, STACK_OF(X509) *certs,
+                                unsigned long flags) {
+  X509 *signer = NULL;
+  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN)) {
+    signer = X509_find_by_subject(req->optionalSignature->certs, nm);
+    if (signer != NULL) {
+      *psigner = signer;
+      return SIGNER_IN_OCSP_CERTS;
+    }
+  }
+
+  signer = X509_find_by_subject(certs, nm);
+  if (signer != NULL) {
+    *psigner = signer;
+    return SIGNER_IN_PROVIDED_CERTS;
+  }
+  return SIGNER_NOT_FOUND;
+}
+
+int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
+                        X509_STORE *store, unsigned long flags) {
+  GUARD_PTR(req);
+  GUARD_PTR(req->tbsRequest);
+  GUARD_PTR(store);
+
+  // Check if |req| has signature to check against.
+  if (req->optionalSignature == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_REQUEST_NOT_SIGNED);
+    return 0;
+  }
+
+  GENERAL_NAME *gen = req->tbsRequest->requestorName;
+  if (gen == NULL || gen->type != GEN_DIRNAME) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNSUPPORTED_REQUESTORNAME_TYPE);
+    return 0;
+  }
+
+  // Find |signer| from |certs| or |req->optionalSignature->certs| against criteria.
+  X509 *signer = NULL;
+  int signer_status =
+      ocsp_req_find_signer(&signer, req, gen->d.directoryName, certs, flags);
+  if (signer_status <= SIGNER_NOT_FOUND || signer == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
+    return 0;
+  }
+  if (signer_status == SIGNER_IN_PROVIDED_CERTS &&
+      IS_OCSP_FLAG_SET(flags, OCSP_TRUSTOTHER)) {
+    // We skip certificate verification if the flag to trust |certs| is set and
+    // the signer is found within that stack.
+    flags |= OCSP_NOVERIFY;
+  }
+
+  // Validate |req|'s signature.
+  EVP_PKEY *skey = X509_get0_pubkey(signer);
+  if (skey == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_SIGNER_KEY);
+    return 0;
+  }
+  if (ASN1_item_verify(ASN1_ITEM_rptr(OCSP_REQINFO),
+                       req->optionalSignature->signatureAlgorithm,
+                       req->optionalSignature->signature, req->tbsRequest,
+                       skey) <= 0) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNATURE_FAILURE);
+    return 0;
+  }
+
+  // Set up |ctx| and start doing the actual verification.
+  X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+  if (ctx == NULL) {
+    return 0;
+  }
+
+  // Validate the signing certificate.
+  int ret = 0;
+  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY)) {
+    // Initialize and set purpose of |ctx| for verification.
+    if (!X509_STORE_CTX_init(ctx, store, signer, NULL) &&
+        !X509_STORE_CTX_set_purpose(ctx, X509_PURPOSE_OCSP_HELPER)) {
+      OPENSSL_PUT_ERROR(OCSP, ERR_R_X509_LIB);
+      goto end;
+    }
+    if (!IS_OCSP_FLAG_SET(flags, OCSP_NOCHAIN)) {
+      X509_STORE_CTX_set_chain(ctx, req->optionalSignature->certs);
+    }
+
+    // Do the verification.
+    if (X509_verify_cert(ctx) <= 0) {
+      int err = X509_STORE_CTX_get_error(ctx);
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_CERTIFICATE_VERIFY_ERROR);
+      ERR_add_error_data(2,
+                         "Verify error:", X509_verify_cert_error_string(err));
+      goto end;
+    }
+  }
+  ret = 1;
+
+end:
+  X509_STORE_CTX_free(ctx);
   return ret;
 }

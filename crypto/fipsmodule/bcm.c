@@ -63,6 +63,7 @@
 #include "bn/prime.c"
 #include "bn/random.c"
 #include "bn/rsaz_exp.c"
+#include "bn/rsaz_exp_x2.c"
 #include "bn/shift.c"
 #include "bn/sqrt.c"
 #include "cipher/aead.c"
@@ -74,8 +75,9 @@
 #include "cpucap/cpu_aarch64.c"
 #include "cpucap/cpu_aarch64_sysreg.c"
 #include "cpucap/cpu_aarch64_apple.c"
-#include "cpucap/cpu_aarch64_fuchsia.c"
+#include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_linux.c"
+#include "cpucap/cpu_aarch64_openbsd.c"
 #include "cpucap/cpu_aarch64_win.c"
 #include "cpucap/cpu_arm_freebsd.c"
 #include "cpucap/cpu_arm_linux.c"
@@ -83,6 +85,9 @@
 #include "cpucap/cpu_ppc64le.c"
 
 #include "cmac/cmac.c"
+#include "curve25519/curve25519.c"
+#include "curve25519/curve25519_nohw.c"
+#include "curve25519/curve25519_s2n_bignum_asm.c"
 #include "dh/check.c"
 #include "dh/dh.c"
 #include "digest/digest.c"
@@ -109,13 +114,22 @@
 #include "evp/evp.c"
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
+#include "evp/p_ed25519.c"
+#include "evp/p_ed25519ph.c"
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
+#include "evp/p_kem.c"
+#include "evp/p_pqdsa.c"
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
+#include "kdf/kbkdf.c"
+#include "kdf/sskdf.c"
+#include "kem/kem.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
+#include "ml_dsa/ml_dsa.c"
+#include "ml_kem/ml_kem.c"
 #include "modes/cbc.c"
 #include "modes/cfb.c"
 #include "modes/ctr.c"
@@ -125,9 +139,11 @@
 #include "modes/xts.c"
 #include "modes/polyval.c"
 #include "pbkdf/pbkdf.c"
+#include "pqdsa/pqdsa.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
+#include "rand/snapsafe_detect.c"
 #include "rand/urandom.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
@@ -144,7 +160,6 @@
 #include "sha/sha512.c"
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
-
 
 #if defined(BORINGSSL_FIPS)
 
@@ -171,6 +186,12 @@ extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
+#define STRING_POINTER_LENGTH 18
+#define MAX_FUNCTION_NAME 32
+#define ASSERT_WITHIN_MSG "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n"
+#define MAX_WITHIN_MSG_LEN sizeof(ASSERT_WITHIN_MSG) + (3 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
+#define ASSERT_OUTSIDE_MSG "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n"
+#define MAX_OUTSIDE_MSG_LEN sizeof(ASSERT_OUTSIDE_MSG) + (4 * STRING_POINTER_LENGTH) + MAX_FUNCTION_NAME
 // assert_within is used to sanity check that certain symbols are within the
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
@@ -184,11 +205,10 @@ static void assert_within(const void *start, const void *symbol,
     return;
   }
 
-  fprintf(
-      stderr,
-      "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n",
-      symbol_name, start, symbol, end);
-  BORINGSSL_FIPS_abort();
+  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
+  char message[MAX_WITHIN_MSG_LEN] = {0};
+  snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start, symbol, end);
+  AWS_LC_FIPS_failure(message);
 }
 
 static void assert_not_within(const void *start, const void *symbol,
@@ -201,11 +221,10 @@ static void assert_not_within(const void *start, const void *symbol,
     return;
   }
 
-  fprintf(
-      stderr,
-      "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n",
-      symbol_name, symbol, start, symbol, end);
-  BORINGSSL_FIPS_abort();
+  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
+  char message[MAX_WITHIN_MSG_LEN] = {0};
+  snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol, start, symbol, end);
+  AWS_LC_FIPS_failure(message);
 }
 
 // TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
@@ -233,6 +252,14 @@ static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 
 #endif  // !ASAN
 
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+#if defined(__ELF__) && defined(__GNUC__)
+WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
+#else
+#error AWSLC_FIPS_FAILURE_CALLBACK not supported on this platform
+#endif
+#endif
+
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
 static void BORINGSSL_bcm_power_on_self_test(void);
@@ -246,14 +273,13 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 // TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
 // PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
 // to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_PPC32BE) && !defined(OPENSSL_PPC64BE)
+#if defined(HAS_OPENSSL_CPUID_SETUP) && !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
 #endif
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   if (jent_entropy_init()) {
-    fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
-    goto err;
+    AWS_LC_FIPS_failure("CPU Jitter entropy RNG initialization failed");
   }
 #endif
 
@@ -261,18 +287,13 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
   if (!BORINGSSL_integrity_test()) {
-    goto err;
+    AWS_LC_FIPS_failure("Integrity test failed");
   }
 #endif  // OPENSSL_ASAN
 
   if (!boringssl_self_test_startup()) {
-    goto err;
+    AWS_LC_FIPS_failure("Power on self test failed");
   }
-
-  return;
-
-err:
-  BORINGSSL_FIPS_abort();
 }
 
 #if !defined(OPENSSL_ASAN)
@@ -364,26 +385,41 @@ int BORINGSSL_integrity_test(void) {
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
-  if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
-#if !defined(BORINGSSL_FIPS_BREAK_TESTS)
-    return 0;
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+  // Check the integrity but don't call AWS_LC_FIPS_failure or return 0
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", false);
+#else
+  // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which will
+  // result in an abort
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
 #endif
-  }
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
   return 1;
 }
 #endif  // OPENSSL_ASAN
 
-void BORINGSSL_FIPS_abort(void) {
+void AWS_LC_FIPS_failure(const char* message) {
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+  if (AWS_LC_fips_failure_callback != NULL) {
+    AWS_LC_fips_failure_callback(message);
+    return;
+  }
+  // Fallback to the default behavior if the callback is not defined
+#endif
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fflush(stderr);
   for (;;) {
     abort();
     exit(1);
   }
 }
-
+#else  // BORINGSSL_FIPS
+void AWS_LC_FIPS_failure(const char* message) {
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+  fflush(stderr);
+}
 #endif  // BORINGSSL_FIPS
-
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // When linking with a static library, if no symbols in an object file are
 // referenced then the object file is discarded, even if it has a constructor

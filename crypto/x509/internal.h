@@ -308,14 +308,12 @@ struct x509_store_st {
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE */;
-
 
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
@@ -337,13 +335,17 @@ struct x509_store_ctx_st {
   STACK_OF(X509_CRL) *crls;   // set of CRLs passed in
 
   X509_VERIFY_PARAM *param;
-  void *other_ctx;  // Other info for use with get_issuer()
+
+  // trusted_stack, if non-NULL, is a set of trusted certificates to consider
+  // instead of those from |X509_STORE|.
+  STACK_OF(X509) *trusted_stack;
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
+  X509_STORE_CTX_verify_crit_oids_cb
+      verify_custom_crit_oids;  // Check custom critical oids
 
   // The following is built up
 
@@ -359,6 +361,9 @@ struct x509_store_ctx_st {
 
   int current_crl_score;         // score of current CRL
 
+  // Stack of allowed custom critical extension oids.
+  STACK_OF(ASN1_OBJECT) *custom_crit_oids;
+
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
 
@@ -367,12 +372,6 @@ void X509_OBJECT_free_contents(X509_OBJECT *a);
 ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
-
-// X509_PUBKEY_get0 decodes the public key in |key| and returns an |EVP_PKEY|
-// on success, or NULL on error. It is similar to |X509_PUBKEY_get|, but it
-// directly returns the reference to |pkey| of |key|. This means that the
-// caller must not free the result after use.
-EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key);
 
 int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
 
@@ -400,7 +399,7 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
 // Signature algorithm functions.
 
 // x509_digest_sign_algorithm encodes the signing parameters of |ctx| as an
-// AlgorithmIdentifer and saves the result in |algor|. It returns one on
+// AlgorithmIdentifier and saves the result in |algor|. It returns one on
 // success, or zero on error.
 int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 
@@ -570,6 +569,8 @@ GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
 // |X509_NAME| issue is resolved.
 int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
 
+// TODO(https://crbug.com/boringssl/695): Remove this.
+int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
 
 #if defined(__cplusplus)
 }  // extern C

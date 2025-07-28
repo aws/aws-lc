@@ -343,10 +343,10 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600,.-KeccakF1600
-.globl	SHA3_Absorb_hw
-.type	SHA3_Absorb_hw,%function
+.globl	Keccak1600_Absorb_hw
+.type	Keccak1600_Absorb_hw,%function
 .align	5
-SHA3_Absorb_hw:
+Keccak1600_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -438,15 +438,15 @@ $code.=<<___;
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb_hw,.-SHA3_Absorb_hw
+.size	Keccak1600_Absorb_hw,.-Keccak1600_Absorb_hw
 ___
 {
 my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
 $code.=<<___;
-.globl	SHA3_Squeeze_hw
-.type	SHA3_Squeeze_hw,%function
+.globl	Keccak1600_Squeeze_hw
+.type	Keccak1600_Squeeze_hw,%function
 .align	5
-SHA3_Squeeze_hw:
+Keccak1600_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -458,6 +458,8 @@ SHA3_Squeeze_hw:
 	mov	$out,x1
 	mov	$len,x2
 	mov	$bsz,x3
+	cmp	x4, #0				// x4 = 'padded' argument; if !=0, perform Keccak first
+	bne .Lnext_block
 .Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	$len,#8
@@ -470,6 +472,7 @@ SHA3_Squeeze_hw:
 	beq	.Lsqueeze_done
 	subs	x3,x3,#8
 	bhi	.Loop_squeeze
+.Lnext_block:
 	mov	x0,$A_flat
 	bl	KeccakF1600
 	mov	x0,$A_flat
@@ -509,7 +512,7 @@ SHA3_Squeeze_hw:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze_hw,.-SHA3_Squeeze_hw
+.size	Keccak1600_Squeeze_hw,.-Keccak1600_Squeeze_hw
 ___
 }								}}}
 								{{{
@@ -647,10 +650,10 @@ ___
 my ($ctx,$inp,$len,$bsz) = map("x$_",(0..3));
 
 $code.=<<___;
-.globl	SHA3_Absorb_cext
-.type	SHA3_Absorb_cext,%function
+.globl	Keccak1600_Absorb_cext
+.type	Keccak1600_Absorb_cext,%function
 .align	5
-SHA3_Absorb_cext:
+Keccak1600_Absorb_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
@@ -719,16 +722,16 @@ $code.=<<___;
 	ldp	x29,x30,[sp],#80
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb_cext,.-SHA3_Absorb_cext
+.size	Keccak1600_Absorb_cext,.-Keccak1600_Absorb_cext
 ___
 }
 {
 my ($ctx,$out,$len,$bsz) = map("x$_",(0..3));
 $code.=<<___;
-.globl	SHA3_Squeeze_cext
-.type	SHA3_Squeeze_cext,%function
+.globl	Keccak1600_Squeeze_cext
+.type	Keccak1600_Squeeze_cext,%function
 .align	5
-SHA3_Squeeze_cext:
+Keccak1600_Squeeze_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
@@ -784,7 +787,7 @@ SHA3_Squeeze_cext:
 	ldr	x29,[sp],#16
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze_cext,.-SHA3_Squeeze_cext
+.size	Keccak1600_Squeeze_cext,.-Keccak1600_Squeeze_cext
 ___
 }								}}}
 $code.=<<___;

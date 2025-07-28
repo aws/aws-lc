@@ -59,7 +59,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 
 $avx = 2;
 $addx = 1;
-for (@ARGV) { $avx = 0, $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
+for (@ARGV) { $avx = 0, $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
 $code.=<<___;
 .text
@@ -102,6 +102,7 @@ $code.=<<___;
 .align	32
 ecp_nistz256_neg:
 .cfi_startproc
+	_CET_ENDBR
 	push	%r12
 .cfi_push	%r12
 	push	%r13
@@ -170,13 +171,16 @@ $code.=<<___;
 .align	32
 ecp_nistz256_ord_mul_mont:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lecp_nistz256_ord_mul_montx
+#endif
 ___
 $code.=<<___;
 	push	%rbp
@@ -501,13 +505,16 @@ $code.=<<___;
 .align	32
 ecp_nistz256_ord_sqr_mont:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lecp_nistz256_ord_sqr_montx
+#endif
 ___
 $code.=<<___;
 	push	%rbp
@@ -793,6 +800,7 @@ $code.=<<___;
 ___
 
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 ################################################################################
 .type	ecp_nistz256_ord_mul_montx,\@function,3
 .align	32
@@ -1237,6 +1245,7 @@ ecp_nistz256_ord_sqr_montx:
 	ret
 .cfi_endproc
 .size	ecp_nistz256_ord_sqr_montx,.-ecp_nistz256_ord_sqr_montx
+#endif
 ___
 
 $code.=<<___;
@@ -1251,11 +1260,14 @@ $code.=<<___;
 .align	32
 ecp_nistz256_mul_mont:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
+#endif
 ___
 $code.=<<___;
 .Lmul_mont:
@@ -1274,8 +1286,10 @@ $code.=<<___;
 .Lmul_body:
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	cmp	\$0x80100, %ecx
 	je	.Lmul_montx
+#endif
 ___
 $code.=<<___;
 	mov	$b_org, $b_ptr
@@ -1288,6 +1302,7 @@ $code.=<<___;
 	call	__ecp_nistz256_mul_montq
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	jmp	.Lmul_mont_done
 
 .align	32
@@ -1301,6 +1316,7 @@ $code.=<<___	if ($addx);
 	lea	-128($a_ptr), $a_ptr	# control u-op density
 
 	call	__ecp_nistz256_mul_montx
+#endif
 ___
 $code.=<<___;
 .Lmul_mont_done:
@@ -1553,11 +1569,14 @@ __ecp_nistz256_mul_montq:
 .align	32
 ecp_nistz256_sqr_mont:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
+#endif
 ___
 $code.=<<___;
 	push	%rbp
@@ -1575,8 +1594,10 @@ $code.=<<___;
 .Lsqr_body:
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	cmp	\$0x80100, %ecx
 	je	.Lsqr_montx
+#endif
 ___
 $code.=<<___;
 	mov	8*0($a_ptr), %rax
@@ -1587,6 +1608,7 @@ $code.=<<___;
 	call	__ecp_nistz256_sqr_montq
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	jmp	.Lsqr_mont_done
 
 .align	32
@@ -1598,6 +1620,7 @@ $code.=<<___	if ($addx);
 	lea	-128($a_ptr), $a_ptr	# control u-op density
 
 	call	__ecp_nistz256_sqr_montx
+#endif
 ___
 $code.=<<___;
 .Lsqr_mont_done:
@@ -1787,6 +1810,7 @@ ___
 
 if ($addx) {
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .type	__ecp_nistz256_mul_montx,\@abi-omnipotent
 .align	32
 __ecp_nistz256_mul_montx:
@@ -2085,6 +2109,7 @@ __ecp_nistz256_sqr_montx:
 	ret
 .cfi_endproc
 .size	__ecp_nistz256_sqr_montx,.-__ecp_nistz256_sqr_montx
+#endif
 ___
 }
 }
@@ -2102,12 +2127,15 @@ $code.=<<___;
 .align	32
 ecp_nistz256_select_w5:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($avx>1);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rax
 	mov	8(%rax), %rax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w5
+#endif
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
@@ -2202,12 +2230,15 @@ $code.=<<___;
 .align	32
 ecp_nistz256_select_w7:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($avx>1);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rax
 	mov	8(%rax), %rax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w7
+#endif
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
@@ -2292,6 +2323,7 @@ my ($M0,$T0a,$T0b,$T0c,$TMP0)=map("%ymm$_",(5..9));
 my ($M1,$T1a,$T1b,$T1c,$TMP1)=map("%ymm$_",(10..14));
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 ################################################################################
 # void ecp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
 .type	ecp_nistz256_avx2_select_w5,\@abi-omnipotent
@@ -2388,6 +2420,7 @@ $code.=<<___;
 .cfi_endproc
 .LSEH_end_ecp_nistz256_avx2_select_w5:
 .size	ecp_nistz256_avx2_select_w5,.-ecp_nistz256_avx2_select_w5
+#endif
 ___
 }
 if ($avx>1) {
@@ -2398,7 +2431,7 @@ my ($M1,$T1a,$T1b,$TMP1)=map("%ymm$_",(8..11));
 my ($M2,$T2a,$T2b,$TMP2)=map("%ymm$_",(12..15));
 
 $code.=<<___;
-
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 ################################################################################
 # void ecp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
 .globl	ecp_nistz256_avx2_select_w7
@@ -2407,6 +2440,7 @@ $code.=<<___;
 ecp_nistz256_avx2_select_w7:
 .cfi_startproc
 .Lavx2_select_w7:
+	_CET_ENDBR
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
@@ -2511,6 +2545,7 @@ $code.=<<___;
 .cfi_endproc
 .LSEH_end_ecp_nistz256_avx2_select_w7:
 .size	ecp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
+#endif
 ___
 } else {
 $code.=<<___;
@@ -2518,6 +2553,7 @@ $code.=<<___;
 .type	ecp_nistz256_avx2_select_w7,\@function,3
 .align	32
 ecp_nistz256_avx2_select_w7:
+	_CET_ENDBR
 	.byte	0x0f,0x0b	# ud2
 	ret
 .size	ecp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
@@ -2722,13 +2758,16 @@ $code.=<<___;
 .align	32
 ecp_nistz256_point_double:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lpoint_doublex
+#endif
 ___
     } else {
 	$src0 = "%rdx";
@@ -2974,13 +3013,16 @@ $code.=<<___;
 .align	32
 ecp_nistz256_point_add:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lpoint_addx
+#endif
 ___
     } else {
 	$src0 = "%rdx";
@@ -3372,13 +3414,16 @@ $code.=<<___;
 .align	32
 ecp_nistz256_point_add_affine:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
 	je	.Lpoint_add_affinex
+#endif
 ___
     } else {
 	$src0 = "%rdx";
@@ -3687,6 +3732,7 @@ if ($addx) {								{
 my ($a0,$a1,$a2,$a3,$t3,$t4)=($acc4,$acc5,$acc0,$acc1,$acc2,$acc3);
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .type	__ecp_nistz256_add_tox,\@abi-omnipotent
 .align	32
 __ecp_nistz256_add_tox:
@@ -3827,6 +3873,10 @@ ___
 &gen_double("x");
 &gen_add("x");
 &gen_add_affine("x");
+
+  $code.=<<___;
+#endif
+___
 }
 }}}
 
@@ -3986,6 +4036,7 @@ full_handler:
 	.rva	.LSEH_info_ecp_nistz256_ord_sqr_mont
 ___
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	.rva	.LSEH_begin_ecp_nistz256_ord_mul_montx
 	.rva	.LSEH_end_ecp_nistz256_ord_mul_montx
 	.rva	.LSEH_info_ecp_nistz256_ord_mul_montx
@@ -3993,6 +4044,7 @@ $code.=<<___	if ($addx);
 	.rva	.LSEH_begin_ecp_nistz256_ord_sqr_montx
 	.rva	.LSEH_end_ecp_nistz256_ord_sqr_montx
 	.rva	.LSEH_info_ecp_nistz256_ord_sqr_montx
+#endif
 ___
 $code.=<<___;
 	.rva	.LSEH_begin_ecp_nistz256_mul_mont
@@ -4012,6 +4064,7 @@ $code.=<<___;
 	.rva	.LSEH_info_ecp_nistz256_select_wX
 ___
 $code.=<<___	if ($avx>1);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	.rva	.LSEH_begin_ecp_nistz256_avx2_select_w5
 	.rva	.LSEH_end_ecp_nistz256_avx2_select_w5
 	.rva	.LSEH_info_ecp_nistz256_avx2_select_wX
@@ -4019,6 +4072,7 @@ $code.=<<___	if ($avx>1);
 	.rva	.LSEH_begin_ecp_nistz256_avx2_select_w7
 	.rva	.LSEH_end_ecp_nistz256_avx2_select_w7
 	.rva	.LSEH_info_ecp_nistz256_avx2_select_wX
+#endif
 ___
 $code.=<<___;
 	.rva	.LSEH_begin_ecp_nistz256_point_double
@@ -4034,6 +4088,7 @@ $code.=<<___;
 	.rva	.LSEH_info_ecp_nistz256_point_add_affine
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	.rva	.LSEH_begin_ecp_nistz256_point_doublex
 	.rva	.LSEH_end_ecp_nistz256_point_doublex
 	.rva	.LSEH_info_ecp_nistz256_point_doublex
@@ -4045,6 +4100,7 @@ $code.=<<___ if ($addx);
 	.rva	.LSEH_begin_ecp_nistz256_point_add_affinex
 	.rva	.LSEH_end_ecp_nistz256_point_add_affinex
 	.rva	.LSEH_info_ecp_nistz256_point_add_affinex
+#endif
 ___
 $code.=<<___;
 
@@ -4066,6 +4122,7 @@ $code.=<<___;
 	.long	48,0
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .LSEH_info_ecp_nistz256_ord_mul_montx:
 	.byte	9,0,0,0
 	.rva	full_handler
@@ -4076,6 +4133,7 @@ $code.=<<___ if ($addx);
 	.rva	full_handler
 	.rva	.Lord_sqrx_body,.Lord_sqrx_epilogue	# HandlerData[]
 	.long	48,0
+#endif
 ___
 $code.=<<___;
 .LSEH_info_ecp_nistz256_mul_mont:
@@ -4104,6 +4162,7 @@ $code.=<<___;
 	.align	8
 ___
 $code.=<<___	if ($avx>1);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .LSEH_info_ecp_nistz256_avx2_select_wX:
 	.byte	0x01,0x36,0x17,0x0b
 	.byte	0x36,0xf8,0x09,0x00	# vmovaps 0x90(rsp),xmm15
@@ -4119,6 +4178,7 @@ $code.=<<___	if ($avx>1);
 	.byte	0x04,0x01,0x15,0x00	# sub	  rsp,0xa8
 	.byte	0x00,0xb3,0x00,0x00	# set_frame r11
 	.align	8
+#endif
 ___
 $code.=<<___;
 .LSEH_info_ecp_nistz256_point_double:
@@ -4138,6 +4198,7 @@ $code.=<<___;
 	.long	32*15+56,0
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .align	8
 .LSEH_info_ecp_nistz256_point_doublex:
 	.byte	9,0,0,0
@@ -4154,6 +4215,7 @@ $code.=<<___ if ($addx);
 	.rva	full_handler
 	.rva	.Ladd_affinex_body,.Ladd_affinex_epilogue	# HandlerData[]
 	.long	32*15+56,0
+#endif
 ___
 }
 

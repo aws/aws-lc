@@ -126,6 +126,22 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #endif
 }
 
+static bool os_supports_avx512(uint64_t xcr0) {
+#if defined(OPENSSL_APPLE)
+  // The Darwin kernel had a bug where it could corrupt the opmask registers.
+  // See
+  // https://community.intel.com/t5/Software-Tuning-Performance/MacOS-Darwin-kernel-bug-clobbers-AVX-512-opmask-register-state/m-p/1327259
+  // Darwin also does not initially set the XCR0 bits for AVX512, but they are
+  // set if the thread tries to use AVX512 anyway.  Thus, to safely and
+  // consistently use AVX512 on macOS we'd need to check the kernel version as
+  // well as detect AVX512 support using a macOS-specific method.  We don't
+  // bother with this, especially given Apple's transition to arm64.
+  return false;
+#else
+  return (xcr0 & 0xe6) == 0xe6;
+#endif
+}
+
 // handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|
 // and |out[1]|. See the comment in |OPENSSL_cpuid_setup| about this.
 static void handle_cpu_env(uint32_t *out, const char *in) {
@@ -240,7 +256,8 @@ void OPENSSL_cpuid_setup(void) {
 
     // Clear the XSAVE bit on Knights Landing to mimic Silvermont. This enables
     // some Silvermont-specific codepaths which perform better. See OpenSSL
-    // commit 64d92d74985ebb3d0be58a9718f9e080a14a8e7f.
+    // commit 64d92d74985ebb3d0be58a9718f9e080a14a8e7f and
+    // |CRYPTO_cpu_perf_is_like_silvermont|.
     if ((eax & 0x0fff0ff0) == 0x00050670 /* Knights Landing */ ||
         (eax & 0x0fff0ff0) == 0x00080650 /* Knights Mill (per SDE) */) {
       ecx &= ~(1u << 26);
@@ -267,12 +284,13 @@ void OPENSSL_cpuid_setup(void) {
     // Clear AVX2 and AVX512* bits.
     //
     // TODO(davidben): Should bits 17 and 26-28 also be cleared? Upstream
-    // doesn't clear those.
+    // doesn't clear those. See the comments in
+    // |CRYPTO_hardware_supports_XSAVE|.
     extended_features[0] &=
         ~((1u << 5) | (1u << 16) | (1u << 21) | (1u << 30) | (1u << 31));
   }
   // See Intel manual, volume 1, section 15.2.
-  if ((xcr0 & 0xe6) != 0xe6) {
+  if (!os_supports_avx512(xcr0)) {
     // Clear AVX512F. Note we don't touch other AVX512 extensions because they
     // can be used with YMM.
     extended_features[0] &= ~(1u << 16);
