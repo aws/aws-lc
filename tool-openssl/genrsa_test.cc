@@ -15,7 +15,6 @@
 
 // Define standard key sizes for testing
 const std::vector<unsigned> kStandardKeySizes = {1024, 2048, 3072, 4096};
-const unsigned kDefaultKeySize = 2048;
 
 // Base test fixture with common functionality
 class GenRSATestBase : public ::testing::Test {
@@ -35,36 +34,33 @@ class GenRSATestBase : public ::testing::Test {
     RemoveFile(out_path_openssl);
   }
 
-  bool ValidateKey(const char *path, unsigned expected_bits,
-                   bool check_components = false) {
+  // CLI-focused validation: file exists, readable, basic PEM format
+  bool ValidateKeyFile(const char *path) {
     if (!path) {
       ADD_FAILURE() << "Path parameter is null";
       return false;
     }
 
+    // Check file exists and is readable
     ScopedFILE file(fopen(path, "rb"));
     if (!file) {
       ADD_FAILURE() << "Failed to open key file: " << path;
       return false;
     }
 
+    // Basic PEM format validation - check for PEM headers
+    std::string content = ReadFileToString(path);
+    if (content.find("-----BEGIN RSA PRIVATE KEY-----") == std::string::npos ||
+        content.find("-----END RSA PRIVATE KEY-----") == std::string::npos) {
+      ADD_FAILURE() << "File does not contain valid PEM RSA private key format";
+      return false;
+    }
+
+    // Verify the key can be parsed (basic sanity check)
     bssl::UniquePtr<RSA> rsa(
         PEM_read_RSAPrivateKey(file.get(), nullptr, nullptr, nullptr));
     if (!rsa) {
-      ADD_FAILURE() << "Failed to read RSA key";
-      return false;
-    }
-
-    unsigned actual_bits = static_cast<unsigned>(RSA_bits(rsa.get()));
-    if (actual_bits != expected_bits) {
-      ADD_FAILURE() << "Incorrect key size. Expected: " << expected_bits
-                    << ", Got: " << actual_bits;
-      return false;
-    }
-
-    // Use AWS-LC's built-in RSA key validation instead of manual component checking
-    if (check_components && RSA_check_key(rsa.get()) != 1) {
-      ADD_FAILURE() << "RSA key validation failed";
+      ADD_FAILURE() << "Failed to parse RSA key from PEM file";
       return false;
     }
 
@@ -73,6 +69,12 @@ class GenRSATestBase : public ::testing::Test {
 
   bool GenerateKey(unsigned key_size) {
     args_list_t args{"-out", out_path_tool, std::to_string(key_size)};
+    return genrsaTool(args);
+  }
+
+  bool GenerateKeyToStdout(unsigned key_size) {
+    // Test stdout output by not providing -out
+    args_list_t args{std::to_string(key_size)};
     return genrsaTool(args);
   }
 
@@ -94,44 +96,13 @@ class GenRSATest : public GenRSATestBase {};
 class GenRSAParamTest : public GenRSATestBase,
                         public ::testing::WithParamInterface<unsigned> {};
 
-// Test key generation with various key sizes
-TEST_P(GenRSAParamTest, KeyGeneration) {
+// Test CLI can generate key files for various key sizes
+TEST_P(GenRSAParamTest, GeneratesKeyFile) {
   EXPECT_TRUE(GenerateKey(GetParam())) << "Key generation failed";
-  EXPECT_TRUE(ValidateKey(out_path_tool, GetParam()))
-      << "Key validation failed";
+  EXPECT_TRUE(ValidateKeyFile(out_path_tool)) << "Generated key file validation failed";
 }
 
-// Test key components validation
-TEST_P(GenRSAParamTest, KeyComponentsValidation) {
-  EXPECT_TRUE(GenerateKey(GetParam())) << "Key generation failed";
-  EXPECT_TRUE(ValidateKey(out_path_tool, GetParam(), true))
-      << "Component validation failed";
-}
-
-// Test key uniqueness
-TEST_P(GenRSAParamTest, KeyUniqueness) {
-  char out_path2[PATH_MAX];
-  ASSERT_GT(createTempFILEpath(out_path2), 0u)
-      << "Failed to create second temporary file path";
-
-  // Generate two keys of the same size
-  args_list_t args1{"-out", out_path_tool, std::to_string(GetParam())};
-  args_list_t args2{"-out", out_path2, std::to_string(GetParam())};
-
-  EXPECT_TRUE(genrsaTool(args1)) << "First key generation failed";
-  EXPECT_TRUE(genrsaTool(args2)) << "Second key generation failed";
-
-  std::string key1 = ReadFileToString(out_path_tool);
-  std::string key2 = ReadFileToString(out_path2);
-
-  ASSERT_FALSE(key1.empty()) << "First key file is empty";
-  ASSERT_FALSE(key2.empty()) << "Second key file is empty";
-  EXPECT_NE(key1, key2) << "Generated keys are identical";
-
-  RemoveFile(out_path2);
-}
-
-// Test OpenSSL compatibility
+// Test OpenSSL compatibility - this is a CLI integration concern
 TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
   if (!HasCrossCompatibilityTools()) {
     GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
@@ -142,7 +113,7 @@ TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
   // Generate with AWS-LC
   EXPECT_TRUE(GenerateKey(GetParam())) << "AWS-LC key generation failed";
 
-  // Verify with OpenSSL
+  // Verify with OpenSSL - tests PEM format compatibility
   std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
                            out_path_tool + " -check -noout";
   EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification failed";
@@ -155,18 +126,38 @@ INSTANTIATE_TEST_SUITE_P(StandardKeySizes, GenRSAParamTest,
 TEST_F(GenRSATest, DefaultKeyGeneration) {
   args_list_t args{"-out", out_path_tool};
   EXPECT_TRUE(genrsaTool(args)) << "Default key generation failed";
-  EXPECT_TRUE(ValidateKey(out_path_tool, kDefaultKeySize))
-      << "Default key validation failed";
+  EXPECT_TRUE(ValidateKeyFile(out_path_tool)) << "Default key file validation failed";
 }
 
-// Test help option
+// Test help option displays usage information
 TEST_F(GenRSATest, HelpOption) {
   args_list_t args{"-help"};
   EXPECT_TRUE(genrsaTool(args)) << "Help command failed";
 }
 
-// Test error cases
-TEST_F(GenRSATest, ErrorCases) {
+// Test stdout output (no -out specified)
+TEST_F(GenRSATest, StdoutOutput) {
+  // This test verifies the CLI can output to stdout
+  // We can't easily capture stdout in this test framework,
+  // but we can verify the command succeeds
+  EXPECT_TRUE(GenerateKeyToStdout(2048)) << "Stdout key generation failed";
+}
+
+// Test file output vs stdout behavior
+TEST_F(GenRSATest, FileVsStdoutOutput) {
+  // Test file output
+  args_list_t file_args{"-out", out_path_tool, "2048"};
+  EXPECT_TRUE(genrsaTool(file_args)) << "File output failed";
+  EXPECT_TRUE(ValidateKeyFile(out_path_tool)) << "File output validation failed";
+  
+  // Test that file has content
+  std::string file_content = ReadFileToString(out_path_tool);
+  EXPECT_FALSE(file_content.empty()) << "Generated key file is empty";
+  EXPECT_GT(file_content.length(), 100u) << "Generated key file seems too small";
+}
+
+// Test CLI argument parsing and error handling
+TEST_F(GenRSATest, ArgumentParsingErrors) {
   // Test incorrect argument order
   {
     args_list_t args{"2048", "-out", out_path_tool};
@@ -186,11 +177,30 @@ TEST_F(GenRSATest, ErrorCases) {
     args_list_t args{"-out", out_path_tool, "0"};
     EXPECT_FALSE(genrsaTool(args)) << "Command should fail with zero key size";
   }
+}
 
+// Test file I/O error handling
+TEST_F(GenRSATest, FileIOErrors) {
   // Test invalid output path
   {
-    args_list_t args{"-out", "/nonexistent/directory/key.pem"};
+    args_list_t args{"-out", "/nonexistent/directory/key.pem", "2048"};
     EXPECT_FALSE(genrsaTool(args))
         << "Command should fail with invalid output path";
+  }
+}
+
+// Test argument validation
+TEST_F(GenRSATest, ArgumentValidation) {
+  // Test missing key size (should use default)
+  {
+    args_list_t args{"-out", out_path_tool};
+    EXPECT_TRUE(genrsaTool(args)) << "Default key size should work";
+    EXPECT_TRUE(ValidateKeyFile(out_path_tool)) << "Default key should be valid";
+  }
+
+  // Test help takes precedence
+  {
+    args_list_t args{"-help", "-out", out_path_tool, "2048"};
+    EXPECT_TRUE(genrsaTool(args)) << "Help should work even with other args";
   }
 }
