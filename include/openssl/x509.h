@@ -4980,6 +4980,8 @@ typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
 
+OPENSSL_EXPORT X509_STORE_CTX_verify_cb X509_STORE_get_verify_cb(X509_STORE *ctx);
+
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
 // the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
 //

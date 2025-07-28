@@ -642,6 +642,10 @@ void X509_STORE_set_verify_cb(X509_STORE *ctx,
   ctx->verify_cb = verify_cb;
 }
 
+X509_STORE_CTX_verify_cb X509_STORE_get_verify_cb(X509_STORE *ctx) {
+  return ctx->verify_cb;
+}
+
 X509_STORE_CTX_lookup_crls_fn X509_STORE_get_lookup_crls(X509_STORE *ctx) {
   return ctx->lookup_crls;
 }
