@@ -62,24 +62,10 @@ class GenRSATestBase : public ::testing::Test {
       return false;
     }
 
-    if (check_components) {
-      const BIGNUM *n = nullptr, *e = nullptr, *d = nullptr, *p = nullptr,
-                   *q = nullptr;
-      const BIGNUM *dmp1 = nullptr, *dmq1 = nullptr, *iqmp = nullptr;
-
-      RSA_get0_key(rsa.get(), &n, &e, &d);
-      RSA_get0_factors(rsa.get(), &p, &q);
-      RSA_get0_crt_params(rsa.get(), &dmp1, &dmq1, &iqmp);
-
-      if (!n || !e || !d || !p || !q || !dmp1 || !dmq1 || !iqmp) {
-        ADD_FAILURE() << "Missing key components";
-        return false;
-      }
-
-      if (BN_get_word(e) != RSA_F4) {
-        ADD_FAILURE() << "Unexpected public exponent value";
-        return false;
-      }
+    // Use AWS-LC's built-in RSA key validation instead of manual component checking
+    if (check_components && RSA_check_key(rsa.get()) != 1) {
+      ADD_FAILURE() << "RSA key validation failed";
+      return false;
     }
 
     return true;
