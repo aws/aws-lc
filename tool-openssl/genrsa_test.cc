@@ -37,6 +37,11 @@ class GenRSATestBase : public ::testing::Test {
 
   bool ValidateKey(const char *path, unsigned expected_bits,
                    bool check_components = false) {
+    if (!path) {
+      ADD_FAILURE() << "Path parameter is null";
+      return false;
+    }
+
     ScopedFILE file(fopen(path, "rb"));
     if (!file) {
       ADD_FAILURE() << "Failed to open key file: " << path;

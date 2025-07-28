@@ -54,6 +54,12 @@ static bssl::UniquePtr<RSA> GenerateRSAKey(unsigned bits) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> e(BN_new());
 
+  if (!rsa || !e) {
+    fprintf(stderr, "Error: Failed to allocate RSA or BIGNUM structures\n");
+    ERR_print_errors_fp(stderr);
+    return nullptr;
+  }
+
   if (!BN_set_word(e.get(), RSA_F4) ||
       !RSA_generate_key_ex(rsa.get(), bits, e.get(), NULL)) {
     ERR_print_errors_fp(stderr);
@@ -67,6 +73,10 @@ static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
   bssl::UniquePtr<BIO> bio;
   if (out_path.empty()) {
     bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+    if (!bio) {
+      fprintf(stderr, "Error: Could not create BIO for stdout\n");
+      return nullptr;
+    }
   } else {
     bio.reset(BIO_new_file(out_path.c_str(), "wb"));
     if (!bio) {
@@ -98,7 +108,11 @@ bool genrsaTool(const args_list_t &args) {
     bssl::UniquePtr<BIO>& bio_ref;
     ~BIOCleanupGuard() {
       if (bio_ref && bio_ref.get()) {
-        BIO_flush(bio_ref.get());
+        // Only flush if the BIO is still valid and not closed
+        if (BIO_flush(bio_ref.get()) < 0) {
+          // Log flush error but continue with cleanup
+          ERR_print_errors_fp(stderr);
+        }
         // Explicitly reset to ensure file handle is closed
         // This is especially important on Windows
         bio_ref.reset();
