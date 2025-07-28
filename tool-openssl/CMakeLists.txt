@@ -42,7 +42,7 @@ else()
     endif()
 endif()
 
-target_add_awslc_include_paths(openssl PRIVATE)
+target_add_awslc_include_paths(TARGET openssl SCOPE PRIVATE)
 
 install(TARGETS openssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -105,7 +105,7 @@ if(BUILD_TESTING)
         x509_test.cc
     )
 
-    target_add_awslc_include_paths(tool_openssl_test PRIVATE)
+    target_add_awslc_include_paths(TARGET tool_openssl_test SCOPE PRIVATE)
 
     file(INSTALL
             ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh

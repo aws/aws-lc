@@ -31,15 +31,28 @@ if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
 endif()
 
-function(target_add_awslc_include_paths target_name scope)
-  if(ARGC EQUAL 2 OR ARGC GREATER 2)
-    set(include_prefix_headers ARG2)
+function(target_add_awslc_include_paths)
+  set(options EXCLUDE_PREFIX_HEADERS)
+  set(oneValueArgs TARGET SCOPE)
+  set(multiValueArgs)
+
+  if(CMAKE_VERSION VERSION_LESS "3.7")
+    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   else()
-    set(include_prefix_headers true)
+    cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
   endif()
-  add_dependencies(${target_name} boringssl_prefix_symbols)
-  target_include_directories(${target_name} BEFORE ${scope}
-    $<$<BOOL:include_prefix_headers>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+
+  if(arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unparsed arguments to target_add_awslc_include_paths: ${arg_UNPARSED_ARGUMENTS}")
+  endif()
+
+  if(arg_KEYWORDS_MISSING_VALUES)
+    message(FATAL_ERROR "Missing value(s) for keyword(s) to target_add_awslc_include_paths: ${arg_KEYWORDS_MISSING_VALUES}")
+  endif()
+
+  add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
+  target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
+    $<$<NOT:$<BOOL:EXCLUDE_PREFIX_HEADERS>>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 endfunction()
@@ -52,7 +65,7 @@ option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
-option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" OFF)
+option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
 include(cmake/go.cmake)
 
 if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)

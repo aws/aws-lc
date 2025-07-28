@@ -22,4 +22,4 @@ endif()
 
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
-target_add_awslc_include_paths(jitterentropy PRIVATE)
+target_add_awslc_include_paths(TARGET jitterentropy SCOPE PRIVATE)

@@ -344,7 +344,7 @@ if(FIPS_DELOCATE)
 
   # Important: We do not want to add the generated prefix symbols to the include path here!
   # Delocator expects symbols to not be prefixed.
-  target_add_awslc_include_paths(bcm_c_generated_asm PRIVATE FALSE)
+  target_add_awslc_include_paths(TARGET bcm_c_generated_asm SCOPE PRIVATE EXCLUDE_PREFIX_HEADERS)
   target_include_directories(bcm_c_generated_asm PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -409,7 +409,7 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
 
-  target_add_awslc_include_paths(bcm_hashunset PRIVATE)
+  target_add_awslc_include_paths(TARGET bcm_hashunset SCOPE PRIVATE)
   target_include_directories(bcm_hashunset PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -440,7 +440,7 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  target_add_awslc_include_paths(fipsmodule PRIVATE)
+  target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -457,7 +457,7 @@ elseif(FIPS_SHARED)
     cpucap/cpucap.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
-  target_add_awslc_include_paths(fipsmodule PRIVATE)
+  target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
   target_include_directories(fipsmodule PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 
   add_library(
@@ -470,7 +470,7 @@ elseif(FIPS_SHARED)
     ${BCM_ASM_SOURCES}
   )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS )
-  target_add_awslc_include_paths(bcm_library PRIVATE)
+  target_add_awslc_include_paths(TARGET bcm_library SCOPE PRIVATE)
   target_include_directories(bcm_library PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
   if (APPLE)
     set(BCM_NAME bcm.o)
@@ -576,6 +576,6 @@ else()
     ${BCM_ASM_OBJECTS}
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
-  target_add_awslc_include_paths(fipsmodule PRIVATE)
+  target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
   target_include_directories(fipsmodule PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 endif()
