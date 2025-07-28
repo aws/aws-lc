@@ -19,9 +19,8 @@ static const argument_t kArguments[] = {
   { "-out", kOptionalArgument, "Output file - default stdout" },
   { "-sign", kBooleanArgument, "Sign input data with private key" },
   { "-verify", kBooleanArgument, "Verify with public key" },
-  { "-digest", kOptionalArgument, "Specify digest algorithm when signing raw input data" },
+  { "-sigfile", kOptionalArgument, "Signature file, required for verify operations only" },
   { "-inkey", kOptionalArgument, "Input private key file" },
-  { "-rawin", kBooleanArgument, "Indicate input data is in raw form" },
   { "-pubin", kBooleanArgument, "Input is a public key" },
   { "-passin", kOptionalArgument, "Input file pass phrase source" },
   { "-hexdump", kBooleanArgument, "Hex dump output" },
@@ -164,130 +163,6 @@ static bool DoVerify(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
   }
 }
 
-static bool DoRawSign(EVP_PKEY *pkey, const std::string &digest_name,
-                      const std::string &in_path, std::vector<uint8_t> &signature) {
-  bssl::UniquePtr<EVP_MD_CTX> mctx(EVP_MD_CTX_new());
-  if (!mctx) {
-    fprintf(stderr, "Error: failed to create digest context\n");
-    return false;
-  }
-
-  const EVP_MD *md = nullptr;
-  if (!digest_name.empty()) {
-    md = EVP_get_digestbyname(digest_name.c_str());
-    if (!md) {
-      fprintf(stderr, "Error: unknown digest algorithm '%s'\n", digest_name.c_str());
-      return false;
-    }
-  } else {
-    md = EVP_sha256(); // Default digest
-  }
-
-  if (EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey) <= 0) {
-    fprintf(stderr, "Error: failed to initialize digest signing\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to open input file '%s'\n", in_path.c_str());
-      return false;
-    }
-  }
-
-  // Read and update digest in chunks
-  uint8_t buffer[4096];
-  size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), in_file.get())) > 0) {
-    if (EVP_DigestSignUpdate(mctx.get(), buffer, bytes_read) <= 0) {
-      fprintf(stderr, "Error: failed to update digest\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-  }
-
-  size_t sig_len = 0;
-  if (EVP_DigestSignFinal(mctx.get(), nullptr, &sig_len) <= 0) {
-    fprintf(stderr, "Error: failed to determine signature length\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  signature.resize(sig_len);
-  if (EVP_DigestSignFinal(mctx.get(), signature.data(), &sig_len) <= 0) {
-    fprintf(stderr, "Error: failed to finalize signature\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  signature.resize(sig_len);
-  return true;
-}
-
-static bool DoRawVerify(EVP_PKEY *pkey, const std::string &digest_name,
-                        const std::string &in_path, const std::vector<uint8_t> &signature) {
-  bssl::UniquePtr<EVP_MD_CTX> mctx(EVP_MD_CTX_new());
-  if (!mctx) {
-    fprintf(stderr, "Error: failed to create digest context\n");
-    return false;
-  }
-
-  const EVP_MD *md = nullptr;
-  if (!digest_name.empty()) {
-    md = EVP_get_digestbyname(digest_name.c_str());
-    if (!md) {
-      fprintf(stderr, "Error: unknown digest algorithm '%s'\n", digest_name.c_str());
-      return false;
-    }
-  } else {
-    md = EVP_sha256(); // Default digest
-  }
-
-  if (EVP_DigestVerifyInit(mctx.get(), nullptr, md, nullptr, pkey) <= 0) {
-    fprintf(stderr, "Error: failed to initialize digest verification\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to open input file '%s'\n", in_path.c_str());
-      return false;
-    }
-  }
-
-  // Read and update digest in chunks
-  uint8_t buffer[4096];
-  size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), in_file.get())) > 0) {
-    if (EVP_DigestVerifyUpdate(mctx.get(), buffer, bytes_read) <= 0) {
-      fprintf(stderr, "Error: failed to update digest\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-  }
-
-  int result = EVP_DigestVerifyFinal(mctx.get(), signature.data(), signature.size());
-  if (result == 1) {
-    return true;
-  } else if (result == 0) {
-    return false; // Verification failed
-  } else {
-    fprintf(stderr, "Error: verification operation failed\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-}
-
 static bool WriteOutput(const std::vector<uint8_t> &data, const std::string &out_path, 
                         bool hexdump) {
   bssl::UniquePtr<BIO> output_bio;
@@ -326,17 +201,16 @@ bool pkeyutlTool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, inkey_path, passin_arg, digest_name;
-  bool sign = false, verify = false, rawin = false, pubin = false, hexdump = false;
+  std::string in_path, out_path, inkey_path, passin_arg, sigfile_path;
+  bool sign = false, verify = false, pubin = false, hexdump = false;
 
   GetString(&in_path, "-in", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&inkey_path, "-inkey", "", parsed_args);
   GetString(&passin_arg, "-passin", "", parsed_args);
-  GetString(&digest_name, "-digest", "", parsed_args);
+  GetString(&sigfile_path, "-sigfile", "", parsed_args);
   GetBoolArgument(&sign, "-sign", parsed_args);
   GetBoolArgument(&verify, "-verify", parsed_args);
-  GetBoolArgument(&rawin, "-rawin", parsed_args);
   GetBoolArgument(&pubin, "-pubin", parsed_args);
   GetBoolArgument(&hexdump, "-hexdump", parsed_args);
 
@@ -357,13 +231,13 @@ bool pkeyutlTool(const args_list_t &args) {
     return false;
   }
 
-  if (rawin && !sign && !verify) {
-    fprintf(stderr, "Error: -rawin can only be used with -sign or -verify\n");
+  if (verify && sigfile_path.empty()) {
+    fprintf(stderr, "Error: No signature file specified for verify (-sigfile parameter)\n");
     return false;
   }
 
-  if (!digest_name.empty() && !rawin) {
-    fprintf(stderr, "Error: -digest can only be used with -rawin\n");
+  if (!verify && !sigfile_path.empty()) {
+    fprintf(stderr, "Error: Signature file specified for non-verify operation\n");
     return false;
   }
 
@@ -386,26 +260,18 @@ bool pkeyutlTool(const args_list_t &args) {
 
   if (sign) {
     std::vector<uint8_t> signature;
-    bool success = false;
-
-    if (rawin) {
-      success = DoRawSign(pkey.get(), digest_name, in_path, signature);
-    } else {
-      std::vector<uint8_t> input_data;
-      if (!ReadInputData(in_path, input_data)) {
-        return false;
-      }
-
-      // Sanity check for non-raw input
-      if (input_data.size() > EVP_MAX_MD_SIZE) {
-        fprintf(stderr, "Error: input data looks too long to be a hash\n");
-        return false;
-      }
-
-      success = DoSign(pkey.get(), input_data, signature);
+    std::vector<uint8_t> input_data;
+    if (!ReadInputData(in_path, input_data)) {
+      return false;
     }
 
-    if (!success) {
+    // Sanity check for non-raw input
+    if (input_data.size() > EVP_MAX_MD_SIZE) {
+      fprintf(stderr, "Error: input data looks too long to be a hash\n");
+      return false;
+    }
+
+    if (!DoSign(pkey.get(), input_data, signature)) {
       return false;
     }
 
@@ -413,24 +279,26 @@ bool pkeyutlTool(const args_list_t &args) {
       return false;
     }
   } else if (verify) {
-    // For verification, we need a signature file or signature data
-    // For simplicity, we'll read signature from stdin if no specific sig file
+    // Read signature from sigfile
     std::vector<uint8_t> signature;
-    if (!ReadInputData("", signature)) { // Read signature from stdin
+    ScopedFILE sig_file;
+    sig_file.reset(fopen(sigfile_path.c_str(), "rb"));
+    if (!sig_file) {
+      fprintf(stderr, "Error: unable to open signature file '%s'\n", sigfile_path.c_str());
+      return false;
+    }
+    
+    if (!ReadAll(&signature, sig_file.get())) {
+      fprintf(stderr, "Error: error reading signature data\n");
       return false;
     }
 
-    bool success = false;
-    if (rawin) {
-      success = DoRawVerify(pkey.get(), digest_name, in_path, signature);
-    } else {
-      std::vector<uint8_t> input_data;
-      if (!ReadInputData(in_path, input_data)) {
-        return false;
-      }
-
-      success = DoVerify(pkey.get(), input_data, signature);
+    std::vector<uint8_t> input_data;
+    if (!ReadInputData(in_path, input_data)) {
+      return false;
     }
+
+    bool success = DoVerify(pkey.get(), input_data, signature);
 
     bssl::UniquePtr<BIO> output_bio;
     if (out_path.empty()) {

@@ -108,15 +108,10 @@ TEST_F(PKeyUtlTest, VerifyTest) {
   
   // Then verify the signature
   {
-    // For verification, we need to provide the signature on stdin
-    // and the original data as the input file
-    std::string verify_cmd = "cat " + std::string(sig_path) + " | " + 
-                             "AWSLC_TOOL_PATH=./tool-openssl/tool-openssl " + 
-                             "./tool-openssl/tool-openssl pkeyutl -verify -pubin -inkey " + 
-                             pubkey_path + " -in " + in_path + " > " + out_path;
-    
-    int cmd_result = system(verify_cmd.c_str());
-    ASSERT_EQ(cmd_result, 0);
+    args_list_t args = {"-verify", "-pubin", "-inkey", pubkey_path, "-in", in_path, 
+                        "-sigfile", sig_path, "-out", out_path};
+    bool result = pkeyutlTool(args);
+    ASSERT_TRUE(result);
     
     // Check that the output contains "Signature Verified Successfully"
     std::string output = ReadFileToString(out_path);
@@ -124,59 +119,6 @@ TEST_F(PKeyUtlTest, VerifyTest) {
   }
 }
 
-// Test raw input signing and verification
-TEST_F(PKeyUtlTest, RawInTest) {
-  // Sign with raw input
-  {
-    args_list_t args = {"-sign", "-rawin", "-inkey", key_path, "-in", in_path, "-out", sig_path};
-    bool result = pkeyutlTool(args);
-    ASSERT_TRUE(result);
-  }
-  
-  // Verify with raw input
-  {
-    // For verification, we need to provide the signature on stdin
-    // and the original data as the input file
-    std::string verify_cmd = "cat " + std::string(sig_path) + " | " + 
-                             "AWSLC_TOOL_PATH=./tool-openssl/tool-openssl " + 
-                             "./tool-openssl/tool-openssl pkeyutl -verify -rawin -pubin -inkey " + 
-                             pubkey_path + " -in " + in_path + " > " + out_path;
-    
-    int cmd_result = system(verify_cmd.c_str());
-    ASSERT_EQ(cmd_result, 0);
-    
-    // Check that the output contains "Signature Verified Successfully"
-    std::string output = ReadFileToString(out_path);
-    ASSERT_NE(output.find("Signature Verified Successfully"), std::string::npos);
-  }
-}
-
-// Test with specific digest algorithm
-TEST_F(PKeyUtlTest, DigestTest) {
-  // Sign with specific digest
-  {
-    args_list_t args = {"-sign", "-rawin", "-digest", "sha256", "-inkey", key_path, "-in", in_path, "-out", sig_path};
-    bool result = pkeyutlTool(args);
-    ASSERT_TRUE(result);
-  }
-  
-  // Verify with specific digest
-  {
-    // For verification, we need to provide the signature on stdin
-    // and the original data as the input file
-    std::string verify_cmd = "cat " + std::string(sig_path) + " | " + 
-                             "AWSLC_TOOL_PATH=./tool-openssl/tool-openssl " + 
-                             "./tool-openssl/tool-openssl pkeyutl -verify -rawin -digest sha256 -pubin -inkey " + 
-                             pubkey_path + " -in " + in_path + " > " + out_path;
-    
-    int cmd_result = system(verify_cmd.c_str());
-    ASSERT_EQ(cmd_result, 0);
-    
-    // Check that the output contains "Signature Verified Successfully"
-    std::string output = ReadFileToString(out_path);
-    ASSERT_NE(output.find("Signature Verified Successfully"), std::string::npos);
-  }
-}
 
 // Test with hexdump output
 TEST_F(PKeyUtlTest, HexdumpTest) {
@@ -230,10 +172,10 @@ TEST_F(PKeyUtlOptionUsageErrorsTest, InvalidOptionCombinationsTest) {
     {"-sign", "-verify", "-inkey", key_path, "-in", in_path},
     // Missing inkey
     {"-sign", "-in", in_path},
-    // digest without rawin
-    {"-sign", "-digest", "sha256", "-inkey", key_path, "-in", in_path},
-    // rawin without sign or verify
-    {"-rawin", "-inkey", key_path, "-in", in_path},
+    // Verify without sigfile
+    {"-verify", "-inkey", key_path, "-in", in_path},
+    // Sigfile with sign operation
+    {"-sign", "-inkey", key_path, "-in", in_path, "-sigfile", sig_path},
   };
   
   for (const auto& args : testparams) {
@@ -345,40 +287,6 @@ TEST_F(PKeyUtlComparisonTest, SignCompareOpenSSL) {
   ASSERT_NE(openssl_output_str.find("Signature Verified Successfully"), std::string::npos);
 }
 
-// Test raw input signing against OpenSSL
-TEST_F(PKeyUtlComparisonTest, RawSignCompareOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " pkeyutl -sign -rawin -digest sha256 -inkey " + 
-                             key_path + " -in " + in_path + " -out " + sig_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " pkeyutl -sign -rawin -digest sha256 -inkey " + 
-                                key_path + " -in " + in_path + " -out " + sig_path_openssl;
-
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
-
-  // Verify both signatures with the public key
-  std::string tool_verify_cmd = std::string(tool_executable_path) + " pkeyutl -verify -rawin -digest sha256 -pubin -inkey " + 
-                                pubkey_path + " -in " + in_path + " -sigfile " + sig_path_tool + 
-                                " > " + out_path_tool;
-  std::string openssl_verify_cmd = std::string(openssl_executable_path) + " pkeyutl -verify -rawin -digest sha256 -pubin -inkey " + 
-                                   pubkey_path + " -in " + in_path + " -sigfile " + sig_path_openssl + 
-                                   " > " + out_path_openssl;
-
-  ASSERT_EQ(system(tool_verify_cmd.c_str()), 0);
-  ASSERT_EQ(system(openssl_verify_cmd.c_str()), 0);
-
-  // Read verification results
-  std::ifstream tool_output(out_path_tool);
-  tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)), std::istreambuf_iterator<char>());
-  std::ifstream openssl_output(out_path_openssl);
-  openssl_output_str = std::string((std::istreambuf_iterator<char>(openssl_output)), std::istreambuf_iterator<char>());
-
-  // Both should verify successfully
-  ASSERT_NE(tool_output_str.find("Signature Verified Successfully"), std::string::npos);
-  ASSERT_NE(openssl_output_str.find("Signature Verified Successfully"), std::string::npos);
-}
 
 // Test hexdump output against OpenSSL
 TEST_F(PKeyUtlComparisonTest, HexdumpCompareOpenSSL) {
@@ -416,7 +324,6 @@ TEST_F(PKeyUtlComparisonTest, HelpCompareOpenSSL) {
   ASSERT_NE(tool_output_str.find("-verify"), std::string::npos);
   ASSERT_NE(tool_output_str.find("-inkey"), std::string::npos);
   ASSERT_NE(tool_output_str.find("-pubin"), std::string::npos);
-  ASSERT_NE(tool_output_str.find("-rawin"), std::string::npos);
-  ASSERT_NE(tool_output_str.find("-digest"), std::string::npos);
+  ASSERT_NE(tool_output_str.find("-sigfile"), std::string::npos);
   ASSERT_NE(tool_output_str.find("-hexdump"), std::string::npos);
 }
