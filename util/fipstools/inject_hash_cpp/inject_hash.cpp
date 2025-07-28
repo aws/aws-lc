@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <openssl/hmac.h>  
+#include <openssl/sha.h>
 #include <tool/internal.h>
 
 static const argument_t kArguments[] = {
@@ -17,8 +19,6 @@ static void print_usage() {
 }
 
 int main(int argc, char** argv) {
-    std::cout << "\n=== C++ inject_hash starting ===" << std::endl;
-
     // Convert argv to vector of strings, skipping program name (argv[0])
     std::vector<std::string> args;
     for (int i = 1; i < argc; i++) {
@@ -53,18 +53,43 @@ int main(int argc, char** argv) {
     if (is_apple) {
         std::cout << "Platform: macOS" << std::endl;
     }
-
-    // Parse binary
-    std::cout << "\nParsing binary..." << std::endl;
+    std::cout << "=== C++ inject_hash started ===" << std::endl;
     if (auto binary = LIEF::Parser::parse(input_file)) {
-        std::cout << "✅ LIEF parser successfully loaded: " << input_file << std::endl;
-        
-        // TODO: Add hash calculation and injection
-        
-    } else {
-        std::cerr << "❌ LIEF parser failed to load: " << input_file << std::endl;
+        std::cout << "LIEF parser successfully loaded: " << input_file << std::endl;
+    } 
+    else {
+        std::cerr << "LIEF parser failed to load: " << input_file << std::endl;
+        return 1;
+                }
+    std::cout << "LIEF parser loaded successfully" << std::endl;
+    
+    uint8_t zero_key[64] = {0};
+    HMAC_CTX ctx;
+
+    if (!HMAC_Init(&ctx, &zero_key, sizeof(zero_key), EVP_sha256())) {
+        std::cerr << "HMAC_Init failed" << std::endl;
         return 1;
     }
+
+    const std::string& input_str = input_file;
+    if (!HMAC_Update(&ctx, 
+                     reinterpret_cast<const uint8_t*>(input_str.data()), 
+                     input_str.length())) {
+        std::cerr << "HMAC_Update failed" << std::endl;
+        return 1;
+    }
+    std::vector<uint8_t> calculate_hash(HMAC_size(&ctx));
+    
+    unsigned int calculate_hash_len;
+    if (!HMAC_Final(&ctx, calculate_hash.data(), &calculate_hash_len)) {
+        std::cerr << "HMAC_Final failed" << std::endl;
+        return 1;
+    }
+    std::cout << "HMAC hash calculated successfully, the hash is: " << std::endl;     
+    for (unsigned int i = 0; i < calculate_hash_len; i++) {
+        printf("%02x", calculate_hash[i]);
+    } 
+    std::cout << std::endl;     
 
     std::cout << "=== C++ inject_hash completed ===" << std::endl;
     return 0;
