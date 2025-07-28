@@ -103,31 +103,6 @@ bool genrsaTool(const args_list_t &args) {
   bool help = false;
   bssl::UniquePtr<BIO> bio;
 
-  // Define a cleanup guard that will ensure proper BIO cleanup on all exit paths
-  struct BIOCleanupGuard {
-    bssl::UniquePtr<BIO>& bio_ref;
-    bool is_file_bio;
-    
-    BIOCleanupGuard(bssl::UniquePtr<BIO>& bio) : bio_ref(bio), is_file_bio(false) {}
-    
-    void set_file_bio(bool is_file) { is_file_bio = is_file; }
-    
-    ~BIOCleanupGuard() {
-      if (bio_ref && bio_ref.get()) {
-        // Only flush file BIOs, not stdout/stderr BIOs to avoid Windows issues
-        if (is_file_bio) {
-          if (BIO_flush(bio_ref.get()) < 0) {
-            // Log flush error but continue with cleanup
-            ERR_print_errors_fp(stderr);
-          }
-        }
-        // Explicitly reset to ensure file handle is closed
-        // This is especially important on Windows
-        bio_ref.reset();
-      }
-    }
-  } bio_guard{bio};
-
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
                                                    args, kArguments)) {
     bio.reset(BIO_new_fp(stderr, BIO_NOCLOSE));
@@ -182,12 +157,12 @@ bool genrsaTool(const args_list_t &args) {
     return false;
   }
 
-  // Set the file_bio flag - true if we're writing to a file, false for stdout
-  bio_guard.set_file_bio(!out_path.empty());
-
   bool result = WriteRSAKeyToBIO(bio.get(), rsa.get());
-  return result;
   
-  // No need for explicit cleanup - the BIOCleanupGuard's destructor
-  // will handle it automatically when the function exits
+  // Flush output for successful writes to files
+  if (result && !out_path.empty()) {
+    BIO_flush(bio.get());
+  }
+  
+  return result;
 }
