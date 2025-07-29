@@ -89,7 +89,7 @@ static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
 
   // Check length before modification
   if (source->length() - 5 > PEM_BUFSIZE) {
-    fprintf(stderr, "Password exceeds maximum allowed length\n");
+    fprintf(stderr, "Password exceeds maximum allowed length (%d bytes)\n", PEM_BUFSIZE);
     return false;
   }
 
@@ -135,7 +135,7 @@ static bool ExtractPasswordFromFile(bssl::UniquePtr<std::string> &source,
        buf[len - 1] != '\r');
   if (possible_truncation) {
     OPENSSL_cleanse(buf, sizeof(buf));
-    fprintf(stderr, "Password file content too long\n");
+    fprintf(stderr, "Password file content too long (maximum %d bytes)\n", PEM_BUFSIZE);
     return false;
   }
 
@@ -174,7 +174,7 @@ static bool ExtractPasswordFromEnv(bssl::UniquePtr<std::string> &source) {
     return false;
   }
   if (env_val_len > PEM_BUFSIZE) {
-    fprintf(stderr, "Environment variable value too long\n");
+    fprintf(stderr, "Environment variable value too long (maximum %d bytes)\n", PEM_BUFSIZE);
     return false;
   }
 
