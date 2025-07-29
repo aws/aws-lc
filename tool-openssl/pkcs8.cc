@@ -243,8 +243,10 @@ bool pkcs8Tool(const args_list_t &args) {
     return false;
   }
 
-  pkey = read_private_key(
-      in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str(), inform);
+  pkey.reset((inform == "PEM")
+                 ? PEM_read_bio_PrivateKey(in.get(), nullptr, nullptr,
+                                           passin_arg->empty() ? nullptr : const_cast<char*>(passin_arg->c_str()))
+                 : read_private_key(in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str(), inform).release());
   if (!pkey) {
     fprintf(stderr, "Unable to load private key\n");
     return false;
