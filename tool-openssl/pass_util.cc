@@ -131,8 +131,8 @@ static bool ExtractPasswordFromFile(bssl::UniquePtr<std::string> &source,
   }
 
   const bool possible_truncation =
-      (static_cast<size_t>(len) == PEM_BUFSIZE - 1 && buf[len - 1] != '\n' &&
-       buf[len - 1] != '\r');
+      (static_cast<size_t>(len) == PEM_BUFSIZE - 1) && buf[len - 1] != '\n' &&
+       buf[len - 1] != '\r';
   if (possible_truncation) {
     OPENSSL_cleanse(buf, sizeof(buf));
     fprintf(stderr, "Password file content too long (maximum %d bytes)\n", PEM_BUFSIZE);
