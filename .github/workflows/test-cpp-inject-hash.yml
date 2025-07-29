@@ -1,8 +1,6 @@
 name: Test C++ inject_hash Implementation with LIEF, HMAC and SHA-256 integrated.
 
 on:
-  push:
-    branches: [ hmac-sha-lief-integration ]
   pull_request:
     branches: [ inject-hash-cpp-experiment ]
 

@@ -76,6 +76,12 @@ else
     ((ERRORS+=$?))
 fi
 
+#Test 4: HMAC calvulation of a test file path (should succeed)
+run_test "HMAC calculation test" false \
+    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+    --test-file "util/fipstools/inject_hash_cpp/CMakeLists.txt"
+((ERRORS+=$?))
+
 # Print test summary
 echo "=== Summary ==="
 echo "Total errors: ${ERRORS}"

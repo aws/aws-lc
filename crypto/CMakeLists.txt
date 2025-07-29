@@ -621,7 +621,6 @@ endfunction()
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
-  add_subdirectory(fips_hashing)
   if(MSVC)
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
@@ -653,6 +652,7 @@ if(FIPS_SHARED)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
     # the hash directly into the final library.
+    add_subdirectory(fips_hashing)
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")

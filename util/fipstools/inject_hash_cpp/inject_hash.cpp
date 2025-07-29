@@ -1,3 +1,6 @@
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #include <LIEF/LIEF.hpp>
 #include <iostream>
 #include <string>
@@ -34,6 +37,44 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    std::string test_file;
+    if (GetString(&test_file, "--test-file", "", args_map)) {
+        std::cout << "=== Test Mode: Calculating hash of file path ===" << std::endl;
+        std::cout << "Test file path: " << test_file << std::endl;
+
+        // Calculate HMAC of the file path string
+        uint8_t zero_key[64] = {0};
+        HMAC_CTX ctx;
+
+        if (!HMAC_Init(&ctx, zero_key, sizeof(zero_key), EVP_sha256())) {
+            std::cerr << "HMAC_Init failed" << std::endl;
+            return 1;
+        }
+
+        if (!HMAC_Update(&ctx, 
+                        reinterpret_cast<const uint8_t*>(test_file.data()), 
+                        test_file.length())) {
+            std::cerr << "HMAC_Update failed" << std::endl;
+            return 1;
+        }
+
+        std::vector<uint8_t> hash(HMAC_size(&ctx));
+        unsigned int hash_len;
+        
+        if (!HMAC_Final(&ctx, hash.data(), &hash_len)) {
+            std::cerr << "HMAC_Final failed" << std::endl;
+            return 1;
+        }
+
+        // Print hash
+        std::cout << "Calculated hash of file path: ";
+        for (unsigned int i = 0; i < hash_len; i++) {
+            printf("%02x", hash[i]);
+        }
+        std::cout << std::endl;
+        return 0;
+    }
+
     // Get the input and output file paths
     std::string input_file, output_file;
     if (!GetString(&input_file, "-in-object", "", args_map) ||
@@ -54,7 +95,7 @@ int main(int argc, char** argv) {
         std::cout << "Platform: macOS" << std::endl;
     }
     std::cout << "=== C++ inject_hash started ===" << std::endl;
-    if (auto binary = LIEF::Parser::parse(input_file)) {
+    if (LIEF::Parser::parse(input_file)) {
         std::cout << "LIEF parser successfully loaded: " << input_file << std::endl;
     } 
     else {
@@ -94,3 +135,4 @@ int main(int argc, char** argv) {
     std::cout << "=== C++ inject_hash completed ===" << std::endl;
     return 0;
 }
+
