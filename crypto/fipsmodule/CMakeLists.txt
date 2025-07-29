@@ -298,23 +298,7 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
 
     # Check if assembler supports SHA3 extension
     # (gcc supports it since gcc8, clang supports it since clang7)
-    include(CheckCSourceCompiles)
-    set(CMAKE_REQUIRED_FLAGS_BACKUP "${CMAKE_REQUIRED_FLAGS}")
-    set(CMAKE_REQUIRED_FLAGS "-march=armv8.4-a+sha3")
-    check_c_source_compiles("
-        int main(void) {
-            __asm__(\"eor3 v0.16b, v1.16b, v2.16b, v3.16b\");
-            __asm__(\"bcax v0.16b, v1.16b, v2.16b, v3.16b\");
-            __asm__(\"rax1 v0.2d,  v1.2d,  v2.2d         \");
-            __asm__(\"xar  v0.2d,  v1.2d,  v2.2d,  #0x2a \");
-            return 0;
-        }
-    " MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS_BACKUP}")
-
-    if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-        add_definitions(-DMY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
-    endif()
+    check_compiler("neon_sha3_check.c" MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION "-march=armv8.4-a+sha3")
 
     # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native
     list(APPEND BCM_ASM_SOURCES
