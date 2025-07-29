@@ -50,12 +50,12 @@ This action:
 1. Validates the provided `release` input parameter (must be one of: `main`, `fips1`, `fips2`, `fips3`)
 2. Validates that the specified path exists and is a git repository if provided
 3. Fetches all tags from the repository
-3. Based on the release type:
+4. Based on the release type:
    - For `main`: Filters tags to only include those that follow the format `vX.Y.Z`
    - For `fipsN`: Filters tags to only include those that follow the format `AWS-LC-FIPS-N.Y.Z` where N matches the FIPS version
-4. Sorts the tags according to semantic versioning rules
-5. Determines the latest tag (fails if no matching tag is found)
-6. Outputs the latest tag and version (without the prefix)
+5. Sorts the tags according to semantic versioning rules
+6. Determines the latest tag (fails if no matching tag is found)
+7. Outputs the latest tag and version (without the prefix)
 
 ## Requirements
 
