@@ -34,33 +34,34 @@ class GenRSATestBase : public ::testing::Test {
     RemoveFile(out_path_openssl);
   }
 
-  // CLI-focused validation: file exists, readable, basic PEM format
+  // BIO-based validation: single read operation for both format and parsing validation
   bool ValidateKeyFile(const char *path) {
     if (!path) {
       ADD_FAILURE() << "Path parameter is null";
       return false;
     }
 
-    // Check file exists and is readable
-    ScopedFILE file(fopen(path, "rb"));
-    if (!file) {
+    // Create BIO for file access - single I/O operation
+    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "rb"));
+    if (!bio) {
       ADD_FAILURE() << "Failed to open key file: " << path;
+      ERR_print_errors_fp(stderr);
       return false;
     }
 
-    // Basic PEM format validation - check for PEM headers
-    std::string content = ReadFileToString(path);
-    if (content.find("-----BEGIN RSA PRIVATE KEY-----") == std::string::npos ||
-        content.find("-----END RSA PRIVATE KEY-----") == std::string::npos) {
-      ADD_FAILURE() << "File does not contain valid PEM RSA private key format";
-      return false;
-    }
-
-    // Verify the key can be parsed (basic sanity check)
+    // Single read operation - validates both PEM format and parseability
     bssl::UniquePtr<RSA> rsa(
-        PEM_read_RSAPrivateKey(file.get(), nullptr, nullptr, nullptr));
+        PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
     if (!rsa) {
       ADD_FAILURE() << "Failed to parse RSA key from PEM file";
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+
+    // Optional: Additional RSA key consistency check
+    if (RSA_check_key(rsa.get()) != 1) {
+      ADD_FAILURE() << "RSA key failed consistency check";
+      ERR_print_errors_fp(stderr);
       return false;
     }
 
