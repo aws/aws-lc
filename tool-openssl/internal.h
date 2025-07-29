@@ -30,6 +30,14 @@ bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 
 // Password extracting utility for -passin and -passout options
 namespace pass_util {
+// Password source types for handling different input methods
+enum class Source : uint8_t {
+  kNone,  // Empty or invalid source
+  kPass,  // Direct password with pass: prefix
+  kFile,  // Password from file with file: prefix
+  kEnv,   // Password from environment with env: prefix
+};
+
 // Custom deleter for sensitive strings that securely clears memory before
 // deletion. This ensures passwords are securely removed from memory when no
 // longer needed, preventing potential exposure in memory dumps or swap files.
