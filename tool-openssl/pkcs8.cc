@@ -85,8 +85,6 @@ static bool validate_prf(const std::string &prf_name) {
   return true;
 }
 
-// The SensitiveStringDeleter is now defined in password.cc
-
 // Reads a private key from BIO in the specified format with optional password
 static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO *in_bio,
                                                   const char *passin,
