@@ -57,7 +57,7 @@ run_test "No arguments test" true \
 # Test 2: Invalid file (should fail)
 run_test "Invalid file test" true \
     ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-    -in-object nonexistent.file -o nonexistent.file
+    -in-object nonexistent.so -o nonexistent.so
 ((ERRORS+=$?))
 
 # Test 3: Actual library (should succeed)
