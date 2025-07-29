@@ -50,9 +50,15 @@ function(target_add_awslc_include_paths)
     message(FATAL_ERROR "Missing value(s) for keyword(s) to target_add_awslc_include_paths: ${arg_KEYWORDS_MISSING_VALUES}")
   endif()
 
+  if(EXCLUDE_PREFIX_HEADERS)
+    set(INCLUDE_PREFIX_HEADERS 0)
+  else()
+    set(INCLUDE_PREFIX_HEADERS 1)
+  endif()
+
   add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
-    $<$<NOT:$<BOOL:EXCLUDE_PREFIX_HEADERS>>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<$<BOOL:INCLUDE_PREFIX_HEADERS>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 endfunction()
@@ -78,8 +84,8 @@ message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
 message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 if(PERFORM_SONAME_BUILD)
-  set(CRYPTO_LIB_NAME "crypto-${SOFTWARE_NAME}")
-  set(SSL_LIB_NAME "ssl-${SOFTWARE_NAME}")
+  set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
+  set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
 endif()
 
 enable_language(C)

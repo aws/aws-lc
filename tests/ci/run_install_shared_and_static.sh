@@ -112,8 +112,20 @@ build_myapp() {
 
     local LINKAGE_CHECKER="${SCRATCH_DIR}/${2}-check-linkage.sh"
 
+    # The application links libssl explicitly which will find libssl correctly as it embeds rpath.
+    # libcrypto is a transient dependency which is picked up, but won't use the rpath.
+    # So set LD_LIBRARY_PATH so that the check-linkage.sh script works and the binary can be run.
+    local ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+
+    export LD_LIBRARY_PATH="${SCRATCH_DIR}/${AWS_LC_INSTALL_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
     test_lib_use "${LINKAGE_CHECKER}" ${BUILD_DIR}/myapp ssl ${EXPECT_USE_LIB_TYPE}
     test_lib_use "${LINKAGE_CHECKER}" ${BUILD_DIR}/myapp crypto ${EXPECT_USE_LIB_TYPE}
+
+    ${BUILD_DIR}/myapp || fail "library constructor has not been executed"
+
+    # Reset LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH="${ORIG_LD_LIBRARY_PATH}"
 }
 
 # test that app is using expected library

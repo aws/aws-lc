@@ -13,5 +13,5 @@ build_options_to_test=("" "-DOPENSSL_SMALL=1" "-DOPENSSL_NO_ASM=1" "-DENABLE_PRE
 
 for build_option in "${build_options_to_test[@]}"; do
   echo "Testing a prefix build of AWS-LC in release mode with additional build option: ${build_option}"
-  run_build ${build_option} -DCMAKE_BUILD_TYPE=Release
+  build_prefix_and_test ${build_option} -DCMAKE_BUILD_TYPE=Release
 done

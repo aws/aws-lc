@@ -32,7 +32,7 @@ if [ ! -f "${FILE_TO_CHECK}" ]; then
   exit 1
 fi
 
-# Run ldd on the shared object
+# Run ldd on the file
 LDD_OUTPUT=$(ldd "${FILE_TO_CHECK}")
 EXIT_CODE=0
 
@@ -55,7 +55,7 @@ case "${LIBRARY_TYPE}" in
     ;;
   *)
     echo "Error: Unknown library type '${LIBRARY_TYPE}'. Must be 'crypto' or 'ssl'."
-    exit 1
+    EXIT_CODE=1
     ;;
 esac
 
