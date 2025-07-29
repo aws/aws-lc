@@ -31,6 +31,7 @@
 #include <openssl/err.h>
 #include <openssl/nid.h>
 #include <openssl/pem.h>
+#include <openssl/pkcs7.h>
 #include <openssl/pool.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
@@ -8406,4 +8407,42 @@ TEST(X509Test, X509MultipleCustomExtensions) {
                               /*flags=*/0, set_custom_exts_with_callback));
   // Check that |EXFLAG_CRITICAL| has been removed after validation.
   EXPECT_FALSE(X509_get_extension_flags(cert.get()) & EXFLAG_CRITICAL);
+}
+
+TEST(X509Test, StoreVerifyCallback) {
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+
+  // Initially verify callback should be null
+  EXPECT_EQ(nullptr, X509_STORE_get_verify_cb(store.get()));
+
+  // Store the callback pointer for comparison
+  X509_STORE_CTX_verify_cb verify_cb = [](int ok, X509_STORE_CTX *ctx) -> int {
+    return 1;
+  };
+
+  // Set a custom verify callback
+  X509_STORE_set_verify_cb(store.get(), verify_cb);
+
+  // Verify callback should now be set and match the stored pointer
+  EXPECT_EQ(verify_cb, X509_STORE_get_verify_cb(store.get()));
+}
+
+TEST(X509Test, StoreLookupCRLs) {
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+
+  // Initially lookup_crls callback should be null
+  EXPECT_EQ(nullptr, X509_STORE_get_lookup_crls(store.get()));
+
+  X509_STORE_CTX_lookup_crls_fn lookup_crls = [](X509_STORE_CTX *ctx,
+                                                 X509_NAME *nm) {
+    return sk_X509_CRL_new_null();
+  };
+
+  // Set the custom lookup_crls callback
+  X509_STORE_set_lookup_crls(store.get(), lookup_crls);
+
+  // Lookup_crls callback should now be set and match the stored pointer
+  EXPECT_EQ(lookup_crls, X509_STORE_get_lookup_crls(store.get()));
 }
