@@ -96,6 +96,8 @@ int main(int argc, char** argv) {
     } 
     std::cout << std::endl;     
 
+    HMAC_CTX_cleanse(&ctx);
+
     std::cout << "=== C++ inject_hash completed ===" << std::endl;
     return 0;
 }
