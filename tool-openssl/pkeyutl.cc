@@ -382,6 +382,9 @@ bool pkeyutlTool(const args_list_t &args) {
       fprintf(stderr, "DEBUG: pkeyutlTool - Writing failure message\n");
       BIO_puts(output_bio.get(), "Signature Verification Failure\n");
     }
+
+    BIO_flush(output_bio.get());
+    output_bio.reset();
     fprintf(stderr, "DEBUG: pkeyutlTool - Verification process completed\n");
   }
 
