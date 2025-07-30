@@ -85,49 +85,33 @@ static bool validate_prf(const std::string &prf_name) {
   return true;
 }
 
-// Reads a private key from BIO in the specified format with optional password
-static bssl::UniquePtr<EVP_PKEY> read_private_key(BIO *in_bio,
-                                                  const char *passin,
-                                                  const std::string &format) {
+// Reads a private key from BIO in DER format with optional password
+static bssl::UniquePtr<EVP_PKEY> read_private_der(BIO *in_bio, const char *passin) {
   if (!in_bio) {
     return nullptr;
   }
 
-  bssl::UniquePtr<EVP_PKEY> pkey;
-
+  BIO_reset(in_bio);
+  
   if (passin) {
-    if (format == "DER") {
-      BIO_reset(in_bio);
-      pkey.reset(d2i_PKCS8PrivateKey_bio(in_bio, nullptr, nullptr,
-                                         const_cast<char *>(passin)));
-      return pkey;
-    } else {
-      BIO_reset(in_bio);
-      pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr,
-                                         const_cast<char *>(passin)));
+    // Try encrypted PKCS8 DER
+    return bssl::UniquePtr<EVP_PKEY>(
+        d2i_PKCS8PrivateKey_bio(in_bio, nullptr, nullptr, const_cast<char *>(passin)));
+  }
+  
+  // Try unencrypted DER formats in order of preference
+  // 1. Try unencrypted PKCS8 DER
+  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(d2i_PKCS8_PRIV_KEY_INFO_bio(in_bio, nullptr));
+  if (p8inf) {
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKCS82PKEY(p8inf.get()));
+    if (pkey) {
       return pkey;
     }
   }
-
-  // If no password provided, try unencrypted paths
-  if (format == "DER") {
-    BIO_reset(in_bio);
-    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf(
-        d2i_PKCS8_PRIV_KEY_INFO_bio(in_bio, nullptr));
-    if (p8inf) {
-      pkey.reset(EVP_PKCS82PKEY(p8inf.get()));
-      if (pkey) {
-        return pkey;
-      }
-    }
-    BIO_reset(in_bio);
-    pkey.reset(d2i_PrivateKey_bio(in_bio, nullptr));
-    return pkey;
-  } else {
-    BIO_reset(in_bio);
-    pkey.reset(PEM_read_bio_PrivateKey(in_bio, nullptr, nullptr, nullptr));
-    return pkey;
-  }
+  
+  // 2. Fall back to traditional DER (auto-detect RSA/DSA/EC)
+  BIO_reset(in_bio);
+  return bssl::UniquePtr<EVP_PKEY>(d2i_PrivateKey_bio(in_bio, nullptr));
 }
 
 static const argument_t kArguments[] = {
@@ -160,7 +144,6 @@ bool pkcs8Tool(const args_list_t &args) {
   bssl::UniquePtr<BIO> in;
   bssl::UniquePtr<BIO> out;
   bssl::UniquePtr<EVP_PKEY> pkey;
-  const EVP_CIPHER *cipher = nullptr;
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
 
   if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
@@ -246,7 +229,7 @@ bool pkcs8Tool(const args_list_t &args) {
   pkey.reset((inform == "PEM")
                  ? PEM_read_bio_PrivateKey(in.get(), nullptr, nullptr,
                                            passin_arg->empty() ? nullptr : const_cast<char*>(passin_arg->c_str()))
-                 : read_private_key(in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str(), inform).release());
+                 : read_private_der(in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str()).release());
   if (!pkey) {
     fprintf(stderr, "Unable to load private key\n");
     return false;
@@ -254,40 +237,29 @@ bool pkcs8Tool(const args_list_t &args) {
 
   bool result = false;
   if (!topk8) {
+    // Default behavior: output unencrypted PKCS#8 format
+    // (AWS-LC doesn't support -traditional option)
     result = (outform == "PEM")
-                 ? PEM_write_bio_PrivateKey(out.get(), pkey.get(), nullptr,
-                                            nullptr, 0, nullptr, nullptr)
-                 : i2d_PrivateKey_bio(out.get(), pkey.get());
+        ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), nullptr,
+                                        nullptr, 0, nullptr, nullptr)
+        : i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), nullptr,
+                                  nullptr, 0, nullptr, nullptr);
   } else {
-    // If passout is provided, always encrypt the output regardless of nocrypt
-    if (nocrypt && passout_arg->empty()) {
-      p8inf.reset(EVP_PKEY2PKCS8(pkey.get()));
-      if (!p8inf) {
-        fprintf(stderr, "Error converting to PKCS#8\n");
-        return false;
-      }
+    // -topk8: output PKCS#8 format (encrypted by default unless -nocrypt)
+    const EVP_CIPHER *cipher = (nocrypt) ? nullptr : 
+        ((parsed_args.count("-v2") == 0 || parsed_args["-v2"].empty()) 
+            ? EVP_aes_256_cbc() 
+            : EVP_get_cipherbyname(parsed_args["-v2"].c_str()));
 
-      result = (outform == "PEM")
-                   ? PEM_write_bio_PKCS8_PRIV_KEY_INFO(out.get(), p8inf.get())
-                   : i2d_PKCS8_PRIV_KEY_INFO_bio(out.get(), p8inf.get());
-    } else {
-      if (passout_arg->empty()) {
-        fprintf(stderr, "Password required for encryption\n");
-        return false;
-      }
-      cipher = (parsed_args.count("-v2") == 0 || parsed_args["-v2"].empty())
-                   ? EVP_aes_256_cbc()
-                   : EVP_get_cipherbyname(parsed_args["-v2"].c_str());
-      if (outform == "PEM") {
-        result = PEM_write_bio_PKCS8PrivateKey(
-            out.get(), pkey.get(), cipher, passout_arg->c_str(),
-            passout_arg->length(), nullptr, nullptr);
-      } else {
-        result = i2d_PKCS8PrivateKey_bio(
-            out.get(), pkey.get(), cipher, passout_arg->c_str(),
-            passout_arg->length(), nullptr, nullptr);
-      }
-    }
+    result = (outform == "PEM")
+        ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), cipher,
+                                        passout_arg->empty() ? nullptr : passout_arg->c_str(),
+                                        passout_arg->empty() ? 0 : passout_arg->length(),
+                                        nullptr, nullptr)
+        : i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), cipher,
+                                  passout_arg->empty() ? nullptr : passout_arg->c_str(),
+                                  passout_arg->empty() ? 0 : passout_arg->length(),
+                                  nullptr, nullptr);
   }
 
   if (!result) {
