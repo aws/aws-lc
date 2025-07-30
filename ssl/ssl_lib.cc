@@ -3432,6 +3432,12 @@ int SSL_num_renegotiations(const SSL *ssl) {
   return SSL_total_renegotiations(ssl);
 }
 
+int SSL_clear_num_renegotiations(const SSL *ssl) {
+  int ret = SSL_total_renegotiations(ssl);
+  ssl->s3->total_renegotiations = 0;
+  return ret;
+}
+
 int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx) { return 0; }
 int SSL_need_tmp_RSA(const SSL *ssl) { return 0; }
 int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa) { return 1; }

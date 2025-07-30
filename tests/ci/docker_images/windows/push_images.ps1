@@ -14,4 +14,5 @@ Write-Host "$ECS_REPO"
 
 Tag-And-Push-Image "windows-2022:vs2015" "${ECS_REPO}:windows-2022_vs2015"
 Tag-And-Push-Image "windows-2022:vs2017" "${ECS_REPO}:windows-2022_vs2017"
+Tag-And-Push-Image "windows-2022:vs2019" "${ECS_REPO}:windows-2022_vs2019"
 Tag-And-Push-Image "windows-2022:vs2022" "${ECS_REPO}:windows-2022_vs2022"

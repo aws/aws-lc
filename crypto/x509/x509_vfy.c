@@ -1257,7 +1257,7 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   }
 
   // Lookup CRLs from store
-  skcrl = X509_STORE_CTX_get1_crls(ctx, nm);
+  skcrl = ctx->lookup_crls(ctx, nm);
 
   // If no CRLs found and a near match from get_crl_sk use that
   if (!skcrl && crl) {
@@ -1762,6 +1762,12 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
     ctx->check_crl = store->check_crl;
   } else {
     ctx->check_crl = check_crl;
+  }
+
+  if (store->lookup_crls) {
+    ctx->lookup_crls = store->lookup_crls;
+  } else {
+    ctx->lookup_crls = X509_STORE_get1_crls;
   }
 
   ctx->verify_custom_crit_oids = null_verify_custom_crit_oids_callback;
