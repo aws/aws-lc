@@ -41,7 +41,7 @@ function libwebsockets_build() {
   export LD_LIBRARY_PATH="${SOCKET_DEST_DIR}/usr/local/share/libwebsockets-test-server/plugins:${SOCKET_DEST_DIR}/usr/local/lib:${AWS_LC_INSTALL_FOLDER}/lib"
 
   pushd $SOCKET_BUILD_DIR
-  cmake .. -DLWS_WITH_AWSLC=1 -DLWS_OPENSSL_INCLUDE_DIRS="${AWS_LC_INSTALL_FOLDER}/include" -DLWS_OPENSSL_LIBRARIES="${AWS_LC_INSTALL_FOLDER}/lib/libssl.so;${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" -DLWS_WITH_MINIMAL_EXAMPLES=1
+  cmake .. -DLWS_WITH_AWSLC=1 -DLWS_WITH_SS_TESTS_HTTP_ONLY=0 -DLWS_OPENSSL_INCLUDE_DIRS="${AWS_LC_INSTALL_FOLDER}/include" -DLWS_OPENSSL_LIBRARIES="${AWS_LC_INSTALL_FOLDER}/lib/libssl.so;${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" -DLWS_WITH_MINIMAL_EXAMPLES=1
   make -j && make -j DESTDIR=${SOCKET_DEST_DIR} install
 
   local socket_lib="${SOCKET_DEST_DIR}/usr/local/lib/libwebsockets.so"
