@@ -9,10 +9,6 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 #include <cctype>
-#include <regex>
-#include <sstream>
-#include <iomanip>
-
 
 class PKeyUtlTest : public ::testing::Test {
 protected:
@@ -42,7 +38,7 @@ protected:
     ASSERT_TRUE(protected_key_file);
     ASSERT_TRUE(PEM_write_PrivateKey(protected_key_file.get(), pkey.get(), 
                                      EVP_aes_256_cbc(), 
-                                     (unsigned char*)"testpassword", 11, 
+                                     (unsigned char*)"testpassword", 12,
                                      nullptr, nullptr));
     
     // Create a test input file with some data
