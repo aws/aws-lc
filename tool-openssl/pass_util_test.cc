@@ -18,7 +18,8 @@
 
 namespace {
 // Helper functions to encapsulate common operations
-void WriteTestFile(const char* path, const char* content, bool preserve_newlines = false) {
+void WriteTestFile(const char *path, const char *content,
+                   bool preserve_newlines = false) {
   ScopedFILE file(fopen(path, "wb"));
   ASSERT_TRUE(file) << "Failed to open file: " << path;
   if (content && strlen(content) > 0) {
@@ -33,10 +34,11 @@ void WriteTestFile(const char* path, const char* content, bool preserve_newlines
           << "Failed to write to file: " << path;
     }
   }
-  // If content is NULL or empty, we just create an empty file (no assertion needed)
+  // If content is NULL or empty, we just create an empty file (no assertion
+  // needed)
 }
 
-void SetTestEnvVar(const char* name, const char* value) {
+void SetTestEnvVar(const char *name, const char *value) {
 #ifdef _WIN32
   _putenv_s(name, value);
 #else
@@ -44,7 +46,7 @@ void SetTestEnvVar(const char* name, const char* value) {
 #endif
 }
 
-void UnsetTestEnvVar(const char* name) {
+void UnsetTestEnvVar(const char *name) {
 #ifdef _WIN32
   _putenv_s(name, "");
 #else
@@ -57,7 +59,8 @@ void UnsetTestEnvVar(const char* name) {
 class PassUtilTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // Create temporary files for testing using utility from crypto/test/test_util.h
+    // Create temporary files for testing using utility from
+    // crypto/test/test_util.h
     ASSERT_GT(createTempFILEpath(pass_path), 0u)
         << "Failed to create first temp file path";
     ASSERT_GT(createTempFILEpath(pass_path2), 0u)
@@ -82,64 +85,73 @@ class PassUtilTest : public ::testing::Test {
   char pass_path2[PATH_MAX] = {};
 };
 
-// Test edge cases for file-based passwords
+
 TEST_F(PassUtilTest, FileEdgeCases) {
   // Test file truncation - exactly at buffer size - 1 without newline
   {
     std::string truncated_pass(PEM_BUFSIZE - 1, 'A');
     WriteTestFile(pass_path, truncated_pass.c_str());
   }
-  
-  bssl::UniquePtr<std::string> source(new std::string(std::string("file:") + pass_path));
-  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on truncated file";
+
+  bssl::UniquePtr<std::string> source(
+      new std::string(std::string("file:") + pass_path));
+  EXPECT_FALSE(pass_util::ExtractPassword(source))
+      << "Should fail on truncated file";
 
   // Test file exceeding maximum length
   {
     std::string long_pass(PEM_BUFSIZE + 10, 'B');
     WriteTestFile(pass_path, long_pass.c_str());
   }
-  
+
   source.reset(new std::string(std::string("file:") + pass_path));
-  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long file content";
+  EXPECT_FALSE(pass_util::ExtractPassword(source))
+      << "Should fail on too long file content";
 
   // Test empty file
   {
     WriteTestFile(pass_path, "");
   }
-  
-  source.reset(new std::string(std::string("file:") + pass_path));
-  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on empty file";
 
-  // Test file with only newlines - should succeed with empty password (like OpenSSL)
+  source.reset(new std::string(std::string("file:") + pass_path));
+  EXPECT_FALSE(pass_util::ExtractPassword(source))
+      << "Should fail on empty file";
+
+  // Test file with only newlines - should succeed with empty password (like
+  // OpenSSL)
   {
     WriteTestFile(pass_path, "\n\n\n", true);  // preserve_newlines = true
   }
-  
+
   source.reset(new std::string(std::string("file:") + pass_path));
   bool result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed on newline-only file";
-  EXPECT_TRUE(source->empty()) << "Password should be empty from newline-only file";
+  EXPECT_TRUE(source->empty())
+      << "Password should be empty from newline-only file";
 
   // Test file at buffer size - 1 with newline (should not trigger truncation)
   {
     std::string non_truncated_pass(PEM_BUFSIZE - 2, 'C');
     std::string content = non_truncated_pass + "\n";
-    WriteTestFile(pass_path, content.c_str(), true);  // preserve_newlines = true
+    WriteTestFile(pass_path, content.c_str(),
+                  true);  // preserve_newlines = true
   }
-  
+
   source.reset(new std::string(std::string("file:") + pass_path));
   result = pass_util::ExtractPassword(source);
-  EXPECT_TRUE(result) << "Should succeed when file is at max length but has newline";
-  EXPECT_EQ(source->length(), static_cast<size_t>(PEM_BUFSIZE - 2)) 
+  EXPECT_TRUE(result)
+      << "Should succeed when file is at max length but has newline";
+  EXPECT_EQ(source->length(), static_cast<size_t>(PEM_BUFSIZE - 2))
       << "Password should not include newline and should be max length - 2";
 }
 
-// Test edge cases for environment variable passwords
+
 TEST_F(PassUtilTest, EnvVarEdgeCases) {
   // Test empty environment variable
   SetTestEnvVar("TEST_EMPTY_PASSWORD", "");
-  
-  bssl::UniquePtr<std::string> source(new std::string("env:TEST_EMPTY_PASSWORD"));
+
+  bssl::UniquePtr<std::string> source(
+      new std::string("env:TEST_EMPTY_PASSWORD"));
   bool result = pass_util::ExtractPassword(source);
   EXPECT_FALSE(result) << "Should fail on empty environment variable";
 
@@ -148,22 +160,24 @@ TEST_F(PassUtilTest, EnvVarEdgeCases) {
   SetTestEnvVar("TEST_LONG_PASSWORD", long_pass.c_str());
 
   source.reset(new std::string("env:TEST_LONG_PASSWORD"));
-  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long environment variable";
+  EXPECT_FALSE(pass_util::ExtractPassword(source))
+      << "Should fail on too long environment variable";
 
   // Test non-existent environment variable
   source.reset(new std::string("env:NON_EXISTENT_VAR_NAME_12345"));
-  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on non-existent environment variable";
+  EXPECT_FALSE(pass_util::ExtractPassword(source))
+      << "Should fail on non-existent environment variable";
 
   UnsetTestEnvVar("TEST_EMPTY_PASSWORD");
   UnsetTestEnvVar("TEST_LONG_PASSWORD");
 }
 
-// Test edge cases for direct passwords
 TEST_F(PassUtilTest, DirectPasswordEdgeCases) {
   // Test maximum length direct password
   std::string long_pass = "pass:" + std::string(PEM_BUFSIZE + 10, 'C');
   bssl::UniquePtr<std::string> source(new std::string(long_pass));
-  EXPECT_FALSE(pass_util::ExtractPassword(source)) << "Should fail on too long direct password";
+  EXPECT_FALSE(pass_util::ExtractPassword(source))
+      << "Should fail on too long direct password";
 
   // Test empty direct password
   source.reset(new std::string("pass:"));
@@ -172,39 +186,34 @@ TEST_F(PassUtilTest, DirectPasswordEdgeCases) {
   EXPECT_TRUE(source->empty()) << "Password should be empty";
 
   // Test invalid format strings
-  const char* invalid_formats[] = {
-    "pass",           // Missing colon
-    "pass:test:123",  // Multiple colons
-    ":password",      // Missing prefix
-    "invalid:pass",   // Invalid prefix
-    "file:",         // Empty file path
-    "env:",          // Empty environment variable
-    "",              // Empty string
+  const char *invalid_formats[] = {
+      "pass",           // Missing colon
+      "pass:test:123",  // Multiple colons
+      ":password",      // Missing prefix
+      "invalid:pass",   // Invalid prefix
+      "file:",          // Empty file path
+      "env:",           // Empty environment variable
+      "",               // Empty string
   };
 
-  for (const char* fmt : invalid_formats) {
+  for (const char *fmt : invalid_formats) {
     source.reset(new std::string(fmt));
-    EXPECT_FALSE(pass_util::ExtractPassword(source)) 
+    EXPECT_FALSE(pass_util::ExtractPassword(source))
         << "Should fail on invalid format: " << fmt;
   }
 }
 
-// Test SensitiveStringDeleter properly clears memory
 TEST_F(PassUtilTest, SensitiveStringDeleter) {
   const char *test_password = "sensitive_data_to_be_cleared";
   std::string *str = new std::string(test_password);
 
-  // Make a copy of the string content
   std::string original_content = *str;
 
-  // Verify we have the password
   ASSERT_EQ(original_content, test_password)
       << "Failed to set up test password";
 
-  // Get a pointer to the string's buffer
   const char *buffer_ptr = str->data();
 
-  // Verify the buffer contains our password
   ASSERT_EQ(memcmp(buffer_ptr, test_password, str->length()), 0)
       << "Buffer doesn't contain expected password data";
 
@@ -216,35 +225,38 @@ TEST_F(PassUtilTest, SensitiveStringDeleter) {
       << "Original content was unexpectedly modified";
 }
 
-// Test ExtractPasswords with different file sources
 TEST_F(PassUtilTest, ExtractPasswordsDifferentFiles) {
-  bssl::UniquePtr<std::string> passin(new std::string(std::string("file:") + pass_path));
-  bssl::UniquePtr<std::string> passout(new std::string(std::string("file:") + pass_path2));
-  
+  bssl::UniquePtr<std::string> passin(
+      new std::string(std::string("file:") + pass_path));
+  bssl::UniquePtr<std::string> passout(
+      new std::string(std::string("file:") + pass_path2));
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "testpassword");
   EXPECT_EQ(*passout, "anotherpassword");
 }
 
-// Test ExtractPasswords with same file (critical functionality!)
 TEST_F(PassUtilTest, ExtractPasswordsSameFile) {
   // Create file with two lines
   WriteTestFile(pass_path, "firstpassword\nsecondpassword\n", true);
-  
-  bssl::UniquePtr<std::string> passin(new std::string(std::string("file:") + pass_path));
-  bssl::UniquePtr<std::string> passout(new std::string(std::string("file:") + pass_path));
-  
+
+  bssl::UniquePtr<std::string> passin(
+      new std::string(std::string("file:") + pass_path));
+  bssl::UniquePtr<std::string> passout(
+      new std::string(std::string("file:") + pass_path));
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "firstpassword");
   EXPECT_EQ(*passout, "secondpassword");
 }
 
-// Test ExtractPasswords with mixed source types
 TEST_F(PassUtilTest, ExtractPasswordsMixedSources) {
   // Test file + environment variable
-  bssl::UniquePtr<std::string> passin(new std::string(std::string("file:") + pass_path));
-  bssl::UniquePtr<std::string> passout(new std::string("env:TEST_PASSWORD_ENV"));
-  
+  bssl::UniquePtr<std::string> passin(
+      new std::string(std::string("file:") + pass_path));
+  bssl::UniquePtr<std::string> passout(
+      new std::string("env:TEST_PASSWORD_ENV"));
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "testpassword");
   EXPECT_EQ(*passout, "envpassword");
@@ -252,18 +264,17 @@ TEST_F(PassUtilTest, ExtractPasswordsMixedSources) {
   // Test direct password + file
   passin.reset(new std::string("pass:directpass"));
   passout.reset(new std::string(std::string("file:") + pass_path2));
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "directpass");
   EXPECT_EQ(*passout, "anotherpassword");
 }
 
-// Test ExtractPasswords with empty passwords
 TEST_F(PassUtilTest, ExtractPasswordsEmptyPasswords) {
   // Both empty
   bssl::UniquePtr<std::string> passin(new std::string(""));
   bssl::UniquePtr<std::string> passout(new std::string(""));
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_TRUE(passin->empty());
   EXPECT_TRUE(passout->empty());
@@ -271,7 +282,7 @@ TEST_F(PassUtilTest, ExtractPasswordsEmptyPasswords) {
   // One empty, one with password
   passin.reset(new std::string(""));
   passout.reset(new std::string("pass:onlypassout"));
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_TRUE(passin->empty());
   EXPECT_EQ(*passout, "onlypassout");
@@ -279,36 +290,35 @@ TEST_F(PassUtilTest, ExtractPasswordsEmptyPasswords) {
   // Reverse: one with password, one empty
   passin.reset(new std::string("pass:onlypassin"));
   passout.reset(new std::string(""));
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "onlypassin");
   EXPECT_TRUE(passout->empty());
 }
 
-// Test ExtractPasswords error cases
 TEST_F(PassUtilTest, ExtractPasswordsErrorCases) {
   // Invalid passin format
   bssl::UniquePtr<std::string> passin(new std::string("invalid:format"));
   bssl::UniquePtr<std::string> passout(new std::string("pass:validpass"));
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 
   // Invalid passout format
   passin.reset(new std::string("pass:validpass"));
   passout.reset(new std::string("invalid:format"));
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 
   // Both invalid formats
   passin.reset(new std::string("invalid1:format"));
   passout.reset(new std::string("invalid2:format"));
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 
   // Null UniquePtr objects
   bssl::UniquePtr<std::string> null_passin;
   bssl::UniquePtr<std::string> null_passout;
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(null_passin, null_passout));
 
   // One null, one valid
@@ -316,53 +326,54 @@ TEST_F(PassUtilTest, ExtractPasswordsErrorCases) {
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, null_passout));
 }
 
-// Test ExtractPasswords with file errors
 TEST_F(PassUtilTest, ExtractPasswordsFileErrors) {
   // Non-existent file for passin
-  bssl::UniquePtr<std::string> passin(new std::string("file:/non/existent/file1"));
+  bssl::UniquePtr<std::string> passin(
+      new std::string("file:/non/existent/file1"));
   bssl::UniquePtr<std::string> passout(new std::string("pass:validpass"));
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 
   // Non-existent file for passout
   passin.reset(new std::string("pass:validpass"));
   passout.reset(new std::string("file:/non/existent/file2"));
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 
   // Same non-existent file for both
   passin.reset(new std::string("file:/non/existent/samefile"));
   passout.reset(new std::string("file:/non/existent/samefile"));
-  
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 }
 
-// Test ExtractPasswords with same file edge cases
 TEST_F(PassUtilTest, ExtractPasswordsSameFileEdgeCases) {
   // File with only one line (passout should fail)
   WriteTestFile(pass_path, "onlyoneline", false);
-  
-  bssl::UniquePtr<std::string> passin(new std::string(std::string("file:") + pass_path));
-  bssl::UniquePtr<std::string> passout(new std::string(std::string("file:") + pass_path));
-  
+
+  bssl::UniquePtr<std::string> passin(
+      new std::string(std::string("file:") + pass_path));
+  bssl::UniquePtr<std::string> passout(
+      new std::string(std::string("file:") + pass_path));
+
   EXPECT_FALSE(pass_util::ExtractPasswords(passin, passout));
 
   // File with empty second line
   WriteTestFile(pass_path, "firstline\n\n", true);
-  
+
   passin.reset(new std::string(std::string("file:") + pass_path));
   passout.reset(new std::string(std::string("file:") + pass_path));
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "firstline");
   EXPECT_TRUE(passout->empty());
 
   // File with multiple lines (should only read first two)
   WriteTestFile(pass_path, "line1\nline2\nline3\nline4\n", true);
-  
+
   passin.reset(new std::string(std::string("file:") + pass_path));
   passout.reset(new std::string(std::string("file:") + pass_path));
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "line1");
   EXPECT_EQ(*passout, "line2");
