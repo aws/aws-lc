@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include "internal.h"
+#include "../../internal.h"
 #include "../cpucap/internal.h"
 
 #if defined(__x86_64__) || defined(__aarch64__) || \
@@ -410,6 +411,12 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
+static void keccak_log_dispatch(size_t id) {
+#if BORINGSSL_DISPATCH_TEST
+    BORINGSSL_function_hit[id] = 1;
+#endif
+}
+
 void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // Dispatch logic for Keccak-x1 on AArch64:
     //
@@ -435,18 +442,21 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
 
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
     if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
+	keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
 	sha3_keccak_f1600((uint64_t *)A, iotas);
 	return;
     }
 
 #if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
     if (CRYPTO_is_ARMv8_SHA3_capable()) {
+	keccak_log_dispatch(11); // kFlag_sha3_keccak_f1600_alt
         sha3_keccak_f1600_alt((uint64_t *)A, iotas);
         return;
     }
 #endif
 #endif
 
+    keccak_log_dispatch(9); // kFlag_KeccakF1600_hw
     KeccakF1600_hw((uint64_t *) A);
 }
 
