@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -101,6 +102,12 @@ class GenRSAParamTest : public GenRSATestBase,
 
 TEST_P(GenRSAParamTest, GeneratesKeyFile) {
   unsigned key_size = GetParam();
+  
+  // FIPS mode requires 2048-bit minimum - see validation in crypto/fipsmodule/rsa/rsa_impl.c
+  if (FIPS_mode() && key_size < 2048) {
+    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS mode (minimum 2048 bits required)";
+  }
+  
   EXPECT_TRUE(GenerateKey(key_size, out_path_tool)) << "Key generation failed";
   EXPECT_TRUE(ValidateKeyFile(out_path_tool, key_size))
       << "Generated key file validation failed";
@@ -108,14 +115,20 @@ TEST_P(GenRSAParamTest, GeneratesKeyFile) {
 
 
 TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
+  unsigned key_size = GetParam();
+  
+  // FIPS mode requires 2048-bit minimum - see validation in crypto/fipsmodule/rsa/rsa_impl.c
+  if (FIPS_mode() && key_size < 2048) {
+    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS mode (minimum 2048 bits required)";
+  }
+  
   if (!HasCrossCompatibilityTools()) {
     GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
                     "environment variables are not set";
     return;
   }
 
-
-  EXPECT_TRUE(GenerateKey(GetParam(), out_path_tool))
+  EXPECT_TRUE(GenerateKey(key_size, out_path_tool))
       << "AWS-LC key generation failed";
 
   std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
