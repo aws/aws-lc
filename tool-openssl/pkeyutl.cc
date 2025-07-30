@@ -83,21 +83,30 @@ static bool LoadPublicKey(const std::string &keyfile, bssl::UniquePtr<EVP_PKEY> 
 }
 
 static bool ReadInputData(const std::string &in_path, std::vector<uint8_t> &data) {
+  fprintf(stderr, "DEBUG: ReadInputData - Starting for path: %s\n", in_path.empty() ? "stdin" : in_path.c_str());
+  
   ScopedFILE in_file;
   if (in_path.empty()) {
+    fprintf(stderr, "DEBUG: ReadInputData - Using stdin\n");
     in_file.reset(stdin);
   } else {
+    fprintf(stderr, "DEBUG: ReadInputData - Opening file: %s\n", in_path.c_str());
     in_file.reset(fopen(in_path.c_str(), "rb"));
     if (!in_file) {
+      fprintf(stderr, "DEBUG: ReadInputData - Failed to open file\n");
       fprintf(stderr, "Error: unable to open input file '%s'\n", in_path.c_str());
       return false;
     }
+    fprintf(stderr, "DEBUG: ReadInputData - File opened successfully\n");
   }
 
+  fprintf(stderr, "DEBUG: ReadInputData - About to read all data\n");
   if (!ReadAll(&data, in_file.get())) {
+    fprintf(stderr, "DEBUG: ReadInputData - Failed to read data\n");
     fprintf(stderr, "Error: error reading input data\n");
     return false;
   }
+  fprintf(stderr, "DEBUG: ReadInputData - Read %zu bytes successfully\n", data.size());
 
   return true;
 }
@@ -137,25 +146,42 @@ static bool DoSign(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
 
 static bool DoVerify(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
                      const std::vector<uint8_t> &signature) {
+  fprintf(stderr, "DEBUG: DoVerify - Starting verification\n");
+  fprintf(stderr, "DEBUG: DoVerify - pkey=%p, input_data.size=%zu, signature.size=%zu\n", 
+          (void*)pkey, input_data.size(), signature.size());
+  
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey, nullptr));
   if (!ctx) {
+    fprintf(stderr, "DEBUG: DoVerify - Failed to create verification context\n");
     fprintf(stderr, "Error: failed to create verification context\n");
     return false;
   }
+  fprintf(stderr, "DEBUG: DoVerify - Created verification context successfully\n");
 
   if (EVP_PKEY_verify_init(ctx.get()) <= 0) {
+    fprintf(stderr, "DEBUG: DoVerify - Failed to initialize verification context\n");
     fprintf(stderr, "Error: failed to initialize verification context\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
+  fprintf(stderr, "DEBUG: DoVerify - Initialized verification context successfully\n");
 
+  fprintf(stderr, "DEBUG: DoVerify - About to call EVP_PKEY_verify\n");
+  fprintf(stderr, "DEBUG: DoVerify - signature.data=%p, input_data.data=%p\n", 
+          (void*)signature.data(), (void*)input_data.data());
+  
   int result = EVP_PKEY_verify(ctx.get(), signature.data(), signature.size(),
                               input_data.data(), input_data.size());
+  fprintf(stderr, "DEBUG: DoVerify - EVP_PKEY_verify result=%d\n", result);
+  
   if (result == 1) {
+    fprintf(stderr, "DEBUG: DoVerify - Verification successful\n");
     return true;
   } else if (result == 0) {
+    fprintf(stderr, "DEBUG: DoVerify - Verification failed (signature mismatch)\n");
     return false; // Verification failed
   } else {
+    fprintf(stderr, "DEBUG: DoVerify - Verification operation error\n");
     fprintf(stderr, "Error: verification operation failed\n");
     ERR_print_errors_fp(stderr);
     return false;
@@ -163,24 +189,43 @@ static bool DoVerify(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
 }
 
 static bool WriteOutput(const std::vector<uint8_t> &data, const std::string &out_path) {
+  fprintf(stderr, "DEBUG: WriteOutput - Starting for path: %s\n", out_path.empty() ? "stdout" : out_path.c_str());
+  fprintf(stderr, "DEBUG: WriteOutput - Data size: %zu bytes\n", data.size());
+  
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
+    fprintf(stderr, "DEBUG: WriteOutput - Creating stdout BIO\n");
     output_bio.reset(BIO_new_fp(stdout, BIO_CLOSE));
   } else {
+    fprintf(stderr, "DEBUG: WriteOutput - Creating file BIO\n");
     output_bio.reset(BIO_new(BIO_s_file()));
+    if (!output_bio) {
+      fprintf(stderr, "DEBUG: WriteOutput - Failed to create file BIO\n");
+      fprintf(stderr, "Error: unable to create output BIO\n");
+      return false;
+    }
+    
+    fprintf(stderr, "DEBUG: WriteOutput - Setting filename: %s\n", out_path.c_str());
     if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
+      fprintf(stderr, "DEBUG: WriteOutput - Failed to open output file\n");
       fprintf(stderr, "Error: failed to open output file '%s'\n", out_path.c_str());
       return false;
     }
+    fprintf(stderr, "DEBUG: WriteOutput - Filename set successfully\n");
   }
 
   if (!output_bio) {
+    fprintf(stderr, "DEBUG: WriteOutput - Failed to create output BIO\n");
     fprintf(stderr, "Error: unable to create output BIO\n");
     return false;
   }
+  fprintf(stderr, "DEBUG: WriteOutput - Output BIO created successfully\n");
 
-  BIO_write(output_bio.get(), data.data(), data.size());
-  return true;
+  fprintf(stderr, "DEBUG: WriteOutput - About to write %zu bytes\n", data.size());
+  int bytes_written = BIO_write(output_bio.get(), data.data(), data.size());
+  fprintf(stderr, "DEBUG: WriteOutput - BIO_write returned: %d\n", bytes_written);
+  
+  return bytes_written > 0;
 }
 
 bool pkeyutlTool(const args_list_t &args) {
@@ -271,43 +316,73 @@ bool pkeyutlTool(const args_list_t &args) {
       return false;
     }
   } else if (verify) {
+    fprintf(stderr, "DEBUG: pkeyutlTool - Starting verification process\n");
+    fprintf(stderr, "DEBUG: pkeyutlTool - sigfile_path=%s, in_path=%s, out_path=%s\n", 
+            sigfile_path.c_str(), in_path.c_str(), out_path.c_str());
+    
     // Read signature from sigfile
     std::vector<uint8_t> signature;
     ScopedFILE sig_file;
+    fprintf(stderr, "DEBUG: pkeyutlTool - About to open signature file\n");
     sig_file.reset(fopen(sigfile_path.c_str(), "rb"));
     if (!sig_file) {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Failed to open signature file\n");
       fprintf(stderr, "Error: unable to open signature file '%s'\n", sigfile_path.c_str());
       return false;
     }
+    fprintf(stderr, "DEBUG: pkeyutlTool - Opened signature file successfully\n");
     
+    fprintf(stderr, "DEBUG: pkeyutlTool - About to read signature data\n");
     if (!ReadAll(&signature, sig_file.get())) {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Failed to read signature data\n");
       fprintf(stderr, "Error: error reading signature data\n");
       return false;
     }
+    fprintf(stderr, "DEBUG: pkeyutlTool - Read signature data successfully, size=%zu\n", signature.size());
 
     std::vector<uint8_t> input_data;
+    fprintf(stderr, "DEBUG: pkeyutlTool - About to read input data\n");
     if (!ReadInputData(in_path, input_data)) {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Failed to read input data\n");
       return false;
     }
+    fprintf(stderr, "DEBUG: pkeyutlTool - Read input data successfully, size=%zu\n", input_data.size());
 
+    fprintf(stderr, "DEBUG: pkeyutlTool - About to call DoVerify\n");
     bool success = DoVerify(pkey.get(), input_data, signature);
+    fprintf(stderr, "DEBUG: pkeyutlTool - DoVerify returned: %s\n", success ? "success" : "failure");
 
+    fprintf(stderr, "DEBUG: pkeyutlTool - About to create output BIO\n");
     bssl::UniquePtr<BIO> output_bio;
     if (out_path.empty()) {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Creating stdout BIO\n");
       output_bio.reset(BIO_new_fp(stdout, BIO_CLOSE));
     } else {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Creating file BIO for path: %s\n", out_path.c_str());
       output_bio.reset(BIO_new(BIO_s_file()));
-      if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
+      if (output_bio && BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
+        fprintf(stderr, "DEBUG: pkeyutlTool - Failed to open output file\n");
         fprintf(stderr, "Error: failed to open output file '%s'\n", out_path.c_str());
         return false;
       }
     }
+    
+    if (!output_bio) {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Failed to create output BIO\n");
+      fprintf(stderr, "Error: unable to create output BIO\n");
+      return false;
+    }
+    fprintf(stderr, "DEBUG: pkeyutlTool - Created output BIO successfully\n");
 
+    fprintf(stderr, "DEBUG: pkeyutlTool - About to write result to output\n");
     if (success) {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Writing success message\n");
       BIO_puts(output_bio.get(), "Signature Verified Successfully\n");
     } else {
+      fprintf(stderr, "DEBUG: pkeyutlTool - Writing failure message\n");
       BIO_puts(output_bio.get(), "Signature Verification Failure\n");
     }
+    fprintf(stderr, "DEBUG: pkeyutlTool - Verification process completed\n");
   }
 
   return true;

@@ -81,23 +81,42 @@ TEST_F(PKeyUtlTest, SignTest) {
 
 // Test basic verification operation
 TEST_F(PKeyUtlTest, VerifyTest) {
+  fprintf(stderr, "DEBUG: Starting VerifyTest\n");
+  fprintf(stderr, "DEBUG: in_path=%s, out_path=%s, sig_path=%s, key_path=%s, pubkey_path=%s\n", 
+          in_path, out_path, sig_path, key_path, pubkey_path);
+  
   // First sign the data
   {
+    fprintf(stderr, "DEBUG: About to sign data\n");
     args_list_t args = {"-sign", "-inkey", key_path, "-in", in_path, "-out", sig_path};
     bool result = pkeyutlTool(args);
+    fprintf(stderr, "DEBUG: Sign operation result: %s\n", result ? "success" : "failure");
     ASSERT_TRUE(result);
+    
+    // Verify signature file exists and has content
+    struct stat st;
+    int stat_result = stat(sig_path, &st);
+    fprintf(stderr, "DEBUG: Signature file stat result: %d, size: %lld\n", 
+            stat_result, stat_result == 0 ? (long long)st.st_size : -1);
   }
   
   // Then verify the signature
   {
+    fprintf(stderr, "DEBUG: About to verify signature\n");
     args_list_t args = {"-verify", "-pubin", "-inkey", pubkey_path, "-in", in_path, 
                         "-sigfile", sig_path, "-out", out_path};
+    fprintf(stderr, "DEBUG: Verify args: verify=%s, pubin=%s, inkey=%s, in=%s, sigfile=%s, out=%s\n",
+            "true", "true", pubkey_path, in_path, sig_path, out_path);
     bool result = pkeyutlTool(args);
+    fprintf(stderr, "DEBUG: Verify operation result: %s\n", result ? "success" : "failure");
     ASSERT_TRUE(result);
     
     // Check that the output contains "Signature Verified Successfully"
+    fprintf(stderr, "DEBUG: About to read output file\n");
     std::string output = ReadFileToString(out_path);
+    fprintf(stderr, "DEBUG: Output file content length: %zu\n", output.length());
     ASSERT_NE(output.find("Signature Verified Successfully"), std::string::npos);
+    fprintf(stderr, "DEBUG: VerifyTest completed successfully\n");
   }
 }
 
