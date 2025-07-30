@@ -85,15 +85,15 @@ var defaultCPUs = []string{
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
 	"tgl", // Tiger Lake
-    "snb", // Sandy Bridge
-    "ivb", // Ivy Bridge
+	"snb", // Sandy Bridge
+	"ivb", // Ivy Bridge
 }
 
 // CPUs that are NOT compatible with MSVC
 var cpusWithoutAVX = []string{
-    "slm", // Silvermont
-    "glm", // Goldmont
-    "glp", // Goldmont Plus
+	"slm", // Silvermont
+	"glm", // Goldmont
+	"glp", // Goldmont Plus
 	"nhm", // Nehalem
 	"tnt", // Tremont
 	"wsm", // Westmere
@@ -102,25 +102,24 @@ var cpusWithoutAVX = []string{
 var sdeCPUs []string
 
 func initSDECPUs() {
-    sdeCPUs = append([]string{}, defaultCPUs...)
+	sdeCPUs = append([]string{}, defaultCPUs...)
 	if (runtime.GOOS == "windows") {
-	    cmd := exec.Command("cmd", "/C", "ver")
-	    output, err := cmd.Output()
-        if err != nil {
-            return
-        }
+		cmd := exec.Command("cmd", "/C", "ver")
+		output, err := cmd.Output()
+		if err != nil {
+			return
+		}
 
-        verOutput := strings.ToLower(string(output))
+		verOutput := strings.ToLower(string(output))
 
-        // Windows Server 2022 (or 10.0.20348) may natively use some AVX instructions that old CPUs do not have
-        if !strings.Contains(verOutput, "10.0.20348") {
-            sdeCPUs = append(sdeCPUs, cpusWithoutAVX...)
-        } else {
-            fmt.Printf("Running on Windows 2022. Removing old CPUs lacking AVX instructions that Windows 2022 may use.\n")
-        }
+		// Windows Server 2022 (or 10.0.20348) may natively use some AVX instructions that old CPUs do not have
+		if !strings.Contains(verOutput, "10.0.20348") {
+			sdeCPUs = append(sdeCPUs, cpusWithoutAVX...)
+		} else {
+			fmt.Printf("Running on Windows 2022. Removing old CPUs lacking AVX instructions that Windows 2022 may use.\n")
+		}
 	}
 }
-
 
 func targetArchMatchesRuntime(target string) bool {
 	if (target == "") ||
