@@ -185,19 +185,10 @@ bool pkcs8Tool(const args_list_t &args) {
   GetString(passin_arg.get(), "-passin", "", parsed_args);
   GetString(passout_arg.get(), "-passout", "", parsed_args);
 
-  // Extract passwords if provided
-  if (!passin_arg->empty()) {
-    if (!pass_util::ExtractPassword(passin_arg)) {
-      fprintf(stderr, "Error extracting input password\n");
-      return false;
-    }
-  }
-
-  if (!passout_arg->empty()) {
-    if (!pass_util::ExtractPassword(passout_arg)) {
-      fprintf(stderr, "Error extracting output password\n");
-      return false;
-    }
+  // Extract passwords (handles same-file case where both passwords are in one file)
+  if (!pass_util::ExtractPasswords(passin_arg, passout_arg)) {
+    fprintf(stderr, "Error extracting passwords\n");
+    return false;
   }
 
   // Check for contradictory arguments
