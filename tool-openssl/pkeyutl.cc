@@ -23,7 +23,6 @@ static const argument_t kArguments[] = {
   { "-inkey", kOptionalArgument, "Input private key file" },
   { "-pubin", kBooleanArgument, "Input is a public key" },
   { "-passin", kOptionalArgument, "Input file pass phrase source" },
-  { "-hexdump", kBooleanArgument, "Hex dump output" },
   { "", kOptionalArgument, "" }
 };
 
@@ -163,8 +162,7 @@ static bool DoVerify(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
   }
 }
 
-static bool WriteOutput(const std::vector<uint8_t> &data, const std::string &out_path, 
-                        bool hexdump) {
+static bool WriteOutput(const std::vector<uint8_t> &data, const std::string &out_path) {
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
@@ -181,12 +179,7 @@ static bool WriteOutput(const std::vector<uint8_t> &data, const std::string &out
     return false;
   }
 
-  if (hexdump) {
-    BIO_dump(output_bio.get(), reinterpret_cast<const char*>(data.data()), data.size());
-  } else {
-    BIO_write(output_bio.get(), data.data(), data.size());
-  }
-
+  BIO_write(output_bio.get(), data.data(), data.size());
   return true;
 }
 
@@ -202,7 +195,7 @@ bool pkeyutlTool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, inkey_path, passin_arg, sigfile_path;
-  bool sign = false, verify = false, pubin = false, hexdump = false;
+  bool sign = false, verify = false, pubin = false;
 
   GetString(&in_path, "-in", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
@@ -212,7 +205,6 @@ bool pkeyutlTool(const args_list_t &args) {
   GetBoolArgument(&sign, "-sign", parsed_args);
   GetBoolArgument(&verify, "-verify", parsed_args);
   GetBoolArgument(&pubin, "-pubin", parsed_args);
-  GetBoolArgument(&hexdump, "-hexdump", parsed_args);
 
   // Display help
   if (HasArgument(parsed_args, "-help")) {
@@ -275,7 +267,7 @@ bool pkeyutlTool(const args_list_t &args) {
       return false;
     }
 
-    if (!WriteOutput(signature, out_path, hexdump)) {
+    if (!WriteOutput(signature, out_path)) {
       return false;
     }
   } else if (verify) {
