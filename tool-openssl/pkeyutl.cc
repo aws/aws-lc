@@ -165,7 +165,7 @@ static bool DoVerify(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
 static bool WriteOutput(const std::vector<uint8_t> &data, const std::string &out_path) {
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
-    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+    output_bio.reset(BIO_new_fp(stdout, BIO_CLOSE));
   } else {
     output_bio.reset(BIO_new(BIO_s_file()));
     if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {
@@ -294,7 +294,7 @@ bool pkeyutlTool(const args_list_t &args) {
 
     bssl::UniquePtr<BIO> output_bio;
     if (out_path.empty()) {
-      output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+      output_bio.reset(BIO_new_fp(stdout, BIO_CLOSE));
     } else {
       output_bio.reset(BIO_new(BIO_s_file()));
       if (BIO_write_filename(output_bio.get(), out_path.c_str()) <= 0) {

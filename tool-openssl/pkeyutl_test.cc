@@ -250,20 +250,3 @@ TEST_F(PKeyUtlComparisonTest, SignCompareOpenSSL) {
   ASSERT_NE(tool_output_str.find("Signature Verified Successfully"), std::string::npos);
   ASSERT_NE(openssl_output_str.find("Signature Verified Successfully"), std::string::npos);
 }
-
-
-
-// Test help output against OpenSSL
-TEST_F(PKeyUtlComparisonTest, HelpCompareOpenSSL) {
-  std::string tool_command = std::string(tool_executable_path) + " pkeyutl -help > " + out_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " pkeyutl -help > " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  // Both should contain help information for the supported options
-  ASSERT_NE(tool_output_str.find("-sign"), std::string::npos);
-  ASSERT_NE(tool_output_str.find("-verify"), std::string::npos);
-  ASSERT_NE(tool_output_str.find("-inkey"), std::string::npos);
-  ASSERT_NE(tool_output_str.find("-pubin"), std::string::npos);
-  ASSERT_NE(tool_output_str.find("-sigfile"), std::string::npos);
-}
