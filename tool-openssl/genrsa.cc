@@ -50,23 +50,21 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
   return true;
 }
 
-static bssl::UniquePtr<RSA> GenerateRSAKey(unsigned bits) {
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-
-  if (!rsa || !e) {
-    fprintf(stderr, "Error: Failed to allocate RSA or BIGNUM structures\n");
-    ERR_print_errors_fp(stderr);
-    return nullptr;
+static bssl::UniquePtr<EVP_PKEY> GenerateRSAKey(unsigned bits) {
+  bssl::UniquePtr<EVP_PKEY> pkey;
+  EVP_PKEY *raw_pkey = nullptr;
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  if (!ctx || !EVP_PKEY_keygen_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits)) {
+    return pkey;
   }
 
-  if (!BN_set_word(e.get(), RSA_F4) ||
-      !RSA_generate_key_ex(rsa.get(), bits, e.get(), NULL)) {
-    ERR_print_errors_fp(stderr);
-    return nullptr;
+  if (!EVP_PKEY_keygen(ctx.get(), &raw_pkey)) {
+    return pkey;
   }
 
-  return rsa;
+  pkey.reset(raw_pkey);
+  return pkey;
 }
 
 static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
@@ -88,35 +86,29 @@ static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
   return bio;
 }
 
-static bool WriteRSAKeyToBIO(BIO *bio, RSA *rsa) {
-  if (!PEM_write_bio_RSAPrivateKey(bio, rsa, NULL, NULL, 0, NULL, NULL)) {
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-  return true;
-}
-
 bool genrsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args{};
   std::string out_path;
   bool help = false;
   bssl::UniquePtr<BIO> bio;
+  bssl::UniquePtr<EVP_PKEY> pkey;
+  unsigned bits = 0;
 
+  // Parse command line arguments
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
                                                    args, kArguments)) {
     bio.reset(BIO_new_fp(stderr, BIO_NOCLOSE));
     if (bio) {
       DisplayHelp(bio.get());
     }
-    return false;
+    goto err;
   }
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
 
   // Simple validation that numbits is after all options
-  // This works because ParseOrderedKeyValueArguments processes args in order
   for (size_t i = 0; i < args.size(); i++) {
     if (i < args.size() - 1 && !extra_args.empty() &&
         args[i] == extra_args[0]) {
@@ -126,43 +118,58 @@ bool genrsaTool(const args_list_t &args) {
           fprintf(stderr,
                   "Error: Key size must be specified after all options\n");
           fprintf(stderr, "Usage: genrsa [options] numbits\n");
-          return false;
+          goto err;
         }
       }
       break;
     }
   }
 
+  // Handle help request
   if (help) {
     bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
     if (!bio) {
-      return false;
+      goto err;
     }
     DisplayHelp(bio.get());
-    return true;
+    return true;  // Help display is a successful exit
   }
 
-  unsigned bits = 0;
+  // Parse and validate key size
   if (!ParseKeySize(extra_args, bits)) {
-    return false;
+    goto err;
   }
 
-  bssl::UniquePtr<RSA> rsa = GenerateRSAKey(bits);
-  if (!rsa) {
-    return false;
+  // Generate RSA key
+  pkey = GenerateRSAKey(bits);
+  if (!pkey) {
+    fprintf(stderr, "Error: Failed to generate RSA key\n");
+    goto err;
   }
 
+  // Set up output BIO
   bio = CreateOutputBIO(out_path);
   if (!bio) {
-    return false;
+    goto err;
   }
 
-  bool result = WriteRSAKeyToBIO(bio.get(), rsa.get());
-  
+  // Write the key
+  if (!PEM_write_bio_PrivateKey(bio.get(), pkey.get(), NULL, NULL, 0, NULL,
+                                NULL)) {
+    goto err;
+  }
+
   // Flush output for successful writes to files
-  if (result && !out_path.empty()) {
+  if (!out_path.empty() && !BIO_flush(bio.get())) {
+    goto err;
+  }
+
+  return true;
+
+err:
+  ERR_print_errors_fp(stderr);
+  if (bio) {
     BIO_flush(bio.get());
   }
-  
-  return result;
+  return false;
 }
