@@ -5,8 +5,8 @@
 // Optionally subtract, z := x - y (if p nonzero) or z := x (if p zero)
 // Inputs x[k], p, y[k]; outputs function return (carry-out) and z[k]
 //
-//    extern uint64_t bignum_optsub
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p, uint64_t *y);
+//    extern uint64_t bignum_optsub(uint64_t k, uint64_t *z, const uint64_t *x,
+//                                  uint64_t p, const uint64_t *y);
 //
 // It is assumed that all numbers x, y and z have the same size k digits.
 // Returns carry-out as per usual subtraction, always 0 if p was zero.

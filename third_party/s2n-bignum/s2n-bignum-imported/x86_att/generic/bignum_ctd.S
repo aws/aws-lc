@@ -5,7 +5,7 @@
 // Count trailing zero digits (64-bit words)
 // Input x[k]; output function return
 //
-//    extern uint64_t bignum_ctd (uint64_t k, uint64_t *x);
+//    extern uint64_t bignum_ctd(uint64_t k, const uint64_t *x);
 //
 // In the case of a zero bignum as input the result is k
 //

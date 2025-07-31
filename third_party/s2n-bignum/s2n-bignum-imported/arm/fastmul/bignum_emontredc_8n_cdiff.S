@@ -5,13 +5,14 @@
 // Extend Montgomery reduce in 8-digit blocks, uses an extra storage to
 // temporarily cache multiplied differences appearing in ADK.
 // Results are stored in input-output buffer (z).
+// k must be divisible by 8 and not smaller than 16.
 // Inputs z[2*k], m[k], w;
 // Outputs function return (extra result bit) and z[2*k]
 // Temporary buffer m_precalc[12*(k/4-1)]
-// k must be divisible by 8 and not smaller than 16.
 //
-//    extern uint64_t bignum_emontredc_8n_cdiff
-//     (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w, uint64_t *m_precalc);
+//    extern uint64_t bignum_emontredc_8n_cdiff(uint64_t k, uint64_t *z,
+//                                              const uint64_t *m, uint64_t w,
+//                                              uint64_t *m_precalc);
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, X4 = m_precalc
 //                   returns X0

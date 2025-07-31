@@ -6,8 +6,8 @@
 // x reduced
 // Inputs c, x[4]; output z[4]
 //
-//    extern void bignum_cmul_p25519
-//     (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+//    extern void bignum_cmul_p25519(uint64_t z[static 4], uint64_t c,
+//                                   const uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------

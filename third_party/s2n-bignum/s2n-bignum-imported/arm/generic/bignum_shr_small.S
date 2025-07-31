@@ -5,8 +5,8 @@
 // Shift bignum right by c < 64 bits z := floor(x / 2^c)
 // Inputs x[n], c; outputs function return (bits shifted out) and z[k]
 //
-//    extern uint64_t bignum_shr_small
-//     (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t c);
+//    extern uint64_t bignum_shr_small(uint64_t k, uint64_t *z, uint64_t n,
+//                                     const uint64_t *x, uint64_t c);
 //
 // Does the "z := x >> c" operation where x is n digits, result z is p.
 // The shift count c is masked to 6 bits so it actually uses c' = c mod 64.

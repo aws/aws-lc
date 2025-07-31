@@ -15,6 +15,10 @@ result is correct, based on a formal model of the underlying machine. Each
 function is moreover written in a constant-time style to avoid timing
 side-channels.
 
+For the SHA-3 and ML-KEM code currently part of s2n-bignum, some of the
+comments in the main part of this README do not apply exactly. See the section
+[ML-KEM code](#ml-kem-code) below for more details.
+
 ### Building
 
 Assuming a suitable operating system (e.g. Linux, Mac OS X, or Windows with
@@ -502,6 +506,37 @@ and flaws in the timing framework) could only arise if either:
    we have no absolute guarantees from the hardware makers that there are no
    such variations in the instructions we use, except on ARM platforms where
    the "DIT" = "data-independent timing" bit is set.
+
+## ML-KEM code
+
+The code in the following two subdirectories breaks with some of the general
+patterns for s2n-bignum that are described above:
+
+    arm/mlkem
+    arm/sha3
+
+This code is almost exactly the same as the corresponding aarch64 assembler
+kernels in the [mlkem-native](https://github.com/pq-code-package/mlkem-native)
+project, and conforms to the same API; this in particular often includes the
+precondition that some additional arguments point to certain tables of
+constants. The ways in which this body of code breaks with the conventions
+for s2n-bignum described above are as follows:
+
+ * This code exists only for ARM, with no x86 counterpart present yet. However,
+   x86 code and proofs are under active development and we expect before
+   the end of 2025 to provide analogous functionality for x86.
+
+ * The licensing of the code (which largely originates in mlkem-native or
+   via other projects) is slightly different: Apache-2.0 or ISC or MIT versus
+   the usual s2n-bignum licensing Apache-2.0 or ISC or MIT-0 (the difference
+   is the attribution clause present in the unsuffixed MIT license).
+
+ * Some ARM functions in the sha3 directory *do* rely on instruction set
+   extension `sha3`, and so will not work on any ARM8 platform, something
+   all other ARM code will.
+
+ * One function, and *only* one at present, is not constant-time; this fact is
+   explicitly telegraphed in its name `mlkem_rej_uniform_VARIABLE_TIME`.
 
 ## Security
 

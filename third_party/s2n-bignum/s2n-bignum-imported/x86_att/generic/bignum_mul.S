@@ -5,9 +5,8 @@
 // Multiply z := x * y
 // Inputs x[m], y[n]; output z[k]
 //
-//    extern void bignum_mul
-//     (uint64_t k, uint64_t *z,
-//      uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+//    extern void bignum_mul(uint64_t k, uint64_t *z, uint64_t m, const uint64_t *x,
+//                           uint64_t n, const uint64_t *y);
 //
 // Does the "z := x * y" operation where x is m digits, y is n, result z is k.
 // Truncates the result in general unless k >= m + n

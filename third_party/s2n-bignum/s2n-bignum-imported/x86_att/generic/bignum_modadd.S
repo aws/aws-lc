@@ -5,8 +5,8 @@
 // Add modulo m, z := (x + y) mod m, assuming x and y reduced
 // Inputs x[k], y[k], m[k]; output z[k]
 //
-//    extern void bignum_modadd
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
+//    extern void bignum_modadd(uint64_t k, uint64_t *z, const uint64_t *x,
+//                              const uint64_t *y, const uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = y, R8 = m
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = y, [RSP+40] = m

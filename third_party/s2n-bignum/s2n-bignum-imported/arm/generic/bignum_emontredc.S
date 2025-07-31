@@ -5,8 +5,8 @@
 // Extended Montgomery reduce, returning results in input-output buffer
 // Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k]
 //
-//    extern uint64_t bignum_emontredc
-//     (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
+//    extern uint64_t bignum_emontredc(uint64_t k, uint64_t *z, const uint64_t *m,
+//                                     uint64_t w);
 //
 // Assumes that z initially holds a 2k-digit bignum z_0, m is a k-digit odd
 // bignum and m * w == -1 (mod 2^64). This function also uses z for the output

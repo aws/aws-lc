@@ -5,8 +5,8 @@
 // Reduce modulo group order, z := x mod m_25519
 // Input x[4]; output z[4]
 //
-//    extern void bignum_mod_m25519_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_mod_m25519_4(uint64_t z[static 4],
+//                                    const uint64_t x[static 4]);
 //
 // Reduction is modulo the group order of curve25519/edwards25519.
 // This is the full group order, 8 * the standard basepoint order.
