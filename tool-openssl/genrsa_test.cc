@@ -158,18 +158,12 @@ TEST_F(GenRSATest, StdoutOutput) {
   EXPECT_TRUE(GenerateKey(2048)) << "Stdout key generation failed";
 }
 
-TEST_F(GenRSATest, FileVsStdoutOutput) {
+TEST_F(GenRSATest, FileOutput) {
   // Test file output
   args_list_t file_args{"-out", out_path_tool, "2048"};
   EXPECT_TRUE(genrsaTool(file_args)) << "File output failed";
   EXPECT_TRUE(ValidateKeyFile(out_path_tool))
       << "File output validation failed";
-
-  // Test that file has content
-  std::string file_content = ReadFileToString(out_path_tool);
-  EXPECT_FALSE(file_content.empty()) << "Generated key file is empty";
-  EXPECT_GT(file_content.length(), 100u)
-      << "Generated key file seems too small";
 }
 
 TEST_F(GenRSATest, ArgumentParsingErrors) {
