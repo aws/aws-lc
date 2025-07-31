@@ -2178,7 +2178,9 @@ TEST(ECTest, LargeXCoordinateVectors) {
     bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(
             EVP_PKEY_CTX_new(ec_pkey.get(), NULL));
     ASSERT_TRUE(ec_key_ctx);
-    ASSERT_TRUE(EVP_PKEY_check(ec_key_ctx.get()));
+
+    // Only valid public key exists, EVP_PKEY_check should fail
+    ASSERT_FALSE(EVP_PKEY_check(ec_key_ctx.get()));
     ASSERT_TRUE(EVP_PKEY_public_check((ec_key_ctx.get())));
 
     // Set the raw point directly with the BIGNUM coordinates.
