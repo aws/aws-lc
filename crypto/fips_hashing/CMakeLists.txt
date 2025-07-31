@@ -14,7 +14,7 @@ if(FIPS AND (UNIX AND NOT ANDROID))
     ../thread_pthread.c
 
     ../err/err.c
-    $<TARGET_OBJECTS:generated_err_data>
+    "${CMAKE_SOURCE_DIR}/generated-src/err_data.c"
     ../decrepit/ripemd/ripemd.c
   )
 

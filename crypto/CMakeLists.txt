@@ -324,11 +324,6 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
-if(FIPS)
-  add_library(generated_err_data OBJECT err_data.c)
-  target_include_directories(generated_err_data PRIVATE ${PROJECT_SOURCE_DIR}/include)
-endif()
-
 set(CRYPTO_ARCH_OBJECTS "")
 if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
