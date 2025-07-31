@@ -1,8 +1,5 @@
-// The scripts need to be included in fips_hashing.c rather than compiled separately through CMake because it maintains a 
-// shared context for all files and preserves critical dependencies between them. Compiling files individually would cause 
-// memory allocation issues and symbol resolution problems due to their interconnected nature. Even if the flow of each 
-// script were intricately studied and laid out in order in CMake, it would require extensive refactoring of internal
-//  functions to resolve these dependencies.
+// The C files need to be included in fips_hashing.c rather than compiled separately through CMake because it maintains a 
+// shared context for all files and preserves dependencies between them like bcm.c.
 
 #include "../fipsmodule/delocate.h"
 
