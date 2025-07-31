@@ -505,6 +505,22 @@ static const CurveTest kCurveTests[] = {
             SSL_GROUP_SECP256R1_MLKEM768,
         },
     },
+    {
+      "MLKEM512:MLKEM768:MLKEM1024",
+      {
+        SSL_GROUP_MLKEM512,
+        SSL_GROUP_MLKEM768,
+        SSL_GROUP_MLKEM1024,
+      },
+    },
+    {
+      "ML-KEM-512:ML-KEM-768:ML-KEM-1024",
+      {
+        SSL_GROUP_MLKEM512,
+        SSL_GROUP_MLKEM768,
+        SSL_GROUP_MLKEM1024,
+      },
+    },
 };
 
 

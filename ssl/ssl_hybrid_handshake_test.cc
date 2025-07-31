@@ -370,6 +370,32 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
         false,
     },
 
+    // Pure MLKEM at all key sizes
+    {
+      "MLKEM512",
+      TLS1_3_VERSION,
+      "MLKEM512",
+      TLS1_3_VERSION,
+      SSL_GROUP_MLKEM512,
+      false,
+    },
+    {
+      "MLKEM768",
+      TLS1_3_VERSION,
+      "MLKEM768",
+      TLS1_3_VERSION,
+      SSL_GROUP_MLKEM768,
+      false,
+    },
+    {
+      "MLKEM1024",
+      TLS1_3_VERSION,
+      "MLKEM1024",
+      TLS1_3_VERSION,
+      SSL_GROUP_MLKEM1024,
+      false,
+    },
+
     // The client's preferred hybrid group should be negotiated when also
     // supported by the server, even if the server "prefers"/supports other
     // groups.
