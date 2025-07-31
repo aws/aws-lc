@@ -10,6 +10,11 @@
  *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
  *   National Institute of Standards and Technology
  *   https://csrc.nist.gov/pubs/fips/203/final
+ *
+ * - [REF]
+ *   CRYSTALS-Kyber C reference implementation
+ *   Bos, Ducas, Kiltz, Lepoint, Lyubashevsky, Schanck, Schwabe, Seiler, Stehlé
+ *   https://github.com/pq-crystals/kyber/tree/main/ref
  */
 
 #ifndef MLK_KEM_H
@@ -49,6 +54,56 @@
 #define crypto_kem_enc_derand MLK_NAMESPACE_K(enc_derand)
 #define crypto_kem_enc MLK_NAMESPACE_K(enc)
 #define crypto_kem_dec MLK_NAMESPACE_K(dec)
+#define crypto_kem_check_pk MLK_NAMESPACE_K(check_pk)
+#define crypto_kem_check_sk MLK_NAMESPACE_K(check_sk)
+
+
+
+/*************************************************
+ * Name:        crypto_kem_check_pk
+ *
+ * Description: Implements modulus check mandated by FIPS 203,
+ *              i.e., ensures that coefficients are in [0,q-1].
+ *
+ * Arguments:   - const uint8_t *pk: pointer to input public key
+ *                (an already allocated array of MLKEM_INDCCA_PUBLICKEYBYTES
+ *                 bytes)
+ *
+ * Returns: - 0 on success
+ *          - -1 on failure
+ *
+ * Specification: Implements @[FIPS203, Section 7.2, 'modulus check']
+ *
+ **************************************************/
+
+/* Reference: Not implemented in the reference implementation @[REF]. */
+MLK_INTERNAL_API
+MLK_MUST_CHECK_RETURN_VALUE
+int crypto_kem_check_pk(const uint8_t pk[MLKEM_INDCCA_PUBLICKEYBYTES]);
+
+
+/*************************************************
+ * Name:        crypto_kem_check_sk
+ *
+ * Description: Implements public key hash check mandated by FIPS 203,
+ *              i.e., ensures that
+ *              sk[768𝑘+32 ∶ 768𝑘+64] = H(pk)= H(sk[384𝑘 : 768𝑘+32])
+ *
+ * Arguments:   - const uint8_t *sk: pointer to input private key
+ *                (an already allocated array of MLKEM_INDCCA_SECRETKEYBYTES
+ *                 bytes)
+ *
+ * Returns: - 0 on success
+ *          - -1 on failure
+ *
+ * Specification: Implements @[FIPS203, Section 7.3, 'hash check']
+ *
+ **************************************************/
+
+/* Reference: Not implemented in the reference implementation @[REF]. */
+MLK_INTERNAL_API
+MLK_MUST_CHECK_RETURN_VALUE
+int crypto_kem_check_sk(const uint8_t sk[MLKEM_INDCCA_SECRETKEYBYTES]);
 
 /*************************************************
  * Name:        crypto_kem_keypair_derand

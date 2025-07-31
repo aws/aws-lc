@@ -150,6 +150,8 @@
 #undef MLK_NAMESPACE_K
 #undef MLK_NAMESPACE_PREFIX
 #undef MLK_NAMESPACE_PREFIX_K
+#undef mlk_memcpy
+#undef mlk_memset
 /* mlkem/src/indcpa.h */
 #undef MLK_INDCPA_H
 #undef mlk_gen_matrix
@@ -159,6 +161,8 @@
 /* mlkem/src/kem.h */
 #undef MLK_CONFIG_API_NO_SUPERCOP
 #undef MLK_KEM_H
+#undef crypto_kem_check_pk
+#undef crypto_kem_check_sk
 #undef crypto_kem_dec
 #undef crypto_kem_enc
 #undef crypto_kem_enc_derand

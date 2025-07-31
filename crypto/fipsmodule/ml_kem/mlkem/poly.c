@@ -266,8 +266,8 @@ void mlk_poly_mulcache_compute(mlk_poly_mulcache *x, const mlk_poly *a)
     invariant(i <= MLKEM_N / 4)
     invariant(array_abs_bound(x->coeffs, 0, 2 * i, MLKEM_Q)))
   {
-    x->coeffs[2 * i + 0] = mlk_fqmul(a->coeffs[4 * i + 1], zetas[64 + i]);
-    x->coeffs[2 * i + 1] = mlk_fqmul(a->coeffs[4 * i + 3], -zetas[64 + i]);
+    x->coeffs[2 * i + 0] = mlk_fqmul(a->coeffs[4 * i + 1], mlk_zetas[64 + i]);
+    x->coeffs[2 * i + 1] = mlk_fqmul(a->coeffs[4 * i + 3], -mlk_zetas[64 + i]);
   }
 
   /*
@@ -378,7 +378,7 @@ __contract__(
     invariant(array_abs_bound(r, 0, start, layer * MLKEM_Q + MLKEM_Q))
     invariant(array_abs_bound(r, start, MLKEM_N, layer * MLKEM_Q)))
   {
-    int16_t zeta = zetas[k++];
+    int16_t zeta = mlk_zetas[k++];
     mlk_ntt_butterfly_block(r, zeta, start, len, layer * MLKEM_Q);
   }
 }
@@ -449,7 +449,7 @@ __contract__(
     invariant(2 * len * k + start == 2 * MLKEM_N - 2 * len))
   {
     unsigned j;
-    int16_t zeta = zetas[k--];
+    int16_t zeta = mlk_zetas[k--];
     for (j = start; j < start + len; j++)
     __loop__(
       invariant(start <= j && j <= start + len)

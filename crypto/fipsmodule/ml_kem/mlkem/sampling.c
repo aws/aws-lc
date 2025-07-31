@@ -146,7 +146,8 @@ __contract__(
  *            - x4-batched version of `rej_uniform()` from the
  *              reference implementation, leveraging x4-batched Keccak-f1600. */
 MLK_INTERNAL_API
-void mlk_poly_rej_uniform_x4(mlk_poly *vec,
+void mlk_poly_rej_uniform_x4(mlk_poly *vec0, mlk_poly *vec1, mlk_poly *vec2,
+                             mlk_poly *vec3,
                              uint8_t seed[4][MLK_ALIGN_UP(MLKEM_SYMBYTES + 2)])
 {
   /* Temporary buffers for XOF output before rejection sampling */
@@ -167,10 +168,10 @@ void mlk_poly_rej_uniform_x4(mlk_poly *vec,
    */
   mlk_xof_x4_squeezeblocks(buf, MLKEM_GEN_MATRIX_NBLOCKS, &statex);
   buflen = MLKEM_GEN_MATRIX_NBLOCKS * MLK_XOF_RATE;
-  ctr[0] = mlk_rej_uniform(vec[0].coeffs, MLKEM_N, 0, buf[0], buflen);
-  ctr[1] = mlk_rej_uniform(vec[1].coeffs, MLKEM_N, 0, buf[1], buflen);
-  ctr[2] = mlk_rej_uniform(vec[2].coeffs, MLKEM_N, 0, buf[2], buflen);
-  ctr[3] = mlk_rej_uniform(vec[3].coeffs, MLKEM_N, 0, buf[3], buflen);
+  ctr[0] = mlk_rej_uniform(vec0->coeffs, MLKEM_N, 0, buf[0], buflen);
+  ctr[1] = mlk_rej_uniform(vec1->coeffs, MLKEM_N, 0, buf[1], buflen);
+  ctr[2] = mlk_rej_uniform(vec2->coeffs, MLKEM_N, 0, buf[2], buflen);
+  ctr[3] = mlk_rej_uniform(vec3->coeffs, MLKEM_N, 0, buf[3], buflen);
 
   /*
    * So long as not all matrix entries have been generated, squeeze
@@ -180,20 +181,27 @@ void mlk_poly_rej_uniform_x4(mlk_poly *vec,
   while (ctr[0] < MLKEM_N || ctr[1] < MLKEM_N || ctr[2] < MLKEM_N ||
          ctr[3] < MLKEM_N)
   __loop__(
-    assigns(ctr, statex, memory_slice(vec, sizeof(mlk_poly) * 4), object_whole(buf[0]),
-       object_whole(buf[1]), object_whole(buf[2]), object_whole(buf[3]))
+    assigns(ctr, statex,
+            memory_slice(vec0, sizeof(mlk_poly)),
+            memory_slice(vec1, sizeof(mlk_poly)),
+            memory_slice(vec2, sizeof(mlk_poly)),
+            memory_slice(vec3, sizeof(mlk_poly)),
+            object_whole(buf[0]),
+            object_whole(buf[1]),
+            object_whole(buf[2]),
+            object_whole(buf[3]))
     invariant(ctr[0] <= MLKEM_N && ctr[1] <= MLKEM_N)
     invariant(ctr[2] <= MLKEM_N && ctr[3] <= MLKEM_N)
-    invariant(array_bound(vec[0].coeffs, 0, ctr[0], 0, MLKEM_Q))
-    invariant(array_bound(vec[1].coeffs, 0, ctr[1], 0, MLKEM_Q))
-    invariant(array_bound(vec[2].coeffs, 0, ctr[2], 0, MLKEM_Q))
-    invariant(array_bound(vec[3].coeffs, 0, ctr[3], 0, MLKEM_Q)))
+    invariant(array_bound(vec0->coeffs, 0, ctr[0], 0, MLKEM_Q))
+    invariant(array_bound(vec1->coeffs, 0, ctr[1], 0, MLKEM_Q))
+    invariant(array_bound(vec2->coeffs, 0, ctr[2], 0, MLKEM_Q))
+    invariant(array_bound(vec3->coeffs, 0, ctr[3], 0, MLKEM_Q)))
   {
     mlk_xof_x4_squeezeblocks(buf, 1, &statex);
-    ctr[0] = mlk_rej_uniform(vec[0].coeffs, MLKEM_N, ctr[0], buf[0], buflen);
-    ctr[1] = mlk_rej_uniform(vec[1].coeffs, MLKEM_N, ctr[1], buf[1], buflen);
-    ctr[2] = mlk_rej_uniform(vec[2].coeffs, MLKEM_N, ctr[2], buf[2], buflen);
-    ctr[3] = mlk_rej_uniform(vec[3].coeffs, MLKEM_N, ctr[3], buf[3], buflen);
+    ctr[0] = mlk_rej_uniform(vec0->coeffs, MLKEM_N, ctr[0], buf[0], buflen);
+    ctr[1] = mlk_rej_uniform(vec1->coeffs, MLKEM_N, ctr[1], buf[1], buflen);
+    ctr[2] = mlk_rej_uniform(vec2->coeffs, MLKEM_N, ctr[2], buf[2], buflen);
+    ctr[3] = mlk_rej_uniform(vec3->coeffs, MLKEM_N, ctr[3], buf[3], buflen);
   }
 
   mlk_xof_x4_release(&statex);
