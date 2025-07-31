@@ -112,7 +112,13 @@ TEST_F(PKeyUtlTest, VerifyTest) {
     ASSERT_TRUE(result);
     
     // Check that the output contains "Signature Verified Successfully"
-    fprintf(stderr, "DEBUG: About to read output file\n");
+    fprintf(stderr, "DEBUG: About to open output file with ScopedFILE first\n");
+    {
+      ScopedFILE out_file(fopen(out_path, "rb"));
+      ASSERT_TRUE(out_file);
+      // Just opening and closing the file
+    }
+    fprintf(stderr, "DEBUG: Now reading with ReadFileToString\n");
     std::string output = ReadFileToString(out_path);
     fprintf(stderr, "DEBUG: Output file content length: %zu\n", output.length());
     ASSERT_NE(output.find("Signature Verified Successfully"), std::string::npos);
