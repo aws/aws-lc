@@ -293,15 +293,33 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     )
   endif()
 
-  if(BORINGSSL_PREFIX)
-    # s2n-bignum is third-party code and therefore doesn't have an explicit
-    # definition of symbol prefixes under the prefix build. Inject prefix
-    # definitions instead. One could set this property for just the s2n-bignum
-    # source. But for simplicity, do it for all. The pre-processor will remove
-    # any duplicate header files.
-    set_source_files_properties(${BCM_ASM_SOURCES} PROPERTIES COMPILE_FLAGS "--include=\"${AWSLC_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h\"")
-  endif()
 endif()
+
+
+# mlkem-native assembly files can be compiled on Unix platforms for x86_64 and arm64 only.
+if((ARCH STREQUAL "aarch64") AND UNIX)
+
+  # Set the source directory for s2n-bignum assembly files
+  set(MLKEM_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_kem")
+
+  set(MLKEM_NATIVE_AARCH64_ASM_SOURCES
+
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/intt.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/ntt.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_mulcache_compute_asm.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_reduce_asm.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_tobytes_asm.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/poly_tomont_asm.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k2.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/aarch64/src/rej_uniform_asm.S
+  )
+
+  list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_AARCH64_ASM_SOURCES})
+
+endif()
+
 
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)

@@ -23,7 +23,7 @@ void AWS_LC_fips_failure_callback(const char* message) {
   SCOPED_TRACE(message);
   const std::map<std::string, std::vector<std::string>> kat_failure_messages = {
     {"RSA_PWCT", {"RSA keygen checks failed"}},
-    {"ECDSA_PWCT", {"EC keygen checks failed"}},
+    {"EC_PWCT", {"EC keygen checks failed"}},
     {"EDDSA_PWCT", {"Ed25519 keygen PCT failed"}},
     {"MLKEM_PWCT", {"ML-KEM keygen PCT failed", "ML-KEM self tests failed", "ML-KEM keygen PCT failed"}},
     {"MLDSA_PWCT", {"ML-DSA keygen PCT failed", "ML-DSA self tests failed", "ML-DSA keygen PCT failed"}},
@@ -138,7 +138,7 @@ TEST(FIPSCallback, PWCT) {
   }
 
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
-  if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "ECDSA_PWCT" ) == 0) {
+  if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "EC_PWCT" ) == 0) {
     EXPECT_FALSE(EC_KEY_generate_key_fips(key.get()));
   } else {
     EXPECT_TRUE(EC_KEY_generate_key_fips(key.get()));

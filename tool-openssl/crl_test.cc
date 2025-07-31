@@ -182,3 +182,27 @@ TEST_F(CRLComparisonTest, CRLToolCompareHashFingerprintNoOutOpenSSL) {
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 }
+
+// Test against OpenSSL output "openssl crl -in file -fingerprint -hash"
+TEST_F(CRLComparisonTest, CRLToolCompareReorderedHashFingerprintOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " crl -in " + in_path + " -fingerprint -hash > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " crl -in " + in_path + " -fingerprint -hash > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl crl -in file -fingerprint -hash -noout"
+TEST_F(CRLComparisonTest, CRLToolCompareReorderedHashFingerprintNoOutOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " crl -in " + in_path + " -fingerprint -hash -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " crl -in " + in_path + " -fingerprint -hash -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl crl -in file -noout -fingerprint -hash"
+TEST_F(CRLComparisonTest, CRLToolCompareReorderedNoOutHashFingerprintOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " crl -in " + in_path + " -noout -fingerprint -hash > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " crl -in " + in_path + " -noout -fingerprint -hash > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+}
