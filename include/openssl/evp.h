@@ -755,19 +755,19 @@ OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                                    size_t *out_key_len);
 
-// EVP_PKEY_check supports EC and RSA keys and wraps the corresponding key
-// check functions. In OpenSSL, this function is meant to validate the key-pair,
-// however, our key checking logic is less restrictive in that it allows keys
-// with only a public component. To avoid introducing inconsistencies in key
-// checking behavior, this function is implemented differently than in OpenSSL.
-// |EVP_PKEY_check| validates the public component of the key and private
-// component if available.
+// EVP_PKEY_check supports EC and RSA keys and validates both the public and
+// private components of a key pair. For EC keys, it verifies that the private
+// key component exists and calls EC_KEY_check_key. For RSA keys, it calls
+// RSA_check_key which validates both public and private key relationships.
 //
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
 
-// EVP_PKEY_public_check wraps |EVP_PKEY_check|. Validates the public component
-// of the key and private component if provided.
+// EVP_PKEY_public_check validates at least the public components of a key.
+// For EC keys, this calls EC_KEY_check_key without requiring a private key.
+// For RSA keys, this reuses RSA_check_key (which does require a private key)
+// as OpenSSL doesn't provide a distinct public-only verification function for
+// RSA.
 //
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
