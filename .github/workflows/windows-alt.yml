@@ -226,7 +226,7 @@ jobs:
           echo "GOPATH=${SYSROOT}" >> $GITHUB_ENV
           echo "GOROOT=${SYSROOT}/lib/go" >> $GITHUB_ENV
           echo "CMAKE_GENERATOR=${{ matrix.generator }}" >> $GITHUB_ENV
-          cygpath -w ${SYSROOT}/bin >> $GITHUB_PATH
+          cygpath -m ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup CMake
