@@ -13,6 +13,7 @@
 
 .align	5
 _bn_mul_mont:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	tst	x5,#7
 	b.eq	__bn_sqr8x_mont
@@ -20,10 +21,20 @@ _bn_mul_mont:
 	b.eq	__bn_mul4x_mont
 Lmul_mont:
 	stp	x29,x30,[sp,#-64]!
+.cfi_def_cfa_offset	64
+.cfi_offset	x30, -56
+.cfi_offset	x29, -64
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 64
 	stp	x19,x20,[sp,#16]
+.cfi_offset	x19, -48
+.cfi_offset	x20, -40
 	stp	x21,x22,[sp,#32]
+.cfi_offset	x21, -32
+.cfi_offset	x22, -24
 	stp	x23,x24,[sp,#48]
+.cfi_offset	x23, -16
+.cfi_offset	x24, -8
 
 	ldr	x9,[x2],#8		// bp[0]
 	sub	x22,sp,x5,lsl#3
@@ -206,29 +217,54 @@ Lcond_copy:
 	str	x14,[x0,#-8]
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	mov	sp,x29
+.cfi_def_cfa	sp, 64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	mov	x0,#1
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldr	x29,[sp],#64
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 
 .align	5
 __bn_sqr8x_mont:
+.cfi_startproc
 	// Not adding AARCH64_SIGN_LINK_REGISTER here because __bn_sqr8x_mont is jumped to
 	// only from bn_mul_mont which has already signed the return address.
 	cmp	x1,x2
 	b.ne	__bn_mul4x_mont
 Lsqr8x_mont:
 	stp	x29,x30,[sp,#-128]!
+.cfi_def_cfa_offset	128
+.cfi_offset	x30, -120
+.cfi_offset	x29, -128
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 128
 	stp	x19,x20,[sp,#16]
+.cfi_offset	x19, -112
+.cfi_offset	x20, -104
 	stp	x21,x22,[sp,#32]
+.cfi_offset	x21, -96
+.cfi_offset	x22, -88
 	stp	x23,x24,[sp,#48]
+.cfi_offset	x23, -80
+.cfi_offset	x24, -72
 	stp	x25,x26,[sp,#64]
+.cfi_offset	x25, -64
+.cfi_offset	x26, -56
 	stp	x27,x28,[sp,#80]
+.cfi_offset	x27, -48
+.cfi_offset	x28, -40
 	stp	x0,x3,[sp,#96]	// offload rp and np
 
 	ldp	x6,x7,[x1,#8*0]
@@ -929,6 +965,7 @@ Lsqr4x_cond_copy:
 Lsqr8x8_post_condition:
 	adc	x28,xzr,xzr
 	ldr	x30,[x29,#8]		// pull return address
+.cfi_restore	x30
 	// x19-7,x28 hold result, x6-7 hold modulus
 	subs	x6,x19,x6
 	ldr	x1,[x29,#96]		// pull rp
@@ -965,30 +1002,58 @@ Lsqr8x8_post_condition:
 
 Lsqr8x_done:
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	mov	sp,x29
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	mov	x0,#1
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldr	x29,[sp],#128
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	// x30 is popped earlier
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 
 .align	5
 __bn_mul4x_mont:
+.cfi_startproc
 	// Not adding AARCH64_SIGN_LINK_REGISTER here because __bn_mul4x_mont is jumped to
 	// only from bn_mul_mont or __bn_mul8x_mont which have already signed the
 	// return address.
 	stp	x29,x30,[sp,#-128]!
+.cfi_def_cfa_offset	128
+.cfi_offset	x30, -120
+.cfi_offset	x29, -128
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 128
 	stp	x19,x20,[sp,#16]
+.cfi_offset	x19, -112
+.cfi_offset	x20, -104
 	stp	x21,x22,[sp,#32]
+.cfi_offset	x21, -96
+.cfi_offset	x22, -88
 	stp	x23,x24,[sp,#48]
+.cfi_offset	x23, -80
+.cfi_offset	x24, -72
 	stp	x25,x26,[sp,#64]
+.cfi_offset	x25, -64
+.cfi_offset	x26, -56
 	stp	x27,x28,[sp,#80]
+.cfi_offset	x27, -48
+.cfi_offset	x28, -40
 
 	sub	x26,sp,x5,lsl#3
 	lsl	x5,x5,#3
@@ -1389,6 +1454,7 @@ Lmul4x4_post_condition:
 	// x19-3,x0 hold result, x14-7 hold modulus
 	subs	x6,x19,x14
 	ldr	x30,[x29,#8]		// pull return address
+.cfi_restore	x30
 	sbcs	x7,x20,x15
 	stp	xzr,xzr,[sp,#8*0]
 	sbcs	x8,x21,x16
@@ -1408,16 +1474,29 @@ Lmul4x4_post_condition:
 
 Lmul4x_done:
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	mov	sp,x29
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	mov	x0,#1
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldr	x29,[sp],#128
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	// x30 is popped earlier
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 .byte	77,111,110,116,103,111,109,101,114,121,32,77,117,108,116,105,112,108,105,99,97,116,105,111,110,32,102,111,114,32,65,82,77,118,56,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .align	2
