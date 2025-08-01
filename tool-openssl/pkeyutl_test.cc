@@ -119,10 +119,22 @@ TEST_F(PKeyUtlTest, VerifyTest) {
       // Just opening and closing the file
     }
     fprintf(stderr, "DEBUG: Now reading with ReadFileToString\n");
-    std::string output = ReadFileToString(out_path);
+    // Create a BIO for reading the file
+    bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+    ASSERT_TRUE(bio);
+
+    // Read the file contents
+    const int buffer_size = 1024;
+    std::vector<char> buffer(buffer_size);
+    std::string output;
+    int bytes_read;
+
+    while ((bytes_read = BIO_read(bio.get(), buffer.data(), buffer_size)) > 0) {
+        output.append(buffer.data(), bytes_read);
+    }
+
     fprintf(stderr, "DEBUG: Output file content length: %zu\n", output.length());
     ASSERT_NE(output.find("Signature Verified Successfully"), std::string::npos);
-    fprintf(stderr, "DEBUG: VerifyTest completed successfully\n");
   }
 }
 
