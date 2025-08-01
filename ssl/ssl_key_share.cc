@@ -699,6 +699,9 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_SecP256r1MLKEM768, SSL_GROUP_SECP256R1_MLKEM768, "SecP256r1MLKEM768", ""},
     {NID_X25519MLKEM768, SSL_GROUP_X25519_MLKEM768, "X25519MLKEM768", ""},
     {NID_SecP384r1MLKEM1024, SSL_GROUP_SECP384R1_MLKEM1024, "SecP384r1MLKEM1024", ""},
+    {NID_MLKEM512, SSL_GROUP_MLKEM512, "MLKEM512", "ML-KEM-512"},
+    {NID_MLKEM768, SSL_GROUP_MLKEM768, "MLKEM768", "ML-KEM-768"},
+    {NID_MLKEM1024, SSL_GROUP_MLKEM1024, "MLKEM1024", "ML-KEM-1024"},
 };
 
 CONSTEXPR_ARRAY uint16_t kPQGroups[] = {
@@ -789,13 +792,11 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP256R1_KYBER768_DRAFT00);
     case SSL_GROUP_X25519_KYBER768_DRAFT00:
       return MakeUnique<HybridKeyShare>(SSL_GROUP_X25519_KYBER768_DRAFT00);
+    case SSL_GROUP_MLKEM512:
+      return MakeUnique<KEMKeyShare>(NID_MLKEM512, SSL_GROUP_MLKEM512);
     case SSL_GROUP_MLKEM768:
-      // MLKEM768, as a standalone group, is not a NamedGroup; however, we
-      // need to create MLKEM768 key shares as part of hybrid groups.
       return MakeUnique<KEMKeyShare>(NID_MLKEM768, SSL_GROUP_MLKEM768);
     case SSL_GROUP_MLKEM1024:
-      // MLKEM1024, as a standalone group, is not a NamedGroup; however, we
-      // need to create MLKEM1024 key shares as part of hybrid groups.
       return MakeUnique<KEMKeyShare>(NID_MLKEM1024, SSL_GROUP_MLKEM1024);
     case SSL_GROUP_SECP256R1_MLKEM768:
       return MakeUnique<HybridKeyShare>(SSL_GROUP_SECP256R1_MLKEM768);
