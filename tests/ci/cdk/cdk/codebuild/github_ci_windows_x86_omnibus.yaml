@@ -10,11 +10,11 @@ batch:
       buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
       env:
         # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html
-        type: WINDOWS_SERVER_2019_CONTAINER
+        type: WINDOWS_SERVER_2022_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         # Build failure on Docker image `vs2015_latest`, tracked in CryptoAlg-741.
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2015_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:windows-2022_vs2015_latest
         variables:
           MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat'
           ARCH_OPTION: x64
@@ -22,11 +22,45 @@ batch:
     - identifier: windows_msvc2017_x64
       buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
       env:
-        type: WINDOWS_SERVER_2019_CONTAINER
+        type: WINDOWS_SERVER_2022_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2017_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:windows-2022_vs2017_latest
         variables:
           # vcvarsall will set the required lib and libpath for MSVC to compile everything
           MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
           ARCH_OPTION: x64
+
+    - identifier: windows_msvc2019_x64
+      buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
+      env:
+        type: WINDOWS_SERVER_2022_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:windows-2022_vs2019_latest
+        variables:
+          MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
+          ARCH_OPTION: x64
+
+    - identifier: windows_msvc2022_x64
+      buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
+      env:
+        type: WINDOWS_SERVER_2022_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:windows-2022_vs2022_latest
+        variables:
+          MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
+          ARCH_OPTION: x64
+
+    - identifier: windows_msvc2022_sde_x64
+      buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
+      env:
+        type: WINDOWS_SERVER_2022_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:windows-2022_vs2022_latest
+        variables:
+          MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
+          ARCH_OPTION: x64
+          RUN_SDE: true
