@@ -5,8 +5,8 @@
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 //
-//    extern void bignum_add_p384
-//     (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
+//    extern void bignum_add_p384(uint64_t z[static 6], const uint64_t x[static 6],
+//                                const uint64_t y[static 6]);
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------

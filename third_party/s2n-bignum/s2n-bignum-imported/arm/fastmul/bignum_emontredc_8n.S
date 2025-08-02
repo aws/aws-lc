@@ -5,8 +5,8 @@
 // Extended Montgomery reduce in 8-digit blocks, results in input-output buffer
 // Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k]
 //
-//    extern uint64_t bignum_emontredc_8n
-//     (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
+//    extern uint64_t bignum_emontredc_8n(uint64_t k, uint64_t *z, const uint64_t *m,
+//                                        uint64_t w);
 //
 // Functionally equivalent to bignum_emontredc (see that file for more detail).
 // But in general assumes that the input k is a multiple of 8.

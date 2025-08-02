@@ -5,8 +5,8 @@
 // Test bignums for equality, x = y
 // Inputs x[m], y[n]; output function return
 //
-//    extern uint64_t bignum_eq
-//     (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+//    extern uint64_t bignum_eq(uint64_t m, const uint64_t *x, uint64_t n,
+//                              const uint64_t *y);
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, returns X0
 // ----------------------------------------------------------------------------

@@ -4,8 +4,8 @@
 // ----------------------------------------------------------------------------
 // Point doubling on NIST curve P-521 in Jacobian coordinates
 //
-//    extern void p521_jdouble_alt
-//      (uint64_t p3[static 27],uint64_t p1[static 27]);
+//    extern void p521_jdouble_alt(uint64_t p3[static 27],
+//                                 const uint64_t p1[static 27]);
 //
 // Does p3 := 2 * p1 where all points are regarded as Jacobian triples.
 // A Jacobian triple (x,y,z) represents affine point (x/z^2,y/z^3).

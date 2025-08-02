@@ -7,9 +7,9 @@
 //
 // extern void p256_scalarmulbase_alt
 //   (uint64_t res[static 8],
-//    uint64_t scalar[static 4],
+//    const uint64_t scalar[static 4],
 //    uint64_t blocksize,
-//    uint64_t *table);
+//    const uint64_t *table);
 //
 // Given scalar = n and point = P, assumed to be on the NIST elliptic
 // curve P-256, the input argument "table" is expected to be a table of
