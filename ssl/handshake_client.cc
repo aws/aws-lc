@@ -1797,6 +1797,8 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
     }
   }
 
+  ssl->verify_result = hs->new_session->verify_result;
+
   // |ticket_lifetime_hint| is measured from when the ticket was issued.
   ssl_session_rebase_time(ssl, hs->new_session.get());
 

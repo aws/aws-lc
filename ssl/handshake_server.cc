@@ -947,6 +947,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     ssl->session = std::move(session);
     ssl->s3->session_reused = true;
     hs->can_release_private_key = true;
+    ssl->verify_result = ssl->session->verify_result;
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, nullptr);
@@ -990,6 +991,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       // OpenSSL returns X509_V_OK when no certificates are requested. This is
       // classed by them as a bug, but it's assumed by at least NGINX.
       hs->new_session->verify_result = X509_V_OK;
+      ssl->verify_result = hs->new_session->verify_result;
     }
   }
 
@@ -1397,6 +1399,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     // OpenSSL returns X509_V_OK when no certificates are received. This is
     // classed by them as a bug, but it's assumed by at least NGINX.
     hs->new_session->verify_result = X509_V_OK;
+    ssl->verify_result = hs->new_session->verify_result;
   } else if (hs->config->retain_only_sha256_of_client_certs) {
     // The hash will have been filled in.
     hs->new_session->peer_sha256_valid = true;
