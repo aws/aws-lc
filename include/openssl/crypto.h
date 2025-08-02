@@ -182,10 +182,16 @@ OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 OPENSSL_EXPORT int OPENSSL_malloc_init(void);
 
 // ENGINE_load_builtin_engines does nothing.
-OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
+OPENSSL_DEPRECATED OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
+
+// ENGINE_register_all_ciphers does nothing.
+OPENSSL_DEPRECATED OPENSSL_EXPORT void ENGINE_register_all_ciphers(void);
+
+// ENGINE_register_all_digests does nothing.
+OPENSSL_DEPRECATED OPENSSL_EXPORT void ENGINE_register_all_digests(void);
 
 // ENGINE_register_all_complete returns one.
-OPENSSL_EXPORT int ENGINE_register_all_complete(void);
+OPENSSL_DEPRECATED OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
@@ -222,6 +228,8 @@ OPENSSL_EXPORT int FIPS_mode_set(int on);
 // These are related to memory debugging functionalities provided by OpenSSL,
 // but are not supported in AWS-LC.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
+
+#define CRYPTO_MEM_CHECK_ON 0
 
 #if defined(BORINGSSL_FIPS_140_3)
 
