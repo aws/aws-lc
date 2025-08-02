@@ -70,6 +70,7 @@
 #include <openssl/digest.h>
 #include <openssl/nid.h>
 #include <openssl/objects.h>
+#include <openssl/hmac.h> // Needed by Apache mod_ssl
 
 #if defined(__cplusplus)
 extern "C" {
