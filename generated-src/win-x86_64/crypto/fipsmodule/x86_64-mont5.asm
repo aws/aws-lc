@@ -3834,40 +3834,40 @@ ALIGN	4
 	DD	$L$SEH_end_bn_gather5 wrt ..imagebase
 	DD	$L$SEH_info_bn_gather5 wrt ..imagebase
 
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_bn_mul_mont_gather5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul_body wrt ..imagebase,$L$mul_body wrt ..imagebase,$L$mul_epilogue wrt ..imagebase
-ALIGN	8
+ALIGN	4
 $L$SEH_info_bn_mul4x_mont_gather5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul4x_prologue wrt ..imagebase,$L$mul4x_body wrt ..imagebase,$L$mul4x_epilogue wrt ..imagebase
-ALIGN	8
+ALIGN	4
 $L$SEH_info_bn_power5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$power5_prologue wrt ..imagebase,$L$power5_body wrt ..imagebase,$L$power5_epilogue wrt ..imagebase
 %ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-ALIGN	8
+ALIGN	4
 $L$SEH_info_bn_mulx4x_mont_gather5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mulx4x_prologue wrt ..imagebase,$L$mulx4x_body wrt ..imagebase,$L$mulx4x_epilogue wrt ..imagebase
-ALIGN	8
+ALIGN	4
 $L$SEH_info_bn_powerx5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$powerx5_prologue wrt ..imagebase,$L$powerx5_body wrt ..imagebase,$L$powerx5_epilogue wrt ..imagebase
 %endif
-ALIGN	8
+ALIGN	4
 $L$SEH_info_bn_gather5:
 	DB	0x01,0x0b,0x03,0x0a
 	DB	0x0b,0x01,0x21,0x00
 	DB	0x04,0xa3,0x00,0x00
-ALIGN	8
+ALIGN	4
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

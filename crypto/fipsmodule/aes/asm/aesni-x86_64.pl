@@ -3939,22 +3939,25 @@ $code.=<<___;
 	.rva	.LSEH_end_set_encrypt_key
 	.rva	.LSEH_info_key
 .section	.xdata
-.align	8
+.align	4
 ___
 $code.=<<___ if ($PREFIX eq "aes_hw");
 .LSEH_info_ecb:
 	.byte	9,0,0,0
 	.rva	ecb_ccm64_se_handler
 	.rva	.Lecb_enc_body,.Lecb_enc_ret		# HandlerData[]
+.align	4
 .LSEH_info_ctr32:
 	.byte	9,0,0,0
 	.rva	ctr_xts_se_handler
 	.rva	.Lctr32_body,.Lctr32_epilogue		# HandlerData[]
 ___
 $code.=<<___;
+.align	4
 .LSEH_info_cbc:
 	.byte	9,0,0,0
 	.rva	cbc_se_handler
+.align	4
 .LSEH_info_key:
 	.byte	0x01,0x04,0x01,0x00
 	.byte	0x04,0x02,0x00,0x00	# sub rsp,8

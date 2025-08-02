@@ -4394,19 +4394,22 @@ ALIGN	4
 	DD	$L$SEH_begin_sha256_block_data_order_avx wrt ..imagebase
 	DD	$L$SEH_end_sha256_block_data_order_avx wrt ..imagebase
 	DD	$L$SEH_info_sha256_block_data_order_avx wrt ..imagebase
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_sha256_block_data_order_nohw:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue wrt ..imagebase,$L$epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_sha256_block_data_order_hw:
 	DB	9,0,0,0
 	DD	shaext_handler wrt ..imagebase
+ALIGN	4
 $L$SEH_info_sha256_block_data_order_ssse3:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_ssse3 wrt ..imagebase,$L$epilogue_ssse3 wrt ..imagebase
+ALIGN	4
 $L$SEH_info_sha256_block_data_order_avx:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase

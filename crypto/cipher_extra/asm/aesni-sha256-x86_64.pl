@@ -1707,6 +1707,7 @@ $code.=<<___;
 .size	se_handler,.-se_handler
 
 .section	.pdata
+.align	4
 	.rva	.LSEH_begin_${func}_xop
 	.rva	.LSEH_end_${func}_xop
 	.rva	.LSEH_info_${func}_xop
@@ -1727,24 +1728,27 @@ $code.=<<___ if ($shaext);
 ___
 $code.=<<___;
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_${func}_xop:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue_xop,.Lepilogue_xop		# HandlerData[]
 
+.align	4
 .LSEH_info_${func}_avx:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue_avx,.Lepilogue_avx		# HandlerData[]
 ___
 $code.=<<___ if ($avx>1);
+.align	4
 .LSEH_info_${func}_avx2:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue_avx2,.Lepilogue_avx2		# HandlerData[]
 ___
 $code.=<<___ if ($shaext);
+.align	4
 .LSEH_info_${func}_shaext:
 	.byte	9,0,0,0
 	.rva	se_handler
