@@ -2083,6 +2083,7 @@ if ($addx) {{{
 my $bp="%rdx";	# restore original value
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .global bn_mulx4x_mont_gather5
 .type	bn_mulx4x_mont_gather5,\@function,6
 .align	32
