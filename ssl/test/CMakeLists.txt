@@ -16,8 +16,7 @@ target_link_libraries(bssl_shim test_support_lib ssl crypto)
 if(WIN32)
   target_link_libraries(bssl_shim ws2_32)
 endif()
-
-target_include_directories(bssl_shim BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+target_add_awslc_include_paths(TARGET bssl_shim SCOPE PRIVATE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(
@@ -34,8 +33,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   )
 
   target_link_libraries(handshaker test_support_lib ssl crypto)
-
-  target_include_directories(handshaker BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_add_awslc_include_paths(TARGET handshaker SCOPE PRIVATE)
 else()
   # Declare a dummy target for run_tests to depend on.
   add_custom_target(handshaker)

@@ -14,8 +14,6 @@ set(JITTER_SOURCES
         ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
         ${AWSLC_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
 
-include_directories(${AWSLC_SOURCE_DIR}/include)
-
 if(MSVC)
     set(JITTER_COMPILE_FLAGS "/Od /W4 /DYNAMICBASE /DAWSLC")
 else()
@@ -24,5 +22,4 @@ endif()
 
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
-add_dependencies(jitterentropy boringssl_prefix_symbols)
-target_include_directories(jitterentropy BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+target_add_awslc_include_paths(TARGET jitterentropy SCOPE PRIVATE)
