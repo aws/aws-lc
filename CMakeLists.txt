@@ -252,7 +252,8 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
 
   message(STATUS "Prefix build configured: performing build using prefix \"${BORINGSSL_PREFIX}\" and headers path \"${BORINGSSL_PREFIX_HEADERS}\"")
 
-  if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
+  # Absolute paths might not be properly detected on Cygwin
+  if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS} OR CYGWIN)
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
   else()
     set(BORINGSSL_PREFIX_HEADERS_PATH ${AWSLC_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
