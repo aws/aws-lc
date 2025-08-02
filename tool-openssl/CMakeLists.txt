@@ -11,6 +11,7 @@ add_executable(
     dgst.cc
     pkcs8.cc
     pkey.cc
+    pkeyutl.cc
     rehash.cc
     req.cc
     ordered_args.cc
@@ -92,6 +93,8 @@ if(BUILD_TESTING)
         pkcs8_test.cc
         pkey.cc
         pkey_test.cc
+        pkeyutl.cc
+        pkeyutl_test.cc
         rehash.cc
         rehash_test.cc
         req.cc
