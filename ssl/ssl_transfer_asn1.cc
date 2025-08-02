@@ -1075,8 +1075,10 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     ssl->config.reset();
   }
 
-  if (!CBS_get_optional_asn1_int64(&ssl_cbs, &verify_result, kSSLVerifyResultTag, X509_V_ERR_INVALID_CALL)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
+  if (!CBS_get_optional_asn1_int64(
+          &ssl_cbs, &verify_result, kSSLVerifyResultTag,
+          ssl->s3->established_session->verify_result)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
 
