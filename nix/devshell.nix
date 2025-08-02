@@ -1,13 +1,7 @@
 { pkgs, aws-lc }:
 pkgs.mkShell rec {
-  buildInputs = [
-    pkgs.cmake
-    pkgs.nixfmt-classic
-    pkgs.ninja
-    pkgs.perl
-    pkgs.go
-    aws-lc
-  ];
+  buildInputs =
+    [ pkgs.cmake pkgs.nixfmt-classic pkgs.ninja pkgs.perl pkgs.go aws-lc ];
 
   shellHook = ''
     # Set custom prompt with ANSI color
