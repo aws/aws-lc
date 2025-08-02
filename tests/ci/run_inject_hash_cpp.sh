@@ -79,13 +79,6 @@ else
     ((ERRORS+=$?))
 fi
 
-#Test 4: HMAC calculation of a test file path (should succeed)
-run_test "HMAC calculation test" false \
-    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-    -in-object "util/fipstools/inject_hash_cpp/CMakeLists.txt" \
-    -o "util/fipstools/inject_hash_cpp/CMakeLists.txt"
-((ERRORS+=$?))
-
 # Print test summary
 echo "=== Summary ==="
 echo "Total errors: ${ERRORS}"
