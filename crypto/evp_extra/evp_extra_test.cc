@@ -2578,6 +2578,16 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_TRUE(pkey_new);
   ASSERT_TRUE(EVP_PKEY_kem_check_key(pkey_new.get()));
 
+  // Not supported for anything but EC and RSA keys
+  bssl::UniquePtr<EVP_PKEY_CTX> kem_key_ctx(
+          EVP_PKEY_CTX_new(pkey_new.get(), NULL));
+  ASSERT_TRUE(kem_key_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(kem_key_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check((kem_key_ctx.get())));
+  ASSERT_EQ((uint16_t)ERR_get_error(),
+            (uint16_t)EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  ERR_clear_error();
+
   // ---- 5. Test encaps/decaps with new keys ----
   // Create Alice's context with the new key that has both
   // the public and the secret part of the key.
