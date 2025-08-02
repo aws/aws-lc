@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 set -xo pipefail
 
 # Get directory containing this script
@@ -57,7 +60,7 @@ run_test "No arguments test" true \
 # Test 2: Invalid file (should fail)
 run_test "Invalid file test" true \
     ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-    -in-object nonexistent.file -o nonexistent.file
+    -in-object nonexistent.so -o nonexistent.so
 ((ERRORS+=$?))
 
 # Test 3: Actual library (should succeed)
@@ -75,6 +78,13 @@ else
         -in-object ./crypto/libcrypto.so
     ((ERRORS+=$?))
 fi
+
+#Test 4: HMAC calculation of a test file path (should succeed)
+run_test "HMAC calculation test" false \
+    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+    -in-object "util/fipstools/inject_hash_cpp/CMakeLists.txt" \
+    -o "util/fipstools/inject_hash_cpp/CMakeLists.txt"
+((ERRORS+=$?))
 
 # Print test summary
 echo "=== Summary ==="

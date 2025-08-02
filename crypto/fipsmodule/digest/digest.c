@@ -367,3 +367,7 @@ int EVP_MD_CTX_type(const EVP_MD_CTX *ctx) {
 }
 
 int EVP_add_digest(const EVP_MD *digest) { return 1; }
+
+int used_for_hmac(EVP_MD_CTX *ctx) {
+  return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
+}

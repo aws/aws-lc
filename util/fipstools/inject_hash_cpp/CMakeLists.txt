@@ -22,6 +22,7 @@ if(USE_CPP_INJECT_HASH)
 
     target_link_libraries(inject_hash_cpp PRIVATE
         LIEF::LIEF
+        fips_hashing
     )
 endif()
 

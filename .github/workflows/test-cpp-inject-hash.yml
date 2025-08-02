@@ -1,8 +1,6 @@
-name: Test C++ inject_hash Implementation
+name: Test C++ inject_hash Implementation with LIEF, HMAC and SHA-256 integrated.
 
 on:
-  push:
-    branches: [ implement-inject-hash-clean ]
   pull_request:
     branches: [ inject-hash-cpp-experiment ]
 
@@ -17,6 +15,7 @@ jobs:
         #   - os: ubuntu-latest
         #     build-type: 'static'
         #skipping handling of static builds for now
+      # Don't cancel all jobs if one fails
       fail-fast: false
         
     steps:
