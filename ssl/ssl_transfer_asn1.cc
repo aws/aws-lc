@@ -964,7 +964,7 @@ static const unsigned kSSLQuietShutdownTag =
 static const unsigned kSSLConfigTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 static const unsigned kSSLVerifyResultTag =
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 
 // Parse serialized SSL connection binary
 //
