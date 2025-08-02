@@ -35,6 +35,22 @@
     "shard": true
   },
   {
+    "comment": "Test algorithm dispatch without CPU indicator bits",
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=~0x7080"],
+    "target_arch": "arm",
+    "skip_valgrind": true,
+    "shard": true
+  },
+  {
+    "comment": "Test algorithm dispatch without CPU indicator or Neon extension capability bits",
+    "cmd": ["crypto/crypto_test"],
+    "env": ["OPENSSL_armcap=~0x78fc"],
+    "target_arch": "arm",
+    "skip_valgrind": true,
+    "shard": true
+  },
+  {
     "comment": "Test OPENSSL_ia32cap on crypto_test for x86, as urandom_test is disabled for shared builds on x86",
     "cmd": ["crypto/crypto_test", "--gtest_filter=Crypto.OnDemandIntegrityTest"],
     "env": ["OPENSSL_ia32cap=0:0"],

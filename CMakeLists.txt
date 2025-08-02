@@ -288,15 +288,19 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
+# Checks if test file compiles. If so, sets flag_to_set both as a CMake variable
+# and as a preprocessor define. Additional arguments are interpreted as CFLAGS
+# for the attempted compilation.
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
-          RESULT
+          ${flag_to_set} # Use CMake variable of the same name as the C flag to allow later reference
           ${AWSLC_BINARY_DIR}
-          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
-          COMPILE_DEFINITIONS "-Werror"
+          SOURCES "${AWSLC_SOURCE_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "-Werror ${ARGN}"
           OUTPUT_VARIABLE ERROR_MESSAGE)
-  if(RESULT)
-    set(COMPILER_CHECK_FLAGS "${COMPILER_CHECK_FLAGS} -D${flag_to_set}")
+  if(${flag_to_set})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D${flag_to_set}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D${flag_to_set}")
     message(STATUS "${file_to_test} probe is positive, enabling ${flag_to_set}")
   else()
     message(STATUS "${file_to_test} probe is negative, NOT enabling ${flag_to_set}:")
@@ -516,9 +520,6 @@ if(GCC OR CLANG)
   if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
-
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMPILER_CHECK_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILER_CHECK_FLAGS}")
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST

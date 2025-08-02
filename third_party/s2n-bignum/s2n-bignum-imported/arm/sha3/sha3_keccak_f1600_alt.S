@@ -30,6 +30,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sha3_keccak_f1600_alt)
         .text
         .balign 4
+        .arch armv8.4-a+sha3
 
 // This is very similar to the vector code in the mlkem-native
 // repository here:

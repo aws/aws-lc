@@ -31,6 +31,7 @@
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
 #include "fipsmodule/bn/rsaz_exp.h"
+#include "fipsmodule/sha/internal.h"
 
 #include "test/file_test.h"
 
@@ -85,6 +86,23 @@ class ImplDispatchTest : public ::testing::Test {
     aes_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
     sha_ext_ = OPENSSL_armcap_P & ARMV8_SHA256;
     sha_512_ext_ = OPENSSL_armcap_P & ARMV8_SHA512;
+    sha3_ext_ = CRYPTO_is_ARMv8_SHA3_capable();
+    neoverse_n1_ = CRYPTO_is_Neoverse_N1();
+    neoverse_v1_ = CRYPTO_is_Neoverse_V1();
+    neoverse_v2_ = CRYPTO_is_Neoverse_V2();
+
+    assembler_has_neon_sha3_extension_ =
+#if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+        true;
+#else
+        false;
+#endif
+    have_s2n_bignum_asm_ =
+#if defined(KECCAK1600_S2N_BIGNUM_ASM)
+        true;
+#else
+        false;
+#endif
 #endif
   }
 
@@ -126,6 +144,12 @@ class ImplDispatchTest : public ::testing::Test {
   bool aes_gcm_pmull_ = false;
   bool aes_gcm_8x_ = false;
   bool sha_512_ext_ = false;
+  bool sha3_ext_ = false;
+  bool neoverse_n1_ = false;
+  bool neoverse_v1_ = false;
+  bool neoverse_v2_ = false;
+  bool assembler_has_neon_sha3_extension_ = false;
+  bool have_s2n_bignum_asm_ = false;
 #endif
 
 };
@@ -147,6 +171,9 @@ constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
 constexpr size_t kFlag_sha512_hw = 8;
+constexpr size_t kFlag_KeccakF1600_hw = 9;
+constexpr size_t kFlag_sha3_keccak_f1600 = 10;
+constexpr size_t kFlag_sha3_keccak_f1600_alt = 11;
 #endif
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
@@ -243,6 +270,39 @@ TEST_F(ImplDispatchTest, SHA512) {
         const uint8_t in[32] = {0};
         uint8_t out[SHA512_DIGEST_LENGTH];
         SHA512(in, 32, out);
+      });
+}
+
+TEST_F(ImplDispatchTest, SHA3_512) {
+  // Assembly dispatch logic for Keccak-x1 on AArch64:
+  // - For Neoverse N1, V1, V2, we use scalar Keccak assembly from s2n-bignum
+  //   (`sha3_keccak_f1600()`)
+  //   leveraging lazy rotations from https://eprint.iacr.org/2022/1243.
+  // - Otherwise, if the Neon SHA3 extension is supported, we use the Neon
+  //   Keccak assembly from s2n-bignum (`sha3_keccak_f1600_alt()`),
+  //   leveraging that extension.
+  // - Otherwise, fall back to scalar Keccak implementation from OpenSSL,
+  //   (`Keccak1600_hw()`), not using lazy rotations.
+  AssertFunctionsHit(
+      {
+	  {kFlag_sha3_keccak_f1600,
+	   have_s2n_bignum_asm_ &&
+	   (neoverse_n1_ || neoverse_v1_ || neoverse_v2_) },
+	  {kFlag_sha3_keccak_f1600_alt,
+	   have_s2n_bignum_asm_ &&
+	   !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
+           (assembler_has_neon_sha3_extension_ && sha3_ext_) },
+          {kFlag_KeccakF1600_hw,
+  	   !have_s2n_bignum_asm_ ||
+	   (
+	     !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
+	     !(assembler_has_neon_sha3_extension_ && sha3_ext_)
+	   ) },
+      },
+      [] {
+        const uint8_t in[32] = {0};
+        uint8_t out[SHA3_512_DIGEST_LENGTH];
+        SHA3_512(in, 32, out);
       });
 }
 #endif // OPENSSL_AARCH64
