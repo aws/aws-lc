@@ -291,6 +291,26 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_16.S
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_32.S
     )
+
+    #
+    # Keccak assembly from s2n-bignum/mlkem-native
+    #
+
+    # Check if assembler supports SHA3 extension
+    # (gcc supports it since gcc8, clang supports it since clang7)
+    check_compiler("neon_sha3_check.c" MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION "-march=armv8.4-a+sha3")
+
+    # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native
+    list(APPEND BCM_ASM_SOURCES
+                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
+    )
+
+    # SIMD Keccak-x1 assembly from s2n-bignum/mlkem-native, using SHA3 extension
+    if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+        list(APPEND BCM_ASM_SOURCES ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S)
+        set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S
+                                    PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
+    endif()
   endif()
 
 endif()
