@@ -29,63 +29,25 @@ static inline std::string &trim(std::string &s) {
 
 // Helper function to read file content into a string
 inline std::string ReadFileToString(const std::string& file_path) {
-  fprintf(stderr, "DEBUG: ReadFileToString - Starting for path: %s\n", file_path.c_str());
-  
   if (file_path.empty()) {
-    fprintf(stderr, "DEBUG: ReadFileToString - Empty file path provided\n");
     return "";
   }
   
   // Check if file exists first
-  fprintf(stderr, "DEBUG: ReadFileToString - Checking if file exists with stat()\n");
   struct stat stat_buffer;
-  int stat_result = stat(file_path.c_str(), &stat_buffer);
-  if (stat_result != 0) {
-    fprintf(stderr, "DEBUG: ReadFileToString - stat() failed with error code: %d, errno: %d\n", 
-            stat_result, errno);
+  if (stat(file_path.c_str(), &stat_buffer) != 0) {
     return "";
   }
-  fprintf(stderr, "DEBUG: ReadFileToString - File exists, size: %lld bytes\n", 
-          (long long)stat_buffer.st_size);
 
-  fprintf(stderr, "DEBUG: ReadFileToString - Opening file stream\n");
   std::ifstream file_stream(file_path, std::ios::binary);
   if (!file_stream.is_open()) {
-    fprintf(stderr, "DEBUG: ReadFileToString - Failed to open file stream, errno: %d\n", errno);
     return "";
   }
-  fprintf(stderr, "DEBUG: ReadFileToString - File stream opened successfully\n");
   
-  fprintf(stderr, "DEBUG: ReadFileToString - Creating output buffer and reading file content\n");
   std::ostringstream output_buffer;
+  output_buffer << file_stream.rdbuf();
   
-  // Check stream state before reading
-  if (file_stream.good()) {
-    output_buffer << file_stream.rdbuf();
-    fprintf(stderr, "DEBUG: ReadFileToString - File content read into buffer\n");
-  } else {
-    fprintf(stderr, "DEBUG: ReadFileToString - File stream not in good state before reading\n");
-    return "";
-  }
-  
-  // Check stream state after reading
-  if (!file_stream.good() && !file_stream.eof()) {
-    fprintf(stderr, "DEBUG: ReadFileToString - File stream in bad state after reading, error flags: %d\n", 
-            (int)file_stream.rdstate());
-    return "";
-  }
-  
-  std::string result = output_buffer.str();
-  fprintf(stderr, "DEBUG: ReadFileToString - Created result string, length: %zu bytes\n", result.length());
-  
-  fprintf(stderr, "DEBUG: ReadFileToString - Closing file stream\n");
-  file_stream.close();
-  if (file_stream.fail()) {
-    fprintf(stderr, "DEBUG: ReadFileToString - Warning: Error closing file stream\n");
-  }
-  
-  fprintf(stderr, "DEBUG: ReadFileToString - Returning result\n");
-  return result;
+  return output_buffer.str();
 }
 
 inline void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command,
