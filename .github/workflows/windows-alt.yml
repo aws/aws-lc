@@ -242,10 +242,5 @@ jobs:
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             CMAKE_BUILD_TYPE=Release \
       - name: Run tests
-        if: matrix.generator != 'MSYS Makefiles'
-        shell: 'bash'
-        run: cmake --build ./build --target run_tests
-      - name: Run tests
-        if: matrix.generator == 'MSYS Makefiles'
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests
