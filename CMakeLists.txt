@@ -11,6 +11,11 @@ set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
 set(OPENSSL_VERSION_NUMBER "0x1010107f")
 
+# Note this is set to 1.1.1 for compatibility purposes
+# with projects that use the pkg-config information to determine
+# the OpenSSL version.
+set(PKG_CONFIG_VERSION "1.1.1") 
+
 # Defer enabling C and CXX languages.
 project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
 
@@ -76,17 +81,14 @@ include(cmake/go.cmake)
 
 if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
   set(PERFORM_SONAME_BUILD 1)
+  set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
+  set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
 else()
   set(PERFORM_SONAME_BUILD 0)
 endif()
 
 message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
 message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
-
-if(PERFORM_SONAME_BUILD)
-  set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
-  set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
-endif()
 
 enable_language(C)
 

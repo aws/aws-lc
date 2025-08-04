@@ -144,11 +144,11 @@ install(EXPORT ssl-targets
     COMPONENT Development)
 
 if(PERFORM_SONAME_BUILD)
-install(CODE "
+  install(CODE "
 set(TGT lib${SSL_LIB_NAME}.so.${ABI_VERSION})
 set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so)
 message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
 "
-COMPONENT Development)
+    COMPONENT Development)
 endif()
