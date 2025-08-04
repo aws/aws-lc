@@ -15,3 +15,4 @@ phases:
       - ./tests/check_generated_src.sh
       - ./tests/coding_guidelines/style.sh
       - (cd util && go run ./doc.go)
+      - ./tests/check_cmake_configure.sh
