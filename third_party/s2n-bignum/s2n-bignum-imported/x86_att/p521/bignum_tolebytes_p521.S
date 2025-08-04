@@ -4,8 +4,8 @@
 // ----------------------------------------------------------------------------
 // Convert 9-digit 528-bit bignum to little-endian bytes
 //
-//    extern void bignum_tolebytes_p521
-//     (uint8_t z[static 66], uint64_t x[static 9]);
+//    extern void bignum_tolebytes_p521(uint8_t z[static 66],
+//                                      const uint64_t x[static 9]);
 //
 // This is assuming the input x is < 2^528 so that it fits in 66 bytes.
 // In particular this holds if x < p_521 < 2^521 < 2^528.

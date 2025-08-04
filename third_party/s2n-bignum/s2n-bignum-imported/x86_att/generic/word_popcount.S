@@ -5,7 +5,7 @@
 // Count number of set bits in a single 64-bit word (population count)
 // Input a; output function return
 //
-//    extern uint64_t word_popcount (uint64_t a);
+//    extern uint64_t word_popcount(uint64_t a);
 //
 // Standard x86-64 ABI: RDI = a, returns RAX
 // Microsoft x64 ABI:   RCX = a, returns RAX

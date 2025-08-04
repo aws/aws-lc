@@ -5,7 +5,7 @@
 // Modular inverse modulo p_25519 = 2^255 - 19
 // Input x[4]; output z[4]
 //
-// extern void bignum_inv_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+// extern void bignum_inv_p25519(uint64_t z[static 4],const uint64_t x[static 4]);
 //
 // Assuming the 4-digit input x is coprime to p_25519, i.e. is not divisible
 // by it, returns z < p_25519 such that x * z == 1 (mod p_25519). The input

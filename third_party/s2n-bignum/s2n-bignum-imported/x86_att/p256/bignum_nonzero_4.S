@@ -5,7 +5,7 @@
 // 256-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero
 // Input x[4]; output function return
 //
-//    extern uint64_t bignum_nonzero_4(uint64_t x[static 4]);
+//    extern uint64_t bignum_nonzero_4(const uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = x, returns RAX
 // Microsoft x64 ABI:   RCX = x, returns RAX

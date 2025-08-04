@@ -5,8 +5,8 @@
 // Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
 //
-//    extern void bignum_mul_p521
-//     (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+//    extern void bignum_mul_p521(uint64_t z[static 9], const uint64_t x[static 9],
+//                                const uint64_t y[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y

@@ -45,7 +45,7 @@ function libwebsockets_build() {
   make -j && make -j DESTDIR=${SOCKET_DEST_DIR} install
 
   local socket_lib="${SOCKET_DEST_DIR}/usr/local/lib/libwebsockets.so"
-  ldd ${socket_lib} | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${socket_lib} crypto || exit 1
 }
 
 function libwebsockets_test() {

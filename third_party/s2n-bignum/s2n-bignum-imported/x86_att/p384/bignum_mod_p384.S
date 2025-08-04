@@ -5,8 +5,8 @@
 // Reduce modulo field characteristic, z := x mod p_384
 // Input x[k]; output z[6]
 //
-//    extern void bignum_mod_p384
-//     (uint64_t z[static 6], uint64_t k, uint64_t *x);
+//    extern void bignum_mod_p384(uint64_t z[static 6], uint64_t k,
+//                                const uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = z, RSI = k, RDX = x
 // Microsoft x64 ABI:   RCX = z, RDX = k, R8 = x

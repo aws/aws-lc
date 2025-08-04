@@ -6,7 +6,8 @@
 // Inputs p1[16], p2[16]; output p3[16]
 //
 // extern void edwards25519_epadd
-//   (uint64_t p3[static 16],uint64_t p1[static 16],uint64_t p2[static 16])
+//   (uint64_t p3[static 16],const uint64_t p1[static 16],
+//    const uint64_t p2[static 16]);
 //
 // The output p3 and both inputs p1 and p2 are points (x,y) on
 // edwards25519 represented in extended projective quadruples (X,Y,Z,T)

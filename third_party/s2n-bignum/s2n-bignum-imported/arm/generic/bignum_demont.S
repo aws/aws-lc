@@ -5,8 +5,8 @@
 // Convert from (almost-)Montgomery form z := (x / 2^{64k}) mod m
 // Inputs x[k], m[k]; output z[k]
 //
-//    extern void bignum_demont
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
+//    extern void bignum_demont(uint64_t k, uint64_t *z, const uint64_t *x,
+//                              const uint64_t *m);
 //
 // Does z := (x / 2^{64k}) mod m, hence mapping out of Montgomery domain.
 // In other words, this is a k-fold Montgomery reduction with same-size input.

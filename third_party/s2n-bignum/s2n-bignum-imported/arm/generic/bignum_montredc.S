@@ -5,9 +5,8 @@
 // Montgomery reduce, z := (x' / 2^{64p}) MOD m
 // Inputs x[n], m[k], p; output z[k]
 //
-//    extern void bignum_montredc
-//     (uint64_t k, uint64_t *z,
-//      uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
+//    extern void bignum_montredc(uint64_t k, uint64_t *z, uint64_t n,
+//                                const uint64_t *x, const uint64_t *m, uint64_t p);
 //
 // Does a := (x' / 2^{64p}) mod m where x' = x if n <= p + k and in general
 // is the lowest (p+k) digits of x, assuming x' <= 2^{64p} * m. That is,
