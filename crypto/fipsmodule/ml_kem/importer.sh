@@ -84,6 +84,14 @@ cp $TMP/mlkem/src/native/api.h $SRC/native
 cp $TMP/mlkem/src/native/aarch64/meta.h $SRC/native/aarch64
 cp $TMP/mlkem/src/native/aarch64/src/* $SRC/native/aarch64/src
 
+# Copy x86 backend
+mkdir -p $SRC/native/x86_64/src
+# Backend API and specification assumed by mlkem-native frontend
+cp $TMP/mlkem/src/native/api.h $SRC/native
+# Copy x86 backend implementation
+cp $TMP/mlkem/src/native/x86_64/meta.h $SRC/native/x86_64
+cp $TMP/mlkem/src/native/x86_64/src/* $SRC/native/x86_64/src
+
 # We use the custom `mlkem_native_config.h`, so can remove the default one
 rm $SRC/config.h
 
@@ -139,8 +147,29 @@ for file in $SRC/native/aarch64/src/*.S; do
   fi
 done
 
-echo "Remove temporary artifacts ..."
-rm -rf $TMP
+echo "Fixup x86 assembly backend to use s2n-bignum macros"
+for file in $SRC/native/x86_64/src/*.S; do
+  echo "Processing $file"
+  tmp_file=$(mktemp)
+
+  # Flatten multiline preprocessor directives, then process with unifdef
+  sed -e ':a' -e 'N' -e '$!ba' -e 's/\\\n/ /g' "$file" | \
+  unifdef -DMLK_ARITH_BACKEND_AARCH64 -UMLK_CONFIG_MULTILEVEL_NO_SHARED -DMLK_CONFIG_MULTILEVEL_WITH_SHARED > "$tmp_file"
+  mv "$tmp_file" "$file"
+
+  # Replace common.h include and assembly macros
+  sed "${SED_I[@]}" 's/#include "\.\.\/\.\.\/\.\.\/common\.h"/#include "_internal_s2n_bignum.h"/' "$file"
+
+  func_name=$(grep -o '\.global MLK_ASM_NAMESPACE(\([^)]*\))' "$file" | sed 's/\.global MLK_ASM_NAMESPACE(\([^)]*\))/\1/')
+  if [ -n "$func_name" ]; then
+    sed "${SED_I[@]}" "s/\.global MLK_ASM_NAMESPACE($func_name)/        S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_$func_name)\n        S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_$func_name)/" "$file"
+    sed "${SED_I[@]}" "s/MLK_ASM_FN_SYMBOL($func_name)/S2N_BN_SYMBOL(mlkem_$func_name):/" "$file"
+  fi
+done
+
+
+# echo "Remove temporary artifacts ..."
+# rm -rf $TMP
 
 # Log timestamp, repository, and commit
 
