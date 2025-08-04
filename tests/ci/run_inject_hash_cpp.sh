@@ -60,24 +60,54 @@ run_test "No arguments test" true \
 # Test 2: Invalid file (should fail)
 run_test "Invalid file test" true \
     ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-    -in-object nonexistent.so -o nonexistent.so
+    -in-object nonexistent.file -o nonexistent.file
 ((ERRORS+=$?))
 
-# Test 3: Actual library (should succeed)
+# Platform Specific Tests
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    run_test "Valid library test (macOS)" false \
+    echo "MacOS specific tests..."
+    
+    # Test 3: macOS without -apple flag (should fail)
+    run_test "macOS missing apple flag test" true \
         ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
         -o ./crypto/libcrypto.dylib \
-        -in-object ./crypto/libcrypto.dylib \
-        -apple
+        -in-object ./crypto/libcrypto.dylib
     ((ERRORS+=$?))
+
+    # Test 4: Create corrupted library copy and invalid hash check
+    echo "Creating corrupted copy of library..."
+    cp ./crypto/libcrypto.dylib ./crypto/libcrypto_corrupted.dylib
+    printf '\x00' | dd of=./crypto/libcrypto_corrupted.dylib bs=1 seek=1024 count=1 conv=notrunc
+    export DYLD_LIBRARY_PATH="./crypto"
+    run_test "Corrupted hash verification test" true \
+        ./crypto/crypto_test
+    unset DYLD_LIBRARY_PATH
+    ((ERRORS+=$?))
+
 else
-    run_test "Valid library test (Linux)" false \
+    echo "Linux specific tests..."
+    
+    # Test 4: Linux with -apple flag (should fail)
+    run_test "Linux with apple flag test" true \
         ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
         -o ./crypto/libcrypto.so \
-        -in-object ./crypto/libcrypto.so
+        -in-object ./crypto/libcrypto.so \
+        -apple
+    ((ERRORS+=$?))
+    # Test 6: Create corrupted library copy and invalid hash check
+    echo "Creating corrupted copy of library..."
+    cp ./crypto/libcrypto.so ./crypto/libcrypto_corrupted.so
+    printf '\x00' | dd of=./crypto/libcrypto_corrupted.so bs=1 seek=1024 count=1 conv=notrunc
+    export LD_LIBRARY_PATH="./crypto_corrupted"
+    run_test "Corrupted hash verification test" true \
+        ./crypto/crypto_test
+    unset LD_LIBRARY_PATH
     ((ERRORS+=$?))
 fi
+
+# Clean up
+rm -f ./crypto/libcrypto_corrupted.* 2>/dev/null
+
 
 # Print test summary
 echo "=== Summary ==="

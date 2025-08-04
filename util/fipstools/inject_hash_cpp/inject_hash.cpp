@@ -11,6 +11,7 @@
 #include <openssl/hmac.h> 
 #include <tool/internal.h>
 #include <string>
+#include <inttypes.h> 
 
 
 // Define logging macros to maintain similar behavior to the original code
@@ -71,14 +72,16 @@ private:
 
             // Find boundary symbols
             const auto* text_start = macho->get_symbol("_BORINGSSL_bcm_text_start");
+            if (!text_start) {
+                LOG_ERROR("Could not find BORINGSSL_bcm_text_start symbol");
+            }
             const auto* text_end = macho->get_symbol("_BORINGSSL_bcm_text_end");
+            if (!text_end) {
+                LOG_ERROR("Could not find BORINGSSL_bcm_text_end symbol");
+            }
             const auto* rodata_start = macho->get_symbol("_BORINGSSL_bcm_rodata_start");
             const auto* rodata_end = macho->get_symbol("_BORINGSSL_bcm_rodata_end");
 
-            if (!text_start || !text_end) {
-                LOG_ERROR("Could not find text boundary symbols");
-                return false;
-            }
 
             // Find the sections containing these symbols
             const LIEF::MachO::Section* text_section = nullptr;
@@ -93,9 +96,11 @@ private:
             for (const auto& section : text_segment->sections()) {
                 if (section.name() == "__text") {
                     text_section = &section;
+                    LOG_INFO("Found __text section at virtual address: 0x%" PRIx64, section.virtual_address());
                 }
                 else if (section.name() == "__const") {
                     rodata_section = &section;
+                    LOG_INFO("Found __const section at virtual address: 0x%" PRIx64, section.virtual_address());
                 }
             }
 
@@ -137,8 +142,16 @@ private:
                 std::memcpy(rodata_module.data(), rodata_content.data() + rodata_start_offset, rodata_module.size());
             }
             else {
+                if ((rodata_start == nullptr) != (rodata_section == nullptr)) {
+                LOG_ERROR("rodata start marker inconsistent with rodata section presence");
+                return false;
+                }
+                if ((rodata_start != nullptr) != (rodata_end != nullptr)) {
+                    LOG_ERROR("rodata marker presence inconsistent");
+                    return false;
+                }
                 rodata_module.clear();
-            }
+                }
 
             return true;
     }
@@ -176,11 +189,11 @@ private:
             for (const auto& section : elf->sections()) {
                 if (section.name() == ".text") {
                     text_section = &section;
-                    LOG_INFO("Found .text section at virtual address: 0x%llx", section.virtual_address());
+                    LOG_INFO("Found .text section at virtual address: 0x%" PRIx64, section.virtual_address());
                 }
                 if (section.name() == ".rodata") {
                     rodata_section = &section;
-                    LOG_INFO("Found .rodata section at virtual address: 0x%llx", section.virtual_address());
+                    LOG_INFO("Found .rodata section at virtual address: 0x%" PRIx64, section.virtual_address());
                 }
             }
 
