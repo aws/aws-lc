@@ -2560,7 +2560,7 @@ $code.=<<___;
 ___
 }{
 ######################################################################
-# void bn_power5(
+# void bn_powerx5(
 my $rptr="%rdi";	# BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
 my $bptr="%rdx";	# const BN_ULONG *table,
