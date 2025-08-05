@@ -14,7 +14,7 @@ set(OPENSSL_VERSION_NUMBER "0x1010107f")
 # Note this is set to 1.1.1 for compatibility purposes
 # with projects that use the pkg-config information to determine
 # the OpenSSL version.
-set(PKG_CONFIG_VERSION "1.1.1") 
+set(REPORTED_PKGCONFIG_VERSION "1.1.1") 
 
 # Defer enabling C and CXX languages.
 project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
