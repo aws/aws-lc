@@ -227,3 +227,34 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutNooutOpenSSL) {
   trim(openssl_output_str);
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
+
+// Test against OpenSSL output "openssl rsa -in file -noout -modulus"
+// Only modulus is printed to stdin (reordered parameters)
+TEST_F(RSAComparisonTest, RSAToolCompareReorderedModulusNooutOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + in_path + " -noout -modulus > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + in_path + " -noout -modulus > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl rsa -in file -noout -modulus -out out_file"
+// Only modulus is printed to output file (reordered parameters)
+TEST_F(RSAComparisonTest, RSAToolCompareReorderedModulusOutNooutOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + in_path + " -noout -modulus -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + in_path + " -noout -modulus -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ScopedFILE tool_out_file(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out_file);
+  ScopedFILE openssl_out_file(fopen(out_path_openssl, "rb"));
+  ASSERT_TRUE(openssl_out_file);
+
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  trim(tool_output_str);
+  trim(openssl_output_str);
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}

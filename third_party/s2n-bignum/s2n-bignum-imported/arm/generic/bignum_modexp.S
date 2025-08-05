@@ -6,7 +6,8 @@
 // Inputs a[k], p[k], m[k]; output z[k], temporary buffer t[>=3*k]
 //
 //   extern void bignum_modexp
-//    (uint64_t k,uint64_t *z, uint64_t *a,uint64_t *p,uint64_t *m,uint64_t *t);
+//    (uint64_t k,uint64_t *z, const uint64_t *a,const uint64_t *p,
+//     const uint64_t *m,uint64_t *t);
 //
 // Does z := (a^p) mod m where all numbers are k-digit and m is odd
 //

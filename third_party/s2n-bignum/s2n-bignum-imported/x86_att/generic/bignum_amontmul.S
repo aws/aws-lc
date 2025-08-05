@@ -5,8 +5,8 @@
 // Almost-Montgomery multiply, z :== (x * y / 2^{64k}) (congruent mod m)
 // Inputs x[k], y[k], m[k]; output z[k]
 //
-//    extern void bignum_amontmul
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
+//    extern void bignum_amontmul(uint64_t k, uint64_t *z, const uint64_t *x,
+//                                const uint64_t *y, const uint64_t *m);
 //
 // Does z :== (x * y / 2^{64k}) mod m, meaning that the result, in the native
 // size k, is congruent modulo m, but might not be fully reduced mod m. This

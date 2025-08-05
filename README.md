@@ -150,10 +150,11 @@ verified on certain CPUs with caveats include:
 | SHA-2 | 384 | neoverse-n1, neoverse-v1 |
 | HMAC | with <nobr>SHA-384</nobr> | SandyBridge+ |
 | <nobr>AES-KW(P)</nobr> | 256 | SandyBridge+ |
-| Elliptic Curve Keys and Parameters | with <nobr>P-384</nobr> | SandyBridge+ |
-| ECDSA | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | SandyBridge+ |
-| ECDH | with <nobr>P-384</nobr> | SandyBridge+ |
-| HKDF | with <nobr>HMAC-SHA384</nobr> | SandyBridge+ |
+| <nobr>AES-GCM</nobr> | 256 | SandyBridge+ |
+<!--- | Elliptic Curve Keys and Parameters | with <nobr>P-384</nobr> | SandyBridge+ | --->
+<!--- | ECDSA | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | SandyBridge+ | --->
+<!--- | ECDH | with <nobr>P-384</nobr> | SandyBridge+ | --->
+<!--- | HKDF | with <nobr>HMAC-SHA384</nobr> | SandyBridge+ | --->
 
 The CPUs for which code is verified are defined in the following table.
 

@@ -8,8 +8,8 @@
 // achieved by reading the whole table and using the bit-masking to get the
 // `idx`-th row.
 //
-//    extern void bignum_copy_from_table
-//     (uint64_t *z, uint64_t *table, uint64_t height, uint64_t width,
+//    extern void bignum_copy_row_from_table
+//     (uint64_t *z, const uint64_t *table, uint64_t height, uint64_t width,
 //      uint64_t idx);
 //
 // Standard ARM ABI: X0 = z, X1 = table, X2 = height, X3 = width, X4 = idx

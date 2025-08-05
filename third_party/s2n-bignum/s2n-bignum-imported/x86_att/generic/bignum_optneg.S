@@ -5,8 +5,8 @@
 // Optionally negate, z := -x (if p nonzero) or z := x (if p zero)
 // Inputs p, x[k]; outputs function return (nonzero input) and z[k]
 //
-//    extern uint64_t bignum_optneg
-//     (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x);
+//    extern uint64_t bignum_optneg(uint64_t k, uint64_t *z, uint64_t p,
+//                                  const uint64_t *x);
 //
 // It is assumed that both numbers x and z have the same size k digits.
 // Returns a carry, which is equivalent to "x is nonzero".

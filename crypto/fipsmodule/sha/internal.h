@@ -340,6 +340,10 @@ void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *data,
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
 #define KECCAK1600_ASM
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+#define KECCAK1600_S2N_BIGNUM_ASM
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
+#endif
 #endif
 
 // SHAx_Init_from_state is a low-level function that initializes |sha| with a

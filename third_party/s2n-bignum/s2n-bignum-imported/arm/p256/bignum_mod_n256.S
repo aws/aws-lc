@@ -5,8 +5,8 @@
 // Reduce modulo group order, z := x mod n_256
 // Input x[k]; output z[4]
 //
-//    extern void bignum_mod_n256
-//     (uint64_t z[static 4], uint64_t k, uint64_t *x);
+//    extern void bignum_mod_n256(uint64_t z[static 4], uint64_t k,
+//                                const uint64_t *x);
 //
 // Reduction is modulo the group order of the NIST curve P-256.
 //

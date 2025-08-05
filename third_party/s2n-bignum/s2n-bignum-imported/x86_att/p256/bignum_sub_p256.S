@@ -5,8 +5,8 @@
 // Subtract modulo p_256, z := (x - y) mod p_256
 // Inputs x[4], y[4]; output z[4]
 //
-//    extern void bignum_sub_p256
-//     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+//    extern void bignum_sub_p256(uint64_t z[static 4], const uint64_t x[static 4],
+//                                const uint64_t y[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y

@@ -88,6 +88,14 @@ class SetupStack(Stack):
                     "ecr:BatchGetImage",
                     "ecr:PutImage",
                     "ecr:BatchDeleteImage",
+                    "ecr:GetAuthorizationToken",
+                    "ecr:ListImages",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload"
+
                 ],
                 resources=["*"],
             )

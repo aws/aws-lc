@@ -2919,11 +2919,23 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
        !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
        !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 35
+       !SpeedHmac(EVP_sha3_224(), "HMAC-SHA3-224", selected) ||
+       !SpeedHmac(EVP_sha3_256(), "HMAC-SHA3-256", selected) ||
+       !SpeedHmac(EVP_sha3_384(), "HMAC-SHA3-384", selected) ||
+       !SpeedHmac(EVP_sha3_512(), "HMAC-SHA3-512", selected) ||
+#endif
        !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >=35
+       !SpeedHmacOneShot(EVP_sha3_224(), "HMAC-SHA3-224-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_256(), "HMAC-SHA3-256-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_384(), "HMAC-SHA3-384-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_512(), "HMAC-SHA3-512-OneShot", selected) ||
+#endif
 #if !defined(OPENSSL_1_0_BENCHMARK)
        !SpeedCmac(EVP_aes_128_cbc(), "CMAC-AES-128-CBC", selected) ||
        !SpeedCmac(EVP_aes_256_cbc(), "CMAC-AES-256-CBC", selected) ||

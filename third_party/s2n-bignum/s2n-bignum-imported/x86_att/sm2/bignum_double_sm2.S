@@ -5,8 +5,7 @@
 // Double modulo p_sm2, z := (2 * x) mod p_sm2, assuming x reduced
 // Input x[4]; output z[4]
 //
-//    extern void bignum_double_sm2
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_double_sm2(uint64_t z[static 4], const uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x

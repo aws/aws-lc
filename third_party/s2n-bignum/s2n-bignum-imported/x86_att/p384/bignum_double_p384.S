@@ -5,8 +5,8 @@
 // Double modulo p_384, z := (2 * x) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
 //
-//    extern void bignum_double_p384
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_double_p384(uint64_t z[static 6],
+//                                   const uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x

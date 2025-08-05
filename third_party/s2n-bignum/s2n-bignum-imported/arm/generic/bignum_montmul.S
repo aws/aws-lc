@@ -5,8 +5,8 @@
 // Montgomery multiply, z := (x * y / 2^{64k}) mod m
 // Inputs x[k], y[k], m[k]; output z[k]
 //
-//    extern void bignum_montmul
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
+//    extern void bignum_montmul(uint64_t k, uint64_t *z, const uint64_t *x,
+//                               const uint64_t *y, const uint64_t *m);
 //
 // Does z := (x * y / 2^{64k}) mod m, assuming x * y <= 2^{64k} * m, which is
 // guaranteed in particular if x < m, y < m initially (the "intended" case).

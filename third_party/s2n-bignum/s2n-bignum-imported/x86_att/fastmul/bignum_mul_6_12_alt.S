@@ -5,8 +5,9 @@
 // Multiply z := x * y
 // Inputs x[6], y[6]; output z[12]
 //
-//    extern void bignum_mul_6_12_alt
-//     (uint64_t z[static 12], uint64_t x[static 6], uint64_t y[static 6]);
+//    extern void bignum_mul_6_12_alt(uint64_t z[static 12],
+//                                    const uint64_t x[static 6],
+//                                    const uint64_t y[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x, RDX = y
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y

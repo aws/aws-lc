@@ -5,8 +5,8 @@
 // Reduce modulo group order, z := x mod n_521
 // Input x[9]; output z[9]
 //
-//    extern void bignum_mod_n521_9_alt
-//      (uint64_t z[static 9], uint64_t x[static 9]);
+//    extern void bignum_mod_n521_9_alt(uint64_t z[static 9],
+//                                      const uint64_t x[static 9]);
 //
 // Reduction is modulo the group order of the NIST curve P-521.
 //

@@ -5,9 +5,8 @@
 // Subtract, z := x - y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]
 //
-//    extern uint64_t bignum_sub
-//     (uint64_t p, uint64_t *z,
-//      uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+//    extern uint64_t bignum_sub(uint64_t p, uint64_t *z, uint64_t m,
+//                               const uint64_t *x, uint64_t n, const uint64_t *y);
 //
 // Does the z := x - y operation, truncating modulo p words in general and
 // returning a top borrow (0 or 1) in the p'th place, only subtracting input

@@ -5,9 +5,10 @@
 // Multiply-add modulo the order of the curve25519/edwards25519 basepoint
 // Inputs x[4], y[4], c[4]; output z[4]
 //
-//    extern void bignum_madd_n25519_alt
-//     (uint64_t z[static 4], uint64_t x[static 4],
-//      uint64_t y[static 4], uint64_t c[static 4]);
+//    extern void bignum_madd_n25519_alt(uint64_t z[static 4],
+//                                       const uint64_t x[static 4],
+//                                       const uint64_t y[static 4],
+//                                       const uint64_t c[static 4]);
 //
 // Performs z := (x * y + c) mod n_25519, where the modulus is
 // n_25519 = 2^252 + 27742317777372353535851937790883648493, the
