@@ -6,28 +6,16 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
 .text	
 
-
-
-.globl	_bn_mul_mont_gather5
-.private_extern _bn_mul_mont_gather5
+.globl	_bn_mul_mont_gather5_nohw
+.private_extern _bn_mul_mont_gather5_nohw
 
 .p2align	6
-_bn_mul_mont_gather5:
+_bn_mul_mont_gather5_nohw:
 
 _CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 
-	testl	$7,%r9d
-	jnz	L$mul_enter
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	_OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-#endif
-	jmp	L$mul4x_enter
-
-.p2align	4
-L$mul_enter:
 	movd	8(%rsp),%xmm5
 	pushq	%rbx
 
@@ -454,19 +442,16 @@ L$mul_epilogue:
 	.byte	0xf3,0xc3
 
 
+.global	_bn_mul4x_mont_gather5
+.private_extern _bn_mul4x_mont_gather5
 
 .p2align	5
-bn_mul4x_mont_gather5:
+_bn_mul4x_mont_gather5:
 
+_CET_ENDBR
 .byte	0x67
 	movq	%rsp,%rax
 
-L$mul4x_enter:
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	andl	$0x80108,%r11d
-	cmpl	$0x80108,%r11d
-	je	L$mulx4x_enter
-#endif
 	pushq	%rbx
 
 	pushq	%rbp
@@ -1091,22 +1076,15 @@ L$inner4x:
 	jmp	L$sqr4x_sub_entry
 
 
-.globl	_bn_power5
-.private_extern _bn_power5
+.globl	_bn_power5_nohw
+.private_extern _bn_power5_nohw
 
 .p2align	5
-_bn_power5:
+_bn_power5_nohw:
 
 _CET_ENDBR
 	movq	%rsp,%rax
 
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	_OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-	andl	$0x80108,%r11d
-	cmpl	$0x80108,%r11d
-	je	L$powerx5_enter
-#endif
 	pushq	%rbx
 
 	pushq	%rbp
@@ -2073,13 +2051,15 @@ L$sqr4x_sub_entry:
 
 
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.global	_bn_mulx4x_mont_gather5
+.private_extern _bn_mulx4x_mont_gather5
 
 .p2align	5
-bn_mulx4x_mont_gather5:
+_bn_mulx4x_mont_gather5:
 
+_CET_ENDBR
 	movq	%rsp,%rax
 
-L$mulx4x_enter:
 	pushq	%rbx
 
 	pushq	%rbp
@@ -2610,13 +2590,15 @@ L$mulx4x_inner:
 	jmp	L$sqrx4x_sub_entry
 
 
+.global	_bn_powerx5
+.private_extern _bn_powerx5
 
 .p2align	5
-bn_power5:
+_bn_powerx5:
 
+_CET_ENDBR
 	movq	%rsp,%rax
 
-L$powerx5_enter:
 	pushq	%rbx
 
 	pushq	%rbp

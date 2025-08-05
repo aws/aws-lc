@@ -6,29 +6,16 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
 .text	
 
-.extern	OPENSSL_ia32cap_P
-.hidden OPENSSL_ia32cap_P
-
-.globl	bn_mul_mont_gather5
-.hidden bn_mul_mont_gather5
-.type	bn_mul_mont_gather5,@function
+.globl	bn_mul_mont_gather5_nohw
+.hidden bn_mul_mont_gather5_nohw
+.type	bn_mul_mont_gather5_nohw,@function
 .align	64
-bn_mul_mont_gather5:
+bn_mul_mont_gather5_nohw:
 .cfi_startproc	
 _CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
-	testl	$7,%r9d
-	jnz	.Lmul_enter
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-#endif
-	jmp	.Lmul4x_enter
-
-.align	16
-.Lmul_enter:
 	movd	8(%rsp),%xmm5
 	pushq	%rbx
 .cfi_offset	%rbx,-16
@@ -454,20 +441,17 @@ _CET_ENDBR
 .Lmul_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	bn_mul_mont_gather5,.-bn_mul_mont_gather5
+.size	bn_mul_mont_gather5_nohw,.-bn_mul_mont_gather5_nohw
+.global	bn_mul4x_mont_gather5
+.hidden bn_mul4x_mont_gather5
 .type	bn_mul4x_mont_gather5,@function
 .align	32
 bn_mul4x_mont_gather5:
 .cfi_startproc	
+_CET_ENDBR
 .byte	0x67
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
-.Lmul4x_enter:
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	andl	$0x80108,%r11d
-	cmpl	$0x80108,%r11d
-	je	.Lmulx4x_enter
-#endif
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -1092,22 +1076,15 @@ mul4x_internal:
 	jmp	.Lsqr4x_sub_entry
 .cfi_endproc	
 .size	mul4x_internal,.-mul4x_internal
-.globl	bn_power5
-.hidden bn_power5
-.type	bn_power5,@function
+.globl	bn_power5_nohw
+.hidden bn_power5_nohw
+.type	bn_power5_nohw,@function
 .align	32
-bn_power5:
+bn_power5_nohw:
 .cfi_startproc	
 _CET_ENDBR
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-	andl	$0x80108,%r11d
-	cmpl	$0x80108,%r11d
-	je	.Lpowerx5_enter
-#endif
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -1230,7 +1207,7 @@ _CET_ENDBR
 .Lpower5_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	bn_power5,.-bn_power5
+.size	bn_power5_nohw,.-bn_power5_nohw
 
 .globl	bn_sqr8x_internal
 .hidden bn_sqr8x_internal
@@ -2074,13 +2051,15 @@ __bn_post4x_internal:
 .cfi_endproc	
 .size	__bn_post4x_internal,.-__bn_post4x_internal
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.global	bn_mulx4x_mont_gather5
+.hidden bn_mulx4x_mont_gather5
 .type	bn_mulx4x_mont_gather5,@function
 .align	32
 bn_mulx4x_mont_gather5:
 .cfi_startproc	
+_CET_ENDBR
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
-.Lmulx4x_enter:
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -2611,13 +2590,15 @@ mulx4x_internal:
 	jmp	.Lsqrx4x_sub_entry
 .cfi_endproc	
 .size	mulx4x_internal,.-mulx4x_internal
-.type	bn_power5,@function
+.global	bn_powerx5
+.hidden bn_powerx5
+.type	bn_powerx5,@function
 .align	32
-bn_power5:
+bn_powerx5:
 .cfi_startproc	
+_CET_ENDBR
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
-.Lpowerx5_enter:
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -2744,7 +2725,7 @@ bn_power5:
 .Lpowerx5_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	bn_power5,.-bn_power5
+.size	bn_powerx5,.-bn_powerx5
 
 .globl	bn_sqrx8x_internal
 .hidden bn_sqrx8x_internal
