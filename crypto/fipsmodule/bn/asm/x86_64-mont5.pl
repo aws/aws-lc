@@ -3719,7 +3719,7 @@ $code.=<<___;
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_body,.Lmul_epilogue		# HandlerData[]
 .align	8
-.LSEH_info_bn_mul4x_mont_gather5_nohw:
+.LSEH_info_bn_mul4x_mont_gather5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul4x_prologue,.Lmul4x_body,.Lmul4x_epilogue		# HandlerData[]

@@ -3820,7 +3820,7 @@ $L$SEH_info_bn_mul_mont_gather5_nohw:
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul_body wrt ..imagebase,$L$mul_body wrt ..imagebase,$L$mul_epilogue wrt ..imagebase
 ALIGN	8
-$L$SEH_info_bn_mul4x_mont_gather5_nohw:
+$L$SEH_info_bn_mul4x_mont_gather5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul4x_prologue wrt ..imagebase,$L$mul4x_body wrt ..imagebase,$L$mul4x_epilogue wrt ..imagebase
