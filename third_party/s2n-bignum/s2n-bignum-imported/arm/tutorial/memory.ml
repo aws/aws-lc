@@ -56,9 +56,8 @@ let memory_SPEC = prove(
      // Memory instructions raise observable microarchitectural events!
      MAYCHANGE [events])`,
 
-  (* Convert 'nonoverlapping' into 'nonoverlapping_modulo' and rewrite 'LENGTH memory_mc'
-     with the concrete number. *)
-  REWRITE_TAC[NONOVERLAPPING_CLAUSES;fst EXEC] THEN
+  (* Rewrite 'LENGTH memory_mc' with the concrete number. *)
+  REWRITE_TAC[fst EXEC] THEN
   (* Strips the assumption and outermost universal quantifier from the conclusion of a goal *)
   REPEAT STRIP_TAC THEN
 
