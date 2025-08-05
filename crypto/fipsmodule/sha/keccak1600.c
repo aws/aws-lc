@@ -519,6 +519,49 @@ static void KeccakF1600_ExtractBytes_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK160
 
 static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS])
 {
+    // Dispatch logic for Keccak-x4 on AArch64:
+    //
+    // 1. If ASM is disabled, we use 4x the C implementation.
+    // 2. If ASM is enabled:
+    // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
+    //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
+    //   lazy rotations.
+    // - For Neoverse V1, V2, we use SIMD batched hybrid Keccak assembly from s2n-bignum
+    //   (`sha3_keccak4_f1600_alt2()`) leveraging Neon, Neon SHA3 extension,
+    //   and scalar assembly with lazy rotations.
+    // - Otherwise, if the Neon SHA3 extension is supported, we use the 2-fold
+    //   Keccak assembly from s2n-bignum (`sha3_keccak2_f1600_alt()`) twice,
+    //   which is a straightforward implementation using the SHA3 extension.
+    // - Otherwise, fall back to four times the 1-fold Keccak implementation
+    //   (which has its own dispatch logic).
+
+#if defined(KECCAK1600_S2N_BIGNUM_ASM)
+    if (CRYPTO_is_Neoverse_N1()) {
+        keccak_log_dispatch(12); // kFlag_sha3_keccak4_f1600_alt
+        sha3_keccak4_f1600_alt((uint64_t *)A, iotas);
+        return;
+    }
+
+    if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
+#if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+        keccak_log_dispatch(14); // kFlag_sha3_keccak4_f1600_alt2
+        sha3_keccak4_f1600_alt2((uint64_t *)A, iotas);
+        return;
+#endif
+    }
+
+#if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+    if (CRYPTO_is_ARMv8_SHA3_capable()) {
+        keccak_log_dispatch(13); // kFlag_sha3_keccak2_f1600_alt
+        // Use 2-fold function twice: A[0:1] and A[2:3]
+        sha3_keccak2_f1600_alt((uint64_t *)&A[0], iotas);
+        sha3_keccak2_f1600_alt((uint64_t *)&A[2], iotas);
+        return;
+    }
+#endif
+#endif
+
+    // Fallback: 4x individual KeccakF1600 calls (each with their own dispatch)
     KeccakF1600(A[0]);
     KeccakF1600(A[1]);
     KeccakF1600(A[2]);
