@@ -5,8 +5,8 @@
 // Select element from 16-element table, z := xs[k*i]
 // Inputs xs[16*k], i; output z[k]
 //
-//    extern void bignum_mux16
-//     (uint64_t k, uint64_t *z, uint64_t *xs, uint64_t i);
+//    extern void bignum_mux16(uint64_t k, uint64_t *z, const uint64_t *xs,
+//                             uint64_t i);
 //
 // It is assumed that all numbers xs[16] and the target z have the same size k
 // The pointer xs is to a contiguous array of size 16, elements size-k bignums

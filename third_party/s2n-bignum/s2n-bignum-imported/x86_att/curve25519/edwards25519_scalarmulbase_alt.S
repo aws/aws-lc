@@ -6,7 +6,7 @@
 // Input scalar[4]; output res[8]
 //
 // extern void edwards25519_scalarmulbase_alt
-//   (uint64_t res[static 8],uint64_t scalar[static 4]);
+//   (uint64_t res[static 8],const uint64_t scalar[static 4]);
 //
 // Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
 // the standard basepoint for the edwards25519 (Ed25519) curve.

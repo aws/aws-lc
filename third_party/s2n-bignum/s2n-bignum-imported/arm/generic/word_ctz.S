@@ -5,7 +5,7 @@
 // Count trailing zero bits in a single word
 // Input a; output function return
 //
-//    extern uint64_t word_ctz (uint64_t a);
+//    extern uint64_t word_ctz(uint64_t a);
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------

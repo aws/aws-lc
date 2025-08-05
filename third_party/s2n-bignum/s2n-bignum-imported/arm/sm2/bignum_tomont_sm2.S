@@ -5,8 +5,7 @@
 // Convert to Montgomery form z := (2^256 * x) mod p_sm2
 // Input x[4]; output z[4]
 //
-//    extern void bignum_tomont_sm2
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_tomont_sm2(uint64_t z[static 4], const uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

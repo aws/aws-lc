@@ -44,8 +44,8 @@ function ruby_build() {
     ./install/bin/ruby -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
     ./miniruby ./tool/runruby.rb -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
 
-    ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-    ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+    ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "$(find "$PWD/install" -name "openssl.so")" crypto || exit 1
+    ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "$(find "$PWD/install" -name "openssl.so")" ssl || exit 1
 
     make test-all TESTS="test/openssl/*.rb"
     make test-all TESTS="test/rubygems/test*.rb"

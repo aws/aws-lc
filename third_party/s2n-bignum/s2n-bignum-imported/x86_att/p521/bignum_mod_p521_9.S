@@ -5,8 +5,7 @@
 // Reduce modulo field characteristic, z := x mod p_521
 // Input x[9]; output z[9]
 //
-//    extern void bignum_mod_p521_9
-//     (uint64_t z[static 9], uint64_t x[static 9]);
+//    extern void bignum_mod_p521_9(uint64_t z[static 9], const uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x

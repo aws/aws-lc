@@ -5,8 +5,7 @@
 // Negated modular inverse, z := (-1/x) mod 2^{64k}
 // Input x[k]; output z[k]
 //
-//    extern void bignum_negmodinv
-//     (uint64_t k, uint64_t *z, uint64_t *x);
+//    extern void bignum_negmodinv(uint64_t k, uint64_t *z, const uint64_t *x);
 //
 // Assuming x is odd (otherwise nothing makes sense) the result satisfies
 //

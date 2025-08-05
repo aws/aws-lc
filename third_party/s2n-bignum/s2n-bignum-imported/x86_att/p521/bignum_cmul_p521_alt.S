@@ -6,8 +6,8 @@
 // x reduced
 // Inputs c, x[9]; output z[9]
 //
-//    extern void bignum_cmul_p521_alt
-//     (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
+//    extern void bignum_cmul_p521_alt(uint64_t z[static 9], uint64_t c,
+//                                     const uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
