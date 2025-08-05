@@ -320,6 +320,31 @@ if((ARCH STREQUAL "aarch64") AND UNIX)
 
 endif()
 
+# mlkem-native assembly files can be compiled on Unix platforms for x86_64 and arm64 only.
+if((ARCH STREQUAL "x86_64") AND UNIX)
+
+  # Set the source directory for s2n-bignum assembly files
+  set(MLKEM_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_kem")
+
+  set(MLKEM_NATIVE_X86_64_ASM_SOURCES
+
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/intt.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/ntt.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/mulcache_compute.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/nttfrombytes.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/ntttobytes.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/nttunpack.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/reduce.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/tomont.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k2.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/rej_uniform_asm.S
+  )
+
+  list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_X86_64_ASM_SOURCES})
+
+endif()
 
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)

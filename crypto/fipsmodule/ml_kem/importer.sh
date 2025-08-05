@@ -104,7 +104,6 @@ cp $TMP/.clang-format $SRC
 # arithmetic backend that are not yet imported.
 unifdef -DMLK_CONFIG_FIPS202_CUSTOM_HEADER                             \
         -UMLK_CONFIG_USE_NATIVE_BACKEND_FIPS202                        \
-        -UMLK_SYS_X86_64                                               \
         $TMP/mlkem/mlkem_native.c                                      \
         > $SRC/mlkem_native_bcm.c
 
@@ -154,7 +153,7 @@ for file in $SRC/native/x86_64/src/*.S; do
 
   # Flatten multiline preprocessor directives, then process with unifdef
   sed -e ':a' -e 'N' -e '$!ba' -e 's/\\\n/ /g' "$file" | \
-  unifdef -DMLK_ARITH_BACKEND_AARCH64 -UMLK_CONFIG_MULTILEVEL_NO_SHARED -DMLK_CONFIG_MULTILEVEL_WITH_SHARED > "$tmp_file"
+  unifdef -DMLK_ARITH_BACKEND_X86_64_DEFAULT -UMLK_CONFIG_MULTILEVEL_NO_SHARED -DMLK_CONFIG_MULTILEVEL_WITH_SHARED > "$tmp_file"
   mv "$tmp_file" "$file"
 
   # Replace common.h include and assembly macros

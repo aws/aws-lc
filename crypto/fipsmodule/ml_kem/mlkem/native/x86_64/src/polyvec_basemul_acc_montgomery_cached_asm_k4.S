@@ -4,7 +4,6 @@
  */
 
 #include "_internal_s2n_bignum.h"
-#if defined(MLK_ARITH_BACKEND_X86_64_DEFAULT) &&      !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED) &&      (defined(MLK_CONFIG_MULTILEVEL_WITH_SHARED) || MLKEM_K == 4)
 
 /*
  * WARNING: This file is auto-derived from the mlkem-native source file
@@ -982,4 +981,3 @@ S2N_BN_SYMBOL(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k4):
         vmovdqa	%ymm9, 0x1e0(%rdi)
         retq
 
-#endif /* MLK_ARITH_BACKEND_X86_64_DEFAULT && !MLK_CONFIG_MULTILEVEL_NO_SHARED            && (MLK_CONFIG_MULTILEVEL_WITH_SHARED || MLKEM_K == 4) */

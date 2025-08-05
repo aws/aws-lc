@@ -13,4 +13,10 @@
 #include "mlkem/native/aarch64/meta.h"
 #endif
 
+#if !defined(OPENSSL_NO_ASM) &&				\
+    defined(OPENSSL_X86_64) &&				\
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
+#include "mlkem/native/x86_64/meta.h"
+#endif
+
 #endif /* MLKEM_NATIVE_BACKEND_H */

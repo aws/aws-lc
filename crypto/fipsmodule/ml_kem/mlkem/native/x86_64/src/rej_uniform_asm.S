@@ -20,7 +20,6 @@
  **************************************************/
 #include "_internal_s2n_bignum.h"
 
-#if defined(MLK_ARITH_BACKEND_X86_64_DEFAULT) &&      !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED)
 
 /*
  * WARNING: This file is auto-derived from the mlkem-native source file
@@ -84,4 +83,3 @@ rej_uniform_asm_final_copy:
         addq	$0x210, %rsp            # imm = 0x210
         retq
 
-#endif /* MLK_ARITH_BACKEND_X86_64_DEFAULT && !MLK_CONFIG_MULTILEVEL_NO_SHARED          */

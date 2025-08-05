@@ -19,7 +19,6 @@
 
 #include "_internal_s2n_bignum.h"
 
-#if defined(MLK_ARITH_BACKEND_X86_64_DEFAULT) &&      !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED)
 
 /*
  * WARNING: This file is auto-derived from the mlkem-native source file
@@ -109,4 +108,3 @@ ntttobytes_avx2_core:
         vmovdqu	%ymm9, 0xa0(%rdi)
         retq
 
-#endif /* MLK_ARITH_BACKEND_X86_64_DEFAULT && !MLK_CONFIG_MULTILEVEL_NO_SHARED          */
