@@ -2612,7 +2612,7 @@ L$mulx4x_inner:
 
 
 .p2align	5
-bn_powerx5:
+bn_power5:
 
 	movq	%rsp,%rax
 

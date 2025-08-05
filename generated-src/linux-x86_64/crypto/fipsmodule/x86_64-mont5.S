@@ -2611,9 +2611,9 @@ mulx4x_internal:
 	jmp	.Lsqrx4x_sub_entry
 .cfi_endproc	
 .size	mulx4x_internal,.-mulx4x_internal
-.type	bn_powerx5,@function
+.type	bn_power5,@function
 .align	32
-bn_powerx5:
+bn_power5:
 .cfi_startproc	
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
@@ -2744,7 +2744,7 @@ bn_powerx5:
 .Lpowerx5_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	bn_powerx5,.-bn_powerx5
+.size	bn_power5,.-bn_power5
 
 .globl	bn_sqrx8x_internal
 .hidden bn_sqrx8x_internal

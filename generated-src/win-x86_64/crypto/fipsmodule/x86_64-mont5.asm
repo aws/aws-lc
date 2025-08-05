@@ -2671,11 +2671,11 @@ $L$mulx4x_inner:
 
 
 ALIGN	32
-bn_powerx5:
+bn_power5:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_bn_powerx5:
+$L$SEH_begin_bn_power5:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -2816,7 +2816,7 @@ $L$powerx5_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	DB	0F3h,0C3h		;repret
 
-$L$SEH_end_bn_powerx5:
+$L$SEH_end_bn_power5:
 
 global	bn_sqrx8x_internal
 
@@ -3826,9 +3826,9 @@ ALIGN	4
 	DD	$L$SEH_end_bn_mulx4x_mont_gather5 wrt ..imagebase
 	DD	$L$SEH_info_bn_mulx4x_mont_gather5 wrt ..imagebase
 
-	DD	$L$SEH_begin_bn_powerx5 wrt ..imagebase
-	DD	$L$SEH_end_bn_powerx5 wrt ..imagebase
-	DD	$L$SEH_info_bn_powerx5 wrt ..imagebase
+	DD	$L$SEH_begin_bn_power5 wrt ..imagebase
+	DD	$L$SEH_end_bn_power5 wrt ..imagebase
+	DD	$L$SEH_info_bn_power5 wrt ..imagebase
 %endif
 	DD	$L$SEH_begin_bn_gather5 wrt ..imagebase
 	DD	$L$SEH_end_bn_gather5 wrt ..imagebase
@@ -3857,7 +3857,7 @@ $L$SEH_info_bn_mulx4x_mont_gather5:
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mulx4x_prologue wrt ..imagebase,$L$mulx4x_body wrt ..imagebase,$L$mulx4x_epilogue wrt ..imagebase
 ALIGN	8
-$L$SEH_info_bn_powerx5:
+$L$SEH_info_bn_power5:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$powerx5_prologue wrt ..imagebase,$L$powerx5_body wrt ..imagebase,$L$powerx5_epilogue wrt ..imagebase

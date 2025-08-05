@@ -2575,10 +2575,10 @@ my @A1=("%r12","%r13");
 my ($a0,$a1,$ai)=("%r14","%r15","%rbx");
 
 $code.=<<___;
-.global bn_power5
-.type	bn_power5,\@function,6
+.global bn_powerx5
+.type	bn_powerx5,\@function,6
 .align	32
-bn_power5:
+bn_powerx5:
 .cfi_startproc
     _CET_ENDBR
 	mov	%rsp,%rax
@@ -2709,7 +2709,7 @@ bn_power5:
 .Lpowerx5_epilogue:
 	ret
 .cfi_endproc
-.size	bn_power5,.-bn_power5
+.size	bn_powerx5,.-bn_powerx5
 
 .globl	bn_sqrx8x_internal
 .hidden	bn_sqrx8x_internal
@@ -3702,9 +3702,9 @@ $code.=<<___ if ($addx);
 	.rva	.LSEH_end_bn_mulx4x_mont_gather5
 	.rva	.LSEH_info_bn_mulx4x_mont_gather5
 
-	.rva	.LSEH_begin_bn_power5
-	.rva	.LSEH_end_bn_power5
-	.rva	.LSEH_info_bn_power5
+	.rva	.LSEH_begin_bn_powerx5
+	.rva	.LSEH_end_bn_powerx5
+	.rva	.LSEH_info_bn_powerx5
 #endif
 ___
 $code.=<<___;
@@ -3737,7 +3737,7 @@ $code.=<<___ if ($addx);
 	.rva	mul_handler
 	.rva	.Lmulx4x_prologue,.Lmulx4x_body,.Lmulx4x_epilogue	# HandlerData[]
 .align	8
-.LSEH_info_bn_power5:
+.LSEH_info_bn_powerx5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lpowerx5_prologue,.Lpowerx5_body,.Lpowerx5_epilogue	# HandlerData[]
