@@ -104,7 +104,7 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "6e4c27902010c020100020100020100a05b3059020101020203030402cca8040004308566"
      "8dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd8098dc19d900"
      "b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb20302011da2"
-     "06040474657374a7030101ff020108020100a0030101ffa303020141"},
+     "06040474657374a7030101ff020108020100a0030101ffa203020100"},
     // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used
     // to generate below bytes by adding print statement on the output of
     // |SSL_to_bytes| in bssl_shim.cc.
@@ -129,7 +129,7 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "6e4c27902010c020100020100020100a05b3059020101020203030402cca8040004308566"
      "8dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd8098dc19d900"
      "b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb20302011da2"
-     "06040474657374a7030101ff020108020100a0030101ffa303020141"},
+     "06040474657374a7030101ff020108020100a0030101ffa203020100"},
     // In runner.go, the test case
     // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
     // below bytes by adding print statement on the output of |SSL_to_bytes| in
@@ -189,7 +189,7 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "164b46d2d685e9fe826465cc135130f3e2e47838658af57173f864070fdce241be58ecbd6"
      "0d18128dfa28f4b1a00042a2a0000ba233021020101020403001301301602010102011704"
      "0e300c0201010201000201000101ffbb23302102010102040300130130160201010201170"
-     "40e300c0201010201000201000101ff020108020100a0030101ffa303020141"},
+     "40e300c0201010201000201000101ff020108020100a0030101ffa203020100"},
     // In runner.go, the test case
     // "TLS-ECH-Server-Cipher-HKDF-SHA256-AES-256-GCM-SSL_Transfer" is used
     // to generate below bytes by adding print statement on the output of
@@ -221,7 +221,7 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "5c17851bd8498b1d1131a79e19c66463e0566985ef55deb548fe370058ba83566278d01b3"
      "a565075b8ef2a82bea17ae95fa91b7b3ffa611a7d8a633100045a5a0000ba153013020101"
      "02040300130330080201010201050400bb153013020101020403001303300802010102010"
-     "50400020108020100a0030101ffa303020100",
+     "50400020108020100a0030101ffa203020100",
      nullptr}};
 
 class EncodeDecodeKATTest
@@ -1018,11 +1018,11 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(SSLTest, GetTrafficSecrets) {
   // Set up client and server contexts with TLS 1.3
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx = 
+  bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-  
+
   // Ensure TLS 1.3 is used
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
@@ -1043,37 +1043,51 @@ TEST(SSLTest, GetTrafficSecrets) {
          server_write_len = 0;
 
   // First check the lengths
-  ASSERT_TRUE(SSL_get_read_traffic_secret(client.get(), nullptr, &client_read_len));
-  ASSERT_TRUE(SSL_get_write_traffic_secret(client.get(), nullptr, &client_write_len));
-  ASSERT_TRUE(SSL_get_read_traffic_secret(server.get(), nullptr, &server_read_len));
-  ASSERT_TRUE(SSL_get_write_traffic_secret(server.get(), nullptr, &server_write_len));
+  ASSERT_TRUE(
+      SSL_get_read_traffic_secret(client.get(), nullptr, &client_read_len));
+  ASSERT_TRUE(
+      SSL_get_write_traffic_secret(client.get(), nullptr, &client_write_len));
+  ASSERT_TRUE(
+      SSL_get_read_traffic_secret(server.get(), nullptr, &server_read_len));
+  ASSERT_TRUE(
+      SSL_get_write_traffic_secret(server.get(), nullptr, &server_write_len));
 
   ASSERT_EQ(client_read_len, server_write_len);
   ASSERT_EQ(client_write_len, server_read_len);
 
   // Get the actual secrets
-  ASSERT_TRUE(SSL_get_read_traffic_secret(client.get(), client_read_secret, &client_read_len));
-  ASSERT_TRUE(SSL_get_write_traffic_secret(client.get(), client_write_secret, &client_write_len));
-  ASSERT_TRUE(SSL_get_read_traffic_secret(server.get(), server_read_secret, &server_read_len));
-  ASSERT_TRUE(SSL_get_write_traffic_secret(server.get(), server_write_secret, &server_write_len));
+  ASSERT_TRUE(SSL_get_read_traffic_secret(client.get(), client_read_secret,
+                                          &client_read_len));
+  ASSERT_TRUE(SSL_get_write_traffic_secret(client.get(), client_write_secret,
+                                           &client_write_len));
+  ASSERT_TRUE(SSL_get_read_traffic_secret(server.get(), server_read_secret,
+                                          &server_read_len));
+  ASSERT_TRUE(SSL_get_write_traffic_secret(server.get(), server_write_secret,
+                                           &server_write_len));
 
   // Client's read secret should match server's write secret
-  ASSERT_EQ(0, OPENSSL_memcmp(client_read_secret, server_write_secret, client_read_len));
+  ASSERT_EQ(0, OPENSSL_memcmp(client_read_secret, server_write_secret,
+                              client_read_len));
   // Client's write secret should match server's read secret
-  ASSERT_EQ(0, OPENSSL_memcmp(client_write_secret, server_read_secret, client_write_len));
+  ASSERT_EQ(0, OPENSSL_memcmp(client_write_secret, server_read_secret,
+                              client_write_len));
 
   // Test error cases
   bssl::UniquePtr<SSL> unconnected(SSL_new(client_ctx.get()));
   ASSERT_TRUE(unconnected);
   size_t unused = 0;
-  ASSERT_FALSE(SSL_get_read_traffic_secret(unconnected.get(), nullptr, &unused));
-  ASSERT_FALSE(SSL_get_write_traffic_secret(unconnected.get(), nullptr, &unused));
+  ASSERT_FALSE(
+      SSL_get_read_traffic_secret(unconnected.get(), nullptr, &unused));
+  ASSERT_FALSE(
+      SSL_get_write_traffic_secret(unconnected.get(), nullptr, &unused));
 
   // Test buffer too small
   uint8_t small_buffer[1];
   size_t actual_size = sizeof(small_buffer);
-  ASSERT_FALSE(SSL_get_read_traffic_secret(client.get(), small_buffer, &actual_size));
-  ASSERT_FALSE(SSL_get_write_traffic_secret(client.get(), small_buffer, &actual_size));
+  ASSERT_FALSE(
+      SSL_get_read_traffic_secret(client.get(), small_buffer, &actual_size));
+  ASSERT_FALSE(
+      SSL_get_write_traffic_secret(client.get(), small_buffer, &actual_size));
 
   // Passing null buffers and null size
   ASSERT_FALSE(SSL_get_read_traffic_secret(client.get(), nullptr, nullptr));
