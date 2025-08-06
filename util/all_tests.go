@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -112,13 +113,28 @@ func initSDECPUs() {
 
 		verOutput := strings.ToLower(string(output))
 
-		// Windows Server 2022 (or 10.0.20348) may natively use some AVX instructions that old CPUs do not have
-		if !strings.Contains(verOutput, "10.0.20348") {
-			sdeCPUs = append(sdeCPUs, cpusWithoutAVX...)
+		// Modern MSVC runtime libraries (Windows Server 2022 and newer) assumes a minimum level of AVX support. Some old CPUs do not support AVX.
+		if isWindowsOlderThan2022(verOutput) {
+			sdeCPUs = append(sdeCPUs, cpusWithNoAVXSupport...)
 		} else {
-			fmt.Printf("Running on Windows 2022. Removing old CPUs lacking AVX instructions that Windows 2022 may use.\n")
+			fmt.Printf("Running on Windows 2022 or newer. Removed old CPUs lacking AVX support that Windows 2022+ may use.\n")
 		}
 	}
+}
+
+func isWindowsOlderThan2022(verOutput string) bool {
+	re := regexp.MustCompile(`(\d+\.\d+\.\d+(?:\.\d+)*)`)
+	matches := re.FindStringSubmatch(verOutput)
+
+	if len(matches) < 2 {
+		fmt.Printf("Could not parse Windows version. Testing all CPUs to ensure maximum coverage.")
+		return true
+	}
+
+	version := matches[1]
+
+	// Windows Server 2022 has version number 10.0.20348
+	return version < "10.0.20"
 }
 
 func targetArchMatchesRuntime(target string) bool {
