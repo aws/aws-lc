@@ -73,7 +73,38 @@ else
     LIB_PATH_VAR="LD_LIBRARY_PATH"
 fi
 
-# Test 3: Create corrupted library copy and invalid hash check
+# Test 3: Verify inject_hash_cpp works correctly
+echo "Testing inject_hash_cpp functionality..."
+
+# Create test directory for good library
+mkdir -p ./test_good
+cp ./crypto/crypto_test ./test_good/
+cp ./crypto/libcrypto.${LIB_EXT} ./test_good/libcrypto.${LIB_EXT}
+
+# Test successful hash injection
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    run_test "Hash injection test" false \
+        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+        -o ./test_good/libcrypto.${LIB_EXT} \
+        -in-object ./test_good/libcrypto.${LIB_EXT} \
+        -apple
+else
+    run_test "Hash injection test" false \
+        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
+        -o ./test_good/libcrypto.${LIB_EXT} \
+        -in-object ./test_good/libcrypto.${LIB_EXT}
+fi
+((ERRORS+=$?))
+
+# Test that library loads and works correctly
+run_test "Library functionality test" false \
+    bash -c "cd ./test_good && ${LIB_PATH_VAR}=./ ./crypto_test"
+((ERRORS+=$?))
+
+# Clean up good library test
+rm -rf ./test_good 
+
+# Test 4: Create corrupted library copy and invalid hash check
 echo "Creating corrupted copy of library..."
 
 # Create a separate test directory
@@ -84,23 +115,19 @@ cp ./crypto/libcrypto.${LIB_EXT} ./test_corrupted/libcrypto.${LIB_EXT}
 # Try to find the hash directly - the most reliable method
 echo "Searching for integrity hash..."
 HASH_PATTERN="ae2cea2abda6f3ec977f9bf6949afc836827cba0a09f6b6fde52cde2cdff3180"
-HASH_OFFSET=$(hexdump -ve '1/1 "%.2x"' ./test_corrupted/libcrypto.${LIB_EXT} | grep -b -o "$HASH_PATTERN" | head -1 | cut -d':' -f1)
+HASH_COUNT=$(hexdump -ve '1/1 "%.2x"' ./test_corrupted/libcrypto.${LIB_EXT} | grep -o "$HASH_PATTERN" | wc -l)
 
-if [ -n "$HASH_OFFSET" ]; then
-    # Convert hex string position to binary file position (divide by 2)
-    OFFSET=$((HASH_OFFSET / 2))
-    echo "Found integrity hash at offset $OFFSET, corrupting"
-    # Corrupt one byte of the hash
-    printf '\x00' | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$OFFSET count=1 conv=notrunc
-else
-    echo "WARNING: Could not find integrity hash pattern, trying multiple offsets"
-    # Try multiple offsets to increase chance of hitting FIPS module
-    for OFFSET in 1024 2048 4096 8192 16384; do
-        echo "Corrupting at offset $OFFSET"
-        printf '\x00' | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$OFFSET count=1 conv=notrunc
-    done
+if [ "$HASH_COUNT" -ne 1 ]; then
+    echo "Error: Found ${HASH_COUNT} occurrences of placeholder hash. Expected exactly 1."
+    exit 1
 fi
+HASH_OFFSET=$(hexdump -ve '1/1 "%.2x"' ./test_corrupted/libcrypto.${LIB_EXT} | grep -b -o "$HASH_PATTERN" | cut -d':' -f1)
 
+# Convert hex string position to binary file position (divide by 2)
+OFFSET=$((HASH_OFFSET / 2))
+echo "Found integrity hash at offset $OFFSET, corrupting"
+# Corrupt one byte of the hash
+printf '\x00' | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$OFFSET count=1 conv=notrunc
 # Run test with the corrupted library
 run_test "Corrupted hash verification test" true \
     bash -c "cd ./test_corrupted && ${LIB_PATH_VAR}=./ ./crypto_test 2>&1 | grep -q 'integrity'"

@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+// currently only supports shared builds for Linux and MacOS
 #include <getopt.h>
 #include <inttypes.h>
 #include <openssl/base.h>
@@ -32,6 +33,9 @@ static void print_usage() {
   PrintUsage(kArguments);
 }
 
+// UninitHashValue is the default hash value that we inject into the module.
+// This value need only be distinct, i.e. so that we can safely
+// search-and-replace it in an object file.
 static constexpr uint8_t UNINIT_HASH[32] = {
     0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 0x97, 0x7f, 0x9b,
     0xf6, 0x94, 0x9a, 0xfc, 0x83, 0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f,
@@ -82,8 +86,19 @@ static bool extract_apple_modules(const std::string &input_path,
     LOG_ERROR("Could not find BORINGSSL_bcm_text_end symbol");
     return false;
   }
+  // rodata linker markers have to be present for the shared builds. They are
+  // only optional in the case of static builds where rodata linker markers are
+  // not present since rodata is embedded inside the text section itself.
   const auto *rodata_start = macho->get_symbol("_BORINGSSL_bcm_rodata_start");
+  if (!rodata_start) {
+    LOG_ERROR("Could not find BORINGSSL_bcm_rodata_start symbol");
+    return false;
+  }
   const auto *rodata_end = macho->get_symbol("_BORINGSSL_bcm_rodata_end");
+  if (!rodata_end) {
+    LOG_ERROR("Could not find BORINGSSL_bcm_rodata_end symbol");
+    return false;
+  }
 
 
   // Find the sections containing these symbols
@@ -113,6 +128,11 @@ static bool extract_apple_modules(const std::string &input_path,
     return false;
   }
 
+  if (!rodata_section) {
+    LOG_ERROR("Could not locate __const section");
+    return false;
+  }
+
   // Calculate module boundaries within sections
   auto text_sec_addr = text_section->virtual_address();
   uint64_t text_start_offset = text_start->value() - text_sec_addr;
@@ -131,34 +151,20 @@ static bool extract_apple_modules(const std::string &input_path,
               text_module.size());
 
   // Extract rodata module if present
-  if (rodata_section && rodata_start && rodata_end) {
-    auto rodata_sec_addr = rodata_section->virtual_address();
-    uint64_t rodata_start_offset = rodata_start->value() - rodata_sec_addr;
-    uint64_t rodata_end_offset = rodata_end->value() - rodata_sec_addr;
+  auto rodata_sec_addr = rodata_section->virtual_address();
+  uint64_t rodata_start_offset = rodata_start->value() - rodata_sec_addr;
+  uint64_t rodata_end_offset = rodata_end->value() - rodata_sec_addr;
 
-    if (rodata_start_offset >= rodata_end_offset ||
-        rodata_end_offset > rodata_section->content().size()) {
-      LOG_ERROR("Invalid rodata module boundaries");
-      return false;
-    }
-
-    auto rodata_content = rodata_section->content();
-    rodata_module.resize(rodata_end_offset - rodata_start_offset);
-    std::memcpy(rodata_module.data(),
-                rodata_content.data() + rodata_start_offset,
-                rodata_module.size());
-  } else {
-    if ((rodata_start == nullptr) != (rodata_section == nullptr)) {
-      LOG_ERROR(
-          "rodata start marker inconsistent with rodata section presence");
-      return false;
-    }
-    if ((rodata_start != nullptr) != (rodata_end != nullptr)) {
-      LOG_ERROR("rodata marker presence inconsistent");
-      return false;
-    }
-    rodata_module.clear();
+  if (rodata_start_offset >= rodata_end_offset ||
+      rodata_end_offset > rodata_section->content().size()) {
+    LOG_ERROR("Invalid rodata module boundaries");
+    return false;
   }
+
+  auto rodata_content = rodata_section->content();
+  rodata_module.resize(rodata_end_offset - rodata_start_offset);
+  std::memcpy(rodata_module.data(), rodata_content.data() + rodata_start_offset,
+              rodata_module.size());
 
   return true;
 }
@@ -189,8 +195,20 @@ static bool extract_linux_modules(const std::string &input_path,
     LOG_ERROR("Could not find BORINGSSL_bcm_text_end symbol");
     return false;
   }
+
+  // rodata linker markers have to be present for the shared builds. They are
+  // only optional in the case of static builds where rodata linker markers are
+  // not present since rodata is embedded inside the text section itself.
   const auto *rodata_start = elf->get_symbol("BORINGSSL_bcm_rodata_start");
+  if (!rodata_start) {
+    LOG_ERROR("Could not find BORINGSSL_bcm_rodata_start symbol");
+    return false;
+  }
   const auto *rodata_end = elf->get_symbol("BORINGSSL_bcm_rodata_end");
+  if (!rodata_end) {
+    LOG_ERROR("Could not find BORINGSSL_bcm_rodata_end symbol");
+    return false;
+  }
 
 
   // Find the sections containing these symbols
@@ -214,6 +232,10 @@ static bool extract_linux_modules(const std::string &input_path,
     LOG_ERROR("Could not locate .text section");
     return false;
   }
+  if (!rodata_section) {
+    LOG_ERROR("Could not locate .rodata section");
+    return false;
+  }
 
   // Calculate module boundaries within sections
   auto text_sec_addr = text_section->virtual_address();
@@ -233,34 +255,22 @@ static bool extract_linux_modules(const std::string &input_path,
               text_module.size());
 
   // Extract rodata module if present
-  if (rodata_section && rodata_start && rodata_end) {
-    auto rodata_sec_addr = rodata_section->virtual_address();
-    uint64_t rodata_start_offset = rodata_start->value() - rodata_sec_addr;
-    uint64_t rodata_end_offset = rodata_end->value() - rodata_sec_addr;
 
-    if (rodata_start_offset >= rodata_end_offset ||
-        rodata_end_offset > rodata_section->content().size()) {
-      LOG_ERROR("Invalid rodata module boundaries");
-      return false;
-    }
+  auto rodata_sec_addr = rodata_section->virtual_address();
+  uint64_t rodata_start_offset = rodata_start->value() - rodata_sec_addr;
+  uint64_t rodata_end_offset = rodata_end->value() - rodata_sec_addr;
 
-    auto rodata_content = rodata_section->content();
-    rodata_module.resize(rodata_end_offset - rodata_start_offset);
-    std::memcpy(rodata_module.data(),
-                rodata_content.data() + rodata_start_offset,
-                rodata_module.size());
-  } else {
-    if ((rodata_start == nullptr) != (rodata_section == nullptr)) {
-      LOG_ERROR(
-          "rodata start marker inconsistent with rodata section presence");
-      return false;
-    }
-    if ((rodata_start != nullptr) != (rodata_end != nullptr)) {
-      LOG_ERROR("rodata marker presence inconsistent");
-      return false;
-    }
-    rodata_module.clear();
+  if (rodata_start_offset >= rodata_end_offset ||
+      rodata_end_offset > rodata_section->content().size()) {
+    LOG_ERROR("Invalid rodata module boundaries");
+    return false;
   }
+
+  auto rodata_content = rodata_section->content();
+  rodata_module.resize(rodata_end_offset - rodata_start_offset);
+  std::memcpy(rodata_module.data(), rodata_content.data() + rodata_start_offset,
+              rodata_module.size());
+
 
   return true;
 }
@@ -274,15 +284,14 @@ static bool calculate_hash(const std::vector<uint8_t> &text_module,
   uint8_t length_bytes[8];
 
   bssl::ScopedHMAC_CTX ctx;
-  // if (!ctx) {
-  //     LOG_ERROR("Failed to create HMAC context");
-  //     return hash_result;
-  // }
+  if (!ctx.get()) {
+    LOG_ERROR("Failed to create HMAC context");
+    return false;
+  }
 
   if (!HMAC_Init_ex(ctx.get(), zero_key, sizeof(zero_key), EVP_sha256(),
                     nullptr)) {
     LOG_ERROR("HMAC_Init failed");
-    // HMAC_CTX_free(ctx);
     return false;
   }
 
@@ -290,13 +299,11 @@ static bool calculate_hash(const std::vector<uint8_t> &text_module,
   if (!size_to_little_endian(text_module.size(), length_bytes,
                              sizeof(length_bytes))) {
     LOG_ERROR("Buffer too small for little-endian conversion");
-    // HMAC_CTX_free(ctx);
     return false;
   }
   if (!HMAC_Update(ctx.get(), length_bytes, sizeof(length_bytes)) ||
       !HMAC_Update(ctx.get(), text_module.data(), text_module.size())) {
     LOG_ERROR("HMAC_Update failed for text module");
-    // HMAC_CTX_free(ctx);
     return false;
   }
 
@@ -305,13 +312,11 @@ static bool calculate_hash(const std::vector<uint8_t> &text_module,
     if (!size_to_little_endian(rodata_module.size(), length_bytes,
                                sizeof(length_bytes))) {
       LOG_ERROR("Buffer too small for little-endian conversion");
-      // HMAC_CTX_free(ctx);
       return false;
     }
     if (!HMAC_Update(ctx.get(), length_bytes, sizeof(length_bytes)) ||
         !HMAC_Update(ctx.get(), rodata_module.data(), rodata_module.size())) {
       LOG_ERROR("HMAC_Update failed for rodata module");
-      // HMAC_CTX_free(ctx);
       return false;
     }
   }
@@ -319,11 +324,8 @@ static bool calculate_hash(const std::vector<uint8_t> &text_module,
   unsigned int hash_len;
   if (!HMAC_Final(ctx.get(), out_hash.data(), &hash_len)) {
     LOG_ERROR("HMAC_Final failed");
-    // HMAC_CTX_free(ctx);
     return false;
   }
-
-  // HMAC_CTX_free(ctx);
 
   // Print calculated hash for reference
   std::string hash_str;
