@@ -89,8 +89,8 @@ var defaultCPUs = []string{
 	"ivb", // Ivy Bridge
 }
 
-// CPUs that are NOT compatible with MSVC
-var cpusWithoutAVX = []string{
+// List of CPUs that do not support AVX instructions and thus are incompatible with modern MSVC runtime libraries (2022+)
+var cpusWithNoAVXSupport = []string{
 	"slm", // Silvermont
 	"glm", // Goldmont
 	"glp", // Goldmont Plus
