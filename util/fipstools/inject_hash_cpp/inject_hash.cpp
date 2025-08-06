@@ -71,7 +71,6 @@ static bool extract_apple_modules(const std::string &input_path,
     return false;
   }
 
-
   // Find boundary symbols
   const auto *text_start = macho->get_symbol("_BORINGSSL_bcm_text_start");
   if (!text_start) {

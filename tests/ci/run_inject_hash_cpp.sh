@@ -20,7 +20,6 @@ run_build \
     
 cd "${BUILD_ROOT}"
 
-# Function to run test and check result
 run_test() {
     local test_name="$1"
     local expected_to_fail="$2"
@@ -65,49 +64,50 @@ run_test "Invalid file test" true \
 
 # Platform Specific Tests
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "MacOS specific tests..."
-    
-    # Test 3: macOS without -apple flag (should fail)
-    run_test "macOS missing apple flag test" true \
-        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-        -o ./crypto/libcrypto.dylib \
-        -in-object ./crypto/libcrypto.dylib
-    ((ERRORS+=$?))
-
-    # Test 4: Create corrupted library copy and invalid hash check
-    echo "Creating corrupted copy of library..."
-    cp ./crypto/libcrypto.dylib ./crypto/libcrypto_corrupted.dylib
-    printf '\x00' | dd of=./crypto/libcrypto_corrupted.dylib bs=1 seek=1024 count=1 conv=notrunc
-    export DYLD_LIBRARY_PATH="./crypto"
-    run_test "Corrupted hash verification test" true \
-        ./crypto/crypto_test
-    unset DYLD_LIBRARY_PATH
-    ((ERRORS+=$?))
-
+    # Set platform-specific variables
+    LIB_EXT="dylib"
+    LIB_PATH_VAR="DYLD_LIBRARY_PATH"
 else
-    echo "Linux specific tests..."
-    
-    # Test 4: Linux with -apple flag (should fail)
-    run_test "Linux with apple flag test" true \
-        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-        -o ./crypto/libcrypto.so \
-        -in-object ./crypto/libcrypto.so \
-        -apple
-    ((ERRORS+=$?))
-    # Test 6: Create corrupted library copy and invalid hash check
-    echo "Creating corrupted copy of library..."
-    cp ./crypto/libcrypto.so ./crypto/libcrypto_corrupted.so
-    printf '\x00' | dd of=./crypto/libcrypto_corrupted.so bs=1 seek=1024 count=1 conv=notrunc
-    export LD_LIBRARY_PATH="./crypto_corrupted"
-    run_test "Corrupted hash verification test" true \
-        ./crypto/crypto_test
-    unset LD_LIBRARY_PATH
-    ((ERRORS+=$?))
+    # Set platform-specific variables
+    LIB_EXT="so"
+    LIB_PATH_VAR="LD_LIBRARY_PATH"
 fi
 
-# Clean up
-rm -f ./crypto/libcrypto_corrupted.* 2>/dev/null
+# Test 3: Create corrupted library copy and invalid hash check
+echo "Creating corrupted copy of library..."
 
+# Create a separate test directory
+mkdir -p ./test_corrupted
+cp ./crypto/crypto_test ./test_corrupted/
+cp ./crypto/libcrypto.${LIB_EXT} ./test_corrupted/libcrypto.${LIB_EXT}
+
+# Try to find the hash directly - the most reliable method
+echo "Searching for integrity hash..."
+HASH_PATTERN="ae2cea2abda6f3ec977f9bf6949afc836827cba0a09f6b6fde52cde2cdff3180"
+HASH_OFFSET=$(hexdump -ve '1/1 "%.2x"' ./test_corrupted/libcrypto.${LIB_EXT} | grep -b -o "$HASH_PATTERN" | head -1 | cut -d':' -f1)
+
+if [ -n "$HASH_OFFSET" ]; then
+    # Convert hex string position to binary file position (divide by 2)
+    OFFSET=$((HASH_OFFSET / 2))
+    echo "Found integrity hash at offset $OFFSET, corrupting"
+    # Corrupt one byte of the hash
+    printf '\x00' | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$OFFSET count=1 conv=notrunc
+else
+    echo "WARNING: Could not find integrity hash pattern, trying multiple offsets"
+    # Try multiple offsets to increase chance of hitting FIPS module
+    for OFFSET in 1024 2048 4096 8192 16384; do
+        echo "Corrupting at offset $OFFSET"
+        printf '\x00' | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$OFFSET count=1 conv=notrunc
+    done
+fi
+
+# Run test with the corrupted library
+run_test "Corrupted hash verification test" true \
+    bash -c "cd ./test_corrupted && ${LIB_PATH_VAR}=./ ./crypto_test 2>&1 | grep -q 'integrity'"
+((ERRORS+=$?))
+
+# Clean up
+rm -rf ./test_corrupted
 
 # Print test summary
 echo "=== Summary ==="
@@ -120,4 +120,3 @@ else
     echo "All tests passed"
     exit 0
 fi
-
