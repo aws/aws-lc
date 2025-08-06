@@ -22,8 +22,8 @@ _bn_mul_mont:
 Lmul_mont:
 	stp	x29,x30,[sp,#-64]!
 .cfi_def_cfa_offset	64
-.cfi_offset	x30, -56
 .cfi_offset	x29, -64
+.cfi_offset	x30, -56
 	add	x29,sp,#0
 .cfi_def_cfa	x29, 64
 	stp	x19,x20,[sp,#16]
@@ -246,8 +246,8 @@ __bn_sqr8x_mont:
 Lsqr8x_mont:
 	stp	x29,x30,[sp,#-128]!
 .cfi_def_cfa_offset	128
-.cfi_offset	x30, -120
 .cfi_offset	x29, -128
+.cfi_offset	x30, -120
 	add	x29,sp,#0
 .cfi_def_cfa	x29, 128
 	stp	x19,x20,[sp,#16]
