@@ -726,6 +726,10 @@ OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
 #define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
 #define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
                                           * socket to be passed in */
+#define BIO_CTRL_DGRAM_SET_RECV_TIMEOUT 33 /* setsockopt, essentially */
+#define BIO_CTRL_DGRAM_GET_RECV_TIMEOUT 34 /* getsockopt, essentially */
+#define BIO_CTRL_DGRAM_SET_SEND_TIMEOUT 35 /* setsockopt, essentially */
+#define BIO_CTRL_DGRAM_GET_SEND_TIMEOUT 36 /* getsockopt, essentially */
 
 # define BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP 37 // flag whether the last
 # define BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP 38 // I/O operation tiemd out
@@ -786,6 +790,22 @@ OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUS
 // BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
 // It returns 1 on success and a non-positive value on error.
 OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_set_recv_timeout sets the receive timeout for the datagram BIO.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_set_recv_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_get_recv_timeout gets the receive timeout for the datagram BIO.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_get_recv_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_set_send_timeout sets the send timeout for the datagram BIO.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_set_send_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
+
+// BIO_dgram_get_send_timeout gets the send timeout for the datagram BIO.
+// It returns 1 on success and a non-positive value on error.
+OPENSSL_EXPORT int BIO_dgram_get_send_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ADDR_new allocates and initializes a new BIO_ADDR structure.
 // Returns the new BIO_ADDR structure on success, NULL on error.

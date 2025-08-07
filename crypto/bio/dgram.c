@@ -255,6 +255,116 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       }
       break;
     }
+#if defined(SO_RCVTIMEO)
+    case BIO_CTRL_DGRAM_SET_RECV_TIMEOUT: {
+      GUARD_PTR(ptr);
+#ifdef OPENSSL_WINDOWS
+      struct timeval *tv = (struct timeval *)ptr;
+      int timeout = tv->tv_sec * 1000 + tv->tv_usec / 1000;
+      if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
+                     (void *)&timeout, sizeof(timeout)) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      }
+#else
+      if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO, ptr,
+                     sizeof(struct timeval)) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      }
+#endif
+      break;
+    }
+    case BIO_CTRL_DGRAM_GET_RECV_TIMEOUT: {
+      GUARD_PTR(ptr);
+      union {
+        size_t s;
+        int i;
+      } sz = {0};
+#ifdef OPENSSL_WINDOWS
+      int timeout;
+      struct timeval *tv = (struct timeval *)ptr;
+
+      sz.i = sizeof(timeout);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
+                     (void *)&timeout, &sz.i) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      } else {
+        tv->tv_sec = timeout / 1000;
+        tv->tv_usec = (timeout % 1000) * 1000;
+        ret = sizeof(*tv);
+      }
+#else
+      sz.i = sizeof(struct timeval);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
+                     ptr, (void *)&sz) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      } else if (sizeof(sz.s) != sizeof(sz.i) && sz.i == 0) {
+        ret = (int)sz.s;
+      } else {
+        ret = sz.i;
+      }
+#endif
+      break;
+    }
+#endif
+#if defined(SO_SNDTIMEO)
+    case BIO_CTRL_DGRAM_SET_SEND_TIMEOUT: {
+      GUARD_PTR(ptr);
+#ifdef OPENSSL_WINDOWS
+      struct timeval *tv = (struct timeval *)ptr;
+      int timeout = tv->tv_sec * 1000 + tv->tv_usec / 1000;
+      if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
+                     (void *)&timeout, sizeof(timeout)) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      }
+#else
+      if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO, ptr,
+                     sizeof(struct timeval)) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      }
+#endif
+      break;
+    }
+    case BIO_CTRL_DGRAM_GET_SEND_TIMEOUT: {
+      GUARD_PTR(ptr);
+      union {
+        size_t s;
+        int i;
+      } sz = {0};
+#ifdef OPENSSL_WINDOWS
+      int timeout;
+      struct timeval *tv = (struct timeval *)ptr;
+
+      sz.i = sizeof(timeout);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
+                     (void *)&timeout, &sz.i) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      } else {
+        tv->tv_sec = timeout / 1000;
+        tv->tv_usec = (timeout % 1000) * 1000;
+        ret = sizeof(*tv);
+      }
+#else
+      sz.i = sizeof(struct timeval);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
+                     ptr, (void *)&sz) < 0) {
+        OPENSSL_PUT_SYSTEM_ERROR();
+        ret = -1;
+      } else if (sizeof(sz.s) != sizeof(sz.i) && sz.i == 0) {
+        ret = (int)sz.s;
+      } else {
+        ret = sz.i;
+      }
+#endif
+      break;
+    }
+#endif
     default:
       ret = 0;
       break;
@@ -335,6 +445,38 @@ int BIO_dgram_get_peer(BIO *bp, BIO_ADDR *peer) {
 
 int BIO_dgram_set_peer(BIO *bp, const BIO_ADDR *peer) {
   const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_PEER, 0, (BIO_ADDR *)peer);
+  if (ret < INT_MIN || ret > INT_MAX) {
+    return 0;
+  }
+  return ret;
+}
+
+int BIO_dgram_set_recv_timeout(BIO *bp, struct timeval *tv) {
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, tv);
+  if (ret < INT_MIN || ret > INT_MAX) {
+    return 0;
+  }
+  return ret;
+}
+
+int BIO_dgram_get_recv_timeout(BIO *bp, struct timeval *tv) {
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_RECV_TIMEOUT, 0, tv);
+  if (ret < INT_MIN || ret > INT_MAX) {
+    return 0;
+  }
+  return ret;
+}
+
+int BIO_dgram_set_send_timeout(BIO *bp, struct timeval *tv) {
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_SEND_TIMEOUT, 0, tv);
+  if (ret < INT_MIN || ret > INT_MAX) {
+    return 0;
+  }
+  return ret;
+}
+
+int BIO_dgram_get_send_timeout(BIO *bp, struct timeval *tv) {
+  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_SEND_TIMEOUT, 0, tv);
   if (ret < INT_MIN || ret > INT_MAX) {
     return 0;
   }
