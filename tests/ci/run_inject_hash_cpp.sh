@@ -102,8 +102,14 @@ END_OFFSET=$((16#$END_OFFSET))
 RANDOM_OFFSET=$((START_OFFSET + RANDOM % (END_OFFSET - START_OFFSET)))
 echo "Corrupting FIPS module at offset $RANDOM_OFFSET"
 
-# Corrupt one byte
-printf '\x00' | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$RANDOM_OFFSET count=1 conv=notrunc
+# Read current byte
+CURRENT_BYTE=$(dd if=./test_corrupted/libcrypto.${LIB_EXT} bs=1 skip=$RANDOM_OFFSET count=1 2>/dev/null | xxd -p)
+
+# Flip the bit (XOR with 1)
+FLIPPED_BYTE=$(printf "%02x" "$((0x$CURRENT_BYTE ^ 1))")
+
+# Write back the flipped byte
+echo $FLIPPED_BYTE | xxd -r -p | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$RANDOM_OFFSET count=1 conv=notrunc
 
 # Change to test directory and set library path
 cd ./test_corrupted

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // currently only supports shared builds for Linux and MacOS
-#include <getopt.h>
 #include <inttypes.h>
 #include <openssl/base.h>
 #include <openssl/hmac.h>
@@ -341,7 +340,6 @@ static bool calculate_hash(const std::vector<uint8_t> &text_module,
 
 static bool process(const std::string &input_path,
                     const std::string &output_path, bool is_apple) {
-  // Read the input binary file
   std::ifstream input_file(
       input_path, std::ios::binary |
                       std::ios::ate);  // Open the file in binary mode and move
@@ -356,6 +354,7 @@ static bool process(const std::string &input_path,
   input_file.seekg(0, std::ios::beg);  // Move back to the beginning of the file
                                        // to read its content
 
+   // Read the input binary file
   std::vector<uint8_t> binary_data(file_size);
   if (!input_file.read(reinterpret_cast<char *>(binary_data.data()),
                        file_size)) {
