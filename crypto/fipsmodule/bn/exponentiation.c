@@ -165,6 +165,13 @@ static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width
 
 #if defined(OPENSSL_BN_ASM_MONT5)
 
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
+                const BN_ULONG *np, const BN_ULONG *n0, int num, int power) {
+  assert(0);
+}
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+
 // bn_mul_mont_gather5 multiples loads index |power| of |table|, multiplies it
 // by |ap| modulo |np|, and stores the result in |rp|. The values are |num|
 // words long and represented in Montgomery form. |n0| is a pointer to the

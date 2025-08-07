@@ -505,12 +505,7 @@ void bn_gather5(BN_ULONG *out, size_t num, const BN_ULONG *table, size_t power);
   }
   void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
                   const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
-#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  OPENSSL_INLINE void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
-                  const BN_ULONG *np, const BN_ULONG *n0, int num, int power) {
-    assert(0);
-  }
-#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+
 #endif  // !OPENSSL_NO_ASM && OPENSSL_X86_64
 
 uint64_t bn_mont_n0(const BIGNUM *n);
