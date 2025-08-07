@@ -73,7 +73,12 @@ else
     LIB_PATH_VAR="LD_LIBRARY_PATH"
 fi
 
-# Test 3: Create corrupted library copy and invalid hash check
+# Test 3: Sanity check - verify tests pass with injected hash
+run_test "Sanity check" false \
+    ./crypto/crypto_test
+((ERRORS+=$?))
+
+# Test 4: Create corrupted library copy and invalid hash check
 echo "Creating corrupted copy of library..."
 
 # Create a separate test directory
