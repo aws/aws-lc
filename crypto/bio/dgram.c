@@ -263,13 +263,13 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       int timeout = tv->tv_sec * 1000 + tv->tv_usec / 1000;
       if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
                      (void *)&timeout, sizeof(timeout)) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       }
 #else
       if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO, ptr,
                      sizeof(struct timeval)) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       }
 #endif
@@ -288,7 +288,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       sz.i = sizeof(timeout);
       if (getsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
                      (void *)&timeout, &sz.i) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       } else {
         tv->tv_sec = timeout / 1000;
@@ -299,7 +299,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       sz.i = sizeof(struct timeval);
       if (getsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
                      ptr, (void *)&sz) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       } else if (sizeof(sz.s) != sizeof(sz.i) && sz.i == 0) {
         ret = (int)sz.s;
@@ -318,13 +318,13 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       int timeout = tv->tv_sec * 1000 + tv->tv_usec / 1000;
       if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
                      (void *)&timeout, sizeof(timeout)) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       }
 #else
       if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO, ptr,
                      sizeof(struct timeval)) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       }
 #endif
@@ -343,7 +343,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       sz.i = sizeof(timeout);
       if (getsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
                      (void *)&timeout, &sz.i) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       } else {
         tv->tv_sec = timeout / 1000;
@@ -354,7 +354,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       sz.i = sizeof(struct timeval);
       if (getsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
                      ptr, (void *)&sz) < 0) {
-        OPENSSL_PUT_SYSTEM_ERROR();
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
         ret = -1;
       } else if (sizeof(sz.s) != sizeof(sz.i) && sz.i == 0) {
         ret = (int)sz.s;
