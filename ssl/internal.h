@@ -1386,6 +1386,13 @@ void ssl_do_msg_callback(const SSL *ssl, int is_write, int content_type,
 
 // Transport buffers.
 
+enum SSL_BUFFER_SERDE_VERSION {
+  SSL_BUFFER_SERDE_VERSION_ONE = 1,
+  SSL_BUFFER_SERDE_VERSION_TWO = 2
+};
+
+const unsigned kSSLBufferMaxSerDeVersion = SSL_BUFFER_SERDE_VERSION_TWO;
+
 #define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
 #define SSLBUFFER_MAX_CAPACITY UINT16_MAX
 class SSLBuffer {
@@ -1432,15 +1439,28 @@ class SSLBuffer {
   void DiscardConsumed();
 
   // DoSerialization writes all fields into |cbb|.
-  bool DoSerialization(CBB *cbb);
+  bool DoSerialization(CBB &cbb);
 
   // DoDeserialization recovers the states encoded via |DoSerialization|.
-  bool DoDeserialization(CBS *in);
+  bool DoDeserialization(CBS &in);
+
+  bool SerializeBufferView(CBB &cbb, Span<uint8_t> &view);
+  bool DeserializeBufferView(CBS &cbb, Span<uint8_t> &view);
 
  private:
   // buf_ is the memory allocated for this buffer.
   uint8_t *buf_ = nullptr;
-  // offset_ is the offset into |buf_| which the buffer contents start at.
+  // buf_allocated_ is true if |buf_| points to allocated data and must be freed
+  // or false if it points into |inline_buf_|.
+  bool buf_allocated_ = false;
+  // The total capacity requested for this buffer by |EnsureCap|.
+  size_t buf_cap_ = 0;
+  // buf_size_ is how much memory allocated for |buf_|. This is needed by
+  // |DoSerializationV1|. This is the total size of the buffer with the requested capacity + padding.
+  size_t buf_size_ = 0;
+  // header length used to calculate initial offset
+  size_t header_len_ = 0;
+  // offset_ is the offset into |buf_| which the buffer contents start at, and is moved as contents are consumed
   uint16_t offset_ = 0;
   // size_ is the size of the buffer contents from |buf_| + |offset_|.
   uint16_t size_ = 0;
@@ -1448,12 +1468,17 @@ class SSLBuffer {
   uint16_t cap_ = 0;
   // inline_buf_ is a static buffer for short reads.
   uint8_t inline_buf_[SSL3_RT_HEADER_LENGTH];
-  // buf_allocated_ is true if |buf_| points to allocated data and must be freed
-  // or false if it points into |inline_buf_|.
-  bool buf_allocated_ = false;
-  // buf_size_ is how much memory allocated for |buf_|. This is needed by
-  // |DoSerialization|.
-  size_t buf_size_ = 0;
+    
+  // The V1 version has some intricacies were solved in later serialization versions.
+  // This is mainly to capture if a V1 version was restored and whether it needs to be
+  // re-serialized as that version.
+  uint32_t max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_TWO;
+
+  bool DoSerializationV1(CBB &cbb);
+  bool DoSerializationV2(CBB &cbb);
+
+  bool DoDeserializationV1(CBS &in);
+  bool DoDeserializationV2(CBS &in);
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
@@ -4237,6 +4262,10 @@ struct ssl_st {
   // as will fit in the SSLBuffer from the BIO, or just enough to read the record
   // header and then the length of the body
   bool enable_read_ahead : 1;
+
+  // is_suspended_state indicates that the |SSL| object has been serialized and
+  // operations should not be performed on the connection.
+  bool is_suspended_state : 1;
 };
 
 struct ssl_session_st : public bssl::RefCounted<ssl_session_st> {
