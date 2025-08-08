@@ -199,7 +199,6 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to) {
   // TODO: test half read and write hold by SSL.
   // TODO: add a test to check error code?
   // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
-  SSL_free(from->release());
 }
 
 // TransferSSL performs SSL transfer by
