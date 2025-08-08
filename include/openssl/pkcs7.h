@@ -158,6 +158,8 @@ struct pkcs7_st {
     PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
     PKCS7_DIGEST *digest;
     PKCS7_ENCRYPT *encrypted;
+    // Other things provided by the user. Not specified in the RFC.
+    ASN1_TYPE *other;
   } d;
 };
 

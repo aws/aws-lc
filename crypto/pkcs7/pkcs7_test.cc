@@ -2170,7 +2170,7 @@ iWjrtmwM/HRbFEg2THS9b/vkiTsNSRCR9goaq9KPqXuJJsjJIoMA8IBHSLVvFnLf
   // Run |PKCS7_verify| again to check that we're consuming a copy of the
   // underlying |EVP_MD_CTX|.
   EXPECT_TRUE(PKCS7_verify(pkcs7.get(), nullptr, store.get(), nullptr,
-                         out.get(), /*flags*/ 0));
+                           out.get(), /*flags*/ 0));
 }
 
 TEST(PKCS7Test, PKCS7SignedAttributesRuby) {
@@ -2222,7 +2222,7 @@ L6qflZ9YCU5erE4T5U98hCQBMh4nOYxgaTjnZzhpkKQuEiKq/755cjzTzlI/eok=
   // The test has an expected output. Check that we output the same contents
   // as OpenSSL.
   static const char kPKCS7RubyOpenSSLOutput[] =
-    R"(-----BEGIN PKCS7-----
+      R"(-----BEGIN PKCS7-----
 MIIDawYJKoZIhvcNAQcDoIIDXDCCA1gCAQAxggEQMIIBDAIBADB1MHAxEDAOBgNV
 BAoMB2V4YW1wbGUxFzAVBgNVBAMMDlRBUk1BQyBST09UIENBMSIwIAYJKoZIhvcN
 AQkBFhNzb21lb25lQGV4YW1wbGUub3JnMQswCQYDVQQGEwJVUzESMBAGA1UEBwwJ
@@ -2271,4 +2271,30 @@ tcH961onq8Tme2ICaCzk
   ASSERT_TRUE(PEM_write_bio_PKCS7(out3.get(), new_pk7.get()));
   BIO_get_mem_ptr(out3.get(), &buf);
   EXPECT_EQ(Bytes(buf->data, buf->length), Bytes(kPKCS7RubyOpenSSLOutput));
+}
+
+TEST(PKCS7Test, VerifyOtherField) {
+  // Set up test data
+  const unsigned char test_data[] = {0x30, 0x02, 0x01, 0x02};
+  const int test_data_len = sizeof(test_data);
+
+  // Create PKCS7 and required ASN.1 structures
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(p7);
+  bssl::UniquePtr<ASN1_TYPE> other(ASN1_TYPE_new());
+  ASSERT_TRUE(other);
+  bssl::UniquePtr<ASN1_STRING> seq(ASN1_STRING_new());
+  ASSERT_TRUE(seq);
+
+  ASSERT_TRUE(ASN1_STRING_set(seq.get(), test_data, test_data_len));
+
+  // Set up the ASN.1 structure
+  ASN1_TYPE_set(other.get(), V_ASN1_SEQUENCE, seq.release());
+  p7->d.other = other.release();
+
+  ASSERT_EQ(p7->d.other->type, V_ASN1_SEQUENCE);
+  EXPECT_EQ(p7->d.other->value.sequence->length, test_data_len);
+  EXPECT_EQ(OPENSSL_memcmp(p7->d.other->value.sequence->data, test_data,
+                           test_data_len),
+            0);
 }
