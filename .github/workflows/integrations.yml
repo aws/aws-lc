@@ -100,3 +100,16 @@ jobs:
       - name: Build AWS-LC, build python, run tests
         run: |
           ./tests/ci/integration/run_python_integration.sh 3.9
+  apache-httpd:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: Apache httpd
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libpcre2-dev libnghttp2-dev nghttp2-client zlib1g-dev libtool-bin libxml2-dev pebble python3-venv
+      - uses: actions/checkout@v4
+      - name: Build AWS-LC, build httpd, run tests
+        run: |
+          ./tests/ci/integration/run_httpd_integration.sh '2.4.65'
