@@ -44,17 +44,20 @@ int32_t ml_dsa_decompose(ml_dsa_params *params, int32_t *a0, int32_t a) {
 
   int32_t a1;
 
-  a1  = (a + 127) >> 7;
+  a1 = (a + 127) >> 7;
   if (params->gamma2 == (ML_DSA_Q-1)/32) {
     a1  = (a1*1025 + (1 << 21)) >> 22;
     a1 &= 15;
-  }
-  if (params->gamma2 == (ML_DSA_Q-1)/88) {
+  } else if (params->gamma2 == (ML_DSA_Q-1)/88) {
     a1  = (a1*11275 + (1 << 23)) >> 24;
-    a1 ^= ((43 - a1) >> 31) & a1;
+    // a1 = 43 < a1 ? 0 : a1;
+    a1 = constant_time_select_int(constant_time_msb_w(43 - a1), 0, a1);
   }
-  *a0  = a - a1*2*params->gamma2;
-  *a0 -= (((ML_DSA_Q-1)/2 - *a0) >> 31) & ML_DSA_Q;
+
+  *a0 = a - a1*2*params->gamma2;
+  // a0 = (Q-1)/2 < a0 ? a0 - Q : a0;
+  *a0 = constant_time_select_int(constant_time_msb_w((ML_DSA_Q-1)/2 - *a0),
+                                                     *a0 - ML_DSA_Q, *a0);
   return a1;
 }
 
