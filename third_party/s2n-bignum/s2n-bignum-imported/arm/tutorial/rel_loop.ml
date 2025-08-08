@@ -99,7 +99,7 @@ let LOOP_EQUIV = prove(
     (* Symbolically execute the right program only. *)
     ARM_N_STUTTER_RIGHT_TAC LOOP2_EXEC (1--4) "'" None THEN
     (* Let's prove the postcondition. *)
-    REPEAT_N 2 ENSURES_N_FINAL_STATE_TAC THEN
+    REPEAT_N 2 ENSURES_FINAL_STATE_TAC THEN
     ASM_REWRITE_TAC[WORD_ADD] THEN
 
     CONJ_TAC THENL [
@@ -120,7 +120,7 @@ let LOOP_EQUIV = prove(
 
     ARM_N_STUTTER_LEFT_TAC LOOP_EXEC (1--1) None THEN
     ARM_N_STUTTER_RIGHT_TAC LOOP2_EXEC (1--1) "'" None THEN
-    REPEAT_N 2 ENSURES_N_FINAL_STATE_TAC THEN
+    REPEAT_N 2 ENSURES_FINAL_STATE_TAC THEN
     ASM_REWRITE_TAC[WORD_ADD] THEN
 
     SUBGOAL_THEN `(word i:int64 = word n) <=> F` SUBST_ALL_TAC THENL [

@@ -174,6 +174,9 @@ constexpr size_t kFlag_sha512_hw = 8;
 constexpr size_t kFlag_KeccakF1600_hw = 9;
 constexpr size_t kFlag_sha3_keccak_f1600 = 10;
 constexpr size_t kFlag_sha3_keccak_f1600_alt = 11;
+constexpr size_t kFlag_sha3_keccak2_f1600 = 12;
+constexpr size_t kFlag_sha3_keccak4_f1600_alt = 13;
+constexpr size_t kFlag_sha3_keccak4_f1600_alt2 = 14;
 #endif
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
@@ -285,24 +288,75 @@ TEST_F(ImplDispatchTest, SHA3_512) {
   //   (`Keccak1600_hw()`), not using lazy rotations.
   AssertFunctionsHit(
       {
-	  {kFlag_sha3_keccak_f1600,
-	   have_s2n_bignum_asm_ &&
-	   (neoverse_n1_ || neoverse_v1_ || neoverse_v2_) },
-	  {kFlag_sha3_keccak_f1600_alt,
-	   have_s2n_bignum_asm_ &&
-	   !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
+          {kFlag_sha3_keccak_f1600,
+           have_s2n_bignum_asm_ &&
+           (neoverse_n1_ || neoverse_v1_ || neoverse_v2_) },
+          {kFlag_sha3_keccak_f1600_alt,
+           have_s2n_bignum_asm_ &&
+           !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
            (assembler_has_neon_sha3_extension_ && sha3_ext_) },
           {kFlag_KeccakF1600_hw,
-  	   !have_s2n_bignum_asm_ ||
-	   (
-	     !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
-	     !(assembler_has_neon_sha3_extension_ && sha3_ext_)
-	   ) },
+           !have_s2n_bignum_asm_ ||
+           (
+             !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
+             !(assembler_has_neon_sha3_extension_ && sha3_ext_)
+           ) },
       },
       [] {
         const uint8_t in[32] = {0};
         uint8_t out[SHA3_512_DIGEST_LENGTH];
         SHA3_512(in, 32, out);
+      });
+}
+
+TEST_F(ImplDispatchTest, SHAKE256_Batched) {
+  // Assembly dispatch logic for Keccak-x4 on AArch64:
+  // - For Neoverse N1, we use scalar batched hybrid Keccak assembly from s2n-bignum
+  //   (`sha3_keccak4_f1600_alt()`) leveraging Neon and scalar assembly with
+  //   lazy rotations.
+  // - For Neoverse V1, V2, we use SIMD batched hybrid Keccak assembly from s2n-bignum
+  //   (`sha3_keccak4_f1600_alt2()`) leveraging Neon, Neon SHA3 extension,
+  //   and scalar assembly with lazy rotations.
+  // - Otherwise, if the Neon SHA3 extension is supported, we use the 2-fold
+  //   Keccak assembly from s2n-bignum (`sha3_keccak2_f1600()`) twice,
+  //   which is a straightforward implementation using the SHA3 extension.
+  // - Otherwise, fall back to four times the 1-fold Keccak implementation
+  //   with its own dispatch logic.
+  AssertFunctionsHit(
+      {
+          {kFlag_sha3_keccak4_f1600_alt,
+           have_s2n_bignum_asm_ && neoverse_n1_},
+          {kFlag_sha3_keccak4_f1600_alt2,
+           have_s2n_bignum_asm_ &&
+           (neoverse_v1_ || neoverse_v2_) &&
+           assembler_has_neon_sha3_extension_},
+          {kFlag_sha3_keccak2_f1600,
+           have_s2n_bignum_asm_ &&
+           !(neoverse_n1_ || neoverse_v1_ || neoverse_v2_) &&
+           (assembler_has_neon_sha3_extension_ && sha3_ext_)},
+          // If we don't have assembly batched Keccak available,
+          // we fall back to the dispatch logic in KeccakF1600().
+          // Under the assumption that no batched Keccak assembly
+          // was chosen, this simplifies as follows:
+          // 1. If we run on Neoverse-V1 and Neoverse-V2 and there is
+          //    no compiler support for SHA3 (otherwise, we would have
+          //    have chosen the batched hybrid with SHA3 extension),
+          //    we use the scalar assembly with lazy rotation.
+          // 2. Otherwise, we fall back to the OpenSSL assembly.
+          {kFlag_sha3_keccak_f1600,
+           have_s2n_bignum_asm_ && (neoverse_v1_ || neoverse_v2_) &&
+           !(assembler_has_neon_sha3_extension_ && sha3_ext_) },
+          {kFlag_KeccakF1600_hw,
+           !have_s2n_bignum_asm_ ||
+           (
+	       !neoverse_n1_ && !neoverse_v1_ && !neoverse_v2_ &&
+	       !(assembler_has_neon_sha3_extension_ && sha3_ext_)
+	   ) },
+      },
+      [] {
+        const uint8_t in[32] = {0};
+        uint8_t out0[32], out1[32], out2[32], out3[32];
+        SHAKE256_x4(in, in, in, in, 32, out0, out1, out2, out3, 32);
       });
 }
 #endif // OPENSSL_AARCH64

@@ -1407,7 +1407,10 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   9: KeccakF1600_hw
 //  10: sha3_keccak_f1600
 //  11: sha3_keccak_f1600_alt
-extern uint8_t BORINGSSL_function_hit[12];
+//  12: sha3_keccak2_f1600
+//  13: sha3_keccak4_f1600_alt
+//  14: sha3_keccak4_f1600_alt2
+extern uint8_t BORINGSSL_function_hit[15];
 #endif  // BORINGSSL_DISPATCH_TEST
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
