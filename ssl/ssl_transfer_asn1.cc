@@ -963,6 +963,8 @@ static const unsigned kSSLQuietShutdownTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
 static const unsigned kSSLConfigTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
+static const unsigned kSSLVerifyResultTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 
 // Parse serialized SSL connection binary
 //
@@ -998,12 +1000,18 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
     }
   }
 
+  if (!CBB_add_asn1(&ssl, &child, kSSLVerifyResultTag) ||
+      !CBB_add_asn1_int64(&child, in->verify_result)) {
+    return 0;
+  }
+
   return CBB_flush(cbb);
 }
 
 static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   CBS ssl_cbs, ssl_config;
   uint64_t ssl_serial_ver, version, max_send_fragment, mode, options;
+  int64_t verify_result = X509_V_ERR_INVALID_CALL;
   int quiet_shutdown;
   int ssl_config_present = 0;
 
@@ -1028,6 +1036,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
 
   ssl->version = version;
   ssl->max_send_fragment = max_send_fragment;
+
   SSL_set_accept_state(ssl);
 
   // This is called separately to avoid overriding error code.
@@ -1066,10 +1075,19 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
     ssl->config.reset();
   }
 
+  if (!CBS_get_optional_asn1_int64(
+          &ssl_cbs, &verify_result, kSSLVerifyResultTag,
+          ssl->s3->established_session->verify_result)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
+    return 0;
+  }
+
   if (CBS_len(&ssl_cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
+
+  ssl->verify_result = verify_result;
 
   return 1;
 }

@@ -155,6 +155,7 @@
 #include <openssl/rand.h>
 
 #include "../crypto/internal.h"
+#include "../crypto/x509/internal.h"
 #include "internal.h"
 
 #if defined(OPENSSL_WINDOWS)
