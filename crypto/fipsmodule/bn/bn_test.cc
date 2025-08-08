@@ -3028,15 +3028,12 @@ TEST_F(BNTest, BNMulMont5ABI) {
       bn_scatter5(r.data(), words, table.data(), i);
     }
     CHECK_ABI(bn_gather5, r.data(), words, table.data(), 13);
-
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     if (bn_mulx4x_mont_gather5_capable(words)) {
       CHECK_ABI(bn_mulx4x_mont_gather5, r.data(), r.data(), table.data(), m->d,
                 mont->n0, words, 13);
       CHECK_ABI(bn_mulx4x_mont_gather5, r.data(), a.data(), table.data(), m->d,
                 mont->n0, words, 13);
     }
-#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     if (bn_mul4x_mont_gather5_capable(words)) {
       CHECK_ABI(bn_mul4x_mont_gather5, r.data(), r.data(), table.data(), m->d,
                 mont->n0, words, 13);
