@@ -1665,15 +1665,74 @@ TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
   bssl::UniquePtr<SSL> transfer_server;
-  TransferSSL(&server, server_ctx.get(), &transfer_server);
+  TransferSSL(&server, server_ctx.get(), &transfer_server, false);
+
+  // All Read/Write connection operations should fail now for a transferred server
+  ASSERT_EQ(-1, SSL_connect(server.get()));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_accept(server.get()));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_shutdown(server.get()));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_do_handshake(server.get()));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_peek(server.get(), nullptr, 0));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_peek_ex(server.get(), nullptr, 0, nullptr));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_read(server.get(), nullptr, 0));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_read_ex(server.get(), nullptr, 0, nullptr));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_write(server.get(), nullptr, 0));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_write_ex(server.get(), nullptr, 0, nullptr));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
+  ASSERT_EQ(-1, SSL_key_update(server.get(), SSL_KEY_UPDATE_REQUESTED));
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  ERR_clear_error();
+
   server = std::move(transfer_server);
 
   char buf[3];
   size_t buf_cap = sizeof(buf);
 
-  for (size_t t = 0; t < 5; t++) {
-    for (size_t i = 0; i < 20; i++) {
+  size_t server_transfers = 5;
+  size_t read_write_per_instance = 20;
+
+  for (size_t t = 0; t < server_transfers; t++) {
+    for (size_t i = 0; i < read_write_per_instance; i++) {
       std::string send_str = std::to_string(i);
+
+      if(t > 0 && i == 0) {
+        // Actually read the previously peeked data from the last transfer
+        std::string peeked_str = std::to_string(read_write_per_instance-1);
+        int read = SSL_read(server.get(), buf, buf_cap);
+        ASSERT_TRUE(read);
+        ASSERT_TRUE((size_t)read == peeked_str.length());
+        std::string read_str(buf, read);
+        ASSERT_EQ(peeked_str, read_str);
+      }
 
       // Assert server open
       ASSERT_TRUE(SSL_write(client.get(), send_str.c_str(), send_str.length()));
@@ -1690,6 +1749,20 @@ TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
       ASSERT_TRUE((size_t)read == send_str.length());
       read_str = std::string(buf, read);
       ASSERT_EQ(send_str, read_str);
+
+      if(i == read_write_per_instance - 1) {
+        // Peek some client data before serialization
+        ASSERT_TRUE(SSL_write(client.get(), send_str.c_str(), send_str.length()));
+        read = SSL_peek(server.get(), buf, buf_cap);
+        ASSERT_TRUE(read);
+        ASSERT_TRUE((size_t)read == send_str.length());
+        read_str = std::string(buf, read);
+        ASSERT_EQ(send_str, read_str);
+      }
+    }
+    if(version == TLS1_3_VERSION) {
+      // Queue a Key Update to validate pending handshake flight messages are serialized
+      SSL_key_update(server.get(), SSL_KEY_UPDATE_REQUESTED);
     }
     TransferSSL(&server, server_ctx.get(), &transfer_server);
     server = std::move(transfer_server);
