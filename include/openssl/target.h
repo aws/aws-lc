@@ -34,10 +34,10 @@
 #elif defined(__ARMEL__) || defined(_M_ARM)
 #define OPENSSL_32_BIT
 #define OPENSSL_ARM
-#elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_LITTLE_ENDIAN)
+#elif (defined(__PPC64__) || defined(__powerpc64__)) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define OPENSSL_64_BIT
 #define OPENSSL_PPC64LE
-#elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_BIG_ENDIAN)
+#elif (defined(__PPC64__) || defined(__powerpc64__)) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define OPENSSL_64_BIT
 #define OPENSSL_PPC64BE
 #define OPENSSL_BIG_ENDIAN
