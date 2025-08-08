@@ -370,7 +370,7 @@ int callback_SSL_client_hello_get1_extensions_present_impl(
   EXPECT_NE(nullptr, extensions);
 
   unsigned legacy_version = SSL_client_hello_get0_legacy_version(ssl);
-  EXPECT_NE(legacy_version, 0u);
+  EXPECT_EQ(legacy_version, (unsigned)TLS1_2_VERSION);
 
   // Verify a few common extensions are present
   bool found_supported_groups = false;
@@ -486,7 +486,7 @@ TEST(SSLClientHelloTest, GetExtensionOrder) {
         }
 
         unsigned legacy_version = SSL_client_hello_get0_legacy_version(ssl);
-        EXPECT_NE(legacy_version, 0u);
+        EXPECT_EQ(legacy_version, (unsigned)TLS1_2_VERSION);
 
         // Call with a buffer that is too small and confirm it fails.
         size_t too_small_num_extensions = num_extensions - 1;
