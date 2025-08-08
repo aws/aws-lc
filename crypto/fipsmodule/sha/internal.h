@@ -111,7 +111,11 @@ OPENSSL_STATIC_ASSERT(sizeof(KECCAK1600_CTX) <= sizeof(union md_ctx_union),
                       hmac_md_ctx_union_sha3_size_needs_update)
 
 // KECCAK1600 x4 batched context structure
-typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];
+typedef struct keccak_ctx_st_x4 KECCAK1600_CTX_x4;
+
+struct keccak_ctx_st_x4 {
+  uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS];
+};
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
@@ -600,6 +604,20 @@ OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
 // |len| bytes and returns the remaining number of bytes.
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
+
+// Keccak1600_Absorb_once_x4 absorbs exactly |len| bytes from four inputs into four
+// Keccak states, applying padding character |p|. Unlike Keccak1600_Absorb, this
+// processes a single block and takes the padding character as an additional argument.
+void Keccak1600_Absorb_once_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                               const uint8_t *inp0, const uint8_t *inp1,
+                               const uint8_t *inp2, const uint8_t *inp3,
+                               size_t len, size_t r, uint8_t p);
+
+// Keccak1600_Squeezeblocks_x4 squeezes |num_blocks| blocks from four Keccak states
+// into four output buffers, with each block being |r| bytes.
+void Keccak1600_Squeezeblocks_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                                 uint8_t *out0, uint8_t *out1, uint8_t *out2, uint8_t *out3,
+                                 size_t num_blocks, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
 // multiple times when used as eXtendable Output Function. |padded| indicates
