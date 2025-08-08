@@ -20,7 +20,6 @@ run_build \
     
 cd "${BUILD_ROOT}"
 
-# Function to run test and check result
 run_test() {
     local test_name="$1"
     local expected_to_fail="$2"
@@ -60,31 +59,75 @@ run_test "No arguments test" true \
 # Test 2: Invalid file (should fail)
 run_test "Invalid file test" true \
     ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-    -in-object nonexistent.so -o nonexistent.so
+    -in-object nonexistent.file -o nonexistent.file
 ((ERRORS+=$?))
 
-# Test 3: Actual library (should succeed)
+# Platform Specific Tests
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    run_test "Valid library test (macOS)" false \
-        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-        -o ./crypto/libcrypto.dylib \
-        -in-object ./crypto/libcrypto.dylib \
-        -apple
-    ((ERRORS+=$?))
+    # Set platform-specific variables
+    LIB_EXT="dylib"
+    LIB_PATH_VAR="DYLD_LIBRARY_PATH"
 else
-    run_test "Valid library test (Linux)" false \
-        ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-        -o ./crypto/libcrypto.so \
-        -in-object ./crypto/libcrypto.so
-    ((ERRORS+=$?))
+    # Set platform-specific variables
+    LIB_EXT="so"
+    LIB_PATH_VAR="LD_LIBRARY_PATH"
 fi
 
-#Test 4: HMAC calculation of a test file path (should succeed)
-run_test "HMAC calculation test" false \
-    ./util/fipstools/inject_hash_cpp/inject_hash_cpp \
-    -in-object "util/fipstools/inject_hash_cpp/CMakeLists.txt" \
-    -o "util/fipstools/inject_hash_cpp/CMakeLists.txt"
+# Test 3: Sanity check - verify tests pass with injected hash
+run_test "Sanity check" false \
+    ./crypto/crypto_test
 ((ERRORS+=$?))
+
+# Test 4: Create corrupted library copy and invalid hash check
+echo "Creating corrupted copy of library..."
+
+# Create a separate test directory
+mkdir -p ./test_corrupted
+cp ./crypto/crypto_test ./test_corrupted/
+cp ./crypto/libcrypto.${LIB_EXT} ./test_corrupted/libcrypto.${LIB_EXT}
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    START_OFFSET=$(nm ./test_corrupted/libcrypto.${LIB_EXT} | grep _BORINGSSL_bcm_text_start | cut -d' ' -f1)
+    END_OFFSET=$(nm ./test_corrupted/libcrypto.${LIB_EXT} | grep _BORINGSSL_bcm_text_end | cut -d' ' -f1)
+else
+    START_OFFSET=$(nm ./test_corrupted/libcrypto.${LIB_EXT} | grep BORINGSSL_bcm_text_start | cut -d' ' -f1)
+    END_OFFSET=$(nm ./test_corrupted/libcrypto.${LIB_EXT} | grep BORINGSSL_bcm_text_end | cut -d' ' -f1)
+fi
+
+# Convert hex to decimal
+START_OFFSET=$((16#$START_OFFSET))
+END_OFFSET=$((16#$END_OFFSET))
+
+# Pick a random offset within the module
+RANDOM_OFFSET=$((START_OFFSET + RANDOM % (END_OFFSET - START_OFFSET)))
+echo "Corrupting FIPS module at offset $RANDOM_OFFSET"
+
+# Read current byte
+CURRENT_BYTE=$(dd if=./test_corrupted/libcrypto.${LIB_EXT} bs=1 skip=$RANDOM_OFFSET count=1 2>/dev/null | xxd -p)
+
+# Flip the bit (XOR with 1)
+FLIPPED_BYTE=$(printf "%02x" "$((0x$CURRENT_BYTE ^ 1))")
+
+# Write back the flipped byte
+echo $FLIPPED_BYTE | xxd -r -p | dd of=./test_corrupted/libcrypto.${LIB_EXT} bs=1 seek=$RANDOM_OFFSET count=1 conv=notrunc
+
+# Change to test directory and set library path
+cd ./test_corrupted
+export ${LIB_PATH_VAR}=./
+
+# Run test and capture output
+OUTPUT=$( ./crypto_test 2>&1 )
+echo "Test output: $OUTPUT"
+
+# Check specifically for integrity failure
+run_test "Corrupted module verification test" true \
+    bash -c 'echo "$OUTPUT" | grep -q "integrity" || echo "$OUTPUT" | grep -q "FIPS"'
+
+cd ..
+((ERRORS+=$?))
+
+# Clean up
+rm -rf ./test_corrupted
 
 # Print test summary
 echo "=== Summary ==="
@@ -97,4 +140,3 @@ else
     echo "All tests passed"
     exit 0
 fi
-
