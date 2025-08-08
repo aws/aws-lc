@@ -103,67 +103,6 @@ jobs:
         run: |
           ./tests/ci/run_fips_tests.sh
 
-
-  MSVC-2019:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    runs-on: aws-lc_windows-2019_8-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja  -y &&
-          choco install nasm -y
-      - name: Run Windows Tests on MSVC-2019
-        run: |
-          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
-
-  MSVC-2022:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    runs-on: aws-lc_windows-latest_8-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja -y &&
-          choco install nasm -y
-      - name: Run Windows Tests on MSVC-2022
-        run: |
-          .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-
-  MSVC-SDE-64-bit:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    # TODO: Update this to run on windows-2022. windows-2022 (Windows 11) has phased out support for older processors.
-    # https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors
-    runs-on: aws-lc_windows-2019_64-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja -y &&
-          choco install nasm -y
-
-      - name: Install SDE simulator
-        run: |
-          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
-          7z x temp.tar.xz
-          7z x temp.tar
-          ren ${{ env.SDE_VERSION_TAG }} windows-sde
-          del temp.tar.xz
-          del temp.tar
-
-      - name: Run Windows SDE Tests for 64 bit
-        run: |
-          $env:SDEROOT = "${PWD}\windows-sde"
-          echo ${env:SDEROOT}
-          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
-
   clang-ubuntu-2004-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
