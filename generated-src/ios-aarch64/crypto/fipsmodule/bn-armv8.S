@@ -15,6 +15,7 @@
 .private_extern	_bn_add_words
 .align	4
 _bn_add_words:
+.cfi_startproc
 	AARCH64_VALID_CALL_TARGET
 	# Clear the carry flag.
 	cmn	xzr, xzr
@@ -45,6 +46,7 @@ Ladd_tail:
 Ladd_exit:
 	cset	x0, cs
 	ret
+.cfi_endproc
 
 
 // BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
@@ -54,6 +56,7 @@ Ladd_exit:
 .private_extern	_bn_sub_words
 .align	4
 _bn_sub_words:
+.cfi_startproc
 	AARCH64_VALID_CALL_TARGET
 	# Set the carry flag. Arm's borrow bit is flipped from the carry flag,
 	# so we want C = 1 here.
@@ -85,5 +88,6 @@ Lsub_tail:
 Lsub_exit:
 	cset	x0, cc
 	ret
+.cfi_endproc
 
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(__APPLE__)
