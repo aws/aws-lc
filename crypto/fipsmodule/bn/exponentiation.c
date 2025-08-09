@@ -168,18 +168,21 @@ static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width
 #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                    const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
-  assert(0);
+  perror("bn_mulx4x_mont");
+  abort();
 }
 
 void bn_mulx4x_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
                              const BN_ULONG *table, const BN_ULONG *np,
                              const BN_ULONG *n0, int num, int power) {
-  assert(0);
+  perror("bn_mulx4x_mont_gather5");
+  abort();
 }
 
 void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
                 const BN_ULONG *np, const BN_ULONG *n0, int num, int power) {
-  assert(0);
+  perror("bn_powerx5");
+  abort();
 }
 #endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 
