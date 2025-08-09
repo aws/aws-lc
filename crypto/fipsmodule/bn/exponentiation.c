@@ -166,7 +166,7 @@ static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width
 #if defined(OPENSSL_BN_ASM_MONT5)
 
 #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-void bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                    const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
   assert(0);
 }
@@ -195,13 +195,9 @@ void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
 static void bn_mul_mont_gather5(
     BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table, const BN_ULONG *np,
     const BN_ULONG *n0, int num, int power) {
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (bn_mulx4x_mont_gather5_capable(num)) {
     bn_mulx4x_mont_gather5(rp, ap, table, np, n0, num, power);
-    return;
-  }
-#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  if (bn_mul4x_mont_gather5_capable(num)) {
+  } else if (bn_mul4x_mont_gather5_capable(num)) {
     bn_mul4x_mont_gather5(rp, ap, table, np, n0, num, power);
   } else {
     bn_mul_mont_gather5_nohw(rp, ap, table, np, n0, num, power);
@@ -222,13 +218,11 @@ static void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
                       int power)
 {
   assert(bn_power5_capable(num));
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (bn_powerx5_capable(num)) {
     bn_powerx5(rp, ap, table, np, n0, num, power);
-    return;
+  } else {
+    bn_power5_nohw(rp, ap, table, np, n0, num, power);
   }
-#endif
-  bn_power5_nohw(rp, ap, table, np, n0, num, power);
 }
 
 #endif // defined(OPENSSL_BN_ASM_MONT5)
