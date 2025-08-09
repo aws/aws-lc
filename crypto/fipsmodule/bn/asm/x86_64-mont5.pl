@@ -1061,7 +1061,7 @@ $code.=<<___;
 .size	mul4x_internal,.-mul4x_internal
 ___
 }}}
-{{{
+{{{
 ######################################################################
 # void bn_power5_nohw(
 my $rptr="%rdi";	# BN_ULONG *rptr,
