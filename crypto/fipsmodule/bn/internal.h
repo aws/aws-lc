@@ -420,11 +420,10 @@ int bn_mul4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 
 OPENSSL_INLINE int bn_mulx4x_mont_capable(size_t num) {
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   return 0;
-#else
-  return bn_mul4x_mont_capable(num) && bn_mulx_adx_capable();
 #endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  return bn_mul4x_mont_capable(num) && bn_mulx_adx_capable();
 }
 int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                    const BN_ULONG *np, const BN_ULONG *n0, size_t num);
@@ -459,7 +458,7 @@ int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, BN_ULONG mulx_adx_capable,
                              const BN_ULONG *n0, int num, int power);
 
   OPENSSL_INLINE int bn_mulx4x_mont_gather5_capable(int num) {
-  #if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     return 0;
   #endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     return bn_mul4x_mont_gather5_capable(num) && CRYPTO_is_ADX_capable() &&
@@ -493,7 +492,7 @@ void bn_gather5(BN_ULONG *out, size_t num, const BN_ULONG *table, size_t power);
   }
 
   OPENSSL_INLINE int bn_powerx5_capable(int num) {
-  #if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     return 0;
   #endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     return bn_power5_capable(num) && CRYPTO_is_ADX_capable() &&
