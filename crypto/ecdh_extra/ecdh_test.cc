@@ -104,6 +104,16 @@ TEST(ECDHTest, TestVectors) {
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_key(key.get()));
 
+    // Check EVP_PKEY_check and EVP_PKEY_public_check
+    bssl::UniquePtr<EVP_PKEY> ec_pkey(EVP_PKEY_new());
+    ASSERT_TRUE(ec_pkey);
+    ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(ec_pkey.get(), key.get()));
+    bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(
+            EVP_PKEY_CTX_new(ec_pkey.get(), NULL));
+    ASSERT_TRUE(ec_key_ctx);
+    ASSERT_TRUE(EVP_PKEY_check(ec_key_ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_public_check((ec_key_ctx.get())));
+
     std::vector<uint8_t> actual_z;
     // Make |actual_z| larger than expected to ensure |ECDH_compute_key| returns
     // the right amount of data.

@@ -2024,29 +2024,33 @@ $code.=<<___ if ($avx>1);
 ___
 $code.=<<___;
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_sha1_block_data_order_nohw:
 	.byte	9,0,0,0
 	.rva	se_handler
 ___
 $code.=<<___ if ($shaext);
+.align	4
 .LSEH_info_sha1_block_data_order_hw:
 	.byte	9,0,0,0
 	.rva	shaext_handler
 ___
 $code.=<<___;
+.align	4
 .LSEH_info_sha1_block_data_order_ssse3:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
 	.rva	.Lprologue_ssse3,.Lepilogue_ssse3	# HandlerData[]
 ___
 $code.=<<___ if ($avx);
+.align	4
 .LSEH_info_sha1_block_data_order_avx:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
 	.rva	.Lprologue_avx,.Lepilogue_avx		# HandlerData[]
 ___
 $code.=<<___ if ($avx>1);
+.align	4
 .LSEH_info_sha1_block_data_order_avx2:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
