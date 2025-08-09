@@ -622,3 +622,32 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 }
 
 #endif  // !BN_ADD_ASM
+
+// Default implementations of hardware accelerated functions that throw errors if reached.
+// Used to reduce the number of guards needed in code.
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+
+#if defined(OPENSSL_X86_64) && defined(OPENSSL_BN_ASM_MONT)
+int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                   const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+  perror("bn_mulx4x_mont");
+  abort();
+}
+#endif
+
+#if defined(OPENSSL_BN_ASM_MONT5)
+void bn_mulx4x_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
+                             const BN_ULONG *table, const BN_ULONG *np,
+                             const BN_ULONG *n0, int num, int power) {
+  perror("bn_mulx4x_mont_gather5");
+  abort();
+}
+
+void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
+                const BN_ULONG *np, const BN_ULONG *n0, int num, int power) {
+  perror("bn_powerx5");
+  abort();
+}
+#endif
+
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
