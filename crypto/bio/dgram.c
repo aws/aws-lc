@@ -125,7 +125,14 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   BIO_clear_retry_flags(bp);
   if (ret < 0 && bio_socket_should_retry(ret)) {
     BIO_set_retry_read(bp);
-    data->_errno = bio_sock_error_get_and_clear(bp->num);
+#if defined(OPENSSL_WINDOWS)
+    // On Windows, the error is per-thread and retrieved with WSAGetLastError.
+    data->_errno = WSAGetLastError();
+#else
+    // On POSIX, the error is in the global errno.
+    data->_errno = errno;
+#endif
+    // data->_errno = bio_sock_error_get_and_clear(bp->num);
   }
 
   return ret;

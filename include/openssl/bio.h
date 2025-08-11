@@ -754,6 +754,8 @@ OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
 
 #if !defined(OPENSSL_NO_SOCK)
 
+#include <sys/time.h> // For struct timeval
+
 typedef union bio_addr_st BIO_ADDR;
 
 // BIO_s_datagram returns the datagram |BIO_METHOD|. A datagram BIO provides a wrapper
