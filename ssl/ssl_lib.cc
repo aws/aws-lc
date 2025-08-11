@@ -3148,7 +3148,6 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
   CBS_init(&extensions, client_hello.extensions, client_hello.extensions_len);
 
   size_t num_extensions = 0;
-  size_t i = 0;
   while (CBS_len(&extensions) > 0) {
     uint16_t type = 0;
     CBS body;
@@ -3159,11 +3158,11 @@ int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_ext
     }
     if (exts != nullptr) {
       // num_exts is an in/out param. Return error if insufficient size.
-      if (i >= *num_exts) {
+      if (num_extensions >= *num_exts) {
         return 0;
       }
       // Store the type for each extension
-      exts[i++] = type;
+      exts[num_extensions] = type;
     }
     num_extensions++;
   }

@@ -367,7 +367,7 @@ int callback_SSL_client_hello_get1_extensions_present_impl(
   }
 
   EXPECT_GT(extensions_len, 0u);
-  EXPECT_NE(nullptr, extensions);
+  EXPECT_TRUE(extensions);
 
   unsigned legacy_version = SSL_client_hello_get0_legacy_version(ssl);
   EXPECT_EQ(legacy_version, (unsigned)TLS1_2_VERSION);
@@ -469,32 +469,37 @@ TEST(SSLClientHelloTest, GetExtensionOrder) {
         // First, call with a null buffer to get the count of extensions.
         if (SSL_client_hello_get_extension_order(ssl, nullptr,
                                                  &num_extensions) != 1) {
+          ADD_FAILURE()
+              << "Failed initial call to SSL_client_hello_get_extension_order";
           return SSL_CLIENT_HELLO_ERROR;
         }
         EXPECT_GT(num_extensions, 0u);
 
         // Allocate a buffer of the correct size and get the extensions.
-        uint16_t* exts =
-            (uint16_t *)OPENSSL_zalloc(sizeof(uint16_t) * num_extensions);
+        uint16_t *exts = static_cast<uint16_t *>(
+            OPENSSL_zalloc(sizeof(uint16_t) * num_extensions));
         if (exts == nullptr) {
+          ADD_FAILURE() << "Failed to allocate extensions";
           return SSL_CLIENT_HELLO_ERROR;
         }
-        if (SSL_client_hello_get_extension_order(
-                ssl, exts, &num_extensions) != 1) {
+        if (SSL_client_hello_get_extension_order(ssl, exts, &num_extensions) !=
+            1) {
+          ADD_FAILURE()
+              << "Failed call to SSL_client_hello_get_extension_order";
           OPENSSL_free(exts);
           return SSL_CLIENT_HELLO_ERROR;
         }
 
         unsigned legacy_version = SSL_client_hello_get0_legacy_version(ssl);
-        EXPECT_EQ(legacy_version, (unsigned)TLS1_2_VERSION);
+        EXPECT_EQ(legacy_version, static_cast<unsigned>(TLS1_2_VERSION));
 
         // Call with a buffer that is too small and confirm it fails.
         size_t too_small_num_extensions = num_extensions - 1;
-        uint16_t* too_small_exts =
-            (uint16_t *)OPENSSL_zalloc(sizeof(uint16_t) *
-                                       too_small_num_extensions);
+        uint16_t *too_small_exts = static_cast<uint16_t *>(
+            OPENSSL_zalloc(sizeof(uint16_t) * too_small_num_extensions));
         if (!too_small_exts) {
           OPENSSL_free(exts);
+          ADD_FAILURE() << "Failed to allocate too small buffer";
           return SSL_CLIENT_HELLO_ERROR;
         }
         // Expect failure
@@ -502,6 +507,8 @@ TEST(SSLClientHelloTest, GetExtensionOrder) {
                 ssl, too_small_exts, &too_small_num_extensions) != 0) {
           OPENSSL_free(exts);
           OPENSSL_free(too_small_exts);
+          ADD_FAILURE()
+              << "Failed call to SSL_client_hello_get_extension_order";
           return SSL_CLIENT_HELLO_ERROR;
         }
         OPENSSL_free(exts);
