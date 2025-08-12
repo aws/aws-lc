@@ -18,6 +18,3 @@ git add -A
 
 echo "Checking for any changes"
 git diff --exit-code HEAD
-
-echo "Checking for any changes"
-git diff --exit-code HEAD
