@@ -144,6 +144,7 @@
 #include "rand/ctrdrbg.c"
 #include "rand/rand.c"
 #include "rand/entropy/entropy_sources.c"
+#include "rand/entropy/maine_coon_entropy.c"
 #include "rand/entropy/tree_drbg_jitter_entropy.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
