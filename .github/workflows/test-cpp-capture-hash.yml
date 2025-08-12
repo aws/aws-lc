@@ -1,0 +1,48 @@
+name: Test C++ capture_hash Implementation for Windows
+
+on:
+  pull_request:
+    branches: [ inject-hash-cpp-experiment ]
+
+jobs:
+  test-cpp-capture-hash:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build-type: ['shared']
+        # include:
+        #   - build-type: 'static'
+        #skipping handling of static builds for now
+      # Don't cancel all jobs if one fails
+      fail-fast: false
+        
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+        
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.20'
+        
+    - name: Setup Visual Studio Environment
+      uses: microsoft/setup-msbuild@v1.1
+        
+    - name: Install Dependencies (Windows)
+      run: |
+        choco install ninja cmake perl golang --confirm
+        
+    - name: Verify Dependencies
+      run: |
+        cmake --version
+        ninja --version
+        go version
+        perl --version
+        cl
+        
+    - name: Build and Test (Windows)
+      env:
+        BUILD_TYPE: ${{ matrix.build-type }}
+      run: |
+        .\tests\ci\run_capture_hash_cpp.bat
