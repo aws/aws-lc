@@ -50,7 +50,15 @@ if !errorlevel! == 0 (
     echo Test 'Invalid file test' failed as expected
 )
 
-REM ... rest of your tests ...
+REM Test 3: FIPS integrity sanity check
+echo Running test: FIPS integrity sanity check
+crypto\crypto_test.exe >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Test 'FIPS integrity sanity check' failed - FIPS module has integrity issues
+    set /a ERRORS+=1
+) else (
+    echo Test 'FIPS integrity sanity check' passed - FIPS module integrity OK
+)
 
 echo.
 echo === Summary ===
