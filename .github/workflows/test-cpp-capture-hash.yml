@@ -7,10 +7,6 @@ on:
 jobs:
   test-cpp-capture-hash:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        build-type: ['shared']
-      fail-fast: false
         
     steps:
     - uses: actions/checkout@v2
@@ -44,7 +40,5 @@ jobs:
         cl
         
     - name: Build and Test (Windows)
-      env:
-        BUILD_TYPE: ${{ matrix.build-type }}
       run: |
         .\tests\ci\run_capture_hash_cpp.bat

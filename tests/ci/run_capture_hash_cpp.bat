@@ -50,7 +50,7 @@ if !errorlevel! == 0 (
     echo Test 'Invalid file test' failed as expected
 )
 
-REM Test 3: FIPS integrity sanity check
+REM Test 3: FIPS integrity sanity check(should succeed)
 echo Running test: FIPS integrity sanity check
 crypto\crypto_test.exe >nul 2>&1
 if !errorlevel! neq 0 (
@@ -73,6 +73,9 @@ if !ERRORS! gtr 0 (
 )
 
 REM Build function copied from run_windows_tests.bat
+REM Note: The build function is intentionally duplicated from run_windows_tests.bat
+REM       as Windows batch files don't support function sharing like bash scripts.
+REM       This keeps the script self-contained and more reliable.
 :build
 @echo on
 @echo LOG: %date%-%time% %1 %2 build started with cmake generation
@@ -86,6 +89,7 @@ cmake -GNinja -DCMAKE_BUILD_TYPE=%~1 %~2 %SRC_ROOT% || goto error
 @echo LOG: %date%-%time% %1 %2 cmake generation complete, starting build
 ninja || goto error
 @echo LOG: %date%-%time% %1 %2 build complete
+@echo off
 exit /b 0
 
 :error
