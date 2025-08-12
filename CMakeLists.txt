@@ -1342,7 +1342,4 @@ endforeach()
 
 configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
 configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
-
-if(BUILD_TESTING)
-  configure_file(tests/ci/check-linkage.sh.in check-linkage.sh @ONLY)
-endif()
+configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
