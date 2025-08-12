@@ -31,8 +31,11 @@ jobs:
         
     - name: Install Dependencies (Windows)
       run: |
-        choco install ninja cmake perl golang --confirm
-        
+        choco install cmake --confirm --no-progress || echo "cmake already installed"
+        choco install ninja --confirm --no-progress || echo "ninja already installed"  
+        choco install strawberryperl --confirm --no-progress || echo "strawberryperl already installed"
+        choco install golang --confirm --no-progress || echo "golang already installed"
+
     - name: Verify Dependencies
       run: |
         cmake --version
