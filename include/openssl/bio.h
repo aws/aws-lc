@@ -67,6 +67,16 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#if !defined(OPENSSL_NO_SOCK)
+#if defined(OPENSSL_WINDOWS)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
+#else
+#include <sys/time.h>
+#endif
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -753,8 +763,6 @@ OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
 
 
 #if !defined(OPENSSL_NO_SOCK)
-
-#include <sys/time.h> // For struct timeval
 
 typedef union bio_addr_st BIO_ADDR;
 
