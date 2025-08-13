@@ -2281,18 +2281,20 @@ TEST(PKCS7Test, VerifyOtherField) {
   // Create PKCS7 and required ASN.1 structures
   bssl::UniquePtr<PKCS7> p7(PKCS7_new());
   ASSERT_TRUE(p7);
-  bssl::UniquePtr<ASN1_TYPE> other(ASN1_TYPE_new());
-  ASSERT_TRUE(other);
   bssl::UniquePtr<ASN1_STRING> seq(ASN1_STRING_new());
   ASSERT_TRUE(seq);
 
   ASSERT_TRUE(ASN1_STRING_set(seq.get(), test_data, test_data_len));
 
   // Set up the ASN.1 structure
-  ASN1_TYPE_set(other.get(), V_ASN1_SEQUENCE, seq.release());
-  p7->d.other = other.release();
+  // |p7->type| is intentionally undefined. OpenSSL frees all contents whether
+  // it's defined or not.
+  p7->d.other = ASN1_TYPE_new();
+  EXPECT_TRUE(p7->d.other);
 
-  ASSERT_EQ(p7->d.other->type, V_ASN1_SEQUENCE);
+  ASN1_TYPE_set(p7->d.other, V_ASN1_OCTET_STRING, seq.release());
+
+  ASSERT_EQ(p7->d.other->type, V_ASN1_OCTET_STRING);
   EXPECT_EQ(p7->d.other->value.sequence->length, test_data_len);
   EXPECT_EQ(OPENSSL_memcmp(p7->d.other->value.sequence->data, test_data,
                            test_data_len),

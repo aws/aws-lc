@@ -25,7 +25,7 @@ ASN1_ADB(PKCS7) = {
     ADB_ENTRY(
         NID_pkcs7_encrypted,
         ASN1_EXP_OPT(PKCS7, d.encrypted, PKCS7_ENCRYPT,
-                     0))} ASN1_ADB_END(PKCS7, 0, type, 0, &p7default_tt, NULL);
+                     0))} ASN1_ADB_END(PKCS7, 0, type, 0, &p7default_tt, &p7default_tt);
 
 ASN1_SEQUENCE(PKCS7) = {ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
                         ASN1_ADB_OBJECT(PKCS7)} ASN1_SEQUENCE_END(PKCS7)
