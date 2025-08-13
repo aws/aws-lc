@@ -48,7 +48,7 @@ static const struct sockaddr *BIO_ADDR_sockaddr(const BIO_ADDR *bap) {
   return &bap->sa;
 }
 
-static int dgram_get_errno() {
+static int dgram_get_errno(void) {
 #if defined(OPENSSL_WINDOWS)
   return WSAGetLastError();
 #else
@@ -133,7 +133,7 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   BIO_clear_retry_flags(bp);
   if (ret < 0 && bio_socket_should_retry(ret)) {
     BIO_set_retry_read(bp);
-    data->_errno = bio_sock_error_get_and_clear(bp->num);
+    data->_errno = dgram_get_errno();
   }
 
   return ret;
