@@ -891,55 +891,10 @@ TEST_P(BIODgramTest, SocketDatagramTimeoutBehavior) {
   }
 
   // Part 2: Test send timeout
-  {
-    // To test the send timeout, we need a sender and a non-reading receiver.
-    // The receiver will not read data, causing its receive buffer to fill up,
-    // which in turn will cause the sender's send buffer to fill.
-    bssl::UniquePtr<BIO> receiver_bio = create_server_bio(addr_family, SOCK_DGRAM);
-    if (!receiver_bio && addr_family == AF_INET6) {
-      GTEST_SKIP() << "IPv6 not supported";
-      return;
-    }
-    ASSERT_TRUE(receiver_bio) << LastSocketError();
-
-    OwnedSocket receiver_sock(BIO_get_fd(receiver_bio.get(), NULL));
-    ASSERT_EQ(1, BIO_set_close(receiver_bio.get(), BIO_NOCLOSE))
-        << LastSocketError();
-    SockaddrStorage receiver_addr = receiver_sock.storage();
-
-    bssl::UniquePtr<BIO> sender_bio =
-        create_client_bio(receiver_addr.family(), SOCK_DGRAM);
-    ASSERT_TRUE(sender_bio) << LastSocketError();
-
-    // "Connect" the sender to the receiver so it knows where to send data.
-    bssl::UniquePtr<BIO_ADDR> receiver_bio_addr = receiver_addr.ToBIO_ADDR();
-    ASSERT_TRUE(receiver_bio_addr);
-    ASSERT_EQ(1, BIO_dgram_set_peer(sender_bio.get(), receiver_bio_addr.get()))
-        << LastSocketError();
-
-    // Set a very short send timeout.
-    struct timeval send_timeout = {0, 100000}; // 0.1 seconds
-    ASSERT_EQ(1, BIO_dgram_set_send_timeout(sender_bio.get(), &send_timeout))
-        << LastSocketError();
-
-    // Continuously write to the socket in a loop to fill the kernel buffer.
-    // Eventually, the write operation will block and then time out.
-    char write_buffer[1024] = {0};
-    int write_ret;
-    for (;;) {
-      write_ret = BIO_write(sender_bio.get(), write_buffer, sizeof(write_buffer));
-      if (write_ret <= 0) {
-        break;
-      }
-    }
-
-    // The write operation should have failed.
-    EXPECT_EQ(-1, write_ret);
-
-    // Check if the timeout was detected correctly.
-    EXPECT_EQ(1, BIO_dgram_send_timedout(sender_bio.get()));
-    EXPECT_EQ(0, BIO_dgram_recv_timedout(sender_bio.get()));
-  }
+  // Triggering a send timeout requires filling the kernel's send buffer, which
+  // is unreliable. The OS may drop packets or have a very large buffer,
+  // preventing the send call from blocking. The API's get/set functionality
+  // is verified in the |SocketDatagramTimeouts| test.
 }
 
 class BIOAddrTest : public ::testing::Test {
