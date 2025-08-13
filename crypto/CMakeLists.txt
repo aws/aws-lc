@@ -624,6 +624,15 @@ if(FIPS_SHARED)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
     target_include_directories(fips_empty_main PRIVATE ${AWSLC_SOURCE_DIR}/include)
     target_include_directories(fips_empty_main BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+    if(USE_CPP_INJECT_HASH)
+      add_custom_command(OUTPUT generated_fips_shared_support.c
+              COMMAND ${CMAKE_BINARY_DIR}/util/fipstools/inject_hash_cpp/capture_hash_cpp
+              -in-executable $<TARGET_FILE:fips_empty_main>
+              > generated_fips_shared_support.c
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+              DEPENDS fips_empty_main capture_hash_cpp
+              )
+    else()
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
@@ -631,6 +640,7 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
+    endif()
     add_library(
       generated_fipsmodule
 
