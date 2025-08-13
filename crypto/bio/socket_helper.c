@@ -119,8 +119,10 @@ int bio_sock_error_get_and_clear(int sock) {
   socklen_t error_size = sizeof(error);
   // Get and clear the pending socket error. The SO_ERROR option is read-only.
   if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) < 0) {
+    fprintf(stdout, "bio_sock_error_get_and_clear returned a value less than 0, returning 1\n");
     return 1;
   }
+  fprintf(stdout, "bio_sock_error_get_and_clear(%d)\n", error);
   return error;
 }
 

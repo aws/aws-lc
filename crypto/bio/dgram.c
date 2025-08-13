@@ -48,6 +48,14 @@ static const struct sockaddr *BIO_ADDR_sockaddr(const BIO_ADDR *bap) {
   return &bap->sa;
 }
 
+static int dgram_get_errno() {
+#if defined(OPENSSL_WINDOWS)
+  return WSAGetLastError();
+#else
+  return errno;
+#endif
+}
+
 static int dgram_write(BIO *bp, const char *in, const int in_len) {
   GUARD_PTR(bp);
   GUARD_PTR(in);
@@ -82,7 +90,7 @@ static int dgram_write(BIO *bp, const char *in, const int in_len) {
   BIO_clear_retry_flags(bp);
   if (ret <= 0 && bio_socket_should_retry(ret)) {
     BIO_set_retry_write(bp);
-    data->_errno = bio_sock_error_get_and_clear(bp->num);
+    data->_errno = dgram_get_errno();
   }
   return ret;
 }
@@ -125,14 +133,7 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   BIO_clear_retry_flags(bp);
   if (ret < 0 && bio_socket_should_retry(ret)) {
     BIO_set_retry_read(bp);
-#if defined(OPENSSL_WINDOWS)
-    // On Windows, the error is per-thread and retrieved with WSAGetLastError.
-    data->_errno = WSAGetLastError();
-#else
-    // On POSIX, the error is in the global errno.
-    data->_errno = errno;
-#endif
-    // data->_errno = bio_sock_error_get_and_clear(bp->num);
+    data->_errno = bio_sock_error_get_and_clear(bp->num);
   }
 
   return ret;
