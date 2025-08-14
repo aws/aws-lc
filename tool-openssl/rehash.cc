@@ -336,9 +336,10 @@ static const argument_t kArguments[] = {
 };
 
 bool RehashTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args,
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
     kArguments) || extra_args.size() > 1) {
     PrintUsage(kArguments);
     return false;
@@ -359,7 +360,7 @@ bool RehashTool(const args_list_t &args) {
       "removes any existing symbolic links that match the regex \n" \
       "[0-9a-f]{8}.([r])?[0-9]+ in that directory. \n");
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   if (extra_args.empty()) { // No directory path provided on command line

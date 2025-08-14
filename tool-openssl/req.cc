@@ -7,6 +7,8 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <algorithm>
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include "../tool/internal.h"
@@ -226,12 +228,18 @@ static const char *prompt_field(const ReqField &field, char *buffer,
     return NULL;
   }
 
-  // Remove newline character if present
+  // Remove newline character and carriage return if present
   size_t len = OPENSSL_strnlen(buffer, buffer_size);
   if (len > 0 && buffer[len - 1] == '\n') {
     buffer[len - 1] = '\0';
     len--;
   }
+#if defined(_WIN32)
+  if (len > 0 && buffer[len - 1] == '\r') {
+    buffer[len - 1] = '\0';
+    len--;
+  }
+#endif
 
   if (strcmp(buffer, ".") == 0) {
     // Empty entry requested
@@ -381,60 +389,6 @@ static int make_certificate_request(X509_REQ *req, EVP_PKEY *pkey,
   return 1;
 }
 
-static int req_password_callback(char *buf, int size, int rwflag,
-                                 void *userdata) {
-  const char *prompt = "Enter PEM pass phrase:";
-  char verify_buf[BUF_SIZE];
-  int len;
-
-  // Display prompt
-  fprintf(stderr, "%s", prompt);
-  fflush(stderr);
-
-  // Get password
-  if (fgets(buf, size, stdin) == NULL) {
-    fprintf(stderr, "Error reading password\n");
-    return 0;
-  }
-
-  // Remove trailing newline
-  len = OPENSSL_strnlen(buf, sizeof(buf));
-  if (len > 0 && buf[len - 1] == '\n') {
-    buf[--len] = '\0';
-  }
-
-  // For encryption only (which is the case for req tool)
-  if (rwflag) {
-    // Verify password
-    fprintf(stderr, "Verifying - %s", prompt);
-    fflush(stderr);
-
-    if (fgets(verify_buf, sizeof(verify_buf), stdin) == NULL) {
-      fprintf(stderr, "Error reading verification password\n");
-      return 0;
-    }
-
-    // Remove trailing newline
-    int verify_len = OPENSSL_strnlen(verify_buf, sizeof(verify_buf));
-    if (verify_len > 0 && verify_buf[verify_len - 1] == '\n')
-      verify_buf[--verify_len] = '\0';
-
-    // Check if passwords match
-    if (strncmp(buf, verify_buf, BUF_SIZE) != 0) {
-      fprintf(stderr, "Passwords don't match\n");
-      return 0;
-    }
-
-    // Enforce minimum length
-    if (len < 4) {
-      fprintf(stderr, "Password too short (minimum 4 characters)\n");
-      return 0;
-    }
-  }
-
-  return len;
-}
-
 // Function to add extensions to a certificate
 static bool add_cert_extensions(X509 *cert) {
   const char *config =
@@ -503,9 +457,10 @@ static bool generate_serial(X509 *cert) {
 }
 
 bool reqTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
@@ -528,7 +483,7 @@ bool reqTool(const args_list_t &args) {
 
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   if (!new_flag && !x509_flag && newkey.empty()) {
@@ -569,7 +524,7 @@ bool reqTool(const args_list_t &args) {
   // If encryption disabled, don't use password prompting callback
   if (!out_bio ||
       !PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), cipher, NULL, 0,
-                                cipher ? req_password_callback : NULL, NULL)) {
+                                NULL, NULL)) {
     fprintf(stderr, "Failed to write private key.\n");
     return false;
   }

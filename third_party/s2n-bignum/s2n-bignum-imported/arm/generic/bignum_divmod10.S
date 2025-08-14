@@ -5,7 +5,7 @@
 // Divide bignum by 10, returning remainder: z' := z div 10, return = z mod 10
 // Inputs z[k]; outputs function return (remainder) and z[k]
 //
-//    extern uint64_t bignum_divmod10 (uint64_t k, uint64_t *z);
+//    extern uint64_t bignum_divmod10(uint64_t k, uint64_t *z);
 //
 // Standard ARM ABI: X0 = k, X1 = z, returns X0
 // ----------------------------------------------------------------------------

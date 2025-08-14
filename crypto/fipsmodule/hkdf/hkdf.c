@@ -12,30 +12,26 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/hkdf.h>
-
 #include <assert.h>
 #include <string.h>
 
 #include <openssl/err.h>
+#include <openssl/hkdf.h>
 #include <openssl/hmac.h>
+#include <openssl/mem.h>
 
 #include "../../internal.h"
-#include "../service_indicator/internal.h"
 #include "../cpucap/internal.h"
+#include "../service_indicator/internal.h"
 
-// TODO(CryptoAlg-1281): We need to get our FIPS testing partner's opinion on
-// which API level(s) we need to check at. HKDF_extract() originally had checks
-// similar to HKDF_expand(), but we were unsure whether it was required at that
-// level.
 
 int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
          const uint8_t *secret, size_t secret_len, const uint8_t *salt,
          size_t salt_len, const uint8_t *info, size_t info_len) {
   // https://tools.ietf.org/html/rfc5869#section-2
   uint8_t prk[EVP_MAX_MD_SIZE];
-  size_t prk_len;
-  int ret = 1;
+  size_t prk_len = 0;
+  int ret = 0;
 
   // We have to avoid the underlying HKDF services updating the indicator
   // state, so we lock the state here.
@@ -44,14 +40,18 @@ int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   if (!HKDF_extract(prk, &prk_len, digest, secret, secret_len, salt,
                     salt_len) ||
       !HKDF_expand(out_key, out_len, digest, prk, prk_len, info, info_len)) {
-    ret = 0;
+    // |HKDF_expand| zeroizes |out_key| on failure.
     goto out;
   }
 
-out:
-  FIPS_service_indicator_unlock_state();
-  HKDF_verify_service_indicator(digest, salt, salt_len, info_len);
+  ret = 1;
 
+out:
+  OPENSSL_cleanse(prk, EVP_MAX_MD_SIZE);
+  FIPS_service_indicator_unlock_state();
+  if (ret == 1) {
+    HKDF_verify_service_indicator(digest, salt, salt_len, info_len);
+  }
   return ret;
 }
 
@@ -73,6 +73,7 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
     goto out;
   }
+
   *out_len = len;
   assert(*out_len == EVP_MD_size(digest));
   ret = 1;
@@ -89,59 +90,66 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   SET_DIT_AUTO_RESET;
   const size_t digest_len = EVP_MD_size(digest);
   uint8_t previous[EVP_MAX_MD_SIZE];
-  size_t n, done = 0;
-  unsigned i;
   int ret = 0;
   HMAC_CTX hmac;
 
   // Expand key material to desired length.
-  n = (out_len + digest_len - 1) / digest_len;
+  size_t n = (out_len + digest_len - 1) / digest_len;
   if (out_len + digest_len < out_len || n > 255) {
     OPENSSL_PUT_ERROR(HKDF, HKDF_R_OUTPUT_TOO_LARGE);
     return 0;
   }
 
-  HMAC_CTX_init(&hmac);
-
   // We have to avoid the underlying HMAC services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
+  HMAC_CTX_init(&hmac);
   if (!HMAC_Init_ex(&hmac, prk, prk_len, digest, NULL)) {
     goto out;
   }
 
-  for (i = 0; i < n; i++) {
+  size_t done = 0;
+  uint32_t written = 0;
+
+  for (size_t i = 0; i < n; i++) {
+    // n is verified above to be <= 255. Hence 8-bit type is sufficient.
     uint8_t ctr = i + 1;
-    size_t todo;
 
     if (i != 0 && (!HMAC_Init_ex(&hmac, NULL, 0, NULL, NULL) ||
                    !HMAC_Update(&hmac, previous, digest_len))) {
       goto out;
     }
+
+    written = 0;
     if (!HMAC_Update(&hmac, info, info_len) ||
         !HMAC_Update(&hmac, &ctr, 1) ||
-        !HMAC_Final(&hmac, previous, NULL)) {
+        !HMAC_Final(&hmac, previous, &written) ||
+        written != digest_len) {
       goto out;
     }
 
-    todo = digest_len;
-    if (todo > out_len - done) {
-      todo = out_len - done;
+    if (written > out_len - done) {
+      written = out_len - done;
     }
-    OPENSSL_memcpy(out_key + done, previous, todo);
-    done += todo;
+    OPENSSL_memcpy(out_key + done, previous, written);
+    done += written;
   }
 
   ret = 1;
 
 out:
-  FIPS_service_indicator_unlock_state();
-  HKDFExpand_verify_service_indicator(digest);
-
+  OPENSSL_cleanse(previous, EVP_MAX_MD_SIZE);
   HMAC_CTX_cleanup(&hmac);
   if (ret != 1) {
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
+    OPENSSL_cleanse(out_key, out_len);
   }
+
+  FIPS_service_indicator_unlock_state();
+  if (ret == 1) {
+    HKDFExpand_verify_service_indicator(digest);
+  }
+
   return ret;
 }

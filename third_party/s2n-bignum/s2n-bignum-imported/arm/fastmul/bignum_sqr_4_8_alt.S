@@ -5,8 +5,8 @@
 // Square, z := x^2
 // Input x[4]; output z[8]
 //
-//    extern void bignum_sqr_4_8_alt
-//     (uint64_t z[static 8], uint64_t x[static 4]);
+//    extern void bignum_sqr_4_8_alt(uint64_t z[static 8],
+//                                   const uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

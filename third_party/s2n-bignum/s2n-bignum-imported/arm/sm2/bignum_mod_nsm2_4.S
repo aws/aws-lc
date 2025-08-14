@@ -5,8 +5,7 @@
 // Reduce modulo group order, z := x mod n_sm2
 // Input x[4]; output z[4]
 //
-//    extern void bignum_mod_nsm2_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_mod_nsm2_4(uint64_t z[static 4], const uint64_t x[static 4]);
 //
 // Reduction is modulo the group order of the GM/T 0003-2012 curve SM2.
 //

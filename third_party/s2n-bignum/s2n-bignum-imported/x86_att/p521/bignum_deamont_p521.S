@@ -5,8 +5,8 @@
 // Convert from Montgomery form z := (x / 2^576) mod p_521
 // Input x[9]; output z[9]
 //
-//    extern void bignum_deamont_p521
-//     (uint64_t z[static 9], uint64_t x[static 9]);
+//    extern void bignum_deamont_p521(uint64_t z[static 9],
+//                                    const uint64_t x[static 9]);
 //
 // Convert a 9-digit bignum x out of its (optionally almost) Montgomery form,
 // "almost" meaning any 9-digit input will work, with no range restriction.

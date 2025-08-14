@@ -1450,27 +1450,29 @@ ALIGN	4
 	DD	$L$SEH_end_bn_mulx4x_mont wrt ..imagebase
 	DD	$L$SEH_info_bn_mulx4x_mont wrt ..imagebase
 %endif
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_bn_mul_mont_nohw:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul_body wrt ..imagebase,$L$mul_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_bn_mul4x_mont:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul4x_body wrt ..imagebase,$L$mul4x_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_bn_sqr8x_mont:
 	DB	9,0,0,0
 	DD	sqr_handler wrt ..imagebase
 	DD	$L$sqr8x_prologue wrt ..imagebase,$L$sqr8x_body wrt ..imagebase,$L$sqr8x_epilogue wrt ..imagebase
-ALIGN	8
+ALIGN	4
 %ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 $L$SEH_info_bn_mulx4x_mont:
 	DB	9,0,0,0
 	DD	sqr_handler wrt ..imagebase
 	DD	$L$mulx4x_prologue wrt ..imagebase,$L$mulx4x_body wrt ..imagebase,$L$mulx4x_epilogue wrt ..imagebase
-ALIGN	8
+ALIGN	4
 %endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738

@@ -240,6 +240,38 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <p><span>Returns zero.</span></p>
   </td>
  </tr>
+ <tr>
+  <td rowspan=3>
+    <p><span>Post-handshake authentication</span></p>
+  </td>
+  <td rowspan=3>
+    <p><span>
+<a href="https://github.com/aws/aws-lc/blob/b6063413c8cfa2302f750a8cf90de550a598671d/include/openssl/ssl.h#L5981-L5995">Post-handshake authentication</a>
+</span></p>
+  </td>
+  <td>
+    <p><span>SSL_verify_client_post_handshake</span></p>
+  </td>
+  <td>
+    <p><span>Returns zero.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+    <p><span>SSL_CTX_set_post_handshake_auth</span></p>
+  </td>
+  <td>
+    <p><span>Not implemented.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+    <p><span>SSL_set_post_handshake_auth</span></p>
+  </td>
+  <td>
+    <p><span>Not implemented.</span></p>
+  </td>
+ </tr>
 </table>
 
 ### libssl TLS supported ciphersuites

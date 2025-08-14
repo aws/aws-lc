@@ -136,7 +136,7 @@ let VECTORIZE_SQR_EQUIV = prove(equiv_goal1,
                        WORD_SQR128_DIGIT1;WORD_SQR128_DIGIT2;
                        WORD_SQR128_DIGIT3]) THEN
 
-  REPEAT_N 2 ENSURES_N_FINAL_STATE_TAC THEN
+  REPEAT_N 2 ENSURES_FINAL_STATE_TAC THEN
   (* Prove remaining clauses from the postcondition *)
   ASM_REWRITE_TAC[] THEN
   CONJ_TAC THENL [

@@ -9,8 +9,11 @@ add_executable(
 
     crl.cc
     dgst.cc
+    pkcs8.cc
+    pkey.cc
     rehash.cc
     req.cc
+    ordered_args.cc
     rsa.cc
     s_client.cc
     tool.cc
@@ -19,7 +22,6 @@ add_executable(
     x509.cc
 )
 
-target_include_directories(openssl PUBLIC ${AWSLC_SOURCE_DIR}/include)
 target_compile_options(openssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)
@@ -40,7 +42,7 @@ else()
     endif()
 endif()
 
-target_include_directories(openssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+target_add_awslc_include_paths(TARGET openssl SCOPE PRIVATE)
 
 install(TARGETS openssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -85,6 +87,10 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        pkcs8.cc
+        pkcs8_test.cc
+        pkey.cc
+        pkey_test.cc
         rehash.cc
         rehash_test.cc
         req.cc
@@ -92,11 +98,14 @@ if(BUILD_TESTING)
         rsa.cc
         rsa_test.cc
         s_client.cc
+        ordered_args.cc
         verify.cc
         verify_test.cc
         x509.cc
         x509_test.cc
     )
+
+    target_add_awslc_include_paths(TARGET tool_openssl_test SCOPE PRIVATE)
 
     file(INSTALL
             ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
@@ -112,7 +121,7 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
-    target_include_directories(tool_openssl_test BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests tool_openssl_test)
+    add_dependencies(tool_openssl_test openssl)
     set_test_location(tool_openssl_test)
 endif()

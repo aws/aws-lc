@@ -9,10 +9,10 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
-      - name: Build Project
-        run: ./util/build_compilation_database.sh
       - uses: ZedThree/clang-tidy-review@v0.21.0
         with:
           split_workflow: true
-
+          clang_tidy_version: 19
+          install_commands: /github/workspace/util/build_compilation_database.sh
+          config_file: '/github/workspace/.clang-tidy'
       - uses: ZedThree/clang-tidy-review/upload@v0.21.0

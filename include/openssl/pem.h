@@ -110,6 +110,9 @@ extern "C" {
 #define PEM_TYPE_MIC_CLEAR 30
 #define PEM_TYPE_CLEAR 40
 
+// For compatibility with OpenSSL. First argument ignored.
+#define PEMerr(f, r) OPENSSL_PUT_ERROR(PEM, (r))
+
 // These macros make the PEM_read/PEM_write functions easier to maintain and
 // write. Now they are all implemented with either:
 // IMPLEMENT_PEM_rw(...) or IMPLEMENT_PEM_rw_cb(...)
@@ -316,6 +319,12 @@ typedef int pem_password_cb(char *buf, int size, int rwflag, void *userdata);
 
 OPENSSL_EXPORT int PEM_get_EVP_CIPHER_INFO(char *header,
                                            EVP_CIPHER_INFO *cipher);
+
+// PEM_do_header decrypts PEM-encoded data using the cipher info in |cipher|.
+// It processes |data| of length |len| using a password obtained via |callback|
+// (or the default callback provided via |PEM_def_callback| if NULL) with callback
+// data |u|. It then updates |len| with decrypted length.
+// Returns 1 on success or if |cipher| is NULL, 0 on failure.
 OPENSSL_EXPORT int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data,
                                  long *len, pem_password_cb *callback, void *u);
 
@@ -357,6 +366,11 @@ OPENSSL_EXPORT int PEM_bytes_read_bio(unsigned char **pdata, long *plen,
 OPENSSL_EXPORT void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name,
                                        BIO *bp, void **x, pem_password_cb *cb,
                                        void *u);
+
+// PEM_ASN1_write_bio writes ASN.1 structure |x| encoded by |i2d| to BIO |bp| in PEM format
+// with name |name|. If |enc| is non-NULL, encrypts data using cipher with password from
+// |pass| and |pass_len|, or via |callback| with user data |u| (uses PEM_def_callback if
+// callback is NULL). Returns 1 on success, 0 on failure.
 OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
                                       BIO *bp, void *x, const EVP_CIPHER *enc,
                                       const unsigned char *pass, int pass_len,
@@ -410,11 +424,17 @@ OPENSSL_EXPORT int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                                   const unsigned char *pass, int pass_len,
                                   pem_password_cb *callback, void *u);
 
-// PEM_def_callback treats |userdata| as a string and copies it into |buf|,
-// assuming its |size| is sufficient. Returns the length of the string, or 0
-// if there is not enough room. If either |buf| or |userdata| is NULL, 0 is
-// returned. Note that this is different from OpenSSL, which prompts for a
-// password.
+// PEM_def_callback provides a password for PEM encryption/decryption operations.
+// This function is used as the default callback to provide a password for PEM
+// functions such as |PEM_do_header| and |PEM_ASN1_write_bio|.
+// If |userdata| is non-NULL, it treats |userdata| as a string and copies it
+// into |buf|, assuming |size| is sufficient. If |userdata| is NULL, it prompts
+// the user for a password using the prompt from EVP_get_pw_prompt() (or default
+// "Enter PEM pass phrase:"). For encryption (|rwflag|=1), a minimum password
+// length is enforced, while for decryption (|rwflag|=0) any password length is
+// accepted. Returns the length of the password (excluding null
+// terminator) on success, or 0 on error or if |buf| is null, if |buf| is too small,
+// or |size| is negative, or |size| is smaller than user input length.
 OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
                                     void *userdata);
 

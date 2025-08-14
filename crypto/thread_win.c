@@ -85,6 +85,21 @@ void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   ReleaseSRWLockExclusive(&lock->lock);
 }
 
+#if !defined(NDEBUG)
+int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
+  assert(lock != NULL);
+
+  if (TryAcquireSRWLockShared(&lock->lock)) {
+    // If successful, the lock is not write-locked
+    // Release it immediately and return false (0)
+    ReleaseSRWLockShared(&lock->lock);
+    return 0;
+  }
+
+  return 1;
+}
+#endif
+
 static SRWLOCK g_destructors_lock = SRWLOCK_INIT;
 static thread_local_destructor_t g_destructors[NUM_OPENSSL_THREAD_LOCALS];
 
@@ -146,6 +161,7 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
 // optimization from discarding the variable.
 //
 // Note, in the prefixed build, |p_thread_callback_boringssl| may be a macro.
+#ifdef _MSC_VER
 #define STRINGIFY(x) #x
 #define EXPAND_AND_STRINGIFY(x) STRINGIFY(x)
 #ifdef _WIN64
@@ -156,6 +172,7 @@ __pragma(comment(
 __pragma(comment(linker, "/INCLUDE:__tls_used"))
 __pragma(comment(
     linker, "/INCLUDE:_" EXPAND_AND_STRINGIFY(p_thread_callback_boringssl)))
+#endif
 #endif
 
 // .CRT$XLA to .CRT$XLZ is an array of PIMAGE_TLS_CALLBACK pointers that are

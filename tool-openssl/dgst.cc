@@ -153,7 +153,7 @@ static bool dgst_tool_op(const args_list_t &args, const EVP_MD *digest) {
       const std::string option = arg.substr(1);
       if (option == "help") {
         PrintUsage(kArguments);
-        return false;
+        return true;
       } else if (option == "hmac") {
         // Read next argument as key string.
         it++;

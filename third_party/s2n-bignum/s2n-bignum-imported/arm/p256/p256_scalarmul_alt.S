@@ -7,8 +7,8 @@
 //
 // extern void p256_scalarmul_alt
 //   (uint64_t res[static 8],
-//    uint64_t scalar[static 4],
-//    uint64_t point[static 8]);
+//    const uint64_t scalar[static 4],
+//    const uint64_t point[static 8]);
 //
 // Given scalar = n and point = P, assumed to be on the NIST elliptic
 // curve P-256, returns the point (X,Y) = n * P. The input and output

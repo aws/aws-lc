@@ -4,6 +4,9 @@
 #include <openssl/base.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <algorithm>
+#include <iostream>
+#include <string>
 #include "internal.h"
 
 // TO-DO: We do not support using a default trust store, therefore -CAfile must
@@ -171,24 +174,26 @@ static int check(X509_STORE *ctx, const char* chainfile, const char *certfile) {
 }
 
 bool VerifyTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
     return false;
   }
 
-  if (parsed_args.count("-help") || parsed_args.size() == 0) {
+  if (HasArgument(parsed_args, "-help") || parsed_args.size() == 0) {
     fprintf(stderr,
             "Usage: verify [options] [cert.pem...]\n"
             "Certificates must be in PEM format. They can be specified in one or more files.\n"
             "If no files are specified, the tool will read from stdin.\n\n"
             "Valid options are:\n");
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
-  std::string cafile = parsed_args["-CAfile"];
+  std::string cafile;
+  GetString(&cafile, "-CAfile", "", parsed_args);
 
   bssl::UniquePtr<X509_STORE> store(setup_verification_store(cafile));
   // Initialize certificate verification store
@@ -202,7 +207,9 @@ bool VerifyTool(const args_list_t &args) {
 
   int ret = 1;
 
-  const char *chain = parsed_args.count("-untrusted") ? parsed_args["-untrusted"].c_str() : NULL;
+  std::string chain_file;
+  GetString(&chain_file, "-untrusted", "", parsed_args);
+  const char *chain = chain_file.empty() ? NULL : chain_file.c_str();
 
   // No additional file or certs provided, read from stdin
   if (extra_args.size() == 0) {

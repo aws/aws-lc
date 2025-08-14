@@ -1,637 +1,151 @@
-diff --git a/cmake/lws_config.h.in b/cmake/lws_config.h.in
-index e69d0845..bae5ff6a 100644
---- a/cmake/lws_config.h.in
-+++ b/cmake/lws_config.h.in
-@@ -144,6 +144,7 @@
- #cmakedefine LWS_WITH_ALSA
- #cmakedefine LWS_WITH_SYS_ASYNC_DNS
- #cmakedefine LWS_WITH_BORINGSSL
-+#cmakedefine LWS_WITH_AWSLC
- #cmakedefine LWS_WITH_CGI
- #cmakedefine LWS_WITH_CONMON
- #cmakedefine LWS_WITH_COSE
-diff --git a/lib/tls/CMakeLists.txt b/lib/tls/CMakeLists.txt
-index 9b15d9c6..e3eb9e97 100644
---- a/lib/tls/CMakeLists.txt
-+++ b/lib/tls/CMakeLists.txt
-@@ -51,8 +51,8 @@ set(LWS_WOLFSSL_LIBRARIES CACHE PATH "Path to the wolfSSL library" )
- set(LWS_WOLFSSL_INCLUDE_DIRS CACHE PATH "Path to the wolfSSL include directory" )
+diff --git a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt
+index 3f9b3ba8..3f762b0b 100644
+--- a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt
++++ b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt
+@@ -18,8 +18,14 @@ require_lws_config(USE_WOLFSSL 0 requirements)
+ require_lws_config(LWS_WITH_TLS 1 requirements)
 
+ if (requirements)
++    option(LWS_WITH_SS_TESTS_HTTP_ONLY "Enable HTTP-only tests that require a local go-httpbin in secure streams test suite" ON)
++
+ 	add_executable(${SAMP} minimal-secure-streams-testsfail.c)
 
--if (LWS_WITH_BORINGSSL)
--	# boringssl deprecated EVP_PKEY
-+if (LWS_WITH_BORINGSSL OR LWS_WITH_AWSLC)
-+	# boringssl and aws-lc deprecated EVP_PKEY
- 	set (LWS_WITH_GENHASH OFF PARENT_SCOPE)
- endif()
++	if(LWS_WITH_SS_TESTS_HTTP_ONLY)
++    	target_compile_definitions(${SAMP} PRIVATE LWS_WITH_SS_TESTS_HTTP_ONLY)
++	endif()
++
+ 	find_program(VALGRIND "valgrind")
 
-@@ -261,7 +261,7 @@ if (LWS_WITH_SSL)
- 			set(OPENSSL_INCLUDE_DIRS "${OPENSSL_INCLUDE_DIR}")
- 		endif()
+ 	if (LWS_CTEST_INTERNET_AVAILABLE AND NOT WIN32)
+diff --git a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c
+index 176b3d27..6c927dcc 100644
+--- a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c
++++ b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c
+@@ -24,6 +24,12 @@ static lws_state_notify_link_t nl;
+ struct lws_context *context;
+ size_t amount = 12345;
 
--		if (NOT OPENSSL_FOUND AND NOT LWS_WITH_BORINGSSL)
-+		if (NOT OPENSSL_FOUND AND NOT LWS_WITH_BORINGSSL AND NOT LWS_WITH_AWSLC)
- 			# TODO: Add support for STATIC also.
- 			if (NOT LWS_PLAT_FREERTOS)
- 				find_package(PkgConfig QUIET)
-diff --git a/lib/tls/openssl/openssl-client.c b/lib/tls/openssl/openssl-client.c
-index 884ca021..baec81a7 100644
---- a/lib/tls/openssl/openssl-client.c
-+++ b/lib/tls/openssl/openssl-client.c
-@@ -275,7 +275,7 @@ lws_ssl_client_bio_create(struct lws *wsi)
- 	wsi->tls.ssl = SSL_new(wsi->a.vhost->tls.ssl_client_ctx);
- 	if (!wsi->tls.ssl) {
- 		const char *es = ERR_error_string(
--#if defined(LWS_WITH_BORINGSSL)
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 	(uint32_t)
- #else
- 	(unsigned long)
-@@ -429,17 +429,8 @@ lws_ssl_client_bio_create(struct lws *wsi)
- 		if (lws_system_blob_get_single_ptr(b, &data))
- 			goto no_client_cert;
++#if defined(LWS_WITH_SS_TESTS_HTTP_ONLY)
++#define TESTS_COUNT 18  /* Original number of tests */
++#else
++#define TESTS_COUNT 16  /* Number of tests with HTTP ones removed */
++#endif
++
+ static void
+ tests_start_next(lws_sorted_usec_list_t *sul);
 
--		if (SSL_use_certificate_ASN1(wsi->tls.ssl,
--#if defined(USE_WOLFSSL)
--			(unsigned char *)
--#endif
--					data,
--#if defined(LWS_WITH_BORINGSSL)
--					(size_t)
--#else
--					(int)
--#endif
--					size) != 1) {
-+		if (SSL_use_certificate_ASN1(wsi->tls.ssl, SSL_DATA_CAST(data),
-+			SSL_SIZE_CAST(size)) != 1) {
- 			lwsl_err("%s: use_certificate failed\n", __func__);
- 			lws_tls_err_describe_clear();
- 			goto no_client_cert;
-@@ -458,29 +449,11 @@ lws_ssl_client_bio_create(struct lws *wsi)
- 		if (lws_system_blob_get_single_ptr(b, &data))
- 			goto no_client_cert;
+@@ -187,7 +193,9 @@ static const char * const default_ss_policy =
+ 			"\"http_no_content_length\": true,"
+ 			"\"retry\": \"default\","
+ 			"\"tls_trust_store\": \"api_amazon_com\""
+-		"}},{"
++		"}},"
++#if defined(LWS_WITH_SS_TESTS_HTTP_ONLY)
++		"{"
 
--		if (SSL_use_PrivateKey_ASN1(EVP_PKEY_RSA, wsi->tls.ssl,
--#if defined(USE_WOLFSSL)
--			(unsigned char *)
--#endif
-+		if (SSL_use_PrivateKey_ASN1(EVP_PKEY_RSA, wsi->tls.ssl, SSL_DATA_CAST(data),
-+			SSL_SIZE_CAST(size)) != 1 &&
-+		    SSL_use_PrivateKey_ASN1(EVP_PKEY_EC, wsi->tls.ssl, SSL_DATA_CAST(data),
-+			SSL_SIZE_CAST(size)) != 1) {
+ 		/*
+ 		 * Just get a 200 from httpbin
+@@ -204,7 +212,9 @@ static const char * const default_ss_policy =
+ 			"\"http_url\": \"/status/200\","
+ 			"\"timeout_ms\": 10000,"
+ 			"\"retry\": \"default\""
+-		"}},{"
++		"}},"
++#endif
++		"{"
+ 		    "\"t_h1_tls\": {"
+ 			"\"endpoint\": \"libwebsockets.org\","
+ 			"\"port\": 443,"
+@@ -310,7 +320,9 @@ static const char * const default_ss_policy =
+ 			"\"timeout_ms\": 10000,"
+ 			"\"retry\": \"default\","
+ 			"\"tls_trust_store\": \"arca1\""
+-		"}},{"
++		"}},"
++#if defined(LWS_WITH_SS_TESTS_HTTP_ONLY)
++		"{"
 
--					    data,
--#if defined(LWS_WITH_BORINGSSL)
--					(size_t)
--#else
--					(int)
--#endif
--					    size) != 1 &&
--		    SSL_use_PrivateKey_ASN1(EVP_PKEY_EC, wsi->tls.ssl,
--#if defined(USE_WOLFSSL)
--			(unsigned char *)
--#endif
--					    data,
--#if defined(LWS_WITH_BORINGSSL)
--					(size_t)
--#else
--					(int)
--#endif
--					    size) != 1) {
- 			lwsl_err("%s: use_privkey failed\n", __func__);
- 			lws_tls_err_describe_clear();
- 			goto no_client_cert;
-@@ -552,7 +525,7 @@ lws_tls_client_connect(struct lws *wsi, char *errbuf, size_t elen)
- #if defined(LWS_HAVE_SSL_SESSION_set_time)
- 		sess = SSL_get_session(wsi->tls.ssl);
- 		if (sess) /* should always be true */
--#if defined(OPENSSL_IS_BORINGSSL)
-+#if defined(OPENSSL_IS_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 			SSL_SESSION_set_time(sess, (uint64_t)time(NULL)); /* extend session lifetime */
- #else
- 			SSL_SESSION_set_time(sess, (long)time(NULL)); /* extend session lifetime */
-@@ -654,7 +627,7 @@ lws_tls_client_confirm_peer_cert(struct lws *wsi, char *ebuf, size_t ebuf_len)
- 	}
-
- 	es = ERR_error_string(
--	#if defined(LWS_WITH_BORINGSSL)
-+	#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 					 (uint32_t)
- 	#else
- 					 (unsigned long)
-@@ -747,14 +720,8 @@ lws_tls_client_create_vhost_context(struct lws_vhost *vh,
- 	if (!method) {
- 		const char *es;
-
--		error = ERR_get_error();
--		es = ERR_error_string(
--		#if defined(LWS_WITH_BORINGSSL)
--			(uint32_t)
--		#else
--			(unsigned long)
--		#endif
--			 error, (char *)vh->context->pt[0].serv_buf);
-+		error = ERR_peek_error();
-+		es = ERR_error_string(ERR_get_error(), (char *)vh->context->pt[0].serv_buf);
- 		lwsl_err("problem creating ssl method %lu: %s\n",
- 			error, es);
- 		return 1;
-@@ -855,14 +822,8 @@ lws_tls_client_create_vhost_context(struct lws_vhost *vh,
- 	if (!vh->tls.ssl_client_ctx) {
- 		const char *es;
-
--		error = ERR_get_error();
--		es = ERR_error_string(
--		#if defined(LWS_WITH_BORINGSSL)
--			(uint32_t)
--		#else
--			(unsigned long)
--		#endif
--			 error, (char *)vh->context->pt[0].serv_buf);
-+		error = ERR_peek_error();
-+		es = ERR_error_string(ERR_get_error(), (char *)vh->context->pt[0].serv_buf);
- 		lwsl_err("problem creating ssl context %lu: %s\n",
- 			error, es);
- 		return 1;
-@@ -910,64 +871,14 @@ lws_tls_client_create_vhost_context(struct lws_vhost *vh,
- 			 SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER |
- 			 SSL_MODE_RELEASE_BUFFERS);
-
--#if !defined(USE_WOLFSSL)
--#if defined(LWS_WITH_BORINGSSL)
--				uint32_t
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l) && \
--	!defined(LIBRESSL_VERSION_NUMBER) /* not documented by openssl */
--		unsigned long
--#else
--		long
--#endif
--#endif
--#else
--		long
--#endif
--			ssl_client_options_set_value =
--#if !defined(USE_WOLFSSL)
--#if defined(LWS_WITH_BORINGSSL)
--				(uint32_t)
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l) && \
--	!defined(LIBRESSL_VERSION_NUMBER) /* not documented by openssl */
--				(unsigned long)
--#else
--				(long)
--#endif
--#endif
--#endif
--			info->ssl_client_options_set;
-+	SSL_OPT_TYPE ssl_client_options_set_value = (SSL_OPT_TYPE) info->ssl_client_options_set;
-
- 	if (info->ssl_client_options_set)
- 		SSL_CTX_set_options(vh->tls.ssl_client_ctx, ssl_client_options_set_value);
-
- #if (OPENSSL_VERSION_NUMBER >= 0x009080df) && !defined(USE_WOLFSSL)
+ 		/*
+ 		 * bulk payload transfer from httpbin.org
+@@ -330,7 +342,9 @@ static const char * const default_ss_policy =
+ 				"}],"
+ 			"\"timeout_ms\": 10000,"
+ 			"\"retry\": \"default\""
+-		"}},{"
++		"}},"
++#endif
++		"{"
+ 		    "\"bulk_h1_tls\": {"
+ 			"\"endpoint\": \"libwebsockets.org\","
+ 			"\"port\": 443,"
+@@ -438,7 +452,7 @@ struct tests_seq {
+ 	/*
+ 	 * We just get a 200 from httpbin.org as a sanity check first
+ 	 */
 -
- 	/* SSL_clear_options introduced in 0.9.8m */
--#if defined(LWS_WITH_BORINGSSL)
--                uint32_t
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l) && \
--	!defined(LIBRESSL_VERSION_NUMBER) /* not documented by openssl */
--		unsigned long
--#else
--		long
--#endif
--#endif
++#if defined(LWS_WITH_SS_TESTS_HTTP_ONLY)
+ 	{
+ 		"h1:80 just get 200",
+ 		"t_h1", 15 * LWS_US_PER_SEC, LWSSSCS_QOS_ACK_REMOTE,
+@@ -446,6 +460,7 @@ struct tests_seq {
+ 					 (1 << LWSSSCS_ALL_RETRIES_FAILED),
+ 		0
+ 	},
++#endif
+ 	{
+ 		"h1:443 just get 200",
+ 		"t_h1_tls", 15 * LWS_US_PER_SEC, LWSSSCS_QOS_ACK_REMOTE,
+@@ -544,7 +559,7 @@ struct tests_seq {
+ 	/*
+ 	 * Let's request some bulk data from httpbin.org
+ 	 */
 -
--			ssl_client_options_clear_value =
--#if defined(LWS_WITH_BORINGSSL)
--				(uint32_t)
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l) && \
--	!defined(LIBRESSL_VERSION_NUMBER) /* not documented by openssl */
--				(unsigned long)
--#else
--				(long)
--#endif
--#endif
--			info->ssl_client_options_clear;
-+	SSL_OPT_TYPE ssl_client_options_clear_value = (SSL_OPT_TYPE) info->ssl_client_options_clear;
++#if defined(LWS_WITH_SS_TESTS_HTTP_ONLY)
+ 	{
+ 		"h1:80 read bulk",
+ 		"bulk_h1", 15 * LWS_US_PER_SEC, LWSSSCS_QOS_ACK_REMOTE,
+@@ -552,6 +567,7 @@ struct tests_seq {
+ 		(1 << LWSSSCS_ALL_RETRIES_FAILED),
+ 		12345
+ 	},
++#endif
+ 	{
+ 		"h1:443 read bulk",
+ 		"bulk_h1_tls", 15 * LWS_US_PER_SEC, LWSSSCS_QOS_ACK_REMOTE,
+@@ -724,7 +740,7 @@ tests_start_next(lws_sorted_usec_list_t *sul)
 
- 	if (info->ssl_client_options_clear)
- 		SSL_CTX_clear_options(vh->tls.ssl_client_ctx, ssl_client_options_clear_value);
-@@ -1097,13 +1008,7 @@ lws_tls_client_create_vhost_context(struct lws_vhost *vh,
- 			return 1;
- 		}
+ 	doing_a_retry = 0;
 
--		n = SSL_CTX_use_certificate_ASN1(vh->tls.ssl_client_ctx,
--#if defined(LWS_WITH_BORINGSSL)
--				(size_t)
--#else
--				(int)
--#endif
--				flen, p);
-+		n = SSL_CTX_use_certificate_ASN1(vh->tls.ssl_client_ctx, SSL_SIZE_CAST(flen), p);
-
- 		if (n < 1) {
- 			lwsl_err("%s: problem interpreting client cert\n",  __func__);
-@@ -1149,7 +1054,7 @@ lws_tls_client_create_vhost_context(struct lws_vhost *vh,
- 		}
-
- 		n = SSL_CTX_use_PrivateKey_ASN1(EVP_PKEY_RSA, vh->tls.ssl_client_ctx, p,
--#if defined(LWS_WITH_BORINGSSL)
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 				(size_t)
- #else
- 				(long)(lws_intptr_t)
-@@ -1158,7 +1063,7 @@ lws_tls_client_create_vhost_context(struct lws_vhost *vh,
- 		if (n != 1)
- 			n = SSL_CTX_use_PrivateKey_ASN1(EVP_PKEY_EC,
- 							vh->tls.ssl_client_ctx, p,
--#if defined(LWS_WITH_BORINGSSL)
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 				(size_t)
- #else
- 				(long)(lws_intptr_t)
-diff --git a/lib/tls/openssl/openssl-server.c b/lib/tls/openssl/openssl-server.c
-index a3c8d120..912c0579 100644
---- a/lib/tls/openssl/openssl-server.c
-+++ b/lib/tls/openssl/openssl-server.c
-@@ -23,6 +23,7 @@
-  */
-
- #include "private-lib-core.h"
-+#include "private-lib-tls-openssl.h"
-
- /*
-  * Care: many openssl apis return 1 for success.  These are translated to the
-@@ -159,7 +160,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
-     ((OPENSSL_VERSION_NUMBER < 0x30000000l) || \
-      defined(LWS_SUPPRESS_DEPRECATED_API_WARNINGS))
- 	const char *ecdh_curve = "prime256v1";
--#if !defined(LWS_WITH_BORINGSSL) && defined(LWS_HAVE_SSL_EXTRA_CHAIN_CERTS)
-+#if !defined(LWS_WITH_BORINGSSL) && !defined(LWS_WITH_AWSLC) && defined(LWS_HAVE_SSL_EXTRA_CHAIN_CERTS)
- 	STACK_OF(X509) *extra_certs = NULL;
- #endif
- 	EC_KEY *ecdh, *EC_key = NULL;
-@@ -213,14 +214,8 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
- 		m = SSL_CTX_use_certificate_chain_file(vhost->tls.ssl_ctx, cert);
- 		if (m != 1) {
- 			const char *s;
--			error = ERR_get_error();
--
--			s = ERR_error_string(
--#if defined(LWS_WITH_BORINGSSL)
--				(uint32_t)
--#endif
--					error,
--				       (char *)vhost->context->pt[0].serv_buf);
-+			error = ERR_peek_error();
-+			s = ERR_error_string(ERR_get_error(), (char *)vhost->context->pt[0].serv_buf);
-
- 			lwsl_err("problem getting cert '%s' %lu: %s\n",
- 				 cert, error, s);
-@@ -236,13 +231,8 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
- 			if (SSL_CTX_use_PrivateKey_file(vhost->tls.ssl_ctx, private_key,
- 							SSL_FILETYPE_PEM) != 1) {
- 				const char *s;
--				error = ERR_get_error();
--				s = ERR_error_string(
--	#if defined(LWS_WITH_BORINGSSL)
--					(uint32_t)
--	#endif
--						error,
--					       (char *)vhost->context->pt[0].serv_buf);
-+				error = ERR_peek_error();
-+				s = ERR_error_string(ERR_get_error(), (char *)vhost->context->pt[0].serv_buf);
- 				lwsl_err("ssl problem getting key '%s' %lu: %s\n",
- 					 private_key, error, s);
- 				return 1;
-@@ -262,13 +252,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
- 	}
-
- #if !defined(USE_WOLFSSL)
--	ret = SSL_CTX_use_certificate_ASN1(vhost->tls.ssl_ctx,
--#if defined(LWS_WITH_BORINGSSL)
--				(size_t)
--#else
--				(int)
--#endif
--				flen, p);
-+	ret = SSL_CTX_use_certificate_ASN1(vhost->tls.ssl_ctx, SSL_SIZE_CAST(flen), p);
- #else
- 	ret = wolfSSL_CTX_use_certificate_buffer(vhost->tls.ssl_ctx,
- 						 (uint8_t *)p, (int)flen,
-@@ -291,7 +275,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
-
- #if !defined(USE_WOLFSSL)
- 	ret = SSL_CTX_use_PrivateKey_ASN1(EVP_PKEY_RSA, vhost->tls.ssl_ctx, p,
--#if defined(LWS_WITH_BORINGSSL)
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 			(size_t)
- #else
- 					  (long)(long long)
-@@ -300,7 +284,7 @@ lws_tls_server_certs_load(struct lws_vhost *vhost, struct lws *wsi,
- 	if (ret != 1) {
- 		ret = SSL_CTX_use_PrivateKey_ASN1(EVP_PKEY_EC,
- 						  vhost->tls.ssl_ctx, p,
--#if defined(LWS_WITH_BORINGSSL)
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
- 			(size_t)
- #else
- 					  (long)(long long)
-@@ -439,7 +423,7 @@ check_key:
- 		lwsl_notice(" Using ECDH certificate support\n");
-
- 	/* Get X509 certificate from ssl context */
--#if !defined(LWS_WITH_BORINGSSL) && !defined(USE_WOLFSSL)
-+#if !defined(LWS_WITH_BORINGSSL) && !defined(LWS_WITH_AWSLC) && !defined(USE_WOLFSSL)
- #if !defined(LWS_HAVE_SSL_EXTRA_CHAIN_CERTS)
- 	x = sk_X509_value(vhost->tls.ssl_ctx->extra_certs, 0);
- #else
-@@ -482,7 +466,7 @@ check_key:
-
- 	EC_KEY_free(EC_key);
-
--#if !defined(OPENSSL_NO_EC) && !defined(LWS_WITH_BORINGSSL) && !defined(USE_WOLFSSL)
-+#if !defined(OPENSSL_NO_EC) && !defined(LWS_WITH_BORINGSSL) && !defined(LWS_WITH_AWSLC) && !defined(USE_WOLFSSL)
- post_ecdh:
- #endif
- 	vhost->tls.skipped_certs = 0;
-@@ -502,13 +486,8 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
-
- 	if (!method) {
- 		const char *s;
--		error = ERR_get_error();
--		s = ERR_error_string(
--#if defined(LWS_WITH_BORINGSSL)
--			(uint32_t)
--#endif
--				error,
--			       (char *)vhost->context->pt[0].serv_buf);
-+		error = ERR_peek_error();
-+		s = ERR_error_string(ERR_get_error(), (char *)vhost->context->pt[0].serv_buf);
-
- 		lwsl_err("problem creating ssl method %lu: %s\n",
- 				error, s);
-@@ -518,13 +497,8 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
- 	if (!vhost->tls.ssl_ctx) {
- 		const char *s;
-
--		error = ERR_get_error();
--		s = ERR_error_string(
--#if defined(LWS_WITH_BORINGSSL)
--			(uint32_t)
--#endif
--				error,
--			       (char *)vhost->context->pt[0].serv_buf);
-+		error = ERR_peek_error();
-+		s = ERR_error_string(ERR_get_error(), (char *)vhost->context->pt[0].serv_buf);
- 		lwsl_err("problem creating ssl context %lu: %s\n",
- 				error, s);
- 		return 1;
-@@ -569,34 +543,7 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
- 			 __func__);
- 	}
-
--#if defined(USE_WOLFSSL)
--		long
--#else
--#if defined(LWS_WITH_BORINGSSL)
--		uint32_t
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l) && !defined(LIBRESSL_VERSION_NUMBER) /* not documented by openssl */
--		unsigned long
--#else
--		long
--#endif
--#endif
--#endif
--			ssl_options_set_value =
--#if defined(USE_WOLFSSL)
--				(long)
--#else
--#if defined(LWS_WITH_BORINGSSL)
--				(uint32_t)
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l) && !defined(LIBRESSL_VERSION_NUMBER) /* not documented by openssl */
--				(unsigned long)
--#else
--				(long)
--#endif
--#endif
--#endif
--					info->ssl_options_set;
-+	SSL_OPT_TYPE ssl_options_set_value = (SSL_OPT_TYPE) info->ssl_options_set;
-
- 	if (info->ssl_options_set)
- 		SSL_CTX_set_options(vhost->tls.ssl_ctx, ssl_options_set_value);
-@@ -604,27 +551,7 @@ lws_tls_server_vhost_backend_init(const struct lws_context_creation_info *info,
- #if (OPENSSL_VERSION_NUMBER >= 0x009080df) && !defined(USE_WOLFSSL)
-
- /* SSL_clear_options introduced in 0.9.8m */
--#if defined(LWS_WITH_BORINGSSL)
--	uint32_t
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l)  && !defined(LIBRESSL_VERSION_NUMBER)/* not documented by openssl */
--	unsigned long
--#else
--	long
--#endif
--#endif
--
--	ssl_options_clear_value =
--#if defined(LWS_WITH_BORINGSSL)
--				(uint32_t)
--#else
--#if (OPENSSL_VERSION_NUMBER >= 0x10003000l)  && !defined(LIBRESSL_VERSION_NUMBER)/* not documented by openssl */
--				(unsigned long)
--#else
--				(long)
--#endif
--#endif
--					info->ssl_options_clear;
-+	SSL_OPT_TYPE ssl_options_clear_value = (SSL_OPT_TYPE) info->ssl_options_clear;
-
- 	if (info->ssl_options_clear) {
- 		SSL_CTX_clear_options(vhost->tls.ssl_ctx, ssl_options_clear_value);
-diff --git a/lib/tls/openssl/openssl-session.c b/lib/tls/openssl/openssl-session.c
-index e27a8f38..517249b9 100644
---- a/lib/tls/openssl/openssl-session.c
-+++ b/lib/tls/openssl/openssl-session.c
-@@ -105,7 +105,7 @@ lws_tls_reuse_session(struct lws *wsi)
- #if !defined(USE_WOLFSSL)
- 	/* extend session lifetime */
- 	SSL_SESSION_set_time(ts->session,
--#if defined(OPENSSL_IS_BORINGSSL)
-+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
- 			(unsigned long)
- #else
- 			(long)
-@@ -356,7 +356,7 @@ lws_tls_session_cache(struct lws_vhost *vh, uint32_t ttl)
- 	if (!ttl)
+-	if ((unsigned int)tests >= LWS_ARRAY_SIZE(tests_seq)) {
++	if ((unsigned int)tests >= TESTS_COUNT) {
+ 		lwsl_notice("Completed all tests\n");
+ 		interrupted = 1;
  		return;
+@@ -803,6 +819,16 @@ sigint_handler(int sig)
+ 	interrupted = 1;
+ }
 
--#if defined(OPENSSL_IS_BORINGSSL)
-+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
- 	SSL_CTX_set_timeout(vh->tls.ssl_client_ctx, ttl);
- #else
- 	SSL_CTX_set_timeout(vh->tls.ssl_client_ctx, (long)ttl);
-diff --git a/lib/tls/openssl/openssl-ssl.c b/lib/tls/openssl/openssl-ssl.c
-index 11e9b49f..c8666429 100644
---- a/lib/tls/openssl/openssl-ssl.c
-+++ b/lib/tls/openssl/openssl-ssl.c
-@@ -176,7 +176,8 @@ lws_ssl_destroy(struct lws_vhost *vhost)
- #else
- #if OPENSSL_VERSION_NUMBER >= 0x1010005f && \
-     !defined(LIBRESSL_VERSION_NUMBER) && \
--    !defined(OPENSSL_IS_BORINGSSL)
-+    !defined(OPENSSL_IS_BORINGSSL) && \
-+	!defined(OPENSSL_IS_AWSLC)
- 	ERR_remove_thread_state();
- #else
- 	ERR_remove_thread_state(NULL);
-@@ -505,7 +506,8 @@ lws_ssl_context_destroy(struct lws_context *context)
- #else
- #if OPENSSL_VERSION_NUMBER >= 0x1010005f && \
-     !defined(LIBRESSL_VERSION_NUMBER) && \
--    !defined(OPENSSL_IS_BORINGSSL)
-+    !defined(OPENSSL_IS_BORINGSSL) && \
-+	!defined(OPENSSL_IS_AWSLC)
- 	ERR_remove_thread_state();
- #else
- 	ERR_remove_thread_state(NULL);
-diff --git a/lib/tls/openssl/openssl-tls.c b/lib/tls/openssl/openssl-tls.c
-index 3080d772..f3fba7af 100644
---- a/lib/tls/openssl/openssl-tls.c
-+++ b/lib/tls/openssl/openssl-tls.c
-@@ -38,15 +38,11 @@ lws_tls_err_describe_clear(void)
- 	unsigned long l;
++static void
++set_bulk_test_payloads(size_t payload_size)
++{
++    for (size_t i = 0; i < TESTS_COUNT; i++) {
++        if (strstr(tests_seq[i].name, "read bulk")) {
++            tests_seq[i].eom_pass = payload_size;
++        }
++    }
++}
++
+ int
+ main(int argc, const char **argv)
+ {
+@@ -818,9 +844,8 @@ main(int argc, const char **argv)
+ 		amount = (size_t)atoi(pp);
 
- 	do {
--		l = ERR_get_error();
-+		l = ERR_peek_error();
- 		if (!l)
- 			break;
+ 	/* set the expected payload for the bulk-related tests to amount */
++	set_bulk_test_payloads(amount);
 
--		ERR_error_string_n(
--#if defined(LWS_WITH_BORINGSSL)
--				(uint32_t)
--#endif
--				l, buf, sizeof(buf));
-+		ERR_error_string_n(ERR_get_error(), buf, sizeof(buf));
- 		lwsl_info("   openssl error: %s\n", buf);
- 	} while (l);
- 	lwsl_info("\n");
-@@ -90,8 +86,10 @@ lws_context_init_ssl_library(struct lws_context *cx,
- 	lwsl_cx_info(cx, " Compiled with wolfSSL support");
+-	tests_seq[12].eom_pass = tests_seq[13].eom_pass =
+-					tests_seq[14].eom_pass = amount;
+ #if !defined(LWS_SS_USE_SSPC)
+ 	// puts(default_ss_policy);
  #endif
- #else
--#if defined(LWS_WITH_BORINGSSL)
-+#if defined(LWS_WITH_BORINGSSL)
- 	lwsl_cx_info(cx, " Compiled with BoringSSL support");
-+#elif defined(LWS_WITH_AWSLC)
-+	lwsl_cx_info(cx, " Compiled with AWS-LC support");
- #else
- 	lwsl_cx_info(cx, " Compiled with OpenSSL support");
- #endif
-diff --git a/lib/tls/openssl/openssl-x509.c b/lib/tls/openssl/openssl-x509.c
-index d8e8dcc8..586ed48d 100644
---- a/lib/tls/openssl/openssl-x509.c
-+++ b/lib/tls/openssl/openssl-x509.c
-@@ -250,8 +250,12 @@ lws_tls_openssl_cert_info(X509 *x509, enum lws_tls_cert_info type,
- 		{
- 			const X509V3_EXT_METHOD* method = X509V3_EXT_get(ext);
- 			STACK_OF(CONF_VALUE) *cv;
-+		#if defined(LWS_WITH_AWSLC)
-+			size_t j;
-+		#else
- 			int j;
--
-+		#endif
-+
- 			cv = i2v_GENERAL_NAMES((X509V3_EXT_METHOD*)method, akid->issuer, NULL);
- 			if (!cv)
- 				goto bail_ak;
-diff --git a/lib/tls/openssl/private-lib-tls-openssl.h b/lib/tls/openssl/private-lib-tls-openssl.h
-index 004d596a..48242726 100644
---- a/lib/tls/openssl/private-lib-tls-openssl.h
-+++ b/lib/tls/openssl/private-lib-tls-openssl.h
-@@ -27,6 +27,43 @@
- #if !defined(__LWS_PRIVATE_LIB_TLS_OPENSSL_H__)
- #define __LWS_PRIVATE_LIB_TLS_OPENSSL_H__
-
-+
-+/*
-+* SSL library compatibility layer:
-+*
-+* Different SSL implementations (OpenSSL, BoringSSL, wolfSSL, etc.) require
-+* different type signatures for their APIs. These macros provide the appropriate
-+* type definitions and cast operations to ensure correct function signatures
-+* across all supported SSL backends.
-+*
-+* SSL_OPT_TYPE    - Defines the correct type for SSL options based on library
-+* SSL_SIZE_CAST   - Performs appropriate cast for buffer size parameters
-+* SSL_DATA_CAST   - Handles buffer pointer type differences between implementations
-+*/
-+#if defined(USE_WOLFSSL)
-+    #define SSL_OPT_TYPE long
-+#elif defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
-+    #define SSL_OPT_TYPE uint32_t
-+#elif (OPENSSL_VERSION_NUMBER >= 0x10003000l) && !defined(LIBRESSL_VERSION_NUMBER)
-+    #define SSL_OPT_TYPE unsigned long
-+#else
-+    #define SSL_OPT_TYPE long
-+#endif
-+
-+/* Define macro for appropriate size cast by SSL implementation */
-+#if defined(LWS_WITH_BORINGSSL) || defined(LWS_WITH_AWSLC)
-+    #define SSL_SIZE_CAST(x) ((size_t)(x))
-+#else
-+    #define SSL_SIZE_CAST(x) ((int)(x))
-+#endif
-+
-+#if defined(USE_WOLFSSL)
-+	#define SSL_DATA_CAST(x) ((unsigned char *)(x))
-+#else
-+	#define SSL_DATA_CAST(x) (x)
-+#endif
-+
-+
- /*
-  * one of these per different client context
-  * cc_owner is in lws_context.lws_context_tls
-diff --git a/lib/tls/private-lib-tls.h b/lib/tls/private-lib-tls.h
-index 28203c58..f43b4392 100644
---- a/lib/tls/private-lib-tls.h
-+++ b/lib/tls/private-lib-tls.h
-@@ -121,7 +121,7 @@ enum lws_tls_extant {
- #if defined(LWS_WITH_TLS)
-
- #if defined(LWS_WITH_TLS_SESSIONS) && defined(LWS_WITH_CLIENT) && \
--	(defined(LWS_WITH_MBEDTLS) || defined(OPENSSL_IS_BORINGSSL))
-+	(defined(LWS_WITH_MBEDTLS) || defined(OPENSSL_IS_BORINGSSL)) || defined(OPENSSL_IS_AWSLC)
- #define LWS_TLS_SYNTHESIZE_CB 1
- #endif
-
-diff --git a/test-apps/test-client.c b/test-apps/test-client.c
-index 05d08ed7..1cfdd354 100644
---- a/test-apps/test-client.c
-+++ b/test-apps/test-client.c
-@@ -309,14 +309,8 @@ callback_dumb_increment(struct lws *wsi, enum lws_callback_reasons reason,
- 				char errbuf[256];
- 				const char *es;
-
--				n = (int)ERR_get_error();
--				es = ERR_error_string(
--#if defined(LWS_WITH_BORINGSSL)
--							 (uint32_t)
--#else
--							 (unsigned long)
--#endif
--							 n, errbuf);
-+				n = (int)ERR_peek_error();
-+				es = ERR_error_string(ERR_get_error(), errbuf);
- 				lwsl_err("EXTRA_CLIENT_VERIFY_CERTS: "
- 					 "SSL error: %s (%d)\n", es, n);
- 				return 1;

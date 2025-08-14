@@ -5,8 +5,8 @@
 // Multiplex/select z := x (if p nonzero) or z := y (if p zero)
 // Inputs p, x[k], y[k]; output z[k]
 //
-//    extern void bignum_mux
-//     (uint64_t p, uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y);
+//    extern void bignum_mux(uint64_t p, uint64_t k, uint64_t *z, const uint64_t *x,
+//                           const uint64_t *y);
 //
 // It is assumed that all numbers x, y and z have the same size k digits.
 //

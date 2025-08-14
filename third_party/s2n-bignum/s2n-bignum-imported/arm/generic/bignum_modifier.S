@@ -5,8 +5,8 @@
 // Compute "modification" constant z := 2^{64k} mod m
 // Input m[k]; output z[k]; temporary buffer t[>=k]
 //
-//    extern void bignum_modifier
-//     (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t);
+//    extern void bignum_modifier(uint64_t k, uint64_t *z, const uint64_t *m,
+//                                uint64_t *t);
 //
 // The last argument points to a temporary buffer t that should have size >= k.
 // This is called "mod-ifier" because given any other k-digit number x we can
