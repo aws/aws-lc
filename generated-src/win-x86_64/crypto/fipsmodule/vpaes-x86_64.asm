@@ -1453,28 +1453,33 @@ ALIGN	4
 	DD	$L$SEH_end_vpaes_ctr32_encrypt_blocks wrt ..imagebase
 	DD	$L$SEH_info_vpaes_ctr32_encrypt_blocks wrt ..imagebase
 
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_vpaes_set_encrypt_key:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$enc_key_body wrt ..imagebase,$L$enc_key_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_vpaes_set_decrypt_key:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$dec_key_body wrt ..imagebase,$L$dec_key_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_vpaes_encrypt:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$enc_body wrt ..imagebase,$L$enc_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_vpaes_decrypt:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$dec_body wrt ..imagebase,$L$dec_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_vpaes_cbc_encrypt:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$cbc_body wrt ..imagebase,$L$cbc_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_vpaes_ctr32_encrypt_blocks:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase

@@ -5,17 +5,17 @@
 // Convert 4-digit (256-bit) bignum to/from little-endian form
 // Input x[4]; output z[4]
 //
-//    extern void bignum_littleendian_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_littleendian_4(uint64_t z[static 4],
+//                                      const uint64_t x[static 4]);
 //
 // The same function is given two other prototypes whose names reflect the
 // treatment of one or other argument as a byte array rather than word array:
 //
-//    extern void bignum_fromlebytes_4
-//     (uint64_t z[static 4], uint8_t x[static 32]);
+//    extern void bignum_fromlebytes_4(uint64_t z[static 4],
+//                                     const uint8_t x[static 32]);
 //
-//    extern void bignum_tolebytes_4
-//     (uint8_t z[static 32], uint64_t x[static 4]);
+//    extern void bignum_tolebytes_4(uint8_t z[static 32],
+//                                   const uint64_t x[static 4]);
 //
 // Since x86 is little-endian, this is just copying.
 //

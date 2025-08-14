@@ -5,8 +5,8 @@
 // Montgomery square, z := (x^2 / 2^576) mod p_521
 // Input x[9]; output z[9]
 //
-//    extern void bignum_montsqr_p521
-//     (uint64_t z[static 9], uint64_t x[static 9]);
+//    extern void bignum_montsqr_p521(uint64_t z[static 9],
+//                                    const uint64_t x[static 9]);
 //
 // Does z := (x^2 / 2^576) mod p_521, assuming x < p_521. This means the
 // Montgomery base is the "native size" 2^{9*64} = 2^576; since p_521 is

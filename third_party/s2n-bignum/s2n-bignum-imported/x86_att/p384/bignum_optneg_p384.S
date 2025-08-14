@@ -6,8 +6,8 @@
 // z := x (if p zero), assuming x reduced
 // Inputs p, x[6]; output z[6]
 //
-//    extern void bignum_optneg_p384
-//      (uint64_t z[static 6], uint64_t p, uint64_t x[static 6]);
+//    extern void bignum_optneg_p384(uint64_t z[static 6], uint64_t p,
+//                                   const uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = p, RDX = x
 // Microsoft x64 ABI:   RCX = z, RDX = p, R8 = x

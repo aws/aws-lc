@@ -64,4 +64,4 @@ rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 build_and_test_haproxy
 
-ldd "${HAPROXY_SRC}/haproxy" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${HAPROXY_SRC}/haproxy" crypto || exit 1

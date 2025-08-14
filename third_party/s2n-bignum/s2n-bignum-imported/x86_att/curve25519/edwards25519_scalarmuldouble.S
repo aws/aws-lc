@@ -6,8 +6,8 @@
 // Input scalar[4], point[8], bscalar[4]; output res[8]
 //
 // extern void edwards25519_scalarmuldouble
-//   (uint64_t res[static 8],uint64_t scalar[static 4],
-//    uint64_t point[static 8],uint64_t bscalar[static 4]);
+//   (uint64_t res[static 8],const uint64_t scalar[static 4],
+//    const uint64_t point[static 8],const uint64_t bscalar[static 4]);
 //
 // Given scalar = n, point = P and bscalar = m, returns in res
 // the point (X,Y) = n * P + m * B where B = (...,4/5) is

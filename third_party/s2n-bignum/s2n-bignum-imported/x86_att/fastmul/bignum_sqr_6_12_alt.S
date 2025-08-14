@@ -5,7 +5,8 @@
 // Square, z := x^2
 // Input x[6]; output z[12]
 //
-//    extern void bignum_sqr_6_12_alt (uint64_t z[static 12], uint64_t x[static 6]);
+//    extern void bignum_sqr_6_12_alt(uint64_t z[static 12],
+//                                    const uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x

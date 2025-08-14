@@ -5,8 +5,8 @@
 // Square modulo p_256k1, z := (x^2) mod p_256k1
 // Input x[4]; output z[4]
 //
-//    extern void bignum_sqr_p256k1_alt
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_sqr_p256k1_alt(uint64_t z[static 4],
+//                                      const uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

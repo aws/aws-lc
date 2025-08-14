@@ -5,8 +5,8 @@
 // Compare bignums, x > y
 // Inputs x[m], y[n]; output function return
 //
-//    extern uint64_t bignum_gt
-//     (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+//    extern uint64_t bignum_gt(uint64_t m, const uint64_t *x, uint64_t n,
+//                              const uint64_t *y);
 //
 // Standard x86-64 ABI: RDI = m, RSI = x, RDX = n, RCX = y, returns RAX
 // Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, returns RAX

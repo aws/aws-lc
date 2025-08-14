@@ -5,7 +5,7 @@
 // Return minimum of two unsigned 64-bit words
 // Inputs a, b; output function return
 //
-//    extern uint64_t word_min (uint64_t a, uint64_t b);
+//    extern uint64_t word_min(uint64_t a, uint64_t b);
 //
 // Standard x86-64 ABI: RDI = a, RSI = b, returns RAX
 // Microsoft x64 ABI:   RCX = a, RDX = b, returns RAX

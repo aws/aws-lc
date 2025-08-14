@@ -5,8 +5,8 @@
 // Multiply-add with single-word multiplier, z := z + c * y
 // Inputs c, y[n]; outputs function return (carry-out) and z[k]
 //
-//    extern uint64_t bignum_cmadd
-//     (uint64_t k, uint64_t *z, uint64_t c, uint64_t n, uint64_t *y);
+//    extern uint64_t bignum_cmadd(uint64_t k, uint64_t *z, uint64_t c, uint64_t n,
+//                                 const uint64_t *y);
 //
 // Does the "z := z + c * y" operation where y is n digits, result z is p.
 // Truncates the result in general.
