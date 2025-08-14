@@ -2273,30 +2273,66 @@ tcH961onq8Tme2ICaCzk
   EXPECT_EQ(Bytes(buf->data, buf->length), Bytes(kPKCS7RubyOpenSSLOutput));
 }
 
-TEST(PKCS7Test, VerifyOtherField) {
-  // Set up test data
-  const unsigned char test_data[] = {0x30, 0x02, 0x01, 0x02};
-  const int test_data_len = sizeof(test_data);
 
-  // Create PKCS7 and required ASN.1 structures
+static const unsigned char test_data[] = {0x30, 0x02, 0x01, 0x02};
+
+static bssl::UniquePtr<PKCS7> pkcs7_with_other(const unsigned char *data,
+                                               int data_len) {
   bssl::UniquePtr<PKCS7> p7(PKCS7_new());
-  ASSERT_TRUE(p7);
-  bssl::UniquePtr<ASN1_STRING> seq(ASN1_STRING_new());
-  ASSERT_TRUE(seq);
+  if (!p7) {
+    return nullptr;
+  }
 
-  ASSERT_TRUE(ASN1_STRING_set(seq.get(), test_data, test_data_len));
+  bssl::UniquePtr<ASN1_STRING> seq(ASN1_STRING_new());
+  if (!seq || !ASN1_STRING_set(seq.get(), data, data_len)) {
+    return nullptr;
+  }
 
   // Set up the ASN.1 structure
-  // |p7->type| is intentionally undefined. OpenSSL frees all contents whether
-  // it's defined or not.
   p7->d.other = ASN1_TYPE_new();
-  EXPECT_TRUE(p7->d.other);
+  if (!p7->d.other) {
+    return nullptr;
+  }
 
   ASN1_TYPE_set(p7->d.other, V_ASN1_OCTET_STRING, seq.release());
 
+  return p7;
+}
+
+TEST(PKCS7Test, OtherFieldMemoryLeak) {
+  // Set up the ASN.1 structure
+  // |p7->type| is intentionally undefined. OpenSSL frees all contents whether
+  // it's defined or not.
+  bssl::UniquePtr<PKCS7> p7(pkcs7_with_other(test_data, sizeof(test_data)));
+
   ASSERT_EQ(p7->d.other->type, V_ASN1_OCTET_STRING);
-  EXPECT_EQ(p7->d.other->value.sequence->length, test_data_len);
+  EXPECT_EQ(p7->d.other->value.sequence->length,
+            static_cast<int>(sizeof(test_data)));
   EXPECT_EQ(OPENSSL_memcmp(p7->d.other->value.sequence->data, test_data,
-                           test_data_len),
+                           sizeof(test_data)),
+            0);
+}
+
+TEST(PKCS7Test, SerdeOtherField) {
+  // Create PKCS7 and required ASN.1 structures. |p7->type | needs to be defined
+  // to be properly serialized.
+  bssl::UniquePtr<PKCS7> p7(pkcs7_with_other(test_data, sizeof(test_data)));
+  p7->type = OBJ_nid2obj(NID_pkcs7);
+
+  // Serialize the original object. This should echo back the original saved
+  // bytes.
+  uint8_t *bytes = nullptr;
+  int bytes_len = i2d_PKCS7(p7.get(), &bytes);
+  ASSERT_GT(bytes_len, 0);
+  bssl::UniquePtr<uint8_t> free_bytes(bytes);
+
+  const uint8_t *ptr = bytes;
+  bssl::UniquePtr<PKCS7> pkcs7_obj(d2i_PKCS7(nullptr, &ptr, bytes_len));
+  ASSERT_TRUE(pkcs7_obj);
+  ASSERT_EQ(p7->d.other->type, V_ASN1_OCTET_STRING);
+  EXPECT_EQ(p7->d.other->value.sequence->length,
+            static_cast<int>(sizeof(test_data)));
+  EXPECT_EQ(OPENSSL_memcmp(p7->d.other->value.sequence->data, test_data,
+                           sizeof(test_data)),
             0);
 }
