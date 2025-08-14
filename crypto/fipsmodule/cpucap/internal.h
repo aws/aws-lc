@@ -255,8 +255,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_RNDR_capable(void) {
-  return (OPENSSL_armcap_P & (ARMV8_RNG | ARMV8_DIT_ALLOWED)) ==
-    (ARMV8_DIT | ARMV8_DIT_ALLOWED);
+  return (OPENSSL_armcap_P & ARMV8_RNG) != 0;
 }
 
 OPENSSL_INLINE int CRYPTO_is_Neoverse_N1(void) {
