@@ -88,8 +88,10 @@ static int dgram_write(BIO *bp, const char *in, const int in_len) {
   const int ret = result;
 
   BIO_clear_retry_flags(bp);
-  if (ret <= 0 && bio_socket_should_retry(ret)) {
-    BIO_set_retry_write(bp);
+  if (ret <= 0) {
+    if (bio_socket_should_retry(ret)) {
+      BIO_set_retry_write(bp);
+    }
     data->_errno = dgram_get_errno();
   }
   return ret;
@@ -131,8 +133,10 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   }
 
   BIO_clear_retry_flags(bp);
-  if (ret < 0 && bio_socket_should_retry(ret)) {
-    BIO_set_retry_read(bp);
+  if (ret < 0) {
+    if (bio_socket_should_retry(ret)) {
+      BIO_set_retry_read(bp);
+    }
     data->_errno = dgram_get_errno();
   }
 
