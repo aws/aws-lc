@@ -5,8 +5,8 @@
 // Encode edwards25519 point into compressed form as 256-bit number
 // Input p[8]; output z[32] (bytes)
 //
-//    extern void edwards25519_encode
-//     (uint8_t z[static 32], uint64_t p[static 8]);
+//    extern void edwards25519_encode(uint8_t z[static 32],
+//                                    const uint64_t p[static 8]);
 //
 // This assumes that the input buffer p points to a pair of 256-bit
 // numbers x (at p) and y (at p+4) representing a point (x,y) on the

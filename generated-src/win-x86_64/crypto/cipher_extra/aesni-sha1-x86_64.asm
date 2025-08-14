@@ -3262,16 +3262,18 @@ ALIGN	4
 	DD	$L$SEH_begin_aesni_cbc_sha1_enc_shaext wrt ..imagebase
 	DD	$L$SEH_end_aesni_cbc_sha1_enc_shaext wrt ..imagebase
 	DD	$L$SEH_info_aesni_cbc_sha1_enc_shaext wrt ..imagebase
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha1_enc_ssse3:
 	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$prologue_ssse3 wrt ..imagebase,$L$epilogue_ssse3 wrt ..imagebase
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha1_enc_avx:
 	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$prologue_avx wrt ..imagebase,$L$epilogue_avx wrt ..imagebase
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha1_enc_shaext:
 	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase

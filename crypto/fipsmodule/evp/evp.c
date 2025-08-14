@@ -69,6 +69,8 @@
 #include <openssl/thread.h>
 
 #include "../../evp_extra/internal.h"
+#include "../../pem/internal.h"
+#include "../../console/internal.h"
 #include "../../internal.h"
 #include "internal.h"
 
@@ -154,6 +156,79 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   }
 
   return -2;
+}
+
+char *EVP_get_pw_prompt(void) {
+    return (char*)"Enter PEM passphrase:";
+}
+
+int EVP_read_pw_string(char *buf, int length, const char *prompt, int verify) {
+  return EVP_read_pw_string_min(buf, 0, length, prompt, verify);
+}
+
+int EVP_read_pw_string_min(char *buf, int min_length, int length,
+                           const char *prompt, int verify) {
+  int ret = -1;
+  char verify_buf[1024];
+
+  if (!buf || min_length <= 0 || min_length >= length) {
+    return -1;
+  }
+
+  if (prompt == NULL) {
+    prompt = EVP_get_pw_prompt();
+  }
+
+  // Proactively zeroize |buf| and verify_buf
+  OPENSSL_cleanse(buf, length);
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+
+  // acquire write lock
+  openssl_console_acquire_mutex();
+
+  if (!openssl_console_open()) {
+    goto err;
+  }
+
+  // Write initial password prompt
+  if (!openssl_console_write(prompt)) {
+    goto err;
+  }
+
+  // Read password with echo disabled. Returns 0 on success.
+  // While |buf| and |length| are user-provided and can be arbitrarily large,
+  // passwords exceeding 1024 characters will be rejected with AWS-LC. OpenSSL
+  // handles this by silently truncating |length| before reading the password.
+  ret = openssl_console_read(buf, min_length, length, 0);
+  if (ret != 0) {
+    OPENSSL_cleanse(buf, length);
+    OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+    goto err;
+  }
+
+  if (verify) {
+    openssl_console_write("Verifying - ");
+    openssl_console_write(prompt);
+
+    ret = openssl_console_read(verify_buf, min_length, sizeof(verify_buf), 0);
+
+    if (ret == 0) {
+      if (strncmp(buf, verify_buf, length) != 0) {
+        openssl_console_write("Verify failure\n");
+        ret = -1;
+      }
+    } else {
+      OPENSSL_PUT_ERROR(PEM, PEM_R_PROBLEMS_GETTING_PASSWORD);
+      goto err;
+    }
+  }
+
+  openssl_console_close();
+
+err:
+  openssl_console_release_mutex();
+  OPENSSL_cleanse(verify_buf, sizeof(verify_buf));
+  return ret;
 }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
@@ -261,6 +336,35 @@ void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
   free_it(pkey);
   pkey->ameth = method;
   pkey->type = pkey->ameth->pkey_id;
+}
+
+static int pkey_set_type(EVP_PKEY *pkey, int type, const char *str, int len) {
+  if (pkey && pkey->pkey.ptr) {
+    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
+    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
+    // behavior.
+    free_it(pkey);
+  }
+
+  const EVP_PKEY_ASN1_METHOD *ameth = NULL;
+
+  if (str != NULL) {
+    ameth = EVP_PKEY_asn1_find_str(NULL, str, len);
+  } else {
+    ameth = evp_pkey_asn1_find(type);
+  }
+
+  if (ameth == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    ERR_add_error_dataf("algorithm %d", type);
+    return 0;
+  }
+
+  if (pkey) {
+    evp_pkey_set_method(pkey, ameth);
+  }
+
+  return 1;
 }
 
 int EVP_PKEY_type(int nid) {
@@ -445,25 +549,12 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   SET_DIT_AUTO_RESET;
-  if (pkey && pkey->pkey.ptr) {
-    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
-    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
-    // behavior.
-    free_it(pkey);
-  }
+  return pkey_set_type(pkey, type, NULL, -1);
+}
 
-  const EVP_PKEY_ASN1_METHOD *ameth = evp_pkey_asn1_find(type);
-  if (ameth == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    ERR_add_error_dataf("algorithm %d", type);
-    return 0;
-  }
-
-  if (pkey) {
-    evp_pkey_set_method(pkey, ameth);
-  }
-
-  return 1;
+int EVP_PKEY_set_type_str(EVP_PKEY *pkey, const char *str, int len) {
+  SET_DIT_AUTO_RESET;
+  return pkey_set_type(pkey, EVP_PKEY_NONE, str, len);
 }
 
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,

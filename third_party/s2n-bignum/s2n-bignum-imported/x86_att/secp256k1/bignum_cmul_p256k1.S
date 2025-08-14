@@ -6,8 +6,8 @@
 // x reduced
 // Inputs c, x[4]; output z[4]
 //
-//    extern void bignum_cmul_p256k1
-//     (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+//    extern void bignum_cmul_p256k1(uint64_t z[static 4], uint64_t c,
+//                                   const uint64_t x[static 4]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
 // Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x

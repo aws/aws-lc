@@ -181,7 +181,7 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 
 // EVP_MAX_MD_BLOCK_SIZE is the largest digest block size supported, in
 // bytes.
-#define EVP_MAX_MD_BLOCK_SIZE 128  // SHA-512 is the longest so far.
+#define EVP_MAX_MD_BLOCK_SIZE 144      // SHA3-224 has the largest block size so far
 
 // EVP_DigestFinal_ex finishes the digest in |ctx| and writes the output to
 // |md_out|. |EVP_MD_CTX_size| bytes are written, which is at most
@@ -294,8 +294,8 @@ OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
                                       size_t len);
 
-// EVP_DigestSqueeze provides byte-wise streaming XOF output generation for 
-// XOF digests, writing |len| bytes of extended output to |out|. It can be 
+// EVP_DigestSqueeze provides byte-wise streaming XOF output generation for
+// XOF digests, writing |len| bytes of extended output to |out|. It can be
 // called multiple times with arbitrary length |len| output requests.
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_DigestSqueeze(EVP_MD_CTX *ctx, uint8_t *out,
@@ -333,6 +333,9 @@ OPENSSL_EXPORT EVP_PKEY_CTX *EVP_MD_CTX_pkey_ctx(const EVP_MD_CTX *ctx);
 
 struct evp_md_pctx_ops;
 
+// env_md_ctx_st is typoed ("evp" -> "env"), but the typo comes from OpenSSL
+// and some consumers forward-declare these structures so we're leaving it
+// alone.
 struct env_md_ctx_st {
   // digest is the underlying digest function, or NULL if not set.
   const EVP_MD *digest;

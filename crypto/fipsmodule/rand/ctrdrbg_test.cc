@@ -127,3 +127,21 @@ TEST(CTRDRBGTest, TestVectors) {
     EXPECT_EQ(Bytes(expected), Bytes(out));
   });
 }
+
+TEST(CTRDRBGTest, NoAlias) {
+  const uint8_t kSeed[CTR_DRBG_ENTROPY_LEN] = {0};
+  const uint8_t *kAliasEqual = kSeed;
+  const uint8_t kSeedOversized[CTR_DRBG_ENTROPY_LEN+10] = {0};
+  const uint8_t *kAliasOverlapping = &kSeedOversized[10];
+
+  CTR_DRBG_STATE drbg;
+  ASSERT_FALSE(CTR_DRBG_init(&drbg, kSeed, kAliasEqual, CTR_DRBG_ENTROPY_LEN));
+  ASSERT_FALSE(CTR_DRBG_init(&drbg, kSeedOversized, kAliasOverlapping, CTR_DRBG_ENTROPY_LEN));
+
+  ASSERT_TRUE(CTR_DRBG_init(&drbg, kSeed, nullptr, 0));
+
+  ASSERT_FALSE(CTR_DRBG_reseed(&drbg, kSeed, kAliasEqual, CTR_DRBG_ENTROPY_LEN));
+  ASSERT_FALSE(CTR_DRBG_reseed(&drbg, kSeedOversized, kAliasOverlapping, CTR_DRBG_ENTROPY_LEN));
+
+  CTR_DRBG_clear(&drbg);
+}

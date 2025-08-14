@@ -52,7 +52,8 @@ int32_t ml_dsa_reduce32(int32_t a) {
 * Returns r.
 **************************************************/
 int32_t ml_dsa_caddq(int32_t a) {
-  a += (a >> 31) & ML_DSA_Q;
+  // a = a < 0 ? a + Q : a;
+  a = constant_time_select_int(constant_time_msb_w(a), a + ML_DSA_Q, a);
   return a;
 }
 

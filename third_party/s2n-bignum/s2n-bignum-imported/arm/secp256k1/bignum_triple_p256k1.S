@@ -5,8 +5,8 @@
 // Triple modulo p_256k1, z := (3 * x) mod p_256k1
 // Input x[4]; output z[4]
 //
-//    extern void bignum_triple_p256k1
-//      (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_triple_p256k1(uint64_t z[static 4],
+//                                     const uint64_t x[static 4]);
 //
 // The input x can be any 4-digit bignum, not necessarily reduced modulo
 // p_256k1, and the result is always fully reduced, z = (3 * x) mod p_256k1.

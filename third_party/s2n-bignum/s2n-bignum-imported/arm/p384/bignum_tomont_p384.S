@@ -5,8 +5,8 @@
 // Convert to Montgomery form z := (2^384 * x) mod p_384
 // Input x[6]; output z[6]
 //
-//    extern void bignum_tomont_p384
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_tomont_p384(uint64_t z[static 6],
+//                                   const uint64_t x[static 6]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

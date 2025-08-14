@@ -619,7 +619,7 @@ ALIGN	4
 	DD	$L$SEH_info_abi_test_bad_unwind_epilog_0 wrt ..imagebase
 
 
-section	.xdata rdata align=8
+section	.xdata rdata align=4
 ALIGN	4
 $L$SEH_info_abi_test_trampoline_0:
 	DB	1
@@ -684,6 +684,7 @@ $L$SEH_info_abi_test_trampoline_0:
 	DB	1
 	DW	43
 
+ALIGN	4
 $L$SEH_info_abi_test_bad_unwind_wrong_register_0:
 	DB	1
 	DB	$L$SEH_prolog_abi_test_bad_unwind_wrong_register_2-$L$SEH_begin_abi_test_bad_unwind_wrong_register_1
@@ -692,6 +693,7 @@ $L$SEH_info_abi_test_bad_unwind_wrong_register_0:
 	DB	$L$SEH_prolog_abi_test_bad_unwind_wrong_register_2-$L$SEH_begin_abi_test_bad_unwind_wrong_register_1
 	DB	208
 
+ALIGN	4
 $L$SEH_info_abi_test_bad_unwind_temporary_0:
 	DB	1
 	DB	$L$SEH_prolog_abi_test_bad_unwind_temporary_2-$L$SEH_begin_abi_test_bad_unwind_temporary_1
@@ -700,6 +702,7 @@ $L$SEH_info_abi_test_bad_unwind_temporary_0:
 	DB	$L$SEH_prolog_abi_test_bad_unwind_temporary_2-$L$SEH_begin_abi_test_bad_unwind_temporary_1
 	DB	192
 
+ALIGN	4
 $L$SEH_info_abi_test_bad_unwind_epilog_0:
 	DB	1
 	DB	$L$SEH_prolog_abi_test_bad_unwind_epilog_2-$L$SEH_begin_abi_test_bad_unwind_epilog_1

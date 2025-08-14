@@ -5,7 +5,7 @@
 // Test bignum for zero-ness, x = 0
 // Input x[k]; output function return
 //
-//    extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);
+//    extern uint64_t bignum_iszero(uint64_t k, const uint64_t *x);
 //
 // Standard ARM ABI: X0 = k, X1 = x, returns X0
 // ----------------------------------------------------------------------------

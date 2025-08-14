@@ -5,8 +5,8 @@
 // Reduce modulo group order, z := x mod n_256k1
 // Input x[4]; output z[4]
 //
-//    extern void bignum_mod_n256k1_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_mod_n256k1_4(uint64_t z[static 4],
+//                                    const uint64_t x[static 4]);
 //
 // Reduction is modulo the group order of the secp256k1 curve.
 //

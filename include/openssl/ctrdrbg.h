@@ -50,7 +50,8 @@ OPENSSL_EXPORT void CTR_DRBG_free(CTR_DRBG_STATE* state);
 
 // CTR_DRBG_reseed reseeds |drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of entropy
 // in |entropy| and, optionally, up to |CTR_DRBG_ENTROPY_LEN| bytes of
-// additional data. It returns one on success or zero on error.
+// additional data. It returns one on success or zero on error. |entropy| and
+// |additional_data| must not alias.
 OPENSSL_EXPORT int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
                                    const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                                    const uint8_t *additional_data,

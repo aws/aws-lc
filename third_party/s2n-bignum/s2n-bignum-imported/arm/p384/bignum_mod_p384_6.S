@@ -5,8 +5,7 @@
 // Reduce modulo field characteristic, z := x mod p_384
 // Input x[6]; output z[6]
 //
-//    extern void bignum_mod_p384_6
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_mod_p384_6(uint64_t z[static 6], const uint64_t x[static 6]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

@@ -1525,27 +1525,32 @@ se_handler:
 	.rva	.LSEH_info_${PREFIX}_ctr32_encrypt_blocks
 
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_${PREFIX}_set_encrypt_key:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_key_body,.Lenc_key_epilogue	# HandlerData[]
+.align	4
 .LSEH_info_${PREFIX}_set_decrypt_key:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Ldec_key_body,.Ldec_key_epilogue	# HandlerData[]
+.align	4
 .LSEH_info_${PREFIX}_encrypt:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_body,.Lenc_epilogue		# HandlerData[]
+.align	4
 .LSEH_info_${PREFIX}_decrypt:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Ldec_body,.Ldec_epilogue		# HandlerData[]
+.align	4
 .LSEH_info_${PREFIX}_cbc_encrypt:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lcbc_body,.Lcbc_epilogue		# HandlerData[]
+.align	4
 .LSEH_info_${PREFIX}_ctr32_encrypt_blocks:
 	.byte	9,0,0,0
 	.rva	se_handler

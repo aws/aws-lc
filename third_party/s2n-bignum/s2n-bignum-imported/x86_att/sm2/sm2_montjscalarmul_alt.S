@@ -7,8 +7,8 @@
 //
 // extern void sm2_montjscalarmul_alt
 //   (uint64_t res[static 12],
-//    uint64_t scalar[static 4],
-//    uint64_t point[static 12]);
+//    const uint64_t scalar[static 4],
+//    const uint64_t point[static 12]);
 //
 // This function is a variant of its affine point version sm2_scalarmul.
 // Here, input and output points are assumed to be in Jacobian form with

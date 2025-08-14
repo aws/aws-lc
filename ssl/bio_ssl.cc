@@ -11,6 +11,19 @@
 
 #include <openssl/bio.h>
 
+// We intentionally redefine |iovec| here without header guards or redefinition
+// protection to prevent "bio.h" from inadvertently including system headers
+// (like <sys/socket.h>) in consuming applications. This avoids potential
+// conflicts where system headers might define types that interfere with the
+// consumer's code. Consumers should ideally handle potential struct
+// redefinitions themselves, but unfortunately most legacy codebases do not
+// implement such checks, making this approach necessary for compatibility.
+//
+// See commit aws-lc@9db959e for more details.
+struct iovec {
+  void* iov_base;
+  size_t iov_len;
+};
 
 static SSL *get_ssl(BIO *bio) {
   return reinterpret_cast<SSL *>(bio->ptr);

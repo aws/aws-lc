@@ -5,7 +5,7 @@
 // Find bignum modulo a single word
 // Input x[k], m; output function return
 //
-//    extern uint64_t bignum_cmod (uint64_t k, uint64_t *x, uint64_t m);
+//    extern uint64_t bignum_cmod(uint64_t k, const uint64_t *x, uint64_t m);
 //
 // Returns x mod m, assuming m is nonzero.
 //

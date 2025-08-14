@@ -303,6 +303,7 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     // OpenSSL returns X509_V_OK when no certificates are requested. This is
     // classed by them as a bug, but it's assumed by at least NGINX.
     hs->new_session->verify_result = X509_V_OK;
+    ssl->verify_result = hs->new_session->verify_result;
 
     // No certificate, so nothing more to do.
     return true;

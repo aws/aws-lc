@@ -72,10 +72,9 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../console/internal.h"
 #include "../fipsmodule/evp/internal.h"
 
-
-#define MIN_LENGTH 4
 
 static int load_iv(char **fromp, unsigned char *to, size_t num);
 static int check_pem(const char *nm, const char *name);
@@ -785,13 +784,40 @@ err:
 }
 
 int PEM_def_callback(char *buf, int size, int rwflag, void *userdata) {
-  if (!buf || !userdata || size < 0) {
+  if (!buf || size <= 0) {
     return 0;
   }
-  size_t len = strlen((char *)userdata);
-  if (len >= (size_t)size) {
+
+  // Proactively zeroize |buf|
+  OPENSSL_cleanse(buf, size);
+
+  if (userdata) {
+    size_t len =  strlen((char *)userdata);
+    if (len >= (size_t)size) {
+      return 0;
+    }
+    OPENSSL_strlcpy(buf, userdata, (size_t)size);
+    return (int)len;
+  }
+
+  const char *prompt = EVP_get_pw_prompt();
+  if (prompt == NULL) {
+    prompt = "Enter PEM pass phrase:";
+  }
+
+  /*
+     * rwflag == 0 means decryption
+     * rwflag == 1 means encryption
+     *
+     * We assume that for encryption, we want a minimum length, while for
+     * decryption, we cannot know any minimum length, so we assume zero.
+     */
+  int min_len = rwflag ? MIN_LENGTH : 0;
+
+  int ret = EVP_read_pw_string_min(buf, min_len, size, prompt, rwflag);
+  if (ret != 0) {
     return 0;
   }
-  OPENSSL_strlcpy(buf, userdata, (size_t)size);
-  return (int)len;
+
+  return (int)OPENSSL_strnlen(buf, size);
 }

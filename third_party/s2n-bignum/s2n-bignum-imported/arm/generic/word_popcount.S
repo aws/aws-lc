@@ -5,7 +5,7 @@
 // Count number of set bits in a single 64-bit word (population count)
 // Input a; output function return
 //
-//    extern uint64_t word_popcount (uint64_t a);
+//    extern uint64_t word_popcount(uint64_t a);
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------

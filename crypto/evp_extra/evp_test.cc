@@ -1468,6 +1468,20 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     ERR_clear_error();
 }
 
+TEST(EVPTest, PKEY_set_type_str) {
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  /* Test case 1: Assign RSA algorithm */
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "RSA", 3));
+  ASSERT_EQ(pkey->type, EVP_PKEY_RSA);
+
+  /* Test case 2: Assign EC algorithm */
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "EC", 2));
+  ASSERT_EQ(pkey->type, EVP_PKEY_EC);
+
+  /* Test case 3: Assign non-existent algorithm */
+  ASSERT_FALSE(EVP_PKEY_set_type_str(pkey.get(), "Nonsense", 8));
+}
+
 TEST(EVPTest, PKEY_asn1_find) {
   int pkey_id, pkey_base_id, pkey_flags;
   const char *pinfo, *pem_str;

@@ -1,7 +1,17 @@
 /*
- * Copyright (c) 2024-2025 The mlkem-native project authors
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) The mlkem-native project authors
+ * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
+
+/* References
+ * ==========
+ *
+ * - [FIPS203]
+ *   FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism Standard
+ *   National Institute of Standards and Technology
+ *   https://csrc.nist.gov/pubs/fips/203/final
+ */
+
 #ifndef MLK_SYMMETRIC_H
 #define MLK_SYMMETRIC_H
 
@@ -14,17 +24,17 @@
 
 /* Macros denoting FIPS 203 specific Hash functions */
 
-/* Hash function H, [FIPS 203, Section 4.1, Eq (4.4)] */
+/* Hash function H, @[FIPS203, Section 4.1, Eq (4.4)] */
 #define mlk_hash_h(OUT, IN, INBYTES) mlk_sha3_256(OUT, IN, INBYTES)
 
-/* Hash function G, [FIPS 203, Section 4.1, Eq (4.5)] */
+/* Hash function G, @[FIPS203, Section 4.1, Eq (4.5)] */
 #define mlk_hash_g(OUT, IN, INBYTES) mlk_sha3_512(OUT, IN, INBYTES)
 
-/* Hash function J, [FIPS 203, Section 4.1, Eq (4.4)] */
+/* Hash function J, @[FIPS203, Section 4.1, Eq (4.4)] */
 #define mlk_hash_j(OUT, IN, INBYTES) \
   mlk_shake256(OUT, MLKEM_SYMBYTES, IN, INBYTES)
 
-/* PRF function, [FIPS 203, Section 4.1, Eq (4.3)]
+/* PRF function, @[FIPS203, Section 4.1, Eq (4.3)]
  * Referring to (eq 4.3), `OUT` is assumed to contain `s || b`. */
 #define mlk_prf_eta(ETA, OUT, IN) \
   mlk_shake256(OUT, (ETA) * MLKEM_N / 4, IN, MLKEM_SYMBYTES + 1)

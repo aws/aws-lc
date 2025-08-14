@@ -33,8 +33,7 @@ function strongswan_build() {
   --enable-monolithic=no --enable-leak-detective=no --enable-asan --enable-drbg
   make -j ${NUM_CPU_THREADS}
   local openssl_plugin="${STRONGSWAN_SRC_FOLDER}/src/libstrongswan/plugins/openssl/.libs/libstrongswan-openssl.so"
-  ldd ${openssl_plugin} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${openssl_plugin}" crypto || exit 1
 }
 
 function strongswan_run_tests() {

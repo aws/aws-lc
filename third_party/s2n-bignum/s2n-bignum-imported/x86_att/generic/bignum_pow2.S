@@ -5,7 +5,7 @@
 // Return bignum of power of 2, z := 2^n
 // Input n; output z[k]
 //
-//    extern void bignum_pow2 (uint64_t k, uint64_t *z, uint64_t n);
+//    extern void bignum_pow2(uint64_t k, uint64_t *z, uint64_t n);
 //
 // The result is as usual mod 2^{64*k}, so will be zero if n >= 64*k.
 //
