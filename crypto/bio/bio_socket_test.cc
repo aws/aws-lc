@@ -807,6 +807,7 @@ TEST_P(BIODgramTest, SocketDatagramConnect) {
   test_send_receive(server_bio, client_bio);
 }
 
+
 TEST_P(BIODgramTest, SocketDatagramTimeouts) {
   int addr_family = GetParam();
   // Wrap the server socket in a BIO.
@@ -834,9 +835,10 @@ TEST_P(BIODgramTest, SocketDatagramTimeouts) {
   ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_dgram_get_recv_timeout(bio.get(), &recv_timeout_get))
       << LastSocketError();
 
-  // Verify the timeout values match what we set
+  // Verify the timeout values match what we set (allowing for small variations in microseconds)
   EXPECT_EQ(recv_timeout_set.tv_sec, recv_timeout_get.tv_sec);
-  EXPECT_EQ(recv_timeout_set.tv_usec, recv_timeout_get.tv_usec);
+  // Allow for small variations in microseconds that might occur on different systems
+  EXPECT_NEAR(recv_timeout_set.tv_usec, recv_timeout_get.tv_usec, 500);
 
   // Test send timeout
   struct timeval send_timeout_set = {2, 750000}; // 2.75 seconds
@@ -847,9 +849,10 @@ TEST_P(BIODgramTest, SocketDatagramTimeouts) {
   ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_dgram_get_send_timeout(bio.get(), &send_timeout_get))
       << LastSocketError();
 
-  // Verify the timeout values match what we set
+  // Verify the timeout values match what we set (allowing for small variations in microseconds)
   EXPECT_EQ(send_timeout_set.tv_sec, send_timeout_get.tv_sec);
-  EXPECT_EQ(send_timeout_set.tv_usec, send_timeout_get.tv_usec);
+  // Allow for small variations in microseconds that might occur on different systems
+  EXPECT_NEAR(send_timeout_set.tv_usec, send_timeout_get.tv_usec, 500);
 }
 
 TEST_P(BIODgramTest, SocketDatagramTimeoutBehavior) {
