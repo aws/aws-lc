@@ -42,6 +42,7 @@ my $code = <<____;
 .globl	bn_add_words
 .align	4
 bn_add_words:
+.cfi_startproc
 	AARCH64_VALID_CALL_TARGET
 	# Clear the carry flag.
 	cmn	xzr, xzr
@@ -72,6 +73,7 @@ bn_add_words:
 .Ladd_exit:
 	cset	x0, cs
 	ret
+.cfi_endproc
 .size	bn_add_words,.-bn_add_words
 
 // BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
@@ -80,6 +82,7 @@ bn_add_words:
 .globl	bn_sub_words
 .align	4
 bn_sub_words:
+.cfi_startproc
 	AARCH64_VALID_CALL_TARGET
 	# Set the carry flag. Arm's borrow bit is flipped from the carry flag,
 	# so we want C = 1 here.
@@ -111,7 +114,8 @@ bn_sub_words:
 .Lsub_exit:
 	cset x0, cc
 	ret
-size	bn_sub_words,.-bn_sub_words
+.cfi_endproc
+.size   bn_sub_words,.-bn_sub_words
 ____
 
 print $code;
