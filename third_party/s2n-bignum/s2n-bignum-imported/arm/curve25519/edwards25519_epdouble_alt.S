@@ -5,8 +5,8 @@
 // Extended projective doubling for edwards25519
 // Input p1[12]; output p3[16]
 //
-// extern void edwards25519_epdouble
-//   (uint64_t p3[static 16],uint64_t p1[static 12])
+// extern void edwards25519_epdouble_alt
+//   (uint64_t p3[static 16],const uint64_t p1[static 12]);
 //
 // If p1 is a point on edwards25519, returns its double p3 = 2 * p1.
 // The output p3 is in extended projective coordinates, representing

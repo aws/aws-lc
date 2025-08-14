@@ -1,12 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include "internal.h"
+#include <openssl/x509.h>
+#include <algorithm>
 #include <ctime>
+#include <iostream>
 #include <string>
+#include "internal.h"
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
@@ -46,7 +48,7 @@ static bool isCharUpperCaseEqual(char a, char b) {
   return ::toupper(a) ==  ::toupper(b);
 }
 
-static bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
+bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
   return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
 }
 
@@ -75,49 +77,192 @@ bool IsNumeric(const std::string& str) {
   return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
+static bool handleModulus(X509 *x509, BIO *output_bio) {
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(x509));
+  if (!pkey) {
+    fprintf(stderr, "Error: unable to load public key from certificate\n");
+    return false;
+  }
+
+  if (EVP_PKEY_base_id(pkey.get()) != EVP_PKEY_RSA) {
+    fprintf(stderr, "Error: public key is not an RSA key\n");
+    return false;
+  }
+
+  const RSA *rsa = EVP_PKEY_get0_RSA(pkey.get());
+  if (!rsa) {
+    fprintf(stderr, "Error: unable to load RSA key\n");
+    return false;
+  }
+
+  const BIGNUM *n = RSA_get0_n(rsa);
+  if (!n) {
+    fprintf(stderr, "Error: unable to load modulus\n");
+    return false;
+  }
+
+  char *hex_modulus = BN_bn2hex(n);
+  if (!hex_modulus) {
+    fprintf(stderr, "Error: unable to convert modulus to hex\n");
+    return false;
+  }
+
+  for (char *p = hex_modulus; *p; ++p) {
+    *p = toupper(*p);
+  }
+  BIO_printf(output_bio, "Modulus=%s\n", hex_modulus);
+  OPENSSL_free(hex_modulus);
+  return true;
+}
+
+static bool handleSubject(X509 *x509, BIO *output_bio) {
+  X509_NAME *subject_name = X509_get_subject_name(x509);
+  if (!subject_name) {
+    fprintf(stderr, "Error: unable to obtain subject from certificate\n");
+    return false;
+  }
+  BIO_printf(output_bio, "subject=");
+  X509_NAME_print_ex(output_bio, subject_name, 0, XN_FLAG_ONELINE);
+  BIO_printf(output_bio, "\n");
+  return true;
+}
+
+static bool handleFingerprint(X509 *x509, BIO *output_bio) {
+  unsigned int out_len = 0;
+  unsigned char md[EVP_MAX_MD_SIZE];
+  const EVP_MD *digest = EVP_sha1();
+
+  if (!X509_digest(x509, digest, md, &out_len)) {
+    fprintf(stderr, "Error: unable to obtain digest\n");
+    return false;
+  }
+
+  BIO_printf(output_bio, "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(digest)));
+  for (int j = 0; j < (int)out_len; j++) {
+    BIO_printf(output_bio, "%02X%c", md[j],
+               (j + 1 == (int)out_len) ? '\n' : ':');
+  }
+  return true;
+}
+
+static bool handleDates(X509 *x509, BIO *output_bio) {
+  BIO_printf(output_bio, "notBefore=");
+  ASN1_TIME_print(output_bio, X509_get_notBefore(x509));
+  BIO_printf(output_bio, "\n");
+  BIO_printf(output_bio, "notAfter=");
+  ASN1_TIME_print(output_bio, X509_get_notAfter(x509));
+  BIO_printf(output_bio, "\n");
+  return true;
+}
+
+static bool handleCheckend(X509 *x509, BIO *output_bio,
+                           const std::string &arg_value) {
+  if (!IsNumeric(arg_value)) {
+    fprintf(stderr,
+            "Error: '-checkend' option must include a non-negative integer\n");
+    return false;
+  }
+
+  unsigned checkend_val = std::stoul(arg_value);
+  bssl::UniquePtr<ASN1_TIME> current_time(
+      ASN1_TIME_set(nullptr, std::time(nullptr)));
+  ASN1_TIME *end_time = X509_getm_notAfter(x509);
+  int days_left = 0, seconds_left = 0;
+
+  if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time.get(),
+                      end_time)) {
+    fprintf(stderr, "Error: failed to calculate time difference\n");
+    return false;
+  }
+
+  BIO_printf(output_bio, "%s\n",
+             (days_left * 86400 + seconds_left) < static_cast<int>(checkend_val)
+                 ? "Certificate will expire"
+                 : "Certificate will not expire");
+  return true;
+}
+
+static bool ProcessArgument(const std::string &arg_name,
+                            const std::string &arg_value, X509 *x509,
+                            bssl::UniquePtr<BIO> &output_bio,
+                            bool *dates_processed) {
+  if (arg_name == "-modulus") {
+    return handleModulus(x509, output_bio.get());
+  }
+  if (arg_name == "-text") {
+    X509_print(output_bio.get(), x509);
+    return true;
+  }
+  if (arg_name == "-subject") {
+    return handleSubject(x509, output_bio.get());
+  }
+  if (arg_name == "-subject_hash") {
+    const uint32_t hash_value = X509_subject_name_hash(x509);
+    BIO_printf(output_bio.get(), "%08x\n", hash_value);
+    return true;
+  }
+  if (arg_name == "-subject_hash_old") {
+    const uint32_t hash_value = X509_subject_name_hash_old(x509);
+    BIO_printf(output_bio.get(), "%08x\n", hash_value);
+    return true;
+  }
+  if (arg_name == "-fingerprint") {
+    return handleFingerprint(x509, output_bio.get());
+  }
+  if (arg_name == "-dates") {
+    *dates_processed = true;
+    return handleDates(x509, output_bio.get());
+  }
+  if (arg_name == "-enddate" && !*dates_processed) {
+    BIO_printf(output_bio.get(), "notAfter=");
+    ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509));
+    BIO_printf(output_bio.get(), "\n");
+    return true;
+  }
+  if (arg_name == "-checkend") {
+    return handleCheckend(x509, output_bio.get(), arg_value);
+  }
+  return true;
+}
+
 // Map arguments using tool/args.cc
 bool X509Tool(const args_list_t &args) {
-  args_map_t parsed_args;
+  // Use the ordered argument list instead of the standard map
+  ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
 
-  std::string in_path, out_path, signkey_path, checkend_str, days_str, inform;
-  bool noout = false, modulus = false, dates = false, req = false, help = false,
-  text = false, subject = false, fingerprint = false, enddate = false,
-  subject_hash = false, subject_hash_old = false;
-  std::unique_ptr<unsigned> checkend, days;
+  std::string in_path, out_path, signkey_path, days_str, inform;
+  bool noout = false, dates = false, req = false, help = false;
+  std::unique_ptr<unsigned> days;
 
-  GetBoolArgument(&help, "-help", parsed_args);
-  GetString(&in_path, "-in", "", parsed_args);
-  GetBoolArgument(&req, "-req", parsed_args);
-  GetString(&signkey_path, "-signkey", "", parsed_args);
-  GetString(&out_path, "-out", "", parsed_args);
-  GetBoolArgument(&noout, "-noout", parsed_args);
-  GetBoolArgument(&dates, "-dates", parsed_args);
-  GetBoolArgument(&modulus, "-modulus", parsed_args);
-  GetBoolArgument(&subject, "-subject", parsed_args);
-  GetBoolArgument(&subject_hash, "-subject_hash", parsed_args);
-  GetBoolArgument(&subject_hash_old, "-subject_hash_old", parsed_args);
-  GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
-  GetBoolArgument(&text, "-text", parsed_args);
-  GetString(&inform, "-inform", "", parsed_args);
-  GetBoolArgument(&enddate, "-enddate", parsed_args);
+  ordered_args::GetBoolArgument(&help, "-help", parsed_args);
+  ordered_args::GetString(&in_path, "-in", "", parsed_args);
+  ordered_args::GetBoolArgument(&req, "-req", parsed_args);
+  ordered_args::GetString(&signkey_path, "-signkey", "", parsed_args);
+  ordered_args::GetString(&out_path, "-out", "", parsed_args);
+  ordered_args::GetBoolArgument(&noout, "-noout", parsed_args);
+  ordered_args::GetBoolArgument(&dates, "-dates", parsed_args);
+  ordered_args::GetString(&inform, "-inform", "", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
   bssl::UniquePtr<BIO> output_bio;
   if (out_path.empty()) {
     output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
     output_bio.reset(BIO_new(BIO_s_file()));
-    BIO_write_filename(output_bio.get(), out_path.c_str());
+    if (1 != BIO_write_filename(output_bio.get(), out_path.c_str())) {
+      fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+      return false;
+    }
   }
 
   // -req must include -signkey
@@ -127,32 +272,22 @@ bool X509Tool(const args_list_t &args) {
   }
 
   // Check for mutually exclusive options
-  if (req && (dates || parsed_args.count("-checkend"))){
+  if (req && (dates || ordered_args::HasArgument(parsed_args, "-checkend"))) {
     fprintf(stderr, "Error: '-req' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
-  if (!signkey_path.empty() && (dates || parsed_args.count("-checkend"))){
+  if (!signkey_path.empty() && (dates || ordered_args::HasArgument(parsed_args, "-checkend"))) {
     fprintf(stderr, "Error: '-signkey' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
-  if (parsed_args.count("-days") && (dates || parsed_args.count("-checkend"))){
+  if (ordered_args::HasArgument(parsed_args, "-days") && (dates || ordered_args::HasArgument(parsed_args, "-checkend"))) {
     fprintf(stderr, "Error: '-days' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
 
-  // Check that -checkend argument is valid, int >=0
-  if (parsed_args.count("-checkend")) {
-    checkend_str = parsed_args["-checkend"];
-    if (!IsNumeric(checkend_str)) {
-      fprintf(stderr, "Error: '-checkend' option must include a non-negative integer\n");
-      return false;
-    }
-    checkend.reset(new unsigned(std::stoul(checkend_str)));
-  }
-
   // Check that -days argument is valid, int > 0
-  if (parsed_args.count("-days")) {
-    days_str = parsed_args["-days"];
+  if (ordered_args::HasArgument(parsed_args, "-days")) {
+    ordered_args::GetString(&days_str, "-days", "", parsed_args);
     if (!IsNumeric(days_str) || std::stoul(days_str) == 0) {
       fprintf(stderr, "Error: '-days' option must include a positive integer\n");
       return false;
@@ -253,111 +388,21 @@ bool X509Tool(const args_list_t &args) {
       return false;
     }
 
-    if (modulus) {
-      bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(x509.get()));
-      if (!pkey) {
-        fprintf(stderr, "Error: unable to load public key from certificate\n");
+    // Process arguments in the order they were provided
+    bool dates_processed = false;
+    for (const auto &arg_pair : parsed_args) {
+      const std::string &arg_name = arg_pair.first;
+      const std::string &arg_value = arg_pair.second;
+
+      // Skip non-output arguments
+      if (arg_name == "-in" || arg_name == "-out" || arg_name == "-inform" || 
+          arg_name == "-signkey" || arg_name == "-days" || arg_name == "-req" ||
+          arg_name == "-noout" || arg_name == "-help") {
+        continue;
+      }
+
+      if (!ProcessArgument(arg_name, arg_value, x509.get(), output_bio, &dates_processed)) {
         return false;
-      }
-
-      if (EVP_PKEY_base_id(pkey.get()) == EVP_PKEY_RSA) {
-        const RSA *rsa = EVP_PKEY_get0_RSA(pkey.get());
-        if (!rsa) {
-          fprintf(stderr, "Error: unable to load RSA key\n");
-          return false;
-        }
-        const BIGNUM *n = RSA_get0_n(rsa);
-        if (!n) {
-          fprintf(stderr, "Error: unable to load modulus\n");
-          return false;
-        }
-        char *hex_modulus = BN_bn2hex(n);
-        if (!hex_modulus) {
-          fprintf(stderr, "Error: unable to convert modulus to hex\n");
-          return false;
-        }
-        for (char *p = hex_modulus; *p; ++p) {
-          *p = toupper(*p);
-        }
-        BIO_printf(output_bio.get(), "Modulus=%s\n", hex_modulus);
-
-        OPENSSL_free(hex_modulus);
-      } else {
-        fprintf(stderr, "Error: public key is not an RSA key\n");
-        return false;
-      }
-    }
-
-    if(text) {
-      X509_print(output_bio.get(), x509.get());
-    }
-
-    if (subject) {
-      X509_NAME *subject_name = X509_get_subject_name(x509.get());
-      if (!subject_name) {
-        fprintf(stderr, "Error: unable to obtain subject from certificate\n");
-        return false;
-      }
-
-      BIO_printf(output_bio.get(), "subject=");
-      X509_NAME_print_ex(output_bio.get(), subject_name, 0, XN_FLAG_ONELINE);
-      BIO_printf(output_bio.get(), "\n");
-    }
-
-    if (subject_hash) {
-      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash(x509.get()));
-    }
-
-    if(subject_hash_old) {
-      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash_old(x509.get()));
-    }
-
-    if (fingerprint) {
-      unsigned int out_len;
-      unsigned char md[EVP_MAX_MD_SIZE];
-      const EVP_MD *digest = EVP_sha1();
-
-      if (!X509_digest(x509.get(), digest, md, &out_len)) {
-        fprintf(stderr, "Error: unable to obtain digest\n");
-        return false;
-      }
-      BIO_printf(output_bio.get(), "%s Fingerprint=",
-                 OBJ_nid2sn(EVP_MD_type(digest)));
-      for (int j = 0; j < (int)out_len; j++) {
-        BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)out_len)
-                                                      ? '\n' : ':');
-      }
-    }
-
-    if (dates) {
-      BIO_printf(output_bio.get(), "notBefore=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-
-      BIO_printf(output_bio.get(), "notAfter=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-    }
-
-    if (!dates && enddate) {
-      BIO_printf(output_bio.get(), "notAfter=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-    }
-
-    if (checkend) {
-      bssl::UniquePtr<ASN1_TIME> current_time(ASN1_TIME_set(nullptr, std::time(nullptr)));
-      ASN1_TIME *end_time = X509_getm_notAfter(x509.get());
-      int days_left, seconds_left;
-      if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time.get(), end_time)) {
-        fprintf(stderr, "Error: failed to calculate time difference\n");
-        return false;
-      }
-
-      if ((days_left * 86400 + seconds_left) < static_cast<int>(*checkend)) {
-        BIO_printf(output_bio.get(), "Certificate will expire\n");
-      } else {
-        BIO_printf(output_bio.get(), "Certificate will not expire\n");
       }
     }
 
@@ -367,7 +412,7 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!noout && !checkend) {
+    if (!noout && !ordered_args::HasArgument(parsed_args, "-checkend")) {
       if (!WriteSignedCertificate(x509.get(), output_bio, out_path)) {
         return false;
       }

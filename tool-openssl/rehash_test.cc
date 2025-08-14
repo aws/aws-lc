@@ -9,13 +9,25 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <openssl/pem.h>
 
+struct FreeOpenSSLChar {
+  void operator()(char *v) { OPENSSL_free(v); }
+};
+
+using ScopedCharBuffer = std::unique_ptr<char, FreeOpenSSLChar>;
+
 // Test fixture class
 class RehashTest : public ::testing::Test {
 protected:
   BUCKET** hash_table = get_table();
 
-  void makePathInDir(char *full_path, const char *dir, const char *filename) {
-    snprintf(full_path, 255, "%s/%s", dir, filename);
+  void makePathInDir(ScopedCharBuffer &full_path, const char *dir, const char *filename) {
+    size_t buffer_len = strlen(dir) + strlen(filename) + 2;
+    char *buffer = (char *)OPENSSL_zalloc(sizeof(char)*buffer_len);
+    if(buffer == nullptr) {
+      abort();
+    }
+    full_path.reset(buffer);
+    snprintf(full_path.get(), buffer_len, "%s/%s", dir, filename);
   }
 
   void SetUp() override {
@@ -25,36 +37,36 @@ protected:
     makePathInDir(crl1_path, test_dir, "crl1.pem");
     makePathInDir(crl2_path, test_dir, "crl2.pem");
 
-    ScopedFILE in_file(fopen(cert1_path, "wb"));
+    ScopedFILE in_file(fopen(cert1_path.get(), "wb"));
     bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
     ASSERT_TRUE(x509);
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
 
-    ScopedFILE in_file2(fopen(cert2_path, "wb"));
+    ScopedFILE in_file2(fopen(cert2_path.get(), "wb"));
     x509.reset(CreateAndSignX509Certificate());
     ASSERT_TRUE(x509);
     ASSERT_TRUE(in_file2);
     ASSERT_TRUE(PEM_write_X509(in_file2.get(), x509.get()));
 
     bssl::UniquePtr<X509_CRL> crl(createTestCRL());
-    ScopedFILE crl_file(fopen(crl1_path, "wb"));
+    ScopedFILE crl_file(fopen(crl1_path.get(), "wb"));
     ASSERT_TRUE(crl);
     ASSERT_TRUE(crl_file);
     ASSERT_TRUE(PEM_write_X509_CRL(crl_file.get(), crl.get()));
 
     crl.reset(createTestCRL());
-    ScopedFILE crl_file2(fopen(crl2_path, "wb"));
+    ScopedFILE crl_file2(fopen(crl2_path.get(), "wb"));
     ASSERT_TRUE(crl);
     ASSERT_TRUE(crl_file2);
     ASSERT_TRUE(PEM_write_X509_CRL(crl_file2.get(), crl.get()));
   }
 
   void TearDown() override {
-    RemoveFile(cert1_path);
-    RemoveFile(cert2_path);
-    RemoveFile(crl1_path);
-    RemoveFile(crl2_path);
+    RemoveFile(cert1_path.get());
+    RemoveFile(cert2_path.get());
+    RemoveFile(crl1_path.get());
+    RemoveFile(crl2_path.get());
     rmdir(test_dir);
   }
 
@@ -75,11 +87,11 @@ protected:
     return count;
   }
 
-  char cert1_path[256];
-  char cert2_path[256];
-  char crl1_path[256];
-  char crl2_path[256];
-  char test_dir[128];
+  ScopedCharBuffer cert1_path;
+  ScopedCharBuffer cert2_path;
+  ScopedCharBuffer crl1_path;
+  ScopedCharBuffer crl2_path;
+  char test_dir[PATH_MAX];
 };
 
 // Test hashtable Bucket collisions at an idx
@@ -175,7 +187,7 @@ TEST_F(RehashTest, EntryCollision) {
 TEST_F(RehashTest, RehashHelp) {
   args_list_t args = {"-help"};
   bool result = RehashTool(args);
-  ASSERT_FALSE(result);
+  ASSERT_TRUE(result);
 }
 
 TEST_F(RehashTest, InvalidDirectory) {
@@ -206,20 +218,22 @@ TEST_F(RehashTest, ValidDirectory) {
   ASSERT_TRUE(result);
 
   // Get hashes for certs and CRLs
-  ScopedFILE cert_file(fopen(cert1_path, "rb"));
+  ScopedFILE cert_file(fopen(cert1_path.get(), "rb"));
   bssl::UniquePtr<X509> cert(PEM_read_X509(
     cert_file.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(cert);
   uint32_t cert_hash = X509_subject_name_hash(cert.get());
 
-  ScopedFILE crl_file(fopen(crl1_path, "rb"));
+  ScopedFILE crl_file(fopen(crl1_path.get(), "rb"));
   bssl::UniquePtr<X509_CRL> crl(PEM_read_X509_CRL(
     crl_file.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(crl);
   uint32_t crl_hash = X509_NAME_hash(X509_CRL_get_issuer(crl.get()));
 
   // Check that symlinks exist with correct format and targets
-  char link_path[PATH_MAX];
+  size_t link_path_len = strlen(test_dir) + 13; // 13 = slash + hex + decimal + char + int + nul
+  ScopedCharBuffer link_path(
+      (char *)OPENSSL_zalloc(sizeof(char) * link_path_len));
   char link_target[PATH_MAX];
   struct stat st;
 
@@ -227,30 +241,30 @@ TEST_F(RehashTest, ValidDirectory) {
 
   // Check cert symlinks (should have .0 and .1 suffixes)
   for (int i = 0; i < 2; i++) {
-    snprintf(link_path, sizeof(link_path), "%s/%08x.%d",
-      test_dir, cert_hash, i);
-    ASSERT_EQ(0, lstat(link_path, &st));
+    snprintf(link_path.get(), link_path_len, "%s/%08x.%d", test_dir, cert_hash,
+             i);
+    ASSERT_EQ(0, lstat(link_path.get(), &st));
     ASSERT_TRUE(S_ISLNK(st.st_mode));
 
-    ssize_t len = readlink(link_path, link_target, sizeof(link_target) - 1);
+    ssize_t len = readlink(link_path.get(), link_target, sizeof(link_target) - 1);
     ASSERT_GT(len, 0);
     link_target[len] = '\0';
     ASSERT_TRUE(strstr(link_target, "cert") != nullptr);
-    unlink(link_path);
+    unlink(link_path.get());
   }
 
   // Check CRL symlinks (should have .r0 and .r1 suffixes)
   for (int i = 0; i < 2; i++) {
-    snprintf(link_path, sizeof(link_path), "%s/%08x.r%d",
-      test_dir, crl_hash, i);
-    ASSERT_EQ(0, lstat(link_path, &st));
+    snprintf(link_path.get(), link_path_len, "%s/%08x.r%d", test_dir, crl_hash,
+             i);
+    ASSERT_EQ(0, lstat(link_path.get(), &st));
     ASSERT_TRUE(S_ISLNK(st.st_mode));
 
-    ssize_t len = readlink(link_path, link_target, sizeof(link_target) - 1);
+    ssize_t len = readlink(link_path.get(), link_target, sizeof(link_target) - 1);
     ASSERT_GT(len, 0);
     link_target[len] = '\0';
     ASSERT_TRUE(strstr(link_target, "crl") != nullptr);\
-    unlink(link_path);
+    unlink(link_path.get());
   }
 }
 #else

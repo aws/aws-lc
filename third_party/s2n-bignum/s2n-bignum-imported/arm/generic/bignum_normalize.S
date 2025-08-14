@@ -5,7 +5,7 @@
 // Normalize bignum in-place by shifting left till top bit is 1
 // Input z[k]; outputs function return (bits shifted left) and z[k]
 //
-//    extern uint64_t bignum_normalize (uint64_t k, uint64_t *z);
+//    extern uint64_t bignum_normalize(uint64_t k, uint64_t *z);
 //
 // Given a k-digit bignum z, this function shifts it left by its number of
 // leading zero bits, to give result with top bit 1, unless the input number

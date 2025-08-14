@@ -6,7 +6,8 @@
 // Inputs scalar[4], point[4]; output res[8]
 //
 // extern void curve25519_pxscalarmul_alt
-//   (uint64_t res[static 8],uint64_t scalar[static 4],uint64_t point[static 4])
+//   (uint64_t res[static 8],const uint64_t scalar[static 4],
+//    const uint64_t point[static 4]);
 //
 // Given the X coordinate of an input point = (X,Y) on curve25519, which
 // could also be part of a projective representation (X,Y,1) of the same

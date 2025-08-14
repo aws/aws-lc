@@ -6,8 +6,8 @@
 // z := x (if p zero), assuming x reduced
 // Inputs p, x[4]; output z[4]
 //
-//    extern void bignum_optneg_p256
-//     (uint64_t z[static 4], uint64_t p, uint64_t x[static 4]);
+//    extern void bignum_optneg_p256(uint64_t z[static 4], uint64_t p,
+//                                   const uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = p, X2 = x
 // ----------------------------------------------------------------------------

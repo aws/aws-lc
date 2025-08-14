@@ -416,6 +416,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
       ssl->s3->session_reused = true;
       hs->can_release_private_key = true;
+      ssl->verify_result = hs->new_session->verify_result;
 
       // Resumption incorporates fresh key material, so refresh the timeout.
       ssl_session_renew_timeout(ssl, hs->new_session.get(),
@@ -1115,6 +1116,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
       // |verify_result|, though this is a no-op because servers do not
       // implement the client's odd soft-fail mode.)
       hs->new_session->verify_result = X509_V_OK;
+      ssl->verify_result = hs->new_session->verify_result;
     }
 
     // Skip this state.

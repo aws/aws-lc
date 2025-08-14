@@ -214,6 +214,27 @@ void CRYPTO_STATIC_MUTEX_unlock_write(struct CRYPTO_STATIC_MUTEX *lock) {
   }
 }
 
+#if !defined(NDEBUG)
+int CRYPTO_STATIC_MUTEX_is_write_locked(struct CRYPTO_STATIC_MUTEX *lock) {
+  assert(lock != NULL);
+
+  int result = pthread_rwlock_tryrdlock(&lock->lock);
+
+  if (result == 0) {
+    // If we successfully acquired the lock, it wasn't locked
+    // Release it immediately and return false
+    pthread_rwlock_unlock(&lock->lock);
+    return 0;
+  }
+  // errno may be set to EDEADLK if the current thread is already has a write lock
+  if (result == EBUSY || result == EDEADLK) {
+    return 1;
+  }
+
+  return -1;
+}
+#endif
+
 void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
   if (pthread_once(once, init) != 0) {
     abort();

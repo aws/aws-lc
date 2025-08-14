@@ -42,5 +42,6 @@ set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} ${JITTER_ENETROPY_PREFIX_INCLU
 
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
-add_dependencies(jitterentropy boringssl_prefix_symbols)
+
 target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library)
+target_add_awslc_include_paths(TARGET jitterentropy SCOPE PRIVATE)

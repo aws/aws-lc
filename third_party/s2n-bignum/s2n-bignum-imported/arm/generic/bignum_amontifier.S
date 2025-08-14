@@ -5,8 +5,8 @@
 // Compute "amontification" constant z :== 2^{128k} (congruent mod m)
 // Input m[k]; output z[k]; temporary buffer t[>=k]
 //
-//    extern void bignum_amontifier
-//     (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t);
+//    extern void bignum_amontifier(uint64_t k, uint64_t *z, const uint64_t *m,
+//                                  uint64_t *t);
 //
 // This is called "amontifier" because any other value x can now be mapped into
 // the almost-Montgomery domain with an almost-Montgomery multiplication by z.

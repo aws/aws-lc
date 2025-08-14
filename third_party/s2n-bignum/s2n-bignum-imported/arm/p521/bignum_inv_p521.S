@@ -5,7 +5,7 @@
 // Modular inverse modulo p_521 =  2^521 - 1
 // Input x[9]; output z[9]
 //
-// extern void bignum_inv_p521(uint64_t z[static 9],uint64_t x[static 9]);
+// extern void bignum_inv_p521(uint64_t z[static 9],const uint64_t x[static 9]);
 //
 // Assuming the 9-digit input x is coprime to p_521, i.e. is not divisible
 // by it, returns z < p_521 such that x * z == 1 (mod p_521). Note that

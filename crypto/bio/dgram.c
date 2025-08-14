@@ -7,59 +7,12 @@
 
 #include <openssl/mem.h>
 
-#include <stddef.h>
-#if defined(OPENSSL_WINDOWS)
-typedef SSIZE_T ssize_t;
-#else
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
-
 #include "../internal.h"
 #include "./internal.h"
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(const int sock) { return close(sock); }
 #endif
-
-#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_ANDROID)
-// Winsock2 APIs don't support AF_UNIX.
-// > The values currently supported are AF_INET or AF_INET6, which are the
-// > Internet address family formats for IPv4 and IPv6.
-// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-socket
-#define AWS_LC_HAS_AF_UNIX 1
-#endif
-
-/*
- * BIO_ADDR_make - non-public routine to fill a BIO_ADDR with the contents
- * of a struct sockaddr.
- */
-
-static int BIO_ADDR_make(BIO_ADDR *bap, const struct sockaddr *sap) {
-  GUARD_PTR(bap);
-  GUARD_PTR(sap);
-  if (sap->sa_family == AF_INET) {
-    OPENSSL_memcpy(&bap->s_in, sap, sizeof(struct sockaddr_in));
-    return 1;
-  }
-#ifdef AF_INET6
-  if (sap->sa_family == AF_INET6) {
-    OPENSSL_memcpy(&bap->s_in6, sap, sizeof(struct sockaddr_in6));
-    return 1;
-  }
-#endif
-#ifdef AWS_LC_HAS_AF_UNIX
-  if (sap->sa_family == AF_UNIX) {
-    OPENSSL_memcpy(&bap->s_un, sap, sizeof(struct sockaddr_un));
-    return 1;
-  }
-#endif
-
-  return 0;
-}
 
 typedef struct bio_dgram_data_st {
   BIO_ADDR peer;
@@ -253,7 +206,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       GUARD_PTR(data);
       if (ptr != NULL) {
         data->connected = 1;
-        ret = BIO_ADDR_make(&data->peer, BIO_ADDR_sockaddr(ptr));
+        ret = BIO_ADDR_copy(&data->peer, ptr);
       } else {
         data->connected = 0;
         OPENSSL_cleanse(&data->peer, sizeof(data->peer));
@@ -276,7 +229,7 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
     case BIO_CTRL_DGRAM_SET_PEER:
       GUARD_PTR(data);
       GUARD_PTR(ptr);
-      ret = BIO_ADDR_make(&data->peer, BIO_ADDR_sockaddr(ptr));
+      ret = BIO_ADDR_copy(&data->peer, ptr);
       break;
     case BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP:
     case BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP: {

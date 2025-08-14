@@ -1,0 +1,28 @@
+name: 'Latest Semantic Version Tag'
+description: 'Determines the latest tagged git release following semantic versioning'
+inputs:
+  release:
+    description: 'The release type to filter tags by'
+    required: true
+    default: 'main'
+    # Allowed values: main, fips1, fips2, fips3
+  path:
+    description: 'The path containing the git repository to check'
+    required: false
+    default: '.'
+outputs:
+  latest-tag:
+    description: 'The latest semantic version tag (vX.Y.Z format)'
+    value: ${{ steps.get-tag.outputs.latest-tag }}
+  latest-version:
+    description: 'The latest semantic version without the "v" prefix (X.Y.Z format)'
+    value: ${{ steps.get-tag.outputs.latest-version }}
+runs:
+  using: 'composite'
+  steps:
+    - id: get-tag
+      shell: bash
+      env:
+        INPUT_RELEASE: ${{ inputs.release }}
+        INPUT_PATH: ${{ inputs.path }}
+      run: ${{ github.action_path }}/get-latest-tag.sh

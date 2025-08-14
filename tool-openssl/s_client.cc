@@ -29,19 +29,26 @@ static const argument_t kArguments[] = {
 };
 
 bool SClientTool(const args_list_t &args) {
-  std::map<std::string, std::string> args_map;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
 
-  if (!ParseKeyValueArguments(args_map, extra_args, args, kArguments) ||
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
 
-  if(args_map.count("help")) {
+  if(HasArgument(parsed_args, "-help")) {
     fprintf(stderr, "Usage: s_client [options] [host:port]\n");
     PrintUsage(kArguments);
-    return false;
+    return true;
+  }
+
+  // Convert to std::map for DoClient compatibility
+  std::map<std::string, std::string> args_map;
+  for (const auto &arg_pair : parsed_args) {
+    args_map[arg_pair.first] = arg_pair.second;
   }
 
   return DoClient(args_map, true);

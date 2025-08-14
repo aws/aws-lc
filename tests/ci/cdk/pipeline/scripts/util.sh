@@ -12,13 +12,15 @@ fi
 
 function assume_role() {
   set +x
-  if [[ -z ${CROSS_ACCOUNT_BUILD_ROLE_ARN} ]]; then
+  local role_arn=${1:-${CROSS_ACCOUNT_BUILD_ROLE_ARN}}
+
+  if [[ -z ${role_arn} ]]; then
     echo "No role arn provided"
     return 1
   fi
 
   local session_name=${CROSS_ACCOUNT_BUILD_SESSION:-"build-session"}
-  CREDENTIALS=$(aws sts assume-role --role-arn "${CROSS_ACCOUNT_BUILD_ROLE_ARN}" --role-session-name "${session_name}")
+  CREDENTIALS=$(aws sts assume-role --role-arn "${role_arn}" --role-session-name "${session_name}")
   export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r .Credentials.AccessKeyId)
   export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r .Credentials.SecretAccessKey)
   export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r .Credentials.SessionToken)
@@ -80,6 +82,7 @@ function codebuild_build_status_check() {
     elif [[ ${build_batch_status} == "IN_PROGRESS" ]]; then
       echo "${i}: Wait 5 min for build job finish."
       sleep 300
+    # if the build runs for too long, AWS sessions may expire and need to be refreshed
     elif echo "${build_batch_status}" | grep -q "ExpiredTokenException"; then
       refresh_session
     else
@@ -99,8 +102,13 @@ function start_windows_img_build() {
   # Run commands on windows EC2 instance to build windows docker images.
   for i in {1..60}; do
     instance_id=$(aws ec2 describe-instances \
-      --filters "Name=tag:${WIN_EC2_TAG_KEY},Values=${WIN_EC2_TAG_VALUE}" | jq -r '.Reservations[0].Instances[0].InstanceId')
-    if [[ "${instance_id}" == "null" ]]; then
+      --filters "Name=tag:${WIN_EC2_TAG_KEY},Values=${WIN_EC2_TAG_VALUE}" \
+      --query 'Reservations[0].Instances[0].InstanceId' \
+      --output text 2>&1)
+    # if the build runs for too long, AWS sessions may expire and need to be refreshed
+    if echo "${instance_id}" | grep -q "RequestExpired"; then
+      refresh_session
+    elif [[ "${instance_id}" == "null" ]]; then
       sleep 60
       continue
     fi
@@ -135,7 +143,9 @@ function win_docker_img_build_status_check() {
   local status_check_max=$((timeout / 5))
   for i in $(seq 1 ${status_check_max}); do
     # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ssm/list-commands.html
-    command_run_status=$(aws ssm list-commands --command-id "${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID}" | jq -r '.Commands[0].Status')
+    command_run_status=$(aws ssm list-commands --command-id "${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID}" \
+            --query 'Commands[0].Status' \
+            --output text 2>&1)
     if [[ ${command_run_status} == "Success" ]]; then
       echo "SSM command ${WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID} finished successfully."
       return 0
@@ -145,6 +155,7 @@ function win_docker_img_build_status_check() {
     elif [[ ${command_run_status} == "InProgress" ]]; then
       echo "${i}: Wait 5 min for build job finish."
       sleep 300
+    # if the build runs for too long, AWS sessions may expire and need to be refreshed
     elif echo "${command_run_status}" | grep -q "ExpiredTokenException"; then
       refresh_session
     else

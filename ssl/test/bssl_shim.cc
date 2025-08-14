@@ -1416,6 +1416,14 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
 
+  if (SSL_clear_num_renegotiations(ssl) !=
+          config->expect_total_renegotiations ||
+      SSL_total_renegotiations(ssl) != 0) {
+    fprintf(stderr, "Expected renegotiation count to be reset to 0, got %d\n",
+            SSL_total_renegotiations(ssl));
+    return false;
+  }
+
   return true;
 }
 

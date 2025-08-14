@@ -5,7 +5,7 @@
 // Select digit x[n]
 // Inputs x[k], n; output function return
 //
-//    extern uint64_t bignum_digit (uint64_t k, uint64_t *x, uint64_t n);
+//    extern uint64_t bignum_digit(uint64_t k, const uint64_t *x, uint64_t n);
 //
 // n'th digit of a k-digit (digit=64 bits) bignum, in constant-time style.
 // Indexing starts at 0, which is the least significant digit (little-endian).

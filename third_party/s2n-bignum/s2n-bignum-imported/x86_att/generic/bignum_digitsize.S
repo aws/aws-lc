@@ -5,7 +5,7 @@
 // Return size of bignum in digits (64-bit word)
 // Input x[k]; output function return
 //
-//    extern uint64_t bignum_digitsize (uint64_t k, uint64_t *x);
+//    extern uint64_t bignum_digitsize(uint64_t k, const uint64_t *x);
 //
 // In the case of a zero bignum as input the result is 0
 //

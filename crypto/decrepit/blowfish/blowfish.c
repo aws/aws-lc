@@ -138,6 +138,8 @@ void BF_decrypt(uint32_t *data, const BF_KEY *key) {
   data[0] = r & 0xffffffffL;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+
 void BF_ecb_encrypt(const uint8_t *in, uint8_t *out,
                     const BF_KEY *key, int encrypt) {
   uint32_t d[2];
@@ -504,9 +506,9 @@ void BF_set_key(BF_KEY *key, size_t len, const uint8_t *data) {
   }
 }
 
-static void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                             const BF_KEY *schedule, uint8_t *ivec, int *num,
-                             int encrypt) {
+void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                      const BF_KEY *schedule, uint8_t *ivec, int *num,
+                      int encrypt) {
   uint32_t v0, v1, t;
   int n = *num;
   size_t l = length;
@@ -597,6 +599,8 @@ static int bf_cfb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   ctx->num = num;
   return 1;
 }
+
+OPENSSL_END_ALLOW_DEPRECATED
 
 static const EVP_CIPHER bf_ecb = {
     .nid = NID_bf_ecb,

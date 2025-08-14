@@ -103,110 +103,6 @@ jobs:
         run: |
           ./tests/ci/run_fips_tests.sh
 
-
-  MSVC-2019:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    runs-on: aws-lc_windows-2019_8-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja  -y &&
-          choco install nasm -y
-      - name: Run Windows Tests on MSVC-2019
-        run: |
-          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
-
-  MSVC-2022:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    runs-on: aws-lc_windows-latest_8-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja -y &&
-          choco install nasm -y
-      - name: Run Windows Tests on MSVC-2022
-        run: |
-          .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-
-  MSVC-SDE-64-bit:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    # TODO: Update this to run on windows-2022. windows-2022 (Windows 11) has phased out support for older processors.
-    # https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors
-    runs-on: aws-lc_windows-2019_64-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja -y &&
-          choco install nasm -y
-
-      - name: Install SDE simulator
-        run: |
-          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
-          7z x temp.tar.xz
-          7z x temp.tar
-          ren ${{ env.SDE_VERSION_TAG }} windows-sde
-          del temp.tar.xz
-          del temp.tar
-
-      - name: Run Windows SDE Tests for 64 bit
-        run: |
-          $env:SDEROOT = "${PWD}\windows-sde"
-          echo ${env:SDEROOT}
-          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
-
-  gcc-ubuntu-2004-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    strategy:
-      fail-fast: false
-      matrix:
-        gccversion:
-          - "10"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
-    container:
-      image: ubuntu:20.04
-    steps:
-      - run: |
-          env DEBIAN_FRONTEND=noninteractive apt-get update
-          env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git curl cmake ninja-build \
-            gcc-${{ matrix.gccversion }} g++-${{ matrix.gccversion }}
-      - name: Install Newer Go Compiler
-        run: |
-          curl -L -o /tmp/go.tar.gz https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-          cat <<EOF >/tmp/go.tar.gz.sha256
-          68097bd680839cbc9d464a0edce4f7c333975e27a90246890e9f1078c7e702ad  /tmp/go.tar.gz
-          EOF
-          sha256sum -c /tmp/go.tar.gz.sha256
-          (cd /usr/local && tar xvf /tmp/go.tar.gz)
-      - name: Checkout
-        run: |
-          git config --global --add safe.directory '*'
-          git clone --recursive ${{ github.server_url }}/${{ github.repository }}.git .
-          git fetch origin ${{ github.sha }}
-          git checkout --recurse-submodules -b ci-job ${{ github.sha }}
-      - name: Build Project
-        run: |
-          env PATH="/usr/local/go/bin:${PATH}" \
-            CC=gcc-${{ matrix.gccversion }} CXX=g++-${{ matrix.gccversion }} \
-            cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DFIPS=${{ matrix.fips }} -GNinja
-          cmake --build build --target all
-      - name: Run Tests
-        run: |
-          cmake --build build --target run_tests
-
   clang-ubuntu-2004-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
@@ -250,16 +146,16 @@ jobs:
         run: |
           cmake --build build --target run_tests
 
-  gcc-ubuntu-2204-sanity:
+  clang-ubuntu-2204-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
       fail-fast: false
       matrix:
-        gccversion:
-          - "10"
+        clangversion:
           - "11"
           - "12"
+          - "13"
         fips:
           - "0"
           - "1"
@@ -269,51 +165,77 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
+      - name: Install Clang ${{ matrix.clangversion }}
+        if: ${{ matrix.clangversion == '11' || matrix.clangversion == '12' }}
+        run: |
+          env DEBIAN_FRONTEND=noninteractive sudo apt-get update
+          env DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang-${{ matrix.clangversion }}
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: gcc-${{ matrix.gccversion }}
-          cxx-compiler: g++-${{ matrix.gccversion }}
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
           options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
-  gcc-ubuntu-2404-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
+  compiler-tests:
+    name: ${{ matrix.compiler }}, FIPS=${{ matrix.fips }}
+    env:
+      GOFLAGS: "-buildvcs=false"
     strategy:
       fail-fast: false
       matrix:
-        gccversion:
-          - "12"
-          - "13"
-          - "14"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-24.04
+        fips: [0, 1]
+        compiler:
+          - 'gcc9'
+          - 'gcc10'
+          - 'gcc11'
+          - 'gcc12'
+          - 'gcc13'
+          - 'gcc14'
+          - 'gcc15'
+          - 'gcc16'
+          - 'clang14'
+          - 'clang15'
+          - 'clang16'
+          - 'clang17'
+          - 'clang18'
+          - 'clang19'
+          - 'clang20'
+          - 'clang21'
+        exclude:
+          - fips: 1
+            compiler: 'clang20'
+          - fips: 1
+            compiler: 'clang21'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-${{ matrix.gccversion }}
-          cxx-compiler: g++-${{ matrix.gccversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Setup Clang
+        if: startsWith(matrix.compiler, 'clang')
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+      - name: Setup GCC
+        if: startsWith(matrix.compiler, 'gcc')
+        run: |
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+      - name: Setup ${{ (matrix.fips == 1 && '') || 'non-' }}FIPS Build
+        run:
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
       - name: Build Project
-        # TODO: Re-enable gcc-14/FIPS build once delocator updated
-        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
         run: cmake --build ./build --target all
       - name: Run tests
-        # TODO: Re-enable gcc-14/FIPS build once delocator updated
-        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
         run: cmake --build ./build --target run_tests
 
   gcc-14-hardened:
@@ -341,156 +263,63 @@ jobs:
           cxx-compiler: g++-${{ matrix.gccversion }}
           options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
       - name: Build Project
-        # -Wno-error=hardened gives us warning but no errors if options implied by -fhardened are downgraded or disabled
+        # -Wno-error=hardened gives us warning but no errors if options implied by -fhardened are downgraded or disabledAdd commentMore actions
         # Ubuntu sets FORTIFY_SOURCE automatically which is one of the options implemented by hardened so this warning is
         # generated on every compiler call.
         # TODO: Re-enable gcc-14/FIPS build once delocator updated
         if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
         run: |
-          cmake -DCMAKE_C_FLAGS='-O2 -fhardened -Wno-error=hardened' -S. -Bbuild
-          cmake --build ./build --target all
+            cmake -DCMAKE_C_FLAGS='-O2 -fhardened -Wno-error=hardened' -S. -Bbuild
+            cmake --build ./build --target all
       - name: Run tests
         # TODO: Re-enable gcc-14/FIPS build once delocator updated
         if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
         run: cmake --build ./build --target run_tests
 
-  gcc-13-pedantic:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: gcc-13
-          cxx-compiler: g++-13
-          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
-      - name: Build Crypto
-        run: cmake --build ./build --target crypto
-      - name: Build SSL
-        run: cmake --build ./build --target ssl
-
-  clang-19-pedantic:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install clang-19
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod u+x llvm.sh
-          sudo ./llvm.sh 19
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-19
-          cxx-compiler: clang++-19
-          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
-      - name: Build Crypto
-        run: cmake --build ./build --target crypto
-      - name: Build SSL
-        run: cmake --build ./build --target ssl
-
-  clang-ubuntu-2204-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
+  pedantic-tests:
+    name: pedantic - ${{ matrix.compiler }}, FIPS=${{ matrix.fips }}
+    env:
+      GOFLAGS: "-buildvcs=false"
     strategy:
       fail-fast: false
       matrix:
-        clangversion:
-          - "11"
-          - "12"
-          - "13"
-          - "14"
-          - "15"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
+        fips: [0, 1]
+        compiler:
+          - 'gcc13'
+          - 'gcc15'
+          - 'clang19'
+          - 'clang20'
+        exclude:
+          - fips: 1
+            compiler: 'gcc15'
+          - fips: 1
+            compiler: 'clang20'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
-      - name: Install Clang ${{ matrix.clangversion }}
-        if: ${{ matrix.clangversion == '11' || matrix.clangversion == '12' }}
+      - name: Setup Clang
+        if: startsWith(matrix.compiler, 'clang')
         run: |
-          env DEBIAN_FRONTEND=noninteractive sudo apt-get update
-          env DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang-${{ matrix.clangversion }}
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-${{ matrix.clangversion }}
-          cxx-compiler: clang++-${{ matrix.clangversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        run: cmake --build ./build --target all
-      - name: Run tests
-        run: cmake --build ./build --target run_tests
-
-  clang-ubuntu-2404-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    strategy:
-      fail-fast: false
-      matrix:
-        clangversion:
-          - "16"
-          - "17"
-          - "18"
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-${{ matrix.clangversion }}
-          cxx-compiler: clang++-${{ matrix.clangversion }}
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
-      - name: Build Project
-        run: cmake --build ./build --target all
-      - name: Run tests
-        run: cmake --build ./build --target run_tests
-
-  clang-19-sanity:
-    if: github.repository_owner == 'aws'
-    needs: [ sanity-test-run ]
-    strategy:
-      fail-fast: false
-      matrix:
-        fips:
-          - "0"
-          - "1"
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '>=1.18'
-      - name: Install clang-19
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+      - name: Setup GCC
+        if: startsWith(matrix.compiler, 'gcc')
         run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod u+x llvm.sh
-          sudo ./llvm.sh 19
-      - name: Setup CMake
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-19
-          cxx-compiler: clang++-19
-          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+      - name: Setup Build
+        if: matrix.fips == 0
+        run:
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+      - name: Setup FIPS Build
+        if: matrix.fips == 1
+        run:
+          cmake -G Ninja -B ./build  -DCMAKE_BUILD_TYPE=Release -DFIPS=1 CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
