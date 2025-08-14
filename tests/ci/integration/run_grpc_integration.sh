@@ -49,5 +49,5 @@ for test in $grpc_tests; do
     "./cmake/build/${test}"
 done
 
-ldd "${GRPC_SRC_FOLDER}/cmake/build/libgrpc.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${GRPC_SRC_FOLDER}/cmake/build/libgrpc.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${GRPC_SRC_FOLDER}/cmake/build/libgrpc.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${GRPC_SRC_FOLDER}/cmake/build/libgrpc.so" ssl || exit 1

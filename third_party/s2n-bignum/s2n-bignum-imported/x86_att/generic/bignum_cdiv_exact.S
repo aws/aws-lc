@@ -5,8 +5,8 @@
 // Divide by a single word, z := x / m *when known to be exact*
 // Inputs x[n], m; output z[k]
 //
-//    extern void bignum_cdiv_exact
-//     (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t m);
+//    extern void bignum_cdiv_exact(uint64_t k, uint64_t *z, uint64_t n,
+//                                  const uint64_t *x, uint64_t m);
 //
 // Does the "z := x / m" operation where x is n digits and result z is k,
 // *assuming* that m is nonzero and that the input x is in fact an

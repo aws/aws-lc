@@ -232,8 +232,12 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_SHA512) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA3_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA3) != 0;
+}
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
-  return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
+  return (CRYPTO_is_ARMv8_SHA3_capable() &&
           ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0));
@@ -251,7 +255,24 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_RNDR_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_RNG) != 0;
+  return (OPENSSL_armcap_P & (ARMV8_RNG | ARMV8_DIT_ALLOWED)) ==
+    (ARMV8_DIT | ARMV8_DIT_ALLOWED);
+}
+
+OPENSSL_INLINE int CRYPTO_is_Neoverse_N1(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_N1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_Neoverse_V1(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_Neoverse_V2(void) {
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_Apple_M(void) {
+  return (OPENSSL_armcap_P & ARMV8_APPLE_M) != 0;
 }
 
 // This function is used only for testing; hence, not inlined

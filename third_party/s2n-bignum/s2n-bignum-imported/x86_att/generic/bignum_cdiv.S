@@ -5,8 +5,8 @@
 // Divide by a single (nonzero) word, z := x / m and return x mod m
 // Inputs x[n], m; outputs function return (remainder) and z[k]
 //
-//    extern uint64_t bignum_cdiv
-//     (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t m);
+//    extern uint64_t bignum_cdiv(uint64_t k, uint64_t *z, uint64_t n,
+//                                const uint64_t *x, uint64_t m);
 //
 // Does the "z := x / m" operation where x is n digits, result z is k.
 // Truncates the quotient in general, but always (for nonzero m) returns

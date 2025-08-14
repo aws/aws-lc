@@ -20,7 +20,7 @@ check_test_output() {
   local test_name="$1"
   local output="$2"
   case "$test_name" in
-    "ECDSA_PWCT")  expected="EC keygen checks failed" ;;
+    "EC_PWCT")  expected="EC keygen checks failed" ;;
     "RSA_PWCT")    expected="RSA keygen checks failed" ;;
     "MLKEM_PWCT")  expected="ML-KEM keygen PCT failed" ;;
     "MLDSA_PWCT")  expected="ML-DSA keygen PCT failed" ;;
@@ -36,7 +36,7 @@ check_test_output() {
   return 0
 }
 
-for runtime_test in ECDSA_PWCT RSA_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
+for runtime_test in EC_PWCT RSA_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
   output=$(2>&1 BORINGSSL_FIPS_BREAK_TEST=$runtime_test $TEST_FIPS_BIN 2>&1 >/dev/null || true)
   echo $output
   if ! check_test_output "$runtime_test" "$output"; then

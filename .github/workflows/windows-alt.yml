@@ -56,7 +56,7 @@ jobs:
         uses: KyleMayes/install-llvm-action@v2
         id: clang
         with:
-          version: 18
+          version: 19
           env: true
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
@@ -187,44 +187,65 @@ jobs:
       - name: x86_64-w64-mingw32 Build/Test
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
-  mingw-clang:
+  msys2:
+    name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sys:
+          - mingw64
+          - ucrt64
+          - clang64
+        generator:
+          - 'Ninja'
+          - 'MinGW Makefiles'
+          - 'MSYS Makefiles'
     steps:
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
         id: setup_msys2
         with:
-          msystem: CLANG64 # x86_64 clang-based environment
+          msystem: ${{ matrix.sys }}
           update: true
           pacboy: >-
-            clang
-            nasm
+            cmake
+            toolchain
+            llvm
+            rust
+            rust-bindgen
+            ninja
+            cc
             go
+            nasm
       - name: Update Environment
         shell: bash
         run: |
-          echo "GOPATH=${{ steps.setup_msys2.outputs.msys2-location }}\clang64" >> $GITHUB_ENV
-          echo "GOROOT=${{ steps.setup_msys2.outputs.msys2-location }}\clang64\lib\go" >> $GITHUB_ENV
-          echo "${{ steps.setup_msys2.outputs.msys2-location }}\clang64\bin" >> $GITHUB_PATH
+          SYSROOT=$(cygpath -a -m '${{ steps.setup_msys2.outputs.msys2-location }}\${{ matrix.sys }}')
+          echo "GOPATH=${SYSROOT}" >> $GITHUB_ENV
+          echo "GOROOT=${SYSROOT}/lib/go" >> $GITHUB_ENV
+          echo "CMAKE_GENERATOR=${{ matrix.generator }}" >> $GITHUB_ENV
+          cygpath -w ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
-          generator: Ninja
           build-dir: ./build
-          c-compiler: ${{ steps.setup_msys2.outputs.msys2-location }}\clang64\bin\clang.exe
-          cxx-compiler: ${{ steps.setup_msys2.outputs.msys2-location }}\clang64\bin\clang++.exe
           options: |
             CMAKE_SYSTEM_NAME=Windows \
             CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_FIND_ROOT_PATH='${{ steps.setup_msys2.outputs.msys2-location }}\clang64\' \
+            CMAKE_FIND_ROOT_PATH='${{ steps.setup_msys2.outputs.msys2-location }}\${{ matrix.sys }}\' \
             CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
             CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             CMAKE_BUILD_TYPE=Release \
-      - name: Build Project
-        run: cmake --build ./build --target all
       - name: Run tests
+        if: matrix.generator != 'MSYS Makefiles'
+        shell: 'bash'
+        run: cmake --build ./build --target run_tests
+      - name: Run tests
+        if: matrix.generator == 'MSYS Makefiles'
+        shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests

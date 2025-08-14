@@ -5,7 +5,7 @@
 // Multiply bignum by 10 and add word: z := 10 * z + d
 // Inputs z[k], d; outputs function return (carry) and z[k]
 //
-//    extern uint64_t bignum_muladd10 (uint64_t k, uint64_t *z, uint64_t d);
+//    extern uint64_t bignum_muladd10(uint64_t k, uint64_t *z, uint64_t d);
 //
 // Although typically the input d < 10, this is not actually required.
 //

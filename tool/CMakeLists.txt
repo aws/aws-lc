@@ -20,7 +20,7 @@ add_executable(
   transport_common.cc
 )
 
-target_include_directories(bssl PUBLIC ${AWSLC_SOURCE_DIR}/include)
+target_add_awslc_include_paths(TARGET bssl SCOPE PRIVATE)
 target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)
@@ -40,8 +40,6 @@ else()
     set(LIBRT_FLAG "")
   endif()
 endif()
-
-target_include_directories(bssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

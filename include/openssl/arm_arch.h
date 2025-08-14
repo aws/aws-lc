@@ -82,12 +82,22 @@
 // ARMV8_SHA3 indicates support for hardware SHA-3 instructions including EOR3.
 #define ARMV8_SHA3  (1 << 11)
 
-// The Neoverse V1, V2, and Apple M1 micro-architectures are detected to enable
-// high unrolling factor of AES-GCM and other algorithms that leverage a
-// wide crypto pipeline and fast multiplier.
+// Combination of all Armv8 Neon extension bits: 0x087c
+// NOTE: If you add further Armv8 Neon extension bits, adjust
+// "Test algorithm dispatch without CPU indicator or Neon extension capability bits"
+// in util/all_tests.json
+
+// The Neoverse N1, V1, V2, and Apple M1 micro-architectures are detected to
+// allow selecting the fasted implementations for SHA3/SHAKE and AES-GCM.
+// Combination of all CPU indicator bits: 0x7080
+// NOTE: If you add further CPU indicator bits, adjust
+// "Test algorithm dispatch without CPU indicator bits" in util/all_tests.json.
+#define ARMV8_NEOVERSE_N1 (1 << 7)
 #define ARMV8_NEOVERSE_V1 (1 << 12)
 #define ARMV8_APPLE_M (1 << 13)
 #define ARMV8_NEOVERSE_V2 (1 << 14)
+
+// Combination of CPU indicator bits and Armv8 Neon extension bits: 0x78fc
 
 // ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
 #define ARMV8_DIT (1 << 15)

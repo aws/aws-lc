@@ -91,6 +91,9 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 #include "../crypto/rand_extra/internal.h"
 #endif
 
+#if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
+#include "../crypto/fipsmodule/sha/internal.h"
+#endif
 
 #if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED) && (AWSLC_API_VERSION > 30)
 #include "../crypto/fipsmodule/cpucap/internal.h"
@@ -1160,6 +1163,78 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 
   return true;
 }
+
+#if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
+static bool SpeedSHAKE256_x4_Chunks(std::string name, size_t len) {
+  size_t input_len = 0, output_len = 0;
+
+  if (name.find("Absorb") != std::string::npos) {
+    input_len = len;
+    output_len = 32;
+  } else {
+    input_len = 32;
+    output_len = len;
+  }
+
+  std::unique_ptr<uint8_t[]> input0(new uint8_t[input_len]);
+  std::unique_ptr<uint8_t[]> input1(new uint8_t[input_len]);
+  std::unique_ptr<uint8_t[]> input2(new uint8_t[input_len]);
+  std::unique_ptr<uint8_t[]> input3(new uint8_t[input_len]);
+
+  BM_memset(input0.get(), 0, input_len);
+  BM_memset(input1.get(), 0, input_len);
+  BM_memset(input2.get(), 0, input_len);
+  BM_memset(input3.get(), 0, input_len);
+
+  std::unique_ptr<uint8_t[]> output0(new uint8_t[output_len]);
+  std::unique_ptr<uint8_t[]> output1(new uint8_t[output_len]);
+  std::unique_ptr<uint8_t[]> output2(new uint8_t[output_len]);
+  std::unique_ptr<uint8_t[]> output3(new uint8_t[output_len]);
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&]() -> bool {
+        return SHAKE256_x4(input0.get(), input1.get(), input2.get(), input3.get(), input_len,
+                          output0.get(), output1.get(), output2.get(), output3.get(), output_len);
+      })) {
+    fprintf(stderr, "SHAKE256_x4 failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, len);
+  return true;
+}
+
+static bool SpeedSHAKE256_x4_Absorb(const std::string &selected) {
+  if (!selected.empty() && selected.find("SHAKE256-x4") == std::string::npos &&
+      selected.find("Absorb") == std::string::npos) {
+    return true;
+  }
+
+  for (size_t input_len : g_chunk_lengths) {
+    if (!SpeedSHAKE256_x4_Chunks("SHAKE256-x4 (Absorb)", input_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedSHAKE256_x4_Squeeze(const std::string &selected) {
+  if (!selected.empty() && selected.find("SHAKE256-x4") == std::string::npos &&
+      selected.find("Squeeze") == std::string::npos) {
+    return true;
+  }
+
+  for (size_t output_len : g_chunk_lengths) {
+    if (!SpeedSHAKE256_x4_Chunks("SHAKE256-x4 (Squeeze)", output_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+#endif // OPENSSL_IS_AWSLC && (AWSLC_API_VERSION >= 35)
 
 static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
@@ -2906,6 +2981,10 @@ bool Speed(const std::vector<std::string> &args) {
        // OpenSSL 1.0 and BoringSSL don't support SHAKE
        !SpeedHash(EVP_shake128(), "SHAKE-128", selected) ||
        !SpeedHash(EVP_shake256(), "SHAKE-256", selected) ||
+#if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
+       !SpeedSHAKE256_x4_Absorb(selected) ||
+       !SpeedSHAKE256_x4_Squeeze(selected) ||
+#endif
 #endif
 #if (!defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 20
        // BoringSSL doesn't support ripemd160
@@ -2919,11 +2998,23 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
        !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
        !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 35
+       !SpeedHmac(EVP_sha3_224(), "HMAC-SHA3-224", selected) ||
+       !SpeedHmac(EVP_sha3_256(), "HMAC-SHA3-256", selected) ||
+       !SpeedHmac(EVP_sha3_384(), "HMAC-SHA3-384", selected) ||
+       !SpeedHmac(EVP_sha3_512(), "HMAC-SHA3-512", selected) ||
+#endif
        !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >=35
+       !SpeedHmacOneShot(EVP_sha3_224(), "HMAC-SHA3-224-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_256(), "HMAC-SHA3-256-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_384(), "HMAC-SHA3-384-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_512(), "HMAC-SHA3-512-OneShot", selected) ||
+#endif
 #if !defined(OPENSSL_1_0_BENCHMARK)
        !SpeedCmac(EVP_aes_128_cbc(), "CMAC-AES-128-CBC", selected) ||
        !SpeedCmac(EVP_aes_256_cbc(), "CMAC-AES-256-CBC", selected) ||

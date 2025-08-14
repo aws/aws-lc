@@ -6,7 +6,7 @@
 // Input p1[12]; output p3[12]
 //
 // extern void edwards25519_pdouble
-//   (uint64_t p3[static 12],uint64_t p1[static 12])
+//   (uint64_t p3[static 12],const uint64_t p1[static 12]);
 //
 // If p1 is a point on edwards25519, returns its double p3 = 2 * p1.
 // Input and output are in pure projective coordinates, representing

@@ -703,6 +703,15 @@ OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_read(
 OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_write(
     struct CRYPTO_STATIC_MUTEX *lock);
 
+#if !defined(NDEBUG)
+// CRYPTO_STATIC_MUTEX_is_write_locked checks whether |lock| has an active write
+// lock. If it does, the function returns 1. If it doesn't, it returns 0. Returns -1
+// on any other error. Note that due to the concurrent nature of locks, the result
+// may be stale by the time it is used.
+OPENSSL_EXPORT int CRYPTO_STATIC_MUTEX_is_write_locked(
+    struct CRYPTO_STATIC_MUTEX *lock);
+#endif
+
 #if defined(__cplusplus)
 extern "C++" {
 
@@ -1395,7 +1404,13 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   6: sha256_block_armv8
 //   7: aesv8_gcm_8x_enc_128
 //   8: sha512_block_armv8
-extern uint8_t BORINGSSL_function_hit[9];
+//   9: KeccakF1600_hw
+//  10: sha3_keccak_f1600
+//  11: sha3_keccak_f1600_alt
+//  12: sha3_keccak2_f1600
+//  13: sha3_keccak4_f1600_alt
+//  14: sha3_keccak4_f1600_alt2
+extern uint8_t BORINGSSL_function_hit[15];
 #endif  // BORINGSSL_DISPATCH_TEST
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)

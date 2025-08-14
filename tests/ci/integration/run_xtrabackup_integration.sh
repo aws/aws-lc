@@ -49,5 +49,5 @@ pushd ${XTRABACKUP_SRC_FOLDER}
 xtrabackup_build
 popd
 
-ldd "${XTRABACKUP_BUILD_FOLDER}/bin/xtrabackup" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${XTRABACKUP_BUILD_FOLDER}/bin/xtrabackup" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${XTRABACKUP_BUILD_FOLDER}/bin/xtrabackup" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${XTRABACKUP_BUILD_FOLDER}/bin/xtrabackup" ssl || exit 1

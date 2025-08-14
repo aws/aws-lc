@@ -5,9 +5,9 @@
 // 256-bit multiplex/select z := x (if p nonzero) or z := y (if p zero)
 // Inputs p, x[4], y[4]; output z[4]
 //
-//    extern void bignum_mux_4
-//     (uint64_t p, uint64_t z[static 4],
-//      uint64_t x[static 4], uint64_t y[static 4]);
+//    extern void bignum_mux_4(uint64_t p, uint64_t z[static 4],
+//                             const uint64_t x[static 4],
+//                             const uint64_t y[static 4]);
 //
 // It is assumed that all numbers x, y and z have the same size 4 digits.
 //

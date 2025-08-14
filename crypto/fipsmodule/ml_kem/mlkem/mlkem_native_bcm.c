@@ -5,12 +5,8 @@
 
 /*
  * WARNING: This file is auto-generated from scripts/autogen
+ *          in the mlkem-native repository.
  *          Do not modify it directly.
- */
-
-/*
- * Monolithic compilation unit bundling all compilation units within
- * mlkem-native
  */
 
 /******************************************************************************
@@ -29,18 +25,21 @@
  * If you want an SCU build of mlkem-native with support for multiple security
  * levels, you need to include this file multiple times, and set
  * MLK_CONFIG_MULTILEVEL_WITH_SHARED and MLK_CONFIG_MULTILEVEL_NO_SHARED
- * appropriately. This is exemplified in examples/monolithic_build_multilevel.
+ * appropriately. This is exemplified in examples/monolithic_build_multilevel
+ * and examples/monolithic_build_multilevel_native.
  *
  * # Configuration
  *
- * - MLK_CONFIG_MONOBUILD_CUSTOM_FIPS202
+ * The following options from the mlkem-native configuration are relevant:
+ *
+ * - MLK_CONFIG_FIPS202_CUSTOM_HEADER
  *   Set this option if you use a custom FIPS202 implementation.
  *
- * - MLK_CONFIG_MONOBUILD_WITH_NATIVE_ARITH
+ * - MLK_CONFIG_USE_NATIVE_BACKEND_ARITH
  *   Set this option if you want to include the native arithmetic backends
  *   in your build.
  *
- * - MLK_CONFIG_MONOBUILD_WITH_NATIVE_FIPS202
+ * - MLK_CONFIG_USE_NATIVE_BACKEND_FIPS202
  *   Set this option if you want to include the native FIPS202 backends
  *   in your build.
  *
@@ -54,11 +53,11 @@
  *
  * Example:
  * ```bash
- * unifdef -UMLK_CONFIG_MONOBUILD_WITH_NATIVE_ARITH mlkem_native_monobuild.c
+ * unifdef -UMLK_CONFIG_USE_NATIVE_BACKEND_ARITH mlkem_native.c
  * ```
  */
 
-#include "sys.h"
+#include "common.h"
 
 #include "compress.c"
 #include "debug.c"
@@ -70,44 +69,28 @@
 #include "verify.c"
 
 
+#if defined(MLK_CONFIG_USE_NATIVE_BACKEND_ARITH)
+#if defined(MLK_SYS_AARCH64)
+#include "native/aarch64/src/aarch64_zetas.c"
+#include "native/aarch64/src/rej_uniform_table.c"
+#endif
+#endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
+
+/* Macro #undef's
+ *
+ * The following undefines macros from headers
+ * included by the source files imported above.
+ *
+ * This is to allow building and linking multiple builds
+ * of mlkem-native for varying parameter sets through concatenation
+ * of this file, as if the files had been compiled separately.
+ * If this is not relevant to you, you may remove the following.
+ */
 
 /*
  * Undefine macros from MLK_CONFIG_PARAMETER_SET-specific files
  */
-/* mlkem/common.h */
-#undef MLK_ADD_PARAM_SET
-#undef MLK_ASM_FN_SYMBOL
-#undef MLK_ASM_NAMESPACE
-#undef MLK_COMMON_H
-#undef MLK_CONCAT
-#undef MLK_CONCAT_
-#undef MLK_CONFIG_API_NAMESPACE_PREFIX
-#undef MLK_CONFIG_API_PARAMETER_SET
-#undef MLK_EMPTY_CU
-#undef MLK_EXTERNAL_API
-#undef MLK_FIPS202X4_HEADER_FILE
-#undef MLK_FIPS202_HEADER_FILE
-#undef MLK_INTERNAL_API
-#undef MLK_MULTILEVEL_BUILD
-#undef MLK_NAMESPACE
-#undef MLK_NAMESPACE_K
-#undef MLK_NAMESPACE_PREFIX
-#undef MLK_NAMESPACE_PREFIX_K
-/* mlkem/indcpa.h */
-#undef MLK_INDCPA_H
-#undef mlk_gen_matrix
-#undef mlk_indcpa_dec
-#undef mlk_indcpa_enc
-#undef mlk_indcpa_keypair_derand
-/* mlkem/kem.h */
-#undef MLK_CONFIG_API_NO_SUPERCOP
-#undef MLK_KEM_H
-#undef crypto_kem_dec
-#undef crypto_kem_enc
-#undef crypto_kem_enc_derand
-#undef crypto_kem_keypair
-#undef crypto_kem_keypair_derand
 /* mlkem/mlkem_native.h */
 #undef CRYPTO_BYTES
 #undef CRYPTO_CIPHERTEXTBYTES
@@ -148,7 +131,40 @@
 #undef crypto_kem_enc_derand
 #undef crypto_kem_keypair
 #undef crypto_kem_keypair_derand
-/* mlkem/params.h */
+/* mlkem/src/common.h */
+#undef MLK_ADD_PARAM_SET
+#undef MLK_ASM_FN_SYMBOL
+#undef MLK_ASM_NAMESPACE
+#undef MLK_COMMON_H
+#undef MLK_CONCAT
+#undef MLK_CONCAT_
+#undef MLK_CONFIG_API_NAMESPACE_PREFIX
+#undef MLK_CONFIG_API_PARAMETER_SET
+#undef MLK_EMPTY_CU
+#undef MLK_EXTERNAL_API
+#undef MLK_FIPS202X4_HEADER_FILE
+#undef MLK_FIPS202_HEADER_FILE
+#undef MLK_INTERNAL_API
+#undef MLK_MULTILEVEL_BUILD
+#undef MLK_NAMESPACE
+#undef MLK_NAMESPACE_K
+#undef MLK_NAMESPACE_PREFIX
+#undef MLK_NAMESPACE_PREFIX_K
+/* mlkem/src/indcpa.h */
+#undef MLK_INDCPA_H
+#undef mlk_gen_matrix
+#undef mlk_indcpa_dec
+#undef mlk_indcpa_enc
+#undef mlk_indcpa_keypair_derand
+/* mlkem/src/kem.h */
+#undef MLK_CONFIG_API_NO_SUPERCOP
+#undef MLK_KEM_H
+#undef crypto_kem_dec
+#undef crypto_kem_enc
+#undef crypto_kem_enc_derand
+#undef crypto_kem_keypair
+#undef crypto_kem_keypair_derand
+/* mlkem/src/params.h */
 #undef MLKEM_DU
 #undef MLKEM_DV
 #undef MLKEM_ETA1
@@ -177,7 +193,7 @@
 #undef MLKEM_SYMBYTES
 #undef MLKEM_UINT12_LIMIT
 #undef MLK_PARAMS_H
-/* mlkem/poly_k.h */
+/* mlkem/src/poly_k.h */
 #undef MLK_POLY_K_H
 #undef mlk_poly_compress_du
 #undef mlk_poly_compress_dv
@@ -201,7 +217,7 @@
 #undef mlk_polyvec_reduce
 #undef mlk_polyvec_tobytes
 #undef mlk_polyvec_tomont
-/* mlkem/sys.h */
+/* mlkem/src/sys.h */
 #undef MLK_ALIGN
 #undef MLK_ALIGN_UP
 #undef MLK_ALWAYS_INLINE
@@ -219,6 +235,7 @@
 #undef MLK_SYS_H
 #undef MLK_SYS_LITTLE_ENDIAN
 #undef MLK_SYS_PPC64LE
+#undef MLK_SYS_RISCV32
 #undef MLK_SYS_RISCV64
 #undef MLK_SYS_WINDOWS
 #undef MLK_SYS_X86_64
@@ -228,7 +245,7 @@
 /*
  * Undefine macros from MLK_CONFIG_PARAMETER_SET-generic files
  */
-/* mlkem/compress.h */
+/* mlkem/src/compress.h */
 #undef MLK_COMPRESS_H
 #undef mlk_poly_compress_d10
 #undef mlk_poly_compress_d11
@@ -242,7 +259,7 @@
 #undef mlk_poly_frommsg
 #undef mlk_poly_tobytes
 #undef mlk_poly_tomsg
-/* mlkem/debug.h */
+/* mlkem/src/debug.h */
 #undef MLK_DEBUG_H
 #undef mlk_assert
 #undef mlk_assert_abs_bound
@@ -251,7 +268,7 @@
 #undef mlk_assert_bound_2d
 #undef mlk_debug_check_assert
 #undef mlk_debug_check_bounds
-/* mlkem/poly.h */
+/* mlkem/src/poly.h */
 #undef MLK_INVNTT_BOUND
 #undef MLK_NTT_BOUND
 #undef MLK_POLY_H
@@ -262,15 +279,15 @@
 #undef mlk_poly_reduce
 #undef mlk_poly_sub
 #undef mlk_poly_tomont
-/* mlkem/randombytes.h */
+/* mlkem/src/randombytes.h */
 #undef MLK_RANDOMBYTES_H
-/* mlkem/sampling.h */
+/* mlkem/src/sampling.h */
 #undef MLK_SAMPLING_H
 #undef mlk_poly_cbd2
 #undef mlk_poly_cbd3
 #undef mlk_poly_rej_uniform
 #undef mlk_poly_rej_uniform_x4
-/* mlkem/symmetric.h */
+/* mlkem/src/symmetric.h */
 #undef MLK_SYMMETRIC_H
 #undef MLK_XOF_RATE
 #undef mlk_hash_g
@@ -290,14 +307,57 @@
 #undef mlk_xof_x4_init
 #undef mlk_xof_x4_release
 #undef mlk_xof_x4_squeezeblocks
-/* mlkem/verify.h */
+/* mlkem/src/verify.h */
 #undef MLK_USE_ASM_VALUE_BARRIER
 #undef MLK_VERIFY_H
 #undef mlk_ct_opt_blocker_u64
-/* mlkem/cbmc.h */
+/* mlkem/src/cbmc.h */
 #undef MLK_CBMC_H
 #undef __contract__
 #undef __loop__
 
 
+#if defined(MLK_CONFIG_USE_NATIVE_BACKEND_ARITH)
+/* mlkem/src/native/api.h */
+#undef MLK_INVNTT_BOUND
+#undef MLK_NATIVE_API_H
+#undef MLK_NTT_BOUND
+/* mlkem/src/native/meta.h */
+#undef MLK_NATIVE_META_H
+#if defined(MLK_SYS_AARCH64)
+/*
+ * Undefine macros from native code (Arith, AArch64)
+ */
+/* mlkem/src/native/aarch64/meta.h */
+#undef MLK_ARITH_BACKEND_AARCH64
+#undef MLK_NATIVE_AARCH64_META_H
+#undef MLK_USE_NATIVE_INTT
+#undef MLK_USE_NATIVE_NTT
+#undef MLK_USE_NATIVE_POLYVEC_BASEMUL_ACC_MONTGOMERY_CACHED
+#undef MLK_USE_NATIVE_POLY_MULCACHE_COMPUTE
+#undef MLK_USE_NATIVE_POLY_REDUCE
+#undef MLK_USE_NATIVE_POLY_TOBYTES
+#undef MLK_USE_NATIVE_POLY_TOMONT
+#undef MLK_USE_NATIVE_REJ_UNIFORM
+/* mlkem/src/native/aarch64/src/arith_native_aarch64.h */
+#undef MLK_NATIVE_AARCH64_SRC_ARITH_NATIVE_AARCH64_H
+#undef mlk_aarch64_invntt_zetas_layer12345
+#undef mlk_aarch64_invntt_zetas_layer67
+#undef mlk_aarch64_ntt_zetas_layer12345
+#undef mlk_aarch64_ntt_zetas_layer67
+#undef mlk_aarch64_zetas_mulcache_native
+#undef mlk_aarch64_zetas_mulcache_twisted_native
+#undef mlk_intt_asm
+#undef mlk_ntt_asm
+#undef mlk_poly_mulcache_compute_asm
+#undef mlk_poly_reduce_asm
+#undef mlk_poly_tobytes_asm
+#undef mlk_poly_tomont_asm
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k2
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k3
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k4
+#undef mlk_rej_uniform_asm
+#undef mlk_rej_uniform_table
+#endif /* MLK_SYS_AARCH64 */
+#endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 #endif /* !MLK_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS */
