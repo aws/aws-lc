@@ -5,8 +5,8 @@
 // Convert from Montgomery form z := (x / 2^256) mod p_256k1,
 // Input x[4]; output z[4]
 //
-//    extern void bignum_deamont_p256k1
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_deamont_p256k1(uint64_t z[static 4],
+//                                      const uint64_t x[static 4]);
 //
 // Convert a 4-digit bignum x out of its (optionally almost) Montgomery form,
 // "almost" meaning any 4-digit input will work, with no range restriction.

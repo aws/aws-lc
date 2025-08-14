@@ -5,7 +5,7 @@
 // Convert single digit to bignum, z := n
 // Input n; output z[k]
 //
-//    extern void bignum_of_word (uint64_t k, uint64_t *z, uint64_t n);
+//    extern void bignum_of_word(uint64_t k, uint64_t *z, uint64_t n);
 //
 // Create a k-digit (digit=64 bits) bignum at z with value n (mod 2^k)
 // where n is a word. The "mod 2^k" only matters in the degenerate k = 0 case.

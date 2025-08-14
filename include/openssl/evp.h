@@ -70,6 +70,7 @@
 #include <openssl/digest.h>
 #include <openssl/nid.h>
 #include <openssl/objects.h>
+#include <openssl/hmac.h> // Needed by Apache mod_ssl
 
 #if defined(__cplusplus)
 extern "C" {
@@ -754,6 +755,33 @@ OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                                    size_t *out_key_len);
+
+// EVP_PKEY_check supports EC and RSA keys and validates both the public and
+// private components of a key pair. For EC keys, it verifies that the private
+// key component exists and calls EC_KEY_check_key. For RSA keys, it calls
+// RSA_check_key which validates both public and private key relationships.
+//
+// It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
+
+// EVP_PKEY_public_check validates at least the public component of a key.
+// For EC keys, this calls |EC_KEY_check_key| which validates the public component,
+// and if available, the private key as well.
+// For RSA keys, this calls |RSA_check_key| which requires the public and private
+// components of the key pair. This is different from OpenSSL which does not
+// support RSA keys via this API.
+//
+// It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
+
+// EVP_PKEY_param_check validates the parameters component of the key given by
+// |ctx|. OpenSSL only supports by DH and EC keys via this API.
+// For DH keys, this calls |DH_check| to validate the parameters. EC key
+// parameter validations are not supported as of now.
+// TODO: Support EC group validations.
+//
+// It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_param_check(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
 // operation. It should be called before |EVP_PKEY_keygen|.

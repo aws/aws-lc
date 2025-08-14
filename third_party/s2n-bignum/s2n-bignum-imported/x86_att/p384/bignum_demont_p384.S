@@ -5,8 +5,8 @@
 // Convert from Montgomery form z := (x / 2^384) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
 //
-//    extern void bignum_demont_p384
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_demont_p384(uint64_t z[static 6],
+//                                   const uint64_t x[static 6]);
 //
 // This assumes the input is < p_384 for correctness. If this is not the case,
 // use the variant "bignum_deamont_p384" instead.

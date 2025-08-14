@@ -5,8 +5,8 @@
 // Double modulo m, z := (2 * x) mod m, assuming x reduced
 // Inputs x[k], m[k]; output z[k]
 //
-//    extern void bignum_moddouble
-//      (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
+//    extern void bignum_moddouble(uint64_t k, uint64_t *z, const uint64_t *x,
+//                                 const uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = x, RCX = m
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m

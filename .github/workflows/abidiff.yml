@@ -1,4 +1,4 @@
-name: ABI Diff
+name: ABI Monitoring
 on:
   push:
     branches: [ '*' ]
@@ -11,9 +11,9 @@ env:
   DOCKER_BUILDKIT: 1
   GOPROXY: https://proxy.golang.org,direct
 jobs:
-  libs:
+  libcrypto-incremental:
     if: github.repository_owner == 'aws'
-    name: libcrypto and libssl
+    name: libcrypto incremental ABI check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -33,7 +33,82 @@ jobs:
       - name: Perform libcrypto ABI Diff
         run: |
           docker run -v ${{ github.workspace }}/previous:/previous -v ${{ github.workspace }}/next:/next abidiff crypto
+
+  libssl-incremental:
+    if: github.repository_owner == 'aws'
+    name: libssl incremental ABI check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc
+          ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
+          path: ${{ github.workspace }}/next
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc
+          ref: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+          path: ${{ github.workspace }}/previous
+      - name: Build Docker Image
+        working-directory: ${{ github.workspace }}/next/.github/docker_images/abidiff
+        run: |
+          docker build -t abidiff .
       - name: Perform libssl ABI Diff
-        if: ${{ success() || failure() }}
+        run: |
+          docker run -v ${{ github.workspace }}/previous:/previous -v ${{ github.workspace }}/next:/next abidiff ssl
+
+  libcrypto-release:
+    if: github.repository_owner == 'aws'
+    name: libcrypto release ABI check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc
+          ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
+          path: ${{ github.workspace }}/next
+      - name: Get latest release tag
+        id: get-latest-tag
+        uses: ./next/.github/actions/latest-semver-tag
+        with:
+          path: ${{ github.workspace }}/next
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc
+          ref: ${{ steps.get-latest-tag.outputs.latest-tag }}
+          path: ${{ github.workspace }}/previous
+      - name: Build Docker Image
+        working-directory: ${{ github.workspace }}/next/.github/docker_images/abidiff
+        run: |
+          docker build -t abidiff .
+      - name: Perform libcrypto ABI Diff against release
+        run: |
+          docker run -v ${{ github.workspace }}/previous:/previous -v ${{ github.workspace }}/next:/next abidiff crypto
+
+  libssl-release:
+    if: github.repository_owner == 'aws'
+    name: libssl release ABI check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc
+          ref: ${{ github.event_name == 'push' && github.event.ref || github.event.pull_request.head.sha }}
+          path: ${{ github.workspace }}/next
+      - name: Get latest release tag
+        id: get-latest-tag
+        uses: ./next/.github/actions/latest-semver-tag
+        with:
+          path: ${{ github.workspace }}/next
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc
+          ref: ${{ steps.get-latest-tag.outputs.latest-tag }}
+          path: ${{ github.workspace }}/previous
+      - name: Build Docker Image
+        working-directory: ${{ github.workspace }}/next/.github/docker_images/abidiff
+        run: |
+          docker build -t abidiff .
+      - name: Perform libssl ABI Diff against release
         run: |
           docker run -v ${{ github.workspace }}/previous:/previous -v ${{ github.workspace }}/next:/next abidiff ssl

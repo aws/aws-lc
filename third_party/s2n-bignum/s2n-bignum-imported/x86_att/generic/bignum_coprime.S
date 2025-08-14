@@ -5,8 +5,8 @@
 // Test bignums for coprimality, gcd(x,y) = 1
 // Inputs x[m], y[n]; output function return; temporary buffer t[>=2*max(m,n)]
 //
-//    extern uint64_t bignum_coprime
-//     (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y, uint64_t *t);
+//    extern uint64_t bignum_coprime(uint64_t m, const uint64_t *x, uint64_t n,
+//                                   const uint64_t *y, uint64_t *t);
 //
 // Test for whether two bignums are coprime (no common factor besides 1).
 // This is equivalent to testing if their gcd is 1, but a bit faster than

@@ -37,8 +37,7 @@ function ibmtpm_build() {
   
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
   local ibmtpm_executable="tpm_server"
-  ldd ${ibmtpm_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${ibmtpm_executable} crypto || exit 1
 
   popd
 }

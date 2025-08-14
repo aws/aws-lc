@@ -972,6 +972,46 @@ extern void edwards25519_scalarmulbase_alt(uint64_t res[8],uint64_t scalar[4]);
 extern void edwards25519_scalarmuldouble(uint64_t res[8],uint64_t scalar[4], uint64_t point[8],uint64_t bscalar[4]);
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[8],uint64_t scalar[4], uint64_t point[8],uint64_t bscalar[4]);
 
+/* Scalar product of 2-element polynomial vectors in NTT domain, with mulcache */
+/* Inputs a[512], b[512], bt[256] (signed 16-bit words); output r[256] (signed 16-bit words) */
+extern void mlkem_basemul_k2(int16_t r[256],const int16_t a[512],const int16_t b[512],const int16_t bt[256]);
+
+/* Scalar product of 3-element polynomial vectors in NTT domain, with mulcache */
+/* Inputs a[768], b[768], bt[384] (signed 16-bit words); output r[256] (signed 16-bit words) */
+extern void mlkem_basemul_k3(int16_t r[256],const int16_t a[768],const int16_t b[768],const int16_t bt[384]);
+
+/* Scalar product of 4-element polynomial vectors in NTT domain, with mulcache */
+/* Inputs a[1024], b[1024], bt[512] (signed 16-bit words); output r[256] (signed 16-bit words) */
+extern void mlkem_basemul_k4(int16_t r[256],const int16_t a[1024],const int16_t b[1024],const int16_t bt[512]);
+
+/* Inverse number-theoretic transform from ML-KEM */
+/* Input a[256] (signed 16-bit words), z_01234[80] (signed 16-bit words), z_56[384] (signed 16-bit words); output a[256] (signed 16-bit words) */
+extern void mlkem_intt(int16_t a[256],int16_t z_01234[80],int16_t z_56[384]);
+
+/* Precompute the mulcache data for a polynomial in the NTT domain */
+/* Inputs a[256], z[128] and t[128] (signed 16-bit words); output x[128] (signed 16-bit words) */
+extern void mlkem_mulcache_compute(int16_t x[128],int16_t a[256],int16_t z[128],int16_t t[128]);
+
+/* Forward number-theoretic transform from ML-KEM */
+/* Input a[256] (signed 16-bit words), z_01234[80] (signed 16-bit words), z_56[384] (signed 16-bit words); output a[256] (signed 16-bit words) */
+extern void mlkem_ntt(int16_t a[256],int16_t z_01234[80],int16_t z_56[384]);
+
+/* Canonical modular reduction of polynomial coefficients for ML-KEM */
+/* Input a[256] (signed 16-bit words); output a[256] (signed 16-bit words) */
+extern void mlkem_reduce(int16_t a[256]);
+
+/* Pack ML-KEM polynomial coefficients as 12-bit numbers */
+/* Input a[256] (signed 16-bit words); output r[384] (bytes) */
+extern void mlkem_tobytes(uint8_t r[384],int16_t a[256]);
+
+/* Conversion of ML-KEM polynomial coefficients to Montgomery form */
+/* Input a[256] (signed 16-bit words); output a[256] (signed 16-bit words) */
+extern void mlkem_tomont(int16_t a[256]);
+
+/* Uniform rejection sampling for ML-KEM */
+/* Inputs *buf (unsigned bytes), buflen, table (unsigned bytes); output r[256] (signed 16-bit words), return */
+extern uint64_t mlkem_rej_uniform_VARIABLE_TIME(int16_t r[256],uint8_t *buf,uint64_t buflen,uint8_t *table);
+
 /* Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12], p2[12]; output p3[12] */
 extern void p256_montjadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
@@ -1056,6 +1096,22 @@ extern void secp256k1_jdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 /* Inputs p1[12], p2[8]; output p3[12] */
 extern void secp256k1_jmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 extern void secp256k1_jmixadd_alt(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
+
+/* Keccak-f1600 permutation for SHA3 */
+/* Inputs a[25], rc[24]; output a[25] */
+extern void sha3_keccak_f1600(uint64_t a[25],uint64_t rc[24]);
+extern void sha3_keccak_f1600_alt(uint64_t a[25],uint64_t rc[24]);
+
+/* Batched 2-way Keccak-f1600 permutation for SHA3 */
+/* Inputs a[50], rc[24]; output a[50] */
+extern void sha3_keccak2_f1600(uint64_t a[50],uint64_t rc[24]);
+extern void sha3_keccak2_f1600_alt(uint64_t a[50],uint64_t rc[24]);
+
+/* Batched 4-way Keccak-f1600 permutation for SHA3 */
+/* Inputs a[100], rc[24]; output a[100] */
+extern void sha3_keccak4_f1600(uint64_t a[100],uint64_t rc[24]);
+extern void sha3_keccak4_f1600_alt(uint64_t a[100],uint64_t rc[24]);
+extern void sha3_keccak4_f1600_alt2(uint64_t a[100],uint64_t rc[24]);
 
 /* Point addition on CC curve SM2 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12], p2[12]; output p3[12] */

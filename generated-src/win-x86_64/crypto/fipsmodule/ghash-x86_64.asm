@@ -1227,7 +1227,7 @@ ALIGN	4
 	DD	$L$SEH_info_gcm_ghash_avx_0 wrt ..imagebase
 
 
-section	.xdata rdata align=8
+section	.xdata rdata align=4
 ALIGN	4
 $L$SEH_info_gcm_init_clmul_0:
 	DB	1
@@ -1240,6 +1240,7 @@ $L$SEH_info_gcm_init_clmul_0:
 	DB	$L$SEH_prolog_gcm_init_clmul_2-$L$SEH_begin_gcm_init_clmul_1
 	DB	34
 
+ALIGN	4
 $L$SEH_info_gcm_ghash_clmul_0:
 	DB	1
 	DB	$L$SEH_prolog_gcm_ghash_clmul_12-$L$SEH_begin_gcm_ghash_clmul_1
@@ -1279,6 +1280,7 @@ $L$SEH_info_gcm_ghash_clmul_0:
 	DB	1
 	DW	21
 
+ALIGN	4
 $L$SEH_info_gcm_init_avx_0:
 	DB	1
 	DB	$L$SEH_prolog_gcm_init_avx_3-$L$SEH_begin_gcm_init_avx_1
@@ -1290,6 +1292,7 @@ $L$SEH_info_gcm_init_avx_0:
 	DB	$L$SEH_prolog_gcm_init_avx_2-$L$SEH_begin_gcm_init_avx_1
 	DB	34
 
+ALIGN	4
 $L$SEH_info_gcm_ghash_avx_0:
 	DB	1
 	DB	$L$SEH_prolog_gcm_ghash_avx_12-$L$SEH_begin_gcm_ghash_avx_1
