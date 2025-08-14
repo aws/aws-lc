@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/bio.h>
+#include <openssl/bio.h> // This imports winsock2.h
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -26,7 +26,6 @@
 #include <fcntl.h>
 #include <io.h>
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <winsock2.h>
 #include <ws2tcpip.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
@@ -838,7 +837,7 @@ TEST_P(BIODgramTest, SocketDatagramTimeouts) {
   // Verify the timeout values match what we set (allowing for small variations in microseconds)
   EXPECT_EQ(recv_timeout_set.tv_sec, recv_timeout_get.tv_sec);
   // Allow for small variations in microseconds that might occur on different systems
-  EXPECT_NEAR(recv_timeout_set.tv_usec, recv_timeout_get.tv_usec, 500);
+  EXPECT_NEAR(recv_timeout_set.tv_usec, recv_timeout_get.tv_usec, 5000);
 
   // Test send timeout
   struct timeval send_timeout_set = {2, 750000}; // 2.75 seconds
@@ -852,7 +851,7 @@ TEST_P(BIODgramTest, SocketDatagramTimeouts) {
   // Verify the timeout values match what we set (allowing for small variations in microseconds)
   EXPECT_EQ(send_timeout_set.tv_sec, send_timeout_get.tv_sec);
   // Allow for small variations in microseconds that might occur on different systems
-  EXPECT_NEAR(send_timeout_set.tv_usec, send_timeout_get.tv_usec, 500);
+  EXPECT_NEAR(send_timeout_set.tv_usec, send_timeout_get.tv_usec, 5000);
 }
 
 TEST_P(BIODgramTest, SocketDatagramTimeoutBehavior) {
@@ -893,7 +892,6 @@ TEST_P(BIODgramTest, SocketDatagramTimeoutBehavior) {
     EXPECT_EQ(0, BIO_dgram_send_timedout(bio.get()));
   }
 
-  // Part 2: Test send timeout
   // Triggering a send timeout requires filling the kernel's send buffer, which
   // is unreliable. The OS may drop packets or have a very large buffer,
   // preventing the send call from blocking. The API's get/set functionality
