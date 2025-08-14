@@ -45,6 +45,7 @@ struct ctr_drbg_state_st {
   uint8_t counter[16];
   uint64_t reseed_counter;
 };
+OPENSSL_STATIC_ASSERT((sizeof((struct ctr_drbg_state_st*)0)->reseed_counter) * 8 >= 48, value_can_overflow)
 
 // CTR_DRBG_init initialises |*drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of
 // entropy in |entropy| and, optionally, a personalization string up to
