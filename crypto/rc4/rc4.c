@@ -56,6 +56,9 @@
 
 #include <openssl/rc4.h>
 
+const char *RC4_options(void) {
+  return "rc4(ptr,int)";
+}
 
 void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
   uint32_t x = key->x;
