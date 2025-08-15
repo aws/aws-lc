@@ -399,9 +399,10 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
         variables:
+          AWS_LC_GO_TEST_TIMEOUT: '60m'
           AWS_LC_CI_TARGET: "tests/ci/run_valgrind_tests.sh"
 
-    - identifier: amazonlinux2023_gcc11x_x86_64_ssl_runner_valgrind
+    - identifier: amazonlinux2023_gcc11x_x86_64_ssl_runner_valgrind1
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
@@ -409,6 +410,20 @@ batch:
         compute-type: BUILD_GENERAL1_2XLARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
         variables:
+          AWS_LC_GO_TEST_TIMEOUT: '60m'
+          AWS_LC_SSL_RUNNER_END_INDEX: 4000
+          AWS_LC_CI_TARGET: "tests/ci/run_ssl_runner_valgrind_tests.sh"
+
+    - identifier: amazonlinux2023_gcc11x_x86_64_ssl_runner_valgrind2
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
+        variables:
+          AWS_LC_GO_TEST_TIMEOUT: '60m'
+          AWS_LC_SSL_RUNNER_START_INDEX: 4001
           AWS_LC_CI_TARGET: "tests/ci/run_ssl_runner_valgrind_tests.sh"
 
     - identifier: amazonlinux2023_gcc11x_x86_64
