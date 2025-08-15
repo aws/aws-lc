@@ -1,0 +1,33 @@
+From 9c0cf55628322af2e5cb440884851caedbc43e6d Mon Sep 17 00:00:00 2001
+From: Justin W Smith <justsmth@amazon.com>
+Date: Fri, 1 Aug 2025 14:31:04 +0000
+Subject: [PATCH] Support AWS-LC
+
+---
+ modules/ssl/ssl_engine_init.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/modules/ssl/ssl_engine_init.c b/modules/ssl/ssl_engine_init.c
+index 94cc2772e0..df2dc44ce0 100644
+--- a/modules/ssl/ssl_engine_init.c
++++ b/modules/ssl/ssl_engine_init.c
+@@ -1358,7 +1358,7 @@ static int ssl_no_passwd_prompt_cb(char *buf, int size, int rwflag,
+  * off the OpenSSL stack and evaluates to true only for the first
+  * case.  With OpenSSL < 3 the second case is identifiable by the
+  * function code, but function codes are not used from 3.0. */
+-#if OPENSSL_VERSION_NUMBER < 0x30000000L
++#if OPENSSL_VERSION_NUMBER < 0x30000000L && !defined(OPENSSL_IS_AWSLC)
+ #define CHECK_PRIVKEY_ERROR(ec) (ERR_GET_FUNC(ec) != X509_F_X509_CHECK_PRIVATE_KEY)
+ #else
+ #define CHECK_PRIVKEY_ERROR(ec) (ERR_GET_LIB(ec) != ERR_LIB_X509            \
+@@ -1751,7 +1751,7 @@ static apr_status_t ssl_init_proxy_certs(server_rec *s,
+
+     ap_assert(store != NULL); /* safe to assume always non-NULL? */
+
+-#if OPENSSL_VERSION_NUMBER >= 0x1010100fL && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x1010100fL && !defined(LIBRESSL_VERSION_NUMBER) && !defined(OPENSSL_IS_AWSLC)
+     /* For OpenSSL >=1.1.1, turn on client cert support which is
+      * otherwise turned off by default (by design).
+      * https://github.com/openssl/openssl/issues/6933 */
+--
+2.43.0
