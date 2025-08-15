@@ -648,6 +648,12 @@ void bn_powerx5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
   perror("bn_powerx5");
   abort();
 }
+
+int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, BN_ULONG mulx_adx_capable,
+                  const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+  perror("bn_sqr8x_mont");
+  abort();
+}
 #endif
 
 #endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
