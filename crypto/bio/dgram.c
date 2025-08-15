@@ -11,7 +11,12 @@
 #include "./internal.h"
 
 #if !defined(OPENSSL_WINDOWS)
+#include <sys/time.h>
 static int closesocket(const int sock) { return close(sock); }
+#else
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 typedef struct bio_dgram_data_st {
