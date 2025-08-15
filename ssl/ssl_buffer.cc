@@ -36,16 +36,27 @@ static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX, "uint16_t does not fit in int")
 static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
               "SSL3_ALIGN_PAYLOAD must be a power of 2");
 
+static OPENSSL_INLINE size_t compute_buffer_size(size_t capacity) {
+  return capacity + SSL3_ALIGN_PAYLOAD - 1;
+}
+
+static OPENSSL_INLINE size_t compute_buffer_offset(size_t header_len, uint8_t *buffer) {
+  return (0 - header_len - (uintptr_t)buffer) & (SSL3_ALIGN_PAYLOAD - 1);
+}
+
 void SSLBuffer::Clear() {
   if (buf_allocated_) {
     free(buf_);  // Allocated with malloc().
   }
   buf_ = nullptr;
   buf_allocated_ = false;
+  buf_cap_ = 0;
+  buf_size_ = 0;
+  header_len_ = 0;
   offset_ = 0;
   size_ = 0;
   cap_ = 0;
-  buf_size_ = 0;
+  max_serialization_version_ = kSSLBufferMaxSerDeVersion;
 }
 
 bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
@@ -67,23 +78,22 @@ bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
     new_buf = inline_buf_;
     new_buf_allocated = false;
     new_offset = 0;
+    buf_size_ = sizeof(inline_buf_);
   } else {
     // Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment.
     //
     // Since this buffer gets allocated quite frequently and doesn't contain any
     // sensitive data, we allocate with malloc rather than |OPENSSL_malloc| and
     // avoid zeroing on free.
-    buf_size_ = new_cap + SSL3_ALIGN_PAYLOAD - 1;
+    buf_size_ = compute_buffer_size(new_cap);
     new_buf = (uint8_t *)malloc(buf_size_);
     if (new_buf == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
     new_buf_allocated = true;
-
     // Offset the buffer such that the record body is aligned.
-    new_offset =
-        (0 - header_len - (uintptr_t)new_buf) & (SSL3_ALIGN_PAYLOAD - 1);
+    new_offset = compute_buffer_offset(header_len, new_buf);
   }
 
   // Note if the both old and new buffer are inline, the source and destination
@@ -96,8 +106,10 @@ bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
 
   buf_ = new_buf;
   buf_allocated_ = new_buf_allocated;
+  header_len_ = header_len;
   offset_ = new_offset;
-  cap_ = new_cap;
+  buf_cap_ = cap_ = new_cap;
+  max_serialization_version_ = kSSLBufferMaxSerDeVersion;
   return true;
 }
 
@@ -125,6 +137,18 @@ void SSLBuffer::DiscardConsumed() {
 
 // An SSLBuffer is serialized as the following ASN.1 structure:
 //
+// -- The V2 Serialization
+// SSLBuffer ::= SEQUENCE {
+//    version                           INTEGER (2),  -- SSLBuffer structure version
+//    bufAllocated                      BOOLEAN,
+//    bufferCapacity                    INTEGER,
+//    headerLength                      INTEGER,
+//    relativeOffset                    INTEGER,
+//    remainingCapacity                 INTEGER,
+//    buf                               OCTET STRING,
+// }
+//
+// -- The V1 Serialization
 // SSLBuffer ::= SEQUENCE {
 //    version                           INTEGER (1),  -- SSLBuffer structure version
 //    bufAllocated                      BOOLEAN,
@@ -133,43 +157,121 @@ void SSLBuffer::DiscardConsumed() {
 //    cap                               INTEGER,
 //    buf                               OCTET STRING,
 // }
-static const unsigned kSSLBufferVersion = 1;
+
+bool SSLBuffer::DoSerializationV1(CBB *seq) {
+  if (!seq) {
+    return false;
+  }
+  if (!CBB_add_asn1_uint64(seq, SSL_BUFFER_SERDE_VERSION_ONE) ||
+      !CBB_add_asn1_bool(seq, (buf_allocated_ ? 1 : 0)) ||
+      !CBB_add_asn1_uint64(seq, offset_) ||
+      !CBB_add_asn1_uint64(seq, size_) ||
+      !CBB_add_asn1_uint64(seq, cap_) ||
+      (buf_allocated_ && !CBB_add_asn1_octet_string(seq, buf_, buf_size_)) ||
+      (!buf_allocated_ && !CBB_add_asn1_octet_string(seq, inline_buf_, SSL3_RT_HEADER_LENGTH))) {
+    return false;
+  }
+  return true;
+}
+
+bool SSLBuffer::DoSerializationV2(CBB *seq) {
+  if (!seq) {
+    return false;
+  }
+
+  size_t align_offset = 0;
+  if(buf_allocated_) {
+    align_offset = compute_buffer_offset(header_len_, buf_);
+  }
+
+  size_t rel_offset = offset_ - align_offset;
+
+  if (!CBB_add_asn1_uint64(seq, SSL_BUFFER_SERDE_VERSION_TWO) ||
+      !CBB_add_asn1_bool(seq, (buf_allocated_ ? 1 : 0)) ||
+      !CBB_add_asn1_uint64(seq, buf_cap_) ||
+      !CBB_add_asn1_uint64(seq, header_len_) ||
+      !CBB_add_asn1_uint64(seq, rel_offset) ||
+      !CBB_add_asn1_uint64(seq, cap_) ||
+      (buf_allocated_ && !CBB_add_asn1_octet_string(seq, buf_ + align_offset,
+                                                    rel_offset + size_)) ||
+      (!buf_allocated_ &&
+       !CBB_add_asn1_octet_string(seq, inline_buf_ + align_offset,
+                                  rel_offset + size_))) {
+    return false;
+  }
+
+  return true;
+}
 
 bool SSLBuffer::DoSerialization(CBB *cbb) {
   if (!cbb) {
     return false;
   }
   CBB seq;
-  if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&seq, kSSLBufferVersion) ||
-      !CBB_add_asn1_bool(&seq, (buf_allocated_ ? 1 : 0)) ||
-      !CBB_add_asn1_uint64(&seq, offset_) ||
-      !CBB_add_asn1_uint64(&seq, size_) ||
-      !CBB_add_asn1_uint64(&seq, cap_) ||
-      (buf_allocated_ && !CBB_add_asn1_octet_string(&seq, buf_, buf_size_)) ||
-      (!buf_allocated_ && !CBB_add_asn1_octet_string(&seq, inline_buf_, SSL3_RT_HEADER_LENGTH))) {
+  
+  if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE)) {
     return false;
   }
+
+  switch (max_serialization_version_) {
+    case SSL_BUFFER_SERDE_VERSION_TWO:
+      if(!DoSerializationV2(&seq)) {
+        return false;
+      }
+      break;
+    case SSL_BUFFER_SERDE_VERSION_ONE:
+      if(!DoSerializationV1(&seq)) {
+        return false;
+      }
+      break;
+    default:
+      // Only possible with a programming error
+      abort();
+  }
+
   return CBB_flush(cbb) == 1;
 }
+
 
 bool SSLBuffer::DoDeserialization(CBS *cbs) {
   if (!cbs) {
     return false;
   }
 
-  CBS seq, buf;
-  int buf_allocated_int;
-  uint64_t version, offset, size, cap;
+  CBS seq;
+  uint64_t version;
   if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&seq, &version) ||
-      version != kSSLBufferVersion ||
-      !CBS_get_asn1_bool(&seq, &buf_allocated_int) ||
-      !CBS_get_asn1_uint64(&seq, &offset) ||
-      !CBS_get_asn1_uint64(&seq, &size) ||
-      !CBS_get_asn1_uint64(&seq, &cap) ||
-      !CBS_get_asn1(&seq, &buf, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&seq) != 0) {
+      version > kSSLBufferMaxSerDeVersion) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+    return false;
+  }
+
+  switch (version) {
+    case SSL_BUFFER_SERDE_VERSION_TWO:
+      return DoDeserializationV2(&seq);
+    case SSL_BUFFER_SERDE_VERSION_ONE:
+      return DoDeserializationV1(&seq);
+    default:
+      // Only possible with a programming error
+      abort();
+  }
+}
+
+bool SSLBuffer::DoDeserializationV1(CBS *cbs) {
+  if (!cbs) {
+    return false;
+  }
+
+  CBS buf;
+  int buf_allocated_int;
+  uint64_t offset, size, cap;
+  if (!CBS_get_asn1_bool(cbs, &buf_allocated_int) ||
+      !CBS_get_asn1_uint64(cbs, &offset) ||
+      !CBS_get_asn1_uint64(cbs, &size) ||
+      !CBS_get_asn1_uint64(cbs, &cap) ||
+      !CBS_get_asn1(cbs, &buf, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
@@ -192,13 +294,71 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
-    buf_size_ = 0;
+    buf_ = inline_buf_;
+    buf_size_ = sizeof(inline_buf_);
     OPENSSL_memcpy(inline_buf_, CBS_data(&buf), CBS_len(&buf));
   }
   buf_allocated_ = buf_allocated;
+  buf_cap_ = header_len_ = 0; // V1 was lossy :(
   offset_ = (uint16_t)offset;
   size_ = (uint16_t)size;
   cap_ = (uint16_t)cap;
+  // As we restored from a V1 format we can only serialize as V1 until the next |EnsureCap| call.
+  max_serialization_version_ = 1;
+  return true;
+}
+
+bool SSLBuffer::DoDeserializationV2(CBS *cbs) {
+  if (!cbs) {
+    return false;
+  }
+
+  CBS buf;
+  int buf_allocated_int;
+  uint64_t header_len, buf_cap, rel_offset, cap;
+  size_t align_offset = 0;
+  if (!CBS_get_asn1_bool(cbs, &buf_allocated_int) ||
+      !CBS_get_asn1_uint64(cbs, &buf_cap) ||
+      !CBS_get_asn1_uint64(cbs, &header_len) ||
+      !CBS_get_asn1_uint64(cbs, &rel_offset) ||
+      !CBS_get_asn1_uint64(cbs, &cap) ||
+      !CBS_get_asn1(cbs, &buf, CBS_ASN1_OCTETSTRING) || CBS_len(cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+    return false;
+  }
+
+  bool buf_allocated = !!buf_allocated_int;
+  if (buf_allocated) {
+    buf_size_ = compute_buffer_size(buf_cap);
+    buf_ = (uint8_t *)malloc(buf_size_);
+    if (buf_ == NULL) {
+      return false;
+    }
+    align_offset = compute_buffer_offset(header_len, buf_);
+    if (CBS_len(&buf) > buf_size_ - align_offset) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+      return false;
+    }
+    OPENSSL_memcpy(buf_ + align_offset, CBS_data(&buf), CBS_len(&buf));
+  } else {
+    // We could relax this and just allocate a in-memory buffer with correct alignment.
+    // But this value is not configurable (unlike SSL3_ALIGN_PAYLOAD), so we can adjust
+    // this in the future if we modify sizeof(inline_buf_);
+    if (CBS_len(&buf) > sizeof(inline_buf_)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+      return false;
+    }
+    buf_ = inline_buf_;
+    buf_size_ = sizeof(inline_buf_);
+    OPENSSL_memcpy(buf_, CBS_data(&buf), CBS_len(&buf));
+  }
+  buf_allocated_ = buf_allocated;
+  buf_cap_ = (size_t)buf_cap;
+  header_len_ = (size_t)header_len;
+  offset_ = (uint16_t)(align_offset + rel_offset);
+  size_ = (uint16_t)(CBS_len(&buf) - rel_offset);
+  cap_ = (uint16_t)cap;
+  max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_TWO;
   return true;
 }
 
