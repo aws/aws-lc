@@ -287,6 +287,9 @@ OPENSSL_INLINE int sha256_hw_capable(void) {
 
 #define SHA256_ASM_AVX
 OPENSSL_INLINE int sha256_avx_capable(void) {
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  return 0;
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   // TODO: Simplify this logic, which was extracted from the assembly:
   //  * Does AVX imply SSSE3?
   //  * sha256_block_data_order_avx does not seem to use SSSE3 instructions.
@@ -306,7 +309,10 @@ void sha256_block_data_order_ssse3(uint32_t state[8], const uint8_t *data,
                                    size_t num);
 
 #define SHA512_ASM_AVX
-OPENSSL_INLINE int sha512_avx_capable(void) {
+  OPENSSL_INLINE int sha512_avx_capable(void) {
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    return 0;
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   // TODO: Simplify this logic, which was extracted from the assembly:
   //  * Does AVX imply SSSE3?
   //  * sha512_block_data_order_avx does not seem to use SSSE3 instructions.
