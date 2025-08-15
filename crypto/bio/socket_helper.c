@@ -17,7 +17,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 
-#include <openssl/bio.h> // This imports winsock2.h
+#include <openssl/bio.h>
 #include <openssl/err.h>
 
 #if !defined(OPENSSL_NO_SOCK)
@@ -32,6 +32,7 @@
 #include <unistd.h>
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
 #include <ws2tcpip.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif

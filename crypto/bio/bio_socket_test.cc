@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/bio.h> // This imports winsock2.h
+#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <io.h>
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
 #include <ws2tcpip.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
@@ -827,11 +828,11 @@ TEST_P(BIODgramTest, SocketDatagramTimeouts) {
 
   // Test receive timeout
   struct timeval recv_timeout_set = {3, 500000}; // 3.5 seconds
-  ASSERT_EQ(1, BIO_dgram_set_recv_timeout(bio.get(), &recv_timeout_set))
+  ASSERT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &recv_timeout_set))
       << LastSocketError();
 
   struct timeval recv_timeout_get = {0, 0};
-  ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_dgram_get_recv_timeout(bio.get(), &recv_timeout_get))
+  ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_GET_RECV_TIMEOUT, 0, &recv_timeout_get))
       << LastSocketError();
 
   // Verify the timeout values match what we set (allowing for small variations in microseconds)
@@ -841,11 +842,11 @@ TEST_P(BIODgramTest, SocketDatagramTimeouts) {
 
   // Test send timeout
   struct timeval send_timeout_set = {2, 750000}; // 2.75 seconds
-  ASSERT_EQ(1, BIO_dgram_set_send_timeout(bio.get(), &send_timeout_set))
+  ASSERT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_SET_SEND_TIMEOUT, 0, &send_timeout_set))
       << LastSocketError();
 
   struct timeval send_timeout_get = {0, 0};
-  ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_dgram_get_send_timeout(bio.get(), &send_timeout_get))
+  ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_GET_SEND_TIMEOUT, 0, &send_timeout_get))
       << LastSocketError();
 
   // Verify the timeout values match what we set (allowing for small variations in microseconds)
@@ -877,7 +878,7 @@ TEST_P(BIODgramTest, SocketDatagramTimeoutBehavior) {
 
     // Set a very short receive timeout (100ms)
     struct timeval recv_timeout = {0, 100000}; // 0.1 seconds
-    ASSERT_EQ(1, BIO_dgram_set_recv_timeout(bio.get(), &recv_timeout))
+    ASSERT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &recv_timeout))
         << LastSocketError();
 
     // Try to read from the socket. Since no data is being sent, it should time out.

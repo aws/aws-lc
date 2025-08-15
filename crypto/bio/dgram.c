@@ -463,36 +463,4 @@ int BIO_dgram_set_peer(BIO *bp, const BIO_ADDR *peer) {
   return ret;
 }
 
-int BIO_dgram_set_recv_timeout(BIO *bp, struct timeval *tv) {
-  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, tv);
-  if (ret < INT_MIN || ret > INT_MAX) {
-    return 0;
-  }
-  return ret;
-}
-
-int BIO_dgram_get_recv_timeout(BIO *bp, struct timeval *tv) {
-  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_RECV_TIMEOUT, 0, tv);
-  if (ret < INT_MIN || ret > INT_MAX) {
-    return 0;
-  }
-  return ret;
-}
-
-int BIO_dgram_set_send_timeout(BIO *bp, struct timeval *tv) {
-  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_SET_SEND_TIMEOUT, 0, tv);
-  if (ret < INT_MIN || ret > INT_MAX) {
-    return 0;
-  }
-  return ret;
-}
-
-int BIO_dgram_get_send_timeout(BIO *bp, struct timeval *tv) {
-  const long ret = BIO_ctrl(bp, BIO_CTRL_DGRAM_GET_SEND_TIMEOUT, 0, tv);
-  if (ret < INT_MIN || ret > INT_MAX) {
-    return 0;
-  }
-  return ret;
-}
-
 #endif

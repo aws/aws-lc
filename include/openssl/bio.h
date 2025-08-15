@@ -67,16 +67,6 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
-#if !defined(OPENSSL_NO_SOCK)
-#if defined(OPENSSL_WINDOWS)
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <winsock2.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#else
-#include <sys/time.h>
-#endif
-#endif
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -800,22 +790,6 @@ OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUS
 // BIO_dgram_set_peer sets the peer address for the datagram BIO to |peer|.
 // It returns 1 on success and a non-positive value on error.
 OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
-
-// BIO_dgram_set_recv_timeout sets the receive timeout for the datagram BIO.
-// It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_dgram_set_recv_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
-
-// BIO_dgram_get_recv_timeout gets the receive timeout for the datagram BIO.
-// It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_dgram_get_recv_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
-
-// BIO_dgram_set_send_timeout sets the send timeout for the datagram BIO.
-// It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_dgram_set_send_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
-
-// BIO_dgram_get_send_timeout gets the send timeout for the datagram BIO.
-// It returns 1 on success and a non-positive value on error.
-OPENSSL_EXPORT int BIO_dgram_get_send_timeout(BIO *bp, struct timeval *tv) OPENSSL_WARN_UNUSED_RESULT;
 
 // BIO_ADDR_new allocates and initializes a new BIO_ADDR structure.
 // Returns the new BIO_ADDR structure on success, NULL on error.

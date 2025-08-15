@@ -54,7 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/bio.h> // This imports winsock2.h
+#include <openssl/bio.h>
 
 #if !defined(OPENSSL_NO_SOCK)
 
@@ -63,6 +63,10 @@
 
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
+#else
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include "internal.h"
