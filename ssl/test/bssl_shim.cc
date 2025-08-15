@@ -61,6 +61,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <vector>
 
 #include "../../crypto/internal.h"
+#include "../../crypto/ube/snapsafe_detect.h"
 #include "../internal.h"
 #include "async_bio.h"
 #include "handshake_util.h"

@@ -108,6 +108,8 @@
 // |armv8_disable_dit| and |armv8_enable_dit|, respectively.
 #define ARMV8_DIT_ALLOWED (1 << 16)
 
+// ARMV8_RNG indicates supports for hardware RNG instruction RNDR.
+#define ARMV8_RNG (1 << 17)
 
 //
 // MIDR_EL1 system register
