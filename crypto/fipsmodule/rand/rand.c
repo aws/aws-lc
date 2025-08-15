@@ -11,6 +11,7 @@
 #include "../../internal.h"
 #include "../../ube/internal.h"
 #include "../delocate.h"
+#include "../service_indicator/internal.h"
 
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_local_state {

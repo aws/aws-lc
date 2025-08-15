@@ -437,7 +437,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   // "successfully" returns zero.
   errno = 0;
   while (len > 0) {
-    ssize_t ret;
+    ssize_t ret = 0;
 
     if (random_flavor == USE_GETRANDOM) {
       ret = wrapper_getrandom(out, len, block);
