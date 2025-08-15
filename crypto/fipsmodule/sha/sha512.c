@@ -689,7 +689,7 @@ static void sha512_block_data_order(uint64_t state[8], const uint8_t *data,
     return;
   }
 #endif
-#if defined(SHA512_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA512_ASM_AVX)
   if (sha512_avx_capable()) {
     sha512_block_data_order_avx(state, data, num);
     return;
@@ -714,3 +714,15 @@ static void sha512_block_data_order(uint64_t state[8], const uint8_t *data,
 #undef Maj
 #undef ROUND_00_15
 #undef ROUND_16_80
+
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+#if defined(SHA512_ASM_AVX)
+void sha512_block_data_order_avx(uint64_t state[8], const uint8_t *data,
+                               size_t num) {
+  perror("sha512_block_data_order_avx");
+  abort();
+}
+#endif // defined(SHA512_ASM_AVX)
+
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)

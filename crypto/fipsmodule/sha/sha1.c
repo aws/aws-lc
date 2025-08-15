@@ -396,13 +396,13 @@ static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
     return;
   }
 #endif
-#if defined(SHA1_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA1_ASM_AVX2)
   if (sha1_avx2_capable()) {
     sha1_block_data_order_avx2(state, data, num);
     return;
   }
 #endif
-#if defined(SHA1_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA1_ASM_AVX)
   if (sha1_avx_capable()) {
     sha1_block_data_order_avx(state, data, num);
     return;
@@ -441,3 +441,23 @@ static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
 #undef BODY_40_59
 #undef BODY_60_79
 #undef X
+
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+
+#if defined(ASH1_ASM_AVX2)
+void sha1_block_data_order_avx2(uint32_t state[5], const uint8_t *data,
+                                size_t num) {
+  perror("sha1_block_data_order_avx2");
+  abort();
+}
+#endif // defined(ASH1_ASM_AVX2)
+
+#if defined(SHA1_ASM_AVX)
+void sha1_block_data_order_avx(uint32_t state[5], const uint8_t *data,
+                               size_t num) {
+  perror("sha1_block_data_order_avx");
+  abort();
+}
+#endif // defined(SHA1_ASM_AVX)
+
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)

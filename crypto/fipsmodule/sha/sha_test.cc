@@ -36,12 +36,12 @@ TEST(SHATest, SHA1ABI) {
       CHECK_ABI(sha1_block_data_order_hw, ctx.h, kBuf, blocks);
     }
 #endif
-#if defined(SHA1_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA1_ASM_AVX2)
     if (sha1_avx2_capable()) {
       CHECK_ABI(sha1_block_data_order_avx2, ctx.h, kBuf, blocks);
     }
 #endif
-#if defined(SHA1_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA1_ASM_AVX)
     if (sha1_avx_capable()) {
       CHECK_ABI(sha1_block_data_order_avx, ctx.h, kBuf, blocks);
     }
@@ -76,7 +76,7 @@ TEST(SHATest, SHA256ABI) {
       CHECK_ABI(sha256_block_data_order_hw, ctx.h, kBuf, blocks);
     }
 #endif
-#if defined(SHA256_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA256_ASM_AVX)
     if (sha256_avx_capable()) {
       CHECK_ABI(sha256_block_data_order_avx, ctx.h, kBuf, blocks);
     }
@@ -111,7 +111,7 @@ TEST(SHATest, SHA512ABI) {
       CHECK_ABI(sha512_block_data_order_hw, ctx.h, kBuf, blocks);
     }
 #endif
-#if defined(SHA512_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA512_ASM_AVX)
     if (sha512_avx_capable()) {
       CHECK_ABI(sha512_block_data_order_avx, ctx.h, kBuf, blocks);
     }

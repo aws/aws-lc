@@ -245,6 +245,9 @@ OPENSSL_INLINE int sha1_hw_capable(void) {
 
 #define SHA1_ASM_AVX2
 OPENSSL_INLINE int sha1_avx2_capable(void) {
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  return 0;
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   // TODO: Simplify this logic, which was extracted from the assembly:
   //  * Does AVX2 imply SSSE3?
   //  * sha1_block_data_order_avx2 does not seem to use SSSE3 instructions.
@@ -256,6 +259,9 @@ void sha1_block_data_order_avx2(uint32_t state[5], const uint8_t *data,
 
 #define SHA1_ASM_AVX
 OPENSSL_INLINE int sha1_avx_capable(void) {
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  return 0;
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   // TODO: Simplify this logic, which was extracted from the assembly:
   //  * Does AVX imply SSSE3?
   //  * sha1_block_data_order_avx does not seem to use SSSE3 instructions.

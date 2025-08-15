@@ -59,6 +59,9 @@ void ChaCha20_ctr32_neon(uint8_t *out, const uint8_t *in, size_t in_len,
 
 #define CHACHA20_ASM_AVX2
 OPENSSL_INLINE int ChaCha20_ctr32_avx2_capable(size_t len) {
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  return 0;
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   return len > 128 && CRYPTO_is_AVX2_capable();
 }
 void ChaCha20_ctr32_avx2(uint8_t *out, const uint8_t *in, size_t in_len,
