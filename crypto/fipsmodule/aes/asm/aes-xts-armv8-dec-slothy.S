@@ -93,7 +93,7 @@ aes_hw_slothy_xts_decrypt:
 Lxts_dec_big_size:  // decrypt input size >= 16 bytes
         and  x21, x2, #0xf    // store the tail value of length%16
         and  x2, x2, #-16    // len &= 0x1..110000, now divisible by 16
-        subs x2, x2, #16
+        // subs x2, x2, #16
 
         // Firstly, encrypt the iv with key2, as the first iv of XEX.
         ldr  w6, [x4,#240]
@@ -137,27 +137,27 @@ Loop_iv_enc:
 Lxts_dec:
         tst x21,#0xf
         b.eq Lxts_dec_begin
-        subs x2,x2,#16
-        cmp x2, #0
+        subs x2,x2,#32
+        cmp x2, #0x0
         b.lt Lxts_dec_done   // There is one block and a tail, go directy to cipher-stealing
 
 Lxts_dec_begin:
-        cmp x2, #16
+        cmp x2, #0x10
         b.lo Lxts_dec_tail1x   // when input = 1 with another block and a tail
 
-        subs  x2,x2,#32           // bias
+        cmp  x2,#0x20         // bias
         b.lo  Lxts_dec_tail2x    // when input size  = 2 with another block and a tail
 
         // The iv for third block
         tweak d9,v9.d[1]
 
-        cmp  x2,#16
+        cmp  x2,#0x30
         b.lo  Lxts_dec_tail3x // when input size  = 3 with another block and a tail
 
         // The iv for fourth block
         tweak d10,v10.d[1]
 
-        subs x2,x2,#32
+        cmp x2,#0x40
         b.lo  Lxts_dec_tail4x // when input size  = 4 with another block and a tail
 
         // The iv for fifth block
@@ -292,19 +292,19 @@ Loop5x_xts_dec:
         b.hs  Loop5x_xts_dec
 
 Loop5x_dec_after:
-        cmn  x2,#0x10
+        cmp  x2,#0x40
         b.eq  Lxts_dec_tail4x  // 4 blocks left + 1block and a tail
 
-        add  x2,x2,#0x50
-        cbz  x2,Lxts_dec_done     // no blocks left + 1block and a tail
+        cmp  x2,#0x30
+        b.eq  Lxts_dec_tail3x    // 3 blocks left + 1block and a tail
 
-        subs  x2,x2,#0x20
-        b.lo  Lxts_dec_tail1x    // 1 block left + 1block and a tail
+        cmp  x2,#0x20
+        b.eq  Lxts_dec_tail2x    // 2 block left + 1block and a tail
 
-        subs x2,x2,#0x10
-        b.lo Lxts_dec_tail2x  // 2 blocks left + 1block and a tail
+        cmp  x2,#0x10
+        b.eq  Lxts_dec_tail1x  // 1 blocks left + 1block and a tail
 
-        b  Lxts_dec_tail3x  // 3 blocks left + 1block and a tail
+        b  Lxts_dec_done  // no blocks left + 1block and a tail
 
 .align  4
 Lxts_dec_tail4x:
