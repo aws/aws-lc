@@ -70,6 +70,7 @@
 #include <openssl/digest.h>
 #include <openssl/nid.h>
 #include <openssl/objects.h>
+#include <openssl/hmac.h> // Needed by Apache mod_ssl
 
 #if defined(__cplusplus)
 extern "C" {
@@ -772,6 +773,15 @@ OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
 //
 // It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
+
+// EVP_PKEY_param_check validates the parameters component of the key given by
+// |ctx|. OpenSSL only supports by DH and EC keys via this API.
+// For DH keys, this calls |DH_check| to validate the parameters. EC key
+// parameter validations are not supported as of now.
+// TODO: Support EC group validations.
+//
+// It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_param_check(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
 // operation. It should be called before |EVP_PKEY_keygen|.

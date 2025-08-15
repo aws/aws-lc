@@ -744,13 +744,17 @@ int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *ca_file,
   return X509_STORE_load_locations(ctx->cert_store, ca_file, ca_dir);
 }
 
+void SSL_set_verify_result(SSL *ssl, long arg) {
+  check_ssl_x509_method(ssl);
+  ssl->verify_result = arg;
+}
+
 long SSL_get_verify_result(const SSL *ssl) {
   check_ssl_x509_method(ssl);
-  SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL) {
+  if (SSL_get_session(ssl) == nullptr) {
     return X509_V_ERR_INVALID_CALL;
   }
-  return session->verify_result;
+  return ssl->verify_result;
 }
 
 X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx) {

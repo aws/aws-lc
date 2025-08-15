@@ -155,6 +155,7 @@
 #include <openssl/rand.h>
 
 #include "../crypto/internal.h"
+#include "../crypto/x509/internal.h"
 #include "internal.h"
 
 #if defined(OPENSSL_WINDOWS)
@@ -3081,6 +3082,110 @@ int SSL_client_hello_get0_ext(SSL *s, unsigned int type, const unsigned char **o
   return 1;  // Success
 }
 
+int SSL_client_hello_get1_extensions_present(SSL *s, int **out,
+                                             size_t *outlen) {
+  GUARD_PTR(s);
+  GUARD_PTR(out);
+  GUARD_PTR(outlen);
+  size_t num_extensions = 0;
+
+  // Count the number of extensions so we can allocate
+  if (1 != SSL_client_hello_get_extension_order(s, nullptr, &num_extensions)) {
+    return 0;
+  }
+
+  if (num_extensions == 0) {
+    *out = nullptr;
+    *outlen = 0;
+    return 1;
+  }
+
+  // Allocate a uint16_t for each extension
+  uint16_t *exts =
+      static_cast<uint16_t *>(OPENSSL_zalloc(sizeof(uint16_t) * num_extensions));
+  if (exts == nullptr) {
+    return 0;
+  }
+
+  // Collect the type for each extension
+  if (1 != SSL_client_hello_get_extension_order(s, exts, &num_extensions)) {
+    OPENSSL_free(exts);
+    return 0;
+  }
+
+  // Allocate the int array needed by caller.
+  int *ext_types =
+    static_cast<int *>(OPENSSL_zalloc(sizeof(int) * num_extensions));
+  if (ext_types == nullptr) {
+    OPENSSL_free(exts);
+    return 0;
+  }
+
+  // Cast each uint16_t type to an int
+  for (size_t i = 0; i < num_extensions; i++) {
+    ext_types[i] = exts[i];
+  }
+  OPENSSL_free(exts);
+
+  *out = ext_types;
+  *outlen = num_extensions;
+
+  return 1;
+}
+
+int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts) {
+  GUARD_PTR(s);
+  GUARD_PTR(s->s3);
+  SSL_HANDSHAKE *hs = s->s3->hs.get();
+  GUARD_PTR(hs);
+
+  SSLMessage msg_unused;
+  SSL_CLIENT_HELLO client_hello;
+  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+    return 0;
+  }
+
+  CBS extensions;
+  CBS_init(&extensions, client_hello.extensions, client_hello.extensions_len);
+
+  size_t num_extensions = 0;
+  while (CBS_len(&extensions) > 0) {
+    uint16_t type = 0;
+    CBS body;
+    if (!CBS_get_u16(&extensions, &type) ||
+        !CBS_get_u16_length_prefixed(&extensions, &body)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return 0;
+    }
+    if (exts != nullptr) {
+      // num_exts is an in/out param. Return error if insufficient size.
+      if (num_extensions >= *num_exts) {
+        return 0;
+      }
+      // Store the type for each extension
+      exts[num_extensions] = type;
+    }
+    num_extensions++;
+  }
+  *num_exts = num_extensions;
+
+  return 1;
+}
+
+unsigned int SSL_client_hello_get0_legacy_version(SSL *s) {
+  GUARD_PTR(s);
+  GUARD_PTR(s->s3);
+  SSL_HANDSHAKE *hs = s->s3->hs.get();
+  GUARD_PTR(hs);
+
+  SSLMessage msg_unused;
+  SSL_CLIENT_HELLO client_hello;
+  if (!hs->GetClientHello(&msg_unused, &client_hello)) {
+    return 0;
+  }
+  return client_hello.version;
+}
+
 void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
                                  void (*cb)(const SSL *ssl, const char *line)) {
   ctx->keylog_callback = cb;
@@ -3655,4 +3760,3 @@ OPENSSL_EXPORT int SSL_get_write_traffic_secret(
 int SSL_verify_client_post_handshake(SSL *ssl) {
   return 0;
 }
-

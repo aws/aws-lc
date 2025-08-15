@@ -243,8 +243,8 @@ int ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
      data but we must not leak the sign of the centralized representative. */
   for(i = 0; i < ML_DSA_N; ++i) {
     /* Absolute value */
-    t = a->coeffs[i] >> 31;
-    t = a->coeffs[i] - (t & 2*a->coeffs[i]);
+    t = constant_time_select_int(constant_time_msb_w(a->coeffs[i]),
+                                 -a->coeffs[i], a->coeffs[i]);
 
     if(t >= B) {
       return 1;
