@@ -4684,6 +4684,7 @@ $L$in_prologue:
 
 
 section	.pdata rdata align=4
+ALIGN	4
 	DD	$L$SEH_begin_aesni_cbc_sha256_enc_xop wrt ..imagebase
 	DD	$L$SEH_end_aesni_cbc_sha256_enc_xop wrt ..imagebase
 	DD	$L$SEH_info_aesni_cbc_sha256_enc_xop wrt ..imagebase
@@ -4697,21 +4698,24 @@ section	.pdata rdata align=4
 	DD	$L$SEH_begin_aesni_cbc_sha256_enc_shaext wrt ..imagebase
 	DD	$L$SEH_end_aesni_cbc_sha256_enc_shaext wrt ..imagebase
 	DD	$L$SEH_info_aesni_cbc_sha256_enc_shaext wrt ..imagebase
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha256_enc_xop:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_xop wrt ..imagebase,$L$epilogue_xop wrt ..imagebase
 
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha256_enc_avx:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_avx wrt ..imagebase,$L$epilogue_avx wrt ..imagebase
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha256_enc_avx2:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_avx2 wrt ..imagebase,$L$epilogue_avx2 wrt ..imagebase
+ALIGN	4
 $L$SEH_info_aesni_cbc_sha256_enc_shaext:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase

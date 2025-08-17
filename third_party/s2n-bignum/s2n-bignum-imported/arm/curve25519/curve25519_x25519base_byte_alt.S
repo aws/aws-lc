@@ -6,7 +6,7 @@
 // Input scalar[32] (bytes); output res[32] (bytes)
 //
 // extern void curve25519_x25519base_byte_alt
-//   (uint8_t res[static 32],uint8_t scalar[static 32])
+//   (uint8_t res[static 32],const uint8_t scalar[static 32]);
 //
 // Given a scalar n, returns the X coordinate of n * G where G = (9,...) is
 // the standard generator. The scalar is first slightly modified/mangled

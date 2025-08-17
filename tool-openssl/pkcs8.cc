@@ -130,12 +130,13 @@ static const argument_t kArguments[] = {
     {"", kOptionalArgument, ""}};
 
 bool pkcs8Tool(const args_list_t &args) {
-  args_map_t parsed_args;
-  args_list_t extra_args;
-  bool help = false;
-  std::string in_path, out_path;
-  std::string inform = "PEM", outform = "PEM";
-  bool topk8 = false, nocrypt = false;
+    using namespace ordered_args;
+    ordered_args_map_t parsed_args;
+    args_list_t extra_args;
+    bool help = false;
+    std::string in_path, out_path;
+    std::string inform = "PEM", outform = "PEM";
+    bool topk8 = false, nocrypt = false;
 
   // Sensitive strings will be automatically cleared on function exit
   bssl::UniquePtr<std::string> passin_arg(new std::string());
@@ -146,7 +147,7 @@ bool pkcs8Tool(const args_list_t &args) {
   bssl::UniquePtr<EVP_PKEY> pkey;
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
 
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
     PrintUsage(kArguments);
     return false;
   }
@@ -173,12 +174,15 @@ bool pkcs8Tool(const args_list_t &args) {
   GetBoolArgument(&topk8, "-topk8", parsed_args);
   GetBoolArgument(&nocrypt, "-nocrypt", parsed_args);
 
-  if (parsed_args.count("-v2") > 0 && !parsed_args["-v2"].empty() &&
-      !validate_cipher(parsed_args["-v2"])) {
+  std::string v2_cipher;
+  GetString(&v2_cipher, "-v2", "", parsed_args);
+  if (!v2_cipher.empty() && !validate_cipher(v2_cipher)) {
     return false;
   }
-  if (parsed_args.count("-v2prf") > 0 && !parsed_args["-v2prf"].empty() &&
-      !validate_prf(parsed_args["-v2prf"])) {
+
+  std::string v2_prf;
+  GetString(&v2_prf, "-v2prf", "", parsed_args);
+  if (!v2_prf.empty() && !validate_prf(v2_prf)) {
     return false;
   }
 
@@ -238,9 +242,7 @@ bool pkcs8Tool(const args_list_t &args) {
   } else {
     // -topk8: output PKCS#8 format (encrypted by default unless -nocrypt)
     const EVP_CIPHER *cipher = (nocrypt) ? nullptr : 
-        ((parsed_args.count("-v2") == 0 || parsed_args["-v2"].empty()) 
-            ? EVP_aes_256_cbc() 
-            : EVP_get_cipherbyname(parsed_args["-v2"].c_str()));
+        (v2_cipher.empty() ? EVP_aes_256_cbc() : EVP_get_cipherbyname(v2_cipher.c_str()));
 
     result = (outform == "PEM")
         ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), cipher,

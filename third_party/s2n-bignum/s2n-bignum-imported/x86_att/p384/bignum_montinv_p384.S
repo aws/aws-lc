@@ -5,7 +5,8 @@
 // Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
 // Input x[6]; output z[6]
 //
-// extern void bignum_montinv_p384(uint64_t z[static 6],uint64_t x[static 6]);
+// extern void bignum_montinv_p384(uint64_t z[static 6],
+//                                 const uint64_t x[static 6]);
 //
 // If the 6-digit input x is coprime to p_384, i.e. is not divisible
 // by it, returns z < p_384 such that x * z == 2^768 (mod p_384). This

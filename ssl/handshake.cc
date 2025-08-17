@@ -361,6 +361,7 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
     hs->new_session->signed_cert_timestamp_list =
         UpRef(prev_session->signed_cert_timestamp_list);
     hs->new_session->verify_result = prev_session->verify_result;
+    ssl->verify_result = hs->new_session->verify_result;
     return ssl_verify_ok;
   }
 
@@ -410,6 +411,8 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
       ret = ssl_verify_invalid;
     }
   }
+
+  ssl->verify_result = hs->new_session->verify_result;
 
   return ret;
 }

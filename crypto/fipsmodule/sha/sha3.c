@@ -455,46 +455,66 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
  * SHAKE batched (x4) APIs implement SHAKE functionalities in batches of four on top of SHAKE API layer
  */
 int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx) {
-
-  int ok = (SHAKE_Init(&(*ctx)[0], SHAKE128_BLOCKSIZE) &&
-            SHAKE_Init(&(*ctx)[1], SHAKE128_BLOCKSIZE) &&
-            SHAKE_Init(&(*ctx)[2], SHAKE128_BLOCKSIZE) &&
-            SHAKE_Init(&(*ctx)[3], SHAKE128_BLOCKSIZE));
-
-  return ok;
+  OPENSSL_memset(ctx, 0, sizeof(KECCAK1600_CTX_x4));
+  return 1;
 }
 
 int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len) {
-
-  int ok = (SHAKE_Absorb(&(*ctx)[0], data0, len) &&
-            SHAKE_Absorb(&(*ctx)[1], data1, len) &&
-            SHAKE_Absorb(&(*ctx)[2], data2, len) &&
-            SHAKE_Absorb(&(*ctx)[3], data3, len));
-
-  return ok;
+  Keccak1600_Absorb_once_x4(ctx->A, data0, data1, data2, data3, len,
+                            SHAKE128_BLOCKSIZE, SHAKE_PAD_CHAR);
+  return 1;
 }
 
 int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
                                   KECCAK1600_CTX_x4 *ctx, size_t blks) {
+  Keccak1600_Squeezeblocks_x4(ctx->A, md0, md1, md2, md3, blks, SHAKE128_BLOCKSIZE);
+  return 1;
+}
 
-  int ok = (SHAKE_Squeeze(md0, &(*ctx)[0], blks * SHAKE128_BLOCKSIZE) &&
-            SHAKE_Squeeze(md1, &(*ctx)[1], blks * SHAKE128_BLOCKSIZE) &&
-            SHAKE_Squeeze(md2, &(*ctx)[2], blks * SHAKE128_BLOCKSIZE) &&
-            SHAKE_Squeeze(md3, &(*ctx)[3], blks * SHAKE128_BLOCKSIZE));
+static int SHAKE256_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
+                                  const void *data2, const void *data3, size_t len) {
+  Keccak1600_Absorb_once_x4(ctx->A, data0, data1, data2, data3,
+                            len, SHAKE256_BLOCKSIZE, SHAKE_PAD_CHAR);
+  return 1;
+}
 
-    return ok;
+static int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t *md2, uint8_t *md3,
+                                  KECCAK1600_CTX_x4 *ctx, size_t blks) {
+  Keccak1600_Squeezeblocks_x4(ctx->A, md0, md1, md2, md3, blks, SHAKE256_BLOCKSIZE);
+  return 1;
 }
 
 int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1, const uint8_t *data2,
                                   const uint8_t *data3, const size_t in_len,
                                   uint8_t *out0, uint8_t *out1, uint8_t *out2,
                                   uint8_t *out3, size_t out_len) {
+  KECCAK1600_CTX_x4 ctx;
+  OPENSSL_memset(&ctx, 0, sizeof(ctx));
+  size_t nblocks = out_len / SHAKE256_BLOCKSIZE;
+  uint8_t tmp0[SHAKE256_BLOCKSIZE];
+  uint8_t tmp1[SHAKE256_BLOCKSIZE];
+  uint8_t tmp2[SHAKE256_BLOCKSIZE];
+  uint8_t tmp3[SHAKE256_BLOCKSIZE];
 
-  int ok = (SHAKE256(data0, in_len, out0, out_len) &&
-            SHAKE256(data1, in_len, out1, out_len) &&
-            SHAKE256(data2, in_len, out2, out_len) &&
-            SHAKE256(data3, in_len, out3, out_len));
+  SHAKE256_Absorb_once_x4(&ctx, data0, data1, data2, data3, in_len);
+  SHAKE256_Squeezeblocks_x4(out0, out1, out2, out3, &ctx, nblocks);
 
-  return ok;
+  out0 += nblocks * SHAKE256_BLOCKSIZE;
+  out1 += nblocks * SHAKE256_BLOCKSIZE;
+  out2 += nblocks * SHAKE256_BLOCKSIZE;
+  out3 += nblocks * SHAKE256_BLOCKSIZE;
+
+  out_len -= nblocks * SHAKE256_BLOCKSIZE;
+
+  if (out_len > 0)
+  {
+      SHAKE256_Squeezeblocks_x4(tmp0, tmp1, tmp2, tmp3, &ctx, 1);
+      OPENSSL_memcpy(out0, tmp0, out_len);
+      OPENSSL_memcpy(out1, tmp1, out_len);
+      OPENSSL_memcpy(out2, tmp2, out_len);
+      OPENSSL_memcpy(out3, tmp3, out_len);
+  }
+
+  return 1;
 }

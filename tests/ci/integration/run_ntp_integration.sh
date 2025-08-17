@@ -9,14 +9,17 @@ source tests/ci/common_posix_setup.sh
 # Set up environment.
 
 # SYS_ROOT
+#  |
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - NTP_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  |
+#  - SCRATCH_FOLDER
+#    |
+#    - NTP_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/../NTP_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/NTP_BUILD_ROOT"
 NTP_WEBSITE_URL="https://downloads.nwtime.org/ntp/"
 
 # - curl fetches the HTML content of the website,
@@ -72,4 +75,4 @@ ntp_run_tests
 
 popd
 
-ldd "${NTP_SRC_FOLDER}/ntpd/ntpd" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${NTP_SRC_FOLDER}/ntpd/ntpd" crypto || exit 1

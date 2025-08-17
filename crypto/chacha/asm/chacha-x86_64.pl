@@ -2718,33 +2718,38 @@ $code.=<<___ if ($avx>2);
 ___
 $code.=<<___;
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_ChaCha20_ctr32_nohw:
 	.byte	9,0,0,0
 	.rva	se_handler
 
+.align	4
 .LSEH_info_ChaCha20_ctr32_ssse3:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
 	.rva	.Lssse3_body,.Lssse3_epilogue
 
+.align	4
 .LSEH_info_ChaCha20_ctr32_ssse3_4x:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.L4x_body,.L4x_epilogue
 ___
 $code.=<<___ if ($avx>1);
+.align	4
 .LSEH_info_ChaCha20_ctr32_avx2:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.L8x_body,.L8x_epilogue			# HandlerData[]
 ___
 $code.=<<___ if ($avx>2);
+.align	4
 .LSEH_info_ChaCha20_avx512:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
 	.rva	.Lavx512_body,.Lavx512_epilogue		# HandlerData[]
 
+.align	4
 .LSEH_info_ChaCha20_16x:
 	.byte	9,0,0,0
 	.rva	full_handler
