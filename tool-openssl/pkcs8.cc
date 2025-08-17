@@ -129,7 +129,7 @@ static const argument_t kArguments[] = {
     {"-passout", kOptionalArgument, "Output file passphrase source"},
     {"", kOptionalArgument, ""}};
 
-bool pkcs8Tool(const args_list_t &args) {
+bool pkcs8Tool(const args_list_t& args) {
     using namespace ordered_args;
     ordered_args_map_t parsed_args;
     args_list_t extra_args;
@@ -137,129 +137,131 @@ bool pkcs8Tool(const args_list_t &args) {
     std::string in_path, out_path;
     std::string inform = "PEM", outform = "PEM";
     bool topk8 = false, nocrypt = false;
+    
+    // Sensitive strings will be automatically cleared on function exit
+    bssl::UniquePtr<std::string> passin_arg(new std::string());
+    bssl::UniquePtr<std::string> passout_arg(new std::string());
+    
+    bssl::UniquePtr<BIO> in;
+    bssl::UniquePtr<BIO> out;
+    bssl::UniquePtr<EVP_PKEY> pkey;
+    const EVP_CIPHER* cipher = nullptr;
+    bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
 
-  // Sensitive strings will be automatically cleared on function exit
-  bssl::UniquePtr<std::string> passin_arg(new std::string());
-  bssl::UniquePtr<std::string> passout_arg(new std::string());
+    
+    if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
+        PrintUsage(kArguments);
+        return false;
+    }
 
-  bssl::UniquePtr<BIO> in;
-  bssl::UniquePtr<BIO> out;
-  bssl::UniquePtr<EVP_PKEY> pkey;
-  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
+    GetBoolArgument(&help, "-help", parsed_args);
+    if (help) {
+        PrintUsage(kArguments);
+        return true;
+    }
 
-  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
-    PrintUsage(kArguments);
-    return false;
-  }
+    GetString(&in_path, "-in", "", parsed_args);
+    if (in_path.empty()) {
+        fprintf(stderr, "Input file required\n");
+        return false;
+    }
+    GetString(&out_path, "-out", "", parsed_args);
 
-  GetBoolArgument(&help, "-help", parsed_args);
-  if (help) {
-    PrintUsage(kArguments);
+    GetString(&inform, "-inform", "PEM", parsed_args);
+    GetString(&outform, "-outform", "PEM", parsed_args);
+    if (!validate_format(inform) || !validate_format(outform)) {
+        return false;
+    }
+
+    GetBoolArgument(&topk8, "-topk8", parsed_args);
+    GetBoolArgument(&nocrypt, "-nocrypt", parsed_args);
+
+    std::string v2_cipher;
+    GetString(&v2_cipher, "-v2", "", parsed_args);
+    if (!v2_cipher.empty() && !validate_cipher(v2_cipher)) {
+        return false;
+    }
+
+    std::string v2_prf;
+    GetString(&v2_prf, "-v2prf", "", parsed_args);
+    if (!v2_prf.empty() && !validate_prf(v2_prf)) {
+        return false;
+    }
+
+    GetString(passin_arg.get(), "-passin", "", parsed_args);
+    GetString(passout_arg.get(), "-passout", "", parsed_args);
+
+    // Extract passwords (handles same-file case where both passwords are in one file)
+    if (!pass_util::ExtractPasswords(passin_arg, passout_arg)) {
+        fprintf(stderr, "Error extracting passwords\n");
+        return false;
+    }
+
+    // Check for contradictory arguments
+    if (nocrypt && !passin_arg->empty() && !passout_arg->empty()) {
+        fprintf(stderr,
+                "Error: -nocrypt cannot be used with both -passin and -passout\n");
+        return false;
+    }
+
+    in.reset(BIO_new_file(in_path.c_str(), "rb"));
+    if (!in) {
+        fprintf(stderr, "Cannot open input file\n");
+        return false;
+    }
+    if (!validate_bio_size(*in)) {
+        return false;
+    }
+
+    if (!out_path.empty()) {
+        out.reset(BIO_new_file(out_path.c_str(), "wb"));
+    } else {
+        out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+    }
+    if (!out) {
+        fprintf(stderr, "Cannot open output file\n");
+        return false;
+    }
+
+    pkey.reset((inform == "PEM")
+                   ? PEM_read_bio_PrivateKey(in.get(), nullptr, nullptr,
+                                             passin_arg->empty() ? nullptr : const_cast<char*>(passin_arg->c_str()))
+                   : read_private_der(in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str()).release());
+    if (!pkey) {
+        fprintf(stderr, "Unable to load private key\n");
+        return false;
+    }
+
+    bool result = false;
+    if (!topk8) {
+        // Default behavior: output unencrypted PKCS#8 format
+        // (AWS-LC doesn't support -traditional option)
+        result = (outform == "PEM")
+            ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), nullptr,
+                                            nullptr, 0, nullptr, nullptr)
+            : i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), nullptr,
+                                      nullptr, 0, nullptr, nullptr);
+    } else {
+        // -topk8: output PKCS#8 format (encrypted by default unless -nocrypt)
+        cipher = (nocrypt) ? nullptr : 
+            (v2_cipher.empty() ? EVP_aes_256_cbc() : EVP_get_cipherbyname(v2_cipher.c_str()));
+
+        result = (outform == "PEM")
+            ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), cipher,
+                                            passout_arg->empty() ? nullptr : passout_arg->c_str(),
+                                            passout_arg->empty() ? 0 : passout_arg->length(),
+                                            nullptr, nullptr)
+            : i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), cipher,
+                                      passout_arg->empty() ? nullptr : passout_arg->c_str(),
+                                      passout_arg->empty() ? 0 : passout_arg->length(),
+                                      nullptr, nullptr);
+    }
+
+    if (!result) {
+        fprintf(stderr, "Error writing private key\n");
+        return false;
+    }
+
+    BIO_flush(out.get());
     return true;
-  }
-
-  GetString(&in_path, "-in", "", parsed_args);
-  if (in_path.empty()) {
-    fprintf(stderr, "Input file required\n");
-    return false;
-  }
-  GetString(&out_path, "-out", "", parsed_args);
-
-  GetString(&inform, "-inform", "PEM", parsed_args);
-  GetString(&outform, "-outform", "PEM", parsed_args);
-  if (!validate_format(inform) || !validate_format(outform)) {
-    return false;
-  }
-
-  GetBoolArgument(&topk8, "-topk8", parsed_args);
-  GetBoolArgument(&nocrypt, "-nocrypt", parsed_args);
-
-  std::string v2_cipher;
-  GetString(&v2_cipher, "-v2", "", parsed_args);
-  if (!v2_cipher.empty() && !validate_cipher(v2_cipher)) {
-    return false;
-  }
-
-  std::string v2_prf;
-  GetString(&v2_prf, "-v2prf", "", parsed_args);
-  if (!v2_prf.empty() && !validate_prf(v2_prf)) {
-    return false;
-  }
-
-  GetString(passin_arg.get(), "-passin", "", parsed_args);
-  GetString(passout_arg.get(), "-passout", "", parsed_args);
-
-  // Extract passwords (handles same-file case where both passwords are in one file)
-  if (!pass_util::ExtractPasswords(passin_arg, passout_arg)) {
-    fprintf(stderr, "Error extracting passwords\n");
-    return false;
-  }
-
-  // Check for contradictory arguments
-  if (nocrypt && !passin_arg->empty() && !passout_arg->empty()) {
-    fprintf(stderr,
-            "Error: -nocrypt cannot be used with both -passin and -passout\n");
-    return false;
-  }
-
-  in.reset(BIO_new_file(in_path.c_str(), "rb"));
-  if (!in) {
-    fprintf(stderr, "Cannot open input file\n");
-    return false;
-  }
-  if (!validate_bio_size(*in)) {
-    return false;
-  }
-
-  if (!out_path.empty()) {
-    out.reset(BIO_new_file(out_path.c_str(), "wb"));
-  } else {
-    out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
-  }
-  if (!out) {
-    fprintf(stderr, "Cannot open output file\n");
-    return false;
-  }
-
-  pkey.reset((inform == "PEM")
-                 ? PEM_read_bio_PrivateKey(in.get(), nullptr, nullptr,
-                                           passin_arg->empty() ? nullptr : const_cast<char*>(passin_arg->c_str()))
-                 : read_private_der(in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str()).release());
-  if (!pkey) {
-    fprintf(stderr, "Unable to load private key\n");
-    return false;
-  }
-
-  bool result = false;
-  if (!topk8) {
-    // Default behavior: output unencrypted PKCS#8 format
-    // (AWS-LC doesn't support -traditional option)
-    result = (outform == "PEM")
-        ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), nullptr,
-                                        nullptr, 0, nullptr, nullptr)
-        : i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), nullptr,
-                                  nullptr, 0, nullptr, nullptr);
-  } else {
-    // -topk8: output PKCS#8 format (encrypted by default unless -nocrypt)
-    const EVP_CIPHER *cipher = (nocrypt) ? nullptr : 
-        (v2_cipher.empty() ? EVP_aes_256_cbc() : EVP_get_cipherbyname(v2_cipher.c_str()));
-
-    result = (outform == "PEM")
-        ? PEM_write_bio_PKCS8PrivateKey(out.get(), pkey.get(), cipher,
-                                        passout_arg->empty() ? nullptr : passout_arg->c_str(),
-                                        passout_arg->empty() ? 0 : passout_arg->length(),
-                                        nullptr, nullptr)
-        : i2d_PKCS8PrivateKey_bio(out.get(), pkey.get(), cipher,
-                                  passout_arg->empty() ? nullptr : passout_arg->c_str(),
-                                  passout_arg->empty() ? 0 : passout_arg->length(),
-                                  nullptr, nullptr);
-  }
-
-  if (!result) {
-    fprintf(stderr, "Error writing private key\n");
-    return false;
-  }
-
-  BIO_flush(out.get());
-  return true;
 }
