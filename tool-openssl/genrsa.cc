@@ -11,7 +11,6 @@
 #include "internal.h"
 
 static const unsigned kDefaultKeySize = 2048;
-static const unsigned kMinKeySize = 1;
 static const char kKeyArgName[] = "key_size";
 
 static const argument_t kArguments[] = {
@@ -38,11 +37,15 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
     return true;
   }
 
+  if (extra_args.size() > 1) {
+    fprintf(stderr, "Error: Only one key size argument allowed\n");
+    return false;
+  }
+
   ordered_args::ordered_args_map_t temp_args;
   temp_args.push_back(std::make_pair(kKeyArgName, extra_args[0]));
 
-  if (!ordered_args::GetUnsigned(&bits, kKeyArgName, 0, temp_args) ||
-      bits < kMinKeySize) {
+  if (!ordered_args::GetUnsigned(&bits, kKeyArgName, 0, temp_args)) {
     fprintf(stderr, "Error: Invalid key size '%s'\n", extra_args[0].c_str());
     return false;
   }
@@ -108,21 +111,17 @@ bool genrsaTool(const args_list_t &args) {
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
 
-  // Simple validation that numbits is after all options
-  for (size_t i = 0; i < args.size(); i++) {
-    if (i < args.size() - 1 && !extra_args.empty() &&
-        args[i] == extra_args[0]) {
-      // Found the numbits argument, check if any options come after it
-      for (size_t j = i + 1; j < args.size(); j++) {
-        if (::IsFlag(args[j])) {
-          fprintf(stderr,
-                  "Error: Key size must be specified after all options\n");
-          fprintf(stderr, "Usage: genrsa [options] numbits\n");
-          goto err;
-        }
-      }
-      break;
-    }
+  // Parse and validate key size first (catches multiple key sizes)
+  if (!ParseKeySize(extra_args, bits)) {
+    goto err;
+  }
+
+  // Simple validation that numbits is the last argument
+  if (!extra_args.empty() && args[args.size()-1] != extra_args[0]) {
+    fprintf(stderr,
+            "Error: Key size must be specified after all options\n");
+    fprintf(stderr, "Usage: genrsa [options] numbits\n");
+    goto err;
   }
 
   // Handle help request
@@ -133,11 +132,6 @@ bool genrsaTool(const args_list_t &args) {
     }
     DisplayHelp(bio.get());
     return true;  // Help display is a successful exit
-  }
-
-  // Parse and validate key size
-  if (!ParseKeySize(extra_args, bits)) {
-    goto err;
   }
 
   // Generate RSA key
