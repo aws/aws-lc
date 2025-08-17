@@ -1308,6 +1308,10 @@ bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id);
 // true. Otherwise, it returns false.
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 
+// ssl_group_id_to_nid returns the NID corresponding to |group_id| or
+// |NID_undef| if unknown.
+int ssl_group_id_to_nid(uint16_t group_id);
+
 
 // Handshake messages.
 
@@ -4201,6 +4205,10 @@ struct ssl_st {
 
   // extra application data
   CRYPTO_EX_DATA ex_data;
+
+  // verify_result is the result of certificate verification in the case of
+  // non-fatal certificate errors.
+  long verify_result = X509_V_ERR_INVALID_CALL;
 
   uint32_t options = 0;  // protocol behaviour
   uint32_t mode = 0;     // API behaviour

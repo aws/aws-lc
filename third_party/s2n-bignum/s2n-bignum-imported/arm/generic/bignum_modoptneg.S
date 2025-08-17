@@ -6,8 +6,8 @@
 // (if p zero), assuming x reduced
 // Inputs p, x[k], m[k]; output z[k]
 //
-//    extern void bignum_modoptneg
-//      (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x, uint64_t *m);
+//    extern void bignum_modoptneg(uint64_t k, uint64_t *z, uint64_t p,
+//                                 const uint64_t *x, const uint64_t *m);
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = p, X3 = x, X4 = m
 // ----------------------------------------------------------------------------

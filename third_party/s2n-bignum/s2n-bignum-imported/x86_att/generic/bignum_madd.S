@@ -5,9 +5,8 @@
 // Multiply-add, z := z + x * y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[k]
 //
-//    extern uint64_t bignum_madd
-//     (uint64_t k, uint64_t *z,
-//      uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+//    extern uint64_t bignum_madd(uint64_t k, uint64_t *z, uint64_t m,
+//                                const uint64_t *x, uint64_t n, const uint64_t *y);
 //
 // Does the "z := x * y + z" operation, while also returning a "next" or
 // "carry" word. In the case where m + n <= p (i.e. the pure product would

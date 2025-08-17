@@ -4,8 +4,8 @@
 // ----------------------------------------------------------------------------
 // Point doubling on SECG curve secp256k1 in Jacobian coordinates
 //
-//    extern void secp256k1_montjdouble
-//      (uint64_t p3[static 12],uint64_t p1[static 12]);
+//    extern void secp256k1_jdouble(uint64_t p3[static 12],
+//                                  const uint64_t p1[static 12]);
 //
 // Does p3 := 2 * p1 where all points are regarded as Jacobian triples.
 // A Jacobian triple (x,y,z) represents affine point (x/z^2,y/z^3).

@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -69,24 +70,14 @@ type result struct {
 	Error  error
 }
 
-// sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
-// is true.
-var sdeCPUs = []string{
-
+// Default list of CPU codes that are compatible with MSVC
+var defaultCPUs = []string{
 	"p4p", // Pentium4 Prescott
 	"mrm", // Merom
 	"pnr", // Penryn
-	"nhm", // Nehalem
-	"wsm", // Westmere
-	"snb", // Sandy Bridge
-	"ivb", // Ivy Bridge
 	"hsw", // Haswell
 	"bdw", // Broadwell
 	"slt", // Saltwell
-	"slm", // Silvermont
-	"glm", // Goldmont
-	"glp", // Goldmont Plus
-	"tnt", // Tremont
 	"skl", // Skylake
 	"cnl", // Cannon Lake
 	"icl", // Ice Lake
@@ -95,6 +86,55 @@ var sdeCPUs = []string{
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
 	"tgl", // Tiger Lake
+	"snb", // Sandy Bridge
+	"ivb", // Ivy Bridge
+}
+
+// List of CPUs that do not support AVX instructions and thus are incompatible with modern MSVC runtime libraries (2022+)
+var cpusWithNoAVXSupport = []string{
+	"slm", // Silvermont
+	"glm", // Goldmont
+	"glp", // Goldmont Plus
+	"nhm", // Nehalem
+	"tnt", // Tremont
+	"wsm", // Westmere
+}
+
+var sdeCPUs []string
+
+func initSDECPUs() {
+	sdeCPUs = append([]string{}, defaultCPUs...)
+	if (runtime.GOOS == "windows") {
+		cmd := exec.Command("cmd", "/C", "ver")
+		output, err := cmd.Output()
+		if err != nil {
+			return
+		}
+
+		verOutput := strings.ToLower(string(output))
+
+		// Modern MSVC runtime libraries (Windows Server 2022 and newer) assumes a minimum level of AVX support. Some old CPUs do not support AVX.
+		if isWindowsOlderThan2022(verOutput) {
+			sdeCPUs = append(sdeCPUs, cpusWithNoAVXSupport...)
+		} else {
+			fmt.Printf("Running on Windows 2022 or newer. Removed old CPUs lacking AVX support that Windows 2022+ may use.\n")
+		}
+	}
+}
+
+func isWindowsOlderThan2022(verOutput string) bool {
+	re := regexp.MustCompile(`(\d+\.\d+\.\d+(?:\.\d+)*)`)
+	matches := re.FindStringSubmatch(verOutput)
+
+	if len(matches) < 2 {
+		fmt.Printf("Could not parse Windows version. Testing all CPUs to ensure maximum coverage.")
+		return true
+	}
+
+	version := matches[1]
+
+	// Windows Server 2022 has version number 10.0.20348
+	return version < "10.0.20"
 }
 
 func targetArchMatchesRuntime(target string) bool {
@@ -360,6 +400,9 @@ func (t test) getGTestShards() ([]test, error) {
 func main() {
 	flag.Parse()
 	setWorkingDirectory()
+
+	// Initialize sdeCPUs now that flags are parsed
+	initSDECPUs()
 
 	testCases, err := testconfig.ParseTestConfig("util/all_tests.json")
 	if err != nil {

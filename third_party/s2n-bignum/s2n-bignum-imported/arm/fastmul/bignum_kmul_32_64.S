@@ -5,9 +5,10 @@
 // Multiply z := x * y
 // Inputs x[32], y[32]; output z[64]; temporary buffer t[>=96]
 //
-//    extern void bignum_kmul_32_64
-//     (uint64_t z[static 64], uint64_t x[static 32], uint64_t y[static 32],
-//      uint64_t t[static 96])
+//    extern void bignum_kmul_32_64(uint64_t z[static 64],
+//                                  const uint64_t x[static 32],
+//                                  const uint64_t y[static 32],
+//                                  uint64_t t[static 96]);
 //
 // This is a Karatsuba-style function multiplying half-sized results
 // internally and using temporary buffer t for intermediate results.

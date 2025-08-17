@@ -5,8 +5,7 @@
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
 //
-//    extern void bignum_sqr_p521 (uint64_t z[static 9],
-//                                      uint64_t x[static 9]);
+//    extern void bignum_sqr_p521(uint64_t z[static 9], const uint64_t x[static 9]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

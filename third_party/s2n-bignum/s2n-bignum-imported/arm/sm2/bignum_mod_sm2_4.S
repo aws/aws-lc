@@ -5,8 +5,7 @@
 // Reduce modulo field characteristic, z := x mod p_sm2
 // Input x[4]; output z[4]
 //
-//    extern void bignum_mod_sm2_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_mod_sm2_4(uint64_t z[static 4], const uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

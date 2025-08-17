@@ -1124,6 +1124,34 @@ OPENSSL_EXPORT size_t SSL_get0_peer_delegation_algorithms(
 // - SSL_CLIENT_HELLO_RETRY (not supported) is handled like SSL_CLIENT_HELLO_ERROR
 typedef int (*SSL_client_hello_cb_fn)(SSL *s, int *al, void *arg);
 
+// SSL_client_hello_get1_extensions_present iterates over the extensions in the
+// ClientHello. If any are found, it allocates an array of int and sets |*out|
+// to point to this array and |*outlen| to the number of extensions. The ints
+// in the array correspond to the type of each extension. The caller is
+// responsible for releasing the array with OPENSSL_free. If no extensions are
+// found, it sets |*out| to NULL and |*outlen| to 0. The function returns 1 on
+// success and returns 0 on error.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT int SSL_client_hello_get1_extensions_present(SSL *s, int **out, size_t *outlen);
+
+// SSL_client_hello_get_extension_order iterates over the extensions in the
+// ClientHello. If |exts| is not null, the type for each extension will be
+// stored in |exts| and |*num_exts| should be the size of storage
+// allocated for |exts|; the function will return an error if |*num_exts| is
+// too small. On success, the function will return 1 and will set |*num_exts| to
+// the number of extensions. The caller may pass |exts| as null to obtain the
+// number of extensions. If no ClientHello extensions are found, the
+// function returns 1 and sets |*num_exts| to 0. The functions returns 0 on
+// error.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT int SSL_client_hello_get_extension_order(SSL *s, uint16_t *exts, size_t *num_exts);
+
 // SSL_CTX_set_client_hello_cb configures a callback that is called when a
 // ClientHello message is received. This can be used to select certificates,
 // adjust settings, or otherwise make decisions about the connection before
@@ -1143,6 +1171,15 @@ OPENSSL_EXPORT void SSL_CTX_set_client_hello_cb(SSL_CTX *c, SSL_client_hello_cb_
 
 // SSL_client_hello_isv2 always returns zero as SSLv2 is not supported.
 OPENSSL_EXPORT int SSL_client_hello_isv2(SSL *s);
+
+
+// SSL_client_hello_get0_legacy_version provides the value of the
+// "legacy_version" field in the client hello.
+//
+// This function can only be called from within a client hello callback (see
+// |SSL_CTX_set_client_hello_cb|) or during server certificate selection (see
+// |SSL_CTX_set_select_certificate_cb|).
+OPENSSL_EXPORT unsigned int SSL_client_hello_get0_legacy_version(SSL *s);
 
 // SSL_client_hello_get0_ext searches the extensions in the ClientHello for an
 // extension of the given type. If found, it sets |*out| to point to the
@@ -2745,6 +2782,10 @@ OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
 // failure.
 OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
+// SSL_get_negotiated_group returns the NID of the group used by |ssl|'s most
+// recently completed handshake, or |NID_undef| if not applicable.
+OPENSSL_EXPORT int SSL_get_negotiated_group(const SSL *ssl);
+
 // SSL_GROUP_* define TLS group IDs.
 #define SSL_GROUP_SECP224R1 21
 #define SSL_GROUP_SECP256R1 23
@@ -3133,6 +3174,9 @@ OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
 // SSL_get_verify_result returns the result of certificate verification. It is
 // either |X509_V_OK| or a |X509_V_ERR_*| value.
 OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
+
+// SSL_set_verify_result sets the result of certificate verification.
+OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long arg);
 
 // SSL_alert_from_verify_result returns the SSL alert code, such as
 // |SSL_AD_CERTIFICATE_EXPIRED|, that corresponds to an |X509_V_ERR_*| value.
@@ -5308,6 +5352,10 @@ OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *ssl);
 // SSL_num_renegotiations calls |SSL_total_renegotiations|.
 OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
 
+// SSL_clear_num_renegotiations calls |SSL_total_renegotiations| and resets the
+// total number of renegotiation handshakes performed by |ssl| to 0.
+OPENSSL_EXPORT int SSL_clear_num_renegotiations(const SSL *ssl);
+
 // SSL_CTX_get_read_ahead returns 1 if |ctx| is not null and read ahead is
 // enabled, otherwise it returns 0.
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
@@ -5770,6 +5818,11 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
   SSL_GROUP_SECP256R1_KYBER768_DRAFT00
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
+// TLSEXT_nid_unknown is a constant used in OpenSSL for
+// |SSL_get_negotiated_group| to return an unrecognized group. AWS-LC never
+// returns this value, but we define this constant for compatibility.
+#define TLSEXT_nid_unknown 0x1000000
+
 // SSL_get_curve_id calls |SSL_get_group_id|.
 OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 
@@ -6147,6 +6200,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_CHANNEL_ID doesnt_exist
 #define SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_CLEAR_MODE doesnt_exist
+#define SSL_CTRL_CLEAR_NUM_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
 #define SSL_CTRL_EXTRA_CHAIN_CERT doesnt_exist
 #define SSL_CTRL_GET_CHAIN_CERTS doesnt_exist
@@ -6154,6 +6208,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_CTRL_GET_CLIENT_CERT_TYPES doesnt_exist
 #define SSL_CTRL_GET_EXTRA_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
+#define SSL_CTRL_GET_NEGOTIATED_GROUP doesnt_exist
 #define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_GET_READ_AHEAD doesnt_exist
 #define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
@@ -6246,12 +6301,14 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 #define SSL_add1_chain_cert SSL_add1_chain_cert
 #define SSL_build_cert_chain SSL_build_cert_chain
 #define SSL_clear_chain_certs SSL_clear_chain_certs
+#define SSL_clear_num_renegotiations SSL_clear_num_renegotiations
 #define SSL_clear_mode SSL_clear_mode
 #define SSL_clear_options SSL_clear_options
 #define SSL_get0_certificate_types SSL_get0_certificate_types
 #define SSL_get0_chain_certs SSL_get0_chain_certs
 #define SSL_get_max_cert_list SSL_get_max_cert_list
 #define SSL_get_mode SSL_get_mode
+#define SSL_get_negotiated_group SSL_get_negotiated_group
 #define SSL_get_options SSL_get_options
 #define SSL_get_secure_renegotiation_support \
   SSL_get_secure_renegotiation_support

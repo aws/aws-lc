@@ -5,8 +5,8 @@
 // Reduce modulo basepoint order, z := x mod n_25519
 // Input x[4]; output z[4]
 //
-//    extern void bignum_mod_n25519_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_mod_n25519_4(uint64_t z[static 4],
+//                                    const uint64_t x[static 4]);
 //
 // Reduction is modulo the order of the curve25519/edwards25519 basepoint.
 //

@@ -39,6 +39,10 @@
 # hash] as long as vector instructions issue rate is limited to 1 per
 # cycle...
 #
+# July 2025
+#
+# Removed SHA3 variant, restricted assembly to core Keccak permutation.
+#
 ######################################################################
 # Numbers are cycles per processed byte.
 #
@@ -95,8 +99,8 @@ $code.=<<___;
 .align 8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 	.quad	0,0,0,0,0,0,0,0
-.type	iotas,%object
-iotas:
+.type	iotas_hw,%object
+iotas_hw:
 	.quad	0x0000000000000001
 	.quad	0x0000000000008082
 	.quad	0x800000000000808a
@@ -121,7 +125,7 @@ iotas:
 	.quad	0x8000000000008080
 	.quad	0x0000000080000001
 	.quad	0x8000000080008008
-.size	iotas,.-iotas
+.size	iotas_hw,.-iotas_hw
 ___
 								{{{
 my @A = map([ "x$_", "x".($_+1), "x".($_+2), "x".($_+3), "x".($_+4) ],
@@ -135,7 +139,7 @@ $code.=<<___;
 .align	5
 KeccakF1600_int:
 	AARCH64_SIGN_LINK_REGISTER
-	adr	$C[2],iotas
+	adr	$C[2],iotas_hw
 	stp	$C[2],x30,[sp,#16]		// 32 bytes on top are mine
 	b	.Loop
 .align	4
@@ -291,9 +295,10 @@ $code.=<<___;
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600_int,.-KeccakF1600_int
-.type	KeccakF1600,%function
+.globl	KeccakF1600_hw
+.type	KeccakF1600_hw,%function
 .align	5
-KeccakF1600:
+KeccakF1600_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -342,479 +347,16 @@ KeccakF1600:
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	KeccakF1600,.-KeccakF1600
-.globl	Keccak1600_Absorb_hw
-.type	Keccak1600_Absorb_hw,%function
-.align	5
-Keccak1600_Absorb_hw:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-128]!
-	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
-	stp	x23,x24,[sp,#48]
-	stp	x25,x26,[sp,#64]
-	stp	x27,x28,[sp,#80]
-	sub	sp,sp,#64
-	stp	x0,x1,[sp,#32]			// offload arguments
-	stp	x2,x3,[sp,#48]
-	mov	$C[0],x0			// uint64_t A[5][5]
-	mov	$C[1],x1			// const void *inp
-	mov	$C[2],x2			// size_t len
-	mov	$C[3],x3			// size_t bsz
-	ldp	$A[0][0],$A[0][1],[$C[0],#16*0]
-	ldp	$A[0][2],$A[0][3],[$C[0],#16*1]
-	ldp	$A[0][4],$A[1][0],[$C[0],#16*2]
-	ldp	$A[1][1],$A[1][2],[$C[0],#16*3]
-	ldp	$A[1][3],$A[1][4],[$C[0],#16*4]
-	ldp	$A[2][0],$A[2][1],[$C[0],#16*5]
-	ldp	$A[2][2],$A[2][3],[$C[0],#16*6]
-	ldp	$A[2][4],$A[3][0],[$C[0],#16*7]
-	ldp	$A[3][1],$A[3][2],[$C[0],#16*8]
-	ldp	$A[3][3],$A[3][4],[$C[0],#16*9]
-	ldp	$A[4][0],$A[4][1],[$C[0],#16*10]
-	ldp	$A[4][2],$A[4][3],[$C[0],#16*11]
-	ldr	$A[4][4],[$C[0],#16*12]
-	b	.Loop_absorb
-.align	4
-.Loop_absorb:
-	subs	$C[0],$C[2],$C[3]		// len - bsz
-	blo	.Labsorbed
-	str	$C[0],[sp,#48]			// save len - bsz
+.size	KeccakF1600_hw,.-KeccakF1600_hw
 ___
-for (my $i=0; $i<24; $i+=2) {
-my $j = $i+1;
+								}}}
 $code.=<<___;
-	ldr	$C[0],[$C[1]],#8		// *inp++
-#ifdef	__AARCH64EB__
-	rev	$C[0],$C[0]
-#endif
-	eor	$A[$i/5][$i%5],$A[$i/5][$i%5],$C[0]
-	cmp	$C[3],#8*($i+2)
-	blo	.Lprocess_block
-	ldr	$C[0],[$C[1]],#8		// *inp++
-#ifdef	__AARCH64EB__
-	rev	$C[0],$C[0]
-#endif
-	eor	$A[$j/5][$j%5],$A[$j/5][$j%5],$C[0]
-	beq	.Lprocess_block
+.asciz	"Keccak-1600 permutation for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 ___
-}
-$code.=<<___;
-	ldr	$C[0],[$C[1]],#8		// *inp++
-#ifdef	__AARCH64EB__
-	rev	$C[0],$C[0]
-#endif
-	eor	$A[4][4],$A[4][4],$C[0]
-.Lprocess_block:
-	str	$C[1],[sp,#40]			// save inp
-	bl	KeccakF1600_int
-	ldr	$C[1],[sp,#40]			// restore arguments
-	ldp	$C[2],$C[3],[sp,#48]
-	b	.Loop_absorb
-.align	4
-.Labsorbed:
-	ldr	$C[1],[sp,#32]
-	stp	$A[0][0],$A[0][1],[$C[1],#16*0]
-	stp	$A[0][2],$A[0][3],[$C[1],#16*1]
-	stp	$A[0][4],$A[1][0],[$C[1],#16*2]
-	stp	$A[1][1],$A[1][2],[$C[1],#16*3]
-	stp	$A[1][3],$A[1][4],[$C[1],#16*4]
-	stp	$A[2][0],$A[2][1],[$C[1],#16*5]
-	stp	$A[2][2],$A[2][3],[$C[1],#16*6]
-	stp	$A[2][4],$A[3][0],[$C[1],#16*7]
-	stp	$A[3][1],$A[3][2],[$C[1],#16*8]
-	stp	$A[3][3],$A[3][4],[$C[1],#16*9]
-	stp	$A[4][0],$A[4][1],[$C[1],#16*10]
-	stp	$A[4][2],$A[4][3],[$C[1],#16*11]
-	str	$A[4][4],[$C[1],#16*12]
-	mov	x0,$C[2]			// return value
-	ldp	x19,x20,[x29,#16]
-	add	sp,sp,#64
-	ldp	x21,x22,[x29,#32]
-	ldp	x23,x24,[x29,#48]
-	ldp	x25,x26,[x29,#64]
-	ldp	x27,x28,[x29,#80]
-	ldp	x29,x30,[sp],#128
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	Keccak1600_Absorb_hw,.-Keccak1600_Absorb_hw
-___
-{
-my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
-$code.=<<___;
-.globl	Keccak1600_Squeeze_hw
-.type	Keccak1600_Squeeze_hw,%function
-.align	5
-Keccak1600_Squeeze_hw:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-48]!
-	add	x29,sp,#0
-	cmp	x2,#0
-	beq	.Lsqueeze_abort
-	stp	x19,x20,[sp,#16]
-	stp	x21,x22,[sp,#32]
-	mov	$A_flat,x0			// put aside arguments
-	mov	$out,x1
-	mov	$len,x2
-	mov	$bsz,x3
-	cmp	x4, #0				// x4 = 'padded' argument; if !=0, perform Keccak first
-	bne .Lnext_block
-.Loop_squeeze:
-	ldr	x4,[x0],#8
-	cmp	$len,#8
-	blo	.Lsqueeze_tail
-#ifdef	__AARCH64EB__
-	rev	x4,x4
-#endif
-	str	x4,[$out],#8
-	subs	$len,$len,#8
-	beq	.Lsqueeze_done
-	subs	x3,x3,#8
-	bhi	.Loop_squeeze
-.Lnext_block:
-	mov	x0,$A_flat
-	bl	KeccakF1600
-	mov	x0,$A_flat
-	mov	x3,$bsz
-	b	.Loop_squeeze
-.align	4
-.Lsqueeze_tail:
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done
-	strb	w4,[$out],#1
-.Lsqueeze_done:
-	ldp	x19,x20,[sp,#16]
-	ldp	x21,x22,[sp,#32]
-.Lsqueeze_abort:
-	ldp	x29,x30,[sp],#48
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	Keccak1600_Squeeze_hw,.-Keccak1600_Squeeze_hw
-___
-}								}}}
-								{{{
-my @A = map([ "v".$_.".16b", "v".($_+1).".16b", "v".($_+2).".16b",
-                             "v".($_+3).".16b", "v".($_+4).".16b" ],
-            (0, 5, 10, 15, 20));
-
-my @C = map("v$_.16b", (25..31));
-my @D = @C[4,5,6,2,3];
-
-$code.=<<___;
-.type	KeccakF1600_ce,%function
-.align	5
-KeccakF1600_ce:
-	mov	x9,#24
-	adr	x10,iotas
-	b	.Loop_ce
-.align	4
-.Loop_ce:
-	////////////////////////////////////////////////// Theta
-	eor3	$C[0],$A[4][0],$A[3][0],$A[2][0]
-	eor3	$C[1],$A[4][1],$A[3][1],$A[2][1]
-	eor3	$C[2],$A[4][2],$A[3][2],$A[2][2]
-	eor3	$C[3],$A[4][3],$A[3][3],$A[2][3]
-	eor3	$C[4],$A[4][4],$A[3][4],$A[2][4]
-	eor3	$C[0],$C[0],   $A[1][0],$A[0][0]
-	eor3	$C[1],$C[1],   $A[1][1],$A[0][1]
-	eor3	$C[2],$C[2],   $A[1][2],$A[0][2]
-	eor3	$C[3],$C[3],   $A[1][3],$A[0][3]
-	eor3	$C[4],$C[4],   $A[1][4],$A[0][4]
-	rax1	$C[5],$C[0],$C[2]			// D[1]
-	rax1	$C[6],$C[1],$C[3]			// D[2]
-	rax1	$C[2],$C[2],$C[4]			// D[3]
-	rax1	$C[3],$C[3],$C[0]			// D[4]
-	rax1	$C[4],$C[4],$C[1]			// D[0]
-	////////////////////////////////////////////////// Theta+Rho+Pi
-	xar	$C[0],   $A[0][1],$D[1],#$subrhotates[0][1] // C[0]=A[2][0]
-	xar	$A[0][1],$A[1][1],$D[1],#$subrhotates[1][1]
-	xar	$A[1][1],$A[1][4],$D[4],#$subrhotates[1][4]
-	xar	$A[1][4],$A[4][2],$D[2],#$subrhotates[4][2]
-	xar	$A[4][2],$A[2][4],$D[4],#$subrhotates[2][4]
-	xar	$A[2][4],$A[4][0],$D[0],#$subrhotates[4][0]
-	xar	$C[1],   $A[0][2],$D[2],#$subrhotates[0][2] // C[1]=A[4][0]
-	xar	$A[0][2],$A[2][2],$D[2],#$subrhotates[2][2]
-	xar	$A[2][2],$A[2][3],$D[3],#$subrhotates[2][3]
-	xar	$A[2][3],$A[3][4],$D[4],#$subrhotates[3][4]
-	xar	$A[3][4],$A[4][3],$D[3],#$subrhotates[4][3]
-	xar	$A[4][3],$A[3][0],$D[0],#$subrhotates[3][0]
-	xar	$A[3][0],$A[0][4],$D[4],#$subrhotates[0][4]
-	xar	$D[4],   $A[4][4],$D[4],#$subrhotates[4][4] // D[4]=A[0][4]
-	xar	$A[4][4],$A[4][1],$D[1],#$subrhotates[4][1]
-	xar	$A[1][3],$A[1][3],$D[3],#$subrhotates[1][3] // A[1][3]=A[4][1]
-	xar	$A[0][4],$A[3][1],$D[1],#$subrhotates[3][1] // A[0][4]=A[1][3]
-	xar	$A[3][1],$A[1][0],$D[0],#$subrhotates[1][0]
-	xar	$A[1][0],$A[0][3],$D[3],#$subrhotates[0][3]
-	eor	$A[0][0],$A[0][0],$D[0]
-	xar	$D[3],   $A[3][3],$D[3],#$subrhotates[3][3] // D[3]=A[0][3]
-	xar	$A[0][3],$A[3][2],$D[2],#$subrhotates[3][2] // A[0][3]=A[3][3]
-	xar	$D[1],   $A[2][1],$D[1],#$subrhotates[2][1] // D[1]=A[3][2]
-	xar	$D[2],   $A[1][2],$D[2],#$subrhotates[1][2] // D[2]=A[2][1]
-	xar	$D[0],   $A[2][0],$D[0],#$subrhotates[2][0] // D[0]=A[1][2]
-	////////////////////////////////////////////////// Chi+Iota
-	bcax	$A[4][0],$C[1],   $A[4][2],$A[1][3]	// A[1][3]=A[4][1]
-	bcax	$A[4][1],$A[1][3],$A[4][3],$A[4][2]	// A[1][3]=A[4][1]
-	bcax	$A[4][2],$A[4][2],$A[4][4],$A[4][3]
-	bcax	$A[4][3],$A[4][3],$C[1],   $A[4][4]
-	bcax	$A[4][4],$A[4][4],$A[1][3],$C[1]	// A[1][3]=A[4][1]
-	ld1r	{$C[1]},[x10],#8
-	bcax	$A[3][2],$D[1],   $A[3][4],$A[0][3]	// A[0][3]=A[3][3]
-	bcax	$A[3][3],$A[0][3],$A[3][0],$A[3][4]	// A[0][3]=A[3][3]
-	bcax	$A[3][4],$A[3][4],$A[3][1],$A[3][0]
-	bcax	$A[3][0],$A[3][0],$D[1],   $A[3][1]
-	bcax	$A[3][1],$A[3][1],$A[0][3],$D[1]	// A[0][3]=A[3][3]
-	bcax	$A[2][0],$C[0],   $A[2][2],$D[2]
-	bcax	$A[2][1],$D[2],   $A[2][3],$A[2][2]
-	bcax	$A[2][2],$A[2][2],$A[2][4],$A[2][3]
-	bcax	$A[2][3],$A[2][3],$C[0],   $A[2][4]
-	bcax	$A[2][4],$A[2][4],$D[2],   $C[0]
-	bcax	$A[1][2],$D[0],   $A[1][4],$A[0][4]	// A[0][4]=A[1][3]
-	bcax	$A[1][3],$A[0][4],$A[1][0],$A[1][4]	// A[0][4]=A[1][3]
-	bcax	$A[1][4],$A[1][4],$A[1][1],$A[1][0]
-	bcax	$A[1][0],$A[1][0],$D[0],   $A[1][1]
-	bcax	$A[1][1],$A[1][1],$A[0][4],$D[0]	// A[0][4]=A[1][3]
-	bcax	$A[0][3],$D[3],   $A[0][0],$D[4]
-	bcax	$A[0][4],$D[4],   $A[0][1],$A[0][0]
-	bcax	$A[0][0],$A[0][0],$A[0][2],$A[0][1]
-	bcax	$A[0][1],$A[0][1],$D[3],   $A[0][2]
-	bcax	$A[0][2],$A[0][2],$D[4],   $D[3]
-	eor	$A[0][0],$A[0][0],$C[1]
-	subs	x9,x9,#1
-	bne	.Loop_ce
-	ret
-.size	KeccakF1600_ce,.-KeccakF1600_ce
-.type	KeccakF1600_cext,%function
-.align	5
-KeccakF1600_cext:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-80]!
-	add	x29,sp,#0
-	stp	d8,d9,[sp,#16]		// per ABI requirement
-	stp	d10,d11,[sp,#32]
-	stp	d12,d13,[sp,#48]
-	stp	d14,d15,[sp,#64]
-___
-for($i=0; $i<24; $i+=2) {		# load A[5][5]
-my $j=$i+1;
-$code.=<<___;
-	ldp	d$i,d$j,[x0,#8*$i]
-___
-}
-$code.=<<___;
-	ldr	d24,[x0,#8*$i]
-	bl	KeccakF1600_ce
-	ldr	x30,[sp,#8]
-___
-for($i=0; $i<24; $i+=2) {		# store A[5][5]
-my $j=$i+1;
-$code.=<<___;
-	stp	d$i,d$j,[x0,#8*$i]
-___
-}
-$code.=<<___;
-	str	d24,[x0,#8*$i]
-	ldp	d8,d9,[sp,#16]
-	ldp	d10,d11,[sp,#32]
-	ldp	d12,d13,[sp,#48]
-	ldp	d14,d15,[sp,#64]
-	ldr	x29,[sp],#80
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	KeccakF1600_cext,.-KeccakF1600_cext
-___
-
-{
-my ($ctx,$inp,$len,$bsz) = map("x$_",(0..3));
-
-$code.=<<___;
-.globl	Keccak1600_Absorb_cext
-.type	Keccak1600_Absorb_cext,%function
-.align	5
-Keccak1600_Absorb_cext:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-80]!
-	add	x29,sp,#0
-	stp	d8,d9,[sp,#16]		// per ABI requirement
-	stp	d10,d11,[sp,#32]
-	stp	d12,d13,[sp,#48]
-	stp	d14,d15,[sp,#64]
-___
-for($i=0; $i<24; $i+=2) {		# load A[5][5]
-my $j=$i+1;
-$code.=<<___;
-	ldp	d$i,d$j,[x0,#8*$i]
-___
-}
-$code.=<<___;
-	ldr	d24,[x0,#8*$i]
-	b	.Loop_absorb_ce
-.align	4
-.Loop_absorb_ce:
-	subs	$len,$len,$bsz		// len - bsz
-	blo	.Labsorbed_ce
-___
-for (my $i=0; $i<24; $i+=2) {
-my $j = $i+1;
-$code.=<<___;
-	ldr	d31,[$inp],#8		// *inp++
-#ifdef	__AARCH64EB__
-	rev64	v31.16b,v31.16b
-#endif
-	eor	$A[$i/5][$i%5],$A[$i/5][$i%5],v31.16b
-	cmp	$bsz,#8*($i+2)
-	blo	.Lprocess_block_ce
-	ldr	d31,[$inp],#8		// *inp++
-#ifdef	__AARCH64EB__
-	rev64	v31.16b,v31.16b
-#endif
-	eor	$A[$j/5][$j%5],$A[$j/5][$j%5],v31.16b
-	beq	.Lprocess_block_ce
-___
-}
-$code.=<<___;
-	ldr	d31,[$inp],#8		// *inp++
-#ifdef	__AARCH64EB__
-	rev64	v31.16b,v31.16b
-#endif
-	eor	$A[4][4],$A[4][4],v31.16b
-.Lprocess_block_ce:
-	bl	KeccakF1600_ce
-	b	.Loop_absorb_ce
-.align	4
-.Labsorbed_ce:
-___
-for($i=0; $i<24; $i+=2) {		# store A[5][5]
-my $j=$i+1;
-$code.=<<___;
-	stp	d$i,d$j,[x0,#8*$i]
-___
-}
-$code.=<<___;
-	str	d24,[x0,#8*$i]
-	add	x0,$len,$bsz		// return value
-	ldp	d8,d9,[sp,#16]
-	ldp	d10,d11,[sp,#32]
-	ldp	d12,d13,[sp,#48]
-	ldp	d14,d15,[sp,#64]
-	ldp	x29,x30,[sp],#80
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	Keccak1600_Absorb_cext,.-Keccak1600_Absorb_cext
-___
-}
-{
-my ($ctx,$out,$len,$bsz) = map("x$_",(0..3));
-$code.=<<___;
-.globl	Keccak1600_Squeeze_cext
-.type	Keccak1600_Squeeze_cext,%function
-.align	5
-Keccak1600_Squeeze_cext:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-	cmp	$len,#0
-	beq	.Lsqueeze_done_ce
-	mov	x9,$ctx
-	mov	x10,$bsz
-.Loop_squeeze_ce:
-	ldr	x4,[x9],#8
-	cmp	$len,#8
-	blo	.Lsqueeze_tail_ce
-#ifdef	__AARCH64EB__
-	rev	x4,x4
-#endif
-	str	x4,[$out],#8
-	beq	.Lsqueeze_done_ce
-	sub	$len,$len,#8
-	subs	x10,x10,#8
-	bhi	.Loop_squeeze_ce
-	bl	KeccakF1600_cext
-	ldr	x30,[sp,#8]
-	mov	x9,$ctx
-	mov	x10,$bsz
-	b	.Loop_squeeze_ce
-.align	4
-.Lsqueeze_tail_ce:
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done_ce
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done_ce
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done_ce
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done_ce
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done_ce
-	strb	w4,[$out],#1
-	lsr	x4,x4,#8
-	subs	$len,$len,#1
-	beq	.Lsqueeze_done_ce
-	strb	w4,[$out],#1
-.Lsqueeze_done_ce:
-	ldr	x29,[sp],#16
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	Keccak1600_Squeeze_cext,.-Keccak1600_Squeeze_cext
-___
-}								}}}
-$code.=<<___;
-.asciz	"Keccak-1600 absorb and squeeze for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
-___
-
-{   my  %opcode = (
-	"rax1"	=> 0xce608c00,	"eor3"	=> 0xce000000,
-	"bcax"	=> 0xce200000,	"xar"	=> 0xce800000	);
-
-    sub unsha3 {
-	my ($mnemonic,$arg)=@_;
-
-	$arg =~ m/[qv]([0-9]+)[^,]*,\s*[qv]([0-9]+)[^,]*(?:,\s*[qv]([0-9]+)[^,]*(?:,\s*[qv#]([0-9\-]+))?)?/
-	&&
-	sprintf ".inst\t0x%08x\t//%s %s",
-			$opcode{$mnemonic}|$1|($2<<5)|($3<<16)|(eval($4)<<10),
-			$mnemonic,$arg;
-    }
-}
 
 foreach(split("\n",$code)) {
 
 	s/\`([^\`]*)\`/eval($1)/ge;
-
-	m/\bld1r\b/ and s/\.16b/.2d/g	or
-	s/\b(eor3|rax1|xar|bcax)\s+(v.*)/unsha3($1,$2)/ge;
 
 	print $_,"\n";
 }

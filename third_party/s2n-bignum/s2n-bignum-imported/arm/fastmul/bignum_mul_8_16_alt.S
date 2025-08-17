@@ -5,8 +5,9 @@
 // Multiply z := x * y
 // Inputs x[8], y[8]; output z[16]
 //
-//    extern void bignum_mul_8_16_alt
-//     (uint64_t z[static 16], uint64_t x[static 8], uint64_t y[static 8]);
+//    extern void bignum_mul_8_16_alt(uint64_t z[static 16],
+//                                    const uint64_t x[static 8],
+//                                    const uint64_t y[static 8]);
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------

@@ -263,6 +263,8 @@ TEST_F(EvpPkeyCtxCtrlStrTest, DhParamGen) {
 
   EVP_PKEY* raw = nullptr;
   ASSERT_EQ(EVP_PKEY_paramgen(ctx.get(), &raw), 1);
+  // Only parameters have been generated, but no key has actually been set.
+  EXPECT_FALSE(EVP_PKEY_param_check(ctx.get()));
   bssl::UniquePtr<EVP_PKEY> pkey(raw);
   ASSERT_TRUE(raw);
 

@@ -5,7 +5,7 @@
 // Divide bignum by 10: z' := z div 10, returning remainder z mod 10
 // Inputs z[k]; outputs function return (remainder) and z[k]
 //
-//    extern uint64_t bignum_divmod10 (uint64_t k, uint64_t *z);
+//    extern uint64_t bignum_divmod10(uint64_t k, uint64_t *z);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, returns RAX
 // Microsoft x64 ABI:   RCX = k, RDX = z, returns RAX

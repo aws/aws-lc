@@ -4,6 +4,6 @@ includedir=@includedir_for_pc_file@
 
 Name: AWS-LC-libcrypto
 Description: AWS-LC cryptography library
-Version: @VERSION@
+Version: @REPORTED_PKGCONFIG_VERSION@
 Libs: -L${libdir} -lcrypto
 Cflags: -I${includedir}

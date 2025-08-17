@@ -10105,8 +10105,8 @@ func addSignatureAlgorithmTests() {
 				shouldFail = true
 			}
 
-			// By default, BoringSSL does not enable ecdsa_sha1, ecdsa_secp521_sha512, and ed25519.
-			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 {
+			// By default, AWS-LC does not enable ecdsa_sha1 and ed25519.
+			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureEd25519 {
 				rejectByDefault = true
 			}
 
