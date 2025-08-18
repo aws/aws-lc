@@ -39,8 +39,7 @@ function nmap_build() {
   make -j install
 
   local nmap_executable="${NMAP_BUILD_EPREFIX}/bin/nmap"
-    ldd ${nmap_executable} \
-      | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${nmap_executable} crypto || exit 1
 }
 
 # TODO: Remove this when we make an upstream contribution.
@@ -64,7 +63,7 @@ ls
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${AWS_LC_INSTALL_FOLDER}/lib"
 
 # Build nmap from source.
 pushd ${NMAP_SRC_FOLDER}

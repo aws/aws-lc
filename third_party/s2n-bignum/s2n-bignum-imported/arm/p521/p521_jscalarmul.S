@@ -7,8 +7,8 @@
 //
 // extern void p521_jscalarmul
 //   (uint64_t res[static 27],
-//    uint64_t scalar[static 9],
-//    uint64_t point[static 27]);
+//    const uint64_t scalar[static 9],
+//    const uint64_t point[static 27]);
 //
 // This function is a variant of its affine point version p521_scalarmul.
 // Here, input and output points are assumed to be in Jacobian form with

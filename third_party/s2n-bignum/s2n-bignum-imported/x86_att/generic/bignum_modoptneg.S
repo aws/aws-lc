@@ -6,8 +6,8 @@
 // (if p zero), assuming x reduced
 // Inputs p, x[k], m[k]; output z[k]
 //
-//    extern void bignum_modoptneg
-//      (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x, uint64_t *m);
+//    extern void bignum_modoptneg(uint64_t k, uint64_t *z, uint64_t p,
+//                                 const uint64_t *x, const uint64_t *m);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = p, RCX = x, R8 = m
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = p, R9 = x, [RSP+40] = m

@@ -5,7 +5,7 @@
 // Test bignum for nonzero-ness x =/= 0
 // Input x[k]; output function return
 //
-//    extern uint64_t bignum_nonzero (uint64_t k, uint64_t *x);
+//    extern uint64_t bignum_nonzero(uint64_t k, const uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = x, returns RAX
 // Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX

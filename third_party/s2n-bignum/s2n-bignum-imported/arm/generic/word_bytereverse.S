@@ -4,7 +4,7 @@
 // ----------------------------------------------------------------------------
 // Reverse the order of bytes in a 64-bit word
 //
-//    extern uint64_t word_bytereverse (uint64_t a);
+//    extern uint64_t word_bytereverse(uint64_t a);
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
