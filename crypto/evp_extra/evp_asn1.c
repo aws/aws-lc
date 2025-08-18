@@ -69,6 +69,7 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../fipsmodule/pqdsa/internal.h"
+#include "../fipsmodule/kem/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
@@ -104,7 +105,11 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-  return PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  const EVP_PKEY_ASN1_METHOD *pqdsa_method = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  if (pqdsa_method != NULL) {
+    return pqdsa_method;
+  }
+  return KEM_find_asn1_by_nid(OBJ_cbs2nid(&oid));
 }
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {

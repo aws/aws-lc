@@ -358,7 +358,7 @@ int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid) {
 
 
 // This function sets KEM parameters defined by |nid| in |pkey|.
-static int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid) {
+int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid) {
   const KEM *kem = KEM_find_kem_by_nid(nid);
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
