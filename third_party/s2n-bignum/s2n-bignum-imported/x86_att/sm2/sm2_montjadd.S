@@ -4,8 +4,8 @@
 // ----------------------------------------------------------------------------
 // Point addition on GM/T 0003-2012 curve SM2 in Montgomery-Jacobian coordinates
 //
-//    extern void sm2_montjadd
-//      (uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
+//    extern void sm2_montjadd(uint64_t p3[static 12], const uint64_t p1[static 12],
+//                             const uint64_t p2[static 12]);
 //
 // Does p3 := p1 + p2 where all points are regarded as Jacobian triples with
 // each coordinate in the Montgomery domain, i.e. x' = (2^256 * x) mod p_sm2.

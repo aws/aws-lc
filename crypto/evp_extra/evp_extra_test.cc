@@ -1737,6 +1737,8 @@ TEST(EVPExtraTest, ECKeygen) {
     ASSERT_TRUE(maybe_copy(&ctx));
     EVP_PKEY *raw = nullptr;
     ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw));
+    // |EVP_PKEY_param_check| does not support EC keys yet.
+    ASSERT_FALSE(EVP_PKEY_param_check(ctx.get()));
     bssl::UniquePtr<EVP_PKEY> pkey(raw);
     raw = nullptr;
     ExpectECGroupOnly(pkey.get(), NID_X9_62_prime256v1);
@@ -1801,6 +1803,7 @@ TEST(EVPExtraTest, DHKeygen) {
     ASSERT_TRUE(ctx);
     ASSERT_TRUE(maybe_copy(&ctx));
     ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_param_check(ctx.get()));
     ASSERT_TRUE(maybe_copy(&ctx));
     EVP_PKEY *raw = nullptr;
     ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -1853,6 +1856,8 @@ TEST(EVPExtraTest, DHParamgen) {
     EVP_PKEY *raw_pkey = NULL;
     // Generate the parameters
     ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw_pkey));
+    // Only parameters have been generated, but no key has actually been set.
+    EXPECT_FALSE(EVP_PKEY_param_check(ctx.get()));
     bssl::UniquePtr<EVP_PKEY> pkey(raw_pkey);
     ASSERT_TRUE(raw_pkey);
 
@@ -1876,6 +1881,7 @@ TEST(EVPExtraTest, DHParamgen) {
   ASSERT_NE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), prime_len), 1);
   // Set the generator
   ASSERT_NE(EVP_PKEY_CTX_set_dh_paramgen_generator(ctx.get(), generator), 1);
+  ASSERT_FALSE(EVP_PKEY_param_check(ctx.get()));
 }
 
 // Test that |EVP_PKEY_keygen| works for Ed25519.
@@ -2577,6 +2583,16 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_TRUE(pkey_sk_new);
   ASSERT_TRUE(pkey_new);
   ASSERT_TRUE(EVP_PKEY_kem_check_key(pkey_new.get()));
+
+  // Not supported for anything but EC and RSA keys
+  bssl::UniquePtr<EVP_PKEY_CTX> kem_key_ctx(
+          EVP_PKEY_CTX_new(pkey_new.get(), NULL));
+  ASSERT_TRUE(kem_key_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(kem_key_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check((kem_key_ctx.get())));
+  ASSERT_EQ((uint16_t)ERR_get_error(),
+            (uint16_t)EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  ERR_clear_error();
 
   // ---- 5. Test encaps/decaps with new keys ----
   // Create Alice's context with the new key that has both

@@ -291,6 +291,40 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_16.S
                 ${S2N_BIGNUM_DIR}/generic/bignum_copy_row_from_table_32.S
     )
+
+    #
+    # Keccak assembly from s2n-bignum/mlkem-native
+    #
+
+    # Check if assembler supports SHA3 extension
+    # (gcc supports it since gcc8, clang supports it since clang7)
+    check_compiler("neon_sha3_check.c" MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION "-march=armv8.4-a+sha3")
+
+    list(APPEND BCM_ASM_SOURCES
+                # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native
+                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
+
+                # Batched Keccak-x4 assembly from s2n-bignum
+                # Scalar version for Neoverse N1
+                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt.S
+    )
+
+    if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+        list(APPEND BCM_ASM_SOURCES
+           # Scalar Keccak-x1 assembly from s2n-bignum/mlkem-native, using SHA3 extension
+           ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S
+
+           # SIMD versions using SHA3 extension
+           ${S2N_BIGNUM_DIR}/sha3/sha3_keccak2_f1600.S
+           ${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt2.S)
+
+        set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600_alt.S
+                                    PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
+        set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak2_f1600.S
+                                    PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
+        set_source_files_properties(${S2N_BIGNUM_DIR}/sha3/sha3_keccak4_f1600_alt2.S
+                                    PROPERTIES COMPILE_FLAGS "-march=armv8.4-a+sha3")
+    endif()
   endif()
 
 endif()
@@ -367,10 +401,10 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
 
-  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
   # Important: We do not want to add the generated prefix symbols to the include path here!
   # Delocator expects symbols to not be prefixed.
-  target_include_directories(bcm_c_generated_asm PRIVATE ${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
+  target_add_awslc_include_paths(TARGET bcm_c_generated_asm SCOPE PRIVATE EXCLUDE_PREFIX_HEADERS)
+  target_include_directories(bcm_c_generated_asm PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -434,9 +468,8 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
 
-  add_dependencies(bcm_hashunset boringssl_prefix_symbols)
-  target_include_directories(bcm_hashunset BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(bcm_hashunset PRIVATE ${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
+  target_add_awslc_include_paths(TARGET bcm_hashunset SCOPE PRIVATE)
+  target_include_directories(bcm_hashunset PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
@@ -466,9 +499,7 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
+  target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -485,10 +516,8 @@ elseif(FIPS_SHARED)
     cpucap/cpucap.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
-
-  add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
+  target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
+  target_include_directories(fipsmodule PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 
   add_library(
     bcm_library
@@ -500,11 +529,8 @@ elseif(FIPS_SHARED)
     ${BCM_ASM_SOURCES}
   )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS )
-  target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
-
-  add_dependencies(bcm_library boringssl_prefix_symbols)
-  target_include_directories(bcm_library BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(bcm_library PRIVATE ${AWSLC_SOURCE_DIR}/include)
+  target_add_awslc_include_paths(TARGET bcm_library SCOPE PRIVATE)
+  target_include_directories(bcm_library PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -609,9 +635,6 @@ else()
     ${BCM_ASM_OBJECTS}
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
-
-  add_dependencies(fipsmodule boringssl_prefix_symbols)
-  target_include_directories(fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
-  target_include_directories(fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include "${S2N_BIGNUM_INCLUDE_DIR}")
-
+  target_add_awslc_include_paths(TARGET fipsmodule SCOPE PRIVATE)
+  target_include_directories(fipsmodule PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
 endif()

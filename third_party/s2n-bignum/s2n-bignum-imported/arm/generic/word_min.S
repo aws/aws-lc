@@ -5,7 +5,7 @@
 // Return minimum of two unsigned 64-bit words
 // Inputs a, b; output function return
 //
-//    extern uint64_t word_min (uint64_t a, uint64_t b);
+//    extern uint64_t word_min(uint64_t a, uint64_t b);
 //
 // Standard ARM ABI: X0 = a, X1 = b, returns X0
 // ----------------------------------------------------------------------------

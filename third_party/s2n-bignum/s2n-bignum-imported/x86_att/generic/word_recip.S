@@ -5,7 +5,7 @@
 // Single-word reciprocal, underestimate of 2^128 / a with implicit 1 added
 // Input a; output function return
 //
-//    extern uint64_t word_recip (uint64_t a);
+//    extern uint64_t word_recip(uint64_t a);
 //
 // Given an input word "a" with its top bit set (i.e. 2^63 <= a < 2^64), the
 // result "x" is implicitly augmented with a leading 1 giving x' = 2^64 + x.

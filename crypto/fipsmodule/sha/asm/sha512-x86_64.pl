@@ -2012,30 +2012,34 @@ $code.=<<___ if ($avx>1);
 ___
 $code.=<<___;
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_${func}_nohw:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue,.Lepilogue			# HandlerData[]
 ___
 $code.=<<___ if ($SZ==4 && $shaext);
+.align	4
 .LSEH_info_${func}_hw:
 	.byte	9,0,0,0
 	.rva	shaext_handler
 ___
 $code.=<<___ if ($SZ==4);
+.align	4
 .LSEH_info_${func}_ssse3:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue_ssse3,.Lepilogue_ssse3	# HandlerData[]
 ___
 $code.=<<___ if ($avx);
+.align	4
 .LSEH_info_${func}_avx:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue_avx,.Lepilogue_avx		# HandlerData[]
 ___
 $code.=<<___ if ($avx>1);
+.align	4
 .LSEH_info_${func}_avx2:
 	.byte	9,0,0,0
 	.rva	se_handler

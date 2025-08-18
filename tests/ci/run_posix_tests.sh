@@ -39,7 +39,7 @@ build_and_test -DENABLE_DATA_INDEPENDENT_TIMING=ON -DCMAKE_BUILD_TYPE=Release
 
 # Lightly verify that uncommon build options does not break the build. Fist
 # define a list of typical build options to verify the special build option with
-build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release" "-DDISABLE_PERL=ON -DDISABLE_GO=ON")
+build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release" "-DDISABLE_PERL=ON -DDISABLE_GO=ON" "-DENABLE_PRE_SONAME_BUILD=0")
 
 ## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
 for build_option in "${build_options_to_test[@]}"; do

@@ -5,8 +5,8 @@
 // Optionally subtract or add, z := x + sgn(p) * y interpreting p as signed
 // Inputs x[k], p, y[k]; outputs function return (carry-out) and z[k]
 //
-//    extern uint64_t bignum_optsubadd
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p, uint64_t *y);
+//    extern uint64_t bignum_optsubadd(uint64_t k, uint64_t *z, const uint64_t *x,
+//                                     uint64_t p, const uint64_t *y);
 //
 // If p has top bit set (i.e. is negative as a signed int) return z := x - y
 // Else if p is nonzero (i.e. is positive as a signed int) return z := x + y

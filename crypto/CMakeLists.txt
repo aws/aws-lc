@@ -25,7 +25,7 @@ function(msbuild_aarch64_asm)
       COMMAND "${CMAKE_ASM_COMPILER}"
               --target=arm64-pc-windows-msvc
               /c
-              /I "${AWSLC_BINARY_DIR}/symbol_prefix_include/"
+              /I "${AWSLC_BINARY_DIR}/symbol_prefix_include"
               /I "${AWSLC_SOURCE_DIR}/include"
               /o "${OBJ_FILE}"
               "${ASM_FILE}"
@@ -581,36 +581,60 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
-# For the prefix build, the object files need the prefix header files to build.
-add_dependencies(crypto_objects boringssl_prefix_symbols)
-target_include_directories(crypto_objects BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
-target_include_directories(crypto_objects PRIVATE ${AWSLC_SOURCE_DIR}/include)
+target_add_awslc_include_paths(TARGET crypto_objects SCOPE PRIVATE)
 
-function(build_libcrypto name module_source)
+function(build_libcrypto)
+  set(options SET_OUTPUT_NAME)
+  set(oneValueArgs NAME)
+  set(multiValueArgs MODULE_SOURCE)
+
+  if(CMAKE_VERSION VERSION_LESS "3.7")
+    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  else()
+    cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unparsed arguments to build_libcrypto: ${arg_UNPARSED_ARGUMENTS}")
+  endif()
+
+  if(arg_KEYWORDS_MISSING_VALUES)
+    message(FATAL_ERROR "Missing value(s) for keyword(s) to build_libcrypto: ${arg_KEYWORDS_MISSING_VALUES}")
+  endif()
+
+  if(NOT DEFINED arg_NAME OR NOT DEFINED arg_MODULE_SOURCE)
+    message(FATAL_ERROR "NAME, MODULE_SOURCE are required arguments to build_libcrypto")
+  endif()
+
   if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
     # If the jitter cpu entropy source is enabled add an object dependency to
     # the libcrypto target.
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+    add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE} $<TARGET_OBJECTS:jitterentropy>)
   else()
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+    add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE})
   endif()
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
-    add_dependencies(${name} bcm_o_target)
+    add_dependencies(${arg_NAME} bcm_o_target)
   endif()
   if(WIN32)
-    target_link_libraries(${name} PUBLIC ws2_32)
+    target_link_libraries(${arg_NAME} PUBLIC ws2_32)
   endif()
   if(NOT WIN32 AND NOT ANDROID)
-    target_link_libraries(${name} PUBLIC pthread)
+    target_link_libraries(${arg_NAME} PUBLIC pthread)
   endif()
 
-  add_dependencies(${name} boringssl_prefix_symbols)
-  target_include_directories(${name} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
 
-  target_include_directories(${name} PUBLIC
-          $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
-          $<INSTALL_INTERFACE:include>)
+  if(arg_SET_OUTPUT_NAME)
+    set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")
+  endif()
+
+  if(PERFORM_SONAME_BUILD)
+    set_target_properties(${arg_NAME} PROPERTIES
+      VERSION "${SOFTWARE_VERSION}"
+      SOVERSION "${ABI_VERSION}")
+  endif()
 endfunction()
 
 if(FIPS_SHARED)
@@ -619,11 +643,10 @@ if(FIPS_SHARED)
   if(MSVC)
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
-    build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
+    build_libcrypto(NAME precrypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
-    target_include_directories(fips_empty_main PRIVATE ${AWSLC_SOURCE_DIR}/include)
-    target_include_directories(fips_empty_main BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+    target_add_awslc_include_paths(TARGET fips_empty_main SCOPE PRIVATE)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
@@ -639,15 +662,13 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
-    add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
-    target_include_directories(generated_fipsmodule PRIVATE ${AWSLC_SOURCE_DIR}/include)
-    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+    target_add_awslc_include_paths(TARGET generated_fipsmodule SCOPE PRIVATE)
 
-    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
+    build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:generated_fipsmodule> SET_OUTPUT_NAME)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
     # the hash directly into the final library.
-    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
     if (APPLE)
       set(INJECT_HASH_APPLE_FLAG "-apple")
     endif()
@@ -685,7 +706,7 @@ if(FIPS_SHARED)
 
   endif()
 else()
-  build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+  build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
 endif()
 
 # CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
@@ -718,8 +739,6 @@ if(BUILD_TESTING)
     add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
     target_link_libraries(${executable_name} boringssl_gtest_main)
-    add_dependencies(${executable_name} boringssl_prefix_symbols)
-    target_include_directories(${executable_name} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
     set_test_location(${executable_name})
   endmacro()
@@ -727,8 +746,10 @@ if(BUILD_TESTING)
   # Below tests are added as new executables to be executed in single process.
   # mem_test.cc tests memory overrides via defining strong symbols.
   add_test_executable(${MEM_TEST_EXEC} mem_test.cc)
+  target_add_awslc_include_paths(TARGET ${MEM_TEST_EXEC} SCOPE PRIVATE)
   # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
+  target_add_awslc_include_paths(TARGET ${MEM_SET_TEST_EXEC} SCOPE PRIVATE)
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
@@ -739,9 +760,8 @@ if(BUILD_TESTING)
   )
   set_test_location(${RANDOM_TEST_EXEC})
 
-  add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  target_include_directories(${RANDOM_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_add_awslc_include_paths(TARGET ${RANDOM_TEST_EXEC} SCOPE PRIVATE)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
@@ -844,10 +864,13 @@ if(BUILD_TESTING)
   )
   set_test_location(${CRYPTO_TEST_EXEC})
 
-  add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
-  target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_add_awslc_include_paths(TARGET ${CRYPTO_TEST_EXEC} SCOPE PRIVATE)
   target_compile_definitions(${CRYPTO_TEST_EXEC} PRIVATE AWS_LC_TEST_ENV)
+  # Ensure test has access to the SHA3 feature detection macro
+  if(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+    target_compile_definitions(${CRYPTO_TEST_EXEC} PRIVATE MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
+  endif()
   if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()
@@ -860,9 +883,6 @@ if(BUILD_TESTING)
   add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
   set_test_location(${DYNAMIC_LOADING_TEST_EXEC})
-
-  add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
-  target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   set(DYNAMIC_LINKER_LIB "")
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE OR ANDROID)
@@ -887,7 +907,7 @@ if(BUILD_TESTING)
   set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
   target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_add_awslc_include_paths(TARGET ${RWLOCK_STATIC_INIT_TEST_EXEC} SCOPE PRIVATE)
   if(MSVC)
     target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
   else()
@@ -900,7 +920,9 @@ endif()
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        LIBRARY
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          NAMELINK_SKIP)
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
   install (FILES $<TARGET_FILE_DIR:crypto>/crypto.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -924,3 +946,13 @@ install(EXPORT crypto-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
+
+if(PERFORM_SONAME_BUILD)
+install(CODE "
+set(TGT lib${CRYPTO_LIB_NAME}.so.${ABI_VERSION})
+set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so)
+message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
+"
+  COMPONENT Development)
+endif()

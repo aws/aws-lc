@@ -810,7 +810,29 @@ TEST(SSLTest, SetVersion) {
   EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
 }
 
+TEST(SSLTest, SetVerifyResult) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
 
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  SSL_SESSION *client_session = SSL_get_session(client.get());
+  SSL_SESSION *server_session = SSL_get_session(server.get());
+
+  // SSL and SSL_SESSION should share the same verify_result after a handshake
+  EXPECT_EQ(SSL_get_verify_result(client.get()), client_session->verify_result);
+  EXPECT_EQ(SSL_get_verify_result(server.get()), server_session->verify_result);
+
+  // Use custom verification result
+  SSL_set_verify_result(client.get(), X509_V_ERR_CERT_REVOKED);
+  EXPECT_EQ(X509_V_ERR_CERT_REVOKED, SSL_get_verify_result(client.get()));
+  EXPECT_NE(SSL_get_verify_result(client.get()), client_session->verify_result);
+}
 
 TEST(SSLTest, BuildCertChain) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));

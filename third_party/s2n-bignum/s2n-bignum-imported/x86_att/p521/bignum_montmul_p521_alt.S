@@ -5,8 +5,9 @@
 // Montgomery multiply, z := (x * y / 2^576) mod p_521
 // Inputs x[9], y[9]; output z[9]
 //
-//    extern void bignum_montmul_p521_alt
-//     (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+//    extern void bignum_montmul_p521_alt(uint64_t z[static 9],
+//                                        const uint64_t x[static 9],
+//                                        const uint64_t y[static 9]);
 //
 // Does z := (x * y / 2^576) mod p_521, assuming x < p_521, y < p_521. This
 // means the Montgomery base is the "native size" 2^{9*64} = 2^576; since
