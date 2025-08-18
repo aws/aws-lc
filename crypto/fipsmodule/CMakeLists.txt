@@ -186,6 +186,9 @@ if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCH
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-4k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
 endif()
 
+
+set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
+
 # s2n-bignum files can be compiled on Unix platforms for x86_64 and arm64 only.
 if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
       ARCH STREQUAL "aarch64") AND UNIX)
@@ -197,7 +200,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     set(S2N_BIGNUM_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm")
   endif()
 
-  set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
 
   list(APPEND BCM_ASM_SOURCES
 
@@ -355,7 +357,7 @@ if((ARCH STREQUAL "aarch64") AND UNIX)
 endif()
 
 # mlkem-native assembly files can be compiled on Unix platforms for x86_64 and arm64 only.
-if((ARCH STREQUAL "x86_64") AND UNIX)
+if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
   # Set the source directory for s2n-bignum assembly files
   set(MLKEM_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_kem")

@@ -28,6 +28,7 @@
 #define MLK_CONFIG_KEYGEN_PCT
 #endif
 
+#define MLK_CONFIG_CUSTOM_CAPABILITY_FUNC
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 #define MLK_CONFIG_KEYGEN_PCT_BREAKAGE_TEST
 #if !defined(__ASSEMBLER__) && !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED)
@@ -68,6 +69,32 @@ static MLK_INLINE void mlk_randombytes(void *ptr, size_t len) {
 
 #if defined(OPENSSL_NO_ASM)
 #define MLK_CONFIG_NO_ASM
+#endif
+
+
+#if !defined(__ASSEMBLER__) && !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED)
+#include "mlkem/sys.h"
+
+static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
+{
+#if !defined(OPENSSL_NO_ASM) &&				\
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) &&				\
+    defined(OPENSSL_X86_64) &&				\
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
+  if (cap == MLK_SYS_CAP_AVX2) {
+    return CRYPTO_is_AVX2_capable();
+  } else {
+    return 0;
+  }
+#elif !defined(OPENSSL_NO_ASM) &&				\
+    defined(OPENSSL_AARCH64) &&				\
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 #endif
 
 // Enable AArch64 arithmetic backend and set path

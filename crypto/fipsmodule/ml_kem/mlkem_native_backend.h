@@ -14,6 +14,8 @@
 #endif
 
 #if !defined(OPENSSL_NO_ASM) &&				\
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) &&				\
+    defined(__AVX2__) && \
     defined(OPENSSL_X86_64) &&				\
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
 #include "mlkem/native/x86_64/meta.h"
