@@ -187,4 +187,31 @@
 #define MLK_MUST_CHECK_RETURN_VALUE
 #endif
 
+#if !defined(__ASSEMBLER__)
+/* System capability enumeration */
+typedef enum
+{
+#if defined(MLK_SYS_X86_64)
+  MLK_SYS_CAP_AVX2
+#elif defined(MLK_SYS_AARCH64)
+  MLK_SYS_CAP_SHA3
+#else
+  MLK_SYS_CAP_DUMMY
+#endif
+} mlk_sys_cap;
+
+#if !defined(MLK_CONFIG_CUSTOM_CAPABILITY_FUNC)
+#include "cbmc.h"
+
+static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
+__contract__(
+  ensures(return_value == 0 || return_value == 1)
+)
+{
+  (void)cap; /* Ignore parameter for now */
+  return 1;
+}
+#endif /* !MLK_CONFIG_CUSTOM_CAPABILITY_FUNC */
+#endif /* !__ASSEMBLER__ */
+
 #endif /* !MLK_SYS_H */

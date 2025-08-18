@@ -225,29 +225,6 @@
 #undef mlk_polyvec_reduce
 #undef mlk_polyvec_tobytes
 #undef mlk_polyvec_tomont
-/* mlkem/src/sys.h */
-#undef MLK_ALIGN
-#undef MLK_ALIGN_UP
-#undef MLK_ALWAYS_INLINE
-#undef MLK_CET_ENDBR
-#undef MLK_CT_TESTING_DECLASSIFY
-#undef MLK_CT_TESTING_SECRET
-#undef MLK_DEFAULT_ALIGN
-#undef MLK_HAVE_INLINE_ASM
-#undef MLK_INLINE
-#undef MLK_MUST_CHECK_RETURN_VALUE
-#undef MLK_RESTRICT
-#undef MLK_SYS_AARCH64
-#undef MLK_SYS_AARCH64_EB
-#undef MLK_SYS_BIG_ENDIAN
-#undef MLK_SYS_H
-#undef MLK_SYS_LITTLE_ENDIAN
-#undef MLK_SYS_PPC64LE
-#undef MLK_SYS_RISCV32
-#undef MLK_SYS_RISCV64
-#undef MLK_SYS_WINDOWS
-#undef MLK_SYS_X86_64
-#undef MLK_SYS_X86_64_AVX2
 
 #if !defined(MLK_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS)
 /*
@@ -315,6 +292,29 @@
 #undef mlk_xof_x4_init
 #undef mlk_xof_x4_release
 #undef mlk_xof_x4_squeezeblocks
+/* mlkem/src/sys.h */
+#undef MLK_ALIGN
+#undef MLK_ALIGN_UP
+#undef MLK_ALWAYS_INLINE
+#undef MLK_CET_ENDBR
+#undef MLK_CT_TESTING_DECLASSIFY
+#undef MLK_CT_TESTING_SECRET
+#undef MLK_DEFAULT_ALIGN
+#undef MLK_HAVE_INLINE_ASM
+#undef MLK_INLINE
+#undef MLK_MUST_CHECK_RETURN_VALUE
+#undef MLK_RESTRICT
+#undef MLK_SYS_AARCH64
+#undef MLK_SYS_AARCH64_EB
+#undef MLK_SYS_BIG_ENDIAN
+#undef MLK_SYS_H
+#undef MLK_SYS_LITTLE_ENDIAN
+#undef MLK_SYS_PPC64LE
+#undef MLK_SYS_RISCV32
+#undef MLK_SYS_RISCV64
+#undef MLK_SYS_WINDOWS
+#undef MLK_SYS_X86_64
+#undef MLK_SYS_X86_64_AVX2
 /* mlkem/src/verify.h */
 #undef MLK_USE_ASM_VALUE_BARRIER
 #undef MLK_VERIFY_H
@@ -329,6 +329,8 @@
 /* mlkem/src/native/api.h */
 #undef MLK_INVNTT_BOUND
 #undef MLK_NATIVE_API_H
+#undef MLK_NATIVE_FUNC_FALLBACK
+#undef MLK_NATIVE_FUNC_SUCCESS
 #undef MLK_NTT_BOUND
 /* mlkem/src/native/meta.h */
 #undef MLK_NATIVE_META_H
