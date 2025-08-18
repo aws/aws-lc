@@ -5,17 +5,17 @@
 // Convert 4-digit (256-bit) bignum to/from big-endian form
 // Input x[4]; output z[4]
 //
-//    extern void bignum_bigendian_4
-//     (uint64_t z[static 4], uint64_t x[static 4]);
+//    extern void bignum_bigendian_4(uint64_t z[static 4],
+//                                   const uint64_t x[static 4]);
 //
 // The same function is given two other prototypes whose names reflect the
 // treatment of one or other argument as a byte array rather than word array:
 //
-//    extern void bignum_frombebytes_4
-//     (uint64_t z[static 4], uint8_t x[static 32]);
+//    extern void bignum_frombebytes_4(uint64_t z[static 4],
+//                                     const uint8_t x[static 32]);
 //
-//    extern void bignum_tobebytes_4
-//     (uint8_t z[static 32], uint64_t x[static 4]);
+//    extern void bignum_tobebytes_4(uint8_t z[static 32],
+//                                   const uint64_t x[static 4]);
 //
 // The implementation works by loading in bytes and storing in words (i.e.
 // stylistically it is "frombebytes"); in the more common little-endian

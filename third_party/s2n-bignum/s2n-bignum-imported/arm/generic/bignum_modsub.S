@@ -5,8 +5,8 @@
 // Subtract modulo m, z := (x - y) mod m, assuming x and y reduced
 // Inputs x[k], y[k], m[k]; output z[k]
 //
-//    extern void bignum_modsub
-//     (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
+//    extern void bignum_modsub(uint64_t k, uint64_t *z, const uint64_t *x,
+//                              const uint64_t *y, const uint64_t *m);
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = y, X4 = m
 // ----------------------------------------------------------------------------

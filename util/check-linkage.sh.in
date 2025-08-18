@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -euxo pipefail
+
+CRYPTO_LIB_NAME="lib@CRYPTO_LIB_NAME@.so"
+SSL_LIB_NAME="lib@SSL_LIB_NAME@.so"
+ABI_VERSION="@ABI_VERSION@"
+INSTALL_LIBDIR="@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LIBDIR@"
+
+IS_SONAME_BUILD="@PERFORM_SONAME_BUILD@"
+
+# If this is a SONAME build, append ABI_VERSION to library names
+if [ "${IS_SONAME_BUILD}" = "1" ]; then
+  CRYPTO_LIB_NAME="${CRYPTO_LIB_NAME}.${ABI_VERSION}"
+  SSL_LIB_NAME="${SSL_LIB_NAME}.${ABI_VERSION}"
+fi
+
+if [ $# -ne 2 ]; then
+  echo "Error: Exactly two arguments must be provided."
+  echo "Usage: $0 <shared-object-path> <library-type>"
+  echo "  where <library-type> is 'crypto' or 'ssl'"
+  exit 1
+fi
+
+FILE_TO_CHECK="$1"
+LIBRARY_TYPE="$2"
+
+if [ ! -f "${FILE_TO_CHECK}" ]; then
+  echo "Error: '${FILE_TO_CHECK}' does not exist."
+  exit 1
+fi
+
+# Run ldd on the file
+LDD_OUTPUT=$(ldd "${FILE_TO_CHECK}")
+EXIT_CODE=0
+
+case "${LIBRARY_TYPE}" in
+  "crypto")
+    if ! echo "${LDD_OUTPUT}" | grep -q "${INSTALL_LIBDIR}/${CRYPTO_LIB_NAME}"; then
+      echo "Error: ${CRYPTO_LIB_NAME} not found in linkage of ${FILE_TO_CHECK}"
+      EXIT_CODE=1
+    else
+      echo "Success: ${CRYPTO_LIB_NAME} found in linkage of ${FILE_TO_CHECK}"
+    fi
+    ;;
+  "ssl")
+    if ! echo "${LDD_OUTPUT}" | grep -q "${INSTALL_LIBDIR}/${SSL_LIB_NAME}"; then
+      echo "Error: ${SSL_LIB_NAME} not found in linkage of ${FILE_TO_CHECK}"
+      EXIT_CODE=1
+    else
+      echo "Success: ${SSL_LIB_NAME} found in linkage of ${FILE_TO_CHECK}"
+    fi
+    ;;
+  *)
+    echo "Error: Unknown library type '${LIBRARY_TYPE}'. Must be 'crypto' or 'ssl'."
+    EXIT_CODE=1
+    ;;
+esac
+
+exit ${EXIT_CODE}

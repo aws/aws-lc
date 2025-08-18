@@ -5,7 +5,7 @@
 // Square, z := x^2
 // Input x[6]; output z[12]
 //
-//    extern void bignum_sqr_6_12 (uint64_t z[static 12], uint64_t x[static 6]);
+//    extern void bignum_sqr_6_12(uint64_t z[static 12], const uint64_t x[static 6]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------

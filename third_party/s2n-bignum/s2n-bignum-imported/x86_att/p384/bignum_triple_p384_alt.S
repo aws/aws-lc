@@ -5,8 +5,8 @@
 // Triple modulo p_384, z := (3 * x) mod p_384
 // Input x[6]; output z[6]
 //
-//    extern void bignum_triple_p384_alt
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_triple_p384_alt(uint64_t z[static 6],
+//                                       const uint64_t x[static 6]);
 //
 // The input x can be any 6-digit bignum, not necessarily reduced modulo p_384,
 // and the result is always fully reduced, i.e. z = (3 * x) mod p_384.

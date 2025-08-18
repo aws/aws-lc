@@ -5,8 +5,9 @@
 // Square, z := x^2
 // Input x[16]; output z[32]; temporary buffer t[>=24]
 //
-//    extern void bignum_ksqr_16_32
-//     (uint64_t z[static 32], uint64_t x[static 16], uint64_t t[static 24]);
+//    extern void bignum_ksqr_16_32(uint64_t z[static 32],
+//                                  const uint64_t x[static 16],
+//                                  uint64_t t[static 24]);
 //
 // This is a Karatsuba-style function squaring half-sized results
 // and using temporary buffer t for intermediate results.

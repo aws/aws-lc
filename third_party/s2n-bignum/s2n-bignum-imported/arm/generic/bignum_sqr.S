@@ -5,8 +5,7 @@
 // Square z := x^2
 // Input x[n]; output z[k]
 //
-//    extern void bignum_sqr
-//     (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
+//    extern void bignum_sqr(uint64_t k, uint64_t *z, uint64_t n, const uint64_t *x);
 //
 // Does the "z := x^2" operation where x is n digits and result z is k.
 // Truncates the result in general unless k >= 2 * n

@@ -13,7 +13,7 @@ from aws_cdk import (
     aws_events_targets as targets,
     aws_codebuild as codebuild,
 )
-from aws_cdk.pipelines import CodeBuildStep
+from aws_cdk.pipelines import CodeBuildStep, ManualApprovalStep
 from constructs import Construct
 
 from pipeline.ci_stage import CiStage
@@ -172,7 +172,12 @@ class AwsLcCiPipeline(Stack):
                 cross_account_role=cross_account_role,
             )
 
-            # TODO: add prod env
+            self.deploy_to_environment(
+                DeployEnvironmentType.PROD,
+                pipeline=pipeline,
+                source=source,
+                cross_account_role=cross_account_role,
+            )
 
         pipeline.build_pipeline()
 
@@ -187,6 +192,45 @@ class AwsLcCiPipeline(Stack):
             ),
             targets=[targets.CodePipeline(pipeline=base_pipeline)],
         )
+
+        # Pipeline is run everytime we push to main branch. Avoid unnecessary hold up if these updates are non-CI related
+        if not IS_DEV:
+            start_index = next(
+                (i for i, stage in enumerate(base_pipeline.stages) if stage.stage_name == "PromoteToProduction"),
+                None
+            )
+
+            override_condition = {
+                "Conditions": [
+                    {
+                        "Result": "SKIP",
+                        "Rules": [
+                            {
+                                "Name": "Skip_Prod_Deployment",
+                                "RuleTypeId": {
+                                    "Category": "Rule",
+                                    "Owner": "AWS",
+                                    "Provider": "VariableCheck",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "Variable": "#{Staging-CiTests@PrebuildCheck.NEED_REBUILD}",
+                                    "Value": "0",
+                                    "Operator": "NE"
+                                },
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            l1_pipeline = base_pipeline.node.default_child
+
+            for i in range(start_index, int(base_pipeline.stage_count)):
+                l1_pipeline.add_override(
+                    f"Properties.Stages.{i}.BeforeEntry",
+                    override_condition
+                )
 
     def deploy_to_environment(
         self,
@@ -233,6 +277,12 @@ class AwsLcCiPipeline(Stack):
                 actions=["sts:AssumeRole"],
             )
         )
+
+        if deploy_environment_type == DeployEnvironmentType.PROD:
+            pipeline.add_wave(
+                "PromoteToProduction",
+                pre=[ManualApprovalStep("PromoteToProduction")]
+            )
 
         setup_stage = SetupStage(
             self,

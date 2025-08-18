@@ -1012,12 +1012,13 @@ ALIGN	4
 	DD	$L$SEH_end_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
 	DD	$L$SEH_info_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
 
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_rsaz_amm52x20_x1_ifma256:
 	DB	9,0,0,0
 	DD	rsaz_def_handler wrt ..imagebase
 	DD	$L$rsaz_amm52x20_x1_ifma256_body wrt ..imagebase,$L$rsaz_amm52x20_x1_ifma256_epilogue wrt ..imagebase
+ALIGN	4
 $L$SEH_info_rsaz_amm52x20_x2_ifma256:
 	DB	9,0,0,0
 	DD	rsaz_def_handler wrt ..imagebase

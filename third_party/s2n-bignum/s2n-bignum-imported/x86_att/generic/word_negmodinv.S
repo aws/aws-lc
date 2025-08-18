@@ -5,7 +5,7 @@
 // Single-word negated modular inverse (-1/a) mod 2^64
 // Input a; output function return
 //
-//    extern uint64_t word_negmodinv (uint64_t a);
+//    extern uint64_t word_negmodinv(uint64_t a);
 //
 // A 64-bit function that returns a negated multiplicative inverse mod 2^64
 // of its input, assuming that input is odd. Given odd input a, the result z

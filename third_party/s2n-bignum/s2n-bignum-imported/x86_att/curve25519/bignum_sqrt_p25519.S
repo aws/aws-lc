@@ -5,7 +5,8 @@
 // Square root modulo p_25519 = 2^255 - 19
 // Input x[4]; output function return (Legendre symbol) and z[4]
 //
-// extern int64_t bignum_sqrt_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+// extern int64_t bignum_sqrt_p25519(uint64_t z[static 4],
+//                                   const uint64_t x[static 4]);
 //
 // Given a 4-digit input x, returns a modular square root mod p_25519, i.e.
 // a z such that z^2 == x (mod p_25519), whenever one exists. The square

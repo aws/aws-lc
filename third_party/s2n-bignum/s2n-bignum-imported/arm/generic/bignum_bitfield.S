@@ -5,8 +5,8 @@
 // Select bitfield starting at bit n with length l <= 64
 // Inputs x[k], n, l; output function return
 //
-//    extern uint64_t bignum_bitfield
-//     (uint64_t k, uint64_t *x, uint64_t n, uint64_t l);
+//    extern uint64_t bignum_bitfield(uint64_t k, const uint64_t *x, uint64_t n,
+//                                    uint64_t l);
 //
 // One-word bitfield from a k-digit (digit=64 bits) bignum, in constant-time
 // style. Bitfield starts at bit n and has length l, indexing from 0 (=LSB).
