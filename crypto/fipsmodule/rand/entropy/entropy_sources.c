@@ -11,6 +11,7 @@
 #include "../internal.h"
 #include "../../delocate.h"
 #include "../../../rand_extra/internal.h"
+#include "../../../ube/snapsafe_detect.h"
 
 DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
@@ -60,25 +61,25 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
 // Maine Coon environment configurations
 // CPU source required for rule-of-two.
 // - OS as seed source source.
-// - Requires Intel CPU rdrand or Arm64 rndr that's used for personalizationg
-//   string source and prediction resistance.
+// - Uses rdrand or rndr, if supported, for personalization string. otherwise
+// falls back to OS source.
 DEFINE_LOCAL_DATA(struct entropy_source_methods, maine_coon_entropy_source_methods) {
   out->initialize = maine_coon_initialize;
   out->zeroize_thread = maine_coon_zeroize_thread;
   out->free_thread = maine_coon_free_thread;
   out->get_seed = maine_coon_get_seed;
-  out->get_extra_entropy = entropy_get_prediction_resistance;
-  out->get_prediction_resistance = entropy_get_prediction_resistance;
+  if (have_hw_rng_x86_64() == 1 ||
+      have_hw_rng_aarch64() == 1) {
+    out->get_extra_entropy = entropy_get_prediction_resistance;
+  } else {
+    // Fall back to seed source because a second source must always be present.
+    out->get_extra_entropy = maine_coon_get_seed;
+  }
+  out->get_prediction_resistance = NULL;
 }
 
 static int use_maine_coon_entropy(void) {
-  if (have_hw_rng_x86_64() == 1 ||
-      have_hw_rng_aarch64() == 1) {
-    // TODO: Detect Maine Coon environemnt
-    return 1;
-  } else {
-    return 0;
-  }
+  return CRYPTO_get_snapsafe_supported();
 }
 
 static const struct entropy_source_methods * get_entropy_source_methods(void) {
