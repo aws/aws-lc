@@ -10,12 +10,24 @@
 .private_extern	_md5_block_asm_data_order
 
 _md5_block_asm_data_order:
+.cfi_startproc
         // Save all callee-saved registers
 	stp	x19,x20,[sp,#-80]!
+.cfi_def_cfa_offset	80
+.cfi_offset	x19, -80
+.cfi_offset	x20, -72
 	stp	x21,x22,[sp,#16]
+.cfi_offset	x21, -64
+.cfi_offset	x22, -56
 	stp	x23,x24,[sp,#32]
+.cfi_offset	x23, -48
+.cfi_offset	x24, -40
 	stp	x25,x26,[sp,#48]
+.cfi_offset	x25, -32
+.cfi_offset	x26, -24
 	stp	x27,x28,[sp,#64]
+.cfi_offset	x27, -16
+.cfi_offset	x28, -8
 
 	ldp	w10, w11, [x0, #0]        // Load MD5 state->A and state->B
 	ldp	w12, w13, [x0, #8]        // Load MD5 state->C and state->D
@@ -654,10 +666,22 @@ md5_blocks_loop:
 	b.ne	md5_blocks_loop
 
 	ldp	x21,x22,[sp,#16]
+.cfi_restore	x21
+.cfi_restore	x22
 	ldp	x23,x24,[sp,#32]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[sp,#48]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[sp,#64]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldp	x19,x20,[sp],#80
+.cfi_restore	x19
+.cfi_restore	x20
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(__APPLE__)
