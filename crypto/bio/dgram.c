@@ -275,9 +275,15 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
 #if defined(SO_RCVTIMEO)
     case BIO_CTRL_DGRAM_SET_RECV_TIMEOUT: {
       GUARD_PTR(ptr);
-#ifdef OPENSSL_WINDOWS
       struct timeval *tv = (struct timeval *)ptr;
-      int timeout = tv->tv_sec * 1000 + tv->tv_usec / 1000;
+      // Check for negative values in timeval
+      if (tv->tv_sec < 0 || tv->tv_usec < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
+        ret = -1;
+        break;
+      }
+#ifdef OPENSSL_WINDOWS
+      DWORD timeout = (DWORD)(tv->tv_sec * 1000 + tv->tv_usec / 1000);
       if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
                      (void *)&timeout, sizeof(timeout)) < 0) {
         OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
@@ -330,9 +336,15 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
 #if defined(SO_SNDTIMEO)
     case BIO_CTRL_DGRAM_SET_SEND_TIMEOUT: {
       GUARD_PTR(ptr);
-#ifdef OPENSSL_WINDOWS
       struct timeval *tv = (struct timeval *)ptr;
-      int timeout = tv->tv_sec * 1000 + tv->tv_usec / 1000;
+      // Check for negative values in timeval
+      if (tv->tv_sec < 0 || tv->tv_usec < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
+        ret = -1;
+        break;
+      }
+#ifdef OPENSSL_WINDOWS
+      DWORD timeout = (DWORD)(tv->tv_sec * 1000 + tv->tv_usec / 1000);
       if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
                      (void *)&timeout, sizeof(timeout)) < 0) {
         OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
