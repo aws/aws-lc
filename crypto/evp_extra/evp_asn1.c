@@ -71,7 +71,6 @@
 #include "../fipsmodule/pqdsa/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
 #include "../fipsmodule/kem/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
