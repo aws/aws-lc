@@ -12,6 +12,7 @@
 #include "../test/test_util.h"
 
 // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// All example keys are from Appendix C in the above standard
 // Example ML-KEM-512 public key
 const char *mlkem_512_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
@@ -414,7 +415,6 @@ TEST_P(KEMTest, PrivateKeyExpandedFormat) {
 
 TEST_P(KEMTest, ParsePublicKey) {
   // Test parsing of the draft standard example public keys
-  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
 
   const KEMTestVector &test = GetParam();
   int nid = test.nid;
@@ -445,7 +445,6 @@ TEST_P(KEMTest, ParsePublicKey) {
 
 TEST_P(KEMTest, ParseExamplePrivateKey) {
   // Test parsing of the draft standard example private keys (expanded format)
-  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
 
   const KEMTestVector &test = GetParam();
   int nid = test.nid;
