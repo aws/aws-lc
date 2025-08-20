@@ -12,7 +12,7 @@
 
 #if defined(OPENSSL_AARCH64)
 #include "mlkem/native/aarch64/meta.h"
-#elif defined(OPENSSL_X86_64)
+#elif defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #include "mlkem/native/x86_64/meta.h"
 #endif
 
