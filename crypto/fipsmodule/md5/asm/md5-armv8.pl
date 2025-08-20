@@ -56,7 +56,7 @@ md5_block_asm_data_order:
         ldp w10, w11, [x0, #0]        // Load MD5 state->A and state->B
         ldp w12, w13, [x0, #8]        // Load MD5 state->C and state->D
 .align 5
-md5_blocks_loop:
+.Lmd5_blocks_loop:
         eor x17, x12, x13             // Begin aux function round 1 F(x,y,z)=(((y^z)&x)^z)
         and x16, x17, x11             // Continue aux function round 1 F(x,y,z)=(((y^z)&x)^z)
         ldp x15, x3, [x1]             // Load 4 words of input data0 M[0]/0
@@ -687,7 +687,7 @@ md5_blocks_loop:
         stp w10, w11, [x0]            // Store MD5 states A,B
         add x1, x1, #64               // Increment data pointer
         subs w2, w2, #1               // Decrement block counter
-        b.ne md5_blocks_loop
+        b.ne Lmd5_blocks_loop
 
         ldp     x21,x22,[sp,#16]
 .cfi_restore x21
