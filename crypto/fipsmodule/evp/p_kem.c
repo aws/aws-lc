@@ -10,6 +10,8 @@
 #include "../delocate.h"
 #include "../kem/internal.h"
 #include "../../internal.h"
+#include "internal.h"
+
 
 typedef struct {
   const KEM *kem;
