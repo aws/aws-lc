@@ -143,6 +143,66 @@ TEST_F(PassUtilTest, FileEdgeCases) {
       << "Should succeed when file is at max length but has newline";
   EXPECT_EQ(source->length(), static_cast<size_t>(PEM_BUFSIZE - 2))
       << "Password should not include newline and should be max length - 2";
+
+  // Test Windows carriage return behavior (CRLF)
+  {
+    WriteTestFile(pass_path, "windowspassword\r\n", true);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with Windows CRLF line ending";
+  EXPECT_EQ(*source, "windowspassword") << "Should trim both \\r and \\n from Windows CRLF";
+
+  // Test old Mac carriage return behavior (CR only)
+  {
+    WriteTestFile(pass_path, "macpassword\r", true);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with old Mac CR line ending";
+  EXPECT_EQ(*source, "macpassword") << "Should trim \\r from old Mac line ending";
+
+  // Test mixed trailing line endings
+  {
+    WriteTestFile(pass_path, "mixedpassword\r\n\r", true);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with mixed trailing line endings";
+  EXPECT_EQ(*source, "mixedpassword") << "Should trim multiple trailing \\r and \\n characters";
+
+  // Test password with embedded carriage return (should be preserved)
+  {
+    WriteTestFile(pass_path, "pass\rwith\rembedded\r\n", true);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed with embedded carriage returns";
+  EXPECT_EQ(*source, "pass\rwith\rembedded") << "Embedded \\r should be preserved, only trailing trimmed";
+
+  // Test file with only CRLF
+  {
+    WriteTestFile(pass_path, "\r\n", true);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed on CRLF-only file";
+  EXPECT_TRUE(source->empty()) << "CRLF-only file should result in empty password";
+
+  // Test file with multiple CRLF lines
+  {
+    WriteTestFile(pass_path, "\r\n\r\n\r\n", true);
+  }
+  
+  source.reset(new std::string(std::string("file:") + pass_path));
+  result = pass_util::ExtractPassword(source);
+  EXPECT_TRUE(result) << "Should succeed on multiple CRLF-only lines";
+  EXPECT_TRUE(source->empty()) << "Multiple CRLF-only lines should result in empty password";
 }
 
 
@@ -250,6 +310,26 @@ TEST_F(PassUtilTest, ExtractPasswordsSameFile) {
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "firstpassword");
   EXPECT_EQ(*passout, "secondpassword");
+
+  // Test same-file functionality with Windows CRLF
+  WriteTestFile(pass_path, "firstpass\r\nsecondpass\r\n", true);
+  
+  passin.reset(new std::string(std::string("file:") + pass_path));
+  passout.reset(new std::string(std::string("file:") + pass_path));
+  
+  EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
+  EXPECT_EQ(*passin, "firstpass") << "First line should have CRLF trimmed";
+  EXPECT_EQ(*passout, "secondpass") << "Second line should have CRLF trimmed";
+
+  // Test mixed line endings in same-file scenario
+  WriteTestFile(pass_path, "unixpass\nsecondpass\r\n", true);
+  
+  passin.reset(new std::string(std::string("file:") + pass_path));
+  passout.reset(new std::string(std::string("file:") + pass_path));
+  
+  EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
+  EXPECT_EQ(*passin, "unixpass") << "Unix LF should be trimmed";
+  EXPECT_EQ(*passout, "secondpass") << "Windows CRLF should be trimmed";
 }
 
 TEST_F(PassUtilTest, ExtractPasswordsMixedSources) {
