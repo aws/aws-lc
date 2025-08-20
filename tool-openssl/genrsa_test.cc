@@ -103,9 +103,15 @@ class GenRSAParamTest : public GenRSATestBase,
 TEST_P(GenRSAParamTest, GeneratesKeyFile) {
   unsigned key_size = GetParam();
   
-  // FIPS mode requires 2048-bit minimum - see validation in crypto/fipsmodule/rsa/rsa_impl.c
-  if (FIPS_mode() && key_size < 2048) {
-    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS mode (minimum 2048 bits required)";
+  // FIPS builds require 2048-bit minimum - check both compile-time and runtime
+  bool is_fips = false;
+#if defined(BORINGSSL_FIPS)
+  is_fips = true;
+#endif
+  is_fips = is_fips || FIPS_mode();
+  
+  if (is_fips && key_size < 2048) {
+    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS build/mode (minimum 2048 bits required)";
   }
   
   EXPECT_TRUE(GenerateKey(key_size, out_path_tool)) << "Key generation failed";
@@ -117,9 +123,15 @@ TEST_P(GenRSAParamTest, GeneratesKeyFile) {
 TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
   unsigned key_size = GetParam();
   
-  // FIPS mode requires 2048-bit minimum - see validation in crypto/fipsmodule/rsa/rsa_impl.c
-  if (FIPS_mode() && key_size < 2048) {
-    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS mode (minimum 2048 bits required)";
+  // FIPS builds require 2048-bit minimum - check both compile-time and runtime
+  bool is_fips = false;
+#if defined(BORINGSSL_FIPS)
+  is_fips = true;
+#endif
+  is_fips = is_fips || FIPS_mode();
+  
+  if (is_fips && key_size < 2048) {
+    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS build/mode (minimum 2048 bits required)";
   }
   
   if (!HasCrossCompatibilityTools()) {
