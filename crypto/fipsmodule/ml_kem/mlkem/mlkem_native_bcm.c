@@ -74,6 +74,10 @@
 #include "native/aarch64/src/aarch64_zetas.c"
 #include "native/aarch64/src/rej_uniform_table.c"
 #endif
+#if defined(MLK_SYS_X86_64)
+#include "native/x86_64/src/consts.c"
+#include "native/x86_64/src/rej_uniform_table.c"
+#endif
 #endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
 
@@ -367,5 +371,71 @@
 #undef mlk_rej_uniform_asm
 #undef mlk_rej_uniform_table
 #endif /* MLK_SYS_AARCH64 */
+#if defined(MLK_SYS_X86_64)
+/*
+ * Undefine macros from native code (Arith, X86_64)
+ */
+/* mlkem/src/native/x86_64/meta.h */
+#undef MLK_ARITH_BACKEND_X86_64_DEFAULT
+#undef MLK_NATIVE_X86_64_META_H
+#undef MLK_USE_NATIVE_INTT
+#undef MLK_USE_NATIVE_NTT
+#undef MLK_USE_NATIVE_NTT_CUSTOM_ORDER
+#undef MLK_USE_NATIVE_POLYVEC_BASEMUL_ACC_MONTGOMERY_CACHED
+#undef MLK_USE_NATIVE_POLY_COMPRESS_D10
+#undef MLK_USE_NATIVE_POLY_COMPRESS_D11
+#undef MLK_USE_NATIVE_POLY_COMPRESS_D4
+#undef MLK_USE_NATIVE_POLY_COMPRESS_D5
+#undef MLK_USE_NATIVE_POLY_DECOMPRESS_D10
+#undef MLK_USE_NATIVE_POLY_DECOMPRESS_D11
+#undef MLK_USE_NATIVE_POLY_DECOMPRESS_D4
+#undef MLK_USE_NATIVE_POLY_DECOMPRESS_D5
+#undef MLK_USE_NATIVE_POLY_FROMBYTES
+#undef MLK_USE_NATIVE_POLY_MULCACHE_COMPUTE
+#undef MLK_USE_NATIVE_POLY_REDUCE
+#undef MLK_USE_NATIVE_POLY_TOBYTES
+#undef MLK_USE_NATIVE_POLY_TOMONT
+#undef MLK_USE_NATIVE_REJ_UNIFORM
+/* mlkem/src/native/x86_64/src/arith_native_x86_64.h */
+#undef MLK_AVX2_REJ_UNIFORM_BUFLEN
+#undef MLK_NATIVE_X86_64_SRC_ARITH_NATIVE_X86_64_H
+#undef mlk_invntt_avx2
+#undef mlk_ntt_avx2
+#undef mlk_nttfrombytes_avx2
+#undef mlk_ntttobytes_avx2
+#undef mlk_nttunpack_avx2
+#undef mlk_poly_compress_d10_avx2
+#undef mlk_poly_compress_d11_avx2
+#undef mlk_poly_compress_d4_avx2
+#undef mlk_poly_compress_d5_avx2
+#undef mlk_poly_decompress_d10_avx2
+#undef mlk_poly_decompress_d11_avx2
+#undef mlk_poly_decompress_d4_avx2
+#undef mlk_poly_decompress_d5_avx2
+#undef mlk_poly_mulcache_compute_avx2
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k2
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k3
+#undef mlk_polyvec_basemul_acc_montgomery_cached_asm_k4
+#undef mlk_reduce_avx2
+#undef mlk_rej_uniform_asm
+#undef mlk_rej_uniform_table
+#undef mlk_tomont_avx2
+/* mlkem/src/native/x86_64/src/consts.h */
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XFHI
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XFLO
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XMASK
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XMONTSQHI
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XMONTSQLO
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XQ
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XQINV
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XSHIFT
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_16XV
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_MULCACHE_TWIDDLES
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_REVIDXB
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_REVIDXD
+#undef MLK_AVX2_BACKEND_DATA_OFFSET_ZETAS_EXP
+#undef MLK_NATIVE_X86_64_SRC_CONSTS_H
+#undef mlk_qdata
+#endif /* MLK_SYS_X86_64 */
 #endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 #endif /* !MLK_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS */

@@ -28,6 +28,23 @@
 #define MLK_CONFIG_KEYGEN_PCT
 #endif
 
+// Map the CPU capability function to the ones used by AWS-LC
+#define MLK_CONFIG_CUSTOM_CAPABILITY_FUNC
+#if !defined(__ASSEMBLER__)
+#include <stdint.h>
+#include "mlkem/sys.h"
+static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
+{
+#if defined(MLK_SYS_X86_64)
+  if (cap == MLK_SYS_CAP_AVX2)
+  {
+    return CRYPTO_is_AVX2_capable();
+  }
+#endif
+  return 0;
+}
+#endif
+
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 #define MLK_CONFIG_KEYGEN_PCT_BREAKAGE_TEST
 #if !defined(__ASSEMBLER__) && !defined(MLK_CONFIG_MULTILEVEL_NO_SHARED)
