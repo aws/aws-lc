@@ -80,6 +80,7 @@
 // As the |OID| is read from |cbs| the buffer is advanced.
 // For the case of |NID_rsa| the method |rsa_asn1_meth| is returned.
 // For the case of |EVP_PKEY_PQDSA| the method |pqdsa_asn1.meth| is returned.
+// For the case of |EVP_PKEY_KEM| the method |kem_asn1.meth| is returned.
 static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
   CBS oid;
   if (!CBS_get_asn1(cbs, &oid, CBS_ASN1_OBJECT)) {
