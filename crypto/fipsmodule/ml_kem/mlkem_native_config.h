@@ -66,6 +66,26 @@ static MLK_INLINE void mlk_randombytes(void *ptr, size_t len) {
 }
 #endif // !__ASSEMBLER__
 
+// Map memcpy function to the one used by AWS-LC
+#define MLK_CONFIG_CUSTOM_MEMCPY
+#if !defined(__ASSEMBLER__)
+#include <stdint.h>
+#include "mlkem/sys.h"
+static MLK_INLINE void *mlk_memcpy(void *dest, const void *src, size_t n) {
+    return OPENSSL_memcpy(dest, src, n);
+}
+#endif // !__ASSEMBLER__
+
+// Map memset function to the one used by AWS-LC
+#define MLK_CONFIG_CUSTOM_MEMSET
+#if !defined(__ASSEMBLER__)
+#include <stdint.h>
+#include "mlkem/sys.h"
+static MLK_INLINE void *mlk_memset(void *s, int c, size_t n) {
+    return OPENSSL_memset(s, c, n);
+}
+#endif // !__ASSEMBLER__
+
 #if defined(OPENSSL_NO_ASM)
 #define MLK_CONFIG_NO_ASM
 #endif
