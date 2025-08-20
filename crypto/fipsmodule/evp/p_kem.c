@@ -12,7 +12,6 @@
 #include "../../internal.h"
 #include "internal.h"
 
-
 typedef struct {
   const KEM *kem;
 } KEM_PKEY_CTX;
