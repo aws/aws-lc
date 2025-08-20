@@ -3,6 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: poly_tobytes_asm
+  Description: Convert polynomial to byte representation
+  Signature: void mlk_poly_tobytes_asm(uint8_t r[384], const int16_t a[256])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 384
+      permissions: write-only
+      c_parameter: uint8_t r[384]
+      description: Output byte array
+    x1:
+      type: buffer
+      size_bytes: 512
+      permissions: read-only
+      c_parameter: const int16_t a[256]
+      description: Input polynomial
+  Stack:
+    bytes: 0
+*/
+
 #include "_internal_s2n_bignum.h"
 
 /*
