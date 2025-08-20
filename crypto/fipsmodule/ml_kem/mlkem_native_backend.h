@@ -8,9 +8,14 @@
 
 // For now, we only include an AArch64 backend, used on Linux and MacOS systems
 #if !defined(OPENSSL_NO_ASM) &&				\
-    defined(OPENSSL_AARCH64) &&				\
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
+
+#if defined(OPENSSL_AARCH64)
 #include "mlkem/native/aarch64/meta.h"
+#elif defined(OPENSSL_X86_64)
+#include "mlkem/native/x86_64/meta.h"
+#endif
+
 #endif
 
 #endif /* MLKEM_NATIVE_BACKEND_H */
