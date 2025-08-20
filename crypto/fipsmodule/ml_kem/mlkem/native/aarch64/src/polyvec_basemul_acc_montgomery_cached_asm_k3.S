@@ -12,7 +12,39 @@
  *   https://eprint.iacr.org/2021/986
  */
 
-/* Re-implementation of asymmetric base multiplication following @[NeonNTT] */
+/*yaml
+  Name: polyvec_basemul_acc_montgomery_cached_asm_k3
+  Description: Re-implementation of asymmetric base multiplication following @[NeonNTT] for k=3
+  Signature: void mlk_polyvec_basemul_acc_montgomery_cached_asm_k3(int16_t r[256], const int16_t a[768], const int16_t b[768], const int16_t b_cache[384])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 512
+      permissions: write-only
+      c_parameter: int16_t r[256]
+      description: Output polynomial
+    x1:
+      type: buffer
+      size_bytes: 1536
+      permissions: read-only
+      c_parameter: const int16_t a[768]
+      description: Input polynomial vector a
+    x2:
+      type: buffer
+      size_bytes: 1536
+      permissions: read-only
+      c_parameter: const int16_t b[768]
+      description: Input polynomial vector b
+    x3:
+      type: buffer
+      size_bytes: 768
+      permissions: read-only
+      c_parameter: const int16_t b_cache[384]
+      description: Cached values for b
+  Stack:
+    bytes: 64
+    description: saving callee-saved Neon registers
+*/
 
 #include "_internal_s2n_bignum.h"
 

@@ -3,6 +3,39 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: poly_mulcache_compute_asm
+  Description: Compute multiplication cache for polynomial
+  Signature: void mlk_poly_mulcache_compute_asm(int16_t cache[128], const int16_t mlk_poly[256], const int16_t zetas[128], const int16_t zetas_twisted[128])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 256
+      permissions: write-only
+      c_parameter: int16_t cache[128]
+      description: Output cache
+    x1:
+      type: buffer
+      size_bytes: 512
+      permissions: read-only
+      c_parameter: const int16_t mlk_poly[256]
+      description: Input polynomial
+    x2:
+      type: buffer
+      size_bytes: 256
+      permissions: read-only
+      c_parameter: const int16_t zetas[128]
+      description: Zeta values
+    x3:
+      type: buffer
+      size_bytes: 256
+      permissions: read-only
+      c_parameter: const int16_t zetas_twisted[128]
+      description: Twisted zeta values
+  Stack:
+    bytes: 0
+*/
+
 #include "_internal_s2n_bignum.h"
 
 /*
