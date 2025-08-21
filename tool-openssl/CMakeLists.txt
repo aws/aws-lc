@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    ec.cc
     genrsa.cc
     pass_util.cc
     pkcs8.cc
