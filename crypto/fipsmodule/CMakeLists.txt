@@ -104,8 +104,6 @@ if(ARCH STREQUAL "aarch64")
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
     vpaes-armv8.${ASM_EXT}
-    ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/aes/asm/aes-xts-armv8-enc-slothy.S
-    ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/aes/asm/aes-xts-armv8-dec-slothy.S
   )
 endif()
 
@@ -273,6 +271,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_byte_alt.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_byte.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_byte_alt.S
+                ${S2N_BIGNUM_DIR}/aes/aes-xts-enc-armv8.S
+                ${S2N_BIGNUM_DIR}/aes/aes-xts-dec-armv8.S
     )
 
     # Big integer arithmetics using s2n-bignum

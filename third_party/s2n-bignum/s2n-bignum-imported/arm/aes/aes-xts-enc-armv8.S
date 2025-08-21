@@ -16,17 +16,17 @@
 #include <openssl/arm_arch.h>
 .arch   armv8-a+crypto
 .text
-.globl  aes_hw_slothy_xts_encrypt
-.hidden aes_hw_slothy_xts_encrypt
-.type   aes_hw_slothy_xts_encrypt,%function
+.globl  aes_hw_xts_encrypt
+.hidden aes_hw_xts_encrypt
+.type   aes_hw_xts_encrypt,%function
 #elif defined(__APPLE__)
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
 #include <openssl/arm_arch.h>
 .text
-.globl	_aes_hw_slothy_xts_encrypt
-.private_extern	_aes_hw_slothy_xts_encrypt
+.globl	_aes_hw_xts_encrypt
+.private_extern	_aes_hw_xts_encrypt
 #else
 #error Unknown configuration
 #endif
@@ -35,9 +35,22 @@
 
 .align  4
 
+#define STACK_SIZE_GPRS  (2*16)
+#define STACK_SIZE_VREGS (4*16)
+#define STACK_SIZE  (STACK_SIZE_GPRS + STACK_SIZE_VREGS)
 
-#define STACK_BASE_VREGS 0
-#define STACK_SIZE_VREGS (6*16)
+#define STACK_BASE_GPRS  (0)
+#define STACK_BASE_VREGS (STACK_SIZE_GPRS)
+
+.macro save_regs
+        stp  x19, x20, [sp, #(STACK_BASE_GPRS + 16*0)]
+     	stp  x21, x22, [sp, #(STACK_BASE_GPRS + 16*1)]
+.endm
+
+.macro restore_regs
+        ldp  x19, x20, [sp, #(STACK_BASE_GPRS + 16*0)]
+        ldp  x21, x22, [sp, #(STACK_BASE_GPRS + 16*1)]
+.endm
 
 .macro save_vregs
     	stp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
@@ -46,21 +59,11 @@
         stp d14, d15, [sp, #(STACK_BASE_VREGS + 16*3)]
 .endm
 
-.macro save_regs
-        stp  x19, x20, [sp, #(STACK_BASE_VREGS + 16*4)]
-     	stp  x21, x22, [sp, #(STACK_BASE_VREGS + 16*5)]
-.endm
-
 .macro restore_vregs
         ldp  d8,  d9, [sp, #(STACK_BASE_VREGS + 16*0)]
         ldp d10, d11, [sp, #(STACK_BASE_VREGS + 16*1)]
         ldp d12, d13, [sp, #(STACK_BASE_VREGS + 16*2)]
         ldp d14, d15, [sp, #(STACK_BASE_VREGS + 16*3)]
-.endm
-
-.macro restore_regs
-        ldp  x19, x20, [sp, #(STACK_BASE_VREGS + 16*4)]
-        ldp  x21, x22, [sp, #(STACK_BASE_VREGS + 16*5)]
 .endm
 
 // A single AES round
@@ -79,13 +82,16 @@
         fmov  \hi, x10
 .endm
 
-_aes_hw_slothy_xts_encrypt:
-aes_hw_slothy_xts_encrypt:
+_aes_hw_xts_encrypt:
+aes_hw_xts_encrypt:
   # AARCH64_VALID_CALL_TARGET
 
-        sub sp, sp, #STACK_SIZE_VREGS
+        sub sp, sp, #STACK_SIZE
         save_vregs
         save_regs
+
+        mov x8, #0x50
+        udiv x8, x2, x8 // Number of 5x-unrolled iterations
 
         cmp   x2, #16 // AES-XTS needs at least one block
         b.lt  Lxts_abort
@@ -93,7 +99,6 @@ aes_hw_slothy_xts_encrypt:
 Lxts_enc_big_size:  // Encrypt input size >= 16 bytes
         and  x21, x2, #0xf    // store the tail value of length%16
         and  x2, x2, #-16    // len &= 0x1..110000, now divisible by 16
-        subs x2, x2, #16
 
         // Firstly, encrypt the iv with key2, as the first iv of XEX.
         ldr  w6, [x4,#240]
@@ -135,143 +140,122 @@ Loop_iv_enc:
 
 // Encryption
 Lxts_enc:
-        cmp x2, #16
+        cmp x2, #0x20
         b.lo Lxts_enc_tail1x   // when input = 1 with tail
 
-        subs  x2,x2,#32           // bias
+        cmp x2, #0x30
         b.lo  Lxts_enc_tail2x    // when input size  = 2
 
         // The iv for third block
         tweak d9,v9.d[1]
 
-        cmp  x2,#16
+        cmp  x2,#0x40
         b.lo  Lxts_enc_tail3x
 
         // The iv for fourth block
         tweak d10,v10.d[1]
 
-        subs x2,x2,#32
+        cmp x2,#0x50
         b.lo  Lxts_enc_tail4x
 
         // The iv for fifth block
         tweak d11,v11.d[1]
 
-        subs x2,x2,#16
-        b.lo  Lxts_enc_tail5x
-
-        // The iv for sixth block
-        tweak d28,v28.d[1]
-
 .align  4
-Loop6x_xts_enc:
-        ldp q0, q1, [x0], #0x60
-        ldp q24, q25, [x0, #-0x40]
-        ldp q26, q27, [x0, #-0x20]
+Loop5x_xts_enc:
+        ldp q0, q1, [x0], #0x50
+        ldp q24, q25, [x0, #-0x30]
+        ldr q26, [x0, #-0x10]
 
         eor  v0.16b,v0.16b,v6.16b          // before encryption, xor with iv
         eor  v1.16b,v1.16b,v8.16b
         eor  v24.16b,v24.16b,v9.16b
         eor  v25.16b,v25.16b,v10.16b
         eor  v26.16b,v26.16b,v11.16b
-        eor  v27.16b,v27.16b,v28.16b
 
         aesr    v0.16b, v16.16b
         aesr    v1.16b, v16.16b
         aesr    v24.16b, v16.16b
         aesr    v25.16b, v16.16b
         aesr    v26.16b, v16.16b
-        aesr    v27.16b, v16.16b
 
         aesr    v0.16b, v17.16b
         aesr    v1.16b, v17.16b
         aesr    v24.16b, v17.16b
         aesr    v25.16b, v17.16b
         aesr    v26.16b, v17.16b
-        aesr    v27.16b, v17.16b
 
         aesr    v0.16b, v12.16b
         aesr    v1.16b, v12.16b
         aesr    v24.16b, v12.16b
         aesr    v25.16b, v12.16b
         aesr    v26.16b, v12.16b
-        aesr    v27.16b, v12.16b
 
         aesr    v0.16b, v13.16b
         aesr    v1.16b, v13.16b
         aesr    v24.16b, v13.16b
         aesr    v25.16b, v13.16b
         aesr    v26.16b, v13.16b
-        aesr    v27.16b, v13.16b
 
         aesr    v0.16b, v14.16b
         aesr    v1.16b, v14.16b
         aesr    v24.16b, v14.16b
         aesr    v25.16b, v14.16b
         aesr    v26.16b, v14.16b
-        aesr    v27.16b, v14.16b
 
         aesr    v0.16b, v15.16b
         aesr    v1.16b, v15.16b
         aesr    v24.16b, v15.16b
         aesr    v25.16b, v15.16b
         aesr    v26.16b, v15.16b
-        aesr    v27.16b, v15.16b
 
         aesr    v0.16b, v4.16b
         aesr    v1.16b, v4.16b
         aesr    v24.16b, v4.16b
         aesr    v25.16b, v4.16b
         aesr    v26.16b, v4.16b
-        aesr    v27.16b, v4.16b
 
         aesr    v0.16b, v5.16b
         aesr    v1.16b, v5.16b
         aesr    v24.16b, v5.16b
         aesr    v25.16b, v5.16b
         aesr    v26.16b, v5.16b
-        aesr    v27.16b, v5.16b
 
         aesr    v0.16b, v18.16b
         aesr    v1.16b, v18.16b
         aesr    v24.16b, v18.16b
         aesr    v25.16b, v18.16b
         aesr    v26.16b, v18.16b
-        aesr    v27.16b, v18.16b
 
         aesr    v0.16b, v19.16b
         aesr    v1.16b, v19.16b
         aesr    v24.16b, v19.16b
         aesr    v25.16b, v19.16b
         aesr    v26.16b, v19.16b
-        aesr    v27.16b, v19.16b
 
         aesr    v0.16b, v20.16b
         aesr    v1.16b, v20.16b
         aesr    v24.16b, v20.16b
         aesr    v25.16b, v20.16b
         aesr    v26.16b, v20.16b
-        aesr    v27.16b, v20.16b
 
         aesr    v0.16b, v21.16b
         aesr    v1.16b, v21.16b
         aesr    v24.16b, v21.16b
         aesr    v25.16b, v21.16b
         aesr    v26.16b, v21.16b
-        aesr    v27.16b, v21.16b
 
         aesr    v0.16b, v22.16b
         aesr    v1.16b, v22.16b
         aesr    v24.16b, v22.16b
         aesr    v25.16b, v22.16b
         aesr    v26.16b, v22.16b
-        aesr    v27.16b, v22.16b
 
         aese  v0.16b,v23.16b
         aese  v1.16b,v23.16b
         aese  v24.16b,v23.16b
         aese  v25.16b,v23.16b
         aese  v26.16b,v23.16b
-        aese  v27.16b, v23.16b
 
         eor  v0.16b,v0.16b,v7.16b
         eor  v0.16b,v0.16b,v6.16b
@@ -297,156 +281,29 @@ Loop6x_xts_enc:
 
         // The iv for fifth block
         tweak d11,v11.d[1]
-        eor  v27.16b,v27.16b,v7.16b
-        eor  v27.16b,v27.16b,v28.16b
 
-        // The iv for sixth block
-        tweak d28,v28.d[1]
+        stp q0, q1, [x1], #0x50
+        stp q24, q25, [x1, #-0x30]
+        str q26, [x1, #-0x10]
 
-        stp q0, q1, [x1], #0x60
-        stp q24, q25, [x1, #-0x40]
-        stp q26, q27, [x1, #-0x20]
+        sub x2, x2, #0x50
+        subs x8,x8,#1
+        cbnz x8, Loop5x_xts_enc
 
-        subs x2,x2,#0x60 // @slothy:core
-        b.hs  Loop6x_xts_enc
+Loop5x_enc_after:
+        cmp  x2,#0x40
+        b.eq  Lxts_enc_tail4x  // 4 blocks left
 
-Loop6x_enc_after:
-        cmn  x2,#0x10
-        b.eq  Lxts_enc_tail5x  // 5 blocks left
+        cmp x2,#0x30
+        b.eq Lxts_enc_tail3x
 
-        add  x2,x2,#0x60
-        cbz  x2,Lxts_enc_done     // no blocks left
+        cmp x2,#0x20
+        b.eq Lxts_enc_tail2x
 
-        subs  x2,x2,#0x20
-        b.lo  Lxts_enc_tail1x    // 1 block left
+        cmp x2,#0x10
+        b.eq Lxts_enc_tail1x
 
-        subs x2,x2,#0x10
-        b.lo Lxts_enc_tail2x  // 2 blocks left
-
-        subs x2,x2,#0x10
-        b.lo  Lxts_enc_tail3x  // 3 blocks left
-
-        b Lxts_enc_tail4x  // 4 blocks left
-
-.align  4
-Lxts_enc_tail5x:
-        ld1  {v0.16b}, [x0],#16              // the first block
-        ld1  {v1.16b}, [x0],#16  // the second block
-        ld1  {v24.16b},[x0],#16 // the third block
-        ld1  {v25.16b},[x0],#16  // the fourth block
-        ld1  {v26.16b},[x0],#16  // the fourth block
-
-        eor  v0.16b,v0.16b,v6.16b          // before encryption, xor with iv
-        eor  v1.16b,v1.16b,v8.16b
-        eor  v24.16b,v24.16b,v9.16b
-        eor  v25.16b,v25.16b,v10.16b
-        eor  v26.16b,v26.16b,v11.16b
-
-        aesr    v0.16b, v16.16b
-        aesr    v1.16b, v16.16b
-        aesr    v24.16b, v16.16b
-        aesr    v25.16b, v16.16b
-        aesr    v26.16b, v16.16b
-
-        aesr    v0.16b, v17.16b
-        aesr    v1.16b, v17.16b
-        aesr    v24.16b, v17.16b
-        aesr    v25.16b, v17.16b
-        aesr    v26.16b, v17.16b
-
-        aesr    v0.16b, v12.16b
-        aesr    v1.16b, v12.16b
-        aesr    v24.16b, v12.16b
-        aesr    v25.16b, v12.16b
-        aesr    v26.16b, v12.16b
-
-        aesr    v0.16b, v13.16b
-        aesr    v1.16b, v13.16b
-        aesr    v24.16b, v13.16b
-        aesr    v25.16b, v13.16b
-        aesr    v26.16b, v13.16b
-
-        aesr    v0.16b, v14.16b
-        aesr    v1.16b, v14.16b
-        aesr    v24.16b, v14.16b
-        aesr    v25.16b, v14.16b
-        aesr    v26.16b, v14.16b
-
-        aesr    v0.16b, v15.16b
-        aesr    v1.16b, v15.16b
-        aesr    v24.16b, v15.16b
-        aesr    v25.16b, v15.16b
-        aesr    v26.16b, v15.16b
-
-        aesr    v0.16b, v4.16b
-        aesr    v1.16b, v4.16b
-        aesr    v24.16b, v4.16b
-        aesr    v25.16b, v4.16b
-        aesr    v26.16b, v4.16b
-
-        aesr    v0.16b, v5.16b
-        aesr    v1.16b, v5.16b
-        aesr    v24.16b, v5.16b
-        aesr    v25.16b, v5.16b
-        aesr    v26.16b, v5.16b
-
-        aesr    v0.16b, v18.16b
-        aesr    v1.16b, v18.16b
-        aesr    v24.16b, v18.16b
-        aesr    v25.16b, v18.16b
-        aesr    v26.16b, v18.16b
-
-        aesr    v0.16b, v19.16b
-        aesr    v1.16b, v19.16b
-        aesr    v24.16b, v19.16b
-        aesr    v25.16b, v19.16b
-        aesr    v26.16b, v19.16b
-
-        aesr    v0.16b, v20.16b
-        aesr    v1.16b, v20.16b
-        aesr    v24.16b, v20.16b
-        aesr    v25.16b, v20.16b
-        aesr    v26.16b, v20.16b
-
-        aesr    v0.16b, v21.16b
-        aesr    v1.16b, v21.16b
-        aesr    v24.16b, v21.16b
-        aesr    v25.16b, v21.16b
-        aesr    v26.16b, v21.16b
-
-        aesr    v0.16b, v22.16b
-        aesr    v1.16b, v22.16b
-        aesr    v24.16b, v22.16b
-        aesr    v25.16b, v22.16b
-        aesr    v26.16b, v22.16b
-
-        aese  v0.16b,v23.16b
-        aese  v1.16b,v23.16b
-        aese  v24.16b,v23.16b
-        aese  v25.16b,v23.16b
-        aese  v26.16b,v23.16b
-
-        eor  v0.16b,v0.16b,v7.16b
-        eor  v0.16b,v0.16b,v6.16b
-        eor  v1.16b,v1.16b,v7.16b
-        eor  v1.16b,v1.16b,v8.16b
-        eor  v24.16b,v24.16b,v7.16b
-        eor  v24.16b,v24.16b,v9.16b
-        eor  v25.16b,v25.16b,v7.16b
-        eor  v25.16b,v25.16b,v10.16b
-        eor  v26.16b,v26.16b,v7.16b
-        eor  v26.16b,v26.16b,v11.16b
-
-        st1  {v0.16b,v1.16b},[x1],#32
-        st1  {v24.16b,v25.16b},[x1],#32
-        st1 {v26.16b},[x1],#16
-
-        // The iv for tail
-        fmov  x9,d11
-        fmov  x10,v11.d[1]
-        tweak d6,v6.d[1]
-
-        b  Lxts_enc_done
+        b Lxts_enc_done     // no blocks left
 
 .align  4
 Lxts_enc_tail4x:
@@ -556,7 +413,7 @@ Lxts_enc_tail4x:
 Lxts_enc_tail3x:
         ld1  {v0.16b,v1.16b}, [x0],#32
         ld1  {v24.16b}, [x0],#16
-        
+
         eor  v0.16b,v0.16b,v6.16b
         eor  v1.16b,v1.16b,v8.16b
         eor  v24.16b,v24.16b,v9.16b
@@ -810,7 +667,7 @@ Lxts_abort:
 
 Lxts_enc_final_abort:
         restore_vregs
-        add sp, sp, #STACK_SIZE_VREGS
+        add sp, sp, #STACK_SIZE
         ret
 
 #endif

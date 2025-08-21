@@ -13,17 +13,17 @@
 #include <openssl/arm_arch.h>
 .arch   armv8-a+crypto
 .text
-.globl    aes_hw_slothy_xts_decrypt
-.hidden    aes_hw_slothy_xts_decrypt
-.type    aes_hw_slothy_xts_decrypt,%function
+.globl    aes_hw_xts_decrypt
+.hidden    aes_hw_xts_decrypt
+.type    aes_hw_xts_decrypt,%function
 #elif defined(__APPLE__)
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
 #include <openssl/arm_arch.h>
 .text
-.globl    _aes_hw_slothy_xts_decrypt
-.private_extern    _aes_hw_slothy_xts_decrypt
+.globl    _aes_hw_xts_decrypt
+.private_extern    _aes_hw_xts_decrypt
 #else
 #error Unknown configuration
 #endif
@@ -78,8 +78,8 @@
         fmov  \hi, x10
 .endm
 
-_aes_hw_slothy_xts_decrypt:
-aes_hw_slothy_xts_decrypt:
+_aes_hw_xts_decrypt:
+aes_hw_xts_decrypt:
         // AARCH64_VALID_CALL_TARGET
         sub sp, sp, #STACK_SIZE_VREGS
         save_vregs
@@ -137,27 +137,31 @@ Loop_iv_enc:
 Lxts_dec:
         tst x21,#0xf
         b.eq Lxts_dec_begin
-        subs x2,x2,#32
-        cmp x2, #0x0
+        subs x2,x2,#16
+        cmp x2, #16
         b.lt Lxts_dec_done   // There is one block and a tail, go directy to cipher-stealing
 
 Lxts_dec_begin:
-        cmp x2, #0x10
+
+        mov x8, #0x50
+        udiv x8, x2, x8 // Number of 5x-unrolled iterations
+
+        cmp x2, #0x20
         b.lo Lxts_dec_tail1x   // when input = 1 with another block and a tail
 
-        cmp  x2,#0x20         // bias
+        cmp  x2,#0x30         // bias
         b.lo  Lxts_dec_tail2x    // when input size  = 2 with another block and a tail
 
         // The iv for third block
         tweak d9,v9.d[1]
 
-        cmp  x2,#0x30
+        cmp  x2,#0x40
         b.lo  Lxts_dec_tail3x // when input size  = 3 with another block and a tail
 
         // The iv for fourth block
         tweak d10,v10.d[1]
 
-        cmp x2,#0x40
+        cmp x2,#0x50
         b.lo  Lxts_dec_tail4x // when input size  = 4 with another block and a tail
 
         // The iv for fifth block
@@ -288,8 +292,9 @@ Loop5x_xts_dec:
         stp q24, q25, [x1, #-0x30]
         str  q26, [x1, #-0x10]
 
-        subs x2,x2,#0x50   // @slothy:core
-        b.hs  Loop5x_xts_dec
+        subs x2,x2,#0x50
+        subs x8,x8,#1
+        cbnz x8, Loop5x_xts_dec
 
 Loop5x_dec_after:
         cmp  x2,#0x40
