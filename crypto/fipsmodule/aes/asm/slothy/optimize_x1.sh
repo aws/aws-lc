@@ -72,7 +72,7 @@ fi
 ##     done
 ## done
 
-VARIANTS_ALL="x5_basic"
+VARIANTS_ALL="x1_basic"
 
 VERBOSE=${VERBOSE:=0}
 TIMEOUT=${TIMEOUT:=1200} # 20min timeout by default
@@ -111,21 +111,21 @@ if [ "$SKIP_EXISTING" = "" ]; then
 fi
 
 #    -l Loop_enc_iv_enc                                 \
-#     -c sw_pipelining.unknown_iteration_count=true    \
-optimize_x5() {
+
+optimize_x1() {
     slothy-cli Arm_AArch64 $MODEL                      \
     ${INFILE}                                          \
-    -l Loop5x_xts_${ENCDEC}                            \
+    -l Loop1x_xts_enc                                  \
     -c inputs_are_outputs                              \
     -c sw_pipelining.enabled=true                      \
-    -c sw_pipelining.optimize_preamble=true         \
-    -c sw_pipelining.optimize_postamble=true        \
+    -c sw_pipelining.optimize_preamble=false         \
+    -c sw_pipelining.optimize_postamble=false        \
     -c inputs_are_outputs                              \
     -c sw_pipelining.minimize_overlapping=False        \
-    -c sw_pipelining.unknown_iteration_count=true     \
+    -c sw_pipelining.unknown_iteration_count=true    \
     -c variable_size                                   \
     -c constraints.stalls_first_attempt=64             \
-    -c reserved_regs="[x18,x23--x30,w19,x2,x3,x21,x0,x1,x4,x5,x8,sp]" \
+    -c reserved_regs="[x18,x23--x30,w19,x2,x3,x21,x0,x1,x4,x5,sp]" \
     -c selftest=false                                  \
     -c constraints.allow_reordering=true             \
     -c constraints.allow_renaming=true             \
@@ -141,7 +141,7 @@ optimize_variant() {
     TMP1=$TMP_DIR/${TMP_STEM}_$1_1.S
     TMP2=$TMP_DIR/${TMP_STEM}_$1_2.S
 
-    optimize_x5
+    optimize_x1
 }
 
 for v in $TODO
