@@ -418,12 +418,10 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 
 #if defined(KECCAK1600_ASM)
 
-// #if defined(OPENSSL_AARCH64)
-// // Double-check that bit-interleaving is not used on AArch64
-// #if BIT_INTERLEAVE != 0
-// #error Bit-interleaving of Keccak1600 states should be disabled for AArch64
-// #endif
-// #endif
+// Double-check that bit-interleaving is not used on AArch64
+#if defined(BIT_INTERLEAVE) && BIT_INTERLEAVE
+#error Bit-interleaving of Keccak1600 states should be disabled for AArch64
+#endif
 
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
