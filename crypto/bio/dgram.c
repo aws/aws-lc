@@ -11,7 +11,12 @@
 #include "./internal.h"
 
 #if !defined(OPENSSL_WINDOWS)
+#include <sys/time.h>
 static int closesocket(const int sock) { return close(sock); }
+#else
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <winsock2.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 typedef struct bio_dgram_data_st {
@@ -48,6 +53,14 @@ static const struct sockaddr *BIO_ADDR_sockaddr(const BIO_ADDR *bap) {
   return &bap->sa;
 }
 
+static int dgram_get_errno(void) {
+#if defined(OPENSSL_WINDOWS)
+  return WSAGetLastError();
+#else
+  return errno;
+#endif
+}
+
 static int dgram_write(BIO *bp, const char *in, const int in_len) {
   GUARD_PTR(bp);
   GUARD_PTR(in);
@@ -80,9 +93,11 @@ static int dgram_write(BIO *bp, const char *in, const int in_len) {
   const int ret = result;
 
   BIO_clear_retry_flags(bp);
-  if (ret <= 0 && bio_socket_should_retry(ret)) {
-    BIO_set_retry_write(bp);
-    data->_errno = bio_sock_error_get_and_clear(bp->num);
+  if (ret <= 0) {
+    if (bio_socket_should_retry(ret)) {
+      BIO_set_retry_write(bp);
+    }
+    data->_errno = dgram_get_errno();
   }
   return ret;
 }
@@ -123,9 +138,11 @@ static int dgram_read(BIO *bp, char *out, const int out_len) {
   }
 
   BIO_clear_retry_flags(bp);
-  if (ret < 0 && bio_socket_should_retry(ret)) {
-    BIO_set_retry_read(bp);
-    data->_errno = bio_sock_error_get_and_clear(bp->num);
+  if (ret < 0) {
+    if (bio_socket_should_retry(ret)) {
+      BIO_set_retry_read(bp);
+    }
+    data->_errno = dgram_get_errno();
   }
 
   return ret;
@@ -255,6 +272,128 @@ static long dgram_ctrl(BIO *bp, const int cmd, const long num, void *ptr) {
       }
       break;
     }
+#if defined(SO_RCVTIMEO)
+    case BIO_CTRL_DGRAM_SET_RECV_TIMEOUT: {
+      GUARD_PTR(ptr);
+      struct timeval *tv = (struct timeval *)ptr;
+      // Check for negative values in timeval
+      if (tv->tv_sec < 0 || tv->tv_usec < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
+        ret = -1;
+        break;
+      }
+#ifdef OPENSSL_WINDOWS
+      DWORD timeout = (DWORD)(tv->tv_sec * 1000 + tv->tv_usec / 1000);
+      if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
+                     (void *)&timeout, sizeof(timeout)) != 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      }
+#else
+      if (setsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO, ptr,
+                     sizeof(struct timeval)) < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      }
+#endif
+      break;
+    }
+    case BIO_CTRL_DGRAM_GET_RECV_TIMEOUT: {
+      GUARD_PTR(ptr);
+      union {
+        size_t s;
+        int i;
+      } sz = {0};
+#ifdef OPENSSL_WINDOWS
+      int timeout;
+      struct timeval *tv = (struct timeval *)ptr;
+
+      sz.i = sizeof(timeout);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
+                     (void *)&timeout, &sz.i) != 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      } else {
+        tv->tv_sec = timeout / 1000;
+        tv->tv_usec = (timeout % 1000) * 1000;
+        ret = sizeof(*tv);
+      }
+#else
+      sz.i = sizeof(struct timeval);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_RCVTIMEO,
+                     ptr, (void *)&sz) < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      } else if (sizeof(sz.s) != sizeof(sz.i) && sz.i == 0) {
+        ret = (int)sz.s;
+      } else {
+        ret = sz.i;
+      }
+#endif
+      break;
+    }
+#endif
+#if defined(SO_SNDTIMEO)
+    case BIO_CTRL_DGRAM_SET_SEND_TIMEOUT: {
+      GUARD_PTR(ptr);
+      struct timeval *tv = (struct timeval *)ptr;
+      // Check for negative values in timeval
+      if (tv->tv_sec < 0 || tv->tv_usec < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
+        ret = -1;
+        break;
+      }
+#ifdef OPENSSL_WINDOWS
+      DWORD timeout = (DWORD)(tv->tv_sec * 1000 + tv->tv_usec / 1000);
+      if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
+                     (void *)&timeout, sizeof(timeout)) != 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      }
+#else
+      if (setsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO, ptr,
+                     sizeof(struct timeval)) < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      }
+#endif
+      break;
+    }
+    case BIO_CTRL_DGRAM_GET_SEND_TIMEOUT: {
+      GUARD_PTR(ptr);
+      union {
+        size_t s;
+        int i;
+      } sz = {0};
+#ifdef OPENSSL_WINDOWS
+      int timeout;
+      struct timeval *tv = (struct timeval *)ptr;
+
+      sz.i = sizeof(timeout);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
+                     (void *)&timeout, &sz.i) != 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      } else {
+        tv->tv_sec = timeout / 1000;
+        tv->tv_usec = (timeout % 1000) * 1000;
+        ret = sizeof(*tv);
+      }
+#else
+      sz.i = sizeof(struct timeval);
+      if (getsockopt(bp->num, SOL_SOCKET, SO_SNDTIMEO,
+                     ptr, (void *)&sz) < 0) {
+        OPENSSL_PUT_ERROR(BIO, BIO_R_SYS_LIB);
+        ret = -1;
+      } else if (sizeof(sz.s) != sizeof(sz.i) && sz.i == 0) {
+        ret = (int)sz.s;
+      } else {
+        ret = sz.i;
+      }
+#endif
+      break;
+    }
+#endif
     default:
       ret = 0;
       break;

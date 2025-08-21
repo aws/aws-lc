@@ -807,6 +807,98 @@ TEST_P(BIODgramTest, SocketDatagramConnect) {
   test_send_receive(server_bio, client_bio);
 }
 
+
+TEST_P(BIODgramTest, SocketDatagramTimeouts) {
+  int addr_family = GetParam();
+  // Wrap the server socket in a BIO.
+  bssl::UniquePtr<BIO> bio = create_server_bio(addr_family, SOCK_DGRAM);
+  if (!bio && addr_family == AF_INET6) {
+    // Some CodeBuild environments don't support IPv6
+    GTEST_SKIP() << "IPv6 not supported";
+    return;
+  }
+#if defined(__MINGW32__) && defined(AWS_LC_HAS_AF_UNIX)
+  if (addr_family == AF_UNIX) {
+    // Wine (is not an emulator) doesn't properly support Unix domain sockets
+    GTEST_SKIP() << "Unix domain sockets not supported";
+    return;
+  }
+#endif
+  ASSERT_TRUE(bio) << LastSocketError();
+
+  // Test receive timeout
+  struct timeval recv_timeout_set = {3, 500000}; // 3.5 seconds
+  ASSERT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &recv_timeout_set))
+      << LastSocketError();
+
+  struct timeval recv_timeout_get = {0, 0};
+  ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_GET_RECV_TIMEOUT, 0, &recv_timeout_get))
+      << LastSocketError();
+
+  // Verify the timeout values match what we set (allowing for small variations in microseconds)
+  EXPECT_EQ(recv_timeout_set.tv_sec, recv_timeout_get.tv_sec);
+  // Allow for small variations in microseconds that might occur on different systems
+  EXPECT_NEAR(recv_timeout_set.tv_usec, recv_timeout_get.tv_usec, 5000);
+
+  // Test send timeout
+  struct timeval send_timeout_set = {2, 750000}; // 2.75 seconds
+  ASSERT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_SET_SEND_TIMEOUT, 0, &send_timeout_set))
+      << LastSocketError();
+
+  struct timeval send_timeout_get = {0, 0};
+  ASSERT_EQ(sizeof(struct timeval), (size_t)BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_GET_SEND_TIMEOUT, 0, &send_timeout_get))
+      << LastSocketError();
+
+  // Verify the timeout values match what we set (allowing for small variations in microseconds)
+  EXPECT_EQ(send_timeout_set.tv_sec, send_timeout_get.tv_sec);
+  // Allow for small variations in microseconds that might occur on different systems
+  EXPECT_NEAR(send_timeout_set.tv_usec, send_timeout_get.tv_usec, 5000);
+}
+
+TEST_P(BIODgramTest, SocketDatagramTimeoutBehavior) {
+  int addr_family = GetParam();
+
+#if defined(__MINGW32__) && defined(AWS_LC_HAS_AF_UNIX)
+  if (addr_family == AF_UNIX) {
+    // Wine (is not an emulator) doesn't properly support Unix domain sockets
+    GTEST_SKIP() << "Unix domain sockets not supported";
+    return;
+  }
+#endif
+
+  // Part 1: Test receive timeout
+  {
+    bssl::UniquePtr<BIO> bio = create_server_bio(addr_family, SOCK_DGRAM);
+    if (!bio && addr_family == AF_INET6) {
+      // Some CodeBuild environments don't support IPv6
+      GTEST_SKIP() << "IPv6 not supported";
+      return;
+    }
+    ASSERT_TRUE(bio) << LastSocketError();
+
+    // Set a very short receive timeout (100ms)
+    struct timeval recv_timeout = {0, 100000}; // 0.1 seconds
+    ASSERT_EQ(1, BIO_ctrl(bio.get(), BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &recv_timeout))
+        << LastSocketError();
+
+    // Try to read from the socket. Since no data is being sent, it should time out.
+    char buffer[256];
+    int ret = BIO_read(bio.get(), buffer, sizeof(buffer));
+
+    // The read should fail.
+    EXPECT_EQ(-1, ret);
+
+    // Check if the timeout was detected correctly.
+    EXPECT_EQ(1, BIO_dgram_recv_timedout(bio.get()));
+    EXPECT_EQ(0, BIO_dgram_send_timedout(bio.get()));
+  }
+
+  // Triggering a send timeout requires filling the kernel's send buffer, which
+  // is unreliable. The OS may drop packets or have a very large buffer,
+  // preventing the send call from blocking. The API's get/set functionality
+  // is verified in the |SocketDatagramTimeouts| test.
+}
+
 class BIOAddrTest : public ::testing::Test {
  protected:
   void SetUp() override {
