@@ -1,5 +1,6 @@
 #include "_internal_s2n_bignum.h"
 
+        .arch	armv8-a+crypto
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(aes_hw_xts_decrypt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(aes_hw_xts_decrypt)
         .text
