@@ -70,7 +70,7 @@
 #include "../bn/internal.h"
 #include "../../internal.h"
 #include "../delocate.h"
-#include "../rand/fork_detect.h"
+#include "../../ube/fork_detect.h"
 
 static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
   if (*out != NULL) {
