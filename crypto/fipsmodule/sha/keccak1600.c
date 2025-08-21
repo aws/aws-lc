@@ -450,7 +450,7 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 #if defined(KECCAK1600_ASM)
 
 // Double-check that bit-interleaving is not used on AArch64
-#if defined(BIT_INTERLEAVE)
+#if defined(BIT_INTERLEAVE) && defined(OPENSSL_AARCH64)
 #error Bit-interleaving of Keccak1600 states should be disabled for AArch64
 #endif
 
