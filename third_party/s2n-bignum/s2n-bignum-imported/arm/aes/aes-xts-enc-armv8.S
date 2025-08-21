@@ -5,8 +5,6 @@
         .text
         .balign 4
 
-S2N_BN_SYMBOL(aes_hw_xts_encrypt):
-
 #define STACK_SIZE_GPRS  (2*16)
 #define STACK_SIZE_VREGS (4*16)
 #define STACK_SIZE  (STACK_SIZE_GPRS + STACK_SIZE_VREGS)
@@ -54,7 +52,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         fmov  \hi, x10
 .endm
 
-aes_hw_xts_encrypt:
+S2N_BN_SYMBOL(aes_hw_xts_encrypt):
   # AARCH64_VALID_CALL_TARGET
 
         sub sp, sp, #STACK_SIZE

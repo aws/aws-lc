@@ -5,7 +5,6 @@
         .text
         .balign 4
 
-S2N_BN_SYMBOL(aes_hw_xts_decrypt):
 
 #define STACK_BASE_VREGS 0
 #define STACK_SIZE_VREGS (4*16)
@@ -53,7 +52,7 @@ S2N_BN_SYMBOL(aes_hw_xts_decrypt):
         fmov  \hi, x10
 .endm
 
-aes_hw_xts_decrypt:
+S2N_BN_SYMBOL(aes_hw_xts_decrypt):
         // AARCH64_VALID_CALL_TARGET
         sub sp, sp, #STACK_SIZE_VREGS
         save_vregs
