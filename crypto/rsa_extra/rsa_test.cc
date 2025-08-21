@@ -1120,7 +1120,7 @@ TEST(RSATest, RSAMETHOD) {
 
   // Encrypt Decrypt Operations (pub_enc & priv_dec)
   size_t out_len = EVP_PKEY_size(rsa_key.get());
-  uint8_t in, out;
+  uint8_t in = 0, out = 0;
   ASSERT_TRUE(EVP_PKEY_encrypt_init(rsa_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_encrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
   // Custom func return 0 since they don't write any data to out
@@ -1173,7 +1173,8 @@ TEST(RSATest, RSAEngine) {
   ASSERT_TRUE(key);
 
   size_t out_len = 16;
-  uint8_t in, out;
+  const uint8_t in = 0;
+  uint8_t out = 0;
   // Call custom Engine implementation
   ASSERT_TRUE(RSA_decrypt(key, &out_len, &out, out_len, &in, 0, 0));
   ASSERT_EQ(out_len, (size_t)0);
