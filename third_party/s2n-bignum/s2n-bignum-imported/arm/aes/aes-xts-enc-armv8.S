@@ -1,39 +1,11 @@
-// The following xts encrypt is from MacBook M3 build folder
-// after moving around some instructions
+#include "_internal_s2n_bignum.h"
 
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(aes_hw_xts_encrypt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(aes_hw_xts_encrypt)
+        .text
+        .balign 4
 
-#include <openssl/asm_base.h>
-
-#if !defined(OPENSSL_NO_ASM) && defined(__AARCH64EL__)
-#if defined(__ELF__)
-#include <openssl/boringssl_prefix_symbols_asm.h>
-#include <openssl/arm_arch.h>
-.arch   armv8-a+crypto
-.text
-.globl  aes_hw_xts_encrypt
-.hidden aes_hw_xts_encrypt
-.type   aes_hw_xts_encrypt,%function
-#elif defined(__APPLE__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
-#include <openssl/arm_arch.h>
-.text
-.globl	_aes_hw_xts_encrypt
-.private_extern	_aes_hw_xts_encrypt
-#else
-#error Unknown configuration
-#endif
-
-#if __ARM_MAX_ARCH__ >= 8
-
-.align  4
+S2N_BN_SYMBOL(aes_hw_xts_encrypt):
 
 #define STACK_SIZE_GPRS  (2*16)
 #define STACK_SIZE_VREGS (4*16)
@@ -82,7 +54,6 @@
         fmov  \hi, x10
 .endm
 
-_aes_hw_xts_encrypt:
 aes_hw_xts_encrypt:
   # AARCH64_VALID_CALL_TARGET
 
@@ -670,9 +641,6 @@ Lxts_enc_final_abort:
         add sp, sp, #STACK_SIZE
         ret
 
-#endif
-#endif  // !OPENSSL_NO_ASM && defined(__AARCH64EL__) && defined(__APPLE__)
-#if defined(__ELF__)
-// See https://www.airs.com/blog/archives/518.
-.section .note.GNU-stack,"",%progbits
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
 #endif
