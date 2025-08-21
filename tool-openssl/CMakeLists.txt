@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    ec.cc
     pkcs8.cc
     pkey.cc
     rehash.cc
