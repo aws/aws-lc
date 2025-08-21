@@ -11,6 +11,7 @@
 #include "internal.h"
 
 static const unsigned kDefaultKeySize = 2048;
+static const unsigned kMinKeySize = 1024;
 static const char kKeyArgName[] = "key_size";
 
 static const argument_t kArguments[] = {
@@ -30,8 +31,8 @@ static void DisplayHelp(BIO *bio) {
              kDefaultKeySize);
 }
 
-static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
-  bits = kDefaultKeySize;
+static bool ParseKeySize(const args_list_t &extra_args, unsigned &KeySizeBits) {
+  KeySizeBits = kDefaultKeySize;
 
   if (extra_args.empty()) {
     return true;
@@ -45,8 +46,13 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &bits) {
   ordered_args::ordered_args_map_t temp_args;
   temp_args.push_back(std::make_pair(kKeyArgName, extra_args[0]));
 
-  if (!ordered_args::GetUnsigned(&bits, kKeyArgName, 0, temp_args)) {
+  if (!ordered_args::GetUnsigned(&KeySizeBits, kKeyArgName, 0, temp_args)) {
     fprintf(stderr, "Error: Invalid key size '%s'\n", extra_args[0].c_str());
+    return false;
+  }
+
+  if (KeySizeBits < kMinKeySize) {
+    fprintf(stderr, "Error: Key size must be at least %u bits\n", kMinKeySize);
     return false;
   }
 
@@ -96,7 +102,7 @@ bool genrsaTool(const args_list_t &args) {
   bool help = false;
   bssl::UniquePtr<BIO> bio;
   bssl::UniquePtr<EVP_PKEY> pkey;
-  unsigned bits = 0;
+  unsigned KeySizeBits = 0;
 
   // Parse command line arguments
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
@@ -112,7 +118,7 @@ bool genrsaTool(const args_list_t &args) {
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
 
   // Parse and validate key size first (catches multiple key sizes)
-  if (!ParseKeySize(extra_args, bits)) {
+  if (!ParseKeySize(extra_args, KeySizeBits)) {
     goto err;
   }
 
@@ -135,7 +141,7 @@ bool genrsaTool(const args_list_t &args) {
   }
 
   // Generate RSA key
-  pkey = GenerateRSAKey(bits);
+  pkey = GenerateRSAKey(KeySizeBits);
   if (!pkey) {
     fprintf(stderr, "Error: Failed to generate RSA key\n");
     goto err;
