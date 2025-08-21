@@ -149,6 +149,10 @@ int OPENSSL_malloc_init(void) { return 1; }
 
 void ENGINE_load_builtin_engines(void) {}
 
+void ENGINE_register_all_ciphers(void) {}
+
+void ENGINE_register_all_digests(void) {}
+
 int ENGINE_register_all_complete(void) { return 1; }
 
 void OPENSSL_load_builtin_modules(void) {}

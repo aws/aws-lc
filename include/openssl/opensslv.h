@@ -15,7 +15,7 @@
 /* This header is provided in order to make compiling against code that expects
    OpenSSL easier. */
 
-#include "crypto.h"
+#include <openssl/crypto.h>
 
 // MySQL does regex parsing on the opensslv.h file directly.
 // https://github.com/mysql/mysql-server/blob/8.0/cmake/ssl.cmake#L208-L227

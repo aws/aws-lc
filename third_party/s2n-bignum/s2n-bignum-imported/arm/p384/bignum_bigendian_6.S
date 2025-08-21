@@ -5,17 +5,17 @@
 // Convert 6-digit (384-bit) bignum to/from big-endian form
 // Input x[6]; output z[6]
 //
-//    extern void bignum_bigendian_6
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_bigendian_6(uint64_t z[static 6],
+//                                   const uint64_t x[static 6]);
 //
 // The same function is given two other prototypes whose names reflect the
 // treatment of one or other argument as a byte array rather than word array:
 //
-//    extern void bignum_frombebytes_6
-//     (uint64_t z[static 6], uint8_t x[static 48]);
+//    extern void bignum_frombebytes_6(uint64_t z[static 6],
+//                                     const uint8_t x[static 48]);
 //
-//    extern void bignum_tobebytes_6
-//     (uint8_t z[static 48], uint64_t x[static 6]);
+//    extern void bignum_tobebytes_6(uint8_t z[static 48],
+//                                   const uint64_t x[static 6]);
 //
 // The implementation works by loading in bytes and storing in words (i.e.
 // stylistically it is "frombebytes"); in the more common little-endian

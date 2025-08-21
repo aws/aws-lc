@@ -46,7 +46,7 @@
 #define MLK_NAMESPACE_PREFIX_K \
   MLK_CONCAT(MLK_ADD_PARAM_SET(MLK_CONFIG_NAMESPACE_PREFIX), _)
 
-/* Functions are prefixed by MLK_CONFIG_NAMESPACE.
+/* Functions are prefixed by MLK_CONFIG_NAMESPACE_PREFIX.
  *
  * If multiple parameter sets are used, functions depending on the parameter
  * set are additionally prefixed with 512/768/1024. See config.h.
@@ -100,6 +100,7 @@
 #endif
 
 #if defined(MLK_CONFIG_USE_NATIVE_BACKEND_ARITH)
+#include MLK_CONFIG_ARITH_BACKEND_FILE
 /* Include to enforce consistency of API and implementation,
  * and conduct sanity checks on the backend.
  *
@@ -108,10 +109,10 @@
 #if defined(MLK_CHECK_APIS) && !defined(__ASSEMBLER__)
 #include "native/api.h"
 #endif
-#include MLK_CONFIG_ARITH_BACKEND_FILE
 #endif /* MLK_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
 #if defined(MLK_CONFIG_USE_NATIVE_BACKEND_FIPS202)
+#include MLK_CONFIG_FIPS202_BACKEND_FILE
 /* Include to enforce consistency of API and implementation,
  * and conduct sanity checks on the backend.
  *
@@ -120,7 +121,6 @@
 #if defined(MLK_CHECK_APIS) && !defined(__ASSEMBLER__)
 #include "fips202/native/api.h"
 #endif
-#include MLK_CONFIG_FIPS202_BACKEND_FILE
 #endif /* MLK_CONFIG_USE_NATIVE_BACKEND_FIPS202 */
 
 #if !defined(MLK_CONFIG_FIPS202_CUSTOM_HEADER)
@@ -134,6 +134,19 @@
 #else
 #define MLK_FIPS202X4_HEADER_FILE MLK_CONFIG_FIPS202X4_CUSTOM_HEADER
 #endif
+
+/* Standard library function replacements */
+#if !defined(__ASSEMBLER__)
+#if !defined(MLK_CONFIG_CUSTOM_MEMCPY)
+#include <string.h>
+#define mlk_memcpy memcpy
+#endif
+
+#if !defined(MLK_CONFIG_CUSTOM_MEMSET)
+#include <string.h>
+#define mlk_memset memset
+#endif
+#endif /* !__ASSEMBLER__ */
 
 /* Just in case we want to include mlkem_native.h, set the configuration
  * for that header in accordance with the configuration used here. */

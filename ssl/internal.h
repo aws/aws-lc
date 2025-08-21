@@ -461,6 +461,8 @@ class GrowableArray {
 // CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
 OPENSSL_EXPORT bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 
+OPENSSL_EXPORT UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509);
+
 // GetAllNames helps to implement |*_get_all_*_names| style functions. It
 // writes at most |max_out| string pointers to |out| and returns the number that
 // it would have liked to have written. The strings written consist of
@@ -1305,6 +1307,10 @@ bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id);
 // length |len|. On success, it sets |*out_group_id| to the group ID and returns
 // true. Otherwise, it returns false.
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
+
+// ssl_group_id_to_nid returns the NID corresponding to |group_id| or
+// |NID_undef| if unknown.
+int ssl_group_id_to_nid(uint16_t group_id);
 
 
 // Handshake messages.
@@ -3933,6 +3939,10 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // more than this due to padding and MAC overheads.
   uint16_t max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
+  /* ClientHello callback.  Mostly for extensions, but not entirely. */
+  SSL_client_hello_cb_fn client_hello_cb = NULL;
+  void *client_hello_cb_arg = NULL;
+
   // TLS extensions servername callback
   int (*servername_callback)(SSL *, int *, void *) = nullptr;
   void *servername_arg = nullptr;
@@ -4195,6 +4205,10 @@ struct ssl_st {
 
   // extra application data
   CRYPTO_EX_DATA ex_data;
+
+  // verify_result is the result of certificate verification in the case of
+  // non-fatal certificate errors.
+  long verify_result = X509_V_ERR_INVALID_CALL;
 
   uint32_t options = 0;  // protocol behaviour
   uint32_t mode = 0;     // API behaviour

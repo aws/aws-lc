@@ -6,7 +6,8 @@
 // Inputs scalar[4], point[4]; output res[4]
 //
 // extern void curve25519_x25519_alt
-//   (uint64_t res[static 4],uint64_t scalar[static 4],uint64_t point[static 4])
+//   (uint64_t res[static 4],const uint64_t scalar[static 4],
+//    const uint64_t point[static 4]);
 //
 // Given a scalar n and the X coordinate of an input point P = (X,Y) on
 // curve25519 (Y can live in any extension field of characteristic 2^255-19),

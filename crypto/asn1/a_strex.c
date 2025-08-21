@@ -160,7 +160,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
     // for invalid codepoints. Before doing that, enforce it in the parser,
     // https://crbug.com/boringssl/427, so these error cases are not
     // reachable from parsed objects.
-    uint32_t c;
+    uint32_t c = 0;
     switch (encoding) {
       case MBSTRING_UNIV:
         c = ((uint32_t)*p++) << 24;

@@ -5,8 +5,8 @@
 // Invert modulo m, z = (1/a) mod b, assuming b is an odd number > 1, coprime a
 // Inputs a[k], b[k]; output z[k]; temporary buffer t[>=3*k]
 //
-//    extern void bignum_modinv
-//     (uint64_t k, uint64_t *z, uint64_t *a, uint64_t *b, uint64_t *t);
+//    extern void bignum_modinv(uint64_t k, uint64_t *z, const uint64_t *a,
+//                              const uint64_t *b, uint64_t *t);
 //
 // k-digit (digit=64 bits) "z := a^-1 mod b" (modular inverse of a modulo b)
 // using t as a temporary buffer (t at least 3*k words = 24*k bytes), and

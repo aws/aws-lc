@@ -5,8 +5,7 @@
 // Copy bignum with zero-extension or truncation, z := x
 // Input x[n]; output z[k]
 //
-//    extern void bignum_copy
-//      (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
+//    extern void bignum_copy(uint64_t k, uint64_t *z, uint64_t n, const uint64_t *x);
 //
 // Standard x86-64 ABI: RDI = k, RSI = z, RDX = n, RCX = x
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x

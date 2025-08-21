@@ -87,3 +87,29 @@ jobs:
         run: |
           pushd "${GITHUB_WORKSPACE}/aws-lc"
           ./tests/ci/integration/run_rust_openssl_integration.sh
+  python-39:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: Python 3.9
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build python, run tests
+        run: |
+          ./tests/ci/integration/run_python_integration.sh 3.9
+  apache-httpd:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: Apache httpd
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libpcre2-dev libnghttp2-dev nghttp2-client zlib1g-dev libtool-bin libxml2-dev pebble python3-venv
+      - uses: actions/checkout@v4
+      - name: Build AWS-LC, build httpd, run tests
+        run: |
+          ./tests/ci/integration/run_httpd_integration.sh '2.4.65'

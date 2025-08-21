@@ -5,7 +5,7 @@
 // Modular inverse modulo p_sm2 = 2^256 - 2^224 - 2^96 + 2^64 - 1
 // Input x[4]; output z[4]
 //
-// extern void bignum_inv_sm2(uint64_t z[static 4],uint64_t x[static 4]);
+// extern void bignum_inv_sm2(uint64_t z[static 4],const uint64_t x[static 4]);
 //
 // If the 4-digit input x is coprime to p_sm2, i.e. is not divisible
 // by it, returns z < p_sm2 such that x * z == 1 (mod p_sm2). Note that

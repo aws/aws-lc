@@ -158,6 +158,8 @@ struct pkcs7_st {
     PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
     PKCS7_DIGEST *digest;
     PKCS7_ENCRYPT *encrypted;
+    // Other things provided by the user. Not specified in the RFC.
+    ASN1_TYPE *other;
   } d;
 };
 
@@ -211,7 +213,7 @@ struct pkcs7_signer_info_st {
   X509_ALGOR *digest_enc_alg;
   ASN1_OCTET_STRING *enc_digest;
   STACK_OF(X509_ATTRIBUTE) *unauth_attr;
-  EVP_PKEY *pkey;  // NOTE: |pkey| is not seriliazed.
+  EVP_PKEY *pkey;  // NOTE: |pkey| is not serialized.
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-11.1

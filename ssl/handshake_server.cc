@@ -715,6 +715,26 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // Finished parsing the ClientHello, now we can start processing it.
+  // Give the ClientHello callback a crack at things
+  const SSL_CTX* sctx = ssl->ctx.get();
+  if (sctx != NULL && sctx->client_hello_cb != NULL) {
+    int al = SSL_AD_INTERNAL_ERROR;
+    // A failure in the ClientHello callback terminates the connection.
+    switch (sctx->client_hello_cb(ssl, &al, sctx->client_hello_cb_arg)) {
+      case SSL_CLIENT_HELLO_SUCCESS:
+        break;
+      case SSL_CLIENT_HELLO_RETRY:
+        // This case is treated as failure.
+        OPENSSL_FALLTHROUGH;
+      case SSL_CLIENT_HELLO_ERROR:
+      default:
+        OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, al);
+        return ssl_hs_error;
+    }
+  }
+
   // Run the early callback.
   if (ssl->ctx->select_certificate_cb != NULL) {
     switch (ssl->ctx->select_certificate_cb(&client_hello)) {
@@ -927,6 +947,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     ssl->session = std::move(session);
     ssl->s3->session_reused = true;
     hs->can_release_private_key = true;
+    ssl->verify_result = ssl->session->verify_result;
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, nullptr);
@@ -970,6 +991,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       // OpenSSL returns X509_V_OK when no certificates are requested. This is
       // classed by them as a bug, but it's assumed by at least NGINX.
       hs->new_session->verify_result = X509_V_OK;
+      ssl->verify_result = hs->new_session->verify_result;
     }
   }
 
@@ -1377,6 +1399,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     // OpenSSL returns X509_V_OK when no certificates are received. This is
     // classed by them as a bug, but it's assumed by at least NGINX.
     hs->new_session->verify_result = X509_V_OK;
+    ssl->verify_result = hs->new_session->verify_result;
   } else if (hs->config->retain_only_sha256_of_client_certs) {
     // The hash will have been filled in.
     hs->new_session->peer_sha256_valid = true;

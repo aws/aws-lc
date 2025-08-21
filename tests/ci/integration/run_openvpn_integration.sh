@@ -51,8 +51,7 @@ function openvpn_build() {
   make -j install
 
   local openvpn_executable="${OPENVPN_SRC_FOLDER}/build/exec-install/sbin/openvpn"
-  ldd ${openvpn_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${openvpn_executable} crypto || exit 1
 }
 
 function openvpn_patch_build() {

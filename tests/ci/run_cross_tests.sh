@@ -61,14 +61,16 @@ echo "Testing AWS-LC shared library for ${TARGET_CPU}."
 for BO in "${BUILD_OPTIONS[@]}"; do
   run_build -DCMAKE_TOOLCHAIN_FILE="${SCRATCH_FOLDER}/${TARGET_CPU}.cmake" ${BO}
 
-  shard_gtest "${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests"
+  shard_gtest "${BUILD_ROOT}/crypto/crypto_test"
   shard_gtest ${BUILD_ROOT}/crypto/urandom_test
   shard_gtest ${BUILD_ROOT}/crypto/mem_test
   shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
-  shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init
 
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test
   shard_gtest ${BUILD_ROOT}/ssl/integration_test
+
+  # Does not use GoogleTest
+  ${BUILD_ROOT}/crypto/rwlock_static_init
 
   # Due to its special linkage, this does not use GoogleTest
   ${BUILD_ROOT}/crypto/dynamic_loading_test

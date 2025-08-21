@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/hmac.h>
+
 #include "../../internal.h"
 #include "../cpucap/internal.h"
 
@@ -43,18 +45,22 @@ extern "C" {
 #define KECCAK1600_WIDTH 1600
 
 #define SHA3_224_CAPACITY_BYTES 56
+#define SHA3_224_CBLOCK SHA3_BLOCKSIZE(SHA3_224_DIGEST_BITLENGTH)
 #define SHA3_224_DIGEST_BITLENGTH 224
 #define SHA3_224_DIGEST_LENGTH 28
 
 #define SHA3_256_CAPACITY_BYTES 64
+#define SHA3_256_CBLOCK SHA3_BLOCKSIZE(SHA3_256_DIGEST_BITLENGTH)
 #define SHA3_256_DIGEST_BITLENGTH 256
 #define SHA3_256_DIGEST_LENGTH 32
 
 #define SHA3_384_CAPACITY_BYTES 96
+#define SHA3_384_CBLOCK SHA3_BLOCKSIZE(SHA3_384_DIGEST_BITLENGTH)
 #define SHA3_384_DIGEST_BITLENGTH 384
 #define SHA3_384_DIGEST_LENGTH 48
 
 #define SHA3_512_CAPACITY_BYTES 128
+#define SHA3_512_CBLOCK SHA3_BLOCKSIZE(SHA3_512_DIGEST_BITLENGTH)
 #define SHA3_512_DIGEST_BITLENGTH 512
 #define SHA3_512_DIGEST_LENGTH 64
 
@@ -81,11 +87,11 @@ extern "C" {
 // so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
-typedef struct keccak_st KECCAK1600_CTX;
+typedef struct keccak_ctx_st KECCAK1600_CTX;
 
 // The data buffer should have at least the maximum number of
 // block size bytes to fit any SHA3/SHAKE block length.
-struct keccak_st {
+struct keccak_ctx_st {
   uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS];
   size_t block_size;                               // cached ctx->digest->block_size
   size_t md_size;                                  // output length, variable in XOF (SHAKE)
@@ -95,8 +101,21 @@ struct keccak_st {
   uint8_t state;                                   // denotes the keccak phase (absorb, squeeze, final)
 };
 
+// To avoid externalizing KECCAK1600_CTX, we hard-code the context size in
+// hmac.h's |md_ctx_union| and use a compile time check here to make sure
+// |KECCAK1600_CTX|'s size never exceeds that of |md_ctx_union|. This means
+// that whenever a new field is added to |keccak_ctx_st| we must also update
+// the hard-coded size of |sha3| in hmac.h's |md_ctx_union| with the new
+// value given by |sizeof(keccaak_ctx_st)|.
+OPENSSL_STATIC_ASSERT(sizeof(KECCAK1600_CTX) <= sizeof(union md_ctx_union),
+                      hmac_md_ctx_union_sha3_size_needs_update)
+
 // KECCAK1600 x4 batched context structure
-typedef KECCAK1600_CTX KECCAK1600_CTX_x4[4];
+typedef struct keccak_ctx_st_x4 KECCAK1600_CTX_x4;
+
+struct keccak_ctx_st_x4 {
+  uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS];
+};
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
@@ -325,6 +344,10 @@ void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *data,
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
 #define KECCAK1600_ASM
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+#define KECCAK1600_S2N_BIGNUM_ASM
+#include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
+#endif
 #endif
 
 // SHAx_Init_from_state is a low-level function that initializes |sha| with a
@@ -445,6 +468,46 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 // When call-discipline is maintained, this function never fails.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
+// SHA3_224_Init initialises |sha| and returns 1.
+int SHA3_224_Init(KECCAK1600_CTX *sha);
+
+// SHA3_224_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_224_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_224_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_224_Final(uint8_t out[SHA3_224_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// SHA3_256_Init initialises |sha| and returns 1.
+int SHA3_256_Init(KECCAK1600_CTX *sha);
+
+// SHA3_256_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_256_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_256_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_256_Final(uint8_t out[SHA3_256_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// SHA3_384_Init initialises |sha| and returns 1.
+int SHA3_384_Init(KECCAK1600_CTX *sha);
+
+// SHA3_384_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_384_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_384_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_384_Final(uint8_t out[SHA3_384_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
+// SHA3_512_Init initialises |sha| and returns 1.
+int SHA3_512_Init(KECCAK1600_CTX *sha);
+
+// SHA3_512_Update adds |len| bytes from |data| to |sha| and returns 1.
+int SHA3_512_Update(KECCAK1600_CTX *sha, const void *data, size_t len);
+
+// SHA3_512_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|. It returns one on success and zero on programmer error.
+int SHA3_512_Final(uint8_t out[SHA3_512_DIGEST_LENGTH], KECCAK1600_CTX *sha);
+
 /*
  * SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
  *
@@ -541,6 +604,20 @@ OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
 // |len| bytes and returns the remaining number of bytes.
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
+
+// Keccak1600_Absorb_once_x4 absorbs exactly |len| bytes from four inputs into four
+// Keccak states, applying padding character |p|. Unlike Keccak1600_Absorb, this
+// processes a single block and takes the padding character as an additional argument.
+void Keccak1600_Absorb_once_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                               const uint8_t *inp0, const uint8_t *inp1,
+                               const uint8_t *inp2, const uint8_t *inp3,
+                               size_t len, size_t r, uint8_t p);
+
+// Keccak1600_Squeezeblocks_x4 squeezes |num_blocks| blocks from four Keccak states
+// into four output buffers, with each block being |r| bytes.
+void Keccak1600_Squeezeblocks_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                                 uint8_t *out0, uint8_t *out1, uint8_t *out2, uint8_t *out3,
+                                 size_t num_blocks, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
 // multiple times when used as eXtendable Output Function. |padded| indicates

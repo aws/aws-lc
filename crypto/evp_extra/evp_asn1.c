@@ -59,16 +59,18 @@
 #include <string.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-#include "../fipsmodule/evp/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/dh/internal.h"
+#include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
@@ -299,6 +301,82 @@ static EVP_PKEY *old_priv_decode(CBS *cbs, int type) {
 err:
   EVP_PKEY_free(ret);
   return NULL;
+}
+
+int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  switch (pkey->type) {
+    case EVP_PKEY_EC: {
+      EC_KEY *ec = pkey->pkey.ec;
+      // For EVP_PKEY_check, ensure the private key exists for EC keys
+      if (EC_KEY_get0_private_key(ec) == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EC_R_MISSING_PRIVATE_KEY);
+        return 0;
+      }
+      return EC_KEY_check_key(ec);
+    }
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+}
+
+int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+  switch (pkey->type) {
+    case EVP_PKEY_EC:
+      return EC_KEY_check_key(pkey->pkey.ec);
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+}
+
+int EVP_PKEY_param_check(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  int err_flags = 0;
+  switch (pkey->type) {
+    case EVP_PKEY_DH:
+      return DH_check(pkey->pkey.dh, &err_flags) && err_flags == 0;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
 }
 
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,

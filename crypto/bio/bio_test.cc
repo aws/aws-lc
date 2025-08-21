@@ -19,31 +19,16 @@
 #include <gtest/gtest.h>
 
 #include <openssl/bio.h>
-#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+
+#include <array>
 
 #include "../internal.h"
 #include "../test/file_util.h"
 #include "../test/test_util.h"
 
-#if !defined(OPENSSL_WINDOWS)
-#include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#else
-#include <io.h>
-#include <fcntl.h>
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <winsock2.h>
-#include <ws2tcpip.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#endif
 
 #if !defined(OPENSSL_WINDOWS)
 static const int kOpenReadOnlyBinary = O_RDONLY;
@@ -245,17 +230,30 @@ TEST(BIOTest, ReadASN1) {
 
 TEST(BIOTest, MemReadOnly) {
   // A memory BIO created from |BIO_new_mem_buf| is a read-only buffer.
-  static const char kData[] = "abcdefghijklmno";
+  static const char kData[] = "abcdefghijklmno\npqrs";
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kData, strlen(kData)));
   ASSERT_TRUE(bio);
+
+  auto check_bio_contents = [&](Bytes b) {
+    char *contents = nullptr;
+    long len_l = BIO_get_mem_data(bio.get(), &contents);
+    ASSERT_GE(len_l, 0);
+    EXPECT_EQ(Bytes(contents, len_l), b);
+
+    const uint8_t *contents_c = nullptr;
+    size_t len = 0;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents_c, &len));
+    EXPECT_EQ(Bytes(contents_c, len), b);
+
+    BUF_MEM *buf = nullptr;
+    ASSERT_EQ(BIO_get_mem_ptr(bio.get(), &buf), 1);
+    EXPECT_EQ(Bytes(buf->data, buf->length), b);
+  };
 
   // Writing to read-only buffers should fail.
   EXPECT_EQ(BIO_write(bio.get(), kData, strlen(kData)), -1);
 
-  const uint8_t *contents;
-  size_t len;
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes(kData));
+  check_bio_contents(Bytes(kData));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read less than the whole buffer.
@@ -263,26 +261,28 @@ TEST(BIOTest, MemReadOnly) {
   int ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("abcdef"));
-
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes("ghijklmno"));
+  check_bio_contents(Bytes("ghijklmno\npqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("ghijkl"));
+  check_bio_contents(Bytes("mno\npqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
 
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes("mno"));
+  // Read stops at newline
+  ret = BIO_gets(bio.get(), buf, sizeof(buf));
+  ASSERT_GT(ret, 0);
+  EXPECT_EQ(Bytes(buf, ret), Bytes("mno\n"));
+  check_bio_contents(Bytes("pqrs"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read the remainder of the buffer.
   ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
-  EXPECT_EQ(Bytes(buf, ret), Bytes("mno"));
-
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-  EXPECT_EQ(Bytes(contents, len), Bytes(""));
+  EXPECT_EQ(Bytes(buf, ret), Bytes("pqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 1);
+  check_bio_contents(Bytes(""));
   EXPECT_EQ(BIO_eof(bio.get()), 1);
 
   // By default, reading from a consumed read-only buffer returns EOF.
@@ -295,6 +295,32 @@ TEST(BIOTest, MemReadOnly) {
   EXPECT_EQ(BIO_set_mem_eof_return(bio.get(), -1), 1);
   EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
   EXPECT_TRUE(BIO_should_read(bio.get()));
+
+  // Rewind buffer when buffer pointer aligns with read pointer
+  ret = BIO_seek(bio.get(), 3);
+  ASSERT_EQ(ret, 3);
+  check_bio_contents(Bytes("defghijklmno\npqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Rewind buffer when buffer pointer does not align with read pointer
+  EXPECT_GT(BIO_read(bio.get(), buf, sizeof(buf)), 0);
+  ret = BIO_seek(bio.get(), 4);
+  ASSERT_EQ(ret, 4);
+  check_bio_contents(Bytes("efghijklmno\npqrs"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Reset buffer when buffer pointer aligns with read pointer
+  ret = BIO_reset(bio.get());
+  ASSERT_EQ(ret, 1);
+  check_bio_contents(Bytes(kData));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Reset buffer when buffer pointer does not align with read pointer
+  EXPECT_GT(BIO_read(bio.get(), buf, sizeof(buf)), 0);
+  ret = BIO_reset(bio.get());
+  ASSERT_EQ(ret, 1);
+  check_bio_contents(Bytes(kData));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Read exactly the right number of bytes, to test the boundary condition is
   // correct.
@@ -312,17 +338,17 @@ TEST(BIOTest, MemWritable) {
   ASSERT_TRUE(bio);
 
   auto check_bio_contents = [&](Bytes b) {
-    const uint8_t *contents;
-    size_t len;
-    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-    EXPECT_EQ(Bytes(contents, len), b);
-
-    char *contents_c;
-    long len_l = BIO_get_mem_data(bio.get(), &contents_c);
+    char *contents = nullptr;
+    long len_l = BIO_get_mem_data(bio.get(), &contents);
     ASSERT_GE(len_l, 0);
-    EXPECT_EQ(Bytes(contents_c, len_l), b);
+    EXPECT_EQ(Bytes(contents, len_l), b);
 
-    BUF_MEM *buf;
+    const uint8_t *contents_c = nullptr;
+    size_t len = 0;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents_c, &len));
+    EXPECT_EQ(Bytes(contents_c, len), b);
+
+    BUF_MEM *buf = nullptr;
     ASSERT_EQ(BIO_get_mem_ptr(bio.get(), &buf), 1);
     EXPECT_EQ(Bytes(buf->data, buf->length), b);
   };
@@ -350,34 +376,57 @@ TEST(BIOTest, MemWritable) {
   check_bio_contents(Bytes("abcdef"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
+  // Reset clears the buffer
+  int ret = BIO_reset(bio.get());
+  ASSERT_EQ(ret, 1);
+  EXPECT_EQ(BIO_eof(bio.get()), 1);
+  EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
+  EXPECT_TRUE(BIO_should_read(bio.get()));
+
   // Writes can include embedded NULs.
-  ASSERT_EQ(BIO_write(bio.get(), "\0ghijk", 6), 6);
+  ASSERT_EQ(BIO_write(bio.get(), "abcdef\0ghijk", 12), 12);
   check_bio_contents(Bytes("abcdef\0ghijk", 12));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Do a partial read.
-  int ret = BIO_read(bio.get(), buf, 4);
+  ret = BIO_read(bio.get(), buf, 4);
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("abcd"));
   check_bio_contents(Bytes("ef\0ghijk", 8));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Reads and writes may alternate.
-  ASSERT_EQ(BIO_write(bio.get(), "lmnopq", 6), 6);
-  check_bio_contents(Bytes("ef\0ghijklmnopq", 14));
+  ASSERT_EQ(BIO_write(bio.get(), "\nlmnopq", 7), 7);
+  check_bio_contents(Bytes("ef\0ghijk\nlmnopq", 15));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // Reads may consume embedded NULs.
   ret = BIO_read(bio.get(), buf, 4);
   ASSERT_GT(ret, 0);
   EXPECT_EQ(Bytes(buf, ret), Bytes("ef\0g", 4));
-  check_bio_contents(Bytes("hijklmnopq"));
+  check_bio_contents(Bytes("hijk\nlmnopq"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Read then rewind.
+  ret = BIO_read(bio.get(), buf, 4);
+  ASSERT_GT(ret, 0);
+  EXPECT_EQ(Bytes(buf, ret), Bytes("hijk", 4));
+  ret = BIO_seek(bio.get(), 0);
+  ASSERT_EQ(ret, 0);
+  check_bio_contents(Bytes("hijk\nlmnopq"));
+  EXPECT_EQ(BIO_eof(bio.get()), 0);
+
+  // Gets stop at newline
+  ret = BIO_gets(bio.get(), buf, sizeof(buf));
+  ASSERT_GT(ret, 0);
+  EXPECT_EQ(Bytes(buf, ret), Bytes("hijk\n", 5));
+  check_bio_contents(Bytes("lmnopq"));
   EXPECT_EQ(BIO_eof(bio.get()), 0);
 
   // The read buffer exceeds the |BIO|, so we consume everything.
   ret = BIO_read(bio.get(), buf, sizeof(buf));
   ASSERT_GT(ret, 0);
-  EXPECT_EQ(Bytes(buf, ret), Bytes("hijklmnopq"));
+  EXPECT_EQ(Bytes(buf, ret), Bytes("lmnopq"));
   check_bio_contents(Bytes(""));
   EXPECT_EQ(BIO_eof(bio.get()), 1);
 
@@ -588,7 +637,7 @@ TEST(BIOTest, FileMode) {
   bio.reset(BIO_new_file(temp.path().c_str(), "r"));
   ASSERT_TRUE(bio);
   // NOTE: Our behavior here aligns with OpenSSL which is to |_setmode| the file
-  // to binary. BoringSSL would |expect_text_mode| below because it respects 
+  // to binary. BoringSSL would |expect_text_mode| below because it respects
   // default mode on Windows which is text and doesn't call |_setmode| (unless
   // |BIO_FP_TEXT| is set, which is not the case here).
   expect_binary_mode(bio.get());
@@ -650,9 +699,9 @@ TEST(BIOTest, FileMode) {
 class BIOPairTest : public testing::TestWithParam<std::tuple<bool, bool>> {};
 
 TEST_P(BIOPairTest, TestPair) {
-  BIO *bio1, *bio2;
-  ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
-  bssl::UniquePtr<BIO> free_bio1(bio1), free_bio2(bio2);
+  BIO *bio1_raw, *bio2_raw;
+  ASSERT_TRUE(BIO_new_bio_pair(&bio1_raw, 10, &bio2_raw, 10));
+  bssl::UniquePtr<BIO> bio1(bio1_raw), bio2(bio2_raw);
 
   const bool should_swap = std::get<0>(GetParam());
   if (should_swap) {
@@ -660,88 +709,125 @@ TEST_P(BIOPairTest, TestPair) {
   }
 
   // Check initial states.
-  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1));
-  EXPECT_EQ(0u, BIO_ctrl_get_read_request(bio1));
+  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(0u, BIO_ctrl_get_read_request(bio1.get()));
+  EXPECT_FALSE(BIO_eof(bio1.get()));
+  EXPECT_EQ(0u, BIO_pending(bio1.get()));
+  EXPECT_EQ(0u, BIO_wpending(bio1.get()));
 
   // Data written in one end may be read out the other.
   uint8_t buf[20];
-  EXPECT_EQ(5, BIO_write(bio1, "12345", 5));
-  EXPECT_EQ(5u, BIO_ctrl_get_write_guarantee(bio1));
-  ASSERT_EQ(5, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_EQ(5, BIO_write(bio1.get(), "12345", 5));
+  EXPECT_EQ(5u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(5u, BIO_pending(bio2.get()));
+  EXPECT_EQ(5u, BIO_wpending(bio1.get()));
+  ASSERT_EQ(5, BIO_read(bio2.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("12345"), Bytes(buf, 5));
-  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1));
+  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(0u, BIO_pending(bio2.get()));
+  EXPECT_EQ(0u, BIO_wpending(bio1.get()));
 
   // Attempting to write more than 10 bytes will write partially.
-  EXPECT_EQ(10, BIO_write(bio1, "1234567890___", 13));
-  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1));
-  EXPECT_EQ(-1, BIO_write(bio1, "z", 1));
-  EXPECT_TRUE(BIO_should_write(bio1));
-  ASSERT_EQ(10, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_EQ(10, BIO_write(bio1.get(), "1234567890___", 13));
+  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(-1, BIO_write(bio1.get(), "z", 1));
+  EXPECT_TRUE(BIO_should_write(bio1.get()));
+  ASSERT_EQ(10, BIO_read(bio2.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("1234567890"), Bytes(buf, 10));
-  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1));
+  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1.get()));
 
   // Unsuccessful reads update the read request.
-  EXPECT_EQ(-1, BIO_read(bio2, buf, 5));
-  EXPECT_TRUE(BIO_should_read(bio2));
-  EXPECT_EQ(5u, BIO_ctrl_get_read_request(bio1));
+  EXPECT_EQ(-1, BIO_read(bio2.get(), buf, 5));
+  EXPECT_TRUE(BIO_should_read(bio2.get()));
+  EXPECT_EQ(5u, BIO_ctrl_get_read_request(bio1.get()));
 
   // The read request is clamped to the size of the buffer.
-  EXPECT_EQ(-1, BIO_read(bio2, buf, 20));
-  EXPECT_TRUE(BIO_should_read(bio2));
-  EXPECT_EQ(10u, BIO_ctrl_get_read_request(bio1));
+  EXPECT_EQ(-1, BIO_read(bio2.get(), buf, 20));
+  EXPECT_TRUE(BIO_should_read(bio2.get()));
+  EXPECT_EQ(10u, BIO_ctrl_get_read_request(bio1.get()));
 
   // Data may be written and read in chunks.
-  EXPECT_EQ(5, BIO_write(bio1, "12345", 5));
-  EXPECT_EQ(5u, BIO_ctrl_get_write_guarantee(bio1));
-  EXPECT_EQ(5, BIO_write(bio1, "67890___", 8));
-  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1));
-  ASSERT_EQ(3, BIO_read(bio2, buf, 3));
+  EXPECT_EQ(5, BIO_write(bio1.get(), "12345", 5));
+  EXPECT_EQ(5u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(5, BIO_write(bio1.get(), "67890___", 8));
+  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  ASSERT_EQ(3, BIO_read(bio2.get(), buf, 3));
   EXPECT_EQ(Bytes("123"), Bytes(buf, 3));
-  EXPECT_EQ(3u, BIO_ctrl_get_write_guarantee(bio1));
-  ASSERT_EQ(7, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_EQ(3u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  ASSERT_EQ(7, BIO_read(bio2.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("4567890"), Bytes(buf, 7));
-  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1));
+  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1.get()));
 
   // Successful reads reset the read request.
-  EXPECT_EQ(0u, BIO_ctrl_get_read_request(bio1));
+  EXPECT_EQ(0u, BIO_ctrl_get_read_request(bio1.get()));
 
   // Test writes and reads starting in the middle of the ring buffer and
   // wrapping to front.
-  EXPECT_EQ(8, BIO_write(bio1, "abcdefgh", 8));
-  EXPECT_EQ(2u, BIO_ctrl_get_write_guarantee(bio1));
-  ASSERT_EQ(3, BIO_read(bio2, buf, 3));
+  EXPECT_EQ(8, BIO_write(bio1.get(), "abcdefgh", 8));
+  EXPECT_EQ(2u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  ASSERT_EQ(3, BIO_read(bio2.get(), buf, 3));
   EXPECT_EQ(Bytes("abc"), Bytes(buf, 3));
-  EXPECT_EQ(5u, BIO_ctrl_get_write_guarantee(bio1));
-  EXPECT_EQ(5, BIO_write(bio1, "ijklm___", 8));
-  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1));
-  ASSERT_EQ(10, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_EQ(5u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(5, BIO_write(bio1.get(), "ijklm___", 8));
+  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  ASSERT_EQ(10, BIO_read(bio2.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("defghijklm"), Bytes(buf, 10));
-  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1));
+  EXPECT_EQ(10u, BIO_ctrl_get_write_guarantee(bio1.get()));
 
   // Data may flow from both ends in parallel.
-  EXPECT_EQ(5, BIO_write(bio1, "12345", 5));
-  EXPECT_EQ(5, BIO_write(bio2, "67890", 5));
-  ASSERT_EQ(5, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_EQ(5, BIO_write(bio1.get(), "12345", 5));
+  EXPECT_EQ(5, BIO_write(bio2.get(), "67890", 5));
+  ASSERT_EQ(5, BIO_read(bio2.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("12345"), Bytes(buf, 5));
-  ASSERT_EQ(5, BIO_read(bio1, buf, sizeof(buf)));
+  ASSERT_EQ(5, BIO_read(bio1.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("67890"), Bytes(buf, 5));
 
   // Closing the write end causes an EOF on the read half, after draining.
-  EXPECT_EQ(5, BIO_write(bio1, "12345", 5));
-  EXPECT_TRUE(BIO_shutdown_wr(bio1));
-  ASSERT_EQ(5, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_EQ(5, BIO_write(bio1.get(), "12345", 5));
+  EXPECT_TRUE(BIO_shutdown_wr(bio1.get()));
+  EXPECT_FALSE(BIO_eof(bio2.get()));
+  EXPECT_EQ(5u, BIO_pending(bio2.get()));
+  EXPECT_EQ(5u, BIO_wpending(bio1.get()));
+  ASSERT_EQ(5, BIO_read(bio2.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("12345"), Bytes(buf, 5));
-  EXPECT_EQ(0, BIO_read(bio2, buf, sizeof(buf)));
+  EXPECT_TRUE(BIO_eof(bio2.get()));
+  EXPECT_EQ(0u, BIO_pending(bio2.get()));
+  EXPECT_EQ(0u, BIO_wpending(bio1.get()));
+  EXPECT_EQ(0, BIO_read(bio2.get(), buf, sizeof(buf)));
+  EXPECT_TRUE(BIO_eof(bio2.get()));
+  EXPECT_EQ(0u, BIO_pending(bio2.get()));
+  EXPECT_EQ(0u, BIO_wpending(bio1.get()));
 
   // A closed write end may not be written to.
-  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1));
-  EXPECT_EQ(-1, BIO_write(bio1, "_____", 5));
+  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1.get()));
+  EXPECT_EQ(-1, BIO_write(bio1.get(), "_____", 5));
   EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_BIO, BIO_R_BROKEN_PIPE));
 
   // The other end is still functional.
-  EXPECT_EQ(5, BIO_write(bio2, "12345", 5));
-  ASSERT_EQ(5, BIO_read(bio1, buf, sizeof(buf)));
+  EXPECT_EQ(5, BIO_write(bio2.get(), "12345", 5));
+  ASSERT_EQ(5, BIO_read(bio1.get(), buf, sizeof(buf)));
   EXPECT_EQ(Bytes("12345"), Bytes(buf, 5));
+  EXPECT_FALSE(BIO_eof(bio1.get()));
+
+  // Destroying |bio2| implicitly closes it, and discards unread data.
+  EXPECT_EQ(5, BIO_write(bio2.get(), "12345", 5));
+  bio2 = nullptr;
+
+  // |bio1| no longer has the "init" flag set, so reads and writes will fail at
+  // the BIO framework.
+  EXPECT_FALSE(BIO_get_init(bio1.get()));
+  EXPECT_EQ(-2, BIO_write(bio1.get(), "12345", 5));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_BIO, BIO_R_UNINITIALIZED));
+  EXPECT_EQ(-2, BIO_read(bio1.get(), buf, sizeof(buf)));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_BIO, BIO_R_UNINITIALIZED));
+
+  // Although in this disconnected state, |BIO_ctrl| works. |bio1| should
+  // report EOF when it has no peer.
+  EXPECT_TRUE(BIO_eof(bio1.get()));
+
+  // BIO_ctrl_get_write_guarantee should return 0 because there is no one to
+  // write to.
+  EXPECT_EQ(0u, BIO_ctrl_get_write_guarantee(bio1.get()));
 }
 
 #define CALL_BACK_FAILURE -1234567
@@ -1251,4 +1337,99 @@ TEST(BIOTest, GetMemDataBackwardsCompat) {
   long data_len = BIO_get_mem_data(bio.get(), &ptr);
   ASSERT_EQ((size_t)data_len, sizeof(contents));
   EXPECT_EQ(Bytes(contents, sizeof(contents)), Bytes(ptr, data_len));
+}
+
+TEST(BIOTest, Dump) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  static constexpr std::array<uint8_t, 12> data = {{
+      0x00, 0x01, 0x02, 0x7f, 0x80, 0xff, 'A', 'B', 'C', '\n', '\r', '\t'
+  }};
+
+  int ret = BIO_dump(bio.get(), data.data(), data.size());
+
+  static constexpr std::array<char, 75> kExpectedOutput = {{
+    '0', '0', '0', '0', '0', '0', '0', '0',  // offset
+    ' ', ' ',                                 // spacing
+    '0', '0', ' ', '0', '1', ' ', '0', '2', ' ', '7', 'f', ' ',
+    '8', '0', ' ', 'f', 'f', ' ', '4', '1', ' ', '4', '2', ' ', // first 8 bytes hex
+    ' ',                                      // group separator
+    '4', '3', ' ', '0', 'a', ' ', '0', 'd', ' ', '0', '9', // remaining 4 bytes hex
+    ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', // padding
+    '|',                                      // separator
+    '.', '.', '.', '.', '.', '.', 'A', 'B', 'C', '.', '.', '.', // ASCII
+    '|', '\n'                                // closing
+}};
+
+  const uint8_t *contents = nullptr;
+  size_t len = 0;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  std::string output(reinterpret_cast<const char *>(contents), len);
+
+  EXPECT_EQ(output, std::string(kExpectedOutput.data(), kExpectedOutput.size()))
+    << "BIO_dump output should exactly match expected format";
+  EXPECT_EQ(ret, static_cast<int>(kExpectedOutput.size()))
+      << "Return value should match expected length";
+
+  // Test edge cases
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  EXPECT_EQ(BIO_dump(bio.get(), data.data(), 0), 0)
+      << "Valid data with zero length should return 0";
+
+  EXPECT_EQ(BIO_dump(bio.get(), data.data(), -1), -1)
+      << "Negative length should return -1";
+
+  EXPECT_EQ(BIO_dump(bio.get(), nullptr, 0), -1)
+      << "BIO_dump with NULL data should return -1";
+
+  EXPECT_EQ(BIO_dump(nullptr, data.data(), data.size()), -1)
+      << "BIO_dump with NULL BIO should return -1";
+
+  // Test with larger data
+  static constexpr std::array<uint8_t, 32> large_data = {{
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
+}};
+
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  ret = BIO_dump(bio.get(), large_data.data(), large_data.size());
+
+  static constexpr std::array<char, 158> kExpectedLargeOutput = {{
+    // First line
+    '0', '0', '0', '0', '0', '0', '0', '0',  // offset
+    ' ', ' ',                                 // spacing
+    '0', '0', ' ', '0', '1', ' ', '0', '2', ' ', '0', '3', ' ',
+    '0', '4', ' ', '0', '5', ' ', '0', '6', ' ', '0', '7', ' ', // first 8 bytes hex
+    ' ',                                      // group separator
+    '0', '8', ' ', '0', '9', ' ', '0', 'a', ' ', '0', 'b', ' ',
+    '0', 'c', ' ', '0', 'd', ' ', '0', 'e', ' ', '0', 'f', ' ', // last 8 bytes hex
+    ' ', '|',                                // separator
+    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', // ASCII
+    '|', '\n',                              // closing
+
+    // Second line
+    '0', '0', '0', '0', '0', '0', '1', '0',  // offset
+    ' ', ' ',                                 // spacing
+    '1', '0', ' ', '1', '1', ' ', '1', '2', ' ', '1', '3', ' ',
+    '1', '4', ' ', '1', '5', ' ', '1', '6', ' ', '1', '7', ' ', // first 8 bytes hex
+    ' ',                                      // group separator
+    '1', '8', ' ', '1', '9', ' ', '1', 'a', ' ', '1', 'b', ' ',
+    '1', 'c', ' ', '1', 'd', ' ', '1', 'e', ' ', '1', 'f', ' ', // last 8 bytes hex
+    ' ', '|',                                // separator
+    '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', // ASCII
+    '|', '\n'                               // closing
+}};
+
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  output = std::string(reinterpret_cast<const char *>(contents), len);
+
+  EXPECT_EQ(output, std::string(kExpectedLargeOutput.data(), kExpectedLargeOutput.size()))
+    << "BIO_dump output should exactly match expected format";
+  EXPECT_EQ(ret, static_cast<int>(kExpectedLargeOutput.size()))
+      << "Return value should match expected length";
 }

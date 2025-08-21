@@ -5,8 +5,8 @@
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
 //
-//    extern void bignum_deamont_p384_alt
-//     (uint64_t z[static 6], uint64_t x[static 6]);
+//    extern void bignum_deamont_p384_alt(uint64_t z[static 6],
+//                                        const uint64_t x[static 6]);
 //
 // Convert a 6-digit bignum x out of its (optionally almost) Montgomery form,
 // "almost" meaning any 6-digit input will work, with no range restriction.

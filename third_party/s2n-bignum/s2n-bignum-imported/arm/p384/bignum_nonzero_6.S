@@ -5,7 +5,7 @@
 // 384-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero
 // Input x[6]; output function return
 //
-//    extern uint64_t bignum_nonzero_6(uint64_t x[static 6]);
+//    extern uint64_t bignum_nonzero_6(const uint64_t x[static 6]);
 //
 // Standard ARM ABI: X0 = x, returns X0
 // ----------------------------------------------------------------------------
