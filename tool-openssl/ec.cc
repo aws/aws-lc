@@ -8,8 +8,10 @@
 #include <string>
 #include "internal.h"
 
-#define FORMAT_PEM 1
-#define FORMAT_DER 2
+enum Format {
+  FORMAT_PEM = 1,
+  FORMAT_DER = 2
+};
 
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display this summary"},
@@ -47,8 +49,23 @@ bool ecTool(const args_list_t &args) {
     return true;
   }
 
-  input_format = (inform_str == "DER") ? FORMAT_DER : FORMAT_PEM;
-  output_format = (outform_str == "DER") ? FORMAT_DER : FORMAT_PEM;
+  if (inform_str == "PEM" || inform_str == "pem") {
+    input_format = FORMAT_PEM;
+  } else if (inform_str == "DER" || inform_str == "der") {
+    input_format = FORMAT_DER;
+  } else {
+    fprintf(stderr, "Error: Invalid input format '%s'. Must be PEM, pem, DER, or der\n", inform_str.c_str());
+    goto err;
+  }
+
+  if (outform_str == "PEM" || outform_str == "pem") {
+    output_format = FORMAT_PEM;
+  } else if (outform_str == "DER" || outform_str == "der") {
+    output_format = FORMAT_DER;
+  } else {
+    fprintf(stderr, "Error: Invalid output format '%s'. Must be PEM, pem, DER, or der\n", outform_str.c_str());
+    goto err;
+  }
 
   input_bio.reset(in_path.empty() ? BIO_new_fp(stdin, BIO_NOCLOSE)
                                   : BIO_new_file(in_path.c_str(), "rb"));
@@ -62,7 +79,8 @@ bool ecTool(const args_list_t &args) {
                    : PEM_read_bio_ECPrivateKey(input_bio.get(), nullptr,
                                                nullptr, nullptr));
   if (!ec_key) {
-    fprintf(stderr, "Error: Could not read EC key\n");
+    fprintf(stderr, "Error: Could not read EC key in %s format\n", 
+            input_format == FORMAT_DER ? "DER" : "PEM");
     goto err;
   }
 
