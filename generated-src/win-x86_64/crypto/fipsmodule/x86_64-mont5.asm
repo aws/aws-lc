@@ -12,16 +12,14 @@ default	rel
 section	.text code align=64
 
 
-EXTERN	OPENSSL_ia32cap_P
-
-global	bn_mul_mont_gather5
+global	bn_mul_mont_gather5_nohw
 
 ALIGN	64
-bn_mul_mont_gather5:
+bn_mul_mont_gather5_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_bn_mul_mont_gather5:
+$L$SEH_begin_bn_mul_mont_gather5_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -35,16 +33,6 @@ _CET_ENDBR
 	mov	r9d,r9d
 	mov	rax,rsp
 
-	test	r9d,7
-	jnz	NEAR $L$mul_enter
-%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	lea	r11,[OPENSSL_ia32cap_P]
-	mov	r11d,DWORD[8+r11]
-%endif
-	jmp	NEAR $L$mul4x_enter
-
-ALIGN	16
-$L$mul_enter:
 	movd	xmm5,DWORD[56+rsp]
 	push	rbx
 
@@ -472,7 +460,8 @@ $L$mul_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	DB	0F3h,0C3h		;repret
 
-$L$SEH_end_bn_mul_mont_gather5:
+$L$SEH_end_bn_mul_mont_gather5_nohw:
+global	bn_mul4x_mont_gather5
 
 ALIGN	32
 bn_mul4x_mont_gather5:
@@ -489,15 +478,10 @@ $L$SEH_begin_bn_mul4x_mont_gather5:
 
 
 
+_CET_ENDBR
 	DB	0x67
 	mov	rax,rsp
 
-$L$mul4x_enter:
-%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	and	r11d,0x80108
-	cmp	r11d,0x80108
-	je	NEAR $L$mulx4x_enter
-%endif
 	push	rbx
 
 	push	rbp
@@ -1124,14 +1108,14 @@ $L$inner4x:
 	jmp	NEAR $L$sqr4x_sub_entry
 
 
-global	bn_power5
+global	bn_power5_nohw
 
 ALIGN	32
-bn_power5:
+bn_power5_nohw:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_bn_power5:
+$L$SEH_begin_bn_power5_nohw:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -1144,13 +1128,6 @@ $L$SEH_begin_bn_power5:
 _CET_ENDBR
 	mov	rax,rsp
 
-%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	lea	r11,[OPENSSL_ia32cap_P]
-	mov	r11d,DWORD[8+r11]
-	and	r11d,0x80108
-	cmp	r11d,0x80108
-	je	NEAR $L$powerx5_enter
-%endif
 	push	rbx
 
 	push	rbp
@@ -1275,7 +1252,7 @@ $L$power5_epilogue:
 	mov	rsi,QWORD[16+rsp]
 	DB	0F3h,0C3h		;repret
 
-$L$SEH_end_bn_power5:
+$L$SEH_end_bn_power5_nohw:
 
 global	bn_sqr8x_internal
 
@@ -2118,6 +2095,7 @@ $L$sqr4x_sub_entry:
 
 
 %ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+global	bn_mulx4x_mont_gather5
 
 ALIGN	32
 bn_mulx4x_mont_gather5:
@@ -2134,9 +2112,9 @@ $L$SEH_begin_bn_mulx4x_mont_gather5:
 
 
 
+_CET_ENDBR
 	mov	rax,rsp
 
-$L$mulx4x_enter:
 	push	rbx
 
 	push	rbp
@@ -2669,6 +2647,7 @@ $L$mulx4x_inner:
 	jmp	NEAR $L$sqrx4x_sub_entry
 
 
+global	bn_powerx5
 
 ALIGN	32
 bn_powerx5:
@@ -2685,9 +2664,9 @@ $L$SEH_begin_bn_powerx5:
 
 
 
+_CET_ENDBR
 	mov	rax,rsp
 
-$L$powerx5_enter:
 	push	rbx
 
 	push	rbp
@@ -3810,17 +3789,17 @@ $L$common_seh_tail:
 
 section	.pdata rdata align=4
 ALIGN	4
-	DD	$L$SEH_begin_bn_mul_mont_gather5 wrt ..imagebase
-	DD	$L$SEH_end_bn_mul_mont_gather5 wrt ..imagebase
-	DD	$L$SEH_info_bn_mul_mont_gather5 wrt ..imagebase
+	DD	$L$SEH_begin_bn_mul_mont_gather5_nohw wrt ..imagebase
+	DD	$L$SEH_end_bn_mul_mont_gather5_nohw wrt ..imagebase
+	DD	$L$SEH_info_bn_mul_mont_gather5_nohw wrt ..imagebase
 
 	DD	$L$SEH_begin_bn_mul4x_mont_gather5 wrt ..imagebase
 	DD	$L$SEH_end_bn_mul4x_mont_gather5 wrt ..imagebase
 	DD	$L$SEH_info_bn_mul4x_mont_gather5 wrt ..imagebase
 
-	DD	$L$SEH_begin_bn_power5 wrt ..imagebase
-	DD	$L$SEH_end_bn_power5 wrt ..imagebase
-	DD	$L$SEH_info_bn_power5 wrt ..imagebase
+	DD	$L$SEH_begin_bn_power5_nohw wrt ..imagebase
+	DD	$L$SEH_end_bn_power5_nohw wrt ..imagebase
+	DD	$L$SEH_info_bn_power5_nohw wrt ..imagebase
 %ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	DD	$L$SEH_begin_bn_mulx4x_mont_gather5 wrt ..imagebase
 	DD	$L$SEH_end_bn_mulx4x_mont_gather5 wrt ..imagebase
@@ -3836,7 +3815,7 @@ ALIGN	4
 
 section	.xdata rdata align=4
 ALIGN	4
-$L$SEH_info_bn_mul_mont_gather5:
+$L$SEH_info_bn_mul_mont_gather5_nohw:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul_body wrt ..imagebase,$L$mul_body wrt ..imagebase,$L$mul_epilogue wrt ..imagebase
@@ -3846,7 +3825,7 @@ $L$SEH_info_bn_mul4x_mont_gather5:
 	DD	mul_handler wrt ..imagebase
 	DD	$L$mul4x_prologue wrt ..imagebase,$L$mul4x_body wrt ..imagebase,$L$mul4x_epilogue wrt ..imagebase
 ALIGN	4
-$L$SEH_info_bn_power5:
+$L$SEH_info_bn_power5_nohw:
 	DB	9,0,0,0
 	DD	mul_handler wrt ..imagebase
 	DD	$L$power5_prologue wrt ..imagebase,$L$power5_body wrt ..imagebase,$L$power5_epilogue wrt ..imagebase
