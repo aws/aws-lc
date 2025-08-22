@@ -115,15 +115,15 @@ else
 fi
 
 # Exclude POLY_COMPRESS/DECOMPRESS functions from the x86 backend for now.
-sed ${SED_I[@]} '/compress_avx2.c/d' $SRC/mlkem_native_bcm.c
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_COMPRESS_D4/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_COMPRESS_D5/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_COMPRESS_D10/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_COMPRESS_D11/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_DECOMPRESS_D4/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_DECOMPRESS_D5/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_DECOMPRESS_D10/d' $SRC/native/x86_64/meta.h
-sed ${SED_I[@]} '/MLK_USE_NATIVE_POLY_DECOMPRESS_D11/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/compress_avx2.c/d' $SRC/mlkem_native_bcm.c
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D4/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D5/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D10/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D11/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D4/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D5/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D10/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D11/d' $SRC/native/x86_64/meta.h
 
 # Copy mlkem-native header
 # This is only needed for access to the various macros defining key sizes.
