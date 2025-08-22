@@ -90,6 +90,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        ec.cc
+        ec_test.cc
         genrsa.cc
         genrsa_test.cc
         pass_util.cc
