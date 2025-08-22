@@ -96,6 +96,7 @@ $code.=<<___;
 .type	${prefix}_set_encrypt_key,%function
 .align	5
 ${prefix}_set_encrypt_key:
+.cfi_startproc
 .Lenc_key:
 ___
 $code.=<<___	if ($flavour =~ /64/);
@@ -109,7 +110,11 @@ $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+	.cfi_def_cfa_offset 16
+	.cfi_offset x29, -16
+	.cfi_offset x30, -8
 	add	x29,sp,#0
+	.cfi_def_cfa x29, 16
 ___
 $code.=<<___;
 	mov	$ptr,#-1
@@ -277,21 +282,32 @@ $code.=<<___;
 .Lenc_key_abort:
 	mov	x0,$ptr			// return value
 	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
+	`".cfi_restore x29"		if ($flavour =~ /64/)`
+	`".cfi_def_cfa_offset 0"	if ($flavour =~ /64/)`
 	ret
+.cfi_endproc
 .size	${prefix}_set_encrypt_key,.-${prefix}_set_encrypt_key
 
 .globl	${prefix}_set_decrypt_key
 .type	${prefix}_set_decrypt_key,%function
 .align	5
 ${prefix}_set_decrypt_key:
+.cfi_startproc
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
+	.cfi_def_cfa_offset 16
+	.cfi_offset x29, -16
+	.cfi_offset x30, -8
 	add	x29,sp,#0
+	.cfi_def_cfa x29, 16
 ___
 $code.=<<___	if ($flavour !~ /64/);
 	stmdb	sp!,{r4,lr}
+	.cfi_def_cfa_offset 8
+	.cfi_offset r4, -8
+	.cfi_offset lr, -4
 ___
 $code.=<<___;
 	bl	.Lenc_key
@@ -327,13 +343,20 @@ $code.=<<___;
 ___
 $code.=<<___	if ($flavour !~ /64/);
 	ldmia	sp!,{r4,pc}
+	.cfi_restore r4
+	.cfi_restore lr
+	.cfi_def_cfa_offset 0
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	ldp	x29,x30,[sp],#16
+	.cfi_restore x29
+	.cfi_restore x30
+	.cfi_def_cfa_offset 0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 ___
 $code.=<<___;
+.cfi_endproc
 .size	${prefix}_set_decrypt_key,.-${prefix}_set_decrypt_key
 ___
 }}}
@@ -350,6 +373,7 @@ $code.=<<___;
 .type	${prefix}_${dir}crypt,%function
 .align	5
 ${prefix}_${dir}crypt:
+.cfi_startproc
 ___
 $code.=<<___	if ($flavour =~ /64/);
 #ifdef BORINGSSL_DISPATCH_TEST
@@ -386,6 +410,7 @@ $code.=<<___;
 
 	vst1.8	{$inout},[$out]
 	ret
+.cfi_endproc
 .size	${prefix}_${dir}crypt,.-${prefix}_${dir}crypt
 ___
 }
@@ -407,17 +432,38 @@ $code.=<<___;
 .type	${prefix}_cbc_encrypt,%function
 .align	5
 ${prefix}_cbc_encrypt:
+.cfi_startproc
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+	.cfi_def_cfa_offset 16
+	.cfi_offset x29, -16
+	.cfi_offset x30, -8
 	add	x29,sp,#0
+	.cfi_def_cfa x29, 16
 ___
 $code.=<<___	if ($flavour !~ /64/);
 	mov	ip,sp
 	stmdb	sp!,{r4-r8,lr}
+	.cfi_def_cfa_offset 24
+	.cfi_offset r4, -24
+	.cfi_offset r5, -20
+	.cfi_offset r6, -16
+	.cfi_offset r7, -12
+	.cfi_offset r8, -8
+	.cfi_offset lr, -4
 	vstmdb	sp!,{d8-d15}            @ ABI specification says so
+	.cfi_def_cfa_offset 88
+	.cfi_offset d8, -88
+	.cfi_offset d9, -80
+	.cfi_offset d10, -72
+	.cfi_offset d11, -64
+	.cfi_offset d12, -56
+	.cfi_offset d13, -48
+	.cfi_offset d14, -40
+	.cfi_offset d15, -32
 	ldmia	ip,{r4-r5}		@ load remaining args
 ___
 $code.=<<___;
@@ -710,13 +756,32 @@ ___
 }
 $code.=<<___	if ($flavour !~ /64/);
 	vldmia	sp!,{d8-d15}
+	.cfi_restore d8
+	.cfi_restore d9
+	.cfi_restore d10
+	.cfi_restore d11
+	.cfi_restore d12
+	.cfi_restore d13
+	.cfi_restore d14
+	.cfi_restore d15
+	.cfi_def_cfa_offset 24
 	ldmia	sp!,{r4-r8,pc}
+	.cfi_restore r4
+	.cfi_restore r5
+	.cfi_restore r6
+	.cfi_restore r7
+	.cfi_restore r8
+	.cfi_restore lr
+	.cfi_def_cfa_offset 0
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	ldr	x29,[sp],#16
+	.cfi_restore x29
+	.cfi_def_cfa_offset 0
 	ret
 ___
 $code.=<<___;
+.cfi_endproc
 .size	${prefix}_cbc_encrypt,.-${prefix}_cbc_encrypt
 ___
 }}}
@@ -738,6 +803,7 @@ $code.=<<___;
 .type	${prefix}_ctr32_encrypt_blocks,%function
 .align	5
 ${prefix}_ctr32_encrypt_blocks:
+.cfi_startproc
 ___
 $code.=<<___	if ($flavour =~ /64/);
 #ifdef BORINGSSL_DISPATCH_TEST
@@ -750,12 +816,34 @@ $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp		x29,x30,[sp,#-16]!
+	.cfi_def_cfa_offset 16
+	.cfi_offset x29, -16
+	.cfi_offset x30, -8
 	add		x29,sp,#0
+	.cfi_def_cfa x29, 16
 ___
 $code.=<<___	if ($flavour !~ /64/);
 	mov		ip,sp
 	stmdb		sp!,{r4-r10,lr}
+	.cfi_def_cfa_offset 32
+	.cfi_offset r4, -32
+	.cfi_offset r5, -28
+	.cfi_offset r6, -24
+	.cfi_offset r7, -20
+	.cfi_offset r8, -16
+	.cfi_offset r9, -12
+	.cfi_offset r10, -8
+	.cfi_offset lr, -4
 	vstmdb		sp!,{d8-d15}            @ ABI specification says so
+	.cfi_def_cfa_offset 96
+	.cfi_offset d8, -96
+	.cfi_offset d9, -88
+	.cfi_offset d10, -80
+	.cfi_offset d11, -72
+	.cfi_offset d12, -64
+	.cfi_offset d13, -56
+	.cfi_offset d14, -48
+	.cfi_offset d15, -40
 	ldr		r4, [ip]		@ load remaining arg
 ___
 $code.=<<___;
@@ -958,13 +1046,34 @@ $code.=<<___;
 ___
 $code.=<<___	if ($flavour !~ /64/);
 	vldmia		sp!,{d8-d15}
+	.cfi_restore d8
+	.cfi_restore d9
+	.cfi_restore d10
+	.cfi_restore d11
+	.cfi_restore d12
+	.cfi_restore d13
+	.cfi_restore d14
+	.cfi_restore d15
+	.cfi_def_cfa_offset 32
 	ldmia		sp!,{r4-r10,pc}
+	.cfi_restore r4
+	.cfi_restore r5
+	.cfi_restore r6
+	.cfi_restore r7
+	.cfi_restore r8
+	.cfi_restore r9
+	.cfi_restore r10
+	.cfi_restore lr
+	.cfi_def_cfa_offset 0
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	ldr		x29,[sp],#16
+	.cfi_restore x29
+	.cfi_def_cfa_offset 0
 	ret
 ___
 $code.=<<___;
+.cfi_endproc
 .size	${prefix}_ctr32_encrypt_blocks,.-${prefix}_ctr32_encrypt_blocks
 ___
 }}}
