@@ -88,6 +88,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        ec.cc
+        ec_test.cc
         pkcs8.cc
         pkcs8_test.cc
         pkey.cc
