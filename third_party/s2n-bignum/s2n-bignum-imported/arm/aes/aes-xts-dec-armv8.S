@@ -1,5 +1,15 @@
-#include "_internal_s2n_bignum.h"
-
+#if !defined(OPENSSL_WINDOWS)
+  #include "_internal_s2n_bignum.h"
+#else
+#   define S2N_BN_SYMBOL(name) name
+#   define __LF ;
+#define S2N_BN_SYM_VISIBILITY_DIRECTIVE(name) .globl S2N_BN_SYMBOL(name)
+#ifdef S2N_BN_HIDE_SYMBOLS
+#   define S2N_BN_SYM_PRIVACY_DIRECTIVE(name) .hidden S2N_BN_SYMBOL(name)
+#else
+#   define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
+#endif
+#endif
         .arch	armv8-a+crypto
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(aes_hw_xts_decrypt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(aes_hw_xts_decrypt)
