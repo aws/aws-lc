@@ -171,7 +171,7 @@ int EVP_read_pw_string_min(char *buf, int min_length, int length,
   int ret = -1;
   char verify_buf[1024];
 
-  if (!buf || min_length <= 0 || min_length >= length) {
+  if (!buf || min_length < 0 || min_length >= length) {
     return -1;
   }
 
