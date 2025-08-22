@@ -19,9 +19,31 @@ jobs:
       fail-fast: false
         
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout main repository
+      uses: actions/checkout@v4
       with:
-        submodules: 'recursive'
+        fetch-depth: 0
+        # Don't initialize submodules yet
+
+    - name: Handle LIEF submodule specifically
+      run: |
+        git config --global --add safe.directory '*'
+        echo "Cleaning any existing LIEF directory..."
+        rm -rf third_party/lief
+        
+        echo "Initializing only the LIEF submodule..."
+        git submodule init third_party/lief
+        git submodule update third_party/lief
+        
+        echo "Verifying LIEF submodule..."
+        ls -la third_party/lief
+        
+        echo "Now initializing remaining submodules..."
+        git submodule update --init --recursive
+
+    - name: Verify all submodules
+      run: |
+        git submodule status
         
     - name: Set up Go
       uses: actions/setup-go@v2
