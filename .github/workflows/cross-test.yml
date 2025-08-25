@@ -1,9 +1,9 @@
 name: Cross Build & Test
 on:
   push:
-    branches: [ '*' ]
+    branches: ["*"]
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -62,11 +62,11 @@ jobs:
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: RISC-V 64 Build/Test
-# The flag below is set to avoid the following error with GCC 11.4.0:
-#
-#  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
-#  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
-#      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # The flag below is set to avoid the following error with GCC 11.4.0:
+        #
+        #  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
+        #  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
+        #      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
         env:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh riscv riscv64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
@@ -101,11 +101,11 @@ jobs:
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: s390x Build/Test
-# The flag below is set to avoid the following error with GCC 11.4.0:
-#
-#  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
-#  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
-#      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # The flag below is set to avoid the following error with GCC 11.4.0:
+        #
+        #  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
+        #  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
+        #      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
         env:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh s390x s390x-ibm-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
@@ -117,9 +117,18 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
-          go-version: '>=1.18'
+          go-version: ">=1.18"
       - run: |
           brew install llvm bash
+      - name: Setup Xcode
+        run: |
+          echo "Setting up Xcode environment..."
+          sudo xcodebuild -license accept || echo "License acceptance failed, continuing..."
+          xcodebuild -runFirstLaunch || echo "First launch setup failed, continuing..."
+          echo "Available Xcode versions:"
+          xcodebuild -version
+          echo "Available iOS simulator runtimes:"
+          xcrun simctl list runtimes | grep -i ios || echo "No iOS runtimes found via simctl"
       - name: iOS Simulator Runner
+        timeout-minutes: 45
         run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
-
