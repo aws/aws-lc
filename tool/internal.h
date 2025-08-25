@@ -19,20 +19,18 @@
 
 #if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
 #include <openssl/base.h>
-#include <openssl/span.h>
 #include <openssl/bytestring.h>
+#include <openssl/span.h>
 #endif
 
+#include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <memory>
-#include <map>
 
 struct FileCloser {
-  void operator()(FILE *file) {
-    fclose(file);
-  }
+  void operator()(FILE *file) { fclose(file); }
 };
 
 using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
@@ -102,6 +100,8 @@ enum ArgumentType {
   kRequiredArgument,
   kOptionalArgument,
   kBooleanArgument,
+  kDuplicateArgument,
+  kExclusiveBooleanArgument,
 };
 
 typedef struct argument_t {
@@ -113,30 +113,39 @@ typedef struct argument_t {
 typedef std::vector<std::string> args_list_t;
 typedef std::map<std::string, std::string> args_map_t;
 
-bool IsFlag(const std::string& arg);
+bool IsFlag(const std::string &arg);
 
-// ParseKeyValueArguments converts the list of strings |args| ["-filter", "RSA", "-Timeout", "10"] into a map in
-// |out_args| of key value pairs {"-filter": "RSA", "-Timeout": "10"}. It uses |templates| to determine what arguments
-// are option or required. Any extra arguments that don't look like an unknown flag argument (prefixed by "-" or "--")
-// will be appended to extra_args in the order they appear in.
-bool ParseKeyValueArguments(args_map_t &out_args,
-                            args_list_t &extra_args,
+// ParseKeyValueArguments converts the list of strings |args| ["-filter", "RSA",
+// "-Timeout", "10"] into a map in |out_args| of key value pairs {"-filter":
+// "RSA", "-Timeout": "10"}. It uses |templates| to determine what arguments are
+// option or required. Any extra arguments that don't look like an unknown flag
+// argument (prefixed by "-" or "--") will be appended to extra_args in the
+// order they appear in.
+bool ParseKeyValueArguments(args_map_t &out_args, args_list_t &extra_args,
                             const args_list_t &args,
                             const argument_t *templates);
 
-// PrintUsage prints the description from the list of templates in |templates| to stderr.
+// PrintUsage prints the description from the list of templates in |templates|
+// to stderr.
 void PrintUsage(const argument_t *templates);
 
 // Get{Unsigned, String} assign |out| the value of |arg_name| from the map
 // |args| if it is present. If |arg_name| is not found in |args| it assigns
 // |out| to the |default_value|.
-bool GetUnsigned(unsigned *out, const std::string &arg_name, unsigned default_value, const args_map_t &args);
-bool GetString(std::string *out, const std::string &arg_name, std::string default_value, const args_map_t &args);
+bool GetUnsigned(unsigned *out, const std::string &arg_name,
+                 unsigned default_value, const args_map_t &args);
+bool GetString(std::string *out, const std::string &arg_name,
+               std::string default_value, const args_map_t &args);
 
 // GetBoolArgument assigns |out| the value |true| if |arg_name|, of
 // type |kBooleanArgument|, from the map |args| is present. If |arg_name| is not
 // found in |args| it assigns |out| to the value |false|.
-bool GetBoolArgument(bool *out, const std::string &arg_name, const args_map_t &args);
+bool GetBoolArgument(bool *out, const std::string &arg_name,
+                     const args_map_t &args);
+
+bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
+                              std::string default_out_arg,
+                              const args_map_t &args);
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
 bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
@@ -145,7 +154,8 @@ bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
 // bssl and openssl tools. It takes an additional parameter |tool| to indicate
 // which tool's s_client is being invoked. A value of true indicates openssl
 // and false indicates the internal bssl tool.
-bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client);
+bool DoClient(std::map<std::string, std::string> args_map,
+              bool is_openssl_s_client);
 
 bool Ciphers(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);
