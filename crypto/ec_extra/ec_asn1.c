@@ -369,7 +369,7 @@ EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
     return EC_KEY_parse_curve_name(cbs);
   }
 
-  // OpenSSL sometimes produces ECPrivateKeys with explicitly-encoded versions
+  // OpenSSL sometimes produces ECPrivateKeys or ECPublicKey with explicitly-encoded versions
   // of named curves.
   //
   // TODO(davidben): Remove support for this.
