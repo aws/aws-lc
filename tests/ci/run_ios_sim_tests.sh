@@ -20,7 +20,7 @@ source "${SCRIPT_DIR}/gtest_util.sh"
 
 SIM_IMAGE_LIST_PATH='/Library/Developer/CoreSimulator/Images/images.plist'
 SIM_IMAGE_MOUNT_BASE='/Volumes'
-SIM_IMAGE_PATTERN='iOS-17'
+SIM_IMAGE_PATTERN='iOS-18'
 
 if [[ ! -r "${SIM_IMAGE_LIST_PATH}" ]]; then
   echo ERROR: Image list not found: "${SIM_IMAGE_LIST_PATH}"
