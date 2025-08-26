@@ -12,6 +12,7 @@
 
 static const unsigned kDefaultKeySize = 2048;
 static const unsigned kMinKeySize = 1024;
+static const unsigned kRecommendedMaxKeySize = 16384;
 static const char kKeyArgName[] = "key_size";
 
 static const argument_t kArguments[] = {
@@ -54,6 +55,11 @@ static bool ParseKeySize(const args_list_t &extra_args, unsigned &KeySizeBits) {
   if (KeySizeBits < kMinKeySize) {
     fprintf(stderr, "Error: Key size must be at least %u bits\n", kMinKeySize);
     return false;
+  }
+
+  if (KeySizeBits > kRecommendedMaxKeySize) {
+    fprintf(stderr, "Warning: It is not recommended to use more than %u bits for RSA keys.\n", kRecommendedMaxKeySize);
+    fprintf(stderr, "         Your key size is %u! Larger key sizes may not behave as expected.\n", KeySizeBits);
   }
 
   return true;
