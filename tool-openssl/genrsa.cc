@@ -159,8 +159,8 @@ bool genrsaTool(const args_list_t &args) {
     goto err;
   }
 
-  // Flush output for successful writes to files
-  if (!out_path.empty() && !BIO_flush(bio.get())) {
+  // Flush output
+  if (!BIO_flush(bio.get())) {
     goto err;
   }
 
