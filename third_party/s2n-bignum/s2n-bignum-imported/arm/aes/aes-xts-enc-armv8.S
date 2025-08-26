@@ -93,6 +93,13 @@
         fmov  \hi, x10
 .endm
 
+.macro udiv_by_80 src, dst
+        mov   \dst, #-0x3333333333333334 // =-3689348814741910324
+        movk  \dst, #0xcccd
+        umulh \dst, \src, \dst
+        lsr   \dst, \dst, #6
+.endm
+
 S2N_BN_SYMBOL(aes_hw_xts_encrypt):
   # AARCH64_VALID_CALL_TARGET
 
@@ -100,8 +107,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         save_vregs
         save_regs
 
-        mov x8, #0x50
-        udiv x8, x2, x8 // Number of 5x-unrolled iterations
+        udiv_by_80 x2, x8 // Number of 5x-unrolled iterations
 
         cmp   x2, #16 // AES-XTS needs at least one block
         b.lt  Lxts_abort

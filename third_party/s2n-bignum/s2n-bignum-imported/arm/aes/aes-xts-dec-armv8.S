@@ -91,6 +91,13 @@
         fmov  \hi, x10
 .endm
 
+.macro udiv_by_80 src, dst
+        mov   \dst, #-0x3333333333333334 // =-3689348814741910324
+        movk  \dst, #0xcccd
+        umulh \dst, \src, \dst
+        lsr   \dst, \dst, #6
+.endm
+
 S2N_BN_SYMBOL(aes_hw_xts_decrypt):
         // AARCH64_VALID_CALL_TARGET
         sub sp, sp, #STACK_SIZE_VREGS
@@ -155,8 +162,7 @@ Lxts_dec:
 
 Lxts_dec_begin:
 
-        mov x8, #0x50
-        udiv x8, x2, x8 // Number of 5x-unrolled iterations
+        udiv_by_80 x2, x8 // Number of 5x-unrolled iterations
 
         cmp x2, #0x20
         b.lo Lxts_dec_tail1x   // when input = 1 with another block and a tail
