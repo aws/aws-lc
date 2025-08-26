@@ -77,6 +77,9 @@ class AwsLcAndroidCIStack(AwsLcBaseCiStack):
             ),
             build_spec=BuildSpecLoader.load(spec_file_path, env),
         )
+        cfn_project = project.node.default_child
+        cfn_project.add_property_override("Source.PullRequestBuildPolicy", self.pull_request_policy)
+
         project.enable_batch_builds()
 
         PruneStaleGitHubBuilds(
