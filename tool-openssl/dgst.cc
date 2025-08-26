@@ -288,7 +288,7 @@ static bool VerifySignature(EVP_PKEY *pkey, const std::string &in_path,
                             const std::string &signature_file_path,
                             bssl::UniquePtr<BIO> &out_bio) {
   bssl::ScopedEVP_MD_CTX ctx;
-  EVP_PKEY_CTX *pctx;
+  EVP_PKEY_CTX *pctx = nullptr;
 
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, digest, nullptr, pkey)) {
     fprintf(stderr, "Failed to initialize digest context.\n");
@@ -407,7 +407,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
 
   if (HasArgument(parsed_args, "-help")) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   GetBoolArgument(&binary, "-binary", parsed_args);
