@@ -241,6 +241,9 @@ set(
   crypto/x509/test/basic_constraints_ca_pathlen_10.pem
   crypto/x509/test/basic_constraints_leaf.pem
   crypto/x509/test/basic_constraints_none.pem
+  crypto/x509/test/csr-mldsa44.pem
+  crypto/x509/test/csr-mldsa65.pem
+  crypto/x509/test/csr-mldsa87.pem
   crypto/x509/test/invalid_extension_intermediate.pem
   crypto/x509/test/invalid_extension_intermediate_authority_key_identifier.pem
   crypto/x509/test/invalid_extension_intermediate_basic_constraints.pem
@@ -269,11 +272,11 @@ set(
   crypto/x509/test/many_names1.pem
   crypto/x509/test/many_names2.pem
   crypto/x509/test/many_names3.pem
-  crypto/x509/test/policy_root.pem
+  crypto/x509/test/policy_intermediate.pem
   crypto/x509/test/policy_intermediate_duplicate.pem
   crypto/x509/test/policy_intermediate_invalid.pem
-  crypto/x509/test/policy_intermediate.pem
   crypto/x509/test/policy_leaf_duplicate.pem
+  crypto/x509/test/policy_root.pem
   crypto/x509/test/policy_leaf_invalid.pem
   crypto/x509/test/policy_leaf.pem
   crypto/x509/test/some_names1.pem
