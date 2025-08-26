@@ -140,16 +140,16 @@ bool genrsaTool(const args_list_t &args) {
     return true;  // Help display is a successful exit
   }
 
+  // Set up output BIO
+  bio = CreateOutputBIO(out_path);
+  if (!bio) {
+    goto err;
+  }
+
   // Generate RSA key
   pkey = GenerateRSAKey(KeySizeBits);
   if (!pkey) {
     fprintf(stderr, "Error: Failed to generate RSA key\n");
-    goto err;
-  }
-
-  // Set up output BIO
-  bio = CreateOutputBIO(out_path);
-  if (!bio) {
     goto err;
   }
 
