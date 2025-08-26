@@ -2092,35 +2092,6 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
   ASSERT_TRUE(pkey_from_der);
 }
 
-// Helper function that:
-// 1. Creates a BIO
-// 2. Reads the provided |pem_string| into bio
-// 3. Reads the PEM into DER encoding
-// 4. Returns the DER data and length
-static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len) {
-  char *name = nullptr;
-  char *header = nullptr;
-
-  // Create BIO from memory
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
-  if (!bio) {
-    return false;
-  }
-
-  // Read PEM into DER
-  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
-    OPENSSL_free(name);
-    OPENSSL_free(header);
-    OPENSSL_free(*out_der);
-    *out_der = nullptr;
-    return false;
-  }
-
-  OPENSSL_free(name);
-  OPENSSL_free(header);
-  return true;
-}
-
 TEST_P(PQDSAParameterTest, ParsePrivateKeySeed) {
   // ---- 1. Setup phase: parse provided public/private from PEM strings ----
   CBS cbs_pub, cbs_priv;

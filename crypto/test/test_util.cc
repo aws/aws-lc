@@ -156,6 +156,30 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
   return stack;
 }
 
+bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len) {
+  char *name = nullptr;
+  char *header = nullptr;
+
+  // Create BIO from memory
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
+  if (!bio) {
+    return false;
+  }
+
+  // Read PEM into DER
+  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
+    OPENSSL_free(name);
+    OPENSSL_free(header);
+    OPENSSL_free(*out_der);
+    *out_der = nullptr;
+    return false;
+  }
+
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+  return true;
+}
+
 #if defined(OPENSSL_WINDOWS)
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
   // On Windows, tmpfile() may attempt to create temp files in the root directory
@@ -242,4 +266,3 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
                            int index, long argl, void *argp) {
   free(ptr);
 }
-

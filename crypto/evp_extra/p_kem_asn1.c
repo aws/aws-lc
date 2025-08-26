@@ -240,16 +240,16 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
     kem_pub_cmp,
     kem_priv_decode,
     kem_priv_encode,
-    NULL /*priv_encode_v2*/,
-    NULL /* kem_set_priv_raw */,
-    NULL /*kem_set_pub_raw */,
+    NULL, // priv_encode_v2 
+    NULL, // kem_set_priv_raw
+    NULL, // kem_set_pub_raw
     kem_get_priv_raw,
     kem_get_pub_raw,
-    NULL /* pkey_opaque */,
-    NULL /* kem_size */,
-    NULL /* kem_bits */,
-    NULL /* param_missing */,
-    NULL /* param_copy */,
+    NULL, // pkey_opaque
+    NULL, // kem_size
+    NULL, // kem_bits 
+    NULL, // param_missing 
+    NULL, // param_copy 
     kem_cmp_parameters,
     kem_free,
 };

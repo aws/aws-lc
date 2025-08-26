@@ -10,6 +10,7 @@
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/kem/internal.h"
 #include "../test/test_util.h"
+#include <openssl/ssl.h>
 
 // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
 // All example keys are from Appendix C in the above standard
@@ -291,31 +292,6 @@ static const KEMTestVector kKEMTestVectors[] = {
      mlkem_1024_priv_expanded_pem_str, 1568, 3168},
 };
 
-// Helper function to convert PEM to DER format
-static bool PEM_to_DER(const char *pem_str, uint8_t **out_der,
-                       long *out_der_len) {
-  char *name = nullptr;
-  char *header = nullptr;
-
-  // Create BIO from memory
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
-  if (!bio) {
-    return false;
-  }
-
-  // Read PEM into DER
-  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
-    OPENSSL_free(name);
-    OPENSSL_free(header);
-    OPENSSL_free(*out_der);
-    *out_der = nullptr;
-    return false;
-  }
-
-  OPENSSL_free(name);
-  OPENSSL_free(header);
-  return true;
-}
 
 static bssl::UniquePtr<EVP_PKEY> generate_kem_key_pair(int nid) {
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
@@ -473,18 +449,18 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
   ASSERT_EQ(kem_key->kem->secret_key_len, secret_key_len);
 
   // ---- 4. Verify private key is present ----
-  ASSERT_NE(kem_key->secret_key, nullptr);
+  ASSERT_TRUE(kem_key->secret_key);
 }
 
 // Invalid length test vectors - truncated DER structures
 static const uint8_t mlkem512_public_key_invalid_length[] = {
-    0x30, 0x18, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-  0x04, 0x04, 0x01, 0x03, 0x09, 0x00, 0x39, 0x95, 0x81, 0x5e, 0x59, 0x7d,
-  0x10, 0x43};
+    0x30, 0x16, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+  0x04, 0x04, 0x01, 0x03, 0x07, 0x00, 0x39, 0x95, 0x5e, 0x59, 0x7d, 0x10};
 
 static const uint8_t mlkem512_private_key_invalid_length[] = {
-    0x30, 0x14, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-  0x04, 0x04, 0x01, 0x03, 0x05, 0x00, 0x39, 0x95, 0x81, 0x5e};
+    0x30, 0x1c, 0x02, 0x01, 0x00, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48,
+  0x01, 0x65, 0x03, 0x04, 0x04, 0x01, 0x04, 0x0a, 0x04, 0x08, 0x70, 0x55,
+  0x4f, 0xd4, 0x36, 0x34, 0x4f, 0x27};
 
 TEST(KEMTest, ParsePublicKeyInvalidLength) {
   CBS cbs;
@@ -492,6 +468,7 @@ TEST(KEMTest, ParsePublicKeyInvalidLength) {
            sizeof(mlkem512_public_key_invalid_length));
   bssl::UniquePtr<EVP_PKEY> pub_pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_FALSE(pub_pkey_from_der.get());
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_INVALID_BUFFER_SIZE);
 }
 
 TEST(KEMTest, ParsePrivateKeyInvalidLength) {
@@ -500,4 +477,6 @@ TEST(KEMTest, ParsePrivateKeyInvalidLength) {
            sizeof(mlkem512_private_key_invalid_length));
   bssl::UniquePtr<EVP_PKEY> private_pkey_from_der(EVP_parse_private_key(&cbs));
   ASSERT_FALSE(private_pkey_from_der.get());
+  ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_INVALID_BUFFER_SIZE);
+
 }
