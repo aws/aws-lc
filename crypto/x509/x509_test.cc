@@ -2965,6 +2965,63 @@ TEST(X509Test, SignCSR) {
   }
 }
 
+TEST(X509Test, PqdsaCSR) {
+  for (int val: std::vector<int>{44, 65, 87}) {
+    std::ostringstream path;
+    path << "crypto/x509/test/csr-mldsa" << val << ".pem";
+    bssl::UniquePtr<X509_REQ> csr = CSRFromPEM(GetTestData(path.str().c_str()).c_str());
+    ASSERT_TRUE(csr);
+
+    // Test signature verification
+    EVP_PKEY* pub_key = X509_REQ_get0_pubkey(csr.get());
+    ASSERT_TRUE(pub_key);
+    ASSERT_EQ(1, X509_REQ_verify(csr.get(), pub_key));
+
+    // Test version
+    EXPECT_EQ(X509_REQ_VERSION_1, X509_REQ_get_version(csr.get()));
+
+    // Test subject name - verify "Generic" is parsed correctly
+    X509_NAME *subject = X509_REQ_get_subject_name(csr.get());
+    ASSERT_TRUE(subject);
+    char *subject_str = X509_NAME_oneline(subject, nullptr, 0);
+    ASSERT_TRUE(subject_str);
+    EXPECT_STREQ("/CN=Generic", subject_str);
+    OPENSSL_free(subject_str);
+
+    // Test signature algorithm NID
+    int sig_nid = X509_REQ_get_signature_nid(csr.get());
+    EXPECT_NE(NID_undef, sig_nid);
+    switch (val) {
+      case 44:
+        EXPECT_EQ(NID_MLDSA44, sig_nid);
+        break;
+      case 65:
+        EXPECT_EQ(NID_MLDSA65, sig_nid);
+        break;
+      case 87:
+        EXPECT_EQ(NID_MLDSA87, sig_nid);
+        break;
+      default:
+        ADD_FAILURE() << "Invalid NID";
+    }
+
+    // Test signature and algorithm retrieval
+    const ASN1_BIT_STRING *sig = nullptr;
+    const X509_ALGOR *alg = nullptr;
+    X509_REQ_get0_signature(csr.get(), &sig, &alg);
+    ASSERT_TRUE(sig);
+    ASSERT_TRUE(alg);
+
+    // Test attribute count
+    int attr_count = X509_REQ_get_attr_count(csr.get());
+    EXPECT_GE(attr_count, 0);
+
+    // Test extensions (may be NULL if no extensions present)
+    bssl::UniquePtr<STACK_OF(X509_EXTENSION)> exts(X509_REQ_get_extensions(csr.get()));
+    // Extensions are optional, so we just verify the function doesn't crash
+  }
+}
+
 TEST(X509Test, Ed25519Sign) {
   uint8_t pub_bytes[32], priv_bytes[64];
   ED25519_keypair(pub_bytes, priv_bytes);
