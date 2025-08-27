@@ -262,6 +262,7 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_alt.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_alt.S
+                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
     )
   elseif(ARCH STREQUAL "aarch64")
     # byte-level interface for aarch64 s2n-bignum x25519 are in
