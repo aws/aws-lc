@@ -282,7 +282,7 @@ struct KEMTestVector {
   size_t secret_key_len;
 };
 
-static const KEMTestVector kKEMTestVectors[] = {
+static const KEMTestVector kemParameters[] = {
     {NID_MLKEM512, mlkem_512_pub_pem_str,
      mlkem_512_priv_expanded_pem_str, 800, 1632},
     {NID_MLKEM768, mlkem_768_pub_pem_str,
@@ -307,7 +307,7 @@ static bssl::UniquePtr<EVP_PKEY> generate_kem_key_pair(int nid) {
 
 class KEMTest : public testing::TestWithParam<KEMTestVector> {};
 
-INSTANTIATE_TEST_SUITE_P(All, KEMTest, testing::ValuesIn(kKEMTestVectors));
+INSTANTIATE_TEST_SUITE_P(All, KEMTest, testing::ValuesIn(kemParameters));
 
 TEST_P(KEMTest, MarshalParse) {
   // ---- 1. Setup phase: generate a key ----
