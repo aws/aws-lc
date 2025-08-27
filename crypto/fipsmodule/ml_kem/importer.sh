@@ -84,6 +84,14 @@ cp $TMP/mlkem/src/native/api.h $SRC/native
 cp $TMP/mlkem/src/native/aarch64/meta.h $SRC/native/aarch64
 cp $TMP/mlkem/src/native/aarch64/src/* $SRC/native/aarch64/src
 
+# Copy x86_64 backend
+mkdir -p $SRC/native/x86_64/src
+# Backend API and specification assumed by mlkem-native frontend
+cp $TMP/mlkem/src/native/api.h $SRC/native
+# Copy x86_64 backend implementation
+cp $TMP/mlkem/src/native/x86_64/meta.h $SRC/native/x86_64
+cp $TMP/mlkem/src/native/x86_64/src/* $SRC/native/x86_64/src
+
 # We use the custom `mlkem_native_config.h`, so can remove the default one
 rm $SRC/config.h
 
@@ -94,11 +102,28 @@ cp $TMP/.clang-format $SRC
 # The static simplification is not necessary, but improves readability
 # by removing directives related to the FIPS-202 backend and the x86_64
 # arithmetic backend that are not yet imported.
+# Moreover, exclude POLY_COMPRESS/DECOMPRESS functions from the x86 backend.
 unifdef -DMLK_CONFIG_FIPS202_CUSTOM_HEADER                             \
         -UMLK_CONFIG_USE_NATIVE_BACKEND_FIPS202                        \
-        -UMLK_SYS_X86_64                                               \
         $TMP/mlkem/mlkem_native.c                                      \
         > $SRC/mlkem_native_bcm.c
+
+if [[ "$(uname)" == "Darwin" ]]; then
+  SED_I=(-i "")
+else
+  SED_I=(-i)
+fi
+
+# Exclude POLY_COMPRESS/DECOMPRESS functions from the x86 backend for now.
+sed "${SED_I[@]}" '/compress_avx2.c/d' $SRC/mlkem_native_bcm.c
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D4/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D5/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D10/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_COMPRESS_D11/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D4/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D5/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D10/d' $SRC/native/x86_64/meta.h
+sed "${SED_I[@]}" '/MLK_USE_NATIVE_POLY_DECOMPRESS_D11/d' $SRC/native/x86_64/meta.h
 
 # Copy mlkem-native header
 # This is only needed for access to the various macros defining key sizes.
@@ -110,23 +135,19 @@ cp $TMP/mlkem/mlkem_native.h $SRC
 # In mlkem-native, the include path is "mlkem/*", while here we
 # embed mlkem_native_bcm.c in the main source directory of mlkem-native,
 # hence the relative import path is just ".".
-if [[ "$(uname)" == "Darwin" ]]; then
-  SED_I=(-i "")
-else
-  SED_I=(-i)
-fi
-
 echo "Fixup include paths"
 sed "${SED_I[@]}" 's/#include "src\/\([^"]*\)"/#include "\1"/' $SRC/mlkem_native_bcm.c
 
-echo "Fixup AArch64 assembly backend to use s2n-bignum macros"
-for file in $SRC/native/aarch64/src/*.S; do
+echo "Fixup AArch64 and x86_64 assembly backend to use s2n-bignum macros"
+for file in $SRC/native/aarch64/src/*.S $SRC/native/x86_64/src/*.S; do
   echo "Processing $file"
   tmp_file=$(mktemp)
 
+  backend_define=$(if [[ "$file" == *"aarch64"* ]]; then echo "MLK_ARITH_BACKEND_AARCH64"; else echo "MLK_ARITH_BACKEND_X86_64_DEFAULT"; fi)
+
   # Flatten multiline preprocessor directives, then process with unifdef
   sed -e ':a' -e 'N' -e '$!ba' -e 's/\\\n/ /g' "$file" | \
-  unifdef -DMLK_ARITH_BACKEND_AARCH64 -UMLK_CONFIG_MULTILEVEL_NO_SHARED -DMLK_CONFIG_MULTILEVEL_WITH_SHARED > "$tmp_file"
+    unifdef -D$backend_define -UMLK_CONFIG_MULTILEVEL_NO_SHARED -DMLK_CONFIG_MULTILEVEL_WITH_SHARED > "$tmp_file"
   mv "$tmp_file" "$file"
 
   # Replace common.h include and assembly macros

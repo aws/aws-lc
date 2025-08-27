@@ -3,21 +3,39 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
-/*************************************************
- * Name:        mlk_rej_uniform_asm
- *
- * Description: Run rejection sampling on uniform random bytes to generate
- *              uniform random integers mod q
- *
- * Arguments:   - int16_t *r:          pointer to output buffer of MLKEM_N
- *                                     16-bit coefficients.
- *              - const uint8_t *buf:  pointer to input buffer
- *                                     (assumed to be uniform random bytes)
- *              - unsigned buflen:     length of input buffer in bytes.
- *                                     Must be a multiple of 24.
- *
- * Returns number of sampled 16-bit integers (at most MLKEM_N).
- **************************************************/
+/*yaml
+  Name: rej_uniform_asm
+  Description: Run rejection sampling on uniform random bytes to generate uniform random integers mod q
+  Signature: uint64_t mlk_rej_uniform_asm(int16_t r[256], const uint8_t *buf, unsigned buflen, const uint8_t table[2048])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 512
+      permissions: write-only
+      c_parameter: int16_t r[256]
+      description: Output buffer
+    x1:
+      type: buffer
+      size_bytes: x2
+      permissions: read-only
+      c_parameter: const uint8_t *buf
+      description: Input buffer
+    x2:
+      type: scalar
+      c_parameter: unsigned buflen
+      description: Length of input buffer (must be multiple of 24)
+      test_with: 504  # MLKEM_GEN_MATRIX_NBLOCKS * MLK_XOF_RATE
+    x3:
+      type: buffer
+      size_bytes: 2048
+      permissions: read-only
+      c_parameter: const uint8_t table[2048]
+      description: Lookup table
+  Stack:
+    bytes: 576
+    description: register preservation and temporary storage
+*/
+
 #include "_internal_s2n_bignum.h"
 
 /*

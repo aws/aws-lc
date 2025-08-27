@@ -19,7 +19,33 @@
  *   https://eprint.iacr.org/2022/1303
  */
 
-/* AArch64 ML-KEM inverse NTT following @[NeonNTT] and @[SLOTHY_Paper]. */
+/*yaml
+  Name: intt_asm
+  Description: AArch64 ML-KEM inverse NTT following @[NeonNTT] and @[SLOTHY_Paper]
+  Signature: void mlk_intt_asm(int16_t p[256], const int16_t twiddles12345[80], const int16_t twiddles56[384])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 512
+      permissions: read/write
+      c_parameter: int16_t p[256]
+      description: Input/output polynomial
+    x1:
+      type: buffer
+      size_bytes: 160
+      permissions: read-only
+      c_parameter: const int16_t twiddles12345[80]
+      description: Twiddle factors for layers 1-5
+    x2:
+      type: buffer
+      size_bytes: 768
+      permissions: read-only
+      c_parameter: const int16_t twiddles56[384]
+      description: Twiddle factors for layers 6-7
+  Stack:
+    bytes: 64
+    description: saving callee-saved Neon registers
+*/
 
 #include "_internal_s2n_bignum.h"
 
