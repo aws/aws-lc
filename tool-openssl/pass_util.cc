@@ -138,14 +138,15 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
   }
   
   if (!bio) {
-    const char* error_msg = (source_type == pass_util::Source::kStdin) ? 
-                           "Cannot open stdin\n" : 
+    if (source_type == pass_util::Source::kStdin) {
+      fprintf(stderr, "Cannot open stdin\n");
 #ifndef _WIN32
-                           (source_type == pass_util::Source::kFd) ?
-                           "Cannot open file descriptor\n" :
+    } else if (source_type == pass_util::Source::kFd) {
+      fprintf(stderr, "Cannot open file descriptor\n");
 #endif
-                           "Cannot open password file\n";
-    fprintf(stderr, "%s", error_msg);
+    } else {
+      fprintf(stderr, "Cannot open password file\n");
+    }
     return false;
   }
 
