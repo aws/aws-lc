@@ -276,7 +276,6 @@ const char *mlkem_1024_priv_expanded_pem_str =
 
 struct KEMTestVector {
   int nid;
-  const char *name;
   const char *public_pem_str;
   const char *private_pem_expanded_str;
   size_t public_key_len;
