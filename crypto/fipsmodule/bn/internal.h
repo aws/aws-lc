@@ -428,7 +428,7 @@ OPENSSL_INLINE int bn_mulx4x_mont_capable(size_t num) {
 int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                    const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 OPENSSL_INLINE int bn_sqr8x_mont_capable(size_t num) {
-#if defined(MY_ASSEMBLER_IS_TOO_OOLD_FOR_512AVX)
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   return 0;
 #endif // defined(MY_ASSEMBLER_IS_TOO_OOLD_FOR_512AVX)
   return (num >= 8) && ((num & 7) == 0);
