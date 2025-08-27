@@ -283,11 +283,11 @@ struct KEMTestVector {
 };
 
 static const KEMTestVector kKEMTestVectors[] = {
-    {NID_MLKEM512, "ML-KEM-512", mlkem_512_pub_pem_str,
+    {NID_MLKEM512, mlkem_512_pub_pem_str,
      mlkem_512_priv_expanded_pem_str, 800, 1632},
-    {NID_MLKEM768, "ML-KEM-768", mlkem_768_pub_pem_str,
+    {NID_MLKEM768, mlkem_768_pub_pem_str,
      mlkem_768_priv_expanded_pem_str, 1184, 2400},
-    {NID_MLKEM1024, "ML-KEM-1024", mlkem_1024_pub_pem_str,
+    {NID_MLKEM1024, mlkem_1024_pub_pem_str,
      mlkem_1024_priv_expanded_pem_str, 1568, 3168},
 };
 
