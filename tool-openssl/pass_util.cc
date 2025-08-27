@@ -30,6 +30,11 @@ static pass_util::Source DetectSource(
   if (source->compare("stdin") == 0) {
     return pass_util::Source::kStdin;
   }
+#ifndef _WIN32
+  if (source->compare(0, 3, "fd:") == 0) {
+    return pass_util::Source::kFd;
+  }
+#endif
   return pass_util::Source::kNone;
 }
 
@@ -105,22 +110,42 @@ static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
 }
 
 static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
+                                      pass_util::Source source_type,
                                       bool skip_first_line = false,
-                                      bool is_stdin = false,
                                       bssl::UniquePtr<std::string> *passout = nullptr) {
   char buf[PEM_BUFSIZE] = {};
   bssl::UniquePtr<BIO> bio;
   
-  // Initialize BIO based on input source
-  if (is_stdin) {
+  // Initialize BIO based on source type
+  if (source_type == pass_util::Source::kStdin) {
     bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
-  } else {
+  } else if (source_type == pass_util::Source::kFile) {
     source->erase(0, 5); // Remove "file:" prefix
     bio.reset(BIO_new_file(source->c_str(), "r"));
+#ifndef _WIN32
+  } else if (source_type == pass_util::Source::kFd) {
+    source->erase(0, 3); // Remove "fd:" prefix
+    int fd = atoi(source->c_str());
+    if (fd < 0) {
+      fprintf(stderr, "Invalid file descriptor: %s\n", source->c_str());
+      return false;
+    }
+    bio.reset(BIO_new_fd(fd, BIO_NOCLOSE));
+#endif
+  } else {
+    fprintf(stderr, "Unsupported source type for stream extraction\n");
+    return false;
   }
   
   if (!bio) {
-    fprintf(stderr, is_stdin ? "Cannot open stdin\n" : "Cannot open password file\n");
+    const char* error_msg = (source_type == pass_util::Source::kStdin) ? 
+                           "Cannot open stdin\n" : 
+#ifndef _WIN32
+                           (source_type == pass_util::Source::kFd) ?
+                           "Cannot open file descriptor\n" :
+#endif
+                           "Cannot open password file\n";
+    fprintf(stderr, "%s", error_msg);
     return false;
   }
 
@@ -128,8 +153,15 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     int len = BIO_gets(bio.get(), buf, sizeof(buf));
     if (len <= 0) {
       OPENSSL_cleanse(buf, sizeof(buf));
-      fprintf(stderr, is_stdin ? "Failed to read password from stdin\n" 
-                              : "Cannot read password file\n");
+      if (source_type == pass_util::Source::kStdin) {
+        fprintf(stderr, "Failed to read password from stdin\n");
+#ifndef _WIN32
+      } else if (source_type == pass_util::Source::kFd) {
+        fprintf(stderr, "Failed to read password from file descriptor\n");
+#endif
+      } else {
+        fprintf(stderr, "Cannot read password file\n");
+      }
       return false;
     }
 
@@ -137,9 +169,15 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     if (static_cast<size_t>(len) == PEM_BUFSIZE - 1 && 
         buf[len - 1] != '\n' && buf[len - 1] != '\r') {
       OPENSSL_cleanse(buf, sizeof(buf));
-      fprintf(stderr, is_stdin ? "Password from stdin too long (maximum %d bytes)\n" 
-                              : "Password file content too long (maximum %d bytes)\n",
-              PEM_BUFSIZE);
+      if (source_type == pass_util::Source::kStdin) {
+        fprintf(stderr, "Password from stdin too long (maximum %d bytes)\n", PEM_BUFSIZE);
+#ifndef _WIN32
+      } else if (source_type == pass_util::Source::kFd) {
+        fprintf(stderr, "Password from file descriptor too long (maximum %d bytes)\n", PEM_BUFSIZE);
+#endif
+      } else {
+        fprintf(stderr, "Password file content too long (maximum %d bytes)\n", PEM_BUFSIZE);
+      }
       return false;
     }
 
@@ -216,13 +254,21 @@ static bool ExtractPasswordFromSource(bssl::UniquePtr<std::string> &source,
     case pass_util::Source::kPass:
       return ExtractDirectPassword(source);
     case pass_util::Source::kFile:
-      return ExtractPasswordFromStream(source, skip_first_line, false, passout);
+      return ExtractPasswordFromStream(source, type, skip_first_line, passout);
     case pass_util::Source::kEnv:
       return ExtractPasswordFromEnv(source);
     case pass_util::Source::kStdin:
-      return ExtractPasswordFromStream(source, skip_first_line, true, passout);
+      return ExtractPasswordFromStream(source, type, skip_first_line, passout);
+#ifndef _WIN32
+    case pass_util::Source::kFd:
+      return ExtractPasswordFromStream(source, type, skip_first_line, passout);
+#endif
     default:
+#ifndef _WIN32
+      fprintf(stderr, "Invalid password format (use pass:, file:, env:, fd:, or stdin)\n");
+#else
       fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
+#endif
       return false;
   }
 }

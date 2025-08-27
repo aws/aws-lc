@@ -37,6 +37,9 @@ enum class Source : uint8_t {
   kFile,   // Password from file with file: prefix
   kEnv,    // Password from environment with env: prefix
   kStdin,  // Password from stdin
+#ifndef _WIN32
+  kFd,     // Password from file descriptor with fd: prefix (Unix only)
+#endif
 };
 
 // Custom deleter for sensitive strings that securely clears memory before
@@ -50,6 +53,7 @@ void SensitiveStringDeleter(std::string *str);
 //   - file:/path/to/file (password from file)
 //   - env:VAR_NAME (password from environment variable)
 //   - stdin (password from standard input)
+//   - fd:N (password from file descriptor N, Unix only)
 // The source string will be replaced with the extracted password if successful.
 // Returns bool indicating success or failure:
 //   - true: Password was successfully extracted and stored in source
