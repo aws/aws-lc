@@ -26,7 +26,7 @@ static const argument_t kArguments[] = {
     {"-sha512", kExclusiveBooleanArgument, "Supported digest function"},
     {"-hmac", kOptionalArgument,
      "Create a hashed MAC with the corresponding key"},
-    {"-sigopt", kOptionalArgument, "Signature parameter in n:v form"},
+    {"-sigopt", kDuplicateArgument, "Signature parameter in n:v form"},
     // TODO: Implement -passin
     // {"-passin", kOptionalArgument, "Input file pass phrase source"},
     {"-sign", kOptionalArgument, "Sign digest using private key"},
