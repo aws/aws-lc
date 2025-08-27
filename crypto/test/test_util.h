@@ -83,7 +83,11 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs);
 // |RSA*|.
 bssl::UniquePtr<RSA> RSAFromPEM(const char *pem);
 
-// PEM_to_DER converts a PEM string to DER format. Returns true on success.
+// Helper function that:
+// 1. Creates a BIO
+// 2. Reads the provided |pem_string| into bio
+// 3. Reads the PEM into DER encoding
+// 4. Returns the DER data and length
 bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len);
 
 // kReferenceTime is the reference time used by certs created by |MakeTestCert|.
