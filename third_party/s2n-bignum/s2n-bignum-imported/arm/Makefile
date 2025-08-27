@@ -435,6 +435,13 @@ clean:; rm -f libs2nbignum.a */*.o */*/*.o */*.correct */*.native
 # in your home directory, and do "make" inside the subdirectory hol-light,
 # then the following HOLDIR setting should be right:
 
+# TODO: exhaustively list all files. Do we need ocamldep-equivalent tool for HOL Light?
+BASE_ML=proofs/arm.ml \
+        proofs/base.ml \
+        proofs/decode.ml \
+        proofs/instruction.ml \
+        proofs/subroutine_signatures.ml
+
 HOLDIR?=$(HOME)/hol-light
 HOLLIGHT:=$(HOLDIR)/hol.sh
 
@@ -445,10 +452,15 @@ TUTORIAL_PROOF_LOGS = $(TUTORIAL_PROOFS:.ml=.correct)
 
 # Build precompiled native binaries of HOL Light proofs
 
-proofs/simulator.native: proofs/simulator.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
+proofs/simulator.native: proofs/simulator.ml $(BASE_ML) proofs/simulator_iclasses.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
+
+# For constant-time property and memory safety, collect input/output/temporary
+# buffers from function signatures in s2n-bignum.h .
+
+proofs/subroutine_signatures.ml: ../include/s2n-bignum.h ; cd .. && python3 tools/collect-signatures.py
 
 .SECONDEXPANSION:
-%.native: proofs/$$(*F).ml %.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
+%.native: proofs/$$(*F).ml $(BASE_ML) %.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
 
 # Run them and print the standard output+error at *.correct
 
