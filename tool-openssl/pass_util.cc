@@ -27,6 +27,9 @@ static pass_util::Source DetectSource(
   if (source->compare(0, 4, "env:") == 0) {
     return pass_util::Source::kEnv;
   }
+  if (source->compare("stdin") == 0) {
+    return pass_util::Source::kStdin;
+  }
   return pass_util::Source::kNone;
 }
 
@@ -36,13 +39,13 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
                            bool *same_file = nullptr) {
   // Validate passin
   if (!passin) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
     return false;
   }
 
   // Validate passout if provided
   if (passout && !*passout) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
     return false;
   }
 
@@ -50,7 +53,7 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
   if (!passin->empty()) {
     pass_util::Source passin_type = DetectSource(passin);
     if (passin_type == pass_util::Source::kNone) {
-      fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+      fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
       return false;
     }
   }
@@ -59,7 +62,7 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
   if (passout && *passout && !(*passout)->empty()) {
     pass_util::Source passout_type = DetectSource(*passout);
     if (passout_type == pass_util::Source::kNone) {
-      fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+      fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
       return false;
     }
 
@@ -68,7 +71,9 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
       pass_util::Source passin_type = DetectSource(passin);
       *same_file =
           (passin_type == pass_util::Source::kFile &&
-           passout_type == pass_util::Source::kFile && *passin == **passout);
+           passout_type == pass_util::Source::kFile && *passin == **passout) ||
+          (passin_type == pass_util::Source::kStdin &&
+           passout_type == pass_util::Source::kStdin);
     }
   }
 
@@ -83,7 +88,7 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
 static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
   // Check for additional colons in password portion after prefix
   if (source->find(':', 5) != std::string::npos) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
     return false;
   }
 
@@ -99,56 +104,74 @@ static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
   return true;
 }
 
-static bool ExtractPasswordFromFile(bssl::UniquePtr<std::string> &source,
-                                    bool skip_first_line = false) {
-  // Remove "file:" prefix
-  source->erase(0, 5);
-
-  bssl::UniquePtr<BIO> bio(BIO_new_file(source->c_str(), "r"));
+static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
+                                      bool skip_first_line = false,
+                                      bool is_stdin = false,
+                                      bssl::UniquePtr<std::string> *passout = nullptr) {
+  char buf[PEM_BUFSIZE] = {};
+  bssl::UniquePtr<BIO> bio;
+  
+  // Initialize BIO based on input source
+  if (is_stdin) {
+    bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
+  } else {
+    source->erase(0, 5); // Remove "file:" prefix
+    bio.reset(BIO_new_file(source->c_str(), "r"));
+  }
+  
   if (!bio) {
-    fprintf(stderr, "Cannot open password file\n");
+    fprintf(stderr, is_stdin ? "Cannot open stdin\n" : "Cannot open password file\n");
     return false;
   }
 
-  char buf[PEM_BUFSIZE] = {};
-
-  // Skip first line if requested (for passout when using same file)
-  if (skip_first_line) {
-    if (BIO_gets(bio.get(), buf, sizeof(buf)) <= 0) {
+  auto read_password_line = [&](std::string& target) -> bool {
+    int len = BIO_gets(bio.get(), buf, sizeof(buf));
+    if (len <= 0) {
       OPENSSL_cleanse(buf, sizeof(buf));
-      fprintf(stderr, "Cannot read password file\n");
+      fprintf(stderr, is_stdin ? "Failed to read password from stdin\n" 
+                              : "Cannot read password file\n");
       return false;
     }
-    OPENSSL_cleanse(buf, sizeof(buf));
+
+    // Check for possible truncation
+    if (static_cast<size_t>(len) == PEM_BUFSIZE - 1 && 
+        buf[len - 1] != '\n' && buf[len - 1] != '\r') {
+      OPENSSL_cleanse(buf, sizeof(buf));
+      fprintf(stderr, is_stdin ? "Password from stdin too long (maximum %d bytes)\n" 
+                              : "Password file content too long (maximum %d bytes)\n",
+              PEM_BUFSIZE);
+      return false;
+    }
+
+    // Trim trailing newlines
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+      len--;
+    }
+    
+    target.assign(buf, len);
+    return true;
+  };
+
+  // Handle same-file case (read both passwords)
+  if (passout) {
+    if (!read_password_line(*source) || !read_password_line(**passout)) {
+      return false;
+    }
+  } else {
+    // Handle skip_first_line if needed
+    if (skip_first_line) {
+      std::string dummy;
+      if (!read_password_line(dummy)) {
+        return false;
+      }
+    }
+    
+    // Read single password
+    if (!read_password_line(*source)) {
+      return false;
+    }
   }
 
-  // Read the password line
-  int len = BIO_gets(bio.get(), buf, sizeof(buf));
-  if (len <= 0) {
-    OPENSSL_cleanse(buf, sizeof(buf));
-    fprintf(stderr, "Cannot read password file\n");
-    return false;
-  }
-
-  const bool possible_truncation =
-      (static_cast<size_t>(len) == PEM_BUFSIZE - 1) && buf[len - 1] != '\n' &&
-      buf[len - 1] != '\r';
-  if (possible_truncation) {
-    OPENSSL_cleanse(buf, sizeof(buf));
-    fprintf(stderr, "Password file content too long (maximum %d bytes)\n",
-            PEM_BUFSIZE);
-    return false;
-  }
-
-  // Trim trailing newlines
-  size_t buf_len = len;
-  while (buf_len > 0 &&
-         (buf[buf_len - 1] == '\n' || buf[buf_len - 1] == '\r')) {
-    buf[--buf_len] = '\0';
-  }
-
-  // Replace source content with password
-  *source = std::string(buf, buf_len);
   OPENSSL_cleanse(buf, sizeof(buf));
   return true;
 }
@@ -187,16 +210,19 @@ static bool ExtractPasswordFromEnv(bssl::UniquePtr<std::string> &source) {
 // Internal helper to extract password based on source type
 static bool ExtractPasswordFromSource(bssl::UniquePtr<std::string> &source,
                                       pass_util::Source type,
-                                      bool skip_first_line = false) {
+                                      bool skip_first_line = false,
+                                      bssl::UniquePtr<std::string> *passout = nullptr) {
   switch (type) {
     case pass_util::Source::kPass:
       return ExtractDirectPassword(source);
     case pass_util::Source::kFile:
-      return ExtractPasswordFromFile(source, skip_first_line);
+      return ExtractPasswordFromStream(source, skip_first_line, false, passout);
     case pass_util::Source::kEnv:
       return ExtractPasswordFromEnv(source);
+    case pass_util::Source::kStdin:
+      return ExtractPasswordFromStream(source, skip_first_line, true, passout);
     default:
-      fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+      fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
       return false;
   }
 }
@@ -216,7 +242,7 @@ bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
   }
 
   if (source->empty()) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, or env:)\n");
+    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
     return false;
   }
 
@@ -230,6 +256,12 @@ bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
   bool same_file = false;
   if (!ValidateSource(passin, &passout, &same_file)) {
     return false;
+  }
+
+  // Handle same_file case with single extraction call
+  if (same_file && !passin->empty() && !passout->empty()) {
+    pass_util::Source source_type = DetectSource(passin);
+    return ExtractPasswordFromSource(passin, source_type, same_file, &passout);
   }
 
   // Extract passin (always from first line)

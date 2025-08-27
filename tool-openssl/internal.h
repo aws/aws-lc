@@ -32,10 +32,11 @@ bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 namespace pass_util {
 // Password source types for handling different input methods
 enum class Source : uint8_t {
-  kNone,  // Empty or invalid source
-  kPass,  // Direct password with pass: prefix
-  kFile,  // Password from file with file: prefix
-  kEnv,   // Password from environment with env: prefix
+  kNone,   // Empty or invalid source
+  kPass,   // Direct password with pass: prefix
+  kFile,   // Password from file with file: prefix
+  kEnv,    // Password from environment with env: prefix
+  kStdin,  // Password from stdin
 };
 
 // Custom deleter for sensitive strings that securely clears memory before
@@ -48,6 +49,7 @@ void SensitiveStringDeleter(std::string *str);
 //   - pass:password (direct password, e.g., "pass:mypassword")
 //   - file:/path/to/file (password from file)
 //   - env:VAR_NAME (password from environment variable)
+//   - stdin (password from standard input)
 // The source string will be replaced with the extracted password if successful.
 // Returns bool indicating success or failure:
 //   - true: Password was successfully extracted and stored in source
@@ -64,6 +66,8 @@ bool ExtractPassword(bssl::UniquePtr<std::string> &source);
 // - If same file is used for both passwords, reads first line for passin
 //   and second line for passout in a single file operation matching OpenSSL
 //   behavior
+// - If stdin is used for both passwords, reads first line for passin
+//   and second line for passout from standard input matching OpenSSL behavior
 bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
                       bssl::UniquePtr<std::string> &passout);
 
