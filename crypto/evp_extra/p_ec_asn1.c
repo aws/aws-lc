@@ -96,7 +96,8 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   // The parameters are a named curve.
   EC_POINT *point = NULL;
   EC_KEY *eckey = NULL;
-  const EC_GROUP *group = EC_KEY_parse_curve_name(params);
+
+  const EC_GROUP *group = EC_KEY_parse_parameters(params);
   if (group == NULL || CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
