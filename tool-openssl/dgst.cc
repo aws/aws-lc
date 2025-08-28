@@ -27,7 +27,8 @@ static const argument_t kArguments[] = {
     {"-hmac", kOptionalArgument,
      "Create a hashed MAC with the corresponding key"},
     {"-sigopt", kOptionalArgument, "Signature parameter in n:v form"},
-    {"-passin", kOptionalArgument, "Input file pass phrase source"},
+    // TODO: Implement -passin
+    // {"-passin", kOptionalArgument, "Input file pass phrase source"},
     {"-sign", kOptionalArgument, "Sign digest using private key"},
     {"-out", kOptionalArgument, "Output to filename rather than stdout"},
     {"-verify", kOptionalArgument, "Verify a signature using public key"},
@@ -118,8 +119,8 @@ static std::string GetSigName(int nid) {
   }
 }
 
-static bool GenerateHash(const std::string &in_path, const EVP_MD *digest,
-                         std::vector<uint8_t> &hash) {
+static bool GenerateHash(FILE *in_file, const std::string &in_path,
+                         const EVP_MD *digest, std::vector<uint8_t> &hash) {
   bssl::ScopedEVP_MD_CTX ctx;
 
   if (!EVP_DigestInit_ex(ctx.get(), digest, nullptr)) {
@@ -127,26 +128,15 @@ static bool GenerateHash(const std::string &in_path, const EVP_MD *digest,
     return false;
   }
 
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to open input file '%s'\n",
-              in_path.c_str());
-      return false;
-    }
-  }
-
   uint8_t buf[4096];
   for (;;) {
-    size_t n = fread(buf, 1, sizeof(buf), in_file.get());
-
-    if (feof(in_file.get())) {
+    if (feof(in_file)) {
       break;
     }
-    if (ferror(in_file.get())) {
+
+    size_t n = fread(buf, 1, sizeof(buf), in_file);
+
+    if (ferror(in_file)) {
       fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
       return false;
     }
@@ -169,35 +159,24 @@ static bool GenerateHash(const std::string &in_path, const EVP_MD *digest,
   return true;
 }
 
-static bool GenerateHMAC(const std::string &in_path, const char *hmac_key,
-                         const size_t hmac_key_len, const EVP_MD *digest,
-                         std::vector<uint8_t> &mac) {
+static bool GenerateHMAC(FILE *in_file, const std::string &in_path,
+                         const char *hmac_key, const size_t hmac_key_len,
+                         const EVP_MD *digest, std::vector<uint8_t> &mac) {
   bssl::ScopedHMAC_CTX ctx;
   if (!HMAC_Init_ex(ctx.get(), hmac_key, hmac_key_len, digest, nullptr)) {
     fprintf(stderr, "Failed to initialize HMAC_Init_ex.\n");
     return false;
   }
 
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to open input file '%s'\n",
-              in_path.c_str());
-      return false;
-    }
-  }
-
   uint8_t buf[4096];
   for (;;) {
-    size_t n = fread(buf, 1, sizeof(buf), in_file.get());
-
-    if (feof(in_file.get())) {
+    if (feof(in_file)) {
       break;
     }
-    if (ferror(in_file.get())) {
+
+    size_t n = fread(buf, 1, sizeof(buf), in_file);
+
+    if (ferror(in_file)) {
       fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
       return false;
     }
@@ -219,8 +198,8 @@ static bool GenerateHMAC(const std::string &in_path, const char *hmac_key,
   return true;
 }
 
-static bool GenerateSignature(EVP_PKEY *pkey, const std::string &in_path,
-                              const EVP_MD *digest,
+static bool GenerateSignature(EVP_PKEY *pkey, FILE *in_file,
+                              const std::string &in_path, const EVP_MD *digest,
                               const std::vector<std::string> &sigopts,
                               std::vector<uint8_t> &signature) {
   bssl::ScopedEVP_MD_CTX ctx;
@@ -240,26 +219,15 @@ static bool GenerateSignature(EVP_PKEY *pkey, const std::string &in_path,
     }
   }
 
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error: unable to open input file '%s'\n",
-              in_path.c_str());
-      return false;
-    }
-  }
-
   uint8_t buf[4096];
   for (;;) {
-    size_t n = fread(buf, 1, sizeof(buf), in_file.get());
-
-    if (feof(in_file.get())) {
+    if (feof(in_file)) {
       break;
     }
-    if (ferror(in_file.get())) {
+
+    size_t n = fread(buf, 1, sizeof(buf), in_file);
+
+    if (ferror(in_file)) {
       fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
       return false;
     }
@@ -282,11 +250,11 @@ static bool GenerateSignature(EVP_PKEY *pkey, const std::string &in_path,
   return true;
 }
 
-static bool VerifySignature(EVP_PKEY *pkey, const std::string &in_path,
-                            const EVP_MD *digest,
+static bool VerifySignature(EVP_PKEY *pkey, FILE *in_file,
+                            const std::string &in_path, const EVP_MD *digest,
                             const std::vector<std::string> &sigopts,
                             const std::string &signature_file_path,
-                            bssl::UniquePtr<BIO> &out_bio) {
+                            BIO *out_bio) {
   bssl::ScopedEVP_MD_CTX ctx;
   EVP_PKEY_CTX *pctx = nullptr;
 
@@ -304,25 +272,15 @@ static bool VerifySignature(EVP_PKEY *pkey, const std::string &in_path,
     }
   }
 
-  ScopedFILE in_file;
-  if (in_path.empty()) {
-    in_file.reset(stdin);
-  } else {
-    in_file.reset(fopen(in_path.c_str(), "rb"));
-    if (!in_file) {
-      fprintf(stderr, "Error opening input file '%s'\n", in_path.c_str());
-      return false;
-    }
-  }
-
   uint8_t buf[4096];
   for (;;) {
-    size_t n = fread(buf, 1, sizeof(buf), in_file.get());
-
-    if (feof(in_file.get())) {
+    if (feof(in_file)) {
       break;
     }
-    if (ferror(in_file.get())) {
+
+    size_t n = fread(buf, 1, sizeof(buf), in_file);
+
+    if (ferror(in_file)) {
       fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
       return false;
     }
@@ -332,7 +290,7 @@ static bool VerifySignature(EVP_PKEY *pkey, const std::string &in_path,
       return false;
     }
   }
-  std::vector<uint8_t> signature(EVP_PKEY_size(pkey));
+  std::vector<uint8_t> signature;
   ScopedFILE signature_file(fopen(signature_file_path.c_str(), "rb"));
   if (!signature_file) {
     fprintf(stderr, "Error opening signature file %s.\n",
@@ -350,40 +308,39 @@ static bool VerifySignature(EVP_PKEY *pkey, const std::string &in_path,
       EVP_DigestVerifyFinal(ctx.get(), signature.data(), signature.size());
 
   if (result > 0) {
-    BIO_printf(out_bio.get(), "Verified OK\n");
+    BIO_printf(out_bio, "Verified OK\n");
   } else if (result == 0) {
-    BIO_printf(out_bio.get(), "Verification failure\n");
+    BIO_printf(out_bio, "Verification failure\n");
   } else {
-    BIO_printf(out_bio.get(), "Error verifying data\n");
+    BIO_printf(out_bio, "Error verifying data\n");
   }
 
   return true;
 }
 
-static bool WriteOutput(bssl::UniquePtr<BIO> &out_bio,
-                        const std::vector<uint8_t> &data,
+static bool WriteOutput(BIO *out_bio, const std::vector<uint8_t> &data,
                         const std::string &sig_name,
                         const std::string &digest_name,
                         const std::string &in_path, bool out_bin) {
   if (out_bin) {
-    BIO_write(out_bio.get(), data.data(), data.size());
+    BIO_write(out_bio, data.data(), data.size());
   } else {
     if (!sig_name.empty()) {
-      BIO_printf(out_bio.get(), "%s-%s", sig_name.c_str(), digest_name.c_str());
+      BIO_printf(out_bio, "%s-%s", sig_name.c_str(), digest_name.c_str());
     } else {
-      BIO_printf(out_bio.get(), "%s", digest_name.c_str());
+      BIO_printf(out_bio, "%s", digest_name.c_str());
     }
 
     if (!in_path.empty()) {
-      BIO_printf(out_bio.get(), "(%s)=", in_path.c_str());
+      BIO_printf(out_bio, "(%s)=", in_path.c_str());
     } else {
-      BIO_printf(out_bio.get(), "(stdin)=");
+      BIO_printf(out_bio, "(stdin)=");
     }
 
     for (size_t i = 0; i < data.size(); i++) {
-      BIO_printf(out_bio.get(), "%02x", data[i]);
+      BIO_printf(out_bio, "%02x", data[i]);
     }
-    BIO_printf(out_bio.get(), "\n");
+    BIO_printf(out_bio, "\n");
   }
 
   return true;
@@ -428,7 +385,8 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   }
 
   if ((!verify_key_file.empty() + !sign_key_file.empty() + !hmac.empty()) > 1) {
-    fprintf(stderr, "Error: MAC and signing key cannot both be specified\n");
+    fprintf(stderr,
+            "Error: -verify, -sign, and -hmac cannot be used together\n");
     return false;
   }
 
@@ -473,11 +431,19 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   bssl::UniquePtr<EVP_PKEY> pkey;
   size_t i = 0;
   do {
+    ScopedFILE in_file;
     std::string in_path;
     if (in_files.empty()) {
-      in_path = "";
+      in_path = "stdin";
+      in_file.reset(stdin);
     } else {
       in_path = in_files[i++];
+      in_file.reset(fopen(in_path.c_str(), "rb"));
+      if (!in_file) {
+        fprintf(stderr, "Error: unable to open input file '%s'\n",
+                in_path.c_str());
+        return false;
+      }
     }
 
     if (!hmac.empty()) {
@@ -486,19 +452,20 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
 
       std::vector<uint8_t> mac(EVP_MD_size(digest));
 
-      if (!GenerateHMAC(in_path, hmac_key, hmac_key_len, digest, mac)) {
+      if (!GenerateHMAC(in_file.get(), in_path, hmac_key, hmac_key_len, digest,
+                        mac)) {
         return false;
       }
 
-      WriteOutput(out_bio, mac, "HMAC", EVP_MD_get0_name(digest), in_path,
+      WriteOutput(out_bio.get(), mac, "HMAC", EVP_MD_get0_name(digest), in_path,
                   out_bin);
     } else if (!verify_key_file.empty()) {
       if (!LoadPublicKey(verify_key_file, pkey)) {
         return false;
       }
 
-      if (!VerifySignature(pkey.get(), in_path, digest, sigopts, signature_file,
-                           out_bio)) {
+      if (!VerifySignature(pkey.get(), in_file.get(), in_path, digest, sigopts,
+                           signature_file, out_bio.get())) {
         return false;
       }
     } else if (!sign_key_file.empty()) {
@@ -507,20 +474,21 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
       }
 
       std::vector<uint8_t> signature(EVP_PKEY_size(pkey.get()));
-      if (!GenerateSignature(pkey.get(), in_path, digest, sigopts, signature)) {
+      if (!GenerateSignature(pkey.get(), in_file.get(), in_path, digest,
+                             sigopts, signature)) {
         return false;
       }
 
-      WriteOutput(out_bio, signature, GetSigName(EVP_PKEY_id(pkey.get())),
+      WriteOutput(out_bio.get(), signature, GetSigName(EVP_PKEY_id(pkey.get())),
                   EVP_MD_get0_name(digest), in_path, out_bin);
     } else {
       std::vector<uint8_t> hash(EVP_MAX_MD_SIZE);
 
-      if (!GenerateHash(in_path, digest, hash)) {
+      if (!GenerateHash(in_file.get(), in_path, digest, hash)) {
         return false;
       }
 
-      WriteOutput(out_bio, hash, "", EVP_MD_get0_name(digest), in_path,
+      WriteOutput(out_bio.get(), hash, "", EVP_MD_get0_name(digest), in_path,
                   out_bin);
     }
 

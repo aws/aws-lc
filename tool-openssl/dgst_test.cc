@@ -318,20 +318,12 @@ TEST_F(DgstTest, Verify) {
   EXPECT_TRUE(dgstTool(verify_args));
 }
 
-TEST_F(DgstTest, DigestSHA256) {
-  std::ofstream ofs(in_path);
-  ofs << "test data";
-  ofs.close();
-
-  args_list_t args = {"-sha256", in_path};
+TEST_F(DgstTest, DigestDefault) {
+  args_list_t args = {in_path};
   EXPECT_TRUE(dgstTool(args));
 }
 
 TEST_F(DgstTest, DigestSHA1) {
-  std::ofstream ofs(in_path);
-  ofs << "test data";
-  ofs.close();
-
   args_list_t args = {"-sha1", in_path};
   EXPECT_TRUE(dgstTool(args));
 }
@@ -344,9 +336,11 @@ TEST_F(DgstTest, FileInput) {
   // Multiple file inputs
   char in_path2[PATH_MAX];
   ASSERT_GT(createTempFILEpath(in_path2), 0u);
-  std::ofstream ofs2(in_path2);
-  ofs2 << "AWS_LC_TEST_STRING_INPUT_2";
-  ofs2.close();
+  ScopedFILE in_file2(fopen(in_path2, "wb"));
+  ASSERT_TRUE(in_file2);
+  const char *test_data = "AWS_LC_TEST_STRING_INPUT_2";
+  ASSERT_EQ(fwrite(test_data, 1, strlen(test_data), in_file2.get()),
+            strlen(test_data));
 
   args_list_t multi_args = {in_path, in_path2};
   EXPECT_TRUE(dgstTool(multi_args));
