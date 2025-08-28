@@ -830,6 +830,8 @@ struct ec_key_st {
 
   const EC_KEY_METHOD *eckey_method;
 
+  int group_decoded_from_explicit_params;
+
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 

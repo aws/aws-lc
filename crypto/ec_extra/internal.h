@@ -70,6 +70,13 @@ OPENSSL_EXPORT int ec_hash_to_scalar_p384_xmd_sha512_draft07(
     const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
     const uint8_t *msg, size_t msg_len);
 
+enum ECParametersType {
+  UNKNOWN_EC_PARAMETERS = 0,
+  NAMED_CURVE_EC_PARAMETERS = 1,
+  SPECIFIED_CURVE_EC_PARAMETERS = 2,
+};
+
+EC_GROUP *EC_KEY_maybe_parse_parameters(CBS *cbs, enum ECParametersType *paramType);
 
 #if defined(__cplusplus)
 }  // extern C
