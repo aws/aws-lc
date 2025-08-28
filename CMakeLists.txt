@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.58.1")
+set(SOFTWARE_VERSION "1.59.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -14,7 +14,7 @@ set(OPENSSL_VERSION_NUMBER "0x1010107f")
 # Note this is set to 1.1.1 for compatibility purposes
 # with projects that use the pkg-config information to determine
 # the OpenSSL version.
-set(REPORTED_PKGCONFIG_VERSION "1.1.1") 
+set(REPORTED_PKGCONFIG_VERSION "1.1.1")
 
 # Defer enabling C and CXX languages.
 project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
