@@ -178,10 +178,13 @@ static void bn_mul_mont_gather5(
     BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table, const BN_ULONG *np,
     const BN_ULONG *n0, int num, int power) {
   if (bn_mulx4x_mont_gather5_capable(num)) {
+    keccak_log_dispatch(15);
     bn_mulx4x_mont_gather5(rp, ap, table, np, n0, num, power);
   } else if (bn_mul4x_mont_gather5_capable(num)) {
+    keccak_log_dispatch(16);
     bn_mul4x_mont_gather5(rp, ap, table, np, n0, num, power);
   } else {
+    keccak_log_dispatch(17);
     bn_mul_mont_gather5_nohw(rp, ap, table, np, n0, num, power);
   }
 }
@@ -201,8 +204,10 @@ static void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
 {
   assert(bn_power5_capable(num));
   if (bn_powerx5_capable(num)) {
+    keccak_log_dispatch(18);
     bn_powerx5(rp, ap, table, np, n0, num, power);
   } else {
+    keccak_log_dispatch(19);
     bn_power5_nohw(rp, ap, table, np, n0, num, power);
   }
 }
