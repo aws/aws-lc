@@ -103,7 +103,7 @@ class AwsLcGitHubCIStack(AwsLcBaseCiStack):
             "ResourceAccessRole", resource_access_role.role_arn
         )
 
-        cfn_project.add_property_override("Source.PullRequestBuildPolicy", self.pull_request_policy)
+        cfn_project.add_property_override("Triggers.PullRequestBuildPolicy", self.pull_request_policy)
 
         project.enable_batch_builds()
 

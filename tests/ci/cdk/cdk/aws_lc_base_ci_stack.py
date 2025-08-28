@@ -57,12 +57,12 @@ class AwsLcBaseCiStack(Stack):
             webhook_triggers_batch_build=True,
         )
         # P292389560
-        self.pull_request_policy = codebuild.CfnProject.PullRequestBuildPolicyProperty(
-            requires_comment_approval="ALL_PULL_REQUESTS",
-            approver_roles=[
+        self.pull_request_policy = {
+            "RequiresCommentApproval": "ALL_PULL_REQUESTS",
+            "ApproverRoles": [
                 "GITHUB_ADMIN",
-                "GITHUB_MAINTAINER",
+                "GITHUB_MAINTAIN",
                 "GITHUB_WRITE",
-                "GITHUB_TRIAGE"
-            ]
-        )
+                "GITHUB_TRIAGE",
+            ],
+        }
