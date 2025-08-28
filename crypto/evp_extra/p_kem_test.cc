@@ -7,10 +7,10 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/pem.h>
+#include <openssl/ssl.h>
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/kem/internal.h"
 #include "../test/test_util.h"
-#include <openssl/ssl.h>
 
 // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
 // All example keys are from Appendix C in the above standard
@@ -274,6 +274,157 @@ const char *mlkem_1024_priv_expanded_pem_str =
     "JCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\n"
     "-----END PRIVATE KEY-----\n";
 
+// The following private/public keys were generated externally and encoded using the Java library BouncyCastle which is a JCA provider. 
+// Private keys generated were encoded in expandedKey format. 
+// Implementation: https://github.com/bcgit/bc-java/tree/b41f23936724284a20f10dff13c76896a846031b/prov/src/main/java/org/bouncycastle/jcajce/provider/asymmetric/mlkem
+// Encoder: https://github.com/bcgit/bc-java/blob/0e100a58af34d0cf91ea5cfd1f0a6d36681c3653/core/src/main/java/org/bouncycastle/pqc/crypto/util/PrivateKeyInfoFactory.java#L247-L256
+
+const char *bouncy_castle_mlkem_512_priv_expanded_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "uX0nVwQBIwZSB9XN4NgNm6sl7CUnZ/1dK5Tv5Q==\n"
+    "-----END PRIVATE KEY-----\n";
+
+const char *bouncy_castle_mlkem_512_pub_pem_str =
+    "-----BEGIN PUBLIC KEY-----\n"
+    "MIIDMjALBglghkgBZQMEBAEDggMhABGUC5yCDceDLGeFfYoSrNSrWzSzT0kKpP4r\n"
+    "hr0bZuuWgQQMbkhqduH7aluLnFdcZ0MnjCwzrHnSDD0DcW0GucPRKCI4A61zt6mU\n"
+    "GaV4NVTZo708vujEWR1gYYZKV4mQjgAJG5F6tqBpQZ7VEt34RJ2gzPTAMfenP6CJ\n"
+    "Oo5wiJSoHq/2gW3buAcxeliIY2OLArK5D953DTt7Xb7jtw00m/cAEQqMXjpBeIvp\n"
+    "S0MAqHwXoRHsJFhqU7tcOCBqCBAToSixMlmitK5Hsj/oshZscJOkEm3VbAT4Z0oA\n"
+    "uWCIv0AMuQThCOs0H9Pori8gHfLonWAiYFgxzRAgt6fFVVkhJOfDDXYZtrcpE20m\n"
+    "JYxKIDESyquhVhCBcyhLctW6KKalncFoRi2SlSunVWDJYj/zVu5iLmAWMu28ltc5\n"
+    "N90qvWVsIi+sFTFKE4jmcINba3JnI6wkJe0LV9nTI5l4VQyFzg2DtAnZXApWHDil\n"
+    "Ee7Kgc2HVZJsT688dA3lHS3gSn3bYuTZwHCKwqYIz7D0jyziun1pg3NYAivih/KW\n"
+    "LyRQVDiQVbbIQ6G5CbwyPe0LJ3yHb0I2jdXlbhQiYJVyXo1HXixYuzVXGL5LdWF3\n"
+    "pLdjpJdrvd28goVDTysUTN2XAkpzr3HKG7EgRdKFBhizmuv1Qxz5u15aog1BnsLR\n"
+    "ziBTM1T3I0PwZuB2ngajoMoKRSDUvWBrtNcwcpG5UXT5Sy86zDIgwas1yoezsO0k\n"
+    "wRixswpcyyKmMEmDAqdFkGrEvMosxUX4vhFZWRk4Cd/4k8FpHlZBdZmLOCoqtZnY\n"
+    "riUpQVHiWGGoSlsipm6hyHhJrz+FAw7rTrGjJRaZyiqgYuIGglPQnjLkowHyG2VL\n"
+    "om9XUeiaX2SHHx6gHNfAYl9KBjM4w6rgzpGsstiMKu6KxKTwsgRbTzRiFkoL0DUp\n"
+    "IxD8DUqiTqEEp7vHA1qLxqILjIdcJCkhmSRlWJhHGhZ7uycpLVDYLqF2g8BFbE+I\n"
+    "KBlkF51phuoYW4bXpZoqCUMhTDnqjb9Q36AIJdp2kU0GBrB9gaFT0He5h2IK5GIn\n"
+    "qg50PyZp\n"
+    "-----END PUBLIC KEY-----\n";
+
+const char *bouncy_castle_mlkem_768_priv_expanded_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "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\n"
+    "drB5C6kc52uVVA3V9jomMufpdKNdVgjqHk4vWA==\n"
+    "-----END PRIVATE KEY-----\n";
+
+const char *bouncy_castle_mlkem_768_pub_pem_str =
+    "-----BEGIN PUBLIC KEY-----\n"
+    "MIIEsjALBglghkgBZQMEBAIDggShAL+iTbEENK8an4t0q47AObdlI0WMOQVxxYBB\n"
+    "izFVBdI2oRtSK2fmaYUZZmGUc834TuHJuiNRwKX0wwRwwNPQkZmgGbkZu2wmagby\n"
+    "XFRJSdYDq+OVSkSGBFLVeo6YhG3VsLSXQKUCDKLWw0LRx9MEwWThxE0YeH9HEr6U\n"
+    "H2rjykEKe3camweMSdW5qwO7Apl2iOigfK1hqb76iVAFibNCE35skD+GCk9oVgMq\n"
+    "lJ0oECPVhqFbXf9AP4j4rVxMVcHWaNgzQjKGYahamoK0YlcDYoEMc9USel02uDHo\n"
+    "xjejqV6mPNWmE0USfuDMYen3TFAAfW14xxtFcdPKlS4wmnDArB5nGbvsV5vGEyZF\n"
+    "sisQph4bJgLID8Y8SUjygZeMmWSmOQ9UB6MrApS2XQKFRcyylj3GGYpmN7UYj09h\n"
+    "gqjYLcvpPrjBqrXxXpNgt5DhNyJVGIsDMQsWl6dUw3O4dLOWSgrLgQRyuQlEY8e5\n"
+    "szViCcB1YwTZYC1RuofisRQsDTsAhU1JcZsGguJ4c0taObMncfI3mpFiJcirTNuS\n"
+    "OlR7oyDcOSA3aKE7puorRPdTbi0FMcD6fOsXgyFzHAOXS2KDvoOLRLUXcq0kTiGJ\n"
+    "CTFROT4YeP2Cmn5gIBV1Is+LvUIVEE5wCep3mUDskttsKcl3Rh0awZCRX8hSTuVi\n"
+    "T+fJcuTqKNawZntKx1zEEw4wKgtHqnirYvUwzEY7NOkQz6orsYpQhzfbozSJWVkF\n"
+    "JCLEH7goz9ZLWGr8BqCKn3WXDnT7XFr7rSZaX/q6mr7aJY3VGAViVDYBxMWFwtYw\n"
+    "JMKnRRnQt1X6l+GLgcAGXcsKpRAXmpYzlu7DAsPVQ674mXHBO/VjfqmyQVfkjzrq\n"
+    "wys2sAibKayKApJ4rjGSZ+azxI0lPBO5aFvwvdnmJBm7oTSykcAlri9Wn1lxtLiW\n"
+    "Zfmci/eWsCgYsy3mvhSimWgESJAwAunsa44YXiWRfVmpxfSjwGWolP8ZAtYlcHnA\n"
+    "lrFcJKHwgMvMP0KQEt7hvfRJuMTmF2RquNRCgcDHdwXXu5jVrM0cVvEAFjlCynT1\n"
+    "F8GYUww7aIiXsJt5D3TwDNR7JUvgz9IbDbGgFPE3aU/7InBWXaFQcY1pDM/HmAlb\n"
+    "WZbwbeKkWshggSgidOTwhMnMjQPVYaxMr0OcQBAYwBGguDJMjwF1tzG5rQerNxIl\n"
+    "SjN5euyYBtUJhsgor08AXr4IHExFj/LyFitkvrpXvnOjhNZWrcc3jyB8kGQDEIqy\n"
+    "zuFBHS2ZXpulnxkxGTFQO/N5k433ULThg5W4jrWYKZd0l/iVEknYFdWTzQeqRCdS\n"
+    "b4UGoGN3ObB6nVXRQM4MkXXmcc9SGRiZxXl0CGwCmAcIxtpCntxgfkJ4UbATNDLi\n"
+    "qsOqD42LTtYxo7QpepE0lJh6AiYkYZTbOx1RbzZICV6gJsCWtSRYLGnUaPvZDj80\n"
+    "MqZwn/8nRip6pZaJoH1KafsULir7opUjK04GKMvhnLclBtI4lpRSolNrGW/lVfaA\n"
+    "n8QLUMqiwEuVCQ6LPpkDk3EXFs/ERtpU8+ZOuHLg4EBAZcbwybrYGDjQ5TAoriVu\n"
+    "0KCMcW41\n"
+    "-----END PUBLIC KEY-----\n";
+
 struct KEMTestVector {
   int nid;
   const char *public_pem_str;
@@ -283,18 +434,22 @@ struct KEMTestVector {
 };
 
 static const KEMTestVector kemParameters[] = {
-    {NID_MLKEM512, mlkem_512_pub_pem_str,
-     mlkem_512_priv_expanded_pem_str, 800, 1632},
-    {NID_MLKEM768, mlkem_768_pub_pem_str,
-     mlkem_768_priv_expanded_pem_str, 1184, 2400},
-    {NID_MLKEM1024, mlkem_1024_pub_pem_str,
-     mlkem_1024_priv_expanded_pem_str, 1568, 3168},
+    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800,
+     1632},
+    {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184,
+     2400},
+    {NID_MLKEM1024, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str,
+     1568, 3168},
+    {NID_MLKEM512, bouncy_castle_mlkem_512_pub_pem_str,
+     bouncy_castle_mlkem_512_priv_expanded_pem_str, 800, 1632},
+    {NID_MLKEM768, bouncy_castle_mlkem_768_pub_pem_str,
+     bouncy_castle_mlkem_768_priv_expanded_str, 1184, 2400},
 };
 
 
 static bssl::UniquePtr<EVP_PKEY> generate_kem_key_pair(int nid) {
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
-  if (!ctx || !EVP_PKEY_CTX_kem_set_params(ctx.get(), nid) || 
+  if (!ctx || !EVP_PKEY_CTX_kem_set_params(ctx.get(), nid) ||
       !EVP_PKEY_keygen_init(ctx.get())) {
     return nullptr;
   }
@@ -367,14 +522,15 @@ TEST_P(KEMTest, PrivateKeyExpandedFormat) {
   bssl::UniquePtr<uint8_t> free_der(der);
 
   // Parse the PKCS#8 structure to verify the privateKey field contains
-  // the expandedKey format - AWS-LC currently only supports expandedKey encoding 
+  // the expandedKey format - AWS-LC currently only supports expandedKey
+  // encoding
   CBS pkcs8, algorithm, private_key;
   uint64_t version;
   CBS_init(&pkcs8, der, der_len);
 
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &pkcs8, CBS_ASN1_SEQUENCE));
   ASSERT_TRUE(CBS_get_asn1_uint64(&pkcs8, &version));
-  ASSERT_EQ(version, 0u);  
+  ASSERT_EQ(version, 0u);
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE));
   ASSERT_TRUE(CBS_get_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING));
 
@@ -454,12 +610,12 @@ TEST_P(KEMTest, ParseExamplePrivateKey) {
 // Invalid length test vectors - truncated DER structures
 static const uint8_t mlkem512_public_key_invalid_length[] = {
     0x30, 0x16, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-  0x04, 0x04, 0x01, 0x03, 0x07, 0x00, 0x39, 0x95, 0x5e, 0x59, 0x7d, 0x10};
+    0x04, 0x04, 0x01, 0x03, 0x07, 0x00, 0x39, 0x95, 0x5e, 0x59, 0x7d, 0x10};
 
 static const uint8_t mlkem512_private_key_invalid_length[] = {
-    0x30, 0x1c, 0x02, 0x01, 0x00, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48,
-  0x01, 0x65, 0x03, 0x04, 0x04, 0x01, 0x04, 0x0a, 0x04, 0x08, 0x70, 0x55,
-  0x4f, 0xd4, 0x36, 0x34, 0x4f, 0x27};
+    0x30, 0x1c, 0x02, 0x01, 0x00, 0x30, 0x0b, 0x06, 0x09, 0x60,
+    0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04, 0x01, 0x04, 0x0a,
+    0x04, 0x08, 0x70, 0x55, 0x4f, 0xd4, 0x36, 0x34, 0x4f, 0x27};
 
 TEST(KEMTest, ParsePublicKeyInvalidLength) {
   CBS cbs;
@@ -477,5 +633,4 @@ TEST(KEMTest, ParsePrivateKeyInvalidLength) {
   bssl::UniquePtr<EVP_PKEY> private_pkey_from_der(EVP_parse_private_key(&cbs));
   ASSERT_FALSE(private_pkey_from_der.get());
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_INVALID_BUFFER_SIZE);
-
 }

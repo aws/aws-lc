@@ -135,13 +135,13 @@ static int kem_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
   // section 4.
   CBB spki, algorithm, oid, key_bitstring;
-  if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, kem->oid, kem->oid_len) ||
-      !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
-      !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
-      !CBB_add_bytes(&key_bitstring, key->public_key, kem->public_key_len) ||
+  if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) || // SubjectPublicKeyInfo SEQUENCE
+      !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) || // algorithm: AlgorithmIdentifier SEQUENCE
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) || // OBJECT IDENTIFIER
+      !CBB_add_bytes(&oid, kem->oid, kem->oid_len) || // OID bytes for id-alg-ml-kem-512/768/1024, params must be absent per standard
+      !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) || // subjectPublicKey: BIT STRING
+      !CBB_add_u8(&key_bitstring, 0 /* padding */) || // 0 unused bits (ML-KEM public keys are complete octets) 
+      !CBB_add_bytes(&key_bitstring, key->public_key, kem->public_key_len) || // Raw ML-KEM public key
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
@@ -178,8 +178,9 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
     return 0;
   }
 
-  // Only support expandedKey OCTET STRING format
-  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // At the moment, we only support expandedKey format from
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates.
+  // TODO(awslc): add support for "seed" and "both" formats.
   if (!CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -209,14 +210,14 @@ static int kem_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
   // section 6.
   CBB pkcs8, algorithm, oid, private_key, expanded_key;
-  if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
+  if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) || // OneAsymmetricKey SEQUENCE
       !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
-      !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, kem->oid, kem->oid_len) ||
-      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&expanded_key, key->secret_key, kem->secret_key_len) ||
+      !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) || // privateKeyAlgorithm: SEQUENCE
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) || // algorithm: OBJECT IDENTIFIER
+      !CBB_add_bytes(&oid, kem->oid, kem->oid_len) || // OID bytes for id-alg-ml-kem-512/768/1024
+      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) || // // privateKey: OCTET STRING (outer container)
+      !CBB_add_asn1(&private_key, &expanded_key, CBS_ASN1_OCTETSTRING) || // expandedKey CHOICE variant, AWS-LC uses expandedKey for the moment
+      !CBB_add_bytes(&expanded_key, key->secret_key, kem->secret_key_len) || // raw private key 
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
