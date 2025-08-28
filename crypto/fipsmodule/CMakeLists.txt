@@ -402,12 +402,16 @@ if(FIPS_DELOCATE)
   # Listify the current arguments
   separate_arguments(BCM_ALL_FLAGS UNIX_COMMAND "${CMAKE_C_FLAGS}")
 
-  # Compilation flags + defines + include dirs
+  # Compilation flags + defines + include dirs + target
   list(APPEND BCM_ALL_FLAGS "-fPIC" "-DBORINGSSL_IMPLEMENTATION" "-DS2N_BN_HIDE_SYMBOLS" "-DBORINGSSL_FIPS")
   list(APPEND BCM_ALL_FLAGS "-I${AWSLC_SOURCE_DIR}/include" "-I${S2N_BIGNUM_INCLUDE_DIR}")
   list(APPEND BCM_ALL_FLAGS "${TARGET}")
   if (TEST_SYSGENID_PATH)
     list(APPEND BCM_ALL_FLAGS "-DAWSLC_SNAPSAFE_TESTING=1" -DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+  endif()
+
+  if(CMAKE_C_STANDARD)
+    list(APPEND BCM_ALL_FLAGS "-std=c${CMAKE_C_STANDARD}")
   endif()
 
   if(CMAKE_C_STANDARD)
