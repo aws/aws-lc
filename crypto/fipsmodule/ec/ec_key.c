@@ -122,6 +122,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
+  ret->group_decoded_from_explicit_params = 0;
 
   CRYPTO_new_ex_data(&ret->ex_data);
 
@@ -192,6 +193,7 @@ EC_KEY *EC_KEY_dup(const EC_KEY *src) {
 
   ret->enc_flag = src->enc_flag;
   ret->conv_form = src->conv_form;
+  ret->group_decoded_from_explicit_params = src->group_decoded_from_explicit_params;
   return ret;
 }
 
@@ -652,4 +654,8 @@ int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags) {
 
   meth->flags |= flags;
   return 1;
+}
+
+int EC_KEY_decoded_from_explicit_params(const EC_KEY *key) {
+  return key->group_decoded_from_explicit_params;
 }

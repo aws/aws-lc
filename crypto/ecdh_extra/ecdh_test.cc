@@ -287,6 +287,12 @@ static void RunWycheproofTest(FileTest *t) {
   ASSERT_TRUE(peer_ec);
   OPENSSL_BEGIN_ALLOW_DEPRECATED
   ASSERT_EQ(peer_ec, EVP_PKEY_get0(peer_evp.get()));
+  if (std::find(result.flags.begin(), result.flags.end(), "UnnamedCurve") !=
+      result.flags.end()) {
+    ASSERT_EQ(1, EC_KEY_decoded_from_explicit_params(peer_ec));
+  } else {
+    ASSERT_EQ(0, EC_KEY_decoded_from_explicit_params(peer_ec));
+  }
   OPENSSL_END_ALLOW_DEPRECATED
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
   ASSERT_TRUE(key);

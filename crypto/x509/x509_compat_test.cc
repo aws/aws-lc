@@ -1912,7 +1912,7 @@ Certificate:
         02:21:00:f5:77:2c:9d:23:6d:71:69:4d:93:eb:7e:fd:a5:17:
         24:37:ee:97:01:4f:1c:54:09:cd:3d:87:e9:1d:da:5f:7e
 */
-static char kFoo[] = R"(
+static char kWildCardCommonNameAndSubjAlt[] = R"(
 -----BEGIN CERTIFICATE-----
 MIICsDCCAlagAwIBAgIUE8Fj5wNvoyasMXGp/q2mNCCUvzowCgYIKoZIzj0EAwIw
 YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
@@ -1929,6 +1929,98 @@ c3QuZXhhbXBsZS5jb20wHQYDVR0OBBYEFMh4ZOn3nA9W4h3O7u0k4J8dS6O/MB8G
 A1UdIwQYMBaAFBkZ4YwJ4l1cFgThnHRmGf24UlvfMAoGCCqGSM49BAMCA0gAMEUC
 IBO8bJw7jseV558xCN1/bOqXTikBcrWcRfEpvNfOOVohAiEA9XcsnSNtcWlNk+t+
 /aUXJDfulwFPHFQJzT2H6R3aX34=
+-----END CERTIFICATE-----
+)";
+
+/*
+This certificate uses the |EE_KEY_1| key but uses the explicit curve
+parameters rather then the prime256v1 curve identifier.
+
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            07:52:c5:b3:fd:bd:67:6b:68:bf:ff:2e:ab:a5:81:31:d1:58:86:0f
+        Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=US, ST=Washington, O=AWS Libcrypto, OU=Good CA, CN=Root CA 1
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: C=US, ST=Washington, O=AWS Libcrypto, OU=Bad Endpoint, CN=rfc5480 specifiedCurve MUST NOT be used in PKIX
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:c2:a9:7a:df:6d:d4:e3:16:29:b3:74:11:f1:8f:
+                    bd:44:8d:c7:3f:b2:d7:9a:e7:10:14:ff:1c:4a:fa:
+                    ce:fb:c9:7c:c1:e6:57:f2:ff:31:1b:71:8c:6e:3a:
+                    b9:f0:1e:b5:ac:5f:db:2e:81:68:02:cb:be:19:44:
+                    d5:89:3d:30:d6
+                Field Type: prime-field
+                Prime:
+                    00:ff:ff:ff:ff:00:00:00:01:00:00:00:00:00:00:
+                    00:00:00:00:00:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:
+                    ff:ff:ff
+                A:   
+                    00:ff:ff:ff:ff:00:00:00:01:00:00:00:00:00:00:
+                    00:00:00:00:00:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:
+                    ff:ff:fc
+                B:   
+                    5a:c6:35:d8:aa:3a:93:e7:b3:eb:bd:55:76:98:86:
+                    bc:65:1d:06:b0:cc:53:b0:f6:3b:ce:3c:3e:27:d2:
+                    60:4b
+                Generator (uncompressed):
+                    04:6b:17:d1:f2:e1:2c:42:47:f8:bc:e6:e5:63:a4:
+                    40:f2:77:03:7d:81:2d:eb:33:a0:f4:a1:39:45:d8:
+                    98:c2:96:4f:e3:42:e2:fe:1a:7f:9b:8e:e7:eb:4a:
+                    7c:0f:9e:16:2b:ce:33:57:6b:31:5e:ce:cb:b6:40:
+                    68:37:bf:51:f5
+                Order: 
+                    00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:
+                    ff:ff:bc:e6:fa:ad:a7:17:9e:84:f3:b9:ca:c2:fc:
+                    63:25:51
+                Cofactor:  1 (0x1)
+                Seed:
+                    c4:9d:36:08:86:e7:04:93:6a:66:78:e1:13:9d:26:
+                    b7:81:9f:7e:90
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication
+            X509v3 Subject Alternative Name: 
+                DNS:example.com
+            X509v3 Subject Key Identifier: 
+                19:19:E1:8C:09:E2:5D:5C:16:04:E1:9C:74:66:19:FD:B8:52:5B:DF
+    Signature Algorithm: ecdsa-with-SHA256
+    Signature Value:
+        30:45:02:20:3e:3e:8b:43:6b:9b:dd:7e:c7:45:24:94:47:28:
+        04:ac:2a:4c:22:a8:3b:74:1d:c6:0f:10:38:fe:11:0b:34:1e:
+        02:21:00:eb:8d:66:70:e2:2c:76:2b:a2:a3:38:e9:10:51:1c:
+        e8:89:82:7e:ce:80:a1:fd:f2:ca:06:60:d0:e6:1e:49:f8
+*/
+static char kLeafCertificateWithExplicitECParams[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIDUDCCAvagAwIBAgIUB1LFs/29Z2tov/8uq6WBMdFYhg8wCgYIKoZIzj0EAwIw
+YDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xFjAUBgNVBAoMDUFX
+UyBMaWJjcnlwdG8xEDAOBgNVBAsMB0dvb2QgQ0ExEjAQBgNVBAMMCVJvb3QgQ0Eg
+MTAgFw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowgYsxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRYwFAYDVQQKDA1BV1MgTGliY3J5cHRv
+MRUwEwYDVQQLDAxCYWQgRW5kcG9pbnQxODA2BgNVBAMML3JmYzU0ODAgc3BlY2lm
+aWVkQ3VydmUgTVVTVCBOT1QgYmUgdXNlZCBpbiBQS0lYMIIBSzCCAQMGByqGSM49
+AgEwgfcCAQEwLAYHKoZIzj0BAQIhAP////8AAAABAAAAAAAAAAAAAAAA////////
+////////MFsEIP////8AAAABAAAAAAAAAAAAAAAA///////////////8BCBaxjXY
+qjqT57PrvVV2mIa8ZR0GsMxTsPY7zjw+J9JgSwMVAMSdNgiG5wSTamZ44ROdJreB
+n36QBEEEaxfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5RdiYwpZP40Li/hp/m47n
+60p8D54WK84zV2sxXs7LtkBoN79R9QIhAP////8AAAAA//////////+85vqtpxee
+hPO5ysL8YyVRAgEBA0IABMKpet9t1OMWKbN0EfGPvUSNxz+y15rnEBT/HEr6zvvJ
+fMHmV/L/MRtxjG46ufAetaxf2y6BaALLvhlE1Yk9MNajbDBqMA4GA1UdDwEB/wQE
+AwIHgDAMBgNVHRMBAf8EAjAAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBYGA1UdEQQP
+MA2CC2V4YW1wbGUuY29tMB0GA1UdDgQWBBQZGeGMCeJdXBYE4Zx0Zhn9uFJb3zAK
+BggqhkjOPQQDAgNIADBFAiA+PotDa5vdfsdFJJRHKASsKkwiqDt0HcYPEDj+EQs0
+HgIhAOuNZnDiLHYroqM46RBRHOiJgn7OgKH98soGYNDmHkn4
 -----END CERTIFICATE-----
 )";
 
@@ -2434,7 +2526,7 @@ TEST(X509CompatTest, CommonNameToDNS) {
 TEST(X509CompatTest, WildcardNameBehaviors) {
   bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
   ASSERT_TRUE(root);
-  bssl::UniquePtr<X509> leaf = CertFromPEM(kFoo);
+  bssl::UniquePtr<X509> leaf = CertFromPEM(kWildCardCommonNameAndSubjAlt);
   ASSERT_TRUE(leaf);
 
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
@@ -2547,4 +2639,29 @@ TEST(X509CompatTest, WildcardNameBehaviors) {
                      char host[] = ".baz.example.org";
                      X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
                    }));
+}
+
+TEST(X509CompatTest, LeafCertificateWithExplicitECParams) {
+    bssl::UniquePtr<X509> root = CertFromPEM(kValidRootCA1);
+    ASSERT_TRUE(root);
+    bssl::UniquePtr<X509> leaf = CertFromPEM(kLeafCertificateWithExplicitECParams);
+    ASSERT_TRUE(leaf);
+
+    const char host[] = "example.com";
+
+    EXPECT_EQ(
+        X509_V_ERR_EC_KEY_EXPLICIT_PARAMS,
+        Verify(leaf.get(), /*roots=*/{root.get()},
+               /*intermediates=*/{},
+               /*crls=*/{}, /*flags=*/0));
+
+    EXPECT_EQ(
+        X509_V_OK,
+        Verify(leaf.get(), /*roots=*/{root.get()},
+               /*intermediates=*/{},
+               /*crls=*/{}, /*flags=*/0, [&host](X509_STORE_CTX *ctx) {
+                 X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                 X509_VERIFY_PARAM_set1_host(param, host, sizeof(host) - 1);
+                 X509_VERIFY_PARAM_enable_ec_key_explicit_params(param);
+               }));
 }
