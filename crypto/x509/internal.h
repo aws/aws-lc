@@ -268,6 +268,7 @@ struct X509_VERIFY_PARAM_st {
   unsigned char *ip;     // If not NULL IP address to match
   size_t iplen;          // Length of IP address
   unsigned char poison;  // Fail all verifications at name checking
+  uint64_t awslc_flags;
 } /* X509_VERIFY_PARAM */;
 
 struct x509_object_st {
@@ -368,6 +369,10 @@ struct x509_store_ctx_st {
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
+
+#define FLAG_BIT(n)  ((uint64_t)1 << (uint64_t)n)
+
+#define AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS FLAG_BIT(0)
 
 void X509_OBJECT_free_contents(X509_OBJECT *a);
 

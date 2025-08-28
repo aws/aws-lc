@@ -4923,26 +4923,38 @@ TEST(X509Test, SignatureVerification) {
                    X509_V_FLAG_PARTIAL_CHAIN));
 
   // Bad keys in the root and intermediate are rejected.
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.bad_key.get()},
                    {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.bad_key_type.get()},
                    {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.valid.get()},
                    {intermediate.bad_key.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.valid.get()},
                    {intermediate.bad_key_type.get()}, {}));
 
   // Bad keys in the leaf are rejected.
-  EXPECT_EQ(X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.bad_key.get(), {root.valid.get()},
                    {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
+            Verify(leaf.bad_key.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}, 0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_enable_ec_key_explicit_params(param);
+                   }));
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.bad_key_type.get(), {root.valid.get()},
                    {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
+            Verify(leaf.bad_key_type.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}, 0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_enable_ec_key_explicit_params(param);
+                   }));
 
   // At the time we go to verify signatures, it is possible that we have a
   // single-element certificate chain with a certificate that isn't self-signed.

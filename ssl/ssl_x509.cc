@@ -1588,7 +1588,7 @@ int SSL_alert_from_verify_result(long result) {
       return SSL_AD_HANDSHAKE_FAILURE;
 
     case X509_V_ERR_INVALID_PURPOSE:
-    case X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY:
+    case X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY:
       return SSL_AD_UNSUPPORTED_CERTIFICATE;
 
     default:

@@ -633,6 +633,28 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
   return 1;
 }
 
+static int check_curve(X509 *x) {
+  EVP_PKEY *pkey = X509_get0_pubkey(x);
+  if (!pkey) {
+    return -1;
+  }
+
+  if (EVP_PKEY_id(pkey) != EVP_PKEY_EC) {
+    return 1;
+  }
+
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (ec_key == NULL) {
+    return -1;
+  }
+
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  int is_explicit = EC_KEY_decoded_from_explicit_params(ec_key);
+  OPENSSL_END_ALLOW_DEPRECATED
+
+  return !is_explicit;
+}
+
 // Check a certificate chains extensions for consistency with the supplied
 // purpose
 
@@ -657,6 +679,31 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       ctx->current_cert = x;
       ok = call_verify_cb(0, ctx);
       if (!ok) {
+        goto end;
+      }
+    }
+
+    if (num > 1 && (ctx->param->awslc_flags&AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS) == 0) {
+      // In OpenSSL 1.1.1 this check was done if |X509_V_FLAG_X509_STRICT| was enabled.
+      // We did not perform this check explicitly before, but the behavior was baked into
+      // SPKI with explicit parameters not being parsed for elliptic curve key types.
+      //
+      // A conforming public CA should not issue certificate with explicitly encoded parameters for
+      // EC keys, but for privately operated CA's this could be doing so still. To be backwards
+      // compatible with OpenSSL 1.1.1 we have added support for parsing SPKI with explicit parameters,
+      // so we have added a new option for enabling this during chain validation.
+      int ret = check_curve(x);
+      if (ret < 0) {
+        ctx->error = X509_V_ERR_UNSPECIFIED;
+        ctx->error_depth = i;
+        ctx->current_cert = x;
+        ok = 0;
+        goto end;
+      } else if (ret == 0) {
+        ctx->error = X509_V_ERR_EC_KEY_EXPLICIT_PARAMS;
+        ctx->error_depth = i;
+        ctx->current_cert = x;
+        ok = 0;
         goto end;
       }
     }
@@ -1508,12 +1555,15 @@ static int internal_verify(X509_STORE_CTX *ctx) {
 
   // Check that the final certificate subject (leaf)
   // has a public key we actually support. Otherwise
-  // we shouldn't consider the certificate okay.
+  // we shouldn't consider the certificate okay. It is possible
+  // for it to be reject sooner during |check_chain_extensions| as well
+  // but disabling certain checks can result in an unuseable leaf certificate
+  // making it to this point.
   //
   // This covers situations like invalid curves or points.
   EVP_PKEY *pkey = X509_get0_pubkey(xs);
   if(pkey == NULL) {
-    ctx->error = X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
+    ctx->error = X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
     ctx->current_cert = xi;
     ok = 0;
     goto end;

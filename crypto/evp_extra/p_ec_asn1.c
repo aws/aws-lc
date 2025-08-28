@@ -63,6 +63,7 @@
 #include <openssl/err.h>
 
 #include "../fipsmodule/evp/internal.h"
+#include "../ec_extra/internal.h"
 #include "internal.h"
 
 
@@ -97,8 +98,11 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
   EC_POINT *point = NULL;
   EC_KEY *eckey = NULL;
 
-  const EC_GROUP *group = EC_KEY_parse_parameters(params);
-  if (group == NULL || CBS_len(params) != 0) {
+  enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
+
+  const EC_GROUP *group = EC_KEY_maybe_parse_parameters(params, &paramType);
+  if (group == NULL || CBS_len(params) != 0 ||
+      paramType == UNKNOWN_EC_PARAMETERS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
@@ -113,6 +117,12 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
       !EC_POINT_oct2point(group, point, CBS_data(key), CBS_len(key), NULL) ||
       !EC_KEY_set_public_key(eckey, point)) {
     goto err;
+  }
+
+  if(paramType == SPECIFIED_CURVE_EC_PARAMETERS) {
+    eckey->group_decoded_from_explicit_params = 1;
+  } else {
+    eckey->group_decoded_from_explicit_params = 0;
   }
 
   EC_POINT_free(point);
@@ -147,8 +157,10 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
     return 0;
   }
 
-  const EC_GROUP *group = EC_KEY_parse_parameters(params);
-  if (group == NULL || CBS_len(params) != 0) {
+  enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
+
+  const EC_GROUP *group = EC_KEY_maybe_parse_parameters(params, &paramType);
+  if (group == NULL || CBS_len(params) != 0 || paramType == UNKNOWN_EC_PARAMETERS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -158,6 +170,10 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     EC_KEY_free(ec_key);
     return 0;
+  }
+
+  if (paramType == SPECIFIED_CURVE_EC_PARAMETERS) {
+    ec_key->group_decoded_from_explicit_params = 1;
   }
 
   EVP_PKEY_assign_EC_KEY(out, ec_key);

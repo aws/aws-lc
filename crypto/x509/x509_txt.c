@@ -179,8 +179,10 @@ const char *X509_verify_cert_error_string(long err) {
       return "Invalid certificate verification context";
     case X509_V_ERR_STORE_LOOKUP:
       return "Issuer certificate lookup error";
-    case X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY:
+    case X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY:
       return "Unable to get leaf certificate's public key";
+    case X509_V_ERR_EC_KEY_EXPLICIT_PARAMS:
+      return "Certificate public key has explicit ECC parameters";
 
     default:
       return "unknown certificate verification error";
