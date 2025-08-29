@@ -11,6 +11,8 @@
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/kem/internal.h"
 #include "../test/test_util.h"
+#include <openssl/experimental/kem_deterministic_api.h>
+
 
 // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
 // All example keys are from Appendix C in the above standard
@@ -429,21 +431,25 @@ struct KEMTestVector {
   int nid;
   const char *public_pem_str;
   const char *private_pem_expanded_str;
+  const char *expected_deterministic_pub_pem;
+  const char *expected_deterministic_priv_pem;
   size_t public_key_len;
   size_t secret_key_len;
 };
 
 static const KEMTestVector kemParameters[] = {
-    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800,
-     1632},
-    {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184,
-     2400},
+    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 
+     mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+    {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str,
+     mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
     {NID_MLKEM1024, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str,
-     1568, 3168},
+     mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
     {NID_MLKEM512, bouncy_castle_mlkem_512_pub_pem_str,
-     bouncy_castle_mlkem_512_priv_expanded_pem_str, 800, 1632},
+     bouncy_castle_mlkem_512_priv_expanded_pem_str, 
+     mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
     {NID_MLKEM768, bouncy_castle_mlkem_768_pub_pem_str,
-     bouncy_castle_mlkem_768_priv_expanded_str, 1184, 2400},
+     bouncy_castle_mlkem_768_priv_expanded_str,
+     mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
 };
 
 
@@ -633,4 +639,83 @@ TEST(KEMTest, ParsePrivateKeyInvalidLength) {
   bssl::UniquePtr<EVP_PKEY> private_pkey_from_der(EVP_parse_private_key(&cbs));
   ASSERT_FALSE(private_pkey_from_der.get());
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), EVP_R_INVALID_BUFFER_SIZE);
+}
+
+
+// Verifies that deterministic ML-KEM key generation with the fixed seed from the IETF standard produces keys that exactly
+// match the expected PEM strings from the standard. 
+// The expected PEM strings from the given seed are fields at the top (mlkem_XXX_pub/priv_pem_str)
+// See Appendix C.1 in https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/ for the seed value
+TEST_P(KEMTest, DeterministicKeyMarshaling) {
+  const KEMTestVector& test = GetParam();
+  
+  // ---- 1. Setup phase: create context and set parameters ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), test.nid));
+
+  // ---- 2. Create deterministic seed: 00 01 02 ... 3f (64 consecutive bytes) ----
+  // Seed is specified in Appendix C.1 in https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  std::vector<uint8_t> keygen_seed(64);
+  for (size_t i = 0; i < 64; i++) {
+    keygen_seed[i] = static_cast<uint8_t>(i);  // seed is a sequence - 00, 01, 02, ... 3f (from above standard)
+  }
+  size_t seed_len = keygen_seed.size();
+
+  // ---- 3. Generate deterministic keypair ----
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
+                                           keygen_seed.data(), &seed_len));
+  ASSERT_TRUE(raw);
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+  // ---- 4. Marshal generated public key to DER ----
+  bssl::ScopedCBB public_cbb;
+  ASSERT_TRUE(CBB_init(public_cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_public_key(public_cbb.get(), pkey.get()));
+
+  uint8_t *generated_pub_der;
+  size_t generated_pub_der_len;
+  ASSERT_TRUE(CBB_finish(public_cbb.get(), &generated_pub_der, &generated_pub_der_len));
+  bssl::UniquePtr<uint8_t> generated_pub_der_ptr(generated_pub_der);
+
+  // ---- 5. Convert expected public PEM to DER ----
+  uint8_t *expected_pub_der = nullptr;
+  long expected_pub_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.expected_deterministic_pub_pem, &expected_pub_der, &expected_pub_der_len));
+  bssl::UniquePtr<uint8_t> expected_pub_der_ptr(expected_pub_der);
+
+  // ---- 6. Compare public key DERs ----
+  EXPECT_EQ(generated_pub_der_len, static_cast<size_t>(expected_pub_der_len))
+      << "Public key DER length mismatch";
+  EXPECT_EQ(Bytes(generated_pub_der, generated_pub_der_len),
+            Bytes(expected_pub_der, expected_pub_der_len))
+      << "Public key DER content mismatch";
+
+  // ---- 7. Marshal generated private key to DER ----
+  bssl::ScopedCBB private_cbb;
+  ASSERT_TRUE(CBB_init(private_cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(private_cbb.get(), pkey.get()));
+
+  uint8_t *generated_priv_der;
+  size_t generated_priv_der_len;
+  ASSERT_TRUE(CBB_finish(private_cbb.get(), &generated_priv_der, &generated_priv_der_len));
+  bssl::UniquePtr<uint8_t> generated_priv_der_ptr(generated_priv_der);
+
+  // ---- 8. Convert expected private PEM to DER ----
+  uint8_t *expected_priv_der = nullptr;
+  long expected_priv_der_len = 0;
+  ASSERT_TRUE(PEM_to_DER(test.expected_deterministic_priv_pem, &expected_priv_der, &expected_priv_der_len));
+  bssl::UniquePtr<uint8_t> expected_priv_der_ptr(expected_priv_der);
+
+  // ---- 9. Compare private key DERs ----
+  EXPECT_EQ(generated_priv_der_len, static_cast<size_t>(expected_priv_der_len))
+      << "Private key DER length mismatch";
+  EXPECT_EQ(Bytes(generated_priv_der, generated_priv_der_len),
+            Bytes(expected_priv_der, expected_priv_der_len))
+      << "Private key DER content mismatch";
+
+  // ---- 10. Verify private key DER is larger than public key DER ----
+  EXPECT_GT(generated_priv_der_len, generated_pub_der_len);
 }
