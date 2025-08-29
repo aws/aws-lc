@@ -44,3 +44,4 @@ symbols.txt
 /CMakePresets.json
 /compile_commands.json
 /scratch
+awslcTestTmpFile*
