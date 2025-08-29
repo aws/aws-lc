@@ -321,11 +321,13 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
+#if defined(OPENSSL_AARCH64)
 static void keccak_log_dispatch(size_t id) {
 #if BORINGSSL_DISPATCH_TEST
     BORINGSSL_function_hit[id] = 1;
 #endif
 }
+#endif
 
 void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // Dispatch logic for Keccak-x1 on AArch64:
@@ -349,7 +351,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // Neoverse V1 and V2 do support SHA3 instructions, but they are only
     // implemented on 1/4 of Neon units, and are thus slower than a scalar
     // implementation.
-
+#if defined(OPENSSL_AARCH64)
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
     if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
         keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
@@ -368,6 +370,11 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
 
     keccak_log_dispatch(9); // kFlag_KeccakF1600_hw
     KeccakF1600_hw((uint64_t *) A);
+
+#elif defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) && \
+    defined(KECCAK1600_S2N_BIGNUM_ASM)
+    sha3_keccak_f1600((uint64_t *)A, iotas);
+#endif
 }
 
 #else // KECCAK1600_ASM
@@ -419,8 +426,7 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     //   which is a straightforward implementation using the SHA3 extension.
     // - Otherwise, fall back to four times the 1-fold Keccak implementation
     //   (which has its own dispatch logic).
-
-#if defined(KECCAK1600_S2N_BIGNUM_ASM)
+#if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_AARCH64)
     if (CRYPTO_is_Neoverse_N1()) {
         keccak_log_dispatch(13); // kFlag_sha3_keccak4_f1600_alt
         sha3_keccak4_f1600_alt((uint64_t *)A, iotas);

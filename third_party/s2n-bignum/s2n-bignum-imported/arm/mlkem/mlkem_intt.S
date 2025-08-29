@@ -15,7 +15,8 @@
 // tables of constants whose definitions can be found in the mlkem-native
 // repo (mlkem/native/aarch64/src/aarch64_zetas.c) or our "tests/test.c".
 //
-// extern void mlkem_intt(int16_t a[256],const int16_t z_01234[80],const int16_t z_56[384]);
+// extern void mlkem_intt(int16_t a[static 256],const int16_t z_01234[static 80],
+//                        const int16_t z_56[static 384]);
 //
 // Standard ARM ABI: X0 = a, X1 = z_01234, X2 = z_56
 // ----------------------------------------------------------------------------

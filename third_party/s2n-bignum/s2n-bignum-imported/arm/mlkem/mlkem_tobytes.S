@@ -10,7 +10,7 @@
 // 0 <= a[i] < 2^12 (typically they will be < 3329, the ML-KEM prime).
 // It packs them into the output array as 12-bit unsigned numbers.
 //
-// extern void mlkem_tobytes(uint8_t r[384],const int16_t a[256]);
+// extern void mlkem_tobytes(uint8_t r[static 384],const int16_t a[static 256]);
 //
 // Standard ARM ABI: X0 = r, X1 = a
 // ----------------------------------------------------------------------------
