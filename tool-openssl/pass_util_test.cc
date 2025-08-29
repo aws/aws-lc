@@ -493,7 +493,7 @@ TEST_F(PassUtilTest, StdinExtraction) {
   int old_stdin = dup(STDIN_FILENO);
   dup2(pipefd[0], STDIN_FILENO);
   
-  write(pipefd[1], "stdinpass\n", 10);
+  ASSERT_EQ(write(pipefd[1], "stdinpass\n", 10), 10);
   close(pipefd[1]);
   
   bssl::UniquePtr<std::string> source(new std::string("stdin"));
@@ -512,7 +512,7 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   int old_stdin = dup(STDIN_FILENO);
   dup2(pipefd[0], STDIN_FILENO);
   
-  write(pipefd[1], "firstpass\nsecondpass\n", 20);
+  ASSERT_EQ(write(pipefd[1], "firstpass\nsecondpass\n", 20), 20);
   close(pipefd[1]);
   
   bssl::UniquePtr<std::string> passin(new std::string("stdin"));
