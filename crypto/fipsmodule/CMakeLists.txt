@@ -271,8 +271,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_byte_alt.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_byte.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_byte_alt.S
-                #${S2N_BIGNUM_DIR}/aes/aes-xts-enc-armv8.S
-                #${S2N_BIGNUM_DIR}/aes/aes-xts-dec-armv8.S
     )
 
     # Big integer arithmetics using s2n-bignum
@@ -333,9 +331,10 @@ endif()
 
 # Attempt to include files in Windows AArch64
 if(ARCH STREQUAL "aarch64")
+  set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
   list(APPEND BCM_ASM_SOURCES
-          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes/aes-xts-enc-armv8.S
-          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes/aes-xts-dec-armv8.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes/aes-xts-enc.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes/aes-xts-dec.S
   )
 endif()
 

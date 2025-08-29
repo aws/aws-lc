@@ -1,21 +1,9 @@
-// Auto-added during import for AWS-LC symbol prefixing support
-#include <openssl/boringssl_prefix_symbols_asm.h>
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
+
 #include <openssl/asm_base.h>
-
-#ifdef __APPLE__
-#   define S2N_BN_SYMBOL(NAME) _##NAME
-#   if defined(__AARCH64EL__) || defined(__ARMEL__)
-#     define __LF %%
-#   else
-#     define __LF ;
-#   endif
-#else
-#   define S2N_BN_SYMBOL(name) name
-#   define __LF ;
-#endif
-
-#define S2N_BN_SYM_VISIBILITY_DIRECTIVE(name) .globl S2N_BN_SYMBOL(name)
-#define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
+// Auto-added during import for AWS-LC symbol prefixing support
+#include "_internal_s2n_bignum.h"
 
         .arch	armv8-a+crypto
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(aes_hw_xts_decrypt)
@@ -85,7 +73,7 @@ S2N_BN_SYMBOL(aes_hw_xts_decrypt):
 
         cmp    x2,#16
         // Original input data size bigger than 16, jump to big size processing.
-        b.lt    Lxts_dec_abort
+        b.lt    .Lxts_dec_abort
 
 .align 5
 Lxts_dec_big_size:  // decrypt input size >= 16 bytes
@@ -621,7 +609,7 @@ Lxts_dec_tail1x:
 
 Lxts_dec_done:
         tst    x21,#0xf
-        b.eq    Lxts_dec_abort
+        b.eq    .Lxts_dec_abort
         // Processing the last 1 block and a tail with cipher stealing.
         // At this point, we know there is 1 block+tail
         // We need two tweaks, one is already calculated and stored in v6
@@ -698,7 +686,7 @@ Lxts_dec_done:
         eor    v26.16b,v26.16b,v6.16b
         st1    {v26.16b},[x1]
 
-Lxts_dec_abort:
+.Lxts_dec_abort:
         restore_vregs
         restore_regs
         add sp, sp, #STACK_SIZE

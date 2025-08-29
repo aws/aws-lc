@@ -1,22 +1,9 @@
-// Auto-added during import for AWS-LC symbol prefixing support
-#include <openssl/boringssl_prefix_symbols_asm.h>
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
+
 #include <openssl/asm_base.h>
-
-#ifdef __APPLE__
-#   define S2N_BN_SYMBOL(NAME) _##NAME
-#   if defined(__AARCH64EL__) || defined(__ARMEL__)
-#     define __LF %%
-#   else
-#     define __LF ;
-#   endif
-#else
-#   define S2N_BN_SYMBOL(name) name
-#   define __LF ;
-#endif
-
-#define S2N_BN_SYM_VISIBILITY_DIRECTIVE(name) .globl S2N_BN_SYMBOL(name)
-#define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
-
+// Auto-added during import for AWS-LC symbol prefixing support
+#include "_internal_s2n_bignum.h"
 
         .arch	armv8-a+crypto
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(aes_hw_xts_encrypt)
@@ -81,7 +68,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         udiv_by_80(x2, x8) // Number of 5x-unrolled iterations
 
         cmp   x2, #16 // AES-XTS needs at least one block
-        b.lt  Lxts_abort
+        b.lt  .Lxts_enc_abort
 .align  4
 Lxts_enc_big_size:  // Encrypt input size >= 16 bytes
         and  x21, x2, #0xf    // store the tail value of length%16
@@ -613,7 +600,7 @@ Lxts_enc_tail1x:
 Lxts_enc_done:
         // Process the tail block with cipher stealing.
         tst  x21,#0xf
-        b.eq  Lxts_abort
+        b.eq  .Lxts_enc_abort
 
         mov  x20,x0
         mov  x13,x1
@@ -649,10 +636,8 @@ Loop_final_enc:
         eor  v26.16b,v26.16b,v6.16b
         st1  {v26.16b},[x1]
 
-Lxts_abort:
+.Lxts_enc_abort:
         restore_regs
-
-Lxts_enc_final_abort:
         restore_vregs
         add sp, sp, #STACK_SIZE
         ret
