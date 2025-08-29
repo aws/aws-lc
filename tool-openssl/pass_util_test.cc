@@ -7,6 +7,10 @@
 #include <openssl/mem.h>
 #include <openssl/pem.h>
 #include <string>
+#ifndef _WIN32
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 #ifdef _WIN32
 #include <stdlib.h>  // for _putenv_s
 #endif
@@ -459,4 +463,66 @@ TEST_F(PassUtilTest, ExtractPasswordsSameFileEdgeCases) {
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(*passin, "line1");
   EXPECT_EQ(*passout, "line2");
+}
+
+#ifndef _WIN32
+TEST_F(PassUtilTest, FdExtraction) {
+  int fd = open(pass_path, O_RDONLY);
+  ASSERT_GE(fd, 0);
+  
+  std::string fd_source = "fd:" + std::to_string(fd);
+  bssl::UniquePtr<std::string> source(new std::string(fd_source));
+  
+  EXPECT_TRUE(pass_util::ExtractPassword(source));
+  EXPECT_EQ(*source, "testpassword");
+  
+  close(fd);
+  
+  source.reset(new std::string("fd:-1"));
+  EXPECT_FALSE(pass_util::ExtractPassword(source));
+  
+  source.reset(new std::string("fd:invalid"));
+  EXPECT_FALSE(pass_util::ExtractPassword(source));
+}
+#endif
+
+TEST_F(PassUtilTest, StdinExtraction) {
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  
+  int old_stdin = dup(STDIN_FILENO);
+  dup2(pipefd[0], STDIN_FILENO);
+  
+  write(pipefd[1], "stdinpass\n", 10);
+  close(pipefd[1]);
+  
+  bssl::UniquePtr<std::string> source(new std::string("stdin"));
+  EXPECT_TRUE(pass_util::ExtractPassword(source));
+  EXPECT_EQ(*source, "stdinpass");
+  
+  dup2(old_stdin, STDIN_FILENO);
+  close(old_stdin);
+  close(pipefd[0]);
+}
+
+TEST_F(PassUtilTest, StdinExtractPasswords) {
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+  
+  int old_stdin = dup(STDIN_FILENO);
+  dup2(pipefd[0], STDIN_FILENO);
+  
+  write(pipefd[1], "firstpass\nsecondpass\n", 20);
+  close(pipefd[1]);
+  
+  bssl::UniquePtr<std::string> passin(new std::string("stdin"));
+  bssl::UniquePtr<std::string> passout(new std::string("stdin"));
+  
+  EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
+  EXPECT_EQ(*passin, "firstpass");
+  EXPECT_EQ(*passout, "secondpass");
+  
+  dup2(old_stdin, STDIN_FILENO);
+  close(old_stdin);
+  close(pipefd[0]);
 }

@@ -124,7 +124,13 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     bio.reset(BIO_new_file(source->c_str(), "r"));
 #ifndef _WIN32
   } else if (source_type == pass_util::Source::kFd) {
-    source->erase(0, 3); // Remove "fd:" prefix
+    source->erase(0, 3);
+    
+    if (source->empty() || strspn(source->c_str(), "0123456789") != source->length()) {
+      fprintf(stderr, "Invalid file descriptor: %s\n", source->c_str());
+      return false;
+    }
+    
     int fd = atoi(source->c_str());
     if (fd < 0) {
       fprintf(stderr, "Invalid file descriptor: %s\n", source->c_str());
