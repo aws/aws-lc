@@ -27,6 +27,7 @@ Lrcon:
 #endif
 .align	5
 _aes_hw_set_encrypt_key:
+.cfi_startproc
 Lenc_key:
 	mov	r3,#-1
 	cmp	r0,#0
@@ -190,7 +191,10 @@ Ldone:
 Lenc_key_abort:
 	mov	r0,r3			@ return value
 
+
+
 	bx	lr
+.cfi_endproc
 
 
 .globl	_aes_hw_set_decrypt_key
@@ -200,7 +204,11 @@ Lenc_key_abort:
 #endif
 .align	5
 _aes_hw_set_decrypt_key:
+.cfi_startproc
 	stmdb	sp!,{r4,lr}
+.cfi_def_cfa_offset	8
+.cfi_offset	r4, -8
+.cfi_offset	lr, -4
 	bl	Lenc_key
 
 	cmp	r0,#0
@@ -232,6 +240,10 @@ Loop_imc:
 	eor	r0,r0,r0		@ return value
 Ldec_key_abort:
 	ldmia	sp!,{r4,pc}
+.cfi_restore	r4
+.cfi_restore	lr
+.cfi_def_cfa_offset	0
+.cfi_endproc
 
 .globl	_aes_hw_encrypt
 .private_extern	_aes_hw_encrypt
@@ -240,6 +252,7 @@ Ldec_key_abort:
 #endif
 .align	5
 _aes_hw_encrypt:
+.cfi_startproc
 	AARCH64_VALID_CALL_TARGET
 	ldr	r3,[r2,#240]
 	vld1.32	{q0},[r2]!
@@ -265,6 +278,7 @@ Loop_enc:
 
 	vst1.8	{q2},[r1]
 	bx	lr
+.cfi_endproc
 
 .globl	_aes_hw_decrypt
 .private_extern	_aes_hw_decrypt
@@ -273,6 +287,7 @@ Loop_enc:
 #endif
 .align	5
 _aes_hw_decrypt:
+.cfi_startproc
 	AARCH64_VALID_CALL_TARGET
 	ldr	r3,[r2,#240]
 	vld1.32	{q0},[r2]!
@@ -298,6 +313,7 @@ Loop_dec:
 
 	vst1.8	{q2},[r1]
 	bx	lr
+.cfi_endproc
 
 .globl	_aes_hw_cbc_encrypt
 .private_extern	_aes_hw_cbc_encrypt
@@ -306,9 +322,26 @@ Loop_dec:
 #endif
 .align	5
 _aes_hw_cbc_encrypt:
+.cfi_startproc
 	mov	ip,sp
 	stmdb	sp!,{r4,r5,r6,r7,r8,lr}
+.cfi_def_cfa_offset	24
+.cfi_offset	r4, -24
+.cfi_offset	r5, -20
+.cfi_offset	r6, -16
+.cfi_offset	r7, -12
+.cfi_offset	r8, -8
+.cfi_offset	lr, -4
 	vstmdb	sp!,{d8,d9,d10,d11,d12,d13,d14,d15}            @ ABI specification says so
+.cfi_def_cfa_offset	88
+.cfi_offset	d8, -88
+.cfi_offset	d9, -80
+.cfi_offset	d10, -72
+.cfi_offset	d11, -64
+.cfi_offset	d12, -56
+.cfi_offset	d13, -48
+.cfi_offset	d14, -40
+.cfi_offset	d15, -32
 	ldmia	ip,{r4,r5}		@ load remaining args
 	subs	r2,r2,#16
 	mov	r8,#16
@@ -592,7 +625,24 @@ Lcbc_done:
 	vst1.8	{q6},[r4]
 Lcbc_abort:
 	vldmia	sp!,{d8,d9,d10,d11,d12,d13,d14,d15}
+.cfi_restore	d8
+.cfi_restore	d9
+.cfi_restore	d10
+.cfi_restore	d11
+.cfi_restore	d12
+.cfi_restore	d13
+.cfi_restore	d14
+.cfi_restore	d15
+.cfi_def_cfa_offset	24
 	ldmia	sp!,{r4,r5,r6,r7,r8,pc}
+.cfi_restore	r4
+.cfi_restore	r5
+.cfi_restore	r6
+.cfi_restore	r7
+.cfi_restore	r8
+.cfi_restore	lr
+.cfi_def_cfa_offset	0
+.cfi_endproc
 
 .globl	_aes_hw_ctr32_encrypt_blocks
 .private_extern	_aes_hw_ctr32_encrypt_blocks
@@ -601,9 +651,28 @@ Lcbc_abort:
 #endif
 .align	5
 _aes_hw_ctr32_encrypt_blocks:
+.cfi_startproc
 	mov	ip,sp
 	stmdb	sp!,{r4,r5,r6,r7,r8,r9,r10,lr}
+.cfi_def_cfa_offset	32
+.cfi_offset	r4, -32
+.cfi_offset	r5, -28
+.cfi_offset	r6, -24
+.cfi_offset	r7, -20
+.cfi_offset	r8, -16
+.cfi_offset	r9, -12
+.cfi_offset	r10, -8
+.cfi_offset	lr, -4
 	vstmdb	sp!,{d8,d9,d10,d11,d12,d13,d14,d15}            @ ABI specification says so
+.cfi_def_cfa_offset	96
+.cfi_offset	d8, -96
+.cfi_offset	d9, -88
+.cfi_offset	d10, -80
+.cfi_offset	d11, -72
+.cfi_offset	d12, -64
+.cfi_offset	d13, -56
+.cfi_offset	d14, -48
+.cfi_offset	d15, -40
 	ldr	r4, [ip]		@ load remaining arg
 	ldr	r5,[r3,#240]
 
@@ -795,7 +864,26 @@ Lctr32_tail:
 
 Lctr32_done:
 	vldmia	sp!,{d8,d9,d10,d11,d12,d13,d14,d15}
+.cfi_restore	d8
+.cfi_restore	d9
+.cfi_restore	d10
+.cfi_restore	d11
+.cfi_restore	d12
+.cfi_restore	d13
+.cfi_restore	d14
+.cfi_restore	d15
+.cfi_def_cfa_offset	32
 	ldmia	sp!,{r4,r5,r6,r7,r8,r9,r10,pc}
+.cfi_restore	r4
+.cfi_restore	r5
+.cfi_restore	r6
+.cfi_restore	r7
+.cfi_restore	r8
+.cfi_restore	r9
+.cfi_restore	r10
+.cfi_restore	lr
+.cfi_def_cfa_offset	0
+.cfi_endproc
 
 #endif
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_ARM) && defined(__APPLE__)
