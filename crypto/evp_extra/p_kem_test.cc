@@ -7,6 +7,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/pem.h>
+#include <openssl/pkcs8.h>
 #include <openssl/ssl.h>
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/kem/internal.h"
@@ -719,3 +720,114 @@ TEST_P(KEMTest, DeterministicKeyMarshaling) {
   // ---- 10. Verify private key DER is larger than public key DER ----
   EXPECT_GT(generated_priv_der_len, generated_pub_der_len);
 }
+
+// Test KEM public key round-trip serialization using i2d_PUBKEY and d2i_PUBKEY functions.
+TEST_P(KEMTest, I2dAndD2iPUBKEYRoundTrip) {
+  const KEMTestVector &test = GetParam();
+  
+  // ---- 1. Generate a keypair ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+  // ---- 2. Encode public key using i2d_PUBKEY ----
+  uint8_t *encoded_der = nullptr;
+  int encoded_der_len = i2d_PUBKEY(pkey.get(), &encoded_der);
+  ASSERT_GT(encoded_der_len, 0);
+  ASSERT_TRUE(encoded_der);
+  bssl::UniquePtr<uint8_t> free_encoded_der(encoded_der);
+
+  // ---- 3. Decode back using d2i_PUBKEY ----
+  const uint8_t *encoded_der_ptr = encoded_der;
+  bssl::UniquePtr<EVP_PKEY> decoded_pkey(d2i_PUBKEY(nullptr, &encoded_der_ptr, encoded_der_len));
+  ASSERT_TRUE(decoded_pkey);
+  ASSERT_EQ(EVP_PKEY_id(decoded_pkey.get()), EVP_PKEY_KEM);
+
+  // ---- 4. Verify round-trip correctness ----
+  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), decoded_pkey.get()));
+
+  // ---- i2d_PUBKEY output should work with EVP_parse_public_key ----
+  CBS cbs;
+  CBS_init(&cbs, encoded_der, encoded_der_len);
+  bssl::UniquePtr<EVP_PKEY> cross_decoded_pkey(EVP_parse_public_key(&cbs));
+  ASSERT_TRUE(cross_decoded_pkey);
+  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), cross_decoded_pkey.get()));
+}
+
+// Test round-trip encoding/decoding of KEM private keys using PKCS#8 format via EVP_PKEY2PKCS8, i2d_PKCS8_PRIV_KEY_INFO, and d2i_PrivateKey.
+TEST_P(KEMTest, PKCS8_PrivateKey_RoundTrip) {
+  const KEMTestVector &test = GetParam();
+  
+  // ---- 1. Generate a keypair ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+  // ---- 2. Convert to PKCS8 structure using EVP_PKEY2PKCS8 ----
+  bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> pkcs8_info(EVP_PKEY2PKCS8(pkey.get()));
+  ASSERT_TRUE(pkcs8_info);
+
+  // ---- 3. Encode PKCS8 to DER using i2d_PKCS8_PRIV_KEY_INFO ----
+  uint8_t *encoded_der = nullptr;
+  int encoded_der_len = i2d_PKCS8_PRIV_KEY_INFO(pkcs8_info.get(), &encoded_der);
+  ASSERT_GT(encoded_der_len, 0);
+  ASSERT_TRUE(encoded_der);
+  bssl::UniquePtr<uint8_t> free_encoded_der(encoded_der);
+
+  // ---- 4. Decode back using d2i_PrivateKey ----
+  const uint8_t *encoded_der_ptr = encoded_der;
+  bssl::UniquePtr<EVP_PKEY> decoded_pkey(d2i_PrivateKey(EVP_PKEY_KEM, nullptr, &encoded_der_ptr, encoded_der_len));
+  ASSERT_TRUE(decoded_pkey);
+  ASSERT_EQ(EVP_PKEY_id(decoded_pkey.get()), EVP_PKEY_KEM);
+
+  // ---- 5. Verify round-trip correctness by comparing secret keys ----
+  ASSERT_TRUE(pkey->pkey.kem_key->secret_key);
+  ASSERT_TRUE(decoded_pkey->pkey.kem_key->secret_key);
+  EXPECT_EQ(Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len),
+            Bytes(decoded_pkey->pkey.kem_key->secret_key, test.secret_key_len));
+
+  // ---- 6. i2d_PKCS8_PRIV_KEY_INFO output should work with EVP_parse_private_key ----
+  CBS cbs;
+  CBS_init(&cbs, encoded_der, encoded_der_len);
+  bssl::UniquePtr<EVP_PKEY> cross_decoded_pkey(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(cross_decoded_pkey);
+  EXPECT_EQ(Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len),
+            Bytes(cross_decoded_pkey->pkey.kem_key->secret_key, test.secret_key_len));
+}
+
+// Test cross-compatibility between modern EVP_marshal_* encoding functions d2i_* decoding functions
+TEST_P(KEMTest, ASN1_Methods_Cross_Compatibility) {
+  const KEMTestVector &test = GetParam();
+  
+  // ---- 1. Generate a keypair ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_kem_key_pair(test.nid));
+  ASSERT_TRUE(pkey);
+
+// ---- 2. Test if the encoded public key using EVP_marshal_public_key can be decoded using d2i_PUBKEY ----
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), pkey.get()));
+  uint8_t *marshal_der;
+  size_t marshal_der_len;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &marshal_der, &marshal_der_len));
+  bssl::UniquePtr<uint8_t> free_marshal_der(marshal_der);
+
+  const uint8_t *marshal_der_ptr = marshal_der;
+  bssl::UniquePtr<EVP_PKEY> decoded_from_marshal(d2i_PUBKEY(nullptr, &marshal_der_ptr, marshal_der_len));
+  ASSERT_TRUE(decoded_from_marshal);
+  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), decoded_from_marshal.get()));
+
+// ---- 3. Test if the encoded private key using EVP_marshal_private_key can be decoded using d2i_PrivateKey ----
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
+  uint8_t *marshal_priv_der;
+  size_t marshal_priv_der_len;
+  ASSERT_TRUE(CBB_finish(cbb.get(), &marshal_priv_der, &marshal_priv_der_len));
+  bssl::UniquePtr<uint8_t> free_marshal_priv_der(marshal_priv_der);
+
+  const uint8_t *marshal_priv_der_ptr = marshal_priv_der;
+  bssl::UniquePtr<EVP_PKEY> decoded_priv_from_marshal(d2i_PrivateKey(EVP_PKEY_KEM, nullptr, 
+                                                      &marshal_priv_der_ptr, marshal_priv_der_len));
+  ASSERT_TRUE(decoded_priv_from_marshal);
+  EXPECT_EQ(Bytes(pkey->pkey.kem_key->secret_key, test.secret_key_len),
+            Bytes(decoded_priv_from_marshal->pkey.kem_key->secret_key, test.secret_key_len));
+}
+
