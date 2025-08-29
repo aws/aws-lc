@@ -2978,6 +2978,68 @@ INSTANTIATE_TEST_SUITE_P(All, PerMLKEMTest, testing::ValuesIn(kMLKEMs),
                          [](const testing::TestParamInfo<KnownKEM> &params)
                              -> std::string { return params.param.name; });
 
+TEST_P(PerMLKEMTest, KeyMarshalingTest) {
+  // ---- 1. Setup phase: create context and set parameters ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
+
+  // ---- 2. Create deterministic seed: 00 01 02 ... 3f (64 consecutive bytes) ----
+  std::vector<uint8_t> keygen_seed(64);
+  for (size_t i = 0; i < 64; i++) {
+    keygen_seed[i] = static_cast<uint8_t>(i);  // 00 01 02 ... 3f
+  }
+  size_t seed_len = keygen_seed.size();
+
+  // ---- 3. Generate deterministic keypair ----
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
+                                           keygen_seed.data(), &seed_len));
+  ASSERT_TRUE(raw);
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+  // ---- 3.5. Print PEM format ----
+  bssl::UniquePtr<BIO> stdout_bio(BIO_new_fp(stdout, BIO_NOCLOSE));
+  ASSERT_TRUE(stdout_bio);
+
+  printf("\n=== %s Public Key PEM ===\n", GetParam().name);
+  ASSERT_TRUE(PEM_write_bio_PUBKEY(stdout_bio.get(), pkey.get()));
+
+  printf("\n=== %s Private Key PEM ===\n", GetParam().name);
+  ASSERT_TRUE(PEM_write_bio_PrivateKey(stdout_bio.get(), pkey.get(),
+                                       nullptr, nullptr, 0, nullptr, nullptr));
+
+  // ---- 4. Marshal public key ----
+  bssl::ScopedCBB public_cbb;
+  ASSERT_TRUE(CBB_init(public_cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_public_key(public_cbb.get(), pkey.get()));
+
+  uint8_t *public_der;
+  size_t public_der_len;
+  ASSERT_TRUE(CBB_finish(public_cbb.get(), &public_der, &public_der_len));
+  bssl::UniquePtr<uint8_t> public_der_ptr(public_der);
+
+  // Verify we got some output
+  EXPECT_GT(public_der_len, 0u);
+
+  // ---- 5. Marshal private key ----
+  bssl::ScopedCBB private_cbb;
+  ASSERT_TRUE(CBB_init(private_cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(private_cbb.get(), pkey.get()));
+
+  uint8_t *private_der;
+  size_t private_der_len;
+  ASSERT_TRUE(CBB_finish(private_cbb.get(), &private_der, &private_der_len));
+  bssl::UniquePtr<uint8_t> private_der_ptr(private_der);
+
+  // Verify we got some output
+  EXPECT_GT(private_der_len, 0u);
+
+  // ---- 6. Verify private key DER is larger than public key DER ----
+  EXPECT_GT(private_der_len, public_der_len);
+}
+
 TEST_P(PerMLKEMTest, InputValidation) {
   // ---- 1. Setup phase: generate a context and a key ----
   bssl::UniquePtr<EVP_PKEY_CTX> ctx;
