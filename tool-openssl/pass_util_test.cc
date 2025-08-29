@@ -486,6 +486,7 @@ TEST_F(PassUtilTest, FdExtraction) {
 }
 #endif
 
+#ifndef _WIN32
 TEST_F(PassUtilTest, StdinExtraction) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
@@ -526,3 +527,4 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   close(old_stdin);
   close(pipefd[0]);
 }
+#endif
