@@ -329,7 +329,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
 
 endif()
 
-# Attempt to include files in Windows AArch64
+# Include s2n-bignum files in Windows AArch64 which replace similar implementation that was available on Windows
+# TODO: Attempt more AArch64 s2n-bignum files in Windows build
 if(ARCH STREQUAL "aarch64")
   set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
   list(APPEND BCM_ASM_SOURCES
