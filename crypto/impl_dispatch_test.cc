@@ -140,6 +140,11 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
   bool ifma_avx512 = false;
+  bool is_bn_mulx4x_mont_gather5 = false;
+  bool is_bn_mul4x_mont_gather5 = false;
+  bool is_bn_mul_mont_gather5_nohw = false;
+  bool is_power5 = false;
+  bool is_powerx5 = false;
 #else // AARCH64
   bool aes_gcm_pmull_ = false;
   bool aes_gcm_8x_ = false;
@@ -167,6 +172,11 @@ constexpr size_t kFlag_sha256_hw = 6;
 constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
 constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
+constexpr size_t kFlag_bn_mulx4x_mont_gather5 = 15;
+constexpr size_t kFlag_bn_mul4x_mont_gather5 = 16;
+constexpr size_t kFlag_bn_mul_mont_gather5_nohw = 17;
+constexpr size_t kFlag_bn_powerx5 = 18;
+constexpr size_t kFlag_bn_power5_nohw = 19;
 #else // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
@@ -178,6 +188,85 @@ constexpr size_t kFlag_sha3_keccak2_f1600 = 12;
 constexpr size_t kFlag_sha3_keccak4_f1600_alt = 13;
 constexpr size_t kFlag_sha3_keccak4_f1600_alt2 = 14;
 #endif
+
+#if defined(OPENSSL_BN_ASM_MONT5)
+TEST_F(ImplDispatchTest, BN_mul_mont_gather5) {
+  for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
+    SCOPED_TRACE(words);
+
+    bssl::UniquePtr<BIGNUM> m(BN_new());
+    ASSERT_TRUE(m);
+    ASSERT_TRUE(BN_set_bit(m.get(), 0));
+    ASSERT_TRUE(BN_set_bit(m.get(), words * BN_BITS2 - 1));
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx()));
+    ASSERT_TRUE(mont);
+
+    std::vector<BN_ULONG> r(words), a(words), b(words), table(words * 32);
+    a[0] = 1;
+    b[0] = 42;
+
+    bn_mul_mont(r.data(), a.data(), b.data(), mont->N.d, mont->n0, words);
+
+    is_bn_mulx4x_mont_gather5 = bn_mulx4x_mont_gather5_capable(words);
+    if (is_bn_mulx4x_mont_gather5) {
+      is_bn_mul4x_mont_gather5 = false;
+      is_bn_mul_mont_gather5_nohw = false;
+    } else {
+      is_bn_mul4x_mont_gather5 = bn_mul4x_mont_gather5_capable(words);
+      if (is_bn_mul4x_mont_gather5) {
+        is_bn_mul_mont_gather5_nohw = false;
+      } else {
+        is_bn_mul_mont_gather5_nohw = true;
+      }
+    }
+
+    AssertFunctionsHit(
+      {
+          {kFlag_bn_mulx4x_mont_gather5, is_bn_mulx4x_mont_gather5},
+          {kFlag_bn_mul4x_mont_gather5, is_bn_mul4x_mont_gather5},
+          {kFlag_bn_mul_mont_gather5_nohw, is_bn_mul_mont_gather5_nohw},
+      },
+      [] {
+        bn_mul_mont_gather5(r.data(), r.data(), table.data(), m->d, mont->n0, words, 13);
+        bn_mul_mont_gather5(r.data(), a.data(), table.data(), m->d, mont->n0, words, 13);
+      });
+  }
+}
+
+TEST_F(ImplDispatchTest, BN_power5) {
+  for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
+    SCOPED_TRACE(words);
+
+    bssl::UniquePtr<BIGNUM> m(BN_new());
+    ASSERT_TRUE(m);
+    ASSERT_TRUE(BN_set_bit(m.get(), 0));
+    ASSERT_TRUE(BN_set_bit(m.get(), words * BN_BITS2 - 1));
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx()));
+    ASSERT_TRUE(mont);
+
+    std::vector<BN_ULONG> r(words), a(words), b(words), table(words * 32);
+    a[0] = 1;
+    b[0] = 42;
+
+    bn_mul_mont(r.data(), a.data(), b.data(), mont->N.d, mont->n0, words);
+
+    is_power5 = bn_power5_capable(words);
+    is_powerx5 = bn_powerx5_capable(words);
+
+    AssertFunctionsHit(
+      {
+          {kFlag_bn_powerx5, is_powerx5},
+          {kFlag_bn_power5_nohw, !is_powerx5 && is_power5},
+      },
+      [] {
+        bn_power5(r.data(), r.data(), table.data(), m->d, mont->n0, words, 13);
+        bn_power5(r.data(), a.data(), table.data(), m->d, mont->n0, words, 13);
+      });
+  }
+}
+#endif // defined(OPENSSL_BN_ASM_MONT5)
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
