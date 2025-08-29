@@ -379,6 +379,7 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
       SSL_GROUP_MLKEM512,
       false,
     },
+
     {
       "MLKEM768",
       TLS1_3_VERSION,
@@ -387,6 +388,7 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
       SSL_GROUP_MLKEM768,
       false,
     },
+
     {
       "MLKEM1024",
       TLS1_3_VERSION,
