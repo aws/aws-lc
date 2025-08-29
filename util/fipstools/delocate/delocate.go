@@ -29,7 +29,6 @@ import (
 	"strings"
 	"unicode"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
 	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
@@ -39,9 +38,6 @@ type inputFile struct {
 	// index is a unique identifier given to this file. It's used for
 	// mapping local symbols.
 	index int
-	// isArchive indicates that the input should be processed as an ar
-	// file.
-	isArchive bool
 	// contents contains the contents of the file.
 	contents string
 	// ast points to the head of the syntax tree.
@@ -1522,7 +1518,7 @@ Args:
 					// Move instruction dereferencing known relro local symbol. Assume
 					// this form:
 					// 	movq .Labc(%rip), %xmm
-					// relroLocalLabelToFuncMap contains the mapping .Labc->foo. 
+					// relroLocalLabelToFuncMap contains the mapping .Labc->foo.
 					// Transform to
 					// 	leaq .Lfoo_local_target(%rip), %reg
 					// 	movq %reg, %xmm
@@ -2529,41 +2525,21 @@ func parseInputs(inputs []inputFile, cppCommand []string) error {
 	for i, input := range inputs {
 		var contents string
 
-		if input.isArchive {
-			arFile, err := os.Open(input.path)
-			if err != nil {
-				return err
-			}
-			defer arFile.Close()
+		var inBytes []byte
+		var err error
 
-			ar, err := ar.ParseAR(arFile)
-			if err != nil {
-				return err
-			}
+        // Assembly file with lower-case *.s suffix do not get preprocessed
+        if !strings.HasSuffix(input.path, ".s") && len(cppCommand) > 0 {
+            inBytes, err = preprocess(cppCommand, input.path)
+        } else {
+            inBytes, err = os.ReadFile(input.path)
+        }
 
-			if len(ar) != 1 {
-				return fmt.Errorf("expected one file in archive, but found %d", len(ar))
-			}
+        if err != nil {
+            return err
+        }
 
-			for _, c := range ar {
-				contents = string(c)
-			}
-		} else {
-			var inBytes []byte
-			var err error
-
-			if len(cppCommand) > 0 {
-				inBytes, err = preprocess(cppCommand, input.path)
-			} else {
-				inBytes, err = os.ReadFile(input.path)
-			}
-
-			if err != nil {
-				return err
-			}
-
-			contents = string(inBytes)
-		}
+        contents = string(inBytes)
 
 		asm := Asm{Buffer: contents, Pretty: true}
 		asm.Init()
@@ -2617,10 +2593,6 @@ func relativeHeaderIncludePath(path string) (string, error) {
 }
 
 func main() {
-	// The .a file, if given, is expected to be an archive of textual
-	// assembly sources. That's odd, but CMake really wants to create
-	// archive files so it's the only way that we can make it work.
-	arInput := flag.String("a", "", "Path to a .a file containing assembly sources")
 	outFile := flag.String("o", "", "Path to output assembly")
 	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
@@ -2635,14 +2607,6 @@ func main() {
 	}
 
 	var inputs []inputFile
-	if len(*arInput) > 0 {
-		inputs = append(inputs, inputFile{
-			path:      *arInput,
-			index:     0,
-			isArchive: true,
-		})
-	}
-
 	var includes []string
 	includePaths := make(map[string]struct{})
 
@@ -2666,7 +2630,7 @@ func main() {
 
 		inputs = append(inputs, inputFile{
 			path:  path,
-			index: i + 1,
+			index: i,
 		})
 	}
 
