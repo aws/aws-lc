@@ -9336,3 +9336,54 @@ TEST(X509Test, DeleteLastExtension) {
   EXPECT_EQ(X509_CRL_get0_extensions(crl.get()), nullptr);
   EXPECT_EQ(X509_REVOKED_get0_extensions(rev.get()), nullptr);
 }
+
+// Test that, signatures over unusual TBSCertificates are verified correctly.
+// This tests that encoding is correctly round-tripped through the parser to the
+// verifier.
+//
+// In principle, this should never happen because a DER parser will only accept
+// the canonical encoding of an object. However, it is possible for encoding to
+// not round-trip if we accept any BER inputs, or our in-memory representation
+// does not capture the full range of abstract TBSCertificate values.
+//
+// |X509| objects cache the encoded TBSCertificate, so all encoding variations
+// should be captured. This test tries to exercise the cache's effects on
+// signature verification. Unlike BoringSSL, AWS-LC supports BER inputs
+// (indefinite lengths and constructed strings) in the ASN1 macro parsers for
+// OpenSSL compatibility, so an accepted certificate's encoding may not
+// round-trip through re-encoding. Signature verification must therefore use
+// the cached TBSCertificate bytes, which this test checks.
+TEST(X509Test, VerifyUnusualTBSCert) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(
+      GetTestData("crypto/x509/test/unusual_tbs_key.pem").c_str());
+  ASSERT_TRUE(key);
+  // The TBSCertificates were made with https://github.com/google/der-ascii.
+  // crypto/x509/test/make_unusual_tbs.go then filled in valid signatures.
+  const char *kPaths[] = {
+      // Empty extension instead of omitting the entire field.
+      // TODO(crbug.com/442221114): The parser should reject this.
+      "crypto/x509/test/unusual_tbs_empty_extension_not_omitted.pem",
+      // ecdsa-with-SHA256 AlgorithmIdentifier parameters are NULL instead of
+      // omitted. We accept this due to b/167375496.
+      "crypto/x509/test/unusual_tbs_null_sigalg_param.pem",
+      // Deprecated subject and issuer unique IDs are present. This is valid,
+      // but
+      // rarely exercised.
+      "crypto/x509/test/unusual_tbs_uid_both.pem",
+      "crypto/x509/test/unusual_tbs_uid_issuer.pem",
+      "crypto/x509/test/unusual_tbs_uid_subject.pem",
+      // Within a RelativeDistinguishedName, attributes should be sorted in
+      // canonical SET OF order. These are inverted.
+      // TODO(crbug.com/42290219): The parser should reject this.
+      "crypto/x509/test/unusual_tbs_wrong_attribute_order.pem",
+      // A v1 version is explicit encoded instead of omitted as DEFAULT.
+      // TODO(crbug.com/42290225): The parser should reject this.
+      "crypto/x509/test/unusual_tbs_v1_not_omitted.pem",
+  };
+  for (const char *path : kPaths) {
+    SCOPED_TRACE(path);
+    bssl::UniquePtr<X509> cert = CertFromPEM(GetTestData(path).c_str());
+    ASSERT_TRUE(cert);
+    EXPECT_TRUE(X509_verify(cert.get(), key.get()));
+  }
+}
