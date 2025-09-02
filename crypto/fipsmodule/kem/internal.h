@@ -66,6 +66,8 @@ struct kem_key_st {
 };
 
 const KEM *KEM_find_kem_by_nid(int nid);
+const EVP_PKEY_ASN1_METHOD *KEM_find_asn1_by_nid(int nid);
+int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid);
 
 KEM_KEY *KEM_KEY_new(void);
 int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
