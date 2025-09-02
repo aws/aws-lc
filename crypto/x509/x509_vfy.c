@@ -633,7 +633,7 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
   return 1;
 }
 
-static int check_curve(X509 *x) {
+static int check_curve_decoded_by_name(X509 *x) {
   EVP_PKEY *pkey = X509_get0_pubkey(x);
   if (!pkey) {
     return -1;
@@ -692,7 +692,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       // EC keys, but for privately operated CA's this could be doing so still. To be backwards
       // compatible with OpenSSL 1.1.1 we have added support for parsing SPKI with explicit parameters,
       // so we have added a new option for enabling this during chain validation.
-      int ret = check_curve(x);
+      int ret = check_curve_decoded_by_name(x);
       if (ret < 0) {
         ctx->error = X509_V_ERR_UNSPECIFIED;
         ctx->error_depth = i;

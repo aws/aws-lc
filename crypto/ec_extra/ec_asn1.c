@@ -107,7 +107,7 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
       OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
       goto err;
     }
-    const EC_GROUP *inner_group = EC_KEY_maybe_parse_parameters(&child, &paramType);
+    const EC_GROUP *inner_group = EC_KEY_parse_parameters_and_type(&child, &paramType);
     if (inner_group == NULL || paramType == UNKNOWN_EC_PARAMETERS) {
       goto err;
     }
@@ -375,10 +375,10 @@ int EC_KEY_marshal_curve_name(CBB *cbb, const EC_GROUP *group) {
 
 EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
   enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
-  return EC_KEY_maybe_parse_parameters(cbs, &paramType);
+  return EC_KEY_parse_parameters_and_type(cbs, &paramType);
 }
 
-EC_GROUP *EC_KEY_maybe_parse_parameters(CBS *cbs, enum ECParametersType *paramType) {
+EC_GROUP *EC_KEY_parse_parameters_and_type(CBS *cbs, enum ECParametersType *paramType) {
   GUARD_PTR(paramType);
 
   const EC_GROUP *ret = NULL;
@@ -394,8 +394,6 @@ EC_GROUP *EC_KEY_maybe_parse_parameters(CBS *cbs, enum ECParametersType *paramTy
 
   // OpenSSL sometimes produces ECPrivateKeys or ECPublicKey with explicitly-encoded versions
   // of named curves.
-  //
-  // TODO(davidben): Remove support for this.
   struct explicit_prime_curve curve;
   if (!parse_explicit_prime_curve(cbs, &curve)) {
     return NULL;

@@ -76,7 +76,9 @@ enum ECParametersType {
   SPECIFIED_CURVE_EC_PARAMETERS = 2,
 };
 
-EC_GROUP *EC_KEY_maybe_parse_parameters(CBS *cbs, enum ECParametersType *paramType);
+// EC_KEY_parse_parameters_and_type parses the elliptic curve key parameters from |cbs| and
+// sets the type of parameters found on |paramType|.
+EC_GROUP *EC_KEY_parse_parameters_and_type(CBS *cbs, enum ECParametersType *paramType);
 
 #if defined(__cplusplus)
 }  // extern C

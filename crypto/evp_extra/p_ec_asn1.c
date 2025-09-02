@@ -100,7 +100,7 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key) {
 
   enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
 
-  const EC_GROUP *group = EC_KEY_maybe_parse_parameters(params, &paramType);
+  const EC_GROUP *group = EC_KEY_parse_parameters_and_type(params, &paramType);
   if (group == NULL || CBS_len(params) != 0 ||
       paramType == UNKNOWN_EC_PARAMETERS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -159,7 +159,7 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
 
   enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
 
-  const EC_GROUP *group = EC_KEY_maybe_parse_parameters(params, &paramType);
+  const EC_GROUP *group = EC_KEY_parse_parameters_and_type(params, &paramType);
   if (group == NULL || CBS_len(params) != 0 || paramType == UNKNOWN_EC_PARAMETERS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -174,6 +174,8 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
 
   if (paramType == SPECIFIED_CURVE_EC_PARAMETERS) {
     ec_key->group_decoded_from_explicit_params = 1;
+  } else {
+    ec_key->group_decoded_from_explicit_params = 0;
   }
 
   EVP_PKEY_assign_EC_KEY(out, ec_key);
