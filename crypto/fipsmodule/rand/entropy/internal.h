@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+#define OVERRIDDEN_ENTROPY_SOURCE 0
+#define TREE_DRBG_JITTER_ENTROPY_SOURCE 1
+#define MAINE_COON_ENTROPY_SOURCE 2
+
 #define ENTROPY_JITTER_MAX_NUM_TRIES (3)
 
 // TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE = 2^24
@@ -35,6 +39,7 @@ struct entropy_source_methods {
     uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]);
   int (*get_prediction_resistance)(const struct entropy_source_t *entropy_source,
     uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]);
+  int id;
 };
 
 // get_entropy_source will return an entropy source configured for the platform.
@@ -47,6 +52,8 @@ struct entropy_source_t * get_entropy_source(void);
 // the start of a process.
 OPENSSL_EXPORT void override_entropy_source_method_FOR_TESTING(
   const struct entropy_source_methods *override_entropy_source_methods);
+
+OPENSSL_EXPORT int get_entropy_source_method_id_FOR_TESTING(void);
 
 OPENSSL_EXPORT int tree_jitter_initialize(struct entropy_source_t *entropy_source);
 OPENSSL_EXPORT void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source);

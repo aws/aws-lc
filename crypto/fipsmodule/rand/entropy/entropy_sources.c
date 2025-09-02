@@ -56,6 +56,7 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   } else {
     out->get_prediction_resistance = NULL;
   }
+  out->id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
 }
 
 // Maine Coon environment configurations
@@ -76,6 +77,7 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, maine_coon_entropy_source_metho
     out->get_extra_entropy = maine_coon_get_seed;
   }
   out->get_prediction_resistance = NULL;
+  out->id = MAINE_COON_ENTROPY_SOURCE;
 }
 
 static int use_maine_coon_entropy(void) {
@@ -159,7 +161,6 @@ int have_hw_rng_x86_64_for_testing(void) {
   return have_hw_rng_x86_64();
 }
 
-
 void override_entropy_source_method_FOR_TESTING(
   const struct entropy_source_methods *override_entropy_source_methods) {
 
@@ -167,4 +168,13 @@ void override_entropy_source_method_FOR_TESTING(
   *allow_entropy_source_methods_override_bss_get() = 1;
   *entropy_source_methods_override_bss_get() = override_entropy_source_methods;
   CRYPTO_STATIC_MUTEX_unlock_write(global_entropy_source_lock_bss_get());
+}
+
+int get_entropy_source_method_id_FOR_TESTING(void) {
+  int id;
+  CRYPTO_STATIC_MUTEX_lock_read(global_entropy_source_lock_bss_get());
+  const struct entropy_source_methods *entropy_source_method = get_entropy_source_methods();
+  id = entropy_source_method->id;
+  CRYPTO_STATIC_MUTEX_unlock_read(global_entropy_source_lock_bss_get());
+  return id;
 }

@@ -37,7 +37,8 @@ static entropy_source_methods entropy_methods{
   nullptr,  // free_thread
   nullptr,  // get_seed
   nullptr,  // get_extra_entropy
-  nullptr   // get_prediction_resistance
+  nullptr,  // get_prediction_resistance
+  OVERRIDDEN_ENTROPY_SOURCE
 };
 
 static int overrideInitialize(struct entropy_source_t *entropy_source) {
@@ -102,7 +103,8 @@ static void overrideEntropySourceMethodsCount() {
     &overrideFreeThread,
     &overrideGetSeed,
     &overrideGetExtraEntropy,
-    &overrideGetPredictionResistance
+    &overrideGetPredictionResistance,
+    OVERRIDDEN_ENTROPY_SOURCE
   };
   override_entropy_source_method_FOR_TESTING(&entropy_methods);
 }
@@ -729,7 +731,8 @@ private:
       &overrideFreeThreadKat,
       &overrideGetSeedKat,
       &overrideGetExtraEntropyKat,
-      getPredictionResistanceCallback(kat_test_type_)
+      getPredictionResistanceCallback(kat_test_type_),
+      OVERRIDDEN_ENTROPY_SOURCE
     };
     override_entropy_source_method_FOR_TESTING(&entropy_methods_);
   }
