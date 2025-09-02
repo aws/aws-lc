@@ -824,6 +824,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/rand_test.cc
     fipsmodule/rand/entropy/entropy_source_test.cc
+    fipsmodule/rand/entropy/maine_coon_entropy_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
