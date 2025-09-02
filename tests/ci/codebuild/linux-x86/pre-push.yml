@@ -11,6 +11,7 @@ phases:
   build:
     commands:
       - ./tests/check_objects_and_errors.sh
+      - ./tests/check_cmake_configure.sh
       - go run ./tests/check_licenses.go
       - ./tests/check_generated_src.sh
       - ./tests/coding_guidelines/style.sh

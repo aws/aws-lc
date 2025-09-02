@@ -64,7 +64,7 @@ static void mlk_pack_pk(uint8_t r[MLKEM_INDCPA_PUBLICKEYBYTES], mlk_polyvec pk,
 {
   mlk_assert_bound_2d(pk, MLKEM_K, MLKEM_N, 0, MLKEM_Q);
   mlk_polyvec_tobytes(r, pk);
-  memcpy(r + MLKEM_POLYVECBYTES, seed, MLKEM_SYMBYTES);
+  mlk_memcpy(r + MLKEM_POLYVECBYTES, seed, MLKEM_SYMBYTES);
 }
 
 /*************************************************
@@ -87,7 +87,7 @@ static void mlk_unpack_pk(mlk_polyvec pk, uint8_t seed[MLKEM_SYMBYTES],
                           const uint8_t packedpk[MLKEM_INDCPA_PUBLICKEYBYTES])
 {
   mlk_polyvec_frombytes(pk, packedpk);
-  memcpy(seed, packedpk + MLKEM_POLYVECBYTES, MLKEM_SYMBYTES);
+  mlk_memcpy(seed, packedpk + MLKEM_POLYVECBYTES, MLKEM_SYMBYTES);
 
   /* NOTE: If a modulus check was conducted on the PK, we know at this
    * point that the coefficients of `pk` are unsigned canonical. The
@@ -215,16 +215,15 @@ void mlk_gen_matrix(mlk_polymat a, const uint8_t seed[MLKEM_SYMBYTES],
 
   for (j = 0; j < 4; j++)
   {
-    memcpy(seed_ext[j], seed, MLKEM_SYMBYTES);
+    mlk_memcpy(seed_ext[j], seed, MLKEM_SYMBYTES);
   }
 
   /* Sample 4 matrix entries a time. */
   for (i = 0; i < (MLKEM_K * MLKEM_K / 4) * 4; i += 4)
   {
-    uint8_t x, y;
-
     for (j = 0; j < 4; j++)
     {
+      uint8_t x, y;
       x = (i + j) / MLKEM_K;
       y = (i + j) % MLKEM_K;
       if (transposed)
@@ -239,11 +238,7 @@ void mlk_gen_matrix(mlk_polymat a, const uint8_t seed[MLKEM_SYMBYTES],
       }
     }
 
-    /*
-     * This call writes across mlk_polyvec boundaries for K=2 and K=3.
-     * This is intentional and safe.
-     */
-    mlk_poly_rej_uniform_x4(&a[i], seed_ext);
+    mlk_poly_rej_uniform_x4(&a[i], &a[i + 1], &a[i + 2], &a[i + 3], seed_ext);
   }
 
   /* For MLKEM_K == 3, sample the last entry individually. */
@@ -344,7 +339,7 @@ void mlk_indcpa_keypair_derand(uint8_t pk[MLKEM_INDCPA_PUBLICKEYBYTES],
 
   MLK_ALIGN uint8_t coins_with_domain_separator[MLKEM_SYMBYTES + 1];
   /* Concatenate coins with MLKEM_K for domain separation of security levels */
-  memcpy(coins_with_domain_separator, coins, MLKEM_SYMBYTES);
+  mlk_memcpy(coins_with_domain_separator, coins, MLKEM_SYMBYTES);
   coins_with_domain_separator[MLKEM_SYMBYTES] = MLKEM_K;
 
   mlk_hash_g(buf, coins_with_domain_separator, MLKEM_SYMBYTES + 1);
