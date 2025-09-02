@@ -254,6 +254,17 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   return 1;
 }
 
+const EVP_PKEY_ASN1_METHOD *KEM_find_asn1_by_nid(int nid) {
+  switch (nid) {
+    case NID_MLKEM512:
+    case NID_MLKEM768:
+    case NID_MLKEM1024:
+      return &kem_asn1_meth;
+    default:
+      return NULL;
+  }
+}
+
 void KEM_KEY_free(KEM_KEY *key) {
   if (key == NULL) {
     return;

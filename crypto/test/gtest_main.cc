@@ -22,6 +22,7 @@
 #include "abi_test.h"
 #include "gtest_main.h"
 #include "../internal.h"
+#include "../ube/snapsafe_detect.h"
 
 
 int main(int argc, char **argv) {
@@ -35,12 +36,6 @@ int main(int argc, char **argv) {
   bssl::SetupGoogleTest();
   bool unwind_tests = true;
   for (int i = 1; i < argc; i++) {
-#if !defined(OPENSSL_WINDOWS)
-    if (strcmp(argv[i], "--fork_unsafe_buffering") == 0) {
-      RAND_enable_fork_unsafe_buffering(-1);
-    }
-#endif
-
     if (strcmp(argv[i], "--no_unwind_tests") == 0) {
       unwind_tests = false;
     }
