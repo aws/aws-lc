@@ -893,6 +893,7 @@ ____
 	# https://learn.microsoft.com/en-us/cpp/build/exception-handling-x64?view=msvc-170#struct-unwind_info
 	my $frame_encoded = $info{frame_reg} | (($info{frame_offset} / 16) << 4);
 	$xdata .= <<____;
+.align	4
 $info{info_label}:
 	.byte	1	# version 1, no flags
 	.byte	$info{endprolog}-$info{start_label}
@@ -1021,7 +1022,6 @@ ____
 	if ($xdata ne "") {
 	    $ret .= <<____;
 .section	.xdata
-.align	4
 $xdata
 ____
 	}
@@ -1188,7 +1188,7 @@ ____
 					my $qualifiers = "";
 					if ($$line=~/\.([prx])data/) {
 					    $qualifiers = "rdata align=";
-					    $qualifiers .= $1 eq "p"? 4 : 8;
+					    $qualifiers .= ($1 eq "p" || $1 eq "x")? 4 : 8;
 					} elsif ($$line=~/\.CRT\$/i) {
 					    $qualifiers = "rdata align=8";
 					}
@@ -1198,7 +1198,7 @@ ____
 					$v.="$$line\tSEGMENT";
 					if ($$line=~/\.([prx])data/) {
 					    $v.=" READONLY";
-					    $v.=" ALIGN(".($1 eq "p" ? 4 : 8).")" if ($masm>=$masmref);
+					    $v.=" ALIGN(".(($1 eq "p" || $1 eq "x") ? 4 : 8).")" if ($masm>=$masmref);
 					} elsif ($$line=~/\.CRT\$/i) {
 					    $v.=" READONLY ";
 					    $v.=$masm>=$masmref ? "ALIGN(8)" : "DWORD";

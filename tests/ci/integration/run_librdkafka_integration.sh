@@ -38,8 +38,7 @@ function kafka_build() {
   make check
 
   local kafka_executable="${KAFKA_BUILD_PREFIX}/lib/librdkafka.so"
-  ldd ${kafka_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${kafka_executable}" crypto || exit 1
 }
 
 function kafka_run_tests() {

@@ -250,12 +250,17 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 // Private functions
 typedef struct hmac_methods_st HmacMethods;
 
-// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+// We use a union to ensure that enough space is allocated and never actually
+// bother with the named members. We do not externalize SHA3 ctx definition,
+// so hard-code ctx size below and use a compile-time assertion where that ctx
+// is defined to ensure it does not exceed size bounded by |md_ctx_union|. This
+// is OK because union members are never referenced, they're only used for sizing.
 union md_ctx_union {
   MD5_CTX md5;
   SHA_CTX sha1;
   SHA256_CTX sha256;
   SHA512_CTX sha512;
+  uint8_t sha3[400];
 };
 
 struct hmac_ctx_st {
@@ -295,5 +300,6 @@ BSSL_NAMESPACE_END
 #define HMAC_R_BUFFER_TOO_SMALL 102
 #define HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED 103
 #define HMAC_R_NOT_CALLED_JUST_AFTER_INIT 104
+#define HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST 105
 
 #endif  // OPENSSL_HEADER_HMAC_H

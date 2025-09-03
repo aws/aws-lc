@@ -67,19 +67,6 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
-#if defined(OPENSSL_WINDOWS)
-// Due to name conflicts, we must prevent "wincrypt.h" from being included
-#define NOCRYPT
-#include <winsock2.h>
-#include <ws2ipdef.h>
-#undef NOCRYPT
-#else
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#endif
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -714,19 +701,27 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 #endif  // !OPENSSL_NO_SOCK
 
 
-// Datagram BIOs.
+// Message digest BIOs
 
-  // Data structures
-typedef union bio_addr_st {
-    struct sockaddr sa;
-#ifdef AF_INET6
-    struct sockaddr_in6 s_in6;
-#endif
-    struct sockaddr_in s_in;
-#if defined(AF_UNIX) && !defined(OPENSSL_WINDOWS)
-    struct sockaddr_un s_un;
-#endif
-} BIO_ADDR;
+// BIO_f_md provides a filter |BIO| that digests any data passed through it.
+// The BIO must be initialized with |BIO_set_md| or |BIO_get_md_ctx| before it
+// can be used.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
+
+// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|. It returns
+// one on success and zero on error.
+OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
+
+// BIO_set_md set's |b|'s EVP_MD* to |md|. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
+
+// BIO_get_md set's |*md| to |b|'s |EVP_MD*|. It returns one on success and zero
+// on error.
+OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
+
+
+// Datagram BIOs.
 
 #define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
 #define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
@@ -751,6 +746,11 @@ typedef union bio_addr_st {
 #define BIO_CTRL_DGRAM_GET_PEER           46
 
 #define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
+
+
+#if !defined(OPENSSL_NO_SOCK)
+
+typedef union bio_addr_st BIO_ADDR;
 
 // BIO_s_datagram returns the datagram |BIO_METHOD|. A datagram BIO provides a wrapper
 // around datagram sockets.
@@ -787,10 +787,55 @@ OPENSSL_EXPORT int BIO_dgram_get_peer(BIO* bp, BIO_ADDR *peer) OPENSSL_WARN_UNUS
 // It returns 1 on success and a non-positive value on error.
 OPENSSL_EXPORT int BIO_dgram_set_peer(BIO* bp, const BIO_ADDR *peer) OPENSSL_WARN_UNUSED_RESULT;
 
-// BIO_dgram_get_mtu_overhead returns the number of bytes of overhead when sending
-// a datagram of the maximum size through |bp| to the specified |peer| address.
-// This is used for PMTU discovery in DTLS.
-OPENSSL_EXPORT unsigned int BIO_dgram_get_mtu_overhead(BIO* bp, struct sockaddr *peer) OPENSSL_WARN_UNUSED_RESULT;
+// BIO_ADDR_new allocates and initializes a new BIO_ADDR structure.
+// Returns the new BIO_ADDR structure on success, NULL on error.
+OPENSSL_EXPORT BIO_ADDR *BIO_ADDR_new(void);
+
+// BIO_ADDR_copy copies the contents of the BIO_ADDR structure from src to dst.
+// Returns 1 on success, 0 on error.
+OPENSSL_EXPORT int BIO_ADDR_copy(BIO_ADDR *dst, const BIO_ADDR *src);
+
+// BIO_ADDR_dup creates a copy of the BIO_ADDR.
+// Returns the new BIO_ADDR structure on success, NULL on error.
+OPENSSL_EXPORT BIO_ADDR *BIO_ADDR_dup(const BIO_ADDR *ap);
+
+// BIO_ADDR_free releases all resources associated with the BIO_ADDR structure.
+// If 'ap' is NULL, no action occurs.
+OPENSSL_EXPORT void BIO_ADDR_free(BIO_ADDR *ap);
+
+// BIO_ADDR_clear zeros the contents of the BIO_ADDR structure but does not free it.
+// If 'ap' is NULL, no action occurs.
+OPENSSL_EXPORT void BIO_ADDR_clear(BIO_ADDR *ap);
+
+// BIO_ADDR_rawmake sets up a BIO_ADDR with the provided values. |family| is
+// the Address family (e.g., AF_INET, AF_INET6). |where| is a pointer to the
+// address data. |wherelen| is the length of the address data. For AF_UNIX,
+// |wherelen| is expected to be the length of the path string not including the
+// terminating NUL. |port| is the port number in host byte order. Returns 1 on
+// success, 0 on error.
+OPENSSL_EXPORT int BIO_ADDR_rawmake(BIO_ADDR *ap, int family, const void *where,
+                                   size_t wherelen, unsigned short port);
+
+// BIO_ADDR_family returns the address family of the BIO_ADDR.
+// Returns the address family (e.g., AF_INET, AF_INET6) on success,
+// -1 on error.
+OPENSSL_EXPORT int BIO_ADDR_family(const BIO_ADDR *ap);
+
+// BIO_ADDR_rawaddress retrieves the raw address data from a BIO_ADDR structure.
+// The address data from |ap| is copied into the buffer |p| if |p| is not NULL.
+// If |l| is not NULL, |*l| will be updated with the size of the address data.
+// For AF_INET, this is the 4-byte IPv4 address; for AF_INET6, the 16-byte IPv6
+// address; for AF_UNIX, the socket path. With AF_UNIX addresses, the buffer |p|
+// must be large enough for both the path and a NUL terminator. The function will
+// write the terminator to the buffer, but the length stored in |*l| excludes it.
+// Returns 1 on success, 0 if the address family is unsupported or |ap| is NULL.
+OPENSSL_EXPORT int BIO_ADDR_rawaddress(const BIO_ADDR *ap, void *p, size_t *l);
+
+// BIO_ADDR_rawport returns the port number stored in the BIO_ADDR.
+// Returns the port number in host byte order.
+OPENSSL_EXPORT unsigned short BIO_ADDR_rawport(const BIO_ADDR *ap);
+
+#endif // !defined(OPENSSL_NO_SOCK)
 
 // BIO Pairs.
 //
@@ -1198,6 +1243,10 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(BIO, BIO_free)
 BORINGSSL_MAKE_UP_REF(BIO, BIO_up_ref)
 BORINGSSL_MAKE_DELETER(BIO_METHOD, BIO_meth_free)
+
+#if !defined(OPENSSL_NO_SOCK)
+BORINGSSL_MAKE_DELETER(BIO_ADDR, BIO_ADDR_free)
+#endif
 
 BSSL_NAMESPACE_END
 

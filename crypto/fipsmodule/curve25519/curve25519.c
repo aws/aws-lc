@@ -253,6 +253,12 @@ int ed25519_sign_internal(
   // implementation, we want to reserve the ability to allocate in this
   // implementation in the future.
 
+  if (alg == ED25519PH_ALG &&
+      message_len != SHA512_DIGEST_LENGTH) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    return 0;
+  }
+
   // Ed25519 sign: rfc8032 5.1.6
   //
   // Step: rfc8032 5.1.6.1
@@ -484,6 +490,12 @@ int ed25519_verify_internal(
     const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
     const uint8_t *ctx, size_t ctx_len) {
   // Ed25519 verify: rfc8032 5.1.7
+
+  if (alg == ED25519PH_ALG &&
+      message_len != SHA512_DIGEST_LENGTH) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_CRYPTO_LIB);
+    return 0;
+  }
 
   // Step: rfc8032 5.1.7.1 (up to decoding the public key)
   // Decode signature as:

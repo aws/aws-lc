@@ -1,10 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "internal.h"
-#include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <algorithm>
 #include <ctime>
+#include <iostream>
+#include <string>
+#include "internal.h"
 
 static const argument_t kArguments[] = {
         { "-help", kBooleanArgument, "Display option summary" },
@@ -15,28 +18,59 @@ static const argument_t kArguments[] = {
         { "", kOptionalArgument, "" }
 };
 
+static bool handleHash(X509_CRL *crl) {
+  fprintf(stdout, "%08x\n", X509_NAME_hash(X509_CRL_get_issuer(crl)));
+  return true;
+}
+
+static bool handleFingerprint(X509_CRL *crl) {
+  int j;
+  unsigned int n;
+  unsigned char md[EVP_MAX_MD_SIZE];
+
+  if (!X509_CRL_digest(crl, EVP_sha1(), md, &n)) {
+    fprintf(stderr, "unable to get encoding of CRL\n");
+    return false;
+  }
+  fprintf(stdout, "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(EVP_sha1())));
+
+  for (j = 0; j < (int)n; j++) {
+    fprintf(stdout, "%02X%c", md[j], (j + 1 == (int)n) ? '\n' : ':');
+  }
+  return true;
+}
+
+static bool ProcessArgument(const std::string &arg_name, X509_CRL *crl) {
+  if (arg_name == "-hash") {
+    return handleHash(crl);
+  }
+  if (arg_name == "-fingerprint") {
+    return handleFingerprint(crl);
+  }
+  return true;
+}
+
 bool CRLTool(const args_list_t &args) {
-  args_map_t parsed_args;
+  using namespace ordered_args;
+  ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments) ||
       extra_args.size() > 0) {
     PrintUsage(kArguments);
     return false;
   }
 
   std::string in;
-  bool help = false, hash = false, fingerprint = false, noout = false;
+  bool help = false, noout = false;
 
   GetBoolArgument(&help, "-help", parsed_args);
   GetString(&in, "-in", "", parsed_args);
-  GetBoolArgument(&hash, "-hash", parsed_args);
-  GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
   GetBoolArgument(&noout, "-noout", parsed_args);
 
   // Display crl tool option summary
   if (help) {
     PrintUsage(kArguments);
-    return false;
+    return true;
   }
 
   // Read from stdin if no -in path provided
@@ -58,23 +92,17 @@ bool CRLTool(const args_list_t &args) {
     return false;
   }
 
-  if (hash) {
-    fprintf(stdout, "%08x\n", X509_NAME_hash(X509_CRL_get_issuer(crl.get())));
-  }
+  // Process arguments in the order they were provided
+  for (const auto &arg_pair : parsed_args) {
+    const std::string &arg_name = arg_pair.first;
 
-  if (fingerprint) {
-    int j;
-    unsigned int n;
-    unsigned char md[EVP_MAX_MD_SIZE];
-
-    if (!X509_CRL_digest(crl.get(), EVP_sha1(), md, &n)) {
-      fprintf(stderr, "unable to get encoding of CRL\n");
-      return false;
+    // Skip non-output arguments
+    if (arg_name == "-in" || arg_name == "-noout" || arg_name == "-help") {
+      continue;
     }
-    fprintf(stdout, "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(EVP_sha1())));
 
-    for (j = 0; j < (int)n; j++) {
-      fprintf(stdout, "%02X%c", md[j], (j + 1 == (int)n) ? '\n' : ':');
+    if (!ProcessArgument(arg_name, crl.get())) {
+      return false;
     }
   }
 

@@ -7,8 +7,8 @@
 //
 // extern void p384_montjscalarmul
 //   (uint64_t res[static 18],
-//    uint64_t scalar[static 6],
-//    uint64_t point[static 18]);
+//    const uint64_t scalar[static 6],
+//    const uint64_t point[static 18]);
 //
 // This function is a variant of its affine point version p384_scalarmul.
 // Here, input and output points are assumed to be in Jacobian form with

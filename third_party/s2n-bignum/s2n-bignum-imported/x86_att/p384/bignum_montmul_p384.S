@@ -5,8 +5,9 @@
 // Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 //
-//    extern void bignum_montmul_p384
-//     (uint64_t z[static 6], uint64_t x[static 6], uint64_t y[static 6]);
+//    extern void bignum_montmul_p384(uint64_t z[static 6],
+//                                    const uint64_t x[static 6],
+//                                    const uint64_t y[static 6]);
 //
 // Does z := (2^{-384} * x * y) mod p_384, assuming that the inputs x and y
 // satisfy x * y <= 2^384 * p_384 (in particular this is true if we are in

@@ -2039,6 +2039,31 @@ TEST_P(HKDF_ServiceIndicatorTest, HKDFTest) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
+TEST(HKDF_ServiceIndicatorTest, NegativeTests) {
+  FIPSStatus status = AWSLC_APPROVED;
+
+  // Setting |out_len| to (256 * 254 + 1) implies n = 255 in |HKDF_expand|.
+  // This should cause a failure and no service indicator set to approved.
+  uint8_t output[sizeof(kHKDF_okm_tc1_sha256)];
+  CALL_SERVICE_AND_CHECK_APPROVED(
+    status, ASSERT_FALSE(HKDF(output, (256 * 254 + 1), EVP_sha256(),
+                               kHKDF_ikm_tc1, sizeof(kHKDF_ikm_tc1),
+                               kHKDF_salt_tc1, sizeof(kHKDF_salt_tc1),
+                               kHKDF_info_tc1, sizeof(kHKDF_info_tc1))));
+  EXPECT_EQ(status, AWSLC_NOT_APPROVED);
+
+  status = AWSLC_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+    status, ASSERT_FALSE(HKDF_expand(output, (256 * 254 + 1), EVP_sha256(),
+                               kHKDF_ikm_tc1, sizeof(kHKDF_ikm_tc1),
+                               kHKDF_info_tc1, sizeof(kHKDF_info_tc1))));
+  EXPECT_EQ(status, AWSLC_NOT_APPROVED);
+
+  // The above short-circuits fast in |HKDF_expand|. But currently, there is no
+  // way to force an error in the rest of the function logic when going through
+  // the public API.
+}
+
 class EVP_HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, EVP_HKDF_ServiceIndicatorTest,
@@ -5296,7 +5321,7 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.52.1");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS " AWSLC_VERSION_NUMBER_STRING);
 }
 
 #else
@@ -5339,6 +5364,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.52.1");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC " AWSLC_VERSION_NUMBER_STRING);
 }
 #endif // AWSLC_FIPS

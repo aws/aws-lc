@@ -42,8 +42,8 @@ pushd "${SCRATCH_FOLDER}"
 function curl_build() {
   cmake -DCMAKE_DEBUG_POSTFIX='' -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="${AWS_LC_INSTALL_FOLDER}" -DCMAKE_INSTALL_PREFIX="${CURL_INSTALL_FOLDER}" -B "${CURL_BUILD_FOLDER}" -S "${CURL_SRC_FOLDER}"
   cmake --build "${CURL_BUILD_FOLDER}" --target install -j "${NUM_CPU_THREADS}"
-  ldd "${CURL_INSTALL_FOLDER}/lib/libcurl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-  ldd "${CURL_INSTALL_FOLDER}/lib/libcurl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${CURL_INSTALL_FOLDER}/lib/libcurl.so" crypto || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${CURL_INSTALL_FOLDER}/lib/libcurl.so" ssl || exit 1
 }
 
 function tpm2_tss_build() {
@@ -53,7 +53,7 @@ function tpm2_tss_build() {
   ./configure --enable-unit --with-crypto=ossl --prefix="${TPM2_TSS_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}" all VERBOSE=1
   make -j "${NUM_CPU_THREADS}" check VERBOSE=1
-  ldd "${TPM2_TSS_SRC_FOLDER}/test/unit/.libs/fapi-get-web-cert" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${TPM2_TSS_SRC_FOLDER}/test/unit/.libs/fapi-get-web-cert" crypto || exit 1
   make -j "${NUM_CPU_THREADS}" install
 }
 
@@ -84,24 +84,24 @@ mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${CURL_BUILD_FOLDE
 ls
 
 aws_lc_build "${SRC_ROOT}" "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${AWS_LC_INSTALL_FOLDER}/lib"
 
 curl_build
 
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${CURL_INSTALL_FOLDER}/lib/"
-export CFLAGS="-g -ggdb -O0 -I\"${AWS_LC_INSTALL_FOLDER}\"/include -I\"${CURL_INSTALL_FOLDER}\"/include -L\"${AWS_LC_INSTALL_FOLDER}\"/lib -L\"${CURL_INSTALL_FOLDER}\"/lib" LT_SYS_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${CURL_INSTALL_FOLDER}/lib"
+export CFLAGS="-g -ggdb -O0 -I${AWS_LC_INSTALL_FOLDER}/include -I${CURL_INSTALL_FOLDER}/include -L${AWS_LC_INSTALL_FOLDER}/lib -L${CURL_INSTALL_FOLDER}/lib" LT_SYS_LIBRARY_PATH="${LD_LIBRARY_PATH}"
 
 pushd "${TPM2_TSS_SRC_FOLDER}"
 tpm2_tss_build
 popd
 
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${TPM2_TSS_INSTALL_FOLDER}/lib/"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${TPM2_TSS_INSTALL_FOLDER}/lib"
 
 pushd "${TPM2_ABRMD_SRC_FOLDER}"
 tpm2_abrmd_build
 popd
 
-export PATH="${PATH:-}:${TPM2_ABRMD_INSTALL_FOLDER}/sbin/"
+export PATH="${PATH:+$PATH:}${TPM2_ABRMD_INSTALL_FOLDER}/sbin"
 
 pushd "${TPM2_TOOLS_SRC_FOLDER}"
 tpm2_tools_build

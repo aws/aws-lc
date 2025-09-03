@@ -2599,6 +2599,17 @@ OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
 // a certificate.
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
 
+typedef STACK_OF(X509_CRL) *(*X509_STORE_CTX_lookup_crls_fn)(
+    X509_STORE_CTX *ctx, X509_NAME *nm);
+
+OPENSSL_EXPORT X509_STORE_CTX_lookup_crls_fn X509_STORE_get_lookup_crls(X509_STORE *ctx);
+
+OPENSSL_EXPORT void X509_STORE_set_lookup_crls(
+    X509_STORE *ctx, X509_STORE_CTX_lookup_crls_fn lookup_crls);
+
+#define X509_STORE_set_lookup_crls_cb(ctx, func) \
+  X509_STORE_set_lookup_crls((ctx), (func))
+
 // Certificate verification.
 //
 // An |X509_STORE_CTX| object represents a single certificate verification
@@ -4968,6 +4979,8 @@ typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
 // |X509_verify_cert| completes successfully.
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
+
+OPENSSL_EXPORT X509_STORE_CTX_verify_cb X509_STORE_get_verify_cb(X509_STORE *ctx);
 
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
 // the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|

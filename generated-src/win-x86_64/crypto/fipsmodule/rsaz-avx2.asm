@@ -1953,18 +1953,20 @@ ALIGN	4
 	DD	$L$SEH_begin_rsaz_1024_gather5 wrt ..imagebase
 	DD	$L$SEH_end_rsaz_1024_gather5 wrt ..imagebase
 	DD	$L$SEH_info_rsaz_1024_gather5 wrt ..imagebase
-section	.xdata rdata align=8
-ALIGN	8
+section	.xdata rdata align=4
+ALIGN	4
 $L$SEH_info_rsaz_1024_sqr_avx2:
 	DB	9,0,0,0
 	DD	rsaz_se_handler wrt ..imagebase
 	DD	$L$sqr_1024_body wrt ..imagebase,$L$sqr_1024_epilogue wrt ..imagebase,$L$sqr_1024_in_tail wrt ..imagebase
 	DD	0
+ALIGN	4
 $L$SEH_info_rsaz_1024_mul_avx2:
 	DB	9,0,0,0
 	DD	rsaz_se_handler wrt ..imagebase
 	DD	$L$mul_1024_body wrt ..imagebase,$L$mul_1024_epilogue wrt ..imagebase,$L$mul_1024_in_tail wrt ..imagebase
 	DD	0
+ALIGN	4
 $L$SEH_info_rsaz_1024_gather5:
 	DB	0x01,0x36,0x17,0x0b
 	DB	0x36,0xf8,0x09,0x00

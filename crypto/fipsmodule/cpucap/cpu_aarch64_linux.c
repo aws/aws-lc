@@ -83,9 +83,10 @@ void OPENSSL_cpuid_setup(void) {
   // is supported. As of Valgrind 3.21 trying to read from that register will
   // cause Valgrind to crash.
   if (hwcap & kCPUID) {
-    // Check if the CPU model is Neoverse V1 or V2,
-    // which has a wide crypto/SIMD pipeline.
     OPENSSL_arm_midr = armv8_cpuid_probe();
+    if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_N1)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
     if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) {
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_V1;
     }

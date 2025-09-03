@@ -4105,16 +4105,18 @@ ___
 $code.=<<___;
 
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_ecp_nistz256_neg:
 	.byte	9,0,0,0
 	.rva	short_handler
 	.rva	.Lneg_body,.Lneg_epilogue		# HandlerData[]
+.align	4
 .LSEH_info_ecp_nistz256_ord_mul_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lord_mul_body,.Lord_mul_epilogue	# HandlerData[]
 	.long	48,0
+.align	4
 .LSEH_info_ecp_nistz256_ord_sqr_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
@@ -4123,11 +4125,13 @@ $code.=<<___;
 ___
 $code.=<<___ if ($addx);
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.align	4
 .LSEH_info_ecp_nistz256_ord_mul_montx:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lord_mulx_body,.Lord_mulx_epilogue	# HandlerData[]
 	.long	48,0
+.align	4
 .LSEH_info_ecp_nistz256_ord_sqr_montx:
 	.byte	9,0,0,0
 	.rva	full_handler
@@ -4136,16 +4140,19 @@ $code.=<<___ if ($addx);
 #endif
 ___
 $code.=<<___;
+.align	4
 .LSEH_info_ecp_nistz256_mul_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lmul_body,.Lmul_epilogue		# HandlerData[]
 	.long	48,0
+.align	4
 .LSEH_info_ecp_nistz256_sqr_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lsqr_body,.Lsqr_epilogue		# HandlerData[]
 	.long	48,0
+.align	4
 .LSEH_info_ecp_nistz256_select_wX:
 	.byte	0x01,0x33,0x16,0x00
 	.byte	0x33,0xf8,0x09,0x00	#movaps 0x90(rsp),xmm15
@@ -4159,10 +4166,10 @@ $code.=<<___;
 	.byte	0x0c,0x78,0x01,0x00	#movaps 0x10(rsp),xmm7
 	.byte	0x08,0x68,0x00,0x00	#movaps 0x00(rsp),xmm6
 	.byte	0x04,0x01,0x15,0x00	#sub	rsp,0xa8
-	.align	8
 ___
 $code.=<<___	if ($avx>1);
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.align	4
 .LSEH_info_ecp_nistz256_avx2_select_wX:
 	.byte	0x01,0x36,0x17,0x0b
 	.byte	0x36,0xf8,0x09,0x00	# vmovaps 0x90(rsp),xmm15
@@ -4177,20 +4184,22 @@ $code.=<<___	if ($avx>1);
 	.byte	0x09,0x68,0x00,0x00	# vmovaps 0x00(rsp),xmm6
 	.byte	0x04,0x01,0x15,0x00	# sub	  rsp,0xa8
 	.byte	0x00,0xb3,0x00,0x00	# set_frame r11
-	.align	8
 #endif
 ___
 $code.=<<___;
+.align	4
 .LSEH_info_ecp_nistz256_point_double:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_doubleq_body,.Lpoint_doubleq_epilogue	# HandlerData[]
 	.long	32*5+56,0
+.align	4
 .LSEH_info_ecp_nistz256_point_add:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_addq_body,.Lpoint_addq_epilogue		# HandlerData[]
 	.long	32*18+56,0
+.align	4
 .LSEH_info_ecp_nistz256_point_add_affine:
 	.byte	9,0,0,0
 	.rva	full_handler
@@ -4199,17 +4208,19 @@ $code.=<<___;
 ___
 $code.=<<___ if ($addx);
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-.align	8
+.align	4
 .LSEH_info_ecp_nistz256_point_doublex:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_doublex_body,.Lpoint_doublex_epilogue	# HandlerData[]
 	.long	32*5+56,0
+.align	4
 .LSEH_info_ecp_nistz256_point_addx:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_addx_body,.Lpoint_addx_epilogue		# HandlerData[]
 	.long	32*18+56,0
+.align	4
 .LSEH_info_ecp_nistz256_point_add_affinex:
 	.byte	9,0,0,0
 	.rva	full_handler

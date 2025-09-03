@@ -1,8 +1,9 @@
 import sys
 
 assert sys.version_info.major == 3, "Only python 3 supported"
-if sys.version_info.minor >= 13:
-    print("Fernet import currently broken on python release candidates >= 3.13")
+
+if sys.version_info.minor >= 14:
+    print("Fernet import currently broken on python release candidates >= 3.14")
     print("Returning early for now, need to check in on this post-release")
     sys.exit()
 

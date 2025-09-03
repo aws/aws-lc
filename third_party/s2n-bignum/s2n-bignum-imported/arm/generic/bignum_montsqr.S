@@ -5,8 +5,8 @@
 // Montgomery square, z := (x^2 / 2^{64k}) mod m
 // Inputs x[k], m[k]; output z[k]
 //
-//    extern void bignum_montsqr
-//      (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
+//    extern void bignum_montsqr(uint64_t k, uint64_t *z, const uint64_t *x,
+//                               const uint64_t *m);
 //
 // Does z := (x^2 / 2^{64k}) mod m, assuming x^2 <= 2^{64k} * m, which is
 // guaranteed in particular if x < m initially (the "intended" case).

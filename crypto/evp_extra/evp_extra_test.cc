@@ -1214,7 +1214,7 @@ TEST(EVPExtraTest, Print) {
   Exponent: 65537 (0x10001)
 )");
   EXPECT_EQ(PrintToString(rsa.get(), /*indent=*/2, &EVP_PKEY_print_private),
-            R"(  Private-Key: (1024 bit)
+            R"(  Private-Key: (1024 bit, 2 primes)
   modulus:
       00:f8:b8:6c:83:b4:bc:d9:a8:57:c0:a5:b4:59:76:
       8c:54:1d:79:eb:22:52:04:7e:d3:37:eb:41:fd:83:
@@ -2577,6 +2577,16 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_TRUE(pkey_sk_new);
   ASSERT_TRUE(pkey_new);
   ASSERT_TRUE(EVP_PKEY_kem_check_key(pkey_new.get()));
+
+  // Not supported for anything but EC and RSA keys
+  bssl::UniquePtr<EVP_PKEY_CTX> kem_key_ctx(
+          EVP_PKEY_CTX_new(pkey_new.get(), NULL));
+  ASSERT_TRUE(kem_key_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(kem_key_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check((kem_key_ctx.get())));
+  ASSERT_EQ((uint16_t)ERR_get_error(),
+            (uint16_t)EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  ERR_clear_error();
 
   // ---- 5. Test encaps/decaps with new keys ----
   // Create Alice's context with the new key that has both

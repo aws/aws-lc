@@ -47,11 +47,16 @@ target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 
 target_link_libraries(ssl crypto)
 
-target_include_directories(ssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+target_add_awslc_include_paths(TARGET ssl SCOPE PUBLIC)
 
-target_include_directories(ssl PUBLIC
-  $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+set_target_properties(ssl PROPERTIES
+    OUTPUT_NAME "${SSL_LIB_NAME}")
+
+if(PERFORM_SONAME_BUILD)
+  set_target_properties(ssl PROPERTIES
+      VERSION "${SOFTWARE_VERSION}"
+      SOVERSION "${ABI_VERSION}")
+endif()
 
 if(BUILD_TESTING)
   # ocsp_integration_test.cc does integration tests with the Amazon Trust
@@ -71,7 +76,7 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${INTEGRATION_TEST_EXEC}
           boringssl_gtest_main ssl )
-  target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+  target_add_awslc_include_paths(TARGET ${INTEGRATION_TEST_EXEC} SCOPE PRIVATE)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
   set_test_location(${INTEGRATION_TEST_EXEC})
 
@@ -81,13 +86,24 @@ if(BUILD_TESTING)
     ../crypto/test/file_util.cc
     span_test.cc
     ssl_test.cc
+    ssl_client_hello_test.cc
     ssl_c_test.c
+    ssl_key_share_test.cc
+    ssl_alps_test.cc
+    ssl_common_test.cc
+    ssl_misc_test.cc
+    ssl_version_test.cc
+    ssl_ech_test.cc
+    ssl_quic_test.cc
+    ssl_hybrid_handshake_test.cc
+    ssl_encoding_test.cc
+    ssl_ciphers_test.cc
+    ssl_handshake_test.cc
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
+  target_add_awslc_include_paths(TARGET ${SSL_TEST_EXEC} SCOPE PRIVATE)
   set_test_location(${SSL_TEST_EXEC})
-
-  target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
 
   if(WIN32)
     target_link_libraries(${SSL_TEST_EXEC} ws2_32)
@@ -99,7 +115,9 @@ endif()
 install(TARGETS ssl
         EXPORT ssl-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          NAMELINK_SKIP
 )
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
@@ -124,3 +142,13 @@ install(EXPORT ssl-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/ssl/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
+
+if(PERFORM_SONAME_BUILD)
+  install(CODE "
+set(TGT lib${SSL_LIB_NAME}.so.${ABI_VERSION})
+set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so)
+message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
+"
+    COMPONENT Development)
+endif()

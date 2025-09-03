@@ -18,7 +18,7 @@ struct rand_thread_local_state {
   CTR_DRBG_STATE drbg;
 
   // generate_calls_since_seed is the number of generate calls made on |drbg|
-  // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
+  // since it was last (re)seeded. Must be bounded by |kCtrDrbgReseedInterval|.
   uint64_t generate_calls_since_seed;
 
   // reseed_calls_since_initialization is the number of reseed calls made on
@@ -64,7 +64,7 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 //
 // This is problematic because a thread might be scheduled and return
 // randomness from a non-valid state. The linked application should obviously
-// arrange that all threads are gracefully exited before existing the process.
+// arrange that all threads are gracefully exited before exiting the process.
 // Yet, in cases where such graceful exit does not happen we ensure that no
 // output can be returned by locking all thread-local states and deliberately
 // not releasing the lock. A synchronization step in the core randomness
@@ -412,7 +412,7 @@ static void rand_bytes_core(
   // Iterate CTR-DRBG generate until |out_len| bytes of randomness have been
   // generated. CTR_DRBG_generate can maximally generate
   // |CTR_DRBG_MAX_GENERATE_LENGTH| bytes per usage of its state see
-  // SP800-90A Rev 1 Table 3. If user requests more, we most generate output in
+  // SP800-90A Rev 1 Table 3. If user requests more, we must generate output in
   // chunks and concatenate.
   while (out_len > 0) {
     size_t todo = out_len;

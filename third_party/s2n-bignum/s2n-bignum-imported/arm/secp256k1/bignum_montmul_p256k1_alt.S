@@ -5,8 +5,9 @@
 // Montgomery multiply, z := (x * y / 2^256) mod p_256k1
 // Inputs x[4], y[4]; output z[4]
 //
-//    extern void bignum_montmul_p256k1_alt
-//     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+//    extern void bignum_montmul_p256k1_alt(uint64_t z[static 4],
+//                                          const uint64_t x[static 4],
+//                                          const uint64_t y[static 4]);
 //
 // Does z := (2^{-256} * x * y) mod p_256k1, assuming that the inputs x and y
 // satisfy x * y <= 2^256 * p_256k1 (in particular this is true if we are in

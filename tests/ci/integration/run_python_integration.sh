@@ -68,6 +68,7 @@ function python_run_tests() {
         test_audit \
         test_ftplib \
         test_hashlib \
+        test_hmac \
         test_httplib \
         test_imaplib \
         test_logging \
@@ -139,12 +140,12 @@ function python_run_3rd_party_tests() {
     echo installing other OpenSSL-dependent modules...
     install_crt_python
     python -m pip install 'boto3[crt]'
-    # cffi install is busted on release candidates >= 3.13, so allow install
-    # failure for cryptography and pyopenssl on those versions for now.
+    # cffi install is busted on newer release candidates, so allow install
+    # failure for cryptography and pyopenssl on >= 3.14 for now.
     python -m pip install 'cryptography' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
     python -m pip install 'pyopenssl' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
         python ${test}
@@ -206,15 +207,21 @@ cd ${SCRATCH_FOLDER}
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
+# Link AWS-LC dynamically against CPython's main, statically against
+# versioned releases.
+if [[ "${1}" == "main" ]]; then
+    BUILD_SHARED_LIBS="ON"
+    export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
+else
+    BUILD_SHARED_LIBS="OFF"
+fi
+
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
-    -DBUILD_SHARED_LIBS=0 \
+    -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS} \
     -DFIPS=${FIPS}
 
 fetch_crt_python
-
-# Some systems install under "lib64" instead of "lib"
-ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
 
 mkdir -p ${PYTHON_SRC_FOLDER}
 pushd ${PYTHON_SRC_FOLDER}
@@ -222,6 +229,8 @@ pushd ${PYTHON_SRC_FOLDER}
 # Some environments disable IPv6 by default
 which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
+
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 # NOTE: As we add more versions to support, we may want to parallelize here
 for branch in "$@"; do

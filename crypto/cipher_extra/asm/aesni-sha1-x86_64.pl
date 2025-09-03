@@ -1530,19 +1530,21 @@ $code.=<<___ if ($shaext);
 ___
 $code.=<<___;
 .section	.xdata
-.align	8
+.align	4
 .LSEH_info_aesni_cbc_sha1_enc_ssse3:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
 	.rva	.Lprologue_ssse3,.Lepilogue_ssse3	# HandlerData[]
 ___
 $code.=<<___ if ($avx);
+.align	4
 .LSEH_info_aesni_cbc_sha1_enc_avx:
 	.byte	9,0,0,0
 	.rva	ssse3_handler
 	.rva	.Lprologue_avx,.Lepilogue_avx		# HandlerData[]
 ___
 $code.=<<___ if ($shaext);
+.align	4
 .LSEH_info_aesni_cbc_sha1_enc_shaext:
 	.byte	9,0,0,0
 	.rva	ssse3_handler

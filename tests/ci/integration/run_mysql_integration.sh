@@ -6,7 +6,7 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
-MYSQL_VERSION_TAG="mysql-cluster-9.3.0"
+MYSQL_VERSION_TAG="mysql-cluster-9.4.0"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
 BOOST_INSTALL_FOLDER=/home/dependencies/boost
@@ -130,10 +130,10 @@ fi
 
 popd
 
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" crypto || exit 1

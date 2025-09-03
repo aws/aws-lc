@@ -5,8 +5,8 @@
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
 #include <openssl/pkcs7.h>
-#include "../../internal.h"
-#include "../crypto/bio/internal.h"
+
+#include "internal.h"
 #include "../internal.h"
 
 
@@ -107,6 +107,7 @@ static long md_ctrl(BIO *b, int cmd, long num, void *ptr) {
       }
       break;
     case BIO_C_GET_MD_CTX:
+      GUARD_PTR(ptr);
       pctx = ptr;
       *pctx = ctx;
       BIO_set_init(b, 1);
@@ -119,14 +120,33 @@ static long md_ctrl(BIO *b, int cmd, long num, void *ptr) {
         BIO_set_init(b, 1);
       }
       break;
-    // OpenSSL implements these, but because we don't need them and cipher BIO
-    // is internal, we can fail loudly if they're called. If this case is hit,
-    // it likely means you're making a change that will require implementing
-    // these.
     case BIO_C_GET_MD:
+      GUARD_PTR(ptr);
+      if (BIO_get_init(b)) {
+        const EVP_MD **ppmd = ptr;
+        *ppmd = EVP_MD_CTX_md(ctx);
+      } else {
+        ret = 0;
+      }
+      break;
+    // |BIO_C_SET_MD_CTX| and |BIO_set_md_ctx| are not implemented due to
+    // complexity with |BIO_f_md|'s automatic |EVP_MD_CTX| allocation.
+    // OpenSSL users would need to manually free the existing |EVP_MD_CTX|
+    // before setting a new one.
+    // Open an issue to AWS-LC if this functionality is ever needed.
     case BIO_C_SET_MD_CTX:
+    // |BIO_C_DO_STATE_MACHINE| is used by |BIO_do_handshake| for most |BIO|s in
+    // OpenSSL. This functionality is only properly supported by |BIO_s_connect|
+    // within AWS-LC.
     case BIO_C_DO_STATE_MACHINE:
+    // |BIO_CTRL_DUP| is used by |BIO_dup_state| for most |BIO|s in OpenSSL,
+    // which AWS-LC doesn't have support for. We can implement support here (or
+    // with a direct function call) if we ever have the need to do so.
     case BIO_CTRL_DUP:
+    // |BIO_CTRL_GET/SET_CALLBACK| are routed to by |BIO_get/set_info_callback|
+    // in OpenSSL, which AWS-LC doesn't have support for. We can implement
+    // support here (or with a direct function call) if we ever have the need to
+    // do so.
     case BIO_CTRL_GET_CALLBACK:
     case BIO_CTRL_SET_CALLBACK:
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_BIO_LIB);
@@ -178,4 +198,8 @@ int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx) {
 
 int BIO_set_md(BIO *b, const EVP_MD *md) {
   return BIO_ctrl(b, BIO_C_SET_MD, 0, (EVP_MD*)md);
+}
+
+int BIO_get_md(BIO *b, EVP_MD **md) {
+  return BIO_ctrl(b, BIO_C_GET_MD, 0, md);
 }
