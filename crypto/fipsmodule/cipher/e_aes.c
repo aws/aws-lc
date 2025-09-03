@@ -1746,7 +1746,7 @@ int EVP_has_aes_hardware(void) {
 #if 1 //xaes
 
 #define XAES_KEY_COMMIT_SIZE  (2*AES_BLOCK_SIZE)
-struct aead_xaes_256_gcm_ctx {
+struct aead_xaes_256_gcm_ctx { // size: 292 bytes
   //struct aead_aes_gcm_ctx gcm_ctx;
   AES_KEY xaes_key; // Key K, used in CMAC and key commitment
   uint8_t k1[AES_BLOCK_SIZE]; // only value needed from cmac_ctx_st
@@ -2073,7 +2073,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
 
 
 #if 1 // AES-GCM with HMAC-SHA256 as a key-deriving PRF
-struct aead_hmac_aes_256_gcm_ctx {
+struct aead_hmac_aes_256_gcm_ctx { //size: 1256 bytes
   HMAC_CTX hmac_ctx;
   uint8_t kc[XAES_KEY_COMMIT_SIZE]; // key commitment
 };
