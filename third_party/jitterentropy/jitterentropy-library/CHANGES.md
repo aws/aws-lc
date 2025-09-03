@@ -1,5 +1,7 @@
 3.6.3
  * Correct time stamp processing on AIX
+ * Use high-resolution time stamp on Apple Silicon
+ * GCD power-up test: consider OSR
 
 3.6.2
  * Fix RCT re-initialization in jent_read_entropy_safe (thanks to Joshua Hill for pointing this out)
