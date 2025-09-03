@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_sm2)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_add_sm2)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_sm2)
         .text
         .balign 4
@@ -31,6 +33,7 @@
 #define n3 x11
 
 S2N_BN_SYMBOL(bignum_add_sm2):
+        CFI_START
 
 // First just add the numbers as [c;d3;d2;d1;d0]
 
@@ -66,7 +69,9 @@ S2N_BN_SYMBOL(bignum_add_sm2):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_add_sm2)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -11,11 +11,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n521_9)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_n521_9)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n521_9)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n521_9_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_n521_9_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n521_9_alt)
         .text
         .balign 4
@@ -54,6 +57,7 @@
 S2N_BN_SYMBOL(bignum_mod_n521_9):
 
 S2N_BN_SYMBOL(bignum_mod_n521_9_alt):
+        CFI_START
 
 // Load the top digit first into d8.
 // The initial quotient estimate is q = h + 1 where x = 2^521 * h + t
@@ -135,7 +139,9 @@ S2N_BN_SYMBOL(bignum_mod_n521_9_alt):
         stp     d6, d7, [z, #48]
         str     d8, [z, #64]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_n521_9)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

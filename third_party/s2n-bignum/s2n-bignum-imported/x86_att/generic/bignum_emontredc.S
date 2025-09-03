@@ -22,10 +22,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = w, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_emontredc)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc)
         .text
 
@@ -58,11 +59,12 @@
 
 
 S2N_BN_SYMBOL(bignum_emontredc):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -71,10 +73,10 @@ S2N_BN_SYMBOL(bignum_emontredc):
 
 // Save registers
 
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
 
 // Initialize top carry to zero immediately to catch the k = 0 case
 
@@ -83,7 +85,7 @@ S2N_BN_SYMBOL(bignum_emontredc):
 // If k = 0 the whole operation is trivial
 
         testq   k, k
-        jz      bignum_emontredc_end
+        jz      Lbignum_emontredc_end
 
 // Move m into its permanent home since we need RDX for muls
 
@@ -92,7 +94,7 @@ S2N_BN_SYMBOL(bignum_emontredc):
 // Launch into the outer loop
 
         xorq    i, i
-bignum_emontredc_outerloop:
+Lbignum_emontredc_outerloop:
         movq    (z), e
         movq    w, d
         imulq   e, d
@@ -104,9 +106,9 @@ bignum_emontredc_outerloop:
         movl    $1, jshort
         movq    k, t
         decq    t
-        jz      bignum_emontredc_montend
+        jz      Lbignum_emontredc_montend
 
-bignum_emontredc_montloop:
+Lbignum_emontredc_montloop:
         adcq    (z,j,8), h
         sbbq    e, e
         movq    (m,j,8), a
@@ -117,9 +119,9 @@ bignum_emontredc_montloop:
         movq    %rdx, h
         incq    j
         decq    t
-        jnz     bignum_emontredc_montloop
+        jnz     Lbignum_emontredc_montloop
 
-bignum_emontredc_montend:
+Lbignum_emontredc_montend:
         adcq    c, h
         movl    $0, cshort
         adcq    $0, c
@@ -133,22 +135,24 @@ bignum_emontredc_montend:
         addq    $8, z // For simple indexing, z pointer moves
         incq    i
         cmpq    k, i
-        jc      bignum_emontredc_outerloop
+        jc      Lbignum_emontredc_outerloop
 
-bignum_emontredc_end:
+Lbignum_emontredc_end:
 
 // Put the top carry in the expected place, restore registers and return
 
         movq    c, %rax
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_emontredc)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

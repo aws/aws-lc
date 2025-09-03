@@ -15,14 +15,16 @@
 //
 // Standard ARM ABI: X0 = a
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_reduce)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(mlkem_reduce)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_reduce)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(mlkem_reduce):
+        CFI_START
 
 // This matches the code in the mlkem-native repository
 // https://github.com/pq-code-package/mlkem-native/blob/main/mlkem/native/aarch64/src/poly_reduce_asm.S
@@ -101,4 +103,10 @@ mlkem_reduce_loop:
         and     v31.16b, v3.16b, v20.16b
         add     v24.8h, v24.8h, v31.8h
         stur    q24, [x0, #-0x40]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(mlkem_reduce)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

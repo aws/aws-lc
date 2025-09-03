@@ -12,9 +12,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqr)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr)
         .text
         .balign 4
@@ -38,10 +40,11 @@
 #define ll x15
 
 S2N_BN_SYMBOL(bignum_sqr):
+        CFI_START
 
 // If p = 0 the result is trivial and nothing needs doing
 
-        cbz     p, bignum_sqr_end
+        cbz     p, Lbignum_sqr_end
 
 // initialize (hh,ll) = 0
 
@@ -51,7 +54,7 @@ S2N_BN_SYMBOL(bignum_sqr):
 // Iterate outer loop from k = 0 ... k = p - 1 producing result digits
 
         mov     k, xzr
-bignum_sqr_outerloop:
+Lbignum_sqr_outerloop:
 
 // First let bot = MAX 0 (k + 1 - n) and top = MIN (k + 1) n
 // We want to accumulate all x[i] * x[k - i] for bot <= i < top
@@ -75,7 +78,7 @@ bignum_sqr_outerloop:
 // If htop <= bot then main doubled part of the sum is empty
 
         cmp     htop, i
-        bls     bignum_sqr_nosumming
+        bls     Lbignum_sqr_nosumming
 
 // Use a moving pointer for [y] = x[k-i] for the cofactor
 
@@ -85,7 +88,7 @@ bignum_sqr_outerloop:
 
 // Do the main part of the sum x[i] * x[k - i] for 2 * i < k
 
-bignum_sqr_innerloop:
+Lbignum_sqr_innerloop:
         ldr     a, [x, i, lsl #3]
         ldr     b, [y], #-8
         mul     d, a, b
@@ -95,7 +98,7 @@ bignum_sqr_innerloop:
         adc     c, c, xzr
         add     i, i, #1
         cmp     i, htop
-        bne     bignum_sqr_innerloop
+        bne     Lbignum_sqr_innerloop
 
 // Now double it
 
@@ -105,12 +108,12 @@ bignum_sqr_innerloop:
 
 // If k is even (which means 2 * i = k) and i < n add the extra x[i]^2 term
 
-bignum_sqr_nosumming:
+Lbignum_sqr_nosumming:
 
         ands    xzr, k, #1
-        bne     bignum_sqr_innerend
+        bne     Lbignum_sqr_innerend
         cmp     i, n
-        bcs     bignum_sqr_innerend
+        bcs     Lbignum_sqr_innerend
 
         ldr     a, [x, i, lsl #3]
         mul     d, a, a
@@ -121,7 +124,7 @@ bignum_sqr_nosumming:
 
 // Now add the local sum into the global sum, store and shift
 
-bignum_sqr_innerend:
+Lbignum_sqr_innerend:
         adds    l, l, ll
         str     l, [z, k, lsl #3]
         adcs    ll, h, hh
@@ -129,10 +132,12 @@ bignum_sqr_innerend:
 
         add     k, k, #1
         cmp     k, p
-        bcc     bignum_sqr_outerloop
+        bcc     Lbignum_sqr_outerloop
 
-bignum_sqr_end:
-        ret
+Lbignum_sqr_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sqr)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

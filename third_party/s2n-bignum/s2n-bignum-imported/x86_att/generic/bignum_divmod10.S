@@ -11,10 +11,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_divmod10)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_divmod10)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_divmod10)
         .text
 
@@ -36,11 +37,12 @@
 #define wshort %r10d
 
 S2N_BN_SYMBOL(bignum_divmod10):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
@@ -49,14 +51,14 @@ S2N_BN_SYMBOL(bignum_divmod10):
 
         xorl    rshort, rshort
         testq   k, k
-        jz      bignum_divmod10_end
+        jz      Lbignum_divmod10_end
 
 // Straightforward top-down loop doing 10 * q + r' := 2^64 * r + d
 
         movq    $0x3333333333333334, s
         movl    $0x3333333, wshort
 
-bignum_divmod10_divloop:
+Lbignum_divmod10_divloop:
         movq    -8(z,k,8), d
 
 // First re-split and shift so 2^28 * h + l = (2^64 * r + d) / 2
@@ -82,16 +84,18 @@ bignum_divmod10_divloop:
         leaq    (d,q,2), r
 
         decq    k
-        jnz     bignum_divmod10_divloop
+        jnz     Lbignum_divmod10_divloop
 
 // Return %rax = r as the final remainder
 
-bignum_divmod10_end:
+Lbignum_divmod10_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_divmod10)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
