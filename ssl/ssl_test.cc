@@ -1688,7 +1688,7 @@ TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 
-  ASSERT_EQ(-1, SSL_peek_ex(server.get(), nullptr, 0, nullptr));
+  ASSERT_EQ(0, SSL_peek_ex(server.get(), nullptr, 0, nullptr));
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 
@@ -1696,7 +1696,7 @@ TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 
-  ASSERT_EQ(-1, SSL_read_ex(server.get(), nullptr, 0, nullptr));
+  ASSERT_EQ(0, SSL_read_ex(server.get(), nullptr, 0, nullptr));
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 
@@ -1704,11 +1704,11 @@ TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 
-  ASSERT_EQ(-1, SSL_write_ex(server.get(), nullptr, 0, nullptr));
+  ASSERT_EQ(0, SSL_write_ex(server.get(), nullptr, 0, nullptr));
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 
-  ASSERT_EQ(-1, SSL_key_update(server.get(), SSL_KEY_UPDATE_REQUESTED));
+  ASSERT_EQ(0, SSL_key_update(server.get(), SSL_KEY_UPDATE_REQUESTED));
   ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   ERR_clear_error();
 

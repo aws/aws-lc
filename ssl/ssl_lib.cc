@@ -1078,7 +1078,7 @@ static int ssl_read_impl(SSL *ssl) {
 }
 
 int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
-  GUARD_SUSPENDED_STATE(ssl, -1);
+  GUARD_SUSPENDED_STATE(ssl, 0);
 
   if (num == 0 && read_bytes != nullptr) {
     *read_bytes = 0;
@@ -1133,7 +1133,7 @@ int SSL_peek(SSL *ssl, void *buf, int num) {
 }
 
 int SSL_peek_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
-  GUARD_SUSPENDED_STATE(ssl, -1);
+  GUARD_SUSPENDED_STATE(ssl, 0);
   int ret = SSL_peek(ssl, buf, (int)num);
   if (ret <= 0) {
     return 0;
@@ -1186,7 +1186,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 }
 
 int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
-  GUARD_SUSPENDED_STATE(ssl, -1);
+  GUARD_SUSPENDED_STATE(ssl, 0);
   if (num == 0 && written != nullptr) {
     *written = 0;
     return 1;
@@ -1202,7 +1202,7 @@ int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
 }
 
 int SSL_key_update(SSL *ssl, int request_type) {
-  GUARD_SUSPENDED_STATE(ssl, -1);
+  GUARD_SUSPENDED_STATE(ssl, 0);
 
   ssl_reset_error_state(ssl);
 

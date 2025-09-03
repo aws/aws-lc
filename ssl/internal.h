@@ -1479,6 +1479,8 @@ class SSLBuffer {
 
   bool DoDeserializationV1(CBS &in);
   bool DoDeserializationV2(CBS &in);
+
+  bool ValidateBuffersState();
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For

@@ -224,6 +224,19 @@ bool SSLBuffer::DoSerialization(CBB &cbb) {
   return CBB_flush(&cbb) == 1;
 }
 
+bool SSLBuffer::ValidateBuffersState() {
+  const uint8_t *start_ptr = buf_;
+  const uint8_t *end_ptr = buf_ + buf_size_;
+  const uint8_t *data_start_ = buf_ + offset_;
+  const uint8_t *data_end_ptr = data_start_ + size_;
+  const uint8_t *remaining_ptr = data_end_ptr + (cap_ - size_);
+  if (data_start_ > end_ptr || data_start_ < start_ptr ||
+      data_end_ptr > end_ptr || data_end_ptr < start_ptr || size_ > cap_ ||
+      remaining_ptr > end_ptr || remaining_ptr < start_ptr) {
+    return false;
+  }
+  return true;
+}
 
 bool SSLBuffer::DoDeserialization(CBS &cbs) {
   CBS seq;
@@ -241,8 +254,7 @@ bool SSLBuffer::DoDeserialization(CBS &cbs) {
     case SSL_BUFFER_SERDE_VERSION_ONE:
       return DoDeserializationV1(seq);
     default:
-      // Only possible with a programming error
-      abort();
+      return false;
   }
 }
 
@@ -257,6 +269,15 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
+
+  if (offset > UINT16_MAX || size > UINT16_MAX || cap > UINT16_MAX) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+    return false;
+  }
+
+  // In the event that deserialization happens into an existing buffer.
+  Clear();
+
   bool buf_allocated = !!buf_allocated_int;
   if (buf_allocated) {
     // When buf_allocated, CBS_len(&buf) should be larger than
@@ -265,8 +286,10 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
+    buf_allocated_ = true;
     buf_ = (uint8_t *)malloc(CBS_len(&buf));
     if (buf_ == NULL) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
     buf_size_ = CBS_len(&buf);
@@ -276,11 +299,11 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
+    buf_allocated_ = false;
     buf_ = inline_buf_;
     buf_size_ = sizeof(inline_buf_);
     OPENSSL_memcpy(inline_buf_, CBS_data(&buf), CBS_len(&buf));
   }
-  buf_allocated_ = buf_allocated;
   buf_cap_ = header_len_ = 0;  // V1 was lossy :(
   offset_ = (uint16_t)offset;
   size_ = (uint16_t)size;
@@ -288,6 +311,14 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
   // As we restored from a V1 format we can only serialize as V1 until the next
   // |EnsureCap| call.
   max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_ONE;
+
+  // Final sanity check
+  if(!ValidateBuffersState()) {
+    Clear();
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+    return false;
+  }
+
   return true;
 }
 
@@ -306,40 +337,63 @@ bool SSLBuffer::DoDeserializationV2(CBS &cbs) {
     return false;
   }
 
+  if (buf_cap > SSLBUFFER_MAX_CAPACITY || rel_offset > UINT16_MAX ||
+      rel_offset > CBS_len(&buf) || cap > UINT16_MAX) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+    return false;
+  }
+
+  // In the event that deserialization happens into an existing buffer.
+  Clear();
+
   bool buf_allocated = !!buf_allocated_int;
   if (buf_allocated) {
+    buf_allocated_ = true;
     buf_size_ = compute_buffer_size(buf_cap);
     buf_ = (uint8_t *)malloc(buf_size_);
     if (buf_ == NULL) {
+      Clear();
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
     align_offset = compute_buffer_offset(header_len, buf_);
-    if (CBS_len(&buf) > buf_size_ - align_offset) {
-      free(buf_);
+    if (rel_offset > UINT16_MAX - align_offset ||
+        CBS_len(&buf) - rel_offset > UINT16_MAX ||
+        CBS_len(&buf) > buf_size_ - align_offset) {
+      Clear();
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
     OPENSSL_memcpy(buf_ + align_offset, CBS_data(&buf), CBS_len(&buf));
   } else {
+    buf_allocated_ = false;
+    buf_ = inline_buf_;
+    buf_size_ = sizeof(inline_buf_);
     // We could relax this and just allocate a in-memory buffer with correct
     // alignment. But this value is not configurable (unlike
     // SSL3_ALIGN_PAYLOAD), so we can adjust this in the future if we modify
     // sizeof(inline_buf_);
-    if (CBS_len(&buf) > sizeof(inline_buf_)) {
+    if (CBS_len(&buf) > sizeof(inline_buf_) || buf_cap > sizeof(inline_buf_)) {
+      Clear();
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
       return false;
     }
-    buf_ = inline_buf_;
-    buf_size_ = sizeof(inline_buf_);
     OPENSSL_memcpy(buf_, CBS_data(&buf), CBS_len(&buf));
   }
-  buf_allocated_ = buf_allocated;
   buf_cap_ = (size_t)buf_cap;
   header_len_ = (size_t)header_len;
   offset_ = (uint16_t)(align_offset + rel_offset);
   size_ = (uint16_t)(CBS_len(&buf) - rel_offset);
   cap_ = (uint16_t)cap;
   max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_TWO;
+
+  // Final sanity check
+  if (!ValidateBuffersState()) {
+    Clear();
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
+    return false;
+  }
+
   return true;
 }
 
@@ -348,9 +402,20 @@ static const unsigned kBufferViewOffsetFromDataPtr =
 
 bool SSLBuffer::SerializeBufferView(CBB &cbb, Span<uint8_t> &view) {
   // View must be a span that points into this buffer.
-  if (!buf_ptr() || buf_ptr() > view.data()) {
+  if (!buf_ptr() || !view.data() ||
+      view.data() <
+          buf_ptr() ||  // does the start of the view fall before the buffer
+      (view.data() + view.size()) <
+          buf_ptr() ||  // does the end of the view fall before the buffer
+      (buf_ptr() + buf_size()) <
+          view.data() ||  // does the start of the view fall after the end of
+                          // the buffer
+      (buf_ptr() + buf_size()) <
+          (view.data() + view.size())  // does the end of of the view fall after
+                                       // the end of the buffer
+  ) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
-    return 0;
+    return false;
   }
 
   // Important: The offset should not be relative to
@@ -389,23 +454,31 @@ static bool deserialize_buffer_view_from_buf_ptr_offset(CBS &cbs,
     return 0;
   }
   uint8_t *view_ptr = buffer->buf_ptr() + offset;
-  if (view_ptr > buffer->buf_ptr() + buffer->buf_size() ||
-      view_ptr + size > buffer->buf_ptr() + buffer->buf_size()) {
+  if (view_ptr < buffer->buf_ptr() ||  // does the start of the view fall before
+                                       // the buffer
+      view_ptr > (buffer->buf_ptr() +
+                  buffer->buf_size()) ||  // does the the start of the view fall
+                                          // after the end of the buffer
+      (view_ptr + size) <
+          buffer->buf_ptr() ||  // does the end of the view fall
+                                // before the start of the buffer
+      (view_ptr + size) > (buffer->buf_ptr() +
+                           buffer->buf_size())  // does the end of the view fall
+                                                // after the end of the buffer
+
+  ) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
-    return 0;
+    return false;
   }
   view = MakeSpan(view_ptr, size);
   return true;
 }
 
 static int fits_in_ptrdiff_int64(int64_t x) {
-#if PTRDIFF_MAX > INT64_MAX
-  // ptrdiff_t is wider than int64_t — all int64_t fit
+#if PTRDIFF_MAX > INT64_MAX || PTRDIFF_MAX == INT64_MAX
+  // ptrdiff_t is equal to or wider than int64_t — all int64_t fit
   (void)x;
   return 1;
-#elif PTRDIFF_MAX == INT64_MAX
-  // ptrdiff_t is exactly int64_t — no cast needed
-  return x >= PTRDIFF_MIN && x <= PTRDIFF_MAX;
 #else
   // ptrdiff_t is narrower than int64_t — cast to int64_t for safe compare
   return x >= (int64_t)PTRDIFF_MIN && x <= (int64_t)PTRDIFF_MAX;
@@ -432,8 +505,17 @@ static bool deserialize_buffer_view_from_data_offset(CBS &cbs,
     return 0;
   }
   uint8_t *view_ptr = buffer->data() + (ptrdiff_t)offset;
-  if (buffer->buf_ptr() > view_ptr ||
-      view_ptr + size > buffer->buf_ptr() + buffer->buf_size()) {
+  if (view_ptr <
+          buffer->buf_ptr() ||  // does the view start fall before the buffer
+      view_ptr >
+          (buffer->buf_ptr() +
+           buffer->buf_size()) ||  // does the view start fall after the buffer
+      (view_ptr + size) < buffer->buf_ptr() ||  // does the end of the view fall
+                                                // before the buffer start
+      (view_ptr + size) > (buffer->buf_ptr() +
+                           buffer->buf_size()  // does the end of the view fall
+                                               // after the end of the buffer
+                           )) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return 0;
   }
