@@ -1256,7 +1256,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrMove
 		}
 
-	case "cmovneq", "cmoveq":
+	case "cmovneq", "cmoveq", "cmove":
 		if len(args) == 2 {
 			return instrConditionalMove
 		}
