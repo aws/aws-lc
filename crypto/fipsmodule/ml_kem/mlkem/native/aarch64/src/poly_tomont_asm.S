@@ -3,6 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
  */
 
+/*yaml
+  Name: poly_tomont_asm
+  Description: Convert polynomial to Montgomery domain
+  Signature: void mlk_poly_tomont_asm(int16_t p[256])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 512
+      permissions: read/write
+      c_parameter: int16_t p[256]
+      description: Input/output polynomial
+  Stack:
+    bytes: 0
+*/
+
 #include "_internal_s2n_bignum.h"
 
 /*

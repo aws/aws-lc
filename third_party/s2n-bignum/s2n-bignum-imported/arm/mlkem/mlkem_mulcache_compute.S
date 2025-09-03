@@ -18,8 +18,8 @@
 // our "tests/test.c", as "mulcache_zetas" and "mulcache_zetas_twisted"
 //
 // extern void mlkem_mulcache_compute
-//      (int16_t x[128],const int16_t a[256],
-//       const int16_t z[128],const int16_t t[128]);
+//      (int16_t x[static 128],const int16_t a[static 256],
+//       const int16_t z[static 128],const int16_t t[static 128]);
 //
 // Standard ARM ABI: X0 = x, X1 = a, X2 = z, X3 = t
 // ----------------------------------------------------------------------------

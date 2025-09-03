@@ -11,7 +11,7 @@
 // This is intended for use when that array represents polynomial
 // coefficients for ML-KEM, but that is not relevant to its operation.
 //
-// extern void mlkem_reduce(int16_t a[256]);
+// extern void mlkem_reduce(int16_t a[static 256]);
 //
 // Standard ARM ABI: X0 = a
 // ----------------------------------------------------------------------------

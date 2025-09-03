@@ -12,43 +12,31 @@
 #include "../../internal.h"
 #include "../cpucap/internal.h"
 
-#if defined(__x86_64__) || defined(__aarch64__) || \
-    defined(__mips64) || defined(__ia64) || defined(__loongarch_lp64) || \
-    (defined(__VMS) && !defined(__vax))
-
- // These are available even in ILP32 flavours, but even then they are
- // capable of performing 64-bit operations as efficiently as in *P64.
- // Since it's not given that we can use sizeof(void *), just shunt it.
-# define BIT_INTERLEAVE (0)
-#else
-# define BIT_INTERLEAVE (sizeof(void *) < 8)
-#endif
-
 static const uint64_t iotas[] = {
-    BIT_INTERLEAVE ? 0x0000000000000001ULL : 0x0000000000000001ULL,
-    BIT_INTERLEAVE ? 0x0000008900000000ULL : 0x0000000000008082ULL,
-    BIT_INTERLEAVE ? 0x8000008b00000000ULL : 0x800000000000808aULL,
-    BIT_INTERLEAVE ? 0x8000808000000000ULL : 0x8000000080008000ULL,
-    BIT_INTERLEAVE ? 0x0000008b00000001ULL : 0x000000000000808bULL,
-    BIT_INTERLEAVE ? 0x0000800000000001ULL : 0x0000000080000001ULL,
-    BIT_INTERLEAVE ? 0x8000808800000001ULL : 0x8000000080008081ULL,
-    BIT_INTERLEAVE ? 0x8000008200000001ULL : 0x8000000000008009ULL,
-    BIT_INTERLEAVE ? 0x0000000b00000000ULL : 0x000000000000008aULL,
-    BIT_INTERLEAVE ? 0x0000000a00000000ULL : 0x0000000000000088ULL,
-    BIT_INTERLEAVE ? 0x0000808200000001ULL : 0x0000000080008009ULL,
-    BIT_INTERLEAVE ? 0x0000800300000000ULL : 0x000000008000000aULL,
-    BIT_INTERLEAVE ? 0x0000808b00000001ULL : 0x000000008000808bULL,
-    BIT_INTERLEAVE ? 0x8000000b00000001ULL : 0x800000000000008bULL,
-    BIT_INTERLEAVE ? 0x8000008a00000001ULL : 0x8000000000008089ULL,
-    BIT_INTERLEAVE ? 0x8000008100000001ULL : 0x8000000000008003ULL,
-    BIT_INTERLEAVE ? 0x8000008100000000ULL : 0x8000000000008002ULL,
-    BIT_INTERLEAVE ? 0x8000000800000000ULL : 0x8000000000000080ULL,
-    BIT_INTERLEAVE ? 0x0000008300000000ULL : 0x000000000000800aULL,
-    BIT_INTERLEAVE ? 0x8000800300000000ULL : 0x800000008000000aULL,
-    BIT_INTERLEAVE ? 0x8000808800000001ULL : 0x8000000080008081ULL,
-    BIT_INTERLEAVE ? 0x8000008800000000ULL : 0x8000000000008080ULL,
-    BIT_INTERLEAVE ? 0x0000800000000001ULL : 0x0000000080000001ULL,
-    BIT_INTERLEAVE ? 0x8000808200000000ULL : 0x8000000080008008ULL
+    0x0000000000000001ULL,
+    0x0000000000008082ULL,
+    0x800000000000808aULL,
+    0x8000000080008000ULL,
+    0x000000000000808bULL,
+    0x0000000080000001ULL,
+    0x8000000080008081ULL,
+    0x8000000000008009ULL,
+    0x000000000000008aULL,
+    0x0000000000000088ULL,
+    0x0000000080008009ULL,
+    0x000000008000000aULL,
+    0x000000008000808bULL,
+    0x800000000000008bULL,
+    0x8000000000008089ULL,
+    0x8000000000008003ULL,
+    0x8000000000008002ULL,
+    0x8000000000000080ULL,
+    0x000000000000800aULL,
+    0x800000008000000aULL,
+    0x8000000080008081ULL,
+    0x8000000000008080ULL,
+    0x0000000080000001ULL,
+    0x8000000080008008ULL
 };
 
 #if !defined(KECCAK1600_ASM)
@@ -70,29 +58,11 @@ static const uint8_t rhotates[KECCAK1600_ROWS][KECCAK1600_ROWS] = {
 # define KECCAK_COMPLEMENTING_TRANSFORM
 #endif
 
-#define ROL32(a, offset) (((a) << (offset)) | ((a) >> ((32 - (offset)) & 31)))
-
 static uint64_t ROL64(uint64_t val, int offset) {
     if (offset == 0) {
         return val;
-    } else if (!BIT_INTERLEAVE) {
-        return (val << offset) | (val >> (64-offset));
     } else {
-        uint32_t hi = (uint32_t)(val >> 32), lo = (uint32_t)val;
-
-        if ((offset & 1) != 0) {
-            uint32_t tmp = hi;
-
-            offset >>= 1;
-            hi = ROL32(lo, offset);
-            lo = ROL32(tmp, offset + 1);
-        } else {
-            offset >>= 1;
-            lo = ROL32(lo, offset);
-            hi = ROL32(hi, offset);
-        }
-
-        return ((uint64_t)hi << 32) | lo;
+        return (val << offset) | (val >> (64-offset));
     }
 }
 
@@ -252,76 +222,6 @@ static void KeccakF1600_c(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
 }
 #endif // !KECCAK1600_ASM
 
-static uint64_t BitInterleave(uint64_t Ai) {
-    if (BIT_INTERLEAVE) {
-        uint32_t hi = (uint32_t)(Ai >> 32), lo = (uint32_t)Ai;
-        uint32_t t0, t1;
-
-        t0 = lo & 0x55555555;
-        t0 |= t0 >> 1;  t0 &= 0x33333333;
-        t0 |= t0 >> 2;  t0 &= 0x0f0f0f0f;
-        t0 |= t0 >> 4;  t0 &= 0x00ff00ff;
-        t0 |= t0 >> 8;  t0 &= 0x0000ffff;
-
-        t1 = hi & 0x55555555;
-        t1 |= t1 >> 1;  t1 &= 0x33333333;
-        t1 |= t1 >> 2;  t1 &= 0x0f0f0f0f;
-        t1 |= t1 >> 4;  t1 &= 0x00ff00ff;
-        t1 |= t1 >> 8;  t1 <<= 16;
-
-        lo &= 0xaaaaaaaa;
-        lo |= lo << 1;  lo &= 0xcccccccc;
-        lo |= lo << 2;  lo &= 0xf0f0f0f0;
-        lo |= lo << 4;  lo &= 0xff00ff00;
-        lo |= lo << 8;  lo >>= 16;
-
-        hi &= 0xaaaaaaaa;
-        hi |= hi << 1;  hi &= 0xcccccccc;
-        hi |= hi << 2;  hi &= 0xf0f0f0f0;
-        hi |= hi << 4;  hi &= 0xff00ff00;
-        hi |= hi << 8;  hi &= 0xffff0000;
-
-        Ai = ((uint64_t)(hi | lo) << 32) | (t1 | t0);
-    }
-
-    return Ai;
-}
-
-static uint64_t BitDeinterleave(uint64_t Ai) {
-    if (BIT_INTERLEAVE) {
-        uint32_t hi = (uint32_t)(Ai >> 32), lo = (uint32_t)Ai;
-        uint32_t t0, t1;
-
-        t0 = lo & 0x0000ffff;
-        t0 |= t0 << 8;  t0 &= 0x00ff00ff;
-        t0 |= t0 << 4;  t0 &= 0x0f0f0f0f;
-        t0 |= t0 << 2;  t0 &= 0x33333333;
-        t0 |= t0 << 1;  t0 &= 0x55555555;
-
-        t1 = hi << 16;
-        t1 |= t1 >> 8;  t1 &= 0xff00ff00;
-        t1 |= t1 >> 4;  t1 &= 0xf0f0f0f0;
-        t1 |= t1 >> 2;  t1 &= 0xcccccccc;
-        t1 |= t1 >> 1;  t1 &= 0xaaaaaaaa;
-
-        lo >>= 16;
-        lo |= lo << 8;  lo &= 0x00ff00ff;
-        lo |= lo << 4;  lo &= 0x0f0f0f0f;
-        lo |= lo << 2;  lo &= 0x33333333;
-        lo |= lo << 1;  lo &= 0x55555555;
-
-        hi &= 0xffff0000;
-        hi |= hi >> 8;  hi &= 0xff00ff00;
-        hi |= hi >> 4;  hi &= 0xf0f0f0f0;
-        hi |= hi >> 2;  hi &= 0xcccccccc;
-        hi |= hi >> 1;  hi &= 0xaaaaaaaa;
-
-        Ai = ((uint64_t)(hi | lo) << 32) | (t1 | t0);
-    }
-
-    return Ai;
-}
-
 // Forward declaration for KeccakF1600 function
 void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]);
 
@@ -349,7 +249,7 @@ static void KeccakF1600_XORBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], c
                       (uint64_t)inp[4] << 32 | (uint64_t)inp[5] << 40 |
                       (uint64_t)inp[6] << 48 | (uint64_t)inp[7] << 56;
         inp += 8;
-        A_flat[i] ^= BitInterleave(Ai);
+        A_flat[i] ^= Ai;
     }
 }
 
@@ -376,7 +276,7 @@ static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS
     size_t i = 0;
 
     while (len != 0) {
-        uint64_t Ai = BitDeinterleave(A_flat[i]);
+        uint64_t Ai = A_flat[i];
 
         if (len < 8) {
             for (size_t j = 0; j < len; j++) {
@@ -418,19 +318,16 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 
 #if defined(KECCAK1600_ASM)
 
-// Double-check that bit-interleaving is not used on AArch64
-#if BIT_INTERLEAVE != 0
-#error Bit-interleaving of Keccak1600 states should be disabled for AArch64
-#endif
-
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
+#if defined(OPENSSL_AARCH64)
 static void keccak_log_dispatch(size_t id) {
 #if BORINGSSL_DISPATCH_TEST
     BORINGSSL_function_hit[id] = 1;
 #endif
 }
+#endif
 
 void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // Dispatch logic for Keccak-x1 on AArch64:
@@ -454,7 +351,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // Neoverse V1 and V2 do support SHA3 instructions, but they are only
     // implemented on 1/4 of Neon units, and are thus slower than a scalar
     // implementation.
-
+#if defined(OPENSSL_AARCH64)
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
     if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
         keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
@@ -473,6 +370,11 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
 
     keccak_log_dispatch(9); // kFlag_KeccakF1600_hw
     KeccakF1600_hw((uint64_t *) A);
+
+#elif defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) && \
+    defined(KECCAK1600_S2N_BIGNUM_ASM)
+    sha3_keccak_f1600((uint64_t *)A, iotas);
+#endif
 }
 
 #else // KECCAK1600_ASM
@@ -524,8 +426,7 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     //   which is a straightforward implementation using the SHA3 extension.
     // - Otherwise, fall back to four times the 1-fold Keccak implementation
     //   (which has its own dispatch logic).
-
-#if defined(KECCAK1600_S2N_BIGNUM_ASM)
+#if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_AARCH64)
     if (CRYPTO_is_Neoverse_N1()) {
         keccak_log_dispatch(13); // kFlag_sha3_keccak4_f1600_alt
         sha3_keccak4_f1600_alt((uint64_t *)A, iotas);

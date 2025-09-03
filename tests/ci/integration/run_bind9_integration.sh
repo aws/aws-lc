@@ -28,6 +28,8 @@ AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
 function bind9_build() {
+  BIND9_VERSION=$(meson introspect meson.build --projectinfo | jq -r '.version')
+
   #dnsrps was removed since bind9 9.21.2
   meson setup "$BIND9_BUILD_FOLDER" \
     --pkg-config-path="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" \
@@ -69,8 +71,8 @@ bind9_run_tests
 
 # Iterate through all of bind's vended artifacts.
 for libname in dns ns isc isccc isccfg; do
-  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib${libname}.so" crypto || exit 1
-  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib${libname}.so" ssl || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib${libname}-${BIND9_VERSION}.so" crypto || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${BIND9_BUILD_FOLDER}/lib${libname}-${BIND9_VERSION}.so" ssl || exit 1
 done
 
 popd
