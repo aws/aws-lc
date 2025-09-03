@@ -3308,17 +3308,19 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
 
-// X509_STORE_CTX_enable_ec_key_explicit_params enables X.509 subject public
+// X509_VERIFY_PARAM_enable_ec_key_explicit_params enables X.509 subject public
 // keys to contain elliptic curve keys with explicit parameters. By default
-// AWS-LC rejects valiation of certificate chains containg public keys
+// AWS-LC rejects validation of certificate chains containing public keys
 // with explicit EC parameters. Returns 1 on success, or 0 on failure.
-OPENSSL_EXPORT int X509_VERIFY_PARAM_enable_ec_key_explicit_params(X509_VERIFY_PARAM *param);
+OPENSSL_EXPORT int X509_VERIFY_PARAM_enable_ec_key_explicit_params(
+    X509_VERIFY_PARAM *param);
 
-// X509_STORE_CTX_disable_ec_key_explicit_params disables X.509 subject public keys
-// to contain elliptic curve keys with explicit parameters. By default
-// AWS-LC rejects valiation of certificate chains containg public keys
-// with explicit EC parameters. Returns 1 on success, or 0 on failure.
-OPENSSL_EXPORT int X509_VERIFY_PARAM_disable_ec_key_explicit_params(X509_VERIFY_PARAM *param);
+// X509_VERIFY_PARAM_disable_ec_key_explicit_params disables X.509 subject
+// public keys to contain elliptic curve keys with explicit parameters. By
+// default AWS-LC rejects validation of certificate chains containing public
+// keys with explicit EC parameters. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int X509_VERIFY_PARAM_disable_ec_key_explicit_params(
+    X509_VERIFY_PARAM *param);
 
 // Filesystem-based certificate stores.
 //
