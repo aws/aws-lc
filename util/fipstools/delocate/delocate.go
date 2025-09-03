@@ -1433,7 +1433,7 @@ func undoConditionalMove(w stringWriter, instr string) wrapperFunc {
 	var invertedCondition string
 
 	switch instr {
-	case "cmoveq":
+	case "cmoveq", "cmove":
 		invertedCondition = "ne"
 	case "cmovneq":
 		invertedCondition = "e"
