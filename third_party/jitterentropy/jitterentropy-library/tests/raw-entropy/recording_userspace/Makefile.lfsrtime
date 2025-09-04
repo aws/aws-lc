@@ -1,0 +1,40 @@
+# Compile Noise Source as user space application
+
+CC ?= gcc
+CFLAGS +=-Wextra -Wall -pedantic -fPIC -O0
+#Hardening
+CFLAGS +=-fstack-protector-all -fwrapv --param ssp-buffer-size=4
+ifneq (Darwin,$(shell uname))
+LDFLAGS +=-Wl,-z,relro,-z,now
+endif
+
+program_NAME := jitterentropy-lfsrtime
+#program_C_SRCS := $(wildcard *.c) 
+program_C_SRCS := jitterentropy-lfsrtime.c
+program_C_OBJS := ${program_C_SRCS:.c=.o}
+program_OBJS := $(program_C_OBJS)
+
+program_INCLUDE_DIRS :=
+program_LIBRARY_DIRS :=
+ifeq (Darwin,$(shell uname))
+program_LIBRARIES := pthread
+else
+program_LIBRARIES := rt pthread
+endif
+
+CPPFLAGS += $(foreach includedir,$(program_INCLUDE_DIRS),-I$(includedir))
+LDFLAGS += $(foreach librarydir,$(program_LIBRARY_DIRS),-L$(librarydir))
+LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
+
+.PHONY: all clean distclean
+
+all: $(program_NAME)
+
+$(program_NAME): $(program_OBJS)
+	$(CC) $(program_OBJS) -o $(program_NAME) $(LDFLAGS)
+
+clean:
+	@- $(RM) $(program_NAME)
+	@- $(RM) $(program_OBJS)
+
+distclean: clean

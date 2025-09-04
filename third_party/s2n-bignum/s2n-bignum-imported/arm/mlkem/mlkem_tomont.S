@@ -11,7 +11,7 @@
 // satisfying (output[i] == 2^16 * input[i]) (mod 3329), without full
 // modular reduction but with |output[i]| < 3329 guaranteed.
 //
-// extern void mlkem_tomont(int16_t a[256]);
+// extern void mlkem_tomont(int16_t a[static 256]);
 //
 // Standard ARM ABI: X0 = a
 // ----------------------------------------------------------------------------

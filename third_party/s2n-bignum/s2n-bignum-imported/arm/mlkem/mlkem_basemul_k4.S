@@ -23,8 +23,8 @@
 // assumed to be as computed by mlkem_mulcache_compute.
 //
 // extern void mlkem_basemul_k4
-//      (int16_t r[256],const int16_t a[1024],const int16_t b[1024],
-//       const int16_t bt[512])
+//      (int16_t r[static 256],const int16_t a[static 1024],
+//       const int16_t b[static 1024], const int16_t bt[static 512]);
 //
 // Standard ARM ABI: X0 = r, X1 = a, X2 = b, X3 = bt
 // ----------------------------------------------------------------------------

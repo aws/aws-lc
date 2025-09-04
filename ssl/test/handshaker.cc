@@ -27,7 +27,8 @@
 #include "handshake_util.h"
 #include "test_config.h"
 #include "test_state.h"
-#include "../crypto/internal.h"
+#include "../../crypto/internal.h"
+#include "../../crypto/ube/snapsafe_detect.h"
 
 using namespace bssl;
 

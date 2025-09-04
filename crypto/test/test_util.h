@@ -83,6 +83,13 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs);
 // |RSA*|.
 bssl::UniquePtr<RSA> RSAFromPEM(const char *pem);
 
+// Helper function that:
+// 1. Creates a BIO
+// 2. Reads the provided |pem_string| into bio
+// 3. Reads the PEM into DER encoding
+// 4. Returns the DER data and length
+bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len);
+
 // kReferenceTime is the reference time used by certs created by |MakeTestCert|.
 // It is the unix timestamp for Sep 27th, 2016.
 static const int64_t kReferenceTime = 1474934400;
@@ -116,6 +123,23 @@ size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
 size_t createTempDirPath(char buffer[PATH_MAX]);
+
+// Returns true if operating system is Amazon Linux and false otherwise.
+// Determined at run-time and requires read-permissions to /etc.
+bool osIsAmazonLinux(void);
+
+// Executes |testFunc| simultaneously in |numberThreads| number of threads. If
+// OPENSSL_THREADS is not defined, executes |testFunc| a single time
+// non-concurrently.
+bool threadTest(const size_t numberOfThreads,
+  std::function<void(bool*)> testFunc);
+
+bool forkAndRunTest(std::function<bool()> child_func,
+  std::function<bool()> parent_func);
+
+void maybeDisableSomeForkDetectMechanisms(void);
+bool runtimeEmulationIsIntelSde(void);
+bool addressSanitizerIsEnabled(void);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {

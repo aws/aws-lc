@@ -88,13 +88,12 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 #endif
 
 #if defined(INTERNAL_TOOL)
-#include "../crypto/fipsmodule/rand/internal.h"
+#include "../crypto/rand_extra/internal.h"
 #endif
 
 #if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
 #include "../crypto/fipsmodule/sha/internal.h"
 #endif
-
 
 #if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED) && (AWSLC_API_VERSION > 30)
 #include "../crypto/fipsmodule/cpucap/internal.h"
@@ -2503,8 +2502,9 @@ static bool SpeedSelfTest(const std::string &selected) {
   results.Print("self-test");
   return true;
 }
+#endif
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#if AWSLC_API_VERSION >= 34
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -2540,7 +2540,6 @@ static bool SpeedJitter(std::string selected) {
   }
   return true;
 }
-#endif
 #endif
 
 static bool SpeedDHcheck(size_t prime_bit_length) {
@@ -3080,7 +3079,6 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
 #if defined(INTERNAL_TOOL)
        !SpeedRandom(CRYPTO_sysrand, "CRYPTO_sysrand", selected) ||
-       !SpeedRandom(CRYPTO_sysrand_for_seed, "CRYPTO_sysrand_for_seed", selected) ||
        !SpeedHashToCurve(selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
@@ -3103,11 +3101,11 @@ bool Speed(const std::vector<std::string> &args) {
     if (!SpeedSelfTest(selected)) {
       return false;
     }
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#endif
+#if AWSLC_API_VERSION >= 34
     if (!SpeedJitter(selected)) {
       return false;
     }
-#endif
 #endif
   }
 

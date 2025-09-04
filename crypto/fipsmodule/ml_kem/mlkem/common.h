@@ -135,6 +135,19 @@
 #define MLK_FIPS202X4_HEADER_FILE MLK_CONFIG_FIPS202X4_CUSTOM_HEADER
 #endif
 
+/* Standard library function replacements */
+#if !defined(__ASSEMBLER__)
+#if !defined(MLK_CONFIG_CUSTOM_MEMCPY)
+#include <string.h>
+#define mlk_memcpy memcpy
+#endif
+
+#if !defined(MLK_CONFIG_CUSTOM_MEMSET)
+#include <string.h>
+#define mlk_memset memset
+#endif
+#endif /* !__ASSEMBLER__ */
+
 /* Just in case we want to include mlkem_native.h, set the configuration
  * for that header in accordance with the configuration used here. */
 
