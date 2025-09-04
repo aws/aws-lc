@@ -2135,7 +2135,7 @@ static int aead_hmac_aes_256_gcm_init_common(EVP_AEAD_CTX *ctx, const uint8_t *k
   // K_U[0:32] := HMAC-SHA256_K(0x0001|"X"|0x00|N[: 12])
   uint8_t gcm_key[(256 >> 3)] = {0};
   HMAC_CTX *hctx = &hmac_aes_ctx->hmac_ctx;
-  unsigned int out_len;
+  unsigned int out_len = 0;
   if (!HMAC_Init_ex(hctx, NULL, 0, NULL, NULL) ||
       !HMAC_Update(hctx, M1, AES_BLOCK_SIZE) ||
       !HMAC_Final(hctx, gcm_key, &out_len) ||

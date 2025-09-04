@@ -1117,8 +1117,12 @@ static bool SpeedAES256XTS(const std::string &name,
   return true;
 }
 
+#if !defined(OPENSSL_BENCHMARK)
 #include "../crypto/fipsmodule/cmac/internal.h"
 
+// This is a benchmark of XAES-256-GCM constructed from existing APIs of CMAC
+// and AES-GCM. It is slower than using EVP_aead_xaes_256_gcm() and
+// EVP_aead_xaes_256_gcm_key_commit().
 static bool SpeedXAES256GCM(const std::string &name,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1278,7 +1282,7 @@ static bool SpeedXAES256GCM(const std::string &name,
           !CMAC_Reset(cmac_ctx.get())) {
         return false;
       }
-      OPENSSL_memcpy(cmac_ctx2.get()->block, cmac_cmt_msg22.data()+16, AES_BLOCK_SIZE);
+      memcpy(cmac_ctx2.get()->block, cmac_cmt_msg22.data(), AES_BLOCK_SIZE);
       if (!CMAC_Final(cmac_ctx2.get(), key_cmt.data() + (key_len/2), &cmac_out_len2) ||
           !CMAC_Reset(cmac_ctx2.get())) {
         return false;
@@ -1359,6 +1363,7 @@ static bool SpeedXAES256GCM(const std::string &name,
 
   return true;
 }
+#endif // !OPENSSL_BENCHMARK
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
@@ -3296,6 +3301,14 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
 #if AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
+       !SpeedAEADSeal(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_hmac_aes_256_gcm(), "AEAD-HMAC-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_hmac_aes_256_gcm(), "AEAD-HMAC-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_hmac_aes_256_gcm_key_commit(), "AEAD-HMAC-AES-256-GCM key commit", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_hmac_aes_256_gcm_key_commit(), "AEAD-HMAC-AES-256-GCM key commit", kTLSADLen, selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
        !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
@@ -3312,14 +3325,6 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
        !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
        !SpeedAEADSeal(EVP_aead_aes_128_ccm_bluetooth(),"AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
-       !SpeedAEADSeal(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
-       !SpeedAEADOpen(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
-       !SpeedAEADSeal(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
-       !SpeedAEADOpen(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
-       !SpeedAEADSeal(EVP_aead_hmac_aes_256_gcm(), "AEAD-HMAC-AES-256-GCM", kTLSADLen, selected) ||
-       !SpeedAEADOpen(EVP_aead_hmac_aes_256_gcm(), "AEAD-HMAC-AES-256-GCM", kTLSADLen, selected) ||
-       !SpeedAEADSeal(EVP_aead_hmac_aes_256_gcm_key_commit(), "AEAD-HMAC-AES-256-GCM key commit", kTLSADLen, selected) ||
-       !SpeedAEADOpen(EVP_aead_hmac_aes_256_gcm_key_commit(), "AEAD-HMAC-AES-256-GCM key commit", kTLSADLen, selected) ||
        !Speed25519(selected) ||
        !SpeedSPAKE2(selected) ||
        !SpeedRSAKeyGen(true, selected) ||
