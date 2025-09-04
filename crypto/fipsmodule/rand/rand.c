@@ -24,6 +24,8 @@ struct rand_thread_local_state {
 
   // reseed_calls_since_initialization is the number of reseed calls made on
   // |drbg| since its initialization.
+  // We assume 2^64 - 1 is an upper bound on the number of reseeds. Type must
+  // support that.
   uint64_t reseed_calls_since_initialization;
 
   // generation_number caches the UBE generation number.
@@ -40,6 +42,7 @@ struct rand_thread_local_state {
   // process exit.
   CRYPTO_MUTEX state_clear_lock;
 };
+OPENSSL_STATIC_ASSERT((sizeof((struct rand_thread_local_state*)0)->generate_calls_since_seed) * 8 >= 48, value_can_overflow)
 
 DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
 DEFINE_STATIC_MUTEX(thread_local_states_list_lock)

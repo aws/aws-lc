@@ -74,6 +74,8 @@ struct tree_jitter_drbg_t {
 
   // reseed_calls_since_initialization is the number of seed/reseed calls made
   // on |drbg| since its initialization.
+  // We assume 2^64 - 1 is an upper bound on the number of reseeds. Type must
+  // support that.
   uint64_t reseed_calls_since_initialization;
 
   // generation_number caches the UBE generation number.
