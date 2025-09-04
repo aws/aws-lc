@@ -475,6 +475,7 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/getentropy.c
   rand_extra/rand_extra.c
+  rand_extra/snapsafe_fallback.c
   rand_extra/urandom.c
   rand_extra/windows.c
   rc4/rc4.c
@@ -824,7 +825,6 @@ if(BUILD_TESTING)
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/rand_test.cc
     fipsmodule/rand/entropy/entropy_source_test.cc
-    fipsmodule/rand/entropy/snapsafe_fallback_entropy_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
@@ -848,6 +848,7 @@ if(BUILD_TESTING)
     pool/pool_test.cc
     rand_extra/ccrandomgeneratebytes_test.cc
     rand_extra/getentropy_test.cc
+    rand_extra/snapsafe_fallback_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc
     rsa_extra/rsassa_pss_asn1_test.cc

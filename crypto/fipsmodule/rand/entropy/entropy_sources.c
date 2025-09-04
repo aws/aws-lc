@@ -59,6 +59,20 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
 }
 
+static int snapsafe_fallback_initialize(
+  struct entropy_source_t *entropy_source) {
+  return 1;
+}
+
+static void snapsafe_fallback_zeroize_thread(struct entropy_source_t *entropy_source) {}
+
+static void snapsafe_fallback_free_thread(struct entropy_source_t *entropy_source) {}
+
+static int snapsafe_fallback_get_seed_wrap(
+  const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  return snapsafe_fallback_get_seed(seed);
+}
+
 // Snapsafe fallback environment configurations
 // CPU source required for rule-of-two.
 // - OS as seed source source.
@@ -68,13 +82,13 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, snapsafe_fallback_entropy_sourc
   out->initialize = snapsafe_fallback_initialize;
   out->zeroize_thread = snapsafe_fallback_zeroize_thread;
   out->free_thread = snapsafe_fallback_free_thread;
-  out->get_seed = snapsafe_fallback_get_seed;
+  out->get_seed = snapsafe_fallback_get_seed_wrap;
   if (have_hw_rng_x86_64() == 1 ||
       have_hw_rng_aarch64() == 1) {
     out->get_extra_entropy = entropy_get_prediction_resistance;
   } else {
     // Fall back to seed source because a second source must always be present.
-    out->get_extra_entropy = snapsafe_fallback_get_seed;
+    out->get_extra_entropy = snapsafe_fallback_get_seed_wrap;
   }
   out->get_prediction_resistance = NULL;
   out->id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;

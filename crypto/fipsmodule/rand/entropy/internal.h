@@ -61,13 +61,6 @@ OPENSSL_EXPORT void tree_jitter_free_thread_drbg(struct entropy_source_t *entrop
 OPENSSL_EXPORT int tree_jitter_get_seed(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
-
-OPENSSL_EXPORT int snapsafe_fallback_initialize(struct entropy_source_t *entropy_source);
-OPENSSL_EXPORT void snapsafe_fallback_zeroize_thread(struct entropy_source_t *entropy_source);
-OPENSSL_EXPORT void snapsafe_fallback_free_thread(struct entropy_source_t *entropy_source);
-OPENSSL_EXPORT int snapsafe_fallback_get_seed(
-  const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
-
 // rndr_multiple8 writes |len| number of bytes to |buf| generated using the
 // rndr instruction. |len| must be a multiple of 8.
 // Outputs 1 on success, 0 otherwise.
