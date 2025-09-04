@@ -327,7 +327,7 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
   //
   // Note, 'int' is the return type of ASN1_STRING_to_UTF8() so that's what
   // we must use for 'utf8_length'.
-  unsigned char *utf8_value;
+  unsigned char *utf8_value = NULL;
   int utf8_length = ASN1_STRING_to_UTF8(&utf8_value, cn);
   if (utf8_length < 0) {
     return X509_V_ERR_OUT_OF_MEM;
@@ -393,17 +393,17 @@ int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen) {
 
 // Check CN against DNS-ID name constraints.
 int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc) {
-  int ret;
+  int ret = 0;
   const X509_NAME *nm = X509_get_subject_name(x);
   ASN1_STRING stmp = {.length = 0, .type = V_ASN1_IA5STRING, .data = NULL, .flags = 0};
   GENERAL_NAME gntmp = {.type = GEN_DNS, .d = {.dNSName = &stmp}};
 
   // Process any commonName attributes in subject name
   for (int i = -1;;) {
-    X509_NAME_ENTRY *ne;
-    ASN1_STRING *cn;
-    unsigned char *idval;
-    size_t idlen;
+    X509_NAME_ENTRY *ne = NULL;
+    ASN1_STRING *cn = NULL;
+    unsigned char *idval = NULL;
+    size_t idlen = 0;
 
     i = X509_NAME_get_index_by_NID(nm, NID_commonName, i);
     if (i == -1) {
@@ -789,7 +789,7 @@ static int nc_ip(const ASN1_OCTET_STRING *ip, const ASN1_OCTET_STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
-  uint8_t ip_byte, cidr_addr_byte, cidr_mask_byte;
+  uint8_t ip_byte = 0, cidr_addr_byte = 0, cidr_mask_byte = 0;
 
   for (size_t i = 0; i < ip_len; i++) {
     if (!CBS_get_u8(&ip_cbs, &ip_byte) ||
