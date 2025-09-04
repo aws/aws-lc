@@ -38,10 +38,10 @@
 // +-----------+  |  +-----------+
 // | CTR-DRBG  | --> | CTR-DRBG  | -|
 // +-----------+  |  +-----------+   -|
-// +-----------+  |  +-----------+     --|     per-process         per-process
-// | CTR-DRBG  | --> | CTR-DRBG  | ---|   --> +-----------+     +---------------+
-// +-----------+  |  +-----------+     -----> | CTR-DRBG  | --> |Jitter Entropy |
-//      ...       |      ...              --> +-----------+     +---------------+
+// +-----------+  |  +-----------+     --|     per-process          per-process
+// | CTR-DRBG  | --> | CTR-DRBG  | ---|   --> +-----------+     +----------------+
+// +-----------+  |  +-----------+     -----> | CTR-DRBG  | --> | Jitter Entropy |
+//      ...       |      ...              --> +-----------+     +----------------+
 // +-----------+  |  +-----------+  -----|
 // | CTR-DRBG  | --> | CTR-DRBG  |-|
 // +-----------+  |  +-----------+
@@ -262,7 +262,7 @@ static void tree_jitter_initialize_once(void) {
 
   // The first parameter passed to |jent_entropy_collector_alloc| function is
   // the desired oversampling rate. Passing a 0 tells Jitter module to use
-  // the default rate (which is 3 in Jitter v3.4.0).
+  // the default rate (which is 3 in Jitter v3.6.3).
   tree_jitter_drbg_global->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
   if (tree_jitter_drbg_global->jitter_ec == NULL) {
     abort();
