@@ -39,6 +39,7 @@
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
+#include "../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
