@@ -11,6 +11,7 @@
 #include "../internal.h"
 #include "../../delocate.h"
 #include "../../../rand_extra/internal.h"
+#include "../../../ube/snapsafe_detect.h"
 
 DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
@@ -55,11 +56,55 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   } else {
     out->get_prediction_resistance = NULL;
   }
+  out->id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
+}
+
+static int snapsafe_fallback_initialize(
+  struct entropy_source_t *entropy_source) {
+  return 1;
+}
+
+static void snapsafe_fallback_zeroize_thread(struct entropy_source_t *entropy_source) {}
+
+static void snapsafe_fallback_free_thread(struct entropy_source_t *entropy_source) {}
+
+static int snapsafe_fallback_get_seed_wrap(
+  const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+  return snapsafe_fallback_get_seed(seed);
+}
+
+// Snapsafe fallback environment configurations
+// CPU source required for rule-of-two.
+// - OS as seed source source.
+// - Uses rdrand or rndr, if supported, for personalization string. otherwise
+// falls back to OS source.
+DEFINE_LOCAL_DATA(struct entropy_source_methods, snapsafe_fallback_entropy_source_methods) {
+  out->initialize = snapsafe_fallback_initialize;
+  out->zeroize_thread = snapsafe_fallback_zeroize_thread;
+  out->free_thread = snapsafe_fallback_free_thread;
+  out->get_seed = snapsafe_fallback_get_seed_wrap;
+  if (have_hw_rng_x86_64() == 1 ||
+      have_hw_rng_aarch64() == 1) {
+    out->get_extra_entropy = entropy_get_prediction_resistance;
+  } else {
+    // Fall back to seed source because a second source must always be present.
+    out->get_extra_entropy = snapsafe_fallback_get_seed_wrap;
+  }
+  out->get_prediction_resistance = NULL;
+  out->id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;
+}
+
+static int use_snapsafe_fallback_entropy(void) {
+  return CRYPTO_get_snapsafe_supported();
 }
 
 static const struct entropy_source_methods * get_entropy_source_methods(void) {
   if (*allow_entropy_source_methods_override_bss_get() == 1) {
     return *entropy_source_methods_override_bss_get();
+  }
+
+  if (use_snapsafe_fallback_entropy()) {
+    return snapsafe_fallback_entropy_source_methods();
   }
 
   return tree_jitter_entropy_source_methods();
@@ -130,7 +175,6 @@ int have_hw_rng_x86_64_for_testing(void) {
   return have_hw_rng_x86_64();
 }
 
-
 void override_entropy_source_method_FOR_TESTING(
   const struct entropy_source_methods *override_entropy_source_methods) {
 
@@ -138,4 +182,13 @@ void override_entropy_source_method_FOR_TESTING(
   *allow_entropy_source_methods_override_bss_get() = 1;
   *entropy_source_methods_override_bss_get() = override_entropy_source_methods;
   CRYPTO_STATIC_MUTEX_unlock_write(global_entropy_source_lock_bss_get());
+}
+
+int get_entropy_source_method_id_FOR_TESTING(void) {
+  int id;
+  CRYPTO_STATIC_MUTEX_lock_read(global_entropy_source_lock_bss_get());
+  const struct entropy_source_methods *entropy_source_method = get_entropy_source_methods();
+  id = entropy_source_method->id;
+  CRYPTO_STATIC_MUTEX_unlock_read(global_entropy_source_lock_bss_get());
+  return id;
 }
