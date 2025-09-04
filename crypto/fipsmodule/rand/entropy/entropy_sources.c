@@ -1,9 +1,6 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// This file mocks entropy sources. It's not final.
-// We use it to implement the basic randomness generation code flow.
-
 #include <openssl/base.h>
 #include <openssl/target.h>
 
