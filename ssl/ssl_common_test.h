@@ -92,7 +92,7 @@ UniquePtr<SSL_SESSION> CreateClientSession(
     const ClientConfig &config = ClientConfig());
 
 void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx,
-                 bssl::UniquePtr<SSL> *out);
+                 bssl::UniquePtr<SSL> *out, bool free_in=true);
 
 bool ConnectClientAndServer(UniquePtr<SSL> *out_client,
                             UniquePtr<SSL> *out_server, SSL_CTX *client_ctx,
