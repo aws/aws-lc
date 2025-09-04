@@ -15,7 +15,7 @@ extern "C" {
 
 #define OVERRIDDEN_ENTROPY_SOURCE 0
 #define TREE_DRBG_JITTER_ENTROPY_SOURCE 1
-#define MAINE_COON_ENTROPY_SOURCE 2
+#define SNAPSAFE_FALLBACK_ENTROPY_SOURCE 2
 
 #define ENTROPY_JITTER_MAX_NUM_TRIES (3)
 
@@ -62,10 +62,10 @@ OPENSSL_EXPORT int tree_jitter_get_seed(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
 
-OPENSSL_EXPORT int maine_coon_initialize(struct entropy_source_t *entropy_source);
-OPENSSL_EXPORT void maine_coon_zeroize_thread(struct entropy_source_t *entropy_source);
-OPENSSL_EXPORT void maine_coon_free_thread(struct entropy_source_t *entropy_source);
-OPENSSL_EXPORT int maine_coon_get_seed(
+OPENSSL_EXPORT int snapsafe_fallback_initialize(struct entropy_source_t *entropy_source);
+OPENSSL_EXPORT void snapsafe_fallback_zeroize_thread(struct entropy_source_t *entropy_source);
+OPENSSL_EXPORT void snapsafe_fallback_free_thread(struct entropy_source_t *entropy_source);
+OPENSSL_EXPORT int snapsafe_fallback_get_seed(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
 // rndr_multiple8 writes |len| number of bytes to |buf| generated using the

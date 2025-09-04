@@ -59,28 +59,28 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
 }
 
-// Maine Coon environment configurations
+// Snapsafe fallback environment configurations
 // CPU source required for rule-of-two.
 // - OS as seed source source.
 // - Uses rdrand or rndr, if supported, for personalization string. otherwise
 // falls back to OS source.
-DEFINE_LOCAL_DATA(struct entropy_source_methods, maine_coon_entropy_source_methods) {
-  out->initialize = maine_coon_initialize;
-  out->zeroize_thread = maine_coon_zeroize_thread;
-  out->free_thread = maine_coon_free_thread;
-  out->get_seed = maine_coon_get_seed;
+DEFINE_LOCAL_DATA(struct entropy_source_methods, snapsafe_fallback_entropy_source_methods) {
+  out->initialize = snapsafe_fallback_initialize;
+  out->zeroize_thread = snapsafe_fallback_zeroize_thread;
+  out->free_thread = snapsafe_fallback_free_thread;
+  out->get_seed = snapsafe_fallback_get_seed;
   if (have_hw_rng_x86_64() == 1 ||
       have_hw_rng_aarch64() == 1) {
     out->get_extra_entropy = entropy_get_prediction_resistance;
   } else {
     // Fall back to seed source because a second source must always be present.
-    out->get_extra_entropy = maine_coon_get_seed;
+    out->get_extra_entropy = snapsafe_fallback_get_seed;
   }
   out->get_prediction_resistance = NULL;
-  out->id = MAINE_COON_ENTROPY_SOURCE;
+  out->id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;
 }
 
-static int use_maine_coon_entropy(void) {
+static int use_snapsafe_fallback_entropy(void) {
   return CRYPTO_get_snapsafe_supported();
 }
 
@@ -89,8 +89,8 @@ static const struct entropy_source_methods * get_entropy_source_methods(void) {
     return *entropy_source_methods_override_bss_get();
   }
 
-  if (use_maine_coon_entropy()) {
-    return maine_coon_entropy_source_methods();
+  if (use_snapsafe_fallback_entropy()) {
+    return snapsafe_fallback_entropy_source_methods();
   }
 
   return tree_jitter_entropy_source_methods();
