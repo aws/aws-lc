@@ -72,7 +72,9 @@ TEST(EntropySources, Configuration) {
   uint8_t buf[1];
   ASSERT_TRUE(RAND_bytes(buf, sizeof(buf)));
 
-#if defined(AWSLC_SNAPSAFE_TESTING)
+// Snapsafe detection is only defined for Linux. So, only strongly assert on
+// that kernel.
+#if defined(AWSLC_SNAPSAFE_TESTING) && defined(OPENSSL_LINUX)
   EXPECT_EQ(MAINE_COON_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
 #else
   int expected_entropy_source_id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
