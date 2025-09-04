@@ -66,6 +66,7 @@
 #include "../bytestring/internal.h"
 #include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 static const CBS_ASN1_TAG kParametersTag =
@@ -94,6 +95,8 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
   // Parse the optional parameters field.
   EC_KEY *ret = NULL;
   BIGNUM *priv_key = NULL;
+  enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
+
   if (CBS_peek_asn1_tag(&ec_private_key, kParametersTag)) {
     // Per SEC 1, as an alternative to omitting it, one is allowed to specify
     // this field and put in a NULL to mean inheriting this value. This was
@@ -104,8 +107,8 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
       OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
       goto err;
     }
-    const EC_GROUP *inner_group = EC_KEY_parse_parameters(&child);
-    if (inner_group == NULL) {
+    const EC_GROUP *inner_group = EC_KEY_parse_parameters_and_type(&child, &paramType);
+    if (inner_group == NULL || paramType == UNKNOWN_EC_PARAMETERS) {
       goto err;
     }
     if (group == NULL) {
@@ -129,6 +132,12 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
   ret = EC_KEY_new();
   if (ret == NULL || !EC_KEY_set_group(ret, group)) {
     goto err;
+  }
+
+  if(paramType == SPECIFIED_CURVE_EC_PARAMETERS) {
+    ret->group_decoded_from_explicit_params = 1;
+  } else {
+    ret->group_decoded_from_explicit_params = 0;
   }
 
   // Although RFC 5915 specifies the length of the key, OpenSSL historically
@@ -365,20 +374,31 @@ int EC_KEY_marshal_curve_name(CBB *cbb, const EC_GROUP *group) {
 }
 
 EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
+  enum ECParametersType paramType = UNKNOWN_EC_PARAMETERS;
+  return EC_KEY_parse_parameters_and_type(cbs, &paramType);
+}
+
+EC_GROUP *EC_KEY_parse_parameters_and_type(CBS *cbs, enum ECParametersType *paramType) {
+  GUARD_PTR(paramType);
+
+  const EC_GROUP *ret = NULL;
+  *paramType = UNKNOWN_EC_PARAMETERS;
+
   if (!CBS_peek_asn1_tag(cbs, CBS_ASN1_SEQUENCE)) {
-    return EC_KEY_parse_curve_name(cbs);
+    ret = EC_KEY_parse_curve_name(cbs);
+    if(ret) {
+      *paramType = NAMED_CURVE_EC_PARAMETERS;
+    }
+    return (EC_GROUP *)ret;
   }
 
   // OpenSSL sometimes produces ECPrivateKeys or ECPublicKey with explicitly-encoded versions
   // of named curves.
-  //
-  // TODO(davidben): Remove support for this.
   struct explicit_prime_curve curve;
   if (!parse_explicit_prime_curve(cbs, &curve)) {
     return NULL;
   }
 
-  const EC_GROUP *ret = NULL;
   BIGNUM *p = BN_new(), *a = BN_new(), *b = BN_new(), *x = BN_new(),
          *y = BN_new();
   if (p == NULL || a == NULL || b == NULL || x == NULL || y == NULL) {
@@ -409,6 +429,7 @@ EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
       break;
     }
     ret = group;
+    *paramType = SPECIFIED_CURVE_EC_PARAMETERS;
     break;
   }
 
@@ -424,6 +445,7 @@ err:
   BN_free(y);
   return (EC_GROUP *)ret;
 }
+
 
 int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group, const EC_POINT *point,
                        point_conversion_form_t form, BN_CTX *ctx) {

@@ -2747,7 +2747,8 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
 #define X509_V_ERR_EE_KEY_TOO_SMALL 68
 #define X509_V_ERR_CA_KEY_TOO_SMALL 69
 #define X509_V_ERR_CA_MD_TOO_WEAK 70
-#define X509_R_UNABLE_TO_GET_CERTS_PUBLIC_KEY 71
+#define X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY 71
+#define X509_V_ERR_EC_KEY_EXPLICIT_PARAMS 72
 
 // X509_STORE_CTX_get_error, after |X509_verify_cert| returns, returns
 // |X509_V_OK| if verification succeeded or an |X509_V_ERR_*| describing why
@@ -2946,7 +2947,6 @@ typedef int (*X509_STORE_CTX_verify_crit_oids_cb)(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_crit_oids(
     X509_STORE_CTX *ctx,
     X509_STORE_CTX_verify_crit_oids_cb verify_custom_crit_oids);
-
 
 // Verification parameters
 //
@@ -3308,6 +3308,19 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
 
+// X509_VERIFY_PARAM_enable_ec_key_explicit_params enables X.509 subject public
+// keys to contain elliptic curve keys with explicit parameters. By default
+// AWS-LC rejects validation of certificate chains containing public keys
+// with explicit EC parameters. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int X509_VERIFY_PARAM_enable_ec_key_explicit_params(
+    X509_VERIFY_PARAM *param);
+
+// X509_VERIFY_PARAM_disable_ec_key_explicit_params disables X.509 subject
+// public keys to contain elliptic curve keys with explicit parameters. By
+// default AWS-LC rejects validation of certificate chains containing public
+// keys with explicit EC parameters. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int X509_VERIFY_PARAM_disable_ec_key_explicit_params(
+    X509_VERIFY_PARAM *param);
 
 // Filesystem-based certificate stores.
 //
