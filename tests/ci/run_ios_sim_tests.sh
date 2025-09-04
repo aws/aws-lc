@@ -99,6 +99,8 @@ shard_gtest "${BUILD_ROOT}/crypto/crypto_test.app/crypto_test --gtest_also_run_d
 shard_gtest ${BUILD_ROOT}/crypto/urandom_test.app/urandom_test
 shard_gtest ${BUILD_ROOT}/crypto/mem_test.app/mem_test
 shard_gtest ${BUILD_ROOT}/crypto/mem_set_test.app/mem_set_test
+shard_gtest ${BUILD_ROOT}/crypto/rand_isolated_test.app/rand_isolated_test
+shard_gtest ${BUILD_ROOT}/crypto/tree_drbg_jitter_entropy_isolated_test.app/tree_drbg_jitter_entropy_isolated_test
 
 shard_gtest ${BUILD_ROOT}/ssl/ssl_test.app/ssl_test
 # TODO: This test is failing on iOS simulator

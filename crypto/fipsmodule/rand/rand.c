@@ -1,584 +1,528 @@
-/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// Ensure we can't call OPENSSL_malloc.
-#define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include <openssl/rand.h>
-
-#include <assert.h>
-#include <limits.h>
-#include <string.h>
-
-#if defined(BORINGSSL_FIPS)
-#if !defined(OPENSSL_WINDOWS)
-#include <unistd.h>
-#else
-#include <io.h>
-#endif
-#include "../../../third_party/jitterentropy/jitterentropy.h"
-#endif
-
-#include <openssl/chacha.h>
 #include <openssl/mem.h>
+#include <openssl/ctrdrbg.h>
 #include <openssl/type_check.h>
 
+#include "entropy/internal.h"
 #include "internal.h"
-#include "fork_detect.h"
-#include "snapsafe_detect.h"
 #include "../../internal.h"
+#include "../../ube/internal.h"
 #include "../delocate.h"
-
-
-// It's assumed that the operating system always has an unfailing source of
-// entropy which is accessed via |CRYPTO_sysrand[_for_seed]|. (If the operating
-// system entropy source fails, it's up to |CRYPTO_sysrand| to abort the
-// process—we don't try to handle it.)
-//
-// In addition, the hardware may provide a low-latency RNG. Intel's rdrand
-// instruction is the canonical example of this. When a hardware RNG is
-// available we don't need to worry about an RNG failure arising from fork()ing
-// the process or moving a VM, so we can keep thread-local RNG state and use it
-// as an additional-data input to CTR-DRBG.
-//
-// (We assume that the OS entropy is safe from fork()ing and VM duplication.
-// This might be a bit of a leap of faith, esp on Windows, but there's nothing
-// that we can do about it.)
-
-// When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.
-// This entropy source is very slow and can incur a cost anywhere between 10-60ms
-// depending on configuration and CPU.  Increasing to 2^24 will amortize the
-// penalty over more requests.  This is the same value used in OpenSSL 3.0
-// and meets the requirements defined in SP 800-90B for a max reseed of interval (2^48)
-//
-// CPU Jitter:  https://www.chronox.de/jent/doc/CPU-Jitter-NPTRNG.html
-//
-// kReseedInterval is the number of generate calls made to CTR-DRBG before
-// reseeding.
-
-#if defined(BORINGSSL_FIPS)
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU) && defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-#error "Only one FIPS entropy source can be enabled at a time"
-#endif
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-static const unsigned kReseedInterval = 16777216;
-#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-static const unsigned kReseedInterval = 4096;
-#else
-#error "A FIPS entropy source must be explicitly defined"
-#endif
-
-#else // defined(BORINGSSL_FIPS)
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU) || defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-#error "A FIPS entropy source must not be defined for non-FIPS build"
-#endif
-static const unsigned kReseedInterval = 4096;
-
-#endif // defined(BORINGSSL_FIPS)
-
+#include "../service_indicator/internal.h"
 
 // rand_thread_state contains the per-thread state for the RNG.
-struct rand_thread_state {
+struct rand_thread_local_state {
+  // Thread-local CTR-DRBG state. UBE volatile state.
   CTR_DRBG_STATE drbg;
-  uint64_t fork_generation;
-  // calls is the number of generate calls made on |drbg| since it was last
-  // (re)seeded. This is bound by |kReseedInterval|.
-  unsigned calls;
-  // fork_unsafe_buffering is non-zero iff, when |drbg| was last (re)seeded,
-  // fork-unsafe buffering was enabled.
-  int fork_unsafe_buffering;
 
-  // snapsafe_generation is non-zero when active. When the value changes,
-  // the drbg state must be reseeded.
-  uint32_t snapsafe_generation;
+  // generate_calls_since_seed is the number of generate calls made on |drbg|
+  // since it was last (re)seeded. Must be bounded by |kCtrDrbgReseedInterval|.
+  uint64_t generate_calls_since_seed;
 
-#if defined(BORINGSSL_FIPS)
-  // next and prev form a NULL-terminated, double-linked list of all states in
-  // a process.
-  struct rand_thread_state *next, *prev;
+  // reseed_calls_since_initialization is the number of reseed calls made on
+  // |drbg| since its initialization.
+  uint64_t reseed_calls_since_initialization;
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-  // In FIPS mode the entropy source is CPU Jitter so we assign an instance
-  // of Jitter to each thread. The instance is initialized/destroyed at the same
-  // time as the thread state is created/destroyed.
-  struct rand_data *jitter_ec;
-#endif
-#endif // defined(BORINGSSL_FIPS)
+  // generation_number caches the UBE generation number.
+  uint64_t generation_number;
+
+  // Entropy source. UBE volatile state.
+  struct entropy_source_t *entropy_source;
+
+  // Backward and forward references to nodes in a doubly-linked list.
+  struct rand_thread_local_state *next;
+  struct rand_thread_local_state *previous;
+
+  // Lock used when globally clearing (zeroising) all thread-local states at
+  // process exit.
+  CRYPTO_MUTEX state_clear_lock;
 };
 
-#if defined(BORINGSSL_FIPS)
-// thread_states_list is the head of a linked-list of all |rand_thread_state|
-// objects in the process, one per thread. This is needed because FIPS requires
-// that they be zeroed on process exit, but thread-local destructors aren't
-// called when the whole process is exiting.
-DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list)
-DEFINE_STATIC_MUTEX(thread_states_list_lock)
-DEFINE_STATIC_MUTEX(state_clear_all_lock)
-
-static void rand_state_fips_clear(struct rand_thread_state *state) {
-  CTR_DRBG_clear(&state->drbg);
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-  jent_entropy_collector_free(state->jitter_ec);
-#endif
-}
-
-static void rand_state_fips_init(struct rand_thread_state *state) {
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-  // Initialize the thread-local Jitter instance.
-  state->jitter_ec = NULL;
-  // The first parameter passed to |jent_entropy_collector_alloc| function is
-  // the desired oversampling rate. Passing a 0 tells Jitter module to use
-  // the default rate (which is 3 in Jitter v3.1.0).
-  state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-  if (state->jitter_ec == NULL) {
-    abort();
-  }
-#endif
-}
-
-static void rand_state_fips_maybe_want_additional_input(
-  uint8_t additional_input[CTR_DRBG_ENTROPY_LEN],
-  size_t *additional_input_len,
-  int want_additional_input) {
-
-  *additional_input_len = 0;
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-
-  // In FIPS mode when getting the entropy from CPU Jitter, in order to not rely
-  // completely on Jitter we add to |CTR_DRBG_init| additional data
-  // that we read from urandom.
-  CRYPTO_sysrand(additional_input, CTR_DRBG_ENTROPY_LEN);
-  *additional_input_len = CTR_DRBG_ENTROPY_LEN;
-
-#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-
-  // When getting entropy from the passive source in FIPS mode, we add
-  // additional data if a CPU source has been used.
-  if (want_additional_input == 1) {
-    if (CRYPTO_sysrand_if_available(additional_input, CTR_DRBG_ENTROPY_LEN) == 1) {
-      *additional_input_len = CTR_DRBG_ENTROPY_LEN;
-    }
-  }
-
-#endif
-}
-
-// Caller must check that |state| is not null.
-static void CRYPTO_fips_get_from_entropy_source(struct rand_thread_state *state,
-  uint8_t *out_entropy, size_t out_entropy_len, int *out_want_additional_input) {
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-
-  if (state->jitter_ec == NULL) {
-    abort();
-  }
-
-  // |jent_read_entropy| has a false positive health test failure rate of 2^-22.
-  // To avoid aborting so frequently, we retry 3 times.
-  size_t num_tries;
-  for (num_tries = 1; num_tries <= JITTER_MAX_NUM_TRIES; num_tries++) {
-    // Try to generate the required number of bytes with Jitter.
-    // If successful break out from the loop, otherwise try again.
-    if (jent_read_entropy(state->jitter_ec, (char *) out_entropy,
-                          out_entropy_len) == (ssize_t) out_entropy_len) {
-        break;
-    }
-    // If Jitter entropy failed to produce entropy we need to reset it.
-    jent_entropy_collector_free(state->jitter_ec);
-    state->jitter_ec = NULL;
-    state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (state->jitter_ec == NULL) {
-      abort();
-    }
-  }
-
-  if (num_tries > JITTER_MAX_NUM_TRIES) {
-    abort();
-  }
-
-#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-
-  RAND_module_entropy_depleted(out_entropy, out_want_additional_input);
-
-#endif
-}
+DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
+DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
 
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
-static void rand_thread_state_clear_all(void);
-static void windows_install_rand_thread_state_clear_all(void) {
-  atexit(&rand_thread_state_clear_all);
+static void rand_thread_local_state_clear_all(void);
+static void windows_install_rand_thread_local_state_clear_all(void) {
+  atexit(&rand_thread_local_state_clear_all);
 }
-__declspec(allocate(".CRT$XCU")) void(*fips_library_destructor)(void) =
-    windows_install_rand_thread_state_clear_all;
+__declspec(allocate(".CRT$XCU")) void(*rand_fips_library_destructor)(void) =
+    windows_install_rand_thread_local_state_clear_all;
 #else
-static void rand_thread_state_clear_all(void) __attribute__ ((destructor));
+static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor));
 #endif
 
-static void rand_thread_state_clear_all(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
-  CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
-  for (struct rand_thread_state *cur = *thread_states_list_bss_get();
-       cur != NULL; cur = cur->next) {
-    rand_state_fips_clear(cur);
+// At process exit not all threads will be scheduled and proper exited. To
+// ensure no secret state is left, globally clear all thread-local states. This
+// is a FIPS-derived requirement, see ISO/IEC 19790-2012 7.9.7.
+//
+// This is problematic because a thread might be scheduled and return
+// randomness from a non-valid state. The linked application should obviously
+// arrange that all threads are gracefully exited before exiting the process.
+// Yet, in cases where such graceful exit does not happen we ensure that no
+// output can be returned by locking all thread-local states and deliberately
+// not releasing the lock. A synchronization step in the core randomness
+// generation routine |RAND_bytes_core| then ensures that no randomness
+// generation can occur after a thread-local state has been locked. It also
+// ensures |rand_thread_local_state_free| cannot free any thread state while we
+// own the lock.
+//
+// When a thread-local DRBGs is gated from returning output, we can invoke the
+// entropy source zeroization from |state->entropy_source|. The entropy source
+// implementation can assume that any returned seed is never used to generate
+// any randomness that is later returned to a consumer.
+static void rand_thread_local_state_clear_all(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
+  for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
+    state != NULL; state = state->next) {
+    CRYPTO_MUTEX_lock_write(&state->state_clear_lock);
+    CTR_DRBG_clear(&state->drbg);
   }
-  // The locks are deliberately left locked so that any threads that are still
-  // running will hang if they try to call |RAND_bytes|.
+
+  for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
+    state != NULL; state = state->next) {
+    state->entropy_source->methods->zeroize_thread(state->entropy_source);
+  }
 }
 
-#endif // defined(BORINGSSL_FIPS)
+static void thread_local_list_delete_node(
+  struct rand_thread_local_state *node_delete) {
 
-// rand_thread_state_free frees a |rand_thread_state|. This is called when a
-// thread exits.
-static void rand_thread_state_free(void *state_in) {
-  struct rand_thread_state *state = state_in;
+  // Mutating the global linked list. Need to synchronize over all threads.
+  CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
+  struct rand_thread_local_state *node_head = *thread_states_list_head_bss_get();
 
+  // We have [node_delete->previous] <--> [node_delete] <--> [node_delete->next]
+  // and must end up with [node_delete->previous] <--> [node_delete->next]
+  if (node_head == node_delete) {
+    // If node node_delete is the head, we know that the backwards reference
+    // does not exist but we need to update the head pointer.
+    *thread_states_list_head_bss_get() = node_delete->next;
+  } else {
+    // On the other hand, if node_delete is not the head, then we need to update
+    // the node node_delete->previous to point to the node node_delete->next.
+    // But only if node_delete->previous actually exists.
+    if (node_delete->previous != NULL) {
+      (node_delete->previous)->next = node_delete->next;
+    }
+  }
+
+  // Now [node_delete->previous] --> [node_delete->next]
+  //                                          |
+  //                         [node_delete] <--|
+  // Final thing to do is to update the backwards reference for the node
+  // node_delete->next, if it exists.
+  if (node_delete->next != NULL) {
+    // If node_delete is the head, then node_delete->previous is NULL. But that
+    // is OK because node_delete->next is the new head and should therefore have
+    // a backwards reference that is NULL.
+    (node_delete->next)->previous = node_delete->previous;
+  }
+
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
+}
+
+// thread_local_list_add adds the state |node_add| to the linked list. Note that
+// |node_add| is not added at the tail of the linked list, but is replacing the
+// current head to keep the add operation at low time-complexity.
+static void thread_local_list_add_node(
+  struct rand_thread_local_state *node_add) {
+
+  // node_add will be the new head and will not have a backwards reference.
+  node_add->previous = NULL;
+
+  // Mutating the global linked list. Need to synchronize over all threads.
+  CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
+
+  // First get a reference to the pointer of the head of the linked list.
+  // That is, the pointer to the head node node_head is *thread_states_head.
+  struct rand_thread_local_state **thread_states_head = thread_states_list_head_bss_get();
+
+  // We have [node_head] <--> [node_head->next] and must end up with
+  // [node_add] <--> [node_head] <--> [node_head->next]
+  // First make the forward reference
+  node_add->next = *thread_states_head;
+
+  // Only add a backwards reference if a head already existed (this might be
+  // the first add).
+  if (*thread_states_head != NULL) {
+    (*thread_states_head)->previous = node_add;
+  }
+
+  // The last thing is to assign the new head.
+  *thread_states_head = node_add;
+
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
+}
+
+// rand_thread_local_state frees a |rand_thread_local_state|. This is called
+// when a thread exits.
+static void rand_thread_local_state_free(void *state_in) {
+
+  struct rand_thread_local_state *state = state_in;
   if (state_in == NULL) {
     return;
   }
 
-#if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  thread_local_list_delete_node(state);
 
-  if (state->prev != NULL) {
-    state->prev->next = state->next;
-  } else if (*thread_states_list_bss_get() == state) {
-    // |state->prev| may be NULL either if it is the head of the list,
-    // or if |state| is freed before it was added to the list at all.
-    // Compare against the head of the list to distinguish these cases.
-    *thread_states_list_bss_get() = state->next;
+  // Potentially, something could kill the thread before an entropy source has
+  // been associated to the thread-local randomness generator object.
+  if (state->entropy_source != NULL) {
+    state->entropy_source->methods->free_thread(state->entropy_source);
   }
 
-  if (state->next != NULL) {
-    state->next->prev = state->prev;
-  }
-
-  CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
-
-  rand_state_fips_clear(state);
-#else
-  OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
-#endif
-
-  free(state);
+  OPENSSL_free(state->entropy_source);
+  OPENSSL_free(state);
 }
 
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+// rand_ensure_valid_state determines whether |state| is in a valid state. The
+// reasons are documented with inline comments in the function.
+//
+// Returns 1 if |state| is in a valid state and 0 otherwise.
+static int rand_ensure_valid_state(const struct rand_thread_local_state *state) {
 
-// rdrand maximum retries as suggested by:
-// Intel® Digital Random Number Generator (DRNG) Software Implementation Guide
-// Revision 2.1
-// https://software.intel.com/content/www/us/en/develop/articles/intel-digital-random-number-generator-drng-software-implementation-guide.html
-#define RDRAND_MAX_RETRIES 10
+  // Currently, the Go based test runner cannot execute a unit test stanza with
+  // guaranteed sequential execution. Snapsafe testing is using a global file
+  // that all unit tests will read if ever taking a path to |RAND_bytes|. The
+  // validation below will have a high likelihood of triggering. Disable the
+  // validation for Snapsafe testing, until Go test runner can guarantee
+  // sequential execution.
 
-OPENSSL_STATIC_ASSERT(RDRAND_MAX_RETRIES > 0, rdrand_max_retries_must_be_positive)
-#define CALL_RDRAND_WITH_RETRY(rdrand_func, fail_ret_value)       \
-    for (size_t tries = 0; tries < RDRAND_MAX_RETRIES; tries++) { \
-      if ((rdrand_func) == 1) {                                   \
-        break;                                                    \
-      }                                                           \
-      else if (tries >= RDRAND_MAX_RETRIES - 1) {                 \
-        return fail_ret_value;                                    \
-      }                                                           \
-    }
+#if !defined(AWSLC_SNAPSAFE_TESTING)
+  // We do not allow the UBE generation number to change while executing AWS-LC
+  // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
+  // this error is if snapshotting the address space while executing
+  // |RAND_bytes| and while snapsafe is active.
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1 &&
+      current_generation_number != state->generation_number) {
+    return 0;
+  }
+#endif
 
-// rdrand should only be called if either |have_rdrand| or |have_fast_rdrand|
-// returned true.
-static int rdrand(uint8_t *buf, const size_t len) {
-  const size_t len_multiple8 = len & ~7;
-  CALL_RDRAND_WITH_RETRY(CRYPTO_rdrand_multiple8_buf(buf, len_multiple8), 0)
-  const size_t remainder = len - len_multiple8;
+  return 1;
+}
 
-  if (remainder != 0) {
-    assert(remainder < 8);
+// rand_check_ctr_drbg_uniqueness computes whether |state| must be randomized
+// to ensure uniqueness.
+//
+// Note: If |rand_check_ctr_drbg_uniqueness| returns 0 it does not necessarily
+// imply that an UBE occurred. It can also mean that no UBE detection is
+// supported or that UBE detection failed. In these cases, |state| must also be
+// randomized to ensure uniqueness. Any special future cases can be handled in
+// this function.
+//
+// Return 0 if |state| must be randomized. 1 otherwise.
+static int rand_check_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
 
-    uint8_t rand_buf[8];
-    CALL_RDRAND_WITH_RETRY(CRYPTO_rdrand(rand_buf), 0)
-    OPENSSL_memcpy(buf + len_multiple8, rand_buf, remainder);
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    return 0;
+  }
+
+  if (current_generation_number != state->generation_number) {
+    state->generation_number = current_generation_number;
+    return 0;
   }
 
   return 1;
 }
 
-#else
+// rand_maybe_get_ctr_drbg_pred_resistance maybe fills |pred_resistance| with
+// |RAND_PRED_RESISTANCE_LEN| bytes. The bytes are sourced from the prediction
+// resistance source from the entropy source in |state|, if such a source has
+// been configured.
+//
+// |*pred_resistance_len| is set to 0 if no prediction resistance source is
+// available and |RAND_PRED_RESISTANCE_LEN| otherwise.
+static void rand_maybe_get_ctr_drbg_pred_resistance(
+  const struct entropy_source_t *entropy_source,
+  uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN],
+  size_t *pred_resistance_len) {
 
-static int rdrand(uint8_t *buf, size_t len) {
-  return 0;
-}
+  GUARD_PTR_ABORT(entropy_source);
+  GUARD_PTR_ABORT(pred_resistance_len);
 
-#endif
+  *pred_resistance_len = 0;
 
-#if defined(BORINGSSL_FIPS)
-
-#if defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-
-// Currently, we assume that the length of externally loaded entropy has the
-// same length as the seed used in the ctr-drbg.
-OPENSSL_STATIC_ASSERT(CTR_DRBG_ENTROPY_LEN == PASSIVE_ENTROPY_LOAD_LENGTH,
-  passive_entropy_load_length_different_from_ctr_drbg_seed_length)
-
-void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                       uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]) {
-  OPENSSL_memcpy(out_entropy, entropy, CTR_DRBG_ENTROPY_LEN);
-}
-
-void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
-                             int *out_want_additional_input) {
-  *out_want_additional_input = 0;
-
-  if (have_rdrand() == 1) {
-    if (rdrand(entropy, PASSIVE_ENTROPY_LOAD_LENGTH) != 1) {
+  if (entropy_source->methods->get_prediction_resistance != NULL) {
+    if (entropy_source->methods->get_prediction_resistance(
+      entropy_source, pred_resistance) != 1) {
       abort();
     }
-    *out_want_additional_input = 1;
+    *pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
+  }
+}
+
+// rand_get_ctr_drbg_seed_entropy source entropy for seeding and reseeding the
+// CTR-DRBG state. Firstly, |seed| is filled with |CTR_DRBG_ENTROPY_LEN| bytes
+// from the seed source configured in |entropy_source|. Secondly, if available,
+// |CTR_DRBG_ENTROPY_LEN| bytes is filled into |extra_entropy| sourced
+// from the extra entropy source configured in |entropy_source|.
+//
+// |*extra_entropy_len| is set to 0 if no extra entropy source
+// is available and |CTR_DRBG_ENTROPY_LEN| otherwise.
+static void rand_get_ctr_drbg_seed_entropy(
+  const struct entropy_source_t *entropy_source,
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN],
+  uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN],
+  size_t *extra_entropy_len) {
+
+  GUARD_PTR_ABORT(entropy_source);
+  GUARD_PTR_ABORT(extra_entropy_len);
+
+  *extra_entropy_len = 0;
+
+  // If the seed source is missing it is impossible to source any entropy.
+  if (entropy_source->methods->get_seed(entropy_source, seed) != 1) {
+    abort();
+  }
+
+  // Not all entropy source configurations will have a personalization string
+  // source. Hence, it's optional. But use it if configured.
+  if (entropy_source->methods->get_extra_entropy != NULL) {
+    if(entropy_source->methods->get_extra_entropy(
+        entropy_source, extra_entropy) != 1) {
+      abort();
+    }
+    *extra_entropy_len = CTR_DRBG_ENTROPY_LEN;
+  }
+}
+
+// rand_ctr_drbg_reseed reseeds the CTR-DRBG state in |state|.
+static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state,
+  const uint8_t seed[CTR_DRBG_ENTROPY_LEN],
+  const uint8_t additional_data[CTR_DRBG_ENTROPY_LEN],
+  size_t additional_data_len) {
+
+  GUARD_PTR_ABORT(state);
+
+  if (CTR_DRBG_reseed(&(state->drbg), seed, additional_data,
+        additional_data_len) != 1) {
+    abort();
+  }
+
+  state->reseed_calls_since_initialization++;
+  state->generate_calls_since_seed = 0;
+}
+
+// rand_state_initialize initializes the thread-local state |state|. In
+// particular initializes the CTR-DRBG state with the initial seed material.
+static void rand_state_initialize(struct rand_thread_local_state *state) {
+
+  GUARD_PTR_ABORT(state);
+
+  state->entropy_source = get_entropy_source();
+  if (state->entropy_source == NULL) {
+    abort();
+  }
+
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+  uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
+  size_t personalization_string_len = 0;
+  rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
+    personalization_string, &personalization_string_len);
+
+  assert(personalization_string_len == 0 ||
+         personalization_string_len == CTR_DRBG_ENTROPY_LEN);
+
+  if (!CTR_DRBG_init(&(state->drbg), seed, personalization_string,
+        personalization_string_len)) {
+    abort();
+  }
+
+  state->reseed_calls_since_initialization = 0;
+  state->generate_calls_since_seed = 0;
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    state->generation_number = 0;
   } else {
-    CRYPTO_sysrand_for_seed(entropy, PASSIVE_ENTROPY_LOAD_LENGTH);
+    state->generation_number = current_generation_number;
   }
-}
-#endif
+  CRYPTO_MUTEX_init(&state->state_clear_lock);
 
-// rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
-// to one if that entropy came directly from the CPU and zero otherwise.
-static void rand_get_seed(struct rand_thread_state *state,
-                          uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_want_additional_input) {
-  *out_want_additional_input = 0;
-
-  CRYPTO_fips_get_from_entropy_source(state, seed, CTR_DRBG_ENTROPY_LEN,
-    out_want_additional_input);
+  OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
+  OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
 }
 
-#else // BORINGSSL_FIPS
+// RAND_bytes_core generates |out_len| bytes of randomness and puts them in
+// |out|. The CTR-DRBG state in |state| is managed to ensure uniqueness and
+// usage requirements are met.
+//
+// The argument |use_user_pred_resistance| must be either
+// |RAND_USE_USER_PRED_RESISTANCE| or |RAND_NO_USER_PRED_RESISTANCE|. The former
+// cause the content of |user_pred_resistance| to be mixed in as prediction
+// resistance. The latter ensures that |user_pred_resistance| is not used.
+//
+// If the state has just been initialized, then |ctr_drbg_state_is_fresh| is 1.
+// Otherwise, 0.
+static void rand_bytes_core(
+  struct rand_thread_local_state *state,
+  uint8_t *out, size_t out_len,
+  const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
+  int use_user_pred_resistance, int ctr_drbg_state_is_fresh) {
 
-// rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
-// to one if that entropy came directly from the CPU and zero otherwise.
-static void rand_get_seed(struct rand_thread_state *state,
-                          uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_want_additional_input) {
-  // If not in FIPS mode, we use the system entropy source.
-  // We don't source the entropy directly from the CPU.
-  // Therefore, |*out_want_additonal_input| is set to zero.
-  CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
-  *out_want_additional_input = 0;
-}
+  GUARD_PTR_ABORT(state);
+  GUARD_PTR_ABORT(out);
 
-#endif // BORINGSSL_FIPS
+  // must_reseed_before_generate is 1 if we must reseed before invoking the
+  // CTR-DRBG generate function CTR_DRBG_generate().
+  int must_reseed_before_generate = 0;
 
-void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
-                                     const uint8_t user_additional_data[32]) {
-  if (out_len == 0) {
-    return;
+  // Ensure that the CTR-DRBG state is unique. If the state is fresh then
+  // uniqueness is guaranteed.
+  if (rand_check_ctr_drbg_uniqueness(state) != 1 &&
+      ctr_drbg_state_is_fresh != 1) {
+    must_reseed_before_generate = 1;
   }
 
-  const uint64_t fork_generation = CRYPTO_get_fork_generation();
-  const int fork_unsafe_buffering = rand_fork_unsafe_buffering_enabled();
+  // If a prediction resistance source is available, use it.
+  // Prediction resistance is only used on first invocation of the CTR-DRBG,
+  // ensuring that its state is randomized before generating output.
+  size_t first_pred_resistance_len = 0;
+  uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN] = {0};
+  rand_maybe_get_ctr_drbg_pred_resistance(state->entropy_source,
+    pred_resistance, &first_pred_resistance_len);
 
-  uint32_t snapsafe_generation = 0;
-  int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
-
-  // Additional data is mixed into every CTR-DRBG call to protect, as best we
-  // can, against forks & VM clones. We do not over-read this information and
-  // don't reseed with it so, from the point of view of FIPS, this doesn't
-  // provide “prediction resistance”. But, in practice, it does.
-  uint8_t additional_data[32];
-  // Intel chips have fast RDRAND instructions while, in other cases, RDRAND can
-  // be _slower_ than a system call.
-  if (!have_fast_rdrand() ||
-      !rdrand(additional_data, sizeof(additional_data))) {
-    // Without a hardware RNG to save us from address-space duplication, the OS
-    // entropy is used. This can be expensive (one read per |RAND_bytes| call)
-    // and so is disabled when we have fork detection, or if the application has
-    // promised not to fork.
-    // snapsafe_status is only 0 when the kernel has snapsafe support, but it
-    // failed to initialize. Otherwise, snapsafe_status is 1.
-    if ((snapsafe_status != 0 && fork_generation != 0) ||
-        fork_unsafe_buffering) {
-      OPENSSL_memset(additional_data, 0, sizeof(additional_data));
-    } else if (!have_rdrand()) {
-      // No alternative so block for OS entropy.
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
-    } else if (!CRYPTO_sysrand_if_available(additional_data,
-                                            sizeof(additional_data)) &&
-               !rdrand(additional_data, sizeof(additional_data))) {
-      // RDRAND failed: block for OS entropy.
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
+  // If caller input user-controlled prediction resistance, use it.
+  if (use_user_pred_resistance == RAND_USE_USER_PRED_RESISTANCE) {
+    for (size_t i = 0; i < RAND_PRED_RESISTANCE_LEN; i++) {
+      pred_resistance[i] ^= user_pred_resistance[i];
     }
+    first_pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
   }
 
-  for (size_t i = 0; i < sizeof(additional_data); i++) {
-    additional_data[i] ^= user_additional_data[i];
-  }
+  assert(first_pred_resistance_len == 0 ||
+         first_pred_resistance_len == RAND_PRED_RESISTANCE_LEN);
 
-  struct rand_thread_state stack_state;
-  struct rand_thread_state *state =
-      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
+  // Synchronize with |rand_thread_local_state_clear_all|. In case a
+  // thread-local state has been zeroized, thread execution will block here
+  // because there is no secure way to generate randomness from that state.
+  // Note that this lock is thread-local and therefore not contended except at
+  // process exit.
+  CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
 
-  if (state == NULL) {
-    state = malloc(sizeof(struct rand_thread_state));
-    if (state != NULL) {
-      OPENSSL_memset(state, 0, sizeof(struct rand_thread_state));
-    }
-    if (state == NULL ||
-        !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
-                                 rand_thread_state_free)) {
-      // If the system is out of memory, use an ephemeral state on the
-      // stack.
-      state = &stack_state;
-    }
-
-#if defined(BORINGSSL_FIPS)
-    rand_state_fips_init(state);
-#endif
-
-    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
-
-    uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
-    size_t personalization_len = 0;
-#if defined(BORINGSSL_FIPS)
-    rand_state_fips_maybe_want_additional_input(personalization,
-      &personalization_len, want_additional_input);
-#endif
-
-    if (!CTR_DRBG_init(&state->drbg, seed, personalization,
-                       personalization_len)) {
-      abort();
-    }
-    state->calls = 0;
-    state->fork_generation = fork_generation;
-    state->fork_unsafe_buffering = fork_unsafe_buffering;
-    state->snapsafe_generation = snapsafe_generation;
-
-#if defined(BORINGSSL_FIPS)
-    if (state != &stack_state) {
-      CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
-      struct rand_thread_state **states_list = thread_states_list_bss_get();
-      state->next = *states_list;
-      if (state->next != NULL) {
-        state->next->prev = state;
-      }
-      state->prev = NULL;
-      *states_list = state;
-      CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
-    }
-#endif
-    OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
-    OPENSSL_cleanse(personalization, CTR_DRBG_ENTROPY_LEN);
-  }
-
-  if (state->calls >= kReseedInterval ||
-      // If we've been cloned since |state| was last seeded, reseed.
-      state->snapsafe_generation != snapsafe_generation ||
-      // If we've forked since |state| was last seeded, reseed.
-      state->fork_generation != fork_generation ||
-      // If |state| was seeded from a state with different fork-safety
-      // preferences, reseed. Suppose |state| was fork-safe, then forked into
-      // two children, but each of the children never fork and disable fork
-      // safety. The children must reseed to avoid working from the same PRNG
-      // state.
-      state->fork_unsafe_buffering != fork_unsafe_buffering) {
-    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
-
-    uint8_t add_data_for_reseed[CTR_DRBG_ENTROPY_LEN];
-    size_t add_data_for_reseed_len = 0;
-#if defined(BORINGSSL_FIPS)
-    // Take a read lock around accesses to |state->drbg|. This is needed to
-    // avoid returning bad entropy if we race with
-    // |rand_thread_state_clear_all|.
-    //
-    // This lock must be taken after any calls to |CRYPTO_sysrand| to avoid a
-    // bug on ppc64le. glibc may implement pthread locks by wrapping user code
-    // in a hardware transaction, but, on some older versions of glibc and the
-    // kernel, syscalls made with |syscall| did not abort the transaction.
-    CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
-
-    rand_state_fips_maybe_want_additional_input(add_data_for_reseed,
-      &add_data_for_reseed_len, want_additional_input);
-#endif
-    if (!CTR_DRBG_reseed(&state->drbg, seed,
-                         add_data_for_reseed, add_data_for_reseed_len)) {
-      abort();
-    }
-    state->calls = 0;
-    state->fork_generation = fork_generation;
-    state->fork_unsafe_buffering = fork_unsafe_buffering;
-    state->snapsafe_generation = snapsafe_generation;
-    OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
-    OPENSSL_cleanse(add_data_for_reseed, CTR_DRBG_ENTROPY_LEN);
-  } else {
-#if defined(BORINGSSL_FIPS)
-    CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
-#endif
-  }
-
-  int first_call = 1;
+  // Iterate CTR-DRBG generate until |out_len| bytes of randomness have been
+  // generated. CTR_DRBG_generate can maximally generate
+  // |CTR_DRBG_MAX_GENERATE_LENGTH| bytes per usage of its state see
+  // SP800-90A Rev 1 Table 3. If user requests more, we must generate output in
+  // chunks and concatenate.
   while (out_len > 0) {
     size_t todo = out_len;
+
     if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
       todo = CTR_DRBG_MAX_GENERATE_LENGTH;
     }
 
-    if (!CTR_DRBG_generate(&state->drbg, out, todo, additional_data,
-                           first_call ? sizeof(additional_data) : 0)) {
+    if (must_reseed_before_generate == 1 ||
+       (state->generate_calls_since_seed + 1) > kCtrDrbgReseedInterval) {
+
+      // An unlock-lock cycle is located here to not acquire any locks while we
+      // might perform system calls (e.g. when sourcing OS entropy). This
+      // shields against known bugs. For example, glibc can implement locks
+      // using memory transactions on powerpc that has been observed to break
+      // when reaching |getrandom| through |syscall|. For this, see
+      // https://github.com/google/boringssl/commit/17ce286e0792fc2855fb7e34a968bed17ae914af
+      // https://www.kernel.org/doc/Documentation/powerpc/transactional_memory.txt
+      //
+      // Even though the unlock-lock cycle is under the loop iteration,
+      // practically a request size (i.e. the value of |out_len|), will
+      // almost-always be strictly less than |CTR_DRBG_MAX_GENERATE_LENGTH|.
+      // Hence, practically, only one lock-unlock rotation will be required.
+      CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
+      uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+      uint8_t additional_data[CTR_DRBG_ENTROPY_LEN];
+      size_t additional_data_len = 0;
+      rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
+        additional_data, &additional_data_len);
+      CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
+
+      rand_ctr_drbg_reseed(state, seed, additional_data,
+        additional_data_len);
+      must_reseed_before_generate = 0;
+
+      OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
+      OPENSSL_cleanse(additional_data, CTR_DRBG_ENTROPY_LEN);
+    }
+
+    if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
+          first_pred_resistance_len)) {
       abort();
     }
 
     out += todo;
     out_len -= todo;
-    // Though we only check before entering the loop, this cannot add enough to
-    // overflow a |size_t|.
-    state->calls++;
-    first_call = 0;
+    state->generate_calls_since_seed++;
+    first_pred_resistance_len = 0;
   }
 
-  if (state == &stack_state) {
-    CTR_DRBG_clear(&state->drbg);
+  OPENSSL_cleanse(pred_resistance, RAND_PRED_RESISTANCE_LEN);
+
+  if (rand_ensure_valid_state(state) != 1) {
+    abort();
   }
 
-  OPENSSL_cleanse(additional_data, 32);
-#if !defined(AWSLC_SNAPSAFE_TESTING)
-  // SysGenId tests might be running parallel to this, causing changes to sgn.
-  if (1 == CRYPTO_get_snapsafe_generation(&snapsafe_generation)) {
-    if (snapsafe_generation != state->snapsafe_generation) {
-      // Unexpected change to snapsafe generation.
-      // A change in the snapsafe generation between the beginning of this
-      // funtion and here indicates that a snapshot was taken (and is now being
-      // used) while this function was executing. This is an invalid snapshot
-      // and is not safe for use. Please ensure all processing is completed
-      // prior to collecting a snapshot.
+  CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
+}
+
+static void rand_bytes_private(uint8_t *out, size_t out_len,
+  const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
+  int use_user_pred_resistance) {
+
+  if (out_len == 0) {
+    return;
+  }
+
+  // Lock state here because CTR-DRBG-generate can be invoked multiple times
+  // and every successful invocation increments updates service indicator.
+  FIPS_service_indicator_lock_state();
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+
+  int ctr_drbg_state_is_fresh = 0;
+
+  if (state == NULL) {
+    state = OPENSSL_zalloc(sizeof(struct rand_thread_local_state));
+    if (state == NULL ||
+        CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, state,
+                                   rand_thread_local_state_free) != 1) {
       abort();
     }
-  }
-#endif
 
-#if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
-#endif
+    rand_state_initialize(state);
+    thread_local_list_add_node(state);
+
+    ctr_drbg_state_is_fresh = 1;
+  }
+
+  rand_bytes_core(state, out, out_len, user_pred_resistance,
+    use_user_pred_resistance, ctr_drbg_state_is_fresh);
+
+  FIPS_service_indicator_unlock_state();
+  FIPS_service_indicator_update_state();
+}
+
+int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
+  const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
+
+  GUARD_PTR_ABORT(user_pred_resistance);
+
+  rand_bytes_private(out, out_len, user_pred_resistance,
+    RAND_USE_USER_PRED_RESISTANCE);
+  return 1;
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
-  static const uint8_t kZeroAdditionalData[32] = {0};
-  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
+
+  static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
+  rand_bytes_private(out, out_len, kZeroPredResistance,
+    RAND_NO_USER_PRED_RESISTANCE);
   return 1;
 }
 
@@ -586,13 +530,32 @@ int RAND_priv_bytes(uint8_t *out, size_t out_len) {
   return RAND_bytes(out, out_len);
 }
 
-int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
-  return RAND_bytes(buf, len);
+int RAND_pseudo_bytes(uint8_t *out, size_t out_len) {
+  return RAND_bytes(out, out_len);
 }
 
-void RAND_get_system_entropy_for_custom_prng(uint8_t *buf, size_t len) {
-  if (len > 256) {
-    abort();
+// Returns the number of generate calls made on the thread-local state since
+// last seed/reseed. Returns 0 if thread-local state has not been initialized.
+uint64_t get_thread_generate_calls_since_seed(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
   }
-  CRYPTO_sysrand_for_seed(buf, len);
+
+  return state->generate_calls_since_seed;
+}
+
+// Returns the number of reseed calls made on the thread-local state since
+// initialization. Returns 0 if thread-local state has not been initialized.
+uint64_t get_thread_reseed_calls_since_initialization(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->reseed_calls_since_initialization;
 }

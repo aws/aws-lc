@@ -55,36 +55,32 @@ protected:
 
         uint32_t header_sizeofcmds = sizeof(struct segment_command_64) + 2 * sizeof(struct section_64) + sizeof(struct symtab_command);
         uint32_t header_ncmds = 2;
-        struct mach_header_64 test_header = {
-            .magic = MH_MAGIC_64,
-            .ncmds = header_ncmds,
-            .sizeofcmds = header_sizeofcmds,
-        };
+        struct mach_header_64 test_header = {};
+        test_header.magic = MH_MAGIC_64;
+        test_header.ncmds = header_ncmds;
+        test_header.sizeofcmds = header_sizeofcmds;
 
         uint32_t text_segment_cmdsize = sizeof(struct segment_command_64) + 2 * sizeof(struct section_64);
         uint32_t text_segment_nsects = 2;
-        struct segment_command_64 test_text_segment = {
-            .cmd = LC_SEGMENT_64,
-            .cmdsize = text_segment_cmdsize,
-            .segname = "__TEXT",
-            .nsects = text_segment_nsects,
-        };
+        struct segment_command_64 test_text_segment = {};
+        test_text_segment.cmd = LC_SEGMENT_64;
+        test_text_segment.cmdsize = text_segment_cmdsize;
+        strncpy(test_text_segment.segname, "__TEXT", sizeof(test_text_segment.segname));
+        test_text_segment.nsects = text_segment_nsects;
 
         uint32_t text_section_offset = sizeof(struct mach_header_64) + sizeof(struct segment_command_64) + 2 * sizeof(struct section_64) + sizeof(struct symtab_command);
         uint64_t text_section_size = TEXT_DATA_SIZE; // {0xC3}
-        struct section_64 test_text_section = {
-            .sectname = "__text",
-            .size = text_section_size, 
-            .offset = text_section_offset,
-        };
+        struct section_64 test_text_section = {};
+        strncpy(test_text_section.sectname, "__text", sizeof(test_text_section.sectname));
+        test_text_section.size = text_section_size;
+        test_text_section.offset = text_section_offset;
 
         uint32_t const_section_offset = text_section_offset + text_section_size;
         uint64_t const_section_size = CONST_DATA_SIZE;  // "hi"
-        struct section_64 test_const_section = {
-            .sectname = "__const",
-            .size = const_section_size,
-            .offset = const_section_offset,
-        };
+        struct section_64 test_const_section = {};
+        strncpy(test_const_section.sectname, "__const", sizeof(test_const_section.sectname));
+        test_const_section.size = const_section_size;
+        test_const_section.offset = const_section_offset;
 
         uint32_t symtab_command_symoff = const_section_offset + const_section_size;
         uint32_t symtab_command_stroff = symtab_command_symoff + NUM_SYMS * sizeof(struct nlist_64);

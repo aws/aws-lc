@@ -13,38 +13,10 @@ section	.text code align=64
 
 
 
-
-
-global	CRYPTO_rdrand
+global	CRYPTO_rdrand_multiple8
 
 ALIGN	16
-CRYPTO_rdrand:
-
-_CET_ENDBR
-	xor	rax,rax
-DB	73,15,199,240
-	test	r8,r8
-	jz	NEAR $L$err
-	cmp	r8,-1
-	je	NEAR $L$err
-
-	adc	rax,rax
-	mov	QWORD[rcx],r8
-	DB	0F3h,0C3h		;repret
-$L$err:
-	xor	rax,rax
-	DB	0F3h,0C3h		;repret
-
-
-
-
-
-
-
-global	CRYPTO_rdrand_multiple8_buf
-
-ALIGN	16
-CRYPTO_rdrand_multiple8_buf:
+CRYPTO_rdrand_multiple8:
 
 _CET_ENDBR
 	test	rdx,rdx

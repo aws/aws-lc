@@ -90,32 +90,33 @@
   {
     "comment": "No RDRAND and without fork detection",
     "cmd": ["crypto/urandom_test"],
-    "env": ["OPENSSL_ia32cap=~0x4000000000000000", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1"],
+    "env": ["OPENSSL_ia32cap=~0x4000000000000000", "BORINGSSL_IGNORE_FORK_DETECTION=1"],
     "skip_valgrind": true,
     "target_arch": "x86"
   },
   {
     "comment": "Potentially with RDRAND, but not Intel, and without fork detection",
     "cmd": ["crypto/urandom_test"],
-    "env": ["OPENSSL_ia32cap=~0x0000000040000000", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1"],
+    "env": ["OPENSSL_ia32cap=~0x0000000040000000", "BORINGSSL_IGNORE_FORK_DETECTION=1"],
     "skip_valgrind": true,
     "target_arch": "x86"
   },
   {
     "comment": "Run RAND test suite without fork detection",
-    "cmd": ["crypto/crypto_test", "--fork_unsafe_buffering", "--gtest_filter=RandTest.*:-RandTest.Fork"],
+    "cmd": ["crypto/crypto_test", "--gtest_filter=RandTest.*:-RandTest.Fork"],
+    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
     "skip_valgrind": true
   },
   {
     "comment": "Run RAND test suite without MADV_WIPEONFORK enabled",
     "cmd": ["crypto/crypto_test", "--gtest_filter=RandTest.*"],
-    "env": ["BORINGSSL_IGNORE_MADV_WIPEONFORK=1"],
+    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
     "skip_valgrind": true
   },
   {
     "comment": "Run fork detection test suite without MADV_WIPEONFORK enabled",
     "cmd": ["crypto/crypto_test", "--gtest_filter=ForkDetect.*"],
-    "env": ["BORINGSSL_IGNORE_MADV_WIPEONFORK=1"],
+    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
     "skip_valgrind": true
   },
   {
@@ -136,6 +137,14 @@
     "cmd": [
       "crypto/dynamic_loading_test"
     ]
+  },
+  {
+    "comment": "Run randomness generation tests in isolated process",
+    "cmd": ["crypto/rand_isolated_test"]
+  },
+  {
+    "comment": "Run tree-DRBG with Jitter Entropy tests in isolated process",
+    "cmd": ["crypto/tree_drbg_jitter_entropy_isolated_test"]
   },
   {
     "cmd": [

@@ -11,6 +11,10 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         aws-lc = pkgs.stdenv.mkDerivation {
+
+          # See https://github.com/NixOS/nixpkgs/issues/18995
+          hardeningDisable = [ "all" ];
+
           src = self;
           name = "aws-lc";
           inherit system;

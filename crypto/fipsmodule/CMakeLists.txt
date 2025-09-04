@@ -100,6 +100,7 @@ if(ARCH STREQUAL "aarch64")
     md5-armv8.${ASM_EXT}
     p256-armv8-asm.${ASM_EXT}
     p256_beeu-armv8-asm.${ASM_EXT}
+    rndr-armv8.${ASM_EXT}
     sha1-armv8.${ASM_EXT}
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
@@ -149,6 +150,7 @@ if(PERL_EXECUTABLE)
   perlasm(p256-armv8-asm.${ASM_EXT} ec/asm/p256-armv8-asm.pl)
   perlasm(p256_beeu-armv8-asm.${ASM_EXT} ec/asm/p256_beeu-armv8-asm.pl)
   perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
+  perlasm(rndr-armv8.${ASM_EXT} rand/asm/rndr-armv8.pl)
   perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
   perlasm(rsaz-2k-avx512.${ASM_EXT} bn/asm/rsaz-2k-avx512.pl)
   perlasm(rsaz-3k-avx512.${ASM_EXT} bn/asm/rsaz-3k-avx512.pl)
@@ -262,6 +264,7 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519_alt.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base.S
                 ${S2N_BIGNUM_DIR}/curve25519/curve25519_x25519base_alt.S
+                ${S2N_BIGNUM_DIR}/sha3/sha3_keccak_f1600.S
     )
   elseif(ARCH STREQUAL "aarch64")
     # byte-level interface for aarch64 s2n-bignum x25519 are in
@@ -351,6 +354,33 @@ if((ARCH STREQUAL "aarch64") AND UNIX)
   )
 
   list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_AARCH64_ASM_SOURCES})
+
+endif()
+
+if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+  # Set the source directory for s2n-bignum assembly files
+  set(MLKEM_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_kem")
+
+  set(MLKEM_NATIVE_X86_64_ASM_SOURCES
+
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/intt.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/ntt.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/mulcache_compute.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/nttfrombytes.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/ntttobytes.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/nttunpack.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/reduce.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/tomont.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k2.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/polyvec_basemul_acc_montgomery_cached_asm_k4.S
+    ${MLKEM_NATIVE_DIR}/mlkem/native/x86_64/src/rej_uniform_asm.S
+  )
+
+  list(APPEND BCM_ASM_SOURCES ${MLKEM_NATIVE_X86_64_ASM_SOURCES})
+
+  set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
 
 endif()
 
@@ -524,14 +554,17 @@ elseif(FIPS_SHARED)
         set(OSX_VERSION_MIN_FLAG "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
       endif()
     endif()
+    if(CMAKE_OSX_SYSROOT)
+      set(FIPS_EXTRA_FLAGS -isysroot \"${CMAKE_OSX_SYSROOT}\")
+    endif()
     add_custom_command(
       OUTPUT fips_apple_start.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} ${OSX_VERSION_MIN_FLAG} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} ${FIPS_EXTRA_FLAGS} ${OSX_VERSION_MIN_FLAG} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_apple_end.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} ${OSX_VERSION_MIN_FLAG} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} ${FIPS_EXTRA_FLAGS} ${OSX_VERSION_MIN_FLAG} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
