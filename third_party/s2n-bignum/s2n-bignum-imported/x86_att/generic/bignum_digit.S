@@ -15,10 +15,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_digit)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_digit)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_digit)
         .text
 
@@ -31,11 +32,12 @@
 #define a %r8
 
 S2N_BN_SYMBOL(bignum_digit):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -45,27 +47,29 @@ S2N_BN_SYMBOL(bignum_digit):
 
         xorq    d, d
         testq   k, k
-        jz      bignum_digit_end
+        jz      Lbignum_digit_end
 
 // Main loop: run over all the digits and take note of the n'th one
 
         xorq    i, i
-bignum_digit_loop:
+Lbignum_digit_loop:
         movq    (x,i,8), a
         cmpq    n, i
         cmovzq  a, d
         incq    i
         cmpq    k, i
-        jc      bignum_digit_loop
+        jc      Lbignum_digit_loop
 
 // Return
 
-bignum_digit_end:
+Lbignum_digit_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_digit)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

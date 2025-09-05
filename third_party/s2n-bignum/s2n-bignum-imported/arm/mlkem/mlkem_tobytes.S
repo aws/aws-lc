@@ -14,17 +14,20 @@
 //
 // Standard ARM ABI: X0 = r, X1 = a
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_tobytes)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(mlkem_tobytes)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_tobytes)
         .text
         .balign 4
 
+S2N_BN_SYMBOL(mlkem_tobytes):
+        CFI_START
+
 // This code is essentially a verbatim copy of the mlkem-native version
 // https://github.com/pq-code-package/mlkem-native/blob/main/mlkem/native/aarch64/src/poly_tobytes_asm.S
 
-S2N_BN_SYMBOL(mlkem_tobytes):
         mov     x2, #0x10
         ldr     q6, [x1], #0x20
         ldur    q24, [x1, #-0x10]
@@ -112,4 +115,10 @@ mlkem_tobytes_asm_asm_loop_start:
         st3     { v1.8b, v2.8b, v3.8b }, [x0], #24
         sli     v23.8b, v5.8b, #0x4
         st3     { v22.8b, v23.8b, v24.8b }, [x0], #24
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(mlkem_tobytes)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

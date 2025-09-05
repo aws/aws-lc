@@ -28,13 +28,17 @@
 //
 // Standard ARM ABI: X0 = a, X1 = rc
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         .arch armv8.4-a+sha3
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(sha3_keccak2_f1600_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(sha3_keccak2_f1600_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sha3_keccak2_f1600_alt)
         .text
         .balign 4
+
+S2N_BN_SYMBOL(sha3_keccak2_f1600_alt):
+        CFI_START
 
 // This is similar to the code in the mlkem-native repository here:
 //
@@ -44,13 +48,11 @@
 // transposition operations and conventional loads and stores. We also
 // avoid saving and restoring some unused integer registers.
 
-S2N_BN_SYMBOL(sha3_keccak2_f1600_alt):
-
-        sub     sp, sp, #0x40
-        stp     d8, d9, [sp]
-        stp     d10, d11, [sp, #0x10]
-        stp     d12, d13, [sp, #0x20]
-        stp     d14, d15, [sp, #0x30]
+        CFI_DEC_SP(64)
+        CFI_STACKSAVE2(d8,d9,0)
+        CFI_STACKSAVE2(d10,d11,0x10)
+        CFI_STACKSAVE2(d12,d13,0x20)
+        CFI_STACKSAVE2(d14,d15,0x30)
 
 // Load the Keccak initial state into upper and lower parts of Q0..Q24
 
@@ -106,7 +108,7 @@ S2N_BN_SYMBOL(sha3_keccak2_f1600_alt):
 
         mov     x2, #24
 
-sha3_keccak2_f1600_alt_loop:
+Lsha3_keccak2_f1600_alt_loop:
         eor     v30.16b, v0.16b, v5.16b
         eor     v30.16b, v30.16b, v10.16b
         eor3    v30.16b, v30.16b, v15.16b, v20.16b
@@ -222,7 +224,7 @@ sha3_keccak2_f1600_alt_loop:
         bcax    v4.16b, v4.16b, v27.16b, v30.16b
         eor     v0.16b, v0.16b, v28.16b
         sub     x2, x2, #0x1
-        cbnz    x2, sha3_keccak2_f1600_alt_loop
+        cbnz    x2, Lsha3_keccak2_f1600_alt_loop
 
 // Store back the state
 
@@ -276,9 +278,15 @@ sha3_keccak2_f1600_alt_loop:
 
 // Restore registers and return
 
-        ldp     d8, d9, [sp]
-        ldp     d10, d11, [sp, #0x10]
-        ldp     d12, d13, [sp, #0x20]
-        ldp     d14, d15, [sp, #0x30]
-        add     sp, sp, #0x40
-        ret
+        CFI_STACKLOAD2(d8,d9,0)
+        CFI_STACKLOAD2(d10,d11,0x10)
+        CFI_STACKLOAD2(d12,d13,0x20)
+        CFI_STACKLOAD2(d14,d15,0x30)
+        CFI_INC_SP(64)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(sha3_keccak2_f1600_alt)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

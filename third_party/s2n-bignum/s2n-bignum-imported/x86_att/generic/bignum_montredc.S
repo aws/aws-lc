@@ -17,10 +17,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m, [RSP+48] = p
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montredc)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montredc)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montredc)
         .text
 
@@ -60,11 +61,12 @@
 
 
 S2N_BN_SYMBOL(bignum_montredc):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -75,18 +77,18 @@ S2N_BN_SYMBOL(bignum_montredc):
 
 // Save registers and allocate space on stack for non-register variable w
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $8, %rsp
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(8)
 
 // If k = 0 the whole operation is trivial
 
         testq   k, k
-        jz      bignum_montredc_end
+        jz      Lbignum_montredc_end
 
 // Move n input into its permanent home, since we need %rdx for multiplications
 
@@ -134,25 +136,25 @@ S2N_BN_SYMBOL(bignum_montredc):
         cmovcq  n, j
         xorq    i, i
         testq   j, j
-        jz      bignum_montredc_padloop
-bignum_montredc_copyloop:
+        jz      Lbignum_montredc_padloop
+Lbignum_montredc_copyloop:
         movq    (x,i,8), a
         movq    a, (z,i,8)
         incq    i
         cmpq    j, i
-        jc      bignum_montredc_copyloop
+        jc      Lbignum_montredc_copyloop
 
         cmpq    k, i
-        jnc     bignum_montredc_initialized
+        jnc     Lbignum_montredc_initialized
 
         xorq    j, j
-bignum_montredc_padloop:
+Lbignum_montredc_padloop:
         movq    j, (z,i,8)
         incq    i
         cmpq    k, i
-        jc      bignum_montredc_padloop
+        jc      Lbignum_montredc_padloop
 
-bignum_montredc_initialized:
+Lbignum_montredc_initialized:
         xorq    c, c
 
 // Now if p = 0 we just need the corrective tail, and even that is
@@ -160,12 +162,12 @@ bignum_montredc_initialized:
 // to maintain the <= 2^64p * n precondition
 
         testq   p, p
-        jz      bignum_montredc_corrective
+        jz      Lbignum_montredc_corrective
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
         xorq    i, i
-bignum_montredc_outerloop:
+Lbignum_montredc_outerloop:
         movq    (z), e
         movq    w, d
         imulq   e, d
@@ -176,9 +178,9 @@ bignum_montredc_outerloop:
         movl    $1, jshort
         movq    k, t
         decq    t
-        jz      bignum_montredc_montend
+        jz      Lbignum_montredc_montend
 
-bignum_montredc_montloop:
+Lbignum_montredc_montloop:
         adcq    (z,j,8), h
         sbbq    e, e
         movq    (m,j,8), a
@@ -189,41 +191,41 @@ bignum_montredc_montloop:
         movq    %rdx, h
         incq    j
         decq    t
-        jnz     bignum_montredc_montloop
+        jnz     Lbignum_montredc_montloop
 
-bignum_montredc_montend:
+Lbignum_montredc_montend:
         adcq    c, h
         movl    $0, cshort
         adcq    $0, c
 
         addq    i, j
         cmpq    n, j
-        jnc     bignum_montredc_offtheend
+        jnc     Lbignum_montredc_offtheend
         movq    (x,j,8), a
         addq    a, h
         adcq    $0, c
-bignum_montredc_offtheend:
+Lbignum_montredc_offtheend:
         movq    h, -8(z,k,8)
 
 // End of outer loop.
 
         incq    i
         cmpq    p, i
-        jc      bignum_montredc_outerloop
+        jc      Lbignum_montredc_outerloop
 
 // Now do a comparison of (c::z) with (0::m) to set a final correction mask
 // indicating that (c::z) >= m and so we need to subtract m.
 
-bignum_montredc_corrective:
+Lbignum_montredc_corrective:
 
         xorq    j, j
         movq    k, n
-bignum_montredc_cmploop:
+Lbignum_montredc_cmploop:
         movq    (z,j,8), a
         sbbq    (m,j,8), a
         incq    j
         decq    n
-        jnz     bignum_montredc_cmploop
+        jnz     Lbignum_montredc_cmploop
 
         sbbq    $0, c
         sbbq    d, d
@@ -233,7 +235,7 @@ bignum_montredc_cmploop:
 
         xorq    e, e
         xorq    j, j
-bignum_montredc_corrloop:
+Lbignum_montredc_corrloop:
         movq    (m,j,8), a
         andq    d, a
         negq    e
@@ -241,22 +243,24 @@ bignum_montredc_corrloop:
         sbbq    e, e
         incq    j
         cmpq    k, j
-        jc      bignum_montredc_corrloop
+        jc      Lbignum_montredc_corrloop
 
-bignum_montredc_end:
-        addq    $8, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+Lbignum_montredc_end:
+        CFI_INC_RSP(8)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montredc)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

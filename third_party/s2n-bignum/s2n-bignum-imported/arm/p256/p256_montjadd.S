@@ -13,7 +13,8 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1, X2 = p2
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
 // This is functionally equivalent to p256_montjadd in unopt/p256_montjadd.S.
 // This is the result of doing the following sequence of optimizations:
@@ -24,22 +25,24 @@
 // done by a script.
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p256_montjadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p256_montjadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p256_montjadd)
 
         .text
         .balign 4
 
 #define NUMSIZE 32
-#define NSPACE (NUMSIZE*7)
+#define NSPACE NUMSIZE*7
 
 S2N_BN_SYMBOL(p256_montjadd):
+        CFI_START
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x26, [sp, #-16]!
-        stp     x27, x30, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x26)
+        CFI_PUSH2(x27,x30)
+        CFI_DEC_SP(NSPACE)
 
         mov x21, x0
         mov x22, x1
@@ -3147,13 +3150,15 @@ S2N_BN_SYMBOL(p256_montjadd):
         stp x8, x9, [x21, #64]
         stp x10, x11, [x21, #80]
 
-        add     sp, sp, NSPACE
-        ldp     x27, x30, [sp], 16
-        ldp     x25, x26, [sp], 16
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x27,x30)
+        CFI_POP2(x25,x26)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(p256_montjadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits
