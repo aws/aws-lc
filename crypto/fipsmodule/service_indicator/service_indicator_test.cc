@@ -5317,6 +5317,43 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
   ASSERT_EQ(AWSLC_APPROVED, approved);
 }
 
+TEST(ServiceIndicatorTest, MLDSAKeyGen) {
+  // Test raw ML-DSA functions for each parameter set
+  struct {
+    void (*keypair_func)(uint8_t *, uint8_t *);
+    size_t private_key_len;
+    size_t public_key_len;
+  } raw_tests[] = {
+    {ml_dsa_44_keypair, MLDSA44_PRIVATE_KEY_BYTES, MLDSA44_PUBLIC_KEY_BYTES},
+    {ml_dsa_65_keypair, MLDSA65_PRIVATE_KEY_BYTES, MLDSA65_PUBLIC_KEY_BYTES},
+    {ml_dsa_87_keypair, MLDSA87_PRIVATE_KEY_BYTES, MLDSA87_PUBLIC_KEY_BYTES},
+  };
+
+  for (const auto &test : raw_tests) {
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    std::vector<uint8_t> private_key(test.private_key_len);
+    std::vector<uint8_t> public_key(test.public_key_len);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                    test.keypair_func(public_key.data(), private_key.data()));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+
+  // Test EVP interface for each ML-DSA parameter set
+  for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_pqdsa_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    EVP_PKEY *raw = nullptr;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+}
+
 // Verifies that the awslc_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
