@@ -334,8 +334,8 @@ endif()
 if(ARCH STREQUAL "aarch64")
   set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
   list(APPEND BCM_ASM_SOURCES
-          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes/aes-xts-enc.S
-          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/arm/aes/aes-xts-dec.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes/aes-xts-enc.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes/aes-xts-dec.S
   )
 endif()
 
