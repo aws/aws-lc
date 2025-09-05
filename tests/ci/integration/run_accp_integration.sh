@@ -8,12 +8,13 @@ source tests/ci/common_posix_setup.sh
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER=${SRC_ROOT}/"scratch"
 ACCP_SRC="${SCRATCH_FOLDER}/amazon-corretto-crypto-provider"
+FIPS=${FIPS:-"false"}
 
 function build_and_test_accp() {
   pushd "${ACCP_SRC}"
   export JAVA_HOME=$(readlink -f /usr/bin/javac | sed "s:/bin/javac::")
   export PATH=$JAVA_HOME/bin:$PATH
-  ./gradlew -DAWSLC_SRC_DIR="${SRC_ROOT}" -DAWSLC_GITVERSION="HEAD" test
+  ./gradlew -DAWSLC_SRC_DIR="${SRC_ROOT}" -DAWSLC_GITVERSION="HEAD" -DFIPS="$FIPS" test
   popd
 }
 
