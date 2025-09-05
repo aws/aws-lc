@@ -44,7 +44,7 @@ function(msbuild_aarch64_asm)
 endfunction()
 
 if(NOT OPENSSL_NO_ASM)
-  if(NOT WIN32)
+  if(NOT WIN32 AND NOT CYGWIN)
     if(ARCH STREQUAL "aarch64")
       # The "armx" Perl scripts look for "64" in the style argument
       # in order to decide whether to generate 32- or 64-bit asm.
