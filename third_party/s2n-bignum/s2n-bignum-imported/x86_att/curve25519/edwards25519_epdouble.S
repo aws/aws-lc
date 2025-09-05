@@ -18,10 +18,11 @@
 // Standard x86-64 ABI: RDI = p3, RSI = p1
 // Microsoft x64 ABI:   RCX = p3, RDX = p1
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_epdouble)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(edwards25519_epdouble)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_epdouble)
         .text
 
@@ -56,7 +57,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (5*NUMSIZE)
+#define NSPACE 5*NUMSIZE
 
 // Macro wrapping up the basic field multiplication, only trivially
 // different from a pure function call to bignum_mul_p25519.
@@ -318,24 +319,25 @@
         movq    %r11, 0x18+P0
 
 S2N_BN_SYMBOL(edwards25519_epdouble):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
 // Save registers, make room for temps, preserve input arguments.
 
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Main sequence
 
@@ -356,19 +358,21 @@ S2N_BN_SYMBOL(edwards25519_epdouble):
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(edwards25519_epdouble)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_p25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul_p25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_p25519)
         .text
         .balign 4
@@ -72,6 +74,7 @@
 #define qshort w17
 
 S2N_BN_SYMBOL(bignum_mul_p25519):
+        CFI_START
 
 // Multiply the low halves using Karatsuba 2x2->4 to get [u3,u2,u1,u0]
 
@@ -327,7 +330,9 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
         stp     u0, u1, [x0]
         stp     u2, u3, [x0, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

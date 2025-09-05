@@ -17,10 +17,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ctz)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_ctz)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ctz)
         .text
 
@@ -35,11 +36,12 @@
 
 
 S2N_BN_SYMBOL(bignum_ctz):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
@@ -48,7 +50,7 @@ S2N_BN_SYMBOL(bignum_ctz):
 
         xorq    %rax, %rax
         testq   k, k
-        jz      bignum_ctz_end
+        jz      Lbignum_ctz_end
 
 // Use w = a[i-1] to store nonzero words in a top-down sweep
 // Set the initial default to be as if we had a 1 word directly above
@@ -57,13 +59,13 @@ S2N_BN_SYMBOL(bignum_ctz):
         incq    i
         movl    $1, wshort
 
-bignum_ctz_loop:
+Lbignum_ctz_loop:
         movq    -8(x,k,8), a
         testq   a, a
         cmovneq k, i
         cmovneq a, w
         decq    k
-        jnz     bignum_ctz_loop
+        jnz     Lbignum_ctz_loop
 
 // Now w = a[i-1] is the lowest nonzero word, or in the zero case the
 // default of the "extra" 1 = a[k]. We now want 64*(i-1) + ctz(w).
@@ -75,12 +77,14 @@ bignum_ctz_loop:
         bsfq    w, %rax
         addq    i, %rax
 
-bignum_ctz_end:
+Lbignum_ctz_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_ctz)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

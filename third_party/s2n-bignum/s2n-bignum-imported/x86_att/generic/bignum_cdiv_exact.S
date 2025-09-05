@@ -17,10 +17,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv_exact)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cdiv_exact)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv_exact)
         .text
 
@@ -52,11 +53,12 @@
 #define hshort %edx
 
 S2N_BN_SYMBOL(bignum_cdiv_exact):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -64,15 +66,15 @@ S2N_BN_SYMBOL(bignum_cdiv_exact):
         movq    56(%rsp), %r8
 #endif
 
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
 
 // If k = 0 then there's nothing to be done
 
         testq   k, k
-        jz      bignum_cdiv_exact_end
+        jz      Lbignum_cdiv_exact_end
 
 // Move parameters that need a new home
 
@@ -138,20 +140,20 @@ S2N_BN_SYMBOL(bignum_cdiv_exact):
 
         xorq    d, d
         testq   n, n
-        jz      bignum_cdiv_exact_loop
+        jz      Lbignum_cdiv_exact_loop
         movq    (x), d
         addq    $8, x
         decq    n
 
-bignum_cdiv_exact_loop:
+Lbignum_cdiv_exact_loop:
 
 // Load the next digit up to get [t,d] then shift right e places
 
         xorq    t, t
         cmpq    n, i
-        jnc     bignum_cdiv_exact_noload
+        jnc     Lbignum_cdiv_exact_noload
         movq    (x,i,8), t
-bignum_cdiv_exact_noload:
+Lbignum_cdiv_exact_noload:
         shrdq   %cl, t, d
         addq    c, d
         sbbq    c, c
@@ -175,18 +177,20 @@ bignum_cdiv_exact_noload:
 
         incq    i
         cmpq    k, i
-        jc      bignum_cdiv_exact_loop
+        jc      Lbignum_cdiv_exact_loop
 
-bignum_cdiv_exact_end:
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
+Lbignum_cdiv_exact_end:
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cdiv_exact)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
