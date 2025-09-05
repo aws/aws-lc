@@ -412,7 +412,7 @@ batch:
           AWS_LC_SSL_RUNNER_START_INDEX: 4001
           AWS_LC_CI_TARGET: "tests/ci/run_ssl_runner_valgrind_tests.sh"
 
-    - identifier: ubuntu2004_clang7x_aarch_benchmark
+    - identifier: benchmarking_framework_aarch
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: ARM_CONTAINER

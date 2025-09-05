@@ -4,6 +4,8 @@
 #ifndef AWSLC_HEADER_CRYPTO_RAND_EXTRA_RAND_INTERNAL_H
 #define AWSLC_HEADER_CRYPTO_RAND_EXTRA_RAND_INTERNAL_H
 
+#include <openssl/ctrdrbg.h>
+
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
 #elif defined(OPENSSL_WINDOWS)
@@ -48,6 +50,8 @@ OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
 // believe that it is easier to detect failing calls than detecting infinite
 // spinning loops.
 #define MAX_BACKOFF_RETRIES 9
+
+OPENSSL_EXPORT int snapsafe_fallback_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
 #if defined(__cplusplus)
 }  // extern C
