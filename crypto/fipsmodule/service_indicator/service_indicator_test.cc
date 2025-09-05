@@ -5398,10 +5398,10 @@ TEST(ServiceIndicatorTest, MLDSASigGenVerify) {
     std::vector<uint8_t> private_key(test.private_key_len);
     std::vector<uint8_t> public_key(test.public_key_len);
     std::vector<uint8_t> signature(test.signature_len);
-    std::vector<uint8_t> seed(test.seed_len);
+    std::vector<uint8_t> seed(32);
     
     // Generate keypair
-    ASSERT_TRUE(test.keypair_func(public_key.data(), private_key.data(), seed.data()));
+    ASSERT_EQ(0, test.keypair_func(public_key.data(), private_key.data(), seed.data()));
 
     FIPSStatus approved = AWSLC_NOT_APPROVED;
     size_t sig_len = test.signature_len;
