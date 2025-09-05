@@ -222,11 +222,6 @@ jobs:
           - 'clang19'
           - 'clang20'
           - 'clang21'
-        exclude:
-          - fips: 1
-            compiler: 'clang20'
-          - fips: 1
-            compiler: 'clang21'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
@@ -305,11 +300,6 @@ jobs:
           - 'gcc15'
           - 'clang19'
           - 'clang20'
-        exclude:
-          - fips: 1
-            compiler: 'gcc15'
-          - fips: 1
-            compiler: 'clang20'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/mattkretz/cplusplus-ci/${{ matrix.compiler }}
