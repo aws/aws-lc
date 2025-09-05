@@ -852,7 +852,7 @@ S2N_BN_SYMBOL(edwards25519_scalarmuldouble):
 
 // ...and constant-time indexing based on that index
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
         adrp    x14, S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant)
         add     x14, x14, :lo12:S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant)
 #else
@@ -1330,7 +1330,7 @@ Ledwards25519_scalarmuldouble_loop:
 
 // ... then doing constant-time lookup with the appropriate index...
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
         adrp    x14, S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant)
         add     x14, x14, :lo12:S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant)
 #else
@@ -3064,7 +3064,7 @@ S2N_BN_SIZE_DIRECTIVE(Ledwards25519_scalarmuldouble_pepadd)
 // The precomputed data (all read-only).
 // ****************************************************************************
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
 .section .rodata
 .type S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant), %object
 .size S2N_BN_SYMBOL(edwards25519_scalarmuldouble_constant), 768

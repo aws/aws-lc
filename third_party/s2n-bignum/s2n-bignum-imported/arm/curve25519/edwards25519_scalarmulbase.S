@@ -585,7 +585,7 @@ S2N_BN_SYMBOL(edwards25519_scalarmulbase):
 // Initialize accumulator "acc" to either 0 or 2^251 * B depending on
 // bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
         adrp    tab, S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant)
         add     tab, tab, :lo12:S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant)
 #else
@@ -2032,7 +2032,7 @@ S2N_BN_SIZE_DIRECTIVE(edwards25519_scalarmulbase)
 // The precomputed data (all read-only).
 // ****************************************************************************
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
 .section .rodata
 .type S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant), %object
 .size S2N_BN_SYMBOL(edwards25519_scalarmulbase_constant), 48576

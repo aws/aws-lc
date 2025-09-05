@@ -16,7 +16,7 @@
   }
 */
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
 .section  .rodata
   .type  Lx, %object
   .size  Lx, 40
@@ -36,7 +36,7 @@ Lx:
   .word  18
   .word  20
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   .type  Ly, %object
   .size  Ly, 40
 #endif
@@ -53,7 +53,7 @@ Ly:
   .word  9
   .word  10
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   .type  Lz, %object
   .size  Lz, 4
 #endif
@@ -63,13 +63,13 @@ Lz:
 
 .text
   .align  2
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   .type  f, %function
 #endif
 
 f:
   mov x3, x0
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   adrp  x10, Lx
   add  x10, x10, :lo12:Lx
 #else
@@ -78,7 +78,7 @@ f:
 #endif
   mov x1, x3
   ldr  w1, [x10, x1, lsl 2]
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   adrp  x11, Ly
   add  x11, x11, :lo12:Ly
 #else
@@ -90,11 +90,11 @@ f:
   add  w0, w1, w0
   ret
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   .type  g, %function
 #endif
 g:
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
   adrp  x10, Lz
   add  x10, x10, :lo12:Lz
 #else

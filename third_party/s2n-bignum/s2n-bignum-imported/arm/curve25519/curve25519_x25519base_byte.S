@@ -597,7 +597,7 @@ S2N_BN_SYMBOL(curve25519_x25519base_byte):
         ldr     x0, [scalar]
         ands    xzr, x0, #8
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
         adrp    tab, S2N_BN_SYMBOL(curve25519_x25519base_byte_constant)
         add     tab, tab, :lo12:S2N_BN_SYMBOL(curve25519_x25519base_byte_constant)
 #else
@@ -2114,7 +2114,7 @@ S2N_BN_SIZE_DIRECTIVE(curve25519_x25519base_byte)
 // The precomputed data (all read-only).
 // ****************************************************************************
 
-#if defined(__linux__) && defined(__ELF__)
+#if defined(__ELF__)
 .section .rodata
 .type S2N_BN_SYMBOL(curve25519_x25519base_byte_constant), %object
 .size S2N_BN_SYMBOL(curve25519_x25519base_byte_constant), 48576
