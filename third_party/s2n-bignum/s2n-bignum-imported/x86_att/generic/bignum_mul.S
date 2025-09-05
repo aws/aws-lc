@@ -15,10 +15,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = m, R9 = x, [RSP+40] = n, [RSP+48] = y
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul)
         .text
 
@@ -47,11 +48,12 @@
 
 
 S2N_BN_SYMBOL(bignum_mul):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -62,12 +64,12 @@ S2N_BN_SYMBOL(bignum_mul):
 
 // We use too many registers, and also we need %rax:%rdx for multiplications
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
         movq    %rdx, m
 
 // If the result size is zero, do nothing
@@ -76,7 +78,7 @@ S2N_BN_SYMBOL(bignum_mul):
 // If we did a multiply-add variant, however, then we could
 
         testq   p, p
-        jz      bignum_mul_end
+        jz      Lbignum_mul_end
 
 // Set initial 2-part sum to zero (we zero c inside the body)
 
@@ -87,7 +89,7 @@ S2N_BN_SYMBOL(bignum_mul):
 
         xorq    k, k
 
-bignum_mul_outerloop:
+Lbignum_mul_outerloop:
 
 // Zero our carry term first; we eventually want it and a zero is useful now
 // Set a =  max 0 (k + 1 - n), i = min (k + 1) m
@@ -113,11 +115,11 @@ bignum_mul_outerloop:
         movq    k, d
         subq    i, d
         subq    a, i
-        jbe     bignum_mul_innerend
+        jbe     Lbignum_mul_innerend
         leaq    (%rcx,a,8), x
         leaq    -8(%r9,d,8), y
 
-bignum_mul_innerloop:
+Lbignum_mul_innerloop:
         movq    (y,i,8), %rax
         mulq      (x)
         addq    $8, x
@@ -125,9 +127,9 @@ bignum_mul_innerloop:
         adcq    %rdx, h
         adcq    $0, c
         decq    i
-        jnz     bignum_mul_innerloop
+        jnz     Lbignum_mul_innerloop
 
-bignum_mul_innerend:
+Lbignum_mul_innerend:
 
         movq    l, (z)
         movq    h, l
@@ -135,20 +137,22 @@ bignum_mul_innerend:
         addq    $8, z
 
         cmpq    p, k
-        jc      bignum_mul_outerloop
+        jc      Lbignum_mul_outerloop
 
-bignum_mul_end:
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+Lbignum_mul_end:
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

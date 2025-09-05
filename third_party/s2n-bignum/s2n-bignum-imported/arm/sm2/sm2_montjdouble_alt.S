@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(sm2_montjdouble_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(sm2_montjdouble_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sm2_montjdouble_alt)
         .text
         .balign 4
@@ -40,7 +42,7 @@
 #define z_3 input_z, #(2*NUMSIZE)
 
 // Pointer-offset pairs for temporaries, with some aliasing
-// NSPACE is the total stack needed for these temporaries
+// #NSPACE is the total stack needed for these temporaries
 
 #define z2 sp, #(NUMSIZE*0)
 #define y4 sp, #(NUMSIZE*0)
@@ -58,7 +60,7 @@
 #define x4p sp, #(NUMSIZE*5)
 #define d sp, #(NUMSIZE*5)
 
-#define NSPACE #(NUMSIZE*6)
+#define NSPACE NUMSIZE*6
 
 // Corresponds to bignum_montmul_sm2_alt except for registers
 
@@ -505,10 +507,11 @@
         stp     x5, x6, [P0+16]
 
 S2N_BN_SYMBOL(sm2_montjdouble_alt):
+        CFI_START
 
 // Make room on stack for temporary variables
 
-        sub     sp, sp, NSPACE
+        CFI_DEC_SP(NSPACE)
 
 // Move the input arguments to stable places
 
@@ -569,8 +572,10 @@ S2N_BN_SYMBOL(sm2_montjdouble_alt):
 
 // Restore stack and return
 
-        add     sp, sp, NSPACE
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(sm2_montjdouble_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

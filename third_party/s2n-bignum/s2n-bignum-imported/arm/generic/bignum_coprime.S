@@ -18,9 +18,11 @@
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, X4 = t, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_coprime)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_coprime)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_coprime)
         .text
         .balign 4
@@ -82,17 +84,18 @@
 
 
 S2N_BN_SYMBOL(bignum_coprime):
+        CFI_START
 
 // We make use of just a couple of additional registers
 
-        stp     x19, x20, [sp, #-16]!
+        CFI_PUSH2(x19,x20)
 
 // Compute k = max(m,n), and if this is zero skip to the end. Note that
 // in this case x0 = m = 0 so we return the right answer of "false"
 
         cmp     x0, x2
         csel    k, x2, x0, cc
-        cbz     k, bignum_coprime_end
+        cbz     k, Lbignum_coprime_end
 
 // Set up inside w two size-k buffers m and n
 
@@ -102,40 +105,40 @@ S2N_BN_SYMBOL(bignum_coprime):
 // Copy the input x into the buffer m, padding with zeros as needed
 
         mov     i, xzr
-        cbz     x0, bignum_coprime_xpadloop
-bignum_coprime_xloop:
+        cbz     x0, Lbignum_coprime_xpadloop
+Lbignum_coprime_xloop:
         ldr     t1, [x1, i, lsl #3]
         str     t1, [m, i, lsl #3]
         add     i, i, #1
         cmp     i, x0
-        bcc     bignum_coprime_xloop
+        bcc     Lbignum_coprime_xloop
         cmp     i, k
-        bcs     bignum_coprime_xskip
-bignum_coprime_xpadloop:
+        bcs     Lbignum_coprime_xskip
+Lbignum_coprime_xpadloop:
         str     xzr, [m, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_coprime_xpadloop
-bignum_coprime_xskip:
+        bcc     Lbignum_coprime_xpadloop
+Lbignum_coprime_xskip:
 
 // Copy the input y into the buffer n, padding with zeros as needed
 
         mov     i, xzr
-        cbz     x2, bignum_coprime_ypadloop
-bignum_coprime_yloop:
+        cbz     x2, Lbignum_coprime_ypadloop
+Lbignum_coprime_yloop:
         ldr     t1, [x3, i, lsl #3]
         str     t1, [n, i, lsl #3]
         add     i, i, #1
         cmp     i, x2
-        bcc     bignum_coprime_yloop
+        bcc     Lbignum_coprime_yloop
         cmp     i, k
-        bcs     bignum_coprime_yskip
-bignum_coprime_ypadloop:
+        bcs     Lbignum_coprime_yskip
+Lbignum_coprime_ypadloop:
         str     xzr, [n, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_coprime_ypadloop
-bignum_coprime_yskip:
+        bcc     Lbignum_coprime_ypadloop
+Lbignum_coprime_yskip:
 
 // Set up the outer loop count of 64 * sum of input sizes.
 // The invariant is that m * n < 2^t at all times.
@@ -159,7 +162,7 @@ bignum_coprime_yskip:
         sub     t3, t3, #1
 
         mov     i, xzr
-bignum_coprime_swaploop:
+Lbignum_coprime_swaploop:
         ldr     t1, [m, i, lsl #3]
         ldr     t2, [n, i, lsl #3]
         eor     t4, t1, t2
@@ -170,11 +173,11 @@ bignum_coprime_swaploop:
         str     t2, [n, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_coprime_swaploop
+        bcc     Lbignum_coprime_swaploop
 
 // Start of the main outer loop iterated t / CHUNKSIZE times
 
-bignum_coprime_outerloop:
+Lbignum_coprime_outerloop:
 
 // We need only bother with sharper l = min k (ceil(t/64)) digits
 // Either both m and n fit in l digits, or m has become zero and so
@@ -199,7 +202,7 @@ bignum_coprime_outerloop:
         // and in this case h1 and h2 are those words
 
         mov     i, xzr
-bignum_coprime_toploop:
+Lbignum_coprime_toploop:
         ldr     t1, [m, i, lsl #3]
         ldr     t2, [n, i, lsl #3]
         orr     c1, t1, t2
@@ -213,7 +216,7 @@ bignum_coprime_toploop:
         csetm   c2, ne
         add     i, i, #1
         cmp     i, l
-        bcc     bignum_coprime_toploop
+        bcc     Lbignum_coprime_toploop
 
         orr     t1, h1, h2
         clz     t2, t1
@@ -270,7 +273,7 @@ bignum_coprime_toploop:
 
         ands    xzr, m_lo, #1
 
-bignum_coprime_innerloop:
+Lbignum_coprime_innerloop:
 
 // At the start of the loop ~ZF <=> m_lo is odd; mask values accordingly
 // Set the flags for m_hi - [~ZF] * n_hi so we know to flip things.
@@ -311,7 +314,7 @@ bignum_coprime_innerloop:
 // Next iteration; don't disturb the flags since they are used at entry
 
         sub     i, i, #1
-        cbnz    i, bignum_coprime_innerloop
+        cbnz    i, Lbignum_coprime_innerloop
 
 // Now actually compute the updates to m and n corresponding to that matrix,
 // and correct the signs if they have gone negative. First we compute the
@@ -327,7 +330,7 @@ bignum_coprime_innerloop:
         mov     c1, xzr
         mov     c2, xzr
         mov     i, xzr
-bignum_coprime_crossloop:
+Lbignum_coprime_crossloop:
         ldr     t1, [m, i, lsl #3]
         ldr     t2, [n, i, lsl #3]
 
@@ -357,7 +360,7 @@ bignum_coprime_crossloop:
 
         add     i, i, #1
         cmp     i, l
-        bcc     bignum_coprime_crossloop
+        bcc     Lbignum_coprime_crossloop
 
 // Write back m optionally negated and shifted right CHUNKSIZE bits
 
@@ -366,9 +369,9 @@ bignum_coprime_crossloop:
         ldr     l1, [m]
         mov     i, xzr
         sub     j, l, #1
-        cbz     j, bignum_coprime_negskip1
+        cbz     j, Lbignum_coprime_negskip1
 
-bignum_coprime_negloop1:
+Lbignum_coprime_negloop1:
         add     t1, i, #8
         ldr     t2, [m, t1]
         extr    l1, t2, l1, #CHUNKSIZE
@@ -378,8 +381,8 @@ bignum_coprime_negloop1:
         mov     l1, t2
         add     i, i, #8
         sub     j, j, #1
-        cbnz    j, bignum_coprime_negloop1
-bignum_coprime_negskip1:
+        cbnz    j, Lbignum_coprime_negloop1
+Lbignum_coprime_negskip1:
         extr    l1, h1, l1, #CHUNKSIZE
         eor     l1, l1, c1
         adcs    l1, l1, xzr
@@ -392,8 +395,8 @@ bignum_coprime_negskip1:
         ldr     l1, [n]
         mov     i, xzr
         sub     j, l, #1
-        cbz     j, bignum_coprime_negskip2
-bignum_coprime_negloop2:
+        cbz     j, Lbignum_coprime_negskip2
+Lbignum_coprime_negloop2:
         add     t1, i, #8
         ldr     t2, [n, t1]
         extr    l1, t2, l1, #CHUNKSIZE
@@ -403,8 +406,8 @@ bignum_coprime_negloop2:
         mov     l1, t2
         add     i, i, #8
         sub     j, j, #1
-        cbnz    j, bignum_coprime_negloop2
-bignum_coprime_negskip2:
+        cbnz    j, Lbignum_coprime_negloop2
+Lbignum_coprime_negskip2:
         extr    l1, h2, l1, #CHUNKSIZE
         eor     l1, l1, c2
         adcs    l1, l1, xzr
@@ -417,33 +420,35 @@ bignum_coprime_negskip2:
 // optimized digit bound l could collapse to 0.
 
         subs    t, t, #CHUNKSIZE
-        bhi     bignum_coprime_outerloop
+        bhi     Lbignum_coprime_outerloop
 
 // Now compare n with 1 (OR of the XORs in t1)
 
         ldr     t1, [n]
         eor     t1, t1, #1
         cmp     k, #1
-        beq     bignum_coprime_finalcomb
+        beq     Lbignum_coprime_finalcomb
         mov     i, #1
-bignum_coprime_compareloop:
+Lbignum_coprime_compareloop:
         ldr     t2, [n, i, lsl #3]
         orr     t1, t1, t2
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_coprime_compareloop
+        bcc     Lbignum_coprime_compareloop
 
 // Now combine that with original oddness flag, which is still in x0
 
-bignum_coprime_finalcomb:
+Lbignum_coprime_finalcomb:
         cmp     t1, xzr
         cset    t1, eq
         and     x0, x0, t1
 
-bignum_coprime_end:
-        ldp     x19, x20, [sp], #16
+Lbignum_coprime_end:
+        CFI_POP2(x19,x20)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_coprime)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

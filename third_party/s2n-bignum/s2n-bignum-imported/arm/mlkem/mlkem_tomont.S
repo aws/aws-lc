@@ -15,14 +15,16 @@
 //
 // Standard ARM ABI: X0 = a
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_tomont)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(mlkem_tomont)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_tomont)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(mlkem_tomont):
+        CFI_START
 
 // This matches the code in the mlkem-native repository
 // https://github.com/pq-code-package/mlkem-native/blob/main/mlkem/native/aarch64/src/poly_tomont_asm.S
@@ -82,4 +84,10 @@ mlkem_tomont_loop:
         mls     v23.8h, v7.8h, v4.h[0]
         stur    q27, [x0, #-0x20]
         stur    q23, [x0, #-0x40]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(mlkem_tomont)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

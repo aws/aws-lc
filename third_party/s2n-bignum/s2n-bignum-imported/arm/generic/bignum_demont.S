@@ -14,9 +14,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = m
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_demont)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont)
         .text
         .balign 4
@@ -51,10 +53,11 @@
 
 
 S2N_BN_SYMBOL(bignum_demont):
+        CFI_START
 
 // If k = 0 the whole operation is trivial
 
-        cbz     k, bignum_demont_end
+        cbz     k, Lbignum_demont_end
 
 // Compute word-level negated modular inverse w for m == m[0].
 // This is essentially the same as word_negmodinv.
@@ -77,17 +80,17 @@ S2N_BN_SYMBOL(bignum_demont):
 // efficient but somewhat fiddlier to tweak the zeroth iteration below instead.
 
         mov     i, xzr
-bignum_demont_iloop:
+Lbignum_demont_iloop:
         ldr     a, [x, i, lsl #3]
         str     a, [z, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_demont_iloop
+        bcc     Lbignum_demont_iloop
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
         mov     i, xzr
-bignum_demont_outerloop:
+Lbignum_demont_outerloop:
 
         ldr     e, [z]
         mul     d, e, w
@@ -97,8 +100,8 @@ bignum_demont_outerloop:
         adds    e, e, l         // Will be zero but want the carry
         mov     j, #1
         sub     a, k, #1
-        cbz     a, bignum_demont_montend
-bignum_demont_montloop:
+        cbz     a, Lbignum_demont_montend
+Lbignum_demont_montloop:
         ldr     a, [m, j, lsl #3]
         ldr     e, [z, j, lsl #3]
         mul     l, d, a
@@ -110,8 +113,8 @@ bignum_demont_montloop:
         str     e, [z, l, lsl #3]
         add     j, j, #1
         sub     a, j, k
-        cbnz    a, bignum_demont_montloop
-bignum_demont_montend:
+        cbnz    a, Lbignum_demont_montloop
+Lbignum_demont_montend:
         adc     h, xzr, h
         sub     l, j, #1
         str     h, [z, l, lsl #3]
@@ -120,25 +123,25 @@ bignum_demont_montend:
 
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_demont_outerloop
+        bcc     Lbignum_demont_outerloop
 
 // Now do a comparison of z with m to set a final correction mask
 // indicating that z >= m and so we need to subtract m.
 
         subs    j, xzr, xzr
-bignum_demont_cmploop:
+Lbignum_demont_cmploop:
         ldr     a, [z, j, lsl #3]
         ldr     e, [m, j, lsl #3]
         sbcs    xzr, a, e
         add     j, j, #1
         sub     a, j, k
-        cbnz    a, bignum_demont_cmploop
+        cbnz    a, Lbignum_demont_cmploop
         csetm   h, cs
 
 // Now do a masked subtraction of m for the final reduced result.
 
         subs    j, xzr, xzr
-bignum_demont_corrloop:
+Lbignum_demont_corrloop:
         ldr     a, [z, j, lsl #3]
         ldr     e, [m, j, lsl #3]
         and     e, e, h
@@ -146,10 +149,12 @@ bignum_demont_corrloop:
         str     a, [z, j, lsl #3]
         add     j, j, #1
         sub     a, j, k
-        cbnz    a, bignum_demont_corrloop
+        cbnz    a, Lbignum_demont_corrloop
 
-bignum_demont_end:
-        ret
+Lbignum_demont_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_demont)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

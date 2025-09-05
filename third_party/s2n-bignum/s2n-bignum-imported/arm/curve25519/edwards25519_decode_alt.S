@@ -25,10 +25,13 @@
 //
 // Standard ARM ABI: X0 = z, X1 = c
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_decode_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(edwards25519_decode_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_decode_alt)
+
 
         .text
         .balign 4
@@ -54,7 +57,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE #(24*N)
+#define NSPACE 24*N
 
 // Loading large constants
 
@@ -70,21 +73,22 @@
         add     x0, dest __LF                                              \
         add     x1, src1 __LF                                              \
         add     x2, src2 __LF                                              \
-        bl      edwards25519_decode_alt_mul_p25519
+        CFI_BL(Ledwards25519_decode_alt_mul_p25519)
 
 #define nsqr(dest,n,src)                                                \
         add     x0, dest __LF                                              \
         mov     x1, n __LF                                                 \
         add     x2, src __LF                                               \
-        bl      edwards25519_decode_alt_nsqr_p25519
+        CFI_BL(Ledwards25519_decode_alt_nsqr_p25519)
 
 S2N_BN_SYMBOL(edwards25519_decode_alt):
+        CFI_START
 
 // Save registers and make room for temporaries
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x30, [sp, -16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite x0 later
 
@@ -334,17 +338,22 @@ S2N_BN_SYMBOL(edwards25519_decode_alt):
 
 // Restore stack and registers
 
-        add     sp, sp, NSPACE
+        CFI_INC_SP(NSPACE)
 
-        ldp     x21, x30, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_POP2(x21,x30)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(edwards25519_decode_alt)
 
 // *************************************************************
 // Local z = x * y
 // *************************************************************
 
-edwards25519_decode_alt_mul_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Ledwards25519_decode_alt_mul_p25519)
+
+Ledwards25519_decode_alt_mul_p25519:
+        CFI_START
         ldp     x3, x4, [x1]
         ldp     x7, x8, [x2]
         mul     x12, x3, x7
@@ -445,13 +454,18 @@ edwards25519_decode_alt_mul_p25519:
         and     x15, x15, #0x7fffffffffffffff
         stp     x12, x13, [x0]
         stp     x14, x15, [x0, #16]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Ledwards25519_decode_alt_mul_p25519)
 
 // *************************************************************
 // Local z = 2^n * x
 // *************************************************************
 
-edwards25519_decode_alt_nsqr_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Ledwards25519_decode_alt_nsqr_p25519)
+
+Ledwards25519_decode_alt_nsqr_p25519:
+        CFI_START
 
 // Copy input argument into [x5;x4;x3;x2] (overwriting input pointer x20
 
@@ -462,7 +476,7 @@ edwards25519_decode_alt_nsqr_p25519:
 // Main squaring loop, accumulating in [x5;x4;x3;x2] consistently and
 // only ensuring the intermediates are < 2 * p_25519 = 2^256 - 38
 
-edwards25519_decode_alt_loop:
+Ledwards25519_decode_alt_loop:
         mul     x9, x2, x3
         umulh   x10, x2, x3
         mul     x11, x2, x5
@@ -535,7 +549,7 @@ edwards25519_decode_alt_loop:
 // Loop as applicable
 
         subs    x1, x1, #1
-        bne     edwards25519_decode_alt_loop
+        bne     Ledwards25519_decode_alt_loop
 
 // We know the intermediate result x < 2^256 - 38, and now we do strict
 // modular reduction mod 2^255 - 19. Note x < 2^255 - 19 <=> x + 19 < 2^255
@@ -556,7 +570,9 @@ edwards25519_decode_alt_loop:
 
         stp     x2, x3, [x0]
         stp     x4, x5, [x0, #16]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Ledwards25519_decode_alt_nsqr_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits
