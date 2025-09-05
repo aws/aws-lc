@@ -397,31 +397,40 @@ if(FIPS_DELOCATE)
     enable_language(ASM)
   endif()
 
-  add_library(
-    bcm_c_generated_asm
-
-    STATIC
-
-    bcm.c
-  )
-  target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
-
-  # Important: We do not want to add the generated prefix symbols to the include path here!
-  # Delocator expects symbols to not be prefixed.
-  target_add_awslc_include_paths(TARGET bcm_c_generated_asm SCOPE PRIVATE EXCLUDE_PREFIX_HEADERS)
-  target_include_directories(bcm_c_generated_asm PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
-  set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
-  set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-  # Clang 20+ warns when both "-S" and "-c" are used as options to the compiler.
-  if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND (CMAKE_C_COMPILER_VERSION VERSION_GREATER "19.99.99"))
-    set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-Wno-unused-command-line-argument")
-  endif()
-
   set(TARGET "")
-  if(CMAKE_ASM_COMPILER_TARGET)
-    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  if(CMAKE_C_COMPILER_TARGET)
+    set(TARGET "--target=${CMAKE_C_COMPILER_TARGET}")
   endif()
+
+  # Listify the current arguments
+  separate_arguments(BCM_ALL_FLAGS UNIX_COMMAND "${CMAKE_C_FLAGS}")
+
+  # Compilation flags + defines + include dirs + target
+  list(APPEND BCM_ALL_FLAGS "-fPIC" "-DBORINGSSL_IMPLEMENTATION" "-DS2N_BN_HIDE_SYMBOLS" "-DBORINGSSL_FIPS")
+  list(APPEND BCM_ALL_FLAGS "-I${AWSLC_SOURCE_DIR}/include" "-I${S2N_BIGNUM_INCLUDE_DIR}")
+  list(APPEND BCM_ALL_FLAGS "${TARGET}")
+  if (TEST_SYSGENID_PATH)
+    list(APPEND BCM_ALL_FLAGS "-DAWSLC_SNAPSAFE_TESTING=1" -DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+  endif()
+
+  if(CMAKE_C_STANDARD)
+    list(APPEND BCM_ALL_FLAGS "-std=c${CMAKE_C_STANDARD}")
+  endif()
+
+  if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
+    list(APPEND BCM_ALL_FLAGS "-DFIPS_ENTROPY_SOURCE_JITTER_CPU")
+  else()
+    list(APPEND BCM_ALL_FLAGS "-DFIPS_ENTROPY_SOURCE_PASSIVE")
+  endif()
+
+  add_custom_command(
+    OUTPUT bcm.s
+    COMMAND ${CMAKE_C_COMPILER} -S ${BCM_ALL_FLAGS} -o bcm.s ${CMAKE_CURRENT_SOURCE_DIR}/bcm.c
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/bcm.c
+    COMMENT "Generating assembly from bcm.c"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    VERBATIM
+  )
 
   set(DELOCATE_EXTRA_ARGS "")
   # clang-6 (and older) do not appreciate the file number starting at a higher value, and incorrectly
@@ -436,18 +445,18 @@ if(FIPS_DELOCATE)
     OUTPUT bcm-delocated.S
     COMMAND
     ./delocate
-    -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS"
     -s2n-bignum-include "${S2N_BIGNUM_INCLUDE_DIR}"
     ${DELOCATE_EXTRA_ARGS}
+    bcm.s
     ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
     ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
     ${AWSLC_SOURCE_DIR}/include/openssl/target.h
     ${BCM_ASM_SOURCES}
     DEPENDS
-    bcm_c_generated_asm
+    bcm.s
     delocate
     ${BCM_ASM_SOURCES}
     ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
