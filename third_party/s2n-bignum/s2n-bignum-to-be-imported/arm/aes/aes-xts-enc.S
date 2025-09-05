@@ -281,9 +281,9 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
 
 .align  4
 .Lxts_enc_tail4x:
-        ld1  {v0.16b}, [x0],#16              // the first block
+        ld1  {v0.16b}, [x0],#16  // the first block
         ld1  {v1.16b}, [x0],#16  // the second block
-        ld1  {v24.16b},[x0],#16 // the third block
+        ld1  {v24.16b},[x0],#16  // the third block
         ld1  {v25.16b},[x0],#16  // the fourth block
 
         eor  v0.16b,v0.16b,v6.16b
