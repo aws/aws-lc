@@ -20,31 +20,32 @@
 // Microsoft x64 ABI:   RCX = a, RDX = rc
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(sha3_keccak_f1600)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(sha3_keccak_f1600)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sha3_keccak_f1600)
         .text
 
 S2N_BN_SYMBOL(sha3_keccak_f1600):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
-        pushq  %rbx
-        pushq  %rbp
-        pushq  %r12
-        pushq  %r13
-        pushq  %r14
-        pushq  %r15
-
-        subq   $0xd0, %rsp
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(208)
 
         notq    0x08(%rdi)
         notq    0x10(%rdi)
@@ -60,7 +61,7 @@ S2N_BN_SYMBOL(sha3_keccak_f1600):
         movq    0xb8(%rdi), %rdx
         movq    0xc0(%rdi), %rbp
         mov $0x0, %r8
-sha3_keccak_f1600_loop:
+Lsha3_keccak_f1600_loop:
         movq   %r8,  0xc8(%rsp)
         movq    (%rdi), %r8
         movq    0x30(%rdi), %r9
@@ -455,7 +456,7 @@ sha3_keccak_f1600_loop:
         movq   0xc8(%rsp), %r8
         add $0x2, %r8
         cmp $24, %r8
-        jne    sha3_keccak_f1600_loop
+        jne    Lsha3_keccak_f1600_loop
         leaq   -0xc0(%rsi), %rsi
         notq    0x08(%rdi)
         notq    0x10(%rdi)
@@ -463,19 +464,22 @@ sha3_keccak_f1600_loop:
         notq    0x60(%rdi)
         notq    0x88(%rdi)
         notq    0xa0(%rdi)
-        addq   $0xd0, %rsp
-        popq   %r15
-        popq   %r14
-        popq   %r13
-        popq   %r12
-        popq   %rbp
-        popq   %rbx
+
+        CFI_INC_RSP(208)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(sha3_keccak_f1600)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,  "",  %progbits

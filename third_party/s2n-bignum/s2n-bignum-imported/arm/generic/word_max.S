@@ -9,9 +9,11 @@
 //
 // Standard ARM ABI: X0 = a, X1 = b, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_max)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_max)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_max)
         .text
         .balign 4
@@ -20,10 +22,13 @@
 #define b x1
 
 S2N_BN_SYMBOL(word_max):
+        CFI_START
 
         cmp     a, b
         csel    x0, a, b, cs
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_max)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

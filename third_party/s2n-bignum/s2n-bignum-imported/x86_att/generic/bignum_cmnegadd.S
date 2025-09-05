@@ -18,10 +18,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = c, R9 = n, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmnegadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmnegadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmnegadd)
         .text
 
@@ -42,11 +43,12 @@
 
 
 S2N_BN_SYMBOL(bignum_cmnegadd):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -56,7 +58,7 @@ S2N_BN_SYMBOL(bignum_cmnegadd):
 
 // Seems hard to avoid one more register
 
-        pushq   %rbx
+        CFI_PUSH(%rbx)
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
@@ -70,7 +72,7 @@ S2N_BN_SYMBOL(bignum_cmnegadd):
 
         xorq    h, h
         testq   n, n
-        jz      bignum_cmnegadd_end
+        jz      Lbignum_cmnegadd_end
 
 // Move c into a safer register as multiplies overwrite %rdx
 
@@ -87,11 +89,11 @@ S2N_BN_SYMBOL(bignum_cmnegadd):
         movq    %rdx, h
         movl    $1, ishort
         decq    n
-        jz      bignum_cmnegadd_tail
+        jz      Lbignum_cmnegadd_tail
 
 // Main loop, where we always have CF + previous high part h to add in
 
-bignum_cmnegadd_loop:
+Lbignum_cmnegadd_loop:
         adcq    (z,i,8), h
         sbbq    r, r
         movq    (x,i,8), %rax
@@ -103,35 +105,35 @@ bignum_cmnegadd_loop:
         movq    %rdx, h
         incq    i
         decq    n
-        jnz     bignum_cmnegadd_loop
+        jnz     Lbignum_cmnegadd_loop
 
 // At this point we have 2^{64n} * (h + CF) + z' = z + c * (2^{64n} - x)
 // so z' - 2^{64n} * (c - (h + CF)) = z - c * x.
 // Since z - c * x < 2^{64n} we must have c - (h + CF) >= 0.
 // Accumulate the negative carry in h for consistency with trivial cases.
 
-bignum_cmnegadd_tail:
+Lbignum_cmnegadd_tail:
         sbbq    h, c
         movq    c, h
 
 // Propagate the carry all the way to the end with h as extra carry word
 
         testq   p, p
-        jz      bignum_cmnegadd_end
+        jz      Lbignum_cmnegadd_end
 
         subq    h, (z,i,8)
         movl    $0, hshort
         incq    i
         decq    p
-        jz      bignum_cmnegadd_highend
+        jz      Lbignum_cmnegadd_highend
 
-bignum_cmnegadd_tloop:
+Lbignum_cmnegadd_tloop:
         sbbq    h, (z,i,8)
         incq    i
         decq    p
-        jnz     bignum_cmnegadd_tloop
+        jnz     Lbignum_cmnegadd_tloop
 
-bignum_cmnegadd_highend:
+Lbignum_cmnegadd_highend:
 
 // Adjust the high word with the carry from subtraction
 
@@ -139,15 +141,17 @@ bignum_cmnegadd_highend:
 
 // Return the high/carry word
 
-bignum_cmnegadd_end:
+Lbignum_cmnegadd_end:
         movq    h, %rax
 
-        popq    %rbx
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cmnegadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

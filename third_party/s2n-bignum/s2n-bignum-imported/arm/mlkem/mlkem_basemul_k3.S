@@ -28,23 +28,25 @@
 //
 // Standard ARM ABI: X0 = r, X1 = a, X2 = b, X3 = bt
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_basemul_k3)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(mlkem_basemul_k3)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_basemul_k3)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(mlkem_basemul_k3):
+        CFI_START
 
 // This matches the code in the mlkem-native repository
 // https://github.com/pq-code-package/mlkem-native/blob/main/mlkem/native/aarch64/src/polyvec_basemul_acc_montgomery_cached_asm_k3.S
 
-        sub     sp, sp, #0x40
-        stp     d8, d9, [sp]
-        stp     d10, d11, [sp, #0x10]
-        stp     d12, d13, [sp, #0x20]
-        stp     d14, d15, [sp, #0x30]
+        CFI_DEC_SP(64)
+        CFI_STACKSAVE2(d8,d9,0)
+        CFI_STACKSAVE2(d10,d11,0x10)
+        CFI_STACKSAVE2(d12,d13,0x20)
+        CFI_STACKSAVE2(d14,d15,0x30)
         mov     w14, #0xd01
         dup     v0.8h, w14
         mov     w14, #0xcff
@@ -133,7 +135,7 @@ S2N_BN_SYMBOL(mlkem_basemul_k3):
         ld1     { v25.8h }, [x9], #16
         sub     x13, x13, #0x2
 
-mlkem_basemul_k3_loop:
+Lmlkem_basemul_k3_loop:
         ldr     q20, [x1], #0x20
         uzp1    v7.8h, v15.8h, v16.8h
         uzp2    v15.8h, v15.8h, v16.8h
@@ -200,7 +202,7 @@ mlkem_basemul_k3_loop:
         ldur    q18, [x8, #-0x10]
         ld1     { v25.8h }, [x9], #16
         sub     x13, x13, #0x1
-        cbnz    x13, mlkem_basemul_k3_loop
+        cbnz    x13, Lmlkem_basemul_k3_loop
         ldr     q7, [x1], #0x20
         uzp1    v20.8h, v15.8h, v16.8h
         uzp2    v15.8h, v15.8h, v16.8h
@@ -256,9 +258,15 @@ mlkem_basemul_k3_loop:
         zip2    v20.8h, v15.8h, v20.8h
         str     q7, [x0], #0x20
         stur    q20, [x0, #-0x10]
-        ldp     d8, d9, [sp]
-        ldp     d10, d11, [sp, #0x10]
-        ldp     d12, d13, [sp, #0x20]
-        ldp     d14, d15, [sp, #0x30]
-        add     sp, sp, #0x40
-        ret
+        CFI_STACKLOAD2(d8,d9,0)
+        CFI_STACKLOAD2(d10,d11,0x10)
+        CFI_STACKLOAD2(d12,d13,0x20)
+        CFI_STACKLOAD2(d14,d15,0x30)
+        CFI_INC_SP(64)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(mlkem_basemul_k3)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

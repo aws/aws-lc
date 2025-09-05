@@ -191,15 +191,16 @@ int X509_PURPOSE_get_trust(const X509_PURPOSE *xp) { return xp->trust; }
 
 int X509_supported_extension(const X509_EXTENSION *ex) {
   int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ex));
-  return nid == NID_netscape_cert_type ||    //
-         nid == NID_key_usage ||             //
-         nid == NID_subject_alt_name ||      //
-         nid == NID_basic_constraints ||     //
-         nid == NID_certificate_policies ||  //
-         nid == NID_ext_key_usage ||         //
-         nid == NID_policy_constraints ||    //
-         nid == NID_name_constraints ||      //
-         nid == NID_policy_mappings ||       //
+  return nid == NID_netscape_cert_type || 
+         nid == NID_key_usage ||
+         nid == NID_subject_alt_name || 
+         nid == NID_basic_constraints ||
+         nid == NID_certificate_policies ||
+         nid == NID_crl_distribution_points || 
+         nid == NID_ext_key_usage ||
+         nid == NID_policy_constraints || 
+         nid == NID_name_constraints ||
+         nid == NID_policy_mappings || 
          nid == NID_inhibit_any_policy;
 }
 

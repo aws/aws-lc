@@ -18,10 +18,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, R8 = n, R9 = l, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bitfield)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_bitfield)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bitfield)
         .text
 
@@ -41,11 +42,12 @@
 
 
 S2N_BN_SYMBOL(bignum_bitfield):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -57,7 +59,7 @@ S2N_BN_SYMBOL(bignum_bitfield):
 
         xorq    e, e
         testq   k, k
-        jz      bignum_bitfield_end
+        jz      Lbignum_bitfield_end
 
 // Decompose the index into n = 64 * n + m, then increment n for next part
 
@@ -69,14 +71,14 @@ S2N_BN_SYMBOL(bignum_bitfield):
 // Run over the digits setting d = n'th and e = (n+1)'th
 
         xorq    i, i
-bignum_bitfield_loop:
+Lbignum_bitfield_loop:
         movq    (x,i,8), a
         cmpq    n, i
         cmovcq  a, d
         cmovzq  a, e
         incq    i
         cmpq    k, i
-        jc      bignum_bitfield_loop
+        jc      Lbignum_bitfield_loop
 
 // Put zero in a register, for several purposes
 
@@ -112,12 +114,14 @@ bignum_bitfield_loop:
 
         andq    a, e
 
-bignum_bitfield_end:
+Lbignum_bitfield_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_bitfield)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
