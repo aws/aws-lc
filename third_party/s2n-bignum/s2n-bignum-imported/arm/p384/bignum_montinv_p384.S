@@ -21,9 +21,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montinv_p384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montinv_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montinv_p384)
 
         .text
@@ -82,7 +84,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE #(32*N)
+#define NSPACE 32*N
 
 // ---------------------------------------------------------------------------
 // Core signed almost-Montgomery reduction macro. Takes input in
@@ -758,13 +760,14 @@
         msub    m11, x15, x17, x5
 
 S2N_BN_SYMBOL(bignum_montinv_p384):
+        CFI_START
 
 // Save registers and make room for temporaries
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_DEC_SP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite x0 later
 
@@ -839,9 +842,9 @@ S2N_BN_SYMBOL(bignum_montinv_p384):
 
         mov     i, #15
         mov     d, #1
-        b       bignum_montinv_p384_midloop
+        b       Lbignum_montinv_p384_midloop
 
-bignum_montinv_p384_loop:
+Lbignum_montinv_p384_loop:
 
 // Separate the matrix elements into sign-magnitude pairs
 
@@ -1280,7 +1283,7 @@ bignum_montinv_p384_loop:
         stp     x3, x4, [v+16]
         stp     x5, x6, [v+32]
 
-bignum_montinv_p384_midloop:
+Lbignum_montinv_p384_midloop:
 
         mov     x1, d
         ldr     x2, [f]
@@ -1291,7 +1294,7 @@ bignum_montinv_p384_midloop:
 // Next iteration
 
         subs    i, i, #1
-        bne     bignum_montinv_p384_loop
+        bne     Lbignum_montinv_p384_loop
 
 // The 15th and last iteration does not need anything except the
 // u value and the sign of f; the latter can be obtained from the
@@ -1477,11 +1480,13 @@ bignum_montinv_p384_midloop:
 
 // Restore stack and registers
 
-        add     sp, sp, NSPACE
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montinv_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

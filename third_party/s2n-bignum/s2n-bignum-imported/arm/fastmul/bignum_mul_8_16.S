@@ -10,17 +10,20 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_8_16)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul_8_16)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_8_16)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(bignum_mul_8_16):
-        stp x19, x20, [sp, #-16]!
-        stp x21, x22, [sp, #-16]!
-        stp x23, x24, [sp, #-16]!
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
         ldp x3, x4, [x1]
         ldr q0, [x1]
         ldp x7, x8, [x2]
@@ -514,8 +517,10 @@ S2N_BN_SYMBOL(bignum_mul_8_16):
         stp x9, x10, [x0, #80]
         stp x20, x21, [x0, #96]
         stp x22, x23, [x0, #112]
-        ldp x23, x24, [sp], #16
-        ldp x21, x22, [sp], #16
-        ldp x19, x20, [sp], #16
-        ret
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul_8_16)
 

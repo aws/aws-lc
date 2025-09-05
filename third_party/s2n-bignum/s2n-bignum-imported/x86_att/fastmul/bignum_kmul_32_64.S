@@ -19,11 +19,14 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y, R9 = t
 // -----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_kmul_32_64)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_kmul_32_64)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_kmul_32_64)
+
+
         .text
 
 #define K 16
@@ -39,11 +42,12 @@
 #define t %rcx
 
 S2N_BN_SYMBOL(bignum_kmul_32_64):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -54,26 +58,26 @@ S2N_BN_SYMBOL(bignum_kmul_32_64):
 // use this space to back up both t and later z. Then move the y variable
 // into its longer-term home for the first few stages.
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
-        pushq   %rcx
+        CFI_PUSH(%rcx)
         movq    %rdx, y
 
 // Multiply the low halves
 
-        callq   bignum_kmul_32_64_local_bignum_kmul_16_32
+        CFI_CALL(Lbignum_kmul_32_64_local_bignum_kmul_16_32)
 
 // Multiply the high halves
 
         leaq    16*K-0x40(%rdi), %rdi
         leaq    8*K-0x40(%rsi), %rsi
         leaq    8*K(%rcx), %rcx
-        callq   bignum_kmul_32_64_local_bignum_kmul_16_32
+        CFI_CALL(Lbignum_kmul_32_64_local_bignum_kmul_16_32)
 
 // Establish %r8 as the t pointer and use the cell to back up z now
 
@@ -147,7 +151,7 @@ S2N_BN_SYMBOL(bignum_kmul_32_64):
         movq    %r8, %rcx
         leaq    8*K(%r8), %rsi
         leaq    16*K(%r8), %rdi
-        callq   bignum_kmul_32_64_local_bignum_kmul_16_32
+        CFI_CALL(Lbignum_kmul_32_64_local_bignum_kmul_16_32)
         movq    (%rsp), z
 
 // Compose the middle parts [2,1] + [1,0] + [3,2], saving carry in %rbx.
@@ -202,26 +206,29 @@ S2N_BN_SYMBOL(bignum_kmul_32_64):
 // Restore and return. The first pop is not needed for the ABI but
 // we need to adjust the stack anyway so it seems reasonable.
 
-        popq    %rcx
+        CFI_POP(%rcx)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
 
 // Local copy of half-length subroutine. This has a slightly different
 // interface, expecting y argument in %rcx directly, and not doing any
 // save-restore of the other registers. It naturally moves z and x on by
 // 0x40, which we compensate for when it is called by adjusting offsets.
 
-bignum_kmul_32_64_local_bignum_kmul_16_32:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_kmul_32_64_local_bignum_kmul_16_32)
+
+Lbignum_kmul_32_64_local_bignum_kmul_16_32:
+        CFI_START
         movq   (%rcx), %rdx
         xorl   %ebp, %ebp
         mulxq  (%rsi), %rax, %r9
@@ -1143,7 +1150,11 @@ bignum_kmul_32_64_local_bignum_kmul_16_32:
         movq   %r13, 0xa8(%rdi)
         movq   %r14, 0xb0(%rdi)
         movq   %r15, 0xb8(%rdi)
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lbignum_kmul_32_64_local_bignum_kmul_16_32)
+
+S2N_BN_SIZE_DIRECTIVE(bignum_kmul_32_64)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

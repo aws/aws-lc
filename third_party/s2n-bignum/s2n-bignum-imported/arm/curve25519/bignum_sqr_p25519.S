@@ -9,9 +9,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_p25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqr_p25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_p25519)
         .text
         .balign 4
@@ -56,6 +58,7 @@
 #define t3short w16
 
 S2N_BN_SYMBOL(bignum_sqr_p25519):
+        CFI_START
 
 // First just a near-clone of bignum_sqr_4_8 to get the square, using
 // different registers to collect full product without writeback.
@@ -222,7 +225,9 @@ S2N_BN_SYMBOL(bignum_sqr_p25519):
         stp     u0, u1, [x0]
         stp     u2, u3, [x0, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sqr_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

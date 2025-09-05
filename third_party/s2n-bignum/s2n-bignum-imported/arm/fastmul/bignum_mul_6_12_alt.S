@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_6_12_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul_6_12_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_6_12_alt)
         .text
         .balign 4
@@ -56,10 +58,11 @@
 #define u11 x15
 
 S2N_BN_SYMBOL(bignum_mul_6_12_alt):
+        CFI_START
 
 // Save more registers
 
-        stp     x19, x20, [sp, #-16]!
+        CFI_PUSH2(x19,x20)
 
 // Load operands and set up row 0 = [u6;...;u0] = a0 * [b5;...;b0]
 
@@ -257,8 +260,10 @@ S2N_BN_SYMBOL(bignum_mul_6_12_alt):
 
 // Restore registers and return
 
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul_6_12_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
