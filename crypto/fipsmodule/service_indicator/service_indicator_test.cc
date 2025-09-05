@@ -5357,6 +5357,193 @@ TEST(ServiceIndicatorTest, MLDSAKeyGen) {
   }
 }
 
+TEST(ServiceIndicatorTest, MLDSASigGenVerify) {
+  const uint8_t MESSAGE[15] = {'M', 'L', '-', 'D', 'S', 'A', ' ',
+                               'M', 'E', 'S', 'S', 'A', 'G', 'E'};
+  const uint8_t CONTEXT[6] = {'A', 'W', 'S', '-', 'L', 'C'};
+  uint8_t digest[64] = {
+      0xcf, 0x83, 0xe1, 0x35, 0x7e, 0xef, 0xb8, 0xbd, 0xf1, 0x54, 0x28,
+      0x50, 0xd6, 0x6d, 0x80, 0x07, 0xd6, 0x20, 0xe4, 0x05, 0x0b, 0x57,
+      0x15, 0xdc, 0x83, 0xf4, 0xa9, 0x21, 0xd3, 0x6c, 0xe9, 0xce, 0x47,
+      0xd0, 0xd1, 0x3c, 0x5d, 0x85, 0xf2, 0xb0, 0xff, 0x83, 0x18, 0xd2,
+      0x87, 0x7e, 0xec, 0x2f, 0x63, 0xb9, 0x31, 0xbd, 0x47, 0x41, 0x7a,
+      0x81, 0xa5, 0x38, 0x32, 0x7a, 0xf9, 0x27, 0xda, 0x3e};  // sha512 of empty
+                                                              // string
+  // Test ML-DSA 44
+  {
+    uint8_t private_key[MLDSA44_PRIVATE_KEY_BYTES] = {0};
+    uint8_t public_key[MLDSA44_PUBLIC_KEY_BYTES] = {0};
+    uint8_t signature[MLDSA44_SIGNATURE_BYTES] = {0};
+    uint8_t seed[MLDSA44_KEYGEN_SEED_BYTES] = {0};
+    
+    // Generate keypair
+    ASSERT_TRUE(ml_dsa_44_keypair(public_key, private_key, seed));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    size_t sig_len = MLDSA44_SIGNATURE_BYTES;
+
+    // Test pure ML-DSA sign
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_44_sign(private_key, signature, &sig_len,
+                                             MESSAGE, sizeof(MESSAGE),
+                                             CONTEXT, sizeof(CONTEXT))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test pure ML-DSA verify
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_44_verify(public_key, signature, sig_len,
+                                               MESSAGE, sizeof(MESSAGE),
+                                               CONTEXT, sizeof(CONTEXT))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test prehash (external mu) sign
+    approved = AWSLC_NOT_APPROVED;
+    sig_len = MLDSA44_SIGNATURE_BYTES;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_extmu_44_sign(private_key, signature, &sig_len,
+                                                   digest, sizeof(digest))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test prehash (external mu) verify
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_extmu_44_verify(public_key, signature, sig_len,
+                                                     digest, sizeof(digest))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+
+  // Test ML-DSA 65
+  {
+    uint8_t private_key[MLDSA65_PRIVATE_KEY_BYTES] = {0};
+    uint8_t public_key[MLDSA65_PUBLIC_KEY_BYTES] = {0};
+    uint8_t signature[MLDSA65_SIGNATURE_BYTES] = {0};
+    uint8_t seed[MLDSA65_KEYGEN_SEED_BYTES] = {0};
+    
+    // Generate keypair
+    ASSERT_TRUE(ml_dsa_65_keypair(public_key, private_key, seed));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    size_t sig_len = MLDSA65_SIGNATURE_BYTES;
+
+    // Test pure ML-DSA sign
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_65_sign(private_key, signature, &sig_len,
+                                             MESSAGE, sizeof(MESSAGE),
+                                             CONTEXT, sizeof(CONTEXT))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test pure ML-DSA verify
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_65_verify(public_key, signature, sig_len,
+                                               MESSAGE, sizeof(MESSAGE),
+                                               CONTEXT, sizeof(CONTEXT))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test prehash (external mu) sign
+    approved = AWSLC_NOT_APPROVED;
+    sig_len = MLDSA65_SIGNATURE_BYTES;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_extmu_65_sign(private_key, signature, &sig_len,
+                                                   digest, sizeof(digest))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test prehash (external mu) verify
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_extmu_65_verify(public_key, signature, sig_len,
+                                                     digest, sizeof(digest))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+
+  // Test ML-DSA 87
+  {
+    uint8_t private_key[MLDSA87_PRIVATE_KEY_BYTES] = {0};
+    uint8_t public_key[MLDSA87_PUBLIC_KEY_BYTES] = {0};
+    uint8_t signature[MLDSA87_SIGNATURE_BYTES] = {0};
+    uint8_t seed[MLDSA87_KEYGEN_SEED_BYTES] = {0};
+    
+    // Generate keypair
+    ASSERT_TRUE(ml_dsa_87_keypair(public_key, private_key, seed));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    size_t sig_len = MLDSA87_SIGNATURE_BYTES;
+
+    // Test pure ML-DSA sign
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_87_sign(private_key, signature, &sig_len,
+                                             MESSAGE, sizeof(MESSAGE),
+                                             CONTEXT, sizeof(CONTEXT))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test pure ML-DSA verify
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_87_verify(public_key, signature, sig_len,
+                                               MESSAGE, sizeof(MESSAGE),
+                                               CONTEXT, sizeof(CONTEXT))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test prehash (external mu) sign
+    approved = AWSLC_NOT_APPROVED;
+    sig_len = MLDSA87_SIGNATURE_BYTES;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_extmu_87_sign(private_key, signature, &sig_len,
+                                                   digest, sizeof(digest))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    // Test prehash (external mu) verify
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(ml_dsa_extmu_87_verify(public_key, signature, sig_len,
+                                                     digest, sizeof(digest))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+
+  // Test EVP interface for ML-DSA 44
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), NID_MLDSA44));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    EVP_PKEY *raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+    bssl::UniquePtr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new());
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_DigestSignInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+    ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+    
+    size_t sig_out_len = 0;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        ASSERT_TRUE(EVP_DigestSign(mdctx.get(), nullptr, &sig_out_len,
+                                   MESSAGE, sizeof(MESSAGE))));
+    ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+
+    std::vector<uint8_t> signature(sig_out_len);
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        ASSERT_TRUE(EVP_DigestSign(mdctx.get(), signature.data(), &sig_out_len,
+                                   MESSAGE, sizeof(MESSAGE))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+
+    mdctx.reset(EVP_MD_CTX_new());
+    ASSERT_TRUE(EVP_DigestVerifyInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+    approved = AWSLC_NOT_APPROVED;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_DigestVerify(mdctx.get(), signature.data(),
+                                               sig_out_len, MESSAGE,
+                                               sizeof(MESSAGE))));
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+}
+
 // Verifies that the awslc_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
