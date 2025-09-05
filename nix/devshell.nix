@@ -3,6 +3,9 @@ pkgs.mkShell rec {
   buildInputs =
     [ pkgs.cmake pkgs.nixfmt-classic pkgs.ninja pkgs.perl pkgs.go aws-lc ];
 
+  # See https://github.com/NixOS/nixpkgs/issues/18995
+  hardeningDisable = [ "all" ];
+
   shellHook = ''
     # Set custom prompt with ANSI color
     export PS1="\[\033[1;32m\][aws-lc]\[\033[0m\] $PS1"

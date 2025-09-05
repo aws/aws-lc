@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = y, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_modadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modadd)
         .text
 
@@ -30,11 +31,12 @@
 #define c %r11
 
 S2N_BN_SYMBOL(bignum_modadd):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -45,39 +47,39 @@ S2N_BN_SYMBOL(bignum_modadd):
 // If k = 0 do nothing
 
         testq   k, k
-        jz      bignum_modadd_end
+        jz      Lbignum_modadd_end
 
 // First just add (c::z) := x + y
 
         xorq    c, c
         movq    k, j
         xorq    i, i
-bignum_modadd_addloop:
+Lbignum_modadd_addloop:
         movq    (x,i,8), a
         adcq    (y,i,8), a
         movq    a, (z,i,8)
         incq    i
         decq    j
-        jnz     bignum_modadd_addloop
+        jnz     Lbignum_modadd_addloop
         adcq    $0, c
 
 // Now do a comparison subtraction (c::z) - m, recording mask for (c::z) >= m
 
         movq    k, j
         xorq    i, i
-bignum_modadd_cmploop:
+Lbignum_modadd_cmploop:
         movq    (z,i,8), a
         sbbq    (m,i,8), a
         incq    i
         decq    j
-        jnz     bignum_modadd_cmploop
+        jnz     Lbignum_modadd_cmploop
         sbbq    $0, c
         notq    c
 
 // Now do a masked subtraction z := z - [c] * m
 
         xorq    i, i
-bignum_modadd_subloop:
+Lbignum_modadd_subloop:
         movq    (m,i,8), a
         andq    c, a
         negq    j
@@ -85,14 +87,16 @@ bignum_modadd_subloop:
         sbbq    j, j
         incq    i
         cmpq    k, i
-        jc      bignum_modadd_subloop
+        jc      Lbignum_modadd_subloop
 
-bignum_modadd_end:
+Lbignum_modadd_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_modadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

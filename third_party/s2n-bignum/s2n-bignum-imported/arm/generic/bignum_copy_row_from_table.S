@@ -14,9 +14,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = table, X2 = height, X3 = width, X4 = idx
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_copy_row_from_table)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_copy_row_from_table)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_copy_row_from_table)
         .text
         .balign 4
@@ -32,22 +34,23 @@
 #define j x7
 
 S2N_BN_SYMBOL(bignum_copy_row_from_table):
+        CFI_START
 
-        cbz     height, bignum_copy_row_from_table_end
-        cbz     width,  bignum_copy_row_from_table_end
+        cbz     height, Lbignum_copy_row_from_table_end
+        cbz     width,  Lbignum_copy_row_from_table_end
         mov     i, width
         mov     x6, z
 
-bignum_copy_row_from_table_initzero:
+Lbignum_copy_row_from_table_initzero:
         str     xzr, [x6]
         add     x6, x6, #8
         subs    i, i, #1
-        bne     bignum_copy_row_from_table_initzero
+        bne     Lbignum_copy_row_from_table_initzero
 
         mov     i, xzr
         mov     x8, table
 
-bignum_copy_row_from_table_outerloop:
+Lbignum_copy_row_from_table_outerloop:
 
         cmp     i, idx
         csetm   mask, eq
@@ -55,7 +58,7 @@ bignum_copy_row_from_table_outerloop:
         mov     j, width
         mov     x9, z
 
-bignum_copy_row_from_table_innerloop:
+Lbignum_copy_row_from_table_innerloop:
 
         ldr     x10, [x8]
         ldr     x11, [x9]
@@ -66,15 +69,17 @@ bignum_copy_row_from_table_innerloop:
         add     x8, x8, #8
         add     x9, x9, #8
         subs    j, j, #1
-        bne     bignum_copy_row_from_table_innerloop
+        bne     Lbignum_copy_row_from_table_innerloop
 
-bignum_copy_row_from_table_innerloop_done:
+Lbignum_copy_row_from_table_innerloop_done:
         add     i, i, #1
         cmp     i, height
-        bne     bignum_copy_row_from_table_outerloop
+        bne     Lbignum_copy_row_from_table_outerloop
 
-bignum_copy_row_from_table_end:
-        ret
+Lbignum_copy_row_from_table_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_copy_row_from_table)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

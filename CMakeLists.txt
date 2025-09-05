@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.59.0")
+set(SOFTWARE_VERSION "1.60.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -73,6 +73,7 @@ option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+# Keeping this flag for now, for compatibility with existing build configs.
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
@@ -92,19 +93,9 @@ message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
 
-# Configure entropy source in case of FIPS build
-if(FIPS)
-  message(STATUS "FIPS build mode configured")
-
-  if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
-    add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
-    add_subdirectory(third_party/jitterentropy)
-    message(STATUS "FIPS entropy source method configured: CPU Jitter")
-  else()
-    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
-    message(STATUS "FIPS entropy source method configured: Passive")
-  endif()
-endif()
+# The validated entropy source will always be configured to be CPU Jitter
+# Entropy by default; because it's the root of the Tree DRBG.
+message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
@@ -1079,6 +1070,8 @@ if(BUILD_TESTING)
   set(INTEGRATION_TEST_EXEC integration_test${TEST_EXECUTABLE_EXT})
   set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test${TEST_EXECUTABLE_EXT})
   set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init${TEST_EXECUTABLE_EXT})
+  set(RANDOM_ISOLATED_EXEC rand_isolated_test${TEST_EXECUTABLE_EXT})
+  set(TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC tree_drbg_jitter_entropy_isolated_test${TEST_EXECUTABLE_EXT})
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
 
@@ -1097,6 +1090,7 @@ if(BUILD_TESTING)
   endmacro()
 endif()
 
+add_subdirectory(third_party/jitterentropy)
 add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)

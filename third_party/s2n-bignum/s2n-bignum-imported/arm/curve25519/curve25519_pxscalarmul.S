@@ -18,9 +18,11 @@
 //
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_pxscalarmul)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_pxscalarmul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_pxscalarmul)
 
         .text
@@ -73,7 +75,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (8*NUMSIZE)
+#define NSPACE 8*NUMSIZE
 
 // Macros wrapping up the basic field operations bignum_mul_p25519
 // and bignum_sqr_p25519, only trivially different from pure function
@@ -850,12 +852,13 @@
         stp     x0, x1, [p0+16]
 
 S2N_BN_SYMBOL(curve25519_pxscalarmul):
+        CFI_START
 
 // Save regs and make room for temporaries
 
-        stp     x19, x22, [sp, -16]!
-        stp     x20, x21, [sp, -16]!
-        sub     sp, sp, #NSPACE
+        CFI_PUSH2(x19,x22)
+        CFI_PUSH2(x20,x21)
+        CFI_DEC_SP(NSPACE)
 
 // Move the input arguments to stable places
 
@@ -883,7 +886,7 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul):
 
         mov     i, #255
 
-curve25519_pxscalarmul_loop:
+Lcurve25519_pxscalarmul_loop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 // The adds don't need any normalization as they're fed to muls
@@ -954,7 +957,7 @@ curve25519_pxscalarmul_loop:
 // Loop down as far as 0 (inclusive)
 
         subs    i, i, #1
-        bcs     curve25519_pxscalarmul_loop
+        bcs     Lcurve25519_pxscalarmul_loop
 
 // The main loop does not handle the special input of the 2-torsion
 // point = (0,0). In that case we may get a spurious (0,0) as output
@@ -985,11 +988,13 @@ curve25519_pxscalarmul_loop:
 
 // Restore stack and registers
 
-        add     sp, sp, #NSPACE
-        ldp     x20, x21, [sp], 16
-        ldp     x19, x22, [sp], 16
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x20,x21)
+        CFI_POP2(x19,x22)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(curve25519_pxscalarmul)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits
