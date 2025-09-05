@@ -1,9 +1,6 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// This file mocks entropy sources. It's not final.
-// We use it to implement the basic randomness generation code flow.
-
 #include <openssl/base.h>
 #include <openssl/target.h>
 
@@ -73,10 +70,14 @@ static int snapsafe_fallback_get_seed_wrap(
   return snapsafe_fallback_get_seed(seed);
 }
 
+static int use_snapsafe_fallback_entropy(void) {
+  return CRYPTO_get_snapsafe_supported();
+}
+
 // Snapsafe fallback environment configurations
 // CPU source required for rule-of-two.
 // - OS as seed source source.
-// - Uses rdrand or rndr, if supported, for personalization string. otherwise
+// - Uses rdrand or rndr, if supported, for personalization string. Otherwise
 // falls back to OS source.
 DEFINE_LOCAL_DATA(struct entropy_source_methods, snapsafe_fallback_entropy_source_methods) {
   out->initialize = snapsafe_fallback_initialize;
@@ -92,10 +93,6 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, snapsafe_fallback_entropy_sourc
   }
   out->get_prediction_resistance = NULL;
   out->id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;
-}
-
-static int use_snapsafe_fallback_entropy(void) {
-  return CRYPTO_get_snapsafe_supported();
 }
 
 static const struct entropy_source_methods * get_entropy_source_methods(void) {
