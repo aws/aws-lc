@@ -412,7 +412,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
     }
 
     if (in->pending_hs_data &&
-        (in->pending_hs_data->length > 0 || in->pending_hs_data->length > 0)) {
+        (in->pending_hs_data->length > 0 || in->pending_hs_data->max > 0)) {
       if (!serialize_buf_mem(in->pending_hs_data, kS3PendingHsDataTag, s3)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return 0;
