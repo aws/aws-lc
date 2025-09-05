@@ -16,7 +16,7 @@ filter_problematic_flags() {
         case "$arg" in
             -march=armv8.4-a+sha3)
                 # Replace the specific problematic flag with a compatible one
-                args+=("-mcpu=generic" "-mattr=+v8.4a,+sha3")
+                args+=("-mcpu=generic+v8.4a+sha3")
                 ;;
             *)
                 # Keep all other arguments
