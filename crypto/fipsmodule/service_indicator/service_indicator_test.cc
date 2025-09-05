@@ -29,6 +29,8 @@
 #include <openssl/sshkdf.h>
 #include <openssl/err.h>
 
+#include "../ml_dsa/ml_dsa.h"
+#include "../pqdsa/internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
@@ -5320,7 +5322,7 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
 TEST(ServiceIndicatorTest, MLDSAKeyGen) {
   // Test raw ML-DSA functions for each parameter set
   struct {
-    void (*keypair_func)(uint8_t *, uint8_t *);
+    int (*keypair_func)(uint8_t *, uint8_t *, uint8_t *);
     size_t private_key_len;
     size_t public_key_len;
   } raw_tests[] = {
@@ -5333,8 +5335,9 @@ TEST(ServiceIndicatorTest, MLDSAKeyGen) {
     FIPSStatus approved = AWSLC_NOT_APPROVED;
     std::vector<uint8_t> private_key(test.private_key_len);
     std::vector<uint8_t> public_key(test.public_key_len);
+    std::vector<uint8_t> seed(32);
     CALL_SERVICE_AND_CHECK_APPROVED(approved,
-                                    test.keypair_func(public_key.data(), private_key.data()));
+                                    test.keypair_func(public_key.data(), private_key.data(), seed.data()));
     ASSERT_EQ(AWSLC_APPROVED, approved);
   }
 
@@ -5342,7 +5345,7 @@ TEST(ServiceIndicatorTest, MLDSAKeyGen) {
   for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(
         EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-    ASSERT_TRUE(EVP_PKEY_CTX_set_pqdsa_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
     ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
 
     FIPSStatus approved = AWSLC_NOT_APPROVED;
