@@ -11,9 +11,6 @@ jobs:
   zig:
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.config.host }}
-    env:
-      CFLAGS: "-fno-sanitize=all"
-      CXXFLAGS: "-fno-sanitize=all"
     strategy:
       fail-fast: false
       matrix:
@@ -48,10 +45,12 @@ jobs:
         if: matrix.os.name != 'windows-latest'
         shell: bash
         run: |
+          echo "CFLAGS=${CFLAGS} -fno-sanitize=all"
+          echo "CXXFLAGS=${CXXFLAGS} -fno-sanitize=all"
           echo "ZIGCC=${PWD}/util/zig-cc" >> $GITHUB_ENV
           echo "ZIGCXX=${PWD}/util/zig-c++" >> $GITHUB_ENV
       - name: Locate zig on Windows
-        if: matrix.os.name == 'windows-latest'
+        if: matrix.config.host == 'windows-latest'
         shell: bash
         run: |
           ZIGCC="python3 $(cygpath -m $(which zigcc))"
