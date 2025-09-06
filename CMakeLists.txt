@@ -494,7 +494,7 @@ if(GCC OR CLANG)
     endif()
   endif()
 
-  if(MINGW)
+  if(MINGW AND NOT CLANG)
     # Some MinGW compilers set _WIN32_WINNT to an older version (Windows Server 2003)
     # See: https://learn.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt?view=msvc-170
     # Support Windows 7 and later.
