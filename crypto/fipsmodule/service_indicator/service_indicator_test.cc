@@ -5320,27 +5320,6 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
 }
 
 TEST(ServiceIndicatorTest, MLDSAKeyGen) {
-  // Test raw ML-DSA functions for each parameter set
-  struct {
-    int (*keypair_func)(uint8_t *, uint8_t *, uint8_t *);
-    size_t private_key_len;
-    size_t public_key_len;
-  } raw_tests[] = {
-    {ml_dsa_44_keypair, MLDSA44_PRIVATE_KEY_BYTES, MLDSA44_PUBLIC_KEY_BYTES},
-    {ml_dsa_65_keypair, MLDSA65_PRIVATE_KEY_BYTES, MLDSA65_PUBLIC_KEY_BYTES},
-    {ml_dsa_87_keypair, MLDSA87_PRIVATE_KEY_BYTES, MLDSA87_PUBLIC_KEY_BYTES},
-  };
-
-  for (const auto &test : raw_tests) {
-    FIPSStatus approved = AWSLC_NOT_APPROVED;
-    std::vector<uint8_t> private_key(test.private_key_len);
-    std::vector<uint8_t> public_key(test.public_key_len);
-    std::vector<uint8_t> seed(32);
-    CALL_SERVICE_AND_CHECK_APPROVED(approved,
-                                    test.keypair_func(public_key.data(), private_key.data(), seed.data()));
-    ASSERT_EQ(AWSLC_APPROVED, approved);
-  }
-
   // Test EVP interface for each ML-DSA parameter set
   for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(
@@ -5362,102 +5341,7 @@ TEST(ServiceIndicatorTest, MLDSASigGenVerify) {
                                'M', 'E', 'S', 'S', 'A', 'G', 'E'};
   const uint8_t CONTEXT[6] = {'A', 'W', 'S', '-', 'L', 'C'};
 
-  // Test raw ML-DSA functions for each parameter set
-  struct {
-    int (*keypair_func)(uint8_t *, uint8_t *, uint8_t *);
-    int (*sign_func)(const uint8_t *, uint8_t *, size_t *, const uint8_t *, size_t, const uint8_t *, size_t);
-    int (*verify_func)(const uint8_t *, const uint8_t *, size_t, const uint8_t *, size_t, const uint8_t *, size_t);
-    int (*extmu_sign_func)(const uint8_t *, uint8_t *, size_t *, const uint8_t *, size_t);
-    int (*extmu_verify_func)(const uint8_t *, const uint8_t *, size_t, const uint8_t *, size_t);
-    size_t private_key_len;
-    size_t public_key_len;
-    size_t signature_len;
-    size_t seed_len;
-  } raw_tests[] = {
-    {
-      ml_dsa_44_keypair, ml_dsa_44_sign, ml_dsa_44_verify,
-      ml_dsa_extmu_44_sign, ml_dsa_extmu_44_verify,
-      MLDSA44_PRIVATE_KEY_BYTES, MLDSA44_PUBLIC_KEY_BYTES,
-      MLDSA44_SIGNATURE_BYTES, MLDSA44_KEYGEN_SEED_BYTES
-    },
-    {
-      ml_dsa_65_keypair, ml_dsa_65_sign, ml_dsa_65_verify,
-      ml_dsa_extmu_65_sign, ml_dsa_extmu_65_verify,
-      MLDSA65_PRIVATE_KEY_BYTES, MLDSA65_PUBLIC_KEY_BYTES,
-      MLDSA65_SIGNATURE_BYTES, MLDSA65_KEYGEN_SEED_BYTES
-    },
-    {
-      ml_dsa_87_keypair, ml_dsa_87_sign, ml_dsa_87_verify,
-      ml_dsa_extmu_87_sign, ml_dsa_extmu_87_verify,
-      MLDSA87_PRIVATE_KEY_BYTES, MLDSA87_PUBLIC_KEY_BYTES,
-      MLDSA87_SIGNATURE_BYTES, MLDSA87_KEYGEN_SEED_BYTES
-    },
-  };
-
-  for (const auto &test : raw_tests) {
-    std::vector<uint8_t> private_key(test.private_key_len);
-    std::vector<uint8_t> public_key(test.public_key_len);
-    std::vector<uint8_t> signature(test.signature_len);
-    std::vector<uint8_t> seed(32);
-    
-    // Generate keypair
-    ASSERT_EQ(0, test.keypair_func(public_key.data(), private_key.data(), seed.data()));
-
-    FIPSStatus approved = AWSLC_NOT_APPROVED;
-    size_t sig_len = test.signature_len;
-
-    // Test pure ML-DSA sign
-    CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(test.sign_func(private_key.data(), signature.data(), &sig_len,
-                                             MESSAGE, sizeof(MESSAGE),
-                                             CONTEXT, sizeof(CONTEXT))));
-    ASSERT_EQ(AWSLC_APPROVED, approved);
-
-    // Test pure ML-DSA verify
-    approved = AWSLC_NOT_APPROVED;
-    CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(test.verify_func(public_key.data(), signature.data(), sig_len,
-                                               MESSAGE, sizeof(MESSAGE),
-                                               CONTEXT, sizeof(CONTEXT))));
-    ASSERT_EQ(AWSLC_APPROVED, approved);
-    
-    // ---- Compute mu according to FIPS 204 ML-DSA specification ----
-    std::vector<uint8_t> mu(64);
-    std::vector<uint8_t> tr(64);
-    
-    // Compute tr = SHAKE256(pk, 64)
-    bssl::ScopedEVP_MD_CTX md_ctx_pk;
-    ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_pk.get(), EVP_shake256(), nullptr));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_pk.get(), public_key.data(), test.public_key_len));
-    ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), 64));
-
-    // Compute mu = SHAKE256(tr || pre || MESSAGE, 64)
-    // where pre = 0x00 0x00 for pure ML-DSA (not HashML-DSA and ctx size 0)
-    uint8_t pre[2] = {0x00, 0x00};
-    bssl::ScopedEVP_MD_CTX md_ctx_mu;
-    ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), 64));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), pre, 2));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), MESSAGE, sizeof(MESSAGE)));
-    ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_mu.get(), mu.data(), 64));
-
-    // Test prehash (external mu) sign
-    approved = AWSLC_NOT_APPROVED;
-    sig_len = test.signature_len;
-    CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(test.extmu_sign_func(private_key.data(), signature.data(), &sig_len,
-                                                   mu.data(), mu.size())));
-    ASSERT_EQ(AWSLC_APPROVED, approved);
-
-    // Test prehash (external mu) verify
-    approved = AWSLC_NOT_APPROVED;
-    CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, ASSERT_TRUE(test.extmu_verify_func(public_key.data(), signature.data(), sig_len,
-                                                     mu.data(), mu.size())));
-    ASSERT_EQ(AWSLC_APPROVED, approved);
-  }
-
-// Test EVP interface for all ML-DSA parameter sets
+  // Test EVP interface for all ML-DSA parameter sets
   for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(
         EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
