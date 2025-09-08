@@ -10,11 +10,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = k, X2 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p256)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_p256)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p256)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p256_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_p256_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p256_alt)
         .text
         .balign 4
@@ -43,11 +46,12 @@
 S2N_BN_SYMBOL(bignum_mod_p256):
 
 S2N_BN_SYMBOL(bignum_mod_p256_alt):
+        CFI_START
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 
         cmp     k, #4
-        bcc     bignum_mod_p256_short
+        bcc     Lbignum_mod_p256_short
 
 // Otherwise load the top 4 digits (top-down) and reduce k by 4
 
@@ -76,8 +80,8 @@ S2N_BN_SYMBOL(bignum_mod_p256_alt):
 
 // Now do (k-4) iterations of 5->4 word modular reduction
 
-        cbz     k, bignum_mod_p256_writeback
-bignum_mod_p256_loop:
+        cbz     k, Lbignum_mod_p256_writeback
+Lbignum_mod_p256_loop:
 
 // Decrement k and load the next digit as t0. We then want to reduce
 // [m3;m2;m1;m0;t0] |-> [m3;m2;m1;m0]; the shuffling downwards is absorbed
@@ -130,32 +134,34 @@ bignum_mod_p256_loop:
         and     t0, n3, t4
         adc     m3, t3, t0
 
-        cbnz    k, bignum_mod_p256_loop
+        cbnz    k, Lbignum_mod_p256_loop
 
 // Finally write back [m3;m2;m1;m0] and return
 
-bignum_mod_p256_writeback:
+Lbignum_mod_p256_writeback:
         stp     m0, m1, [z]
         stp     m2, m3, [z, #16]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_p256)
 
 // Short case: just copy the input with zero-padding
 
-bignum_mod_p256_short:
+Lbignum_mod_p256_short:
         mov     m0, xzr
         mov     m1, xzr
         mov     m2, xzr
         mov     m3, xzr
 
-        cbz     k, bignum_mod_p256_writeback
+        cbz     k, Lbignum_mod_p256_writeback
         ldr     m0, [x]
         subs    k, k, #1
-        beq     bignum_mod_p256_writeback
+        beq     Lbignum_mod_p256_writeback
         ldr     m1, [x, #8]
         subs    k, k, #1
-        beq     bignum_mod_p256_writeback
+        beq     Lbignum_mod_p256_writeback
         ldr     m2, [x, #16]
-        b       bignum_mod_p256_writeback
+        b       Lbignum_mod_p256_writeback
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

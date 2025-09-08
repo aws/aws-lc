@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = n, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_digit)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_digit)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_digit)
         .text
         .balign 4
@@ -30,29 +32,32 @@
 
 
 S2N_BN_SYMBOL(bignum_digit):
+        CFI_START
 
 // For length zero finish immediately (the return value in x0 is 0)
 
-        cbz     k, bignum_digit_end
+        cbz     k, Lbignum_digit_end
 
 // Set default of zero, run over all the digits and take note of the n'th one
 
         mov     d, xzr
         mov     i, xzr
-bignum_digit_loop:
+Lbignum_digit_loop:
         ldr     a, [x, i, lsl #3]
         cmp     i, n
         csel    d, a, d, eq
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_digit_loop
+        bcc     Lbignum_digit_loop
 
 // Return
 
         mov     x0, d
 
-bignum_digit_end:
-        ret
+Lbignum_digit_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_digit)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

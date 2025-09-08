@@ -93,13 +93,9 @@ message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
 
-# The validated entropy source will always be configured to be Jitter Entropy
-# because it's the root of the Tree DRBG.
-if(FIPS)
-  message(STATUS "FIPS seed entropy source method configured: CPU Jitter")
-else()
-  message(STATUS "seed entropy source method configured: CPU Jitter")
-endif()
+# The validated entropy source will always be configured to be CPU Jitter
+# Entropy by default; because it's the root of the Tree DRBG.
+message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   # OpenBSD by defaults links with --execute-only this is problematic for two reasons:

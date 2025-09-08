@@ -36,7 +36,8 @@ bool ssl_transfer_supported(const SSL *in) {
       in->s3->pending_write.size() > 0 ||
       in->s3->pending_flight_offset > 0 ||           // (7)
       in->s3->read_shutdown != ssl_shutdown_none ||  // (8)
-      in->s3->write_shutdown != ssl_shutdown_none) {
+      in->s3->write_shutdown != ssl_shutdown_none ||
+      in->is_suspended_state) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_UNSUPPORTED);
     return false;
   }
@@ -115,7 +116,8 @@ static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst,
 
 enum SSL3_STATE_SERDE_VERSION {
   SSL3_STATE_SERDE_VERSION_ONE = 1,
-  SSL3_STATE_SERDE_VERSION_TWO = 2
+  SSL3_STATE_SERDE_VERSION_TWO = 2,
+  SSL3_STATE_SERDE_VERSION_THREE = 3
 };
 
 static const unsigned kS3EstablishedSessionTag =
@@ -174,6 +176,36 @@ static const unsigned kS3AeadReadCtxTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 26;
 static const unsigned kS3AeadWriteCtxTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 27;
+static const unsigned kS3KeyUpdatePending =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 28;
+
+static int serialize_buf_mem(bssl::UniquePtr<BUF_MEM> &buf, CBS_ASN1_TAG tag,
+                             CBB &cbb) {
+  CBB child;
+  if (!CBB_add_asn1(&cbb, &child, tag) ||
+      !CBB_add_asn1_octet_string(&child, reinterpret_cast<uint8_t *>(buf->data),
+                                 buf->length) ||
+      !CBB_flush(&cbb)) {
+    return 0;
+  }
+  return 1;
+}
+
+static int deserialize_buf_mem(bssl::UniquePtr<BUF_MEM> &buf, int &present,
+                               CBS_ASN1_TAG tag, CBS &cbs) {
+  CBS child;
+
+  if (!CBS_get_optional_asn1_octet_string(&cbs, &child, &present, tag)) {
+    return 0;
+  }
+
+  buf.reset(BUF_MEM_new());
+  if (!BUF_MEM_append(buf.get(), CBS_data(&child), CBS_len(&child))) {
+    return 0;
+  }
+
+  return 1;
+}
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL3_STATE serialization functions are developed to support SSL
@@ -189,9 +221,9 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
     return 0;
   }
 
-  CBB s3, child, child2;
+  CBB s3, child;
   if (!CBB_add_asn1(cbb, &s3, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&s3, SSL3_STATE_SERDE_VERSION_TWO) ||
+        !CBB_add_asn1_uint64(&s3, SSL3_STATE_SERDE_VERSION_THREE) ||
       !CBB_add_asn1_octet_string(&s3, in->read_sequence, TLS_SEQ_NUM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->write_sequence, TLS_SEQ_NUM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->server_random, SSL3_RANDOM_SIZE) ||
@@ -200,10 +232,10 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
       !CBB_add_asn1_int64(&s3, in->rwstate) ||
       !CBB_add_asn1_int64(&s3, in->early_data_reason) ||
       !CBB_add_asn1_octet_string(&s3, in->previous_client_finished,
-                                 PREV_FINISHED_MAX_SIZE) ||
+                                 in->previous_client_finished_len) ||
       !CBB_add_asn1_uint64(&s3, in->previous_client_finished_len) ||
       !CBB_add_asn1_octet_string(&s3, in->previous_server_finished,
-                                 PREV_FINISHED_MAX_SIZE) ||
+                                 in->previous_server_finished_len) ||
       !CBB_add_asn1_uint64(&s3, in->previous_server_finished_len) ||
       !CBB_add_asn1_uint64(&s3, in->empty_record_count) ||
       !CBB_add_asn1_uint64(&s3, in->warning_alert_count) ||
@@ -268,25 +300,15 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
   }
 
   if (!in->pending_app_data.empty()) {
-    // This should never happen because pending_app_data is just a span and
-    // points to read_buffer.
-    if (!in->read_buffer.buf_ptr() ||
-        in->read_buffer.buf_ptr() > in->pending_app_data.data()) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
-      return 0;
-    }
-    uint64_t offset = in->pending_app_data.data() - in->read_buffer.buf_ptr();
     if (!CBB_add_asn1(&s3, &child, kS3PendingAppDataTag) ||
-        !CBB_add_asn1(&child, &child2, CBS_ASN1_SEQUENCE) ||
-        !CBB_add_asn1_uint64(&child2, offset) ||
-        !CBB_add_asn1_uint64(&child2, in->pending_app_data.size())) {
+        !in->read_buffer.SerializeBufferView(child, in->pending_app_data)) {
       return 0;
     }
   }
 
   if (!in->pending_app_data.empty() || !in->read_buffer.empty()) {
     if (!CBB_add_asn1(&s3, &child, kS3ReadBufferTag) ||
-        !in->read_buffer.DoSerialization(&child)) {
+        !in->read_buffer.DoSerialization(child)) {
       return 0;
     }
   }
@@ -299,7 +321,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
     }
   }
 
-  // Version 2 extensions starts below, all which are optional as they are
+  // Version 2 and higher extensions starts below, all which are optional as they are
   // TLS 1.3 specific.
   if (protocol_version >= TLS1_3_VERSION) {
     if (!CBB_add_asn1(&s3, &child, kS3EarlyDataSkippedTag) ||
@@ -334,7 +356,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
 
     if (!CBB_add_asn1(&s3, &child, kS3WriteTrafficSecretTag) ||
         !CBB_add_asn1_octet_string(&child, in->write_traffic_secret,
-                                   SSL_MAX_MD_SIZE)) {
+                                   in->write_traffic_secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -347,7 +369,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
 
     if (!CBB_add_asn1(&s3, &child, kS3ReadTrafficSecretTag) ||
         !CBB_add_asn1_octet_string(&child, in->read_traffic_secret,
-                                   SSL_MAX_MD_SIZE)) {
+                                   in->read_traffic_secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -360,7 +382,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
 
     if (!CBB_add_asn1(&s3, &child, kS3ExporterSecretTag) ||
         !CBB_add_asn1_octet_string(&child, in->exporter_secret,
-                                   SSL_MAX_MD_SIZE)) {
+                                   in->exporter_secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -389,11 +411,17 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
       }
     }
 
-    if (in->pending_hs_data && in->pending_hs_data->length > 0) {
-      if (!CBB_add_asn1(&s3, &child, kS3PendingHsDataTag) ||
-          !CBB_add_asn1_octet_string(
-              &child, reinterpret_cast<uint8_t *>(in->pending_hs_data->data),
-              in->pending_hs_data->length)) {
+    if (in->pending_hs_data &&
+        (in->pending_hs_data->length > 0 || in->pending_hs_data->length > 0)) {
+      if (!serialize_buf_mem(in->pending_hs_data, kS3PendingHsDataTag, s3)) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        return 0;
+      }
+    }
+
+    if (in->pending_flight &&
+        (in->pending_flight->length > 0 || in->pending_flight->max > 0)) {
+      if (!serialize_buf_mem(in->pending_flight, kS3PendingFlightTag, s3)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return 0;
       }
@@ -413,6 +441,12 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return 0;
       }
+    }
+
+    if (!CBB_add_asn1(&s3, &child, kS3KeyUpdatePending) ||
+        !CBB_add_asn1_int64(&child, in->key_update_pending)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
     }
   }
 
@@ -469,7 +503,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   int pending_app_data_present, read_buffer_present;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &serde_version) ||
-      serde_version > SSL3_STATE_SERDE_VERSION_TWO ||
+      serde_version > SSL3_STATE_SERDE_VERSION_THREE ||
       (is_tls13 && serde_version < SSL3_STATE_SERDE_VERSION_TWO) ||
       !CBS_get_asn1(&s3, &read_seq, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
@@ -485,13 +519,19 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
       !CBS_get_asn1_uint64(&s3, &early_data_reason) ||
       early_data_reason > ssl_early_data_reason_max_value ||
       !CBS_get_asn1(&s3, &previous_client_finished, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&previous_client_finished) > PREV_FINISHED_MAX_SIZE ||
       !CBS_get_asn1_uint64(&s3, &previous_client_finished_len) ||
       previous_client_finished_len > PREV_FINISHED_MAX_SIZE ||
+      (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
+       CBS_len(&previous_client_finished) != previous_client_finished_len) ||
+      (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
+       CBS_len(&previous_client_finished) > PREV_FINISHED_MAX_SIZE) ||
       !CBS_get_asn1(&s3, &previous_server_finished, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&previous_server_finished) > PREV_FINISHED_MAX_SIZE ||
       !CBS_get_asn1_uint64(&s3, &previous_server_finished_len) ||
       previous_server_finished_len > PREV_FINISHED_MAX_SIZE ||
+      (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
+       CBS_len(&previous_server_finished) != previous_server_finished_len) ||
+      (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
+       CBS_len(&previous_server_finished) > PREV_FINISHED_MAX_SIZE) ||
       !CBS_get_asn1_uint64(&s3, &empty_record_count) ||
       !CBS_get_asn1_uint64(&s3, &warning_alert_count) ||
       !CBS_get_asn1_uint64(&s3, &total_renegotiations) ||
@@ -521,11 +561,9 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  bool is_v2 = (serde_version == SSL3_STATE_SERDE_VERSION_TWO);
-
   // We should have no more data at this point if we are deserializing v1
   // encoding.
-  if (!is_v2 && CBS_len(&s3) > 0) {
+  if (serde_version < SSL3_STATE_SERDE_VERSION_TWO && CBS_len(&s3) > 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
@@ -567,7 +605,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   int64_t ticket_age_skew;
   if (!CBS_get_optional_asn1_int64(&s3, &ticket_age_skew, kS3TicketAgeSkewTag,
                                    0) ||
-      ticket_age_skew > INT32_MAX) {
+      ticket_age_skew > INT32_MAX || ticket_age_skew < INT32_MIN) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
@@ -636,19 +674,19 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  CBS pending_hs_data;
+  bssl::UniquePtr<BUF_MEM> pending_hs_data;
   int pending_hs_data_present;
-  if (!CBS_get_optional_asn1_octet_string(&s3, &pending_hs_data,
-                                          &pending_hs_data_present,
-                                          kS3PendingHsDataTag)) {
+
+  if (!deserialize_buf_mem(pending_hs_data, pending_hs_data_present,
+                           kS3PendingHsDataTag, s3)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
 
-  CBS pending_flight;
+  bssl::UniquePtr<BUF_MEM> pending_flight;
   int pending_flight_present;
-  if (!CBS_get_optional_asn1_octet_string(
-          &s3, &pending_flight, &pending_flight_present, kS3PendingFlightTag)) {
+  if (!deserialize_buf_mem(pending_flight, pending_flight_present,
+                           kS3PendingFlightTag, s3)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
@@ -669,17 +707,40 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
+  int64_t key_update_pending = SSL_KEY_UPDATE_NONE;
+  if (!CBS_get_optional_asn1_int64(&s3, &key_update_pending,
+                                   kS3KeyUpdatePending, SSL_KEY_UPDATE_NONE)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
+    return 0;
+  }
+
   if (is_tls13) {
-    if (!write_traffic_secret_present ||
-        CBS_len(&write_traffic_secret) != SSL_MAX_MD_SIZE ||
-        !write_traffic_secret_len || write_traffic_secret_len > UINT8_MAX ||
-        !read_traffic_secret_present ||
-        CBS_len(&read_traffic_secret) != SSL_MAX_MD_SIZE ||
-        !read_traffic_secret_len || read_traffic_secret_len > UINT8_MAX ||
-        !exporter_secret_present ||
-        CBS_len(&exporter_secret) != SSL_MAX_MD_SIZE || !exporter_secret_len ||
-        exporter_secret_len > UINT8_MAX || ech_status > ssl_ech_rejected ||
-        !aead_read_ctx_present || !aead_write_ctx_present) {
+    if (!write_traffic_secret_present || !write_traffic_secret_len ||
+        write_traffic_secret_len > UINT8_MAX ||
+        write_traffic_secret_len > SSL_MAX_MD_SIZE ||
+        (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
+         CBS_len(&write_traffic_secret) != write_traffic_secret_len) ||
+        (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
+         CBS_len(&write_traffic_secret) != SSL_MAX_MD_SIZE) ||
+        !read_traffic_secret_present || !read_traffic_secret_len ||
+        read_traffic_secret_len > UINT8_MAX ||
+        read_traffic_secret_len > SSL_MAX_MD_SIZE ||
+        (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
+         CBS_len(&read_traffic_secret) != read_traffic_secret_len) ||
+        (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
+         CBS_len(&read_traffic_secret) != SSL_MAX_MD_SIZE) ||
+        !exporter_secret_present || !exporter_secret_len ||
+        exporter_secret_len > UINT8_MAX ||
+        exporter_secret_len > SSL_MAX_MD_SIZE ||
+        (serde_version >= SSL3_STATE_SERDE_VERSION_THREE &&
+         CBS_len(&exporter_secret) != exporter_secret_len) ||
+        (serde_version < SSL3_STATE_SERDE_VERSION_THREE &&
+         CBS_len(&exporter_secret) != SSL_MAX_MD_SIZE) ||
+        ech_status > ssl_ech_rejected || !aead_read_ctx_present ||
+        !aead_write_ctx_present ||
+        !(key_update_pending == SSL_KEY_UPDATE_NONE ||
+          key_update_pending == SSL_KEY_UPDATE_NOT_REQUESTED ||
+          key_update_pending == SSL_KEY_UPDATE_REQUESTED)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
       return 0;
     }
@@ -707,30 +768,16 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   }
 
   if (read_buffer_present &&
-      !out->read_buffer.DoDeserialization(&read_buffer)) {
+      !out->read_buffer.DoDeserialization(read_buffer)) {
     return 0;
   }
   // If |pending_app_data_size| is not zero, it needs to point to |read_buffer|.
   if (pending_app_data_present) {
-    if (!read_buffer_present) {
+    if (!read_buffer_present || !out->read_buffer.DeserializeBufferView(
+                                    pending_app_data, out->pending_app_data)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
       return 0;
     }
-    CBS app_seq;
-    uint64_t pending_app_data_offset, pending_app_data_size;
-    if (!CBS_get_asn1(&pending_app_data, &app_seq, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1_uint64(&app_seq, &pending_app_data_offset) ||
-        !CBS_get_asn1_uint64(&app_seq, &pending_app_data_size)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
-      return 0;
-    }
-    if (pending_app_data_size > out->read_buffer.buf_size()) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
-      return 0;
-    }
-    out->pending_app_data =
-        MakeSpan(out->read_buffer.buf_ptr() + pending_app_data_offset,
-                 pending_app_data_size);
   }
 
   if (CBS_len(&s3)) {
@@ -768,23 +815,16 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     // tls13_set_traffic_key from trying to flush their contents if they are not
     // empty !!
 
-    out->pending_hs_data.reset(BUF_MEM_new());
     if (pending_hs_data_present) {
-      if (!BUF_MEM_append(out->pending_hs_data.get(),
-                          CBS_data(&pending_hs_data),
-                          CBS_len(&pending_hs_data))) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        return 0;
-      }
+      out->pending_hs_data = std::move(pending_hs_data);
+    } else {
+      out->pending_hs_data.reset(BUF_MEM_new());
     }
 
-    out->pending_flight.reset(BUF_MEM_new());
     if (pending_flight_present) {
-      if (!BUF_MEM_append(out->pending_flight.get(), CBS_data(&pending_flight),
-                          CBS_len(&pending_flight))) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        return 0;
-      }
+      out->pending_flight = std::move(pending_flight);
+    } else {
+      out->pending_flight.reset(BUF_MEM_new());
     }
   } else {
     // the impl of |SSL_serialize_handback|, which only fetch IV when it's
@@ -1088,6 +1128,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   }
 
   ssl->verify_result = verify_result;
+  ssl->is_suspended_state = false;
 
   return 1;
 }
@@ -1132,6 +1173,8 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
       !SSL_to_bytes_full(in, &seq)) {
     return 0;
   }
+
+  const_cast<SSL *>(in)->is_suspended_state = true;
 
   return CBB_finish(cbb.get(), out_data, out_len);
 }

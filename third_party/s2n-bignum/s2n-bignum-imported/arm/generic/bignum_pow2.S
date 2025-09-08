@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_pow2)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_pow2)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_pow2)
         .text
         .balign 4
@@ -28,10 +30,11 @@
 
 
 S2N_BN_SYMBOL(bignum_pow2):
+        CFI_START
 
 // If k = 0 the result is trivially zero
 
-        cbz     k, bignum_pow2_end
+        cbz     k, Lbignum_pow2_end
 
 // Create the index n at which to write the nonzero word and the word w itself
 // Note that the ARM manual explicitly says that shift counts are taken modulo
@@ -44,16 +47,18 @@ S2N_BN_SYMBOL(bignum_pow2):
 // Now in a constant-time fashion set the n'th word to w and others to zero
 
         mov     i, xzr
-bignum_pow2_loop:
+Lbignum_pow2_loop:
         cmp     i, n
         csel    a, w, xzr, eq
         str     a, [z, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_pow2_loop
+        bcc     Lbignum_pow2_loop
 
-bignum_pow2_end:
-        ret
+Lbignum_pow2_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_pow2)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -13,10 +13,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, R8 = m, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmod)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmod)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmod)
         .text
 
@@ -43,11 +44,12 @@
 #define hshort %edx
 
 S2N_BN_SYMBOL(bignum_cmod):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -58,7 +60,7 @@ S2N_BN_SYMBOL(bignum_cmod):
 
         xorq    l, l
         testq   k, k
-        jz      bignum_cmod_end
+        jz      Lbignum_cmod_end
 
 // Move m into its permanent home (also used for n).
 // Find number of leading zeros of m and let n = 2^e m so that for an
@@ -141,7 +143,7 @@ S2N_BN_SYMBOL(bignum_cmod):
 // < 2^128 so we stay inside 2 words
 
         xorl    hshort, hshort
-bignum_cmod_loop:
+Lbignum_cmod_loop:
         movq    h, a
         mulq    r
         addq    -8(x,k,8), a
@@ -152,7 +154,7 @@ bignum_cmod_loop:
         addq    a, l
         adcq    $0, h
         decq    k
-        jnz     bignum_cmod_loop
+        jnz     Lbignum_cmod_loop
 
 // Now do reciprocal multiplication to reduce the 2-word modular equivalent
 // [h;l] to the single word l. If we assume the truncations are as follows
@@ -210,13 +212,15 @@ bignum_cmod_loop:
 
         movq    l, a
         subq    m, l
-bignum_cmod_end:
+Lbignum_cmod_end:
         cmovncq l, a
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cmod)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

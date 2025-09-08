@@ -23,14 +23,16 @@
 //
 // Standard ARM ABI: X0 = x, X1 = a, X2 = z, X3 = t
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_mulcache_compute)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(mlkem_mulcache_compute)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_mulcache_compute)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(mlkem_mulcache_compute):
+        CFI_START
 
 // This matches the code in the mlkem-native repository
 // https://github.com/pq-code-package/mlkem-native/blob/main/mlkem/native/aarch64/src/poly_mulcache_compute_asm.S
@@ -64,4 +66,10 @@ mlkem_mulcache_compute_loop:
 
         mls     v2.8h, v27.8h, v6.h[0]
         str     q2, [x0], #0x10
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(mlkem_mulcache_compute)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

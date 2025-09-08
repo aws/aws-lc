@@ -624,7 +624,7 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_minimal_tests.sh"
 
-    - identifier: ubuntu2004_clang7x_x86_64_benchmark
+    - identifier: benchmarking_framework_x86_64
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER

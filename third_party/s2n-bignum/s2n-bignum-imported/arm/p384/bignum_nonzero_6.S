@@ -9,9 +9,11 @@
 //
 // Standard ARM ABI: X0 = x, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero_6)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_nonzero_6)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero_6)
         .text
         .balign 4
@@ -23,6 +25,7 @@
 
 
 S2N_BN_SYMBOL(bignum_nonzero_6):
+        CFI_START
 
 // Generate a = an OR of all the words in the bignum
 
@@ -40,7 +43,9 @@ S2N_BN_SYMBOL(bignum_nonzero_6):
         cmp     a, xzr
         cset    x0, ne
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_nonzero_6)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

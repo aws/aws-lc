@@ -32,6 +32,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_poly_tomont_asm)
 S2N_BN_SYMBOL(mlkem_poly_tomont_asm):
 
+        .cfi_startproc
         mov	w2, #0xd01              // =3329
         dup	v4.8h, w2
         mov	w2, #0x4ebf             // =20159
@@ -48,7 +49,7 @@ S2N_BN_SYMBOL(mlkem_poly_tomont_asm):
         ldr	q27, [x0, #0x20]
         sub	x1, x1, #0x1
 
-poly_tomont_loop:
+Lpoly_tomont_loop:
         mls	v17.8h, v7.8h, v4.h[0]
         sqrdmulh	v5.8h, v23.8h, v3.8h
         ldr	q7, [x0], #0x40
@@ -70,7 +71,7 @@ poly_tomont_loop:
         ldr	q27, [x0, #0x20]
         stur	q26, [x0, #-0x20]
         sub	x1, x1, #0x1
-        cbnz	x1, poly_tomont_loop
+        cbnz	x1, Lpoly_tomont_loop
         mls	v17.8h, v7.8h, v4.h[0]
         sqrdmulh	v7.8h, v23.8h, v3.8h
         mul	v26.8h, v23.8h, v2.8h
@@ -87,4 +88,5 @@ poly_tomont_loop:
         stur	q27, [x0, #-0x20]
         stur	q23, [x0, #-0x40]
         ret
+        .cfi_endproc
 

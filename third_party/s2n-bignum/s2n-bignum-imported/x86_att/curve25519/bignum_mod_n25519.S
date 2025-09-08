@@ -15,10 +15,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = k, R8 = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_n25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n25519)
         .text
 
@@ -35,11 +36,12 @@
 #define q %rbx
 
 S2N_BN_SYMBOL(bignum_mod_n25519):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -47,14 +49,14 @@ S2N_BN_SYMBOL(bignum_mod_n25519):
 
 // Save extra registers
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 
         cmpq    $4, k
-        jc      bignum_mod_n25519_shortinput
+        jc      Lbignum_mod_n25519_shortinput
 
 // Otherwise load the top 4 digits (top-down) and reduce k by 4
 // This [m3;m2;m1;m0] is the initial x where we begin reduction.
@@ -120,9 +122,9 @@ S2N_BN_SYMBOL(bignum_mod_n25519):
 // estimation process.
 
         testq   k, k
-        jz      bignum_mod_n25519_writeback
+        jz      Lbignum_mod_n25519_writeback
 
-bignum_mod_n25519_loop:
+Lbignum_mod_n25519_loop:
 
 // Assume that the new 5-digit x is 2^64 * previous_x + next_digit.
 // Get the quotient estimate q = max (floor(x/2^252)) (2^64 - 1)
@@ -184,11 +186,11 @@ bignum_mod_n25519_loop:
         movq    d, m0
 
         decq    k
-        jnz     bignum_mod_n25519_loop
+        jnz     Lbignum_mod_n25519_loop
 
 // Write back
 
-bignum_mod_n25519_writeback:
+Lbignum_mod_n25519_writeback:
 
         movq    m0, (z)
         movq    m1, 8(z)
@@ -197,16 +199,18 @@ bignum_mod_n25519_writeback:
 
 // Restore registers and return
 
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
 
-bignum_mod_n25519_shortinput:
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_n25519)
+
+Lbignum_mod_n25519_shortinput:
 
         xorq    m0, m0
         xorq    m1, m1
@@ -214,15 +218,15 @@ bignum_mod_n25519_shortinput:
         xorq    m3, m3
 
         testq   k, k
-        jz      bignum_mod_n25519_writeback
+        jz      Lbignum_mod_n25519_writeback
         movq    (%rdx), m0
         decq    k
-        jz      bignum_mod_n25519_writeback
+        jz      Lbignum_mod_n25519_writeback
         movq    8(%rdx), m1
         decq    k
-        jz      bignum_mod_n25519_writeback
+        jz      Lbignum_mod_n25519_writeback
         movq    16(%rdx), m2
-        jmp     bignum_mod_n25519_writeback
+        jmp     Lbignum_mod_n25519_writeback
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
