@@ -25,12 +25,16 @@
 //
 // Standard ARM ABI: X0 = a, X1 = rc
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(sha3_keccak_f1600)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(sha3_keccak_f1600)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sha3_keccak_f1600)
         .text
         .balign 4
+
+S2N_BN_SYMBOL(sha3_keccak_f1600):
+        CFI_START
 
 // This is almost exactly the same as the scalar code in the mlkem-native
 // repository here:
@@ -40,16 +44,15 @@
 // The only change is the use of simple 64-bit addressing in place of
 // the unnecessary down-and-upcasting arising from [x9, w25, uxtw #3]
 
-S2N_BN_SYMBOL(sha3_keccak_f1600):
-        sub     sp, sp, #0x80
-        stp     x19, x20, [sp, #32]
-        stp     x21, x22, [sp, #48]
-        stp     x23, x24, [sp, #64]
-        stp     x25, x26, [sp, #80]
-        stp     x27, x28, [sp, #96]
-        stp     x29, x30, [sp, #112]
+        CFI_DEC_SP(128)
+        CFI_STACKSAVE2X(x19,x20,32,40)
+        CFI_STACKSAVE2X(x21,x22,48,56)
+        CFI_STACKSAVE2X(x23,x24,64,72)
+        CFI_STACKSAVE2X(x25,x26,80,88)
+        CFI_STACKSAVE2X(x27,x28,96,104)
+        CFI_STACKSAVE2X(x29,x30,112,120)
 
-sha3_keccak_f1600_initial:
+Lsha3_keccak_f1600_initial:
         mov     x26, x1
         str     x26, [sp, #8]
         ldp     x1, x6, [x0]
@@ -179,7 +182,7 @@ sha3_keccak_f1600_initial:
 // shifted operands, the total number of rotation instructions is reduced
 // relative to a naive implementation.
 
-sha3_keccak_f1600_loop:
+Lsha3_keccak_f1600_loop:
         eor     x0, x15, x11, ror #52
         eor     x0, x0, x13, ror #48
         eor     x26, x8, x9, ror #57
@@ -292,7 +295,7 @@ sha3_keccak_f1600_loop:
         bic     x3, x0, x30, ror #5
         eor     x23, x3, x26, ror #52
         eor     x3, x29, x30, ror #24
-        ble     sha3_keccak_f1600_loop
+        ble     Lsha3_keccak_f1600_loop
 
 // Final rotations
 
@@ -333,11 +336,17 @@ sha3_keccak_f1600_loop:
         stp     x5, x10, [x0, #160]
         stp     x15, x20, [x0, #176]
         str     x25, [x0, #192]
-        ldp     x19, x20, [sp, #32]
-        ldp     x21, x22, [sp, #48]
-        ldp     x23, x24, [sp, #64]
-        ldp     x25, x26, [sp, #80]
-        ldp     x27, x28, [sp, #96]
-        ldp     x29, x30, [sp, #112]
-        add     sp, sp, #0x80
-        ret
+        CFI_STACKLOAD2(x19,x20,32)
+        CFI_STACKLOAD2(x21,x22,48)
+        CFI_STACKLOAD2(x23,x24,64)
+        CFI_STACKLOAD2(x25,x26,80)
+        CFI_STACKLOAD2(x27,x28,96)
+        CFI_STACKLOAD2(x29,x30,112)
+        CFI_INC_SP(128)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(sha3_keccak_f1600)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

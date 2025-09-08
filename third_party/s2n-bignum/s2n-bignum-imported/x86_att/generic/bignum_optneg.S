@@ -15,10 +15,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = p, R9 = x, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_optneg)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg)
         .text
 
@@ -34,11 +35,12 @@
 #define cshort %eax
 
 S2N_BN_SYMBOL(bignum_optneg):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -49,7 +51,7 @@ S2N_BN_SYMBOL(bignum_optneg):
 
         xorq    c, c
         testq   k, k
-        jz      bignum_optneg_end
+        jz      Lbignum_optneg_end
 
 // Convert p into a strict bitmask and set initial carry-in in c
 
@@ -60,7 +62,7 @@ S2N_BN_SYMBOL(bignum_optneg):
 // Main loop
 
         xorq    i, i
-bignum_optneg_loop:
+Lbignum_optneg_loop:
 
         movq    (x,i,8), a
         xorq    p, a
@@ -70,19 +72,21 @@ bignum_optneg_loop:
         adcq    $0, c
         incq    i
         cmpq    k, i
-        jc      bignum_optneg_loop
+        jc      Lbignum_optneg_loop
 
 // Return carry flag, fixing up inversion for negative case
 
         xorq    p, %rax
         andq    $1, %rax
 
-bignum_optneg_end:
+Lbignum_optneg_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_optneg)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

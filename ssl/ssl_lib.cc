@@ -168,6 +168,14 @@
 
 BSSL_NAMESPACE_BEGIN
 
+#define GUARD_SUSPENDED_STATE(ptr,code)                         \
+  do {                                                           \
+    if (ptr->is_suspended_state) {                               \
+      OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED); \
+      return code;                                               \
+    }                                                            \
+  } while (0)
+
 // |SSL_R_UNKNOWN_PROTOCOL| is no longer emitted, but continue to define it
 // to avoid downstream churn.
 OPENSSL_DECLARE_ERROR_REASON(SSL, UNKNOWN_PROTOCOL)
@@ -642,7 +650,8 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       server(false),
       quiet_shutdown(ctx->quiet_shutdown),
       enable_early_data(ctx->enable_early_data),
-      enable_read_ahead(ctx->enable_read_ahead) {
+      enable_read_ahead(ctx->enable_read_ahead),
+      is_suspended_state(false) {
   CRYPTO_new_ex_data(&ex_data);
 }
 
@@ -881,6 +890,8 @@ int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
 }
 
 int SSL_do_handshake(SSL *ssl) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   ssl_reset_error_state(ssl);
 
   if (ssl->do_handshake == NULL) {
@@ -913,6 +924,8 @@ int SSL_do_handshake(SSL *ssl) {
 }
 
 int SSL_connect(SSL *ssl) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   if (ssl->do_handshake == NULL) {
     // Not properly initialized yet
     SSL_set_connect_state(ssl);
@@ -922,6 +935,8 @@ int SSL_connect(SSL *ssl) {
 }
 
 int SSL_accept(SSL *ssl) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   if (ssl->do_handshake == NULL) {
     // Not properly initialized yet
     SSL_set_accept_state(ssl);
@@ -1063,6 +1078,8 @@ static int ssl_read_impl(SSL *ssl) {
 }
 
 int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
+  GUARD_SUSPENDED_STATE(ssl, 0);
+
   if (num == 0 && read_bytes != nullptr) {
     *read_bytes = 0;
     return 1;
@@ -1078,6 +1095,8 @@ int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
 }
 
 int SSL_read(SSL *ssl, void *buf, int num) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   int ret = SSL_peek(ssl, buf, num);
   if (ret <= 0) {
     return ret;
@@ -1093,6 +1112,8 @@ int SSL_read(SSL *ssl, void *buf, int num) {
 }
 
 int SSL_peek(SSL *ssl, void *buf, int num) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   if (ssl->quic_method != nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return -1;
@@ -1112,6 +1133,7 @@ int SSL_peek(SSL *ssl, void *buf, int num) {
 }
 
 int SSL_peek_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
+  GUARD_SUSPENDED_STATE(ssl, 0);
   int ret = SSL_peek(ssl, buf, (int)num);
   if (ret <= 0) {
     return 0;
@@ -1121,6 +1143,8 @@ int SSL_peek_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
 }
 
 int SSL_write(SSL *ssl, const void *buf, int num) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   ssl_reset_error_state(ssl);
 
   if (ssl->quic_method != nullptr) {
@@ -1162,6 +1186,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 }
 
 int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
+  GUARD_SUSPENDED_STATE(ssl, 0);
   if (num == 0 && written != nullptr) {
     *written = 0;
     return 1;
@@ -1177,6 +1202,8 @@ int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
 }
 
 int SSL_key_update(SSL *ssl, int request_type) {
+  GUARD_SUSPENDED_STATE(ssl, 0);
+
   ssl_reset_error_state(ssl);
 
   if (ssl->do_handshake == NULL) {
@@ -1208,6 +1235,8 @@ int SSL_key_update(SSL *ssl, int request_type) {
 }
 
 int SSL_shutdown(SSL *ssl) {
+  GUARD_SUSPENDED_STATE(ssl, -1);
+
   ssl_reset_error_state(ssl);
 
   if (ssl->do_handshake == NULL) {

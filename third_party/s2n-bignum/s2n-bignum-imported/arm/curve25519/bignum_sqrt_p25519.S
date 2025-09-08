@@ -21,10 +21,13 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqrt_p25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqrt_p25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqrt_p25519)
+
 
         .text
         .balign 4
@@ -46,7 +49,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE #(16*N)
+#define NSPACE 16*N
 
 // Loading large constants
 
@@ -62,20 +65,21 @@
         add     x0, dest __LF                                              \
         add     x1, src1 __LF                                              \
         add     x2, src2 __LF                                              \
-        bl      bignum_sqrt_p25519_mul_p25519
+        CFI_BL(Lbignum_sqrt_p25519_mul_p25519)
 
 #define nsqr(dest,n,src)                                                \
         add     x0, dest __LF                                              \
         mov     x1, n __LF                                                 \
         add     x2, src __LF                                               \
-        bl      bignum_sqrt_p25519_nsqr_p25519
+        CFI_BL(Lbignum_sqrt_p25519_nsqr_p25519)
 
 S2N_BN_SYMBOL(bignum_sqrt_p25519):
+        CFI_START
 
 // Save registers and make room for temporaries
 
-        stp     x19, x30, [sp, -16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite x0 later
 
@@ -222,7 +226,7 @@ S2N_BN_SYMBOL(bignum_sqrt_p25519):
 
         add     x0, b
         mov     x1, #1
-        bl      bignum_sqrt_p25519_nsqr_p25519
+        CFI_BL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         ldp     x10, x11, [a]
         ldp     x14, x15, [b]
@@ -247,15 +251,20 @@ S2N_BN_SYMBOL(bignum_sqrt_p25519):
 
 // Restore stack and registers
 
-        add     sp, sp, NSPACE
-        ldp     x19, x30, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x19,x30)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sqrt_p25519)
 
 // *************************************************************
 // Local z = x * y
 // *************************************************************
 
-bignum_sqrt_p25519_mul_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_sqrt_p25519_mul_p25519)
+
+Lbignum_sqrt_p25519_mul_p25519:
+        CFI_START
         ldp     x3, x4, [x1]
         ldp     x5, x6, [x2]
         umull   x7, w3, w5
@@ -436,13 +445,18 @@ bignum_sqrt_p25519_mul_p25519:
         and     x10, x10, #0x7fffffffffffffff
         stp     x7, x8, [x0]
         stp     x9, x10, [x0, #16]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lbignum_sqrt_p25519_mul_p25519)
 
 // *************************************************************
 // Local z = 2^n * x
 // *************************************************************
 
-bignum_sqrt_p25519_nsqr_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_sqrt_p25519_nsqr_p25519)
+
+Lbignum_sqrt_p25519_nsqr_p25519:
+        CFI_START
 
 // Copy input argument into [x13;x12;x11;x10]
 
@@ -452,7 +466,7 @@ bignum_sqrt_p25519_nsqr_p25519:
 // Main squaring loop, accumulating in [x13;x12;x11;x10] consistently and
 // only ensuring the intermediates are < 2 * p_25519 = 2^256 - 38
 
-bignum_sqrt_p25519_loop:
+Lbignum_sqrt_p25519_loop:
         umull   x2, w10, w10
         lsr     x14, x10, #32
         umull   x3, w14, w14
@@ -583,7 +597,7 @@ bignum_sqrt_p25519_loop:
 // Loop as applicable
 
         subs    x1, x1, #1
-        bne     bignum_sqrt_p25519_loop
+        bne     Lbignum_sqrt_p25519_loop
 
 // We know the intermediate result x < 2^256 - 38, and now we do strict
 // modular reduction mod 2^255 - 19. Note x < 2^255 - 19 <=> x + 19 < 2^255
@@ -604,7 +618,9 @@ bignum_sqrt_p25519_loop:
 
         stp     x10, x11, [x0]
         stp     x12, x13, [x0, #16]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lbignum_sqrt_p25519_nsqr_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

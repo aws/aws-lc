@@ -35,15 +35,18 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_tomont_avx2)
 S2N_BN_SYMBOL(mlkem_tomont_avx2):
 
+        .cfi_startproc
         vmovdqa	(%rsi), %ymm0
         vmovdqa	0xa0(%rsi), %ymm1
         vmovdqa	0xc0(%rsi), %ymm2
-        callq	tomont_avx2_core
+        callq	Ltomont_avx2_core
         addq	$0x100, %rdi            # imm = 0x100
-        callq	tomont_avx2_core
+        callq	Ltomont_avx2_core
         retq
+        .cfi_endproc
 
-tomont_avx2_core:
+Ltomont_avx2_core:
+        .cfi_startproc
         vmovdqa	(%rdi), %ymm3
         vmovdqa	0x20(%rdi), %ymm4
         vmovdqa	0x40(%rdi), %ymm5
@@ -93,4 +96,5 @@ tomont_avx2_core:
         vmovdqa	%ymm9, 0xc0(%rdi)
         vmovdqa	%ymm10, 0xe0(%rdi)
         retq
+        .cfi_endproc
 
