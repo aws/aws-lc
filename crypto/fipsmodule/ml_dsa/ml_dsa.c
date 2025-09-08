@@ -46,9 +46,9 @@ int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  int ret = ml_dsa_keypair(&params, public_key, private_key, seed);
+  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
   FIPS_service_indicator_unlock_state();
-  if (ret == 0) {
+  if (ret) {
     FIPS_service_indicator_update_state();
   }
   return ret;
@@ -224,9 +224,9 @@ int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  int ret = ml_dsa_keypair(&params, public_key, private_key, seed);
+  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
   FIPS_service_indicator_unlock_state();
-  if (ret == 0) {
+  if (ret) {
     FIPS_service_indicator_update_state();
   }
   return ret;
@@ -387,9 +387,9 @@ int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  int ret = ml_dsa_keypair(&params, public_key, private_key, seed);
+  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
   FIPS_service_indicator_unlock_state();
-  if (ret == 0) {
+  if (ret) {
     FIPS_service_indicator_update_state();
   }
   return ret;
