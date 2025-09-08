@@ -5339,7 +5339,6 @@ TEST(ServiceIndicatorTest, MLDSAKeyGen) {
 TEST(ServiceIndicatorTest, MLDSASigGenVerify) {
   const uint8_t MESSAGE[15] = {'M', 'L', '-', 'D', 'S', 'A', ' ',
                                'M', 'E', 'S', 'S', 'A', 'G', 'E'};
-  const uint8_t CONTEXT[6] = {'A', 'W', 'S', '-', 'L', 'C'};
 
   // Test EVP interface for all ML-DSA parameter sets
   for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
