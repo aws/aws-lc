@@ -371,8 +371,7 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     keccak_log_dispatch(9); // kFlag_KeccakF1600_hw
     KeccakF1600_hw((uint64_t *) A);
 
-#elif defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) && \
-    defined(KECCAK1600_S2N_BIGNUM_ASM)
+#elif defined(OPENSSL_X86_64)
     sha3_keccak_f1600((uint64_t *)A, iotas);
 #endif
 }
