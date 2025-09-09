@@ -1,5 +1,55 @@
+diff --git a/src/ssl.c b/src/ssl.c
+index ff76f05..76ce90d 100644
+--- a/src/ssl.c
++++ b/src/ssl.c
+@@ -53,6 +53,10 @@
+ #include <openssl/x509.h>
+ #include <openssl/x509v3.h>
+ #include <openssl/ocsp.h>
++#ifdef OPENSSL_IS_AWSLC
++#include <openssl/bio.h>
++#include <openssl/pem.h>
++#endif
+ //#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+ //#include <openssl/core_names.h> // OSSL_PKEY_PARAM_RSA_E
+ //#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L */
+@@ -1295,6 +1299,26 @@ ssl_x509chain_use(SSL_CTX *sslctx, X509 *crt, STACK_OF(X509) *chain)
+ X509 *
+ ssl_x509_load(const char *filename)
+ {
++#ifdef OPENSSL_IS_AWSLC
++	BIO *in = NULL;
++	X509 *crt = NULL;
++	int rv;
++
++	if (ssl_init() == -1)
++		return NULL;
++
++	in = BIO_new(BIO_s_file());
++	if (in == NULL)
++		goto leave1;
++	rv = BIO_read_filename(in, filename);
++	if (rv <= 0)
++		goto leave2;
++	crt = PEM_read_bio_X509(in, NULL, NULL, NULL);
++leave2:
++	BIO_free(in);
++leave1:
++	return crt;
++#else
+ 	X509 *crt = NULL;
+ 	SSL_CTX *tmpctx;
+ 	SSL *tmpssl;
+@@ -1320,6 +1344,7 @@ leave2:
+ 	SSL_CTX_free(tmpctx);
+ leave1:
+ 	return crt;
++#endif
+ }
+ 
+ /*
 diff --git a/tests/check/cachedsess.t.c b/tests/check/cachedsess.t.c
-index 7dbac6e..58a47d5 100644
+index 3184219..052d76c 100644
 --- a/tests/check/cachedsess.t.c
 +++ b/tests/check/cachedsess.t.c
 @@ -40,6 +40,8 @@
@@ -12,7 +62,7 @@ index 7dbac6e..58a47d5 100644
  #define TMP_SESS_FILE "pki/session.pem"
  #endif
 diff --git a/tests/check/cachessess.t.c b/tests/check/cachessess.t.c
-index 754b7d3..1cd3294 100644
+index 92aab27..4943e60 100644
 --- a/tests/check/cachessess.t.c
 +++ b/tests/check/cachessess.t.c
 @@ -39,6 +39,8 @@
@@ -25,7 +75,7 @@ index 754b7d3..1cd3294 100644
  #define TMP_SESS_FILE "pki/session.pem"
  #endif
 diff --git a/tests/check/filterstruct.t.c b/tests/check/filterstruct.t.c
-index 47ef6f2..c2d8b85 100644
+index 39e81d2..0c1184b 100644
 --- a/tests/check/filterstruct.t.c
 +++ b/tests/check/filterstruct.t.c
 @@ -59,7 +59,7 @@
@@ -56,7 +106,7 @@ index 47ef6f2..c2d8b85 100644
  #ifdef SSL_OP_NO_COMPRESSION
  		"SSLCompression yes\n"
 diff --git a/tests/check/opts.t.c b/tests/check/opts.t.c
-index 0ea2810..19c5885 100644
+index 55cd149..4650f2b 100644
 --- a/tests/check/opts.t.c
 +++ b/tests/check/opts.t.c
 @@ -128,7 +128,7 @@ static char *argv14[] = {
