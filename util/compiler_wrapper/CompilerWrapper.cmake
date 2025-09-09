@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 # CompilerWrapper.cmake
 #
 # CMake module for handling compiler flag conflicts, particularly the -S/-c conflict
@@ -11,7 +14,7 @@
 #   setup_compiler_wrapper()
 #   use_compiler_wrapper_for_target(my_target)
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
 
 # Check if we need the compiler wrapper based on compiler version
 function(compiler_wrapper_needed result_var)
