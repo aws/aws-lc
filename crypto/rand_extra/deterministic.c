@@ -14,7 +14,7 @@
 
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/internal.h"
+#include "internal.h"
 
 #if defined(OPENSSL_RAND_DETERMINISTIC)
 
@@ -48,10 +48,6 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 
   OPENSSL_memset(out, 0, requested);
   CRYPTO_chacha_20(out, out, requested, kZeroKey, nonce, 0);
-}
-
-void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
-  CRYPTO_sysrand(out, requested);
 }
 
 #endif  // OPENSSL_RAND_DETERMINISTIC

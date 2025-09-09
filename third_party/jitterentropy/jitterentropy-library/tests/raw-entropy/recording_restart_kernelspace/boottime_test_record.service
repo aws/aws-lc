@@ -1,0 +1,13 @@
+# Systemd configuration file
+#
+[Unit]
+Description=Boot time test for Kernel Jitter RNG
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target
+
+[Service]
+ExecStart=/usr/local/sbin/boottime_test_record.sh
+
+[Install]
+WantedBy=basic.target

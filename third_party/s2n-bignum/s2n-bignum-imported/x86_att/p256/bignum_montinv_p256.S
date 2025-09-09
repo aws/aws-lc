@@ -22,10 +22,11 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montinv_p256)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montinv_p256)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montinv_p256)
         .text
 
@@ -52,7 +53,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (30*N)
+#define NSPACE 30*N
 
 // Syntactic variants to make x86_att version simpler to generate
 
@@ -1018,25 +1019,26 @@
         leaq    (%rax,%rdx), %r12
 
 S2N_BN_SYMBOL(bignum_montinv_p256):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
 // Save registers and make room for temporaries
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite %rdi later
 
@@ -1118,9 +1120,9 @@ S2N_BN_SYMBOL(bignum_montinv_p256):
 
         movq    $10, i
         movq    $1, d
-        jmp     bignum_montinv_p256_midloop
+        jmp     Lbignum_montinv_p256_midloop
 
-bignum_montinv_p256_loop:
+Lbignum_montinv_p256_loop:
 
 // Separate out the matrix into sign-magnitude pairs
 
@@ -1449,7 +1451,7 @@ bignum_montinv_p256_loop:
 
         amontred(v)
 
-bignum_montinv_p256_midloop:
+Lbignum_montinv_p256_midloop:
 
         divstep59(d,ff,gg)
         movq    %rsi, d
@@ -1457,7 +1459,7 @@ bignum_montinv_p256_midloop:
 // Next iteration
 
         decq    i
-        jnz     bignum_montinv_p256_loop
+        jnz     Lbignum_montinv_p256_loop
 
 // The 10th and last iteration does not need anything except the
 // u value and the sign of f; the latter can be obtained from the
@@ -1615,20 +1617,22 @@ bignum_montinv_p256_midloop:
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montinv_p256)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

@@ -14,9 +14,11 @@
 // Initial version written by Hanno Becker
 // Standard ARM ABI: X0 = z, X1 = table, X2 = height, X3 = idx
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_copy_row_from_table_32)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_copy_row_from_table_32)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_copy_row_from_table_32)
         .text
         .balign 4
@@ -73,6 +75,7 @@
 #define vmask    v17
 
 S2N_BN_SYMBOL(bignum_copy_row_from_table_32):
+        CFI_START
 
     // Clear accumulator
     // Zeroing can be done via xor, but xor isn't formalized yet.
@@ -94,7 +97,7 @@ S2N_BN_SYMBOL(bignum_copy_row_from_table_32):
     mov ventry15.16b,  ventry0.16b
 
     mov cnt, #0
-bignum_copy_row_from_table_32_loop:
+Lbignum_copy_row_from_table_32_loop:
 
     // Compute mask: Check if current index matches target index
     subs xzr, cnt, idx
@@ -153,9 +156,9 @@ bignum_copy_row_from_table_32_loop:
 
     add cnt, cnt, #1
     subs xzr, height, cnt
-    b.ne bignum_copy_row_from_table_32_loop
+    b.ne Lbignum_copy_row_from_table_32_loop
 
-bignum_copy_row_from_table_32_end:
+Lbignum_copy_row_from_table_32_end:
 
     str qentry0,  [z, #16*0]
     str qentry1,  [z, #16*1]
@@ -174,7 +177,9 @@ bignum_copy_row_from_table_32_end:
     str qentry14,  [z, #16*14]
     str qentry15,  [z, #16*15]
 
-    ret
+    CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_copy_row_from_table_32)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

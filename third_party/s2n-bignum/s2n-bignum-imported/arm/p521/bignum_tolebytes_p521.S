@@ -12,9 +12,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tolebytes_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tolebytes_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tolebytes_p521)
         .text
         .balign 4
@@ -26,6 +28,7 @@
 #define dshort w2
 
 S2N_BN_SYMBOL(bignum_tolebytes_p521):
+        CFI_START
 
 // word 0
 
@@ -186,7 +189,9 @@ S2N_BN_SYMBOL(bignum_tolebytes_p521):
         lsr     d, d, #8
         strb    dshort, [z, #65]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_tolebytes_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

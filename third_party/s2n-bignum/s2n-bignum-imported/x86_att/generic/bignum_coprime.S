@@ -20,10 +20,11 @@
 // Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, [RSP+40] = t, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_coprime)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_coprime)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_coprime)
         .text
 
@@ -96,11 +97,12 @@
 #define arg4 %rcx
 
 S2N_BN_SYMBOL(bignum_coprime):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -110,13 +112,13 @@ S2N_BN_SYMBOL(bignum_coprime):
 
 // Save all required registers and make room on stack for all the above vars
 
-        pushq   %rbp
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $STACKVARSIZE, %rsp
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(STACKVARSIZE)
 
 // Compute k = max(m,n), and if this is zero skip to the end. Note that
 // in this case k is also in %rax so serves as the right answer of "false"
@@ -127,7 +129,7 @@ S2N_BN_SYMBOL(bignum_coprime):
         movq    %rax, k
 
         testq   %rax, %rax
-        jz      bignum_coprime_end
+        jz      Lbignum_coprime_end
 
 // Set up inside w two size-k buffers m and n
 
@@ -137,41 +139,41 @@ S2N_BN_SYMBOL(bignum_coprime):
 
         xorq    i, i
         testq   arg1, arg1
-        jz      bignum_coprime_xpadloop
-bignum_coprime_xloop:
+        jz      Lbignum_coprime_xpadloop
+Lbignum_coprime_xloop:
         movq    (arg2,i,8), a
         movq    a, (m,i,8)
         incq    i
         cmpq    arg1, i
-        jc      bignum_coprime_xloop
+        jc      Lbignum_coprime_xloop
         cmpq    k, i
-        jnc     bignum_coprime_xskip
-bignum_coprime_xpadloop:
+        jnc     Lbignum_coprime_xskip
+Lbignum_coprime_xpadloop:
         movq    $0,  (m,i,8)
         incq    i
         cmpq    k, i
-        jc      bignum_coprime_xpadloop
-bignum_coprime_xskip:
+        jc      Lbignum_coprime_xpadloop
+Lbignum_coprime_xskip:
 
 // Copy the input y into the buffer n, padding with zeros as needed
 
         xorq    i, i
         testq   arg3, arg3
-        jz      bignum_coprime_ypadloop
-bignum_coprime_yloop:
+        jz      Lbignum_coprime_ypadloop
+Lbignum_coprime_yloop:
         movq    (arg4,i,8), a
         movq    a, (n,i,8)
         incq    i
         cmpq    arg3, i
-        jc      bignum_coprime_yloop
+        jc      Lbignum_coprime_yloop
         cmpq    k, i
-        jnc     bignum_coprime_yskip
-bignum_coprime_ypadloop:
+        jnc     Lbignum_coprime_yskip
+Lbignum_coprime_ypadloop:
         movq    $0,  (n,i,8)
         incq    i
         cmpq    k, i
-        jc      bignum_coprime_ypadloop
-bignum_coprime_yskip:
+        jc      Lbignum_coprime_ypadloop
+Lbignum_coprime_yskip:
 
 // Set up the outer loop count of 64 * sum of input sizes.
 // The invariant is that m * n < 2^t at all times.
@@ -197,7 +199,7 @@ bignum_coprime_yskip:
         subq    $1, b
 
         xorq    i, i
-bignum_coprime_swaploop:
+Lbignum_coprime_swaploop:
         movq    (m,i,8), a
         movq    (n,i,8), c
         movq    a, d
@@ -209,11 +211,11 @@ bignum_coprime_swaploop:
         movq    c, (n,i,8)
         incq    i
         cmpq    k, i
-        jnz     bignum_coprime_swaploop
+        jnz     Lbignum_coprime_swaploop
 
 // Start of the main outer loop iterated t / CHUNKSIZE times
 
-bignum_coprime_outerloop:
+Lbignum_coprime_outerloop:
 
 // We need only bother with sharper l = min k (ceil(t/64)) digits
 // Either both m and n fit in l digits, or m has become zero and so
@@ -239,7 +241,7 @@ bignum_coprime_outerloop:
         // and in this case h1 and h2 are those words
 
         xorq    i, i
-bignum_coprime_toploop:
+Lbignum_coprime_toploop:
         movq    (m,i,8), b
         movq    (n,i,8), c
         movq    c2, c1
@@ -255,7 +257,7 @@ bignum_coprime_toploop:
         sbbq    c2, c2
         incq    i
         cmpq    l, i
-        jc      bignum_coprime_toploop
+        jc      Lbignum_coprime_toploop
 
         movq    h1, a
         orq     h2, a
@@ -315,7 +317,7 @@ bignum_coprime_toploop:
 // The actual computation computes updates before actually swapping and
 // then corrects as needed.
 
-bignum_coprime_innerloop:
+Lbignum_coprime_innerloop:
 
         xorl    %eax, %eax
         xorl    %ebx, %ebx
@@ -352,7 +354,7 @@ bignum_coprime_innerloop:
 // End of the inner for-loop
 
         decq    i
-        jnz     bignum_coprime_innerloop
+        jnz     Lbignum_coprime_innerloop
 
 // Unstash the temporary variables
 
@@ -382,7 +384,7 @@ bignum_coprime_innerloop:
         xorq    l1, l1
         xorq    h2, h2
         xorq    l2, l2
-bignum_coprime_crossloop:
+Lbignum_coprime_crossloop:
 
         movq    (m,i,8), c
         movq    mat_mm, a
@@ -420,16 +422,16 @@ bignum_coprime_crossloop:
 
         incq    i
         cmpq    l, i
-        jc      bignum_coprime_crossloop
+        jc      Lbignum_coprime_crossloop
 
 // Now fix the signs of m and n if they have gone negative
 
         xorq    i, i
         movq    h1, c1 // carry-in coded up as well
         movq    h2, c2 // carry-in coded up as well
-        xorq    h1, l1 // for the bignum_coprime_end digit
-        xorq    h2, l2 // for the bignum_coprime_end digit
-bignum_coprime_optnegloop:
+        xorq    h1, l1 // for the Lbignum_coprime_end digit
+        xorq    h2, l2 // for the Lbignum_coprime_end digit
+Lbignum_coprime_optnegloop:
         movq    (m,i,8), a
         xorq    h1, a
         negq    c1
@@ -444,14 +446,14 @@ bignum_coprime_optnegloop:
         movq    a, (n,i,8)
         incq    i
         cmpq    l, i
-        jc      bignum_coprime_optnegloop
+        jc      Lbignum_coprime_optnegloop
         subq    c1, l1
         subq    c2, l2
 
 // Now shift them right CHUNKSIZE bits
 
         movq    l, i
-bignum_coprime_shiftloop:
+Lbignum_coprime_shiftloop:
         movq    -8(m,i,8), a
         movq    a, h1
         shrdq   $CHUNKSIZE, l1, a
@@ -463,7 +465,7 @@ bignum_coprime_shiftloop:
         movq    a, -8(n,i,8)
         movq    h2, l2
         decq    i
-        jnz     bignum_coprime_shiftloop
+        jnz     Lbignum_coprime_shiftloop
 
 // End of main loop. We can stop if t' <= 0 since then m * n < 2^0, which
 // since n is odd (in the main cases where we had one or other input odd)
@@ -472,25 +474,25 @@ bignum_coprime_shiftloop:
 // optimized digit bound l could collapse to 0.
 
         subq    $CHUNKSIZE, t
-        jnbe    bignum_coprime_outerloop
+        jnbe    Lbignum_coprime_outerloop
 
 // Now compare n with 1 (OR of the XORs in a)
 
         movq    (n), a
         xorq    $1, a
         cmpq    $1, k
-        jz      bignum_coprime_finalcomb
+        jz      Lbignum_coprime_finalcomb
         movl    $1, ishort
-bignum_coprime_compareloop:
+Lbignum_coprime_compareloop:
         orq     (n,i,8), a
         incq    i
         cmpq    k, i
-        jc      bignum_coprime_compareloop
+        jc      Lbignum_coprime_compareloop
 
 // Now combine that with original "evenor" oddness flag
 // The final condition is lsb(evenor) = 1 AND a = 0
 
-bignum_coprime_finalcomb:
+Lbignum_coprime_finalcomb:
         negq    a
         sbbq    a, a
         incq    a
@@ -498,20 +500,22 @@ bignum_coprime_finalcomb:
 
 // The end
 
-bignum_coprime_end:
-        addq    $STACKVARSIZE, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
-        popq    %rbp
+Lbignum_coprime_end:
+        CFI_INC_RSP(STACKVARSIZE)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
+        CFI_POP(%rbp)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_coprime)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

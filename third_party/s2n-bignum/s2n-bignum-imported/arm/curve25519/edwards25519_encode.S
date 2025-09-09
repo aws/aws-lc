@@ -23,9 +23,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = p
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_encode)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(edwards25519_encode)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_encode)
         .text
         .balign 4
@@ -44,6 +46,7 @@
 #define xb x6
 
 S2N_BN_SYMBOL(edwards25519_encode):
+        CFI_START
 
 // Load lowest word of x coordinate in xb and full y as [y3;y2;y1;y0].
 
@@ -124,7 +127,9 @@ S2N_BN_SYMBOL(edwards25519_encode):
 
 // Return
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(edwards25519_encode)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -545,6 +545,11 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
 OPENSSL_EXPORT OPENSSL_DEPRECATED point_conversion_form_t
 EC_GROUP_get_point_conversion_form(const EC_GROUP *group);
 
+// EC_KEY_decoded_from_explicit_params returns 1 if the |EC_KEY| was constructed
+// from explicitly encoded parameters to determine the |EC_GROUP|, otherwise
+// returns 0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_KEY_decoded_from_explicit_params(const EC_KEY *key);
+
 
 // EC_METHOD No-ops [Deprecated].
 //
