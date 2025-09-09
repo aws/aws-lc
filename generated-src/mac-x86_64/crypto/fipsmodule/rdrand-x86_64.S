@@ -7,40 +7,11 @@
 .text	
 
 
-
-
-.globl	_CRYPTO_rdrand
-.private_extern _CRYPTO_rdrand
+.globl	_CRYPTO_rdrand_multiple8
+.private_extern _CRYPTO_rdrand_multiple8
 
 .p2align	4
-_CRYPTO_rdrand:
-
-_CET_ENDBR
-	xorq	%rax,%rax
-.byte	72,15,199,242
-	testq	%rdx,%rdx
-	jz	L$err
-	cmpq	$-1,%rdx
-	je	L$err
-
-	adcq	%rax,%rax
-	movq	%rdx,0(%rdi)
-	.byte	0xf3,0xc3
-L$err:
-	xorq	%rax,%rax
-	.byte	0xf3,0xc3
-
-
-
-
-
-
-
-.globl	_CRYPTO_rdrand_multiple8_buf
-.private_extern _CRYPTO_rdrand_multiple8_buf
-
-.p2align	4
-_CRYPTO_rdrand_multiple8_buf:
+_CRYPTO_rdrand_multiple8:
 
 _CET_ENDBR
 	testq	%rsi,%rsi

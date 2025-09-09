@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = p, X2 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg_p256k1)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_optneg_p256k1)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg_p256k1)
         .text
         .balign 4
@@ -29,6 +31,7 @@
 #define c x7
 
 S2N_BN_SYMBOL(bignum_optneg_p256k1):
+        CFI_START
 
 // Load the 4 digits of x and let c be an OR of all the digits
 
@@ -67,7 +70,9 @@ S2N_BN_SYMBOL(bignum_optneg_p256k1):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_optneg_p256k1)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

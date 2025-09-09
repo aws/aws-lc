@@ -1,0 +1,51 @@
+# Compile Noise Source as user space application
+
+CC ?= gcc
+CFLAGS +=-Wextra -Wall -pedantic -fPIC -O0 -DCONFIG_CRYPTO_CPU_JITTERENTROPY_SECURE_MEMORY
+#Hardening
+CFLAGS +=-fwrapv --param ssp-buffer-size=4
+ifneq (Darwin,$(shell uname))
+LDFLAGS +=-Wl,-z,relro,-z,now
+endif
+
+GCCVERSIONFORMAT := $(shell echo `$(CC) -dumpversion | sed 's/\./\n/g' | wc -l`)
+ifeq "$(GCCVERSIONFORMAT)" "3"
+  GCC_GTEQ_490 := $(shell expr `$(CC) -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40900)
+else
+  GCC_GTEQ_490 := $(shell expr `$(CC) -dumpfullversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40900)
+endif
+
+ifeq "$(GCC_GTEQ_490)" "1"
+  CFLAGS += -fstack-protector-strong
+else
+  CFLAGS += -fstack-protector-all
+endif
+
+JENT_DIR := jitterentropy
+JENT_SRCS := $(wildcard $(JENT_DIR)/src/*.c)
+
+NAME := jitterentropy-rng
+C_SRCS := $(JENT_SRCS) jitterentropy-rng.c
+C_OBJS := ${C_SRCS:.c=.o}
+OBJS := $(C_OBJS)
+
+INCLUDE_DIRS := $(JENT_DIR) $(JENT_DIR)/src
+LIBRARY_DIRS :=
+LIBRARIES := rt pthread
+
+CFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
+LDFLAGS += $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir))
+LDFLAGS += $(foreach library,$(LIBRARIES),-l$(library))
+
+.PHONY: all clean distclean
+
+all: $(NAME)
+
+$(NAME): $(OBJS)
+	$(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
+
+clean:
+	@- $(RM) $(NAME)
+	@- $(RM) $(OBJS)
+
+distclean: clean

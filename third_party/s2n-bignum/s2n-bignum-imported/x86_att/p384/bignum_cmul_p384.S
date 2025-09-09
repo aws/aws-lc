@@ -13,10 +13,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmul_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p384)
         .text
 
@@ -45,11 +46,12 @@
 
 
 S2N_BN_SYMBOL(bignum_cmul_p384):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -57,7 +59,7 @@ S2N_BN_SYMBOL(bignum_cmul_p384):
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
-        pushq   %r12
+        CFI_PUSH(%r12)
 
 // Shuffle inputs (since we want multiplier in %rdx)
 
@@ -139,12 +141,14 @@ S2N_BN_SYMBOL(bignum_cmul_p384):
 
 // Return
 
-        popq    %r12
+        CFI_POP(%r12)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cmul_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

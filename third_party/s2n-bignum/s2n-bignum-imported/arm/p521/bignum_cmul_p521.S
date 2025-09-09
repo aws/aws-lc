@@ -11,11 +11,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmul_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p521)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p521_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmul_p521_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p521_alt)
         .text
         .balign 4
@@ -55,6 +58,7 @@
 S2N_BN_SYMBOL(bignum_cmul_p521):
 
 S2N_BN_SYMBOL(bignum_cmul_p521_alt):
+        CFI_START
 
 // First do the multiply, getting [d9; ...; d0], and as this is done
 // accumulate an AND "dd" of digits d7,...,d1 for later use
@@ -141,7 +145,9 @@ S2N_BN_SYMBOL(bignum_cmul_p521_alt):
         stp     d6, d7, [z, #48]
         str     d8, [z, #64]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cmul_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

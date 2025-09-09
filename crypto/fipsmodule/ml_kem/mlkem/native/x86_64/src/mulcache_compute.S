@@ -17,6 +17,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_poly_mulcache_compute_avx2)
 S2N_BN_SYMBOL(mlkem_poly_mulcache_compute_avx2):
 
+        .cfi_startproc
         vmovdqa	(%rdx), %ymm0
         vmovdqa	0x20(%rsi), %ymm2
         vmovdqa	0x60(%rsi), %ymm3
@@ -75,4 +76,5 @@ S2N_BN_SYMBOL(mlkem_poly_mulcache_compute_avx2):
         vmovdqa	%ymm7, 0xc0(%rdi)
         vmovdqa	%ymm8, 0xe0(%rdi)
         retq
+        .cfi_endproc
 

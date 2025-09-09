@@ -179,7 +179,7 @@ static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx,
   out->reset(server2_);
 }
 
-static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to) {
+static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to, bool free_from) {
   // Fetch the bio.
   BIO *rbio = SSL_get_rbio(from->get());
   ASSERT_TRUE(rbio) << "rbio is not set"
@@ -199,7 +199,9 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to) {
   // TODO: test half read and write hold by SSL.
   // TODO: add a test to check error code?
   // e.g. ASSERT_EQ(SSL_get_error(server1_, 0), SSL_ERROR_ZERO_RETURN);
-  SSL_free(from->release());
+  if(free_from) {
+    SSL_free(from->release());
+  }
 }
 
 // TransferSSL performs SSL transfer by
@@ -209,14 +211,14 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to) {
 // 4. If |out| is not nullptr, |out| will hold the decoded SSL.
 //    Else, |in| will get reset to hold the decoded SSL.
 void TransferSSL(UniquePtr<SSL> *in, SSL_CTX *in_ctx,
-                 bssl::UniquePtr<SSL> *out) {
+                 bssl::UniquePtr<SSL> *out, bool free_in) {
   bssl::UniquePtr<SSL> decoded_ssl;
   EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl);
   if (!decoded_ssl) {
     return;
   }
   // Transfer the bio.
-  TransferBIOs(in, decoded_ssl.get());
+  TransferBIOs(in, decoded_ssl.get(), free_in);
   if (out == nullptr) {
     in->reset(decoded_ssl.release());
   } else {

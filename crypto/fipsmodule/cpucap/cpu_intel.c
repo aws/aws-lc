@@ -195,6 +195,31 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
 
 extern uint8_t OPENSSL_cpucap_initialized;
 
+static int amd_rdrand_maybe_apply_restrictions(const uint32_t family,
+                                               const uint32_t model) {
+
+  // Disable RDRAND on AMD families before 0x17 (Zen) due to reported failures
+  // after suspend. https://bugzilla.redhat.com/show_bug.cgi?id=1150286
+  // Also disable for family 0x17, models 0x70–0x7f, due to possible RDRAND
+  // failures there too.
+  if (family < 0x17 || (family == 0x17 && 0x70 <= model && model <= 0x7f)) {
+    return 1;
+  }
+
+  // Zen2 EPYC have prohibitively slow RDRAND implementations. Specifically,
+  // measured on the model EPYC 7R32. Please see q/VxC3AiwXpAjJ.
+  // We assume that slow implementations is universal to all AMD models based
+  // on the Zen2 uarch. Additionally, extend this assumptions to Zen1 based
+  // AMD models as well because Zen1 and Zen2 shares family number.
+  if (family == 0x17) {
+    return 1;
+  }
+
+  // No restrictions.
+  return 0;
+}
+
+
 void OPENSSL_cpuid_setup(void) {
   // Determine the vendor and maximum input value.
   uint32_t eax, ebx, ecx, edx;
@@ -232,12 +257,7 @@ void OPENSSL_cpuid_setup(void) {
       model |= ext_model << 4;
     }
 
-    if (family < 0x17 || (family == 0x17 && 0x70 <= model && model <= 0x7f)) {
-      // Disable RDRAND on AMD families before 0x17 (Zen) due to reported
-      // failures after suspend.
-      // https://bugzilla.redhat.com/show_bug.cgi?id=1150286
-      // Also disable for family 0x17, models 0x70–0x7f, due to possible RDRAND
-      // failures there too.
+    if (amd_rdrand_maybe_apply_restrictions(family, model) != 0) {
       ecx &= ~(1u << 30);
     }
   }

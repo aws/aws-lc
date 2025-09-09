@@ -11,10 +11,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_6_12)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqr_6_12)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_6_12)
         .text
 
@@ -46,23 +47,24 @@
 
 
 S2N_BN_SYMBOL(bignum_sqr_6_12):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
 // Save more registers to play with
 
-        pushq   %rbp
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
 // Set up an initial window [d8;...d1] = [34;05;03;01]
 
@@ -196,18 +198,20 @@ S2N_BN_SYMBOL(bignum_sqr_6_12):
 
 // Restore saved registers and return
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
-        popq    %rbp
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
+        CFI_POP(%rbp)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sqr_6_12)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

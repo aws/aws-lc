@@ -12,11 +12,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = k, X2 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_n384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n384)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n384_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_n384_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n384_alt)
         .text
         .balign 4
@@ -67,11 +70,12 @@
 S2N_BN_SYMBOL(bignum_mod_n384):
 
 S2N_BN_SYMBOL(bignum_mod_n384_alt):
+        CFI_START
 
 // If the input is already <= 5 words long, go to a trivial "copy" path
 
         cmp     k, #6
-        bcc     bignum_mod_n384_short
+        bcc     Lbignum_mod_n384_short
 
 // Otherwise load the top 6 digits (top-down) and reduce k by 6
 
@@ -105,8 +109,8 @@ S2N_BN_SYMBOL(bignum_mod_n384_alt):
 
 // Now do (k-6) iterations of 7->6 word modular reduction
 
-        cbz     k, bignum_mod_n384_writeback
-bignum_mod_n384_loop:
+        cbz     k, Lbignum_mod_n384_writeback
+Lbignum_mod_n384_loop:
 
 // Compute q = min (m5 + 1) (2^64 - 1)
 
@@ -161,20 +165,22 @@ bignum_mod_n384_loop:
         sbc     m5, m4, xzr
         mov     m4, t
 
-        cbnz    k, bignum_mod_n384_loop
+        cbnz    k, Lbignum_mod_n384_loop
 
 // Finally write back [m5;m4;m3;m2;m1;m0] and return
 
-bignum_mod_n384_writeback:
+Lbignum_mod_n384_writeback:
         stp     m0, m1, [z]
         stp     m2, m3, [z, #16]
         stp     m4, m5, [z, #32]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_n384)
 
 // Short case: just copy the input with zero-padding
 
-bignum_mod_n384_short:
+Lbignum_mod_n384_short:
         mov     m0, xzr
         mov     m1, xzr
         mov     m2, xzr
@@ -182,21 +188,21 @@ bignum_mod_n384_short:
         mov     m4, xzr
         mov     m5, xzr
 
-        cbz     k, bignum_mod_n384_writeback
+        cbz     k, Lbignum_mod_n384_writeback
         ldr     m0, [x]
         subs    k, k, #1
-        beq     bignum_mod_n384_writeback
+        beq     Lbignum_mod_n384_writeback
         ldr     m1, [x, #8]
         subs    k, k, #1
-        beq     bignum_mod_n384_writeback
+        beq     Lbignum_mod_n384_writeback
         ldr     m2, [x, #16]
         subs    k, k, #1
-        beq     bignum_mod_n384_writeback
+        beq     Lbignum_mod_n384_writeback
         ldr     m3, [x, #24]
         subs    k, k, #1
-        beq     bignum_mod_n384_writeback
+        beq     Lbignum_mod_n384_writeback
         ldr     m4, [x, #32]
-        b       bignum_mod_n384_writeback
+        b       Lbignum_mod_n384_writeback
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
