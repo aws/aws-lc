@@ -19,9 +19,11 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1, X2 = p2
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(secp256k1_jmixadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(secp256k1_jmixadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(secp256k1_jmixadd)
 
         .text
@@ -55,7 +57,7 @@
 #define z_3 input_z, #(2*NUMSIZE)
 
 // Pointer-offset pairs for temporaries, with some aliasing
-// NSPACE is the total stack needed for these temporaries
+// #NSPACE is the total stack needed for these temporaries
 
 #define zp2 sp, #(NUMSIZE*0)
 #define ww sp, #(NUMSIZE*0)
@@ -77,7 +79,7 @@
 #define xd sp, #(NUMSIZE*5)
 #define resz sp, #(NUMSIZE*5)
 
-#define NSPACE (NUMSIZE*6)
+#define NSPACE NUMSIZE*6
 
 // Corresponds exactly to bignum_mul_p256k1 except for registers and
 // re-use of the pconst register for the constant 4294968273
@@ -401,12 +403,13 @@
         stp     x7, x8, [P0+16]
 
 S2N_BN_SYMBOL(secp256k1_jmixadd):
+        CFI_START
 
 // Save registers and make room on stack for temporary variables
 
-        sub     sp, sp, NSPACE+32
-        stp     x19, x20, [sp, NSPACE]
-        stp     x21, x22, [sp, NSPACE+16]
+        CFI_DEC_SP(NSPACE+32)
+        CFI_STACKSAVE2(x19,x20,NSPACE)
+        CFI_STACKSAVE2(x21,x22,NSPACE+16)
 
 // Move the input arguments to stable place
 
@@ -498,10 +501,12 @@ S2N_BN_SYMBOL(secp256k1_jmixadd):
 
 // Restore stack and return
 
-        ldp     x19, x20, [sp, NSPACE]
-        ldp     x21, x22, [sp, NSPACE+16]
-        add     sp, sp, NSPACE+32
-        ret
+        CFI_STACKLOAD2(x19,x20,NSPACE)
+        CFI_STACKLOAD2(x21,x22,NSPACE+16)
+        CFI_INC_SP((NSPACE+32))
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(secp256k1_jmixadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

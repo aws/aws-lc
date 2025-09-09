@@ -19,9 +19,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = c, X3 = n, X4 = y, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul)
         .text
         .balign 4
@@ -39,6 +41,7 @@
 
 
 S2N_BN_SYMBOL(bignum_cmul):
+        CFI_START
 
 // First clamp the input size n := min(p,n) since we can never need to read
 // past the p'th term of the input to generate p-digit output.
@@ -53,7 +56,7 @@ S2N_BN_SYMBOL(bignum_cmul):
 
         mov     h, xzr
         mov     i, xzr
-        cbz     n, bignum_cmul_tail
+        cbz     n, Lbignum_cmul_tail
 
 // Initialization of the loop: [h,l] = c * x_0
 
@@ -63,12 +66,12 @@ S2N_BN_SYMBOL(bignum_cmul):
         str     l, [z]
         add     i, i, #8
         subs    n, n, #1
-        beq     bignum_cmul_tail
+        beq     Lbignum_cmul_tail
 
 // Main loop (force CF = 0 at the beginning)
 
         adds    xzr, xzr, xzr
-bignum_cmul_loop:
+Lbignum_cmul_loop:
         ldr     a, [x, i]
         mul     l, c, a
         adcs    l, l, h
@@ -76,28 +79,30 @@ bignum_cmul_loop:
         str     l, [z, i]
         add     i, i, #8
         sub     n, n, #1
-        cbnz    n, bignum_cmul_loop
+        cbnz    n, Lbignum_cmul_loop
 
         adc     h, h, xzr
 
-bignum_cmul_tail:
-        cbz     p, bignum_cmul_end
+Lbignum_cmul_tail:
+        cbz     p, Lbignum_cmul_end
         str     h, [z, i]
         mov     h, xzr
         subs    p, p, #1
-        beq     bignum_cmul_end
+        beq     Lbignum_cmul_end
 
-bignum_cmul_tloop:
+Lbignum_cmul_tloop:
         add     i, i, #8
         str     xzr, [z, i]
         sub     p, p, #1
-        cbnz    p, bignum_cmul_tloop
+        cbnz    p, Lbignum_cmul_tloop
 
 // Return the high/carry word
 
-bignum_cmul_end:
+Lbignum_cmul_end:
         mov     x0, h
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cmul)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sub_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sub_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sub_p521)
         .text
         .balign 4
@@ -34,6 +36,7 @@
 
 
 S2N_BN_SYMBOL(bignum_sub_p521):
+        CFI_START
 
 // First just subtract the numbers as [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x - y
 
@@ -80,7 +83,9 @@ S2N_BN_SYMBOL(bignum_sub_p521):
         stp     d6, d7, [z, #48]
         str     d8, [z, #64]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sub_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

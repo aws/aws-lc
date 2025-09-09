@@ -12,9 +12,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n25519_4)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_n25519_4)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n25519_4)
         .text
         .balign 4
@@ -45,6 +47,7 @@
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(bignum_mod_n25519_4):
+        CFI_START
 
 // Load the complicated three words of n_25519.
 // The others are n2 = 0 and n3 = 0x1000000000000000, which
@@ -97,7 +100,9 @@ S2N_BN_SYMBOL(bignum_mod_n25519_4):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_n25519_4)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

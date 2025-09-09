@@ -15,32 +15,35 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
                                         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc_8n)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_emontredc_8n)
                                         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc_8n)
                                         .text
                                         .balign 4
 
 
 S2N_BN_SYMBOL(bignum_emontredc_8n):
-           stp x19, x20, [sp, #-16]!
-           stp x21, x22, [sp, #-16]!
-           stp x23, x24, [sp, #-16]!
-           stp x25, x26, [sp, #-16]!
-           stp x27, x28, [sp, #-16]!
-           sub sp, sp, #32
+        CFI_START
+           CFI_PUSH2(x19,x20)
+           CFI_PUSH2(x21,x22)
+           CFI_PUSH2(x23,x24)
+           CFI_PUSH2(x25,x26)
+           CFI_PUSH2(x27,x28)
+           CFI_DEC_SP(32)
            lsr x0, x0, #2
            mov x26, x0
            subs x12, x0, #1
-           bcc bignum_emontredc_8n_end
+           bcc Lbignum_emontredc_8n_end
 
            stp x3, xzr, [sp]
            stp x26, xzr, [sp, #16]
            mov x28, xzr
            lsl x0, x12, #5
 
-bignum_emontredc_8n_outerloop:
+Lbignum_emontredc_8n_outerloop:
           ldp x3, xzr, [sp]
           ldp x17, x19, [x1]
           ldp x20, x21, [x1, #16]
@@ -299,12 +302,12 @@ usra    out_hi.2d, v2.2d, #32
 #undef out_lo
 #undef out_hi
 
-          cbz x0, bignum_emontredc_8n_madddone
+          cbz x0, Lbignum_emontredc_8n_madddone
           mov x27, x0
           cmp x0, #32
-          bne bignum_emontredc_8n_maddloop_firstitr
+          bne Lbignum_emontredc_8n_maddloop_firstitr
 
-bignum_emontredc_8n_maddloop_x0one:
+Lbignum_emontredc_8n_maddloop_x0one:
                 add     x2, x2, #0x20
                 add     x1, x1, #0x20
                 mul     x17, x4, x8
@@ -445,10 +448,10 @@ bignum_emontredc_8n_maddloop_x0one:
                 stp     x17, x19, [x1]
                 stp     x20, x21, [x1, #16]
                 sub     x27, x27, #0x20
-          b bignum_emontredc_8n_madddone
+          b Lbignum_emontredc_8n_madddone
 
 
-bignum_emontredc_8n_maddloop_firstitr:
+Lbignum_emontredc_8n_maddloop_firstitr:
 
 mov x16, v25.d[0] //umulh x16,x4,x8
 mov x22, v24.d[1] //mul x22, x5, x9
@@ -687,10 +690,10 @@ mov x24, v26.d[1] // lo bits of (x7 * x11)
 
            sub x27, x27, #32
            cmp x27, #32
-           beq bignum_emontredc_8n_maddloop_last
+           beq Lbignum_emontredc_8n_maddloop_last
 
 
-bignum_emontredc_8n_maddloop:
+Lbignum_emontredc_8n_maddloop:
           ldp x8, x9, [x2, #32]
           ldp x10, x11, [x2, #48]
 
@@ -920,10 +923,10 @@ mov x24, v26.d[1] // lo bits of (x7 * x11)
 
            sub x27, x27, #32
            cmp x27, #32
-           bne bignum_emontredc_8n_maddloop
+           bne Lbignum_emontredc_8n_maddloop
 
 
-bignum_emontredc_8n_maddloop_last:
+Lbignum_emontredc_8n_maddloop_last:
           ldp x8, x9, [x2, #32]
           ldp x10, x11, [x2, #48]
 
@@ -1063,7 +1066,7 @@ mov x17, v24.d[0] // lo bits of (x4 * x8)
           stp x20,x21,[x1,#16]
            subs x27, x27, #64
 
-bignum_emontredc_8n_madddone:
+Lbignum_emontredc_8n_madddone:
            ldp x17, x19, [x1, #32]
            ldp x20, x21, [x1, #48]
            ldp x26, xzr, [sp, #16]
@@ -1080,16 +1083,18 @@ bignum_emontredc_8n_madddone:
            add x1, x1, #32
            subs x26, x26, #1
            stp x26, xzr, [sp, #16]
-           bne bignum_emontredc_8n_outerloop
+           bne Lbignum_emontredc_8n_outerloop
            neg x0, x28
 
-bignum_emontredc_8n_end:
-           add sp, sp, #32
+Lbignum_emontredc_8n_end:
+           CFI_INC_SP(32)
 
-           ldp x27, x28, [sp], #16
-           ldp x25, x26, [sp], #16
-           ldp x23, x24, [sp], #16
-           ldp x21, x22, [sp], #16
-           ldp x19, x20, [sp], #16
-           ret
+           CFI_POP2(x27,x28)
+           CFI_POP2(x25,x26)
+           CFI_POP2(x23,x24)
+           CFI_POP2(x21,x22)
+           CFI_POP2(x19,x20)
+           CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_emontredc_8n)
 

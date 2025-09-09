@@ -25,11 +25,13 @@
 // Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p521_jscalarmul)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p521_jscalarmul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p521_jscalarmul)
+
 
         .text
         .balign 4
@@ -55,7 +57,7 @@
 
 #define res (55*NUMSIZE)(%rsp)
 
-#define NSPACE (56*NUMSIZE)
+#define NSPACE 56*NUMSIZE
 
 // Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
 // which doesn't accept repetitions, assembler macros etc.
@@ -73,35 +75,41 @@
         cmovzq  TAB+JACSIZE*(I-1)+64+C*NUMSIZE(%rsp), %r12
 
 S2N_BN_SYMBOL(p521_jscalarmul):
+        CFI_START
         _CET_ENDBR
 
 // The Windows version literally calls the standard ABI version.
 // This simplifies the proofs since subroutine offsets are fixed.
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
-        callq   p521_jscalarmul_standard
-        popq   %rsi
-        popq   %rdi
-        ret
+        CFI_CALL(Lp521_jscalarmul_standard)
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
+        CFI_RET
 
-p521_jscalarmul_standard:
+S2N_BN_SIZE_DIRECTIVE(p521_jscalarmul)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_standard)
+
+Lp521_jscalarmul_standard:
+        CFI_START
 #endif
 
 // Real start of the standard ABI code.
 
-        pushq   %r15
-        pushq   %r14
-        pushq   %r13
-        pushq   %r12
-        pushq   %rbp
-        pushq   %rbx
+        CFI_PUSH(%r15)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%rbx)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Preserve the "res" input argument; others get processed early.
 
@@ -111,7 +119,7 @@ p521_jscalarmul_standard:
 
         movq    %rdx, %rbx
         leaq    SCALARB(%rsp), %rdi
-        callq   p521_jscalarmul_bignum_mod_n521_9
+        CFI_CALL(Lp521_jscalarmul_bignum_mod_n521_9)
 
 // Set the tab[0] table entry to the input point = 1 * P, but also
 // reduce all coordinates modulo p. In principle we assume reduction
@@ -121,15 +129,15 @@ p521_jscalarmul_standard:
 
         leaq    TAB(%rsp), %rdi
         movq    %rbx, %rsi
-        callq   p521_jscalarmul_bignum_mod_p521_9
+        CFI_CALL(Lp521_jscalarmul_bignum_mod_p521_9)
 
         leaq    TAB+NUMSIZE(%rsp), %rdi
         leaq    NUMSIZE(%rbx), %rsi
-        callq   p521_jscalarmul_bignum_mod_p521_9
+        CFI_CALL(Lp521_jscalarmul_bignum_mod_p521_9)
 
         leaq    TAB+2*NUMSIZE(%rsp), %rdi
         leaq    2*NUMSIZE(%rbx), %rsi
-        callq   p521_jscalarmul_bignum_mod_p521_9
+        CFI_CALL(Lp521_jscalarmul_bignum_mod_p521_9)
 
 // If bit 520 of the scalar is set, then negate the scalar mod n_521,
 // i.e. do scalar |-> n_521 - scalar, and also the point to compensate
@@ -231,70 +239,70 @@ p521_jscalarmul_standard:
 
         leaq    TAB+JACSIZE*1(%rsp), %rdi
         leaq    TAB(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*2(%rsp), %rdi
         leaq    TAB+JACSIZE*1(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*3(%rsp), %rdi
         leaq    TAB+JACSIZE*1(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*4(%rsp), %rdi
         leaq    TAB+JACSIZE*3(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*5(%rsp), %rdi
         leaq    TAB+JACSIZE*2(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*6(%rsp), %rdi
         leaq    TAB+JACSIZE*5(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*7(%rsp), %rdi
         leaq    TAB+JACSIZE*3(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*8(%rsp), %rdi
         leaq    TAB+JACSIZE*7(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*9(%rsp), %rdi
         leaq    TAB+JACSIZE*4(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*10(%rsp), %rdi
         leaq    TAB+JACSIZE*9(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*11(%rsp), %rdi
         leaq    TAB+JACSIZE*5(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*12(%rsp), %rdi
         leaq    TAB+JACSIZE*11(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*13(%rsp), %rdi
         leaq    TAB+JACSIZE*6(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    TAB+JACSIZE*14(%rsp), %rdi
         leaq    TAB+JACSIZE*13(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         leaq    TAB+JACSIZE*15(%rsp), %rdi
         leaq    TAB+JACSIZE*7(%rsp), %rsi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
 // Add the recoding constant sum_i(16 * 32^i) to the scalar to allow signed
 // digits. The digits of the constant, in lowest-to-highest order, are as
@@ -458,28 +466,28 @@ p521_jscalarmul_standard:
 
         movl    $520, %ebp
 
-p521_jscalarmul_mainloop:
+Lp521_jscalarmul_mainloop:
         subq    $5, %rbp
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p521_jscalarmul_jdouble
+        CFI_CALL(Lp521_jscalarmul_jdouble)
 
 // Choose the bitfield and adjust it to sign and magnitude
 
@@ -665,10 +673,10 @@ p521_jscalarmul_mainloop:
         leaq    TABENT(%rsp), %rdx
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p521_jscalarmul_jadd
+        CFI_CALL(Lp521_jscalarmul_jadd)
 
         testq   %rbp, %rbp
-        jne     p521_jscalarmul_mainloop
+        jne     Lp521_jscalarmul_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -731,19 +739,28 @@ p521_jscalarmul_mainloop:
 
 // Restore stack and registers and return
 
-        addq    $NSPACE, %rsp
-        popq    %rbx
-        popq    %rbp
-        popq    %r12
-        popq    %r13
-        popq    %r14
-        popq    %r15
-        ret
+        CFI_INC_RSP(NSPACE)
+        CFI_POP(%rbx)
+        CFI_POP(%rbp)
+        CFI_POP(%r12)
+        CFI_POP(%r13)
+        CFI_POP(%r14)
+        CFI_POP(%r15)
+        CFI_RET
+
+#if WINDOWS_ABI
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_standard)
+#else
+S2N_BN_SIZE_DIRECTIVE(p521_jscalarmul)
+#endif
 
 // Local copies of subroutines, complete clones at the moment
 
-p521_jscalarmul_bignum_mod_p521_9:
-        pushq   %rbx
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_bignum_mod_p521_9)
+
+Lp521_jscalarmul_bignum_mod_p521_9:
+        CFI_START
+        CFI_PUSH(%rbx)
         movq    0x40(%rsi), %rax
         movl    $0x1ff, %edx
         andq    %rax, %rdx
@@ -785,10 +802,15 @@ p521_jscalarmul_bignum_mod_p521_9:
         sbbq    $0x0, %rdx
         andq    $0x1ff, %rdx
         movq    %rdx, 0x40(%rdi)
-        popq    %rbx
-        ret
+        CFI_POP(%rbx)
+        CFI_RET
 
-p521_jscalarmul_bignum_mod_n521_9:
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_bignum_mod_p521_9)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_bignum_mod_n521_9)
+
+Lp521_jscalarmul_bignum_mod_n521_9:
+        CFI_START
         movq    0x40(%rsi), %rdx
         movq    $0xfffffffffffffe00, %rax
         orq     %rdx, %rax
@@ -850,57 +872,62 @@ p521_jscalarmul_bignum_mod_n521_9:
         sbbl    %eax, %ecx
         andl    $0x1ff, %ecx
         movq    %rcx, 0x40(%rdi)
-        ret
+        CFI_RET
 
-p521_jscalarmul_jadd:
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0x210, %rsp
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_bignum_mod_n521_9)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_jadd)
+
+Lp521_jscalarmul_jadd:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(528)
         movq    %rdi, 0x1f8(%rsp)
         movq    %rsi, 0x200(%rsp)
         movq    %rdx, 0x208(%rsp)
         movq    0x200(%rsp), %rsi
         leaq    0x90(%rsi), %rsi
         leaq    (%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    0x208(%rsp), %rdi
         leaq    0x90(%rdi), %rsi
         leaq    0x168(%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    0x200(%rsp), %rsi
         movq    0x208(%rsp), %rdi
         leaq    0x48(%rsi), %rdx
         leaq    0x90(%rdi), %rsi
         leaq    0x1b0(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x200(%rsp), %rsi
         movq    0x208(%rsp), %rdi
         leaq    0x48(%rdi), %rdx
         leaq    0x90(%rsi), %rsi
         leaq    0x48(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x208(%rsp), %rdi
         leaq    (%rdi), %rdx
         leaq    (%rsp), %rsi
         leaq    0x90(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x200(%rsp), %rsi
         leaq    (%rsi), %rdx
         leaq    0x168(%rsp), %rsi
         leaq    0x120(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         leaq    0x48(%rsp), %rdx
         leaq    (%rsp), %rsi
         leaq    0x48(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         leaq    0x1b0(%rsp), %rdx
         leaq    0x168(%rsp), %rsi
         leaq    0x1b0(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x90(%rsp), %rax
         subq    0x120(%rsp), %rax
         movq    0x98(%rsp), %rdx
@@ -977,18 +1004,18 @@ p521_jscalarmul_jadd:
         movq    %r14, 0x88(%rsp)
         leaq    0x168(%rsp), %rsi
         leaq    0xd8(%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         leaq    0x48(%rsp), %rsi
         leaq    (%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         leaq    0x120(%rsp), %rdx
         leaq    0xd8(%rsp), %rsi
         leaq    0x120(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         leaq    0x90(%rsp), %rdx
         leaq    0xd8(%rsp), %rsi
         leaq    0x90(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    (%rsp), %rax
         subq    0x120(%rsp), %rax
         movq    0x8(%rsp), %rdx
@@ -1067,7 +1094,7 @@ p521_jscalarmul_jadd:
         leaq    0x90(%rsi), %rdx
         leaq    0x168(%rsp), %rsi
         leaq    0x168(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    (%rsp), %rax
         subq    0x90(%rsp), %rax
         movq    0x8(%rsp), %rdx
@@ -1145,16 +1172,16 @@ p521_jscalarmul_jadd:
         leaq    0x1b0(%rsp), %rdx
         leaq    0xd8(%rsp), %rsi
         leaq    0xd8(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x208(%rsp), %rdi
         leaq    0x90(%rdi), %rdx
         leaq    0x168(%rsp), %rsi
         leaq    0x168(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         leaq    0x120(%rsp), %rdx
         leaq    0x48(%rsp), %rsi
         leaq    0x120(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x120(%rsp), %rax
         subq    0xd8(%rsp), %rax
         movq    0x128(%rsp), %rdx
@@ -1378,33 +1405,38 @@ p521_jscalarmul_jadd:
         movq    %rax, 0xc8(%rdi)
         movq    0x1a8(%rsp), %rax
         movq    %rax, 0xd0(%rdi)
-        addq    $0x210, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_INC_RSP(528)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p521_jscalarmul_jdouble:
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0x208, %rsp
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_jadd)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_jdouble)
+
+Lp521_jscalarmul_jdouble:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(520)
         movq    %rdi, 0x1f8(%rsp)
         movq    %rsi, 0x200(%rsp)
         movq    0x200(%rsp), %rdi
         leaq    0x90(%rdi), %rsi
         leaq    (%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    0x200(%rsp), %rdi
         leaq    0x48(%rdi), %rsi
         leaq    0x48(%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    0x200(%rsp), %rdi
         stc
         movq    (%rdi), %rax
@@ -1487,7 +1519,7 @@ p521_jscalarmul_jdouble:
         leaq    0x120(%rsp), %rdx
         leaq    0x168(%rsp), %rsi
         leaq    0x90(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x200(%rsp), %rdi
         stc
         movq    0x48(%rdi), %rax
@@ -1531,15 +1563,15 @@ p521_jscalarmul_jdouble:
         movq    %r14, 0x1a8(%rsp)
         leaq    0x90(%rsp), %rsi
         leaq    0x1b0(%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    0x200(%rsp), %rdi
         leaq    0x48(%rsp), %rdx
         leaq    (%rdi), %rsi
         leaq    0xd8(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         leaq    0x168(%rsp), %rsi
         leaq    0x120(%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    $0x9, %rdx
         movq    0x1f0(%rsp), %rbx
         xorq    $0x1ff, %rbx
@@ -1678,7 +1710,7 @@ p521_jscalarmul_jdouble:
         movq    %r14, 0x1a8(%rsp)
         leaq    0x48(%rsp), %rsi
         leaq    0x120(%rsp), %rdi
-        callq   p521_jscalarmul_sqr_p521
+        CFI_CALL(Lp521_jscalarmul_sqr_p521)
         movq    0x1f8(%rsp), %rdi
         movq    0x168(%rsp), %rax
         subq    0x48(%rsp), %rax
@@ -1720,7 +1752,7 @@ p521_jscalarmul_jdouble:
         leaq    0x90(%rsp), %rdx
         leaq    0x1b0(%rsp), %rsi
         leaq    0x168(%rsp), %rdi
-        callq   p521_jscalarmul_mul_p521
+        CFI_CALL(Lp521_jscalarmul_mul_p521)
         movq    0x1f8(%rsp), %rdi
         movq    0x118(%rsp), %rbx
         movq    0x110(%rsp), %r15
@@ -1893,17 +1925,22 @@ p521_jscalarmul_jdouble:
         adcq    %rcx, %rbx
         andq    $0x1ff, %rbx
         movq    %rbx, 0x88(%rdi)
-        addq    $0x208, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_INC_RSP(520)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p521_jscalarmul_mul_p521:
-        subq    $0x40, %rsp
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_jdouble)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_mul_p521)
+
+Lp521_jscalarmul_mul_p521:
+        CFI_START
+        CFI_DEC_RSP(64)
         movq    %rdx, %rcx
         xorl    %ebp, %ebp
         movq    (%rcx), %rdx
@@ -2217,11 +2254,16 @@ p521_jscalarmul_mul_p521:
         sbbq    $0x0, %rbp
         andq    $0x1ff, %rbp
         movq    %rbp, 0x40(%rdi)
-        addq    $0x40, %rsp
-        ret
+        CFI_INC_RSP(64)
+        CFI_RET
 
-p521_jscalarmul_sqr_p521:
-        subq    $0x40, %rsp
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_mul_p521)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_sqr_p521)
+
+Lp521_jscalarmul_sqr_p521:
+        CFI_START
+        CFI_DEC_RSP(64)
         xorl    %ebp, %ebp
         movq    (%rsi), %rdx
         mulxq   0x8(%rsi), %r9, %rax
@@ -2453,8 +2495,10 @@ p521_jscalarmul_sqr_p521:
         sbbq    $0x0, %rbp
         andq    $0x1ff, %rbp
         movq    %rbp, 0x40(%rdi)
-        addq    $0x40, %rsp
-        ret
+        CFI_INC_RSP(64)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_sqr_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

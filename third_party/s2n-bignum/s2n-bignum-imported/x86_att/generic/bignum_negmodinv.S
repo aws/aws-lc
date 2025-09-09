@@ -17,10 +17,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_negmodinv)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_negmodinv)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_negmodinv)
         .text
 
@@ -42,23 +43,24 @@
 #define ishort %r8d
 
 S2N_BN_SYMBOL(bignum_negmodinv):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
 #endif
 
-        pushq   %rbx
-        pushq   %r12
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
 
 // If k = 0 do nothing (actually we could have avoiding the pushes and pops)
 
         testq   k, k
-        jz      bignum_negmodinv_end
+        jz      Lbignum_negmodinv_end
 
 // Move the x pointer into its permanent home (%rdx is needed for muls)
 
@@ -101,7 +103,7 @@ S2N_BN_SYMBOL(bignum_negmodinv):
 
         movq    w, (z)
         cmpq    $1, k
-        jz      bignum_negmodinv_end
+        jz      Lbignum_negmodinv_end
 
 // Otherwise compute and write the other digits (1..k-1) of w * x + 1
 
@@ -111,7 +113,7 @@ S2N_BN_SYMBOL(bignum_negmodinv):
         addq    $1, a
         adcq    d, h
         movl    $1, ishort
-bignum_negmodinv_initloop:
+Lbignum_negmodinv_initloop:
         movq    (x,i,8), a
         mulq    w
         addq    h, a
@@ -120,7 +122,7 @@ bignum_negmodinv_initloop:
         movq    d, h
         incq    i
         cmpq    k, i
-        jc      bignum_negmodinv_initloop
+        jc      Lbignum_negmodinv_initloop
 
 // For simpler indexing, z := z + 8 and k := k - 1 per outer iteration
 // Then we can use the same index for x and for z and effective size k.
@@ -134,9 +136,9 @@ bignum_negmodinv_initloop:
 // since we do one outer loop iteration too few.
 
         subq    $2, k
-        jz      bignum_negmodinv_finale
+        jz      Lbignum_negmodinv_finale
 
-bignum_negmodinv_outerloop:
+Lbignum_negmodinv_outerloop:
         addq    $8, z
 
         movq    (z), h
@@ -150,7 +152,7 @@ bignum_negmodinv_outerloop:
         movq    d, h
         movl    $1, ishort
         movq    k, t
- bignum_negmodinv_innerloop:
+Lbignum_negmodinv_innerloop:
         adcq    (z,i,8), h
         sbbq    e, e
         movq    (x,i,8), a
@@ -161,24 +163,26 @@ bignum_negmodinv_outerloop:
         movq    d, h
         incq    i
         decq    t
-        jnz     bignum_negmodinv_innerloop
+        jnz     Lbignum_negmodinv_innerloop
 
         decq    k
-        jnz     bignum_negmodinv_outerloop
+        jnz     Lbignum_negmodinv_outerloop
 
-bignum_negmodinv_finale:
+Lbignum_negmodinv_finale:
         movq    8(z), a
         imulq   w, a
         movq    a, 8(z)
 
-bignum_negmodinv_end:
-        popq    %r12
-        popq    %rbx
+Lbignum_negmodinv_end:
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_negmodinv)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

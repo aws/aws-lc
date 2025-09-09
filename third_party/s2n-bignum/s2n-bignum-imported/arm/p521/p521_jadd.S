@@ -16,10 +16,13 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1, X2 = p2
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p521_jadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p521_jadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p521_jadd)
+
 
         .text
         .balign 4
@@ -49,7 +52,7 @@
 #define z_3 input_z, #(2*NUMSIZE)
 
 // Pointer-offset pairs for temporaries, with some aliasing
-// NSPACE is the total stack needed for these temporaries
+// #NSPACE is the total stack needed for these temporaries
 
 #define z1sq sp, #(NUMSIZE*0)
 #define ww sp, #(NUMSIZE*0)
@@ -77,7 +80,7 @@
 
 #define y1a sp, #(NUMSIZE*7)
 
-#define NSPACE (NUMSIZE*8)
+#define NSPACE NUMSIZE*8
 
 // For the three field operations, we use subroutines not inlining.
 // Call local code very close to bignum_mul_p521 and bignum_sqr_p521
@@ -87,30 +90,31 @@
         add     x0, P0 __LF                        \
         add     x1, P1 __LF                        \
         add     x2, P2 __LF                        \
-        bl      p521_jadd_local_mul_p521
+        CFI_BL(Lp521_jadd_local_mul_p521)
 
 #define sqr_p521(P0,P1)                         \
         add     x0, P0 __LF                        \
         add     x1, P1 __LF                        \
-        bl      p521_jadd_local_sqr_p521
+        CFI_BL(Lp521_jadd_local_sqr_p521)
 
 #define sub_p521(P0,P1,P2)                      \
         add     x0, P0 __LF                        \
         add     x1, P1 __LF                        \
         add     x2, P2 __LF                        \
-        bl      p521_jadd_local_sub_p521
+        CFI_BL(Lp521_jadd_local_sub_p521)
 
 S2N_BN_SYMBOL(p521_jadd):
+        CFI_START
 
 // Save regs and make room on stack for temporary variables
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x26, [sp, #-16]!
-        stp     x27, x28, [sp, #-16]!
-        stp     x29, x30, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x26)
+        CFI_PUSH2(x27,x28)
+        CFI_PUSH2(x29,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Move the input arguments to stable places
 
@@ -337,25 +341,30 @@ S2N_BN_SYMBOL(p521_jadd):
 
 // Restore stack and registers
 
-        add     sp, sp, NSPACE
+        CFI_INC_SP(NSPACE)
 
-        ldp     x29, x30, [sp], 16
-        ldp     x27, x28, [sp], 16
-        ldp     x25, x26, [sp], 16
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_POP2(x29,x30)
+        CFI_POP2(x27,x28)
+        CFI_POP2(x25,x26)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(p521_jadd)
 
 // Local versions of the three field operations, identical to
 // bignum_mul_p521, bignum_sqr_p521 and bignum_sub_p521.
 
-p521_jadd_local_mul_p521:
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x26, [sp, #-16]!
-        sub     sp, sp, #80
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jadd_local_mul_p521)
+
+Lp521_jadd_local_mul_p521:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x26)
+        CFI_DEC_SP(80)
         ldr q6, [x2]
         ldp x10, x17, [x1, #16]
         ldr q4, [x1]
@@ -1020,17 +1029,22 @@ p521_jadd_local_mul_p521:
         adc x10, x3, xzr
         extr x26, x10, x1, #9
         stp x14, x26, [x0, #48]
-        add     sp, sp, #80
-        ldp     x25, x26, [sp], #16
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(80)
+        CFI_POP2(x25,x26)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
 
-p521_jadd_local_sqr_p521:
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
+S2N_BN_SIZE_DIRECTIVE(Lp521_jadd_local_mul_p521)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jadd_local_sqr_p521)
+
+Lp521_jadd_local_sqr_p521:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
         ldr q23, [x1, #32]
         ldp x9, x2, [x1, #32]
         ldr q16, [x1, #32]
@@ -1558,12 +1572,17 @@ p521_jadd_local_sqr_p521:
         adc x1, x12, xzr
         and x1, x1, #0x1ff
         str x1, [x0, #64]
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
 
-p521_jadd_local_sub_p521:
+S2N_BN_SIZE_DIRECTIVE(Lp521_jadd_local_sqr_p521)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jadd_local_sub_p521)
+
+Lp521_jadd_local_sub_p521:
+        CFI_START
         ldp     x5, x6, [x1]
         ldp     x4, x3, [x2]
         subs    x5, x5, x4
@@ -1598,7 +1617,9 @@ p521_jadd_local_sub_p521:
         stp     x9, x10, [x0, #32]
         stp     x11, x12, [x0, #48]
         str     x13, [x0, #64]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lp521_jadd_local_sub_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

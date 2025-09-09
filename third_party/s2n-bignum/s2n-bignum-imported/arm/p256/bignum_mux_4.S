@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = p, X1 = z, X2 = x, X3 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux_4)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mux_4)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux_4)
         .text
         .balign 4
@@ -28,6 +30,7 @@
 
 
 S2N_BN_SYMBOL(bignum_mux_4):
+        CFI_START
 
 cmp     p, #0                    // Set condition codes p = 0
 
@@ -51,7 +54,9 @@ cmp     p, #0                    // Set condition codes p = 0
         csel    a, a, p, ne
         str     a, [z, #24]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mux_4)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

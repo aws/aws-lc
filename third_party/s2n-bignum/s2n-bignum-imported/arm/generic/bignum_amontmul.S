@@ -14,9 +14,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = y, X4 = m
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_amontmul)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_amontmul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_amontmul)
         .text
         .balign 4
@@ -60,10 +62,11 @@
 
 
 S2N_BN_SYMBOL(bignum_amontmul):
+        CFI_START
 
 // If k = 0 the whole operation is trivial
 
-        cbz     k, bignum_amontmul_end
+        cbz     k, Lbignum_amontmul_end
 
 // Compute word-level negated modular inverse w for m == m[0].
 // This is essentially the same as word_negmodinv.
@@ -87,17 +90,17 @@ S2N_BN_SYMBOL(bignum_amontmul):
 // this keeps the code slightly simpler.
 
         mov     i, xzr
-bignum_amontmul_zoop:
+Lbignum_amontmul_zoop:
         str     xzr, [z, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_amontmul_zoop
+        bcc     Lbignum_amontmul_zoop
         mov     c0, xzr
 
 // Outer loop pulling down digits d=x[i], multiplying by y and reducing
 
         mov     i, xzr
-bignum_amontmul_outerloop:
+Lbignum_amontmul_outerloop:
 
 // Multiply-add loop where we always have CF + previous high part h to add in
 // Note that in general we do need yet one more carry in this phase and hence
@@ -106,7 +109,7 @@ bignum_amontmul_outerloop:
         ldr     d, [x, i, lsl #3]
         mov     j, xzr
         adds    h, xzr, xzr
-bignum_amontmul_maddloop:
+Lbignum_amontmul_maddloop:
         ldr     a, [y, j, lsl #3]
         ldr     e, [z, j, lsl #3]
         mul     l, d, a
@@ -117,7 +120,7 @@ bignum_amontmul_maddloop:
         str     e, [z, j, lsl #3]
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_amontmul_maddloop
+        cbnz    t, Lbignum_amontmul_maddloop
         adcs    c0, c0, h
         adc     c1, xzr, xzr
 
@@ -131,8 +134,8 @@ bignum_amontmul_maddloop:
         adds    e, e, l         // Will be zero but want the carry
         mov     j, #1
         sub     t, k, #1
-        cbz     t, bignum_amontmul_montend
-bignum_amontmul_montloop:
+        cbz     t, Lbignum_amontmul_montend
+Lbignum_amontmul_montloop:
         ldr     a, [m, j, lsl #3]
         ldr     e, [z, j, lsl #3]
         mul     l, d, a
@@ -144,8 +147,8 @@ bignum_amontmul_montloop:
         str     e, [z, l, lsl #3]
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_amontmul_montloop
-bignum_amontmul_montend:
+        cbnz    t, Lbignum_amontmul_montloop
+Lbignum_amontmul_montend:
         adcs    h, c0, h
         adc     c0, c1, xzr
         sub     l, j, #1
@@ -155,14 +158,14 @@ bignum_amontmul_montend:
 
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_amontmul_outerloop
+        bcc     Lbignum_amontmul_outerloop
 
 // Now convert carry word, which is always in {0,1}, into a mask
 // and do a masked subtraction of m for the final almost-Montgomery result.
 
         neg     c0, c0
         subs    j, xzr, xzr
-bignum_amontmul_corrloop:
+Lbignum_amontmul_corrloop:
         ldr     a, [z, j, lsl #3]
         ldr     e, [m, j, lsl #3]
         and     e, e, c0
@@ -170,10 +173,12 @@ bignum_amontmul_corrloop:
         str     a, [z, j, lsl #3]
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_amontmul_corrloop
+        cbnz    t, Lbignum_amontmul_corrloop
 
-bignum_amontmul_end:
-        ret
+Lbignum_amontmul_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_amontmul)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

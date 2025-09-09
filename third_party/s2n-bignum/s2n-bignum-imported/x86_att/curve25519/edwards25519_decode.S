@@ -26,11 +26,14 @@
 // Standard x86-64 ABI: RDI = z, RSI = c
 // Microsoft x64 ABI:   RCX = z, RDX = c
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_decode)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(edwards25519_decode)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_decode)
+
+
         .text
 
 // Size in bytes of a 64-bit word
@@ -52,7 +55,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (32*N)
+#define NSPACE 32*N
 
 // Corrupted versions when stack is down 8 more
 
@@ -69,34 +72,40 @@
 #define Q8 (25*N)
 
 S2N_BN_SYMBOL(edwards25519_decode):
+        CFI_START
         _CET_ENDBR
 
 // In this case the Windows form literally makes a subroutine call.
 // This avoids hassle arising from subroutine offsets
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
-        callq   edwards25519_decode_standard
-        popq    %rsi
-        popq    %rdi
-        ret
+        CFI_CALL(Ledwards25519_decode_standard)
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
+        CFI_RET
 
-edwards25519_decode_standard:
+S2N_BN_SIZE_DIRECTIVE(edwards25519_decode)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Ledwards25519_decode_standard)
+
+Ledwards25519_decode_standard:
+        CFI_START
 #endif
 
 // Save registers and make room for temporaries
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite %rdi later
 
@@ -133,7 +142,7 @@ edwards25519_decode_standard:
         leaq    V(%rsp), %rdi
         movq    $1, %rsi
         leaq    Y(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
         movq    V(%rsp), %rax
         subq    $20, %rax
         movq    V+8(%rsp), %rbx
@@ -159,7 +168,7 @@ edwards25519_decode_standard:
         leaq    V(%rsp), %rdi
         leaq    W(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
         movq    V(%rsp), %rax
         addq    $1, %rax
         movq    V+8(%rsp), %rbx
@@ -176,7 +185,7 @@ edwards25519_decode_standard:
         leaq    W(%rsp), %rdi
         leaq    U(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
 // Get s = w^{252-3} as a candidate inverse square root 1/sqrt(w).
 // This power tower computation is the same as bignum_invsqrt_p25519
@@ -184,112 +193,112 @@ edwards25519_decode_standard:
         leaq    T(%rsp), %rdi
         movq    $1, %rsi
         leaq    W(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    T(%rsp), %rsi
         leaq    W(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $2, %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $1, %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    V(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    W(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $5, %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $10, %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $5, %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    V(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $25, %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $50, %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $25, %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    V(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $125, %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    V(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
         leaq    S(%rsp), %rdi
         movq    $2, %rsi
         leaq    V(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    S(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    W(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
 // Compute v' = s^2 * w to discriminate whether the square root sqrt(u/v)
 // exists, in which case we should get 0, 1 or -1.
@@ -297,12 +306,12 @@ edwards25519_decode_standard:
         leaq    V(%rsp), %rdi
         movq    $1, %rsi
         leaq    S(%rsp), %rdx
-        callq   edwards25519_decode_nsqr_p25519
+        CFI_CALL(Ledwards25519_decode_nsqr_p25519)
 
         leaq    V(%rsp), %rdi
         leaq    V(%rsp), %rsi
         leaq    W(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
 // Get the two candidates for sqrt(u / v), one being s = u * w^{252-3}
 // and the other being t = s * j_25519 where j_25519 = sqrt(-1).
@@ -310,7 +319,7 @@ edwards25519_decode_standard:
         leaq    S(%rsp), %rdi
         leaq    U(%rsp), %rsi
         leaq    S(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
         movq    $0xc4ee1b274a0ea0b0, %rax
         movq    %rax, T(%rsp)
         movq    $0x2f431806ad2fe478, %rax
@@ -322,7 +331,7 @@ edwards25519_decode_standard:
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   edwards25519_decode_mul_p25519
+        CFI_CALL(Ledwards25519_decode_mul_p25519)
 
 // %rax = 0 <=> s^2 * w = 0 or 1
 
@@ -439,21 +448,30 @@ edwards25519_decode_standard:
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
+
+#if WINDOWS_ABI
+S2N_BN_SIZE_DIRECTIVE(Ledwards25519_decode_standard)
+#else
+S2N_BN_SIZE_DIRECTIVE(edwards25519_decode)
+#endif
 
 // *************************************************************
 // Local z = x * y
 // *************************************************************
 
-edwards25519_decode_mul_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Ledwards25519_decode_mul_p25519)
+
+Ledwards25519_decode_mul_p25519:
+        CFI_START
         movq    %rdx, %rcx
         xorl    %ebp, %ebp
         movq    (%rcx), %rdx
@@ -544,13 +562,18 @@ edwards25519_decode_mul_p25519:
         movq    %r9, 0x8(%rdi)
         movq    %r10, 0x10(%rdi)
         movq    %r11, 0x18(%rdi)
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Ledwards25519_decode_mul_p25519)
 
 // *************************************************************
 // Local z = 2^n * x
 // *************************************************************
 
-edwards25519_decode_nsqr_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Ledwards25519_decode_nsqr_p25519)
+
+Ledwards25519_decode_nsqr_p25519:
+        CFI_START
 
 // Copy input argument into q
 
@@ -566,7 +589,7 @@ edwards25519_decode_nsqr_p25519:
 // Main squaring loop, accumulating in u consistently  and
 // only ensuring the intermediates are < 2 * p_25519 = 2^256 - 38
 
-edwards25519_decode_loop:
+Ledwards25519_decode_loop:
         movq   Q8(%rsp), %rdx
         mulxq  %rdx, %r8, %r15
         mulxq  Q8+0x8(%rsp), %r9, %r10
@@ -639,7 +662,7 @@ edwards25519_decode_loop:
 // Loop as applicable
 
         decq    %rsi
-        jnz     edwards25519_decode_loop
+        jnz     Ledwards25519_decode_loop
 
 // We know the intermediate result x < 2^256 - 38, and now we do strict
 // modular reduction mod 2^255 - 19. Note x < 2^255 - 19 <=> x + 19 < 2^255
@@ -664,7 +687,9 @@ edwards25519_decode_loop:
         movq    %rbx, 8(%rdi)
         movq    %rcx, 16(%rdi)
         movq    %rdx, 24(%rdi)
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Ledwards25519_decode_nsqr_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

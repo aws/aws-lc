@@ -22,10 +22,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = p, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optsubadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_optsubadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optsubadd)
         .text
 
@@ -43,11 +44,12 @@
 
 
 S2N_BN_SYMBOL(bignum_optsubadd):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -62,7 +64,7 @@ S2N_BN_SYMBOL(bignum_optsubadd):
 // If k = 0 do nothing
 
         testq   k, k
-        jz      bignum_optsubadd_end
+        jz      Lbignum_optsubadd_end
 
 // Turn the input p into two bitmasks, m indicating to use the y input at
 // all (same register as p) and q indicating a sign-flip
@@ -80,7 +82,7 @@ S2N_BN_SYMBOL(bignum_optsubadd):
 // Now go round the loop for i=0...k-1, saving the carry in c each iteration
 
         xorq    i, i
-bignum_optsubadd_loop:
+Lbignum_optsubadd_loop:
         movq    (y,i,8), a
         xorq    q, a
         andq    m, a
@@ -90,19 +92,21 @@ bignum_optsubadd_loop:
         movq    a, (z,i,8)
         incq    i
         cmpq    k, i
-        jc      bignum_optsubadd_loop
+        jc      Lbignum_optsubadd_loop
 
 // Return carry flag, fixing up inversion for negative case
 
         xorq    q, %rax
         negq    %rax
 
-bignum_optsubadd_end:
+Lbignum_optsubadd_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_optsubadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

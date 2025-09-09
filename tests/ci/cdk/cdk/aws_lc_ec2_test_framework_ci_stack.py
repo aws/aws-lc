@@ -168,6 +168,9 @@ class AwsLcEC2TestingCIStack(AwsLcBaseCiStack):
                 "EC2_VPC_ID": codebuild.BuildEnvironmentVariable(value=vpc.vpc_id),
             },
         )
+        cfn_project = project.node.default_child
+        cfn_project.add_property_override("Triggers.PullRequestBuildPolicy", self.pull_request_policy)
+
         project.enable_batch_builds()
 
         PruneStaleGitHubBuilds(

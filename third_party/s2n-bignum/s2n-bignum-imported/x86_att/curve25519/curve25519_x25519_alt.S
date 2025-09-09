@@ -28,12 +28,14 @@
 // Standard x86-64 ABI: RDI = res, RSI = scalar, RDX = point
 // Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519_alt)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519_byte_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519_byte_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519_byte_alt)
         .text
 
@@ -88,7 +90,7 @@
 // This includes space for the 3 other variables above
 // and rounds up to a multiple of 32
 
-#define NSPACE (13*NUMSIZE)
+#define NSPACE 13*NUMSIZE
 
 // Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
 // trivially different from a pure function call to that subroutine.
@@ -758,11 +760,12 @@
 
 S2N_BN_SYMBOL(curve25519_x25519_alt):
 S2N_BN_SYMBOL(curve25519_x25519_byte_alt):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -770,13 +773,13 @@ S2N_BN_SYMBOL(curve25519_x25519_byte_alt):
 
 // Save registers, make room for temps, preserve input arguments.
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $NSPACE, %rsp
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(NSPACE)
 
 // Move the output pointer to a stable place
 
@@ -845,7 +848,7 @@ S2N_BN_SYMBOL(curve25519_x25519_byte_alt):
         movl    $253, %eax
         movq    %rax, i
 
-curve25519_x25519_alt_scalarloop:
+Lcurve25519_x25519_alt_scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 
@@ -915,7 +918,7 @@ curve25519_x25519_alt_scalarloop:
         subq    $1, %rax
         movq    %rax, i
         cmpq    $3, %rax
-        jnc     curve25519_x25519_alt_scalarloop
+        jnc     Lcurve25519_x25519_alt_scalarloop
 
 // Multiplex directly into (xn,zn) then do three pure doubling steps;
 // this accounts for the implicit zeroing of the three lowest bits
@@ -1014,8 +1017,8 @@ curve25519_x25519_alt_scalarloop:
         movq    %rax, 0x78(%rsp)
         movq    $0xa,  0x90(%rsp)
         movq    $0x1,  0x98(%rsp)
-        jmp     curve25519_x25519_alt_midloop
-curve25519_x25519_alt_inverseloop:
+        jmp     Lcurve25519_x25519_alt_midloop
+Lcurve25519_x25519_alt_inverseloop:
         movq    %r8, %r9
         sarq    $0x3f, %r9
         xorq    %r9, %r8
@@ -1306,7 +1309,7 @@ curve25519_x25519_alt_inverseloop:
         shlq    $0x3f, %rax
         addq    %rax, %rsi
         movq    %rsi, 0x78(%rsp)
-curve25519_x25519_alt_midloop:
+Lcurve25519_x25519_alt_midloop:
         movq    0x98(%rsp), %rsi
         movq    (%rsp), %rdx
         movq    0x20(%rsp), %rcx
@@ -2207,7 +2210,7 @@ curve25519_x25519_alt_midloop:
         leaq    (%rax,%rdx), %r12
         movq    %rsi, 0x98(%rsp)
         decq     0x90(%rsp)
-        jne     curve25519_x25519_alt_inverseloop
+        jne     Lcurve25519_x25519_alt_inverseloop
         movq    (%rsp), %rax
         movq    0x20(%rsp), %rcx
         imulq   %r8, %rax
@@ -2323,20 +2326,23 @@ curve25519_x25519_alt_midloop:
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519_alt)
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519_byte_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

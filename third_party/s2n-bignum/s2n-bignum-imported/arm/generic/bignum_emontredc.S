@@ -20,9 +20,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_emontredc)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc)
         .text
         .balign 4
@@ -49,16 +51,17 @@
 
 
 S2N_BN_SYMBOL(bignum_emontredc):
+        CFI_START
 
 // If k = 0 the whole operation is trivial; note we also get a return of c = 0
 
-        cbz     k, bignum_emontredc_end
+        cbz     k, Lbignum_emontredc_end
 
 // Initialize top carry to zero, and launch into the outer loop
 
         mov     c, xzr
         mov     i, xzr
-bignum_emontredc_outerloop:
+Lbignum_emontredc_outerloop:
 
         ldr     e, [z]
         mul     d, e, w
@@ -69,8 +72,8 @@ bignum_emontredc_outerloop:
         adds    xzr, e, l       // Will be zero but want the carry
         mov     j, #1
         sub     a, k, #1
-        cbz     a, bignum_emontredc_montend
-bignum_emontredc_montloop:
+        cbz     a, Lbignum_emontredc_montend
+Lbignum_emontredc_montloop:
         ldr     a, [m, j, lsl #3]
         ldr     e, [z, j, lsl #3]
         mul     l, d, a
@@ -81,8 +84,8 @@ bignum_emontredc_montloop:
         str     e, [z, j, lsl #3]
         add     j, j, #1
         sub     a, j, k
-        cbnz    a, bignum_emontredc_montloop
-bignum_emontredc_montend:
+        cbnz    a, Lbignum_emontredc_montloop
+Lbignum_emontredc_montend:
         adcs    h, h, c
         adc     c, xzr, xzr
         ldr     a, [z, k, lsl #3]
@@ -95,14 +98,16 @@ bignum_emontredc_montend:
         add     z, z, #8         // For simple indexing, z pointer moves
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_emontredc_outerloop
+        bcc     Lbignum_emontredc_outerloop
 
 // Return c in X0
 
         mov     x0, c
 
-bignum_emontredc_end:
-        ret
+Lbignum_emontredc_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_emontredc)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

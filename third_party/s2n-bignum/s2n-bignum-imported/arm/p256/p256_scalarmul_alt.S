@@ -18,10 +18,13 @@
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p256_scalarmul_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p256_scalarmul_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p256_scalarmul_alt)
+
 
         .text
         .balign 4
@@ -50,7 +53,7 @@
 #define z2 sp, #(7*NUMSIZE)
 #define z3 sp, #(8*NUMSIZE)
 
-#define NSPACE #(31*NUMSIZE)
+#define NSPACE 31*NUMSIZE
 
 // Loading large constants
 
@@ -61,10 +64,11 @@
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(p256_scalarmul_alt):
+        CFI_START
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x30, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Preserve the "res" and "point" input arguments. We load and process the
 // scalar immediately so we don't bother preserving that input argument.
@@ -129,11 +133,11 @@ S2N_BN_SYMBOL(p256_scalarmul_alt):
 
         add     x0, tab
         mov     x1, point
-        bl      p256_scalarmul_alt_local_tomont_p256
+        CFI_BL(Lp256_scalarmul_alt_local_tomont_p256)
 
         add     x1, point, #32
         add     x0, tab+32
-        bl      p256_scalarmul_alt_local_tomont_p256
+        CFI_BL(Lp256_scalarmul_alt_local_tomont_p256)
 
         mov     x0, #0x0000000000000001
         mov     x1, #0xffffffff00000000
@@ -168,34 +172,34 @@ S2N_BN_SYMBOL(p256_scalarmul_alt):
 
         add     x0, tab+96*1
         add     x1, tab
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         add     x0, tab+96*2
         add     x1, tab+96*1
         add     x2, tab
-        bl      p256_scalarmul_alt_local_p256_montjmixadd
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
         add     x0, tab+96*3
         add     x1, tab+96*1
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         add     x0, tab+96*4
         add     x1, tab+96*3
         add     x2, tab
-        bl      p256_scalarmul_alt_local_p256_montjmixadd
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
         add     x0, tab+96*5
         add     x1, tab+96*2
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         add     x0, tab+96*6
         add     x1, tab+96*5
         add     x2, tab
-        bl      p256_scalarmul_alt_local_p256_montjmixadd
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
         add     x0, tab+96*7
         add     x1, tab+96*3
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
 // Initialize the accumulator as a table entry for top 4 bits (unrecoded)
 
@@ -251,24 +255,24 @@ S2N_BN_SYMBOL(p256_scalarmul_alt):
 
 // Main loop over size-4 bitfields: double 4 times then add signed digit
 
-p256_scalarmul_alt_loop:
+Lp256_scalarmul_alt_loop:
         sub     j, j, #4
 
         add     x0, acc
         add     x1, acc
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p256_scalarmul_alt_local_p256_montjdouble
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         lsr     x2, j, #6
         ldr     x14, [sp, x2, lsl #3]   // Exploits scalarb = sp exactly
@@ -346,9 +350,9 @@ p256_scalarmul_alt_loop:
         add     x0, acc
         add     x1, acc
         add     x2, tabent
-        bl      p256_scalarmul_alt_local_p256_montjadd
+        CFI_BL(Lp256_scalarmul_alt_local_p256_montjadd)
 
-        cbnz    j, p256_scalarmul_alt_loop
+        cbnz    j, Lp256_scalarmul_alt_loop
 
 // That's the end of the main loop, and we just need to translate
 // back from the Jacobian representation to affine. First of all,
@@ -356,48 +360,53 @@ p256_scalarmul_alt_loop:
 
         add     x0, z2
         add     x1, acc+64
-        bl      p256_scalarmul_alt_local_montsqr_p256
+        CFI_BL(Lp256_scalarmul_alt_local_montsqr_p256)
 
         add     x0, z3
         add     x2, z2
         add     x1, acc+64
-        bl      p256_scalarmul_alt_local_montmul_p256
+        CFI_BL(Lp256_scalarmul_alt_local_montmul_p256)
 
         add     x0, z2
         add     x1, z3
-        bl      p256_scalarmul_alt_local_demont_p256
+        CFI_BL(Lp256_scalarmul_alt_local_demont_p256)
 
         add     x0, z3
         add     x1, z2
-        bl      p256_scalarmul_alt_local_inv_p256
+        CFI_BL(Lp256_scalarmul_alt_local_inv_p256)
 
         add     x0, z2
         add     x2, z3
         add     x1, acc+64
-        bl      p256_scalarmul_alt_local_montmul_p256
+        CFI_BL(Lp256_scalarmul_alt_local_montmul_p256)
 
 // Convert back from Jacobian (X,Y,Z) |-> (X/Z^2, Y/Z^3)
 
         add     x1, acc
         add     x2, z2
         mov     x0, res
-        bl      p256_scalarmul_alt_local_montmul_p256
+        CFI_BL(Lp256_scalarmul_alt_local_montmul_p256)
 
         add     x0, res, #32
         add     x1, acc+32
         add     x2, z3
-        bl      p256_scalarmul_alt_local_montmul_p256
+        CFI_BL(Lp256_scalarmul_alt_local_montmul_p256)
 
 // Restore stack and registers and return
 
-        add     sp, sp, NSPACE
-        ldp     x21, x30, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x21,x30)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(p256_scalarmul_alt)
 
 // Local copies of subroutines, complete clones at the moment
 
-p256_scalarmul_alt_local_demont_p256:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_demont_p256)
+
+Lp256_scalarmul_alt_local_demont_p256:
+        CFI_START
         ldp     x2, x3, [x1]
         ldp     x4, x5, [x1, #16]
         lsl     x7, x2, #32
@@ -434,13 +443,18 @@ p256_scalarmul_alt_local_demont_p256:
         adc     x5, x5, xzr
         stp     x2, x3, [x0]
         stp     x4, x5, [x0, #16]
-        ret
+        CFI_RET
 
-p256_scalarmul_alt_local_inv_p256:
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        sub     sp, sp, #0xa0
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_demont_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_inv_p256)
+
+Lp256_scalarmul_alt_local_inv_p256:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_DEC_SP(160)
         mov     x20, x0
         mov     x10, #0xffffffffffffffff
         mov     x11, #0xffffffff
@@ -468,8 +482,8 @@ p256_scalarmul_alt_local_inv_p256:
         stp     xzr, xzr, [sp, #144]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       p256_scalarmul_alt_inv_midloop
-p256_scalarmul_alt_inv_loop:
+        b       Lp256_scalarmul_alt_inv_midloop
+Lp256_scalarmul_alt_inv_loop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -774,7 +788,7 @@ p256_scalarmul_alt_inv_loop:
         sbc     x5, x5, x10
         stp     x1, x3, [sp, #128]
         stp     x2, x5, [sp, #144]
-p256_scalarmul_alt_inv_midloop:
+Lp256_scalarmul_alt_inv_midloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #48]
@@ -1385,7 +1399,7 @@ p256_scalarmul_alt_inv_midloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        b.ne    p256_scalarmul_alt_inv_loop
+        b.ne    Lp256_scalarmul_alt_inv_loop
         ldr     x0, [sp]
         ldr     x1, [sp, #48]
         mul     x0, x0, x10
@@ -1507,13 +1521,18 @@ p256_scalarmul_alt_inv_midloop:
         csel    x13, x3, x13, cc
         stp     x10, x11, [x20]
         stp     x12, x13, [x20, #16]
-        add     sp, sp, #0xa0
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(160)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
 
-p256_scalarmul_alt_local_montmul_p256:
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_inv_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_montmul_p256)
+
+Lp256_scalarmul_alt_local_montmul_p256:
+        CFI_START
         ldp     x3, x4, [x1]
         ldp     x7, x8, [x2]
         mul     x12, x3, x7
@@ -1627,9 +1646,14 @@ p256_scalarmul_alt_local_montmul_p256:
         csel    x15, x15, x5, cc
         stp     x12, x13, [x0]
         stp     x14, x15, [x0, #16]
-        ret
+        CFI_RET
 
-p256_scalarmul_alt_local_montsqr_p256:
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_montmul_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_montsqr_p256)
+
+Lp256_scalarmul_alt_local_montsqr_p256:
+        CFI_START
         ldp     x2, x3, [x1]
         mul     x9, x2, x3
         umulh   x10, x2, x3
@@ -1721,9 +1745,14 @@ p256_scalarmul_alt_local_montsqr_p256:
         csel    x11, x11, x7, cc
         stp     x8, x9, [x0]
         stp     x10, x11, [x0, #16]
-        ret
+        CFI_RET
 
-p256_scalarmul_alt_local_tomont_p256:
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_montsqr_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_tomont_p256)
+
+Lp256_scalarmul_alt_local_tomont_p256:
+        CFI_START
         ldp     x2, x3, [x1]
         ldp     x4, x5, [x1, #16]
         mov     x1, #0xffffffffffffffff
@@ -1847,10 +1876,15 @@ p256_scalarmul_alt_local_tomont_p256:
         adc     x6, x6, x7
         stp     x3, x4, [x0]
         stp     x5, x6, [x0, #16]
-        ret
+        CFI_RET
 
-p256_scalarmul_alt_local_p256_montjadd:
-        sub     sp, sp, #0xe0
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_tomont_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_p256_montjadd)
+
+Lp256_scalarmul_alt_local_p256_montjadd:
+        CFI_START
+        CFI_DEC_SP(224)
         mov     x15, x0
         mov     x16, x1
         mov     x17, x2
@@ -3776,11 +3810,16 @@ p256_scalarmul_alt_local_p256_montjadd:
         stp     x6, x7, [x15, #48]
         stp     x8, x9, [x15, #64]
         stp     x10, x11, [x15, #80]
-        add     sp, sp, #0xe0
-        ret
+        CFI_INC_SP(224)
+        CFI_RET
 
-p256_scalarmul_alt_local_p256_montjdouble:
-        sub     sp, sp, #0xc0
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_p256_montjadd)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_p256_montjdouble)
+
+Lp256_scalarmul_alt_local_p256_montjdouble:
+        CFI_START
+        CFI_DEC_SP(192)
         mov     x15, x0
         mov     x16, x1
         ldp     x2, x3, [x16, #64]
@@ -4817,11 +4856,16 @@ p256_scalarmul_alt_local_p256_montjdouble:
         adc     x6, x6, x10
         stp     x3, x4, [x15, #32]
         stp     x5, x6, [x15, #48]
-        add     sp, sp, #0xc0
-        ret
+        CFI_INC_SP(192)
+        CFI_RET
 
-p256_scalarmul_alt_local_p256_montjmixadd:
-        sub     sp, sp, #0xc0
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_p256_montjdouble)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_local_p256_montjmixadd)
+
+Lp256_scalarmul_alt_local_p256_montjmixadd:
+        CFI_START
+        CFI_DEC_SP(192)
         mov     x15, x0
         mov     x16, x1
         mov     x17, x2
@@ -6181,9 +6225,10 @@ p256_scalarmul_alt_local_p256_montjmixadd:
         stp     x6, x7, [x15, #48]
         stp     x8, x9, [x15, #64]
         stp     x10, x11, [x15, #80]
-        add     sp, sp, #0xc0
-        ret
+        CFI_INC_SP(192)
+        CFI_RET
 
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

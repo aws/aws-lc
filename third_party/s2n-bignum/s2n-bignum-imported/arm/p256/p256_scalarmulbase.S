@@ -25,10 +25,13 @@
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = blocksize, X3 = table
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p256_scalarmulbase)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p256_scalarmulbase)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p256_scalarmulbase)
+
 
         .text
         .balign 4
@@ -59,7 +62,7 @@
 #define z2 sp, #(4*NUMSIZE)
 #define z3 sp, #(5*NUMSIZE)
 
-#define NSPACE #(9*NUMSIZE)
+#define NSPACE 9*NUMSIZE
 
 // Loading large constants
 
@@ -70,12 +73,13 @@
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(p256_scalarmulbase):
+        CFI_START
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x30, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Preserve the input arguments except the scalar, since that gets absorbed
 // immediately. The "table" value subsequently gets shifted up each iteration
@@ -126,7 +130,7 @@ S2N_BN_SYMBOL(p256_scalarmulbase):
 
         mov     i, xzr
 
-p256_scalarmulbase_loop:
+Lp256_scalarmulbase_loop:
 
 // The next raw bitfield is bf = bitfield(blocksize * i,blocksize) + cf,
 // adding in the deferred carry cf. We then shift the whole scalar right
@@ -183,7 +187,7 @@ p256_scalarmulbase_loop:
         lsr     x16, x16, #1
         mov     x17, j
 
-p256_scalarmulbase_tabloop:
+Lp256_scalarmulbase_tabloop:
         ldp     x8, x9, [table]
         ldp     x10, x11, [table, #16]
         ldp     x12, x13, [table, #32]
@@ -202,7 +206,7 @@ p256_scalarmulbase_tabloop:
         add     table, table, #64
 
         sub     x16, x16, #1
-        cbnz    x16, p256_scalarmulbase_tabloop
+        cbnz    x16, Lp256_scalarmulbase_tabloop
 
 // Before storing back, optionally negate the y coordinate of the table entry
 
@@ -231,7 +235,7 @@ p256_scalarmulbase_tabloop:
         add     x0, nacc
         add     x1, acc
         add     x2, tabent
-        bl      p256_scalarmulbase_local_p256_montjmixadd
+        CFI_BL(Lp256_scalarmulbase_local_p256_montjmixadd)
 
 // However, only commit that update to the accumulator if j is nonzero,
 // because the mixed addition function does not handle this case directly,
@@ -280,7 +284,7 @@ p256_scalarmulbase_tabloop:
         add     i, i, #1
         mul     x0, blocksize, i
         cmp     x0, #257
-        bcc     p256_scalarmulbase_loop
+        bcc     Lp256_scalarmulbase_loop
 
 // That's the end of the main loop, and we just need to translate
 // back from the Jacobian representation to affine. First of all,
@@ -288,50 +292,55 @@ p256_scalarmulbase_tabloop:
 
         add     x0, z2
         add     x1, acc+64
-        bl      p256_scalarmulbase_local_montsqr_p256
+        CFI_BL(Lp256_scalarmulbase_local_montsqr_p256)
 
         add     x0, z3
         add     x1, acc+64
         add     x2, z2
-        bl      p256_scalarmulbase_local_montmul_p256
+        CFI_BL(Lp256_scalarmulbase_local_montmul_p256)
 
         add     x0, z2
         add     x1, z3
-        bl      p256_scalarmulbase_local_demont_p256
+        CFI_BL(Lp256_scalarmulbase_local_demont_p256)
 
         add     x0, z3
         add     x1, z2
-        bl      p256_scalarmulbase_local_inv_p256
+        CFI_BL(Lp256_scalarmulbase_local_inv_p256)
 
         add     x0, z2
         add     x1, acc+64
         add     x2, z3
-        bl      p256_scalarmulbase_local_montmul_p256
+        CFI_BL(Lp256_scalarmulbase_local_montmul_p256)
 
 // Convert back from Jacobian (X,Y,Z) |-> (X/Z^2, Y/Z^3)
 
         mov     x0, res
         add     x1, acc
         add     x2, z2
-        bl      p256_scalarmulbase_local_montmul_p256
+        CFI_BL(Lp256_scalarmulbase_local_montmul_p256)
 
         add     x0, res, #32
         add     x1, acc+32
         add     x2, z3
-        bl      p256_scalarmulbase_local_montmul_p256
+        CFI_BL(Lp256_scalarmulbase_local_montmul_p256)
 
 // Restore stack and registers and return
 
-        add     sp, sp, NSPACE
-        ldp     x25, x30, [sp], 16
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x25,x30)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(p256_scalarmulbase)
 
 // Local copies of subroutines, complete clones at the moment
 
-p256_scalarmulbase_local_demont_p256:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmulbase_local_demont_p256)
+
+Lp256_scalarmulbase_local_demont_p256:
+        CFI_START
         ldp     x2, x3, [x1]
         ldp     x4, x5, [x1, #16]
         lsl     x7, x2, #32
@@ -368,13 +377,18 @@ p256_scalarmulbase_local_demont_p256:
         adc     x5, x5, xzr
         stp     x2, x3, [x0]
         stp     x4, x5, [x0, #16]
-        ret
+        CFI_RET
 
-p256_scalarmulbase_local_inv_p256:
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        sub     sp, sp, #0xa0
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmulbase_local_demont_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmulbase_local_inv_p256)
+
+Lp256_scalarmulbase_local_inv_p256:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_DEC_SP(160)
         mov     x20, x0
         mov     x10, #0xffffffffffffffff
         mov     x11, #0xffffffff
@@ -402,8 +416,8 @@ p256_scalarmulbase_local_inv_p256:
         stp     xzr, xzr, [sp, #144]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       p256_scalarmulbase_inv_midloop
-p256_scalarmulbase_inv_loop:
+        b       Lp256_scalarmulbase_inv_midloop
+Lp256_scalarmulbase_inv_loop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -708,7 +722,7 @@ p256_scalarmulbase_inv_loop:
         sbc     x5, x5, x10
         stp     x1, x3, [sp, #128]
         stp     x2, x5, [sp, #144]
-p256_scalarmulbase_inv_midloop:
+Lp256_scalarmulbase_inv_midloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #48]
@@ -1319,7 +1333,7 @@ p256_scalarmulbase_inv_midloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        bne     p256_scalarmulbase_inv_loop
+        bne     Lp256_scalarmulbase_inv_loop
         ldr     x0, [sp]
         ldr     x1, [sp, #48]
         mul     x0, x0, x10
@@ -1441,13 +1455,18 @@ p256_scalarmulbase_inv_midloop:
         csel    x13, x3, x13, cc
         stp     x10, x11, [x20]
         stp     x12, x13, [x20, #16]
-        add     sp, sp, #0xa0
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(160)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
 
-p256_scalarmulbase_local_montmul_p256:
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmulbase_local_inv_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmulbase_local_montmul_p256)
+
+Lp256_scalarmulbase_local_montmul_p256:
+        CFI_START
         ldr q20, [x2]
         ldp x7, x17, [x1]
         ldr q0, [x1]
@@ -1652,9 +1671,14 @@ p256_scalarmulbase_local_montmul_p256:
         adcs x4, x7, xzr
         adc x1, x17, x1
         stp x4, x1, [x0, #16]
-        ret
+        CFI_RET
 
-p256_scalarmulbase_local_montsqr_p256:
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmulbase_local_montmul_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmulbase_local_montsqr_p256)
+
+Lp256_scalarmulbase_local_montsqr_p256:
+        CFI_START
         ldr q19, [x1]
         ldp x9, x13, [x1]
         ldr q23, [x1, #16]
@@ -1791,11 +1815,16 @@ p256_scalarmulbase_local_montsqr_p256:
         csel x2, x5, x2, cs
         stp x14, x12, [x0, #16]
         stp x16, x2, [x0]
-        ret
+        CFI_RET
 
-p256_scalarmulbase_local_p256_montjmixadd:
-        stp     x19, x20, [sp, #-16]!
-        sub     sp, sp, #0xc0
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmulbase_local_montsqr_p256)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmulbase_local_p256_montjmixadd)
+
+Lp256_scalarmulbase_local_p256_montjmixadd:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_DEC_SP(192)
         mov     x17, x0
         mov     x19, x1
         mov     x20, x2
@@ -3742,9 +3771,11 @@ p256_scalarmulbase_local_p256_montjmixadd:
         stp     x6, x7, [x17, #48]
         stp     x8, x9, [x17, #64]
         stp     x10, x11, [x17, #80]
-        add     sp, sp, #0xc0
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(192)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmulbase_local_p256_montjmixadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

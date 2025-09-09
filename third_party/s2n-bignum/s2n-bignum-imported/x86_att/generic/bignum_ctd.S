@@ -13,10 +13,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ctd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_ctd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ctd)
         .text
 
@@ -28,11 +29,12 @@
 
 
 S2N_BN_SYMBOL(bignum_ctd):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
@@ -41,30 +43,32 @@ S2N_BN_SYMBOL(bignum_ctd):
 
         xorq    %rax, %rax
         testq   k, k
-        jz      bignum_ctd_end
+        jz      Lbignum_ctd_end
 
 // Record in i that the lowest nonzero word is i - 1, where i = k + 1 means
 // that the bignum was entirely zero
 
         movq    k, i
         incq    i
-bignum_ctd_loop:
+Lbignum_ctd_loop:
         movq    -8(x,k,8), a
         testq   a, a
         cmovneq k, i
         decq    k
-        jnz     bignum_ctd_loop
+        jnz     Lbignum_ctd_loop
 
 // We now want to return i - 1
 
         decq    i
         movq    i, %rax
-bignum_ctd_end:
+Lbignum_ctd_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_ctd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

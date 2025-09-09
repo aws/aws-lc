@@ -12,11 +12,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_sm2)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_triple_sm2)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_sm2)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_triple_sm2_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_triple_sm2_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_triple_sm2_alt)
         .text
         .balign 4
@@ -50,6 +53,7 @@
 S2N_BN_SYMBOL(bignum_triple_sm2):
 
 S2N_BN_SYMBOL(bignum_triple_sm2_alt):
+        CFI_START
 
 // Load the inputs
 
@@ -99,7 +103,9 @@ S2N_BN_SYMBOL(bignum_triple_sm2_alt):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_triple_sm2)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

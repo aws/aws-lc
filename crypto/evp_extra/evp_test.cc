@@ -191,6 +191,17 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   }
   EXPECT_EQ(GetKeyType(t, key_type), EVP_PKEY_id(pkey.get()));
 
+  if (EVP_PKEY_id(pkey.get()) == EVP_PKEY_EC) {
+    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey.get());
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    if (t->HasAttribute("ExpectFromExplicitParams")) {
+      EXPECT_EQ(1, EC_KEY_decoded_from_explicit_params(ec_key));
+    } else {
+      EXPECT_EQ(0, EC_KEY_decoded_from_explicit_params(ec_key));
+    }
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
+
   // The key must re-encode correctly.
   bssl::ScopedCBB cbb;
   uint8_t *der;

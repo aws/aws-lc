@@ -519,7 +519,7 @@ extern void bignum_modadd (uint64_t k, uint64_t *z, const uint64_t *x, const uin
 extern void bignum_moddouble (uint64_t k, uint64_t *z, const uint64_t *x, const uint64_t *m);
 
 // Modular exponentiation for arbitrary odd modulus, z := (a^p) mod m
-// Inputs a[k], p[k], m[k]; output z[k], temporary buffer t[>=3*k]
+// Inputs a[k], p[k], m[k]; output z[k]; temporary buffer t[>=3*k]
 extern void bignum_modexp(uint64_t k,uint64_t *z, const uint64_t *a,const uint64_t *p,const uint64_t *m,uint64_t *t);
 
 // Compute "modification" constant z := 2^{64k} mod m

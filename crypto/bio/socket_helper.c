@@ -126,7 +126,7 @@ int bio_sock_error_get_and_clear(int sock) {
 
 int bio_socket_should_retry(int return_value) {
 #if defined(OPENSSL_WINDOWS)
-  return return_value == -1 && WSAGetLastError() == WSAEWOULDBLOCK;
+  return return_value == -1 && (WSAGetLastError() == WSAEWOULDBLOCK);
 #else
   // On POSIX platforms, sockets and fds are the same.
   return bio_errno_should_retry(return_value);

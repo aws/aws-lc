@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = xs, X3 = i
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mux16)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mux16)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mux16)
         .text
         .balign 4
@@ -32,17 +34,18 @@
 
 
 S2N_BN_SYMBOL(bignum_mux16):
+        CFI_START
 
 // Copy size into decrementable counter, skip everything if k = 0
 
         adds    n, k, xzr
-        beq     bignum_mux16_end
+        beq     Lbignum_mux16_end
 
 // Multiply i by k so we can compare pointer offsets directly with it
 
         mul     i, i, k
 
-bignum_mux16_loop:
+Lbignum_mux16_loop:
 
         ldr     a, [x]
         mov     j, k
@@ -57,10 +60,12 @@ bignum_mux16_loop:
         add     z, z, #8
         add     x, x, #8
         subs    n, n, #1
-        bne     bignum_mux16_loop
+        bne     Lbignum_mux16_loop
 
-bignum_mux16_end:
-        ret
+Lbignum_mux16_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mux16)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

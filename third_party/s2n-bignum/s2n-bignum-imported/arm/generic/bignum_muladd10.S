@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = d, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_muladd10)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_muladd10)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_muladd10)
         .text
         .balign 4
@@ -29,15 +31,16 @@
 #define l x5
 
 S2N_BN_SYMBOL(bignum_muladd10):
+        CFI_START
 
 // If k = 0 just return the input d as the carry (out of zero digits)
 
-        cbz     k, bignum_muladd10_end
+        cbz     k, Lbignum_muladd10_end
 
 // Simple loop
 
         mov     i, xzr
-bignum_muladd10_loop:
+Lbignum_muladd10_loop:
         ldr     a, [z, i, lsl #3]
         lsr     h, a, #61
         add     l, a, a
@@ -49,13 +52,15 @@ bignum_muladd10_loop:
         adc     d, h, xzr
         add     i, i, 1
         cmp     i, k
-        bcc     bignum_muladd10_loop
+        bcc     Lbignum_muladd10_loop
 
 // Return the final carry
 
-bignum_muladd10_end:
+Lbignum_muladd10_end:
         mov     x0, d
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_muladd10)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

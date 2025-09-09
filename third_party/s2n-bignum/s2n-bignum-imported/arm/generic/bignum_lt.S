@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = m, X1 = x, X2 = n, X3 = y, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_lt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_lt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_lt)
         .text
         .balign 4
@@ -27,6 +29,7 @@
 
 
 S2N_BN_SYMBOL(bignum_lt):
+        CFI_START
 
 // Zero the main index counter for both branches
 
@@ -35,54 +38,56 @@ S2N_BN_SYMBOL(bignum_lt):
 // Speculatively form m := m - n and do case split
 
         subs    m, m, n
-        bcc     bignum_lt_ylonger
+        bcc     Lbignum_lt_ylonger
 
 // The case where x is longer or of the same size (m >= n)
 // Note that CF=1 initially by the fact that we reach this point
 
-        cbz     n, bignum_lt_xtest
-bignum_lt_xmainloop:
+        cbz     n, Lbignum_lt_xtest
+Lbignum_lt_xmainloop:
         ldr     a, [x, i, lsl #3]
         ldr     d, [y, i, lsl #3]
         sbcs    xzr, a, d
         add     i, i, #1
         sub     n, n, #1
-        cbnz    n, bignum_lt_xmainloop
-bignum_lt_xtest:
-        cbz     m, bignum_lt_xskip
-bignum_lt_xtoploop:
+        cbnz    n, Lbignum_lt_xmainloop
+Lbignum_lt_xtest:
+        cbz     m, Lbignum_lt_xskip
+Lbignum_lt_xtoploop:
         ldr     a, [x, i, lsl #3]
         sbcs    xzr, a, xzr
         add     i, i, #1
         sub     m, m, #1
-        cbnz    m, bignum_lt_xtoploop
-bignum_lt_xskip:
+        cbnz    m, Lbignum_lt_xtoploop
+Lbignum_lt_xskip:
         cset    x0, cc
         ret
 
 // The case where y is longer (n > m)
 // The first "adds" also makes sure CF=1 initially in this branch
 
-bignum_lt_ylonger:
+Lbignum_lt_ylonger:
         adds    m, m, n
-        cbz     m, bignum_lt_ytoploop
+        cbz     m, Lbignum_lt_ytoploop
         sub     n, n, m
-bignum_lt_ymainloop:
+Lbignum_lt_ymainloop:
         ldr     a, [x, i, lsl #3]
         ldr     d, [y, i, lsl #3]
         sbcs    xzr, a, d
         add     i, i, #1
         sub     m, m, #1
-        cbnz    m, bignum_lt_ymainloop
-bignum_lt_ytoploop:
+        cbnz    m, Lbignum_lt_ymainloop
+Lbignum_lt_ytoploop:
         ldr     a, [y, i, lsl #3]
         sbcs    xzr, xzr, a
         add     i, i, #1
         sub     n, n, #1
-        cbnz    n, bignum_lt_ytoploop
+        cbnz    n, Lbignum_lt_ytoploop
 
         cset    x0, cc
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_lt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

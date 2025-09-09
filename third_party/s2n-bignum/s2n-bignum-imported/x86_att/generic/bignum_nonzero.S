@@ -11,10 +11,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_nonzero)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_nonzero)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_nonzero)
         .text
 
@@ -23,22 +24,23 @@
 #define x %rsi
 
 S2N_BN_SYMBOL(bignum_nonzero):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
         xorq    a, a
         testq   k, k
-        jz      bignum_nonzero_end
+        jz      Lbignum_nonzero_end
 
-bignum_nonzero_loop:
+Lbignum_nonzero_loop:
         orq     -8(x,k,8), a
         decq    k
-        jnz     bignum_nonzero_loop
+        jnz     Lbignum_nonzero_loop
 
 // Set a standard C condition based on whether a is nonzero
 
@@ -46,12 +48,14 @@ bignum_nonzero_loop:
         sbbq    a, a
         negq    a
 
-bignum_nonzero_end:
+Lbignum_nonzero_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_nonzero)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

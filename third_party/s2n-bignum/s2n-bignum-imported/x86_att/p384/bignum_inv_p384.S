@@ -16,10 +16,11 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_inv_p384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_inv_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_inv_p384)
         .text
 
@@ -50,7 +51,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (42*N)
+#define NSPACE 42*N
 
 // Syntactic variants to make x86_att version simpler to generate
 
@@ -1041,25 +1042,26 @@
         leaq    (%rax,%rdx), %r12
 
 S2N_BN_SYMBOL(bignum_inv_p384):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
 // Save registers and make room for temporaries
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite %rdi later
 
@@ -1141,9 +1143,9 @@ S2N_BN_SYMBOL(bignum_inv_p384):
 
         movq    $15, i
         movq    $1, d
-        jmp     bignum_inv_p384_midloop
+        jmp     Lbignum_inv_p384_midloop
 
-bignum_inv_p384_loop:
+Lbignum_inv_p384_loop:
 
 // Separate out the matrix into sign-magnitude pairs
 
@@ -1588,7 +1590,7 @@ bignum_inv_p384_loop:
 
         amontred(v)
 
-bignum_inv_p384_midloop:
+Lbignum_inv_p384_midloop:
 
         divstep59(d,ff,gg)
         movq    %rsi, d
@@ -1596,7 +1598,7 @@ bignum_inv_p384_midloop:
 // Next iteration
 
         decq    i
-        jnz     bignum_inv_p384_loop
+        jnz     Lbignum_inv_p384_loop
 
 // The 15th and last iteration does not need anything except the
 // u value and the sign of f; the latter can be obtained from the
@@ -1791,20 +1793,22 @@ bignum_inv_p384_midloop:
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_inv_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

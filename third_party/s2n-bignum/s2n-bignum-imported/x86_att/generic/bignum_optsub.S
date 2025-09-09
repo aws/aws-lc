@@ -15,10 +15,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = p, [RSP+40] = y, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optsub)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_optsub)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optsub)
         .text
 
@@ -35,11 +36,12 @@
 
 
 S2N_BN_SYMBOL(bignum_optsub):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -54,7 +56,7 @@ S2N_BN_SYMBOL(bignum_optsub):
 // If k = 0 do nothing
 
         testq   k, k
-        jz      bignum_optsub_end
+        jz      Lbignum_optsub_end
 
 // Convert the nonzero/zero status of p into an all-1s or all-0s mask
 
@@ -64,7 +66,7 @@ S2N_BN_SYMBOL(bignum_optsub):
 // Now go round the loop for i=0...k-1, saving the carry in c each iteration
 
         xorq    i, i
-bignum_optsub_loop:
+Lbignum_optsub_loop:
         movq    (x,i,8), a
         movq    (y,i,8), b
         andq    p, b
@@ -74,18 +76,20 @@ bignum_optsub_loop:
         movq    a, (z,i,8)
         incq    i
         cmpq    k, i
-        jc      bignum_optsub_loop
+        jc      Lbignum_optsub_loop
 
 // Return top carry
 
         negq    %rax
 
-bignum_optsub_end:
+Lbignum_optsub_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_optsub)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

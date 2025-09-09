@@ -726,6 +726,10 @@ OPENSSL_EXPORT int BIO_get_md(BIO *b, EVP_MD **md);
 #define BIO_CTRL_DGRAM_CONNECT       31 // BIO dgram special
 #define BIO_CTRL_DGRAM_SET_CONNECTED 32 /* allow for an externally connected
                                           * socket to be passed in */
+#define BIO_CTRL_DGRAM_SET_RECV_TIMEOUT 33 // setsockopt, essentially
+#define BIO_CTRL_DGRAM_GET_RECV_TIMEOUT 34 // getsockopt, essentially
+#define BIO_CTRL_DGRAM_SET_SEND_TIMEOUT 35 // setsockopt, essentially
+#define BIO_CTRL_DGRAM_GET_SEND_TIMEOUT 36 // getsockopt, essentially
 
 # define BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP 37 // flag whether the last
 # define BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP 38 // I/O operation tiemd out

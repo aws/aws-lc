@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x, R8 = y
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sub_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sub_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sub_p521)
         .text
 
@@ -39,11 +40,12 @@
 
 
 S2N_BN_SYMBOL(bignum_sub_p521):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -51,8 +53,8 @@ S2N_BN_SYMBOL(bignum_sub_p521):
 
 // Save more registers to play with
 
-        pushq   %rbx
-        pushq   %r12
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
 
 // First just subtract the numbers as [d8;d7;d6;d5;d4;d3;d2;d1;d0] = x - y
 
@@ -102,14 +104,16 @@ S2N_BN_SYMBOL(bignum_sub_p521):
 
 // Restore registers and return
 
-        popq    %r12
-        popq    %rbx
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sub_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

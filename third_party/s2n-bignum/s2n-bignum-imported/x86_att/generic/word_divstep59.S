@@ -11,10 +11,11 @@
 // Standard x86-64 ABI: RDI = m, RSI = d, RDX = f, RCX = g, returns RAX
 // Microsoft x64 ABI:   RCX = m, RDX = d, R8 = f, R9 = g, returns RAX
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_divstep59)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_divstep59)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_divstep59)
         .text
 
@@ -43,11 +44,12 @@
 #define m11 %r11
 
 S2N_BN_SYMBOL(word_divstep59):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -56,10 +58,10 @@ S2N_BN_SYMBOL(word_divstep59):
 
 // Save extra registers
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
 
 // Pack f and g into single registers with (negated) update matrices,
 // initially the identity matrix. The f_lo and g_lo are initially
@@ -385,17 +387,19 @@ S2N_BN_SYMBOL(word_divstep59):
 
 // Restore registers and return
 
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_divstep59)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

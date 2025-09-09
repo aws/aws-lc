@@ -20,9 +20,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = p, X4 = y, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optsubadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_optsubadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optsubadd)
         .text
         .balign 4
@@ -41,10 +43,11 @@
 
 
 S2N_BN_SYMBOL(bignum_optsubadd):
+        CFI_START
 
 // if k = 0 do nothing. This is also the right top carry in X0
 
-        cbz     k, bignum_optsubadd_end
+        cbz     k, Lbignum_optsubadd_end
 
 // Turn the input p into two bitmasks, m indicating to use the y input at
 // all (same register as p) and q indicating a sign-flip
@@ -61,7 +64,7 @@ S2N_BN_SYMBOL(bignum_optsubadd):
 // Main loop
 
         mov     i, xzr
-bignum_optsubadd_loop:
+Lbignum_optsubadd_loop:
         ldr     b, [y, i]
         eor     b, b, q
         ldr     a, [x, i]
@@ -70,7 +73,7 @@ bignum_optsubadd_loop:
         str     a, [z, i]
         add     i, i, #8
         sub     k, k, #1
-        cbnz    k, bignum_optsubadd_loop
+        cbnz    k, Lbignum_optsubadd_loop
 
 // Return carry flag, fixing up inversion for negative case
 
@@ -78,8 +81,10 @@ bignum_optsubadd_loop:
         neg     q, q
         eor     x0, x0, q
 
-bignum_optsubadd_end:
-        ret
+Lbignum_optsubadd_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_optsubadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

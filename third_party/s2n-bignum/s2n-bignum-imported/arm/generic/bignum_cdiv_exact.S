@@ -15,9 +15,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = n, X3 = x, X4 = m
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv_exact)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cdiv_exact)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv_exact)
         .text
         .balign 4
@@ -53,10 +55,11 @@
 #define e8 x7
 
 S2N_BN_SYMBOL(bignum_cdiv_exact):
+        CFI_START
 
 // If k = 0 then there's nothing to be done
 
-        cbz     k, bignum_cdiv_exact_end
+        cbz     k, Lbignum_cdiv_exact_end
 
 // Let e be the number of trailing zeros in m. This implementation uses
 // 63 - clz(-m & m) which is a bit slicker than the main word_ctz function
@@ -114,12 +117,12 @@ S2N_BN_SYMBOL(bignum_cdiv_exact):
 // as the comparison i < n will always fail and the x pointer is unused.
 
         mov     d, xzr
-        cbz     n, bignum_cdiv_exact_loop
+        cbz     n, Lbignum_cdiv_exact_loop
         ldr     d, [x], #8
         lsr     d, d, e
         sub     n, n, 1
 
-bignum_cdiv_exact_loop:
+Lbignum_cdiv_exact_loop:
 
 // Load the next digit up to get [l,d] then shift right e places,
 // eventually setting d back to the other part of the newly loaded digit
@@ -127,9 +130,9 @@ bignum_cdiv_exact_loop:
 
         mov     l, xzr
         cmp     i, n
-        bcs     bignum_cdiv_exact_noload
+        bcs     Lbignum_cdiv_exact_noload
         ldr     l, [x, i, lsl #3]
-bignum_cdiv_exact_noload:
+Lbignum_cdiv_exact_noload:
         rorv    l, l, e
         bic     a, l, f
         orr     a, d, a
@@ -152,10 +155,12 @@ bignum_cdiv_exact_noload:
 
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_cdiv_exact_loop
+        bcc     Lbignum_cdiv_exact_loop
 
-bignum_cdiv_exact_end:
-        ret
+Lbignum_cdiv_exact_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cdiv_exact)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

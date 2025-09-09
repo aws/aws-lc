@@ -17,10 +17,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montsqr_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_p521)
         .text
 
@@ -52,23 +53,24 @@
         adoxq   zero, high
 
 S2N_BN_SYMBOL(bignum_montsqr_p521):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
 // Save more registers to play with and make temporary space on stack
 
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $64, %rsp
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(64)
 
 // Do a basic 8x8 squaring stashing %rsp[0..7] but keeping the
 // top half in the usual rotating register window %r15,...,%r8. Except
@@ -304,18 +306,20 @@ S2N_BN_SYMBOL(bignum_montsqr_p521):
 
 // Restore registers and return
 
-        addq    $64, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
+        CFI_INC_RSP(64)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montsqr_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

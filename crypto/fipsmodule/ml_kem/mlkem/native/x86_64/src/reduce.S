@@ -37,14 +37,17 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_reduce_avx2)
 S2N_BN_SYMBOL(mlkem_reduce_avx2):
 
+        .cfi_startproc
         vmovdqa	(%rsi), %ymm0
         vmovdqa	0x40(%rsi), %ymm1
-        callq	reduce_avx2_core
+        callq	Lreduce_avx2_core
         addq	$0x100, %rdi            # imm = 0x100
-        callq	reduce_avx2_core
+        callq	Lreduce_avx2_core
         retq
+        .cfi_endproc
 
-reduce_avx2_core:
+Lreduce_avx2_core:
+        .cfi_startproc
         vmovdqa	(%rdi), %ymm2
         vmovdqa	0x20(%rdi), %ymm3
         vmovdqa	0x40(%rdi), %ymm4
@@ -126,4 +129,5 @@ reduce_avx2_core:
         vmovdqa	%ymm8, 0xc0(%rdi)
         vmovdqa	%ymm9, 0xe0(%rdi)
         retq
+        .cfi_endproc
 

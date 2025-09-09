@@ -10,11 +10,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256k1)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tomont_p256k1)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256k1)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p256k1_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tomont_p256k1_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p256k1_alt)
         .text
         .balign 4
@@ -41,6 +44,7 @@
 S2N_BN_SYMBOL(bignum_tomont_p256k1):
 
 S2N_BN_SYMBOL(bignum_tomont_p256k1_alt):
+        CFI_START
 
 // Since 2^256 == 4294968273 (mod p_256k1) we more or less just set
 // m = 4294968273 then devolve to a near-clone of bignum_cmul_p256k1;
@@ -94,7 +98,9 @@ S2N_BN_SYMBOL(bignum_tomont_p256k1_alt):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_tomont_p256k1)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

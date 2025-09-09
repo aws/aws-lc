@@ -22,11 +22,14 @@
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqrt_p25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqrt_p25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqrt_p25519)
+
+
         .text
 
 // Size in bytes of a 64-bit word
@@ -44,7 +47,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (22*N)
+#define NSPACE 22*N
 
 // Corrupted versions when stack is down 8 more
 
@@ -60,34 +63,40 @@
 #define U8 (17*N)
 
 S2N_BN_SYMBOL(bignum_sqrt_p25519):
+        CFI_START
         _CET_ENDBR
 
 // In this case the Windows form literally makes a subroutine call.
 // This avoids hassle arising from subroutine offsets
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
-        callq   bignum_sqrt_p25519_standard
-        popq    %rsi
-        popq    %rdi
-        ret
+        CFI_CALL(Lbignum_sqrt_p25519_standard)
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
+        CFI_RET
 
-bignum_sqrt_p25519_standard:
+S2N_BN_SIZE_DIRECTIVE(bignum_sqrt_p25519)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_sqrt_p25519_standard)
+
+Lbignum_sqrt_p25519_standard:
+        CFI_START
 #endif
 
 // Save registers and make room for temporaries
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite %rdi later
 
@@ -126,139 +135,139 @@ bignum_sqrt_p25519_standard:
         leaq    T(%rsp), %rdi
         movq    $1, %rsi
         leaq    A(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    T(%rsp), %rsi
         leaq    A(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^4 - 1 = 15
 
         leaq    S(%rsp), %rdi
         movq    $2, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^5 - 1 = 31
 
         leaq    S(%rsp), %rdi
         movq    $1, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    B(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    A(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^10 - 1
 
         leaq    S(%rsp), %rdi
         movq    $5, %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^20 - 1
 
         leaq    S(%rsp), %rdi
         movq    $10, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^25 - 1
 
         leaq    S(%rsp), %rdi
         movq    $5, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    B(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^50 - 1
 
         leaq    S(%rsp), %rdi
         movq    $25, %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^100 - 1
 
         leaq    S(%rsp), %rdi
         movq    $50, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^125 - 1
 
         leaq    S(%rsp), %rdi
         movq    $25, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    B(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^250 - 1
 
         leaq    S(%rsp), %rdi
         movq    $125, %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    B(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^251 - 1
 
         leaq    S(%rsp), %rdi
         movq    $1, %rsi
         leaq    B(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    A(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
   // Power 2^252 - 2
 
         leaq    S(%rsp), %rdi
         movq    $1, %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
 // s is now one candidate square root. Generate the other one t = s * j_25519
 
@@ -274,14 +283,14 @@ bignum_sqrt_p25519_standard:
         leaq    T(%rsp), %rdi
         leaq    S(%rsp), %rsi
         leaq    T(%rsp), %rdx
-        callq   bignum_sqrt_p25519_mul_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_mul_p25519)
 
 // Now multiplex between them according to whether s^2 = a
 
         leaq    B(%rsp), %rdi
         movq    $1, %rsi
         leaq    S(%rsp), %rdx
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         movq    A(%rsp), %rax
         xorq    B(%rsp), %rax
@@ -338,7 +347,7 @@ bignum_sqrt_p25519_standard:
 
         leaq    B(%rsp), %rdi
         movq    $1, %rsi
-        callq   bignum_sqrt_p25519_nsqr_p25519
+        CFI_CALL(Lbignum_sqrt_p25519_nsqr_p25519)
 
         movq    A(%rsp), %rax
         movq    %rax, %rbp
@@ -364,21 +373,30 @@ bignum_sqrt_p25519_standard:
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
+
+#if WINDOWS_ABI
+S2N_BN_SIZE_DIRECTIVE(Lbignum_sqrt_p25519_standard)
+#else
+S2N_BN_SIZE_DIRECTIVE(bignum_sqrt_p25519)
+#endif
 
 // *************************************************************
 // Local z = x * y
 // *************************************************************
 
-bignum_sqrt_p25519_mul_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_sqrt_p25519_mul_p25519)
+
+Lbignum_sqrt_p25519_mul_p25519:
+        CFI_START
         movq    %rdx, %rcx
         xorl    %ebp, %ebp
         movq    (%rcx), %rdx
@@ -469,13 +487,18 @@ bignum_sqrt_p25519_mul_p25519:
         movq    %r9, 0x8(%rdi)
         movq    %r10, 0x10(%rdi)
         movq    %r11, 0x18(%rdi)
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lbignum_sqrt_p25519_mul_p25519)
 
 // *************************************************************
 // Local z = 2^n * x
 // *************************************************************
 
-bignum_sqrt_p25519_nsqr_p25519:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_sqrt_p25519_nsqr_p25519)
+
+Lbignum_sqrt_p25519_nsqr_p25519:
+        CFI_START
 
 // Copy input argument into u
 
@@ -491,7 +514,7 @@ bignum_sqrt_p25519_nsqr_p25519:
 // Main squaring loop, accumulating in u consistently  and
 // only ensuring the intermediates are < 2 * p_25519 = 2^256 - 38
 
-bignum_sqrt_p25519_loop:
+Lbignum_sqrt_p25519_loop:
         movq   U8(%rsp), %rdx
         mulxq  %rdx, %r8, %r15
         mulxq  U8+0x8(%rsp), %r9, %r10
@@ -564,7 +587,7 @@ bignum_sqrt_p25519_loop:
 // Loop as applicable
 
         decq    %rsi
-        jnz     bignum_sqrt_p25519_loop
+        jnz     Lbignum_sqrt_p25519_loop
 
 // We know the intermediate result x < 2^256 - 38, and now we do strict
 // modular reduction mod 2^255 - 19. Note x < 2^255 - 19 <=> x + 19 < 2^255
@@ -589,7 +612,9 @@ bignum_sqrt_p25519_loop:
         movq    %rbx, 8(%rdi)
         movq    %rcx, 16(%rdi)
         movq    %rdx, 24(%rdi)
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lbignum_sqrt_p25519_nsqr_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

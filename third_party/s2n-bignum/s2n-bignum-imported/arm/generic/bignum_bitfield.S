@@ -16,9 +16,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = n, X3 = l, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_bitfield)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_bitfield)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_bitfield)
         .text
         .balign 4
@@ -36,10 +38,11 @@
 
 
 S2N_BN_SYMBOL(bignum_bitfield):
+        CFI_START
 
 // For length zero finish immediately (the return value in x0 is 0)
 
-        cbz     k, bignum_bitfield_end
+        cbz     k, Lbignum_bitfield_end
 
 // Decompose the index into n = 64 * n + m, then increment n for next part
 
@@ -51,14 +54,14 @@ S2N_BN_SYMBOL(bignum_bitfield):
 
         mov     i, xzr
         mov     e, xzr
-bignum_bitfield_loop:
+Lbignum_bitfield_loop:
         ldr     a, [x, i, lsl #3]
         cmp     i, n
         csel    d, a, d, cc
         csel    e, a, e, eq
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_bitfield_loop
+        bcc     Lbignum_bitfield_loop
 
 // Override d with 0 if we ran off the end (e will retain original 0).
 
@@ -85,8 +88,10 @@ bignum_bitfield_loop:
         lsl     m, m, l
         sub     m, m, #1
         and     x0, a, m
-bignum_bitfield_end:
-        ret
+Lbignum_bitfield_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_bitfield)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

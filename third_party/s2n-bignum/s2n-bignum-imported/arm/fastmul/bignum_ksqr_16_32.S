@@ -14,10 +14,13 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = t
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_ksqr_16_32)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_ksqr_16_32)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_ksqr_16_32)
+
         .text
         .balign 4
 
@@ -33,13 +36,14 @@
 
 
 S2N_BN_SYMBOL(bignum_ksqr_16_32):
+        CFI_START
 
 // Save registers, including return address
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x30, [sp, #-16]!
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x30)
 
 // Move parameters into subroutine-safe places
 
@@ -49,7 +53,7 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32):
 
 // Compute L = x_lo * y_lo in bottom half of buffer (size 8 x 8 -> 16)
 
-        bl      bignum_ksqr_16_32_local_sqr_8_16
+        CFI_BL(Lbignum_ksqr_16_32_local_sqr_8_16)
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 
@@ -96,7 +100,7 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32):
 
         add     x0, z, #128
         add     x1, x, #64
-        bl      bignum_ksqr_16_32_local_sqr_8_16
+        CFI_BL(Lbignum_ksqr_16_32_local_sqr_8_16)
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 // First add 8-sized block then propagate carry through next 8
@@ -149,7 +153,7 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32):
 
         add     x0, t, #64
         mov     x1, t
-        bl      bignum_ksqr_16_32_local_sqr_8_16
+        CFI_BL(Lbignum_ksqr_16_32_local_sqr_8_16)
 
 // Add the interlocking H' and L_bot terms, storing in registers x15..x0
 // Intercept the carry at the 8 + 16 = 24 position and store it in x.
@@ -251,19 +255,24 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32):
 
 // Restore registers and return
 
-        ldp     x25, x30, [sp], #16
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
+        CFI_POP2(x25,x30)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_ksqr_16_32)
 
 // -----------------------------------------------------------------------------
 // Local 8x8->16 squaring routine, shared to reduce code size. Effectively
 // the same as bignum_sqr_8_16 without the scratch register preservation.
 // -----------------------------------------------------------------------------
 
-bignum_ksqr_16_32_local_sqr_8_16:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lbignum_ksqr_16_32_local_sqr_8_16)
+
+Lbignum_ksqr_16_32_local_sqr_8_16:
+        CFI_START
 // Load registers.
         ldp     x2, x3, [x1]
 ldr     q20, [x1]
@@ -652,7 +661,9 @@ mov     x21, v1.d[1]
         adc     x3, x3, xzr
         stp     x2, x3, [x0, #112]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lbignum_ksqr_16_32_local_sqr_8_16)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

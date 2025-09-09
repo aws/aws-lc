@@ -32,9 +32,11 @@
 //
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519)
 
         .text
@@ -61,22 +63,23 @@
 #define regsave sp, #NSPACE
 
 S2N_BN_SYMBOL(curve25519_x25519):
+        CFI_START
 
-// Save registers and make additional room NSPACE for temporaries.
+// Save registers and make additional room #NSPACE for temporaries.
 // We only need to save the low 64-bits of the Q8...Q15 registers
 // according to the ABI, so we use a save of the D8...D15 forms.
 
-        sub     sp, sp, #NSPACE+160
-        stp     d8, d9, [regsave+0]
-        stp     d10, d11, [regsave+16]
-        stp     d12, d13, [regsave+32]
-        stp     d14, d15, [regsave+48]
-        stp     x19, x20, [regsave+64]
-        stp     x21, x22, [regsave+80]
-        stp     x23, x24, [regsave+96]
-        stp     x25, x26, [regsave+112]
-        stp     x27, x28, [regsave+128]
-        stp     x29, x30, [regsave+144]
+        CFI_DEC_SP(NSPACE+160)
+        CFI_STACKSAVE2(d8,d9,NSPACE+0)
+        CFI_STACKSAVE2(d10,d11,NSPACE+16)
+        CFI_STACKSAVE2(d12,d13,NSPACE+32)
+        CFI_STACKSAVE2(d14,d15,NSPACE+48)
+        CFI_STACKSAVE2(x19,x20,NSPACE+64)
+        CFI_STACKSAVE2(x21,x22,NSPACE+80)
+        CFI_STACKSAVE2(x23,x24,NSPACE+96)
+        CFI_STACKSAVE2(x25,x26,NSPACE+112)
+        CFI_STACKSAVE2(x27,x28,NSPACE+128)
+        CFI_STACKSAVE2(x29,x30,NSPACE+144)
 
 // Move the output pointer to a stable place
 
@@ -188,7 +191,7 @@ S2N_BN_SYMBOL(curve25519_x25519):
         mov     x0, #254
         str     x0, [i]
 
-curve25519_x25519_scalarloop:
+Lcurve25519_x25519_scalarloop:
 
         lsr     x1, x0, #6
         ldr     x2, [sp, x1, lsl #3]    // Exploiting scalar = sp exactly
@@ -1257,7 +1260,7 @@ curve25519_x25519_scalarloop:
         ldr     x0, [i]
         subs    x0, x0, #1
         str     x0, [i]
-        bcs     curve25519_x25519_scalarloop
+        bcs     Lcurve25519_x25519_scalarloop
 
 // Repack X2 into the saturated representation as 256-bit value xn.
 // This does not fully normalize mod 2^255-19 but stays within 256 bits.
@@ -1397,8 +1400,8 @@ curve25519_x25519_scalarloop:
         stp     x12, x13, [sp, #112]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       curve25519_x25519_invmidloop
-curve25519_x25519_invloop:
+        b       Lcurve25519_x25519_invmidloop
+Lcurve25519_x25519_invloop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -1665,7 +1668,7 @@ curve25519_x25519_invloop:
         adc     x2, x2, x5
         stp     x0, x1, [sp, #96]
         stp     x3, x2, [sp, #112]
-curve25519_x25519_invmidloop:
+Lcurve25519_x25519_invmidloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #32]
@@ -2276,7 +2279,7 @@ curve25519_x25519_invmidloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        b.ne    curve25519_x25519_invloop
+        b.ne    Lcurve25519_x25519_invloop
         ldr     x0, [sp]
         ldr     x1, [sp, #32]
         mul     x0, x0, x10
@@ -2573,18 +2576,20 @@ curve25519_x25519_invmidloop:
 
 // Restore stack and registers (this will zero the tops of Q8...Q15).
 
-        ldp     d8, d9, [regsave+0]
-        ldp     d10, d11, [regsave+16]
-        ldp     d12, d13, [regsave+32]
-        ldp     d14, d15, [regsave+48]
-        ldp     x19, x20, [regsave+64]
-        ldp     x21, x22, [regsave+80]
-        ldp     x23, x24, [regsave+96]
-        ldp     x25, x26, [regsave+112]
-        ldp     x27, x28, [regsave+128]
-        ldp     x29, x30, [regsave+144]
-        add     sp, sp, #NSPACE+160
-        ret
+        CFI_STACKLOAD2(d8,d9,NSPACE+0)
+        CFI_STACKLOAD2(d10,d11,NSPACE+16)
+        CFI_STACKLOAD2(d12,d13,NSPACE+32)
+        CFI_STACKLOAD2(d14,d15,NSPACE+48)
+        CFI_STACKLOAD2(x19,x20,NSPACE+64)
+        CFI_STACKLOAD2(x21,x22,NSPACE+80)
+        CFI_STACKLOAD2(x23,x24,NSPACE+96)
+        CFI_STACKLOAD2(x25,x26,NSPACE+112)
+        CFI_STACKLOAD2(x27,x28,NSPACE+128)
+        CFI_STACKLOAD2(x29,x30,NSPACE+144)
+        CFI_INC_SP((NSPACE+160))
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

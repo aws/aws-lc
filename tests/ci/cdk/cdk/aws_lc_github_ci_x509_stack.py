@@ -88,3 +88,6 @@ class AwsLcGitHubX509CIStack(AwsLcBaseCiStack):
                 include_build_id=False,
             ),
         )
+
+        cfn_project = self.project.node.default_child
+        cfn_project.add_property_override("Triggers.PullRequestBuildPolicy", self.pull_request_policy)

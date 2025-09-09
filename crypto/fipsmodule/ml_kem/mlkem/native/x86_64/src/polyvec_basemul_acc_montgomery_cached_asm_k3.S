@@ -17,6 +17,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k3)
 S2N_BN_SYMBOL(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k3):
 
+        .cfi_startproc
         vmovdqa	(%r8), %ymm0
         vmovdqa	0x20(%r8), %ymm1
         vmovdqa	(%rsi), %ymm2
@@ -732,4 +733,5 @@ S2N_BN_SYMBOL(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k3):
         vmovdqa	%ymm7, 0x1c0(%rdi)
         vmovdqa	%ymm9, 0x1e0(%rdi)
         retq
+        .cfi_endproc
 
