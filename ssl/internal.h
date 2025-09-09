@@ -1320,8 +1320,8 @@ enum SSL_BUFFER_SERDE_VERSION {
 const unsigned kSSLBufferMaxSerDeVersion = SSL_BUFFER_SERDE_VERSION_TWO;
 
 #define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
-#define SSLBUFFER_MAX_CAPACITY UINT16_MAX
-class SSLBuffer {
+#define SSLBUFFER_MAX_CAPACITY INT_MAX
+class OPENSSL_EXPORT SSLBuffer {
  public:
   SSLBuffer() {}
   ~SSLBuffer() { Clear(); }
@@ -1387,11 +1387,11 @@ class SSLBuffer {
   // header length used to calculate initial offset
   size_t header_len_ = 0;
   // offset_ is the offset into |buf_| which the buffer contents start at, and is moved as contents are consumed
-  uint16_t offset_ = 0;
+  int offset_ = 0;
   // size_ is the size of the buffer contents from |buf_| + |offset_|.
-  uint16_t size_ = 0;
+  int size_ = 0;
   // cap_ is how much memory beyond |buf_| + |offset_| is available.
-  uint16_t cap_ = 0;
+  int cap_ = 0;
   // inline_buf_ is a static buffer for short reads.
   uint8_t inline_buf_[SSL3_RT_HEADER_LENGTH];
     
