@@ -517,7 +517,7 @@ TEST_F(PassUtilTest, StdinExtraction) {
   
   DWORD written;
   ASSERT_TRUE(WriteFile(hWritePipe, "stdinpass\n", 10, &written, NULL));
-  ASSERT_EQ(written, 10);
+  ASSERT_EQ(written, static_cast<DWORD>(10));
   CloseHandle(hWritePipe);
   
   bssl::UniquePtr<std::string> source(new std::string("stdin"));
@@ -529,6 +529,7 @@ TEST_F(PassUtilTest, StdinExtraction) {
 }
 #endif
 
+#ifndef _WIN32
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
@@ -550,3 +551,28 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   close(old_stdin);
   close(pipefd[0]);
 }
+#else
+TEST_F(PassUtilTest, StdinExtractPasswords) {
+  HANDLE hReadPipe, hWritePipe;
+  SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
+  ASSERT_TRUE(CreatePipe(&hReadPipe, &hWritePipe, &sa, 0));
+  
+  HANDLE old_stdin = GetStdHandle(STD_INPUT_HANDLE);
+  SetStdHandle(STD_INPUT_HANDLE, hReadPipe);
+  
+  DWORD written;
+  ASSERT_TRUE(WriteFile(hWritePipe, "firstpass\nsecondpass\n", 20, &written, NULL));
+  ASSERT_EQ(written, static_cast<DWORD>(20));
+  CloseHandle(hWritePipe);
+  
+  bssl::UniquePtr<std::string> passin(new std::string("stdin"));
+  bssl::UniquePtr<std::string> passout(new std::string("stdin"));
+  
+  EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
+  EXPECT_EQ(*passin, "firstpass");
+  EXPECT_EQ(*passout, "secondpass");
+  
+  SetStdHandle(STD_INPUT_HANDLE, old_stdin);
+  CloseHandle(hReadPipe);
+}
+#endif
