@@ -518,6 +518,7 @@ TEST_F(PassUtilTest, StdinExtraction) {
   DWORD written;
   ASSERT_TRUE(WriteFile(hWritePipe, "stdinpass\n", 10, &written, NULL));
   ASSERT_EQ(written, static_cast<DWORD>(10));
+  FlushFileBuffers(hWritePipe);
   CloseHandle(hWritePipe);
   
   bssl::UniquePtr<std::string> source(new std::string("stdin"));
@@ -563,6 +564,7 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   DWORD written;
   ASSERT_TRUE(WriteFile(hWritePipe, "firstpass\nsecondpass\n", 20, &written, NULL));
   ASSERT_EQ(written, static_cast<DWORD>(20));
+  FlushFileBuffers(hWritePipe);
   CloseHandle(hWritePipe);
   
   bssl::UniquePtr<std::string> passin(new std::string("stdin"));
