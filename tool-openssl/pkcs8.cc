@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_set>
 #include "internal.h"
+#include "../crypto/pkcs8/internal.h"
 
 // Maximum size for crypto files to prevent loading excessively large files
 // (1MB)
@@ -52,22 +53,25 @@ static bool validate_format(const std::string &format) {
   return true;
 }
 
-// Supported cipher algorithms for key encryption
-static const std::unordered_set<std::string> kSupportedCiphers = {
-    "aes-128-cbc", "aes-192-cbc", "aes-256-cbc", "des-ede3-cbc", "des-cbc"};
-
-// Checks if the cipher name is supported and can be initialized
+// Checks if the cipher name is supported for PKCS#8 encryption
 static bool validate_cipher(const std::string &cipher_name) {
-  if (kSupportedCiphers.find(cipher_name) == kSupportedCiphers.end()) {
-    fprintf(stderr, "Unsupported cipher algorithm\n");
-    return false;
-  }
   const EVP_CIPHER *cipher = EVP_get_cipherbyname(cipher_name.c_str());
   if (!cipher) {
-    fprintf(stderr, "Cannot initialize cipher\n");
+    fprintf(stderr, "Unknown cipher algorithm: %s\n", cipher_name.c_str());
     return false;
   }
 
+  // Test PKCS#8 compatibility using actual library function
+  bssl::ScopedCBB out;
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  
+  if (!CBB_init(out.get(), 0) ||
+      !PKCS5_pbe2_encrypt_init(out.get(), ctx.get(), cipher, 1000, 
+                               "test", 4, nullptr, 0)) {
+    fprintf(stderr, "Cipher %s not supported for PKCS#8 encryption\n", cipher_name.c_str());
+    return false;
+  }
+  
   return true;
 }
 
