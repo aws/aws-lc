@@ -13,6 +13,7 @@
 #endif
 #ifdef _WIN32
 #include <stdlib.h>  // for _putenv_s
+#include <windows.h> // for CreatePipe, SetStdHandle
 #endif
 #include "internal.h"
 #include "test_util.h"
@@ -505,6 +506,28 @@ TEST_F(PassUtilTest, StdinExtraction) {
   close(old_stdin);
   close(pipefd[0]);
 }
+#else
+TEST_F(PassUtilTest, StdinExtraction) {
+  HANDLE hReadPipe, hWritePipe;
+  SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
+  ASSERT_TRUE(CreatePipe(&hReadPipe, &hWritePipe, &sa, 0));
+  
+  HANDLE old_stdin = GetStdHandle(STD_INPUT_HANDLE);
+  SetStdHandle(STD_INPUT_HANDLE, hReadPipe);
+  
+  DWORD written;
+  ASSERT_TRUE(WriteFile(hWritePipe, "stdinpass\n", 10, &written, NULL));
+  ASSERT_EQ(written, 10);
+  CloseHandle(hWritePipe);
+  
+  bssl::UniquePtr<std::string> source(new std::string("stdin"));
+  EXPECT_TRUE(pass_util::ExtractPassword(source));
+  EXPECT_EQ(*source, "stdinpass");
+  
+  SetStdHandle(STD_INPUT_HANDLE, old_stdin);
+  CloseHandle(hReadPipe);
+}
+#endif
 
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   int pipefd[2];
@@ -527,4 +550,3 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   close(old_stdin);
   close(pipefd[0]);
 }
-#endif
