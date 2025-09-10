@@ -422,9 +422,11 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  # Clang 20+ warns when both "-S" and "-c" are used as options to the compiler.
-  if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND (CMAKE_C_COMPILER_VERSION VERSION_GREATER "19.99.99"))
-    set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-Wno-unused-command-line-argument")
+  get_filename_component(COMPILER_WRAPPER_PATH ${AWSLC_SOURCE_DIR}/util/compiler_wrapper/CompilerWrapper.cmake REALPATH)
+  include(${COMPILER_WRAPPER_PATH})
+  setup_compiler_wrapper()
+  if(COMPILER_WRAPPER_AVAILABLE)
+    use_compiler_wrapper_for_target(bcm_c_generated_asm)
   endif()
 
   set(TARGET "")
