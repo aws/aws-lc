@@ -422,8 +422,7 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  # Some Android targets fail to follow symlinks
-  get_filename_component(COMPILER_WRAPPER_PATH ${CMAKE_SOURCE_DIR}/util/compiler_wrapper/CompilerWrapper.cmake REALPATH)
+  get_filename_component(COMPILER_WRAPPER_PATH ${AWSLC_SOURCE_DIR}/util/compiler_wrapper/CompilerWrapper.cmake REALPATH)
   include(${COMPILER_WRAPPER_PATH})
   setup_compiler_wrapper()
   if(COMPILER_WRAPPER_AVAILABLE)
