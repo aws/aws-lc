@@ -332,6 +332,15 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
 
 endif()
 
+# Include s2n-bignum files in Windows AArch64 which replace similar implementation that was available on Windows
+# TODO: Attempt more AArch64 s2n-bignum files in Windows build
+if(ARCH STREQUAL "aarch64")
+  set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
+  list(APPEND BCM_ASM_SOURCES
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes/aes-xts-enc.S
+          ${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-to-be-imported/arm/aes/aes-xts-dec.S
+  )
+endif()
 
 # mlkem-native assembly files can be compiled on Unix platforms for x86_64 and arm64 only.
 if((ARCH STREQUAL "aarch64") AND UNIX)
@@ -413,9 +422,11 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  # Clang 20+ warns when both "-S" and "-c" are used as options to the compiler.
-  if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND (CMAKE_C_COMPILER_VERSION VERSION_GREATER "19.99.99"))
-    set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-Wno-unused-command-line-argument")
+  get_filename_component(COMPILER_WRAPPER_PATH ${AWSLC_SOURCE_DIR}/util/compiler_wrapper/CompilerWrapper.cmake REALPATH)
+  include(${COMPILER_WRAPPER_PATH})
+  setup_compiler_wrapper()
+  if(COMPILER_WRAPPER_AVAILABLE)
+    use_compiler_wrapper_for_target(bcm_c_generated_asm)
   endif()
 
   set(TARGET "")
