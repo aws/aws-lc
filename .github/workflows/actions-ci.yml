@@ -108,6 +108,8 @@ jobs:
           ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       - name: Build/Test (ARM64)
         if: endsWith(matrix.os, '-arm')
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
         run: |
           ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" arm64
 
