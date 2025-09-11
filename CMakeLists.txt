@@ -31,6 +31,7 @@ endif()
 
 include(sources.cmake)
 include(TestBigEndian)
+include(CheckCCompilerFlag)
 
 if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
@@ -474,8 +475,9 @@ if(GCC OR CLANG)
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
-  if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8") OR
-     (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS "13"))
+  # Test if compiler supports -Wno-cast-function-type flag instead of checking versions
+  check_c_compiler_flag("-Wno-cast-function-type" COMPILER_SUPPORTS_WNO_CAST_FUNCTION_TYPE)
+  if(COMPILER_SUPPORTS_WNO_CAST_FUNCTION_TYPE)
     # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
     # Also suppress for all clang versions supporting this warning.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
