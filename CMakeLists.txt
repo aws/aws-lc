@@ -166,7 +166,7 @@ if (NOT DEFINED CMAKE_C_STANDARD)
           RESULT
           ${AWSLC_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/c11.c"
-          COMPILE_DEFINITIONS -c -std=c11)
+          CMAKE_FLAGS "-DCMAKE_C_FLAGS=-c -std=c11")
   if(RESULT)
     set(CMAKE_C_STANDARD 11)
   else()
@@ -344,7 +344,7 @@ macro(check_compiler file_to_test flag_to_set)
           ${flag_to_set} # Use CMake variable of the same name as the C flag to allow later reference
           ${AWSLC_BINARY_DIR}
           SOURCES "${AWSLC_SOURCE_DIR}/tests/compiler_features_tests/${file_to_test}"
-          COMPILE_DEFINITIONS "-Werror ${ARGN}"
+          CMAKE_FLAGS "-DCMAKE_C_FLAGS=-Werror ${ARGN}" "-DCMAKE_CXX_FLAGS=-Werror ${ARGN}"
           OUTPUT_VARIABLE ERROR_MESSAGE)
   if(${flag_to_set})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D${flag_to_set}")
@@ -371,7 +371,7 @@ macro(check_run file_to_test flag_to_set compile_flags)
           COMPILE_RESULT
           "${CMAKE_CURRENT_BINARY_DIR}"
           "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
-          COMPILE_DEFINITIONS "${compile_flags}"
+          CMAKE_FLAGS "-DCMAKE_C_FLAGS=${compile_flags}" "-DCMAKE_CXX_FLAGS=${compile_flags}"
           OUTPUT_VARIABLE COMPILE_AND_RUN_OUTPUT)
   if (NOT COMPILE_RESULT)
     message(WARNING "COMPILE_AND_RUN_OUTPUT ${COMPILE_AND_RUN_OUTPUT}")
