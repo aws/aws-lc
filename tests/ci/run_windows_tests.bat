@@ -9,6 +9,11 @@ set MSVC_PATH=%1
 set ARCH_OPTION=%2
 if "%~3"=="" ( set RUN_SDE=false ) else ( set RUN_SDE=%3 )
 call %MSVC_PATH% %ARCH_OPTION% || goto error
+
+if /i "%ARCH_OPTION%" == "arm64" (
+  set "CC=clang-cl"
+  set "CXX=clang-cl"
+)
 SET
 
 @echo on
