@@ -17,27 +17,30 @@
 static constexpr long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
 
 // Checks if BIO size is within allowed limits
-static bool validate_bio_size(BIO &bio,
+static bool validate_bio_size(BIO *bio,
                               long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
-  const long current_pos = BIO_tell(&bio);
+  if (!bio) {
+    return false;
+  }
+  const long current_pos = BIO_tell(bio);
   if (current_pos < 0) {
     return false;
   }
-  if (BIO_seek(&bio, 0) < 0) {
+  if (BIO_seek(bio, 0) < 0) {
     return false;
   }
   long size = 0;
   char buffer[4096] = {};
   int bytes_read = 0;
-  while ((bytes_read = BIO_read(&bio, buffer, sizeof(buffer))) > 0) {
+  while ((bytes_read = BIO_read(bio, buffer, sizeof(buffer))) > 0) {
     size += bytes_read;
     if (size > max_size) {
-      BIO_seek(&bio, current_pos);
+      BIO_seek(bio, current_pos);
       fprintf(stderr, "File exceeds maximum allowed size\n");
       return false;
     }
   }
-  if (BIO_seek(&bio, current_pos) < 0) {
+  if (BIO_seek(bio, current_pos) < 0) {
     return false;
   }
   return true;
@@ -191,7 +194,7 @@ bool pkcs8Tool(const args_list_t &args) {
     fprintf(stderr, "Cannot open input file\n");
     return false;
   }
-  if (!validate_bio_size(*in)) {
+  if (!validate_bio_size(in.get())) {
     return false;
   }
 
