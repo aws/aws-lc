@@ -17,9 +17,11 @@
 //
 // Standard ARM ABI: X0 = rr, X1 = point, X2 = pp, X3 = b
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_ladderstep)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_ladderstep)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_ladderstep)
 
         .text
@@ -73,7 +75,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (9*NUMSIZE)
+#define NSPACE 9*NUMSIZE
 
 // Macros wrapping up the basic field operations bignum_mul_p25519
 // and bignum_sqr_p25519, only trivially different from pure function
@@ -870,12 +872,13 @@
         stp     x6, x7, [p1+16]
 
 S2N_BN_SYMBOL(curve25519_ladderstep):
+        CFI_START
 
 // Save regs and make room for temporaries
 
-        stp     x19, x30, [sp, -16]!
-        stp     x20, x21, [sp, -16]!
-        sub     sp, sp, #NSPACE
+        CFI_PUSH2(x19,x30)
+        CFI_PUSH2(x20,x21)
+        CFI_DEC_SP(NSPACE)
 
 // Move the input arguments to stable places
 
@@ -951,11 +954,13 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
 
 // Restore stack and registers
 
-        add     sp, sp, #NSPACE
-        ldp     x20, x21, [sp], 16
-        ldp     x19, x30, [sp], 16
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x20,x21)
+        CFI_POP2(x19,x30)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(curve25519_ladderstep)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

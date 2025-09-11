@@ -14,9 +14,11 @@
 //
 // Standard ARM ABI: X0 = res, X1 = scalar
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_byte_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519base_byte_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_byte_alt)
 
         .text
@@ -72,7 +74,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (14*NUMSIZE)
+#define NSPACE 14*NUMSIZE
 
 // Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
 // trivially different from a pure function call to that subroutine.
@@ -339,13 +341,14 @@
         stp     x5, x6, [P0+16]
 
 S2N_BN_SYMBOL(curve25519_x25519base_byte_alt):
+        CFI_START
 
 // Save regs and make room for temporaries
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
-        sub     sp, sp, #NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_DEC_SP(NSPACE)
 
 // Move the output pointer to a stable place
 
@@ -436,28 +439,34 @@ S2N_BN_SYMBOL(curve25519_x25519base_byte_alt):
         ldr     x0, [scalar]
         ands    xzr, x0, #8
 
-        adr     x10, curve25519_x25519base_byte_alt_edwards25519_0g
-        adr     x11, curve25519_x25519base_byte_alt_edwards25519_8g
-        ldp     x0, x1, [x10]
-        ldp     x2, x3, [x11]
+#if defined(__ELF__)
+        adrp    tab, S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant)
+        add     tab, tab, :lo12:S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant)
+#else
+        adrp    tab, S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant)@PAGE
+        add     tab, tab, S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant)@PAGEOFF
+#endif
+
+        ldp     x0, x1, [tab]
+        ldp     x2, x3, [tab, #96]
         csel    x0, x0, x2, eq
         csel    x1, x1, x3, eq
         stp     x0, x1, [acc]
 
-        ldp     x0, x1, [x10, 1*16]
-        ldp     x2, x3, [x11, 1*16]
+        ldp     x0, x1, [tab, #1*16]
+        ldp     x2, x3, [tab, #(96+1*16)]
         csel    x0, x0, x2, eq
         csel    x1, x1, x3, eq
         stp     x0, x1, [acc+1*16]
 
-        ldp     x0, x1, [x10, 2*16]
-        ldp     x2, x3, [x11, 2*16]
+        ldp     x0, x1, [tab, #2*16]
+        ldp     x2, x3, [tab, #(96+2*16)]
         csel    x0, x0, x2, eq
         csel    x1, x1, x3, eq
         stp     x0, x1, [acc+2*16]
 
-        ldp     x0, x1, [x10, 3*16]
-        ldp     x2, x3, [x11, 3*16]
+        ldp     x0, x1, [tab, #3*16]
+        ldp     x2, x3, [tab, #(96+3*16)]
         csel    x0, x0, x2, eq
         csel    x1, x1, x3, eq
         stp     x0, x1, [acc+3*16]
@@ -466,14 +475,14 @@ S2N_BN_SYMBOL(curve25519_x25519base_byte_alt):
         stp     x0, xzr, [acc+4*16]
         stp     xzr, xzr, [acc+5*16]
 
-        ldp     x0, x1, [x10, 4*16]
-        ldp     x2, x3, [x11, 4*16]
+        ldp     x0, x1, [tab, #4*16]
+        ldp     x2, x3, [tab, #(96+4*16)]
         csel    x0, x0, x2, eq
         csel    x1, x1, x3, eq
         stp     x0, x1, [acc+6*16]
 
-        ldp     x0, x1, [x10, 5*16]
-        ldp     x2, x3, [x11, 5*16]
+        ldp     x0, x1, [tab, #5*16]
+        ldp     x2, x3, [tab, #(96+5*16)]
         csel    x0, x0, x2, eq
         csel    x1, x1, x3, eq
         stp     x0, x1, [acc+7*16]
@@ -493,12 +502,12 @@ S2N_BN_SYMBOL(curve25519_x25519base_byte_alt):
 // l >= 9 case cannot arise on the last iteration.
 
         mov     i, 4
-        adr     tab, curve25519_x25519base_byte_alt_edwards25519_gtable
+        add     tab, tab, #192
         mov     bias, xzr
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
-curve25519_x25519base_byte_alt_scalarloop:
+Lcurve25519_x25519base_byte_alt_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -757,7 +766,7 @@ curve25519_x25519base_byte_alt_scalarloop:
 
 // Extended-projective and precomputed mixed addition.
 // This is effectively the same as calling the standalone
-// function edwards25519_pepadd_alt(acc,acc,tabent), but we
+// function edwards25519_pepadd(acc,acc,tabent), but we
 // only retain slightly weaker normalization < 2 * p_25519
 // throughout the inner loop, so the computation is
 // slightly different, and faster overall.
@@ -781,7 +790,7 @@ curve25519_x25519base_byte_alt_scalarloop:
 
         add     i, i, 4
         cmp     i, 256
-        bcc     curve25519_x25519base_byte_alt_scalarloop
+        bcc     Lcurve25519_x25519base_byte_alt_scalarloop
 
 // Now we need to translate from Edwards curve edwards25519 back
 // to the Montgomery form curve25519. The mapping in the affine
@@ -805,6 +814,8 @@ curve25519_x25519base_byte_alt_scalarloop:
 // the Montgomery point at infinity, and Edwards (0,-1) which maps to
 // Montgomery (0,0) [this is the 2-torsion point] are both by definition
 // mapped to 0 by the X coordinate mapping used to define curve25519.
+//
+// First the addition and subtraction:
 
         add_twice4(t1,x_3,w_3)
         sub_twice4(t2,x_3,w_3)
@@ -869,8 +880,8 @@ curve25519_x25519base_byte_alt_scalarloop:
         stp     x12, x13, [sp, #112]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       curve25519_x25519base_byte_alt_invmidloop
-curve25519_x25519base_byte_alt_invloop:
+        b       Lcurve25519_x25519base_byte_alt_invmidloop
+Lcurve25519_x25519base_byte_alt_invloop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -1137,7 +1148,7 @@ curve25519_x25519base_byte_alt_invloop:
         adc     x2, x2, x5
         stp     x0, x1, [sp, #96]
         stp     x3, x2, [sp, #112]
-curve25519_x25519base_byte_alt_invmidloop:
+Lcurve25519_x25519base_byte_alt_invmidloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #32]
@@ -1748,7 +1759,7 @@ curve25519_x25519base_byte_alt_invmidloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        b.ne    curve25519_x25519base_byte_alt_invloop
+        b.ne    Lcurve25519_x25519base_byte_alt_invloop
         ldr     x0, [sp]
         ldr     x1, [sp, #32]
         mul     x0, x0, x10
@@ -1925,56 +1936,60 @@ curve25519_x25519base_byte_alt_invmidloop:
         lsr     x13, x13, #8
         strb    w13, [resx+31]
 
-
 // Restore stack and registers
 
-        add     sp, sp, #NSPACE
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519base_byte_alt)
+
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif
 
 // ****************************************************************************
-// The precomputed data (all read-only). This is currently part of the same
-// text section, which gives position-independent code with simple PC-relative
-// addressing. However it could be put in a separate section via something like
-//
-// .section .rodata
+// The precomputed data (all read-only).
 // ****************************************************************************
+
+#if defined(__ELF__)
+.section .rodata
+.type S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant), %object
+.size S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant), 48576
+#elif defined(__APPLE__)
+.const_data
+#endif
+
+S2N_BN_SYMBOL(curve25519_x25519base_byte_alt_constant):
 
 // 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
-
-curve25519_x25519base_byte_alt_edwards25519_0g:
 
         .quad   0x251037f7cf4e861d
         .quad   0x10ede0fb19fb128f
         .quad   0x96c033b175f5e2c8
         .quad   0x055f070d6c15fb0d
-
         .quad   0x7c52af2c97473e69
         .quad   0x022f82391bad8378
         .quad   0x9991e1b02adb476f
         .quad   0x511144a03a99b855
-
         .quad   0x5fafc3b88ff2e4ae
         .quad   0x855e4ff0de1230ff
         .quad   0x72e302a348492870
         .quad   0x1253c19e53dbe1bc
 
-curve25519_x25519base_byte_alt_edwards25519_8g:
-
         .quad   0x331d086e0d9abcaa
         .quad   0x1e23c96d311a10c9
         .quad   0x96d0f95e58c13478
         .quad   0x2f72f7384fcfcc59
-
         .quad   0x39a6cd1cfd7d87c9
         .quad   0x9867a0abd8ae153a
         .quad   0xa49d2a5f35986745
         .quad   0x57012940cdfe82e1
-
         .quad   0x5046a6532ec5544a
         .quad   0x6d674004739ff6c9
         .quad   0x9bbaa44b234a70e3
@@ -1982,8 +1997,6 @@ curve25519_x25519base_byte_alt_edwards25519_8g:
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
-
-curve25519_x25519base_byte_alt_edwards25519_gtable:
 
         // 2^4 * 1 * G
 
@@ -9544,7 +9557,3 @@ curve25519_x25519base_byte_alt_edwards25519_gtable:
         .quad   0x3d0987990aff3f7a
         .quad   0xd09ef36267daba45
         .quad   0x7761455e7b1c669c
-
-#if defined(__linux__) && defined(__ELF__)
-.section .note.GNU-stack, "", %progbits
-#endif

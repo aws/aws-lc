@@ -9,9 +9,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_neg_p25519)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_neg_p25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_neg_p25519)
         .text
         .balign 4
@@ -27,6 +29,7 @@
 #define d x7
 
 S2N_BN_SYMBOL(bignum_neg_p25519):
+        CFI_START
 
 // Load the digits of x and compute [d3;d2;d1;d0] = (2^255 - 19) - x
 // while also computing c = the OR of the digits of x
@@ -57,7 +60,9 @@ S2N_BN_SYMBOL(bignum_neg_p25519):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_neg_p25519)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

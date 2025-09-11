@@ -3,6 +3,7 @@
 : add$
 : adds$
 : adr$
+: adrp$
 : and$
 : and.16b$
 : ands$

@@ -154,6 +154,8 @@ class AwsLcGitHubFuzzCIStack(AwsLcBaseCiStack):
             ],
         )
 
+        cfn_codebuild.add_property_override("Triggers.PullRequestBuildPolicy", self.pull_request_policy)
+
         PruneStaleGitHubBuilds(
             scope=self,
             id="PruneStaleGitHubBuilds",

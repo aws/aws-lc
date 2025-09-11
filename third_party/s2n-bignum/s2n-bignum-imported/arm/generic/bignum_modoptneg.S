@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = p, X3 = x, X4 = m
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modoptneg)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_modoptneg)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modoptneg)
         .text
         .balign 4
@@ -29,22 +31,23 @@
 
 
 S2N_BN_SYMBOL(bignum_modoptneg):
+        CFI_START
 
 // Do nothing if k = 0
 
-        cbz     k, bignum_modoptneg_end
+        cbz     k, Lbignum_modoptneg_end
 
 // Make an additional check for zero input, and force p to zero in this case.
 // This can be skipped if the input is known not to be zero a priori.
 
         mov     i, xzr
         mov     a, xzr
-bignum_modoptneg_cmploop:
+Lbignum_modoptneg_cmploop:
         ldr     b, [x, i, lsl #3]
         orr     a, a, b
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_modoptneg_cmploop
+        bcc     Lbignum_modoptneg_cmploop
 
         cmp     a, xzr
         csel    p, p, xzr, ne
@@ -58,7 +61,7 @@ bignum_modoptneg_cmploop:
 
         mov     i, xzr
         adds    xzr, p, p
-bignum_modoptneg_mainloop:
+Lbignum_modoptneg_mainloop:
 
         ldr     a, [m, i, lsl #3]
         ldr     b, [x, i, lsl #3]
@@ -68,10 +71,12 @@ bignum_modoptneg_mainloop:
         str     a, [z, i, lsl #3]
         add     i, i, #1
         sub     a, i, k
-        cbnz    a, bignum_modoptneg_mainloop
+        cbnz    a, Lbignum_modoptneg_mainloop
 
-bignum_modoptneg_end:
-        ret
+Lbignum_modoptneg_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_modoptneg)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -142,7 +142,11 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
   if (pkey_nid != EVP_PKEY_id(pkey) &&
       !(sigalg_nid == NID_rsassaPss && pkey_nid == NID_rsaEncryption &&
         EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) &&
-       !(sigalg_nid == NID_MLDSA65 && pkey_nid == NID_MLDSA65 &&
+      !(sigalg_nid == NID_MLDSA44 && pkey_nid == NID_MLDSA44 &&
+        EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) &&
+      !(sigalg_nid == NID_MLDSA65 && pkey_nid == NID_MLDSA65 &&
+        EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) &&
+      !(sigalg_nid == NID_MLDSA87 && pkey_nid == NID_MLDSA87 &&
         EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA)) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
@@ -160,7 +164,8 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
       return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
     }
 
-    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_MLDSA65) {
+    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_MLDSA44 ||
+        sigalg_nid == NID_MLDSA65 || sigalg_nid == NID_MLDSA87) {
       if (sigalg->parameter != NULL) {
         OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PARAMETER);
         return 0;

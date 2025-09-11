@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_demont_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont_p521)
         .text
         .balign 4
@@ -39,6 +41,7 @@
 #define c x6
 
 S2N_BN_SYMBOL(bignum_demont_p521):
+        CFI_START
 
 // Rotate, as a 521-bit quantity, by 9*64 - 521 = 55 bits right.
 
@@ -63,7 +66,9 @@ S2N_BN_SYMBOL(bignum_demont_p521):
         stp     d6, d7, [z, #48]
         lsr     d8, d8, #55
         str     d8, [z, #64]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_demont_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
