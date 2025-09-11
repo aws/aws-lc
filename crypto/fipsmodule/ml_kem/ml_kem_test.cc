@@ -42,7 +42,7 @@ struct MLKEMKeypairTestVector {
 };
 
 
-static constexpr MLKEMKeypairTestVector keypairParameterSet[] = {
+static const MLKEMKeypairTestVector keypairParameterSet[] = {
   {
     MLKEM512_PUBLIC_KEY_BYTES,
     MLKEM512_SECRET_KEY_BYTES,
@@ -516,7 +516,7 @@ struct MLKEMEncapsulateTestVector {
   int (*encapsulate)(uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *public_key);
 };
 
-static constexpr MLKEMEncapsulateTestVector encapsulateParameterSet[] = {
+static const MLKEMEncapsulateTestVector encapsulateParameterSet[] = {
   {
     MLKEM512_CIPHERTEXT_BYTES,
     MLKEM512_SHARED_SECRET_LEN,
@@ -1571,7 +1571,7 @@ struct MLKEMDecapsulateTestVector {
   int (*decapsulate)(uint8_t *shared_secret, size_t *shared_secret_len, const uint8_t *ciphertext, const uint8_t *secret_key);
 };
 
-static constexpr MLKEMDecapsulateTestVector decapsulateParameterSet[] = {
+static const MLKEMDecapsulateTestVector decapsulateParameterSet[] = {
   {
     MLKEM512_SHARED_SECRET_LEN,
     ciphertext512,
