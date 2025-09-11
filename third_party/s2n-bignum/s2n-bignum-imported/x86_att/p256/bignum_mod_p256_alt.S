@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = k, R8 = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p256_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_p256_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p256_alt)
         .text
 
@@ -41,11 +42,12 @@
 
 
 S2N_BN_SYMBOL(bignum_mod_p256_alt):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -53,13 +55,13 @@ S2N_BN_SYMBOL(bignum_mod_p256_alt):
 
 // Save extra registers
 
-        pushq   %rbx
-        pushq   %r12
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
 
 // If the input is already <= 3 words long, go to a trivial "copy" path
 
         cmpq    $4, k
-        jc      bignum_mod_p256_alt_shortinput
+        jc      Lbignum_mod_p256_alt_shortinput
 
 // Otherwise load the top 4 digits (top-down) and reduce k by 4
 
@@ -95,9 +97,9 @@ S2N_BN_SYMBOL(bignum_mod_p256_alt):
 // Now do (k-4) iterations of 5->4 word modular reduction
 
         testq   k, k
-        jz      bignum_mod_p256_alt_writeback
+        jz      Lbignum_mod_p256_alt_writeback
 
-bignum_mod_p256_alt_loop:
+Lbignum_mod_p256_alt_loop:
 
 // Writing the input as z = 2^256 * m3 + 2^192 * m2 + t = 2^192 * h + t, our
 // intended quotient approximation is MIN ((h + h>>32 + 1)>>64) (2^64 - 1).
@@ -158,11 +160,11 @@ bignum_mod_p256_alt_loop:
         movq    d, m0
 
         decq    k
-        jnz     bignum_mod_p256_alt_loop
+        jnz     Lbignum_mod_p256_alt_loop
 
 // Write back
 
-bignum_mod_p256_alt_writeback:
+Lbignum_mod_p256_alt_writeback:
 
         movq    m0, (z)
         movq    m1, 8(z)
@@ -171,15 +173,17 @@ bignum_mod_p256_alt_writeback:
 
 // Restore registers and return
 
-        popq    %r12
-        popq    %rbx
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
 
-bignum_mod_p256_alt_shortinput:
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_p256_alt)
+
+Lbignum_mod_p256_alt_shortinput:
 
         xorq    m0, m0
         xorq    m1, m1
@@ -187,15 +191,15 @@ bignum_mod_p256_alt_shortinput:
         xorq    m3, m3
 
         testq   k, k
-        jz      bignum_mod_p256_alt_writeback
+        jz      Lbignum_mod_p256_alt_writeback
         movq    (%rdx), m0
         decq    k
-        jz      bignum_mod_p256_alt_writeback
+        jz      Lbignum_mod_p256_alt_writeback
         movq    8(%rdx), m1
         decq    k
-        jz      bignum_mod_p256_alt_writeback
+        jz      Lbignum_mod_p256_alt_writeback
         movq    16(%rdx), m2
-        jmp     bignum_mod_p256_alt_writeback
+        jmp     Lbignum_mod_p256_alt_writeback
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

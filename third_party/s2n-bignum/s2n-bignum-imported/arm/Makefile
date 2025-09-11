@@ -408,7 +408,9 @@ OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
 TUTORIAL_PROOFS = $(wildcard tutorial/*.ml)
 
-TUTORIAL_OBJ = $(TUTORIAL_PROOFS:.ml=.o) tutorial/rel_loop2.o tutorial/rel_simp2.o tutorial/rel_veceq2.o tutorial/rel_equivtac2.o tutorial/rel_reordertac2.o
+TUTORIAL_OBJ = $(TUTORIAL_PROOFS:.ml=.o) tutorial/rel_loop2.o \
+    tutorial/rel_simp2.o tutorial/rel_veceq2.o tutorial/rel_equivtac2.o \
+    tutorial/rel_reordertac2.o tutorial/rodata_local.o
 
 # According to
 # https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms,
@@ -435,6 +437,13 @@ clean:; rm -f libs2nbignum.a */*.o */*/*.o */*.correct */*.native
 # in your home directory, and do "make" inside the subdirectory hol-light,
 # then the following HOLDIR setting should be right:
 
+# TODO: exhaustively list all files. Do we need ocamldep-equivalent tool for HOL Light?
+BASE_ML=proofs/arm.ml \
+        proofs/base.ml \
+        proofs/decode.ml \
+        proofs/instruction.ml \
+        proofs/subroutine_signatures.ml
+
 HOLDIR?=$(HOME)/hol-light
 HOLLIGHT:=$(HOLDIR)/hol.sh
 
@@ -445,10 +454,15 @@ TUTORIAL_PROOF_LOGS = $(TUTORIAL_PROOFS:.ml=.correct)
 
 # Build precompiled native binaries of HOL Light proofs
 
-proofs/simulator.native: proofs/simulator.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
+proofs/simulator.native: proofs/simulator.ml $(BASE_ML) proofs/simulator_iclasses.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
+
+# For constant-time property and memory safety, collect input/output/temporary
+# buffers from function signatures in s2n-bignum.h .
+
+proofs/subroutine_signatures.ml: ../include/s2n-bignum.h ; cd .. && python3 tools/collect-signatures.py
 
 .SECONDEXPANSION:
-%.native: proofs/$$(*F).ml %.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
+%.native: proofs/$$(*F).ml $(BASE_ML) %.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
 
 # Run them and print the standard output+error at *.correct
 
@@ -506,6 +520,7 @@ sm2/sm2_montjscalarmul_alt.native: sm2/sm2_montjadd_alt.native sm2/sm2_montjdoub
 .SECONDEXPANSION:
 tutorial/%.native: tutorial/%.ml tutorial/%.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
 # Additional dependencies on .o files
+tutorial/rodata.native: tutorial/rodata_local.o
 tutorial/rel_loop.native: tutorial/rel_loop2.o
 tutorial/rel_simp.native: tutorial/rel_simp2.o
 tutorial/rel_veceq.native: tutorial/rel_veceq2.o

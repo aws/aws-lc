@@ -10,11 +10,14 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tomont_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p384)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p384_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tomont_p384_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p384_alt)
         .text
         .balign 4
@@ -64,6 +67,7 @@
 S2N_BN_SYMBOL(bignum_tomont_p384):
 
 S2N_BN_SYMBOL(bignum_tomont_p384_alt):
+        CFI_START
 
 #define d0 x2
 #define d1 x3
@@ -125,7 +129,9 @@ S2N_BN_SYMBOL(bignum_tomont_p384_alt):
         stp     d3, d4, [x0, #16]
         stp     d5, d6, [x0, #32]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_tomont_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

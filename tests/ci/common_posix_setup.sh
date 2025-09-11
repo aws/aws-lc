@@ -154,8 +154,6 @@ function build_and_test_valgrind {
 }
 
 function build_and_test_ssl_runner_valgrind {
-  export AWS_LC_GO_TEST_TIMEOUT="60m"
-
   run_build "$@"
   run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }

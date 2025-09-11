@@ -10,7 +10,8 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
 // bignum_mul_p521 is functionally equivalent to unopt/bignum_mul_p521_base.
 // It is written in a way that
@@ -709,19 +710,21 @@
 //        # Please add 'ret' at the end of the output assembly.
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_p521)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(bignum_mul_p521):
+        CFI_START
 
 // Save registers and make space for the temporary buffer
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x26, [sp, #-16]!
-        sub     sp, sp, #80
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x26)
+        CFI_DEC_SP(80)
 
         ldr q6, [x2]
         ldp x10, x17, [x1, #16]
@@ -1390,12 +1393,14 @@ S2N_BN_SYMBOL(bignum_mul_p521):
 
 // Restore regs and return
 
-        add     sp, sp, #80
-        ldp     x25, x26, [sp], #16
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(80)
+        CFI_POP2(x25,x26)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

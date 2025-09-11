@@ -26,9 +26,9 @@
 //
 // The output program of step 1. is as follows:
 //
-//        stp   x19, x20, [sp, #-16]!
-//        stp   x21, x22, [sp, #-16]!
-//        stp   x23, x24, [sp, #-16]!
+//        stp	x19, x20, [sp, #-16]!
+//        stp	x21, x22, [sp, #-16]!
+//        stp	x23, x24, [sp, #-16]!
 //        ldp x3, x21, [x1]
 //        ldr q30, [x1]
 //        ldp x8, x24, [x1, #16]
@@ -435,9 +435,9 @@
 //        stp x10, x5, [x0]                       // @slothy:writes=buffer0
 //        stp x24, x8, [x0, #16]                  // @slothy:writes=buffer16
 //        stp x21, x2, [x0, #32]                  // @slothy:writes=buffer32
-//        ldp   x23, x24, [sp], #16
-//        ldp   x21, x22, [sp], #16
-//        ldp   x19, x20, [sp], #16
+//        ldp	x23, x24, [sp], #16
+//        ldp	x21, x22, [sp], #16
+//        ldp	x19, x20, [sp], #16
 //        ret
 //
 // The bash script used for step 2 is as follows:
@@ -452,20 +452,22 @@
 //        # Please add 'ret' at the end of the output assembly.
 
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montmul_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p384)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(bignum_montmul_p384):
+        CFI_START
 
 // Save some registers
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
 
         ldr q3, [x1]
         ldr q25, [x2]
@@ -876,11 +878,13 @@ S2N_BN_SYMBOL(bignum_montmul_p384):
 
 // Restore registers and return
 
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montmul_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

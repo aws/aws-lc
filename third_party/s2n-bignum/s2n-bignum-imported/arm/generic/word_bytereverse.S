@@ -8,14 +8,17 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_bytereverse)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_bytereverse)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_bytereverse)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(word_bytereverse):
+        CFI_START
 
         mov     x1, #0xFFFF0000FFFF0000
         mov     x2, #0x0000FFFF0000FFFF
@@ -32,7 +35,9 @@ S2N_BN_SYMBOL(word_bytereverse):
         ror     x2, x2, #8
         orr     x0, x1, x2
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_bytereverse)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

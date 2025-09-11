@@ -16,10 +16,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cdiv)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cdiv)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cdiv)
         .text
 
@@ -56,11 +57,12 @@
 #define r %r15
 
 S2N_BN_SYMBOL(bignum_cdiv):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -68,11 +70,11 @@ S2N_BN_SYMBOL(bignum_cdiv):
         movq    56(%rsp), %r8
 #endif
 
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
 // Move parameters that need a new home
 
@@ -86,7 +88,7 @@ S2N_BN_SYMBOL(bignum_cdiv):
 
         xorq    l, l
         testq   n, n
-        jz      bignum_cdiv_nomodulus
+        jz      Lbignum_cdiv_nomodulus
 
         bsrq    m, e
         xorq    $63, e
@@ -152,7 +154,7 @@ S2N_BN_SYMBOL(bignum_cdiv):
 
         xorl    hshort, hshort
         movq    n, i
-bignum_cdiv_modloop:
+Lbignum_cdiv_modloop:
         movq    h, a
         mulq    r
         addq    -8(x,i,8), a
@@ -163,7 +165,7 @@ bignum_cdiv_modloop:
         addq    a, l
         adcq    $0, h
         decq    i
-        jnz     bignum_cdiv_modloop
+        jnz     Lbignum_cdiv_modloop
 
         movq    h, i
         movq    w, a
@@ -201,13 +203,13 @@ bignum_cdiv_modloop:
 
         movq    l, r
         subq    m, l
-bignum_cdiv_nomodulus:
+Lbignum_cdiv_nomodulus:
         cmovncq l, r
 
 // If k = 0 then there's no more to be done
 
         testq   k, k
-        jz      bignum_cdiv_end
+        jz      Lbignum_cdiv_end
 
 // Let e be the number of trailing zeros in m (we can ignore m = 0)
 
@@ -276,20 +278,20 @@ bignum_cdiv_nomodulus:
 
         xorq    d, d
         testq   n, n
-        jz      bignum_cdiv_loop
+        jz      Lbignum_cdiv_loop
         movq    (x), d
         addq    $8, x
         decq    n
 
-bignum_cdiv_loop:
+Lbignum_cdiv_loop:
 
 // Load the next digit up to get [l,d] then shift right e places
 
         xorq    l, l
         cmpq    n, i
-        jnc     bignum_cdiv_noload
+        jnc     Lbignum_cdiv_noload
         movq    (x,i,8), l
-bignum_cdiv_noload:
+Lbignum_cdiv_noload:
         shrdq   %cl, l, d
         addq    c, d
         sbbq    c, c
@@ -313,23 +315,25 @@ bignum_cdiv_noload:
 
         incq    i
         cmpq    k, i
-        jc      bignum_cdiv_loop
+        jc      Lbignum_cdiv_loop
 
 // Return the modulus
 
-bignum_cdiv_end:
+Lbignum_cdiv_end:
         movq    r, %rax
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cdiv)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tomont_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p521)
         .text
 
@@ -39,18 +40,19 @@
 #define d7 %rsi
 
 S2N_BN_SYMBOL(bignum_tomont_p521):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
 
 // Save one more register
 
-        pushq   %rbx
+        CFI_PUSH(%rbx)
 
 // Separate out the input into x = 2^521 * H + L, so that x mod p_521 =
 // (H + L) mod p_521 = if H + L >= p_521 then H + L - p_521 else H + L.
@@ -126,12 +128,14 @@ S2N_BN_SYMBOL(bignum_tomont_p521):
 
 // Restore register
 
-        popq    %rbx
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_tomont_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

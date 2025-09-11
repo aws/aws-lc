@@ -24,10 +24,13 @@
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p521_jscalarmul_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p521_jscalarmul_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p521_jscalarmul_alt)
+
 
         .text
         .balign 4
@@ -56,7 +59,7 @@
 
 // Round up to maintain stack alignment
 
-#define NSPACE #(55*NUMSIZE+8)
+#define NSPACE 3968
 
 #define selectblock(I)                            \
         cmp     bf, #(1*I) __LF                      \
@@ -85,10 +88,11 @@
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(p521_jscalarmul_alt):
+        CFI_START
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x30, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Preserve the "res" input argument; others get processed early.
 
@@ -98,7 +102,7 @@ S2N_BN_SYMBOL(p521_jscalarmul_alt):
 
         mov     x19, x2
         add     x0, scalarb
-        bl      p521_jscalarmul_alt_bignum_mod_n521_9
+        CFI_BL(Lp521_jscalarmul_alt_bignum_mod_n521_9)
         mov     x2, x19
 
 // Set the tab[0] table entry to the input point = 1 * P, but also
@@ -109,15 +113,15 @@ S2N_BN_SYMBOL(p521_jscalarmul_alt):
 
         add     x0, tab
         mov     x1, x19
-        bl      p521_jscalarmul_alt_bignum_mod_p521_9
+        CFI_BL(Lp521_jscalarmul_alt_bignum_mod_p521_9)
 
         add     x0, tab+NUMSIZE
         add     x1, x19, #NUMSIZE
-        bl      p521_jscalarmul_alt_bignum_mod_p521_9
+        CFI_BL(Lp521_jscalarmul_alt_bignum_mod_p521_9)
 
         add     x0, tab+2*NUMSIZE
         add     x1, x19, #(2*NUMSIZE)
-        bl      p521_jscalarmul_alt_bignum_mod_p521_9
+        CFI_BL(Lp521_jscalarmul_alt_bignum_mod_p521_9)
 
 // If bit 520 of the scalar is set, then negate the scalar mod n_521,
 // i.e. do scalar |-> n_521 - scalar, and also the point to compensate
@@ -203,70 +207,70 @@ S2N_BN_SYMBOL(p521_jscalarmul_alt):
 
         add     x0, tab+JACSIZE*1
         add     x1, tab
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*2
         add     x1, tab+JACSIZE*1
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*3
         add     x1, tab+JACSIZE*1
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*4
         add     x1, tab+JACSIZE*3
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*5
         add     x1, tab+JACSIZE*2
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*6
         add     x1, tab+JACSIZE*5
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*7
         add     x1, tab+JACSIZE*3
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*8
         add     x1, tab+JACSIZE*7
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*9
         add     x1, tab+JACSIZE*4
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*10
         add     x1, tab+JACSIZE*9
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*11
         add     x1, tab+JACSIZE*5
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*12
         add     x1, tab+JACSIZE*11
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*13
         add     x1, tab+JACSIZE*6
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, tab+JACSIZE*14
         add     x1, tab+JACSIZE*13
         add     x2, tab
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
         add     x0, tab+JACSIZE*15
         add     x1, tab+JACSIZE*7
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
 // Add the recoding constant sum_i(16 * 32^i) to the scalar to allow signed
 // digits. The digits of the constant, in lowest-to-highest order, are as
@@ -397,28 +401,28 @@ S2N_BN_SYMBOL(p521_jscalarmul_alt):
 
         mov     j, #520
 
-p521_jscalarmul_alt_mainloop:
+Lp521_jscalarmul_alt_mainloop:
         sub     j, j, #5
 
         add     x0, acc
         add     x1, acc
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      p521_jscalarmul_alt_jdouble
+        CFI_BL(Lp521_jscalarmul_alt_jdouble)
 
 // Choose the bitfield and adjust it to sign and magnitude
 
@@ -577,9 +581,9 @@ p521_jscalarmul_alt_mainloop:
         add     x0, acc
         add     x1, acc
         add     x2, tabent
-        bl      p521_jscalarmul_alt_jadd
+        CFI_BL(Lp521_jscalarmul_alt_jadd)
 
-        cbnz    j, p521_jscalarmul_alt_mainloop
+        cbnz    j, Lp521_jscalarmul_alt_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -615,15 +619,20 @@ p521_jscalarmul_alt_mainloop:
 
 // Restore stack and registers and return
 
-        add     sp, sp, NSPACE
-        ldp     x21, x30, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x21,x30)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(p521_jscalarmul_alt)
 
 // Local copies of subroutines, complete clones at the moment except
 // that we share multiplication and squaring between the point operations.
 
-p521_jscalarmul_alt_bignum_mod_p521_9:
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_bignum_mod_p521_9)
+
+Lp521_jscalarmul_alt_bignum_mod_p521_9:
+        CFI_START
         ldr     x12, [x1, #64]
         lsr     x2, x12, #9
         cmp     xzr, xzr
@@ -656,9 +665,14 @@ p521_jscalarmul_alt_bignum_mod_p521_9:
         stp     x8, x9, [x0, #32]
         stp     x10, x11, [x0, #48]
         str     x12, [x0, #64]
-        ret
+        CFI_RET
 
-p521_jscalarmul_alt_bignum_mod_n521_9:
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_bignum_mod_p521_9)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_bignum_mod_n521_9)
+
+Lp521_jscalarmul_alt_bignum_mod_n521_9:
+        CFI_START
         ldr     x14, [x1, #64]
         lsr     x15, x14, #9
         add     x15, x15, #1
@@ -728,107 +742,112 @@ p521_jscalarmul_alt_bignum_mod_n521_9:
         stp     x10, x11, [x0, #32]
         stp     x12, x13, [x0, #48]
         str     x14, [x0, #64]
-        ret
+        CFI_RET
 
-p521_jscalarmul_alt_jadd:
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x26, [sp, #-16]!
-        stp     x27, x28, [sp, #-16]!
-        stp     x29, x30, [sp, #-16]!
-        sub     sp, sp, #0x240
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_bignum_mod_n521_9)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_jadd)
+
+Lp521_jscalarmul_alt_jadd:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x26)
+        CFI_PUSH2(x27,x28)
+        CFI_PUSH2(x29,x30)
+        CFI_DEC_SP(576)
         mov     x27, x0
         mov     x28, x1
         mov     x29, x2
         mov     x0, sp
         add     x1, x28, #0x90
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         add     x0, sp, #0x168
         add     x1, x29, #0x90
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         add     x0, sp, #0x1f8
         add     x1, x29, #0x90
         add     x2, x28, #0x48
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x48
         add     x1, x28, #0x90
         add     x2, x29, #0x48
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x90
         mov     x1, sp
         add     x2, x29, #0x0
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x120
         add     x1, sp, #0x168
         add     x2, x28, #0x0
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x48
         mov     x1, sp
         add     x2, sp, #0x48
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x1f8
         add     x1, sp, #0x168
         add     x2, sp, #0x1f8
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x168
         add     x1, sp, #0x90
         add     x2, sp, #0x120
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         add     x0, sp, #0x48
         add     x1, sp, #0x48
         add     x2, sp, #0x1f8
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         add     x0, sp, #0xd8
         add     x1, sp, #0x168
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         mov     x0, sp
         add     x1, sp, #0x48
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         add     x0, sp, #0x120
         add     x1, sp, #0xd8
         add     x2, sp, #0x120
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x90
         add     x1, sp, #0xd8
         add     x2, sp, #0x90
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         mov     x0, sp
         mov     x1, sp
         add     x2, sp, #0x120
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         add     x0, sp, #0xd8
         add     x1, sp, #0x90
         add     x2, sp, #0x120
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         add     x0, sp, #0x168
         add     x1, sp, #0x168
         add     x2, x28, #0x90
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         mov     x0, sp
         mov     x1, sp
         add     x2, sp, #0x90
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         add     x0, sp, #0x120
         add     x1, sp, #0x120
         mov     x2, sp
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         add     x0, sp, #0xd8
         add     x1, sp, #0xd8
         add     x2, sp, #0x1f8
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x168
         add     x1, sp, #0x168
         add     x2, x29, #0x90
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x120
         add     x1, sp, #0x48
         add     x2, sp, #0x120
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x120
         add     x1, sp, #0x120
         add     x2, sp, #0xd8
-        bl      p521_jscalarmul_alt_sub_p521
+        CFI_BL(Lp521_jscalarmul_alt_sub_p521)
         ldp     x0, x1, [x28, #144]
         ldp     x2, x3, [x28, #160]
         ldp     x4, x5, [x28, #176]
@@ -974,31 +993,36 @@ p521_jscalarmul_alt_jadd:
         stp     x4, x5, [x27, #176]
         stp     x6, x7, [x27, #192]
         str     x8, [x27, #208]
-        add     sp, sp, #0x240
-        ldp     x29, x30, [sp], #16
-        ldp     x27, x28, [sp], #16
-        ldp     x25, x26, [sp], #16
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(576)
+        CFI_POP2(x29,x30)
+        CFI_POP2(x27,x28)
+        CFI_POP2(x25,x26)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
 
-p521_jscalarmul_alt_jdouble:
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
-        stp     x23, x24, [sp, #-16]!
-        stp     x25, x26, [sp, #-16]!
-        stp     x27, x28, [sp, #-16]!
-        stp     x29, x30, [sp, #-16]!
-        sub     sp, sp, #0x200
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_jadd)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_jdouble)
+
+Lp521_jscalarmul_alt_jdouble:
+        CFI_START
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_PUSH2(x25,x26)
+        CFI_PUSH2(x27,x28)
+        CFI_PUSH2(x29,x30)
+        CFI_DEC_SP(512)
         mov     x27, x0
         mov     x28, x1
         mov     x0, sp
         add     x1, x28, #0x90
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         add     x0, sp, #0x48
         add     x1, x28, #0x48
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         ldp     x5, x6, [x28]
         ldp     x4, x3, [sp]
         subs    x5, x5, x4
@@ -1073,7 +1097,7 @@ p521_jscalarmul_alt_jdouble:
         add     x0, sp, #0xd8
         add     x1, sp, #0x90
         add     x2, sp, #0xd8
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         cmp     xzr, xzr
         ldp     x5, x6, [x28, #72]
         ldp     x4, x3, [x28, #144]
@@ -1114,13 +1138,13 @@ p521_jscalarmul_alt_jdouble:
         add     x0, sp, #0x120
         add     x1, x28, #0x0
         add     x2, sp, #0x48
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         add     x0, sp, #0x168
         add     x1, sp, #0xd8
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         add     x0, sp, #0x90
         add     x1, sp, #0x90
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         ldp     x6, x7, [sp, #288]
         mov     x1, #0xc
         mul     x3, x1, x6
@@ -1264,11 +1288,11 @@ p521_jscalarmul_alt_jdouble:
         str     x13, [sp, #208]
         mov     x0, sp
         add     x1, sp, #0x48
-        bl      p521_jscalarmul_alt_sqr_p521
+        CFI_BL(Lp521_jscalarmul_alt_sqr_p521)
         add     x0, sp, #0xd8
         add     x1, sp, #0x168
         add     x2, sp, #0xd8
-        bl      p521_jscalarmul_alt_mul_p521
+        CFI_BL(Lp521_jscalarmul_alt_mul_p521)
         ldp     x5, x6, [sp, #144]
         ldp     x4, x3, [sp, #72]
         subs    x5, x5, x4
@@ -1442,16 +1466,21 @@ p521_jscalarmul_alt_jdouble:
         stp     x7, x8, [x27, #104]
         stp     x9, x10, [x27, #120]
         str     x11, [x27, #136]
-        add     sp, sp, #0x200
-        ldp     x29, x30, [sp], #16
-        ldp     x27, x28, [sp], #16
-        ldp     x25, x26, [sp], #16
-        ldp     x23, x24, [sp], #16
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-        ret
+        CFI_INC_SP(512)
+        CFI_POP2(x29,x30)
+        CFI_POP2(x27,x28)
+        CFI_POP2(x25,x26)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
 
-p521_jscalarmul_alt_mul_p521:
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_jdouble)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_mul_p521)
+
+Lp521_jscalarmul_alt_mul_p521:
+        CFI_START
         ldp     x3, x4, [x1]
         ldp     x5, x6, [x2]
         mul     x15, x3, x5
@@ -1825,9 +1854,14 @@ p521_jscalarmul_alt_mul_p521:
         stp     x9, x10, [x0, #32]
         stp     x11, x12, [x0, #48]
         str     x13, [x0, #64]
-        ret
+        CFI_RET
 
-p521_jscalarmul_alt_sqr_p521:
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_mul_p521)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_sqr_p521)
+
+Lp521_jscalarmul_alt_sqr_p521:
+        CFI_START
         ldp     x2, x3, [x1]
         mul     x11, x2, x3
         umulh   x12, x2, x3
@@ -2058,9 +2092,14 @@ p521_jscalarmul_alt_sqr_p521:
         stp     x14, x15, [x0, #32]
         stp     x16, x17, [x0, #48]
         str     x19, [x0, #64]
-        ret
+        CFI_RET
 
-p521_jscalarmul_alt_sub_p521:
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_sqr_p521)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp521_jscalarmul_alt_sub_p521)
+
+Lp521_jscalarmul_alt_sub_p521:
+        CFI_START
         ldp     x5, x6, [x1]
         ldp     x4, x3, [x2]
         subs    x5, x5, x4
@@ -2095,7 +2134,9 @@ p521_jscalarmul_alt_sub_p521:
         stp     x9, x10, [x0, #32]
         stp     x11, x12, [x0, #48]
         str     x13, [x0, #64]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lp521_jscalarmul_alt_sub_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

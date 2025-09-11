@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = x, X4 = n, X5 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul)
         .text
         .balign 4
@@ -39,10 +41,11 @@
 
 
 S2N_BN_SYMBOL(bignum_mul):
+        CFI_START
 
 // If p = 0 the result is trivial and nothing needs doing
 
-        cbz     p, bignum_mul_end
+        cbz     p, Lbignum_mul_end
 
 // initialize (h,l) = 0, saving c = 0 for inside the loop
 
@@ -52,7 +55,7 @@ S2N_BN_SYMBOL(bignum_mul):
 // Iterate outer loop from k = 0 ... k = p - 1 producing result digits
 
         mov     k, xzr
-bignum_mul_outerloop:
+Lbignum_mul_outerloop:
 
 // Zero the carry for this stage
 
@@ -70,7 +73,7 @@ bignum_mul_outerloop:
 // Set loop count i = b - a, and skip everything if it's <= 0
 
         subs    i, b, a
-        bls     bignum_mul_innerend
+        bls     Lbignum_mul_innerend
 
 // Use temporary pointers xx = x + 8 * a and yy = y + 8 * (k - b)
 // Increment xx per iteration but just use loop counter with yy
@@ -85,7 +88,7 @@ bignum_mul_outerloop:
 
 // And index using the loop counter i = b - a, ..., i = 1
 
-bignum_mul_innerloop:
+Lbignum_mul_innerloop:
         ldr     a, [xx], #8
         ldr     b, [yy, i, lsl #3]
         mul     d, a, b
@@ -94,19 +97,21 @@ bignum_mul_innerloop:
         adcs    h, h, a
         adc     c, c, xzr
         subs    i, i, #1
-        bne     bignum_mul_innerloop
+        bne     Lbignum_mul_innerloop
 
-bignum_mul_innerend:
+Lbignum_mul_innerend:
         str     l, [z, k, lsl #3]
         mov     l, h
         mov     h, c
 
         add     k, k, #1
         cmp     k, p
-        bcc     bignum_mul_outerloop                       // Inverted carry flag!
+        bcc     Lbignum_mul_outerloop                       // Inverted carry flag!
 
-bignum_mul_end:
-        ret
+Lbignum_mul_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

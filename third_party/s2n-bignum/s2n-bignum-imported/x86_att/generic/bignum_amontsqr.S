@@ -16,10 +16,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_amontsqr)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_amontsqr)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_amontsqr)
         .text
 
@@ -56,11 +57,12 @@
 
 
 S2N_BN_SYMBOL(bignum_amontsqr):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -69,17 +71,17 @@ S2N_BN_SYMBOL(bignum_amontsqr):
 
 // Save registers
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
 // If k = 0 the whole operation is trivial
 
         testq   k, k
-        jz      bignum_amontsqr_end
+        jz      Lbignum_amontsqr_end
 
 // Move x input into its permanent home, since we need %rdx for multiplications
 
@@ -124,17 +126,17 @@ S2N_BN_SYMBOL(bignum_amontsqr):
 
         xorq    i, i // Also initializes i for main loop
         xorq    j, j
-bignum_amontsqr_zoop:
+Lbignum_amontsqr_zoop:
         movq    i, (z,j,8)
         incq    j
         cmpq    k, j
-        jc      bignum_amontsqr_zoop
+        jc      Lbignum_amontsqr_zoop
 
         xorq    c0, c0
 
 // Outer loop pulling down digits d=x[i], multiplying by x and reducing
 
-bignum_amontsqr_outerloop:
+Lbignum_amontsqr_outerloop:
 
 // Multiply-add loop where we always have CF + previous high part h to add in.
 // Note that in general we do need yet one more carry in this phase and hence
@@ -146,7 +148,7 @@ bignum_amontsqr_outerloop:
         xorq    c1, c1
         movq    k, n
 
-bignum_amontsqr_maddloop:
+Lbignum_amontsqr_maddloop:
         adcq    (z,j,8), h
         sbbq    e, e
         movq    (x,j,8), a
@@ -157,7 +159,7 @@ bignum_amontsqr_maddloop:
         movq    %rdx, h
         incq    j
         decq    n
-        jnz     bignum_amontsqr_maddloop
+        jnz     Lbignum_amontsqr_maddloop
         adcq    h, c0
         adcq    c1, c1
 
@@ -173,9 +175,9 @@ bignum_amontsqr_maddloop:
         movl    $1, jshort
         movq    k, n
         decq    n
-        jz      bignum_amontsqr_montend
+        jz      Lbignum_amontsqr_montend
 
-bignum_amontsqr_montloop:
+Lbignum_amontsqr_montloop:
         adcq    (z,j,8), h
         sbbq    e, e
         movq    (m,j,8), a
@@ -186,9 +188,9 @@ bignum_amontsqr_montloop:
         movq    %rdx, h
         incq    j
         decq    n
-        jnz     bignum_amontsqr_montloop
+        jnz     Lbignum_amontsqr_montloop
 
-bignum_amontsqr_montend:
+Lbignum_amontsqr_montend:
         adcq    c0, h
         adcq    $0, c1
         movq    c1, c0
@@ -198,7 +200,7 @@ bignum_amontsqr_montend:
 
         incq    i
         cmpq    k, i
-        jc      bignum_amontsqr_outerloop
+        jc      Lbignum_amontsqr_outerloop
 
 // Now convert carry word, which is always in {0,1}, into a mask "d"
 // and do a masked subtraction of m for the final almost-Montgomery result.
@@ -207,7 +209,7 @@ bignum_amontsqr_montend:
         subq    c0, d
         xorq    e, e
         xorq    j, j
-bignum_amontsqr_corrloop:
+Lbignum_amontsqr_corrloop:
         movq    (m,j,8), a
         andq    d, a
         negq    e
@@ -215,21 +217,23 @@ bignum_amontsqr_corrloop:
         sbbq    e, e
         incq    j
         cmpq    k, j
-        jc      bignum_amontsqr_corrloop
+        jc      Lbignum_amontsqr_corrloop
 
-bignum_amontsqr_end:
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+Lbignum_amontsqr_end:
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_amontsqr)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

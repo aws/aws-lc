@@ -6,6 +6,7 @@
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 #include "internal.h"
+#include "../pqdsa/internal.h"
 
 const char *awslc_version_string(void) { return AWSLC_VERSION_STRING; }
 
@@ -217,6 +218,29 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
   }
 }
 
+// mldsa_verify_service_indicator checks if the given PQDSA key uses an approved
+// ML-DSA variant and updates the service indicator if so.
+static void mldsa_verify_service_indicator(const EVP_PKEY *pkey) {
+  if (pkey->type != EVP_PKEY_PQDSA) {
+    return;
+  }
+
+  const PQDSA *pqdsa = PQDSA_KEY_get0_dsa(pkey->pkey.pqdsa_key);
+  if (pqdsa == NULL) {
+    return;
+  }
+
+  switch (pqdsa->nid) {
+    case NID_MLDSA44:
+    case NID_MLDSA65:
+    case NID_MLDSA87:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 // custom_meth_invoked checks whether custom crypto was invoked in the |meth|
 // or |eckey_method| fields for a given |RSA| or |EC_KEY| respectively. For
 // |RSA| keys, custom verify and sign functionality is supported. For |EC_KEY|
@@ -265,6 +289,11 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
       //. 7.6 EdDSA Signature Generation
       //  7.7 EdDSA Signature Verification
       FIPS_service_indicator_update_state();
+      return;
+    }
+    if(ctx->pctx->pkey->type == EVP_PKEY_PQDSA) {
+      // FIPS 204: ML-DSA Signature Generation/Verification
+      mldsa_verify_service_indicator(ctx->pctx->pkey);
       return;
     }
     // All other signature schemes without a prehash are currently never FIPS approved.
@@ -373,6 +402,9 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
     }
   } else if (pkey->type == EVP_PKEY_ED25519) {
     FIPS_service_indicator_update_state();
+  } else if (pkey->type == EVP_PKEY_PQDSA) {
+    // FIPS 204: ML-DSA Key Generation
+    mldsa_verify_service_indicator(pkey);
   }
 }
 

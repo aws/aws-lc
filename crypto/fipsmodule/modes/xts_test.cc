@@ -1150,6 +1150,7 @@ TEST(XTSTest, TestVectors) {
     ASSERT_EQ(EVP_CIPHER_key_length(cipher), key.size());
     ASSERT_EQ(EVP_CIPHER_iv_length(cipher), iv.size());
     ASSERT_EQ(plaintext.size(), ciphertext.size());
+    SCOPED_TRACE(plaintext.size());
 
     int len;
     uint8_t *in_p, *out_p;

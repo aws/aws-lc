@@ -11,19 +11,21 @@
 // Microsoft x64 ABI:   RCX = a, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_ctz)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_ctz)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_ctz)
         .text
 
 S2N_BN_SYMBOL(word_ctz):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
 #endif
 
@@ -38,10 +40,12 @@ S2N_BN_SYMBOL(word_ctz):
         cmoveq  %rdx, %rax
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_ctz)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

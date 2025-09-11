@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = y, [RSP+40] = m
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modsub)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_modsub)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modsub)
         .text
 
@@ -30,11 +31,12 @@
 #define c %r11
 
 S2N_BN_SYMBOL(bignum_modsub):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -45,26 +47,26 @@ S2N_BN_SYMBOL(bignum_modsub):
 // If k = 0 do nothing
 
         testq   k, k
-        jz      bignum_modsub_end
+        jz      Lbignum_modsub_end
 
 // Subtract z := x - y and record a mask for the carry x - y < 0
 
         xorq    c, c
         movq    k, j
         xorq    i, i
-bignum_modsub_subloop:
+Lbignum_modsub_subloop:
         movq    (x,i,8), a
         sbbq    (y,i,8), a
         movq    a, (z,i,8)
         incq    i
         decq    j
-        jnz     bignum_modsub_subloop
+        jnz     Lbignum_modsub_subloop
         sbbq    c, c
 
 // Now do a masked addition z := z + [c] * m
 
         xorq    i, i
-bignum_modsub_addloop:
+Lbignum_modsub_addloop:
         movq    (m,i,8), a
         andq    c, a
         negq    j
@@ -72,14 +74,16 @@ bignum_modsub_addloop:
         sbbq    j, j
         incq    i
         cmpq    k, i
-        jc      bignum_modsub_addloop
+        jc      Lbignum_modsub_addloop
 
-bignum_modsub_end:
+Lbignum_modsub_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_modsub)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

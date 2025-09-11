@@ -15,6 +15,7 @@
  ############################################################################
 
 s/\.intel_syntax *noprefix//
+s/_internal_s2n_bignum_x86/_internal_s2n_bignum_x86_att/
 
 # Don't make any transforms on lines with the argument-taking macros
 

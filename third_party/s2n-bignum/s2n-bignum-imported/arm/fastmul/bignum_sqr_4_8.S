@@ -9,9 +9,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_4_8)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqr_4_8)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_4_8)
         .text
         .balign 4
@@ -78,6 +80,7 @@
 #define s3short w9
 
 S2N_BN_SYMBOL(bignum_sqr_4_8):
+        CFI_START
 
 // Load all the elements
 
@@ -137,7 +140,9 @@ S2N_BN_SYMBOL(bignum_sqr_4_8):
         stp     s4, s5, [z, 32]
         stp     s6, s7, [z, 48]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sqr_4_8)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

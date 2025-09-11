@@ -32,12 +32,15 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_nttunpack_avx2)
 S2N_BN_SYMBOL(mlkem_nttunpack_avx2):
 
-        callq	nttunpack_avx2_core
+        .cfi_startproc
+        callq	Lnttunpack_avx2_core
         addq	$0x100, %rdi            # imm = 0x100
-        callq	nttunpack_avx2_core
+        callq	Lnttunpack_avx2_core
         retq
+        .cfi_endproc
 
-nttunpack_avx2_core:
+Lnttunpack_avx2_core:
+        .cfi_startproc
         vmovdqa	(%rdi), %ymm4
         vmovdqa	0x20(%rdi), %ymm5
         vmovdqa	0x40(%rdi), %ymm6
@@ -103,4 +106,5 @@ nttunpack_avx2_core:
         vmovdqa	%ymm7, 0xc0(%rdi)
         vmovdqa	%ymm11, 0xe0(%rdi)
         retq
+        .cfi_endproc
 

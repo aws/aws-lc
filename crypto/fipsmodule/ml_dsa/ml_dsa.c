@@ -3,6 +3,7 @@
 
 #include "../../evp_extra/internal.h"
 #include "../evp/internal.h"
+#include "../service_indicator/internal.h"
 #include "ml_dsa.h"
 #include "ml_dsa_ref/params.h"
 #include "ml_dsa_ref/sign.h"
@@ -41,10 +42,16 @@ int ml_dsa_44_keypair_internal_no_self_test(uint8_t *public_key   /* OUT */,
 int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */,
                       uint8_t *seed         /* OUT */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return (ml_dsa_keypair(&params, public_key, private_key, seed) == 0);
+  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_44_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
@@ -62,11 +69,17 @@ int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
                    size_t message_len         /* IN */,
                    const uint8_t *ctx_string  /* IN */,
                    size_t ctx_string_len      /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return ml_dsa_sign(&params, sig, sig_len, message, message_len,
-                     ctx_string, ctx_string_len, private_key) == 0;
+  int ret = ml_dsa_sign(&params, sig, sig_len, message, message_len,
+                        ctx_string, ctx_string_len, private_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_extmu_44_sign(const uint8_t *private_key /* IN */,
@@ -74,10 +87,16 @@ int ml_dsa_extmu_44_sign(const uint8_t *private_key /* IN */,
                          size_t *sig_len            /* OUT */,
                          const uint8_t *mu          /* IN */,
                          size_t mu_len              /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  int ret = ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_44_sign_internal(const uint8_t *private_key  /* IN */,
@@ -129,11 +148,17 @@ int ml_dsa_44_verify(const uint8_t *public_key /* IN */,
                      size_t message_len        /* IN */,
                      const uint8_t *ctx_string /* IN */,
                      size_t ctx_string_len     /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return ml_dsa_verify(&params, sig, sig_len, message, message_len,
-                       ctx_string, ctx_string_len, public_key) == 0;
+  int ret = ml_dsa_verify(&params, sig, sig_len, message, message_len,
+                          ctx_string, ctx_string_len, public_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_extmu_44_verify(const uint8_t *public_key /* IN */,
@@ -141,10 +166,16 @@ int ml_dsa_extmu_44_verify(const uint8_t *public_key /* IN */,
                            size_t sig_len            /* IN */,
                            const uint8_t *mu         /* IN */,
                            size_t mu_len             /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  int ret = ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_44_verify_internal(const uint8_t *public_key /* IN */,
@@ -189,10 +220,16 @@ int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key /* IN */,
 int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */,
                       uint8_t *seed         /* OUT */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return (ml_dsa_keypair(&params, public_key, private_key, seed) == 0);
+  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
@@ -218,11 +255,17 @@ int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
                    size_t message_len         /* IN */,
                    const uint8_t *ctx_string  /* IN */,
                    size_t ctx_string_len      /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return ml_dsa_sign(&params, sig, sig_len, message, message_len,
-                     ctx_string, ctx_string_len, private_key) == 0;
+  int ret = ml_dsa_sign(&params, sig, sig_len, message, message_len,
+                        ctx_string, ctx_string_len, private_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_extmu_65_sign(const uint8_t *private_key /* IN */,
@@ -230,10 +273,16 @@ int ml_dsa_extmu_65_sign(const uint8_t *private_key /* IN */,
                          size_t *sig_len            /* OUT */,
                          const uint8_t *mu          /* IN */,
                          size_t mu_len              /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  int ret = ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
@@ -273,11 +322,17 @@ int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
                      size_t message_len        /* IN */,
                      const uint8_t *ctx_string /* IN */,
                      size_t ctx_string_len     /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return ml_dsa_verify(&params, sig, sig_len, message, message_len,
-                       ctx_string, ctx_string_len, public_key) == 0;
+  int ret = ml_dsa_verify(&params, sig, sig_len, message, message_len,
+                          ctx_string, ctx_string_len, public_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_extmu_65_verify(const uint8_t *public_key /* IN */,
@@ -285,10 +340,16 @@ int ml_dsa_extmu_65_verify(const uint8_t *public_key /* IN */,
                            size_t sig_len            /* IN */,
                            const uint8_t *mu         /* IN */,
                            size_t mu_len             /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  int ret = ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_65_verify_internal(const uint8_t *public_key /* IN */,
@@ -322,10 +383,16 @@ int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key /* IN */,
 int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */,
                       uint8_t *seed         /* OUT */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return (ml_dsa_keypair(&params, public_key, private_key, seed) == 0);
+  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_87_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
@@ -352,11 +419,17 @@ int ml_dsa_87_sign(const uint8_t *private_key /* IN */,
                    size_t message_len         /* IN */,
                    const uint8_t *ctx_string  /* IN */,
                    size_t ctx_string_len      /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return ml_dsa_sign(&params, sig, sig_len, message, message_len,
-                     ctx_string, ctx_string_len, private_key) == 0;
+  int ret = ml_dsa_sign(&params, sig, sig_len, message, message_len,
+                        ctx_string, ctx_string_len, private_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_extmu_87_sign(const uint8_t *private_key /* IN */,
@@ -364,10 +437,16 @@ int ml_dsa_extmu_87_sign(const uint8_t *private_key /* IN */,
                          size_t *sig_len            /* OUT */,
                          const uint8_t *mu          /* IN */,
                          size_t mu_len              /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  int ret = ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
@@ -407,11 +486,17 @@ int ml_dsa_87_verify(const uint8_t *public_key /* IN */,
                      size_t message_len        /* IN */,
                      const uint8_t *ctx_string /* IN */,
                      size_t ctx_string_len     /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return ml_dsa_verify(&params, sig, sig_len, message, message_len,
-                       ctx_string, ctx_string_len, public_key) == 0;
+  int ret = ml_dsa_verify(&params, sig, sig_len, message, message_len,
+                          ctx_string, ctx_string_len, public_key) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_extmu_87_verify(const uint8_t *public_key /* IN */,
@@ -419,10 +504,16 @@ int ml_dsa_extmu_87_verify(const uint8_t *public_key /* IN */,
                            size_t sig_len            /* IN */,
                            const uint8_t *mu         /* IN */,
                            size_t mu_len             /* IN */) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  int ret = ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }
 
 int ml_dsa_87_verify_internal(const uint8_t *public_key /* IN */,

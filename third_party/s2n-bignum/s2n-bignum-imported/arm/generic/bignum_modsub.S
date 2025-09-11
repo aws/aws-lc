@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = y, X4 = m
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_modsub)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_modsub)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_modsub)
         .text
         .balign 4
@@ -30,28 +32,29 @@
 
 
 S2N_BN_SYMBOL(bignum_modsub):
+        CFI_START
 
 adds    j, k, xzr               // j = k and ZF = (k = 0)
-        beq     bignum_modsub_end                     // if k = 0 do nothing
+        beq     Lbignum_modsub_end                     // if k = 0 do nothing
         subs    i, xzr, xzr             // i = 0 and CF = 1
 
 // Subtract z := x - y and record a mask for the carry x - y < 0
 
-bignum_modsub_subloop:
+Lbignum_modsub_subloop:
         ldr     a, [x, i]
         ldr     b, [y, i]
         sbcs    a, a, b
         str     a, [z, i]
         add     i, i, #8
         sub     j, j, #1
-        cbnz    j, bignum_modsub_subloop
+        cbnz    j, Lbignum_modsub_subloop
         csetm   c, cc
 
 // Now do a masked addition z := z + [c] * m
 
         mov     j, k
         adds    i, xzr, xzr
-bignum_modsub_addloop:
+Lbignum_modsub_addloop:
         ldr     a, [z, i]
         ldr     b, [m, i]
         and     b, b, c
@@ -59,10 +62,12 @@ bignum_modsub_addloop:
         str     a, [z, i]
         add     i, i, #8
         sub     j, j, #1
-        cbnz    j, bignum_modsub_addloop
+        cbnz    j, Lbignum_modsub_addloop
 
-bignum_modsub_end:
-        ret
+Lbignum_modsub_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_modsub)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

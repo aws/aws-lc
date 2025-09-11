@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = m, RDX = x, R8 = n, R9 = y, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_eq)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_eq)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_eq)
         .text
 
@@ -28,11 +29,12 @@
 #define d %rdx
 
 S2N_BN_SYMBOL(bignum_eq):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -47,50 +49,52 @@ S2N_BN_SYMBOL(bignum_eq):
 // This will drop through for m = n
 
         cmpq    n, m
-        jnc     bignum_eq_mtest
+        jnc     Lbignum_eq_mtest
 
 // Toploop for the case n > m
 
-bignum_eq_nloop:
+Lbignum_eq_nloop:
         decq    n
         orq     (y,n,8), c
         cmpq    n, m
-        jnz     bignum_eq_nloop
-        jmp     bignum_eq_mmain
+        jnz     Lbignum_eq_nloop
+        jmp     Lbignum_eq_mmain
 
 // Toploop for the case m > n (or n = m which enters at "mtest")
 
-bignum_eq_mloop:
+Lbignum_eq_mloop:
         decq    m
         orq     (x,m,8), c
         cmpq    n, m
-bignum_eq_mtest:
-        jnz     bignum_eq_mloop
+Lbignum_eq_mtest:
+        jnz     Lbignum_eq_mloop
 
 // Combined main loop for the min(m,n) lower words
 
-bignum_eq_mmain:
+Lbignum_eq_mmain:
         testq   m, m
-        jz      bignum_eq_end
+        jz      Lbignum_eq_end
 
-bignum_eq_loop:
+Lbignum_eq_loop:
         movq    -8(x,m,8), d
         xorq    -8(y,m,8), d
         orq     d, c
         decq    m
-        jnz     bignum_eq_loop
+        jnz     Lbignum_eq_loop
 
 // Set a standard C condition based on whether c is nonzero
 
-bignum_eq_end:
+Lbignum_eq_end:
         negq    c
         sbbq    c, c
         incq    c
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_eq)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

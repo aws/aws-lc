@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_deamont_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_deamont_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_deamont_p521)
         .text
         .balign 4
@@ -45,6 +47,7 @@
 #define u x12
 
 S2N_BN_SYMBOL(bignum_deamont_p521):
+        CFI_START
 
 // Load all the inputs
 
@@ -108,7 +111,9 @@ S2N_BN_SYMBOL(bignum_deamont_p521):
         stp     d4, d5, [z, #32]
         stp     d6, d7, [z, #48]
         str     d8, [z, #64]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_deamont_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

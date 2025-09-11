@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_4_8)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul_4_8)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_4_8)
         .text
         .balign 4
@@ -52,6 +54,7 @@
 #define u u2
 
 S2N_BN_SYMBOL(bignum_mul_4_8):
+        CFI_START
 
 // Multiply the low halves using Karatsuba 2x2->4 to get [u3,u2,u1,u0]
 // The zeroth multiplication (only) is done via 32-bit breakdowns
@@ -245,7 +248,9 @@ S2N_BN_SYMBOL(bignum_mul_4_8):
         stp     u4, u5, [z, #32]
         stp     u6, u7, [z, #48]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul_4_8)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

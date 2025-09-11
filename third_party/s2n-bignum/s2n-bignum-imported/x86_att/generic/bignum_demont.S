@@ -16,10 +16,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = x, R9 = m
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_demont)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_demont)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_demont)
         .text
 
@@ -53,11 +54,12 @@
 
 
 S2N_BN_SYMBOL(bignum_demont):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -66,14 +68,14 @@ S2N_BN_SYMBOL(bignum_demont):
 
 // Save registers
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
 
 // If k = 0 the whole operation is trivial
 
         testq   k, k
-        jz      bignum_demont_end
+        jz      Lbignum_demont_end
 
 // Compute word-level negated modular inverse w for m == m[0].
 
@@ -113,18 +115,18 @@ S2N_BN_SYMBOL(bignum_demont):
 // After this we never use x again and can safely recycle RDX for muls
 
         xorq    j, j
-bignum_demont_iloop:
+Lbignum_demont_iloop:
         movq    (x,j,8), a
         movq    a, (z,j,8)
         incq    j
         cmpq    k, j
-        jc      bignum_demont_iloop
+        jc      Lbignum_demont_iloop
 
 // Outer loop, just doing a standard Montgomery reduction on z
 
         xorq    i, i
 
-bignum_demont_outerloop:
+Lbignum_demont_outerloop:
         movq    (z), e
         movq    w, d
         imulq   e, d
@@ -135,9 +137,9 @@ bignum_demont_outerloop:
         movl    $1, jshort
         movq    k, n
         decq    n
-        jz      bignum_demont_montend
+        jz      Lbignum_demont_montend
 
-bignum_demont_montloop:
+Lbignum_demont_montloop:
         adcq    (z,j,8), h
         sbbq    e, e
         movq    (m,j,8), a
@@ -148,9 +150,9 @@ bignum_demont_montloop:
         movq    %rdx, h
         incq    j
         decq    n
-        jnz     bignum_demont_montloop
+        jnz     Lbignum_demont_montloop
 
-bignum_demont_montend:
+Lbignum_demont_montend:
         adcq    $0, h
         movq    h, -8(z,j,8)
 
@@ -158,19 +160,19 @@ bignum_demont_montend:
 
         incq    i
         cmpq    k, i
-        jc      bignum_demont_outerloop
+        jc      Lbignum_demont_outerloop
 
 // Now do a comparison of z with m to set a final correction mask
 // indicating that z >= m and so we need to subtract m.
 
         xorq    j, j
         movq    k, n
-bignum_demont_cmploop:
+Lbignum_demont_cmploop:
         movq    (z,j,8), a
         sbbq    (m,j,8), a
         incq    j
         decq    n
-        jnz     bignum_demont_cmploop
+        jnz     Lbignum_demont_cmploop
         sbbq    d, d
         notq    d
 
@@ -178,7 +180,7 @@ bignum_demont_cmploop:
 
         xorq    e, e
         xorq    j, j
-bignum_demont_corrloop:
+Lbignum_demont_corrloop:
         movq    (m,j,8), a
         andq    d, a
         negq    e
@@ -186,18 +188,20 @@ bignum_demont_corrloop:
         sbbq    e, e
         incq    j
         cmpq    k, j
-        jc      bignum_demont_corrloop
+        jc      Lbignum_demont_corrloop
 
-bignum_demont_end:
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+Lbignum_demont_end:
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_demont)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

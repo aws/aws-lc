@@ -17,7 +17,7 @@
 //
 // This is an unoptimized version of bignum_emontredc_8n_cdiff.
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
                                         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc_8n_cdiff_base)
                                         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_emontredc_8n_cdiff_base)

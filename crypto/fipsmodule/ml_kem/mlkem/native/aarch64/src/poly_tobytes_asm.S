@@ -38,6 +38,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_poly_tobytes_asm)
 S2N_BN_SYMBOL(mlkem_poly_tobytes_asm):
 
+        .cfi_startproc
         mov	x2, #0x10               // =16
         ldr	q6, [x1], #0x20
         ldur	q24, [x1, #-0x10]
@@ -50,7 +51,7 @@ S2N_BN_SYMBOL(mlkem_poly_tobytes_asm):
         lsr	x2, x2, #2
         sub	x2, x2, #0x1
 
-poly_tobytes_loop_start:
+Lpoly_tobytes_loop_start:
         uzp1	v25.8h, v6.8h, v24.8h
         uzp2	v6.8h, v6.8h, v24.8h
         xtn	v24.8b, v25.8h
@@ -92,7 +93,7 @@ poly_tobytes_loop_start:
         ldr	q19, [x1], #0x20
         ldur	q4, [x1, #-0x10]
         sub	x2, x2, #0x1
-        cbnz	x2, poly_tobytes_loop_start
+        cbnz	x2, Lpoly_tobytes_loop_start
         uzp1	v25.8h, v30.8h, v22.8h
         uzp2	v18.8h, v30.8h, v22.8h
         uzp1	v30.8h, v6.8h, v24.8h
@@ -126,4 +127,5 @@ poly_tobytes_loop_start:
         sli	v23.8b, v5.8b, #0x4
         st3	{ v22.8b, v23.8b, v24.8b }, [x0], #24
         ret
+        .cfi_endproc
 

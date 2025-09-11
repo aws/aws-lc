@@ -13,7 +13,8 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
 // This is functionally equivalent to p384_montjdouble in unopt/p384_montjdouble.S.
 // This is the result of doing the following sequence of optimizations:
@@ -24,6 +25,7 @@
 // done by a script.
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p384_montjdouble)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p384_montjdouble)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p384_montjdouble)
         .text
         .balign 4
@@ -32,18 +34,19 @@
 
 #define NUMSIZE 48
 
-#define NSPACE #(NUMSIZE*7)
+#define NSPACE NUMSIZE*7
 
 S2N_BN_SYMBOL(p384_montjdouble):
+        CFI_START
 
 // Save regs and make room on stack for temporary variables
 
-        sub     sp, sp, NSPACE+80
-        stp     x19, x20, [sp, NSPACE]
-        stp     x21, x22, [sp, NSPACE+16]
-        stp     x23, x24, [sp, NSPACE+32]
-        stp     x25, x26, [sp, NSPACE+48]
-        stp     x27, xzr, [sp, NSPACE+64]
+        CFI_DEC_SP(416)
+        CFI_STACKSAVE2X(x19,x20,336,344)
+        CFI_STACKSAVE2X(x21,x22,352,360)
+        CFI_STACKSAVE2X(x23,x24,368,376)
+        CFI_STACKSAVE2X(x25,x26,384,392)
+        CFI_STACKSAVE1Z(x27,400)
 
         mov x25, x0
         mov x26, x1
@@ -3134,13 +3137,15 @@ S2N_BN_SYMBOL(p384_montjdouble):
 
 // Restore stack and registers
 
-        ldp     x19, x20, [sp, NSPACE]
-        ldp     x21, x22, [sp, NSPACE+16]
-        ldp     x23, x24, [sp, NSPACE+32]
-        ldp     x25, x26, [sp, NSPACE+48]
-        ldp     x27, xzr, [sp, NSPACE+64]
-        add     sp, sp, NSPACE+80
-        ret
+        CFI_STACKLOAD2(x19,x20,336)
+        CFI_STACKLOAD2(x21,x22,352)
+        CFI_STACKLOAD2(x23,x24,368)
+        CFI_STACKLOAD2(x25,x26,384)
+        CFI_STACKLOAD1Z(x27,400)
+        CFI_INC_SP(416)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(p384_montjdouble)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

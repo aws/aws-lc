@@ -22,13 +22,16 @@
 // Standard x86-64 ABI: RDI = res, RSI = scalar
 // Microsoft x64 ABI:   RCX = res, RDX = scalar
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519base_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_alt)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_byte_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519base_byte_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_byte_alt)
+
         .text
 
 // Size of individual field elements
@@ -80,7 +83,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (15*NUMSIZE+8)
+#define NSPACE 488
 
 // Macro wrapping up the basic field multiplication, only trivially
 // different from a pure function call to bignum_mul_p25519_alt.
@@ -414,33 +417,39 @@
 
 S2N_BN_SYMBOL(curve25519_x25519base_alt):
 S2N_BN_SYMBOL(curve25519_x25519base_byte_alt):
+        CFI_START
         _CET_ENDBR
 
 // In this case the Windows form literally makes a subroutine call.
 // This avoids hassle arising from keeping code and data together.
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
-        callq   curve25519_x25519base_alt_curve25519_x25519base_alt_standard
-        popq    %rsi
-        popq    %rdi
-        ret
+        CFI_CALL(Lcurve25519_x25519base_alt_standard)
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
+        CFI_RET
 
-curve25519_x25519base_alt_curve25519_x25519base_alt_standard:
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519base_alt)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lcurve25519_x25519base_alt_standard)
+
+Lcurve25519_x25519base_alt_standard:
+        CFI_START
 #endif
 
 // Save registers, make room for temps, preserve input arguments.
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $NSPACE, %rsp
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(NSPACE)
 
 // Move the output pointer to a stable place
 
@@ -476,8 +485,8 @@ curve25519_x25519base_alt_curve25519_x25519base_alt_standard:
         movq    (%rsp), %rax
         andq    $8, %rax
 
-        leaq    curve25519_x25519base_alt_edwards25519_0g(%rip), %r10
-        leaq    curve25519_x25519base_alt_edwards25519_8g(%rip), %r11
+        leaq    Lcurve25519_x25519base_alt_edwards25519_0g(%rip), %r10
+        leaq    Lcurve25519_x25519base_alt_edwards25519_8g(%rip), %r11
 
         movq    (%r10), %rax
         movq    (%r11), %rcx
@@ -561,13 +570,13 @@ curve25519_x25519base_alt_curve25519_x25519base_alt_standard:
 // l >= 9 case cannot arise on the last iteration.
 
         movq    $4, i
-        leaq    curve25519_x25519base_alt_edwards25519_gtable(%rip), %rax
+        leaq    Lcurve25519_x25519base_alt_edwards25519_gtable(%rip), %rax
         movq    %rax, tab
         movq    $0, bias
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
-curve25519_x25519base_alt_scalarloop:
+Lcurve25519_x25519base_alt_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -924,7 +933,7 @@ curve25519_x25519base_alt_scalarloop:
 
         addq    $4, i
         cmpq    $256, i
-        jc      curve25519_x25519base_alt_scalarloop
+        jc      Lcurve25519_x25519base_alt_scalarloop
 
 // Now we need to translate from Edwards curve edwards25519 back
 // to the Montgomery form curve25519. The mapping in the affine
@@ -1016,8 +1025,8 @@ curve25519_x25519base_alt_scalarloop:
         movq    %rax, 0x78(%rsp)
         movq    $0xa,  0x90(%rsp)
         movq    $0x1,  0x98(%rsp)
-        jmp     curve25519_x25519base_alt_midloop
-curve25519_x25519base_alt_inverseloop:
+        jmp     Lcurve25519_x25519base_alt_midloop
+Lcurve25519_x25519base_alt_inverseloop:
         movq    %r8, %r9
         sarq    $0x3f, %r9
         xorq    %r9, %r8
@@ -1308,7 +1317,7 @@ curve25519_x25519base_alt_inverseloop:
         shlq    $0x3f, %rax
         addq    %rax, %rsi
         movq    %rsi, 0x78(%rsp)
-curve25519_x25519base_alt_midloop:
+Lcurve25519_x25519base_alt_midloop:
         movq    0x98(%rsp), %rsi
         movq    (%rsp), %rdx
         movq    0x20(%rsp), %rcx
@@ -2209,7 +2218,7 @@ curve25519_x25519base_alt_midloop:
         leaq    (%rax,%rdx), %r12
         movq    %rsi, 0x98(%rsp)
         decq     0x90(%rsp)
-        jne     curve25519_x25519base_alt_inverseloop
+        jne     Lcurve25519_x25519base_alt_inverseloop
         movq    (%rsp), %rax
         movq    0x20(%rsp), %rcx
         imulq   %r8, %rax
@@ -2324,15 +2333,21 @@ curve25519_x25519base_alt_midloop:
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        CFI_INC_RSP(NSPACE)
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
+
+#if WINDOWS_ABI
+S2N_BN_SIZE_DIRECTIVE(Lcurve25519_x25519base_alt_standard)
+#else
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519base_alt)
+#endif
 
 // ****************************************************************************
 // The precomputed data (all read-only). This is currently part of the same
@@ -2345,7 +2360,7 @@ curve25519_x25519base_alt_midloop:
 // 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
 // but with z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-curve25519_x25519base_alt_edwards25519_0g:
+Lcurve25519_x25519base_alt_edwards25519_0g:
 
         .quad   0x251037f7cf4e861d
         .quad   0x10ede0fb19fb128f
@@ -2362,7 +2377,7 @@ curve25519_x25519base_alt_edwards25519_0g:
         .quad   0x72e302a348492870
         .quad   0x1253c19e53dbe1bc
 
-curve25519_x25519base_alt_edwards25519_8g:
+Lcurve25519_x25519base_alt_edwards25519_8g:
 
         .quad   0x331d086e0d9abcaa
         .quad   0x1e23c96d311a10c9
@@ -2382,7 +2397,7 @@ curve25519_x25519base_alt_edwards25519_8g:
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-curve25519_x25519base_alt_edwards25519_gtable:
+Lcurve25519_x25519base_alt_edwards25519_gtable:
 
         // 2^4 * 1 * G
 

@@ -60,11 +60,21 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k2)
 S2N_BN_SYMBOL(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k2):
 
+        .cfi_startproc
         sub	sp, sp, #0x40
+        .cfi_adjust_cfa_offset 0x40
         stp	d8, d9, [sp]
+        .cfi_rel_offset d8, 0x0
+        .cfi_rel_offset d9, 0x8
         stp	d10, d11, [sp, #0x10]
+        .cfi_rel_offset d10, 0x10
+        .cfi_rel_offset d11, 0x18
         stp	d12, d13, [sp, #0x20]
+        .cfi_rel_offset d12, 0x20
+        .cfi_rel_offset d13, 0x28
         stp	d14, d15, [sp, #0x30]
+        .cfi_rel_offset d14, 0x30
+        .cfi_rel_offset d15, 0x38
         mov	w14, #0xd01             // =3329
         dup	v0.8h, w14
         mov	w14, #0xcff             // =3327
@@ -150,7 +160,7 @@ S2N_BN_SYMBOL(mlkem_polyvec_basemul_acc_montgomery_cached_asm_k2):
         ld1	{ v4.8h }, [x3], #16
         sub	x13, x13, #0x2
 
-polyvec_basemul_acc_montgomery_cached_k2_loop:
+Lpolyvec_basemul_acc_montgomery_cached_k2_loop:
         smull2	v20.4s, v3.8h, v17.8h
         ldr	q18, [x4], #0x20
         ldr	q30, [x5], #0x20
@@ -200,7 +210,7 @@ polyvec_basemul_acc_montgomery_cached_k2_loop:
         ld1	{ v4.8h }, [x3], #16
         smlal2	v11.4s, v14.8h, v0.8h
         sub	x13, x13, #0x1
-        cbnz	x13, polyvec_basemul_acc_montgomery_cached_k2_loop
+        cbnz	x13, Lpolyvec_basemul_acc_montgomery_cached_k2_loop
         smull2	v5.4s, v3.8h, v17.8h
         smlal	v12.4s, v14.4h, v0.4h
         smlal	v23.4s, v10.4h, v4.4h
@@ -223,9 +233,19 @@ polyvec_basemul_acc_montgomery_cached_k2_loop:
         str	q5, [x0, #0x10]
         str	q9, [x0], #0x20
         ldp	d8, d9, [sp]
+        .cfi_restore d8
+        .cfi_restore d9
         ldp	d10, d11, [sp, #0x10]
+        .cfi_restore d10
+        .cfi_restore d11
         ldp	d12, d13, [sp, #0x20]
+        .cfi_restore d12
+        .cfi_restore d13
         ldp	d14, d15, [sp, #0x30]
+        .cfi_restore d14
+        .cfi_restore d15
         add	sp, sp, #0x40
+        .cfi_adjust_cfa_offset -0x40
         ret
+        .cfi_endproc
 

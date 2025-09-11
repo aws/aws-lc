@@ -29,6 +29,8 @@
 #include <openssl/sshkdf.h>
 #include <openssl/err.h>
 
+#include "../ml_dsa/ml_dsa.h"
+#include "../pqdsa/internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
@@ -5315,6 +5317,128 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
                                              sizeof(signature), &MESSAGE[0],
                                              sizeof(MESSAGE))));
   ASSERT_EQ(AWSLC_APPROVED, approved);
+}
+
+TEST(ServiceIndicatorTest, MLDSAKeyGen) {
+  // Test EVP interface for each ML-DSA parameter set
+  for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    EVP_PKEY *raw = nullptr;
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    ASSERT_EQ(AWSLC_APPROVED, approved);
+  }
+}
+
+TEST(ServiceIndicatorTest, MLDSASigGenVerify) {
+  const uint8_t MESSAGE[15] = {'M', 'L', '-', 'D', 'S', 'A', ' ',
+                               'M', 'E', 'S', 'S', 'A', 'G', 'E'};
+
+  // Test EVP interface for all ML-DSA parameter sets
+  for (int nid : {NID_MLDSA44, NID_MLDSA65, NID_MLDSA87}) {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    EVP_PKEY *raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+    // Test Method 1: EVP_DigestSign/EVP_DigestVerify (pure signatures)
+    {
+      bssl::UniquePtr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new());
+      FIPSStatus approved = AWSLC_NOT_APPROVED;
+      
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, EVP_DigestSignInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+      ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+      
+      size_t sig_out_len = 0;
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved,
+          ASSERT_TRUE(EVP_DigestSign(mdctx.get(), nullptr, &sig_out_len,
+                                     MESSAGE, sizeof(MESSAGE))));
+      ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+
+      std::vector<uint8_t> signature(sig_out_len);
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved,
+          ASSERT_TRUE(EVP_DigestSign(mdctx.get(), signature.data(), &sig_out_len,
+                                     MESSAGE, sizeof(MESSAGE))));
+      ASSERT_EQ(AWSLC_APPROVED, approved);
+
+      mdctx.reset(EVP_MD_CTX_new());
+      ASSERT_TRUE(EVP_DigestVerifyInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+      approved = AWSLC_NOT_APPROVED;
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_DigestVerify(mdctx.get(), signature.data(),
+                                                 sig_out_len, MESSAGE,
+                                                 sizeof(MESSAGE))));
+      ASSERT_EQ(AWSLC_APPROVED, approved);
+    }
+
+    // Test Method 2: EVP_PKEY_sign/EVP_PKEY_verify (pre-hash signatures)
+    {
+      // Compute mu for this EVP key
+      size_t pk_len = 0;
+      ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pk_len));
+      std::vector<uint8_t> evp_pk(pk_len);
+      ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), evp_pk.data(), &pk_len));
+      
+      std::vector<uint8_t> evp_mu(64);
+      std::vector<uint8_t> evp_tr(64);
+      
+      // Compute tr = SHAKE256(pk, 64)
+      bssl::ScopedEVP_MD_CTX evp_md_ctx_pk;
+      ASSERT_TRUE(EVP_DigestInit_ex(evp_md_ctx_pk.get(), EVP_shake256(), nullptr));
+      ASSERT_TRUE(EVP_DigestUpdate(evp_md_ctx_pk.get(), evp_pk.data(), pk_len));
+      ASSERT_TRUE(EVP_DigestFinalXOF(evp_md_ctx_pk.get(), evp_tr.data(), 64));
+
+      // Compute mu = SHAKE256(tr || pre || MESSAGE, 64)
+      uint8_t evp_pre[2] = {0x00, 0x00};
+      bssl::ScopedEVP_MD_CTX evp_md_ctx_mu;
+      ASSERT_TRUE(EVP_DigestInit_ex(evp_md_ctx_mu.get(), EVP_shake256(), nullptr));
+      ASSERT_TRUE(EVP_DigestUpdate(evp_md_ctx_mu.get(), evp_tr.data(), 64));
+      ASSERT_TRUE(EVP_DigestUpdate(evp_md_ctx_mu.get(), evp_pre, 2));
+      ASSERT_TRUE(EVP_DigestUpdate(evp_md_ctx_mu.get(), MESSAGE, sizeof(MESSAGE)));
+      ASSERT_TRUE(EVP_DigestFinalXOF(evp_md_ctx_mu.get(), evp_mu.data(), 64));
+
+      bssl::UniquePtr<EVP_PKEY_CTX> sign_ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+      FIPSStatus approved = AWSLC_NOT_APPROVED;
+      
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_sign_init(sign_ctx.get())));
+      ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+      
+      size_t sig_len = 0;
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_sign(sign_ctx.get(), nullptr, &sig_len,
+                                              evp_mu.data(), evp_mu.size())));
+      ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+
+      std::vector<uint8_t> signature2(sig_len);
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_sign(sign_ctx.get(), signature2.data(), &sig_len,
+                                              evp_mu.data(), evp_mu.size())));
+      ASSERT_EQ(AWSLC_APPROVED, approved);
+
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_verify_init(sign_ctx.get())));
+      ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+      
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_verify(sign_ctx.get(), signature2.data(), sig_len,
+                                                evp_mu.data(), evp_mu.size())));
+      ASSERT_EQ(AWSLC_APPROVED, approved);
+    }
+  }
 }
 
 // Verifies that the awslc_version_string is as expected.

@@ -633,6 +633,28 @@ static int check_custom_critical_extensions(X509_STORE_CTX *ctx, X509 *x) {
   return 1;
 }
 
+static int check_curve_decoded_by_name(X509 *x) {
+  EVP_PKEY *pkey = X509_get0_pubkey(x);
+  if (!pkey) {
+    return -1;
+  }
+
+  if (EVP_PKEY_id(pkey) != EVP_PKEY_EC) {
+    return 1;
+  }
+
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (ec_key == NULL) {
+    return -1;
+  }
+
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  int is_explicit = EC_KEY_decoded_from_explicit_params(ec_key);
+  OPENSSL_END_ALLOW_DEPRECATED
+
+  return !is_explicit;
+}
+
 // Check a certificate chains extensions for consistency with the supplied
 // purpose
 
@@ -640,8 +662,9 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
   int ok = 0, plen = 0;
   int purpose = ctx->param->purpose;
 
-  // Check all untrusted certificates
-  for (int i = 0; i < ctx->last_untrusted; i++) {
+  int num = (int)sk_X509_num(ctx->chain);
+
+  for (int i = 0; i < num; i++) {
     X509 *x = sk_X509_value(ctx->chain, i);
     if (  // OpenSSL's historic check for unknown critical extensions.
           // |EXFLAG_CRITICAL| indicates an unsupported critical extension was
@@ -656,6 +679,31 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       ctx->current_cert = x;
       ok = call_verify_cb(0, ctx);
       if (!ok) {
+        goto end;
+      }
+    }
+
+    if (num > 1 && (ctx->param->awslc_flags&AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS) == 0) {
+      // In OpenSSL 1.1.1 this check was done if |X509_V_FLAG_X509_STRICT| was enabled.
+      // We did not perform this check explicitly before, but the behavior was baked into
+      // SPKI with explicit parameters not being parsed for elliptic curve key types.
+      //
+      // A conforming public CA should not issue certificate with explicitly encoded parameters for
+      // EC keys, but for privately operated CA's this could be doing so still. To be backwards
+      // compatible with OpenSSL 1.1.1 we have added support for parsing SPKI with explicit parameters,
+      // so we have added a new option for enabling this during chain validation.
+      int ret = check_curve_decoded_by_name(x);
+      if (ret < 0) {
+        ctx->error = X509_V_ERR_UNSPECIFIED;
+        ctx->error_depth = i;
+        ctx->current_cert = x;
+        ok = 0;
+        goto end;
+      } else if (ret == 0) {
+        ctx->error = X509_V_ERR_EC_KEY_EXPLICIT_PARAMS;
+        ctx->error_depth = i;
+        ctx->current_cert = x;
+        ok = 0;
         goto end;
       }
     }
@@ -701,35 +749,27 @@ end:
   return ok;
 }
 
-static int reject_dns_name_in_common_name(X509 *x509) {
-  const X509_NAME *name = X509_get_subject_name(x509);
-  int i = -1;
-  for (;;) {
-    i = X509_NAME_get_index_by_NID(name, NID_commonName, i);
-    if (i == -1) {
-      return X509_V_OK;
-    }
+static int has_san_id(X509 *x, int type_id) {
+  int ret = 0;
 
-    const X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, i);
-    const ASN1_STRING *common_name = X509_NAME_ENTRY_get_data(entry);
-    unsigned char *idval;
-    int idlen = ASN1_STRING_to_UTF8(&idval, common_name);
-    if (idlen < 0) {
-      return X509_V_ERR_OUT_OF_MEM;
-    }
-    // Only process attributes that look like host names. Note it is
-    // important that this check be mirrored in |X509_check_host|.
-    int looks_like_dns = x509v3_looks_like_dns_name(idval, (size_t)idlen);
-    OPENSSL_free(idval);
-    if (looks_like_dns) {
-      return X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS;
+  GENERAL_NAMES *gs = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
+  if (gs == NULL) {
+    return 0;
+  }
+
+  for (size_t i = 0; i < sk_GENERAL_NAME_num(gs); i++) {
+    GENERAL_NAME *g = sk_GENERAL_NAME_value(gs, i);
+    if (g->type == type_id) {
+      ret = 1;
+      break;
     }
   }
+  GENERAL_NAMES_free(gs);
+  return ret;
 }
 
 static int check_name_constraints(X509_STORE_CTX *ctx) {
   int i, j, rv;
-  int has_name_constraints = 0;
   // Check name constraints for all certificates
   for (i = (int)sk_X509_num(ctx->chain) - 1; i >= 0; i--) {
     X509 *x = sk_X509_value(ctx->chain, i);
@@ -744,8 +784,14 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
     for (j = (int)sk_X509_num(ctx->chain) - 1; j > i; j--) {
       NAME_CONSTRAINTS *nc = sk_X509_value(ctx->chain, j)->nc;
       if (nc) {
-        has_name_constraints = 1;
         rv = NAME_CONSTRAINTS_check(x, nc);
+        if (rv == X509_V_OK &&
+            (ctx->param->hostflags & X509_CHECK_FLAG_NEVER_CHECK_SUBJECT) ==
+                0 &&
+            ((ctx->param->hostflags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT) !=
+                0 ||!has_san_id(x, GEN_DNS) )) {
+          rv = NAME_CONSTRAINTS_check_CN(x, nc);
+        }
         switch (rv) {
           case X509_V_OK:
             continue;
@@ -762,36 +808,6 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
             break;
         }
       }
-    }
-  }
-
-  // Name constraints do not match against the common name, but
-  // |X509_check_host| still implements the legacy behavior where, on
-  // certificates lacking a SAN list, DNS-like names in the common name are
-  // checked instead.
-  //
-  // While we could apply the name constraints to the common name, name
-  // constraints are rare enough that can hold such certificates to a higher
-  // standard. Note this does not make "DNS-like" heuristic failures any
-  // worse. A decorative common-name misidentified as a DNS name would fail
-  // the name constraint anyway.
-  X509 *leaf = sk_X509_value(ctx->chain, 0);
-  if (has_name_constraints && leaf->altname == NULL) {
-    rv = reject_dns_name_in_common_name(leaf);
-    switch (rv) {
-      case X509_V_OK:
-        break;
-      case X509_V_ERR_OUT_OF_MEM:
-        ctx->error = rv;
-        return 0;
-      default:
-        ctx->error = rv;
-        ctx->error_depth = i;
-        ctx->current_cert = leaf;
-        if (!call_verify_cb(0, ctx)) {
-          return 0;
-        }
-        break;
     }
   }
 
@@ -1536,6 +1552,23 @@ static int internal_verify(X509_STORE_CTX *ctx) {
       xs = sk_X509_value(ctx->chain, n);
     }
   }
+
+  // Check that the final certificate subject (leaf)
+  // has a public key we actually support. Otherwise
+  // we shouldn't consider the certificate okay. It is possible
+  // for it to be reject sooner during |check_chain_extensions| as well
+  // but disabling certain checks can result in an unuseable leaf certificate
+  // making it to this point.
+  //
+  // This covers situations like invalid curves or points.
+  EVP_PKEY *pkey = X509_get0_pubkey(xs);
+  if(pkey == NULL) {
+    ctx->error = X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY;
+    ctx->current_cert = xi;
+    ok = 0;
+    goto end;
+  }
+
   ok = 1;
 end:
   return ok;

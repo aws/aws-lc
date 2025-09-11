@@ -14,10 +14,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = z, R8 = n, R9 = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_sqr)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr)
         .text
 
@@ -50,11 +51,12 @@
 #define llshort %ebp
 
 S2N_BN_SYMBOL(bignum_sqr):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
@@ -63,18 +65,18 @@ S2N_BN_SYMBOL(bignum_sqr):
 
 // We use too many registers, and also we need %rax:%rdx for multiplications
 
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
         movq    %rdx, n
 
 // If p = 0 the result is trivial and nothing needs doing
 
         testq   p, p
-        jz      bignum_sqr_end
+        jz      Lbignum_sqr_end
 
 // initialize (hh,ll) = 0
 
@@ -85,7 +87,7 @@ S2N_BN_SYMBOL(bignum_sqr):
 
         xorq    k, k
 
-bignum_sqr_outerloop:
+Lbignum_sqr_outerloop:
 
 // First let bot = MAX 0 (k + 1 - n) and top = MIN (k + 1) n
 // We want to accumulate all x[i] * x[k - i] for bot <= i < top
@@ -110,7 +112,7 @@ bignum_sqr_outerloop:
 // If htop <= bot then main doubled part of the sum is empty
 
         cmpq    htop, i
-        jnc     bignum_sqr_nosumming
+        jnc     Lbignum_sqr_nosumming
 
 // Use a moving pointer for [y] = x[k-i] for the cofactor
 
@@ -120,7 +122,7 @@ bignum_sqr_outerloop:
 
 // Do the main part of the sum x[i] * x[k - i] for 2 * i < k
 
-bignum_sqr_innerloop:
+Lbignum_sqr_innerloop:
         movq    (x,i,8), a
         mulq     (y)
         addq    a, l
@@ -129,7 +131,7 @@ bignum_sqr_innerloop:
         subq    $8, y
         incq    i
         cmpq    htop, i
-        jc      bignum_sqr_innerloop
+        jc      Lbignum_sqr_innerloop
 
 // Now double it
 
@@ -139,11 +141,11 @@ bignum_sqr_innerloop:
 
 // If k is even (which means 2 * i = k) and i < n add the extra x[i]^2 term
 
-bignum_sqr_nosumming:
+Lbignum_sqr_nosumming:
         testq   $1, k
-        jnz     bignum_sqr_innerend
+        jnz     Lbignum_sqr_innerend
         cmpq    n, i
-        jnc     bignum_sqr_innerend
+        jnc     Lbignum_sqr_innerend
 
         movq    (x,i,8), a
         mulq    a
@@ -153,7 +155,7 @@ bignum_sqr_nosumming:
 
 // Now add the local sum into the global sum, store and shift
 
-bignum_sqr_innerend:
+Lbignum_sqr_innerend:
         addq    ll, l
         movq    l, (z,k,8)
         adcq    hh, h
@@ -163,22 +165,24 @@ bignum_sqr_innerend:
 
         incq    k
         cmpq    p, k
-        jc      bignum_sqr_outerloop
+        jc      Lbignum_sqr_outerloop
 
 // Restore registers and return
 
-bignum_sqr_end:
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
+Lbignum_sqr_end:
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_sqr)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

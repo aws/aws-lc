@@ -18,10 +18,11 @@
 // Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p256_scalarmul_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p256_scalarmul_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p256_scalarmul_alt)
 
         .text
@@ -52,38 +53,44 @@
 
 #define res (31*NUMSIZE)(%rsp)
 
-#define NSPACE (32*NUMSIZE)
+#define NSPACE 32*NUMSIZE
 
 S2N_BN_SYMBOL(p256_scalarmul_alt):
+        CFI_START
         _CET_ENDBR
 
 // The Windows version literally calls the standard ABI version.
 // This simplifies the proofs since subroutine offsets are fixed.
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
-        callq   p256_scalarmul_alt_standard
-        popq   %rsi
-        popq   %rdi
-        ret
+        CFI_CALL(Lp256_scalarmul_alt_standard)
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
+        CFI_RET
 
-p256_scalarmul_alt_standard:
+S2N_BN_SIZE_DIRECTIVE(p256_scalarmul_alt)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_scalarmul_alt_standard)
+
+Lp256_scalarmul_alt_standard:
+        CFI_START
 #endif
 
 // Real start of the standard ABI code.
 
-        pushq   %r15
-        pushq   %r14
-        pushq   %r13
-        pushq   %r12
-        pushq   %rbp
-        pushq   %rbx
+        CFI_PUSH(%r15)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%rbx)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Preserve the "res" and "point" input arguments. We load and process the
 // scalar immediately so we don't bother preserving that input argument.
@@ -151,11 +158,11 @@ p256_scalarmul_alt_standard:
 
         leaq    TAB(%rsp), %rdi
         movq    %rbx, %rsi
-        callq   p256_scalarmul_alt_local_tomont_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_tomont_p256)
 
         leaq    32(%rbx), %rsi
         leaq    TAB+32(%rsp), %rdi
-        callq   p256_scalarmul_alt_local_tomont_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_tomont_p256)
 
         movl    $1, %eax
         movq    %rax, TAB+64(%rsp)
@@ -199,34 +206,34 @@ p256_scalarmul_alt_standard:
 
         leaq    TAB+96*1(%rsp), %rdi
         leaq    TAB(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         leaq    TAB+96*2(%rsp), %rdi
         leaq    TAB+96*1(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p256_scalarmul_alt_local_p256_montjmixadd
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
         leaq    TAB+96*3(%rsp), %rdi
         leaq    TAB+96*1(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         leaq    TAB+96*4(%rsp), %rdi
         leaq    TAB+96*3(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p256_scalarmul_alt_local_p256_montjmixadd
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
         leaq    TAB+96*5(%rsp), %rdi
         leaq    TAB+96*2(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         leaq    TAB+96*6(%rsp), %rdi
         leaq    TAB+96*5(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p256_scalarmul_alt_local_p256_montjmixadd
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjmixadd)
 
         leaq    TAB+96*7(%rsp), %rdi
         leaq    TAB+96*3(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
 // Set up accumulator as table entry for top 4 bits (constant-time indexing)
 
@@ -281,24 +288,24 @@ p256_scalarmul_alt_standard:
 
         movl    $252, %ebp
 
-p256_scalarmul_alt_loop:
+Lp256_scalarmul_alt_loop:
         subq    $4, %rbp
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_scalarmul_alt_local_p256_montjdouble
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjdouble)
 
         movq    %rbp, %rax
         shrq    $6, %rax
@@ -379,34 +386,34 @@ p256_scalarmul_alt_loop:
         leaq    TABENT(%rsp), %rdx
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_scalarmul_alt_local_p256_montjadd
+        CFI_CALL(Lp256_scalarmul_alt_local_p256_montjadd)
 
         testq   %rbp, %rbp
-        jne     p256_scalarmul_alt_loop
+        jne     Lp256_scalarmul_alt_loop
 
 // Let z2 = 1/z^2 and z3 = 1/z^3, both without Montgomery form
 
         leaq    Z2(%rsp), %rdi
         leaq    ACC+64(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_montsqr_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_montsqr_p256)
 
         leaq    Z3(%rsp), %rdi
         leaq    ACC+64(%rsp), %rsi
         leaq    Z2(%rsp), %rdx
-        callq   p256_scalarmul_alt_local_montmul_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_montmul_p256)
 
         leaq    Z2(%rsp), %rdi
         leaq    Z3(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_demont_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_demont_p256)
 
         leaq    Z3(%rsp), %rdi
         leaq    Z2(%rsp), %rsi
-        callq   p256_scalarmul_alt_local_inv_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_inv_p256)
 
         leaq    Z2(%rsp), %rdi
         leaq    ACC+64(%rsp), %rsi
         leaq    Z3(%rsp), %rdx
-        callq   p256_scalarmul_alt_local_montmul_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_montmul_p256)
 
 // Convert back from Jacobian (X, Y, Z) |-> (X/Z^2, Y/Z^3)
 
@@ -414,27 +421,34 @@ p256_scalarmul_alt_loop:
         leaq    ACC(%rsp), %rsi
         leaq    Z2(%rsp), %rdx
         movq    %rdi, %rbx
-        callq   p256_scalarmul_alt_local_montmul_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_montmul_p256)
 
         leaq    32(%rbx), %rdi
         leaq    ACC+32(%rsp), %rsi
         leaq    Z3(%rsp), %rdx
-        callq   p256_scalarmul_alt_local_montmul_p256
+        CFI_CALL(Lp256_scalarmul_alt_local_montmul_p256)
 
 // Restore stack and registers and return
 
-        addq    $NSPACE, %rsp
-        popq    %rbx
-        popq    %rbp
-        popq    %r12
-        popq    %r13
-        popq    %r14
-        popq    %r15
-        ret
+        CFI_INC_RSP(NSPACE)
+        CFI_POP(%rbx)
+        CFI_POP(%rbp)
+        CFI_POP(%r12)
+        CFI_POP(%r13)
+        CFI_POP(%r14)
+        CFI_POP(%r15)
+        CFI_RET
+
+#if WINDOWS_ABI
+S2N_BN_SIZE_DIRECTIVE(Lp256_scalarmul_alt_standard)
+#else
+S2N_BN_SIZE_DIRECTIVE(p256_scalarmul_alt)
+#endif
 
 // Local copies of subroutines, complete clones at the moment
 
-p256_scalarmul_alt_local_demont_p256:
+Lp256_scalarmul_alt_local_demont_p256:
+        CFI_START
         movq    (%rsi), %r8
         movq    0x8(%rsi), %r9
         movq    0x10(%rsi), %r10
@@ -494,16 +508,17 @@ p256_scalarmul_alt_local_demont_p256:
         movq    %r8, 0x8(%rdi)
         movq    %r9, 0x10(%rdi)
         movq    %r10, 0x18(%rdi)
-        ret
+        CFI_RET
 
-p256_scalarmul_alt_local_inv_p256:
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0xf0, %rsp
+Lp256_scalarmul_alt_local_inv_p256:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(240)
         movq    %rdi, 0xe0(%rsp)
         xorl    %ecx, %ecx
         movl    $0xffffffff, %edx
@@ -549,8 +564,8 @@ p256_scalarmul_alt_local_inv_p256:
         movq    %rax, 0x90(%rsp)
         movq    $0xa,  0xb0(%rsp)
         movq    $0x1,  0xb8(%rsp)
-        jmp     p256_scalarmul_alt_inv_midloop
-p256_scalarmul_alt_inv_loop:
+        jmp     Lp256_scalarmul_alt_inv_midloop
+Lp256_scalarmul_alt_inv_loop:
         movq    %r8, %r9
         sarq    $0x3f, %r9
         xorq    %r9, %r8
@@ -875,7 +890,7 @@ p256_scalarmul_alt_inv_loop:
         movq    %r11, 0x88(%rsp)
         sbbq    %rdx, %r12
         movq    %r12, 0x90(%rsp)
-p256_scalarmul_alt_inv_midloop:
+Lp256_scalarmul_alt_inv_midloop:
         movq    0xb8(%rsp), %rsi
         movq    (%rsp), %rdx
         movq    0x28(%rsp), %rcx
@@ -1776,7 +1791,7 @@ p256_scalarmul_alt_inv_midloop:
         leaq    (%rax,%rdx), %r12
         movq    %rsi, 0xb8(%rsp)
         decq     0xb0(%rsp)
-        jne     p256_scalarmul_alt_inv_loop
+        jne     Lp256_scalarmul_alt_inv_loop
         movq    (%rsp), %rax
         movq    0x28(%rsp), %rcx
         imulq   %r8, %rax
@@ -1915,21 +1930,22 @@ p256_scalarmul_alt_inv_midloop:
         movq    %rbx, 0x8(%rdi)
         movq    %rcx, 0x10(%rdi)
         movq    %rdx, 0x18(%rdi)
-        addq    $0xf0, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_INC_RSP(240)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p256_scalarmul_alt_local_montmul_p256:
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+Lp256_scalarmul_alt_local_montmul_p256:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
         movq    %rdx, %rcx
         movq    (%rcx), %rbx
         movq    (%rsi), %rax
@@ -2097,19 +2113,20 @@ p256_scalarmul_alt_local_montmul_p256:
         movq    %r13, 0x8(%rdi)
         movq    %r14, 0x10(%rdi)
         movq    %r15, 0x18(%rdi)
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
-        ret
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p256_scalarmul_alt_local_montsqr_p256:
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+Lp256_scalarmul_alt_local_montsqr_p256:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
         movq    (%rsi), %rax
         movq    %rax, %rbx
         mulq    %rax
@@ -2247,19 +2264,20 @@ p256_scalarmul_alt_local_montsqr_p256:
         movq    %r13, 0x8(%rdi)
         movq    %r14, 0x10(%rdi)
         movq    %r15, 0x18(%rdi)
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
-        ret
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
+        CFI_RET
 
 
-p256_scalarmul_alt_local_tomont_p256:
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+Lp256_scalarmul_alt_local_tomont_p256:
+        CFI_START
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
         movl    $0x3, %ecx
         movq    (%rsi), %rax
         mulq    %rcx
@@ -2427,20 +2445,21 @@ p256_scalarmul_alt_local_tomont_p256:
         movq    %r13, 0x8(%rdi)
         movq    %r14, 0x10(%rdi)
         movq    %r15, 0x18(%rdi)
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        ret
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_RET
 
-p256_scalarmul_alt_local_p256_montjadd:
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0xe0, %rsp
+Lp256_scalarmul_alt_local_p256_montjadd:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(224)
         movq    %rdx, %rbp
         movq    0x40(%rsi), %rax
         movq    %rax, %rbx
@@ -5196,22 +5215,23 @@ p256_scalarmul_alt_local_p256_montjadd:
         movq    %r13, 0x48(%rdi)
         movq    %r14, 0x50(%rdi)
         movq    %r15, 0x58(%rdi)
-        addq    $0xe0, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_INC_RSP(224)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p256_scalarmul_alt_local_p256_montjdouble:
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0xc0, %rsp
+Lp256_scalarmul_alt_local_p256_montjdouble:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(192)
         movq    0x40(%rsi), %rax
         movq    %rax, %rbx
         mulq    %rax
@@ -6681,22 +6701,23 @@ p256_scalarmul_alt_local_p256_montjdouble:
         movq    %r10, 0x30(%rdi)
         adcq    %rdx, %r11
         movq    %r11, 0x38(%rdi)
-        addq    $0xc0, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
-        ret
+        CFI_INC_RSP(192)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p256_scalarmul_alt_local_p256_montjmixadd:
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0xc0, %rsp
+Lp256_scalarmul_alt_local_p256_montjmixadd:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(192)
         movq    %rdx, %rbp
         movq    0x40(%rsi), %rax
         movq    %rax, %rbx
@@ -8637,14 +8658,14 @@ p256_scalarmul_alt_local_p256_montjmixadd:
         movq    %r9, 0x48(%rdi)
         movq    %r10, 0x50(%rdi)
         movq    %r11, 0x58(%rdi)
-        addq    $0xc0, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_INC_RSP(192)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

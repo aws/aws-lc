@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = m, X1 = d, X2 = f, X3 = g, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_divstep59)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_divstep59)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_divstep59)
         .text
         .balign 4
@@ -38,6 +40,7 @@
 #define n11 x15
 
 S2N_BN_SYMBOL(word_divstep59):
+        CFI_START
 
 // Pack f and g into single registers with (negated) update matrices,
 // initially the identity matrix. The f_lo and g_lo are initially
@@ -316,7 +319,9 @@ S2N_BN_SYMBOL(word_divstep59):
 
         mov     x0, d
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_divstep59)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

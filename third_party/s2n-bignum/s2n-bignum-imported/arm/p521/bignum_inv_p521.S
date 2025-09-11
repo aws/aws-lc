@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_inv_p521)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_inv_p521)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_inv_p521)
 
         .text
@@ -70,7 +72,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE #(36*N)
+#define NSPACE 36*N
 
 // Very similar to a subroutine call to the s2n-bignum word_divstep59.
 // But different in register usage and returning the final matrix in
@@ -695,12 +697,13 @@
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(bignum_inv_p521):
+        CFI_START
 
 // Save registers and make room for temporaries
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_DEC_SP(NSPACE)
 
 // Save the return pointer for the end so we can overwrite x0 later
 
@@ -789,9 +792,9 @@ S2N_BN_SYMBOL(bignum_inv_p521):
 
         mov     i, #21
         mov     d, #1
-        b       bignum_inv_p521_midloop
+        b       Lbignum_inv_p521_midloop
 
-bignum_inv_p521_loop:
+Lbignum_inv_p521_loop:
 
 // Separate the matrix elements into sign-magnitude pairs
 
@@ -1424,7 +1427,7 @@ bignum_inv_p521_loop:
         adc     x2, x2, x6
         str     x2, [v+64]
 
-bignum_inv_p521_midloop:
+Lbignum_inv_p521_midloop:
 
         mov     x1, d
         ldr     x2, [f]
@@ -1435,7 +1438,7 @@ bignum_inv_p521_midloop:
 // Next iteration
 
         subs    i, i, #1
-        bne     bignum_inv_p521_loop
+        bne     Lbignum_inv_p521_loop
 
 // The 21st and last iteration does not need anything except the
 // u value and the sign of f; the latter can be obtained from the
@@ -1686,10 +1689,12 @@ bignum_inv_p521_midloop:
 
 // Restore stack and registers
 
-        add     sp, sp, NSPACE
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_inv_p521)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

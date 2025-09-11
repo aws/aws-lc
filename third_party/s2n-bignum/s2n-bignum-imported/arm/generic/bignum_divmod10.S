@@ -9,9 +9,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_divmod10)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_divmod10)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_divmod10)
         .text
         .balign 4
@@ -31,10 +33,11 @@
 #define s x6
 
 S2N_BN_SYMBOL(bignum_divmod10):
+        CFI_START
 
 // If k = 0 then return; the return in x0 is indeed 0 mod 10 = 0
 
-        cbz     k, bignum_divmod10_end
+        cbz     k, Lbignum_divmod10_end
 
 // Straightforward top-down loop doing 10 * q + r' := 2^64 * r + d
 
@@ -42,7 +45,7 @@ S2N_BN_SYMBOL(bignum_divmod10):
         mov     w, 0x3333333333333333
         add     s, w, 1
         and     w, w, 0xfffffff
-bignum_divmod10_divloop:
+Lbignum_divmod10_divloop:
         sub     k, k, 1
         ldr     d, [z, k, lsl #3]
 
@@ -65,14 +68,16 @@ bignum_divmod10_divloop:
         add     q, q, q, lsl #2
         sub     r, d, q, lsl #1
 
-        cbnz    k, bignum_divmod10_divloop
+        cbnz    k, Lbignum_divmod10_divloop
 
 // Return the final remainder
 
         mov     x0, r
 
-bignum_divmod10_end:
-        ret
+Lbignum_divmod10_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_divmod10)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

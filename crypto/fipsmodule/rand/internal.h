@@ -17,6 +17,7 @@
 
 #include <openssl/aes.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/rand.h>
 
 #include "../../internal.h"
 #include "../modes/internal.h"
@@ -25,54 +26,15 @@
 extern "C" {
 #endif
 
+// kCtrDrbgReseedInterval is the number of generate calls made to CTR-DRBG,
+// for a specific state, before reseeding.
+static const uint64_t kCtrDrbgReseedInterval = 4096;
 
-#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-#define OPENSSL_RAND_DETERMINISTIC
-#elif defined(OPENSSL_WINDOWS)
-#define OPENSSL_RAND_WINDOWS
-#else
-#define OPENSSL_RAND_URANDOM
-#endif
+#define RAND_NO_USER_PRED_RESISTANCE 0
+#define RAND_USE_USER_PRED_RESISTANCE 1
 
-// RAND_bytes_with_additional_data samples from the RNG after mixing 32 bytes
-// from |user_additional_data| in.
-void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
-                                     const uint8_t user_additional_data[32]);
-
-// CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
-// system.
-OPENSSL_EXPORT void CRYPTO_sysrand(uint8_t *buf, size_t len);
-
-// CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
-// operating system. It may draw from the |GRND_RANDOM| pool on Android,
-// depending on the vendor's configuration.
-OPENSSL_EXPORT void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
-
-#if defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
-// CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
-// from the operating system.
-void CRYPTO_init_sysrand(void);
-#else
-OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
-#endif  // defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
-
-#if defined(OPENSSL_RAND_URANDOM)
-// CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
-// operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
-// pool is initialized or if getrandom() is not available and not in FIPS mode.
-// Otherwise it will not block and will instead fill |buf| with all zeros and
-// return 0.
-int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len);
-#else
-OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
-  CRYPTO_sysrand(buf, len);
-  return 1;
-}
-#endif  // defined(OPENSSL_RAND_URANDOM)
-
-// rand_fork_unsafe_buffering_enabled returns whether fork-unsafe buffering has
-// been enabled via |RAND_enable_fork_unsafe_buffering|.
-int rand_fork_unsafe_buffering_enabled(void);
+OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
+OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
 
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
@@ -83,6 +45,7 @@ struct ctr_drbg_state_st {
   uint8_t counter[16];
   uint64_t reseed_counter;
 };
+OPENSSL_STATIC_ASSERT((sizeof((struct ctr_drbg_state_st*)0)->reseed_counter) * 8 >= 48, value_can_overflow)
 
 // CTR_DRBG_init initialises |*drbg| given |CTR_DRBG_ENTROPY_LEN| bytes of
 // entropy in |entropy| and, optionally, a personalization string up to
@@ -92,71 +55,6 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                                  const uint8_t *personalization,
                                  size_t personalization_len);
-
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
-
-OPENSSL_INLINE int have_rdrand(void) {
-  return CRYPTO_is_RDRAND_capable();
-}
-
-// have_fast_rdrand returns true if RDRAND is supported and it's reasonably
-// fast. Concretely the latter is defined by whether the chip is Intel (fast) or
-// not (assumed slow).
-OPENSSL_INLINE int have_fast_rdrand(void) {
-  return CRYPTO_is_RDRAND_capable() && CRYPTO_is_intel_cpu();
-}
-
-// CRYPTO_rdrand writes eight bytes of random data from the hardware RNG to
-// |out|. It returns one on success or zero on hardware failure.
-int CRYPTO_rdrand(uint8_t out[8]);
-
-// CRYPTO_rdrand_multiple8_buf fills |len| bytes at |buf| with random data from
-// the hardware RNG. The |len| argument must be a multiple of eight. It returns
-// one on success and zero on hardware failure.
-int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
-
-#else  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
-
-OPENSSL_INLINE int have_rdrand(void) {
-  return 0;
-}
-
-OPENSSL_INLINE int have_fast_rdrand(void) {
-  return 0;
-}
-
-#endif  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
-
-// Don't retry forever. There is no science in picking this number and can be
-// adjusted in the future if need be. We do not backoff forever, because we
-// believe that it is easier to detect failing calls than detecting infinite
-// spinning loops.
-#define MAX_BACKOFF_RETRIES 9
-OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
-
-// Total number of bytes of entropy to load into FIPS module. Separate constants
-// that separate the logically distinct operations (1) loading entropy, and (2)
-// invoking DRBG.
-#define PASSIVE_ENTROPY_LOAD_LENGTH CTR_DRBG_ENTROPY_LEN
-
-#if defined(BORINGSSL_FIPS)
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-
-#define JITTER_MAX_NUM_TRIES (3)
-
-#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-
-OPENSSL_EXPORT void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                                  int *out_want_additional_input);
-void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
-                             int *out_want_additional_input);
-OPENSSL_EXPORT void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                       uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]);
-
-#endif
-
-#endif // defined(BORINGSSL_FIPS)
 
 #if defined(__cplusplus)
 }  // extern C

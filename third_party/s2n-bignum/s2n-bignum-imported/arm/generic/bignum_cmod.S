@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = x, X2 = m, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmod)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_cmod)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmod)
         .text
         .balign 4
@@ -38,10 +40,11 @@
 #define q x0
 
 S2N_BN_SYMBOL(bignum_cmod):
+        CFI_START
 
 // If the bignum is zero-length, x0 is already the right answer of 0
 
-        cbz     k, bignum_cmod_end
+        cbz     k, Lbignum_cmod_end
 
 // Find number of leading zeros of m and let n = 2^e m so that for an
 // in-scope (nonzero) input m we have n >= 2^63, e <= 63.
@@ -108,7 +111,7 @@ S2N_BN_SYMBOL(bignum_cmod):
 
         mov     h, xzr
         mov     l, xzr
-bignum_cmod_loop:
+Lbignum_cmod_loop:
         sub     k, k, #1
         ldr     d, [x, k, lsl #3]
         mul     a, r, h
@@ -118,7 +121,7 @@ bignum_cmod_loop:
         csel    l, r, xzr, cs
         adds    l, l, a
         adc     h, h, xzr
-        cbnz    k, bignum_cmod_loop
+        cbnz    k, Lbignum_cmod_loop
 
 // Now do reciprocal multiplication to reduce the 2-word modular equivalent
 // [h;l] to the single word l. If we assume the truncations are as follows
@@ -171,8 +174,10 @@ bignum_cmod_loop:
         subs    x0, l, m
         csel    x0, x0, l, cs
 
-bignum_cmod_end:
-        ret
+Lbignum_cmod_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_cmod)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

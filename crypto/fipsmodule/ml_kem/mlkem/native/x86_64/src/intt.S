@@ -42,6 +42,7 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_invntt_avx2)
 S2N_BN_SYMBOL(mlkem_invntt_avx2):
 
+        .cfi_startproc
         vmovdqa	(%rsi), %ymm0
         vmovdqa	0x60(%rsi), %ymm2
         vmovdqa	0x80(%rsi), %ymm3
@@ -692,4 +693,5 @@ S2N_BN_SYMBOL(mlkem_invntt_avx2):
         vmovdqa	%ymm10, 0x1c0(%rdi)
         vmovdqa	%ymm11, 0x1e0(%rdi)
         retq
+        .cfi_endproc
 

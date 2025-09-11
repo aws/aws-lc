@@ -26,10 +26,13 @@
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(sm2_montjscalarmul_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(sm2_montjscalarmul_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sm2_montjscalarmul_alt)
+
 
         .text
         .balign 4
@@ -54,7 +57,7 @@
 
 #define tab sp, #(7*NUMSIZE)
 
-#define NSPACE #(31*NUMSIZE)
+#define NSPACE 31*NUMSIZE
 
 // Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
 // which doesn't accept repetitions, assembler macros etc.
@@ -90,10 +93,11 @@
         movk    nn, n3, lsl #48
 
 S2N_BN_SYMBOL(sm2_montjscalarmul_alt):
+        CFI_START
 
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x30, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x30)
+        CFI_DEC_SP(NSPACE)
 
 // Preserve the "res" and "point" input arguments. We load and process the
 // scalar immediately so we don't bother preserving that input argument.
@@ -199,34 +203,34 @@ S2N_BN_SYMBOL(sm2_montjscalarmul_alt):
 
         add     x0, tab+96*1
         add     x1, tab
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         add     x0, tab+96*2
         add     x1, tab+96*1
         add     x2, tab
-        bl      sm2_montjscalarmul_alt_sm2_montjadd
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjadd)
 
         add     x0, tab+96*3
         add     x1, tab+96*1
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         add     x0, tab+96*4
         add     x1, tab+96*3
         add     x2, tab
-        bl      sm2_montjscalarmul_alt_sm2_montjadd
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjadd)
 
         add     x0, tab+96*5
         add     x1, tab+96*2
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         add     x0, tab+96*6
         add     x1, tab+96*5
         add     x2, tab
-        bl      sm2_montjscalarmul_alt_sm2_montjadd
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjadd)
 
         add     x0, tab+96*7
         add     x1, tab+96*3
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
 // Initialize the accumulator as a table entry for top 4 bits (unrecoded)
 
@@ -267,24 +271,24 @@ S2N_BN_SYMBOL(sm2_montjscalarmul_alt):
 
 // Main loop over size-4 bitfields: double 4 times then add signed digit
 
-sm2_montjscalarmul_alt_mainloop:
+Lsm2_montjscalarmul_alt_mainloop:
         sub     j, j, #4
 
         add     x0, acc
         add     x1, acc
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         add     x0, acc
         add     x1, acc
-        bl      sm2_montjscalarmul_alt_sm2_montjdouble
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
         lsr     x2, j, #6
         ldr     x14, [sp, x2, lsl #3]   // Exploits scalarb = sp exactly
@@ -354,9 +358,9 @@ sm2_montjscalarmul_alt_mainloop:
         add     x0, acc
         add     x1, acc
         add     x2, tabent
-        bl      sm2_montjscalarmul_alt_sm2_montjadd
+        CFI_BL(Lsm2_montjscalarmul_alt_sm2_montjadd)
 
-        cbnz    j, sm2_montjscalarmul_alt_mainloop
+        cbnz    j, Lsm2_montjscalarmul_alt_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -376,15 +380,20 @@ sm2_montjscalarmul_alt_mainloop:
 
 // Restore stack and registers and return
 
-        add     sp, sp, NSPACE
-        ldp     x21, x30, [sp], 16
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x21,x30)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(sm2_montjscalarmul_alt)
 
 // Local copies of subroutines, complete clones at the moment
 
-sm2_montjscalarmul_alt_sm2_montjadd:
-        sub     sp, sp, #0xe0
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lsm2_montjscalarmul_alt_sm2_montjadd)
+
+Lsm2_montjscalarmul_alt_sm2_montjadd:
+        CFI_START
+        CFI_DEC_SP(224)
         mov     x15, x0
         mov     x16, x1
         mov     x17, x2
@@ -2335,11 +2344,16 @@ sm2_montjscalarmul_alt_sm2_montjadd:
         stp     x6, x7, [x15, #0x30]
         stp     x8, x9, [x15, #0x40]
         stp     x10, x11, [x15, #0x50]
-        add     sp, sp, #0xe0
-        ret
+        CFI_INC_SP(224)
+        CFI_RET
 
-sm2_montjscalarmul_alt_sm2_montjdouble:
-        sub     sp, sp, #0xc0
+S2N_BN_SIZE_DIRECTIVE(Lsm2_montjscalarmul_alt_sm2_montjadd)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lsm2_montjscalarmul_alt_sm2_montjdouble)
+
+Lsm2_montjscalarmul_alt_sm2_montjdouble:
+        CFI_START
+        CFI_DEC_SP(192)
         mov     x15, x0
         mov     x16, x1
         ldp     x2, x3, [x16, #0x40]
@@ -3397,8 +3411,10 @@ sm2_montjscalarmul_alt_sm2_montjdouble:
         adc     x6, x6, x8
         stp     x3, x4, [x15, #0x20]
         stp     x5, x6, [x15, #0x30]
-        add     sp, sp, #0xc0
-        ret
+        CFI_INC_SP(192)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lsm2_montjscalarmul_alt_sm2_montjdouble)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

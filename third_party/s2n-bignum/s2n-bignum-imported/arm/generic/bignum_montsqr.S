@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = k, X1 = z, X2 = x, X3 = m
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montsqr)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr)
         .text
         .balign 4
@@ -59,10 +61,11 @@
 
 
 S2N_BN_SYMBOL(bignum_montsqr):
+        CFI_START
 
 // If k = 0 the whole operation is trivial
 
-        cbz     k, bignum_montsqr_end
+        cbz     k, Lbignum_montsqr_end
 
 // Compute word-level negated modular inverse w for m == m[0].
 // This is essentially the same as word_negmodinv.
@@ -86,17 +89,17 @@ S2N_BN_SYMBOL(bignum_montsqr):
 // this keeps the code slightly simpler.
 
         mov     i, xzr
-bignum_montsqr_zoop:
+Lbignum_montsqr_zoop:
         str     xzr, [z, i, lsl #3]
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_montsqr_zoop
+        bcc     Lbignum_montsqr_zoop
         mov     c0, xzr
 
 // Outer loop pulling down digits d=x[i], multiplying by x and reducing
 
         mov     i, xzr
-bignum_montsqr_outerloop:
+Lbignum_montsqr_outerloop:
 
 // Multiply-add loop where we always have CF + previous high part h to add in
 // Note that in general we do need yet one more carry in this phase and hence
@@ -105,7 +108,7 @@ bignum_montsqr_outerloop:
         ldr     d, [x, i, lsl #3]
         mov     j, xzr
         adds    h, xzr, xzr
-bignum_montsqr_maddloop:
+Lbignum_montsqr_maddloop:
         ldr     a, [x, j, lsl #3]
         ldr     e, [z, j, lsl #3]
         mul     l, d, a
@@ -116,7 +119,7 @@ bignum_montsqr_maddloop:
         str     e, [z, j, lsl #3]
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_montsqr_maddloop
+        cbnz    t, Lbignum_montsqr_maddloop
         adcs    c0, c0, h
         adc     c1, xzr, xzr
 
@@ -130,8 +133,8 @@ bignum_montsqr_maddloop:
         adds    e, e, l         // Will be zero but want the carry
         mov     j, #1
         sub     t, k, #1
-        cbz     t, bignum_montsqr_montend
-bignum_montsqr_montloop:
+        cbz     t, Lbignum_montsqr_montend
+Lbignum_montsqr_montloop:
         ldr     a, [m, j, lsl #3]
         ldr     e, [z, j, lsl #3]
         mul     l, d, a
@@ -143,8 +146,8 @@ bignum_montsqr_montloop:
         str     e, [z, l, lsl #3]
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_montsqr_montloop
-bignum_montsqr_montend:
+        cbnz    t, Lbignum_montsqr_montloop
+Lbignum_montsqr_montend:
         adcs    h, c0, h
         adc     c0, c1, xzr
         sub     l, j, #1
@@ -154,19 +157,19 @@ bignum_montsqr_montend:
 
         add     i, i, #1
         cmp     i, k
-        bcc     bignum_montsqr_outerloop
+        bcc     Lbignum_montsqr_outerloop
 
 // Now do a comparison of (c0::z) with (0::m) to set a final correction mask
 // indicating that (c0::z) >= m and so we need to subtract m.
 
         subs    j, xzr, xzr
-bignum_montsqr_cmploop:
+Lbignum_montsqr_cmploop:
         ldr     a, [z, j, lsl #3]
         ldr     e, [m, j, lsl #3]
         sbcs    xzr, a, e
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_montsqr_cmploop
+        cbnz    t, Lbignum_montsqr_cmploop
 
         sbcs    xzr, c0, xzr
         csetm   c0, cs
@@ -174,7 +177,7 @@ bignum_montsqr_cmploop:
 // Now do a masked subtraction of m for the final reduced result.
 
         subs    j, xzr, xzr
-bignum_montsqr_corrloop:
+Lbignum_montsqr_corrloop:
         ldr     a, [z, j, lsl #3]
         ldr     e, [m, j, lsl #3]
         and     e, e, c0
@@ -182,10 +185,12 @@ bignum_montsqr_corrloop:
         str     a, [z, j, lsl #3]
         add     j, j, #1
         sub     t, j, k
-        cbnz    t, bignum_montsqr_corrloop
+        cbnz    t, Lbignum_montsqr_corrloop
 
-bignum_montsqr_end:
-        ret
+Lbignum_montsqr_end:
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montsqr)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

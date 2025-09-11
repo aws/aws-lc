@@ -12,10 +12,11 @@
 // Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tomont_p384_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_tomont_p384_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tomont_p384_alt)
         .text
 
@@ -103,11 +104,12 @@
         adcq    $0, d7
 
 S2N_BN_SYMBOL(bignum_tomont_p384_alt):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
@@ -118,11 +120,11 @@ S2N_BN_SYMBOL(bignum_tomont_p384_alt):
 // plus the easy digits y[4] = 1 and y[5] = 0 being treated specially.
 // Because there is no y pointer to keep, we use one register less.
 
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
 
 // Do row 0 computation, which is a bit different:
 // set up initial window [%r14,%r13,%r12,%r11,%r10,%r9,%r8] = y[0] * x
@@ -303,17 +305,19 @@ S2N_BN_SYMBOL(bignum_tomont_p384_alt):
 
 // Restore registers and return
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
 
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_tomont_p384_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

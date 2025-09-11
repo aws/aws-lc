@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_4_8_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mul_4_8_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mul_4_8_alt)
         .text
         .balign 4
@@ -45,6 +47,7 @@
 #define u7 a2
 
 S2N_BN_SYMBOL(bignum_mul_4_8_alt):
+        CFI_START
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 
@@ -140,7 +143,9 @@ S2N_BN_SYMBOL(bignum_mul_4_8_alt):
         stp     u4, u5, [z, #32]
         stp     u6, u7, [z, #48]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mul_4_8_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

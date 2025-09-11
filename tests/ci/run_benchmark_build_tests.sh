@@ -85,6 +85,7 @@ run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=17 -DC
 aws-lc-fips-2021:${install_dir}/aws-lc-fips-2021-10-20;\
 aws-lc-fips-2022:${install_dir}/aws-lc-fips-2022-11-02;\
 aws-lc-fips-2024:${install_dir}/aws-lc-fips-2024-09-27;\
+aws-lc-fips-main:${install_dir}/aws-lc-fips;\
 open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
 open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
 open31:${install_dir}/openssl-${openssl_3_1_branch};\
@@ -94,7 +95,8 @@ boringssl:${install_dir}/boringssl;"
 
 LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2021-10-20/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2021" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2022-11-02/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10 -chunks 1,2,16,256,20000
-LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2024-09-27/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2024-09-27/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2024" -timeout_ms 10 -chunks 1,2,16,256,20000
+LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-main/lib" "${BUILD_ROOT}/tool/aws-lc-fips-main" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_0_2_branch}/lib" "${BUILD_ROOT}/tool/open102" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_1_1_branch}/lib" "${BUILD_ROOT}/tool/open111" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_1_branch}/lib64" "${BUILD_ROOT}/tool/open31" -timeout_ms 10 -chunks 1,2,16,256,20000

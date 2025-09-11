@@ -33,7 +33,9 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_rej_uniform_asm)
 S2N_BN_SYMBOL(mlkem_rej_uniform_asm):
 
+        .cfi_startproc
         subq	$0x210, %rsp            # imm = 0x210
+        .cfi_adjust_cfa_offset 0x210
         movabsq	$0xd010d010d010d01, %rax # imm = 0xD010D010D010D01
         movq	%rax, %xmm0
         pinsrq	$0x1, %rax, %xmm0
@@ -48,7 +50,7 @@ S2N_BN_SYMBOL(mlkem_rej_uniform_asm):
         movq	$0x0, %r8
         movq	$0x5555, %r9            # imm = 0x5555
 
-rej_uniform_asm_loop_start:
+Lrej_uniform_asm_loop_start:
         movdqu	(%rsi,%r8), %xmm2
         pshufb	%xmm4, %xmm2
         movdqa	%xmm2, %xmm6
@@ -67,12 +69,12 @@ rej_uniform_asm_loop_start:
         popcntq	%r11, %r11
         addq	%r11, %rax
         cmpq	$0x100, %rax            # imm = 0x100
-        jae	rej_uniform_asm_final_copy
+        jae	Lrej_uniform_asm_final_copy
         addq	$0xc, %r8
         cmpq	%r8, %rdx
-        ja	rej_uniform_asm_loop_start
+        ja	Lrej_uniform_asm_loop_start
 
-rej_uniform_asm_final_copy:
+Lrej_uniform_asm_final_copy:
         movq	$0x100, %rcx            # imm = 0x100
         cmpq	$0x100, %rax            # imm = 0x100
         cmovaq	%rcx, %rax
@@ -81,5 +83,7 @@ rej_uniform_asm_final_copy:
         shlq	%rcx
         rep		movsb	(%rsi), %es:(%rdi)
         addq	$0x210, %rsp            # imm = 0x210
+        .cfi_adjust_cfa_offset -0x210
         retq
+        .cfi_endproc
 

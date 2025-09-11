@@ -32,7 +32,7 @@ cd ${SCRATCH_FOLDER}
 
 function curl_build() {
   autoreconf -fi
-  ./configure --enable-warnings --enable-werror --with-openssl=${AWS_LC_INSTALL_FOLDER} --without-libpsl
+  ./configure --enable-warnings --enable-werror --with-openssl=${AWS_LC_INSTALL_FOLDER} --without-libpsl --enable-debug
   make -j "$NUM_CPU_THREADS"
   make -j "$NUM_CPU_THREADS" examples
 }

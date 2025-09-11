@@ -19,9 +19,11 @@
 //
 // Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(curve25519_x25519_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519_alt)
 
         .text
@@ -74,7 +76,7 @@
 
 // Total size to reserve on the stack
 
-#define NSPACE (10*NUMSIZE)
+#define NSPACE 10*NUMSIZE
 
 // Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
 // trivially different from a pure function call to that subroutine.
@@ -456,13 +458,14 @@
         stp     x0, x1, [p0+16]
 
 S2N_BN_SYMBOL(curve25519_x25519_alt):
+        CFI_START
 
 // Save regs and make room for temporaries
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
-        sub     sp, sp, #NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_PUSH2(x21,x22)
+        CFI_PUSH2(x23,x24)
+        CFI_DEC_SP(NSPACE)
 
 // Move the output pointer to a stable place
 
@@ -518,7 +521,7 @@ S2N_BN_SYMBOL(curve25519_x25519_alt):
 
         mov     i, #253
 
-curve25519_x25519_alt_scalarloop:
+Lcurve25519_x25519_alt_scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 
@@ -590,7 +593,7 @@ curve25519_x25519_alt_scalarloop:
 
         sub     i, i, #1
         cmp     i, #3
-        bcs     curve25519_x25519_alt_scalarloop
+        bcs     Lcurve25519_x25519_alt_scalarloop
 
 // Multiplex directly into (xn,zn) then do three pure doubling steps;
 // this accounts for the implicit zeroing of the three lowest bits
@@ -692,8 +695,8 @@ curve25519_x25519_alt_scalarloop:
         stp     x12, x13, [sp, #112]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       curve25519_x25519_alt_invmidloop
-curve25519_x25519_alt_invloop:
+        b       Lcurve25519_x25519_alt_invmidloop
+Lcurve25519_x25519_alt_invloop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -960,7 +963,7 @@ curve25519_x25519_alt_invloop:
         adc     x2, x2, x5
         stp     x0, x1, [sp, #96]
         stp     x3, x2, [sp, #112]
-curve25519_x25519_alt_invmidloop:
+Lcurve25519_x25519_alt_invmidloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #32]
@@ -1571,7 +1574,7 @@ curve25519_x25519_alt_invmidloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        b.ne    curve25519_x25519_alt_invloop
+        b.ne    Lcurve25519_x25519_alt_invloop
         ldr     x0, [sp]
         ldr     x1, [sp, #32]
         mul     x0, x0, x10
@@ -1685,12 +1688,14 @@ curve25519_x25519_alt_invmidloop:
 
 // Restore stack and registers
 
-        add     sp, sp, #NSPACE
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x23,x24)
+        CFI_POP2(x21,x22)
+        CFI_POP2(x19,x20)
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(curve25519_x25519_alt)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

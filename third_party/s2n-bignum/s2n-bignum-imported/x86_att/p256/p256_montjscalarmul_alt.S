@@ -27,11 +27,13 @@
 // Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(p256_montjscalarmul_alt)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(p256_montjscalarmul_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(p256_montjscalarmul_alt)
+
 
         .text
         .balign 4
@@ -55,7 +57,7 @@
 
 #define res (31*NUMSIZE)(%rsp)
 
-#define NSPACE (32*NUMSIZE)
+#define NSPACE 32*NUMSIZE
 
 // Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
 // which doesn't accept repetitions, assembler macros etc.
@@ -76,35 +78,41 @@
         cmovzq  TAB+96*(I-1)+88(%rsp), %r15
 
 S2N_BN_SYMBOL(p256_montjscalarmul_alt):
+        CFI_START
         _CET_ENDBR
 
 // The Windows version literally calls the standard ABI version.
 // This simplifies the proofs since subroutine offsets are fixed.
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
-        callq   p256_montjscalarmul_alt_standard
-        popq   %rsi
-        popq   %rdi
-        ret
+        CFI_CALL(Lp256_montjscalarmul_alt_standard)
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
+        CFI_RET
 
-p256_montjscalarmul_alt_standard:
+S2N_BN_SIZE_DIRECTIVE(p256_montjscalarmul_alt)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_montjscalarmul_alt_standard)
+
+Lp256_montjscalarmul_alt_standard:
+        CFI_START
 #endif
 
 // Real start of the standard ABI code.
 
-        pushq   %r15
-        pushq   %r14
-        pushq   %r13
-        pushq   %r12
-        pushq   %rbp
-        pushq   %rbx
+        CFI_PUSH(%r15)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%rbx)
 
-        subq    $NSPACE, %rsp
+        CFI_DEC_RSP(NSPACE)
 
 // Preserve the "res" and "point" input arguments. We load and process the
 // scalar immediately so we don't bother preserving that input argument.
@@ -226,34 +234,34 @@ p256_montjscalarmul_alt_standard:
 
         leaq    TAB+96*1(%rsp), %rdi
         leaq    TAB(%rsp), %rsi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         leaq    TAB+96*2(%rsp), %rdi
         leaq    TAB+96*1(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p256_montjscalarmul_alt_p256_montjadd
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjadd)
 
         leaq    TAB+96*3(%rsp), %rdi
         leaq    TAB+96*1(%rsp), %rsi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         leaq    TAB+96*4(%rsp), %rdi
         leaq    TAB+96*3(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p256_montjscalarmul_alt_p256_montjadd
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjadd)
 
         leaq    TAB+96*5(%rsp), %rdi
         leaq    TAB+96*2(%rsp), %rsi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         leaq    TAB+96*6(%rsp), %rdi
         leaq    TAB+96*5(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   p256_montjscalarmul_alt_p256_montjadd
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjadd)
 
         leaq    TAB+96*7(%rsp), %rdi
         leaq    TAB+96*3(%rsp), %rsi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
 // Set up accumulator as table entry for top 4 bits (constant-time indexing)
 
@@ -299,24 +307,24 @@ p256_montjscalarmul_alt_standard:
 
         movl    $252, %ebp
 
-p256_montjscalarmul_alt_mainloop:
+Lp256_montjscalarmul_alt_mainloop:
         subq    $4, %rbp
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_montjscalarmul_alt_p256_montjdouble
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjdouble)
 
         movq    %rbp, %rax
         shrq    $6, %rax
@@ -397,10 +405,10 @@ p256_montjscalarmul_alt_mainloop:
         leaq    TABENT(%rsp), %rdx
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   p256_montjscalarmul_alt_p256_montjadd
+        CFI_CALL(Lp256_montjscalarmul_alt_p256_montjadd)
 
         testq   %rbp, %rbp
-        jne     p256_montjscalarmul_alt_mainloop
+        jne     Lp256_montjscalarmul_alt_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -435,25 +443,34 @@ p256_montjscalarmul_alt_mainloop:
 
 // Restore stack and registers and return
 
-        addq    $NSPACE, %rsp
-        popq    %rbx
-        popq    %rbp
-        popq    %r12
-        popq    %r13
-        popq    %r14
-        popq    %r15
-        ret
+        CFI_INC_RSP(NSPACE)
+        CFI_POP(%rbx)
+        CFI_POP(%rbp)
+        CFI_POP(%r12)
+        CFI_POP(%r13)
+        CFI_POP(%r14)
+        CFI_POP(%r15)
+        CFI_RET
+
+#if WINDOWS_ABI
+S2N_BN_SIZE_DIRECTIVE(Lp256_montjscalarmul_alt_standard)
+#else
+S2N_BN_SIZE_DIRECTIVE(p256_montjscalarmul_alt)
+#endif
 
 // Local copies of subroutines, complete clones at the moment
 
-p256_montjscalarmul_alt_p256_montjadd:
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0xe0, %rsp
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_montjscalarmul_alt_p256_montjadd)
+
+Lp256_montjscalarmul_alt_p256_montjadd:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%rbp)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(224)
         movq    %rdx, %rbp
         movq    0x40(%rsi), %rax
         movq    %rax, %rbx
@@ -3209,22 +3226,27 @@ p256_montjscalarmul_alt_p256_montjadd:
         movq    %r13, 0x48(%rdi)
         movq    %r14, 0x50(%rdi)
         movq    %r15, 0x58(%rdi)
-        addq    $0xe0, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
-        ret
+        CFI_INC_RSP(224)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbp)
+        CFI_POP(%rbx)
+        CFI_RET
 
-p256_montjscalarmul_alt_p256_montjdouble:
-        pushq   %rbx
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $0xc0, %rsp
+S2N_BN_SIZE_DIRECTIVE(Lp256_montjscalarmul_alt_p256_montjadd)
+
+S2N_BN_FUNCTION_TYPE_DIRECTIVE(Lp256_montjscalarmul_alt_p256_montjdouble)
+
+Lp256_montjscalarmul_alt_p256_montjdouble:
+        CFI_START
+        CFI_PUSH(%rbx)
+        CFI_PUSH(%r12)
+        CFI_PUSH(%r13)
+        CFI_PUSH(%r14)
+        CFI_PUSH(%r15)
+        CFI_DEC_RSP(192)
         movq    0x40(%rsi), %rax
         movq    %rax, %rbx
         mulq    %rax
@@ -4694,13 +4716,15 @@ p256_montjscalarmul_alt_p256_montjdouble:
         movq    %r10, 0x30(%rdi)
         adcq    %rdx, %r11
         movq    %r11, 0x38(%rdi)
-        addq    $0xc0, %rsp
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbx
-        ret
+        CFI_INC_RSP(192)
+        CFI_POP(%r15)
+        CFI_POP(%r14)
+        CFI_POP(%r13)
+        CFI_POP(%r12)
+        CFI_POP(%rbx)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(Lp256_montjscalarmul_alt_p256_montjdouble)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

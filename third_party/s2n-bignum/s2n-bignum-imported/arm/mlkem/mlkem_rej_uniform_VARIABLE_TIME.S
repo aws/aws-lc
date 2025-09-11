@@ -28,14 +28,16 @@
 // Standard ARM ABI: X0 = buf, X1 = r, X2 = buflen, X3 = table
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(mlkem_rej_uniform_VARIABLE_TIME)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(mlkem_rej_uniform_VARIABLE_TIME)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_rej_uniform_VARIABLE_TIME)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(mlkem_rej_uniform_VARIABLE_TIME):
+        CFI_START
 
 // This is almost identical to the code from mlkem-native:
 //
@@ -45,7 +47,7 @@ S2N_BN_SYMBOL(mlkem_rej_uniform_VARIABLE_TIME):
 // Xnn instead of the mixed use of 32-bit counterparts Wnn in most
 // settings where that is applicable.
 
-        sub     sp, sp, #0x240
+        CFI_DEC_SP(576)
         mov     x7, #0x1
         movk    x7, #0x2, lsl #16
         movk    x7, #0x4, lsl #32
@@ -62,23 +64,23 @@ S2N_BN_SYMBOL(mlkem_rej_uniform_VARIABLE_TIME):
         mov     x7, x8
         mov     w11, #0x0
         eor     v16.16b, v16.16b, v16.16b
-mlkem_rej_uniform_initial_zero:
+Lmlkem_rej_uniform_initial_zero:
         str     q16, [x7], #0x40
         stur    q16, [x7, #-0x30]
         stur    q16, [x7, #-0x20]
         stur    q16, [x7, #-0x10]
         add     x11, x11, #0x20
         cmp     x11, #0x100
-        b.lt    mlkem_rej_uniform_initial_zero
+        b.lt    Lmlkem_rej_uniform_initial_zero
         mov     x7, x8
         mov     w9, #0x0
         mov     w4, #0x100
         cmp     x2, #0x30
-        b.lo    mlkem_rej_uniform_loop48_end
+        b.lo    Lmlkem_rej_uniform_loop48_end
 
-mlkem_rej_uniform_loop48:
+Lmlkem_rej_uniform_loop48:
         cmp     x9, x4
-        b.hs    mlkem_rej_uniform_memory_copy
+        b.hs    Lmlkem_rej_uniform_memory_copy
         sub     x2, x2, #0x30
         ld3     { v0.16b, v1.16b, v2.16b }, [x1], #48
         zip1    v4.16b, v0.16b, v1.16b
@@ -142,13 +144,13 @@ mlkem_rej_uniform_loop48:
         add     x9, x9, x12
         add     x9, x9, x14
         cmp     x2, #0x30
-        b.hs    mlkem_rej_uniform_loop48
+        b.hs    Lmlkem_rej_uniform_loop48
 
-mlkem_rej_uniform_loop48_end:
+Lmlkem_rej_uniform_loop48_end:
         cmp     x9, x4
-        b.hs    mlkem_rej_uniform_memory_copy
+        b.hs    Lmlkem_rej_uniform_memory_copy
         cmp     x2, #0x18
-        b.lo    mlkem_rej_uniform_memory_copy
+        b.lo    Lmlkem_rej_uniform_memory_copy
         sub     x2, x2, #0x18
         ld3     { v0.8b, v1.8b, v2.8b }, [x1], #24
         zip1    v4.16b, v0.16b, v1.16b
@@ -182,13 +184,13 @@ mlkem_rej_uniform_loop48_end:
         add     x9, x9, x12
         add     x9, x9, x13
 
-mlkem_rej_uniform_memory_copy:
+Lmlkem_rej_uniform_memory_copy:
         cmp     x9, x4
         csel    x9, x9, x4, lo
         mov     x11, #0x0
         mov     x7, x8
 
-mlkem_rej_uniform_final_copy:
+Lmlkem_rej_uniform_final_copy:
         ldr     q16, [x7], #0x40
         ldur    q17, [x7, #-0x30]
         ldur    q18, [x7, #-0x20]
@@ -199,10 +201,16 @@ mlkem_rej_uniform_final_copy:
         stur    q19, [x0, #-0x10]
         add     x11, x11, #0x20
         cmp     x11, #0x100
-        b.lt    mlkem_rej_uniform_final_copy
+        b.lt    Lmlkem_rej_uniform_final_copy
         mov     x0, x9
-        b       mlkem_rej_uniform_return
+        b       Lmlkem_rej_uniform_return
 
-mlkem_rej_uniform_return:
-        add     sp, sp, #0x240
-        ret
+Lmlkem_rej_uniform_return:
+        CFI_INC_SP(576)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(mlkem_rej_uniform_VARIABLE_TIME)
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack, "", %progbits
+#endif

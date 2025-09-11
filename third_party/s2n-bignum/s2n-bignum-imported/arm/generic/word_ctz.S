@@ -9,14 +9,17 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_ctz)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_ctz)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_ctz)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(word_ctz):
+        CFI_START
 
 // ARM doesn't have a direct word ctz instruction, so we emulate it via
 // ctz(w) = 64 - clz(~w & (w-1)). This is depending, for cases of the form
@@ -30,7 +33,9 @@ S2N_BN_SYMBOL(word_ctz):
         mov     x0, #64
         sub     x0, x0, x1
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_ctz)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

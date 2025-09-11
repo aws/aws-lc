@@ -14,12 +14,23 @@
 
 #include "test_util.h"
 
+#include <fstream>
 #include <ostream>
 #include <inttypes.h>
 
 #include <openssl/err.h>
 
+#include <thread>
+#if !defined(OPENSSL_WINDOWS)
+ #include <sys/wait.h>
+#endif
+
+#include <inttypes.h>
+
+#include <openssl/err.h>
+
 #include "../internal.h"
+#include "../ube/fork_detect.h"
 #include "openssl/pem.h"
 #include "openssl/rand.h"
 
@@ -156,6 +167,30 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
   return stack;
 }
 
+bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len) {
+  char *name = nullptr;
+  char *header = nullptr;
+
+  // Create BIO from memory
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
+  if (!bio) {
+    return false;
+  }
+
+  // Read PEM into DER
+  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
+    OPENSSL_free(name);
+    OPENSSL_free(header);
+    OPENSSL_free(*out_der);
+    *out_der = nullptr;
+    return false;
+  }
+
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+  return true;
+}
+
 #if defined(OPENSSL_WINDOWS)
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
   // On Windows, tmpfile() may attempt to create temp files in the root directory
@@ -243,3 +278,116 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
   free(ptr);
 }
 
+bool osIsAmazonLinux(void) {
+  bool res = false;
+#if defined(OPENSSL_LINUX)
+  // Per https://docs.aws.amazon.com/linux/al2023/ug/naming-and-versioning.html.
+  std::ifstream amazonLinuxSpecificFile("/etc/amazon-linux-release-cpe");
+  if (amazonLinuxSpecificFile.is_open()) {
+    // Definitely on Amazon Linux.
+    amazonLinuxSpecificFile.close();
+    return true;
+  }
+
+  // /etc/amazon-linux-release-cpe was introduced in AL2023. For earlier, parse
+  // and read /etc/system-release-cpe.
+  std::ifstream osRelease("/etc/system-release-cpe");
+  if (!osRelease.is_open()) {
+    return false;
+  }
+
+  std::string line;
+  while (std::getline(osRelease, line)) {
+    // AL2:
+    // $ cat /etc/system-release-cpe
+    // cpe:2.3:o:amazon:amazon_linux:2
+    //
+    // AL2023:
+    // $ cat /etc/system-release-cpe
+    // cpe:2.3:o:amazon:amazon_linux:2023
+    if (line.find("amazon") != std::string::npos) {
+      res = true;
+    } else if (line.find("amazon_linux") != std::string::npos) {
+      res = true;
+    }
+  }
+  osRelease.close();
+#endif
+  return res;
+}
+
+bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFunc) {
+  bool res = true;
+
+#if defined(OPENSSL_THREADS)
+  // char to be able to pass-as-reference.
+  std::vector<char> retValueVec(numberOfThreads, 0);
+  std::vector<std::thread> threadVec;
+
+  for (size_t i = 0; i < numberOfThreads; i++) {
+    threadVec.emplace_back(testFunc, reinterpret_cast<bool*>(&retValueVec[i]));
+  }
+
+  for (auto& thread : threadVec) {
+    thread.join();
+  }
+
+  for (size_t i = 0; i < numberOfThreads; i++) {
+    if (!static_cast<bool>(retValueVec[i])) {
+      fprintf(stderr, "Thread %lu failed\n", (long unsigned int) i);
+      res = false;
+    }
+  }
+
+#else
+  testFunc(&res);
+#endif
+
+  return res;
+}
+
+bool forkAndRunTest(std::function<bool()> child_func,
+  std::function<bool()> parent_func) {
+
+#if defined(OPENSSL_WINDOWS)
+  // fork() is not supported on Windows. We could potentially add support for
+  // the CreateProcess API at some point.
+  return false;
+#else
+  pid_t pid = fork();
+  if (pid == 0) { // Child
+    bool success = child_func();
+    exit(success ? 0 : 1);
+  } else if (pid > 0) { // Parent
+    bool parent_success = parent_func();
+    int status;
+    waitpid(pid, &status, 0);
+    return parent_success && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+  }
+
+  // Fork failed
+  return false;
+#endif
+}
+
+void maybeDisableSomeForkDetectMechanisms(void) {
+  if (getenv("BORINGSSL_IGNORE_FORK_DETECTION")) {
+    CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
+    CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING();
+  }
+}
+
+bool runtimeEmulationIsIntelSde(void) {
+  if (getenv("RUNTIME_EMULATION_SDE")) {
+    return true;
+  }
+  return false;
+}
+
+bool addressSanitizerIsEnabled(void) {
+#if defined(OPENSSL_ASAN)
+  return true;
+#else
+  return false;
+#endif
+}
