@@ -319,7 +319,7 @@ jobs:
 
   arm-clang-2504-tests:
     if: github.repository_owner == 'aws'
-    #needs: [sanity-test-run]
+    needs: [sanity-test-run]
     name: arm64 - clang${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
     runs-on: ubuntu-24.04-arm
     env:
