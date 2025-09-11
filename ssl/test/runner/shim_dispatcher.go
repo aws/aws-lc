@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -34,14 +35,16 @@ type shimDispatcher struct {
 }
 
 func newShimDispatcher() (*shimDispatcher, error) {
-	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
-	if err != nil {
-		listener, err = net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
-	}
+	// Force IPv4 for all platforms to test if IPv6 is causing issues
+	fmt.Printf("[DEBUG] Creating shimDispatcher on %s %s, forcing IPv4\n", runtime.GOOS, runtime.GOARCH)
+	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
 
 	if err != nil {
+		fmt.Printf("[DEBUG] IPv4 setup failed: %v\n", err)
 		return nil, err
 	}
+
+	fmt.Printf("[DEBUG] shimDispatcher listening on: %s\n", listener.Addr())
 	d := &shimDispatcher{listener: listener, shims: make(map[uint64]*shimListener)}
 	go d.acceptLoop()
 	return d, nil
