@@ -85,6 +85,11 @@ var (
 	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
 	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
 	dumpTestCases      = flag.Bool("dump-tests", false, "Outputs all the available test cases after filtering. Useful for producing a new set of ssl transfer tests file.")
+	// Additional debugging flags
+	forceIPv4          = flag.Bool("force-ipv4", false, "If true, force IPv4 for all network connections (useful for debugging IPv6 issues)")
+	verboseNetwork     = flag.Bool("verbose-network", false, "If true, enable verbose network debugging output")
+	testNetworkFirst   = flag.Bool("test-network-first", false, "If true, run network connectivity tests before SSL tests")
+	connectionDebug    = flag.Bool("connection-debug", false, "If true, add detailed connection-level debugging")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -734,21 +739,69 @@ type timeoutConn struct {
 }
 
 func (t *timeoutConn) Read(b []byte) (int, error) {
+	localAddr := t.Conn.LocalAddr()
+	remoteAddr := t.Conn.RemoteAddr()
+	startTime := time.Now()
+	
 	if !*useGDB {
-		if err := t.SetReadDeadline(time.Now().Add(t.timeout)); err != nil {
+		deadline := startTime.Add(t.timeout)
+		if err := t.SetReadDeadline(deadline); err != nil {
+			if *connectionDebug || *verboseNetwork {
+				fmt.Printf("[DEBUG] timeoutConn.Read: SetReadDeadline failed: %v (local: %v, remote: %v)\n", err, localAddr, remoteAddr)
+			}
 			return 0, err
 		}
+		if *connectionDebug || *verboseNetwork {
+			fmt.Printf("[DEBUG] timeoutConn.Read: deadline set to %v (in %v) for %v->%v, buffer size: %d\n", deadline, t.timeout, localAddr, remoteAddr, len(b))
+		}
 	}
-	return t.Conn.Read(b)
+	
+	n, err := t.Conn.Read(b)
+	elapsed := time.Since(startTime)
+	
+	if err != nil {
+		if *connectionDebug || *verboseNetwork {
+			fmt.Printf("[DEBUG] timeoutConn.Read: failed with %v after %v (read %d bytes, local: %v, remote: %v)\n", err, elapsed, n, localAddr, remoteAddr)
+		}
+	} else {
+		if *connectionDebug || *verboseNetwork {
+			fmt.Printf("[DEBUG] timeoutConn.Read: succeeded after %v (read %d bytes, local: %v, remote: %v)\n", elapsed, n, localAddr, remoteAddr)
+		}
+	}
+	return n, err
 }
 
 func (t *timeoutConn) Write(b []byte) (int, error) {
+	localAddr := t.Conn.LocalAddr()
+	remoteAddr := t.Conn.RemoteAddr()
+	startTime := time.Now()
+	
 	if !*useGDB {
-		if err := t.SetWriteDeadline(time.Now().Add(t.timeout)); err != nil {
+		deadline := startTime.Add(t.timeout)
+		if err := t.SetWriteDeadline(deadline); err != nil {
+			if *connectionDebug || *verboseNetwork {
+				fmt.Printf("[DEBUG] timeoutConn.Write: SetWriteDeadline failed: %v (local: %v, remote: %v)\n", err, localAddr, remoteAddr)
+			}
 			return 0, err
 		}
+		if *connectionDebug || *verboseNetwork {
+			fmt.Printf("[DEBUG] timeoutConn.Write: deadline set to %v (in %v) for %v->%v, writing %d bytes\n", deadline, t.timeout, localAddr, remoteAddr, len(b))
+		}
 	}
-	return t.Conn.Write(b)
+	
+	n, err := t.Conn.Write(b)
+	elapsed := time.Since(startTime)
+	
+	if err != nil {
+		if *connectionDebug || *verboseNetwork {
+			fmt.Printf("[DEBUG] timeoutConn.Write: failed with %v after %v (wrote %d bytes, local: %v, remote: %v)\n", err, elapsed, n, localAddr, remoteAddr)
+		}
+	} else {
+		if *connectionDebug || *verboseNetwork {
+			fmt.Printf("[DEBUG] timeoutConn.Write: succeeded after %v (wrote %d bytes, local: %v, remote: %v)\n", elapsed, n, localAddr, remoteAddr)
+		}
+	}
+	return n, err
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, transcripts *[][]byte, num int) error {
@@ -1451,6 +1504,14 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 			panic(r)
 		}
 	}()
+
+	// Add specific debugging for Peek server tests that are failing on Windows ARM64
+	isPeekServerTest := strings.Contains(test.name, "Peek") && strings.Contains(test.name, "Server")
+	if isPeekServerTest && (*verboseNetwork || *connectionDebug || runtime.GOOS == "windows") {
+		fmt.Printf("[DEBUG] Starting Peek server test: %s (GOOS: %s, GOARCH: %s)\n", test.name, runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("[DEBUG] Test type: %d, messageLen: %d, flags: %v\n", test.testType, test.messageLen, test.flags)
+		fmt.Printf("[DEBUG] Idle timeout: %v, using debugger: %v\n", *idleTimeout, useDebugger())
+	}
 
 	var flags []string
 	if len(*shimExtraFlags) > 0 {
@@ -20200,8 +20261,122 @@ func filterTests(inputTests []testCase, startIndex int, endIndex int) []testCase
 
 var sslTransferHelper *ssl_transfer.TestHelper
 
+func testNetworkConnectivity() error {
+	fmt.Printf("[DEBUG] Testing network connectivity...\n")
+	
+	// Test IPv4 localhost
+	conn4, err := net.Dial("tcp4", "127.0.0.1:0")
+	if err == nil {
+		fmt.Printf("[DEBUG] IPv4 localhost dial succeeded (invalid port test)\n")
+		conn4.Close()
+	} else {
+		fmt.Printf("[DEBUG] IPv4 localhost dial failed (expected for port 0): %v\n", err)
+	}
+	
+	// Test IPv6 localhost
+	conn6, err := net.Dial("tcp6", "[::1]:0")
+	if err == nil {
+		fmt.Printf("[DEBUG] IPv6 localhost dial succeeded (invalid port test)\n")
+		conn6.Close()
+	} else {
+		fmt.Printf("[DEBUG] IPv6 localhost dial failed (expected for port 0): %v\n", err)
+	}
+	
+	// Test actual listen and connect for IPv4
+	listener4, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		fmt.Printf("[DEBUG] IPv4 listen failed: %v\n", err)
+	} else {
+		defer listener4.Close()
+		addr4 := listener4.Addr().String()
+		fmt.Printf("[DEBUG] IPv4 listener created at %s\n", addr4)
+		
+		// Try to connect to our own listener
+		conn, err := net.Dial("tcp4", addr4)
+		if err != nil {
+			fmt.Printf("[DEBUG] IPv4 self-connect failed: %v\n", err)
+		} else {
+			conn.Close()
+			fmt.Printf("[DEBUG] IPv4 self-connect succeeded\n")
+		}
+	}
+	
+	// Test actual listen and connect for IPv6
+	listener6, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		fmt.Printf("[DEBUG] IPv6 listen failed: %v\n", err)
+		return err
+	}
+	defer listener6.Close()
+	
+	addr6 := listener6.Addr().String()
+	fmt.Printf("[DEBUG] IPv6 listener created at %s\n", addr6)
+	
+	// Try to connect to our own listener
+	conn, err := net.Dial("tcp6", addr6)
+	if err != nil {
+		fmt.Printf("[DEBUG] IPv6 self-connect failed: %v\n", err)
+		return err
+	}
+	conn.Close()
+	fmt.Printf("[DEBUG] IPv6 self-connect succeeded\n")
+	
+	return nil
+}
+
+func checkWindowsNetworking() {
+	if runtime.GOOS != "windows" {
+		return
+	}
+	
+	fmt.Printf("[DEBUG] Checking Windows networking configuration...\n")
+	
+	// Check if IPv6 is properly configured
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		fmt.Printf("[DEBUG] Failed to get interface addresses: %v\n", err)
+		return
+	}
+	
+	hasIPv4Loopback := false
+	hasIPv6Loopback := false
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok {
+			if ipnet.IP.IsLoopback() {
+				fmt.Printf("[DEBUG] Loopback address found: %v\n", ipnet.IP)
+				if ipnet.IP.To4() != nil {
+					hasIPv4Loopback = true
+				} else {
+					hasIPv6Loopback = true
+				}
+			}
+		}
+	}
+	
+	fmt.Printf("[DEBUG] IPv4 loopback available: %v\n", hasIPv4Loopback)
+	fmt.Printf("[DEBUG] IPv6 loopback available: %v\n", hasIPv6Loopback)
+	
+	// Check Windows version info
+	fmt.Printf("[DEBUG] GOOS: %s, GOARCH: %s\n", runtime.GOOS, runtime.GOARCH)
+}
+
 func main() {
 	flag.Parse()
+	
+	// Perform network connectivity debugging if requested
+	if *testNetworkFirst || *verboseNetwork {
+		fmt.Printf("[DEBUG] Starting network connectivity checks...\n")
+		checkWindowsNetworking()
+		
+		if err := testNetworkConnectivity(); err != nil {
+			fmt.Printf("[DEBUG] Network connectivity test failed: %v\n", err)
+			fmt.Printf("[DEBUG] Continuing with tests despite network issues...\n")
+		} else {
+			fmt.Printf("[DEBUG] Network connectivity tests passed\n")
+		}
+		fmt.Printf("[DEBUG] Network connectivity checks completed\n")
+	}
+	
 	var err error
 	if tmpDir, err = os.MkdirTemp("", "testing-certs"); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to make temporary directory: %s", err)

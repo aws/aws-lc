@@ -35,16 +35,53 @@ type shimDispatcher struct {
 }
 
 func newShimDispatcher() (*shimDispatcher, error) {
-	// Force IPv4 for all platforms to test if IPv6 is causing issues
-	fmt.Printf("[DEBUG] Creating shimDispatcher on %s %s, forcing IPv4\n", runtime.GOOS, runtime.GOARCH)
-	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
+	var listener *net.TCPListener
+	var err error
+
+	if *verboseNetwork {
+		fmt.Printf("[DEBUG] Creating shimDispatcher on %s %s\n", runtime.GOOS, runtime.GOARCH)
+	}
+
+	// Check if we should force IPv4 or use Windows ARM64 detection
+	forceIPv4Only := *forceIPv4 || (runtime.GOOS == "windows" && runtime.GOARCH == "arm64")
+
+	if forceIPv4Only {
+		if *verboseNetwork {
+			if *forceIPv4 {
+				fmt.Printf("[DEBUG] Forcing IPv4 due to --force-ipv4 flag\n")
+			} else {
+				fmt.Printf("[DEBUG] Windows ARM64 detected, forcing IPv4 due to known IPv6 issues\n")
+			}
+		}
+		listener, err = net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
+	} else {
+		// Try IPv6 first, fallback to IPv4
+		if *verboseNetwork {
+			fmt.Printf("[DEBUG] Attempting IPv6 localhost first\n")
+		}
+		listener, err = net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
+		if err != nil {
+			if *verboseNetwork {
+				fmt.Printf("[DEBUG] IPv6 failed (%v), falling back to IPv4\n", err)
+			}
+			listener, err = net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
+		} else {
+			if *verboseNetwork {
+				fmt.Printf("[DEBUG] IPv6 localhost succeeded, addr: %s\n", listener.Addr())
+			}
+		}
+	}
 
 	if err != nil {
-		fmt.Printf("[DEBUG] IPv4 setup failed: %v\n", err)
+		if *verboseNetwork {
+			fmt.Printf("[DEBUG] Network setup failed: %v\n", err)
+		}
 		return nil, err
 	}
 
-	fmt.Printf("[DEBUG] shimDispatcher listening on: %s\n", listener.Addr())
+	if *verboseNetwork {
+		fmt.Printf("[DEBUG] shimDispatcher listening on: %s\n", listener.Addr())
+	}
 	d := &shimDispatcher{listener: listener, shims: make(map[uint64]*shimListener)}
 	go d.acceptLoop()
 	return d, nil
