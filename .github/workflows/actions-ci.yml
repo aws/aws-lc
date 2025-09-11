@@ -108,6 +108,8 @@ jobs:
           ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       - name: Build/Test (ARM64)
         if: endsWith(matrix.os, '-arm')
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
         run: |
           ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" arm64
 
@@ -224,7 +226,7 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   compiler-tests:
-    name: ${{ matrix.compiler }}, FIPS=${{ matrix.fips }}
+    name: x86-64 - ${{ matrix.compiler }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
     needs: [sanity-test-run]
     env:
       GOFLAGS: "-buildvcs=false"
@@ -277,7 +279,7 @@ jobs:
   arm-gcc-tests:
     if: github.repository_owner == 'aws'
     #needs: [sanity-test-run]
-    name: arm64 - GCC ${{ matrix.gcc_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
+    name: arm64 - gcc${{ matrix.gcc_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
     runs-on: ubuntu-24.04-arm
     env:
       GOFLAGS: "-buildvcs=false"
@@ -306,6 +308,108 @@ jobs:
         # Suppress false positive stringop-overflow warnings w/ GCC-14
         run: |
           echo "CXXFLAGS=-Wno-stringop-overflow -Wno-array-bounds" >> $GITHUB_ENV
+      - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        run: |
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  arm-clang-2404-tests:
+    if: github.repository_owner == 'aws'
+    #needs: [sanity-test-run]
+    name: arm64 - clang${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
+    runs-on: ubuntu-24.04-arm
+    env:
+      GOFLAGS: "-buildvcs=false"
+    container:
+      image: arm64v8/ubuntu:24.04
+      options: "--platform linux/arm64"
+    strategy:
+      fail-fast: false
+      matrix:
+        clang_version: ["14", "15", "16", "17", "18", "19"]
+        fips: ["0", "1"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
+          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
+      - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        run: |
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  arm-clang-2204-tests:
+    if: github.repository_owner == 'aws'
+    #needs: [sanity-test-run]
+    name: arm64 - clang ${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
+    runs-on: ubuntu-24.04-arm
+    env:
+      GOFLAGS: "-buildvcs=false"
+    container:
+      image: arm64v8/ubuntu:22.04
+      options: "--platform linux/arm64"
+    strategy:
+      fail-fast: false
+      matrix:
+        clang_version: ["11", "12", "13"]
+        fips: ["0", "1"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
+          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
+      - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        run: |
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  arm-clang-2004-tests:
+    if: github.repository_owner == 'aws'
+    #needs: [sanity-test-run]
+    name: arm64 - clang ${{ matrix.clang_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
+    runs-on: ubuntu-24.04-arm
+    env:
+      GOFLAGS: "-buildvcs=false"
+    container:
+      image: arm64v8/ubuntu:20.04
+      options: "--platform linux/arm64"
+    strategy:
+      fail-fast: false
+      matrix:
+        clang_version: ["7", "8", "9", "10"]
+        fips: ["0", "1"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential cmake ninja-build clang-${{ matrix.clang_version }}
+          echo "CC=/usr/bin/clang-${{ matrix.clang_version }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++-${{ matrix.clang_version }}" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
         run: |
           cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
