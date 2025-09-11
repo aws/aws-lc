@@ -106,3 +106,13 @@ def add_ci_stacks(
         ignore_failure=True,
         stack_name="aws-lc-ci-x509",
     )
+
+    legacy_avx_build_spec_file = "cdk/codebuild/github_ci_legacy_avx.yaml"
+    AwsLcGitHubCIStack(
+        scope,
+        "aws-lc-ci-legacy-avx",
+        legacy_avx_build_spec_file,
+        env=env,
+        ignore_failure=False,
+        stack_name="aws-lc-ci-legacy-avx",
+    )
