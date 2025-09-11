@@ -84,6 +84,33 @@ jobs:
         run: |
           ./tests/ci/run_posix_tests.sh
 
+  windows:
+    if: github.repository_owner == 'aws'
+    #needs: [sanity-test-run]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "windows-latest"
+          - "windows-11-arm"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Install NASM
+        if: "!endsWith(matrix.os, '-arm')"
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Build/Test (x64)
+        if: "!endsWith(matrix.os, '-arm')"
+        run: |
+          ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      - name: Build/Test (ARM64)
+        if: endsWith(matrix.os, '-arm')
+        run: |
+          ./tests/ci/run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" arm64
+
   macOS-ARM-FIPS:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
@@ -242,6 +269,38 @@ jobs:
           echo "CXX=g++" >> $GITHUB_ENV
       - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
         run:
+          cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  arm-gcc-tests:
+    if: github.repository_owner == 'aws'
+    #needs: [sanity-test-run]
+    name: arm64 - GCC ${{ matrix.gcc_version }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
+    runs-on: ubuntu-24.04-arm
+    env:
+      GOFLAGS: "-buildvcs=false"
+    container:
+      image: gcc:${{ matrix.gcc_version }}
+      options: '--platform linux/arm64'
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc_version: [ '9', '10', '11', '12', '13', '14', '15' ]
+        fips: [ '0', '1' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y cmake ninja-build
+      - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
+        run: |
           cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
       - name: Build Project
         run: cmake --build ./build --target all
