@@ -90,6 +90,7 @@ var (
 	verboseNetwork     = flag.Bool("verbose-network", false, "If true, enable verbose network debugging output")
 	testNetworkFirst   = flag.Bool("test-network-first", false, "If true, run network connectivity tests before SSL tests")
 	connectionDebug    = flag.Bool("connection-debug", false, "If true, add detailed connection-level debugging")
+	peekRounds         = flag.Int("peek-rounds", -1, "Number of peek rounds for SSL peek tests (default: 50, set lower to debug large message issues)")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -1191,7 +1192,31 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		for i := range testMessage {
 			testMessage[i] = 0x42 ^ byte(j)
 		}
-		tlsConn.Write(testMessage)
+		
+		// Add debugging for large message transmission, especially for Peek tests
+		isPeekTest := strings.Contains(test.name, "Peek")
+		if isPeekTest && (*verboseNetwork || *connectionDebug) {
+			fmt.Printf("[DEBUG] doExchange: Creating test message for %s: %d bytes (%.2f KB)\n", 
+				test.name, messageLen, float64(messageLen)/1024.0)
+		}
+		
+		startTime := time.Now()
+		n, err := tlsConn.Write(testMessage)
+		writeElapsed := time.Since(startTime)
+		
+		if isPeekTest && (*verboseNetwork || *connectionDebug) {
+			if err != nil {
+				fmt.Printf("[DEBUG] doExchange: Failed to write test message for %s: %v after %v (wrote %d/%d bytes)\n", 
+					test.name, err, writeElapsed, n, messageLen)
+			} else {
+				fmt.Printf("[DEBUG] doExchange: Successfully wrote test message for %s: %d bytes in %v\n", 
+					test.name, n, writeElapsed)
+			}
+		}
+		
+		if err != nil {
+			return err
+		}
 
 		// Consume the shim prefix if needed.
 		if shimPrefix != "" {
@@ -1328,7 +1353,14 @@ type shimProcess struct {
 func newShimProcess(dispatcher *shimDispatcher, shimPath string, flags []string, env []string) (*shimProcess, error) {
 	listener, err := dispatcher.NewShim()
 	if err != nil {
+		if *verboseNetwork || *connectionDebug {
+			fmt.Printf("[DEBUG] newShimProcess: Failed to create shim listener: %v\n", err)
+		}
 		return nil, err
+	}
+
+	if *verboseNetwork || *connectionDebug {
+		fmt.Printf("[DEBUG] newShimProcess: Created listener on port %d, shim ID %d\n", listener.Port(), listener.ShimID())
 	}
 
 	shim := &shimProcess{listener: listener}
@@ -1357,9 +1389,21 @@ func newShimProcess(dispatcher *shimDispatcher, shimPath string, flags []string,
 	shim.cmd.Stderr = &shim.stderr
 	shim.cmd.Env = env
 
+	if *verboseNetwork || *connectionDebug {
+		fmt.Printf("[DEBUG] newShimProcess: Starting shim process: %s %v\n", shimPath, cmdFlags)
+		fmt.Printf("[DEBUG] newShimProcess: Environment: %v\n", env)
+	}
+
 	if err := shim.cmd.Start(); err != nil {
+		if *verboseNetwork || *connectionDebug {
+			fmt.Printf("[DEBUG] newShimProcess: Failed to start shim process: %v\n", err)
+		}
 		shim.listener.Close()
 		return nil, err
+	}
+
+	if *verboseNetwork || *connectionDebug {
+		fmt.Printf("[DEBUG] newShimProcess: Shim process started with PID %d\n", shim.cmd.Process.Pid)
 	}
 	shim.idled = false
 
@@ -1379,7 +1423,26 @@ func (s *shimProcess) accept() (net.Conn, error) {
 	if !useDebugger() {
 		deadline = time.Now().Add(*idleTimeout)
 	}
-	return s.listener.Accept(deadline)
+	
+	if *verboseNetwork || *connectionDebug {
+		fmt.Printf("[DEBUG] shimProcess.accept: Waiting for connection on port %d (PID %d), deadline: %v\n", 
+			s.listener.Port(), s.cmd.Process.Pid, deadline)
+	}
+	
+	conn, err := s.listener.Accept(deadline)
+	if err != nil {
+		if *verboseNetwork || *connectionDebug {
+			fmt.Printf("[DEBUG] shimProcess.accept: Accept failed: %v (PID %d)\n", err, s.cmd.Process.Pid)
+		}
+		return nil, err
+	}
+	
+	if *verboseNetwork || *connectionDebug {
+		fmt.Printf("[DEBUG] shimProcess.accept: Connection accepted: %s->%s (PID %d)\n", 
+			conn.RemoteAddr(), conn.LocalAddr(), s.cmd.Process.Pid)
+	}
+	
+	return conn, nil
 }
 
 // wait finishes the test and waits for the shim process to exit.
@@ -1388,12 +1451,19 @@ func (s *shimProcess) wait() error {
 	// more connections than expected.
 	s.listener.Close()
 
+	if *verboseNetwork || *connectionDebug {
+		fmt.Printf("[DEBUG] shimProcess.wait: Waiting for process %d to complete\n", s.cmd.Process.Pid)
+	}
+
 	if !useDebugger() {
 		waitTimeout := time.AfterFunc(*idleTimeout, func() {
 			// Enable below code to debug why the shimProcess is idle.
 			// time.Sleep(20 * time.Minute)
-			// stderr := strings.Replace(s.stderr.String(), "\r\n", "\n", -1)
-			// fmt.Fprintf(os.Stderr, "idleTimeout reached. Process %d is idled with output %s", s.cmd.Process.Pid, stderr)
+			stderr := strings.Replace(s.stderr.String(), "\r\n", "\n", -1)
+			stdout := strings.Replace(s.stdout.String(), "\r\n", "\n", -1)
+			fmt.Printf("[DEBUG] shimProcess.wait: idleTimeout reached for process %d\n", s.cmd.Process.Pid)
+			fmt.Printf("[DEBUG] shimProcess.wait: Process %d stdout: %s\n", s.cmd.Process.Pid, stdout)
+			fmt.Printf("[DEBUG] shimProcess.wait: Process %d stderr: %s\n", s.cmd.Process.Pid, stderr)
 			// Mark the bssl_shim process as idled.
 			// The further action is to retry the test case.
 			s.idled = true
@@ -1419,8 +1489,17 @@ func doExchanges(test *testCase, shim *shimProcess, resumeCount int, transcripts
 		config.Rand = &deterministicRand{}
 	}
 
+	isPeekTest := strings.Contains(test.name, "Peek")
+	if isPeekTest && (*verboseNetwork || *connectionDebug) {
+		fmt.Printf("[DEBUG] doExchanges: Starting exchanges for Peek test %s (PID %d)\n", test.name, shim.cmd.Process.Pid)
+		fmt.Printf("[DEBUG] doExchanges: Message length: %d, Resume count: %d\n", test.messageLen, resumeCount)
+	}
+
 	conn, err := shim.accept()
 	if err != nil {
+		if isPeekTest && (*verboseNetwork || *connectionDebug) {
+			fmt.Printf("[DEBUG] doExchanges: Failed to accept connection for %s: %v (PID %d)\n", test.name, err, shim.cmd.Process.Pid)
+		}
 		return err
 	}
 	err = doExchange(test, &config, conn, false /* not a resumption */, transcripts, 0)
@@ -1508,9 +1587,10 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 	// Add specific debugging for Peek server tests that are failing on Windows ARM64
 	isPeekServerTest := strings.Contains(test.name, "Peek") && strings.Contains(test.name, "Server")
 	if isPeekServerTest && (*verboseNetwork || *connectionDebug || runtime.GOOS == "windows") {
-		fmt.Printf("[DEBUG] Starting Peek server test: %s (GOOS: %s, GOARCH: %s)\n", test.name, runtime.GOOS, runtime.GOARCH)
-		fmt.Printf("[DEBUG] Test type: %d, messageLen: %d, flags: %v\n", test.testType, test.messageLen, test.flags)
-		fmt.Printf("[DEBUG] Idle timeout: %v, using debugger: %v\n", *idleTimeout, useDebugger())
+		fmt.Printf("[DEBUG] runTest: Starting Peek server test: %s (GOOS: %s, GOARCH: %s)\n", test.name, runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("[DEBUG] runTest: Test type: %d, messageLen: %d, flags: %v\n", test.testType, test.messageLen, test.flags)
+		fmt.Printf("[DEBUG] runTest: Idle timeout: %v, using debugger: %v\n", *idleTimeout, useDebugger())
+		fmt.Printf("[DEBUG] runTest: Shim path: %s\n", shimPath)
 	}
 
 	var flags []string
@@ -1724,6 +1804,9 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 
 	shim, err := newShimProcess(dispatcher, shimPath, flags, env)
 	if err != nil {
+		if isPeekServerTest && (*verboseNetwork || *connectionDebug) {
+			fmt.Printf("[DEBUG] runTest: Failed to create shim process for %s: %v\n", test.name, err)
+		}
 		return err
 	}
 	statusChan <- statusMsg{test: test, statusType: statusShimStarted, pid: shim.cmd.Process.Pid}
@@ -1740,8 +1823,26 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 			return err
 		}
 		defer shim.close()
+		if isPeekServerTest && (*verboseNetwork || *connectionDebug) {
+			fmt.Printf("[DEBUG] runTest: Starting exchanges for %s (PID %d)\n", test.name, shim.cmd.Process.Pid)
+		}
+	
 		localErr = doExchanges(test, shim, resumeCount, &transcripts)
+	
+		if isPeekServerTest && (*verboseNetwork || *connectionDebug) {
+			fmt.Printf("[DEBUG] runTest: Exchanges completed for %s, local error: %v (PID %d)\n", test.name, localErr, shim.cmd.Process.Pid)
+			fmt.Printf("[DEBUG] runTest: Waiting for shim process %d to finish\n", shim.cmd.Process.Pid)
+		}
+	
 		childErr = shim.wait()
+	
+		if isPeekServerTest && (*verboseNetwork || *connectionDebug) {
+			fmt.Printf("[DEBUG] runTest: Shim process %d finished, child error: %v, idled: %v\n", shim.cmd.Process.Pid, childErr, shim.idled)
+			if shim.stdout.Len() > 0 || shim.stderr.Len() > 0 {
+				fmt.Printf("[DEBUG] runTest: Shim %d stdout: %s\n", shim.cmd.Process.Pid, shim.stdout.String())
+				fmt.Printf("[DEBUG] runTest: Shim %d stderr: %s\n", shim.cmd.Process.Pid, shim.stderr.String())
+			}
+		}
 	}
 
 	// Now that the shim has exited, all the settings files have been
@@ -15834,13 +15935,25 @@ func addServerPeekTests() {
 	const DEFAULT_PEEK_ROUNDS int = 50
 
 	peek_rounds := DEFAULT_PEEK_ROUNDS
-	if v := os.Getenv("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS"); len(v) != 0 {
+	
+	// Check command line flag first
+	if *peekRounds >= 0 {
+		peek_rounds = *peekRounds
+		fmt.Printf("[DEBUG] addServerPeekTests: Using command line flag peek_rounds = %d\n", peek_rounds)
+	} else if v := os.Getenv("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS"); len(v) != 0 {
 		parsed, err := strconv.ParseInt(v, 10, 32)
 		if err != nil {
 			panic("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS environment variable value is not a valid base-10 32-bit integer")
 		}
 		peek_rounds = int(parsed)
+		fmt.Printf("[DEBUG] addServerPeekTests: Using environment override peek_rounds = %d\n", peek_rounds)
+	} else {
+		fmt.Printf("[DEBUG] addServerPeekTests: Using default peek_rounds = %d\n", peek_rounds)
 	}
+	
+	calculatedMessageLen := maxPlaintext*peek_rounds + 1
+	fmt.Printf("[DEBUG] addServerPeekTests: maxPlaintext=%d, peek_rounds=%d, calculated messageLen=%d bytes (%.2f KB)\n", 
+		maxPlaintext, peek_rounds, calculatedMessageLen, float64(calculatedMessageLen)/1024.0)
 
 	// Test SSL_peek works, including on empty records.
 	testCases = append(testCases, testCase{
