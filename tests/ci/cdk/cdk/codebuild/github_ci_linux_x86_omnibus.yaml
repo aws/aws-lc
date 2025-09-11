@@ -663,3 +663,61 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_fips_callback_tests.sh"
+
+    # TEMPORARY, TO TEST run_legacy_avx_tests.sh without deploying the CI locally
+    - identifier: centos7_gcc4x_x86_avx_legacy
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-7_gcc-4x_latest
+        variables:
+          AWSLC_32BIT: 1
+          AWS_LC_CI_TARGET: "tests/ci/run_legacy_avx_tests.sh"
+    - identifier: centos7_gcc4x_x86_64_avx_legacy
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-7_gcc-4x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_legacy_avx_tests.sh"
+    - identifier: centos8_gcc8x_x86_64_avx_legacy
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-8_gcc-8x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_legacy_avx_tests.sh"
+    - identifier: amazonlinux2_gcc7x_x86_64_avx_legacy
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_legacy_avx_tests.sh"
+    - identifier: ubuntu1604_gcc5x_x86_avx_legacy
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-16.04_gcc-5x_latest
+        variables:
+          AWSLC_32BIT: 1
+          AWS_LC_CI_TARGET: "tests/ci/run_legacy_avx_tests.sh"
+    - identifier: ubuntu1804_clang6x_x86_64_avx_legacy
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-18.04_clang-6x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_legacy_avx_tests.sh"
