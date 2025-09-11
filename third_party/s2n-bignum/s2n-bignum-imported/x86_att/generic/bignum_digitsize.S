@@ -13,10 +13,11 @@
 // Microsoft x64 ABI:   RCX = k, RDX = x, returns RAX
 // ----------------------------------------------------------------------------
 
-#include "_internal_s2n_bignum.h"
+#include "_internal_s2n_bignum_x86_att.h"
 
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_digitsize)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_digitsize)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_digitsize)
         .text
 
@@ -29,11 +30,12 @@
 
 
 S2N_BN_SYMBOL(bignum_digitsize):
+        CFI_START
         _CET_ENDBR
 
 #if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
+        CFI_PUSH(%rdi)
+        CFI_PUSH(%rsi)
         movq    %rcx, %rdi
         movq    %rdx, %rsi
 #endif
@@ -45,25 +47,27 @@ S2N_BN_SYMBOL(bignum_digitsize):
 // If the bignum is zero-length, just return 0
 
         testq   k, k
-        jz      bignum_digitsize_end
+        jz      Lbignum_digitsize_end
 
 // Run over the words j = 0..i-1, and set i := j + 1 when hitting nonzero a[j]
 
         xorq    j, j
-bignum_digitsize_loop:
+Lbignum_digitsize_loop:
         movq    (x,j,8), a
         incq    j
         testq   a, a
         cmovnzq j, i
         cmpq    k, j
-        jnz     bignum_digitsize_loop
+        jnz     Lbignum_digitsize_loop
 
-bignum_digitsize_end:
+Lbignum_digitsize_end:
 #if WINDOWS_ABI
-        popq   %rsi
-        popq   %rdi
+        CFI_POP(%rsi)
+        CFI_POP(%rdi)
 #endif
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_digitsize)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

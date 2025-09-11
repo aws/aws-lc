@@ -173,14 +173,17 @@
 //        # Please add 'ret' at the end of the output assembly.
 
 
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_p256)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montsqr_p256)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_p256)
         .text
         .balign 4
 
 S2N_BN_SYMBOL(bignum_montsqr_p256):
+        CFI_START
 
         ldr q19, [x1]
         ldp x9, x13, [x1]
@@ -318,7 +321,9 @@ S2N_BN_SYMBOL(bignum_montsqr_p256):
         csel x2, x5, x2, cs
         stp x14, x12, [x0, #16]
         stp x16, x2, [x0]
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montsqr_p256)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

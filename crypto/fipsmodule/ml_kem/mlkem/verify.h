@@ -431,7 +431,7 @@ __contract__(
   requires(memory_no_alias(ptr, len))
   assigns(memory_slice(ptr, len)))
 {
-  memset(ptr, 0, len);
+  mlk_memset(ptr, 0, len);
   /* This follows OpenSSL and seems sufficient to prevent the compiler
    * from optimizing away the memset.
    *

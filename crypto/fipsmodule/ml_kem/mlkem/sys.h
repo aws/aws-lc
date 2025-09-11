@@ -56,6 +56,14 @@
 #define MLK_SYS_WINDOWS
 #endif
 
+#if defined(__linux__)
+#define MLK_SYS_LINUX
+#endif
+
+#if defined(__APPLE__)
+#define MLK_SYS_APPLE
+#endif
+
 #if defined(MLK_FORCE_AARCH64) && !defined(MLK_SYS_AARCH64)
 #error "MLK_FORCE_AARCH64 is set, but we don't seem to be on an AArch64 system."
 #endif
@@ -186,5 +194,40 @@
 #else
 #define MLK_MUST_CHECK_RETURN_VALUE
 #endif
+
+#if !defined(__ASSEMBLER__)
+/* System capability enumeration */
+typedef enum
+{
+#if defined(MLK_SYS_X86_64)
+  MLK_SYS_CAP_AVX2
+#elif defined(MLK_SYS_AARCH64)
+  MLK_SYS_CAP_SHA3
+#else
+  /* C90 does not allow empty enums, so use a dummy value
+   * for architectures other than AArch64 and x86_64. */
+  MLK_SYS_CAP_DUMMY
+#endif
+} mlk_sys_cap;
+
+#if !defined(MLK_CONFIG_CUSTOM_CAPABILITY_FUNC)
+#include "cbmc.h"
+
+static MLK_INLINE int mlk_sys_check_capability(mlk_sys_cap cap)
+__contract__(
+  ensures(return_value == 0 || return_value == 1)
+)
+{
+  /* By default, we rely on compile-time feature detection/specification:
+   * If a feature is enabled at compile-time, we assume it is supported by
+   * the host that the resulting library/binary will be built on.
+   * If this assumption is not true, you MUST overwrite this function.
+   * See the documentation of MLK_CONFIG_CUSTOM_CAPABILITY_FUNC in config.h
+   * for more information. */
+  (void)cap;
+  return 1;
+}
+#endif /* !MLK_CONFIG_CUSTOM_CAPABILITY_FUNC */
+#endif /* !__ASSEMBLER__ */
 
 #endif /* !MLK_SYS_H */

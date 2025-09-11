@@ -205,11 +205,7 @@ var (
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
-	if *useSDE {
-		// SDE is neither compatible with the unwind tester nor automatically
-		// detected.
-		args = append(args, "--no_unwind_tests")
-	}
+
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc
 
@@ -222,7 +218,11 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	} else if *useGDB {
 		ctx, cmd = gdbOf(ctx, prog, args...)
 	} else if *useSDE {
+		// SDE is neither compatible with the unwind tester nor automatically
+		// detected.
+		args = append(args, "--no_unwind_tests")
 		ctx, cancel, cmd = sdeOf(ctx, test.cpu, prog, args...)
+		cmd.Env = append(cmd.Env, "RUNTIME_EMULATION_SDE=1")
 		defer cancel()
 	} else {
 		cmd = exec.CommandContext(ctx, prog, args...)

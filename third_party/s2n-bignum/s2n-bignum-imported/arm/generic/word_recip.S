@@ -14,9 +14,11 @@
 //
 // Standard ARM ABI: X0 = a, returns X0
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(word_recip)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(word_recip)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(word_recip)
         .text
         .balign 4
@@ -35,6 +37,7 @@
 #define h x4
 
 S2N_BN_SYMBOL(word_recip):
+        CFI_START
 
 // Scale the input down: b overestimates a/2^16 with b <= 2^48 and
 // x underestimates 2^64/b with b * x =~= 2^64, accurate to ~2 bits.
@@ -112,7 +115,9 @@ S2N_BN_SYMBOL(word_recip):
 // Select either x or x + 1 accordingly as the final answer
 
         csel    x0, x, t, cs
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(word_recip)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
