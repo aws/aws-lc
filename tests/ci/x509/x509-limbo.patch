@@ -1,28 +1,5 @@
-From c9801cd216fa64be8045d948cc9f73a3fad025a2 Mon Sep 17 00:00:00 2001
-From: Sean McGrail <mcgrails@amazon.com>
-Date: Mon, 30 Sep 2024 19:29:48 +0000
-Subject: [PATCH] Support for AWS Libcrypto (AWS-LC)
-
----
- Makefile                         |     7 +-
- harness/aws-lc/.gitignore        |     2 +
- harness/aws-lc/Makefile          |    26 +
- harness/aws-lc/README.md         |    26 +
- harness/aws-lc/aws-lc.dockerfile |    27 +
- harness/aws-lc/date.hpp          |  8234 ++++++++++
- harness/aws-lc/json.hpp          | 24596 +++++++++++++++++++++++++++++
- harness/aws-lc/main.cpp          |   253 +
- 8 files changed, 33170 insertions(+), 1 deletion(-)
- create mode 100644 harness/aws-lc/.gitignore
- create mode 100644 harness/aws-lc/Makefile
- create mode 100644 harness/aws-lc/README.md
- create mode 100644 harness/aws-lc/aws-lc.dockerfile
- create mode 100644 harness/aws-lc/date.hpp
- create mode 100644 harness/aws-lc/json.hpp
- create mode 100644 harness/aws-lc/main.cpp
-
 diff --git a/Makefile b/Makefile
-index b81cf83..416c5c8 100644
+index ff0e109..53b4611 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -110,8 +110,13 @@ test-certvalidator: $(NEEDS_VENV)
@@ -50,7 +27,7 @@ index 0000000..9bc5102
 +results.json
 diff --git a/harness/aws-lc/Makefile b/harness/aws-lc/Makefile
 new file mode 100644
-index 0000000..2305b42
+index 0000000..0090d83
 --- /dev/null
 +++ b/harness/aws-lc/Makefile
 @@ -0,0 +1,26 @@
@@ -32990,10 +32967,10 @@ index 0000000..4d1a37a
 +#endif  // INCLUDE_NLOHMANN_JSON_HPP_
 diff --git a/harness/aws-lc/main.cpp b/harness/aws-lc/main.cpp
 new file mode 100644
-index 0000000..e4e8519
+index 0000000..ba987cf
 --- /dev/null
 +++ b/harness/aws-lc/main.cpp
-@@ -0,0 +1,253 @@
+@@ -0,0 +1,275 @@
 +#include <cstdlib>
 +#include <fstream>
 +#include <iostream>
@@ -33021,6 +32998,7 @@ index 0000000..e4e8519
 +using STACK_OF_X509_ptr = std::unique_ptr<STACK_OF(X509), decltype(&SK_X509_free)>;
 +using X509_STORE_ptr = std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)>;
 +using X509_STORE_CTX_ptr = std::unique_ptr<X509_STORE_CTX, decltype(&X509_STORE_CTX_free)>;
++using X509_CRL_ptr = std::unique_ptr<X509_CRL, decltype(&X509_CRL_free)>;
 +
 +[[noreturn]] void barf(const std::string &msg)
 +{
@@ -33048,6 +33026,19 @@ index 0000000..e4e8519
 +  }
 +
 +  return X509_ptr(cert, X509_free);
++}
++
++X509_CRL_ptr pem_to_crl(const std::string &pem)
++{
++  X509_CRL *crl = nullptr;
++  BIO_ptr crl_bio(BIO_new_mem_buf(pem.data(), pem.length()), BIO_free);
++
++  if (!PEM_read_bio_X509_CRL(crl_bio.get(), &crl, 0, NULL))
++  {
++    barf("failed to parse CRL");
++  }
++
++  return X509_CRL_ptr(crl, X509_CRL_free);
 +}
 +
 +STACK_OF_X509_ptr x509_stack(const json &certs)
@@ -33127,6 +33118,19 @@ index 0000000..e4e8519
 +    X509_STORE_add_cert(store.get(), cert_x509.get());
 +  }
 +
++  // Add CRLs to the store if present
++  if (testcase.contains("crls") && !testcase["crls"].empty())
++  {
++    for (auto &crl_pem : testcase["crls"])
++    {
++      auto crl = pem_to_crl(crl_pem.template get<std::string>());
++      X509_STORE_add_crl(store.get(), crl.get());
++    }
++
++    // Enable CRL checking
++    X509_STORE_set_flags(store.get(), X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
++  }
++
 +  auto untrusted = x509_stack(testcase["untrusted_intermediates"]);
 +  auto peer_pem = testcase["peer_certificate"].template get<std::string>();
 +  auto peer = pem_to_x509(peer_pem);
@@ -33153,11 +33157,6 @@ index 0000000..e4e8519
 +  }
 +
 +  auto param = X509_STORE_CTX_get0_param(ctx.get());
-+
-+  // The default authentication level is 1, which corresponds to 80 bits
-+  // of security. Level 2 corresponds to 112 bits and includes RSA 2048,
-+  // which brings the validation logic very slightly closer to the Web PKI.
-+  // X509_VERIFY_PARAM_set_auth_level(param, 2);
 +
 +  if (testcase["expected_peer_name"].is_object())
 +  {
@@ -33247,6 +33246,3 @@ index 0000000..e4e8519
 +
 +  return 0;
 +}
--- 
-2.40.1
-
