@@ -3638,6 +3638,9 @@ bool tls1_change_cipher_state(SSL_HANDSHAKE *hs,
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
                                 Span<const uint8_t> premaster);
 
+// tls1_get_default_grouplist returns the default group list
+OPENSSL_EXPORT Span<const uint16_t> tls1_get_default_grouplist(void);
+
 // tls1_get_grouplist returns the locally-configured group preference list.
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *ssl);
 
