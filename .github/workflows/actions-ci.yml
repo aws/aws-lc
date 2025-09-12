@@ -14,6 +14,7 @@ env:
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
   AWSLC_NO_ASM_FIPS: 1
+  DEBIAN_FRONTEND: noninteractive
 
 jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
