@@ -31,6 +31,26 @@ endif()
 
 include(sources.cmake)
 include(TestBigEndian)
+include(CheckCCompilerFlag)
+
+macro(add_flag_if_supported VARIABLE FLAG)
+  # Create a safe, unique variable name to cache the result of the check
+  string(MAKE_C_IDENTIFIER "HAVE_C_FLAG_${FLAG}" _CHECK_VAR_NAME)
+
+  # Keep configure output tidy
+  set(CMAKE_REQUIRED_QUIET ${CMAKE_NOT_VERBOSE})
+
+  # Run the check only once to speed up re-configuration
+  if(NOT DEFINED ${_CHECK_VAR_NAME})
+    check_c_compiler_flag("${FLAG}" ${_CHECK_VAR_NAME})
+  endif()
+
+  # If the check passed, append the flag to the specified variable
+  if(${_CHECK_VAR_NAME})
+    set(${VARIABLE} "${${VARIABLE}} ${FLAG}")
+    message(STATUS "Compiler supports '${FLAG}', adding to ${VARIABLE}")
+  endif()
+endmacro()
 
 if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
@@ -474,12 +494,9 @@ if(GCC OR CLANG)
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
-  if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8") OR
-     (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS "13"))
-    # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
-    # Also suppress for all clang versions supporting this warning.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
-  endif()
+  # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
+  # Also suppress for all clang versions supporting this warning.
+  add_flag_if_supported(CMAKE_C_FLAGS "-Wno-cast-function-type")
 
   if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo")
     if (MSVC)
@@ -503,31 +520,24 @@ if(GCC OR CLANG)
 
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
-  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
+  else()
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
     # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
+    add_flag_if_supported(C_CXX_FLAGS "-Wno-free-nonheap-object")
     # GCC (from at least 4.8) does not include -Wmissing-braces in -Wall due to Bug 25137.
     # This warning is turned on everywhere internally however, so we have to define it here
     # to check that our changes don't break the build.
     # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25137
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wmissing-braces")
+    add_flag_if_supported(C_CXX_FLAGS "-Wmissing-braces")
   endif()
 
   # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
   # AppleClang 13.0.0 per the table in
   # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
-  if((CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
-          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "12.0.0")) OR
-  (CMAKE_C_COMPILER_ID STREQUAL "AppleClang" AND
-          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0.0")))
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wstring-concatenation")
-  endif()
+  add_flag_if_supported(C_CXX_FLAGS "-Wstring-concatenation")
 
-  if(CLANG OR NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
-  endif()
+  add_flag_if_supported(C_CXX_FLAGS "-Wimplicit-fallthrough")
 
   if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "5")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wformat-signedness")
@@ -674,11 +684,7 @@ if(WIN32)
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
-if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
-   CLANG)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
-endif()
+add_flag_if_supported(C_CXX_FLAGS "-Wshadow")
 
 # pthread_rwlock_t on Linux requires a feature flag. We limit this to Linux
 # because, on Apple platforms, it instead disables APIs we use. See compat(5)
