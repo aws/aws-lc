@@ -24,7 +24,7 @@ struct Tool {
 
 bool IsNumeric(const std::string &str);
 
-X509 *CreateAndSignX509Certificate();
+
 X509_CRL *createTestCRL();
 bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 
@@ -38,7 +38,7 @@ enum class Source : uint8_t {
   kEnv,    // Password from environment with env: prefix
   kStdin,  // Password from stdin
 #ifndef _WIN32
-  kFd,     // Password from file descriptor with fd: prefix (Unix only)
+  kFd,  // Password from file descriptor with fd: prefix (Unix only)
 #endif
 };
 
@@ -82,8 +82,8 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(std::string, pass_util::SensitiveStringDeleter)
 BSSL_NAMESPACE_END
 
-bool LoadPrivateKeyAndSignCertificate(X509 *x509,
-                                      const std::string &signkey_path);
+// bool LoadPrivateKeyAndSignCertificate(X509 *x509,
+//                                       const std::string &signkey_path);
 EVP_PKEY *CreateTestKey(int key_bits);
 
 tool_func_t FindTool(const std::string &name);

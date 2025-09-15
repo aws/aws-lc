@@ -22,10 +22,13 @@ static inline std::string &trim(std::string &s) {
             return !std::isspace(static_cast<unsigned char>(ch));
           }));
   s.erase(std::find_if(s.rbegin(), s.rend(),
+
                        [](unsigned char ch) {
                          return !std::isspace(static_cast<unsigned char>(ch));
                        })
+
               .base(),
+
           s.end());
   return s;
 }
@@ -35,6 +38,7 @@ inline std::string ReadFileToString(const std::string &file_path) {
   if (file_path.empty()) {
     return "";
   }
+
 
   // Check if file exists first
   struct stat stat_buffer;
@@ -47,8 +51,10 @@ inline std::string ReadFileToString(const std::string &file_path) {
     return "";
   }
 
+
   std::ostringstream output_buffer;
   output_buffer << file_stream.rdbuf();
+
 
   return output_buffer.str();
 }
@@ -68,11 +74,20 @@ inline void RunCommandsAndCompareOutput(const std::string &tool_command,
   std::ifstream tool_output(out_path_tool);
   tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)),
                                 std::istreambuf_iterator<char>());
+  tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)),
+                                std::istreambuf_iterator<char>());
   std::ifstream openssl_output(out_path_openssl);
   openssl_output_str =
       std::string((std::istreambuf_iterator<char>(openssl_output)),
                   std::istreambuf_iterator<char>());
+  openssl_output_str =
+      std::string((std::istreambuf_iterator<char>(openssl_output)),
+                  std::istreambuf_iterator<char>());
 
+  std::cout << "AWS-LC tool output:" << std::endl
+            << tool_output_str << std::endl;
+  std::cout << "OpenSSL output:" << std::endl
+            << openssl_output_str << std::endl;
   std::cout << "AWS-LC tool output:" << std::endl
             << tool_output_str << std::endl;
   std::cout << "OpenSSL output:" << std::endl
@@ -88,7 +103,21 @@ inline void RemoveFile(const char *path) {
   }
 }
 
-// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
+inline int ExecuteCommand(const std::string &command) {
+  return system(command.c_str());
+}
+
+// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin)
+// ="
 std::string GetHash(const std::string &str);
+void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
+                                  bssl::UniquePtr<EVP_PKEY> *pkey);
+bssl::UniquePtr<X509_REQ> LoadCSR(const char *path);
+bssl::UniquePtr<X509> LoadPEMCertificate(const char *path);
+bssl::UniquePtr<X509> LoadDERCertificate(const char *path);
+bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2);
+bool CheckCertificateValidityPeriod(X509 *cert, int expected_days);
+bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
+                         int expected_days);
 
 #endif  // TEST_UTIL_H
