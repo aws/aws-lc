@@ -76,12 +76,6 @@ function build_and_test {
   run_cmake_custom_target 'run_tests'
 }
 
-function build_and_test_target {
-  local target="$1"
-  run_build "${@:2}"  # Start from 2nd argument
-  run_cmake_custom_target "$target"
-}
-
 function test_c_rehash {
   if [ -f "${BUILD_ROOT}/tool-openssl/c_rehash_test" ]; then
     "${BUILD_ROOT}/tool-openssl/c_rehash_test"

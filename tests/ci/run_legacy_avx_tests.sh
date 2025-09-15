@@ -21,5 +21,5 @@ for build_option in "${build_options_to_test[@]}"; do
 done
 
 # When Go is disabled, a different test target is produced
-build_and_test_target "run_minimal_tests" -DDISABLE_PERL=ON -DDISABLE_GO=ON -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
-build_and_test_target "run_minimal_tests" -DDISABLE_PERL=ON -DDISABLE_GO=ON -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX=ON
+build_and_run_minimal_test -DDISABLE_PERL=ON -DDISABLE_GO=ON -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
+build_and_run_minimal_test -DDISABLE_PERL=ON -DDISABLE_GO=ON -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX=ON
