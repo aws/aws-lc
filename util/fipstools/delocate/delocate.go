@@ -1256,7 +1256,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrMove
 		}
 
-	case "cmovneq", "cmoveq":
+	case "cmovneq", "cmoveq", "cmove":
 		if len(args) == 2 {
 			return instrConditionalMove
 		}
@@ -1433,7 +1433,7 @@ func undoConditionalMove(w stringWriter, instr string) wrapperFunc {
 	var invertedCondition string
 
 	switch instr {
-	case "cmoveq":
+	case "cmoveq", "cmove":
 		invertedCondition = "ne"
 	case "cmovneq":
 		invertedCondition = "e"

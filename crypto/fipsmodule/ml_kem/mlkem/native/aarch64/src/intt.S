@@ -19,7 +19,33 @@
  *   https://eprint.iacr.org/2022/1303
  */
 
-/* AArch64 ML-KEM inverse NTT following @[NeonNTT] and @[SLOTHY_Paper]. */
+/*yaml
+  Name: intt_asm
+  Description: AArch64 ML-KEM inverse NTT following @[NeonNTT] and @[SLOTHY_Paper]
+  Signature: void mlk_intt_asm(int16_t p[256], const int16_t twiddles12345[80], const int16_t twiddles56[384])
+  ABI:
+    x0:
+      type: buffer
+      size_bytes: 512
+      permissions: read/write
+      c_parameter: int16_t p[256]
+      description: Input/output polynomial
+    x1:
+      type: buffer
+      size_bytes: 160
+      permissions: read-only
+      c_parameter: const int16_t twiddles12345[80]
+      description: Twiddle factors for layers 1-5
+    x2:
+      type: buffer
+      size_bytes: 768
+      permissions: read-only
+      c_parameter: const int16_t twiddles56[384]
+      description: Twiddle factors for layers 6-7
+  Stack:
+    bytes: 64
+    description: saving callee-saved Neon registers
+*/
 
 #include "_internal_s2n_bignum.h"
 
@@ -35,11 +61,21 @@
         S2N_BN_SYM_PRIVACY_DIRECTIVE(mlkem_intt_asm)
 S2N_BN_SYMBOL(mlkem_intt_asm):
 
+        .cfi_startproc
         sub	sp, sp, #0x40
+        .cfi_adjust_cfa_offset 0x40
         stp	d8, d9, [sp]
+        .cfi_rel_offset d8, 0x0
+        .cfi_rel_offset d9, 0x8
         stp	d10, d11, [sp, #0x10]
+        .cfi_rel_offset d10, 0x10
+        .cfi_rel_offset d11, 0x18
         stp	d12, d13, [sp, #0x20]
+        .cfi_rel_offset d12, 0x20
+        .cfi_rel_offset d13, 0x28
         stp	d14, d15, [sp, #0x30]
+        .cfi_rel_offset d14, 0x30
+        .cfi_rel_offset d15, 0x38
         mov	w5, #0xd01              // =3329
         mov	v7.h[0], w5
         mov	w5, #0x4ebf             // =20159
@@ -51,7 +87,7 @@ S2N_BN_SYMBOL(mlkem_intt_asm):
         mov	x3, x0
         mov	x4, #0x8                // =8
 
-intt_scale_start:
+Lintt_scale_start:
         ldr	q8, [x3]
         ldr	q9, [x3, #0x10]
         ldr	q10, [x3, #0x20]
@@ -73,7 +109,7 @@ intt_scale_start:
         stur	q10, [x3, #-0x20]
         stur	q11, [x3, #-0x10]
         subs	x4, x4, #0x1
-        cbnz	x4, intt_scale_start
+        cbnz	x4, Lintt_scale_start
         mov	x3, x0
         mov	x4, #0x8                // =8
         ldr	q3, [x3, #0x10]
@@ -153,7 +189,7 @@ intt_scale_start:
         ldr	q14, [x2], #0x60
         sub	x4, x4, #0x2
 
-intt_layer4567_start:
+Lintt_layer4567_start:
         str	q6, [x3, #0x20]
         ldur	q18, [x2, #-0x50]
         mul	v26.8h, v5.8h, v19.8h
@@ -235,7 +271,7 @@ intt_layer4567_start:
         stur	q9, [x3, #-0x10]
         sqrdmulh	v12.8h, v5.8h, v12.8h
         subs	x4, x4, #0x1
-        cbnz	x4, intt_layer4567_start
+        cbnz	x4, Lintt_layer4567_start
         mul	v21.8h, v22.8h, v0.h[2]
         mul	v28.8h, v5.8h, v19.8h
         trn1	v10.2d, v10.2d, v31.2d
@@ -403,7 +439,7 @@ intt_layer4567_start:
         ldr	q28, [x0, #0x50]
         sub	x4, x4, #0x2
 
-intt_layer123_start:
+Lintt_layer123_start:
         mls	v20.8h, v19.8h, v7.h[0]
         ldr	q31, [x0, #0x1d0]
         sub	v22.8h, v11.8h, v28.8h
@@ -481,7 +517,7 @@ intt_layer123_start:
         sqrdmulh	v21.8h, v2.8h, v0.h[1]
         ldr	q28, [x0, #0x50]
         subs	x4, x4, #0x1
-        cbnz	x4, intt_layer123_start
+        cbnz	x4, Lintt_layer123_start
         mls	v20.8h, v19.8h, v7.h[0]
         sub	v10.8h, v11.8h, v28.8h
         add	v11.8h, v11.8h, v28.8h
@@ -558,9 +594,19 @@ intt_layer123_start:
         str	q11, [x0, #0x70]
         str	q14, [x0, #0x1b0]
         ldp	d8, d9, [sp]
+        .cfi_restore d8
+        .cfi_restore d9
         ldp	d10, d11, [sp, #0x10]
+        .cfi_restore d10
+        .cfi_restore d11
         ldp	d12, d13, [sp, #0x20]
+        .cfi_restore d12
+        .cfi_restore d13
         ldp	d14, d15, [sp, #0x30]
+        .cfi_restore d14
+        .cfi_restore d15
         add	sp, sp, #0x40
+        .cfi_adjust_cfa_offset -0x40
         ret
+        .cfi_endproc
 

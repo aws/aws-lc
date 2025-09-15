@@ -1,0 +1,25 @@
+From 9f2838e089174490f3929cc802c4763945517990 Mon Sep 17 00:00:00 2001
+From: Justin W Smith <justsmth@amazon.com>
+Date: Tue, 19 Aug 2025 12:54:02 +0000
+Subject: [PATCH] Fix test for AWS-LC
+
+---
+ mysql-test/main/ssl_cipher_tlsv13.result | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mysql-test/main/ssl_cipher_tlsv13.result b/mysql-test/main/ssl_cipher_tlsv13.result
+index d3437a7af18..994dde2e733 100644
+--- a/mysql-test/main/ssl_cipher_tlsv13.result
++++ b/mysql-test/main/ssl_cipher_tlsv13.result
+@@ -4,7 +4,7 @@
+ connect c,localhost,root,,,,,SSL;
+ show status like 'ssl_cipher';
+ Variable_name	Value
+-Ssl_cipher	TLS_AES_256_GCM_SHA384
++Ssl_cipher	TLS_AES_128_GCM_SHA256
+ show status like 'ssl_version';
+ Variable_name	Value
+ Ssl_version	TLSv1.3
+-- 
+2.43.0
+

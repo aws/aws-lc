@@ -40,6 +40,7 @@
 #include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
+#include "../test/x509_util.h"
 #include "../fipsmodule/pqdsa/internal.h"
 
 #if defined(OPENSSL_THREADS)
@@ -1320,100 +1321,6 @@ D0+O6KI=
 -----END CERTIFICATE-----
 )";
 
-// kConstrainedIntermediate is an intermediate signed by kSANTypesRoot, with
-// permitted DNS names of permitted1.test and foo.permitted2.test and an
-// excluded DNS name of excluded.permitted1.test. Its private key is:
-//
-// -----BEGIN PRIVATE KEY-----
-// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgTXUM4tJWM7OzATty
-// JhNOfIv/d8heWFBeKOfMR+RfaROhRANCAASbbbWYiN6mn+BCpg4XNpibOH0D/DN4
-// kZ5C/Ml2YVomC9T83OKk2CzB8fPAabPb4P4Vv+fIabpEfjWS5nzKLY1y
-// -----END PRIVATE KEY-----
-static const char kConstrainedIntermediate[] = R"(
------BEGIN CERTIFICATE-----
-MIICDjCCAXegAwIBAgIBAjANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp
-bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y
-MDk5MDEwMTAwMDAwMFowKDEmMCQGA1UEAxMdTmFtZSBDb25zdHJhaW50cyBJbnRl
-cm1lZGlhdGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASbbbWYiN6mn+BCpg4X
-NpibOH0D/DN4kZ5C/Ml2YVomC9T83OKk2CzB8fPAabPb4P4Vv+fIabpEfjWS5nzK
-LY1yo4GJMIGGMA8GA1UdEwEB/wQFMAMBAf8wGwYDVR0jBBQwEoAQQDfXAftAL7gc
-flQEJ4xZATBWBgNVHR4BAf8ETDBKoCowEYIPcGVybWl0dGVkMS50ZXN0MBWCE2Zv
-by5wZXJtaXR0ZWQyLnRlc3ShHDAaghhleGNsdWRlZC5wZXJtaXR0ZWQxLnRlc3Qw
-DQYJKoZIhvcNAQELBQADgYEAFq1Ka05hiKREwRpSceQPzIIH4B5a5IVBg5/EvmQI
-9V0fXyAE1GmahPt70sIBxIgzNTEaY8P/IoOuCdlZWe0msmyEO3S6YSAzOWR5Van6
-cXmFM1uMd95TlkxUMRdV+jKJTvG6R/BM2zltaV7Xt662k5HtzT5Svw0rZlFaggZz
-UyM=
------END CERTIFICATE-----
-)";
-
-// kCommonNamePermittedLeaf is a leaf certificate signed by
-// kConstrainedIntermediate. Its common name is permitted by the name
-// constraints.
-static const char kCommonNamePermittedLeaf[] = R"(
------BEGIN CERTIFICATE-----
-MIIBaDCCAQ2gAwIBAgIBAzAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv
-bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw
-MTAwMDAwMFowPjEeMBwGA1UEChMVQ29tbW9uIG5hbWUgcGVybWl0dGVkMRwwGgYD
-VQQDExNmb28ucGVybWl0dGVkMS50ZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD
-QgAENX5Ycs8q8MRzPYUz6DqLHhJR3wcmniFRgkiEa7MxE/mRe00y0VGwH7xi7Aoc
-emXPrtD4JwN5bssbcxWGAKYYzaMQMA4wDAYDVR0TAQH/BAIwADAKBggqhkjOPQQD
-AgNJADBGAiEAtsnWuRQXtw2xbieC78Y8SVEtTjcZUx8uZyQe1GPLfGICIQDR4fNY
-yg3PC94ydPNQZVsFxAne32CbonWWsokalTFpUQ==
------END CERTIFICATE-----
-)";
-static const char kCommonNamePermitted[] = "foo.permitted1.test";
-
-// kCommonNameNotPermittedLeaf is a leaf certificate signed by
-// kConstrainedIntermediate. Its common name is not permitted by the name
-// constraints.
-static const char kCommonNameNotPermittedLeaf[] = R"(
------BEGIN CERTIFICATE-----
-MIIBazCCARCgAwIBAgIBBDAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv
-bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw
-MTAwMDAwMFowQTEiMCAGA1UEChMZQ29tbW9uIG5hbWUgbm90IHBlcm1pdHRlZDEb
-MBkGA1UEAxMSbm90LXBlcm1pdHRlZC50ZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0D
-AQcDQgAEzfghKuWf0JoXb0Drp09C3yXMSQQ1byt+AUaymvsHOWsxQ9v1Q+vkF/IM
-HRqGTk2TyxrB2iClVEn/Uu+YtYox1KMQMA4wDAYDVR0TAQH/BAIwADAKBggqhkjO
-PQQDAgNJADBGAiEAxaUslxmoWL1tIvnDz7gDkto/HcmdU0jHVuUQLXcCG8wCIQCN
-5xZjitlCQU8UB5qSu9wH4B+0JcVO3Ss4Az76HEJWMw==
------END CERTIFICATE-----
-)";
-static const char kCommonNameNotPermitted[] = "not-permitted.test";
-
-// kCommonNameNotPermittedWithSANsLeaf is a leaf certificate signed by
-// kConstrainedIntermediate. Its common name is not permitted by the name
-// constraints but it has a SAN list.
-static const char kCommonNameNotPermittedWithSANsLeaf[] = R"(
------BEGIN CERTIFICATE-----
-MIIBqTCCAU+gAwIBAgIBBjAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv
-bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw
-MTAwMDAwMFowSzEsMCoGA1UEChMjQ29tbW9uIG5hbWUgbm90IHBlcm1pdHRlZCB3
-aXRoIFNBTlMxGzAZBgNVBAMTEm5vdC1wZXJtaXR0ZWQudGVzdDBZMBMGByqGSM49
-AgEGCCqGSM49AwEHA0IABKsn9wOApXFHrqhLdQgbFSeaSoAIbxgO0zVSRZUb5naR
-93zoL3MFOvZEF8xiEqh7le+l3XuUig0fwqpcsZzRNJajRTBDMAwGA1UdEwEB/wQC
-MAAwMwYDVR0RBCwwKoITZm9vLnBlcm1pdHRlZDEudGVzdIITZm9vLnBlcm1pdHRl
-ZDIudGVzdDAKBggqhkjOPQQDAgNIADBFAiACk+1f184KkKAXuntmrz+Ygcq8MiZl
-4delx44FtcNaegIhAIA5nYfzxNcTXxDo3U+x1vSLH6Y7faLvHiFySp7O//q+
------END CERTIFICATE-----
-)";
-static const char kCommonNameNotPermittedWithSANs[] = "not-permitted.test";
-
-// kCommonNameNotDNSLeaf is a leaf certificate signed by
-// kConstrainedIntermediate. Its common name is not a DNS name.
-static const char kCommonNameNotDNSLeaf[] = R"(
------BEGIN CERTIFICATE-----
-MIIBYTCCAQagAwIBAgIBCDAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv
-bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw
-MTAwMDAwMFowNzEcMBoGA1UEChMTQ29tbW9uIG5hbWUgbm90IEROUzEXMBUGA1UE
-AxMOTm90IGEgRE5TIG5hbWUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASnueyc
-Zxtnw5ke2J2T0/LwAK37auQP/RSFd9mem+BJVbgviawtAlignJmafp7Zw4/GdYEJ
-Vm8qlriOJtluvXGcoxAwDjAMBgNVHRMBAf8EAjAAMAoGCCqGSM49BAMCA0kAMEYC
-IQChUAmVNI39VHe0zemRE09VDcSEgOxr1nTvjLcg/Q8pVQIhAJYZnJI0YZAi05QH
-RHNlAkTK2TnUaVn3fGSylaLiFS1r
------END CERTIFICATE-----
-)";
-static const char kCommonNameNotDNS[] = "Not a DNS name";
-
 // The following six certificates are issued by |kSANTypesRoot| and have
 // different extended key usage values. They were created with the following
 // Go program:
@@ -1554,71 +1461,6 @@ static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
       BIO_new_mem_buf(const_cast<char *>(pem), strlen(pem)));
   return bssl::UniquePtr<EVP_PKEY>(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
-}
-
-// CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
-// STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
-static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
-    const std::vector<X509_CRL *> &crls) {
-  bssl::UniquePtr<STACK_OF(X509_CRL)> stack(sk_X509_CRL_new_null());
-  if (!stack) {
-    return nullptr;
-  }
-  for (auto crl : crls) {
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(crl))) {
-      return nullptr;
-    }
-  }
-
-  return stack;
-}
-
-static int Verify(
-    X509 *leaf, const std::vector<X509 *> &roots,
-    const std::vector<X509 *> &intermediates,
-    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_STORE_CTX *)> configure_callback = nullptr) {
-  bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
-  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
-      CertsToStack(intermediates));
-  bssl::UniquePtr<STACK_OF(X509_CRL)> crls_stack(CRLsToStack(crls));
-
-  if (!roots_stack ||
-      !intermediates_stack ||
-      !crls_stack) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-
-  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
-  if (!ctx ||
-      !store) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-
-  if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
-                           intermediates_stack.get())) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
-
-  X509_STORE_CTX_set0_trusted_stack(ctx.get(), roots_stack.get());
-  X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
-
-  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
-  X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
-  if (configure_callback) {
-    configure_callback(ctx.get());
-  }
-  if (flags) {
-    X509_VERIFY_PARAM_set_flags(param, flags);
-  }
-
-  ERR_clear_error();
-  if (X509_verify_cert(ctx.get()) != 1) {
-    return X509_STORE_CTX_get_error(ctx.get());
-  }
-
-  return X509_V_OK;
 }
 
 TEST(X509Test, X509Extensions) {
@@ -2965,6 +2807,63 @@ TEST(X509Test, SignCSR) {
   }
 }
 
+TEST(X509Test, PqdsaCSR) {
+  for (int val: std::vector<int>{44, 65, 87}) {
+    std::ostringstream path;
+    path << "crypto/x509/test/csr-mldsa" << val << ".pem";
+    bssl::UniquePtr<X509_REQ> csr = CSRFromPEM(GetTestData(path.str().c_str()).c_str());
+    ASSERT_TRUE(csr);
+
+    // Test signature verification
+    EVP_PKEY* pub_key = X509_REQ_get0_pubkey(csr.get());
+    ASSERT_TRUE(pub_key);
+    ASSERT_EQ(1, X509_REQ_verify(csr.get(), pub_key));
+
+    // Test version
+    EXPECT_EQ(X509_REQ_VERSION_1, X509_REQ_get_version(csr.get()));
+
+    // Test subject name - verify "Generic" is parsed correctly
+    X509_NAME *subject = X509_REQ_get_subject_name(csr.get());
+    ASSERT_TRUE(subject);
+    char *subject_str = X509_NAME_oneline(subject, nullptr, 0);
+    ASSERT_TRUE(subject_str);
+    EXPECT_STREQ("/CN=Generic", subject_str);
+    OPENSSL_free(subject_str);
+
+    // Test signature algorithm NID
+    int sig_nid = X509_REQ_get_signature_nid(csr.get());
+    EXPECT_NE(NID_undef, sig_nid);
+    switch (val) {
+      case 44:
+        EXPECT_EQ(NID_MLDSA44, sig_nid);
+        break;
+      case 65:
+        EXPECT_EQ(NID_MLDSA65, sig_nid);
+        break;
+      case 87:
+        EXPECT_EQ(NID_MLDSA87, sig_nid);
+        break;
+      default:
+        ADD_FAILURE() << "Invalid NID";
+    }
+
+    // Test signature and algorithm retrieval
+    const ASN1_BIT_STRING *sig = nullptr;
+    const X509_ALGOR *alg = nullptr;
+    X509_REQ_get0_signature(csr.get(), &sig, &alg);
+    ASSERT_TRUE(sig);
+    ASSERT_TRUE(alg);
+
+    // Test attribute count
+    int attr_count = X509_REQ_get_attr_count(csr.get());
+    EXPECT_GE(attr_count, 0);
+
+    // Test extensions (may be NULL if no extensions present)
+    bssl::UniquePtr<STACK_OF(X509_EXTENSION)> exts(X509_REQ_get_extensions(csr.get()));
+    // Extensions are optional, so we just verify the function doesn't crash
+  }
+}
+
 TEST(X509Test, Ed25519Sign) {
   uint8_t pub_bytes[32], priv_bytes[64];
   ED25519_keypair(pub_bytes, priv_bytes);
@@ -3670,8 +3569,8 @@ TEST(X509Test, CommonNameFallback) {
     });
   };
 
-  // By default, the common name is ignored if the SAN list is present but
-  // otherwise is checked.
+  // Certificate Subject commonName will be checked by default except
+  // if the EE has a DNS SAN.
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(with_sans.get(), 0 /* no flags */, "foo.host1.test"));
   EXPECT_EQ(X509_V_OK,
@@ -3680,13 +3579,13 @@ TEST(X509Test, CommonNameFallback) {
             verify_cert(with_sans.get(), 0 /* no flags */, "foo.host3.test"));
   EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(), 0 /* no flags */,
                                    "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_email.get(), 0 /* no flags */, "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_ip.get(), 0 /* no flags */, "foo.host1.test"));
 
-  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT is ignored.
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT behavior is supported.
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_sans.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
   EXPECT_EQ(X509_V_OK,
@@ -3698,10 +3597,10 @@ TEST(X509Test, CommonNameFallback) {
   EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(),
                                    X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                                    "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_email.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+  EXPECT_EQ(X509_V_OK,
             verify_cert(with_ip.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
 
@@ -3725,99 +3624,6 @@ TEST(X509Test, CommonNameFallback) {
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(with_ip.get(), X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
                         "foo.host1.test"));
-}
-
-TEST(X509Test, LooksLikeDNSName) {
-    static const char *kValid[] = {
-        "example.com",
-        "eXample123-.com",
-        "*.example.com",
-        "exa_mple.com",
-        "example.com.",
-        "project-dev:us-central1:main",
-    };
-    static const char *kInvalid[] = {
-        "-eXample123-.com",
-        "",
-        ".",
-        "*",
-        "*.",
-        "example..com",
-        ".example.com",
-        "example.com..",
-        "*foo.example.com",
-        "foo.*.example.com",
-        "foo,bar",
-    };
-
-    for (const char *str : kValid) {
-      SCOPED_TRACE(str);
-      EXPECT_TRUE(x509v3_looks_like_dns_name(
-          reinterpret_cast<const uint8_t *>(str), strlen(str)));
-    }
-    for (const char *str : kInvalid) {
-      SCOPED_TRACE(str);
-      EXPECT_FALSE(x509v3_looks_like_dns_name(
-          reinterpret_cast<const uint8_t *>(str), strlen(str)));
-    }
-}
-
-TEST(X509Test, CommonNameAndNameConstraints) {
-  bssl::UniquePtr<X509> root = CertFromPEM(kSANTypesRoot);
-  ASSERT_TRUE(root);
-  bssl::UniquePtr<X509> intermediate = CertFromPEM(kConstrainedIntermediate);
-  ASSERT_TRUE(intermediate);
-  bssl::UniquePtr<X509> permitted = CertFromPEM(kCommonNamePermittedLeaf);
-  ASSERT_TRUE(permitted);
-  bssl::UniquePtr<X509> not_permitted =
-      CertFromPEM(kCommonNameNotPermittedLeaf);
-  ASSERT_TRUE(not_permitted);
-  bssl::UniquePtr<X509> not_permitted_with_sans =
-      CertFromPEM(kCommonNameNotPermittedWithSANsLeaf);
-  ASSERT_TRUE(not_permitted_with_sans);
-  bssl::UniquePtr<X509> not_dns = CertFromPEM(kCommonNameNotDNSLeaf);
-  ASSERT_TRUE(not_dns);
-
-  auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
-    return Verify(
-        leaf, {root.get()}, {intermediate.get()}, {}, 0,
-        [&](X509_STORE_CTX *ctx) {
-          X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
-          ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
-          X509_VERIFY_PARAM_set_hostflags(param, flags);
-        });
-  };
-
-  // Certificates which would otherwise trigger the common name fallback are
-  // rejected whenever there are name constraints. We do this whether or not
-  // the common name matches the constraints.
-  EXPECT_EQ(
-      X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
-      verify_cert(permitted.get(), 0 /* no flags */, kCommonNamePermitted));
-  EXPECT_EQ(X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
-            verify_cert(not_permitted.get(), 0 /* no flags */,
-                        kCommonNameNotPermitted));
-
-  // This occurs even if the built-in name checks aren't used. The caller may
-  // separately call |X509_check_host|.
-  EXPECT_EQ(X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
-            Verify(not_permitted.get(), {root.get()}, {intermediate.get()}, {},
-                   0 /* no flags */, nullptr));
-
-  // If the leaf certificate has SANs, the common name fallback is always
-  // disabled, so the name constraints do not apply.
-  EXPECT_EQ(X509_V_OK, Verify(not_permitted_with_sans.get(), {root.get()},
-                              {intermediate.get()}, {}, 0, nullptr));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
-            verify_cert(not_permitted_with_sans.get(), 0 /* no flags */,
-                        kCommonNameNotPermittedWithSANs));
-
-  // If the common name does not look like a DNS name, we apply neither name
-  // constraints nor common name fallback.
-  EXPECT_EQ(X509_V_OK, Verify(not_dns.get(), {root.get()}, {intermediate.get()},
-                              {}, 0, nullptr));
-  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
-            verify_cert(not_dns.get(), 0 /* no flags */, kCommonNameNotDNS));
 }
 
 TEST(X509Test, ServerGatedCryptoEKUs) {
@@ -5174,24 +4980,38 @@ TEST(X509Test, SignatureVerification) {
                    X509_V_FLAG_PARTIAL_CHAIN));
 
   // Bad keys in the root and intermediate are rejected.
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.bad_key.get()},
                    {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.bad_key_type.get()},
                    {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.valid.get()},
                    {intermediate.bad_key.get()}, {}));
-  EXPECT_EQ(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
             Verify(leaf.valid.get(), {root.valid.get()},
                    {intermediate.bad_key_type.get()}, {}));
 
-  // Bad keys in the leaf are ignored. The leaf's key is used by the caller.
-  EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key.get(), {root.valid.get()},
-                              {intermediate.valid.get()}, {}));
-  EXPECT_EQ(X509_V_OK, Verify(leaf.bad_key_type.get(), {root.valid.get()},
-                              {intermediate.valid.get()}, {}));
+  // Bad keys in the leaf are rejected.
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
+            Verify(leaf.bad_key.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
+            Verify(leaf.bad_key.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}, 0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_enable_ec_key_explicit_params(param);
+                   }));
+  EXPECT_EQ(X509_V_ERR_UNSPECIFIED,
+            Verify(leaf.bad_key_type.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}));
+  EXPECT_EQ(X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY,
+            Verify(leaf.bad_key_type.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}, 0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_enable_ec_key_explicit_params(param);
+                   }));
 
   // At the time we go to verify signatures, it is possible that we have a
   // single-element certificate chain with a certificate that isn't self-signed.
@@ -5447,18 +5267,28 @@ TEST(X509Test, Names) {
       },
 
       // OpenSSL has some non-standard wildcard syntax for input DNS names. We
-      // do not support this.
+      // support this for compatibility.
       {
           /*cert_subject=*/{},
           /*cert_dns_names=*/{"www.a.example", "*.b.test"},
           /*cert_emails=*/{},
-          /*valid_dns_names=*/{},
+          /*valid_dns_names=*/{".a.example", ".b.test", ".example", ".test"},
           /*invalid_dns_names=*/
-          {".www.a.example", ".www.b.test", ".a.example", ".b.test", ".example",
-           ".test"},
+          {".www.a.example", ".www.b.test"},
           /*valid_emails=*/{},
           /*invalid_emails=*/{},
           /*flags=*/0,
+      },
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"www.a.example", "*.b.test"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{".a.example", ".b.test"},
+          /*invalid_dns_names=*/
+          {".www.a.example", ".www.b.test", ".example", ".test"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS,
       },
 
       // Emails match case-sensitively before the '@' and case-insensitively
@@ -8269,6 +8099,117 @@ TEST(X509Test, Trust) {
   EXPECT_EQ(X509_V_OK, Verify(leaf.distrusted_server.get(), {root.normal.get()},
                               {intermediate.normal.get()}, {},
                               /*flags=*/0, set_server_trust));
+}
+
+TEST(X509Test, ParseIPAddress) {
+  const struct {
+    const char *inp;
+    // out is the expected output, or an empty vector if the parser is expected
+    // to fail.
+    std::vector<uint8_t> out;
+  } kIPTests[] = {
+      // Valid IPv4 addresses.
+      {"127.0.0.1", {127, 0, 0, 1}},
+      {"1.2.3.4", {1, 2, 3, 4}},
+      {"1.2.3.255", {1, 2, 3, 255}},
+      {"255.255.255.255", {255, 255, 255, 255}},
+
+      // Valid IPv6 addresses
+      {"::", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+      {"::1", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}},
+      {"::01", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}},
+      {"::001", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}},
+      {"::0001", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}},
+      {"ffff::", {0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+      {"1::2", {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}},
+      {"1:1:1:1:1:1:1:1", {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1}},
+      {"2001:db8::ff00:42:8329",
+       {0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00,
+        0x00, 0x42, 0x83, 0x29}},
+      {"1234::1.2.3.4", {0x12, 0x34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4}},
+      {"::1.2.3.4", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4}},
+      {"ffff:ffff:ffff:ffff:ffff:ffff:1.2.3.4",
+       {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        1, 2, 3, 4}},
+
+      // Too few IPv4 components.
+      {"1", {}},
+      {"1.", {}},
+      {"1.2", {}},
+      {"1.2.", {}},
+      {"1.2.3", {}},
+      {"1.2.3.", {}},
+
+      // Invalid embedded IPv4 address.
+      {"::1.2.3", {}},
+
+      // Too many components.
+      {"1.2.3.4.5", {}},
+      {"1:2:3:4:5:6:7:8:9", {}},
+      {"1:2:3:4:5::6:7:8:9", {}},
+
+      // IPv4 literals take the place of two IPv6 components.
+      {"1:2:3:4:5:6:7:1.2.3.4", {}},
+
+      // '::' should have fewer than 16 components or it is redundant.
+      {"1:2:3:4:5:6:7::8", {}},
+
+      // Embedded IPv4 addresses must be at the end.
+      {"::1.2.3.4:1", {}},
+
+      // Stray whitespace or other invalid characters.
+      {"1.2.3.4 ", {}},
+      {"1.2.3 .4", {}},
+      {"1.2.3. 4", {}},
+      {" 1.2.3.4", {}},
+      {"1.2.3.4.", {}},
+      {"1.2.3.+4", {}},
+      {"1.2.3.-4", {}},
+      {"1.2.3.4.example.test", {}},
+      {"::1 ", {}},
+      {" ::1", {}},
+      {":: 1", {}},
+      {": :1", {}},
+      {"1.2.3.nope", {}},
+      {"::nope", {}},
+
+      // Components too large.
+      {"1.2.3.256", {}},  // Overflows when adding
+      {"1.2.3.260", {}},  // Overflows when multiplying by 10
+      {"1.2.3.999999999999999999999999999999999999999999", {}},
+      {"::fffff", {}},
+
+      // Although not an overflow, more than four hex digits is an error.
+      {"::00000", {}},
+
+      // Too many colons.
+      {":::", {}},
+      {"1:::", {}},
+      {":::2", {}},
+      {"1:::2", {}},
+
+      // Only one group of zeros may be elided.
+      {"1::2::3", {}},
+
+      // We only support decimal.
+      {"1.2.3.01", {}},
+      {"1.2.3.0x1", {}},
+
+      // Random garbage.
+      {"example.test", {}},
+      {"", {}},
+  };
+  for (const auto &t : kIPTests) {
+    SCOPED_TRACE(t.inp);
+    bssl::UniquePtr<ASN1_OCTET_STRING> oct(a2i_IPADDRESS(t.inp));
+    if (t.out.empty()) {
+      EXPECT_FALSE(oct);
+    } else {
+      ASSERT_TRUE(oct);
+      EXPECT_EQ(Bytes(t.out), Bytes(ASN1_STRING_get0_data(oct.get()),
+                                    ASN1_STRING_length(oct.get())));
+    }
+  }
 }
 
 // A brief validation against the |oids| expected to be done by the consumer.

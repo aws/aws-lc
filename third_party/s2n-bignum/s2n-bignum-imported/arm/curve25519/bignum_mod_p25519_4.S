@@ -10,9 +10,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p25519_4)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_mod_p25519_4)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p25519_4)
         .text
         .balign 4
@@ -28,6 +30,7 @@
 #define c x7
 
 S2N_BN_SYMBOL(bignum_mod_p25519_4):
+        CFI_START
 
 // Load the inputs as [d3;d2;d1;d0]
 
@@ -65,7 +68,9 @@ S2N_BN_SYMBOL(bignum_mod_p25519_4):
         stp     d0, d1, [z]
         stp     d2, d3, [z, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_mod_p25519_4)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
