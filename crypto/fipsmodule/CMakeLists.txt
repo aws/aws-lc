@@ -523,6 +523,10 @@ elseif(FIPS_SHARED)
     message(FATAL_ERROR "FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
 
+  if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    msbuild_aarch64_asm(TARGET fipsmodule ASM_FILES ${BCM_ASM_SOURCES} OUTPUT_OBJECTS BCM_ASM_OBJECTS)
+  endif()
+
   add_library(
     fipsmodule
 
