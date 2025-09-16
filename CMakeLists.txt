@@ -25,10 +25,6 @@ if(MSVC)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
-if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
-  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
-endif()
-
 include(sources.cmake)
 include(TestBigEndian)
 include(CheckCCompilerFlag)
@@ -811,9 +807,7 @@ if(FIPS)
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
-    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
-  endif()
+
 
   string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
   if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
@@ -923,6 +917,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
+endif()
+
+if(WIN32 AND FIPS AND (CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR (CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" AND ARCH STREQUAL "aarch64")))
+  message(FATAL_ERROR "Windows Debug and RelWithDebInfo builds are not supported with FIPS, use Release")
 endif()
 
 # If target ARCH is 32-bit x86, ensure SSE2 is enabled since it's used by the optimized assembly.
