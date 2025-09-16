@@ -118,7 +118,11 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
   
   // Initialize BIO based on source type
   if (source_type == pass_util::Source::kStdin) {
+#ifdef _WIN32
+    bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE | BIO_FP_TEXT));
+#else
     bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
+#endif
   } else if (source_type == pass_util::Source::kFile) {
     source->erase(0, 5); // Remove "file:" prefix
     bio.reset(BIO_new_file(source->c_str(), "r"));

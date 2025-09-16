@@ -507,30 +507,26 @@ TEST_F(PassUtilTest, StdinExtraction) {
   close(pipefd[0]);
 }
 #else
-// Temporarily commented out to validate CI passes
-/*
 TEST_F(PassUtilTest, StdinExtraction) {
-  HANDLE hReadPipe, hWritePipe;
-  SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
-  ASSERT_TRUE(CreatePipe(&hReadPipe, &hWritePipe, &sa, 0));
+  // Use existing temp file infrastructure instead of pipes
+  WriteTestFile(pass_path, "stdinpass\n", true);
   
-  HANDLE old_stdin = GetStdHandle(STD_INPUT_HANDLE);
-  SetStdHandle(STD_INPUT_HANDLE, hReadPipe);
+  // Redirect stdin to temp file using _dup2
+  FILE* temp_file = fopen(pass_path, "r");
+  ASSERT_TRUE(temp_file) << "Failed to open temp file";
   
-  DWORD written;
-  ASSERT_TRUE(WriteFile(hWritePipe, "stdinpass\n", 10, &written, NULL));
-  ASSERT_EQ(written, static_cast<DWORD>(10));
-  FlushFileBuffers(hWritePipe);
-  CloseHandle(hWritePipe);
+  int old_stdin = _dup(_fileno(stdin));
+  _dup2(_fileno(temp_file), _fileno(stdin));
   
   bssl::UniquePtr<std::string> source(new std::string("stdin"));
   EXPECT_TRUE(pass_util::ExtractPassword(source));
   EXPECT_EQ(*source, "stdinpass");
   
-  SetStdHandle(STD_INPUT_HANDLE, old_stdin);
-  CloseHandle(hReadPipe);
+  // Restore stdin
+  _dup2(old_stdin, _fileno(stdin));
+  _close(old_stdin);
+  fclose(temp_file);
 }
-*/
 #endif
 
 #ifndef _WIN32
@@ -556,21 +552,16 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   close(pipefd[0]);
 }
 #else
-// Temporarily commented out to validate CI passes
-/*
 TEST_F(PassUtilTest, StdinExtractPasswords) {
-  HANDLE hReadPipe, hWritePipe;
-  SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
-  ASSERT_TRUE(CreatePipe(&hReadPipe, &hWritePipe, &sa, 0));
+  // Use existing temp file infrastructure for multi-line input
+  WriteTestFile(pass_path, "firstpass\nsecondpass\n", true);
   
-  HANDLE old_stdin = GetStdHandle(STD_INPUT_HANDLE);
-  SetStdHandle(STD_INPUT_HANDLE, hReadPipe);
+  // Redirect stdin to temp file using _dup2
+  FILE* temp_file = fopen(pass_path, "r");
+  ASSERT_TRUE(temp_file) << "Failed to open temp file";
   
-  DWORD written;
-  ASSERT_TRUE(WriteFile(hWritePipe, "firstpass\nsecondpass\n", 20, &written, NULL));
-  ASSERT_EQ(written, static_cast<DWORD>(20));
-  FlushFileBuffers(hWritePipe);
-  CloseHandle(hWritePipe);
+  int old_stdin = _dup(_fileno(stdin));
+  _dup2(_fileno(temp_file), _fileno(stdin));
   
   bssl::UniquePtr<std::string> passin(new std::string("stdin"));
   bssl::UniquePtr<std::string> passout(new std::string("stdin"));
@@ -579,8 +570,9 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   EXPECT_EQ(*passin, "firstpass");
   EXPECT_EQ(*passout, "secondpass");
   
-  SetStdHandle(STD_INPUT_HANDLE, old_stdin);
-  CloseHandle(hReadPipe);
+  // Restore stdin
+  _dup2(old_stdin, _fileno(stdin));
+  _close(old_stdin);
+  fclose(temp_file);
 }
-*/
 #endif
