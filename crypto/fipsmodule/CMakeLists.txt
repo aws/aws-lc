@@ -611,7 +611,7 @@ elseif(FIPS_SHARED)
       # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
       # The archiver does not handle the CMake list which uses semicolons between items, this generator expression
       # converts it to a list of quoted strings, it also needs to be itself string escaped
-      COMMAND ${CMAKE_AR} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
+      COMMAND "${CMAKE_AR}" /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
       DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
