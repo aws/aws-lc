@@ -311,7 +311,7 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_cyrus_sasl_integration.sh"
 
-    - identifier: amazon_corretto_crypto_provider_integration_x86_64
+    - identifier: amazon_corretto_crypto_provider_nonfips_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
@@ -322,7 +322,7 @@ batch:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_accp_integration.sh"
           ACCP_FIPS: "false"
 
-    - identifier: amazon_corretto_crypto_provider_integration_x86_64
+    - identifier: amazon_corretto_crypto_provider_fips_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
