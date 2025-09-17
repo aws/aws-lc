@@ -364,7 +364,7 @@ macro(check_compiler file_to_test flag_to_set)
           ${flag_to_set} # Use CMake variable of the same name as the C flag to allow later reference
           ${AWSLC_BINARY_DIR}
           SOURCES "${AWSLC_SOURCE_DIR}/tests/compiler_features_tests/${file_to_test}"
-          CMAKE_FLAGS "-DCMAKE_C_FLAGS=-Werror ${ARGN}" "-DCMAKE_CXX_FLAGS=-Werror ${ARGN}"
+          CMAKE_FLAGS "-DCMAKE_C_FLAGS='-Werror ${ARGN}'" "-DCMAKE_CXX_FLAGS='-Werror ${ARGN}'"
           OUTPUT_VARIABLE ERROR_MESSAGE)
   if(${flag_to_set})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D${flag_to_set}")
