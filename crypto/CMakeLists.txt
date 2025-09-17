@@ -103,6 +103,12 @@ if(NOT OPENSSL_NO_ASM)
   else()
     if(ARCH STREQUAL "aarch64")
       set(PERLASM_STYLE win64)
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
+        # Provide debug in the default format
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      endif()
+
       set(ASM_EXT S)
       enable_language(ASM)
     else()

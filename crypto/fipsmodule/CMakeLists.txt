@@ -523,6 +523,10 @@ elseif(FIPS_SHARED)
     message(FATAL_ERROR "FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
 
+  if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    msbuild_aarch64_asm(TARGET fipsmodule ASM_FILES ${BCM_ASM_SOURCES} OUTPUT_OBJECTS BCM_ASM_OBJECTS)
+  endif()
+
   add_library(
     fipsmodule
 
@@ -602,14 +606,18 @@ elseif(FIPS_SHARED)
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 
-    get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
-    set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+    if(CMAKE_AR)
+      set(MSVC_LIB "${CMAKE_AR}")
+    else()
+      get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
+      set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+    endif()
 
     add_custom_command(
       OUTPUT ${BCM_NAME}
       # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
-      # lib.exe does not handle the CMake list which uses semicolons between items, this generator expression converts
-      # it to a list of quoted strings, it also needs to be itself string escaped
+      # The archiver does not handle the CMake list which uses semicolons between items, this generator expression
+      # converts it to a list of quoted strings, it also needs to be itself string escaped
       COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
       DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
