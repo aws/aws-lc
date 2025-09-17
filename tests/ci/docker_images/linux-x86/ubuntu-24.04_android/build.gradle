@@ -1,0 +1,35 @@
+plugins {
+    id 'com.android.application' version '7.3.1'
+    id 'org.jetbrains.kotlin.android' version '1.8.10'
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+android {
+    namespace 'software.amazon.aws.crypto.awslcandroidtestrunner'
+    compileSdk 32
+    buildToolsVersion "32.0.0"
+    ndkVersion "28.2.13676358"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 32
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.2.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test:core:1.5.0'
+}
