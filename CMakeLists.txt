@@ -25,10 +25,6 @@ if(MSVC)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
-if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
-  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
-endif()
-
 include(sources.cmake)
 include(TestBigEndian)
 include(CheckCCompilerFlag)
@@ -658,18 +654,19 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
 
-  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
-  # This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
-  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
-    # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
-    # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
-    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
-    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+endif()
 
-    # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
-    set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
-    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
-  endif()
+# If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
+# This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
+  # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
+  string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
+  string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+
+  # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
+  set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
 endif()
 
 if(WIN32)
@@ -810,9 +807,7 @@ if(FIPS)
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
-    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
-  endif()
+
 
   string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
   if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
@@ -922,6 +917,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
+endif()
+
+if(WIN32 AND FIPS AND (CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR (CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" AND ARCH STREQUAL "aarch64")))
+  message(FATAL_ERROR "Windows Debug and RelWithDebInfo builds are not supported with FIPS, use Release")
 endif()
 
 # If target ARCH is 32-bit x86, ensure SSE2 is enabled since it's used by the optimized assembly.
