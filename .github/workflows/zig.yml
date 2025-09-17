@@ -15,6 +15,12 @@ jobs:
       fail-fast: false
       matrix:
         config:
+          - host: windows-11-arm
+            target_arch: aarch64
+            target_system: Windows
+          - host: ubuntu-24.04-arm
+            target_arch: aarch64
+            target_system: Linux
           - host: windows-latest
             target_arch: x86_64
             target_system: Windows
@@ -30,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install ninja-build tool
-        uses: seanmiddleditch/gha-setup-ninja@v4
+        uses: seanmiddleditch/gha-setup-ninja@v6
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -42,7 +48,7 @@ jobs:
         with:
           zig-version: 0.15.1
       - name: Locate zig not on Windows
-        if: matrix.os.name != 'windows-latest'
+        if: matrix.config.target_system != 'Windows'
         shell: bash
         run: |
           echo "CFLAGS=${CFLAGS} -fno-sanitize=all"
@@ -50,7 +56,7 @@ jobs:
           echo "ZIGCC=${PWD}/util/zig-cc" >> $GITHUB_ENV
           echo "ZIGCXX=${PWD}/util/zig-c++" >> $GITHUB_ENV
       - name: Locate zig on Windows
-        if: matrix.config.host == 'windows-latest'
+        if: matrix.config.target_system == 'Windows'
         shell: bash
         run: |
           ZIGCC="python3 $(cygpath -m $(which zigcc))"
