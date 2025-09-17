@@ -201,7 +201,7 @@ TEST_F(ImplDispatchTest, BN_mul_mont_gather5) {
     ASSERT_TRUE(BN_set_bit(m.get(), 0));
     ASSERT_TRUE(BN_set_bit(m.get(), words * BN_BITS2 - 1));
     bssl::UniquePtr<BN_MONT_CTX> mont(
-        BN_MONT_CTX_new_for_modulus(m.get(), ctx()));
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx.get()));
     ASSERT_TRUE(mont);
 
     std::vector<BN_ULONG> r(words), a(words), b(words), table(words * 32);
@@ -229,7 +229,7 @@ TEST_F(ImplDispatchTest, BN_mul_mont_gather5) {
           {kFlag_bn_mul4x_mont_gather5, is_bn_mul4x_mont_gather5},
           {kFlag_bn_mul_mont_gather5_nohw, is_bn_mul_mont_gather5_nohw},
       },
-      [] {
+      [r, table, m, mont, words] {
         bn_mul_mont_gather5(r.data(), r.data(), table.data(), m->d, mont->n0, words, 13);
         bn_mul_mont_gather5(r.data(), a.data(), table.data(), m->d, mont->n0, words, 13);
       });
