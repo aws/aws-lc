@@ -246,7 +246,7 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
     perror("BoringSSL: mprotect");
   }
 }
-#else
+#elif !defined(OPENSSL_WINDOWS)
 static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #endif  // !ANDROID
 
