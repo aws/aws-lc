@@ -16,3 +16,8 @@
 // TODO(davidben): Remove this header.
 
 #include "crypto.h"
+
+#if defined(BORINGSSL_DISPATCH_TEST)
+__attribute__((unused))
+void log_dispatch(size_t id);
+#endif

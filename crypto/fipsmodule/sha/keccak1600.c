@@ -8,6 +8,7 @@
  */
 
 #include <assert.h>
+#include <openssl/cpu.h>
 #include "internal.h"
 #include "../../internal.h"
 #include "../cpucap/internal.h"
@@ -321,14 +322,6 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 // Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
-#if defined(OPENSSL_AARCH64)
-static void keccak_log_dispatch(size_t id) {
-#if BORINGSSL_DISPATCH_TEST
-    BORINGSSL_function_hit[id] = 1;
-#endif
-}
-#endif
-
 void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     // Dispatch logic for Keccak-x1 on AArch64:
     //
@@ -354,21 +347,21 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
 #if defined(OPENSSL_AARCH64)
 #if defined(KECCAK1600_S2N_BIGNUM_ASM)
     if (CRYPTO_is_Neoverse_N1() || CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
-        keccak_log_dispatch(10); // kFlag_sha3_keccak_f1600
+        log_dispatch(10); // kFlag_sha3_keccak_f1600
         sha3_keccak_f1600((uint64_t *)A, iotas);
         return;
     }
 
 #if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
     if (CRYPTO_is_ARMv8_SHA3_capable()) {
-        keccak_log_dispatch(11); // kFlag_sha3_keccak_f1600_alt
+        log_dispatch(11); // kFlag_sha3_keccak_f1600_alt
         sha3_keccak_f1600_alt((uint64_t *)A, iotas);
         return;
     }
 #endif
 #endif
 
-    keccak_log_dispatch(9); // kFlag_KeccakF1600_hw
+    log_dispatch(9); // kFlag_KeccakF1600_hw
     KeccakF1600_hw((uint64_t *) A);
 
 #elif defined(OPENSSL_X86_64)
@@ -427,20 +420,20 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     //   (which has its own dispatch logic).
 #if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_AARCH64)
     if (CRYPTO_is_Neoverse_N1()) {
-        keccak_log_dispatch(13); // kFlag_sha3_keccak4_f1600_alt
+        log_dispatch(13); // kFlag_sha3_keccak4_f1600_alt
         sha3_keccak4_f1600_alt((uint64_t *)A, iotas);
         return;
     }
 
 #if defined(MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION)
     if (CRYPTO_is_Neoverse_V1() || CRYPTO_is_Neoverse_V2()) {
-        keccak_log_dispatch(14); // kFlag_sha3_keccak4_f1600_alt2
+        log_dispatch(14); // kFlag_sha3_keccak4_f1600_alt2
         sha3_keccak4_f1600_alt2((uint64_t *)A, iotas);
         return;
     }
 
     if (CRYPTO_is_ARMv8_SHA3_capable()) {
-        keccak_log_dispatch(12); // kFlag_sha3_keccak2_f1600
+        log_dispatch(12); // kFlag_sha3_keccak2_f1600
         // Use 2-fold function twice: A[0:1] and A[2:3]
         sha3_keccak2_f1600((uint64_t *)&A[0], iotas);
         sha3_keccak2_f1600((uint64_t *)&A[2], iotas);

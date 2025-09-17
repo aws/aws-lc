@@ -92,6 +92,12 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 #if defined(BORINGSSL_DISPATCH_TEST)
 // This value must be explicitly initialized to zero. See similar comment above.
 HIDDEN uint8_t BORINGSSL_function_hit[15] = {0};
+
+void log_dispatch(size_t id) {
+#if BORINGSSL_DISPATCH_TEST
+  BORINGSSL_function_hit[id] = 1;
+#endif
+}
 #endif // BORINGSSL_DISPATCH_TEST
 
 // This variable is used only for testing purposes to ensure that the library
