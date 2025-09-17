@@ -196,6 +196,8 @@ TEST_F(ImplDispatchTest, BN_mul_mont_gather5) {
 
     bssl::UniquePtr<BIGNUM> m(BN_new());
     ASSERT_TRUE(m);
+    bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+    BN_CTX_start(ctx.get());
     ASSERT_TRUE(BN_set_bit(m.get(), 0));
     ASSERT_TRUE(BN_set_bit(m.get(), words * BN_BITS2 - 1));
     bssl::UniquePtr<BN_MONT_CTX> mont(
