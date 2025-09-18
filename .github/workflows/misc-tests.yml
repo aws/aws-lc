@@ -86,6 +86,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-14 ]
+        ninja: [ 0, 1 ]
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
@@ -98,12 +99,19 @@ jobs:
         with:
           path: "path has spaces/aws-lc"
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: Setup CMake
+      - name: Setup CMake (Ninja)
+        if:  ${{ matrix.ninja == '1' }}
         uses: threeal/cmake-action@v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
           generator: Ninja
+      - name: Setup CMake
+        if:  ${{ matrix.ninja != '1' }}
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build'
       - name: Build Project
         run: cmake --build "path has spaces/build" --target all
       - name: Run tests
