@@ -61,7 +61,9 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments cmake_args.split(',')
+                if (!cmake_args.isEmpty()) {
+                    arguments cmake_args.split(',')
+                }
                 abiFilters specific_abis.split(',')
             }
         }
