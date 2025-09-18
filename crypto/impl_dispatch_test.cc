@@ -31,8 +31,8 @@
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
 #include "fipsmodule/bn/rsaz_exp.h"
+#include "fipsmodule/bn/internal.h"
 #include "fipsmodule/sha/internal.h"
-
 #include "test/file_test.h"
 
 class ImplDispatchTest : public ::testing::Test {
