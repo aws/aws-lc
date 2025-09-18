@@ -19,9 +19,7 @@
 
 #include "crypto.h"
 
-#if defined(BORINGSSL_DISPATCH_TEST)
 __attribute__((unused))
 void log_dispatch(size_t id);
-#endif
 
 #endif // OPENSSL_HEADER_CPU_H
