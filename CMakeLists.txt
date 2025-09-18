@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.60.0")
+set(SOFTWARE_VERSION "1.61.1")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -25,12 +25,28 @@ if(MSVC)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
-if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
-  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
-endif()
-
 include(sources.cmake)
 include(TestBigEndian)
+include(CheckCCompilerFlag)
+
+macro(add_flag_if_supported VARIABLE FLAG)
+  # Create a safe, unique variable name to cache the result of the check
+  string(MAKE_C_IDENTIFIER "HAVE_C_FLAG_${FLAG}" _CHECK_VAR_NAME)
+
+  # Keep configure output tidy
+  set(CMAKE_REQUIRED_QUIET ${CMAKE_NOT_VERBOSE})
+
+  # Run the check only once to speed up re-configuration
+  if(NOT DEFINED ${_CHECK_VAR_NAME})
+    check_c_compiler_flag("${FLAG}" ${_CHECK_VAR_NAME})
+  endif()
+
+  # If the check passed, append the flag to the specified variable
+  if(${_CHECK_VAR_NAME})
+    set(${VARIABLE} "${${VARIABLE}} ${FLAG}")
+    message(STATUS "Compiler supports '${FLAG}', adding to ${VARIABLE}")
+  endif()
+endmacro()
 
 if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
@@ -474,12 +490,9 @@ if(GCC OR CLANG)
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
-  if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8") OR
-     (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS "13"))
-    # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
-    # Also suppress for all clang versions supporting this warning.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
-  endif()
+  # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
+  # Also suppress for all clang versions supporting this warning.
+  add_flag_if_supported(CMAKE_C_FLAGS "-Wno-cast-function-type")
 
   if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo")
     if (MSVC)
@@ -503,31 +516,24 @@ if(GCC OR CLANG)
 
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
-  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
+  else()
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
     # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
+    add_flag_if_supported(C_CXX_FLAGS "-Wno-free-nonheap-object")
     # GCC (from at least 4.8) does not include -Wmissing-braces in -Wall due to Bug 25137.
     # This warning is turned on everywhere internally however, so we have to define it here
     # to check that our changes don't break the build.
     # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25137
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wmissing-braces")
+    add_flag_if_supported(C_CXX_FLAGS "-Wmissing-braces")
   endif()
 
   # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
   # AppleClang 13.0.0 per the table in
   # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
-  if((CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
-          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "12.0.0")) OR
-  (CMAKE_C_COMPILER_ID STREQUAL "AppleClang" AND
-          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0.0")))
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wstring-concatenation")
-  endif()
+  add_flag_if_supported(C_CXX_FLAGS "-Wstring-concatenation")
 
-  if(CLANG OR NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
-  endif()
+  add_flag_if_supported(C_CXX_FLAGS "-Wimplicit-fallthrough")
 
   if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "5")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wformat-signedness")
@@ -648,18 +654,19 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
 
-  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
-  # This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
-  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
-    # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
-    # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
-    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
-    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+endif()
 
-    # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
-    set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
-    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
-  endif()
+# If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
+# This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
+  # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
+  string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
+  string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+
+  # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
+  set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
 endif()
 
 if(WIN32)
@@ -674,11 +681,7 @@ if(WIN32)
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
-if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
-   CLANG)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
-endif()
+add_flag_if_supported(C_CXX_FLAGS "-Wshadow")
 
 # pthread_rwlock_t on Linux requires a feature flag. We limit this to Linux
 # because, on Apple platforms, it instead disables APIs we use. See compat(5)
@@ -804,9 +807,7 @@ if(FIPS)
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
-    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
-  endif()
+
 
   string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
   if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
@@ -916,6 +917,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
+endif()
+
+if(WIN32 AND FIPS AND (CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR (CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" AND ARCH STREQUAL "aarch64")))
+  message(FATAL_ERROR "Windows Debug and RelWithDebInfo builds are not supported with FIPS, use Release")
 endif()
 
 # If target ARCH is 32-bit x86, ensure SSE2 is enabled since it's used by the optimized assembly.
@@ -1295,18 +1304,18 @@ if(BUILD_TESTING)
     if(BUILD_LIBSSL)
       add_custom_target(
           run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          COMMAND ssl_test
-          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+          COMMAND crypto/crypto_test
+          COMMAND crypto/urandom_test
+          COMMAND ssl/ssl_test
+          WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_command(
           run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+          COMMAND crypto/crypto_test
+          COMMAND crypto/urandom_test
+          WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )

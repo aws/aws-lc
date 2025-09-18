@@ -27,6 +27,7 @@ function(msbuild_aarch64_asm)
               /c
               /I "${AWSLC_BINARY_DIR}/symbol_prefix_include"
               /I "${AWSLC_SOURCE_DIR}/include"
+              /I "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include"
               /o "${OBJ_FILE}"
               "${ASM_FILE}"
       DEPENDS ${ASM_FILE}
@@ -102,6 +103,12 @@ if(NOT OPENSSL_NO_ASM)
   else()
     if(ARCH STREQUAL "aarch64")
       set(PERLASM_STYLE win64)
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
+        # Provide debug in the default format
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      endif()
+
       set(ASM_EXT S)
       enable_language(ASM)
     else()

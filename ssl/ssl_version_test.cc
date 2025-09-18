@@ -120,7 +120,7 @@ class SSLVersionTest
 INSTANTIATE_TEST_SUITE_P(
     WithVersion, SSLVersionTest,
     testing::Combine(::testing::ValuesIn(kAllVersions),
-                     testing::Values(0, 128, 512, 8192, 65535)),
+                     testing::Values(0, 128, 512, 8192, 65535, 131072)),
     [](const testing::TestParamInfo<::std::tuple<VersionParam, int>>
            &test_info) {
       std::string test_name =
@@ -2376,5 +2376,70 @@ TEST_P(SSLVersionTest, GetFinished) {
   }
 }
 
+// Test the specific scenario that was failing: buffer
+// serialization/deserialization with sizes larger than uint16_t max (65535)
+TEST(SSLBufferSizeFailureTest, SerDeLargeBuffer) {
+  // Create a buffer with capacity larger than the old uint16_t limit of 65535
+  SSLBuffer buffer;
+  const size_t large_capacity = 70000;
+
+  // Test that we can allocate a buffer larger than 65535 bytes
+  EXPECT_TRUE(buffer.EnsureCap(0, large_capacity));
+
+  // Fill the buffer with test data
+  std::vector<uint8_t> test_data(large_capacity);
+  for (size_t i = 0; i < large_capacity; i++) {
+    test_data[i] = static_cast<uint8_t>(i % 256);
+  }
+
+  // Write data to the buffer using the correct API
+  OPENSSL_memcpy(buffer.data(), test_data.data(), test_data.size());
+  buffer.DidWrite(test_data.size());
+  EXPECT_EQ(buffer.size(), large_capacity);
+
+  // Test serialization (this would have failed before the fix due to uint16_t
+  // overflow)
+  bssl::ScopedCBB cbb;
+  EXPECT_TRUE(CBB_init(cbb.get(), 0));
+  EXPECT_TRUE(buffer.DoSerialization(*cbb.get()));
+
+  uint8_t *serialized_data = nullptr;
+  size_t serialized_len = 0;
+  EXPECT_TRUE(CBB_finish(cbb.get(), &serialized_data, &serialized_len));
+  bssl::UniquePtr<uint8_t> serialized_ptr(serialized_data);
+  EXPECT_GT(serialized_len, 0u);
+
+  // Test deserialization (this would have failed before the fix)
+  SSLBuffer deserialized_buffer;
+  CBS cbs;
+  CBS_init(&cbs, serialized_data, serialized_len);
+  EXPECT_TRUE(deserialized_buffer.DoDeserialization(cbs));
+
+  // Verify the deserialized buffer has the correct size and capacity
+  EXPECT_EQ(deserialized_buffer.size(), large_capacity);
+  EXPECT_GE(deserialized_buffer.cap(), large_capacity);
+
+  // Verify the data integrity
+  EXPECT_EQ(0, OPENSSL_memcmp(deserialized_buffer.data(), test_data.data(),
+                              large_capacity));
+}
+
+// Test that specifically targets the internal buffer allocation logic
+TEST(SSLVersionTest, InternalBufferAllocationLimits) {
+  // This test directly exercises the SSLBuffer class to ensure it properly
+  // handles large buffer size requests
+  SSLBuffer buffer;
+
+  // Test various sizes around the boundary
+  EXPECT_TRUE(buffer.EnsureCap(5, 65535));  // Old limit
+  buffer.Clear();
+
+  EXPECT_TRUE(buffer.EnsureCap(5, 65536));  // Just above old limit
+  buffer.Clear();
+
+  // These should fail - beyond the maximum capacity
+  EXPECT_FALSE(buffer.EnsureCap(5, UINT32_MAX));
+  EXPECT_FALSE(buffer.EnsureCap(5, SIZE_MAX));
+}
 
 BSSL_NAMESPACE_END
