@@ -1,11 +1,13 @@
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.3"
-    ndkVersion "21.4.7075529"
+    namespace 'software.amazon.aws.crypto.awslcandroidtestrunner'
+    compileSdk 30
+    buildToolsVersion "33.0.3"
+    ndkVersion "28.2.13676358"
 
     def cmake_args = ''
     def specific_abis = ''
@@ -50,8 +52,8 @@ android {
 
     defaultConfig {
         applicationId "software.amazon.aws.crypto.awslcandroidtestrunner"
-        minSdkVersion 21
-        targetSdkVersion 30
+        minSdk 21
+        targetSdk 30
         versionCode 1
         versionName "1.0"
 
@@ -87,10 +89,10 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10'
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.2.0'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test:monitor:1.2.0@aar'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test:core:1.5.0'
 }
