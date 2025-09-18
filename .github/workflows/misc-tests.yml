@@ -113,7 +113,7 @@ jobs:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
       - name: Build Project
-        run: cmake --build "path has spaces/build" --target all
+        run: cmake --build "path has spaces/build" --target ssl
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
       - name: Setup CMake FIPS
