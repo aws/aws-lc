@@ -82,6 +82,8 @@ jobs:
   path-has-spaces:
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.os }}
+    env:
+      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
     strategy:
       fail-fast: false
       matrix:
