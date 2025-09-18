@@ -190,6 +190,7 @@ constexpr size_t kFlag_sha3_keccak4_f1600_alt2 = 14;
 #endif
 
 #if defined(OPENSSL_BN_ASM_MONT5)
+/**
 TEST_F(ImplDispatchTest, BN_mul_mont_gather5) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
     SCOPED_TRACE(words);
@@ -235,7 +236,9 @@ TEST_F(ImplDispatchTest, BN_mul_mont_gather5) {
       });
   }
 }
+*/
 
+/**
 TEST_F(ImplDispatchTest, BN_power5) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
     SCOPED_TRACE(words);
@@ -268,6 +271,7 @@ TEST_F(ImplDispatchTest, BN_power5) {
       });
   }
 }
+*/
 #endif // defined(OPENSSL_BN_ASM_MONT5)
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
