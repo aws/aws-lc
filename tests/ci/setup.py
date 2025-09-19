@@ -6,7 +6,7 @@ with open("README.md") as fp:
 
 
 setuptools.setup(
-    name="AWS-LC CI",
+    name="aws-lc-ci",
     version="0.0.1",
 
     description="AWS-LC CI python environment.",
