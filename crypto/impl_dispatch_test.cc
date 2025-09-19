@@ -172,10 +172,15 @@ constexpr size_t kFlag_sha256_hw = 6;
 constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
 constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
+__attribute__((unused))
 constexpr size_t kFlag_bn_mulx4x_mont_gather5 = 15;
+__attribute__((unused))
 constexpr size_t kFlag_bn_mul4x_mont_gather5 = 16;
+__attribute__((unused))
 constexpr size_t kFlag_bn_mul_mont_gather5_nohw = 17;
+__attribute__((unused))
 constexpr size_t kFlag_bn_powerx5 = 18;
+__attribute__((unused))
 constexpr size_t kFlag_bn_power5_nohw = 19;
 #else // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
