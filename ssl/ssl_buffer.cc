@@ -67,7 +67,7 @@ bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
     return false;
   }
 
-  if (cap_ >= new_cap) {
+  if ((size_t)cap_ >= new_cap) {
     return true;
   }
 
@@ -123,12 +123,12 @@ void SSLBuffer::DidWrite(size_t new_size) {
 }
 
 void SSLBuffer::Consume(size_t len) {
-  if (len > size_) {
+  if (len > (size_t)size_) {
     abort();
   }
-  offset_ += (uint16_t)len;
-  size_ -= (uint16_t)len;
-  cap_ -= (uint16_t)len;
+  offset_ += (int)len;
+  size_ -= (int)len;
+  cap_ -= (int)len;
 }
 
 void SSLBuffer::DiscardConsumed() {
@@ -270,7 +270,7 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
     return false;
   }
 
-  if (offset > UINT16_MAX || size > UINT16_MAX || cap > UINT16_MAX) {
+  if (offset > INT_MAX || size > INT_MAX || cap > INT_MAX) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
@@ -305,9 +305,9 @@ bool SSLBuffer::DoDeserializationV1(CBS &cbs) {
     OPENSSL_memcpy(inline_buf_, CBS_data(&buf), CBS_len(&buf));
   }
   buf_cap_ = header_len_ = 0;  // V1 was lossy :(
-  offset_ = (uint16_t)offset;
-  size_ = (uint16_t)size;
-  cap_ = (uint16_t)cap;
+  offset_ = (int)offset;
+  size_ = (int)size;
+  cap_ = (int)cap;
   // As we restored from a V1 format we can only serialize as V1 until the next
   // |EnsureCap| call.
   max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_ONE;
@@ -337,8 +337,8 @@ bool SSLBuffer::DoDeserializationV2(CBS &cbs) {
     return false;
   }
 
-  if (buf_cap > SSLBUFFER_MAX_CAPACITY || rel_offset > UINT16_MAX ||
-      rel_offset > CBS_len(&buf) || cap > UINT16_MAX) {
+  if (buf_cap > SSLBUFFER_MAX_CAPACITY || rel_offset > INT_MAX ||
+      rel_offset > CBS_len(&buf) || cap > INT_MAX) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
     return false;
   }
@@ -357,8 +357,8 @@ bool SSLBuffer::DoDeserializationV2(CBS &cbs) {
       return false;
     }
     align_offset = compute_buffer_offset(header_len, buf_);
-    if (rel_offset > UINT16_MAX - align_offset ||
-        CBS_len(&buf) - rel_offset > UINT16_MAX ||
+    if (rel_offset > INT_MAX - align_offset ||
+        CBS_len(&buf) - rel_offset > INT_MAX ||
         CBS_len(&buf) > buf_size_ - align_offset) {
       Clear();
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_BUFFER);
@@ -382,9 +382,9 @@ bool SSLBuffer::DoDeserializationV2(CBS &cbs) {
   }
   buf_cap_ = (size_t)buf_cap;
   header_len_ = (size_t)header_len;
-  offset_ = (uint16_t)(align_offset + rel_offset);
-  size_ = (uint16_t)(CBS_len(&buf) - rel_offset);
-  cap_ = (uint16_t)cap;
+  offset_ = (int)(align_offset + rel_offset);
+  size_ = (int)(CBS_len(&buf) - rel_offset);
+  cap_ = (int)cap;
   max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_TWO;
 
   // Final sanity check

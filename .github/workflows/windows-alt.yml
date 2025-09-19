@@ -7,6 +7,8 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+env:
+  AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
 jobs:
   mingw:
     if: github.repository_owner == 'aws'

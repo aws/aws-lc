@@ -33,7 +33,9 @@ RUN set -ex && \
     valgrind \
     # valgrind/memcheck.h is provided by the valgrind-devel package on AL2. see P63119011.
     valgrind-devel \
-    unzip && \
+    unzip \
+    patch \
+    jq && \
     wget https://raw.githubusercontent.com/aws/aws-codebuild-docker-images/master/al/x86_64/standard/5.0/amazon-ssm-agent.json -P /etc/amazon/ssm/ && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
