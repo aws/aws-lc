@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.61.1")
+set(SOFTWARE_VERSION "1.61.2")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -1304,18 +1304,18 @@ if(BUILD_TESTING)
     if(BUILD_LIBSSL)
       add_custom_target(
           run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          COMMAND ssl_test
-          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+          COMMAND crypto/crypto_test
+          COMMAND crypto/urandom_test
+          COMMAND ssl/ssl_test
+          WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_command(
           run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+          COMMAND crypto/crypto_test
+          COMMAND crypto/urandom_test
+          WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )
