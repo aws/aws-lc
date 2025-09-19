@@ -47,6 +47,7 @@ if(ARCH STREQUAL "x86_64")
     vpaes-x86_64.${ASM_EXT}
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
+    keccak1600-x86_64-avx512vl.${ASM_EXT}
   )
 endif()
 
@@ -174,6 +175,7 @@ if(PERL_EXECUTABLE)
   perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)
   perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
+  perlasm(keccak1600-x86_64-avx512vl.${ASM_EXT} sha/asm/keccak1600-x86_64-avx512vl.pl)
 endif()
 
 # clang-6 (and older) knows how to compile AVX512 assembly instructions,

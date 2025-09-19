@@ -356,6 +356,8 @@ void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *data,
 #define KECCAK1600_S2N_BIGNUM_ASM
 #include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
 #endif
+void KeccakF1600_x4_avx512vl(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]);
+void KeccakF1600_avx512vl(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]);
 #endif
 #endif
 
