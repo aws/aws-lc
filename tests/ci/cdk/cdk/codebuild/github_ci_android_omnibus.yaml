@@ -6,7 +6,7 @@ version: 0.2
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
   build-list:
-    - identifier: ubuntu2004_android_nonfips_static_debug
+    - identifier: ubuntu2404_android_nonfips_static_debug
       buildspec: ./tests/ci/codebuild/android/run_android_static_debug.yml
       env:
         type: LINUX_CONTAINER
@@ -14,35 +14,35 @@ batch:
         compute-type: BUILD_GENERAL1_MEDIUM
         # TODO(CryptoAlg-1276): replace |620771051181| and |us-west-2| with corresponding env variables.
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-24.04_android_latest
-    - identifier: ubuntu2004_android_nonfips_static_release
+    - identifier: ubuntu2404_android_nonfips_static_release
       buildspec: ./tests/ci/codebuild/android/run_android_static_release.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-24.04_android_latest
-    - identifier: ubuntu2004_android_nonfips_shared_debug
+    - identifier: ubuntu2404_android_nonfips_shared_debug
       buildspec: ./tests/ci/codebuild/android/run_android_shared_debug.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-24.04_android_latest
-    - identifier: ubuntu2004_android_nonfips_shared_release
+    - identifier: ubuntu2404_android_nonfips_shared_release
       buildspec: ./tests/ci/codebuild/android/run_android_shared_release.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-24.04_android_latest
-    - identifier: ubuntu2004_android_fips_shared_release
+    - identifier: ubuntu2404_android_fips_shared_release
       buildspec: ./tests/ci/codebuild/android/run_android_fips_shared.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-24.04_android_latest
-    - identifier: ubuntu2004_android_fips_static_release
+    - identifier: ubuntu2404_android_fips_static_release
       buildspec: ./tests/ci/codebuild/android/run_android_fips_static.yml
       env:
         type: LINUX_CONTAINER
