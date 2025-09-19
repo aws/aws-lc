@@ -1,0 +1,431 @@
+name: linux-x86-omnibus
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  pre_push_checker:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+        buildspec-override:true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-20.04_clang-8x_latest
+          run: |
+            ./tests/check_objects_and_errors.sh
+            ./tests/check_cmake_configure.sh
+            go run ./tests/check_licenses.go
+            ./tests/check_generated_src.sh
+            ./tests/coding_guidelines/style.sh
+            (cd util && go run ./doc.go)
+
+  c99_cplusplus98_checker:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+        buildspec-override:true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-22.04_gcc-12x_latest
+          run: ./tests/coding_guidelines/c99_cplusplus98_test.sh
+
+  posix_tests:
+    name: posix-tests-${{ matrix.image }}-${{ matrix.build32 && 'x86' || 'x86_64' }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2_gcc-7x_latest
+          - amazonlinux-2_clang-7x_latest
+          - amazonlinux-2023_gcc-11x_latest
+          - amazonlinux-2023_clang-15x_latest
+          - centos-7_gcc-4x_latest
+          - centos-8_gcc-8x_latest
+          - fedora-31_clang-9x_latest
+          - ubuntu-18.04_clang-6x_latest
+          - ubuntu-18.04_gcc-7x_latest
+          - ubuntu-20.04_clang-7x_latest
+          - ubuntu-20.04_clang-8x_latest
+          - ubuntu-20.04_clang-9x_latest
+          - ubuntu-20.04_clang-10x_latest
+          - ubuntu-20.04_gcc-7x_latest
+          - ubuntu-20.04_gcc-8x_latest
+          - ubuntu-22.04_gcc-10x_latest
+          - ubuntu-22.04_gcc-11x_latest
+          - ubuntu-22.04_gcc-12x_latest
+        include:
+          - image: centos-7_gcc-4x_latest
+            build32: 1
+          - image: fedora-31_clang-9x_latest
+            cc: clang-9
+            cxx: clang++-9
+          - image: ubuntu-16.04_gcc-5x_latest
+            build32: 1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        env:
+          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          env: |
+            AWSLC_32BIT
+          run: |
+            [[ "${{ matrix.cc }}z" != "z" ]] && export CC="${{ matrix.cc }}" || true
+            [[ "${{ matrix.cxx }}z" != "z" ]] && export CXX="${{ matrix.cxx }}" || true
+            ./tests/ci/run_posix_tests.sh
+
+  fips_tests:
+    name: ${{ matrix.enableASAN && 'asan-' || '' }}fips-tests-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2_clang-7x_latest
+          - amazonlinux-2_gcc-7x_latest
+          - amazonlinux-2023_gcc-11x_latest
+          - amazonlinux-2023_clang-15x_latest
+          - centos-7_gcc-4x_latest
+          - centos-8_gcc-8x_latest
+          - ubuntu-18.04_clang-6x_latest
+          - ubuntu-18.04_gcc-7x_latest
+          - ubuntu-20.04_clang-7x_latest
+          - ubuntu-20.04_clang-8x_latest
+          - ubuntu-20.04_clang-9x_latest
+          - ubuntu-20.04_clang-10x_latest
+          - ubuntu-20.04_gcc-7x_latest
+          - ubuntu-20.04_gcc-8x_latest
+          - ubuntu-22.04_gcc-10x_latest
+          - ubuntu-22.04_gcc-11x_latest
+          - ubuntu-22.04_gcc-12x_latest
+        include:
+          - image: ubuntu-20.04_clang-7x_latest
+            enableASAN: 1
+    env:
+      AWSLC_ENABLE_FIPS_ASAN: ${{ matrix.enableASAN || 0 }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          env: |
+            AWSLC_ENABLE_FIPS_ASAN
+          run: ./tests/ci/run_fips_tests.sh
+
+  prefix_tests:
+    name: prefix-tests-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2_clang-7x_latest
+          - ubuntu-22.04_gcc-11x_latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          run: ./tests/ci/run_prefix_tests.sh
+
+  sde_tests:
+    name: sde-tests-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2_gcc-7x_intel-sde_latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          run: ./tests/ci/run_tests_with_sde.sh
+          options: --privileged
+
+  asan_sde_tests:
+    name: asan-sde-tests-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu-22.04_clang-14x-sde_latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          run: ./tests/ci/run_tests_with_sde_asan.sh
+          options: --privileged
+
+  valgrind:
+    name: valgrind-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2023_gcc-11x_latest
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+          run: ./tests/ci/run_valgrind_tests.sh
+
+  valgrind-ssl-runner-part1:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+        buildspec-override:true
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_END_INDEX: 4000
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_END_INDEX
+          run: ./tests/ci/run_ssl_runner_valgrind_tests.sh
+          options: --privileged
+
+  valgrind-ssl-runner-part2:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+        buildspec-override:true
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_START_INDEX: 4001
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_START_INDEX
+          run: ./tests/ci/run_ssl_runner_valgrind_tests.sh
+          options: --privileged
+
+  sanitizers:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: '45m'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_clang-15x_sanitizer_latest
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+          run: ./tests/ci/run_posix_sanitizers.sh
+
+  install_shared_and_static:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+        buildspec-override:true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-20.04_clang-9x_latest
+          run: ./tests/ci/run_install_shared_and_static.sh
+
+  # We parallel the quick check proof scripts.
+  # Since each proof script takes around 7GB of memory, this results in a high demand for memory.
+  # Current benchmarks show running quick check using 8 processes can consume more than 55 GB of memory.
+  # Therefore, BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is selected for quick check.
+  # SAW proofs on platform X86_64
+  formal_verification:
+    name: fv-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:${{ matrix.size }}
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # We parallel the quick check proof scripts.
+          # Since each proof script takes around 7GB of memory, this results in a high demand for memory.
+          # Current benchmarks show running quick check using 8 processes can consume more than 55 GB of memory.
+          # Therefore, BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is selected for quick check.
+          # SAW proofs on platform X86_64
+          - name: saw-x86_64
+            image: ubuntu-20.04_clang-10x_formal-verification-saw-x86_64_latest
+            size: 2xlarge
+            entry: SAW/scripts/x86_64/docker_entrypoint.sh
+
+          # SAW proof for AES-GCM on platform x86
+          - name: saw-x86_64-aes-gcm
+            image: ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm_latest
+            size: xlarge
+            entry: SAW/scripts/x86_64/docker_entrypoint_aes_gcm.sh
+
+          # SAW proofs on platform AArch64
+          - name: saw-aarch64
+            image: ubuntu-20.04_clang-10x_formal-verification-saw-aarch64_latest
+            size: 2xlarge
+            entry: SAW/scripts/aarch64/docker_entrypoint.sh
+
+          - name: nysym-aarch64
+            image: ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64_latest
+            size: 2xlarge
+            entry: NSym/scripts/docker_entrypoint.sh
+
+          # NSym proofs on platform AArch64
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          run: ./tests/ci/run_formal_verification.sh ${{ matrix.entry }}
+          options: --privileged
+
+  # Build and test aws-lc without Perl/Go.
+  minimal_tests:
+    name: minimal-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2_gcc-7x_latest
+          - centos-7_gcc-4x_latest
+          - ubuntu-16.04_gcc-5x_latest
+          - ubuntu-18.04_clang-6x_latest
+          - ubuntu-20.04_clang-8x_latest
+          - ubuntu-20.04_clang-9x_latest
+          - ubuntu-20.04_gcc-7x_latest
+          - ubuntu-20.04_gcc-8x_latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          run: ./tests/ci/run_minimal_tests.sh
+
+  benchmark:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run POSIX tests
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-22.04_clang-14x-sde_latest
+          run: ./tests/ci/run_benchmark_build_tests.sh
+
+  legacy_build:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+        buildspec-override:true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-10.04_gcc-4.1x_latest
+          run: ./tests/ci/run_legacy_build.sh
+
+  fips_callback:
+    name: fips-callback-${{ matrix.image }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amazonlinux-2_gcc-7x_latest
+          - amazonlinux-2023_gcc-11x_latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          run: ./tests/ci/run_fips_callback_tests.sh
