@@ -15,6 +15,7 @@ from aws_cdk import (
 from constructs import Construct
 
 from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
+from cdk.aws_lc_github_actions_stack import AwsLcGitHubActionsStack
 from pipeline.ci_util import add_ci_stacks
 from pipeline.codebuild_batch_step import CodeBuildBatchStep
 from util.metadata import (
@@ -47,7 +48,8 @@ class CiStage(Stage):
     @property
     def stacks(self) -> typing.List[AwsLcBaseCiStack]:
         return [
-            child for child in self.node.children if isinstance(child, AwsLcBaseCiStack)
+            child for child in self.node.children if isinstance(child, AwsLcBaseCiStack) and 
+                not isinstance(child, AwsLcGitHubActionsStack)
         ]
 
     def add_stage_to_pipeline(

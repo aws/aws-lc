@@ -1,0 +1,32 @@
+name: 'codebuild-docker-run'
+description: 'Run one or more commands inside a docker container'
+inputs:
+  image:
+    description: 'Docker image to pull'
+    required: true
+  options:
+    description: 'Additional docker run configuration options'
+    required: false
+  run:
+    description: 'Run command in container'
+    required: false
+  shell:
+    description: 'Use a specific shell that must be available in the image'
+    required: false
+    default: bash
+  env:
+    description: 'Environment variables to set or pass to the container'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Docker Container (${{ inputs.image }})
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_RUN: ${{ inputs.run }}
+        INPUT_SHELL: ${{ inputs.shell }}
+        INPUT_ENV: ${{ inputs.env }}
+      run: ${{ github.action_path }}/codebuild-docker-run.sh
