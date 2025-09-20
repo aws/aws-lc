@@ -23,12 +23,13 @@ set -euo pipefail
 # either set GITHUB_TARGET or GITHUB_REPOSITORY as below:
 #
 # ```
-# GITHUB_REPOSITORY=<repo owner>/<repo name> GITHUB_TARGET=<branch or tag> ./import.sh
+# GITHUB_REPOSITORY=<repo owner>/<repo name> GITHUB_TARGET=<branch or tag> COMMIT_HASH=<commit hash> ./import.sh
 # ```
 
 GITHUB_SERVER_URL="https://github.com/"
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:=awslabs/s2n-bignum.git}
 GITHUB_TARGET=${GITHUB_TARGET:=main}
+COMMIT_HASH=${COMMIT_HASH:=HEAD}
 
 SRC="s2n-bignum-imported"
 TMP="TEMP_CAN_DELETE"
@@ -49,7 +50,7 @@ mkdir ${TMP}
 
 echo "Fetching repository ..."
 git clone ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} ${TMP} --branch ${GITHUB_TARGET} --single-branch > /dev/null
-GITHUB_COMMIT=$(cd ${TMP} >/dev/null; git rev-parse HEAD)
+GITHUB_COMMIT=$(cd ${TMP} > /dev/null; git checkout ${COMMIT_HASH} > /dev/null; git rev-parse HEAD)
 
 echo "Cloned s2n-bignum folder"
 ls -la ${TMP}
