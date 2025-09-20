@@ -36,9 +36,9 @@ endif()
 
 if(BORINGSSL_PREFIX)
   if(MSVC)
-    set(JITTER_ENETROPY_PREFIX_INCLUDE "/FI ${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+    set(JITTER_ENETROPY_PREFIX_INCLUDE "/FI \"${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h\"")
   else()
-    set(JITTER_ENETROPY_PREFIX_INCLUDE "--include=${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+    set(JITTER_ENETROPY_PREFIX_INCLUDE "--include=\"${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h\"")
   endif()
 endif()
 
@@ -47,5 +47,5 @@ set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} ${JITTER_ENETROPY_PREFIX_INCLU
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
 
-target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library)
+target_include_directories(jitterentropy BEFORE PRIVATE "${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-library")
 target_add_awslc_include_paths(TARGET jitterentropy SCOPE PRIVATE)
