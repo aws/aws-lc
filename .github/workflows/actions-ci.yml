@@ -13,7 +13,8 @@ env:
   SDE_VERSION_TAG: sde-external-9.44.0-2024-08-22-win
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
-  AWSLC_NO_ASM_FIPS: 1
+  AWSLC_ENABLE_FIPS_ASAN: 1
+  DEBIAN_FRONTEND: noninteractive
 
 jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
