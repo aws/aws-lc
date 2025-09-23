@@ -236,18 +236,22 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]);
 
 // KeccakF1600_XORBytes XORs |len| bytes from |inp| into the Keccak state |A|.
 // |len| must be a multiple of 8.
-static void KeccakF1600_XORBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len) {
+static void KeccakF1600_XORBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, const size_t len) {
     assert(len <= SHA3_MAX_BLOCKSIZE);
     assert((len % 8) == 0);
 
     uint64_t *A_flat = (uint64_t *)A;
-    size_t w = len / 8;
+    const size_t w = len / 8;
 
     for (size_t i = 0; i < w; i++) {
+#if defined(OPENSSL_X86_64)
+        const uint64_t Ai = *((const uint64_t *) inp);
+#else
         uint64_t Ai = (uint64_t)inp[0]       | (uint64_t)inp[1] << 8  |
                       (uint64_t)inp[2] << 16 | (uint64_t)inp[3] << 24 |
                       (uint64_t)inp[4] << 32 | (uint64_t)inp[5] << 40 |
                       (uint64_t)inp[6] << 48 | (uint64_t)inp[7] << 56;
+#endif
         inp += 8;
         A_flat[i] ^= Ai;
     }
@@ -275,16 +279,11 @@ static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS
     assert(len <= SHA3_MAX_BLOCKSIZE);
     size_t i = 0;
 
-    while (len != 0) {
+    while (len >= 8) {
+#if defined(OPENSSL_X86_64)
+        *((uint64_t *) out) = A_flat[i];
+#else
         uint64_t Ai = A_flat[i];
-
-        if (len < 8) {
-            for (size_t j = 0; j < len; j++) {
-                *out++ = (uint8_t)Ai;
-                Ai >>= 8;
-            }
-            return;
-        }
 
         out[0] = (uint8_t)(Ai);
         out[1] = (uint8_t)(Ai >> 8);
@@ -294,9 +293,19 @@ static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS
         out[5] = (uint8_t)(Ai >> 40);
         out[6] = (uint8_t)(Ai >> 48);
         out[7] = (uint8_t)(Ai >> 56);
+#endif
         out += 8;
         len -= 8;
         i++;
+    }
+
+    if (len > 0) {
+            uint64_t Ai = A_flat[i];
+
+            for (size_t j = 0; j < len; j++) {
+                    *out++ = (uint8_t)Ai;
+                    Ai >>= 8;
+            }
     }
 }
 
