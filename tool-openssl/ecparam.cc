@@ -139,20 +139,24 @@ bool ecparamTool(const args_list_t &args) {
     // Generate EC key using high-level EVP APIs
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
     if (!ctx) {
+      fprintf(stderr, "Failed to create key generation context\n");
       goto err;
     }
     
     if (EVP_PKEY_keygen_init(ctx.get()) <= 0) {
+      fprintf(stderr, "Failed to initialize key generation\n");
       goto err;
     }
     
     if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), nid) <= 0) {
+      fprintf(stderr, "Failed to set curve for key generation\n");
       goto err;
     }
     
     bssl::UniquePtr<EVP_PKEY> pkey;
     EVP_PKEY* pkey_raw = nullptr;
     if (EVP_PKEY_keygen(ctx.get(), &pkey_raw) <= 0) {
+      fprintf(stderr, "Failed to generate EC key\n");
       goto err;
     }
     pkey.reset(pkey_raw);
@@ -160,6 +164,7 @@ bool ecparamTool(const args_list_t &args) {
     // Get the EC_KEY for setting conversion form
     eckey.reset(EVP_PKEY_get1_EC_KEY(pkey.get()));
     if (!eckey) {
+      fprintf(stderr, "Failed to extract EC key from generated key\n");
       goto err;
     }
     
@@ -169,10 +174,12 @@ bool ecparamTool(const args_list_t &args) {
     if (!noout) {
       if (output_format == OutputFormat::PEM) {
         if (!PEM_write_bio_ECPrivateKey(out_bio.get(), eckey.get(), nullptr, nullptr, 0, nullptr, nullptr)) {
+          fprintf(stderr, "Failed to write private key in PEM format\n");
           goto err;
         }
       } else {
         if (!i2d_ECPrivateKey_bio(out_bio.get(), eckey.get())) {
+          fprintf(stderr, "Failed to write private key in DER format\n");
           goto err;
         }
       }
@@ -182,10 +189,12 @@ bool ecparamTool(const args_list_t &args) {
     if (!noout) {
       if (output_format == OutputFormat::PEM) {
         if (!PEM_write_bio_ECPKParameters(out_bio.get(), group.get())) {
+          fprintf(stderr, "Failed to write EC parameters in PEM format\n");
           goto err;
         }
       } else {
         if (!i2d_ECPKParameters_bio(out_bio.get(), group.get())) {
+          fprintf(stderr, "Failed to write EC parameters in DER format\n");
           goto err;
         }
       }
@@ -195,5 +204,6 @@ bool ecparamTool(const args_list_t &args) {
   ret = true;
 
 err:
+  ERR_print_errors_fp(stderr);
   return ret;
 }
