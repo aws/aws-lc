@@ -7,9 +7,9 @@ set -ex
 
 SAW_URL='https://saw-builds.s3.us-west-2.amazonaws.com/saw-0.9.0.99-2023-06-08-ab46c76e0-Linux-x86_64.tar.gz'
 C2A_URL='https://cryptol-air-interface.s3.us-west-2.amazonaws.com/cryptol-air-interface-2023-11-20-fd3447e-Linux-x86_64.tar.gz'
-ELF_URL='https://ocaml-elf-loader.s3.us-west-2.amazonaws.com/elf_loader-2025-07-22-c95cf1c-Linux_x86_64.tar.gz'
-OSI_URL='https://ocaml-smt-interface.s3.us-west-2.amazonaws.com/ocaml_smt_interface-2025-07-22-9654c87-Linux_x86_64.tar.gz'
-NSYM_URL='https://native-code-symbolic-simulator.s3.us-west-2.amazonaws.com/nsym-2025-07-22-ae32e4c-Linux_x86_64.tar.gz'
+ELF_URL='https://ocaml-elf-loader.s3.us-west-2.amazonaws.com/elf_loader-2025-09-23-c95cf1c-Linux_x86_64.tar.gz'
+OSI_URL='https://ocaml-smt-interface.s3.us-west-2.amazonaws.com/ocaml_smt_interface-2025-09-23-9654c87-Linux_x86_64.tar.gz'
+NSYM_URL='https://native-code-symbolic-simulator.s3.us-west-2.amazonaws.com/nsym-2025-09-23-ae32e4c-Linux_x86_64.tar.gz'
 
 mkdir -p /bin /deps
 
