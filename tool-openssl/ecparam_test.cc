@@ -181,15 +181,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareFileOutputOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -out " + out_path_openssl;
 
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
-
-  // Compare file contents
-  tool_output_str = ReadFileToString(out_path_tool);
-  openssl_output_str = ReadFileToString(out_path_openssl);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
@@ -199,11 +191,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenStructureOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -genkey -out " + key_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -genkey -out " + key_path_openssl;
 
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC key generation failed";
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL key generation failed";
+  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
 
   // Both files should exist and contain valid EC private keys
   bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
@@ -236,11 +224,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenCompressedOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -out " + key_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -out " + key_path_openssl;
 
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC compressed key generation failed";
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL compressed key generation failed";
+  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
 
   // Both should be valid keys
   bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
@@ -262,11 +246,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenUncompressedOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name secp384r1 -genkey -conv_form uncompressed -out " + key_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name secp384r1 -genkey -conv_form uncompressed -out " + key_path_openssl;
 
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC uncompressed key generation failed";
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL uncompressed key generation failed";
+  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
 
   bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
   bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
@@ -285,11 +265,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenDEROpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name secp256k1 -genkey -outform DER -out " + key_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name secp256k1 -genkey -outform DER -out " + key_path_openssl;
 
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC DER key generation failed";
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL DER key generation failed";
+  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
 
   // Both files should exist and be reasonable size for DER keys
   bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "rb"));
@@ -326,11 +302,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareCombinedOptionsOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -outform DER -out " + key_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -outform DER -out " + key_path_openssl;
 
-  int tool_result = system(tool_command.c_str());
-  ASSERT_EQ(tool_result, 0) << "AWS-LC combined options failed";
-
-  int openssl_result = system(openssl_command.c_str());
-  ASSERT_EQ(openssl_result, 0) << "OpenSSL combined options failed";
+  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
 
   // Verify both files exist and contain valid DER keys
   bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "rb"));
