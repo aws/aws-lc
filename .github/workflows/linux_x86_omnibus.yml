@@ -392,7 +392,7 @@ jobs:
       - uses: ./.github/actions/codebuild-docker-run
         name: Run POSIX tests
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-22.04_clang-14x-sde_latest
+          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_clang-15x_latest
           run: ./tests/ci/run_benchmark_build_tests.sh
 
   legacy_build:
