@@ -104,6 +104,15 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 environment_variables={
                     "AWS_ACCOUNT_ID": codebuild.BuildEnvironmentVariable(value=env.account),
+                    "AWS_ECR_REPO_LINUX_X86": codebuild.BuildEnvironmentVariable(
+                        value="{}.dkr.ecr.{}.amazonaws.com/{}".format(env.account, env.region, LINUX_X86_ECR_REPO)
+                    ),
+                    "AWS_ECR_REPO_LINUX_AARCH": codebuild.BuildEnvironmentVariable(
+                        value="{}.dkr.ecr.{}.amazonaws.com/{}".format(env.account, env.region, LINUX_AARCH_ECR_REPO)
+                    ),
+                    "AWS_ECR_REPO_WINDOWS_X86": codebuild.BuildEnvironmentVariable(
+                        value="{}.dkr.ecr.{}.amazonaws.com/{}".format(env.account, env.region, WINDOWS_X86_ECR_REPO)
+                    ),
                 },
             ),
             build_spec=codebuild.BuildSpec.from_object({

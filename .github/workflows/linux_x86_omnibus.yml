@@ -18,10 +18,13 @@ jobs:
         buildspec-override:true
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-20.04_clang-8x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:ubuntu-20.04_clang-8x_latest
           run: |
             ./tests/check_objects_and_errors.sh
             ./tests/check_cmake_configure.sh
@@ -38,10 +41,13 @@ jobs:
         buildspec-override:true
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-22.04_gcc-12x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:ubuntu-22.04_gcc-12x_latest
           run: ./tests/coding_guidelines/c99_cplusplus98_test.sh
 
   posix_tests:
@@ -83,12 +89,15 @@ jobs:
             build32: 1
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         env:
           AWSLC_32BIT: ${{ matrix.build32 || 0 }}
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           env: |
             AWSLC_32BIT
           run: |
@@ -131,10 +140,13 @@ jobs:
       AWSLC_ENABLE_FIPS_ASAN: ${{ matrix.enableASAN || 0 }}
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           env: |
             AWSLC_ENABLE_FIPS_ASAN
           run: ./tests/ci/run_fips_tests.sh
@@ -154,10 +166,13 @@ jobs:
           - ubuntu-22.04_gcc-11x_latest
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_prefix_tests.sh
 
   sde_tests:
@@ -174,10 +189,13 @@ jobs:
           - amazonlinux-2_gcc-7x_intel-sde_latest
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_tests_with_sde.sh
           options: --privileged
 
@@ -195,10 +213,13 @@ jobs:
           - ubuntu-22.04_clang-14x-sde_latest
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_tests_with_sde_asan.sh
           options: --privileged
 
@@ -218,10 +239,13 @@ jobs:
       AWS_LC_GO_TEST_TIMEOUT: 60m
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           env: |
             AWS_LC_GO_TEST_TIMEOUT
           run: ./tests/ci/run_valgrind_tests.sh
@@ -237,10 +261,13 @@ jobs:
       AWS_LC_SSL_RUNNER_END_INDEX: 4000
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
           env: |
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_END_INDEX
@@ -258,10 +285,13 @@ jobs:
       AWS_LC_SSL_RUNNER_START_INDEX: 4001
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
           env: |
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_START_INDEX
@@ -278,10 +308,13 @@ jobs:
       AWS_LC_GO_TEST_TIMEOUT: '45m'
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_clang-15x_sanitizer_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_clang-15x_sanitizer_latest
           env: |
             AWS_LC_GO_TEST_TIMEOUT
           run: ./tests/ci/run_posix_sanitizers.sh
@@ -294,10 +327,13 @@ jobs:
         buildspec-override:true
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-20.04_clang-9x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:ubuntu-20.04_clang-9x_latest
           run: ./tests/ci/run_install_shared_and_static.sh
 
   # We parallel the quick check proof scripts.
@@ -346,10 +382,13 @@ jobs:
           # NSym proofs on platform AArch64
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_formal_verification.sh ${{ matrix.entry }}
           options: --privileged
 
@@ -375,10 +414,13 @@ jobs:
           - ubuntu-20.04_gcc-8x_latest
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_minimal_tests.sh
 
   benchmark:
@@ -389,10 +431,13 @@ jobs:
         buildspec-override:true
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run POSIX tests
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_clang-15x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_clang-15x_latest
           run: ./tests/ci/run_benchmark_build_tests.sh
 
   legacy_build:
@@ -403,10 +448,13 @@ jobs:
         buildspec-override:true
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:ubuntu-10.04_gcc-4.1x_latest
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:ubuntu-10.04_gcc-4.1x_latest
           run: ./tests/ci/run_legacy_build.sh
 
   fips_callback:
@@ -424,8 +472,11 @@ jobs:
           - amazonlinux-2023_gcc-11x_latest
     steps:
       - uses: actions/checkout@v5
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container (${{ matrix.image }})
         with:
-          image: ${{ vars.CI_AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_fips_callback_tests.sh
