@@ -5,6 +5,7 @@
 #include <openssl/ec.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
 #include "internal.h"
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
@@ -46,8 +47,8 @@ TEST_F(EcparamTest, EcparamToolGenkeyTest) {
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
   
   // Verify key file was created
-  ScopedFILE file(fopen(out_path, "r"));
-  EXPECT_TRUE(file) << "Key file not created";
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
+  EXPECT_TRUE(bio) << "Key file not created";
 }
 
 TEST_F(EcparamTest, EcparamToolConvFormTest) {
@@ -205,15 +206,15 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenStructureOpenSSL) {
   ASSERT_EQ(openssl_result, 0) << "OpenSSL key generation failed";
 
   // Both files should exist and contain valid EC private keys
-  ScopedFILE tool_file(fopen(key_path_tool, "r"));
-  ScopedFILE openssl_file(fopen(key_path_openssl, "r"));
-  ASSERT_TRUE(tool_file && openssl_file) << "Key files not created";
+  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
+  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
+  ASSERT_TRUE(tool_bio && openssl_bio) << "Key files not created";
 
   // Parse both keys
   bssl::UniquePtr<EVP_PKEY> tool_pkey(
-    PEM_read_PrivateKey(tool_file.get(), nullptr, nullptr, nullptr));
+    PEM_read_bio_PrivateKey(tool_bio.get(), nullptr, nullptr, nullptr));
   bssl::UniquePtr<EVP_PKEY> openssl_pkey(
-    PEM_read_PrivateKey(openssl_file.get(), nullptr, nullptr, nullptr));
+    PEM_read_bio_PrivateKey(openssl_bio.get(), nullptr, nullptr, nullptr));
 
   ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse generated keys";
   ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
@@ -242,14 +243,14 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenCompressedOpenSSL) {
   ASSERT_EQ(openssl_result, 0) << "OpenSSL compressed key generation failed";
 
   // Both should be valid keys
-  ScopedFILE tool_file(fopen(key_path_tool, "r"));
-  ScopedFILE openssl_file(fopen(key_path_openssl, "r"));
-  ASSERT_TRUE(tool_file && openssl_file);
+  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
+  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
+  ASSERT_TRUE(tool_bio && openssl_bio);
 
   bssl::UniquePtr<EVP_PKEY> tool_pkey(
-    PEM_read_PrivateKey(tool_file.get(), nullptr, nullptr, nullptr));
+    PEM_read_bio_PrivateKey(tool_bio.get(), nullptr, nullptr, nullptr));
   bssl::UniquePtr<EVP_PKEY> openssl_pkey(
-    PEM_read_PrivateKey(openssl_file.get(), nullptr, nullptr, nullptr));
+    PEM_read_bio_PrivateKey(openssl_bio.get(), nullptr, nullptr, nullptr));
 
   ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse compressed keys";
   ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
@@ -267,14 +268,14 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenUncompressedOpenSSL) {
   int openssl_result = system(openssl_command.c_str());
   ASSERT_EQ(openssl_result, 0) << "OpenSSL uncompressed key generation failed";
 
-  ScopedFILE tool_file(fopen(key_path_tool, "r"));
-  ScopedFILE openssl_file(fopen(key_path_openssl, "r"));
-  ASSERT_TRUE(tool_file && openssl_file);
+  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
+  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
+  ASSERT_TRUE(tool_bio && openssl_bio);
 
   bssl::UniquePtr<EVP_PKEY> tool_pkey(
-    PEM_read_PrivateKey(tool_file.get(), nullptr, nullptr, nullptr));
+    PEM_read_bio_PrivateKey(tool_bio.get(), nullptr, nullptr, nullptr));
   bssl::UniquePtr<EVP_PKEY> openssl_pkey(
-    PEM_read_PrivateKey(openssl_file.get(), nullptr, nullptr, nullptr));
+    PEM_read_bio_PrivateKey(openssl_bio.get(), nullptr, nullptr, nullptr));
 
   ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse uncompressed keys";
 }
@@ -291,14 +292,18 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenDEROpenSSL) {
   ASSERT_EQ(openssl_result, 0) << "OpenSSL DER key generation failed";
 
   // Both files should exist and be reasonable size for DER keys
-  ScopedFILE tool_file(fopen(key_path_tool, "rb"));
-  ScopedFILE openssl_file(fopen(key_path_openssl, "rb"));
-  ASSERT_TRUE(tool_file && openssl_file);
+  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "rb"));
+  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "rb"));
+  ASSERT_TRUE(tool_bio && openssl_bio);
 
-  fseek(tool_file.get(), 0, SEEK_END);
-  fseek(openssl_file.get(), 0, SEEK_END);
-  long tool_size = ftell(tool_file.get());
-  long openssl_size = ftell(openssl_file.get());
+  // Check file sizes using BIO
+  BIO_seek(tool_bio.get(), 0);
+  BIO_seek(openssl_bio.get(), 0);
+  
+  // Read entire files to check size
+  char buffer[1000];
+  int tool_size = BIO_read(tool_bio.get(), buffer, sizeof(buffer));
+  int openssl_size = BIO_read(openssl_bio.get(), buffer, sizeof(buffer));
 
   ASSERT_GT(tool_size, 50) << "AWS-LC DER key too small";
   ASSERT_GT(openssl_size, 50) << "OpenSSL DER key too small";
@@ -306,10 +311,10 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenDEROpenSSL) {
   ASSERT_LT(openssl_size, 500) << "OpenSSL DER key too large";
 
   // Parse DER keys to verify they're valid
-  rewind(tool_file.get());
-  rewind(openssl_file.get());
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_fp(tool_file.get(), nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(d2i_PrivateKey_fp(openssl_file.get(), nullptr));
+  BIO_seek(tool_bio.get(), 0);
+  BIO_seek(openssl_bio.get(), 0);
+  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_bio(tool_bio.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY> openssl_pkey(d2i_PrivateKey_bio(openssl_bio.get(), nullptr));
 
   ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse DER keys";
   ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
@@ -328,12 +333,12 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareCombinedOptionsOpenSSL) {
   ASSERT_EQ(openssl_result, 0) << "OpenSSL combined options failed";
 
   // Verify both files exist and contain valid DER keys
-  ScopedFILE tool_file(fopen(key_path_tool, "rb"));
-  ScopedFILE openssl_file(fopen(key_path_openssl, "rb"));
-  ASSERT_TRUE(tool_file && openssl_file);
+  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "rb"));
+  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "rb"));
+  ASSERT_TRUE(tool_bio && openssl_bio);
 
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_fp(tool_file.get(), nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(d2i_PrivateKey_fp(openssl_file.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_bio(tool_bio.get(), nullptr));
+  bssl::UniquePtr<EVP_PKEY> openssl_pkey(d2i_PrivateKey_bio(openssl_bio.get(), nullptr));
 
   ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse combined option keys";
   ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
