@@ -112,6 +112,28 @@ const char *mlkem_1024_pub_pem_str =
     "uYOILhF1\n"
     "-----END PUBLIC KEY-----\n";
 
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// C.1.1.1. ML-KEM-512 Private Key Examples: Seed Format
+const char *mlkem_512_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQBBEKAQAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.1.2.1. ML-KEM-768 Private Key Examples: Seed Format
+const char *mlkem_768_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQCBEKAQAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.1.3.1. ML-KEM-1024 Private Key Examples: Seed Format
+const char *mlkem_1024_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQDBEKAQAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
 const char *mlkem_512_priv_expanded_pem_str =
     "-----BEGIN PRIVATE KEY-----\n"
     "MIIGeAIBADALBglghkgBZQMEBAEEggZkBIIGYHBVT9Q2NE8nhbGzsbrBhLZnkAMz\n"
@@ -432,6 +454,7 @@ struct KEMTestVector {
   int nid;
   const char *public_pem_str;
   const char *private_pem_expanded_str;
+  const char *private_pem_seed_str;
   const char *expected_deterministic_pub_pem;
   const char *expected_deterministic_priv_pem;
   size_t public_key_len;
@@ -439,17 +462,17 @@ struct KEMTestVector {
 };
 
 static const KEMTestVector kemParameters[] = {
-    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 
-     mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str,
+     mlkem_512_seed_pem_str, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
     {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str,
-     mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
+     mlkem_768_seed_pem_str, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
     {NID_MLKEM1024, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str,
-     mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
+     mlkem_1024_seed_pem_str, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
     {NID_MLKEM512, bouncy_castle_mlkem_512_pub_pem_str,
-     bouncy_castle_mlkem_512_priv_expanded_pem_str, 
+     bouncy_castle_mlkem_512_priv_expanded_pem_str, nullptr, 
      mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
     {NID_MLKEM768, bouncy_castle_mlkem_768_pub_pem_str,
-     bouncy_castle_mlkem_768_priv_expanded_str,
+     bouncy_castle_mlkem_768_priv_expanded_str, nullptr,
      mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
 };
 
@@ -831,3 +854,38 @@ TEST_P(KEMTest, ASN1_Methods_Cross_Compatibility) {
             Bytes(decoded_priv_from_marshal->pkey.kem_key->secret_key, test.secret_key_len));
 }
 
+TEST_P(KEMTest, ParsePrivateKeySeed) {
+  // Skip BouncyCastle entries and only test vectors from IETF standard
+  if (GetParam().public_pem_str == bouncy_castle_mlkem_512_pub_pem_str ||
+      GetParam().public_pem_str == bouncy_castle_mlkem_768_pub_pem_str) {
+    return;
+  }
+  // ---- 1. Setup phase: parse provided public/private from PEM strings ----
+  CBS cbs_pub, cbs_priv;
+  uint8_t *der_pub = nullptr, *der_priv = nullptr;
+  long der_pub_len = 0, der_priv_len = 0;
+
+  ASSERT_TRUE(PEM_to_DER(GetParam().public_pem_str, &der_pub, &der_pub_len));
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_seed_str, &der_priv, &der_priv_len));
+
+  CBS_init(&cbs_pub, der_pub, der_pub_len);
+  CBS_init(&cbs_priv, der_priv, der_priv_len);
+
+  // ---- 2. Attempt to parse private key ----
+  bssl::UniquePtr<EVP_PKEY> pkey1(EVP_parse_private_key(&cbs_priv));
+  ASSERT_TRUE(pkey1);
+
+  // ---- 3. Attempt to parse public key ----
+  bssl::UniquePtr<EVP_PKEY> pkey2(EVP_parse_public_key(&cbs_pub));
+  ASSERT_TRUE(pkey2);
+
+  // ---- 4. Compare public keys ----
+  // EVP_parse_private_key will populate both public and private key, we verify
+  // that the public key calculated by EVP_parse_private_key is equivalent to
+  // the public key that was parsed from PEM.
+  ASSERT_EQ(1, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
+
+  // Clean up
+  OPENSSL_free(der_pub);
+  OPENSSL_free(der_priv);
+}
