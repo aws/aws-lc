@@ -10,6 +10,13 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
+// Test constants for better maintainability
+namespace {
+  constexpr const char* FORMAT_DER_STR = "DER";
+  constexpr const char* CONV_FORM_COMPRESSED = "compressed";
+  constexpr const char* CURVE_PRIME256V1 = "prime256v1";
+}
+
 // -------------------- Basic Ecparam Tests ------------------------------------
 
 class EcparamTest : public ::testing::Test {
@@ -30,19 +37,19 @@ protected:
 
 // Test basic functionality
 TEST_F(EcparamTest, EcparamToolBasicTest) {
-  args_list_t args = {"-name", "prime256v1"};
+  args_list_t args = {"-name", CURVE_PRIME256V1};
   
   EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
 }
 
 TEST_F(EcparamTest, EcparamToolNooutTest) {
-  args_list_t args = {"-name", "prime256v1", "-noout"};
+  args_list_t args = {"-name", CURVE_PRIME256V1, "-noout"};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -noout failed";
 }
 
 TEST_F(EcparamTest, EcparamToolGenkeyTest) {
-  args_list_t args = {"-name", "prime256v1", "-genkey", "-out", out_path};
+  args_list_t args = {"-name", CURVE_PRIME256V1, "-genkey", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
   
@@ -52,13 +59,13 @@ TEST_F(EcparamTest, EcparamToolGenkeyTest) {
 }
 
 TEST_F(EcparamTest, EcparamToolConvFormTest) {
-  args_list_t args = {"-name", "prime256v1", "-genkey", "-conv_form", "compressed", "-out", out_path};
+  args_list_t args = {"-name", CURVE_PRIME256V1, "-genkey", "-conv_form", CONV_FORM_COMPRESSED, "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -conv_form failed";
 }
 
 TEST_F(EcparamTest, EcparamToolOutformTest) {
-  args_list_t args = {"-name", "prime256v1", "-outform", "DER", "-out", out_path};
+  args_list_t args = {"-name", CURVE_PRIME256V1, "-outform", FORMAT_DER_STR, "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -outform failed";
 }
@@ -77,12 +84,12 @@ TEST_F(EcparamOptionUsageErrorsTest, InvalidCurveTest) {
 }
 
 TEST_F(EcparamOptionUsageErrorsTest, InvalidConvFormTest) {
-  args_list_t args = {"-name", "prime256v1", "-conv_form", "invalid"};
+  args_list_t args = {"-name", CURVE_PRIME256V1, "-conv_form", "invalid"};
   TestOptionUsageErrors(args);
 }
 
 TEST_F(EcparamOptionUsageErrorsTest, InvalidOutformTest) {
-  args_list_t args = {"-name", "prime256v1", "-outform", "INVALID"};
+  args_list_t args = {"-name", CURVE_PRIME256V1, "-outform", "INVALID"};
   TestOptionUsageErrors(args);
 }
 
