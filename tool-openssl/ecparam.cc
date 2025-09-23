@@ -136,35 +136,15 @@ bool ecparamTool(const args_list_t &args) {
   }
 
   if (genkey) {
-    // Generate EC key using high-level EVP APIs
-    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-    if (!ctx) {
-      fprintf(stderr, "Failed to create key generation context\n");
-      goto err;
-    }
-    
-    if (EVP_PKEY_keygen_init(ctx.get()) <= 0) {
-      fprintf(stderr, "Failed to initialize key generation\n");
-      goto err;
-    }
-    
-    if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), nid) <= 0) {
-      fprintf(stderr, "Failed to set curve for key generation\n");
-      goto err;
-    }
-    
-    bssl::UniquePtr<EVP_PKEY> pkey;
-    EVP_PKEY* pkey_raw = nullptr;
-    if (EVP_PKEY_keygen(ctx.get(), &pkey_raw) <= 0) {
-      fprintf(stderr, "Failed to generate EC key\n");
-      goto err;
-    }
-    pkey.reset(pkey_raw);
-    
-    // Get the EC_KEY for setting conversion form
-    eckey.reset(EVP_PKEY_get1_EC_KEY(pkey.get()));
+    // Generate EC key using direct EC_KEY API
+    eckey.reset(EC_KEY_new_by_curve_name(nid));
     if (!eckey) {
-      fprintf(stderr, "Failed to extract EC key from generated key\n");
+      fprintf(stderr, "Failed to create EC key for curve\n");
+      goto err;
+    }
+    
+    if (!EC_KEY_generate_key(eckey.get())) {
+      fprintf(stderr, "Failed to generate EC key\n");
       goto err;
     }
     
