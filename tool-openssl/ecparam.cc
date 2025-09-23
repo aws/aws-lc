@@ -8,8 +8,35 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
-#define FORMAT_PEM 1
-#define FORMAT_DER 2
+enum class OutputFormat {
+  PEM = 1,
+  DER = 2
+};
+
+enum class PointConversionForm {
+  UNCOMPRESSED = POINT_CONVERSION_UNCOMPRESSED,
+  COMPRESSED = POINT_CONVERSION_COMPRESSED
+};
+
+static OutputFormat ParseOutputFormat(const std::string &format_str) {
+  if (isStringUpperCaseEqual(format_str, "DER")) {
+    return OutputFormat::DER;
+  } else if (isStringUpperCaseEqual(format_str, "PEM")) {
+    return OutputFormat::PEM;
+  }
+  // Invalid format will be handled by caller
+  return OutputFormat::PEM; // default
+}
+
+static PointConversionForm ParsePointConversionForm(const std::string &form_str) {
+  if (form_str == "compressed") {
+    return PointConversionForm::COMPRESSED;
+  } else if (form_str == "uncompressed") {
+    return PointConversionForm::UNCOMPRESSED;
+  }
+  // Invalid form will be handled by caller
+  return PointConversionForm::UNCOMPRESSED; // default
+}
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
@@ -41,8 +68,8 @@ bool ecparamTool(const args_list_t &args) {
   bool ret = false;
   std::string curve_name, out_path, outform, conv_form;
   bool noout = false, genkey = false;
-  point_conversion_form_t form = POINT_CONVERSION_UNCOMPRESSED;
-  int outformat = FORMAT_PEM;
+  PointConversionForm point_form = PointConversionForm::UNCOMPRESSED;
+  OutputFormat output_format = OutputFormat::PEM;
   int nid = NID_undef;
   bssl::UniquePtr<EC_GROUP> group;
   bssl::UniquePtr<EC_KEY> eckey;
@@ -62,10 +89,8 @@ bool ecparamTool(const args_list_t &args) {
 
   // Parse output format
   if (!outform.empty()) {
-    if (isStringUpperCaseEqual(outform, "DER")) {
-      outformat = FORMAT_DER;
-    } else if (isStringUpperCaseEqual(outform, "PEM")) {
-      outformat = FORMAT_PEM;
+    if (isStringUpperCaseEqual(outform, "DER") || isStringUpperCaseEqual(outform, "PEM")) {
+      output_format = ParseOutputFormat(outform);
     } else {
       fprintf(stderr, "Invalid output format: %s\n", outform.c_str());
       goto err;
@@ -74,10 +99,8 @@ bool ecparamTool(const args_list_t &args) {
 
   // Parse point conversion form
   if (!conv_form.empty()) {
-    if (conv_form == "compressed") {
-      form = POINT_CONVERSION_COMPRESSED;
-    } else if (conv_form == "uncompressed") {
-      form = POINT_CONVERSION_UNCOMPRESSED;
+    if (conv_form == "compressed" || conv_form == "uncompressed") {
+      point_form = ParsePointConversionForm(conv_form);
     } else {
       fprintf(stderr, "Invalid point conversion form: %s\n", conv_form.c_str());
       goto err;
@@ -105,7 +128,7 @@ bool ecparamTool(const args_list_t &args) {
   if (out_path.empty()) {
     out_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
-    out_bio.reset(BIO_new_file(out_path.c_str(), outformat == FORMAT_DER ? "wb" : "w"));
+    out_bio.reset(BIO_new_file(out_path.c_str(), output_format == OutputFormat::DER ? "wb" : "w"));
   }
   if (!out_bio) {
     fprintf(stderr, "Error opening output\n");
@@ -141,10 +164,10 @@ bool ecparamTool(const args_list_t &args) {
     }
     
     // Set point conversion form on the key
-    EC_KEY_set_conv_form(eckey.get(), form);
+    EC_KEY_set_conv_form(eckey.get(), static_cast<point_conversion_form_t>(point_form));
     
     if (!noout) {
-      if (outformat == FORMAT_PEM) {
+      if (output_format == OutputFormat::PEM) {
         if (!PEM_write_bio_ECPrivateKey(out_bio.get(), eckey.get(), nullptr, nullptr, 0, nullptr, nullptr)) {
           goto err;
         }
@@ -157,7 +180,7 @@ bool ecparamTool(const args_list_t &args) {
   } else {
     // Output parameters
     if (!noout) {
-      if (outformat == FORMAT_PEM) {
+      if (output_format == OutputFormat::PEM) {
         if (!PEM_write_bio_ECPKParameters(out_bio.get(), group.get())) {
           goto err;
         }
