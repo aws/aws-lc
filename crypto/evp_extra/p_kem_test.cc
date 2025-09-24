@@ -134,6 +134,13 @@ const char *mlkem_1024_seed_pem_str =
     "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
     "-----END PRIVATE KEY-----\n";
 
+// malformed key (63 byte seed)
+const char *mlkem_512_bad_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFMCAQAwCwYJYIZIAWUDBAQBBEGAPwABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pg==\n"
+    "-----END PRIVATE KEY-----\n";
+
 const char *mlkem_512_priv_expanded_pem_str =
     "-----BEGIN PRIVATE KEY-----\n"
     "MIIGeAIBADALBglghkgBZQMEBAEEggZkBIIGYHBVT9Q2NE8nhbGzsbrBhLZnkAMz\n"
@@ -887,5 +894,29 @@ TEST_P(KEMTest, ParsePrivateKeySeed) {
 
   // Clean up
   OPENSSL_free(der_pub);
+  OPENSSL_free(der_priv);
+}
+
+TEST(KEMTest, InvalidSeedLength) {
+  // Test malformed ML-KEM-512 private key with 63-byte seed instead of 64
+  // This should fail with EVP_R_INVALID_BUFFER_SIZE when kem_priv_decode
+  // calls KEM_KEY_set_raw_keypair_from_seed
+  
+  uint8_t *der_priv = nullptr;
+  long der_priv_len = 0;
+  
+  ASSERT_TRUE(PEM_to_DER(mlkem_512_bad_seed_pem_str, &der_priv, &der_priv_len));
+  
+  CBS cbs_priv;
+  CBS_init(&cbs_priv, der_priv, der_priv_len);
+  
+  // This should fail because the seed is only 63 bytes instead of 64
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs_priv));
+  ASSERT_FALSE(pkey);
+  
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err), EVP_R_INVALID_BUFFER_SIZE);
+  
   OPENSSL_free(der_priv);
 }
