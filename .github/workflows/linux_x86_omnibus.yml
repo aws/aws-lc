@@ -214,13 +214,12 @@ jobs:
           options: --privileged
 
   valgrind:
-    name: valgrind-${{ matrix.image }}
+    name: valgrind
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:large
         buildspec-override:true
-          - amazonlinux-2023_gcc-11x_latest
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
     steps:
