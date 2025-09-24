@@ -61,13 +61,12 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - amazonlinux-2_gcc-7x_latest
           - amazonlinux-2_clang-7x_latest
-          - amazonlinux-2023_gcc-11x_latest
+          - amazonlinux-2_gcc-7x_latest
           - amazonlinux-2023_clang-15x_latest
+          - amazonlinux-2023_gcc-11x_latest
           - centos-7_gcc-4x_latest
           - centos-8_gcc-8x_latest
-          - fedora-31_clang-9x_latest
           - ubuntu-18.04_clang-6x_latest
           - ubuntu-18.04_gcc-7x_latest
           - ubuntu-20.04_clang-7x_latest
@@ -79,12 +78,14 @@ jobs:
           - ubuntu-22.04_gcc-10x_latest
           - ubuntu-22.04_gcc-11x_latest
           - ubuntu-22.04_gcc-12x_latest
+        build32: [0] 
         include:
           - image: centos-7_gcc-4x_latest
             build32: 1
           - image: fedora-31_clang-9x_latest
             cc: clang-9
             cxx: clang++-9
+            build32: 0
           - image: ubuntu-16.04_gcc-5x_latest
             build32: 1
     steps:
@@ -118,13 +119,12 @@ jobs:
         image:
           - amazonlinux-2_clang-7x_latest
           - amazonlinux-2_gcc-7x_latest
-          - amazonlinux-2023_gcc-11x_latest
           - amazonlinux-2023_clang-15x_latest
+          - amazonlinux-2023_gcc-11x_latest
           - centos-7_gcc-4x_latest
           - centos-8_gcc-8x_latest
           - ubuntu-18.04_clang-6x_latest
           - ubuntu-18.04_gcc-7x_latest
-          - ubuntu-20.04_clang-7x_latest
           - ubuntu-20.04_clang-8x_latest
           - ubuntu-20.04_clang-9x_latest
           - ubuntu-20.04_clang-10x_latest
@@ -176,50 +176,40 @@ jobs:
           run: ./tests/ci/run_prefix_tests.sh
 
   sde_tests:
-    name: sde-tests-${{ matrix.image }}
+    name: sde-tests
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:2xlarge
         buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - amazonlinux-2_gcc-7x_intel-sde_latest
     steps:
       - uses: actions/checkout@v5
       - name: Get ECR Repoistory URL
         id: ecr
         run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
+        name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2_gcc-7x_intel-sde_latest
           run: ./tests/ci/run_tests_with_sde.sh
           options: --privileged
 
   asan_sde_tests:
-    name: asan-sde-tests-${{ matrix.image }}
+    name: asan-sde-tests
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:2xlarge
         buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - ubuntu-22.04_clang-14x-sde_latest
     steps:
       - uses: actions/checkout@v5
       - name: Get ECR Repoistory URL
         id: ecr
         run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
+        name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:ubuntu-22.04_clang-14x-sde_latest
           run: ./tests/ci/run_tests_with_sde_asan.sh
           options: --privileged
 
@@ -230,10 +220,6 @@ jobs:
         image:linux-5.0
         instance-size:large
         buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
           - amazonlinux-2023_gcc-11x_latest
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
@@ -243,9 +229,9 @@ jobs:
         id: ecr
         run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
+        name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:amazonlinux-2023_gcc-11x_latest
           env: |
             AWS_LC_GO_TEST_TIMEOUT
           run: ./tests/ci/run_valgrind_tests.sh
