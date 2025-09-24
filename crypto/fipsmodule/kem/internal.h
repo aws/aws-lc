@@ -98,6 +98,14 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in);
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
                                       const uint8_t *in_secret);
 
+// KEM_check_key function validates a KEM key pair using the ML-KEM specific
+// validation functions crypto_kem_check_pk and crypto_kem_check_sk.
+// When ML-KEM is used as the KEM, it performs modulus check for the public
+// key and hash check for the secret key as mandated by FIPS 203.
+//
+// Returns 1 on success, 0 on failure.
+int KEM_check_key(const KEM_KEY *key);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

@@ -394,3 +394,54 @@ int ml_kem_common_decapsulate(int (*decapsulate)(uint8_t *shared_secret, const u
   set_written_len_on_success(res, shared_secret);
   return res;
 }
+
+// ML-KEM key validation functions
+// These functions perform FIPS 203 compliant validation of ML-KEM public and secret keys
+
+int ml_kem_512_check_pk(const uint8_t *public_key) {
+  if (public_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-512 check function
+  return mlkem512_check_pk(public_key);
+}
+
+int ml_kem_512_check_sk(const uint8_t *secret_key) {
+  if (secret_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-512 check function
+  return mlkem512_check_sk(secret_key);
+}
+
+int ml_kem_768_check_pk(const uint8_t *public_key) {
+  if (public_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-768 check function
+  return mlkem768_check_pk(public_key);
+}
+
+int ml_kem_768_check_sk(const uint8_t *secret_key) {
+  if (secret_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-768 check function
+  return mlkem768_check_sk(secret_key);
+}
+
+int ml_kem_1024_check_pk(const uint8_t *public_key) {
+  if (public_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-1024 check function
+  return mlkem1024_check_pk(public_key);
+}
+
+int ml_kem_1024_check_sk(const uint8_t *secret_key) {
+  if (secret_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-1024 check function
+  return mlkem1024_check_sk(secret_key);
+}
