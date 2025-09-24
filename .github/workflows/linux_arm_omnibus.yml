@@ -315,6 +315,7 @@ jobs:
           image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_sanitizer_latest
           env: |
             AWS_LC_GO_TEST_TIMEOUT
+          options: --privileged
           run: ./tests/ci/run_posix_sanitizers.sh
 
   # Build and test aws-lc without Perl/Go.
