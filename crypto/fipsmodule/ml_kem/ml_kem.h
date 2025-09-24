@@ -176,14 +176,14 @@ int ml_kem_1024_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
                                          const uint8_t *secret_key /* IN  */);
 
 // ML-KEM key validation functions
-OPENSSL_EXPORT int ml_kem_512_check_pk(const uint8_t *public_key /* IN */);
-OPENSSL_EXPORT int ml_kem_512_check_sk(const uint8_t *secret_key /* IN */);
+int ml_kem_512_check_pk(const uint8_t *public_key /* IN */);
+int ml_kem_512_check_sk(const uint8_t *secret_key /* IN */);
 
-OPENSSL_EXPORT int ml_kem_768_check_pk(const uint8_t *public_key /* IN */);
-OPENSSL_EXPORT int ml_kem_768_check_sk(const uint8_t *secret_key /* IN */);
+int ml_kem_768_check_pk(const uint8_t *public_key /* IN */);
+int ml_kem_768_check_sk(const uint8_t *secret_key /* IN */);
 
-OPENSSL_EXPORT int ml_kem_1024_check_pk(const uint8_t *public_key /* IN */);
-OPENSSL_EXPORT int ml_kem_1024_check_sk(const uint8_t *secret_key /* IN */);
+int ml_kem_1024_check_pk(const uint8_t *public_key /* IN */);
+int ml_kem_1024_check_sk(const uint8_t *secret_key /* IN */);
 
 #if defined(__cplusplus)
 }
