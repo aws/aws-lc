@@ -21,6 +21,7 @@ list(APPEND ANDROID_TEST_CASES "crypto_test")
 list(APPEND ANDROID_TEST_CASES "urandom_test")
 list(APPEND ANDROID_TEST_CASES "ssl_test")
 
+
 # Generate Kotlin test classes
 get_filename_component(testrunner_path "../../androidTest/java/software/amazon/aws/crypto/awslcandroidtestrunner" REALPATH)
 foreach(name IN LISTS ANDROID_TEST_CASES)

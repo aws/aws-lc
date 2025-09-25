@@ -64,6 +64,7 @@ android {
                 if (!cmake_args.isEmpty()) {
                     arguments cmake_args.split(',')
                 }
+                targets "all_tests"
                 abiFilters specific_abis.split(',')
             }
         }
