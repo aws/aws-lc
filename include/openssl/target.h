@@ -116,6 +116,20 @@
     !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC) && \
     !defined(CROS_EC) && !defined(CROS_ZEPHYR)
 #define OPENSSL_LINUX
+#if defined(_GNU_SOURCE)
+#define GNU_SOURCE_IS_DEFINED
+#else
+#define _GNU_SOURCE
+#endif
+#include <features.h>
+#if !defined(__GLIBC__) && !defined(__USE_GNU)
+// MUSL does not provide an explicit macro for detection.
+// If it's not GLIBC (checked via __GLIBC__ or __USE_GNU), we assume MUSL.
+#define OPENSSL_LINUX_MUSL
+#endif
+#if !defined(GNU_SOURCE_IS_DEFINED)
+#undef _GNU_SOURCE
+#endif
 #endif
 
 // nanolibc is a particular minimal libc implementation. Defining this on any
