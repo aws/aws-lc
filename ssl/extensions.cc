@@ -312,6 +312,10 @@ static const uint16_t kDefaultGroups[] = {
     SSL_GROUP_SECP384R1,
 };
 
+Span<const uint16_t> tls1_get_default_grouplist(void) {
+  return Span<const uint16_t>(kDefaultGroups);
+}
+
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *hs) {
   if (!hs->config->supported_group_list.empty()) {
     return hs->config->supported_group_list;
