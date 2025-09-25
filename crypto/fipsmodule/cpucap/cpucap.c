@@ -94,6 +94,12 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 HIDDEN uint8_t BORINGSSL_function_hit[15] = {0};
 #endif // BORINGSSL_DISPATCH_TEST
 
+void log_dispatch(size_t id) {
+#if BORINGSSL_DISPATCH_TEST
+  BORINGSSL_function_hit[id] = 1;
+#endif
+}
+
 // This variable is used only for testing purposes to ensure that the library
 // constructor is executed and the capability variable is initialized.
 HIDDEN uint8_t OPENSSL_cpucap_initialized = 0;

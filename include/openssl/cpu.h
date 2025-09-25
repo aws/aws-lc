@@ -14,5 +14,12 @@
 
 // This header is provided for compatibility with older revisions of BoringSSL.
 // TODO(davidben): Remove this header.
+#ifndef OPENSSL_HEADER_CPU_H
+#define OPENSSL_HEADER_CPU_H
 
 #include "crypto.h"
+
+__attribute__((unused))
+void log_dispatch(size_t id);
+
+#endif // OPENSSL_HEADER_CPU_H
