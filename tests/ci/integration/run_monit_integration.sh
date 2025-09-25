@@ -12,14 +12,14 @@ MONIT_VERSION_TAG="release-5-33-0"
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - monit
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - MONIT_BUILD_FOLDER
+#  - SCRATCH_FOLDER
+#    - monit
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - MONIT_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/MONIT_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/MONIT_BUILD_ROOT"
 MONIT_SRC_FOLDER="${SCRATCH_FOLDER}/monit"
 MONIT_BUILD_FOLDER="${SCRATCH_FOLDER}/monit-aws-lc"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
