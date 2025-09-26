@@ -31,7 +31,7 @@
 #include <unistd.h>
 
 #if defined(OPENSSL_LINUX)
-#if !defined(AWS_LC_URANDOM_U32)
+#if defined(AWS_LC_URANDOM_NEEDS_U32)
   // On old Linux OS: unknown type name '__u32' when include <linux/random.h>.
   // If '__u32' is predefined, redefine will cause compiler error.
   typedef unsigned int __u32;
