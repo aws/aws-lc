@@ -38,6 +38,41 @@ static PointConversionForm ParsePointConversionForm(const std::string &form_str)
   return PointConversionForm::UNCOMPRESSED; // default
 }
 
+static bool ValidateECCurve(const std::string& curve_name, int* out_nid = nullptr, bool print_supported = true) {
+    int nid = OBJ_sn2nid(curve_name.c_str());
+    if (nid == NID_undef) {
+        nid = EC_curve_nist2nid(curve_name.c_str());
+    }
+
+    if (nid == NID_undef) {
+        if (print_supported) {
+            fprintf(stderr, "unknown curve name (%s)\n", curve_name.c_str());
+
+            size_t num_curves = EC_get_builtin_curves(nullptr, 0);
+            std::vector<EC_builtin_curve> curves(num_curves);
+            EC_get_builtin_curves(curves.data(), num_curves);
+
+            fprintf(stderr, "Supported curves:\n");
+            for (const auto& curve : curves) {
+                const char* nist_name = EC_curve_nid2nist(curve.nid);
+                const char* sn = OBJ_nid2sn(curve.nid);
+
+                if (nist_name) {
+                    fprintf(stderr, "  %s (%s) - %s\n", sn, nist_name, curve.comment);
+                } else {
+                    fprintf(stderr, "  %s - %s\n", sn, curve.comment);
+                }
+            }
+        }
+        return false;
+    }
+
+    if (out_nid) {
+        *out_nid = nid;
+    }
+    return true;
+}
+
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "-name", kOptionalArgument, "Use the ec parameters with specified 'short name'" },
@@ -107,17 +142,11 @@ bool ecparamTool(const args_list_t &args) {
     }
   }
 
-  // Get curve NID
-  nid = OBJ_sn2nid(curve_name.c_str());
-  if (nid == NID_undef) {
-    nid = EC_curve_nist2nid(curve_name.c_str());
-  }
-  if (nid == NID_undef) {
-    fprintf(stderr, "Unknown curve: %s\n", curve_name.c_str());
+  // Validate curve name and get NID
+  if (!ValidateECCurve(curve_name, &nid)) {
     goto err;
   }
 
-  // Create EC group
   group.reset(EC_GROUP_new_by_curve_name(nid));
   if (!group) {
     fprintf(stderr, "Failed to create EC group\n");
