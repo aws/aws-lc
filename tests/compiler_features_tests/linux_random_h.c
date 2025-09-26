@@ -9,6 +9,9 @@
 // /usr/include/linux/random.h:38:2: error: unknown type name '__u32'
 // __u32 buf[0];
 // ^
+#if defined(DEFINE_U32)
+typedef unsigned int __u32;
+#endif
 #include <linux/random.h>
 #include <stdlib.h>
 

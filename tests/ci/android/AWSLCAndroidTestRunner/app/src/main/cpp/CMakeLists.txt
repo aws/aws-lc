@@ -3,11 +3,10 @@
 
 # Sets the minimum version of CMake required to build the native library.
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.10)
 
 # AWS lib
-set(path_to_awslc "${CMAKE_CURRENT_LIST_DIR}/../../../../../../../../")
-get_filename_component(path_to_awslc ${path_to_awslc} ABSOLUTE)
+get_filename_component(path_to_awslc "${CMAKE_CURRENT_LIST_DIR}/../../../../../../../../" REALPATH)
 
 list(APPEND CMAKE_MODULE_PATH $<TARGET_FILE:crypto>)
 set(ANDROIDTESTRUNNER ON)
@@ -22,8 +21,9 @@ list(APPEND ANDROID_TEST_CASES "crypto_test")
 list(APPEND ANDROID_TEST_CASES "urandom_test")
 list(APPEND ANDROID_TEST_CASES "ssl_test")
 
+
 # Generate Kotlin test classes
-get_filename_component(testrunner_path "../../androidTest/java/software/amazon/aws/crypto/awslcandroidtestrunner" ABSOLUTE)
+get_filename_component(testrunner_path "../../androidTest/java/software/amazon/aws/crypto/awslcandroidtestrunner" REALPATH)
 foreach(name IN LISTS ANDROID_TEST_CASES)
     set(TEST_NAME "${name}")
     configure_file(
@@ -31,6 +31,4 @@ foreach(name IN LISTS ANDROID_TEST_CASES)
         "${testrunner_path}/tests/NativeTest_${name}.kt"
         @ONLY
     )
-endforeach() 
-
-
+endforeach()

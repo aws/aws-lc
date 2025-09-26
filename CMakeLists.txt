@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.61.2")
+set(SOFTWARE_VERSION "1.61.4")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -569,11 +569,16 @@ if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
+  check_compiler("linux_random_h.c" HAVE_LINUX_RANDOM_H)
+  if(NOT HAVE_LINUX_RANDOM_H)
+    check_compiler("linux_random_h.c" AWS_LC_URANDOM_NEEDS_U32 "-DDEFINE_U32")
+    if(AWS_LC_URANDOM_NEEDS_U32)
+      add_definitions("-DHAVE_LINUX_RANDOM_H")
+    endif()
+  endif()
+
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
-  endif()
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST

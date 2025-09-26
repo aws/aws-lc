@@ -13,7 +13,7 @@ env:
   SDE_VERSION_TAG: sde-external-9.44.0-2024-08-22-win
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
-  AWSLC_NO_ASM_FIPS: 1
+  AWSLC_ENABLE_FIPS_ASAN: 1
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
@@ -276,6 +276,37 @@ jobs:
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
+
+  musl-tests:
+    name: musl - ${{ matrix.config.arch }}
+    needs: [sanity-test-run]
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      GOFLAGS: "-buildvcs=false"
+      CC: musl-gcc
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { host: 'ubuntu-latest', arch: 'x86_64' }
+          - { host: 'ubuntu-24.04-arm', arch: 'aarch64' }
+    runs-on: ${{ matrix.config.host }}
+    container:
+      image: rust:latest
+      options: "--platform linux/${{ (matrix.config.arch == 'aarch64' && 'arm64/v8') || 'amd64'}}"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - run: |
+          set -x
+          apt-get update
+          apt-get install -y cmake musl-tools musl-dev ninja-build
+      - name: Setup Build
+        run: cmake -GNinja -B ./build -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON -DBUILD_TESTING=OFF -DBUILD_LIBSSL=OFF
+      - name: Build Project
+        run: cmake --build ./build --target crypto
 
   arm-gcc-tests:
     if: github.repository_owner == 'aws'
