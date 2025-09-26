@@ -570,11 +570,15 @@ if(GCC OR CLANG)
   endif()
 
   check_compiler("linux_random_h.c" HAVE_LINUX_RANDOM_H)
+  if(NOT HAVE_LINUX_RANDOM_H)
+    check_compiler("linux_random_h.c" AWS_LC_URANDOM_NEEDS_U32 "-DDEFINE_U32")
+    if(AWS_LC_URANDOM_NEEDS_U32)
+      add_definitions("-DHAVE_LINUX_RANDOM_H")
+    endif()
+  endif()
+
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
-  endif()
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
