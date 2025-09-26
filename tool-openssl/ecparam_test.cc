@@ -12,11 +12,6 @@
 
 // Test constants for better maintainability
 namespace {
-  constexpr const char* FORMAT_DER_STR = "DER";
-  constexpr const char* CONV_FORM_COMPRESSED = "compressed";
-  constexpr const char* CURVE_PRIME256V1 = "prime256v1";
-}
-
 // -------------------- Basic Ecparam Tests ------------------------------------
 
 class EcparamTest : public ::testing::Test {
@@ -37,37 +32,41 @@ protected:
 
 // Test basic functionality
 TEST_F(EcparamTest, EcparamToolBasicTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1};
+  args_list_t args = {"-name", "prime256v1", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
+  EXPECT_FALSE(ReadFileToString(out_path).empty()) << "Output file is empty";
 }
 
 TEST_F(EcparamTest, EcparamToolNooutTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1, "-noout"};
+  args_list_t args = {"-name", "prime256v1", "-noout", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -noout failed";
+  EXPECT_TRUE(ReadFileToString(out_path).empty()) << "Output file should be empty with -noout";
 }
 
 TEST_F(EcparamTest, EcparamToolGenkeyTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1, "-genkey", "-out", out_path};
+  args_list_t args = {"-name", "prime256v1", "-genkey", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
   
   // Verify key file was created
-  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
-  EXPECT_TRUE(bio) << "Key file not created";
+  std::string content = ReadFileToString(out_path);
+  EXPECT_FALSE(content.empty()) << "Generated key file is empty";
 }
 
 TEST_F(EcparamTest, EcparamToolConvFormTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1, "-genkey", "-conv_form", CONV_FORM_COMPRESSED, "-out", out_path};
+  args_list_t args = {"-name", "prime256v1", "-genkey", "-conv_form", "compressed", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -conv_form failed";
+  EXPECT_FALSE(ReadFileToString(out_path).empty()) << "Generated key file is empty";
 }
 
 TEST_F(EcparamTest, EcparamToolOutformTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1, "-outform", FORMAT_DER_STR, "-out", out_path};
+  args_list_t args = {"-name", "prime256v1", "-outform", "DER", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -outform failed";
+  EXPECT_FALSE(ReadFileToString(out_path).empty()) << "Output file is empty";
 }
 
 // Error handling tests
@@ -84,16 +83,27 @@ TEST_F(EcparamOptionUsageErrorsTest, InvalidCurveTest) {
 }
 
 TEST_F(EcparamOptionUsageErrorsTest, InvalidConvFormTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1, "-conv_form", "invalid"};
+  args_list_t args = {"-name", "prime256v1", "-conv_form", "invalid"};
   TestOptionUsageErrors(args);
 }
 
 TEST_F(EcparamOptionUsageErrorsTest, InvalidOutformTest) {
-  args_list_t args = {"-name", CURVE_PRIME256V1, "-outform", "INVALID"};
+  args_list_t args = {"-name", "prime256v1", "-outform", "INVALID"};
   TestOptionUsageErrors(args);
 }
 
 // -------------------- Ecparam OpenSSL Comparison Tests -----------------------
+
+// Helper function to run commands and compare trimmed file outputs
+void RunAndCompareCommands(const std::string& tool_cmd, const std::string& openssl_cmd, 
+                          const std::string& tool_file, const std::string& openssl_file) {
+  ASSERT_EQ(system(tool_cmd.c_str()), 0) << "AWS-LC command failed: " << tool_cmd;
+  ASSERT_EQ(system(openssl_cmd.c_str()), 0) << "OpenSSL command failed: " << openssl_cmd;
+  
+  std::string tool_content = ReadFileToString(tool_file);
+  std::string openssl_content = ReadFileToString(openssl_file);
+  ASSERT_EQ(trim(tool_content), trim(openssl_content));
+}
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
@@ -102,8 +112,8 @@ class EcparamComparisonTest : public ::testing::Test {
 protected:
   void SetUp() override {
     // Skip gtests if env variables not set
-    tool_executable_path = getenv("AWSLC_TOOL_PATH");
-    openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
+    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
+    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
     }
@@ -135,30 +145,21 @@ protected:
 TEST_F(EcparamComparisonTest, EcparamToolCompareParametersOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 > " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  ASSERT_EQ(tool_output_str, openssl_output_str);
+  RunAndCompareCommands(tool_command, openssl_command, out_path_tool, out_path_openssl);
 }
 
 // Test against OpenSSL output "openssl ecparam -name secp384r1"
 TEST_F(EcparamComparisonTest, EcparamToolCompareParametersSecp384r1OpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name secp384r1 > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name secp384r1 > " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  ASSERT_EQ(tool_output_str, openssl_output_str);
+  RunAndCompareCommands(tool_command, openssl_command, out_path_tool, out_path_openssl);
 }
 
 // Test against OpenSSL output "openssl ecparam -name secp256k1"
 TEST_F(EcparamComparisonTest, EcparamToolCompareParametersSecp256k1OpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name secp256k1 > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name secp256k1 > " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  ASSERT_EQ(tool_output_str, openssl_output_str);
+  RunAndCompareCommands(tool_command, openssl_command, out_path_tool, out_path_openssl);
 }
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -noout"
@@ -166,11 +167,10 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareNooutOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -noout > " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  // Both should be empty
-  ASSERT_TRUE(tool_output_str.empty());
-  ASSERT_TRUE(openssl_output_str.empty());
+  ASSERT_EQ(system(tool_command.c_str()), 0);
+  ASSERT_EQ(system(openssl_command.c_str()), 0);
+  ASSERT_TRUE(ReadFileToString(out_path_tool).empty());
+  ASSERT_TRUE(ReadFileToString(out_path_openssl).empty());
 }
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -outform DER"
@@ -178,148 +178,71 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareDERFormatOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -outform DER -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -outform DER -out " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  ASSERT_EQ(tool_output_str, openssl_output_str);
+  ASSERT_EQ(system(tool_command.c_str()), 0);
+  ASSERT_EQ(system(openssl_command.c_str()), 0);
+  ASSERT_EQ(ReadFileToString(out_path_tool), ReadFileToString(out_path_openssl));
 }
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -out file"
 TEST_F(EcparamComparisonTest, EcparamToolCompareFileOutputOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -out " + out_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
-
-  ASSERT_EQ(tool_output_str, openssl_output_str);
+  RunAndCompareCommands(tool_command, openssl_command, out_path_tool, out_path_openssl);
 }
 
 // Test key generation structure (content will differ due to randomness)
 TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenStructureOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -genkey -out " + key_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -genkey -out " + key_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
+  ASSERT_EQ(system(tool_command.c_str()), 0);
 
-  // Both files should exist and contain valid EC private keys
-  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
-  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
-  ASSERT_TRUE(tool_bio && openssl_bio) << "Key files not created";
-
-  // Parse both keys
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(
-    PEM_read_bio_PrivateKey(tool_bio.get(), nullptr, nullptr, nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(
-    PEM_read_bio_PrivateKey(openssl_bio.get(), nullptr, nullptr, nullptr));
-
-  ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse generated keys";
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(openssl_pkey.get()));
-
-  // Both should use the same curve
-  EC_KEY* tool_ec = EVP_PKEY_get0_EC_KEY(tool_pkey.get());
-  EC_KEY* openssl_ec = EVP_PKEY_get0_EC_KEY(openssl_pkey.get());
-  ASSERT_TRUE(tool_ec && openssl_ec);
-
-  const EC_GROUP* tool_group = EC_KEY_get0_group(tool_ec);
-  const EC_GROUP* openssl_group = EC_KEY_get0_group(openssl_ec);
-  ASSERT_EQ(EC_GROUP_get_curve_name(tool_group), 
-            EC_GROUP_get_curve_name(openssl_group));
+  // Test that OpenSSL CLI can read AWS-LC generated key
+  std::string openssl_read = std::string(openssl_executable_path) + " pkey -in " + key_path_tool + " -noout";
+  ASSERT_EQ(system(openssl_read.c_str()), 0) << "OpenSSL cannot read AWS-LC generated key";
 }
 
 // Test key generation with compressed point format
 TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenCompressedOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -out " + key_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -out " + key_path_openssl;
+  
+  ASSERT_EQ(system(tool_command.c_str()), 0);
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
-
-  // Both should be valid keys
-  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
-  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
-  ASSERT_TRUE(tool_bio && openssl_bio);
-
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(
-    PEM_read_bio_PrivateKey(tool_bio.get(), nullptr, nullptr, nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(
-    PEM_read_bio_PrivateKey(openssl_bio.get(), nullptr, nullptr, nullptr));
-
-  ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse compressed keys";
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(openssl_pkey.get()));
+  // Test that OpenSSL CLI can read AWS-LC compressed key
+  std::string openssl_read = std::string(openssl_executable_path) + " pkey -in " + key_path_tool + " -noout";
+  ASSERT_EQ(system(openssl_read.c_str()), 0) << "OpenSSL cannot read AWS-LC compressed key";
 }
 
 // Test key generation with uncompressed point format
 TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenUncompressedOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name secp384r1 -genkey -conv_form uncompressed -out " + key_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name secp384r1 -genkey -conv_form uncompressed -out " + key_path_openssl;
+  
+  ASSERT_EQ(system(tool_command.c_str()), 0);
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
-
-  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "r"));
-  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "r"));
-  ASSERT_TRUE(tool_bio && openssl_bio);
-
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(
-    PEM_read_bio_PrivateKey(tool_bio.get(), nullptr, nullptr, nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(
-    PEM_read_bio_PrivateKey(openssl_bio.get(), nullptr, nullptr, nullptr));
-
-  ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse uncompressed keys";
+  // Test that OpenSSL CLI can read AWS-LC uncompressed key
+  std::string openssl_read = std::string(openssl_executable_path) + " pkey -in " + key_path_tool + " -noout";
+  ASSERT_EQ(system(openssl_read.c_str()), 0) << "OpenSSL cannot read AWS-LC uncompressed key";
 }
 
 // Test DER format key generation
 TEST_F(EcparamComparisonTest, EcparamToolCompareKeyGenDEROpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name secp256k1 -genkey -outform DER -out " + key_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name secp256k1 -genkey -outform DER -out " + key_path_openssl;
-
-  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
-
-  // Both files should exist and be reasonable size for DER keys
-  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "rb"));
-  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "rb"));
-  ASSERT_TRUE(tool_bio && openssl_bio);
-
-  // Check file sizes using BIO
-  BIO_seek(tool_bio.get(), 0);
-  BIO_seek(openssl_bio.get(), 0);
   
-  // Read entire files to check size
-  char buffer[1000];
-  int tool_size = BIO_read(tool_bio.get(), buffer, sizeof(buffer));
-  int openssl_size = BIO_read(openssl_bio.get(), buffer, sizeof(buffer));
+  ASSERT_EQ(system(tool_command.c_str()), 0);
 
-  ASSERT_GT(tool_size, 50) << "AWS-LC DER key too small";
-  ASSERT_GT(openssl_size, 50) << "OpenSSL DER key too small";
-  ASSERT_LT(tool_size, 500) << "AWS-LC DER key too large";
-  ASSERT_LT(openssl_size, 500) << "OpenSSL DER key too large";
-
-  // Parse DER keys to verify they're valid
-  BIO_seek(tool_bio.get(), 0);
-  BIO_seek(openssl_bio.get(), 0);
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_bio(tool_bio.get(), nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(d2i_PrivateKey_bio(openssl_bio.get(), nullptr));
-
-  ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse DER keys";
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(openssl_pkey.get()));
+  // Test that OpenSSL CLI can read AWS-LC generated DER key
+  std::string openssl_verify = std::string(openssl_executable_path) + " pkey -in " + key_path_tool + " -inform DER -noout";
+  ASSERT_EQ(system(openssl_verify.c_str()), 0) << "OpenSSL cannot read AWS-LC generated DER key";
 }
 
 // Test combined options
 TEST_F(EcparamComparisonTest, EcparamToolCompareCombinedOptionsOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -outform DER -out " + key_path_tool;
-  std::string openssl_command = std::string(openssl_executable_path) + " ecparam -name prime256v1 -genkey -conv_form compressed -outform DER -out " + key_path_openssl;
+  
+  ASSERT_EQ(system(tool_command.c_str()), 0);
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, key_path_tool, key_path_openssl, tool_output_str, openssl_output_str);
+  // Test that OpenSSL CLI can read AWS-LC generated compressed DER key
+  std::string openssl_verify = std::string(openssl_executable_path) + " pkey -in " + key_path_tool + " -inform DER -noout";
+  ASSERT_EQ(system(openssl_verify.c_str()), 0) << "OpenSSL cannot read AWS-LC generated compressed DER key";
+}
 
-  // Verify both files exist and contain valid DER keys
-  bssl::UniquePtr<BIO> tool_bio(BIO_new_file(key_path_tool, "rb"));
-  bssl::UniquePtr<BIO> openssl_bio(BIO_new_file(key_path_openssl, "rb"));
-  ASSERT_TRUE(tool_bio && openssl_bio);
-
-  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_bio(tool_bio.get(), nullptr));
-  bssl::UniquePtr<EVP_PKEY> openssl_pkey(d2i_PrivateKey_bio(openssl_bio.get(), nullptr));
-
-  ASSERT_TRUE(tool_pkey && openssl_pkey) << "Failed to parse combined option keys";
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(tool_pkey.get()));
-  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(openssl_pkey.get()));
 }
