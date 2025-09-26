@@ -35,7 +35,15 @@ TEST_F(EcparamTest, EcparamToolBasicTest) {
   args_list_t args = {"-name", "prime256v1", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
-  EXPECT_FALSE(ReadFileToString(out_path).empty()) << "Output file is empty";
+  
+  // Validate it's actually parseable EC parameters in PEM format
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
+  ASSERT_TRUE(bio) << "Cannot open output file";
+  bssl::UniquePtr<EC_GROUP> group(PEM_read_bio_ECPKParameters(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(group) << "Output is not valid EC parameters";
+  
+  // Verify it's the correct curve
+  ASSERT_EQ(NID_X9_62_prime256v1, EC_GROUP_get_curve_name(group.get())) << "Wrong curve in output";
 }
 
 TEST_F(EcparamTest, EcparamToolNooutTest) {
@@ -50,23 +58,51 @@ TEST_F(EcparamTest, EcparamToolGenkeyTest) {
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
   
-  // Verify key file was created
-  std::string content = ReadFileToString(out_path);
-  EXPECT_FALSE(content.empty()) << "Generated key file is empty";
+  // Validate it's actually a parseable EC key
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
+  ASSERT_TRUE(bio) << "Cannot open generated key file";
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey) << "Generated key is not parseable";
+  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(pkey.get())) << "Generated key is not EC type";
+  
+  // Verify it's the correct curve
+  EC_KEY* ec_key = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(ec_key);
+  const EC_GROUP* group = EC_KEY_get0_group(ec_key);
+  ASSERT_EQ(NID_X9_62_prime256v1, EC_GROUP_get_curve_name(group)) << "Wrong curve generated";
 }
 
 TEST_F(EcparamTest, EcparamToolConvFormTest) {
   args_list_t args = {"-name", "prime256v1", "-genkey", "-conv_form", "compressed", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -conv_form failed";
-  EXPECT_FALSE(ReadFileToString(out_path).empty()) << "Generated key file is empty";
+  
+  // Validate it's a parseable EC key with compressed point format
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
+  ASSERT_TRUE(bio) << "Cannot open generated key file";
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey) << "Generated compressed key is not parseable";
+  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(pkey.get())) << "Generated key is not EC type";
+  
+  // Verify point compression setting
+  EC_KEY* ec_key = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(ec_key);
+  ASSERT_EQ(POINT_CONVERSION_COMPRESSED, EC_KEY_get_conv_form(ec_key)) << "Key not using compressed format";
 }
 
 TEST_F(EcparamTest, EcparamToolOutformTest) {
   args_list_t args = {"-name", "prime256v1", "-outform", "DER", "-out", out_path};
   
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -outform failed";
-  EXPECT_FALSE(ReadFileToString(out_path).empty()) << "Output file is empty";
+  
+  // Validate it's actually DER format by parsing it
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "rb"));
+  ASSERT_TRUE(bio) << "Cannot open DER output file";
+  bssl::UniquePtr<EC_GROUP> group(d2i_ECPKParameters_bio(bio.get(), nullptr));
+  ASSERT_TRUE(group) << "Output is not valid DER format";
+  
+  // Verify it's the correct curve
+  ASSERT_EQ(NID_X9_62_prime256v1, EC_GROUP_get_curve_name(group.get())) << "Wrong curve in DER output";
 }
 
 // Error handling tests
