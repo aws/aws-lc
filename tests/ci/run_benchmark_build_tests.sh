@@ -71,7 +71,6 @@ function build_boringssl {
 build_aws_lc_fips
 "${BUILD_ROOT}/tool/bssl" speed -timeout_ms 10 -chunks 1,2,16,256,20000
 
-build_aws_lc_branch fips-2021-10-20
 build_aws_lc_branch fips-2022-11-02
 build_aws_lc_branch fips-2024-09-27
 build_openssl_no_debug $openssl_1_0_2_branch
@@ -82,7 +81,6 @@ build_openssl_no_debug $openssl_master_branch
 build_boringssl
 
 run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_STANDARD=11 -DBENCHMARK_LIBS="\
-aws-lc-fips-2021:${install_dir}/aws-lc-fips-2021-10-20;\
 aws-lc-fips-2022:${install_dir}/aws-lc-fips-2022-11-02;\
 aws-lc-fips-2024:${install_dir}/aws-lc-fips-2024-09-27;\
 aws-lc-fips-main:${install_dir}/aws-lc-fips;\
@@ -93,7 +91,6 @@ open32:${install_dir}/openssl-${openssl_3_2_branch};\
 openmaster:${install_dir}/openssl-${openssl_master_branch};\
 boringssl:${install_dir}/boringssl;"
 
-LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2021-10-20/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2021" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2022-11-02/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-2024-09-27/lib" "${BUILD_ROOT}/tool/aws-lc-fips-2024" -timeout_ms 10 -chunks 1,2,16,256,20000
 LD_LIBRARY_PATH="${install_dir}/aws-lc-fips-main/lib" "${BUILD_ROOT}/tool/aws-lc-fips-main" -timeout_ms 10 -chunks 1,2,16,256,20000

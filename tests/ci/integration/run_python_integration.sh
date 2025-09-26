@@ -141,11 +141,13 @@ function python_run_3rd_party_tests() {
     install_crt_python
     python -m pip install 'boto3[crt]'
     # cffi install is busted on newer release candidates, so allow install
-    # failure for cryptography and pyopenssl on >= 3.14 for now.
-    python -m pip install 'cryptography' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
+    # failure for cryptography and pyopenssl on >= 3.15 for now.
+    # Pin cryptography version due to cffi change in v46
+    # https://cryptography.io/en/latest/changelog/#v46-0-0
+    python -m pip install 'cryptography<46' \
+        || python -c 'import sys; assert sys.version_info.minor >= 3.15'
     python -m pip install 'pyopenssl' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.15'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
         python ${test}
