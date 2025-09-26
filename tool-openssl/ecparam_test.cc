@@ -12,8 +12,9 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
-// Test constants for better maintainability
 namespace {
+
+// -------------------- Helper Functions and Structures ------------------------
 
 // Base class for OpenSSL comparison tests
 class OpenSSLComparisonTestBase : public ::testing::Test {
@@ -30,7 +31,53 @@ protected:
   const char* openssl_executable_path;
 };
 
-// -------------------- Basic Ecparam Tests ------------------------------------
+// Helper function to run commands and compare trimmed file outputs
+void RunAndCompareCommands(const std::string& tool_cmd, const std::string& openssl_cmd, 
+                          const std::string& tool_file, const std::string& openssl_file) {
+  ASSERT_EQ(system(tool_cmd.c_str()), 0) << "AWS-LC command failed: " << tool_cmd;
+  ASSERT_EQ(system(openssl_cmd.c_str()), 0) << "OpenSSL command failed: " << openssl_cmd;
+  
+  std::string tool_content = ReadFileToString(tool_file);
+  std::string openssl_content = ReadFileToString(openssl_file);
+  ASSERT_EQ(trim(tool_content), trim(openssl_content));
+}
+
+// Test parameters for curve comparison tests
+struct CurveTestParams {
+  std::string curve_name;
+  std::string test_name;
+};
+
+// Test parameters for key generation tests
+struct KeyGenTestParams {
+  const char* curve_name;
+  const char* extra_args;
+  const char* test_name;
+  bool is_der;
+};
+
+// Helper function to get all supported curves dynamically
+std::vector<CurveTestParams> GetSupportedCurves() {
+  std::vector<CurveTestParams> curves;
+  
+  size_t num_curves = EC_get_builtin_curves(nullptr, 0);
+  std::vector<EC_builtin_curve> builtin_curves(num_curves);
+  EC_get_builtin_curves(builtin_curves.data(), num_curves);
+  
+  for (const auto& curve : builtin_curves) {
+    const char* sn = OBJ_nid2sn(curve.nid);
+    if (sn) {
+      std::string test_name = sn;
+      std::transform(test_name.begin(), test_name.end(), test_name.begin(), 
+                     [](char c) { return std::isalnum(c) ? std::toupper(c) : '_'; });
+      curves.push_back({sn, test_name});
+    }
+  }
+  
+  return curves;
+}
+
+// -------------------- Basic Ecparam Functionality Tests ---------------------
 
 class EcparamTest : public ::testing::Test {
 protected:
@@ -146,46 +193,9 @@ TEST_F(EcparamOptionUsageErrorsTest, InvalidOutformTest) {
   TestOptionUsageErrors(args);
 }
 
-// -------------------- Ecparam OpenSSL Comparison Tests -----------------------
+// -------------------- OpenSSL Comparison Tests ------------------------------
 
-// Helper function to run commands and compare trimmed file outputs
-void RunAndCompareCommands(const std::string& tool_cmd, const std::string& openssl_cmd, 
-                          const std::string& tool_file, const std::string& openssl_file) {
-  ASSERT_EQ(system(tool_cmd.c_str()), 0) << "AWS-LC command failed: " << tool_cmd;
-  ASSERT_EQ(system(openssl_cmd.c_str()), 0) << "OpenSSL command failed: " << openssl_cmd;
-  
-  std::string tool_content = ReadFileToString(tool_file);
-  std::string openssl_content = ReadFileToString(openssl_file);
-  ASSERT_EQ(trim(tool_content), trim(openssl_content));
-}
-
-// Test parameters for curve comparison tests
-struct CurveTestParams {
-  std::string curve_name;
-  std::string test_name;
-};
-
-// Helper function to get all supported curves dynamically
-std::vector<CurveTestParams> GetSupportedCurves() {
-  std::vector<CurveTestParams> curves;
-  
-  size_t num_curves = EC_get_builtin_curves(nullptr, 0);
-  std::vector<EC_builtin_curve> builtin_curves(num_curves);
-  EC_get_builtin_curves(builtin_curves.data(), num_curves);
-  
-  for (const auto& curve : builtin_curves) {
-    const char* sn = OBJ_nid2sn(curve.nid);
-    if (sn) {
-      std::string test_name = sn;
-      std::transform(test_name.begin(), test_name.end(), test_name.begin(), 
-                     [](char c) { return std::isalnum(c) ? std::toupper(c) : '_'; });
-      curves.push_back({sn, test_name});
-    }
-  }
-  
-  return curves;
-}
-
+// Parameterized tests for curve parameter comparison
 class EcparamCurveComparisonTest : public OpenSSLComparisonTestBase, public ::testing::WithParamInterface<CurveTestParams> {
 protected:
   void SetUp() override {
@@ -217,14 +227,7 @@ INSTANTIATE_TEST_SUITE_P(CurveTests, EcparamCurveComparisonTest,
   }
 );
 
-// Test parameters for key generation tests
-struct KeyGenTestParams {
-  const char* curve_name;
-  const char* extra_args;
-  const char* test_name;
-  bool is_der;
-};
-
+// Parameterized tests for key generation compatibility
 class EcparamKeyGenComparisonTest : public OpenSSLComparisonTestBase, public ::testing::WithParamInterface<KeyGenTestParams> {
 protected:
   void SetUp() override {
@@ -264,9 +267,7 @@ INSTANTIATE_TEST_SUITE_P(KeyGenTests, EcparamKeyGenComparisonTest,
   }
 );
 
-// Comparison tests cannot run without set up of environment variables:
-// AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-
+// Additional specialized comparison tests
 class EcparamComparisonTest : public OpenSSLComparisonTestBase {
 protected:
   void SetUp() override {
