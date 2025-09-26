@@ -6,12 +6,30 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+#include <algorithm>
+#include <cctype>
 #include "internal.h"
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 
 // Test constants for better maintainability
 namespace {
+
+// Base class for OpenSSL comparison tests
+class OpenSSLComparisonTestBase : public ::testing::Test {
+protected:
+  void SetUp() override {
+    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
+    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+      GTEST_SKIP() << "Skipping test: AWS_LC_TOOL_EXECUTABLE_PATH and/or OPENSSL_EXECUTABLE_PATH environment variables are not set";
+    }
+  }
+
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
+};
+
 // -------------------- Basic Ecparam Tests ------------------------------------
 
 class EcparamTest : public ::testing::Test {
@@ -158,15 +176,9 @@ std::vector<CurveTestParams> GetSupportedCurves() {
   for (const auto& curve : builtin_curves) {
     const char* sn = OBJ_nid2sn(curve.nid);
     if (sn) {
-      // Create test name by capitalizing first letter and removing special chars
       std::string test_name = sn;
-      if (!test_name.empty()) {
-        test_name[0] = std::toupper(test_name[0]);
-        // Replace non-alphanumeric chars with underscores for valid test names
-        for (char& c : test_name) {
-          if (!std::isalnum(c)) c = '_';
-        }
-      }
+      std::transform(test_name.begin(), test_name.end(), test_name.begin(), 
+                     [](char c) { return std::isalnum(c) ? std::toupper(c) : '_'; });
       curves.push_back({sn, test_name});
     }
   }
@@ -174,15 +186,10 @@ std::vector<CurveTestParams> GetSupportedCurves() {
   return curves;
 }
 
-class EcparamCurveComparisonTest : public ::testing::TestWithParam<CurveTestParams> {
+class EcparamCurveComparisonTest : public OpenSSLComparisonTestBase, public ::testing::WithParamInterface<CurveTestParams> {
 protected:
   void SetUp() override {
-    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
-    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
-      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    }
-
+    OpenSSLComparisonTestBase::SetUp();
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
     ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
   }
@@ -194,8 +201,6 @@ protected:
 
   char out_path_tool[PATH_MAX];
   char out_path_openssl[PATH_MAX];
-  const char* tool_executable_path;
-  const char* openssl_executable_path;
 };
 
 TEST_P(EcparamCurveComparisonTest, CompareParameters) {
@@ -220,15 +225,10 @@ struct KeyGenTestParams {
   bool is_der;
 };
 
-class EcparamKeyGenComparisonTest : public ::testing::TestWithParam<KeyGenTestParams> {
+class EcparamKeyGenComparisonTest : public OpenSSLComparisonTestBase, public ::testing::WithParamInterface<KeyGenTestParams> {
 protected:
   void SetUp() override {
-    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
-    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
-      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    }
-
+    OpenSSLComparisonTestBase::SetUp();
     ASSERT_GT(createTempFILEpath(key_path_tool), 0u);
   }
 
@@ -237,8 +237,6 @@ protected:
   }
 
   char key_path_tool[PATH_MAX];
-  const char* tool_executable_path;
-  const char* openssl_executable_path;
 };
 
 TEST_P(EcparamKeyGenComparisonTest, KeyGenCompatibility) {
@@ -269,16 +267,10 @@ INSTANTIATE_TEST_SUITE_P(KeyGenTests, EcparamKeyGenComparisonTest,
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
 
-class EcparamComparisonTest : public ::testing::Test {
+class EcparamComparisonTest : public OpenSSLComparisonTestBase {
 protected:
   void SetUp() override {
-    // Skip gtests if env variables not set
-    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
-    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
-      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
-    }
-
+    OpenSSLComparisonTestBase::SetUp();
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
     ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
     ASSERT_GT(createTempFILEpath(key_path_tool), 0u);
@@ -296,10 +288,6 @@ protected:
   char out_path_openssl[PATH_MAX];
   char key_path_tool[PATH_MAX];
   char key_path_openssl[PATH_MAX];
-  const char* tool_executable_path;
-  const char* openssl_executable_path;
-  std::string tool_output_str;
-  std::string openssl_output_str;
 };
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -noout"
