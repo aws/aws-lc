@@ -569,6 +569,7 @@ if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
+  check_compiler("linux_random_h.c" HAVE_LINUX_RANDOM_H)
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
   if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
