@@ -143,9 +143,36 @@ void RunAndCompareCommands(const std::string& tool_cmd, const std::string& opens
 
 // Test parameters for curve comparison tests
 struct CurveTestParams {
-  const char* curve_name;
-  const char* test_name;
+  std::string curve_name;
+  std::string test_name;
 };
+
+// Helper function to get all supported curves dynamically
+std::vector<CurveTestParams> GetSupportedCurves() {
+  std::vector<CurveTestParams> curves;
+  
+  size_t num_curves = EC_get_builtin_curves(nullptr, 0);
+  std::vector<EC_builtin_curve> builtin_curves(num_curves);
+  EC_get_builtin_curves(builtin_curves.data(), num_curves);
+  
+  for (const auto& curve : builtin_curves) {
+    const char* sn = OBJ_nid2sn(curve.nid);
+    if (sn) {
+      // Create test name by capitalizing first letter and removing special chars
+      std::string test_name = sn;
+      if (!test_name.empty()) {
+        test_name[0] = std::toupper(test_name[0]);
+        // Replace non-alphanumeric chars with underscores for valid test names
+        for (char& c : test_name) {
+          if (!std::isalnum(c)) c = '_';
+        }
+      }
+      curves.push_back({sn, test_name});
+    }
+  }
+  
+  return curves;
+}
 
 class EcparamCurveComparisonTest : public ::testing::TestWithParam<CurveTestParams> {
 protected:
@@ -179,11 +206,7 @@ TEST_P(EcparamCurveComparisonTest, CompareParameters) {
 }
 
 INSTANTIATE_TEST_SUITE_P(CurveTests, EcparamCurveComparisonTest,
-  ::testing::Values(
-    CurveTestParams{"prime256v1", "Prime256v1"},
-    CurveTestParams{"secp384r1", "Secp384r1"}, 
-    CurveTestParams{"secp256k1", "Secp256k1"}
-  ),
+  ::testing::ValuesIn(GetSupportedCurves()),
   [](const ::testing::TestParamInfo<CurveTestParams>& info) {
     return info.param.test_name;
   }
