@@ -23,16 +23,17 @@
 
 #include "internal.h"
 
-bool IsFlag(const std::string& arg) {
+bool IsFlag(const std::string &arg) {
   return arg.length() > 1 && arg[0] == '-';
 }
 
-bool ParseKeyValueArguments(args_map_t &out_args,
-                          args_list_t &extra_args,
-                          const args_list_t &args,
-                          const argument_t *templates) {
+bool ParseKeyValueArguments(args_map_t &out_args, args_list_t &extra_args,
+                            const args_list_t &args,
+                            const argument_t *templates) {
   out_args.clear();
   extra_args.clear();
+
+  std::vector<std::string> exclusive_boolean_args;
 
   for (size_t i = 0; i < args.size(); i++) {
     const std::string &arg = args[i];
@@ -45,7 +46,7 @@ bool ParseKeyValueArguments(args_map_t &out_args,
     }
 
     if (templ == nullptr) {
-      if(IsFlag(arg)) {
+      if (IsFlag(arg)) {
         fprintf(stderr, "Unknown flag: %s\n", arg.c_str());
         return false;
       }
@@ -58,8 +59,13 @@ bool ParseKeyValueArguments(args_map_t &out_args,
       return false;
     }
 
-    if (templ->type == kBooleanArgument) {
+    if (templ->type == kBooleanArgument ||
+        templ->type == kExclusiveBooleanArgument) {
       out_args[arg] = "";
+
+      if (templ->type == kExclusiveBooleanArgument) {
+        exclusive_boolean_args.push_back(arg);
+      }
     } else {
       if (i + 1 >= args.size()) {
         fprintf(stderr, "Missing argument for option: %s\n", arg.c_str());
@@ -69,9 +75,18 @@ bool ParseKeyValueArguments(args_map_t &out_args,
     }
   }
 
+  if (exclusive_boolean_args.size() > 1) {
+    fprintf(stderr, "These arguments cannot be used together: ");
+    for (size_t i = 0; i < exclusive_boolean_args.size(); ++i) {
+      fprintf(stderr, "%s%s", exclusive_boolean_args[i].c_str(),
+              (i < exclusive_boolean_args.size() - 1) ? ", " : "\n");
+    }
+    return false;
+  }
+
   for (size_t j = 0; templates[j].name[0] != 0; j++) {
     const argument_t *templ = &templates[j];
-    if (templ->type == kRequiredArgument &&
+    if ((templ->type == kRequiredArgument) &&
         out_args.find(templ->name) == out_args.end()) {
       fprintf(stderr, "Missing value for required argument: %s\n", templ->name);
       return false;
@@ -84,13 +99,12 @@ bool ParseKeyValueArguments(args_map_t &out_args,
 void PrintUsage(const argument_t *templates) {
   for (size_t i = 0; templates[i].name[0] != 0; i++) {
     const argument_t *templ = &templates[i];
-    fprintf(stderr, "%s\t%s\n", templ->name, templ->description);
+    fprintf(stderr, "%-20s%s\n", templ->name, templ->description);
   }
 }
 
 bool GetUnsigned(unsigned *out, const std::string &arg_name,
-                 unsigned default_value,
-                 const args_map_t &args) {
+                 unsigned default_value, const args_map_t &args) {
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     *out = default_value;
@@ -118,7 +132,6 @@ bool GetUnsigned(unsigned *out, const std::string &arg_name,
 
 bool GetString(std::string *out, const std::string &arg_name,
                std::string default_value, const args_map_t &args) {
-
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     *out = default_value;
@@ -133,7 +146,6 @@ bool GetString(std::string *out, const std::string &arg_name,
 
 bool GetBoolArgument(bool *out, const std::string &arg_name,
                      const args_map_t &args) {
-
   const auto &it = args.find(arg_name);
   if (it == args.end()) {
     // Boolean argument not found
@@ -144,4 +156,3 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
 
   return true;
 }
-
