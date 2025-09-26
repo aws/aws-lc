@@ -306,3 +306,75 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 
   return 1;
 }
+
+int KEM_check_key(const KEM_KEY *key) {
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Check that the KEM method and parameters are valid
+  if (key->kem == NULL || key->kem->method == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  // Check that at least the public key exists
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  // Call appropriate ML-KEM check functions based on KEM NID
+  switch (key->kem->nid) {
+    case NID_MLKEM512:
+    case NID_KYBER512_R3:
+      // Check public key validity
+      if (ml_kem_512_check_pk(key->public_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      // Check secret key validity if present
+      if (key->secret_key != NULL && ml_kem_512_check_sk(key->secret_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      break;
+
+    case NID_MLKEM768:
+    case NID_KYBER768_R3:
+      // Check public key validity
+      if (ml_kem_768_check_pk(key->public_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      // Check secret key validity if present
+      if (key->secret_key != NULL && ml_kem_768_check_sk(key->secret_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      break;
+
+    case NID_MLKEM1024:
+    case NID_KYBER1024_R3:
+      // Check public key validity
+      if (ml_kem_1024_check_pk(key->public_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      // Check secret key validity if present
+      if (key->secret_key != NULL && ml_kem_1024_check_sk(key->secret_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      break;
+
+    default:
+      // For unsupported KEM variants
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return 0;
+  }
+
+  return 1;
+}
+
