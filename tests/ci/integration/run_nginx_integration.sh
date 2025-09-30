@@ -10,14 +10,14 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - nginx
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - NGINX_BUILD_FOLDER
+#  - SCRATCH_FOLDER
+#    - nginx
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - NGINX_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/NGINX_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/NGINX_BUILD_ROOT"
 NGINX_SRC_FOLDER="${SCRATCH_FOLDER}/nginx"
 NGINX_TEST_FOLDER="${SCRATCH_FOLDER}/nginx-tests"
 NGINX_BUILD_FOLDER="${SCRATCH_FOLDER}/nginx-aws-lc"
