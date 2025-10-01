@@ -631,6 +631,7 @@ elseif(MSVC)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
       "C5026" # move constructor was implicitly defined as deleted
       "C5027" # move assignment operator was implicitly defined as deleted
+      "C5039" # pointer or reference to potentially throwing function passed to 'extern "C"' function under -EHc
       "C5045" # Compiler will insert Spectre mitigation for memory load if
               # /Qspectre switch specified
       "C4255" # no function prototype given: converting '()' to '(void)'
