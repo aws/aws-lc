@@ -598,10 +598,13 @@ elseif(MSVC)
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
+      "C4291" # 'void *operator new(std::size_t,void *) throw()': no matching
+              # operator delete found; memory will not be freed if initialization
+              # throws an exception
+      "C4296" # '>=' : expression is always true
       "C4371" # layout of class may have changed from a previous version of the
               # compiler due to better packing of member '...'
       "C4388" # signed/unsigned mismatch
-      "C4296" # '>=' : expression is always true
       "C4350" # behavior change: 'std::_Wrap_alloc...'
       "C4365" # '=' : conversion from 'size_t' to 'int',
               # signed/unsigned mismatch
