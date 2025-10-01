@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - XMLSEC_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - XMLSEC_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/XMLSEC_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/XMLSEC_BUILD_ROOT"
 XMLSEC_SRC_FOLDER="${SCRATCH_FOLDER}/xmlsec"
 XMLSEC_SRC_FOLDER_BUILD_PREFIX="${XMLSEC_SRC_FOLDER}/build/install"
 XMLSEC_SRC_FOLDER_BUILD_EPREFIX="${XMLSEC_SRC_FOLDER}/build/exec-install"

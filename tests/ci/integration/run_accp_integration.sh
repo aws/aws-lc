@@ -6,7 +6,7 @@ set -exu
 source tests/ci/common_posix_setup.sh
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER=${SRC_ROOT}/"scratch"
+SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 ACCP_SRC="${SCRATCH_FOLDER}/amazon-corretto-crypto-provider"
 ACCP_FIPS=${ACCP_FIPS:-"false"}
 

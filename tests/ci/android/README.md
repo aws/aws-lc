@@ -6,7 +6,7 @@ Our android CI cross-compiles AWS-LC using AWSLCAndroidTestRunner and the NDK to
 ## Setup
 The commands below help build the app within our Android CI's docker image. The docker image is only made to support cross-compiling AWS-LC with Android toolchains, building the `AWSLCAndroidTestRunner` apks, and uploading and kicking off the tests in AWS Device Farm. Running and testing on connected Android devices or emulators via `./gradlew cC` isn't configured within the docker image.
 1. Assuming all the commands are being run from this folder: `cd tests/ci/android`
-2. `docker build -t ubuntu-20.04:android ../docker_images/linux-x86/ubuntu-24.04_android/`
+2. `docker build -t ubuntu-24.04:android ../docker_images/linux-x86/ubuntu-24.04_android/`
 3. Run the docker image from root of aws-lc. The container needs access to aws-lc's source code to build.
    ```
    cd ../../../
