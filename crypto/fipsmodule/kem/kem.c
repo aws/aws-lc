@@ -311,25 +311,25 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 
 int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   if (key == NULL || seed == NULL || key->kem == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Ensure key is uninitialized
+  if (key->public_key != NULL || key->secret_key != NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
   // Validate seed length - all ML-KEM variants use 64-byte seeds
   if (CBS_len(seed) != key->kem->keygen_seed_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
     return 0;
   }
 
   // Allocate temporary buffers for key generation
   uint8_t *public_key = OPENSSL_malloc(key->kem->public_key_len);
   uint8_t *secret_key = OPENSSL_malloc(key->kem->secret_key_len);
-  if (public_key == NULL || secret_key == NULL) {
-    OPENSSL_free(public_key);
-    OPENSSL_free(secret_key);
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
 
   size_t public_len = key->kem->public_key_len;
   size_t secret_len = key->kem->secret_key_len;

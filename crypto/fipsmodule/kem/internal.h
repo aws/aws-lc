@@ -105,6 +105,8 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 //
 // NOTE: The seed must be exactly 64 bytes for all ML-KEM variants.
 //       The caller must ensure the seed CBS contains valid data.
+//       |key->kem| must be initialized and |key->public_key| and 
+//       |key->secret_key| must both be NULL.
 int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
 
 #if defined(__cplusplus)
