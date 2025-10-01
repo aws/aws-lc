@@ -598,10 +598,13 @@ elseif(MSVC)
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
+      "C4291" # 'void *operator new(std::size_t,void *) throw()': no matching
+              # operator delete found; memory will not be freed if initialization
+              # throws an exception
+      "C4296" # '>=' : expression is always true
       "C4371" # layout of class may have changed from a previous version of the
               # compiler due to better packing of member '...'
       "C4388" # signed/unsigned mismatch
-      "C4296" # '>=' : expression is always true
       "C4350" # behavior change: 'std::_Wrap_alloc...'
       "C4365" # '=' : conversion from 'size_t' to 'int',
               # signed/unsigned mismatch
@@ -612,6 +615,8 @@ elseif(MSVC)
       "C4514" # 'function': unreferenced inline function has been removed
       "C4548" # expression before comma has no effect; expected expression with
               # side-effect" caused by FD_* macros.
+      "C4571" # Informational: catch(...) semantics changed since Visual C++ 7.1;
+              # structured exceptions (SEH) are no longer caught
       "C4610" # struct 'argument' can never be instantiated - user defined
               # constructor required.
       "C4623" # default constructor was implicitly defined as deleted
@@ -631,6 +636,7 @@ elseif(MSVC)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
       "C5026" # move constructor was implicitly defined as deleted
       "C5027" # move assignment operator was implicitly defined as deleted
+      "C5039" # pointer or reference to potentially throwing function passed to 'extern "C"' function under -EHc
       "C5045" # Compiler will insert Spectre mitigation for memory load if
               # /Qspectre switch specified
       "C4255" # no function prototype given: converting '()' to '(void)'
@@ -656,9 +662,8 @@ elseif(MSVC)
                             ${MSVC_DISABLED_WARNINGS_LIST})
   string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
                             ${MSVC_LEVEL4_WARNINGS_LIST})
-  set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
-  set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
-
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
 endif()
 
 # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
