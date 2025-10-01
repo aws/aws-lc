@@ -195,7 +195,7 @@ keccak_1600_permute:
 .cfi_startproc
     endbranch
     movl    \$24, $roundn                          # 24 rounds
-    leaq    iotas(%rip), $tblptr                   # Load the address of the SHA3 round constants
+    leaq    iotas_avx512(%rip), $tblptr            # Load the address of the SHA3 round constants
 
 .align  32
 .Lkeccak_rnd_loop:
@@ -493,7 +493,7 @@ ___
 .section .rodata
 
 .align  64
-iotas:
+iotas_avx512:
 .quad 0x0000000000000001, 0x0000000000008082
 .quad 0x800000000000808a, 0x8000000080008000
 .quad 0x000000000000808b, 0x0000000080000001
