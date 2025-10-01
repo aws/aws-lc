@@ -334,9 +334,9 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   if (public_key == NULL || secret_key == NULL) {
     OPENSSL_free(public_key);
     OPENSSL_free(secret_key);
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
- }
+  }
+  
   size_t public_len = key->kem->public_key_len;
   size_t secret_len = key->kem->secret_key_len;
 
