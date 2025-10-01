@@ -612,6 +612,8 @@ elseif(MSVC)
       "C4514" # 'function': unreferenced inline function has been removed
       "C4548" # expression before comma has no effect; expected expression with
               # side-effect" caused by FD_* macros.
+      "C4571" # Informational: catch(...) semantics changed since Visual C++ 7.1;
+              # structured exceptions (SEH) are no longer caught
       "C4610" # struct 'argument' can never be instantiated - user defined
               # constructor required.
       "C4623" # default constructor was implicitly defined as deleted
