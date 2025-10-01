@@ -342,6 +342,7 @@ static size_t GetClientHelloLen(uint16_t max_version, uint16_t session_version,
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   if (!ssl || !SSL_set_session(ssl.get(), session.get()) ||
       !SSL_set_strict_cipher_list(ssl.get(), "ECDHE-RSA-AES128-GCM-SHA256") ||
+      !SSL_set1_curves_list(ssl.get(), "x25519:P-256:P-384") ||
       !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return 0;
   }

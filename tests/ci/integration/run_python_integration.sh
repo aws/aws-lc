@@ -16,18 +16,18 @@ AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO=${AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO:-"0"}
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - PYTHON_SRC_FOLDER
-#        - 3.10
-#        ...
-#      - PYTHON_PATCH_FOLDER
-#        - 3.10
-#        ...
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - PYTHON_SRC_FOLDER
+#      - 3.10
+#      ...
+#    - PYTHON_PATCH_FOLDER
+#      - 3.10
+#      ...
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/PYTHON_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/PYTHON_BUILD_ROOT"
 CRT_SRC_FOLDER="${SCRATCH_FOLDER}/aws-crt-python"
 PYTHON_SRC_FOLDER="${SCRATCH_FOLDER}/python-src"
 PYTHON_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/python_patch"

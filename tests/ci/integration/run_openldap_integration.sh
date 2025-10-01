@@ -12,18 +12,18 @@ set -exuo pipefail
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - OPENLDAP_SRC_FOLDER
-#        - main
-#        ...
-#      - OPENLDAP_PATCH_FOLDER
-#        - main
-#        ...
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - OPENLDAP_SRC_FOLDER
+#      - main
+#      ...
+#    - OPENLDAP_PATCH_FOLDER
+#      - main
+#      ...
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/OPENLDAP_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/OPENLDAP_BUILD_ROOT"
 OPENLDAP_SRC_FOLDER="${SCRATCH_FOLDER}/openldap-src"
 OPENLDAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/openldap_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
