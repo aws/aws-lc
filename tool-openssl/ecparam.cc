@@ -13,30 +13,28 @@ enum OutputFormat {
   FORMAT_DER = 2
 };
 
-static bool ValidateECCurve(const std::string& curve_name, int* out_nid = nullptr, bool print_supported = true) {
+static bool ValidateECCurve(const std::string& curve_name, int* out_nid) {
     int nid = OBJ_sn2nid(curve_name.c_str());
     if (nid == NID_undef) {
         nid = EC_curve_nist2nid(curve_name.c_str());
     }
 
     if (nid == NID_undef) {
-        if (print_supported) {
-            fprintf(stderr, "unknown curve name (%s)\n", curve_name.c_str());
+        fprintf(stderr, "unknown curve name (%s)\n", curve_name.c_str());
 
-            size_t num_curves = EC_get_builtin_curves(nullptr, 0);
-            std::vector<EC_builtin_curve> curves(num_curves);
-            EC_get_builtin_curves(curves.data(), num_curves);
+        size_t num_curves = EC_get_builtin_curves(nullptr, 0);
+        std::vector<EC_builtin_curve> curves(num_curves);
+        EC_get_builtin_curves(curves.data(), num_curves);
 
-            fprintf(stderr, "Supported curves:\n");
-            for (const auto& curve : curves) {
-                const char* nist_name = EC_curve_nid2nist(curve.nid);
-                const char* sn = OBJ_nid2sn(curve.nid);
+        fprintf(stderr, "Supported curves:\n");
+        for (const auto& curve : curves) {
+            const char* nist_name = EC_curve_nid2nist(curve.nid);
+            const char* sn = OBJ_nid2sn(curve.nid);
 
-                if (nist_name) {
-                    fprintf(stderr, "  %s (%s) - %s\n", sn, nist_name, curve.comment);
-                } else {
-                    fprintf(stderr, "  %s - %s\n", sn, curve.comment);
-                }
+            if (nist_name) {
+                fprintf(stderr, "  %s (%s) - %s\n", sn, nist_name, curve.comment);
+            } else {
+                fprintf(stderr, "  %s - %s\n", sn, curve.comment);
             }
         }
         return false;
@@ -172,19 +170,17 @@ bool ecparamTool(const args_list_t &args) {
         }
       }
     }
-  } else {
+  } else if (!noout) {
     // Output parameters
-    if (!noout) {
-      if (output_format == FORMAT_PEM) {
-        if (!PEM_write_bio_ECPKParameters(out_bio.get(), group.get())) {
-          fprintf(stderr, "Failed to write EC parameters in PEM format\n");
-          goto err;
-        }
-      } else {
-        if (!i2d_ECPKParameters_bio(out_bio.get(), group.get())) {
-          fprintf(stderr, "Failed to write EC parameters in DER format\n");
-          goto err;
-        }
+    if (output_format == FORMAT_PEM) {
+      if (!PEM_write_bio_ECPKParameters(out_bio.get(), group.get())) {
+        fprintf(stderr, "Failed to write EC parameters in PEM format\n");
+        goto err;
+      }
+    } else {
+      if (!i2d_ECPKParameters_bio(out_bio.get(), group.get())) {
+        fprintf(stderr, "Failed to write EC parameters in DER format\n");
+        goto err;
       }
     }
   }
