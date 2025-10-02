@@ -13,13 +13,18 @@ enum OutputFormat {
   FORMAT_DER = 2
 };
 
-static bool ValidateECCurve(const std::string& curve_name, int* out_nid) {
+static bssl::UniquePtr<EC_GROUP> ValidateAndCreateECGroup(const std::string& curve_name) {
     int nid = OBJ_sn2nid(curve_name.c_str());
     if (nid == NID_undef) {
         nid = EC_curve_nist2nid(curve_name.c_str());
     }
 
-    if (nid == NID_undef) {
+    bssl::UniquePtr<EC_GROUP> group;
+    if (nid != NID_undef) {
+        group.reset(EC_GROUP_new_by_curve_name(nid));
+    }
+
+    if (!group) {
         fprintf(stderr, "unknown curve name (%s)\n", curve_name.c_str());
 
         size_t num_curves = EC_get_builtin_curves(nullptr, 0);
@@ -37,13 +42,10 @@ static bool ValidateECCurve(const std::string& curve_name, int* out_nid) {
                 fprintf(stderr, "  %s - %s\n", sn, curve.comment);
             }
         }
-        return false;
+        return nullptr;
     }
 
-    if (out_nid) {
-        *out_nid = nid;
-    }
-    return true;
+    return group;
 }
 
 static const argument_t kArguments[] = {
@@ -78,7 +80,6 @@ bool ecparamTool(const args_list_t &args) {
   bool noout = false, genkey = false;
   point_conversion_form_t point_form = POINT_CONVERSION_UNCOMPRESSED;
   OutputFormat output_format = FORMAT_PEM;
-  int nid = NID_undef;
   bssl::UniquePtr<EC_GROUP> group;
   bssl::UniquePtr<EC_KEY> eckey;
   bssl::UniquePtr<BIO> out_bio;
@@ -119,14 +120,9 @@ bool ecparamTool(const args_list_t &args) {
     }
   }
 
-  // Validate curve name and get NID
-  if (!ValidateECCurve(curve_name, &nid)) {
-    goto err;
-  }
-
-  group.reset(EC_GROUP_new_by_curve_name(nid));
+  // Validate curve and create group
+  group = ValidateAndCreateECGroup(curve_name);
   if (!group) {
-    fprintf(stderr, "Failed to create EC group\n");
     goto err;
   }
 
@@ -142,9 +138,9 @@ bool ecparamTool(const args_list_t &args) {
   }
 
   if (genkey) {
-    // Generate EC key using direct EC_KEY API
-    eckey.reset(EC_KEY_new_by_curve_name(nid));
-    if (!eckey) {
+    // Generate EC key using existing group
+    eckey.reset(EC_KEY_new());
+    if (!eckey || !EC_KEY_set_group(eckey.get(), group.get())) {
       fprintf(stderr, "Failed to create EC key for curve\n");
       goto err;
     }
