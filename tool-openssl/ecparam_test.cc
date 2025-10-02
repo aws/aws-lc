@@ -16,21 +16,6 @@ namespace {
 
 // -------------------- Helper Functions and Structures ------------------------
 
-// Base class for OpenSSL comparison tests
-class OpenSSLComparisonTestBase : public ::testing::Test {
-protected:
-  void SetUp() override {
-    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
-    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
-      GTEST_SKIP() << "Skipping test: AWS_LC_TOOL_EXECUTABLE_PATH and/or OPENSSL_EXECUTABLE_PATH environment variables are not set";
-    }
-  }
-
-  const char* tool_executable_path;
-  const char* openssl_executable_path;
-};
-
 // Helper function to run commands and compare trimmed file outputs
 void RunAndCompareCommands(const std::string& tool_cmd, const std::string& openssl_cmd, 
                           const std::string& tool_file, const std::string& openssl_file) {
@@ -196,10 +181,14 @@ TEST_F(EcparamOptionUsageErrorsTest, InvalidOutformTest) {
 // -------------------- OpenSSL Comparison Tests ------------------------------
 
 // Parameterized tests for curve parameter comparison
-class EcparamCurveComparisonTest : public OpenSSLComparisonTestBase, public ::testing::WithParamInterface<CurveTestParams> {
+class EcparamCurveComparisonTest : public ::testing::Test, public ::testing::WithParamInterface<CurveTestParams> {
 protected:
   void SetUp() override {
-    OpenSSLComparisonTestBase::SetUp();
+    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
+    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+      GTEST_SKIP() << "Skipping test: AWS_LC_TOOL_EXECUTABLE_PATH and/or OPENSSL_EXECUTABLE_PATH environment variables are not set";
+    }
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
     ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
   }
@@ -209,6 +198,8 @@ protected:
     RemoveFile(out_path_openssl);
   }
 
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
   char out_path_tool[PATH_MAX];
   char out_path_openssl[PATH_MAX];
 };
@@ -228,10 +219,14 @@ INSTANTIATE_TEST_SUITE_P(CurveTests, EcparamCurveComparisonTest,
 );
 
 // Parameterized tests for key generation compatibility
-class EcparamKeyGenComparisonTest : public OpenSSLComparisonTestBase, public ::testing::WithParamInterface<KeyGenTestParams> {
+class EcparamKeyGenComparisonTest : public ::testing::Test, public ::testing::WithParamInterface<KeyGenTestParams> {
 protected:
   void SetUp() override {
-    OpenSSLComparisonTestBase::SetUp();
+    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
+    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+      GTEST_SKIP() << "Skipping test: AWS_LC_TOOL_EXECUTABLE_PATH and/or OPENSSL_EXECUTABLE_PATH environment variables are not set";
+    }
     ASSERT_GT(createTempFILEpath(key_path_tool), 0u);
   }
 
@@ -239,6 +234,8 @@ protected:
     RemoveFile(key_path_tool);
   }
 
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
   char key_path_tool[PATH_MAX];
 };
 
@@ -268,10 +265,14 @@ INSTANTIATE_TEST_SUITE_P(KeyGenTests, EcparamKeyGenComparisonTest,
 );
 
 // Additional specialized comparison tests
-class EcparamComparisonTest : public OpenSSLComparisonTestBase {
+class EcparamComparisonTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    OpenSSLComparisonTestBase::SetUp();
+    tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
+    openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+      GTEST_SKIP() << "Skipping test: AWS_LC_TOOL_EXECUTABLE_PATH and/or OPENSSL_EXECUTABLE_PATH environment variables are not set";
+    }
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
     ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
     ASSERT_GT(createTempFILEpath(key_path_tool), 0u);
@@ -284,6 +285,9 @@ protected:
     RemoveFile(key_path_tool);
     RemoveFile(key_path_openssl);
   }
+
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
 
   char out_path_tool[PATH_MAX];
   char out_path_openssl[PATH_MAX];
