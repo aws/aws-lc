@@ -65,8 +65,6 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         save_vregs
         save_regs
 
-        udiv_by_80(x2, x8) // Number of 5x-unrolled iterations
-
         cmp   x2, #16 // AES-XTS needs at least one block
         b.lt  .Lxts_enc_abort
 .align  4
@@ -135,6 +133,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         // The iv for fifth block
         tweak(d11,v11.d[1])
 
+        udiv_by_80(x2, x8) // Number of 5x-unrolled iterations
 .align  4
 .Loop5x_xts_enc:
         ldp q0, q1, [x0], #0x50
