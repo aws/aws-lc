@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - STRONGSWAN_SRC_FOLDER
+#  - SCRATCH_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - STRONGSWAN_SRC_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/STRONGSWAN_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/STRONGSWAN_BUILD_ROOT"
 STRONGSWAN_SRC_FOLDER="${SCRATCH_FOLDER}/strongswan"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"

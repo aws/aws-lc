@@ -10,19 +10,17 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - nginx
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - NGINX_BUILD_FOLDER
+#  - SCRATCH_FOLDER
+#    - nginx
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - NGINX_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/NGINX_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/NGINX_BUILD_ROOT"
 NGINX_SRC_FOLDER="${SCRATCH_FOLDER}/nginx"
 NGINX_TEST_FOLDER="${SCRATCH_FOLDER}/nginx-tests"
 NGINX_BUILD_FOLDER="${SCRATCH_FOLDER}/nginx-aws-lc"
-NGINX_PATCH_BUILD_FOLDER="${SRC_ROOT}/tests/ci/integration/nginx_patch"
-NGINX_PATCH_TEST_FOLDER="${SRC_ROOT}/tests/ci/integration/nginx_tests_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${NGINX_SRC_FOLDER}/aws-lc-install"
 
@@ -52,14 +50,6 @@ function nginx_run_tests() {
   TEST_NGINX_BINARY="${NGINX_BUILD_FOLDER}/sbin/nginx" prove .
 }
 
-# TODO: Remove this when we make an upstream contribution.
-function nginx_patch_build() {
-  for patchfile in $(find -L "${NGINX_PATCH_BUILD_FOLDER}" -type f -name '*.patch'); do
-    echo "Apply patch $patchfile..."
-    patch -p1 --quiet -i "$patchfile"
-  done
-}
-
 # There are some features in nginx that we don't currently support. The known gaps are:
 # * SSL_Conf Command
 # * Stateful session resumption (Session Caches)
@@ -79,7 +69,6 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 
 # Build nginx from source.
 pushd ${NGINX_SRC_FOLDER}
-nginx_patch_build
 nginx_build
 popd
 

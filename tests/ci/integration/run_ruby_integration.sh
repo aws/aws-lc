@@ -13,16 +13,16 @@ FIPS=${FIPS:-"0"}
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - RUBY_SRC_FOLDER
-#        - ruby_3_1
-#      - RUBY_PATCH_FOLDER
-#        - ruby_3_1
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - RUBY_SRC_FOLDER
+#      - ruby_3_1
+#    - RUBY_PATCH_FOLDER
+#      - ruby_3_1
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/RUBY_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/RUBY_BUILD_ROOT"
 RUBY_SRC_FOLDER="${SCRATCH_FOLDER}/ruby-src"
 RUBY_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch"
 RUBY_BACKPORT_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch/ruby_release_backport"

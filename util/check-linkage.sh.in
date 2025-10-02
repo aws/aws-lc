@@ -32,13 +32,11 @@ if [ ! -f "${FILE_TO_CHECK}" ]; then
   exit 1
 fi
 
-# Run ldd on the file
-LDD_OUTPUT=$(ldd "${FILE_TO_CHECK}")
 EXIT_CODE=0
 
 case "${LIBRARY_TYPE}" in
   "crypto")
-    if ! echo "${LDD_OUTPUT}" | grep -q "${INSTALL_LIBDIR}/${CRYPTO_LIB_NAME}"; then
+    if ! (ldd "${FILE_TO_CHECK}" | grep -q "${INSTALL_LIBDIR}/${CRYPTO_LIB_NAME}"); then
       echo "Error: ${CRYPTO_LIB_NAME} not found in linkage of ${FILE_TO_CHECK}"
       EXIT_CODE=1
     else
@@ -46,7 +44,7 @@ case "${LIBRARY_TYPE}" in
     fi
     ;;
   "ssl")
-    if ! echo "${LDD_OUTPUT}" | grep -q "${INSTALL_LIBDIR}/${SSL_LIB_NAME}"; then
+    if ! (ldd "${FILE_TO_CHECK}" | grep -q "${INSTALL_LIBDIR}/${SSL_LIB_NAME}"); then
       echo "Error: ${SSL_LIB_NAME} not found in linkage of ${FILE_TO_CHECK}"
       EXIT_CODE=1
     else
