@@ -135,6 +135,12 @@ TEST_F(ECTest, RoundTripPEMtoDERtoPEM) {
   char temp_der[PATH_MAX];
   ASSERT_GT(createTempFILEpath(temp_der), 0u);
 
+  // Load original key for comparison
+  bssl::UniquePtr<BIO> orig_bio(BIO_new_file(pem_key_path, "rb"));
+  ASSERT_TRUE(orig_bio);
+  bssl::UniquePtr<EC_KEY> orig_key(PEM_read_bio_ECPrivateKey(orig_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(orig_key);
+
   args_list_t args1 = {"-in", pem_key_path, "-outform", "DER", "-out", temp_der};
   ASSERT_TRUE(ecTool(args1));
 
@@ -145,6 +151,11 @@ TEST_F(ECTest, RoundTripPEMtoDERtoPEM) {
   ASSERT_TRUE(out_bio);
   bssl::UniquePtr<EC_KEY> parsed_key(PEM_read_bio_ECPrivateKey(out_bio.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(parsed_key);
+
+  // Validate key content matches
+  const BIGNUM *orig_priv = EC_KEY_get0_private_key(orig_key.get());
+  const BIGNUM *parsed_priv = EC_KEY_get0_private_key(parsed_key.get());
+  ASSERT_EQ(BN_cmp(orig_priv, parsed_priv), 0);
   
   RemoveFile(temp_der);
 }
@@ -152,6 +163,12 @@ TEST_F(ECTest, RoundTripPEMtoDERtoPEM) {
 TEST_F(ECTest, RoundTripDERtoPEMtoDER) {
   char temp_pem[PATH_MAX];
   ASSERT_GT(createTempFILEpath(temp_pem), 0u);
+
+  // Load original key for comparison
+  bssl::UniquePtr<BIO> orig_bio(BIO_new_file(der_key_path, "rb"));
+  ASSERT_TRUE(orig_bio);
+  bssl::UniquePtr<EC_KEY> orig_key(d2i_ECPrivateKey_bio(orig_bio.get(), nullptr));
+  ASSERT_TRUE(orig_key);
 
   args_list_t args1 = {"-in", der_key_path, "-inform", "DER", "-out", temp_pem};
   ASSERT_TRUE(ecTool(args1));
@@ -163,6 +180,11 @@ TEST_F(ECTest, RoundTripDERtoPEMtoDER) {
   ASSERT_TRUE(out_bio);
   bssl::UniquePtr<EC_KEY> parsed_key(d2i_ECPrivateKey_bio(out_bio.get(), nullptr));
   ASSERT_TRUE(parsed_key);
+
+  // Validate key content matches
+  const BIGNUM *orig_priv = EC_KEY_get0_private_key(orig_key.get());
+  const BIGNUM *parsed_priv = EC_KEY_get0_private_key(parsed_key.get());
+  ASSERT_EQ(BN_cmp(orig_priv, parsed_priv), 0);
   
   RemoveFile(temp_pem);
 }
