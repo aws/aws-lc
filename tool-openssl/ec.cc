@@ -49,21 +49,21 @@ bool ecTool(const args_list_t &args) {
     return true;
   }
 
-  if (inform_str == "PEM" || inform_str == "pem") {
-    input_format = FORMAT_PEM;
-  } else if (inform_str == "DER" || inform_str == "der") {
+  if (isStringUpperCaseEqual(inform_str, "DER")) {
     input_format = FORMAT_DER;
+  } else if (isStringUpperCaseEqual(inform_str, "PEM")) {
+    input_format = FORMAT_PEM;
   } else {
-    fprintf(stderr, "Error: Invalid input format '%s'. Must be PEM, pem, DER, or der\n", inform_str.c_str());
+    fprintf(stderr, "Error: Invalid input format '%s'. Must be PEM or DER\n", inform_str.c_str());
     goto err;
   }
 
-  if (outform_str == "PEM" || outform_str == "pem") {
-    output_format = FORMAT_PEM;
-  } else if (outform_str == "DER" || outform_str == "der") {
+  if (isStringUpperCaseEqual(outform_str, "DER")) {
     output_format = FORMAT_DER;
+  } else if (isStringUpperCaseEqual(outform_str, "PEM")) {
+    output_format = FORMAT_PEM;
   } else {
-    fprintf(stderr, "Error: Invalid output format '%s'. Must be PEM, pem, DER, or der\n", outform_str.c_str());
+    fprintf(stderr, "Error: Invalid output format '%s'. Must be PEM or DER\n", outform_str.c_str());
     goto err;
   }
 
