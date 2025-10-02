@@ -8697,8 +8697,12 @@ func addExtensionTests() {
 		},
 		// This hostname just needs to be long enough to push the
 		// ClientHello into F5's danger zone between 256 and 511 bytes
-		// long.
-		flags: []string{"-host-name", "01234567890123456789012345678901234567890123456789012345678901234567890123456789.com"},
+		// long. Also override curves to just x25519 to remove any PQ
+		// KeyShares that might push ClientHello above 512 bytes.
+		flags: []string{
+			"-host-name", "01234567890123456789012345678901234567890123456789012345678901234567890123456789.com",
+			"-curves", strconv.Itoa(int(CurveX25519)),
+		},
 	})
 
 	// Test that illegal extensions in TLS 1.3 are rejected by the client if

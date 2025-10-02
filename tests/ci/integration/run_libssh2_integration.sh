@@ -21,7 +21,6 @@ source tests/ci/common_posix_setup.sh
 #    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER=${SYS_ROOT}/"LIBSSH2_SCRATCH"
 LIBSSH2_SRC_FOLDER="${SCRATCH_FOLDER}/libssh2"
 LIBSSH2_BUILD_FOLDER="${SCRATCH_FOLDER}/libssh2-build"

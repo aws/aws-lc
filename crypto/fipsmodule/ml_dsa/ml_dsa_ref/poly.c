@@ -327,7 +327,7 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
-    SHAKE_Squeeze(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+    SHAKE_Squeeze(buf + off, &state, SHAKE128_BLOCKSIZE);
     buflen = SHAKE128_BLOCKSIZE + off;
     ctr += ml_dsa_rej_uniform(a->coeffs + ctr, ML_DSA_N - ctr, buf, buflen);
   }

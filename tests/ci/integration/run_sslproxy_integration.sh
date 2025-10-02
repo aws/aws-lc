@@ -10,16 +10,16 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - sslproxy
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - SSLPROXY_BUILD_FOLDER
-#      - libevent
-#      - LIBEVENT_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - sslproxy
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - SSLPROXY_BUILD_FOLDER
+#    - libevent
+#    - LIBEVENT_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/SSLPROXY_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/SSLPROXY_BUILD_ROOT"
 SSLPROXY_SRC_FOLDER="${SCRATCH_FOLDER}/sslproxy"
 SSLPROXY_BUILD_FOLDER="${SCRATCH_FOLDER}/sslproxy-aws-lc"
 SSLPROXY_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/sslproxy_patch"

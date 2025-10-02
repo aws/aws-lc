@@ -1,0 +1,61 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: 'codebuild-docker-run'
+description: 'Run one or more commands inside a docker container within a CodeBuild environment'
+inputs:
+  image:
+    description: 'Docker image to pull'
+    required: true
+  options:
+    description: 'Additional docker run configuration options'
+    required: false
+  run:
+    description: 'Run command in container'
+    required: false
+  shell:
+    description: 'Use a specific shell that must be available in the image'
+    required: false
+    default: bash
+  env:
+    description: 'Environment variables to set or pass to the container'
+    required: false
+    default: ''
+  ipv6:
+    description: 'Enables IPv6 networking in the container. Implies --privileged'
+    required: false
+    default: false
+  withCredentials:
+    description: 'Whether to passthru the CodeBuild credentials'
+    required: false
+    default: false
+  user:
+    description: 'Run the docker container as a non-root user'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - id: cbdruser 
+      shell: bash
+      run: echo "user=$USER" >> $GITHUB_OUTPUT
+    - name: Run Docker Container (${{ inputs.image }})
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_RUN: ${{ inputs.run }}
+        INPUT_SHELL: ${{ inputs.shell }}
+        INPUT_ENV: ${{ inputs.env }}
+        INPUT_IPV6: ${{ inputs.ipv6 }}
+        INPUT_WITH_CREDENTIALS: ${{ inputs.withCredentials }}
+        INPUT_USER: ${{ inputs.user }}
+      run: ${{ github.action_path }}/codebuild-docker-run.sh
+    - if: ${{ success() || failure() }}
+      shell: bash
+      env:
+        INPUT_USER: ${{ inputs.user }}
+      run: |
+        if [[ "${INPUT_USER}z" != "z" ]]; then
+          chown -R ${{ steps.cbdruser.outputs.user }}:${{ steps.cbdruser.outputs.user }} ${{ github.workspace }}
+        fi
