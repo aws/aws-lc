@@ -327,7 +327,7 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
     return 0;
   }
 
-  // Allocate temporary buffers for key generation
+  // Allocate buffers for key generation
   uint8_t *public_key = OPENSSL_malloc(key->kem->public_key_len);
   uint8_t *secret_key = OPENSSL_malloc(key->kem->secret_key_len);
 
@@ -336,7 +336,7 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
     OPENSSL_free(secret_key);
     return 0;
   }
-  
+
   size_t public_len = key->kem->public_key_len;
   size_t secret_len = key->kem->secret_key_len;
 
