@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 SRC_ROOT="$(pwd)"
-if [ -v CODEBUILD_SRC_DIR ]; then
+if [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -z "${CODEBUILD_WEBHOOK_JOB_ID:-}" ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
 elif [ "$(basename "${SRC_ROOT}")" != 'aws-lc' ]; then
   SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"

@@ -12,7 +12,7 @@ source tests/ci/common_posix_setup.sh
 
 SCRATCH_DIR="${SYS_ROOT}/scratch"
 X509_CI_DIR="${SRC_ROOT}/tests/ci/x509"
-X509_LIMBO_SRC="${SCRATCH_DIR}/x509-limbo"
+X509_LIMBO_SRC="${X509_LIMBO_SRC:-/x509-limbo}" # Should be by the docker image
 BASE_COMMIT_SRC="${SYS_ROOT}/base-src"
 
 # If BASE_REF is set in the environment we will use that, this provides a mechanism for a user to manually kick off
@@ -23,37 +23,60 @@ BASE_COMMIT_SRC="${SYS_ROOT}/base-src"
 BASE_REF="${BASE_REF:-${CODEBUILD_WEBHOOK_BASE_REF:-${CODEBUILD_WEBHOOK_PREV_COMMIT:?}}}"
 
 function build_reporting_tool() {
-    pushd "${X509_CI_DIR}/limbo-report"
+    pushd "${X509_CI_DIR}/limbo-report" 2>&1 >/dev/null
     make
     mv ./limbo-report "${SCRATCH_DIR}/"
-    popd # "${X509_CI_DIR}/limbo-report"
+    popd 2>&1 >/dev/null # "${X509_CI_DIR}/limbo-report"
 }
 
 function setup_x509_limbo() {
-    git clone https://github.com/C2SP/x509-limbo.git "${X509_LIMBO_SRC}"
-    pushd "${X509_LIMBO_SRC}"
+    pushd "${X509_LIMBO_SRC}" 2>&1 >/dev/null
     patch -p1 -i "${X509_CI_DIR}/x509-limbo.patch"
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install -e .
-    popd # "${X509_LIMBO_SRC}"
+    popd 2>&1 >/dev/null # "${X509_LIMBO_SRC}"
+}
+
+function build_aws_lc() {
+    local BUILD_DIR
+    BUILD_DIR=$(mktemp -d)
+    cmake -B "${BUILD_DIR}" -S "${1}" -GNinja \
+        -DBUILD_SHARED_LIBS=1 \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_INSTALL_PREFIX="${2}"
+    cmake --build "${BUILD_DIR}"
+    cmake --install "${BUILD_DIR}"
+    rm -rf "${BUILD_DIR}"
+}
+
+function build_aws_lc_harness() {
+    local HARNESS_SRC
+    HARNESS_SRC="${X509_LIMBO_SRC}/harness/aws-lc"
+    local PKG_CONFIG_PATH
+    PKG_CONFIG_PATH="${1}/lib64/pkgconfig"
+
+    pushd "${HARNESS_SRC}" 2>&1 >/dev/null
+    PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" make 2>&1 >/dev/null
+
+    local HARNESS 
+    HARNESS="$(mktemp harnessXXX)"
+
+    mv main "${HARNESS}"
+
+    popd 2>&1 >/dev/null # "${HARNESS_SRC}"
+
+    echo "${HARNESS_SRC}/${HARNESS}"
 }
 
 function run_aws_lc_harness() {
-    pushd "${X509_LIMBO_SRC}"
+    pushd "${X509_LIMBO_SRC}" 2>&1 >/dev/null
     set +e
-    AWS_LC_SRC_DIR="${1}" make test-aws-lc
+    make run ARGS="harness --output ./results/aws-lc.json -- ${1}"
     if [ ! -f "${X509_LIMBO_SRC}/results/aws-lc.json" ]; then
-        echo "Failed to run x509-limbo harness for AWS_LC_SRC_DIR=${1}"
+        echo "Failed to run x509-limbo harness: ${1}"
         exit 1
     fi
     set -e
-    popd # "${X509_LIMBO_SRC}"
+    popd 2>&1 >/dev/null # "${X509_LIMBO_SRC}"
 }
-
-# Log Docker hub limit https://docs.docker.com/docker-hub/download-rate-limit/#how-can-i-check-my-current-rate
-TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
-curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
 
 git worktree add "${BASE_COMMIT_SRC}" "${BASE_REF:?}"
 
@@ -68,12 +91,16 @@ REPORTS_DIR="${SRC_ROOT}/x509-limbo-reports"
 mkdir -p "${REPORTS_DIR}"
 
 # Build run x509-limbo on current src of event
-run_aws_lc_harness "${SRC_ROOT}"
+build_aws_lc "${SRC_ROOT}" "/opt/aws-lc-after"
+AFTER_HARNESS="$(build_aws_lc_harness "/opt/aws-lc-after")"
+run_aws_lc_harness "${AFTER_HARNESS}"
 "${SCRATCH_DIR}/limbo-report" annotate "${X509_LIMBO_SRC}/limbo.json" "${X509_LIMBO_SRC}/results/aws-lc.json" > "${REPORTS_DIR}/base.json"
 "${SCRATCH_DIR}/limbo-report" annotate -csv "${X509_LIMBO_SRC}/limbo.json" "${X509_LIMBO_SRC}/results/aws-lc.json" > "${REPORTS_DIR}/base.csv"
 
 # Build run x509-limbo on the base src for event
-run_aws_lc_harness "${BASE_COMMIT_SRC}"
+build_aws_lc "${BASE_COMMIT_SRC}" "/opt/aws-lc-before"
+BEFORE_HARNESS="$(build_aws_lc_harness "/opt/aws-lc-before")"
+run_aws_lc_harness "${BEFORE_HARNESS}"
 "${SCRATCH_DIR}/limbo-report" annotate "${X509_LIMBO_SRC}/limbo.json" "${X509_LIMBO_SRC}/results/aws-lc.json" > "${REPORTS_DIR}/changes.json"
 "${SCRATCH_DIR}/limbo-report" annotate -csv "${X509_LIMBO_SRC}/limbo.json" "${X509_LIMBO_SRC}/results/aws-lc.json" > "${REPORTS_DIR}/changes.csv"
 

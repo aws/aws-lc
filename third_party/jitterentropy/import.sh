@@ -62,6 +62,9 @@ echo "Remove upstream repository build scripts to avoid them being invoked ..."
 rm "${SRC}/CMakeLists.txt"
 rm "${SRC}/Makefile"
 
+echo "Remove test folder which is unused and contains recursive paths..."
+rm -rf ${SRC}/tests
+
 echo "Generating META.yml file ..."
 cat <<EOF > META.yml
 name: ${SRC}

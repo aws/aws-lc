@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - KAFKA_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - KAFKA_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/KAFKA_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/KAFKA_BUILD_ROOT"
 KAFKA_SRC_FOLDER="${SCRATCH_FOLDER}/librdkafka"
 KAFKA_BUILD_PREFIX="${KAFKA_SRC_FOLDER}/build/install"
 KAFKA_TEST_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/librdkafka_patch"
