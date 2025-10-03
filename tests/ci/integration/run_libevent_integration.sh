@@ -7,7 +7,7 @@ set -exu
 source tests/ci/common_posix_setup.sh
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER=${SRC_ROOT}/"scratch"
+SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 LIBEVENT_SRC="${SCRATCH_FOLDER}/libevent"
