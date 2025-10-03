@@ -65,8 +65,6 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         save_vregs
         save_regs
 
-        udiv_by_80(x2, x8) // Number of 5x-unrolled iterations
-
         cmp   x2, #16 // AES-XTS needs at least one block
         b.lt  .Lxts_enc_abort
 .align  4
@@ -94,14 +92,6 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         aese v6.16b, v1.16b
         eor  v6.16b, v6.16b, v0.16b
 
-        // The iv for second block
-        // x9- iv(low), x10 - iv(high)
-        // the five ivs stored into, v6.16b,v8.16b,v9.16b,v10.16b,v11.16b
-        fmov  x9, d6
-        fmov  x10, v6.d[1]
-        mov   w19, #0x87
-        tweak(d8, v8.d[1])
-
         mov x7, x3
         ld1 {v16.4s,v17.4s},[x7], #32         // load key schedule
         ld1 {v12.4s,v13.4s},[x7], #32
@@ -116,6 +106,14 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
 .Lxts_enc:
         cmp x2, #0x20
         b.lo .Lxts_enc_tail1x   // when input = 1 with tail
+
+        // The iv for second block
+        // x9- iv(low), x10 - iv(high)
+        // the five ivs stored into, v6.16b,v8.16b,v9.16b,v10.16b,v11.16b
+        fmov  x9, d6
+        fmov  x10, v6.d[1]
+        mov   w19, #0x87
+        tweak(d8, v8.d[1])
 
         cmp x2, #0x30
         b.lo  .Lxts_enc_tail2x    // when input size  = 2
@@ -135,6 +133,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         // The iv for fifth block
         tweak(d11,v11.d[1])
 
+        udiv_by_80(x2, x8) // Number of 5x-unrolled iterations
 .align  4
 .Loop5x_xts_enc:
         ldp q0, q1, [x0], #0x50
