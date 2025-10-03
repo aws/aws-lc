@@ -112,6 +112,35 @@ const char *mlkem_1024_pub_pem_str =
     "uYOILhF1\n"
     "-----END PUBLIC KEY-----\n";
 
+// https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+// C.1.1.1. ML-KEM-512 Private Key Examples: Seed Format
+const char *mlkem_512_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQBBEKAQAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.1.2.1. ML-KEM-768 Private Key Examples: Seed Format
+const char *mlkem_768_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQCBEKAQAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// C.1.3.1. ML-KEM-1024 Private Key Examples: Seed Format
+const char *mlkem_1024_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQDBEKAQAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=\n"
+    "-----END PRIVATE KEY-----\n";
+
+// malformed key (63 byte seed)
+const char *mlkem_512_bad_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFMCAQAwCwYJYIZIAWUDBAQBBEGAPwABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ\n"
+    "GhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pg==\n"
+    "-----END PRIVATE KEY-----\n";
+
 const char *mlkem_512_priv_expanded_pem_str =
     "-----BEGIN PRIVATE KEY-----\n"
     "MIIGeAIBADALBglghkgBZQMEBAEEggZkBIIGYHBVT9Q2NE8nhbGzsbrBhLZnkAMz\n"
@@ -282,156 +311,168 @@ const char *mlkem_1024_priv_expanded_pem_str =
 // Implementation: https://github.com/bcgit/bc-java/tree/b41f23936724284a20f10dff13c76896a846031b/prov/src/main/java/org/bouncycastle/jcajce/provider/asymmetric/mlkem
 // Encoder: https://github.com/bcgit/bc-java/blob/0e100a58af34d0cf91ea5cfd1f0a6d36681c3653/core/src/main/java/org/bouncycastle/pqc/crypto/util/PrivateKeyInfoFactory.java#L247-L256
 
+const char *bouncy_castle_ml_kem_512_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQBBEKAQNE4hxN6KQyTF+Qj9UlXv4frRjHiNEt99Dv+\n"
+    "fyqv3I4AQmR+rSd2QVr8iGPjcTCQ24hWPJ3BxaOnQs7avyfq7ps=\n"
+    "-----END PRIVATE KEY-----\n";
+
 const char *bouncy_castle_mlkem_512_priv_expanded_pem_str =
     "-----BEGIN PRIVATE KEY-----\n"
-    "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\n"
-    "uX0nVwQBIwZSB9XN4NgNm6sl7CUnZ/1dK5Tv5Q==\n"
+    "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\n"
+    "J3ZBWvyIY+NxMJDbiFY8ncHFo6dCztq/J+rumw==\n"
     "-----END PRIVATE KEY-----\n";
 
 const char *bouncy_castle_mlkem_512_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
-    "MIIDMjALBglghkgBZQMEBAEDggMhABGUC5yCDceDLGeFfYoSrNSrWzSzT0kKpP4r\n"
-    "hr0bZuuWgQQMbkhqduH7aluLnFdcZ0MnjCwzrHnSDD0DcW0GucPRKCI4A61zt6mU\n"
-    "GaV4NVTZo708vujEWR1gYYZKV4mQjgAJG5F6tqBpQZ7VEt34RJ2gzPTAMfenP6CJ\n"
-    "Oo5wiJSoHq/2gW3buAcxeliIY2OLArK5D953DTt7Xb7jtw00m/cAEQqMXjpBeIvp\n"
-    "S0MAqHwXoRHsJFhqU7tcOCBqCBAToSixMlmitK5Hsj/oshZscJOkEm3VbAT4Z0oA\n"
-    "uWCIv0AMuQThCOs0H9Pori8gHfLonWAiYFgxzRAgt6fFVVkhJOfDDXYZtrcpE20m\n"
-    "JYxKIDESyquhVhCBcyhLctW6KKalncFoRi2SlSunVWDJYj/zVu5iLmAWMu28ltc5\n"
-    "N90qvWVsIi+sFTFKE4jmcINba3JnI6wkJe0LV9nTI5l4VQyFzg2DtAnZXApWHDil\n"
-    "Ee7Kgc2HVZJsT688dA3lHS3gSn3bYuTZwHCKwqYIz7D0jyziun1pg3NYAivih/KW\n"
-    "LyRQVDiQVbbIQ6G5CbwyPe0LJ3yHb0I2jdXlbhQiYJVyXo1HXixYuzVXGL5LdWF3\n"
-    "pLdjpJdrvd28goVDTysUTN2XAkpzr3HKG7EgRdKFBhizmuv1Qxz5u15aog1BnsLR\n"
-    "ziBTM1T3I0PwZuB2ngajoMoKRSDUvWBrtNcwcpG5UXT5Sy86zDIgwas1yoezsO0k\n"
-    "wRixswpcyyKmMEmDAqdFkGrEvMosxUX4vhFZWRk4Cd/4k8FpHlZBdZmLOCoqtZnY\n"
-    "riUpQVHiWGGoSlsipm6hyHhJrz+FAw7rTrGjJRaZyiqgYuIGglPQnjLkowHyG2VL\n"
-    "om9XUeiaX2SHHx6gHNfAYl9KBjM4w6rgzpGsstiMKu6KxKTwsgRbTzRiFkoL0DUp\n"
-    "IxD8DUqiTqEEp7vHA1qLxqILjIdcJCkhmSRlWJhHGhZ7uycpLVDYLqF2g8BFbE+I\n"
-    "KBlkF51phuoYW4bXpZoqCUMhTDnqjb9Q36AIJdp2kU0GBrB9gaFT0He5h2IK5GIn\n"
-    "qg50PyZp\n"
+    "MIIDMjALBglghkgBZQMEBAEDggMhABC0xcv2T7+iOdhyR9GpG6qbCr2RVwykEti2\n"
+    "LPZiNd2DH5nsmrkVqzkCrDjQmvr1am+VzM7Dm4QRjTAnh5pSmfw7PVAoc8WLEf1Q\n"
+    "HHyqERoUfYlLGIRQOP5HB/vXDOnpuJgkPlfzJ3bmDA3ZBl0bkt1SBPSklcrHKtzs\n"
+    "yGnaO4EbewBKPZy1PGABi3fJbWnGn6hbfHORLiIcjh/QBUWSLjq7ndvYUXiqznBD\n"
+    "xNgUkwCxGlf0MocicCJsx7qGfNunpfREzbyxRydrZc0sSoWoyPyQkUgJHznEisdL\n"
+    "MTA3z7oBearWDCCWFZPWSXQ0S/MTD4posXI0LKfyViOspJgraO9ci2w3yX+pgGG8\n"
+    "pHBseFqxvsSqfR78JXRgSHrCHgG6iZR4ff4wBO0mCV3zvf9QibwMowh7aSoAP22H\n"
+    "AJuSMG84yFcoXBMrDYf7qm7DUZ31LhkkjlZIBpiMu4zLf/W1fH08jsy0nPJYN1ka\n"
+    "Jt50vTgZxRuJWGGUvHsSjr1ntxUpGQfUBP1jQX1mm6FHm2Sqmk4GD6D2g4h4AAUw\n"
+    "RSJDUfL1zL3CUASLiRVnnvlXqYDJMpw0ZAjGR6XoWJIYFYT6cw/Rk5HAaBzWtAjn\n"
+    "LVSYHceiQ3LIthGAEHushzLEFl51NijzrqopuFKGpoi1s0SbfTdKLo2EUbxnWP3x\n"
+    "ROfAdBx6K1hKSLKhnD16wwmQky0HToioSMplQEOlv4pne7MRq2CYwULlK8pDzVEk\n"
+    "R6XabtT7KflgZib7ZeaGIDYgI1sxkn8FtWg6vTNjz19gUWvTckf7YHVYAJfjpw4y\n"
+    "GgTxjIjxJzYqIDeFjbEytZRbiHBiG1/1qJt5a+b0udsqPHLUeZbckMpRza6rq25n\n"
+    "kDW5hPTQs0jsb8iqgt1xjuMjloGCfahjv0S3qtWnKtOWSp8cx1FaMCDrXQG1zrrQ\n"
+    "Ix+MpzN8uuK1Eo8bJH85IL6syek8tx5roXjWR/eRjPUzkAvblBj5zgRsEpRUbJFM\n"
+    "c5/2A+kDyOQwIJ5wW7nWdRJkitQaNHgEoKcRLh6yf3G9sIYpQ8JjMo0SBUiMLtp0\n"
+    "Yaa6NjZv\n"
     "-----END PUBLIC KEY-----\n";
+
+const char *bouncy_castle_ml_kem_768_seed_pem_str =
+    "-----BEGIN PRIVATE KEY-----\n"
+    "MFQCAQAwCwYJYIZIAWUDBAQCBEKAQEaoG9U4IT/3ICeEUsmqUomFES14K0pvYTdA\n"
+    "LQoFvUzjPo/ghsug5JTZ3g1UrXSl2rXr3BFCDJgpEStfanCeVv0=\n"
+    "-----END PRIVATE KEY-----\n";
 
 const char *bouncy_castle_mlkem_768_priv_expanded_str =
     "-----BEGIN PRIVATE KEY-----\n"
-    "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\n"
-    "drB5C6kc52uVVA3V9jomMufpdKNdVgjqHk4vWA==\n"
+    "MIIJeAIBADALBglghkgBZQMEBAIEgglkBIIJYFWygtXJdIs5OE9mj4sqUEgFppME\n"
+    "Xy+FiJXgegyoucGae2I6MqkHboxrT6rxdilBxcgyIygkLNIEUCtZNkxUTNGiXr3E\n"
+    "oPacK8B3F/oUWRpmMDcrUmooevOyW58mmIC7hygTb3W2rLRcD/zbPZzXzyi8rOpK\n"
+    "DBG0MY13KWXykaGoNjGXHdfbJn/oJFrnNJD8eSvpQBsVofOMvqOzLjxzMHdokeoL\n"
+    "aA+ie5cbn3O5kVJ7SI+lE515xv17FYVYx9r6C4jUzBZkPyZcdEXDJihXg84CDk3J\n"
+    "OEQLZcf5dsBxOWulinUcpj7xzdYXvSsZOY+hH3CEpZ28SmhRbCeGnrnmWcPph6Bz\n"
+    "dccCFxaZUDE0du9SlzeUicFxLDwWS4GnM+Acte6Fa0u2wcO8h8y5jCSGFY1ZcCtJ\n"
+    "I2CZV/cLm86cX9fizxuZxeOQR2RzubMLb2G6ckoUkF47djzJZ4kqKzmsMLXBuIl4\n"
+    "m/l7wM88CcKmhxCJjPTGkw0Ivv5imxixCGnVRXiSBStFBB+iXwKlkDD6LvcFfUYk\n"
+    "y8kDEO9QMa7VyTeUmb8CcWqRCEgCV1hnwAUkT1xROy+aTu+xgi5VxXfGqkMmJUh1\n"
+    "dZNicE5MfaaomhRbV8GZRj3aNwVqevMbN8CGEp2KuBZLGq3sY4AAtWijhmKjoJqX\n"
+    "dZccQRW7RGHlXoxLlaHcvaWERt9pUB9JctYSvu8LbpBITjICXypFGV+bmBf4FbCp\n"
+    "hIIxdTXLPk7GR+nMdu0SiM50THOIU2IUQvOVMwNCO3gBiqwpCoqDmmUzfvSRk07k\n"
+    "XLxpWlWjn3CyDx5Ab9m0i/5rSjrEbdQxEcu5fEqhCtQlt/CmBs5ViNiBev47kuts\n"
+    "qeRICj1EXGD6x1iQcjajBi46QUDlCGrURRqYzQ40ECJqynxhzaCcSACXMeMMyVtm\n"
+    "E2zIqgOiID11fQOcYOioKktkrqWGkHilCGDYSlYCpjmGhLFhXGc8tfMRsEfSPDpj\n"
+    "zJO6vspJyNhSChyAYYFAzQuWcUKqX9+sPHhLd/jcqmW4OQ3mFczBUf0ppK3ltT8Z\n"
+    "yK7XfdV4cKzZKzsKzJo8wyTQST1Ig3CySdDHIlv0IM43bCKzUSj7sdtQdntyybn7\n"
+    "eRhJEZN5zhZSWiOiXyoLA7BxggKiRZJKLllUS05iLuQ4Rfmgk+NcxVuAELfDPYOg\n"
+    "pa8wL1SRN7U2sXiTswtUUKMITE6VVHHrjuFzJmEMLgUbpzJlADSZr/w8QS9gbMXT\n"
+    "d5AxU2VZSP3xf/6JVrJ3cY3GVivQI55QfBjGnyJAyeknc9EUD0mrGmeAKU5LuTyE\n"
+    "bjlIatBgCsFkwsI5YOIQaFHljVbyfQDIYkULVQ5cEqh4hwPGVZtgdX1RiRGrEF7n\n"
+    "kLCrrHMCCXlblKeXFrf5ML+xO4XDnQapXWOZX/4KHYjVLOMGgoe3joBaMJkHFwMA\n"
+    "AN/rQcz8YNFLvwFRmygZM/s3kcrUjBHSJtjIHfvBXAGYpfIHWMVbJRF5SlsUReb1\n"
+    "lFRZgULzhH/5t/0XxC9KxvCbvjzASjXqQYV1xaGhKH9RDLSXPlqpkU2js4wCo+CF\n"
+    "lr72UnnAN4e4lQmIy7knU1nWvURys55GYm9iZlD2clCij2H4E1XliJtZWnd0EIZ4\n"
+    "X26yQpuJBM13i9VazemaRnCpYnb3DnpzbrdqQ0wkxOX7OybZfZmyrteyNDt6WwhH\n"
+    "p2pYw83cbmpyrKALdnUmcS/pcWaFFUdyp4WEGIm4doMzkKHRSQuSoYacny7QBXAj\n"
+    "gLiCDQdEJ5Q8JXoBIouiepAobcYAffoEMUT1r+QnvdJXEx1Eu4P4bN03IbExT9Hj\n"
+    "tK58IFibbU1IrZ9WjF4WOwJLWpI0M/yjfVAopLtzhkXxK5jQTeb0eEjQpuFXcuYJ\n"
+    "Xe6HKZaCFDtsM2DhXlIDDHPXiACRbzAxx1jknqqRpIBSIAhahTDGYyp0kQTit30X\n"
+    "b+hSwQZFPmYEB9ZAbTxDUmJCUefBwlh2yKbWQLIzEGKTm9vWsGa3hY8LfWljeha6\n"
+    "fwdpH3rLEOJHimeFv78AISsoMVsVHLMjvrtVMYSchkJsWhZ0vybov2pVi4YlcAmg\n"
+    "UzykzAdojm9iYhQIUrcayYbgsl7nxSHMx/cctBJHipo5i1eyAZ5pOQosi70FV2HU\n"
+    "V07HLAk2Ua5DK+gsvwuyjTGBL/x1WhPhMRcmWKuENQPAnDSppSFpbQ1qI89RXsLF\n"
+    "neBGc/4okSemG+NDlwJBW+DxC6J5KyhHZRBaxh9StqtsTyomBQMpMoNFBAzkbmOz\n"
+    "QiGERgVZCfiTrtyoX93YOHBSVfjmkl4JBZlsyi7GHtZ8s7OxhqyVSlCCpeLnoZWX\n"
+    "nz5RiwgmsxwTIZ4kGmQmSdIxg0BTPxRaV3kRzbmyv4qrMf06Il2gzGJJlXT0uzVx\n"
+    "ZH9BzurITmEhGv/wI40kwtAzXpLBs4zmAIdELulgsWnzJpBBkEXsr9yQWyX8CiV4\n"
+    "gTbiJ+M8P7L1FDLDHEXnnPZWEyOyr7WZKKKCAEUSlaiTmeG1SwB2kOqnLv1JFOzE\n"
+    "yEkBwrzGbVXxuwhxRI5XpVEUQWCmjPRbSQFYjO2yWUCBP/1ca9lnzpqZg9nYz2om\n"
+    "UJkTQpbElP3pI3h6Ujr4FjBTYP8jG2SbdiRQHJ7Gk7ZKS/tqFizwNWQAx2SLXnr0\n"
+    "V8ZstWmzoaQjmTdhS9+1na1MZFdkPsdMsObrZ76qLoNhKIhlTzhRSgC6MZ81qZq0\n"
+    "Tdp2T4m6ah5qa11UDjeVcz5AoYI2gz/hhHOLYilqRnAbtuTBs8xsHA7cY+hqlguh\n"
+    "NUSrqX3BpZxZTcLRjrPSkHcWupF7NrVWOH87AUL3o/SGvbz1RrKFHoaye+27kY4E\n"
+    "wY7DYO7bEEACY9MxFOGMagtaKSZlfRBZMJugT9gxLAazlV3FE7ySFlt0Y6bKKWok\n"
+    "iiw3VXFBFRqAvnI3azk5oUn1eV18zcxRDcqsZfHgNlq2CPbaJUSFFo2gyEHHAPnM\n"
+    "jo5AsR/2OvtnIUJSZx0CRwB5gkxsfvVIop5JFOMENWA2U/PDk1yoUqOIYswgQ0Kw\n"
+    "mKPpm5FCVl7cuaOmRC6ys0XznT6mXXCLma0qERroTP8ys6x3Xe+uHWVXo/bxq1ee\n"
+    "pqFKqWKhM/8A5tdUuybWgj+YpQboiWPT5p8ahUWdVapf/hzXTdRSfK/k40Y+j+CG\n"
+    "y6DklNneDVStdKXatevcEUIMmCkRK19qcJ5W/Q==\n"
     "-----END PRIVATE KEY-----\n";
 
 const char *bouncy_castle_mlkem_768_pub_pem_str =
     "-----BEGIN PUBLIC KEY-----\n"
-    "MIIEsjALBglghkgBZQMEBAIDggShAL+iTbEENK8an4t0q47AObdlI0WMOQVxxYBB\n"
-    "izFVBdI2oRtSK2fmaYUZZmGUc834TuHJuiNRwKX0wwRwwNPQkZmgGbkZu2wmagby\n"
-    "XFRJSdYDq+OVSkSGBFLVeo6YhG3VsLSXQKUCDKLWw0LRx9MEwWThxE0YeH9HEr6U\n"
-    "H2rjykEKe3camweMSdW5qwO7Apl2iOigfK1hqb76iVAFibNCE35skD+GCk9oVgMq\n"
-    "lJ0oECPVhqFbXf9AP4j4rVxMVcHWaNgzQjKGYahamoK0YlcDYoEMc9USel02uDHo\n"
-    "xjejqV6mPNWmE0USfuDMYen3TFAAfW14xxtFcdPKlS4wmnDArB5nGbvsV5vGEyZF\n"
-    "sisQph4bJgLID8Y8SUjygZeMmWSmOQ9UB6MrApS2XQKFRcyylj3GGYpmN7UYj09h\n"
-    "gqjYLcvpPrjBqrXxXpNgt5DhNyJVGIsDMQsWl6dUw3O4dLOWSgrLgQRyuQlEY8e5\n"
-    "szViCcB1YwTZYC1RuofisRQsDTsAhU1JcZsGguJ4c0taObMncfI3mpFiJcirTNuS\n"
-    "OlR7oyDcOSA3aKE7puorRPdTbi0FMcD6fOsXgyFzHAOXS2KDvoOLRLUXcq0kTiGJ\n"
-    "CTFROT4YeP2Cmn5gIBV1Is+LvUIVEE5wCep3mUDskttsKcl3Rh0awZCRX8hSTuVi\n"
-    "T+fJcuTqKNawZntKx1zEEw4wKgtHqnirYvUwzEY7NOkQz6orsYpQhzfbozSJWVkF\n"
-    "JCLEH7goz9ZLWGr8BqCKn3WXDnT7XFr7rSZaX/q6mr7aJY3VGAViVDYBxMWFwtYw\n"
-    "JMKnRRnQt1X6l+GLgcAGXcsKpRAXmpYzlu7DAsPVQ674mXHBO/VjfqmyQVfkjzrq\n"
-    "wys2sAibKayKApJ4rjGSZ+azxI0lPBO5aFvwvdnmJBm7oTSykcAlri9Wn1lxtLiW\n"
-    "Zfmci/eWsCgYsy3mvhSimWgESJAwAunsa44YXiWRfVmpxfSjwGWolP8ZAtYlcHnA\n"
-    "lrFcJKHwgMvMP0KQEt7hvfRJuMTmF2RquNRCgcDHdwXXu5jVrM0cVvEAFjlCynT1\n"
-    "F8GYUww7aIiXsJt5D3TwDNR7JUvgz9IbDbGgFPE3aU/7InBWXaFQcY1pDM/HmAlb\n"
-    "WZbwbeKkWshggSgidOTwhMnMjQPVYaxMr0OcQBAYwBGguDJMjwF1tzG5rQerNxIl\n"
-    "SjN5euyYBtUJhsgor08AXr4IHExFj/LyFitkvrpXvnOjhNZWrcc3jyB8kGQDEIqy\n"
-    "zuFBHS2ZXpulnxkxGTFQO/N5k433ULThg5W4jrWYKZd0l/iVEknYFdWTzQeqRCdS\n"
-    "b4UGoGN3ObB6nVXRQM4MkXXmcc9SGRiZxXl0CGwCmAcIxtpCntxgfkJ4UbATNDLi\n"
-    "qsOqD42LTtYxo7QpepE0lJh6AiYkYZTbOx1RbzZICV6gJsCWtSRYLGnUaPvZDj80\n"
-    "MqZwn/8nRip6pZaJoH1KafsULir7opUjK04GKMvhnLclBtI4lpRSolNrGW/lVfaA\n"
-    "n8QLUMqiwEuVCQ6LPpkDk3EXFs/ERtpU8+ZOuHLg4EBAZcbwybrYGDjQ5TAoriVu\n"
-    "0KCMcW41\n"
+    "MIIEsjALBglghkgBZQMEBAIDggShAKGhKH9RDLSXPlqpkU2js4wCo+CFlr72UnnA\n"
+    "N4e4lQmIy7knU1nWvURys55GYm9iZlD2clCij2H4E1XliJtZWnd0EIZ4X26yQpuJ\n"
+    "BM13i9VazemaRnCpYnb3DnpzbrdqQ0wkxOX7OybZfZmyrteyNDt6WwhHp2pYw83c\n"
+    "bmpyrKALdnUmcS/pcWaFFUdyp4WEGIm4doMzkKHRSQuSoYacny7QBXAjgLiCDQdE\n"
+    "J5Q8JXoBIouiepAobcYAffoEMUT1r+QnvdJXEx1Eu4P4bN03IbExT9HjtK58IFib\n"
+    "bU1IrZ9WjF4WOwJLWpI0M/yjfVAopLtzhkXxK5jQTeb0eEjQpuFXcuYJXe6HKZaC\n"
+    "FDtsM2DhXlIDDHPXiACRbzAxx1jknqqRpIBSIAhahTDGYyp0kQTit30Xb+hSwQZF\n"
+    "PmYEB9ZAbTxDUmJCUefBwlh2yKbWQLIzEGKTm9vWsGa3hY8LfWljeha6fwdpH3rL\n"
+    "EOJHimeFv78AISsoMVsVHLMjvrtVMYSchkJsWhZ0vybov2pVi4YlcAmgUzykzAdo\n"
+    "jm9iYhQIUrcayYbgsl7nxSHMx/cctBJHipo5i1eyAZ5pOQosi70FV2HUV07HLAk2\n"
+    "Ua5DK+gsvwuyjTGBL/x1WhPhMRcmWKuENQPAnDSppSFpbQ1qI89RXsLFneBGc/4o\n"
+    "kSemG+NDlwJBW+DxC6J5KyhHZRBaxh9StqtsTyomBQMpMoNFBAzkbmOzQiGERgVZ\n"
+    "CfiTrtyoX93YOHBSVfjmkl4JBZlsyi7GHtZ8s7OxhqyVSlCCpeLnoZWXnz5Riwgm\n"
+    "sxwTIZ4kGmQmSdIxg0BTPxRaV3kRzbmyv4qrMf06Il2gzGJJlXT0uzVxZH9BzurI\n"
+    "TmEhGv/wI40kwtAzXpLBs4zmAIdELulgsWnzJpBBkEXsr9yQWyX8CiV4gTbiJ+M8\n"
+    "P7L1FDLDHEXnnPZWEyOyr7WZKKKCAEUSlaiTmeG1SwB2kOqnLv1JFOzEyEkBwrzG\n"
+    "bVXxuwhxRI5XpVEUQWCmjPRbSQFYjO2yWUCBP/1ca9lnzpqZg9nYz2omUJkTQpbE\n"
+    "lP3pI3h6Ujr4FjBTYP8jG2SbdiRQHJ7Gk7ZKS/tqFizwNWQAx2SLXnr0V8ZstWmz\n"
+    "oaQjmTdhS9+1na1MZFdkPsdMsObrZ76qLoNhKIhlTzhRSgC6MZ81qZq0Tdp2T4m6\n"
+    "ah5qa11UDjeVcz5AoYI2gz/hhHOLYilqRnAbtuTBs8xsHA7cY+hqlguhNUSrqX3B\n"
+    "pZxZTcLRjrPSkHcWupF7NrVWOH87AUL3o/SGvbz1RrKFHoaye+27kY4EwY7DYO7b\n"
+    "EEACY9MxFOGMagtaKSZlfRBZMJugT9gxLAazlV3FE7ySFlt0Y6bKKWokiiw3VXFB\n"
+    "FRqAvnI3azk5oUn1eV18zcxRDcqsZfHgNlq2CPbaJUSFFo2gyEHHAPnMjo5AsR/2\n"
+    "OvtnIUJSZx0CRwB5gkxsfvVIop5JFOMENWA2U/PDk1yoUqOIYswgQ0KwmKPpm5FC\n"
+    "Vl7cuaOmRC6ys0XznT6mXXCLma0qERroTP8ys6x3Xe+uHWVXo/bxq1eepqFKqWKh\n"
+    "M/8A5tdU\n"
     "-----END PUBLIC KEY-----\n";
-
 struct KEMTestVector {
   int nid;
   const char *public_pem_str;
   const char *private_pem_expanded_str;
+  const char *private_pem_seed_str;
   const char *expected_deterministic_pub_pem;
   const char *expected_deterministic_priv_pem;
   size_t public_key_len;
@@ -439,17 +480,17 @@ struct KEMTestVector {
 };
 
 static const KEMTestVector kemParameters[] = {
-    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 
-     mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
+    {NID_MLKEM512, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str,
+     mlkem_512_seed_pem_str, mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
     {NID_MLKEM768, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str,
-     mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
+     mlkem_768_seed_pem_str, mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
     {NID_MLKEM1024, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str,
-     mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
+     mlkem_1024_seed_pem_str, mlkem_1024_pub_pem_str, mlkem_1024_priv_expanded_pem_str, 1568, 3168},
     {NID_MLKEM512, bouncy_castle_mlkem_512_pub_pem_str,
-     bouncy_castle_mlkem_512_priv_expanded_pem_str, 
+     bouncy_castle_mlkem_512_priv_expanded_pem_str, bouncy_castle_ml_kem_512_seed_pem_str,
      mlkem_512_pub_pem_str, mlkem_512_priv_expanded_pem_str, 800, 1632},
     {NID_MLKEM768, bouncy_castle_mlkem_768_pub_pem_str,
-     bouncy_castle_mlkem_768_priv_expanded_str,
+     bouncy_castle_mlkem_768_priv_expanded_str, bouncy_castle_ml_kem_768_seed_pem_str,
      mlkem_768_pub_pem_str, mlkem_768_priv_expanded_pem_str, 1184, 2400},
 };
 
@@ -831,3 +872,58 @@ TEST_P(KEMTest, ASN1_Methods_Cross_Compatibility) {
             Bytes(decoded_priv_from_marshal->pkey.kem_key->secret_key, test.secret_key_len));
 }
 
+TEST_P(KEMTest, ParsePrivateKeySeed) {
+
+  // ---- 1. Setup phase: parse provided public/private from PEM strings ----
+  CBS cbs_pub, cbs_priv;
+  uint8_t *der_pub = nullptr, *der_priv = nullptr;
+  long der_pub_len = 0, der_priv_len = 0;
+
+  ASSERT_TRUE(PEM_to_DER(GetParam().public_pem_str, &der_pub, &der_pub_len));
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_seed_str, &der_priv, &der_priv_len));
+
+  CBS_init(&cbs_pub, der_pub, der_pub_len);
+  CBS_init(&cbs_priv, der_priv, der_priv_len);
+
+  // ---- 2. Attempt to parse private key ----
+  bssl::UniquePtr<EVP_PKEY> pkey1(EVP_parse_private_key(&cbs_priv));
+  ASSERT_TRUE(pkey1);
+
+  // ---- 3. Attempt to parse public key ----
+  bssl::UniquePtr<EVP_PKEY> pkey2(EVP_parse_public_key(&cbs_pub));
+  ASSERT_TRUE(pkey2);
+
+  // ---- 4. Compare public keys ----
+  // EVP_parse_private_key will populate both public and private key, we verify
+  // that the public key calculated by EVP_parse_private_key is equivalent to
+  // the public key that was parsed from PEM.
+  ASSERT_EQ(1, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
+
+  // Clean up
+  OPENSSL_free(der_pub);
+  OPENSSL_free(der_priv);
+}
+
+TEST(KEMTest, InvalidSeedLength) {
+  // Test malformed ML-KEM-512 private key with 63-byte seed instead of 64
+  // This should fail with EVP_R_INVALID_BUFFER_SIZE when kem_priv_decode
+  // calls KEM_KEY_set_raw_keypair_from_seed
+  
+  uint8_t *der_priv = nullptr;
+  long der_priv_len = 0;
+  
+  ASSERT_TRUE(PEM_to_DER(mlkem_512_bad_seed_pem_str, &der_priv, &der_priv_len));
+  
+  CBS cbs_priv;
+  CBS_init(&cbs_priv, der_priv, der_priv_len);
+  
+  // This should fail because the seed is only 63 bytes instead of 64
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_private_key(&cbs_priv));
+  ASSERT_FALSE(pkey);
+  
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_EVP);
+  EXPECT_EQ(ERR_GET_REASON(err), EVP_R_INVALID_BUFFER_SIZE);
+  
+  OPENSSL_free(der_priv);
+}
