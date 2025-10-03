@@ -184,10 +184,10 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
   // Case 2: expandedKey OCTET STRING
   // Case 3: TODO: both SEQUENCE {seed, expandedKey}
 
-  if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+  if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC)) {
     // Case 1: seed [0] OCTET STRING
     CBS seed;
-    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return 0;
     }

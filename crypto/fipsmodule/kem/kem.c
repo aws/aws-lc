@@ -344,7 +344,7 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   if (!key->kem->method->keygen_deterministic(public_key, &public_len,
                                               secret_key, &secret_len,
                                               CBS_data(seed))) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     OPENSSL_free(public_key);
     OPENSSL_free(secret_key);
     return 0;
