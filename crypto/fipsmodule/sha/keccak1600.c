@@ -236,18 +236,22 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]);
 
 // KeccakF1600_XORBytes XORs |len| bytes from |inp| into the Keccak state |A|.
 // |len| must be a multiple of 8.
-static void KeccakF1600_XORBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, size_t len) {
+static void KeccakF1600_XORBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], const uint8_t *inp, const size_t len) {
     assert(len <= SHA3_MAX_BLOCKSIZE);
     assert((len % 8) == 0);
 
     uint64_t *A_flat = (uint64_t *)A;
-    size_t w = len / 8;
+    const size_t w = len / 8;
 
     for (size_t i = 0; i < w; i++) {
+#if defined(OPENSSL_X86_64)
+        const uint64_t Ai = *((const uint64_t *) inp);
+#else
         uint64_t Ai = (uint64_t)inp[0]       | (uint64_t)inp[1] << 8  |
                       (uint64_t)inp[2] << 16 | (uint64_t)inp[3] << 24 |
                       (uint64_t)inp[4] << 32 | (uint64_t)inp[5] << 40 |
                       (uint64_t)inp[6] << 48 | (uint64_t)inp[7] << 56;
+#endif
         inp += 8;
         A_flat[i] ^= Ai;
     }
@@ -275,16 +279,11 @@ static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS
     assert(len <= SHA3_MAX_BLOCKSIZE);
     size_t i = 0;
 
-    while (len != 0) {
+    while (len >= 8) {
+#if defined(OPENSSL_X86_64)
+        *((uint64_t *) out) = A_flat[i];
+#else
         uint64_t Ai = A_flat[i];
-
-        if (len < 8) {
-            for (size_t j = 0; j < len; j++) {
-                *out++ = (uint8_t)Ai;
-                Ai >>= 8;
-            }
-            return;
-        }
 
         out[0] = (uint8_t)(Ai);
         out[1] = (uint8_t)(Ai >> 8);
@@ -294,9 +293,19 @@ static void KeccakF1600_ExtractBytes(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS
         out[5] = (uint8_t)(Ai >> 40);
         out[6] = (uint8_t)(Ai >> 48);
         out[7] = (uint8_t)(Ai >> 56);
+#endif
         out += 8;
         len -= 8;
         i++;
+    }
+
+    if (len > 0) {
+            uint64_t Ai = A_flat[i];
+
+            for (size_t j = 0; j < len; j++) {
+                    *out++ = (uint8_t)Ai;
+                    Ai >>= 8;
+            }
     }
 }
 
@@ -318,7 +327,8 @@ void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS], uint8_t *o
 
 #if defined(KECCAK1600_ASM)
 
-// Scalar implementation from OpenSSL provided by keccak1600-armv8.pl
+// Scalar implementation from OpenSSL provided by keccak1600-armv8.pl or
+// SIMD implementation provided by keccak-x86_64-avx512vl.pl
 extern void KeccakF1600_hw(uint64_t state[25]);
 
 #if defined(OPENSSL_AARCH64)
@@ -372,7 +382,17 @@ void KeccakF1600(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     KeccakF1600_hw((uint64_t *) A);
 
 #elif defined(OPENSSL_X86_64)
-    sha3_keccak_f1600((uint64_t *)A, iotas);
+    // Dispatch logic for Keccak-x4 on x86_64:
+    //
+    // 1. If ASM is disabled, use the C implementation.
+    // 2. If ASM is enabled:
+    // - For systems with AVX512VL support use KeccakF1600_avx512vl().
+    //   Otherwise fall back to the C implementation.
+    if (CRYPTO_is_AVX512_capable()) {
+            KeccakF1600_avx512vl(A);
+    } else {
+            sha3_keccak_f1600((uint64_t *)A, iotas);
+    }
 #endif
 }
 
@@ -425,6 +445,7 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
     //   which is a straightforward implementation using the SHA3 extension.
     // - Otherwise, fall back to four times the 1-fold Keccak implementation
     //   (which has its own dispatch logic).
+
 #if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_AARCH64)
     if (CRYPTO_is_Neoverse_N1()) {
         keccak_log_dispatch(13); // kFlag_sha3_keccak4_f1600_alt
@@ -447,6 +468,19 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
         return;
     }
 #endif
+#endif
+
+    // Dispatch logic for Keccak-x4 on x86_64:
+    //
+    // 1. If ASM is disabled, use 4x the C implementation.
+    // 2. If ASM is enabled:
+    // - For systems with AVX512VL support use KeccakF1600_x4_avx512vl().
+    //   Otherwise fall back to 4x the C implementation.
+#if defined(OPENSSL_X86_64)
+    if (CRYPTO_is_AVX512_capable()) {
+            KeccakF1600_x4_avx512vl(A);
+            return;
+    }
 #endif
 
     // Fallback: 4x individual KeccakF1600 calls (each with their own dispatch)
