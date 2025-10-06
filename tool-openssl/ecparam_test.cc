@@ -76,8 +76,8 @@ protected:
     RemoveFile(key_path);
   }
 
-  char out_path[PATH_MAX];
-  char key_path[PATH_MAX];
+  char out_path[PATH_MAX] = {};
+  char key_path[PATH_MAX] = {};
 };
 
 // Test basic functionality
@@ -206,8 +206,8 @@ protected:
 
   const char* tool_executable_path;
   const char* openssl_executable_path;
-  char out_path_tool[PATH_MAX];
-  char out_path_openssl[PATH_MAX];
+  char out_path_tool[PATH_MAX] = {};
+  char out_path_openssl[PATH_MAX] = {};
 };
 
 TEST_P(EcparamCurveComparisonTest, CompareParameters) {
@@ -245,7 +245,7 @@ protected:
 
   const char* tool_executable_path;
   const char* openssl_executable_path;
-  char key_path_tool[PATH_MAX];
+  char key_path_tool[PATH_MAX] = {};
 };
 
 TEST_P(EcparamKeyGenComparisonTest, KeyGenCompatibility) {
@@ -310,10 +310,10 @@ protected:
   const char* tool_executable_path;
   const char* openssl_executable_path;
 
-  char out_path_tool[PATH_MAX];
-  char out_path_openssl[PATH_MAX];
-  char key_path_tool[PATH_MAX];
-  char key_path_openssl[PATH_MAX];
+  char out_path_tool[PATH_MAX] = {};
+  char out_path_openssl[PATH_MAX] = {};
+  char key_path_tool[PATH_MAX] = {};
+  char key_path_openssl[PATH_MAX] = {};
 };
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -noout"
