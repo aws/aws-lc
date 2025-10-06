@@ -369,8 +369,8 @@ int KEM_check_key(const KEM_KEY *key) {
     return 0;
   }
 
-  // Check that at least the public key exists
-  if (key->public_key == NULL) {
+  // Check that both public and private keys exist
+  if (key->public_key == NULL || key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
@@ -384,8 +384,13 @@ int KEM_check_key(const KEM_KEY *key) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
-      // Check secret key validity if present
-      if (key->secret_key != NULL && ml_kem_512_check_sk(key->secret_key) != 0) {
+      // Check secret key validity
+      if (ml_kem_512_check_sk(key->secret_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      // Perform Pairwise Consistency Test (PCT)
+      if (ml_kem_512_check_pct(key->public_key, key->secret_key) != 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
@@ -398,8 +403,13 @@ int KEM_check_key(const KEM_KEY *key) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
-      // Check secret key validity if present
-      if (key->secret_key != NULL && ml_kem_768_check_sk(key->secret_key) != 0) {
+      // Check secret key validity
+      if (ml_kem_768_check_sk(key->secret_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      // Perform Pairwise Consistency Test (PCT)
+      if (ml_kem_768_check_pct(key->public_key, key->secret_key) != 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
@@ -412,8 +422,13 @@ int KEM_check_key(const KEM_KEY *key) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
-      // Check secret key validity if present
-      if (key->secret_key != NULL && ml_kem_1024_check_sk(key->secret_key) != 0) {
+      // Check secret key validity
+      if (ml_kem_1024_check_sk(key->secret_key) != 0) {
+        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+        return 0;
+      }
+      // Perform Pairwise Consistency Test (PCT)
+      if (ml_kem_1024_check_pct(key->public_key, key->secret_key) != 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }

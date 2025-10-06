@@ -109,6 +109,15 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 //       |key->secret_key| must both be NULL.
 int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
 
+// KEM_check_key function validates a KEM keypair by performing:
+// 1. Public key validity checks
+// 2. Secret key validity checks  
+// 3. Pairwise Consistency Test (PCT) - encapsulation/decapsulation round-trip
+//
+// NOTE: Both public and secret keys must be present.
+//       Returns 1 on success, 0 on failure.
+int KEM_check_key(const KEM_KEY *key);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

@@ -185,6 +185,14 @@ int ml_kem_768_check_sk(const uint8_t *secret_key /* IN */);
 int ml_kem_1024_check_pk(const uint8_t *public_key /* IN */);
 int ml_kem_1024_check_sk(const uint8_t *secret_key /* IN */);
 
+// ML-KEM Pairwise Consistency Test (PCT) functions
+int ml_kem_512_check_pct(const uint8_t *public_key /* IN */,
+                         const uint8_t *secret_key /* IN */);
+int ml_kem_768_check_pct(const uint8_t *public_key /* IN */,
+                         const uint8_t *secret_key /* IN */);
+int ml_kem_1024_check_pct(const uint8_t *public_key /* IN */,
+                          const uint8_t *secret_key /* IN */);
+
 #if defined(__cplusplus)
 }
 #endif
