@@ -184,8 +184,8 @@ TEST_F(EcparamOptionUsageErrorsTest, InvalidOutformTest) {
 class EcparamCurveComparisonTest : public ::testing::Test, public ::testing::WithParamInterface<CurveTestParams> {
 protected:
   void SetUp() override {
-    out_path_tool[0] = '\0';  // Initialize to empty string
-    out_path_openssl[0] = '\0';  // Initialize to empty string
+    memset(out_path_tool, '\0', PATH_MAX);
+    memset(out_path_openssl, '\0', PATH_MAX);
     tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
     openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -228,7 +228,7 @@ INSTANTIATE_TEST_SUITE_P(CurveTests, EcparamCurveComparisonTest,
 class EcparamKeyGenComparisonTest : public ::testing::Test, public ::testing::WithParamInterface<KeyGenTestParams> {
 protected:
   void SetUp() override {
-    key_path_tool[0] = '\0';  // Initialize to empty string
+    memset(key_path_tool, '\0', PATH_MAX);
     tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
     openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -277,10 +277,10 @@ INSTANTIATE_TEST_SUITE_P(KeyGenTests, EcparamKeyGenComparisonTest,
 class EcparamComparisonTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    out_path_tool[0] = '\0';  // Initialize to empty string
-    out_path_openssl[0] = '\0';  // Initialize to empty string
-    key_path_tool[0] = '\0';  // Initialize to empty string
-    key_path_openssl[0] = '\0';  // Initialize to empty string
+    memset(out_path_tool, '\0', PATH_MAX);
+    memset(out_path_openssl, '\0', PATH_MAX);
+    memset(key_path_tool, '\0', PATH_MAX);
+    memset(key_path_openssl, '\0', PATH_MAX);
     tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
     openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
