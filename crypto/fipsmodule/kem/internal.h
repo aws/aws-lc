@@ -98,13 +98,16 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in);
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
                                       const uint8_t *in_secret);
 
-// KEM_check_key function validates a KEM key pair using the specific
-// validation functions crypto_kem_check_pk and crypto_kem_check_sk.
-// When ML-KEM is used as the KEM, it performs modulus check for the public
-// key and hash check for the secret key as mandated by FIPS 203.
+// KEM_KEY_set_raw_keypair_from_seed function generates a keypair from the
+// given seed using the appropriate key generation function based on the
+// KEM variant, then allocates and sets both public and secret key buffers
+// within the given |key|.
 //
-// Returns 1 on success, 0 on failure.
-int KEM_check_key(const KEM_KEY *key);
+// NOTE: The seed must be exactly 64 bytes for all ML-KEM variants.
+//       The caller must ensure the seed CBS contains valid data.
+//       |key->kem| must be initialized and |key->public_key| and 
+//       |key->secret_key| must both be NULL.
+int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
 
 #if defined(__cplusplus)
 }  // extern C

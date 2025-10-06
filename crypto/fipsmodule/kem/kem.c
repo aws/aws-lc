@@ -7,6 +7,8 @@
 #include "../delocate.h"
 #include "../ml_kem/ml_kem.h"
 #include "internal.h"
+#include <openssl/bytestring.h>
+#include <openssl/err.h>
 
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
 // 2.16.840.1.101.3.4.4.1
@@ -307,6 +309,54 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
   return 1;
 }
 
+int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
+  if (key == NULL || seed == NULL || key->kem == NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Ensure key is uninitialized
+  if (key->public_key != NULL || key->secret_key != NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  // Validate seed length - all ML-KEM variants use 64-byte seeds
+  if (CBS_len(seed) != key->kem->keygen_seed_len) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  // Allocate buffers for key generation
+  uint8_t *public_key = OPENSSL_malloc(key->kem->public_key_len);
+  uint8_t *secret_key = OPENSSL_malloc(key->kem->secret_key_len);
+
+  if (public_key == NULL || secret_key == NULL) {
+    OPENSSL_free(public_key);
+    OPENSSL_free(secret_key);
+    return 0;
+  }
+
+  size_t public_len = key->kem->public_key_len;
+  size_t secret_len = key->kem->secret_key_len;
+
+  // Generate keypair from seed using the KEM method
+  if (!key->kem->method->keygen_deterministic(public_key, &public_len,
+                                              secret_key, &secret_len,
+                                              CBS_data(seed))) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    OPENSSL_free(public_key);
+    OPENSSL_free(secret_key);
+    return 0;
+  }
+
+  // Set public and secret key
+  key->public_key = public_key;
+  key->secret_key = secret_key;
+
+  return 1;
+}
+
 int KEM_check_key(const KEM_KEY *key) {
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
@@ -377,4 +427,3 @@ int KEM_check_key(const KEM_KEY *key) {
 
   return 1;
 }
-
