@@ -196,10 +196,10 @@ protected:
   }
 
   void TearDown() override {
-    if (out_path_tool[0] != '\0') {  // Only remove if path was created
+    if (strnlen(out_path_tool, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(out_path_tool);
     }
-    if (out_path_openssl[0] != '\0') {  // Only remove if path was created
+    if (strnlen(out_path_openssl, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(out_path_openssl);
     }
   }
@@ -238,7 +238,7 @@ protected:
   }
 
   void TearDown() override {
-    if (key_path_tool[0] != '\0') {  // Only remove if path was created
+    if (strnlen(key_path_tool, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(key_path_tool);
     }
   }
@@ -293,16 +293,16 @@ protected:
   }
 
   void TearDown() override {
-    if (out_path_tool[0] != '\0') {  // Only remove if path was created
+    if (strnlen(out_path_tool, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(out_path_tool);
     }
-    if (out_path_openssl[0] != '\0') {  // Only remove if path was created
+    if (strnlen(out_path_openssl, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(out_path_openssl);
     }
-    if (key_path_tool[0] != '\0') {  // Only remove if path was created
+    if (strnlen(key_path_tool, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(key_path_tool);
     }
-    if (key_path_openssl[0] != '\0') {  // Only remove if path was created
+    if (strnlen(key_path_openssl, PATH_MAX) > 0) {  // Only remove if path was created
       RemoveFile(key_path_openssl);
     }
   }
