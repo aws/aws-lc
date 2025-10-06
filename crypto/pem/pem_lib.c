@@ -679,7 +679,11 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
     if (!BUF_MEM_grow(headerB, hl + i + 9)) {
       goto err;
     }
-    if (strncmp(buf, "-----END ", 9) == 0) {
+    // To resolve following error:
+    // /home/runner/work/aws-lc-rs/aws-lc-rs/aws-lc-sys/aws-lc/crypto/pem/pem_lib.c:707:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
+    //       707 |       if (strncmp(buf, "-----END ", 9) == 0) {
+    //           |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (CRYPTO_memcmp(buf, "-----END ", 9) == 0) {
       nohead = 1;
       break;
     }
@@ -709,7 +713,7 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
       if (i != 65) {
         end = 1;
       }
-      if (strncmp(buf, "-----END ", 9) == 0) {
+      if (CRYPTO_memcmp(buf, "-----END ", 9) == 0) {
         break;
       }
       if (i > 65) {
@@ -744,7 +748,7 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
     bl = hl;
   }
   i = strlen(nameB->data);
-  if ((strncmp(buf, "-----END ", 9) != 0) ||
+  if ((CRYPTO_memcmp(buf, "-----END ", 9) != 0) ||
       (strncmp(nameB->data, &(buf[9]), i) != 0) ||
       (strncmp(&(buf[9 + i]), "-----\n", 6) != 0)) {
     OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_END_LINE);
