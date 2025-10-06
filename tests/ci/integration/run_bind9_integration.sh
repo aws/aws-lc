@@ -10,22 +10,24 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - bind9
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - BIND9_BUILD_FOLDER
+#  - SCRATCH_FOLDER
+#    - bind9
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - BIND9_BUILD_FOLDER
 
-# Assumes script is executed from the root of aws-lc directory
-if [ -v CODEBUILD_SRC_DIR ]; then
-  SCRATCH_FOLDER="${CODEBUILD_SCRIPT_DIR}/BIND9_BUILD_ROOT" # /codebuild/output/tmp/BIND9_BUILD_ROOT
-else
-  SCRATCH_FOLDER="${SRC_ROOT}/BIND9_BUILD_ROOT"
-fi
+SCRATCH_FOLDER="${SYS_ROOT}/BIND9_BUILD_ROOT"
+BIND9_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/bind9_patch"
 BIND9_SRC_FOLDER="${SCRATCH_FOLDER}/bind9"
 BIND9_BUILD_FOLDER="${SCRATCH_FOLDER}/bind9-aws-lc"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+
+function bind9_patch() {
+  patchfile="${BIND9_PATCH_FOLDER}/bind9_main.patch"
+  echo "Apply patch $patchfile..."
+  patch -p1 --quiet -i "$patchfile"
+}
 
 function bind9_build() {
   BIND9_VERSION=$(meson introspect meson.build --projectinfo | jq -r '.version')
@@ -66,6 +68,7 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 # Build bind9 from source.
 pushd ${BIND9_SRC_FOLDER}
 
+bind9_patch
 bind9_build
 bind9_run_tests
 

@@ -88,6 +88,14 @@
 
 #if defined(__APPLE__)
 #define OPENSSL_APPLE
+// Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
+// targets macOS specifically.
+#if defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#define OPENSSL_MACOS
+#endif
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#define OPENSSL_IOS
+#endif
 #endif
 
 #if defined(_WIN32)
@@ -164,6 +172,10 @@
 
 #if defined(__OpenBSD__)
 #define OPENSSL_OPENBSD
+#endif
+
+#if defined(__illumos__) || (defined(__sun) && defined(__SVR4))
+#define OPENSSL_SOLARIS
 #endif
 
 // BoringSSL requires platform's locking APIs to make internal global state

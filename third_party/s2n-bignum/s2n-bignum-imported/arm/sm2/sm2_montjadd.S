@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1, X2 = p2
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(sm2_montjadd)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(sm2_montjadd)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(sm2_montjadd)
 
         .text
@@ -46,7 +48,7 @@
 #define z_3 input_z, #(2*NUMSIZE)
 
 // Pointer-offset pairs for temporaries, with some aliasing
-// NSPACE is the total stack needed for these temporaries
+// #NSPACE is the total stack needed for these temporaries
 
 #define z1sq sp, #(NUMSIZE*0)
 #define ww sp, #(NUMSIZE*0)
@@ -72,7 +74,7 @@
 
 #define y1a sp, #(NUMSIZE*6)
 
-#define NSPACE (NUMSIZE*7)
+#define NSPACE NUMSIZE*7
 
 // Corresponds to bignum_montmul_sm2 with x0 in place of x17
 
@@ -400,11 +402,12 @@
         stp     x7, x8, [P0+16]
 
 S2N_BN_SYMBOL(sm2_montjadd):
+        CFI_START
 
 // Save regs and make room on stack for temporary variables
 
-        stp     x19, x20, [sp, #-16]!
-        sub     sp, sp, NSPACE
+        CFI_PUSH2(x19,x20)
+        CFI_DEC_SP(NSPACE)
 
 // Move the input arguments to stable places
 
@@ -531,9 +534,11 @@ S2N_BN_SYMBOL(sm2_montjadd):
 
 // Restore registers and return
 
-        add     sp, sp, NSPACE
-        ldp     x19, x20, [sp], 16
-        ret
+        CFI_INC_SP(NSPACE)
+        CFI_POP2(x19,x20)
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(sm2_montjadd)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

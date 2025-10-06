@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 SRC_ROOT="$(pwd)"
-if [ -v CODEBUILD_SRC_DIR ]; then
+if [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -z "${CODEBUILD_WEBHOOK_JOB_ID:-}" ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
 elif [ "$(basename "${SRC_ROOT}")" != 'aws-lc' ]; then
   SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -154,8 +154,6 @@ function build_and_test_valgrind {
 }
 
 function build_and_test_ssl_runner_valgrind {
-  export AWS_LC_GO_TEST_TIMEOUT="60m"
-
   run_build "$@"
   run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }

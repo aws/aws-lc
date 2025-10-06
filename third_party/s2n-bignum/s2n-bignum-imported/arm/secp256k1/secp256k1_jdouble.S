@@ -14,9 +14,11 @@
 //
 // Standard ARM ABI: X0 = p3, X1 = p1
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(secp256k1_jdouble)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(secp256k1_jdouble)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(secp256k1_jdouble)
 
         .text
@@ -56,7 +58,7 @@
 #define dx2 sp, #(NUMSIZE*8)
 #define xy2 sp, #(NUMSIZE*10)
 
-#define NSPACE #(NUMSIZE*12)
+#define NSPACE NUMSIZE*12
 
 // Corresponds exactly to bignum_mul_p256k1 except for registers and
 // re-use of the pconst register for the constant 4294968273
@@ -819,11 +821,12 @@
         stp     x2, x3, [P0+16]
 
 S2N_BN_SYMBOL(secp256k1_jdouble):
+        CFI_START
 
 // Save registers and make room on stack for temporary variables
 
-        sub     sp, sp, NSPACE+16
-        stp     x19, x20, [sp, NSPACE]
+        CFI_DEC_SP(NSPACE+16)
+        CFI_STACKSAVE2(x19,x20,NSPACE)
 
 // Move the input arguments to stable place
 
@@ -881,9 +884,11 @@ S2N_BN_SYMBOL(secp256k1_jdouble):
 
 // Restore stack and return
 
-        ldp     x19, x20, [sp, NSPACE]
-        add     sp, sp, NSPACE+16
-        ret
+        CFI_STACKLOAD2(x19,x20,NSPACE)
+        CFI_INC_SP((NSPACE+16))
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(secp256k1_jdouble)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits

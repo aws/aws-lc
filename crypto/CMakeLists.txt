@@ -27,6 +27,7 @@ function(msbuild_aarch64_asm)
               /c
               /I "${AWSLC_BINARY_DIR}/symbol_prefix_include"
               /I "${AWSLC_SOURCE_DIR}/include"
+              /I "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include"
               /o "${OBJ_FILE}"
               "${ASM_FILE}"
       DEPENDS ${ASM_FILE}
@@ -102,6 +103,12 @@ if(NOT OPENSSL_NO_ASM)
   else()
     if(ARCH STREQUAL "aarch64")
       set(PERLASM_STYLE win64)
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
+        # Provide debug in the default format
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      endif()
+
       set(ASM_EXT S)
       enable_language(ASM)
     else()
@@ -471,10 +478,12 @@ add_library(
   poly1305/poly1305_arm.c
   poly1305/poly1305_vec.c
   pool/pool.c
+  rand_extra/ccrandomgeneratebytes.c
   rand_extra/deterministic.c
-  rand_extra/entropy_passive.c
-  rand_extra/forkunsafe.c
+  rand_extra/getentropy.c
   rand_extra/rand_extra.c
+  rand_extra/snapsafe_fallback.c
+  rand_extra/urandom.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -494,6 +503,9 @@ add_library(
   trust_token/pmbtoken.c
   trust_token/trust_token.c
   trust_token/voprf.c
+  ube/ube.c
+  ube/fork_detect.c
+  ube/snapsafe_detect.c
   x509/a_digest.c
   x509/a_sign.c
   x509/a_verify.c
@@ -606,13 +618,7 @@ function(build_libcrypto)
     message(FATAL_ERROR "NAME, MODULE_SOURCE are required arguments to build_libcrypto")
   endif()
 
-  if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
-    # If the jitter cpu entropy source is enabled add an object dependency to
-    # the libcrypto target.
-    add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE} $<TARGET_OBJECTS:jitterentropy>)
-  else()
-    add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE})
-  endif()
+  add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE} $<TARGET_OBJECTS:jitterentropy>)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${arg_NAME} bcm_o_target)
@@ -751,12 +757,16 @@ if(BUILD_TESTING)
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
   target_add_awslc_include_paths(TARGET ${MEM_SET_TEST_EXEC} SCOPE PRIVATE)
 
+  # Test randomness generation
+  add_test_executable(${RANDOM_ISOLATED_EXEC} fipsmodule/rand/rand_isolated_test.cc)
+  add_test_executable(${TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC} fipsmodule/rand/entropy/tree_drbg_jitter_entropy_isolated_test.cc)
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
   add_executable(
     ${RANDOM_TEST_EXEC}
-    fipsmodule/rand/urandom_test.cc
+    rand_extra/urandom_test.cc
   )
   set_test_location(${RANDOM_TEST_EXEC})
 
@@ -786,6 +796,11 @@ if(BUILD_TESTING)
     constant_time_test.cc
     crypto_test.cc
     ecdh_extra/ecdh_test.cc
+    decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
+    decrepit/cfb/cfb_test.cc
+    decrepit/evp/evp_test.cc
+    decrepit/ripemd/ripemd_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
     dsa/dsa_test.cc
@@ -795,6 +810,7 @@ if(BUILD_TESTING)
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
     evp_extra/p_pqdsa_test.cc
+    evp_extra/p_kem_test.cc
     evp_extra/scrypt_test.cc
     fips_callback_test.cc
     fipsmodule/aes/aes_test.cc
@@ -815,8 +831,8 @@ if(BUILD_TESTING)
     fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
-    fipsmodule/rand/fork_detect_test.cc
-    fipsmodule/rand/snapsafe_detect_test.cc
+    fipsmodule/rand/rand_test.cc
+    fipsmodule/rand/entropy/entropy_source_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
@@ -838,8 +854,9 @@ if(BUILD_TESTING)
     pkcs8/pkcs12_test.cc
     poly1305/poly1305_test.cc
     pool/pool_test.cc
+    rand_extra/ccrandomgeneratebytes_test.cc
     rand_extra/getentropy_test.cc
-    rand_extra/rand_test.cc
+    rand_extra/snapsafe_fallback_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc
     rsa_extra/rsassa_pss_asn1_test.cc
@@ -849,16 +866,16 @@ if(BUILD_TESTING)
     spake25519/spake25519_test.cc
     test/file_util.cc
     test/file_test_gtest.cc
+    test/x509_util.cc
     thread_test.cc
     trust_token/trust_token_test.cc
+    ube/ube_test.cc
+    ube/fork_detect_test.cc
+    ube/snapsafe_detect_test.cc
     x509/tab_test.cc
     x509/x509_test.cc
+    x509/x509_compat_test.cc
     x509/x509_time_test.cc
-    decrepit/blowfish/blowfish_test.cc
-    decrepit/cast/cast_test.cc
-    decrepit/cfb/cfb_test.cc
-    decrepit/evp/evp_test.cc
-    decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
   )

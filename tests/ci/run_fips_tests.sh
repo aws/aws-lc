@@ -68,7 +68,7 @@ if static_linux_supported || static_openbsd_supported; then
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
-if [[ "${AWSLC_NO_ASM_FIPS}" == "1" ]]; then
+if [[ "${AWSLC_ENABLE_FIPS_ASAN:-0}" == "1" ]]; then
   if [[ ("$(uname -p)" == 'x86_64'*) ]]; then
     echo "Building with Clang and testing AWS-LC in FIPS Release mode with address sanitizer."
     fips_build_and_test -DASAN=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1

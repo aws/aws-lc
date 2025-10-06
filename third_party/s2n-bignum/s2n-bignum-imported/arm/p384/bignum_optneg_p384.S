@@ -11,9 +11,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = p, X2 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_optneg_p384)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_optneg_p384)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_optneg_p384)
         .text
         .balign 4
@@ -37,6 +39,7 @@
 
 
 S2N_BN_SYMBOL(bignum_optneg_p384):
+        CFI_START
 
 // Load the 6 digits of x
 
@@ -90,7 +93,9 @@ S2N_BN_SYMBOL(bignum_optneg_p384):
 
 // Return
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_optneg_p384)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

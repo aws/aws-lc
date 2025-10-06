@@ -34,6 +34,7 @@
 #pragma bss_seg(".fipsbs$b")
 #endif
 
+#include <openssl/chacha.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
@@ -141,10 +142,9 @@
 #include "pbkdf/pbkdf.c"
 #include "pqdsa/pqdsa.c"
 #include "rand/ctrdrbg.c"
-#include "rand/fork_detect.c"
 #include "rand/rand.c"
-#include "rand/snapsafe_detect.c"
-#include "rand/urandom.c"
+#include "rand/entropy/entropy_sources.c"
+#include "rand/entropy/tree_drbg_jitter_entropy.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
 #include "rsa/rsa.c"
@@ -246,7 +246,7 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
     perror("BoringSSL: mprotect");
   }
 }
-#else
+#elif !defined(OPENSSL_WINDOWS)
 static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #endif  // !ANDROID
 
@@ -277,11 +277,9 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   OPENSSL_cpuid_setup();
 #endif
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   if (jent_entropy_init()) {
     AWS_LC_FIPS_failure("CPU Jitter entropy RNG initialization failed");
   }
-#endif
 
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full

@@ -1,0 +1,15 @@
+diff --git a/tests/dns/dnstap_test.c b/tests/dns/dnstap_test.c
+index e39725f..8cbf833 100644
+--- a/tests/dns/dnstap_test.c
++++ b/tests/dns/dnstap_test.c
+@@ -39,8 +39,8 @@
+ 
+ #include <tests/dns.h>
+ 
+-#define TAPFILE TESTS_DIR "/testdata/dnstap/dnstap.file"
+-#define TAPSOCK TESTS_DIR "/testdata/dnstap/dnstap.sock"
++#define TAPFILE "/tmp/dnstap.file"
++#define TAPSOCK "/tmp/dnstap.sock"
+ 
+ #define TAPSAVED TESTS_DIR "/testdata/dnstap/dnstap.saved"
+ #define TAPTEXT	 TESTS_DIR "/testdata/dnstap/dnstap.text"

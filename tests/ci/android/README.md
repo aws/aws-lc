@@ -1,12 +1,12 @@
 # Android CI for AWS-LC
-AWS-LC wants to ensure that our tests and build work correctly on Android. Insipred from the CRT Team's [`AWSCRTAndroidTestRunner`](https://github.com/awslabs/aws-c-common/tree/main/AWSCRTAndroidTestRunner), this mini Android test harness is intended to be used within our Android CI with AWS Device Farm. The tests will include `crypto_test`, `urandom_test` and `ssl_test`, referenced from regular test dimensions. This app can be tested with the docker image at `tests/ci/docker_images/linux-x86/ubuntu-20.04_android`.
+AWS-LC wants to ensure that our tests and build work correctly on Android. Insipred from the CRT Team's [`AWSCRTAndroidTestRunner`](https://github.com/awslabs/aws-c-common/tree/main/AWSCRTAndroidTestRunner), this mini Android test harness is intended to be used within our Android CI with AWS Device Farm. The tests will include `crypto_test`, `urandom_test` and `ssl_test`, referenced from regular test dimensions. This app can be tested with the docker image at `tests/ci/docker_images/linux-x86/ubuntu-24.04_android`.
 
 Our android CI cross-compiles AWS-LC using AWSLCAndroidTestRunner and the NDK toolchains in Codebuild. The current cross-compilation types are `x86_64`,`armeabi-v7a`, `arm64-v8a` for non-FIPS and `arm64-v8a` for FIPS. After cross-compilation is complete, we kick off real time device testing in AWS Device Farm from Codebuild using `tests/ci/kickoff_devicefarm_job.sh`, `boto3`, and the apk artifacts created.
 
 ## Setup
 The commands below help build the app within our Android CI's docker image. The docker image is only made to support cross-compiling AWS-LC with Android toolchains, building the `AWSLCAndroidTestRunner` apks, and uploading and kicking off the tests in AWS Device Farm. Running and testing on connected Android devices or emulators via `./gradlew cC` isn't configured within the docker image.
 1. Assuming all the commands are being run from this folder: `cd tests/ci/android`
-2. `docker build -t ubuntu-20.04:android ../docker_images/linux-x86/ubuntu-20.04_android/`
+2. `docker build -t ubuntu-24.04:android ../docker_images/linux-x86/ubuntu-24.04_android/`
 3. Run the docker image from root of aws-lc. The container needs access to aws-lc's source code to build.
    ```
    cd ../../../

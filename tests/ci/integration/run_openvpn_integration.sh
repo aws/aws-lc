@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - OPENVPN_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - OPENVPN_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/OPENVPN_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/OPENVPN_BUILD_ROOT"
 OPENVPN_SRC_FOLDER="${SCRATCH_FOLDER}/openvpn"
 OPENVPN_BUILD_PREFIX="${OPENVPN_SRC_FOLDER}/build/install"
 OPENVPN_BUILD_EPREFIX="${OPENVPN_SRC_FOLDER}/build/exec-install"

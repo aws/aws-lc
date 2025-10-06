@@ -13,9 +13,11 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
-#include "_internal_s2n_bignum.h"
+
+#include "_internal_s2n_bignum_arm.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montsqr_sm2)
+        S2N_BN_FUNCTION_TYPE_DIRECTIVE(bignum_montsqr_sm2)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montsqr_sm2)
         .text
         .balign 4
@@ -104,6 +106,7 @@
 #define d1short w11
 
 S2N_BN_SYMBOL(bignum_montsqr_sm2):
+        CFI_START
 
 // Load in all words of the input
 
@@ -261,7 +264,9 @@ S2N_BN_SYMBOL(bignum_montsqr_sm2):
         stp     r0, r1, [x0]
         stp     r2, r3, [x0, #16]
 
-        ret
+        CFI_RET
+
+S2N_BN_SIZE_DIRECTIVE(bignum_montsqr_sm2)
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
