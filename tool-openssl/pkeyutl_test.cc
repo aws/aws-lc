@@ -101,11 +101,31 @@ TEST_F(PKeyUtlTest, VerifyTest) {
   }
 }
 
+// Test basic passin integration with password-protected key
+TEST_F(PKeyUtlTest, PassinBasicIntegrationTest) {
+  args_list_t args = {"-sign", "-inkey", protected_key_path, "-passin", "pass:testpassword", "-in", in_path, "-out", out_path};
+  bool result = pkeyutlTool(args);
+  ASSERT_TRUE(result);
+  
+  struct stat st;
+  ASSERT_EQ(stat(out_path, &st), 0);
+  ASSERT_GT(st.st_size, 0);
+}
 
+// Test that pass_util errors are properly propagated 
+TEST_F(PKeyUtlTest, PassinErrorHandlingTest) {
+  args_list_t args = {"-sign", "-inkey", protected_key_path, "-passin", "invalid:format", "-in", in_path, "-out", out_path};
+  bool result = pkeyutlTool(args);
+  ASSERT_FALSE(result);
+  
+  args_list_t args2 = {"-sign", "-inkey", protected_key_path, "-passin", "pass:wrongpassword", "-in", in_path, "-out", out_path};
+  bool result2 = pkeyutlTool(args2);
+  ASSERT_FALSE(result2);
+}
 
-// Test with password-protected key
-TEST_F(PKeyUtlTest, PassinTest) {
-  args_list_t args = {"-sign", "-inkey", protected_key_path, "-passin", "testpassword", "-in", in_path, "-out", out_path};
+// Test that unprotected key works without passin
+TEST_F(PKeyUtlTest, NoPassinRequiredTest) {
+  args_list_t args = {"-sign", "-inkey", key_path, "-in", in_path, "-out", out_path};
   bool result = pkeyutlTool(args);
   ASSERT_TRUE(result);
   

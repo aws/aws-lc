@@ -26,7 +26,7 @@ static const argument_t kArguments[] = {
   { "", kOptionalArgument, "" }
 };
 
-static bool LoadPrivateKey(const std::string &keyfile, const std::string &passin_arg, 
+static bool LoadPrivateKey(const std::string &keyfile, bssl::UniquePtr<std::string> &passin_arg, 
                           bssl::UniquePtr<EVP_PKEY> &pkey) {
   ScopedFILE key_file;
   if (keyfile.empty()) {
@@ -40,12 +40,14 @@ static bool LoadPrivateKey(const std::string &keyfile, const std::string &passin
     return false;
   }
 
-  // For simplicity, we'll handle basic password-protected keys
-  // In a full implementation, we'd parse passin_arg for different password sources
+  // Extract password using pass_util if provided
   const char *password = nullptr;
-  if (!passin_arg.empty()) {
-    // Simple case: assume it's a direct password (not a file or other source)
-    password = passin_arg.c_str();
+  if (passin_arg && !passin_arg->empty()) {
+    if (!pass_util::ExtractPassword(passin_arg)) {
+      fprintf(stderr, "Error: failed to extract password\n");
+      return false;
+    }
+    password = passin_arg->c_str();
   }
 
   pkey.reset(PEM_read_PrivateKey(key_file.get(), nullptr, nullptr, 
@@ -194,13 +196,15 @@ bool pkeyutlTool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, inkey_path, passin_arg, sigfile_path;
+  std::string in_path, out_path, inkey_path, sigfile_path;
+  // Use sensitive string handling for password
+  bssl::UniquePtr<std::string> passin_arg(new std::string());
   bool sign = false, verify = false, pubin = false;
 
   GetString(&in_path, "-in", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&inkey_path, "-inkey", "", parsed_args);
-  GetString(&passin_arg, "-passin", "", parsed_args);
+  GetString(passin_arg.get(), "-passin", "", parsed_args);
   GetString(&sigfile_path, "-sigfile", "", parsed_args);
   GetBoolArgument(&sign, "-sign", parsed_args);
   GetBoolArgument(&verify, "-verify", parsed_args);
