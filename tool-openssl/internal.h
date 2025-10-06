@@ -5,8 +5,8 @@
 #define TOOL_OPENSSL_INTERNAL_H
 
 #include <openssl/digest.h>
-#include <memory>
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,13 +24,67 @@ struct Tool {
 
 bool IsNumeric(const std::string &str);
 
-X509* CreateAndSignX509Certificate();
-X509_CRL* createTestCRL();
+X509 *CreateAndSignX509Certificate();
+X509_CRL *createTestCRL();
 bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
+
+// Password extracting utility for -passin and -passout options
+namespace pass_util {
+// Password source types for handling different input methods
+enum class Source : uint8_t {
+  kNone,   // Empty or invalid source
+  kPass,   // Direct password with pass: prefix
+  kFile,   // Password from file with file: prefix
+  kEnv,    // Password from environment with env: prefix
+  kStdin,  // Password from stdin
+#ifndef _WIN32
+  kFd,     // Password from file descriptor with fd: prefix (Unix only)
+#endif
+};
+
+// Custom deleter for sensitive strings that securely clears memory before
+// deletion. This ensures passwords are securely removed from memory when no
+// longer needed, preventing potential exposure in memory dumps or swap files.
+void SensitiveStringDeleter(std::string *str);
+
+// Extracts password from a source string, modifying it in place if successful.
+// source: Password source string in one of the following formats:
+//   - pass:password (direct password, e.g., "pass:mypassword")
+//   - file:/path/to/file (password from file)
+//   - env:VAR_NAME (password from environment variable)
+//   - stdin (password from standard input)
+//   - fd:N (password from file descriptor N, Unix only)
+// The source string will be replaced with the extracted password if successful.
+// Returns bool indicating success or failure:
+//   - true: Password was successfully extracted and stored in source
+//   - false: Error occurred, error message printed to stderr
+// Error cases:
+//   - Invalid format string (missing or unknown prefix)
+//   - File access errors (file not found, permission denied)
+//   - Environment variable not set
+//   - Memory allocation failures
+bool ExtractPassword(bssl::UniquePtr<std::string> &source);
+
+// Same process as ExtractPassword but used for -passin and -passout within same
+// tool. Special handling:
+// - If same file is used for both passwords, reads first line for passin
+//   and second line for passout in a single file operation matching OpenSSL
+//   behavior
+// - If stdin is used for both passwords, reads first line for passin
+//   and second line for passout from standard input matching OpenSSL behavior
+bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
+                      bssl::UniquePtr<std::string> &passout);
+
+}  // namespace pass_util
+
+// Custom deleter used for -passin -passout options
+BSSL_NAMESPACE_BEGIN
+BORINGSSL_MAKE_DELETER(std::string, pass_util::SensitiveStringDeleter)
+BSSL_NAMESPACE_END
 
 bool LoadPrivateKeyAndSignCertificate(X509 *x509,
                                       const std::string &signkey_path);
-EVP_PKEY* CreateTestKey(int key_bits);
+EVP_PKEY *CreateTestKey(int key_bits);
 
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
@@ -112,6 +166,16 @@ static inline ordered_args_map_t::const_iterator FindArg(
       });
 }
 
+static inline void FindAll(std::vector<std::string> &result,
+                           const std::string &arg_name,
+                           const ordered_args_map_t &args) {
+  for (const auto &pair : args) {
+    if (pair.first == arg_name) {
+      result.push_back(pair.second);
+    }
+  }
+}
+
 // Parse arguments in order of appearance
 bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
                                    args_list_t &extra_args,
@@ -125,6 +189,10 @@ bool GetString(std::string *out, const std::string &arg_name,
                std::string default_value, const ordered_args_map_t &args);
 bool GetBoolArgument(bool *out, const std::string &arg_name,
                      const ordered_args_map_t &args);
+
+bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
+                              std::string default_out_arg,
+                              const ordered_args_map_t &args);
 }  // namespace ordered_args
 
 #endif  // TOOL_OPENSSL_INTERNAL_H
