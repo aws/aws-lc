@@ -178,26 +178,45 @@ static int kem_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key,
     return 0;
   }
 
-  // At the moment, we only support expandedKey format from
-  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates.
-  // TODO(awslc): add support for "seed" and "both" formats.
-  if (!CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
+  // Support multiple ML-KEM private key formats from
+  // https://datatracker.ietf.org/doc/draft-ietf-lamps-kyber-certificates/
+  // Case 1: seed [0] OCTET STRING
+  // Case 2: expandedKey OCTET STRING
+  // Case 3: TODO: both SEQUENCE {seed, expandedKey}
+
+  if (CBS_peek_asn1_tag(key, CBS_ASN1_CONTEXT_SPECIFIC)) {
+    // Case 1: seed [0] OCTET STRING
+    CBS seed;
+    if (!CBS_get_asn1(key, &seed, CBS_ASN1_CONTEXT_SPECIFIC)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (CBS_len(&seed) != out->pkey.kem_key->kem->keygen_seed_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
+
+    return KEM_KEY_set_raw_keypair_from_seed(out->pkey.kem_key, &seed);
+  } else if (CBS_peek_asn1_tag(key, CBS_ASN1_OCTETSTRING)) {
+    // Case 2: expandedKey OCTET STRING
+    CBS expanded_key;
+    if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (CBS_len(&expanded_key) != out->pkey.kem_key->kem->secret_key_len) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+      return 0;
+    }
+
+    return KEM_KEY_set_raw_secret_key(out->pkey.kem_key, CBS_data(&expanded_key));
+  } else {
+    // Case 3: both SEQUENCE {seed, expandedKey} - not implemented yet
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-
-  CBS expanded_key;
-  if (!CBS_get_asn1(key, &expanded_key, CBS_ASN1_OCTETSTRING)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-
-  if (CBS_len(&expanded_key) != out->pkey.kem_key->kem->secret_key_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-    return 0;
-  }
-
-  return KEM_KEY_set_raw_secret_key(out->pkey.kem_key, CBS_data(&expanded_key));
 }
 
 static int kem_priv_encode(CBB *out, const EVP_PKEY *pkey) {
