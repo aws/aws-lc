@@ -1745,3 +1745,121 @@ int EVP_has_aes_hardware(void) {
 }
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
+
+#define XAES_256_GCM_CTX_OFFSET (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
+
+struct xaes_256_gcm_ctx {
+  AES_KEY xaes_key; 
+  uint8_t k1[AES_BLOCK_SIZE]; 
+};
+
+#define BINARY_FIELD_MUL_X_128(out, in)         \
+ do {                                           \
+  unsigned i;                                   \
+  for (i = 0; i < 15; i++) {                    \
+    out[i] = (in[i] << 1) | (in[i+1] >> 7);     \
+  }                                             \
+  const uint8_t carry = in[0] >> 7;             \
+  out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87); \
+} while(0);
+
+static int xaes_256_gcm_derive_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *key, const uint8_t *nonce, int enc) {
+  uint8_t *gcm_key = NULL, *gcm_iv = NULL;
+
+  if(key) {
+    struct xaes_256_gcm_ctx *xaes_ctx =
+        (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+
+    uint8_t M1[AES_BLOCK_SIZE] = {0};
+    uint8_t M2[AES_BLOCK_SIZE] = {0};
+
+    M1[1] = 0x01; 
+    M1[2] = 0x58; 
+    OPENSSL_memcpy(M1 + 4, nonce, 12);
+    OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
+
+    M2[1] = 0x02;
+    for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
+      M1[i] ^= xaes_ctx->k1[i];
+      M2[i] ^= xaes_ctx->k1[i];
+    }
+
+    uint8_t derived_key[(256 >> 3)] = {0};
+    AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
+    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+
+    gcm_key = derived_key;
+
+    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL)) {
+      return 0;
+    }
+    
+    printf("GCM key: ");
+    for(int i = 0; i < 32; ++i) {
+      printf("%x", gcm_key[i]);
+    }
+    printf("\n");
+  }
+
+  if(nonce) {
+    gcm_iv = (uint8_t*)nonce + 12;
+
+    printf("GCM IV: ");
+    for(int i = 0; i < 12; ++i) {
+      printf("%x", gcm_iv[i]);
+    }
+    printf("\n");
+  }
+
+  return aes_gcm_init_key(ctx, gcm_key, gcm_iv, enc);
+}
+
+static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
+
+static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
+  if ((ctx->key_len << 3) != 256) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
+    return 0;
+  }
+
+  struct xaes_256_gcm_ctx *xaes_ctx =
+      (struct xaes_256_gcm_ctx *)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+  uint8_t L[AES_BLOCK_SIZE];
+
+  if (AES_set_encrypt_key(key, (ctx->key_len << 3), &xaes_ctx->xaes_key)) {
+    return 0;
+  }
+  AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
+
+  BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
+
+  return 1;
+}
+
+
+static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                             const uint8_t *iv, int enc) {
+  if(key) {
+    if(!xaes_256_gcm_init_common(ctx, key)) {
+      return -1;
+    }
+  }
+  return xaes_256_gcm_derive_gcm_key(ctx, key, iv, enc);
+}
+
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
+  memset(out, 0, sizeof(EVP_CIPHER));
+
+  out->nid = NID_xaes_256_gcm;
+  out->block_size = 1;
+  out->key_len = 32;
+  out->iv_len = AES_GCM_NONCE_LENGTH;
+  out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING + sizeof(struct xaes_256_gcm_ctx);
+  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
+               EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
+               EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
+  out->init = xaes_256_gcm_init;
+  out->cipher = aes_gcm_cipher;
+  out->cleanup = aes_gcm_cleanup;
+  out->ctrl = aes_gcm_ctrl;
+}

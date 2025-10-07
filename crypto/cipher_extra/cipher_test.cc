@@ -1454,3 +1454,72 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
   CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
   CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 }
+
+TEST(CipherTest, XAES_256_GCM_EVP_Cipher) {
+  // Encryption
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL, 1));
+  std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag; 
+  ciphertext.reserve(60);
+  convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
+  convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
+  convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
+  convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
+
+  int aad_len = aad.size();
+  ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
+
+  int ciphertext_len;
+  ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
+              plaintext.data(), plaintext.size()));
+  int len;
+  ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
+  ciphertext_len += len;
+  tag.resize(16);
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG, tag.size(), (void*)tag.data()));
+  
+  printf("ciphertext: %d\n", ciphertext_len);
+  printText(ciphertext.data(), ciphertext_len);
+
+  printf("tag: %d\n", (int)tag.size());
+  printText(tag.data(), tag.size());
+
+  // Decryption
+  convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
+  convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
+  convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
+  ciphertext.resize(60);
+  convertToBytes(&ciphertext, "386934ffb06b02981a5b3605aefc0228911cf25416a66a6c5778fe028326415831f4e81e9d43800a8f802f0c863e710e2f8fb9e2a589d71f21bf8628");
+
+  std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> udctx(
+          EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
+    EVP_CIPHER_CTX *dctx = udctx.get();
+
+  ASSERT_TRUE(dctx);
+  ASSERT_TRUE(EVP_DecryptInit_ex(dctx, EVP_xaes_256_gcm(), NULL, NULL, NULL));
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
+  ASSERT_TRUE(EVP_DecryptInit_ex(dctx, nullptr, nullptr, key.data(), iv.data()));
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_TAG, tag.size(), const_cast<uint8_t*>(tag.data())));
+  
+  plaintext.reserve(1);
+  EVP_DecryptUpdate(dctx, NULL, &aad_len, aad.data(), aad.size());
+  ASSERT_EQ((size_t)aad_len, aad.size());
+
+  len = 0;
+  int plaintext_len = 0;
+  ASSERT_TRUE(EVP_DecryptUpdate(dctx, (uint8_t*)plaintext.data(), &len, ciphertext.data(), ciphertext_len));
+  printf("Len: %d\n", len);
+  for(int i = 0; i < len; ++i) {
+    printf("%x", plaintext[i]);
+  }
+  printf("\n");
+
+  plaintext_len = len;
+  ASSERT_TRUE(EVP_DecryptFinal(dctx, (uint8_t*)plaintext.data() + len, &len));
+  plaintext_len += len;
+
+  ASSERT_EQ((size_t)plaintext_len, plaintext.size());
+}
