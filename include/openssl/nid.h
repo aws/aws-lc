@@ -3994,6 +3994,11 @@ extern "C" {
 #define NID_xaes_256_gcm 1001
 #define OBJ_aes_256_gcm 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 46L
   
+#define SN_xaes_256_gcm_key_commit "id-xaes256-GCM-key-commit"
+#define LN_xaes_256_gcm_key_commit "xaes-256-gcm-key-commit"
+#define NID_xaes_256_gcm_key_commit 1003
+#define OBJ_aes_256_gcm_key_commit 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 46L
+
 #define SN_aes_256_ccm "id-aes256-CCM"
 #define LN_aes_256_ccm "aes-256-ccm"
 #define NID_aes_256_ccm 902

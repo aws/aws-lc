@@ -493,6 +493,7 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_xaes_256_gcm(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_xaes_256_gcm_key_commit(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);
@@ -602,6 +603,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
 // EVP_CTRL_GCM_SET_IV_INV sets the GCM invocation field, decrypt only
 #define EVP_CTRL_GCM_SET_IV_INV 0x18
 #define EVP_CTRL_GET_IVLEN 0x19
+
+#define EVP_CTRL_AEAD_GET_KEY_COMMITMENT 0x20
+#define EVP_CTRL_AEAD_SET_KEY_COMMITMENT 0x21
 
 // The following constants are unused.
 #define EVP_GCM_TLS_FIXED_IV_LEN 4
