@@ -149,7 +149,7 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
 bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               std::string default_out_arg,
                               const ordered_args_map_t &args) {
-  *out_arg = default_out_arg;
+  *out_arg = std::move(default_out_arg);
 
   for (size_t i = 0; templates[i].name[0] != 0; i++) {
     const argument_t *templ = &templates[i];
