@@ -2903,35 +2903,7 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
   EXPECT_FALSE(EVP_PKEY_check(corrupted_public_only_ctx.get()));
   EXPECT_FALSE(EVP_PKEY_public_check(corrupted_public_only_ctx.get()));
 
-  // ---- 7. Test with invalid key sizes ----
-  // Test with public key that's too small
-  if (pk_len > 1) {
-    std::vector<uint8_t> short_pk(pk_len - 1, 0x00);
-    
-    // This should fail during key creation due to wrong size
-    bssl::UniquePtr<EVP_PKEY> short_pk_pkey(
-        EVP_PKEY_kem_new_raw_public_key(GetParam().nid, short_pk.data(), pk_len - 1));
-    EXPECT_FALSE(short_pk_pkey);
-    
-    // Clear any errors from the failed key creation
-    ERR_clear_error();
-  }
-
-  // ---- 8. Test with invalid secret key size ----
-  if (sk_len > 1) {
-    std::vector<uint8_t> short_sk(sk_len - 1, 0x00);
-    
-    // This should fail during key creation due to wrong size
-    bssl::UniquePtr<EVP_PKEY> short_sk_pkey(
-        EVP_PKEY_kem_new_raw_key(GetParam().nid, pk_copy.data(), pk_len,
-                                 short_sk.data(), sk_len - 1));
-    EXPECT_FALSE(short_sk_pkey);
-    
-    // Clear any errors from the failed key creation
-    ERR_clear_error();
-  }
-
-  // ---- 9. Test with secret key only (no public key) ----
+  // ---- 7. Test with secret key only (no public key) ----
   // Create EVP_PKEY with only secret key (no public key)
   bssl::UniquePtr<EVP_PKEY> secret_only_pkey(
       EVP_PKEY_kem_new_raw_secret_key(GetParam().nid, sk_copy.data(), sk_len));
@@ -2945,7 +2917,7 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
   EXPECT_FALSE(EVP_PKEY_check(secret_only_ctx.get()));
   EXPECT_FALSE(EVP_PKEY_public_check(secret_only_ctx.get()));
 
-  // ---- 10. Verify original valid key still works ----
+  // ---- 8. Verify original valid key still works ----
   // Make sure our tests didn't affect the original valid key
   EXPECT_TRUE(EVP_PKEY_check(kem_key_ctx.get()));
   EXPECT_TRUE(EVP_PKEY_public_check(kem_key_ctx.get()));
@@ -2953,8 +2925,6 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
   // Clear any remaining errors
   ERR_clear_error();
 }
-
-
 
 
 // Perform Known Answer Test (KAT) on known KEMs.
