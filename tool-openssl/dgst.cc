@@ -113,9 +113,11 @@ static std::string GetSigName(int nid) {
     case EVP_PKEY_EC:
       return "ECDSA";
 
-    default:
+    default: {
       /* Try to output provider-registered sig alg name */
-      return OBJ_nid2sn(nid);
+      const char* name = OBJ_nid2sn(nid);
+      return name ? std::string(name) : "UNKNOWN";
+    }
   }
 }
 
