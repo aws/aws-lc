@@ -2845,8 +2845,8 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
       EVP_PKEY_CTX_new(corrupted_sk_pkey.get(), nullptr));
   ASSERT_TRUE(corrupted_sk_ctx);
   EXPECT_FALSE(EVP_PKEY_check(corrupted_sk_ctx.get()));
-  // Public key check should still pass since only secret key is corrupted
-  EXPECT_TRUE(EVP_PKEY_public_check(corrupted_sk_ctx.get()));
+  // Public key check will fail PCT since secret key is present, and corrupted
+  EXPECT_FALSE(EVP_PKEY_public_check(corrupted_sk_ctx.get()));
 
   // ---- 4. Test mismatched keypair (PCT failure) ----
   // Generate a second key pair to create a mismatch
@@ -2873,8 +2873,8 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
       EVP_PKEY_CTX_new(mismatched_pkey.get(), nullptr));
   ASSERT_TRUE(mismatched_ctx);
   EXPECT_FALSE(EVP_PKEY_check(mismatched_ctx.get()));
-  // Public key check should still pass since the public key itself is valid
-  EXPECT_TRUE(EVP_PKEY_public_check(mismatched_ctx.get()));
+  // Public key check will fail PCT
+  EXPECT_FALSE(EVP_PKEY_public_check(mismatched_ctx.get()));
 
   // ---- 5. Test with public key only ----
   // Create EVP_PKEY with only public key (no secret key)
@@ -2886,9 +2886,8 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
       EVP_PKEY_CTX_new(public_only_pkey.get(), nullptr));
   ASSERT_TRUE(public_only_ctx);
   
-  // EVP_PKEY_check should fail because there's no private key
-  EXPECT_FALSE(EVP_PKEY_check(public_only_ctx.get()));
-  // But EVP_PKEY_public_check should pass
+  // Both checks should pass
+  EXPECT_TRUE(EVP_PKEY_check(public_only_ctx.get()));
   EXPECT_TRUE(EVP_PKEY_public_check(public_only_ctx.get()));
 
   // ---- 6. Test with corrupted public key (public key only) ----
@@ -2932,7 +2931,21 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
     ERR_clear_error();
   }
 
-  // ---- 9. Verify original valid key still works ----
+  // ---- 9. Test with secret key only (no public key) ----
+  // Create EVP_PKEY with only secret key (no public key)
+  bssl::UniquePtr<EVP_PKEY> secret_only_pkey(
+      EVP_PKEY_kem_new_raw_secret_key(GetParam().nid, sk_copy.data(), sk_len));
+  ASSERT_TRUE(secret_only_pkey);
+  
+  bssl::UniquePtr<EVP_PKEY_CTX> secret_only_ctx(
+      EVP_PKEY_CTX_new(secret_only_pkey.get(), nullptr));
+  ASSERT_TRUE(secret_only_ctx);
+  
+  // Both checks should fail because public key is required
+  EXPECT_FALSE(EVP_PKEY_check(secret_only_ctx.get()));
+  EXPECT_FALSE(EVP_PKEY_public_check(secret_only_ctx.get()));
+
+  // ---- 10. Verify original valid key still works ----
   // Make sure our tests didn't affect the original valid key
   EXPECT_TRUE(EVP_PKEY_check(kem_key_ctx.get()));
   EXPECT_TRUE(EVP_PKEY_public_check(kem_key_ctx.get()));

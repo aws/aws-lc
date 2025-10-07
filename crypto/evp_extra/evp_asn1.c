@@ -360,7 +360,7 @@ int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
     case EVP_PKEY_RSA:
       return RSA_check_key(pkey->pkey.rsa);
     case EVP_PKEY_KEM:
-      return KEM_check_public_key(pkey->pkey.kem_key);
+      return KEM_check_key(pkey->pkey.kem_key);
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;

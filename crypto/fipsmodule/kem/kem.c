@@ -357,60 +357,9 @@ int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed) {
   return 1;
 }
 
-// Internal function for public key validation only
-int KEM_check_public_key(const KEM_KEY *key) {
-  if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  // Check that the KEM method and parameters are valid
-  if (key->kem == NULL || key->kem->method == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
-    return 0;
-  }
-
-  // Check that the public key exists
-  if (key->public_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
-    return 0;
-  }
-
-  // Call appropriate KEM public key check functions based on KEM NID
-  switch (key->kem->nid) {
-    case NID_MLKEM512:
-    case NID_KYBER512_R3:
-      if (ml_kem_512_check_pk(key->public_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
-      }
-      break;
-
-    case NID_MLKEM768:
-    case NID_KYBER768_R3:
-      if (ml_kem_768_check_pk(key->public_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
-      }
-      break;
-
-    case NID_MLKEM1024:
-    case NID_KYBER1024_R3:
-      if (ml_kem_1024_check_pk(key->public_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
-      }
-      break;
-
-    default:
-      // For unsupported KEM variants
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
-  }
-
-  return 1;
-}
-
+// KEM_check_key: validates the key based on available key material
+// - If only public key: validates public key only
+// - If secret key is present: requires public key and validates public key, secret key, and PCT
 int KEM_check_key(const KEM_KEY *key) {
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
@@ -423,8 +372,14 @@ int KEM_check_key(const KEM_KEY *key) {
     return 0;
   }
 
-  // Check that both public and private keys exist
-  if (key->public_key == NULL || key->secret_key == NULL) {
+  // Must have at least a public key
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  // If we have a secret key, we must also have a public key for PCT
+  if (key->secret_key != NULL && key->public_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
@@ -433,58 +388,67 @@ int KEM_check_key(const KEM_KEY *key) {
   switch (key->kem->nid) {
     case NID_MLKEM512:
     case NID_KYBER512_R3:
-      // Check public key validity
+      // Always validate public key
       if (ml_kem_512_check_pk(key->public_key) != 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
-      // Check secret key validity
-      if (ml_kem_512_check_sk(key->secret_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
-      }
-      // Perform Pairwise Consistency Test (PCT)
-      if (ml_kem_512_check_pct(key->public_key, key->secret_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
+      
+      // If secret key is present, validate it and perform PCT
+      if (key->secret_key != NULL) {
+        if (ml_kem_512_check_sk(key->secret_key) != 0) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+          return 0;
+        }
+        
+        if (ml_kem_512_check_pct(key->public_key, key->secret_key) != 0) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+          return 0;
+        }
       }
       break;
 
     case NID_MLKEM768:
     case NID_KYBER768_R3:
-      // Check public key validity
+      // Always validate public key
       if (ml_kem_768_check_pk(key->public_key) != 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
-      // Check secret key validity
-      if (ml_kem_768_check_sk(key->secret_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
-      }
-      // Perform Pairwise Consistency Test (PCT)
-      if (ml_kem_768_check_pct(key->public_key, key->secret_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
+      
+      // If secret key is present, validate it and perform PCT
+      if (key->secret_key != NULL) {
+        if (ml_kem_768_check_sk(key->secret_key) != 0) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+          return 0;
+        }
+        
+        if (ml_kem_768_check_pct(key->public_key, key->secret_key) != 0) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+          return 0;
+        }
       }
       break;
 
     case NID_MLKEM1024:
     case NID_KYBER1024_R3:
-      // Check public key validity
+      // Always validate public key
       if (ml_kem_1024_check_pk(key->public_key) != 0) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
         return 0;
       }
-      // Check secret key validity
-      if (ml_kem_1024_check_sk(key->secret_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
-      }
-      // Perform Pairwise Consistency Test (PCT)
-      if (ml_kem_1024_check_pct(key->public_key, key->secret_key) != 0) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-        return 0;
+      
+      // If secret key is present, validate it and perform PCT
+      if (key->secret_key != NULL) {
+        if (ml_kem_1024_check_sk(key->secret_key) != 0) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+          return 0;
+        }
+        
+        if (ml_kem_1024_check_pct(key->public_key, key->secret_key) != 0) {
+          OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+          return 0;
+        }
       }
       break;
 
