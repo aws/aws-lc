@@ -31,6 +31,9 @@ void RunAndCompareCommands(const std::string& tool_cmd, const std::string& opens
 struct CurveTestParams {
   std::string curve_name;
   std::string test_name;
+  
+  CurveTestParams(const std::string& name, const std::string& test) 
+    : curve_name(name), test_name(test) {}
 };
 
 // Test parameters for key generation tests
@@ -39,6 +42,9 @@ struct KeyGenTestParams {
   const char* extra_args;
   const char* test_name;
   bool is_der;
+  
+  KeyGenTestParams(const char* name, const char* args, const char* test, bool der)
+    : curve_name(name), extra_args(args), test_name(test), is_der(der) {}
 };
 
 // Helper function to get all supported curves dynamically
