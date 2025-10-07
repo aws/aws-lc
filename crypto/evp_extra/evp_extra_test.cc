@@ -2827,7 +2827,7 @@ TEST_P(PerKEMTest, KEMCheckKeyNegativeTests) {
   // Create a corrupted secret key
   std::vector<uint8_t> corrupted_sk = sk_copy;
   
-  // Corrupt the hash portion of the secret key (last 64 bytes contain hash)
+  // Corrupt the last 64 bytes of secret key (in ML-KEM this is the hash)
   // This should cause the secret key validation to fail
   if (sk_len >= 64) {
     corrupted_sk[sk_len - 64] ^= 1;
