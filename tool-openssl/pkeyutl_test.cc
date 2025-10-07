@@ -269,4 +269,28 @@ TEST_F(PKeyUtlComparisonTest, SignCompareOpenSSL) {
   // Both should verify successfully
   ASSERT_NE(tool_output_str.find("Signature Verified Successfully"), std::string::npos);
   ASSERT_NE(openssl_output_str.find("Signature Verified Successfully"), std::string::npos);
+
+  // Cross-verification testing: 
+  // 1. AWS-LC signs → OpenSSL verifies
+  std::string cross_verify_1 = std::string(openssl_executable_path) + " pkeyutl -verify -pubin -inkey " + 
+                               pubkey_path + " -in " + in_path + " -sigfile " + sig_path_tool + 
+                               " > " + out_path_tool;
+  ASSERT_EQ(system(cross_verify_1.c_str()), 0) << "OpenSSL failed to verify AWS-LC signature";
+
+  // 2. OpenSSL signs → AWS-LC verifies  
+  std::string cross_verify_2 = std::string(tool_executable_path) + " pkeyutl -verify -pubin -inkey " + 
+                               pubkey_path + " -in " + in_path + " -sigfile " + sig_path_openssl + 
+                               " > " + out_path_openssl;
+  ASSERT_EQ(system(cross_verify_2.c_str()), 0) << "AWS-LC failed to verify OpenSSL signature";
+
+  // Read cross-verification results
+  std::ifstream cross_1_output(out_path_tool);
+  std::string cross_1_str = std::string((std::istreambuf_iterator<char>(cross_1_output)), std::istreambuf_iterator<char>());
+  std::ifstream cross_2_output(out_path_openssl);
+  std::string cross_2_str = std::string((std::istreambuf_iterator<char>(cross_2_output)), std::istreambuf_iterator<char>());
+
+  ASSERT_NE(cross_1_str.find("Signature Verified Successfully"), std::string::npos) 
+      << "OpenSSL should successfully verify AWS-LC signature";
+  ASSERT_NE(cross_2_str.find("Signature Verified Successfully"), std::string::npos) 
+      << "AWS-LC should successfully verify OpenSSL signature";
 }
