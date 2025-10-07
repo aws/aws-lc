@@ -431,6 +431,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_tls13(void);
 // 1.3 nonce construction.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_tls13(void);
 
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xaes_256_gcm(void);
 
 // Obscure functions.
 
