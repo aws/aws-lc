@@ -241,7 +241,7 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
   ScopedFILE ca_file(fopen(ca_file_path.c_str(), "rb"));
 
   if (!ca_file) {
-    fprintf(stderr, "Error: ");
+    fprintf(stderr, "Error: Failed to open CA file");
     return false;
   }
 
