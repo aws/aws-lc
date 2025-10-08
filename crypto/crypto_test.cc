@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 #include "test/test_util.h"
+#include "ube/snapsafe_detect.h"
 
 static int AWS_LC_ERROR_return(void) {
   GUARD_PTR(NULL);
@@ -74,7 +75,7 @@ TEST(CryptoTest, Strndup) {
 }
 
 TEST(CryptoTest, aws_lc_assert_entropy_cpu_jitter) {
-  if (FIPS_mode() == 1) {
+  if (FIPS_mode() == 1 && CRYPTO_get_snapsafe_supported() != 1) {
     ASSERT_EQ(1, FIPS_is_entropy_cpu_jitter());
   }
 }

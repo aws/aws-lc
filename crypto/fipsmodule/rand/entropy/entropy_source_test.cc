@@ -79,9 +79,11 @@ TEST(EntropySources, Configuration) {
 #if defined(AWSLC_SNAPSAFE_TESTING) && defined(OPENSSL_LINUX)
   EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
 
-// If entropy build configuration choose to opt-out of CPU Jitter Entropy
+// If entropy build configuration choose to explicitly opt-out of CPU Jitter
+// Entropy
 #elif defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
   EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+
 #else
   int expected_entropy_source_id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
   if (CRYPTO_get_snapsafe_supported()) {
@@ -89,9 +91,10 @@ TEST(EntropySources, Configuration) {
   }
 
   EXPECT_EQ(expected_entropy_source_id, get_entropy_source_method_id_FOR_TESTING());
-#endif
 
-  if (FIPS_mode() == 1) {
+  // For FIPS build we can strongly assert.
+  if (FIPS_mode() == 1 && CRYPTO_get_snapsafe_supported() != 1) {
     EXPECT_NE(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
   }
+#endif
 }
