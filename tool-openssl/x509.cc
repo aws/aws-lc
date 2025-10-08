@@ -133,7 +133,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
   X509V3_CTX ext_ctx;
   bssl::UniquePtr<CONF> ext_conf(nullptr);
 
-  X509V3_set_ctx(&ext_ctx, issuer, subject, NULL, NULL, 0);
+  X509V3_set_ctx(&ext_ctx, issuer, subject, NULL, NULL, X509V3_CTX_REPLACE);
 
   if (ext_file_path.empty()) {
     if (!ext_section.empty()) {
