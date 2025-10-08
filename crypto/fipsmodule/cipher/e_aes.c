@@ -1923,7 +1923,7 @@ static int xaes_256_gcm_cipher_key_commit(EVP_CIPHER_CTX *ctx, uint8_t *out, con
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
         (struct xaes_256_gcm_key_commit_ctx*)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
     if(!ctx->encrypt) {
-        if(OPENSSL_memcmp(xaes_ctx->kc, xaes_ctx->kc_buf, XAES_KEY_COMMIT_SIZE) != 0) {
+        if(OPENSSL_memcmp(xaes_ctx->kc, xaes_ctx->kc_buf, XAES_KEY_COMMIT_SIZE)) {
             return 0;
         }
     }
@@ -1961,11 +1961,10 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     out->ctrl = xaes_256_gcm_key_commit_ctrl;
 }
 
-static int aead_xaes_256_gcm_init_common(EVP_AEAD_CTX *ctx, const uint8_t *key,
+static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                             size_t key_len, size_t requested_tag_len) {
-
     struct xaes_256_gcm_ctx *xaes_ctx =
-        (struct xaes_256_gcm_ctx *)&ctx->state;
+        (struct xaes_256_gcm_ctx*)&ctx->state;
 
     xaes_256_gcm_ctx_init(xaes_ctx, key, key_len);
 
@@ -1974,9 +1973,13 @@ static int aead_xaes_256_gcm_init_common(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 1;
 }
 
-static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+static int aead_xaes_256_gcm_init_key_commit(EVP_AEAD_CTX *ctx, const uint8_t *key,
                             size_t key_len, size_t requested_tag_len) {
-    return aead_xaes_256_gcm_init_common(ctx, key, key_len, requested_tag_len);
+    aead_xaes_256_gcm_init(ctx, key, key_len, requested_tag_len);
+
+    ctx->tag_len += XAES_KEY_COMMIT_SIZE;
+
+    return 1;
 }
 
 static void aead_xaes_256_gcm_cleanup(EVP_AEAD_CTX *ctx) {}
@@ -1988,6 +1991,7 @@ static int aead_xaes_256_gcm_set_gcm_key(struct xaes_256_gcm_ctx *xaes_ctx, stru
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
     }
+    
     uint8_t gcm_key[(256 >> 3)] = {0};
     if(!xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, 
                                 gcm_key, key_commit, key_commitment)) {
@@ -2074,14 +2078,17 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
                                 1, key_commitment)) {
         return 0;
     }
-    
-    if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len,
-                                nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
-                                in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len)) {
+
+    if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
+                                    max_out_tag_len - XAES_KEY_COMMIT_SIZE,
+                                    nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+                                    in, in_len, extra_in, extra_in_len, ad, ad_len, 
+                                    ctx->tag_len - XAES_KEY_COMMIT_SIZE)) {
         return 0;
     }
 
-    OPENSSL_memcpy(out + in_len + ctx->aead->overhead - XAES_KEY_COMMIT_SIZE, key_commitment, XAES_KEY_COMMIT_SIZE);
+    OPENSSL_memcpy(out_tag + *out_tag_len, key_commitment, XAES_KEY_COMMIT_SIZE);
+    *out_tag_len += XAES_KEY_COMMIT_SIZE;
 
     return 1;
 }
@@ -2096,15 +2103,22 @@ static int aead_xaes_256_gcm_open_gather_key_commit(
     struct xaes_256_gcm_ctx *xaes_ctx =
         (struct xaes_256_gcm_ctx*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
-
-    if (!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len, 0, NULL)) {
+    
+    uint8_t key_commitment[XAES_KEY_COMMIT_SIZE] = {0};
+    if (!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len, 1, key_commitment)) {
         return 0;
     }
     
+    if(OPENSSL_memcmp(in_tag + (in_tag_len - XAES_KEY_COMMIT_SIZE), 
+                      key_commitment, XAES_KEY_COMMIT_SIZE)) {
+
+        return 0;
+    }
+
     return aead_aes_gcm_open_gather_impl(
         &gcm_ctx, out, nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
-        in, in_len, in_tag, in_tag_len,
-        ad, ad_len, ctx->tag_len);
+        in, in_len, in_tag, in_tag_len - XAES_KEY_COMMIT_SIZE,
+        ad, ad_len, ctx->tag_len - XAES_KEY_COMMIT_SIZE);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
@@ -2112,10 +2126,10 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
     out->key_len = 32;
     out->nonce_len = 2 * AES_GCM_NONCE_LENGTH;
     out->overhead = EVP_AEAD_AES_GCM_TAG_LEN + XAES_KEY_COMMIT_SIZE;
-    out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+    out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN + XAES_KEY_COMMIT_SIZE;
     out->aead_id = AEAD_XAES_256_GCM_KEY_COMMIT_ID;
 
-    out->init = aead_xaes_256_gcm_init;
+    out->init = aead_xaes_256_gcm_init_key_commit;
     out->cleanup = aead_xaes_256_gcm_cleanup;
     out->seal_scatter = aead_xaes_256_gcm_seal_scatter_key_commit;
     out->open_gather = aead_xaes_256_gcm_open_gather_key_commit;

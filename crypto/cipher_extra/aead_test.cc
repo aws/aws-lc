@@ -1614,9 +1614,10 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
 
     ciphertext.resize(76);
-    tag.resize(16);
+    size_t tag_size = 16;
+
     bssl::ScopedEVP_AEAD_CTX ctx;
-    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag.size(), nullptr));
+    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
 
     size_t ciphertext_len;
     ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
@@ -1625,7 +1626,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 
     // Decryption   
     bssl::ScopedEVP_AEAD_CTX dctx;
-	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag.size(), nullptr));
+	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
 
 	size_t plaintext_len;
 	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, plaintext.size(),
@@ -1656,19 +1657,20 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
 
-    ciphertext.resize(76);
-    tag.resize(16);
+    ciphertext.resize(108);
+    unsigned tag_size = 16; 
+
     bssl::ScopedEVP_AEAD_CTX ctx;
-    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag.size(), nullptr));
+    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
     size_t ciphertext_len;
     ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
                             iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
-    
+
     // Decryption   
     bssl::ScopedEVP_AEAD_CTX dctx;
-	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag.size(), nullptr));
+	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
 	size_t plaintext_len;
 	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, plaintext.size(),
