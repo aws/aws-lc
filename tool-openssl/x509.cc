@@ -249,7 +249,7 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
                          nullptr));  // TODO: add password obtained from -passin
 
   if (!ca) {
-    fprintf(stderr, "Error: ");
+    fprintf(stderr, "Error: Failed to read CA cert from file");
     return false;
   }
 
@@ -257,7 +257,7 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
     ScopedFILE ca_key_file(fopen(ca_key_path.c_str(), "rb"));
 
     if (!ca_key_file) {
-      fprintf(stderr, "Error: ");
+      fprintf(stderr, "Error: Failed to open CA key file");
       return false;
     }
 
@@ -268,7 +268,7 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
   }
 
   if (!ca_key) {
-    fprintf(stderr, "Error: ");
+    fprintf(stderr, "Error: Failed to parse CA key from file");
     return false;
   }
 
@@ -630,13 +630,17 @@ bool X509Tool(const args_list_t &args) {
     }
 
     // Set the public key from CSR
-    bssl::UniquePtr<EVP_PKEY> csr_pkey(X509_REQ_get_pubkey(csr.get()));
-    if ((!signkey_path.empty() && !csr_pkey) ||
-        !X509_set_pubkey(x509.get(),
-                         !signkey_path.empty() ? pkey.get() : csr_pkey.get())) {
-      fprintf(stderr,
-              "Error: unable to set public key from either CSR or a provided "
-              "key\n");
+    // Set the public key based on provided options:
+    // - If no signkey provided: use public key from the CSR
+    // - If signkey provided: use public key from the signkey
+    if (signkey_path.empty()) {
+      bssl::UniquePtr<EVP_PKEY> csr_pkey(X509_REQ_get_pubkey(csr.get()));
+      if (!csr_pkey || !X509_set_pubkey(x509.get(), csr_pkey.get())) {
+        fprintf(stderr, "Error: unable to set public key from CSR\n");
+        return false;
+      }
+    } else if (!X509_set_pubkey(x509.get(), pkey.get())) {
+      fprintf(stderr, "Error: unable to set public key from provided key\n");
       return false;
     }
 

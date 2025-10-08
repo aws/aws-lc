@@ -82,8 +82,6 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(std::string, pass_util::SensitiveStringDeleter)
 BSSL_NAMESPACE_END
 
-// bool LoadPrivateKeyAndSignCertificate(X509 *x509,
-//                                       const std::string &signkey_path);
 EVP_PKEY *CreateTestKey(int key_bits);
 
 tool_func_t FindTool(const std::string &name);
