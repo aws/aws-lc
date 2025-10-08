@@ -1270,6 +1270,8 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // the function can work with.
 int RSA_check_key(const RSA *key) {
   SET_DIT_AUTO_RESET;
+  GUARD_PTR(key);
+
   enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
@@ -1501,6 +1503,7 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
 // approved FIPS services.
 int RSA_check_fips(RSA *key) {
   SET_DIT_AUTO_RESET;
+  GUARD_PTR(key);
 
   enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
   // In addition to invalid key type, stripped private keys can not be checked

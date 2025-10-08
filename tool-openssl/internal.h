@@ -92,6 +92,8 @@ tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 bool CRLTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool ecparamTool(const args_list_t &args);
+bool genrsaTool(const args_list_t &args);
+bool ecTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool pkcs8Tool(const args_list_t &args);
 bool pkeyTool(const args_list_t &args);
@@ -166,6 +168,16 @@ static inline ordered_args_map_t::const_iterator FindArg(
       });
 }
 
+static inline void FindAll(std::vector<std::string> &result,
+                           const std::string &arg_name,
+                           const ordered_args_map_t &args) {
+  for (const auto &pair : args) {
+    if (pair.first == arg_name) {
+      result.push_back(pair.second);
+    }
+  }
+}
+
 // Parse arguments in order of appearance
 bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
                                    args_list_t &extra_args,
@@ -179,6 +191,10 @@ bool GetString(std::string *out, const std::string &arg_name,
                std::string default_value, const ordered_args_map_t &args);
 bool GetBoolArgument(bool *out, const std::string &arg_name,
                      const ordered_args_map_t &args);
+
+bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
+                              std::string default_out_arg,
+                              const ordered_args_map_t &args);
 }  // namespace ordered_args
 
 #endif  // TOOL_OPENSSL_INTERNAL_H

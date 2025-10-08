@@ -10,6 +10,8 @@ add_executable(
     crl.cc
     dgst.cc
     ecparam.cc
+    ec.cc
+    genrsa.cc
     pass_util.cc
     pkcs8.cc
     pkey.cc
@@ -91,6 +93,10 @@ if(BUILD_TESTING)
         dgst_test.cc
         ecparam.cc
         ecparam_test.cc
+        ec.cc
+        ec_test.cc
+        genrsa.cc
+        genrsa_test.cc
         pass_util.cc
         pass_util_test.cc
         pkcs8.cc

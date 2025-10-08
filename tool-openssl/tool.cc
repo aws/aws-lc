@@ -14,11 +14,13 @@
 #endif
 
 #include "./internal.h"
-
-static const std::array<Tool, 13> kTools = {{
+    
+static const std::array<Tool, 15> kTools = {{
     {"crl", CRLTool},
-    {"dgst", dgstTool},
     {"ecparam", ecparamTool},
+    {"dgst", dgstTool},
+    {"genrsa", genrsaTool},
+    {"ec", ecTool},
     {"md5", md5Tool},
     {"pkcs8", pkcs8Tool},
     {"pkey", pkeyTool},
@@ -105,7 +107,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  args_list_t args;
+  args_list_t args{};
   for (int i = starting_arg; i < argc; i++) {
     args.emplace_back(argv[i]);
   }
