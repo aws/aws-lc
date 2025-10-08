@@ -1455,7 +1455,7 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
     CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 }
 
-TEST(CipherTest, XAES_256_GCM_EVP_Cipher) {
+TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
     // Encryption
     bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
     ASSERT_TRUE(ctx);
@@ -1545,7 +1545,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_Cipher) {
     ASSERT_EQ((size_t)plaintext_len, plaintext.size());
 }
 
-TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_Cipher) {
+TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     // Encryption
     bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
     ASSERT_TRUE(ctx);
@@ -1583,7 +1583,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_Cipher) {
     convertToBytes(&ciphertext, "386934ffb06b02981a5b3605aefc0228911cf25416a66a6c5778fe028326415831f4e81e9d43800a8f802f0c863e710e2f8fb9e2a589d71f21bf8628");
 
     bssl::UniquePtr<EVP_CIPHER_CTX> dctx(EVP_CIPHER_CTX_new());
-
+    
     ASSERT_TRUE(dctx);
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), EVP_xaes_256_gcm_key_commit(), NULL, NULL, NULL));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
