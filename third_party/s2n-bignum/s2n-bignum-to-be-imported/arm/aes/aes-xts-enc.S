@@ -576,22 +576,22 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         eor  v26.16b,v26.16b,v6.16b
 
         // Encrypt the composite block to get the last second encrypted text block
-        ldr  w6,[x3,#240]        // load key schedule...
-        ld1  {v0.16b},[x3],#16
-        sub  w6,w6,#2
-        ld1  {v1.16b},[x3],#16     // load key schedule...
-.Loop_final_enc:
-        aesr(v26.16b, v0.16b)
-        ld1  {v0.4s},[x3],#16
-        subs  w6,w6,#2
-        aesr(v26.16b, v1.16b)
-        ld1  {v1.4s},[x3],#16
-        b.gt  .Loop_final_enc
+        aesr(v26.16b, v16.16b)
+        aesr(v26.16b, v17.16b)
+        aesr(v26.16b, v12.16b)
+        aesr(v26.16b, v13.16b)
+        aesr(v26.16b, v14.16b)
+        aesr(v26.16b, v15.16b)
+        aesr(v26.16b, v4.16b)
+        aesr(v26.16b, v5.16b)
+        aesr(v26.16b, v18.16b)
+        aesr(v26.16b, v19.16b)
+        aesr(v26.16b, v20.16b)
+        aesr(v26.16b, v21.16b)
+        aesr(v26.16b, v22.16b)
+        aese  v26.16b,v23.16b
+        eor  v26.16b,v26.16b,v7.16b
 
-        aesr(v26.16b, v0.16b)
-        ld1  {v0.4s},[x3]
-        aese  v26.16b,v1.16b
-        eor  v26.16b,v26.16b,v0.16b
         eor  v26.16b,v26.16b,v6.16b
         st1  {v26.16b},[x1]
 
