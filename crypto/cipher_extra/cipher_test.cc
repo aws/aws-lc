@@ -1626,7 +1626,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_Cipher) {
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, NULL, iv.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), const_cast<uint8_t*>(tag.data())));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_KEY_COMMITMENT, key_commitment.size(), const_cast<uint8_t*>(key_commitment.data())));
-    
+
     plaintext.reserve(1);
     EVP_DecryptUpdate(dctx.get(), NULL, &aad_len, aad.data(), aad.size());
     ASSERT_EQ((size_t)aad_len, aad.size());
