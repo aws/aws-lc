@@ -109,6 +109,7 @@ extern "C" {
 #define AEAD_AES_256_CBC_SHA384_TLS_ID 28
 #define AEAD_MAX_ID 28
 #define AEAD_XAES_256_GCM_ID 29
+#define AEAD_XAES_256_GCM_KEY_COMMIT_ID 30
 
 // EVP_AEAD represents a specific AEAD algorithm.
 struct evp_aead_st {
