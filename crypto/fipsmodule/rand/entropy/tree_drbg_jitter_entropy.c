@@ -1,6 +1,8 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#if !defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
+
 #include <openssl/ctrdrbg.h>
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
@@ -535,3 +537,5 @@ out:
   CRYPTO_STATIC_MUTEX_unlock_write(global_seed_drbg_lock_bss_get());
   return ret;
 }
+
+#endif // !defined(DO_NOT_USE_CPU_JITTER_ENTROPY)

@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/crypto.h>
+
 #include "internal.h"
 #include "../../../ube/snapsafe_detect.h"
 
@@ -75,13 +77,21 @@ TEST(EntropySources, Configuration) {
 // Snapsafe detection is only defined for Linux. So, only strongly assert on
 // that kernel.
 #if defined(AWSLC_SNAPSAFE_TESTING) && defined(OPENSSL_LINUX)
-  EXPECT_EQ(SNAPSAFE_FALLBACK_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+  EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+
+// If entropy build configuration choose to opt-out of CPU Jitter Entropy
+#elif defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
+  EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
 #else
   int expected_entropy_source_id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
   if (CRYPTO_get_snapsafe_supported()) {
-    expected_entropy_source_id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;
+    expected_entropy_source_id = OPT_OUT_CPU_JITTER_ENTROPY_SOURCE;
   }
 
   EXPECT_EQ(expected_entropy_source_id, get_entropy_source_method_id_FOR_TESTING());
 #endif
+
+  if (FIPS_mode() == 1) {
+    EXPECT_NE(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+  }
 }

@@ -2505,7 +2505,7 @@ static bool SpeedSelfTest(const std::string &selected) {
 }
 #endif
 
-#if AWSLC_API_VERSION >= 34
+#if AWSLC_API_VERSION >= 34 && !defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -3103,7 +3103,7 @@ bool Speed(const std::vector<std::string> &args) {
       return false;
     }
 #endif
-#if AWSLC_API_VERSION >= 34
+#if AWSLC_API_VERSION >= 34 && !defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
     if (!SpeedJitter(selected)) {
       return false;
     }

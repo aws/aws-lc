@@ -74,7 +74,9 @@ TEST(CryptoTest, Strndup) {
 }
 
 TEST(CryptoTest, aws_lc_assert_entropy_cpu_jitter) {
-  ASSERT_EQ(1, FIPS_is_entropy_cpu_jitter());
+  if (FIPS_mode() == 1) {
+    ASSERT_EQ(1, FIPS_is_entropy_cpu_jitter());
+  }
 }
 
 TEST(CryptoTest, OPENSSL_hexstr2buf) {

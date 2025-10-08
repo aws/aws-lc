@@ -618,7 +618,11 @@ function(build_libcrypto)
     message(FATAL_ERROR "NAME, MODULE_SOURCE are required arguments to build_libcrypto")
   endif()
 
-  add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE} $<TARGET_OBJECTS:jitterentropy>)
+  add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE})
+
+  if(NOT DISABLE_USAGE_OF_CPU_JITTER_ENTROPY)
+    target_sources(${arg_NAME} PRIVATE $<TARGET_OBJECTS:jitterentropy>)
+  endif()
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${arg_NAME} bcm_o_target)
