@@ -1777,10 +1777,6 @@ do {                                              \
 
 static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const uint8_t* nonce, 
                             uint8_t *derived_key, const uint8_t key_commit, uint8_t *key_commitment) {
-    if(!xaes_ctx || !nonce || !derived_key) {
-        return 0;
-    }
-
     uint8_t M1[AES_BLOCK_SIZE] = {0};
     uint8_t M2[AES_BLOCK_SIZE] = {0};
 
@@ -1799,9 +1795,6 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const
     AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
 
     if(key_commit) {
-        if(key_commitment == NULL) {
-            return 0;
-        }
         OPENSSL_memset(M1, 0, AES_BLOCK_SIZE);
         OPENSSL_memset(M2, 0, AES_BLOCK_SIZE);
         uint8_t kc_prefix[5] = {0x58, 0x43, 0x4D, 0x54, 0x00};
@@ -1832,33 +1825,30 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc, 
                                 uint8_t key_commit, uint8_t *key_commitment) {
-    uint8_t *gcm_key = NULL, *gcm_iv = NULL;
-
-    if(nonce) {
-        if(ctx->cipher->iv_len != 24) {
-            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
-            return 0;
-        }
-        
-        struct xaes_256_gcm_ctx *xaes_ctx =
-            (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-
-        uint8_t derived_key[(256 >> 3)] = {0};
-        if(!xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key, 
-                                    key_commit, key_commitment)) {
-            return 0;
-        }
-
-        gcm_key = derived_key;
-
-        if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL)) {
-            return 0;
-        }
-        
-        gcm_iv = (uint8_t*)nonce + 12;
+    
+    if(nonce == NULL) {
+        return aes_gcm_init_key(ctx, NULL, NULL, enc);
     }
 
-    return aes_gcm_init_key(ctx, gcm_key, gcm_iv, enc);
+    if(ctx->cipher->iv_len != 24) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
+        return 0;
+    }
+    
+    struct xaes_256_gcm_ctx *xaes_ctx =
+        (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+
+    uint8_t derived_key[(256 >> 3)] = {0};
+    if(!xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key, 
+                                key_commit, key_commitment)) {
+        return 0;
+    }
+    
+    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL)) {
+        return 0;
+    }
+
+    return aes_gcm_init_key(ctx, derived_key, (uint8_t*)nonce + 12, enc);
 }
 
 static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
@@ -2159,7 +2149,6 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
     out->aead_id = AEAD_XAES_256_GCM_KEY_COMMIT_ID;
 
     out->init = aead_xaes_256_gcm_init_key_commit;
-    //
     out->cleanup = aead_xaes_256_gcm_cleanup;
     out->seal_scatter = aead_xaes_256_gcm_seal_scatter_key_commit;
     out->open_gather = aead_xaes_256_gcm_open_gather_key_commit;
