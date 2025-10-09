@@ -1877,6 +1877,7 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
 static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
     if(key != NULL) {
+        // Extend cipher_data to accomodate xaes_256_gcm_ctx
         void *temp = ctx->cipher_data;
         ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + sizeof(struct xaes_256_gcm_ctx));
         OPENSSL_memcpy(ctx->cipher_data, temp, ctx->cipher->ctx_size);
@@ -1915,7 +1916,8 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
 static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
     
-    if(key != NULL) {
+    if(key != NULL) { 
+        // Extend cipher_data to accomodate xaes_256_gcm_key_commit_ctx
         void *temp = ctx->cipher_data;
         ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + 
                     sizeof(struct xaes_256_gcm_key_commit_ctx));
