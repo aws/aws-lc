@@ -47,6 +47,19 @@ struct KeyGenTestParams {
     : curve_name(name), extra_args(args), test_name(test), is_der(der) {}
 };
 
+// Custom PrintTo functions to avoid Valgrind padding issues
+void PrintTo(const CurveTestParams& params, std::ostream* os) {
+  *os << "CurveTestParams{curve_name=\"" << params.curve_name 
+      << "\", test_name=\"" << params.test_name << "\"}";
+}
+
+void PrintTo(const KeyGenTestParams& params, std::ostream* os) {
+  *os << "KeyGenTestParams{curve_name=\"" << params.curve_name 
+      << "\", extra_args=\"" << params.extra_args 
+      << "\", test_name=\"" << params.test_name 
+      << "\", is_der=" << (params.is_der ? "true" : "false") << "}";
+}
+
 // Helper function to get all supported curves dynamically
 std::vector<CurveTestParams> GetSupportedCurves() {
   std::vector<CurveTestParams> curves;
