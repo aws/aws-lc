@@ -1825,7 +1825,6 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc, 
                                 uint8_t key_commit, uint8_t *key_commitment) {
-    
     if(nonce == NULL) {
         return aes_gcm_init_key(ctx, NULL, NULL, enc);
     }
@@ -1875,18 +1874,20 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
 // --------------- EVP_CIPHER XAES-256-GCM Without Key Commitment ---------------
 // ------------------------------------------------------------------------------
 
-static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
-    struct xaes_256_gcm_ctx *xaes_ctx =
-        (struct xaes_256_gcm_ctx *)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-
-    return xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len);
-}
-
 static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
-    
-    if(key && !xaes_256_gcm_init_common(ctx, key)) {
-        return -1;
+    if(key != NULL) {
+        void *temp = ctx->cipher_data;
+        ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + sizeof(struct xaes_256_gcm_ctx));
+        OPENSSL_memcpy(ctx->cipher_data, temp, ctx->cipher->ctx_size);
+        OPENSSL_free(temp);
+
+        struct xaes_256_gcm_ctx *xaes_ctx =
+            (struct xaes_256_gcm_ctx *)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+
+        if(!xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len)) {
+            return 0;
+        }
     }
     return xaes_256_gcm_set_gcm_key(ctx, iv, enc, 0, NULL);
 }
@@ -1897,8 +1898,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->block_size = 1;
     out->key_len = 32;
     out->iv_len = AES_GCM_NONCE_LENGTH * 2;
-    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING + 
-                sizeof(struct xaes_256_gcm_ctx);
+    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
@@ -1915,9 +1915,21 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
 static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
     
-    if(key && !xaes_256_gcm_init_common(ctx, key)) {
-        return -1;
+    if(key != NULL) {
+        void *temp = ctx->cipher_data;
+        ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + 
+                    sizeof(struct xaes_256_gcm_key_commit_ctx));
+        OPENSSL_memcpy(ctx->cipher_data, temp, ctx->cipher->ctx_size);
+        OPENSSL_free(temp);
+
+        struct xaes_256_gcm_ctx *xaes_ctx =
+            (struct xaes_256_gcm_ctx *)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+        
+        if(!xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len)) {
+            return 0;
+        }
     }
+
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
         (struct xaes_256_gcm_key_commit_ctx*)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
     
@@ -1958,8 +1970,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     out->block_size = 1;
     out->key_len = 32;
     out->iv_len = AES_GCM_NONCE_LENGTH * 2;
-    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING + 
-                sizeof(struct xaes_256_gcm_key_commit_ctx);
+    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
@@ -2092,6 +2103,7 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
     struct aead_aes_gcm_ctx gcm_ctx;
 
     uint8_t key_commitment[XAES_KEY_COMMIT_SIZE] = {0};
+    
     if (!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len,
                                 /* key_commit */ 1, key_commitment)) {
         return 0;
