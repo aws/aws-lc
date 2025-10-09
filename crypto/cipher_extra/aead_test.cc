@@ -1650,7 +1650,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag; 
-
+    
     // Encryption
     convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     convertToBytes(&iv, "cafebabefacedbad16aedbf5a0de6a57a637b39b9a6b5254");
@@ -1662,7 +1662,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
 
     bssl::ScopedEVP_AEAD_CTX ctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
-    
+
     size_t ciphertext_len;
     ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
