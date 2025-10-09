@@ -70,13 +70,14 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
   X509V3_set_ctx_nodb(&ctx);
   X509V3_set_ctx(&ctx, x509.get(), x509.get(), nullptr, nullptr, 0);
 
-  X509_EXTENSION *ext;
+  X509_EXTENSION *ext = nullptr;
   if (!(ext = X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints,
                                   const_cast<char *>("critical,CA:TRUE"))) ||
       !X509_add_ext(x509.get(), ext, -1)) {
     fprintf(stderr, "Error setting extension\n");
     return;
   }
+  X509_EXTENSION_free(ext);
 
   if (!(ext = X509V3_EXT_conf_nid(nullptr, &ctx, NID_subject_key_identifier,
                                   const_cast<char *>("hash"))) ||
@@ -132,20 +133,23 @@ bssl::UniquePtr<X509> LoadDERCertificate(const char *path) {
 }
 
 bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
-  if (!csr1 || !csr2)
+  if (!csr1 || !csr2) {
     return false;
+  }
 
   // 1. Compare subjects
   X509_NAME *name1 = X509_REQ_get_subject_name(csr1);
   X509_NAME *name2 = X509_REQ_get_subject_name(csr2);
-  if (X509_NAME_cmp(name1, name2) != 0)
+  if (X509_NAME_cmp(name1, name2) != 0) {
     return false;
+  }
 
   // 2. Compare signature algorithms
   int sig_nid1 = X509_REQ_get_signature_nid(csr1);
   int sig_nid2 = X509_REQ_get_signature_nid(csr2);
-  if (sig_nid1 != sig_nid2)
+  if (sig_nid1 != sig_nid2) {
     return false;
+  }
 
   // 3. Compare public key type and parameters
   EVP_PKEY *pkey1 = X509_REQ_get0_pubkey(csr1);
@@ -181,16 +185,18 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
 }
 
 bool CheckCertificateValidityPeriod(X509 *cert, int expected_days) {
-  if (!cert)
+  if (!cert) {
     return false;
+  }
 
   const ASN1_TIME *not_before = X509_get0_notBefore(cert);
   const ASN1_TIME *not_after = X509_get0_notAfter(cert);
-  if (!not_before || !not_after)
+  if (!not_before || !not_after) {
     return false;
+  }
 
   // Get the difference in days between not_before and not_after
-  int days, seconds;
+  int days = 0, seconds = 0;
   if (!ASN1_TIME_diff(&days, &seconds, not_before, not_after)) {
     return false;
   }
