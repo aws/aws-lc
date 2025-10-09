@@ -2159,6 +2159,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
     out->aead_id = AEAD_XAES_256_GCM_KEY_COMMIT_ID;
 
     out->init = aead_xaes_256_gcm_init_key_commit;
+    //
     out->cleanup = aead_xaes_256_gcm_cleanup;
     out->seal_scatter = aead_xaes_256_gcm_seal_scatter_key_commit;
     out->open_gather = aead_xaes_256_gcm_open_gather_key_commit;
