@@ -465,3 +465,41 @@ jobs:
         with:
           image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
           run: ./tests/ci/run_fips_callback_tests.sh
+
+  legacy_avx_tests:
+    name: legacy-avx-${{ matrix.image }}-${{ matrix.build32 && 'x86' || 'x86_64' }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large 
+        buildspec-override:true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - centos-7_gcc-4x_latest
+          - centos-8_gcc-8x_latest
+          - amazonlinux-2_gcc-7x_latest
+          - ubuntu-16.04_gcc-5x_latest
+          - ubuntu-18.04_clang-6x_latest
+        build32: [0]
+        include:
+          - image: centos-7_gcc-4x_latest
+            build32: 1
+          - image: ubuntu-16.04_gcc-5x_latest
+            build32: 1
+    steps:
+      - uses: actions/checkout@v5
+      - name: Get ECR Repository URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        env:
+          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
+        with:
+          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
+          env: |
+            AWSLC_32BIT
+          run: ./tests/ci/run_legacy_avx_tests.sh
+          options: --privileged

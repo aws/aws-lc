@@ -96,6 +96,7 @@ bool ecTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool pkcs8Tool(const args_list_t &args);
 bool pkeyTool(const args_list_t &args);
+bool pkeyutlTool(const args_list_t &args);
 bool RehashTool(const args_list_t &args);
 bool reqTool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);

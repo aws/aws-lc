@@ -15,7 +15,7 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 14> kTools = {{
+static const std::array<Tool, 15> kTools = {{
     {"crl", CRLTool},
     {"dgst", dgstTool},
     {"genrsa", genrsaTool},
@@ -23,6 +23,7 @@ static const std::array<Tool, 14> kTools = {{
     {"md5", md5Tool},
     {"pkcs8", pkcs8Tool},
     {"pkey", pkeyTool},
+    {"pkeyutl", pkeyutlTool},
     {"rehash", RehashTool},
     {"req", reqTool},
     {"rsa", rsaTool},
