@@ -94,6 +94,7 @@ option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" O
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
+option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
 include(cmake/go.cmake)
 
 if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
@@ -1353,8 +1354,10 @@ foreach(in_file ${OPENSSL_PKGCONFIGS})
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endforeach()
 
-configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
-configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
-  configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
+if(ENABLE_SOURCE_MODIFICATION)
+  configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
+  configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
+    configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
+  endif()
 endif()
