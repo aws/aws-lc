@@ -1746,6 +1746,10 @@ int EVP_has_aes_hardware(void) {
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
+// ------------------------------------------------------------------------------
+// ----------- XAES-256-GCM Auxiliary Data Structures and Subroutines -----------
+// ------------------------------------------------------------------------------
+
 #define XAES_256_GCM_CTX_OFFSET (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_KEY_COMMIT_SIZE    (2*AES_BLOCK_SIZE)
 
@@ -1877,6 +1881,10 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
     return 1;
 }
 
+// ------------------------------------------------------------------------------
+// --------------- EVP_CIPHER XAES-256-GCM Without Key Commitment ---------------
+// ------------------------------------------------------------------------------
+
 static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
     struct xaes_256_gcm_ctx *xaes_ctx =
         (struct xaes_256_gcm_ctx *)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
@@ -1909,6 +1917,10 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->cleanup = aes_gcm_cleanup;
     out->ctrl = aes_gcm_ctrl;
 }
+
+// ------------------------------------------------------------------------------
+// ---------------- EVP_CIPHER XAES-256-GCM With Key Commitment -----------------
+// ------------------------------------------------------------------------------
 
 static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
@@ -1965,6 +1977,10 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     out->cleanup = aes_gcm_cleanup;
     out->ctrl = xaes_256_gcm_key_commit_ctrl;
 }
+
+// ------------------------------------------------------------------------------
+// ---------------- EVP_AEAD XAES-256-GCM Without Key Commitment ----------------
+// ------------------------------------------------------------------------------
 
 static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                             size_t key_len, size_t requested_tag_len) {
@@ -2064,6 +2080,10 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
     out->seal_scatter = aead_xaes_256_gcm_seal_scatter;
     out->open_gather = aead_xaes_256_gcm_open_gather;
 }
+
+// ------------------------------------------------------------------------------
+// ----------------- EVP_CIPHER XAES-256-GCM With Key Commitment ----------------
+// ------------------------------------------------------------------------------
 
 static int aead_xaes_256_gcm_seal_scatter_key_commit(
     const EVP_AEAD_CTX *ctx, uint8_t *out,
