@@ -77,7 +77,7 @@ static int is_snapsafe_environment(void) {
 }
 
 static int has_explicitly_opted_out_of_cpu_jitter(void) {
-#if defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
+#if defined(DISABLE_CPU_JITTER_ENTROPY)
   return 1;
 #else
   return 0;

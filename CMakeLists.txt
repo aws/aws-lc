@@ -95,7 +95,7 @@ option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-I
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
 option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
-option(DISABLE_USAGE_OF_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
+option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
 
 include(cmake/go.cmake)
 
@@ -116,7 +116,7 @@ if(DISABLE_USAGE_OF_CPU_JITTER_ENTROPY)
   if(FIPS)
     message(FATAL_ERROR "Cannot opt-out of CPU Jitter for the FIPS build")
   endif()
-  add_definitions(-DDO_NOT_USE_CPU_JITTER_ENTROPY)
+  add_definitions(-DDISABLE_CPU_JITTER_ENTROPY)
   message(STATUS "Entropy source configuration: CPU Jitter opt-out")
   message(STATUS "Entropy source configured: Dynamic (default: Operating system)")
 else()

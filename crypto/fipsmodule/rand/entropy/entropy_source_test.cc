@@ -81,7 +81,7 @@ TEST(EntropySources, Configuration) {
 
 // If entropy build configuration choose to explicitly opt-out of CPU Jitter
 // Entropy
-#elif defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
+#elif defined(DISABLE_CPU_JITTER_ENTROPY)
   EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
 
 #else

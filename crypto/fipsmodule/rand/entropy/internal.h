@@ -55,20 +55,20 @@ OPENSSL_EXPORT void override_entropy_source_method_FOR_TESTING(
 
 OPENSSL_EXPORT int get_entropy_source_method_id_FOR_TESTING(void);
 
-#if !defined(DO_NOT_USE_CPU_JITTER_ENTROPY)
+#if !defined(DISABLE_CPU_JITTER_ENTROPY)
   OPENSSL_EXPORT int tree_jitter_initialize(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source);
   OPENSSL_EXPORT int tree_jitter_get_seed(
     const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
-#else
+#else // !defined(DISABLE_CPU_JITTER_ENTROPY)
   // Define stubs for tree-DRBG functions that implements the entropy source
   // interface.
   static inline int tree_jitter_initialize(struct entropy_source_t *entropy_source) { return 0; }
   static inline void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *entropy_source) { abort(); }
   static inline void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source) { abort(); }
   static inline int tree_jitter_get_seed(const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]) { return 0; }
-#endif
+#endif // !defined(DISABLE_CPU_JITTER_ENTROPY)
 
 // rndr_multiple8 writes |len| number of bytes to |buf| generated using the
 // rndr instruction. |len| must be a multiple of 8.
