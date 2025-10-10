@@ -1750,8 +1750,9 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 // ----------- XAES-256-GCM Auxiliary Data Structures and Subroutines -----------
 // ------------------------------------------------------------------------------
 
-#define XAES_256_GCM_CTX_OFFSET (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
-#define XAES_KEY_COMMIT_SIZE    (AES_BLOCK_SIZE * 2)
+#define XAES_256_GCM_CTX_OFFSET  (sizeof(EVP_AES_GCM_CTX))
+#define XAES_KEY_COMMIT_SIZE     (AES_BLOCK_SIZE * 2)
+#define EVP_XAES_GCM_CTX_PADDING (12)
 
 struct xaes_256_gcm_ctx {
     AES_KEY xaes_key; 
@@ -1884,7 +1885,8 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
 
 static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, const unsigned extended_ctx_size) {
     void *temp = ctx->cipher_data;
-    ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + extended_ctx_size);
+    ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + 
+                extended_ctx_size + EVP_XAES_GCM_CTX_PADDING);
     OPENSSL_memcpy(ctx->cipher_data, temp, ctx->cipher->ctx_size);
     OPENSSL_free(temp);
 
