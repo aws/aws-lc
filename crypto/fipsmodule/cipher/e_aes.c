@@ -1759,12 +1759,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #define EVP_XAES_256_GCM_CTX_PADDING (4)
 #endif
 
-#if defined(OPENSSL_32_BIT)
-#define EVP_XAES_256_GCM_KEY_COMMIT_CTX_PADDING (0)
-#else
-#define EVP_XAES_256_GCM_KEY_COMMIT_CTX_PADDING (4)
-#endif
-
 struct xaes_256_gcm_ctx {
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
@@ -1948,7 +1942,7 @@ static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
     
     if(key != NULL && !xaes_256_gcm_init_common(ctx, key, 
-    sizeof(struct xaes_256_gcm_key_commit_ctx) + EVP_XAES_256_GCM_KEY_COMMIT_CTX_PADDING)) { 
+    sizeof(struct xaes_256_gcm_key_commit_ctx) + EVP_XAES_256_GCM_CTX_PADDING)) { 
         return 0;
     }
     
@@ -1959,9 +1953,13 @@ static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, 
 
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
         (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-
+    
     switch(type) {
         case EVP_CTRL_AEAD_GET_KEY_COMMITMENT:
+            if(arg != XAES_256_GCM_KEY_COMMIT_SIZE) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+                return 0;
+            }
             OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
             return 1;
         case EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT:
