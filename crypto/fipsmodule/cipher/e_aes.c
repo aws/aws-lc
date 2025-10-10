@@ -1752,7 +1752,11 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #define XAES_256_GCM_CTX_OFFSET  (sizeof(EVP_AES_GCM_CTX))
 #define XAES_KEY_COMMIT_SIZE     (AES_BLOCK_SIZE * 2)
-#define EVP_XAES_GCM_CTX_PADDING (20)
+#if defined(OPENSSL_32_BIT)
+#define EVP_XAES_GCM_CTX_PADDING (0)
+#else
+#define EVP_XAES_GCM_CTX_PADDING (4)
+#endif
 
 struct xaes_256_gcm_ctx {
     AES_KEY xaes_key; 
