@@ -1879,7 +1879,7 @@ static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, con
     OPENSSL_free(temp);
 
     struct xaes_256_gcm_ctx *xaes_ctx =
-            (struct xaes_256_gcm_ctx *)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+            (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
     if(!xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len)) {
         return 0;
@@ -1936,7 +1936,7 @@ static int xaes_256_gcm_cipher_key_commit(EVP_CIPHER_CTX *ctx, uint8_t *out, con
                           size_t len) {
 
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
-        (struct xaes_256_gcm_key_commit_ctx*)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+        (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
     if(!ctx->encrypt) {
         if(OPENSSL_memcmp(xaes_ctx->kc, xaes_ctx->kc_buf, XAES_KEY_COMMIT_SIZE)) {
@@ -1950,7 +1950,7 @@ static int xaes_256_gcm_cipher_key_commit(EVP_CIPHER_CTX *ctx, uint8_t *out, con
 static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
 
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
-        (struct xaes_256_gcm_key_commit_ctx*)(ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+        (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
     switch(type) {
         case EVP_CTRL_AEAD_GET_KEY_COMMITMENT:
