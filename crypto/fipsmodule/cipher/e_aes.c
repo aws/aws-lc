@@ -1831,12 +1831,11 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
         return aes_gcm_init_key(ctx, NULL, NULL, enc);
     }
 
-    /*
-    if(ctx->cipher->iv_len != 24) {
+    EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
+    if(gctx->ivlen != 24) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
     }
-    */
     
     struct xaes_256_gcm_ctx *xaes_ctx =
         (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
@@ -1850,7 +1849,15 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
         return 0;
     }
     
-    return aes_gcm_init_key(ctx, derived_key, (uint8_t*)nonce + 12, enc);
+    if(!aes_gcm_init_key(ctx, derived_key, (uint8_t*)nonce + 12, enc)) {
+        return 0;
+    }
+
+    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 24, NULL)) {
+        return 0;
+    }
+
+    return 1;
 }
 
 static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};

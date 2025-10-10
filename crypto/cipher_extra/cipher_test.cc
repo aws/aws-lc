@@ -1463,11 +1463,6 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
     
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag; 
     ciphertext.resize(60);
-    plaintext.resize(60);
-    key.resize(32);
-    iv.resize(24);
-    aad.resize(20);
-
     convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
@@ -1560,11 +1555,6 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag, key_commitment; 
     ciphertext.resize(60);
-    plaintext.resize(60);
-    key.resize(32);
-    iv.resize(24);
-    aad.resize(20);
-
     convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
@@ -1621,11 +1611,10 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     convertToBytes(&iv, "9313225df88406e555909c5aff5269aa6a7a9538534f7da1");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d27e88681ce3243c4830165a8fdcf9ff1de9a1d8e6b447ef6ef7b79828666e4581e79012af34ddd9e2f037589b292db3e67c036745fa22e7e9b7373b");
-    
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, NULL, iv.data(), -1));
     aad_len = aad.size();
     ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
-    
+
     ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                 plaintext.data(), plaintext.size()));
     ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
