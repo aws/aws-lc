@@ -1762,7 +1762,6 @@ struct xaes_256_gcm_key_commit_ctx {
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
     uint8_t kc[XAES_KEY_COMMIT_SIZE];
-    uint8_t kc_buf[XAES_KEY_COMMIT_SIZE];
 };
 
 #define BINARY_FIELD_MUL_X_128(out, in)           \
@@ -1932,32 +1931,20 @@ static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     return xaes_256_gcm_set_gcm_key(ctx, iv, enc, /* key_commit */ 1);
 }
 
-static int xaes_256_gcm_cipher_key_commit(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
-                          size_t len) {
+static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
 
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
         (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
-    if(!ctx->encrypt) {
-        if(OPENSSL_memcmp(xaes_ctx->kc, xaes_ctx->kc_buf, XAES_KEY_COMMIT_SIZE)) {
-            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
-            return 0;
-        }
-    }
-    return aes_gcm_cipher(ctx, out, in, len);
-}
-
-static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
-
-    struct xaes_256_gcm_key_commit_ctx *xaes_kc_ctx =
-        (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-
     switch(type) {
         case EVP_CTRL_AEAD_GET_KEY_COMMITMENT:
-            OPENSSL_memcpy(ptr, xaes_kc_ctx->kc, arg);
+            OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
             return 1;
-        case EVP_CTRL_AEAD_SET_KEY_COMMITMENT:
-            OPENSSL_memcpy(xaes_kc_ctx->kc_buf, ptr, arg);
+        case EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT:
+            if(OPENSSL_memcmp(xaes_ctx->kc, ptr, XAES_KEY_COMMIT_SIZE)) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+                return 0;
+            }
             return 1;
         default: 
             return aes_gcm_ctrl(ctx, type, arg, ptr);
@@ -1975,7 +1962,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
     out->init = xaes_256_gcm_init_key_commit;
-    out->cipher = xaes_256_gcm_cipher_key_commit;
+    out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
     out->ctrl = xaes_256_gcm_key_commit_ctrl;
 }

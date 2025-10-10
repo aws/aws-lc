@@ -1467,16 +1467,18 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
     convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
-    /*
+    
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
-
+    
     int aad_len = aad.size();
     ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
-
+    
     int ciphertext_len;
     ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                 plaintext.data(), plaintext.size()));
+    
+    /*
     int len;
     ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
     ciphertext_len += len;
@@ -1560,10 +1562,10 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
-    /*
+    
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
-
+    /*
     int aad_len = aad.size();
     ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
 
@@ -1593,7 +1595,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key.data(), iv.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
 
     plaintext.reserve(1);
     EVP_DecryptUpdate(dctx.get(), NULL, &aad_len, aad.data(), aad.size());
@@ -1629,7 +1631,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     convertToBytes(&iv, "9313225df88406e555909c5aff5269aa6a7a9538534f7da1");
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, NULL, iv.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
 
     plaintext.reserve(1);
     EVP_DecryptUpdate(dctx.get(), NULL, &aad_len, aad.data(), aad.size());
