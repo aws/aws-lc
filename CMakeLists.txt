@@ -112,7 +112,7 @@ message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
 
-if(DISABLE_USAGE_OF_CPU_JITTER_ENTROPY)
+if(DISABLE_CPU_JITTER_ENTROPY)
   if(FIPS)
     message(FATAL_ERROR "Cannot opt-out of CPU Jitter for the FIPS build")
   endif()
@@ -1124,7 +1124,7 @@ if(BUILD_TESTING)
 endif()
 
 # By default, include jitter entropy.
-if(NOT DISABLE_USAGE_OF_CPU_JITTER_ENTROPY)
+if(NOT DISABLE_CPU_JITTER_ENTROPY)
   add_subdirectory(third_party/jitterentropy)
 endif()
 

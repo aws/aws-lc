@@ -620,7 +620,7 @@ function(build_libcrypto)
 
   add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE})
 
-  if(NOT DISABLE_USAGE_OF_CPU_JITTER_ENTROPY)
+  if(NOT DISABLE_CPU_JITTER_ENTROPY)
     target_sources(${arg_NAME} PRIVATE $<TARGET_OBJECTS:jitterentropy>)
   endif()
 
