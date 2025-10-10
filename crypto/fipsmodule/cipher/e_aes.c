@@ -1831,10 +1831,12 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
         return aes_gcm_init_key(ctx, NULL, NULL, enc);
     }
 
+    /*
     if(ctx->cipher->iv_len != 24) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
     }
+    */
     
     struct xaes_256_gcm_ctx *xaes_ctx =
         (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
@@ -1847,7 +1849,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
     if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL)) {
         return 0;
     }
-
+    
     return aes_gcm_init_key(ctx, derived_key, (uint8_t*)nonce + 12, enc);
 }
 
@@ -1905,7 +1907,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
-    out->iv_len = AES_GCM_NONCE_LENGTH * 2;
+    out->iv_len = AES_GCM_NONCE_LENGTH;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
@@ -1956,7 +1958,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
-    out->iv_len = AES_GCM_NONCE_LENGTH * 2;
+    out->iv_len = AES_GCM_NONCE_LENGTH;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |

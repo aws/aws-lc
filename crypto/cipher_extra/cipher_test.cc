@@ -1467,7 +1467,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
     key.resize(32);
     iv.resize(24);
     aad.resize(20);
-    
+
     convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
@@ -1554,14 +1554,10 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
 
 TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     // Encryption
-    printf("TEST 0!!!\n");
-
     bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
     ASSERT_TRUE(ctx);
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm_key_commit(), NULL, NULL, NULL, 1));
     
-    printf("TEST 1!!!\n");
-
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag, key_commitment; 
     ciphertext.resize(60);
     plaintext.resize(60);
@@ -1574,12 +1570,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
 
-    printf("TEST 2!!!\n");
-
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
-
-    printf("TEST 3!!!\n");
-
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
 
     int aad_len = aad.size();
@@ -1630,10 +1621,11 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     convertToBytes(&iv, "9313225df88406e555909c5aff5269aa6a7a9538534f7da1");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d27e88681ce3243c4830165a8fdcf9ff1de9a1d8e6b447ef6ef7b79828666e4581e79012af34ddd9e2f037589b292db3e67c036745fa22e7e9b7373b");
+    
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, NULL, iv.data(), -1));
     aad_len = aad.size();
     ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
-
+    
     ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                 plaintext.data(), plaintext.size()));
     ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
