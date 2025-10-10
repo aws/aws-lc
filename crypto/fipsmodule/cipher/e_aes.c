@@ -1940,8 +1940,8 @@ static int xaes_256_gcm_cipher_key_commit(EVP_CIPHER_CTX *ctx, uint8_t *out, con
 
     if(!ctx->encrypt) {
         if(OPENSSL_memcmp(xaes_ctx->kc, xaes_ctx->kc_buf, XAES_KEY_COMMIT_SIZE)) {
-            // OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
-            // return 0;
+            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+            return 0;
         }
     }
     return aes_gcm_cipher(ctx, out, in, len);
@@ -1949,15 +1949,15 @@ static int xaes_256_gcm_cipher_key_commit(EVP_CIPHER_CTX *ctx, uint8_t *out, con
 
 static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
 
-    struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
+    struct xaes_256_gcm_key_commit_ctx *xaes_kc_ctx =
         (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
     switch(type) {
         case EVP_CTRL_AEAD_GET_KEY_COMMITMENT:
-            OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
+            OPENSSL_memcpy(ptr, xaes_kc_ctx->kc, arg);
             return 1;
         case EVP_CTRL_AEAD_SET_KEY_COMMITMENT:
-            OPENSSL_memcpy(xaes_ctx->kc_buf, ptr, arg);
+            OPENSSL_memcpy(xaes_kc_ctx->kc_buf, ptr, arg);
             return 1;
         default: 
             return aes_gcm_ctrl(ctx, type, arg, ptr);
