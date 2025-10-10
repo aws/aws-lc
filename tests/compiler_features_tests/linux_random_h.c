@@ -12,7 +12,11 @@
 #if defined(DEFINE_U32)
 typedef unsigned int __u32;
 #endif
+#ifdef __linux__
 #include <linux/random.h>
+#elif __APPLE__
+#include <sys/random.h>
+#endif 
 #include <stdlib.h>
 
 int main(int argc, char **argv) {
