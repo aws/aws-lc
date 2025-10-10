@@ -1911,6 +1911,8 @@ static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, con
 
 static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_ERROR_SOMEWHERE);
+    
     if(key != NULL && !xaes_256_gcm_init_common(ctx, key, 
     sizeof(struct xaes_256_gcm_ctx) + EVP_XAES_256_GCM_CTX_PADDING)) {
         return 0;
@@ -1957,14 +1959,12 @@ static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, 
     switch(type) {
         case EVP_CTRL_AEAD_GET_KEY_COMMITMENT:
             if(arg != XAES_256_GCM_KEY_COMMIT_SIZE) {
-                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
                 return 0;
             }
             OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
             return 1;
         case EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT:
             if(OPENSSL_memcmp(xaes_ctx->kc, ptr, XAES_256_GCM_KEY_COMMIT_SIZE)) {
-                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
                 return 0;
             }
             return 1;
