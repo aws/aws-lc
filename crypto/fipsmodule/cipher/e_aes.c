@@ -1794,7 +1794,7 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const
     AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
 
     if(key_commit) {
-        struct xaes_256_gcm_key_commit_ctx *xaes_kc_ctx = 
+        struct xaes_256_gcm_key_commit_ctx *temp = 
             (struct xaes_256_gcm_key_commit_ctx*)xaes_ctx;
         
         OPENSSL_memset(M1, 0, AES_BLOCK_SIZE);
@@ -1819,8 +1819,8 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const
             M1[i] ^= C1[i] ^ xaes_ctx->k1[i];
             M2[i] ^= C1[i] ^ xaes_ctx->k1[i];
         }
-        AES_encrypt(M1, xaes_kc_ctx->kc, &xaes_ctx->xaes_key);
-        AES_encrypt(M2, xaes_kc_ctx->kc + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+        AES_encrypt(M1, temp->kc, &xaes_ctx->xaes_key);
+        AES_encrypt(M2, temp->kc + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
     }
     return 1;
 }
