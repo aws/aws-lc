@@ -1857,7 +1857,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
         return 0;
     }
     
-    if(!aes_gcm_init_key(ctx, derived_key, (uint8_t*)nonce + 12, enc)) {
+    if(!aes_gcm_init_key(ctx, derived_key, nonce + 12, enc)) {
         return 0;
     }
 
@@ -1919,7 +1919,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
-    memset(out, 0, sizeof(EVP_CIPHER));
+    OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
@@ -1953,7 +1953,7 @@ static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, 
 
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx =
         (struct xaes_256_gcm_key_commit_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-    
+
     switch(type) {
         case EVP_CTRL_AEAD_GET_KEY_COMMITMENT:
             if(arg != XAES_256_GCM_KEY_COMMIT_SIZE) {
@@ -1974,7 +1974,7 @@ static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, 
 }
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
-    memset(out, 0, sizeof(EVP_CIPHER));
+    OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
@@ -2081,7 +2081,7 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
-    memset(out, 0, sizeof(EVP_AEAD));
+    OPENSSL_memset(out, 0, sizeof(EVP_AEAD));
     out->key_len = 32;
     out->nonce_len = AES_GCM_NONCE_LENGTH * 2;
     out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
@@ -2162,7 +2162,7 @@ static int aead_xaes_256_gcm_open_gather_key_commit(
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
-    memset(out, 0, sizeof(EVP_AEAD));
+    OPENSSL_memset(out, 0, sizeof(EVP_AEAD));
     out->key_len = 32;
     out->nonce_len = AES_GCM_NONCE_LENGTH * 2;
     out->overhead = EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE;
