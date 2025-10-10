@@ -1770,14 +1770,14 @@ struct xaes_256_gcm_key_commit_ctx {
     uint8_t kc[XAES_256_GCM_KEY_COMMIT_SIZE];
 };
 
-#define BINARY_FIELD_MUL_X_128(out, in)           \
-do {                                              \
-    unsigned i;                                   \
-    for (i = 0; i < 15; i++) {                    \
-    out[i] = (in[i] << 1) | (in[i+1] >> 7);       \
-    }                                             \
-    const uint8_t carry = in[0] >> 7;             \
-    out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87); \
+#define BINARY_FIELD_MUL_X_128(out, in)             \
+do {                                                \
+    unsigned i;                                     \
+    for (i = 0; i < 15; i++) {                      \
+        out[i] = (in[i] << 1) | (in[i+1] >> 7);     \
+    }                                               \
+    const uint8_t carry = in[0] >> 7;               \
+    out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87);   \
 } while(0);
 
 static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, const uint8_t* nonce, 
@@ -1923,7 +1923,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
-    out->iv_len = AES_GCM_NONCE_LENGTH * 2;
+    out->iv_len = AES_GCM_NONCE_LENGTH;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
@@ -1978,7 +1978,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
-    out->iv_len = AES_GCM_NONCE_LENGTH * 2;
+    out->iv_len = AES_GCM_NONCE_LENGTH;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
