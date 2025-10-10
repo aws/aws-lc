@@ -1552,7 +1552,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm_key_commit(), NULL, NULL, NULL, 1));
     
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag, key_commitment; 
-    ciphertext.resize(60);
+    ciphertext.reserve(60);
     convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     convertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
@@ -1574,7 +1574,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
 
     key_commitment.resize(32);
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KEY_COMMITMENT, key_commitment.size(), (void*)key_commitment.data()));
-    
+
     /*
     // Decryption
     convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
