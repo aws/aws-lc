@@ -12,7 +12,7 @@
 #if defined(DEFINE_U32)
 typedef unsigned int __u32;
 #endif
-#include <sys/random.h>
+#include <linux/random.h>
 #include <stdlib.h>
 
 int main(int argc, char **argv) {
