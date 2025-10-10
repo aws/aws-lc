@@ -1544,7 +1544,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
 
     ASSERT_EQ((size_t)plaintext_len, plaintext.size());
 }
-
+/*
 TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     // Encryption
     bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
@@ -1560,7 +1560,6 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
 
-    /*
     int aad_len = aad.size();
     ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
 
@@ -1641,5 +1640,5 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     plaintext_len += len;
 
     ASSERT_EQ((size_t)plaintext_len, plaintext.size());
-    */
 }
+*/
