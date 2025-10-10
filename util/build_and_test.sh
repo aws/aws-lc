@@ -8,6 +8,7 @@ AWS_LC_BUILD="${BASE_DIR}/build"
 
 DEFAULT_CMAKE_FLAGS=("-DCMAKE_BUILD_TYPE=Debug" "-GNinja")
 
+BUILD_TARGET="all_tests"
 RUN_TARGET="run_tests"
 BUILD_ONLY=false
 CMAKE_ARGS=()
@@ -17,6 +18,10 @@ while [[ $# -gt 0 ]]; do
     --build-only)
       BUILD_ONLY=true
       shift
+      ;;
+    --build-target)
+      BUILD_TARGET="$2"
+      shift 2
       ;;
     --run-target)
       RUN_TARGET="$2"
@@ -34,7 +39,7 @@ mkdir -p "${AWS_LC_BUILD}"
 
 cmake "${BASE_DIR}" -B "${AWS_LC_BUILD}" "${DEFAULT_CMAKE_FLAGS[@]}" "${CMAKE_ARGS[@]}"
 
-cmake --build "${AWS_LC_BUILD}" --target all_tests -j
+cmake --build "${AWS_LC_BUILD}" -j --target ${BUILD_TARGET}
 
 # Only run tests if --build-only was not specified
 if [ "$BUILD_ONLY" = false ]; then
