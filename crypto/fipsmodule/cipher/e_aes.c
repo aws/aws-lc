@@ -1750,7 +1750,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 // ----------- XAES-256-GCM Auxiliary Data Structures and Subroutines -----------
 // ------------------------------------------------------------------------------
 
-#define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX))
+#define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
 
 #if defined(OPENSSL_32_BIT)
@@ -1892,9 +1892,9 @@ static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, con
     void *temp = ctx->cipher_data;
     ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + 
                 extended_ctx_size);
-    OPENSSL_memcpy(ctx->cipher_data, temp, ctx->cipher->ctx_size);
+    OPENSSL_memcpy(ctx->cipher_data, temp, sizeof(EVP_AES_GCM_CTX));
     OPENSSL_free(temp);
-
+    
     struct xaes_256_gcm_ctx *xaes_ctx =
             (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
@@ -1923,7 +1923,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
-    out->iv_len = AES_GCM_NONCE_LENGTH;
+    out->iv_len = AES_GCM_NONCE_LENGTH * 2;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
@@ -1978,7 +1978,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     out->nid = NID_xaes_256_gcm_key_commit;
     out->block_size = 1;
     out->key_len = 32;
-    out->iv_len = AES_GCM_NONCE_LENGTH;
+    out->iv_len = AES_GCM_NONCE_LENGTH * 2;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
