@@ -1845,6 +1845,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
         return 0;
     }
     
+    int ivlen = gctx->ivlen;
     if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL)) {
         return 0;
     }
@@ -1853,10 +1854,10 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce,
         return 0;
     }
 
-    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 24, NULL)) {
+    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, ivlen, NULL)) {
         return 0;
     }
-
+    
     return 1;
 }
 

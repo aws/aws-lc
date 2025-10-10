@@ -1468,7 +1468,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
     
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
     
     int aad_len = aad.size();
@@ -1495,7 +1495,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
 
     ASSERT_TRUE(dctx);
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL));
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key.data(), iv.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
 
@@ -1560,7 +1560,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
 
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
 
     int aad_len = aad.size();
@@ -1589,7 +1589,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
 
     ASSERT_TRUE(dctx);
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), EVP_xaes_256_gcm_key_commit(), NULL, NULL, NULL));
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key.data(), iv.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
