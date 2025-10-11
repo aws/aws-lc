@@ -34,6 +34,25 @@
 #include "openssl/pem.h"
 #include "openssl/rand.h"
 
+bool convertToBytes(std::vector<uint8_t> *out, const std::string &value) {
+  if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') {
+    out->assign(value.begin() + 1, value.end() - 1);
+    return true;
+  }
+
+  if (!DecodeHex(out, value)) {
+    printf("Error decoding value: %s", value.c_str());
+    return false;
+  }
+  return true;
+}
+
+void printText(const uint8_t *msg, const int &len) {
+  for(int i = 0; i < len; ++i) {
+    printf("%0x", msg[i]);
+  }
+  printf("\n");
+}
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
   const uint8_t *data = reinterpret_cast<const uint8_t *>(in);
