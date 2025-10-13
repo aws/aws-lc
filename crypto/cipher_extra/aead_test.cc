@@ -1729,15 +1729,13 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext, &ciphertext_len,
                                     plaintext_len[0] +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                     nonce, 24, plaintext, plaintext_len[0], aad, aad_len[0]));
-            
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext, ciphertext_len));
 
             // Decryption
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
-            
-            size_t plaintext_len = 0;
-            ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &plaintext_len, ciphertext_len - tag_size,
+            size_t len = 0;
+            ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &len, ciphertext_len - tag_size,
                                     nonce, 24, ciphertext, ciphertext_len, aad, aad_len[0]));
             ASSERT_EQ(Bytes(decrypted, 256), Bytes(plaintext, 256));
         }
@@ -1787,8 +1785,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
             
-            size_t plaintext_len = 0;
-            ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &plaintext_len, ciphertext_len - tag_size,
+            size_t len = 0;
+            ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &len, ciphertext_len - tag_size,
                                     nonce, 24, ciphertext, ciphertext_len, aad, aad_len[0]));
             ASSERT_EQ(Bytes(decrypted, 256), Bytes(plaintext, 256));
         }
