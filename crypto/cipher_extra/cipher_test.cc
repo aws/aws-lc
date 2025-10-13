@@ -1601,12 +1601,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
 
         decrypted.resize(plaintext.size());
         len = 0;
-        plaintext_len = 0;
         ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), (uint8_t*)decrypted.data(), &len, ciphertext.data(), ciphertext_len));
-
-        plaintext_len = len;
         ASSERT_TRUE(EVP_DecryptFinal(dctx.get(), (uint8_t*)decrypted.data() + len, &len));
-        plaintext_len += len;
 
         ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
     }
