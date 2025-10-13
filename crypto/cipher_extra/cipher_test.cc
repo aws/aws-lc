@@ -1534,7 +1534,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
         
-        int ciphertext_len;
+        int ciphertext_len = 0;
         ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                     plaintext.data(), plaintext.size()));
         
@@ -1563,7 +1563,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         std::vector<uint8_t> decrypted;
         decrypted.resize(plaintext.size());
         len = 0;
-        size_t plaintext_len;
+        size_t plaintext_len = 0;
         ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), (uint8_t*)decrypted.data(), &len, ciphertext.data(), ciphertext_len));
 
         plaintext_len = len;
@@ -1648,11 +1648,11 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             // Encryption
             ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
             ASSERT_EQ(aad_len[0], EVP_Cipher(ctx.get(), NULL, aad, aad_len[0]));
-            int ciphertext_len;
+            int ciphertext_len = 0;
             ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), ciphertext, &ciphertext_len, 
                         plaintext, plaintext_len[0]));
             
-            int len;
+            int len = 0;
             ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), ciphertext + ciphertext_len, &len));
             ciphertext_len += len;
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext, ciphertext_len));
@@ -1717,11 +1717,11 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             // Encryption
             ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
             ASSERT_EQ(aad_len[0], EVP_Cipher(ctx.get(), NULL, aad, aad_len[0]));
-            int ciphertext_len;
+            int ciphertext_len = 0;
             ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), ciphertext, &ciphertext_len, 
                         plaintext, plaintext_len[0]));
             
-            int len;
+            int len = 0;
             ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), ciphertext + ciphertext_len, &len));
             ciphertext_len += len;
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext, ciphertext_len));
@@ -1770,10 +1770,10 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     int aad_len = aad.size();
     ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
     
-    int ciphertext_len;
+    int ciphertext_len = 0;
     ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                 plaintext.data(), plaintext.size()));
-    int len;
+    int len = 0;
     ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
     ciphertext_len += len;
     tag.resize(16);

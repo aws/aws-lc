@@ -1657,7 +1657,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         bssl::ScopedEVP_AEAD_CTX ctx;
         ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
 
-        size_t ciphertext_len;
+        size_t ciphertext_len = 0;
         ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                                 plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                 iv.data(), iv.size(), plaintext.data(), plaintext.size(), NULL, 0));
@@ -1671,7 +1671,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         bssl::ScopedEVP_AEAD_CTX dctx;
         ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
 
-        size_t plaintext_len;
+        size_t plaintext_len = 0;
         ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
                                 iv.data(), iv.size(), ciphertext.data(),
                                 ciphertext.size(), aad.data(), aad.size()));
@@ -1725,7 +1725,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             bssl::ScopedEVP_AEAD_CTX ctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
-            size_t ciphertext_len;
+            size_t ciphertext_len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext, &ciphertext_len,
                                     plaintext_len[0] +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                     nonce, 24, plaintext, plaintext_len[0], aad, aad_len[0]));
@@ -1736,7 +1736,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
             
-            size_t plaintext_len;
+            size_t plaintext_len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &plaintext_len, ciphertext_len - tag_size,
                                     nonce, 24, ciphertext, ciphertext_len, aad, aad_len[0]));
             ASSERT_EQ(Bytes(decrypted, 256), Bytes(plaintext, 256));
@@ -1776,7 +1776,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             bssl::ScopedEVP_AEAD_CTX ctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
-            size_t ciphertext_len;
+            size_t ciphertext_len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext, &ciphertext_len,
                                     plaintext_len[0] +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                     nonce, 24, plaintext, plaintext_len[0], aad, aad_len[0]));
@@ -1787,7 +1787,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
             
-            size_t plaintext_len;
+            size_t plaintext_len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &plaintext_len, ciphertext_len - tag_size,
                                     nonce, 24, ciphertext, ciphertext_len, aad, aad_len[0]));
             ASSERT_EQ(Bytes(decrypted, 256), Bytes(plaintext, 256));
@@ -1815,7 +1815,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     bssl::ScopedEVP_AEAD_CTX ctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
-    size_t ciphertext_len;
+    size_t ciphertext_len = 0;
     ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
                             iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
@@ -1828,7 +1828,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     bssl::ScopedEVP_AEAD_CTX dctx;
 	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
-	size_t plaintext_len;
+	size_t plaintext_len = 0;
 	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
