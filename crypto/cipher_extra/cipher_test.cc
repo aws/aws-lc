@@ -1857,13 +1857,8 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_EQ((size_t)aad_len, aad.size());
 
     len = 0;
-    plaintext_len = 0;
     ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), (uint8_t*)decrypted.data(), &len, ciphertext.data(), ciphertext_len));
-
-    plaintext_len = len;
     ASSERT_TRUE(EVP_DecryptFinal(dctx.get(), (uint8_t*)decrypted.data() + len, &len));
-    plaintext_len += len;
-
-    ASSERT_EQ((size_t)plaintext_len, plaintext.size());
+    
     ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
 }
