@@ -91,6 +91,7 @@ tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool CRLTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
+bool ecparamTool(const args_list_t &args);
 bool genrsaTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
