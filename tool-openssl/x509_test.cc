@@ -19,6 +19,9 @@ class X509Test : public ::testing::Test {
     ASSERT_GT(createTempFILEpath(der_cert_path), 0u);
     ASSERT_GT(createTempFILEpath(ca_cert_path), 0u);
     ASSERT_GT(createTempFILEpath(ca_key_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_signkey_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_ca_cert_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_ca_key_path), 0u);
 
     bssl::UniquePtr<X509> x509;
     CreateAndSignX509Certificate(x509, nullptr);
@@ -37,6 +40,12 @@ class X509Test : public ::testing::Test {
     ASSERT_TRUE(signkey_file);
     ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr,
                                      nullptr, 0, nullptr, nullptr));
+
+    ScopedFILE protected_signkey_file(fopen(protected_signkey_path, "wb"));
+    ASSERT_TRUE(protected_signkey_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_signkey_file.get(), pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
 
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
@@ -69,10 +78,24 @@ class X509Test : public ::testing::Test {
     ASSERT_TRUE(PEM_write_PrivateKey(ca_cert_file.get(), ca_pkey.get(), nullptr,
                                      nullptr, 0, nullptr, nullptr));
 
+    ScopedFILE protected_ca_cert_file(fopen(protected_ca_cert_path, "wb"));
+    ASSERT_TRUE(protected_ca_cert_file);
+    ASSERT_TRUE(PEM_write_X509(protected_ca_cert_file.get(), ca.get()));
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_ca_cert_file.get(), ca_pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
+
+
     ScopedFILE ca_key_file(fopen(ca_key_path, "wb"));
     ASSERT_TRUE(ca_key_file);
     ASSERT_TRUE(PEM_write_PrivateKey(ca_key_file.get(), ca_pkey.get(), nullptr,
                                      nullptr, 0, nullptr, nullptr));
+
+    ScopedFILE protected_ca_key_file(fopen(protected_ca_key_path, "wb"));
+    ASSERT_TRUE(protected_ca_key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_ca_key_file.get(), ca_pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
   }
   void TearDown() override {
     RemoveFile(in_path);
@@ -82,7 +105,11 @@ class X509Test : public ::testing::Test {
     RemoveFile(der_cert_path);
     RemoveFile(ca_cert_path);
     RemoveFile(ca_key_path);
+    RemoveFile(protected_signkey_path);
+    RemoveFile(protected_ca_cert_path);
+    RemoveFile(protected_ca_key_path);
   }
+
   char in_path[PATH_MAX];
   char csr_path[PATH_MAX];
   char out_path[PATH_MAX];
@@ -90,6 +117,9 @@ class X509Test : public ::testing::Test {
   char der_cert_path[PATH_MAX];
   char ca_cert_path[PATH_MAX];
   char ca_key_path[PATH_MAX];
+  char protected_signkey_path[PATH_MAX];
+  char protected_ca_cert_path[PATH_MAX];
+  char protected_ca_key_path[PATH_MAX];
 };
 
 // ----------------------------- X509 Option Tests -----------------------------
@@ -283,6 +313,43 @@ TEST_F(X509Test, X509ToolExtensionTest) {
   RemoveFile(ext_path);
 }
 
+// Test -passin with -signkey
+TEST_F(X509Test, X509ToolPassinSignkeyTest) {
+  args_list_t args = {"-in",      in_path,
+                      "-signkey", protected_signkey_path,
+                      "-passin",  "pass:testpassword"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -passin with -CA (key in CA file)
+TEST_F(X509Test, X509ToolPassinCATest) {
+  args_list_t args = {"-in",     in_path,
+                      "-CA",     protected_ca_cert_path,
+                      "-passin", "pass:testpassword"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -passin with -CA and -CAkey
+TEST_F(X509Test, X509ToolPassinCAkeyTest) {
+  args_list_t args = {"-in",     in_path,
+                      "-CA",     ca_cert_path,
+                      "-CAkey",  protected_ca_key_path,
+                      "-passin", "pass:testpassword"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -passin with -req and -signkey
+TEST_F(X509Test, X509ToolPassinReqSignkeyTest) {
+  args_list_t args = {
+      "-in",     csr_path,           "-req", "-signkey", protected_signkey_path,
+      "-passin", "pass:testpassword"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
 // -------------------- X590 Option Usage Error Tests --------------------------
 
 class X509OptionUsageErrorsTest : public X509Test {
@@ -348,6 +415,21 @@ TEST_F(X509OptionUsageErrorsTest, InvalidArgTests) {
   }
 }
 
+// Test -passin with invalid formats and wrong passwords
+TEST_F(X509OptionUsageErrorsTest, InvalidPassinTest) {
+  std::vector<std::vector<std::string>> testparams = {
+      {"-in", in_path, "-signkey", protected_signkey_path, "-passin",
+       "pass:wrongpassword"},
+      {"-in", in_path, "-CA", protected_ca_cert_path, "-passin",
+       "pass:wrongpassword"},
+      {"-in", in_path, "-CA", ca_cert_path, "-CAkey", protected_ca_key_path,
+       "-passin", "pass:wrongpassword"},
+      {"-in", in_path, "-signkey", signkey_path, "-passin", "invalid:format"}};
+  for (const auto &args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
+
 // -------------------- X509 OpenSSL Comparison Tests --------------------------
 
 // Comparison tests cannot run without set up of environment variables:
@@ -372,6 +454,7 @@ class X509ComparisonTest : public ::testing::Test {
     ASSERT_GT(createTempFILEpath(der_cert_path), 0u);
     ASSERT_GT(createTempFILEpath(ca_cert_path), 0u);
     ASSERT_GT(createTempFILEpath(ca_key_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_signkey_path), 0u);
 
     CreateAndSignX509Certificate(x509, nullptr);
     ASSERT_TRUE(x509);
@@ -395,6 +478,13 @@ class X509ComparisonTest : public ::testing::Test {
     ASSERT_TRUE(signkey_file);
     ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr,
                                      nullptr, 0, nullptr, nullptr));
+
+    // Create password-protected private key for testing -passin
+    ScopedFILE protected_signkey_file(fopen(protected_signkey_path, "wb"));
+    ASSERT_TRUE(protected_signkey_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_signkey_file.get(), pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
 
     csr.reset(X509_REQ_new());
     ASSERT_TRUE(csr);
@@ -434,6 +524,7 @@ class X509ComparisonTest : public ::testing::Test {
       RemoveFile(der_cert_path);
       RemoveFile(ca_cert_path);
       RemoveFile(ca_key_path);
+      RemoveFile(protected_signkey_path);
     }
   }
 
@@ -445,6 +536,7 @@ class X509ComparisonTest : public ::testing::Test {
   char der_cert_path[PATH_MAX];
   char ca_cert_path[PATH_MAX];
   char ca_key_path[PATH_MAX];
+  char protected_signkey_path[PATH_MAX];
   bssl::UniquePtr<X509> x509;
   bssl::UniquePtr<X509_REQ> csr;
   const char *tool_executable_path;
@@ -1229,4 +1321,32 @@ TEST_F(X509ComparisonTest, X509ToolCompareExtensionsOpenSSL) {
       CompareCertificates(cert_tool.get(), cert_openssl.get(), nullptr, 30));
 
   RemoveFile(ext_path);
+}
+
+// Test against OpenSSL output with -passin option
+TEST_F(X509ComparisonTest, X509ToolComparePassinOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
+                             in_path + " -signkey " + protected_signkey_path +
+                             " -passin pass:testpassword -out " + out_path_tool;
+  std::string openssl_command =
+      std::string(openssl_executable_path) + " x509 -in " + in_path +
+      " -signkey " + protected_signkey_path +
+      " -passin pass:testpassword -out " + out_path_openssl;
+
+  ExecuteCommand(tool_command);
+  ExecuteCommand(openssl_command);
+
+  // Load certificates
+  auto cert_tool = LoadPEMCertificate(out_path_tool);
+  auto cert_openssl = LoadPEMCertificate(out_path_openssl);
+
+  ASSERT_TRUE(cert_tool != nullptr)
+      << "Failed to load certificate generated by tool";
+  ASSERT_TRUE(cert_openssl != nullptr)
+      << "Failed to load certificate generated by OpenSSL";
+
+  // Compare certificates in detail with 30 days validity period
+  ASSERT_TRUE(
+      CompareCertificates(cert_tool.get(), cert_openssl.get(), nullptr, 30))
+      << "Certificates generated by tool and OpenSSL have different attributes";
 }
