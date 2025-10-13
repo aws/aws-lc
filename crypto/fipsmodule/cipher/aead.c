@@ -222,6 +222,7 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
 
   size_t plaintext_len = in_len - ctx->tag_len;
   if (max_out_len < plaintext_len) {
+    printf("max_out_len: %d, plaintext_len: %d\n", (int)max_out_len, (int)plaintext_len);
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     goto error;
   }

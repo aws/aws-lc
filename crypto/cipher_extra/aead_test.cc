@@ -1691,3 +1691,42 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
 }
+
+TEST(CipherTest, XAES_256_GCM_EVP_AEAD_EXAMPLE) {
+    std::vector<uint8_t> ciphertext, aad, tag, decrypted; 
+
+    const uint8_t key[32] = {
+        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
+    const uint8_t nonce[24] = {
+        0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+        0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42};
+
+    const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
+    size_t plaintext_len = strlen((const char *)plaintext);
+
+    ciphertext.resize(36);
+    const size_t tag_size = 16;
+    
+    // Encryption
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
+
+    size_t ciphertext_len;
+    ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                            plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                            nonce, 24, plaintext, plaintext_len, nullptr, 0));
+    std::vector<uint8_t> output;
+    convertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
+    ASSERT_EQ(Bytes(ciphertext), Bytes(output));
+    
+    // Decryption   
+    bssl::ScopedEVP_AEAD_CTX dctx;
+	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
+    
+    decrypted.resize(plaintext_len);
+	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, plaintext_len,
+                            nonce, 24, ciphertext.data(), ciphertext.size(), nullptr, 0));
+    ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
+}

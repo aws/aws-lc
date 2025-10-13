@@ -49,7 +49,7 @@ bool convertToBytes(std::vector<uint8_t> *out, const std::string &value) {
 
 void printText(const uint8_t *msg, const int &len) {
   for(int i = 0; i < len; ++i) {
-    printf("%0x", msg[i]);
+    printf("%02x", msg[i]);
   }
   printf("\n");
 }
