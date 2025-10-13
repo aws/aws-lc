@@ -1929,7 +1929,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
-    out->nid = NID_xaes_256_gcm_key_commit;
+    out->nid = NID_xaes_256_gcm;
     out->block_size = 1;
     out->key_len = 32;
     out->iv_len = AES_GCM_NONCE_LENGTH * 2;
@@ -1990,7 +1990,7 @@ static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, 
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_key_commit) {
     OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
-    out->nid = NID_xaes_256_gcm_key_commit;
+    out->nid = NID_xaes_256_gcm_kc;
     out->block_size = 1;
     out->key_len = 32;
     out->iv_len = AES_GCM_NONCE_LENGTH * 2;

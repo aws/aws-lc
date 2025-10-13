@@ -1605,47 +1605,96 @@ TEST(EvpAeadCtxSerdeTest, ID) {
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
-    std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag; 
+    {
+        std::vector<uint8_t> ciphertext, aad, tag, decrypted; 
+        const uint8_t key[32] = {
+            0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+            0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+            0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
+        const uint8_t nonce[24] = {
+            0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+            0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42};
 
-    // Encryption
-    convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
-    convertToBytes(&iv, "cafebabefacedbad16aedbf5a0de6a57a637b39b9a6b5254");
-    convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
-    convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
+        const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
+        size_t plaintext_len = strlen((const char *)plaintext);
 
-    ciphertext.resize(76);
-    size_t tag_size = 16;
+        ciphertext.resize(36);
+        const size_t tag_size = 16;
+        
+        // Encryption
+        bssl::ScopedEVP_AEAD_CTX ctx;
+        ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
-    bssl::ScopedEVP_AEAD_CTX ctx;
-    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
-
-    size_t ciphertext_len;
-    ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
-                            plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
-                            iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
-
-    // Decryption   
-    bssl::ScopedEVP_AEAD_CTX dctx;
-	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
-
-	size_t plaintext_len;
-	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, plaintext.size(),
-                            iv.data(), iv.size(), ciphertext.data(),
-                            ciphertext.size(), aad.data(), aad.size()));
-
-    // Encryption with another derived key
-    convertToBytes(&iv, "9c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0");
-    convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
-    convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
+        size_t ciphertext_len;
+        ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nonce, 24, plaintext, plaintext_len, nullptr, 0));
+        std::vector<uint8_t> output;
+        convertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
+        ASSERT_EQ(Bytes(ciphertext), Bytes(output));
+        
+        // Decryption   
+        bssl::ScopedEVP_AEAD_CTX dctx;
+        ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
+        
+        decrypted.resize(plaintext_len);
+        ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nonce, 24, ciphertext.data(), ciphertext.size(), nullptr, 0));
+        ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
+    }
     
-    ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
-                            plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
-                            iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
+    {
+        std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, decrypted; 
+        // Encryption
+        convertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
+        convertToBytes(&iv, "cafebabefacedbad16aedbf5a0de6a57a637b39b9a6b5254");
+        convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
+        convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
 
-    // Decryption with another derived key
-    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, plaintext.size(),
-                            iv.data(), iv.size(), ciphertext.data(),
-                            ciphertext.size(), aad.data(), aad.size()));
+        ciphertext.resize(76);
+        size_t tag_size = 16;
+
+        bssl::ScopedEVP_AEAD_CTX ctx;
+        ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
+
+        size_t ciphertext_len;
+        ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                                plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
+
+        std::vector<uint8_t> output;
+        convertToBytes(&output, "dc53ee85e5a4009a4e21788e8b651dce12dcea87be36a81e1a97802ac7aaf326227060c2a820331704cbf8a720bff7d73e0ba5792b9c2dfa69ac8710b202a06b06fba2235a15aebe31b410af");
+        ASSERT_EQ(Bytes(ciphertext), Bytes(output));
+        
+        // Decryption   
+        decrypted.resize(plaintext.size());
+        bssl::ScopedEVP_AEAD_CTX dctx;
+        ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
+
+        size_t plaintext_len;
+        ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                iv.data(), iv.size(), ciphertext.data(),
+                                ciphertext.size(), aad.data(), aad.size()));
+        ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
+
+        // Encryption with another derived key
+        convertToBytes(&iv, "9c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0");
+        convertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
+        convertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
+        
+        ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                                plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
+        
+        convertToBytes(&output, "d1ae7ab8df23fe0ade8deb5f15501431513cff9bf4e9d349a7efcc79df5ddcfa109f706b086449dc0b2fb9203d83ee8978a8d558ffa54d3017c05ba0293202a763e59b746ee82b8b8abd09f5");
+        ASSERT_EQ(Bytes(ciphertext), Bytes(output));
+
+        // Decryption with another derived key
+        ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                iv.data(), iv.size(), ciphertext.data(),
+                                ciphertext.size(), aad.data(), aad.size()));
+        ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
+    }
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
@@ -1673,7 +1722,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
 	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
 	size_t plaintext_len;
-	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, plaintext.size(),
+	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, ciphertext.size() - tag_size,
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
 
@@ -1687,46 +1736,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
                             iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
 
     // Decryption with another derived key
-    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, plaintext.size(),
+    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)plaintext.data(), &plaintext_len, ciphertext.size() - tag_size,
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
-}
-
-TEST(CipherTest, XAES_256_GCM_EVP_AEAD_EXAMPLE) {
-    std::vector<uint8_t> ciphertext, aad, tag, decrypted; 
-
-    const uint8_t key[32] = {
-        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
-    const uint8_t nonce[24] = {
-        0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
-        0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42};
-
-    const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
-    size_t plaintext_len = strlen((const char *)plaintext);
-
-    ciphertext.resize(36);
-    const size_t tag_size = 16;
-    
-    // Encryption
-    bssl::ScopedEVP_AEAD_CTX ctx;
-    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
-
-    size_t ciphertext_len;
-    ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
-                            plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
-                            nonce, 24, plaintext, plaintext_len, nullptr, 0));
-    std::vector<uint8_t> output;
-    convertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
-    ASSERT_EQ(Bytes(ciphertext), Bytes(output));
-    
-    // Decryption   
-    bssl::ScopedEVP_AEAD_CTX dctx;
-	ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
-    
-    decrypted.resize(plaintext_len);
-	ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, plaintext_len,
-                            nonce, 24, ciphertext.data(), ciphertext.size(), nullptr, 0));
-    ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
 }

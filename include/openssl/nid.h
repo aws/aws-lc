@@ -3989,16 +3989,6 @@ extern "C" {
 #define NID_aes_256_gcm 901
 #define OBJ_aes_256_gcm 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 46L
 
-#define SN_xaes_256_gcm "id-xaes256-GCM"
-#define LN_xaes_256_gcm "xaes-256-gcm"
-#define NID_xaes_256_gcm 1001
-#define OBJ_aes_256_gcm 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 46L
-  
-#define SN_xaes_256_gcm_key_commit "id-xaes256-GCM-key-commit"
-#define LN_xaes_256_gcm_key_commit "xaes-256-gcm-key-commit"
-#define NID_xaes_256_gcm_key_commit 1003
-#define OBJ_aes_256_gcm_key_commit 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 46L
-
 #define SN_aes_256_ccm "id-aes256-CCM"
 #define LN_aes_256_ccm "aes-256-ccm"
 #define NID_aes_256_ccm 902
@@ -4395,6 +4385,16 @@ extern "C" {
 #define SN_SecP384r1MLKEM1024 "SecP384r1MLKEM1024"
 #define NID_SecP384r1MLKEM1024 998
 #define OBJ_SecP384r1MLKEM1024 1L, 3L, 6L, 1L, 4L, 1L, 42235L, 6L
+
+#define SN_xaes_256_gcm "id-xaes256-GCM"
+#define LN_xaes_256_gcm "xaes-256-gcm"
+#define NID_xaes_256_gcm 999
+#define OBJ_xaes_256_gcm 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 49L
+
+#define SN_xaes_256_gcm_kc "id-xaes256-GCM-KC"
+#define LN_xaes_256_gcm_kc "xaes-256-gcm-kc"
+#define NID_xaes_256_gcm_kc 1000
+#define OBJ_xaes_256_gcm_kc 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 50L
 
 #if defined(__cplusplus)
 } /* extern C */
