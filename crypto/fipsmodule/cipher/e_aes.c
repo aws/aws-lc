@@ -2032,8 +2032,8 @@ static int aead_xaes_256_gcm_init_key_commit(EVP_AEAD_CTX *ctx, const uint8_t *k
 
 static void aead_xaes_256_gcm_cleanup(EVP_AEAD_CTX *ctx) {}
 
-static int aead_xaes_256_gcm_set_gcm_key(struct xaes_256_gcm_ctx *xaes_ctx, struct aead_aes_gcm_ctx *gcm_ctx, 
-            const uint8_t *nonce, const size_t nonce_len) {
+static int aead_xaes_256_gcm_set_gcm_key(struct xaes_256_gcm_ctx *xaes_ctx, 
+    struct aead_aes_gcm_ctx *gcm_ctx, const uint8_t *nonce, const size_t nonce_len) {
     
     if (nonce_len != 24) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
@@ -2121,7 +2121,8 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
     const size_t extra_in_len, const uint8_t *ad,
     const size_t ad_len) {
     
-    struct xaes_256_gcm_key_commit_ctx *xaes_ctx = (struct xaes_256_gcm_key_commit_ctx*)&ctx->state;
+    struct xaes_256_gcm_key_commit_ctx *xaes_ctx = 
+        (struct xaes_256_gcm_key_commit_ctx*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
     
     if (!aead_xaes_256_gcm_set_gcm_key((struct xaes_256_gcm_ctx*)xaes_ctx, 
