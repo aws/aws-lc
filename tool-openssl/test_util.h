@@ -74,20 +74,11 @@ inline void RunCommandsAndCompareOutput(const std::string &tool_command,
   std::ifstream tool_output(out_path_tool);
   tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)),
                                 std::istreambuf_iterator<char>());
-  tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)),
-                                std::istreambuf_iterator<char>());
   std::ifstream openssl_output(out_path_openssl);
   openssl_output_str =
       std::string((std::istreambuf_iterator<char>(openssl_output)),
                   std::istreambuf_iterator<char>());
-  openssl_output_str =
-      std::string((std::istreambuf_iterator<char>(openssl_output)),
-                  std::istreambuf_iterator<char>());
 
-  std::cout << "AWS-LC tool output:" << std::endl
-            << tool_output_str << std::endl;
-  std::cout << "OpenSSL output:" << std::endl
-            << openssl_output_str << std::endl;
   std::cout << "AWS-LC tool output:" << std::endl
             << tool_output_str << std::endl;
   std::cout << "OpenSSL output:" << std::endl

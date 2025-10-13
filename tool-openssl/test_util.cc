@@ -101,7 +101,7 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
 bssl::UniquePtr<X509_REQ> LoadCSR(const char *path) {
   bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
   if (!bio) {
-    return NULL;
+    return nullptr;
   }
 
   bssl::UniquePtr<X509_REQ> csr(
@@ -113,7 +113,7 @@ bssl::UniquePtr<X509_REQ> LoadCSR(const char *path) {
 bssl::UniquePtr<X509> LoadPEMCertificate(const char *path) {
   bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
   if (!bio) {
-    return NULL;
+    return nullptr;
   }
 
   bssl::UniquePtr<X509> cert(
@@ -125,7 +125,7 @@ bssl::UniquePtr<X509> LoadPEMCertificate(const char *path) {
 bssl::UniquePtr<X509> LoadDERCertificate(const char *path) {
   bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
   if (!bio) {
-    return NULL;
+    return nullptr;
   }
 
   bssl::UniquePtr<X509> cert(d2i_X509_bio(bio.get(), nullptr));
