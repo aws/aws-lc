@@ -34,7 +34,7 @@
 #include "openssl/pem.h"
 #include "openssl/rand.h"
 
-bool convertToBytes(std::vector<uint8_t> *out, const std::string &value) {
+bool ConvertToBytes(std::vector<uint8_t> *out, const std::string &value) {
   if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') {
     out->assign(value.begin() + 1, value.end() - 1);
     return true;
@@ -47,7 +47,7 @@ bool convertToBytes(std::vector<uint8_t> *out, const std::string &value) {
   return true;
 }
 
-void printText(const uint8_t *msg, const int &len) {
+void PrintText(const uint8_t *msg, const int &len) {
   for(int i = 0; i < len; ++i) {
     printf("%02x", msg[i]);
   }
