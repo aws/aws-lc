@@ -1459,7 +1459,6 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
-    /* Test vectors source: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md */
     {
         std::vector<uint8_t> ciphertext, tag, decrypted; 
         const uint8_t key[32] = {

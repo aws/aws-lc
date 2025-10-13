@@ -1606,7 +1606,6 @@ TEST(EvpAeadCtxSerdeTest, ID) {
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
-    /* Test vectors source: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md */
     {
         std::vector<uint8_t> ciphertext, aad, tag, decrypted; 
         const uint8_t key[32] = {
