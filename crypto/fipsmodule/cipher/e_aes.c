@@ -57,6 +57,7 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
+#include <openssl/cmac.h>
 
 #include <openssl/bytestring.h>
 #include "../../internal.h"
@@ -1752,15 +1753,24 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
+#define USE_OPTIMIZED_CMAC                  
 
 struct xaes_256_gcm_ctx {
+#ifdef USE_OPTIMIZED_CMAC
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
+#else 
+    uint8_t xaes_key[AES_BLOCK_SIZE * 2];
+#endif 
 };
 
 struct xaes_256_gcm_key_commit_ctx {
+#ifdef USE_OPTIMIZED_CMAC 
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
+#else 
+    uint8_t xaes_key[AES_BLOCK_SIZE * 2];
+#endif 
     uint8_t kc[XAES_256_GCM_KEY_COMMIT_SIZE];
 };
 
@@ -1783,8 +1793,9 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
     M1[2] = 0x58; 
     OPENSSL_memcpy(M1 + 4, nonce, 12);
     OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
-
+    
     M2[1] = 0x02;
+#ifdef USE_OPTIMIZED_CMAC
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
         M1[i] ^= xaes_ctx->k1[i];
         M2[i] ^= xaes_ctx->k1[i];
@@ -1792,15 +1803,20 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
 
     AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
     AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
-
+#else 
+    if(!AES_CMAC(derived_key, xaes_ctx->xaes_key, 32, M1, AES_BLOCK_SIZE) || 
+    !AES_CMAC(derived_key + AES_BLOCK_SIZE, xaes_ctx->xaes_key, 32, M2, AES_BLOCK_SIZE)) {
+        return 0;
+    }
+#endif 
     return 1;
 }
 
 static int xaes_256_gcm_CMAC_get_key_commitment(
     struct xaes_256_gcm_key_commit_ctx *xaes_ctx, const uint8_t* nonce) {
-    
-    uint8_t M1[AES_BLOCK_SIZE] = {0};
-    uint8_t M2[AES_BLOCK_SIZE] = {0};
+#ifdef USE_OPTIMIZED_CMAC
+    uint8_t M1[AES_BLOCK_SIZE];
+    uint8_t M2[AES_BLOCK_SIZE];
 
     uint8_t kc_prefix[5] = {0x58, 0x43, 0x4D, 0x54, 0x00};
     uint8_t C1[AES_BLOCK_SIZE];
@@ -1809,11 +1825,13 @@ static int xaes_256_gcm_CMAC_get_key_commitment(
     
     AES_encrypt(M1, C1, &xaes_ctx->xaes_key);
     OPENSSL_memcpy(M1, nonce + 12, 12);
+    M1[AES_BLOCK_SIZE-4] = 0x00;
     M1[AES_BLOCK_SIZE-3] = 0x01;
     M1[AES_BLOCK_SIZE-2] = 0x00;
     M1[AES_BLOCK_SIZE-1] = 0x01;
     
     OPENSSL_memcpy(M2, nonce + 12, 12);
+    M2[AES_BLOCK_SIZE-4] = 0x00;
     M2[AES_BLOCK_SIZE-3] = 0x01;
     M2[AES_BLOCK_SIZE-2] = 0x00;
     M2[AES_BLOCK_SIZE-1] = 0x02;
@@ -1825,7 +1843,24 @@ static int xaes_256_gcm_CMAC_get_key_commitment(
 
     AES_encrypt(M1, xaes_ctx->kc, &xaes_ctx->xaes_key);
     AES_encrypt(M2, xaes_ctx->kc + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+#else 
+    uint8_t M1[AES_BLOCK_SIZE * 2] = {0x58, 0x43, 0x4D, 0x54};
+    uint8_t M2[AES_BLOCK_SIZE * 2]; 
+    
+    OPENSSL_memcpy(M1 + 4, nonce, 24); 
+    M1[AES_BLOCK_SIZE * 2 - 1] = 0x01; 
+    M1[AES_BLOCK_SIZE * 2 - 2] = 0x00; 
+    M1[AES_BLOCK_SIZE * 2 - 3] = 0x01;
+    M1[AES_BLOCK_SIZE * 2 - 4] = 0x00;
 
+    OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE * 2);
+    M2[AES_BLOCK_SIZE * 2 - 1] = 0x02;
+
+    if(!AES_CMAC(xaes_ctx->kc, xaes_ctx->xaes_key, 32, M1, AES_BLOCK_SIZE << 1) || 
+    !AES_CMAC(xaes_ctx->kc + AES_BLOCK_SIZE, xaes_ctx->xaes_key, 32, M2, AES_BLOCK_SIZE << 1)) {
+        return 0;
+    }
+#endif 
     return 1;
 }
 
@@ -1873,7 +1908,7 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
         return 0;
     }
-
+#ifdef USE_OPTIMIZED_CMAC 
     uint8_t L[AES_BLOCK_SIZE];
     if (AES_set_encrypt_key(key, (key_len << 3), &xaes_ctx->xaes_key)) {
         return 0;
@@ -1881,7 +1916,9 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
     AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
 
     BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
-
+#else 
+    OPENSSL_memcpy(xaes_ctx->xaes_key, key, key_len);
+#endif 
     return 1;
 }
 

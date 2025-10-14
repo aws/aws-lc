@@ -1786,7 +1786,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
 
     key_commitment.resize(32);
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KEY_COMMITMENT, key_commitment.size(), (void*)key_commitment.data()));
-    ConvertToBytes(&output, "adbdc584c015d57dba62b0be0e6e86e6940be9b87a16386e514747686535bc1b");
+    ConvertToBytes(&output, "4a41097280de3c812b521a6cdd22c6af940be9b87a16386e514747686535bc1b");
     ASSERT_EQ(Bytes(key_commitment), Bytes(output));
 
     // Decryption
@@ -1843,7 +1843,7 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_EQ(Bytes(tag), Bytes(output));
 
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KEY_COMMITMENT, key_commitment.size(), (void*)key_commitment.data()));
-    ConvertToBytes(&output, "fe7ff0ccb4336750b7ffcc9330d9c72fdffdd370a23e22a20330ef13b929510c");
+    ConvertToBytes(&output, "aa53006475123fc5cbccd4abca937d04dffdd370a23e22a20330ef13b929510c");
     ASSERT_EQ(Bytes(key_commitment), Bytes(output));
 
     // Decryption with another derived key
@@ -1859,6 +1859,6 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     len = 0;
     ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), (uint8_t*)decrypted.data(), &len, ciphertext.data(), ciphertext_len));
     ASSERT_TRUE(EVP_DecryptFinal(dctx.get(), (uint8_t*)decrypted.data() + len, &len));
-    
+
     ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
 }
