@@ -2666,7 +2666,6 @@ $L$epilogue_ssse3:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_sha1_block_data_order_ssse3:
-%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 global	sha1_block_data_order_avx
 
 ALIGN	16
@@ -3820,7 +3819,6 @@ $L$epilogue_avx:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_sha1_block_data_order_avx:
-%endif
 %ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 global	sha1_block_data_order_avx2
 

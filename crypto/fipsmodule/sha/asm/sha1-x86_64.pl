@@ -938,7 +938,6 @@ my $_rol=sub { &shld(@_[0],@_) };
 my $_ror=sub { &shrd(@_[0],@_) };
 
 $code.=<<___;
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	sha1_block_data_order_avx
 .type	sha1_block_data_order_avx,\@function,3
 .align	16
@@ -1301,7 +1300,6 @@ $code.=<<___;
 	ret
 .cfi_endproc
 .size	sha1_block_data_order_avx,.-sha1_block_data_order_avx
-#endif
 ___
 
 if ($avx>1) {

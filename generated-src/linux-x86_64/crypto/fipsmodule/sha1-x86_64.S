@@ -2605,7 +2605,6 @@ _CET_ENDBR
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	sha1_block_data_order_ssse3,.-sha1_block_data_order_ssse3
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	sha1_block_data_order_avx
 .hidden sha1_block_data_order_avx
 .type	sha1_block_data_order_avx,@function
@@ -3736,7 +3735,6 @@ _CET_ENDBR
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	sha1_block_data_order_avx,.-sha1_block_data_order_avx
-#endif
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	sha1_block_data_order_avx2
 .hidden sha1_block_data_order_avx2
