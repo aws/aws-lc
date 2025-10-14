@@ -1263,6 +1263,7 @@ my @x=map("\"$_\"",@xx);
 my $xframe = $win64 ? 0xa8 : 8;
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	ChaCha20_ctr32_avx2
 .type	ChaCha20_ctr32_avx2,\@function,5
 .align	32
@@ -1781,6 +1782,7 @@ $code.=<<___;
 	ret
 .cfi_endproc
 .size	ChaCha20_ctr32_avx2,.-ChaCha20_ctr32_avx2
+#endif
 ___
 }
 
