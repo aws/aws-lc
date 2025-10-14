@@ -1482,11 +1482,11 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
 
-        int ciphertext_len;
+        int ciphertext_len = 0;
         ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                     plaintext, plaintext_len));
         
-        int len;
+        int len = 0;
         ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
         ciphertext_len += len;
         
@@ -1538,7 +1538,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, 
                     plaintext.data(), plaintext.size()));
         
-        int len;
+        int len = 0;
         ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
         ciphertext_len += len;
         
