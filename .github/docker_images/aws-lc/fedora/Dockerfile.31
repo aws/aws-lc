@@ -1,0 +1,45 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM public.ecr.aws/docker/library/fedora:31 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+
+RUN <<EOF
+set -ex
+dnf -y install \
+    clang \
+    cmake \
+    git \
+    ninja-build \
+    perl \
+    wget \
+    --setopt=install_weak_deps=False --best
+dnf -y autoremove
+dnf clean all
+rm -rf /tmp/*
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+RUN rm -rf /tmp/*
