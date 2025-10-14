@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM ubuntu:20.04
+FROM public.ecr.aws/ubuntu/ubuntu:20.04
 ENV GOROOT=/usr/local/go
 ENV PATH="$GOROOT/bin:$PATH"
 ARG GO_VERSION=1.20.1
