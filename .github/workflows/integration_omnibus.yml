@@ -16,7 +16,6 @@ jobs:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
         instance-size:${{ matrix.size }}
-        buildspec-override:true
     strategy:
       fail-fast: false
       matrix:
@@ -25,51 +24,59 @@ jobs:
           - name: s2n-tls
             arch: x86_64
             size: small
-            image: ubuntu-20.04_clang-9x_latest
+            image: ubuntu:20.04
+            compiler: clang-9
             run: ./tests/ci/integration/run_s2n_integration.sh
 
           # AWS Common Runtime (CRT) Integration Tests
           - name: aws-crt
             arch: x86_64
             size: small
-            image: amazonlinux-2023_gcc-11x_latest
+            image: amazonlinux:2023
+            compiler: gcc-11
             run: ./tests/ci/integration/run_crt_integration.sh
           - name: aws-crt
             arch: aarch64
             size: small
-            image: amazonlinux-2023_gcc-11x_latest
+            image: amazonlinux:2023
+            compiler: gcc-11
             run: ./tests/ci/integration/run_crt_integration.sh
 
           # libgit2
           - name: libgit2
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_libgit2_integration.sh
 
           # OpenSSH Integration Tests
           - name: openssh-master
             arch: x86_64
             size: small
-            image: amazonlinux-2023_clang-15x_sanitizer_latest
+            image: amazonlinux:2023
+            compiler: clang-15
             openssh_branch: master
             run: ./tests/ci/integration/run_openssh_integration.sh
           - name: openssh-v8.9
             arch: x86_64
             size: small
-            image: amazonlinux-2023_clang-15x_sanitizer_latest
+            image: amazonlinux:2023
+            compiler: clang-15
             openssh_branch: V_8_9
             run: ./tests/ci/integration/run_openssh_integration.sh
           - name: openssh-master
             arch: aarch64
             size: 2xlarge
-            image: amazonlinux-2023_clang-15x_sanitizer_latest
+            image: amazonlinux:2023
+            compiler: clang-15
             openssh_branch: master
             run: ./tests/ci/integration/run_openssh_integration.sh
           - name: openssh-v8.9
             arch: aarch64
             size: 2xlarge
-            image: amazonlinux-2023_clang-15x_sanitizer_latest
+            image: amazonlinux:2023
+            compiler: clang-15
             openssh_branch: V_8_9
             run: ./tests/ci/integration/run_openssh_integration.sh
 
@@ -77,13 +84,15 @@ jobs:
           - name: postgresql
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             user: postgres
             run: ./tests/ci/integration/run_postgres_integration.sh
           - name: postgresql
             arch: aarch64
             size: large
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             user: postgres
             run: ./tests/ci/integration/run_postgres_integration.sh
 
@@ -91,14 +100,16 @@ jobs:
           - name: mysql
             arch: x86_64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             credentials: true
             user: postgres
             run: ./tests/ci/integration/run_mysql_integration.sh
           - name: mysql
             arch: aarch64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             credentials: true
             user: postgres
             run: ./tests/ci/integration/run_mysql_integration.sh
@@ -107,25 +118,29 @@ jobs:
           - name: mariadb
             arch: x86_64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_mariadb_integration.sh
           - name: mariadb
             arch: aarch64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_mariadb_integration.sh
 
           # Curl Integration Tests
           - name: curl
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-11x_latest
+            image: ubuntu:22.04
+            compiler: gcc-11
             ipv6: true
             run: ./tests/ci/integration/run_curl_integration.sh
           - name: curl
             arch: aarch64
             size: large
-            image: ubuntu-22.04_gcc-11x_latest
+            image: ubuntu:22.04
+            compiler: gcc-11
             ipv6: true
             run: ./tests/ci/integration/run_curl_integration.sh
 
@@ -133,13 +148,15 @@ jobs:
           - name: nginx
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             user: postgres
             run: ./tests/ci/integration/run_nginx_integration.sh
           - name: nginx
             arch: aarch64
             size: large
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             user: postgres
             run: ./tests/ci/integration/run_nginx_integration.sh
 
@@ -147,19 +164,22 @@ jobs:
           - name: sslproxy
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_sslproxy_integration.sh
           - name: sslproxy
             arch: aarch64 
             size: large
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_sslproxy_integration.sh
 
           # Monit Integration Tests
           - name: monit
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             credentials: true
             run: ./tests/ci/integration/run_monit_integration.sh
 
@@ -167,81 +187,93 @@ jobs:
           - name: librelp
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_librelp_integration.sh
 
           # HAProxy Integration Tests
           - name: haproxy
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_haproxy_integration.sh
 
           # Trousers Integration Tests
           - name: trousers
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_trousers_integration.sh
 
           # NTP Integration Tests
           - name: ntp
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_ntp_integration.sh
 
           # PQ TLS Integration Tests
           - name: pq-tls
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_pq_tls_integration.sh
 
           # tpm2-tss Integration Tests
           - name: tpm2-tss
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_tpm2_tss_integration.sh
 
           # tcpdump Integration Tests
           - name: tcpdump
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_tcpdump_integration.sh
 
           # OpenLDAP Integration Tests
           - name: openldap-master
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_openldap_integration.sh master
           - name: openldap-v2.5
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_openldap_integration.sh OPENLDAP_REL_ENG_2_5
 
           # Cyrus SASL Integration Tests
           - name: cyrus-sasl 
             arch: x86_64
             size: small 
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_cyrus_sasl_integration.sh
 
           # Amazon Corretto Crypto Provider Integration Tests
           - name: accp
             arch: x86_64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             accp_fips: false
             run: ./tests/ci/integration/run_accp_integration.sh
           - name: accp-fips
             arch: x86_64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             accp_fips: true
             run: ./tests/ci/integration/run_accp_integration.sh
         
@@ -249,28 +281,32 @@ jobs:
           - name: nmap
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_nmap_integration.sh
 
           # IBM TPM Integration Tests
           - name: ibmtpm
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_ibmtpm_integration.sh
 
           # libwebsockets Integration Tests
           - name: libwebsockets
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_libwebsockets_integration.sh
           
           # GRPC Integration Tests
           - name: grpc
             arch: x86_64
             size: 2xlarge
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             ipv6: true
             run: ./tests/ci/integration/run_grpc_integration.sh
 
@@ -278,7 +314,8 @@ jobs:
           - name: bind9
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             ipv6: true
             options: --privileged
             run: ./tests/ci/integration/run_bind9_integration.sh
@@ -287,7 +324,8 @@ jobs:
           - name: strongswan
             arch: x86_64
             size: small
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             ipv6: true
             run: ./tests/ci/integration/run_strongswan_integration.sh
 
@@ -295,13 +333,15 @@ jobs:
           - name: openvpn-master
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             ipv6: true
             run: ./tests/ci/integration/run_openvpn_integration.sh master
           - name: openvpn-v2.6
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             ipv6: true
             run: ./tests/ci/integration/run_openvpn_integration.sh release/2.6
 
@@ -309,7 +349,8 @@ jobs:
           - name: xmlsec
             arch: x86_64
             size: medium
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             options: --privileged
             run: ./tests/ci/integration/run_xmlsec_integration.sh
 
@@ -317,20 +358,21 @@ jobs:
           - name: xtrabackup
             arch: x86_64
             size: large
-            image: ubuntu-22.04_gcc-12x_integration_latest
+            image: ubuntu:22.04
+            compiler: gcc-12
             run: ./tests/ci/integration/run_xtrabackup_integration.sh
     env:
       OPENSSH_BRANCH: ${{ matrix.openssh_branch || '' }}
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo repo=${{ matrix.arch == 'x86_64' && '${AWS_ECR_REPO_LINUX_X86}' || matrix.arch == 'aarch64' && '${AWS_ECR_REPO_LINUX_AARCH}' }} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.repo }}:${{ matrix.image }}
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
             OPENSSH_BRANCH
             ACCP_FIPS
@@ -338,7 +380,9 @@ jobs:
           user: ${{ matrix.user || '' }}
           ipv6: ${{ matrix.ipv6 || false }}
           withCredentials: ${{ matrix.credentials || false }}
-          run: ${{ matrix.run }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ${{ matrix.run }}
 
   python:
     name: python-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.crtUseSystemCrypto == 1 && 'crt-vendored-crypto' || 'crt-system-crypto' }}-${{ matrix.arch }}
@@ -346,7 +390,6 @@ jobs:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:medium
-        buildspec-override:true
     strategy:
       fail-fast: false
       matrix:
@@ -370,18 +413,20 @@ jobs:
       AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.crtUseSystemCrypto }}
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo repo=${{ matrix.arch == 'x86_64' && '${AWS_ECR_REPO_LINUX_X86}' || matrix.arch == 'aarch64' && '${AWS_ECR_REPO_LINUX_AARCH}' }} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.repo }}:ubuntu-22.04_gcc-12x_integration_latest
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
           env: |
             FIPS
             AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO
           ipv6: true
-          run: ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
+          run: |
+            source /opt/compiler-env/setup-gcc-12.sh
+            ./tests/ci/integration/run_python_integration.sh ${{ matrix.version }}
 
   ruby:
     name: ruby-${{ matrix.version }}${{ matrix.buildFIPS == 1 && '-fips' || '' }}-${{ matrix.arch }}
@@ -389,7 +434,6 @@ jobs:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
         instance-size:medium
-        buildspec-override:true
     strategy:
       fail-fast: false
       matrix:
@@ -404,14 +448,16 @@ jobs:
       FIPS: ${{ matrix.buildFIPS }}
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo repo=${{ matrix.arch == 'x86_64' && '${AWS_ECR_REPO_LINUX_X86}' || matrix.arch == 'aarch64' && '${AWS_ECR_REPO_LINUX_AARCH}' }} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.repo }}:ubuntu-22.04_gcc-12x_integration_latest
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
           env: |
             FIPS
           ipv6: true
-          run: ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
+          run: |
+            source /opt/compiler-env/setup-gcc-12.sh
+            ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
