@@ -1320,6 +1320,7 @@ my $rx=0;
 my $frame="%r13";
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	sha1_block_data_order_avx2
 .type	sha1_block_data_order_avx2,\@function,3
 .align	16
@@ -1794,6 +1795,7 @@ $code.=<<___;
 	ret
 .cfi_endproc
 .size	sha1_block_data_order_avx2,.-sha1_block_data_order_avx2
+#endif
 ___
 }
 }

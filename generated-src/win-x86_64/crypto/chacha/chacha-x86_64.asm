@@ -1065,6 +1065,7 @@ $L$4x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_ChaCha20_ctr32_ssse3_4x:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 global	ChaCha20_ctr32_avx2
 
 ALIGN	32
@@ -1706,6 +1707,7 @@ $L$8x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_ChaCha20_ctr32_avx2:
+%endif
 EXTERN	__imp_RtlVirtualUnwind
 
 ALIGN	16

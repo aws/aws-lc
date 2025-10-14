@@ -992,6 +992,7 @@ L$4x_epilogue:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	_ChaCha20_ctr32_avx2
 .private_extern _ChaCha20_ctr32_avx2
 
@@ -1600,4 +1601,5 @@ L$8x_epilogue:
 	.byte	0xf3,0xc3
 
 
+#endif
 #endif

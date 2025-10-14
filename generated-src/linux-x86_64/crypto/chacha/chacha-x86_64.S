@@ -998,6 +998,7 @@ _CET_ENDBR
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	ChaCha20_ctr32_ssse3_4x,.-ChaCha20_ctr32_ssse3_4x
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	ChaCha20_ctr32_avx2
 .hidden ChaCha20_ctr32_avx2
 .type	ChaCha20_ctr32_avx2,@function
@@ -1606,4 +1607,5 @@ _CET_ENDBR
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	ChaCha20_ctr32_avx2,.-ChaCha20_ctr32_avx2
+#endif
 #endif
