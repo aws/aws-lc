@@ -98,6 +98,17 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in);
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
                                       const uint8_t *in_secret);
 
+// KEM_KEY_set_raw_keypair_from_seed function generates a keypair from the
+// given seed using the appropriate key generation function based on the
+// KEM variant, then allocates and sets both public and secret key buffers
+// within the given |key|.
+//
+// NOTE: The seed must be exactly 64 bytes for all ML-KEM variants.
+//       The caller must ensure the seed CBS contains valid data.
+//       |key->kem| must be initialized and |key->public_key| and 
+//       |key->secret_key| must both be NULL.
+int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
