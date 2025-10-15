@@ -1506,6 +1506,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(ConvertToBytes(&output, ""));
         ASSERT_FALSE(ConvertToBytes(&output, "\""));
         ASSERT_TRUE(ConvertToBytes(&output, "\"\""));
+        ASSERT_FALSE(ConvertToBytes(&output, "\"a"));
+        ASSERT_FALSE(ConvertToBytes(&output, "a\""));
         ASSERT_FALSE(ConvertToBytes(&output, "z"));
         ASSERT_FALSE(ConvertToBytes(&output, "1z"));
         ASSERT_FALSE(ConvertToBytes(&output, "abc"));
