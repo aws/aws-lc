@@ -1499,12 +1499,16 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ciphertext_len += len;
         
         std::vector<uint8_t> output;
+
+        // Empty and invalid data
         ASSERT_TRUE(ConvertToBytes(&output, ""));
         ASSERT_FALSE(ConvertToBytes(&output, "\""));
         ASSERT_TRUE(ConvertToBytes(&output, "\"\""));
         ASSERT_FALSE(ConvertToBytes(&output, "z"));
+        ASSERT_FALSE(ConvertToBytes(&output, "1z"));
         ASSERT_FALSE(ConvertToBytes(&output, "abc"));
-        ASSERT_FALSE(ConvertToBytes(&output, "ghijk"));
+        ASSERT_FALSE(ConvertToBytes(&output, "ghijk")); 
+
         ConvertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2f");
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
         
