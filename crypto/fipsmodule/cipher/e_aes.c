@@ -1826,7 +1826,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     struct xaes_256_gcm_ctx *xaes_ctx =
         (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
-    uint8_t derived_key[(256 >> 3)] = {0};
+    uint8_t derived_key[(256 >> 3)];
 
     xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key);
     
