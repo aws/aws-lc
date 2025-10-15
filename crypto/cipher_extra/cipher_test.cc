@@ -1483,7 +1483,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 25, NULL));
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
-        
+
         // Invalid key length
         ctx.get()->key_len = 16;
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
@@ -1499,6 +1499,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ciphertext_len += len;
         
         std::vector<uint8_t> output;
+        ASSERT_TRUE(ConvertToBytes(&output, ""));
+        ASSERT_FALSE(ConvertToBytes(&output, "z"));
         ASSERT_FALSE(ConvertToBytes(&output, "ghijk"));
         ConvertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2f");
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
