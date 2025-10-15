@@ -41,17 +41,9 @@ bool ConvertToBytes(std::vector<uint8_t> *out, const std::string &value) {
   }
 
   if (!DecodeHex(out, value)) {
-    printf("Error decoding value: %s", value.c_str());
     return false;
   }
   return true;
-}
-
-void PrintText(const uint8_t *msg, const int &len) {
-  for(int i = 0; i < len; ++i) {
-    printf("%02x", msg[i]);
-  }
-  printf("\n");
 }
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {

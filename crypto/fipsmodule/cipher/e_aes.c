@@ -1754,7 +1754,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_CMAC_INPUT_SIZE (AES_BLOCK_SIZE * 2)
-// #define USE_OPTIMIZED_CMAC                  
+#define USE_OPTIMIZED_CMAC                  
 
 struct xaes_256_gcm_ctx {
 #ifdef USE_OPTIMIZED_CMAC
@@ -1890,11 +1890,7 @@ static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, con
     struct xaes_256_gcm_ctx *xaes_ctx =
             (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
-    if(!xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len)) {
-        return 0;
-    }
-
-    return 1;
+    return xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len);
 }
 
 // ------------------------------------------------------------------------------
