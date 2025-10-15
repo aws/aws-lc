@@ -603,9 +603,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
 #define EVP_CTRL_GCM_SET_IV_INV 0x18
 #define EVP_CTRL_GET_IVLEN 0x19
 
-#define EVP_CTRL_AEAD_GET_KEY_COMMITMENT 0x20
-#define EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT 0x21
-
 // The following constants are unused.
 #define EVP_GCM_TLS_FIXED_IV_LEN 4
 #define EVP_GCM_TLS_EXPLICIT_IV_LEN 8
