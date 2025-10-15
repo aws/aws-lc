@@ -134,6 +134,21 @@ Use these commands if you wish to deploy individual stacks instead of the entire
 
 1. Ensure you are in `aws-lc/tests/ci/cdk`
 2. Export the relevant environment variables:
+
+  If you wish deploy to your personal account:
+  ```shell
+  # Ensure AWS Credentials are configured for your account and then execute
+  eval "$(./run-cdk.sh --action clear-env)"
+  eval "$(./run-cdk.sh --deploy-account ${DEPLOY_ACCOUNT_ID} --github-repo-owner ${GITHUB_REPO_OWNER} --action setup-dev-env)"
+  ```
+
+  If you wish to deploy to team account manually:
+  ```shell
+  # Ensure the AWS credentials are configured for the pipeline account and then execute
+  eval "$(./run-cdk.sh --action clear-env)"
+  eval "$(./run-cdk.sh --action setup-prod-env)"
+  ```
+
   - `DEPLOY_ACCOUNT_ID` (required): AWS account you wish to deploy the CI stacks to
   - `GITHUB_REPO_OWNER` (required): the GitHub repo targeted by this CI setup.
 
@@ -148,27 +163,39 @@ Use these commands if you wish to deploy individual stacks instead of the entire
     ```
     Set EC2-VPC Elastic IPs = 20 (default is only 5)
 
+4. Synthesize the Cloudformation Stacks
+  ```shell
+  cdk synth
+  ```
 
 4. Choose 1 of the following command options:
-   - To set up AWS-LC CI, run command:
+   - List the stacks available for deployment
     ```shell
-    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action deploy-ci --deploy-account ${DEPLOY_ACCOUNT_ID}
+    cdk list
     ```
 
-   - To update AWS-LC CI, run command:
+   - Example: To setup or update AWS-LC Docker Repositories:
     ```shell
-    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action update-ci --deploy-account ${DEPLOY_ACCOUNT_ID}
-    ```
-   - To create/update Linux Docker images, run command:
-    ```shell
-    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action build-linux-img --deploy-account ${DEPLOY_ACCOUNT_ID}
+    # Replace Dev with Staging or Prod as neccessary
+    cdk deploy AwsLcCiPipeline/Dev-EcrRepositories/aws-lc-private-ecr-stack
     ```
 
-   - To destroy AWS-LC CI resources created above, run command:
+   - Example: To set up or deploy AWS-LC CI stacks, run command:
     ```shell
-    ./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action destroy-ci --deploy-account ${DEPLOY_ACCOUNT_ID}
+    # Replace Dev with Staging or Prod as neccessary
+    cdk deploy AwsLcCiPipeline/Dev-CiTests/aws-lc-ci-*
     ```
-   NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
+
+   - Example: To setup or deploy AWS-LC GitHub Actions:
+    ```shell
+    # Replace Dev with Staging or Prod as neccessary
+    cdk deploy AwsLcCiPipeline/Dev-GithubActions/*
+    ```
+   - To destroy all CDK resources run command (NOTE: this command will destroy all resources (AWS CodeBuild and ECR).):
+    ```shell
+    # Replace Dev with Staging or Prod as neccessary
+    cdk destroy AwsLcCiPipeline/Dev-*
+    ```
 
 For help, run command:
 ```
