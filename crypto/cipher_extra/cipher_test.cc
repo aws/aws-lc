@@ -1476,12 +1476,14 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
         ASSERT_TRUE(ctx);
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL, 1));
+
         // Invalid nonce size
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 19, NULL));
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 25, NULL));
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
+        
         // Invalid key length
         ctx.get()->key_len = 16;
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
