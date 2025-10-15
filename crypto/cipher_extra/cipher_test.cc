@@ -1621,15 +1621,9 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL));
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
 
-        uint8_t key[32] = {0};
-        uint8_t nonce[24] = {0};
-        uint8_t plaintext_len[1] = {0};
-        uint8_t plaintext[256] = {0};
-        uint8_t aad_len[1] = {0};
-        uint8_t aad[256] = {0};
-        uint8_t ciphertext[272] = {0};
+        uint8_t key[32], nonce[24], plaintext_len[1], plaintext[256];
+        uint8_t aad_len[1], aad[256], ciphertext[272], tag[16];
         int tag_size = 16;
-        uint8_t tag[16] = {0};
 
         for(int i = 0; i < 10000; ++i) {    
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), key, 32));
@@ -1690,15 +1684,9 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL));
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, 24, NULL));
 
-        uint8_t key[32] = {0};
-        uint8_t nonce[24] = {0};
-        uint8_t plaintext_len[1] = {0};
-        uint8_t plaintext[256] = {0};
-        uint8_t aad_len[1] = {0};
-        uint8_t aad[256] = {0};
-        uint8_t ciphertext[272] = {0};
+        uint8_t key[32], nonce[24], plaintext_len[1], plaintext[256];
+        uint8_t aad_len[1], aad[256], ciphertext[272], tag[16];
         int tag_size = 16;
-        uint8_t tag[16] = {0};
 
         for(int i = 0; i < 1000000; ++i) {    
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), key, 32));
