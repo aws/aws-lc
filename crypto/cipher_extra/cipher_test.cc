@@ -1472,7 +1472,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
 
         ciphertext.resize(20);
 
-        // Encryption
+        // XAES-256-GCM Encryption
         bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
         ASSERT_TRUE(ctx);
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL, 1));
@@ -1487,6 +1487,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         // Invalid key length
         ctx.get()->key_len = 16;
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
+
+        // Encryption with 256-bit key
         ctx.get()->key_len = 32;
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
         
@@ -1517,7 +1519,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(ConvertToBytes(&output, "c55268f34b14045878fe3668db980319"));
         ASSERT_EQ(Bytes(tag), Bytes(output));
         
-        // Decryption   
+        // XAES-256-GCM Decryption   
         bssl::UniquePtr<EVP_CIPHER_CTX> dctx(EVP_CIPHER_CTX_new());
         ASSERT_TRUE(dctx);
         
@@ -1538,7 +1540,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
     }
 
     {
-        // Encryption
+        // XAES-256-GCM Encryption
         bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
         ASSERT_TRUE(ctx);
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm(), NULL, NULL, NULL, 1));
@@ -1569,7 +1571,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(ConvertToBytes(&output, "b33a9a1974e96e52daf2fcf7075e2271"));
         ASSERT_EQ(Bytes(tag), Bytes(output));
 
-        // Decryption
+        // XAES-256-GCM Decryption
         bssl::UniquePtr<EVP_CIPHER_CTX> dctx(EVP_CIPHER_CTX_new());
 
         ASSERT_TRUE(dctx);
@@ -1591,7 +1593,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_EQ(plaintext.size(), plaintext_len);
         ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
         
-        // Encryption 
+        // XAES-256-GCM Encryption 
         ConvertToBytes(&key, "0303030303030303030303030303030303030303030303030303030303030303");
         ConvertToBytes(&aad, "\"c2sp.org/XAES-256-GCM\"");
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
@@ -1609,8 +1611,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG, tag.size(), (void*)tag.data()));
         ConvertToBytes(&output, "7fd083bf3fdb41abd740a21f71eb769d");
         ASSERT_EQ(Bytes(tag), Bytes(output));
-        
-        // Decryption 
+
+        // XAES-256-GCM Decryption 
         ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key.data(), iv.data()));
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
         
@@ -1653,7 +1655,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad_len, 1));
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad, aad_len[0]));
 
-            // Encryption
+            // XAES-256-GCM Encryption
             ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
             ASSERT_EQ(aad_len[0], EVP_Cipher(ctx.get(), NULL, aad, aad_len[0]));
             int ciphertext_len = 0;
@@ -1668,7 +1670,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG, tag_size, (void*)tag));
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), tag, tag_size));
             
-            // Decryption
+            // XAES-256-GCM Decryption
             ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key, nonce));
             ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag_size, tag));
 
@@ -1716,7 +1718,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad_len, 1));
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad, aad_len[0]));
 
-            // Encryption
+            // XAES-256-GCM Encryption
             ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key, nonce, -1));
             ASSERT_EQ(aad_len[0], EVP_Cipher(ctx.get(), NULL, aad, aad_len[0]));
             int ciphertext_len = 0;
@@ -1731,7 +1733,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG, tag_size, (void*)tag));
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), tag, tag_size));
             
-            // Decryption
+            // XAES-256-GCM Decryption
             ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key, nonce));
             ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag_size, tag));
 
