@@ -10,6 +10,65 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
+  graviton2:
+    name: graviton2-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        fleet:linux-graviton2-c6g-2xlarge
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-tests
+            options: --privileged
+            run: ./tests/ci/run_posix_sanitizers.sh
+          - name: fips-tests
+            run: ./tests/ci/run_fips_tests.sh
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: ${{ matrix.options || '' }}
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ${{ matrix.run }}
+
+  graviton4:
+    name: graviton4-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        fleet:linux-graviton4-r8g-2xlarge
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-tests
+            options: --privileged
+            run: ./tests/ci/run_posix_sanitizers.sh
+          - name: fips-tests
+            run: ./tests/ci/run_fips_tests.sh
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: ${{ matrix.options || '' }}
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ${{ matrix.run }}
+
+
   # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
   # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331,
   # https://github.com/google/sanitizers/issues/703, and fixed in https://reviews.llvm.org/D60243 which is pending a review.
