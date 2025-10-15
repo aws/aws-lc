@@ -1834,17 +1834,12 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     }
     
     int ivlen = gctx->ivlen;
-    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL)) {
-        return 0;
-    }
     
-    if(!aes_gcm_init_key(ctx, derived_key, nonce + ivlen - 12, enc)) {
-        return 0;
-    }
+    gctx->ivlen = 12;
+    
+    aes_gcm_init_key(ctx, derived_key, nonce + ivlen - 12, enc);
 
-    if(!aes_gcm_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, ivlen, NULL)) {
-        return 0;
-    }
+    gctx->ivlen = ivlen;
 
     return 1;
 }
@@ -1859,11 +1854,8 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
     }
 #ifdef USE_OPTIMIZED_CMAC 
     uint8_t L[AES_BLOCK_SIZE];
-    if (AES_set_encrypt_key(key, (key_len << 3), &xaes_ctx->xaes_key)) {
-        return 0;
-    }
+    AES_set_encrypt_key(key, (key_len << 3), &xaes_ctx->xaes_key);
     AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
-
     BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
 #else 
     OPENSSL_memcpy(xaes_ctx->xaes_key, key, key_len);
