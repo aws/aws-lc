@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -exuo pipefail
+set -euo pipefail
 
 source pipeline/scripts/util.sh
 
@@ -447,6 +447,39 @@ function main() {
       exit 1
     fi
     ${COMMAND:?}
+    ;;
+  setup-dev-env)
+    cat<<EOF
+export IS_DEV=True
+export DEPLOY_REGION="${DEPLOY_REGION}"
+export DEPLOY_ACCOUNT="${DEPLOY_ACCOUNT}"
+export PIPELINE_REGION="${PIPELINE_REGION:-${DEPLOY_REGION}}"
+export PIPELINE_ACCOUNT="${PIPELINE_ACCOUNT:-${DEPLOY_ACCOUNT}}"
+export GITHUB_REPO_OWNER="${GITHUB_REPO_OWNER}"
+export GITHUB_SOURCE_VERSION="${GITHUB_SOURCE_VERSION}"
+EOF
+    ;;
+setup-prod-env)
+    cat<<EOF
+export IS_DEV=False
+export DEPLOY_REGION="us-west-2"
+export DEPLOY_ACCOUNT="620771051181"
+export PIPELINE_REGION="us-west-2"
+export PIPELINE_ACCOUNT="774305600158"
+export GITHUB_REPO_OWNER="aws"
+export GITHUB_SOURCE_VERSION="main"
+EOF
+    ;;
+clear-env)
+    cat<<EOF
+unset IS_DEV
+unset DEPLOY_REGION
+unset DEPLOY_ACCOUNT
+unset PIPELINE_REGION
+unset PIPELINE_ACCOUNT
+unset GITHUB_REPO_OWNER
+unset GITHUB_SOURCE_VERSION
+EOF
     ;;
   *)
     echo "--action is required. Use '--help' to see allowed actions."

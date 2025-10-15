@@ -33,6 +33,11 @@ WINDOWS_X86_ECR_REPO = EnvUtil.get(
     "ECR_WINDOWS_X86_REPO_NAME", "aws-lc-docker-images-windows-x86"
 )
 
+UBUNTU_ECR_REPO = "aws-lc/ubuntu"
+AMAZONLINUX_ECR_REPO = "aws-lc/amazonlinux"
+CENTOS_ECR_REPO = "aws-lc/centos"
+FEDORA_ECR_REPO = "aws-lc/fedora"
+
 # Used when AWS CodeBuild needs to create web_hooks.
 GITHUB_REPO_OWNER = EnvUtil.get("GITHUB_REPO_OWNER", "aws")
 GITHUB_REPO_NAME = EnvUtil.get("GITHUB_REPO_NAME", "aws-lc")
