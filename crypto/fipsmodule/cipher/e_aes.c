@@ -2171,7 +2171,7 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
     if(!xaes_256_gcm_CMAC_get_key_commitment(xaes_ctx, nonce, nonce_len)) {
         return 0;
     }
-
+    
     if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
                                 max_out_tag_len - XAES_256_GCM_KEY_COMMIT_SIZE,
                                 nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
@@ -2212,7 +2212,7 @@ static int aead_xaes_256_gcm_open_gather_key_commit(
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_KEY_COMMITMENT_INVALID);            
         return 0;
     }
-    
+
     return aead_aes_gcm_open_gather_impl(
         &gcm_ctx, out, nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
         in, in_len, in_tag, in_tag_len - XAES_256_GCM_KEY_COMMIT_SIZE,
