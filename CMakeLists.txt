@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.61.4")
+set(SOFTWARE_VERSION "1.62.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -94,6 +94,9 @@ option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" O
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
+option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
+option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
+
 include(cmake/go.cmake)
 
 if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
@@ -109,9 +112,20 @@ message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
 
-# The validated entropy source will always be configured to be CPU Jitter
-# Entropy by default; because it's the root of the Tree DRBG.
-message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
+if(DISABLE_CPU_JITTER_ENTROPY)
+  if(FIPS)
+    message(FATAL_ERROR "Cannot opt-out of CPU Jitter for the FIPS build")
+  endif()
+  add_definitions(-DDISABLE_CPU_JITTER_ENTROPY)
+  message(STATUS "Entropy source configuration: CPU Jitter opt-out")
+  message(STATUS "Entropy source configured: Dynamic (default: Operating system)")
+else()
+  # The validated entropy source will always be configured to be CPU Jitter
+  # Entropy by default; because it's the root of the Tree DRBG.
+  message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
+endif()
+
+
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
@@ -1109,7 +1123,11 @@ if(BUILD_TESTING)
   endmacro()
 endif()
 
-add_subdirectory(third_party/jitterentropy)
+# By default, include jitter entropy.
+if(NOT DISABLE_CPU_JITTER_ENTROPY)
+  add_subdirectory(third_party/jitterentropy)
+endif()
+
 add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
@@ -1353,8 +1371,10 @@ foreach(in_file ${OPENSSL_PKGCONFIGS})
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endforeach()
 
-configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
-configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
-  configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
+if(ENABLE_SOURCE_MODIFICATION)
+  configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
+  configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
+    configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
+  endif()
 endif()
