@@ -492,6 +492,7 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 // not act on it until the entire operation is complete.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_xaes_256_gcm(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);
