@@ -100,30 +100,29 @@ bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
          std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
 }
 
-static int AdaptExtension(X509 *cert, X509V3_CTX *ext_ctx, const char *name,
-                          const char *value, int add_default) {
-  bssl::UniquePtr<X509_EXTENSION> new_ext(
+static int AdaptKeyIDExtension(X509 *cert, X509V3_CTX *ext_ctx,
+                               const char *name, const char *value,
+                               int add_if_missing) {
+  bssl::UniquePtr<X509_EXTENSION> new_keyid_ext(
       X509V3_EXT_nconf(NULL, ext_ctx, name, value));
 
-  if (new_ext == NULL) {
+  if (new_keyid_ext == NULL) {
     return 0;
   }
 
-  const ASN1_OBJECT *ext_obj = X509_EXTENSION_get_object(new_ext.get());
-  if (ext_obj == NULL) {
+  const ASN1_OBJECT *keyid_ext_obj =
+      X509_EXTENSION_get_object(new_keyid_ext.get());
+  if (keyid_ext_obj == NULL) {
     return 0;
   }
 
-  int idx = X509_get_ext_by_OBJ(cert, ext_obj, -1);
+  // Check if the requested key identifier extension is already present
+  int idx = X509_get_ext_by_OBJ(cert, keyid_ext_obj, -1);
   if (idx >= 0) {
-    X509_EXTENSION *found_ext = X509_get_ext(cert, idx);
-    if (ASN1_STRING_length(X509_EXTENSION_get_data(found_ext)) <= 2) {
-      X509_delete_ext(cert, idx);
-    }
-    return 1;
+    return 1;  // Extension found
   }
 
-  return !add_default || X509_add_ext(cert, new_ext.get(), -1);
+  return !add_if_missing || X509_add_ext(cert, new_keyid_ext.get(), -1);
 }
 
 static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
@@ -152,7 +151,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
 
     ext_conf.reset(NCONF_new(NULL));
     if (!ext_conf) {
-      fprintf(stderr, "Failed to create extension config\n");
+      fprintf(stderr, "Error: Failed to create extension config\n");
       return false;
     }
 
@@ -193,14 +192,15 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
   }
 
   /* Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER */
-  if (!AdaptExtension(subject, &ext_ctx, "subjectKeyIdentifier", "hash", 1)) {
+  if (!AdaptKeyIDExtension(subject, &ext_ctx, "subjectKeyIdentifier", "hash",
+                           1)) {
     fprintf(stderr, "Error: Failed to handle subject key identifier\n");
     return false;
   }
   /* Prevent X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER */
   int self_sign = X509_check_private_key(subject, pkey);
-  if (!AdaptExtension(subject, &ext_ctx, "authorityKeyIdentifier",
-                      "keyid, issuer", !self_sign)) {
+  if (!AdaptKeyIDExtension(subject, &ext_ctx, "authorityKeyIdentifier",
+                           "keyid, issuer", !self_sign)) {
     fprintf(stderr, "Error: Failed to handle authority key identifier\n");
     return false;
   }
