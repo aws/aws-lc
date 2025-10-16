@@ -82,7 +82,6 @@ if(BUILD_TESTING)
         ../tool/args.cc
         ../tool/file.cc
         ../tool/fd.cc
-        ../crypto/test/test_util.cc
         ../tool/client.cc
         ../tool/transport_common.cc
 
