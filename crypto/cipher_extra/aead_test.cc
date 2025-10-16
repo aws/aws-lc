@@ -1627,6 +1627,17 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
         size_t ciphertext_len = 0;
+        // Invalid nonce and nonce size
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nullptr, 24, plaintext, plaintext_len, nullptr, 0)); 
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nonce, 19, plaintext, plaintext_len, nullptr, 0));
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nonce, 25, plaintext, plaintext_len, nullptr, 0));
+        // XAES-256-GCM Encryption
         ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                                 plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                 nonce, 24, plaintext, plaintext_len, nullptr, 0));
@@ -1634,7 +1645,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         ConvertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
         
-        // Decryption   
+        // XAES-256-GCM Decryption   
         bssl::ScopedEVP_AEAD_CTX dctx;
         ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
         
@@ -1646,7 +1657,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 
     {
         std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, decrypted; 
-        // Encryption
+        // XAES-256-GCM Encryption
         ConvertToBytes(&key, "0101010101010101010101010101010101010101010101010101010101010101");
         ConvertToBytes(&iv, "\"ABCDEFGHIJKLMNOPQRSTUVWX\"");
         ConvertToBytes(&plaintext, "\"XAES-256-GCM\"");
@@ -1666,7 +1677,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         ConvertToBytes(&output, "ce546ef63c9cc60765923609b33a9a1974e96e52daf2fcf7075e2271");
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
         
-        // Decryption   
+        // XAES-256-GCM Decryption   
         decrypted.resize(plaintext.size());
         bssl::ScopedEVP_AEAD_CTX dctx;
         ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
@@ -1703,15 +1714,9 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         bssl::ScopedEVP_MD_CTX d;        
         ASSERT_TRUE(EVP_DigestInit(d.get(), EVP_shake128()));
 
-        uint8_t key[32] = {0};
-        uint8_t nonce[24] = {0};
-        uint8_t plaintext_len[1] = {0};
-        uint8_t plaintext[256] = {0};
-        uint8_t aad_len[1] = {0};
-        uint8_t aad[256] = {0};
-        uint8_t ciphertext[272] = {0};
+        uint8_t key[32], nonce[24], plaintext_len[1], plaintext[256];
+        uint8_t aad_len[1], aad[256], ciphertext[272], decrypted[256];
         int tag_size = 16;
-        uint8_t decrypted[256] = {0};
 
         for(int i = 0; i < 10000; ++i) {    
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), key, 32));
@@ -1721,7 +1726,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad_len, 1));
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad, aad_len[0]));
 
-            // Encryption
+            // XAES-256-GCM Encryption
             bssl::ScopedEVP_AEAD_CTX ctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
@@ -1731,13 +1736,13 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
                                     nonce, 24, plaintext, plaintext_len[0], aad, aad_len[0]));
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext, ciphertext_len));
 
-            // Decryption
+            // XAES-256-GCM Decryption
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
             size_t len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &len, ciphertext_len - tag_size,
                                     nonce, 24, ciphertext, ciphertext_len, aad, aad_len[0]));
-            ASSERT_EQ(Bytes(decrypted, 256), Bytes(plaintext, 256));
+            ASSERT_EQ(Bytes(decrypted, len), Bytes(plaintext, plaintext_len[0]));
         }
         std::vector<uint8_t> expected;
         ConvertToBytes(&expected, "e6b9edf2df6cec60c8cbd864e2211b597fb69a529160cd040d56c0c210081939");
@@ -1752,15 +1757,9 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         bssl::ScopedEVP_MD_CTX d;        
         ASSERT_TRUE(EVP_DigestInit(d.get(), EVP_shake128()));
 
-        uint8_t key[32] = {0};
-        uint8_t nonce[24] = {0};
-        uint8_t plaintext_len[1] = {0};
-        uint8_t plaintext[256] = {0};
-        uint8_t aad_len[1] = {0};
-        uint8_t aad[256] = {0};
-        uint8_t ciphertext[272] = {0};
+        uint8_t key[32], nonce[24], plaintext_len[1], plaintext[256];
+        uint8_t aad_len[1], aad[256], ciphertext[272], decrypted[256];
         int tag_size = 16;
-        uint8_t decrypted[256] = {0};
 
         for(int i = 0; i < 1000000; ++i) {    
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), key, 32));
@@ -1770,7 +1769,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad_len, 1));
             ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad, aad_len[0]));
 
-            // Encryption
+            // XAES-256-GCM Encryption
             bssl::ScopedEVP_AEAD_CTX ctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
@@ -1781,14 +1780,14 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
             
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext, ciphertext_len));
 
-            // Decryption
+            // XAES-256-GCM Decryption
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
             
             size_t len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted, &len, ciphertext_len - tag_size,
                                     nonce, 24, ciphertext, ciphertext_len, aad, aad_len[0]));
-            ASSERT_EQ(Bytes(decrypted, 256), Bytes(plaintext, 256));
+            ASSERT_EQ(Bytes(decrypted, len), Bytes(plaintext, plaintext_len[0]));
         }
         std::vector<uint8_t> expected;
         ConvertToBytes(&expected, "2163ae1445985a30b60585ee67daa55674df06901b890593e824b8a7c885ab15");
@@ -1801,7 +1800,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, decrypted; 
     
-    // Encryption
+    // XAES-256-GCM Encryption
     ConvertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     ConvertToBytes(&iv, "cafebabefacedbad16aedbf5a0de6a57a637b39b9a6b5254");
     ConvertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
@@ -1821,7 +1820,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     ConvertToBytes(&output, "dc53ee85e5a4009a4e21788e8b651dce12dcea87be36a81e1a97802ac7aaf326227060c2a820331704cbf8a720bff7d73e0ba5792b9c2dfa69ac8710b202a06b06fba2235a15aebe31b410afbb95b8b276a9b55b70e63ec996d11207b92bd38ca85ca4b7d1fd7021c94ada75");
     ASSERT_EQ(Bytes(ciphertext), Bytes(output));
 
-    // Decryption   
+    // XAES-256-GCM Decryption   
     decrypted.resize(plaintext.size());
     bssl::ScopedEVP_AEAD_CTX dctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));

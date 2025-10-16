@@ -1784,7 +1784,10 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_EQ(Bytes(tag), Bytes(output));
 
     key_commitment.resize(32);
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KEY_COMMITMENT, key_commitment.size(), (void*)key_commitment.data()));
+    // Too small key commitment size
+    ASSERT_FALSE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KEY_COMMITMENT, 16, (void*)key_commitment.data()));
+    // Get key commitment 
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
     ConvertToBytes(&output, "4a41097280de3c812b521a6cdd22c6af940be9b87a16386e514747686535bc1b");
     ASSERT_EQ(Bytes(key_commitment), Bytes(output));
 
@@ -1805,8 +1808,14 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), NULL, NULL, key.data(), iv.data()));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
+    // Too small key commitment size
+    ASSERT_FALSE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT, 16, key_commitment.data()));
+    // Verify key commitment
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
-
+    // Invalid key commitment
+    key_commitment[0] ^= 0xFF;
+    ASSERT_FALSE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_VERIFY_KEY_COMMITMENT, key_commitment.size(), key_commitment.data()));
+    
     EVP_DecryptUpdate(dctx.get(), NULL, &aad_len, aad.data(), aad.size());
     ASSERT_EQ((size_t)aad_len, aad.size());
 
