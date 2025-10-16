@@ -375,7 +375,7 @@ int X509V3_EXT_add_nconf_sk(const CONF *conf, const X509V3_CTX *ctx,
       if (!sk) {
         ok = 1;
       } else {
-        if (ctx->flags == X509V3_CTX_REPLACE) {
+        if (ctx && ctx->flags == X509V3_CTX_REPLACE) {
           delete_ext(*sk, ext);
         }
         ok = X509v3_add_ext(sk, ext, -1) != NULL;
