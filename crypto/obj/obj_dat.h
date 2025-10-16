@@ -7340,6 +7340,16 @@ static const uint8_t kObjectData[] = {
     0x04,
     0x01,
     0x31,
+    /* NID_xaes_256_gcm_kc */
+    0x60,
+    0x86,
+    0x48,
+    0x01,
+    0x65,
+    0x03,
+    0x04,
+    0x01,
+    0x32,
 };
 
 static const ASN1_OBJECT kObjects[NUM_NID] = {
@@ -9029,7 +9039,8 @@ static const ASN1_OBJECT kObjects[NUM_NID] = {
      &kObjectData[6360], 0},
     {"id-xaes256-GCM", "xaes-256-gcm", NID_xaes_256_gcm, 9, &kObjectData[6369],
      0},
-    {NULL, NULL, NID_undef, 0, NULL, 0},
+    {"id-xaes256-GCM-KC", "xaes-256-gcm-kc", NID_xaes_256_gcm_kc, 9,
+     &kObjectData[6378], 0},
 };
 
 static const uint16_t kNIDsInShortNameOrder[] = {
@@ -9671,6 +9682,7 @@ static const uint16_t kNIDsInShortNameOrder[] = {
     250 /* id-smime-spq-ets-sqt-unotice */,
     249 /* id-smime-spq-ets-sqt-uri */,
     999 /* id-xaes256-GCM */,
+    1000 /* id-xaes256-GCM-KC */,
     676 /* identified-organization */,
     461 /* info */,
     748 /* inhibitAnyPolicy */,
@@ -11011,6 +11023,7 @@ static const uint16_t kNIDsInLongNameOrder[] = {
     158 /* x509Certificate */,
     160 /* x509Crl */,
     999 /* xaes-256-gcm */,
+    1000 /* xaes-256-gcm-kc */,
     125 /* zlib compression */,
 };
 
@@ -11727,6 +11740,7 @@ static const uint16_t kNIDsInOIDOrder[] = {
     902 /* 2.16.840.1.101.3.4.1.47 (OBJ_aes_256_ccm) */,
     903 /* 2.16.840.1.101.3.4.1.48 (OBJ_id_aes256_wrap_pad) */,
     999 /* 2.16.840.1.101.3.4.1.49 (OBJ_xaes_256_gcm) */,
+    1000 /* 2.16.840.1.101.3.4.1.50 (OBJ_xaes_256_gcm_kc) */,
     672 /* 2.16.840.1.101.3.4.2.1 (OBJ_sha256) */,
     673 /* 2.16.840.1.101.3.4.2.2 (OBJ_sha384) */,
     674 /* 2.16.840.1.101.3.4.2.3 (OBJ_sha512) */,
