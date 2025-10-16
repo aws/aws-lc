@@ -1807,7 +1807,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     ConvertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
 
     ciphertext.resize(108);
-    unsigned tag_size = 16; 
+    unsigned tag_size = 16, key_commitment_size = 32; 
 
     bssl::ScopedEVP_AEAD_CTX ctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
@@ -1826,10 +1826,19 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
     size_t plaintext_len = 0;
-    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+    
+    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, 
+                            ciphertext.size() - tag_size - key_commitment_size,
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
     ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
+    
+    // Invalid key commitment
+    ciphertext[plaintext.size() + tag_size] ^= 0xFF;
+    ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, 
+                            ciphertext.size() - tag_size - key_commitment_size,
+                            iv.data(), iv.size(), ciphertext.data(),
+                            ciphertext.size(), aad.data(), aad.size()));
 
     // Encryption with another derived key
     ConvertToBytes(&iv, "9c5aff5269aa6a7a9538534f7da1e4c303d2a318a728c3c0");
@@ -1843,7 +1852,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     ASSERT_EQ(Bytes(ciphertext), Bytes(output));
 
     // Decryption with another derived key
-    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+    ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, 
+                            ciphertext.size() - tag_size - key_commitment_size,
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
     ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
