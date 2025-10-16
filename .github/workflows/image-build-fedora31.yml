@@ -1,0 +1,106 @@
+name: image-build-fedora31
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-fedora31
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/fedora/Dockerfile.31
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/fedora/Dockerfile.31
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+jobs:
+  x86_64_build:
+    runs-on:
+      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    outputs:
+      fedora31: ${{ steps.images.outputs.fedora31 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo fedora31=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/fedora/Dockerfile.31
+          context: ./.github/docker_images/aws-lc/fedora
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          tags: ${{ steps.images.outputs.fedora31 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.fedora31 }}
+          run: |
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.17
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.30
+            # Check Default GCC Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 9.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 9.3
+            # Check GCC 9 Compilers
+            source /opt/compiler-env/setup-gcc-9.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 9.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 9.3
+            # Check Clang 9 Compilers
+            source /opt/compiler-env/setup-clang-9.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 9.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 9.0
+
+  x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_build
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo fedora31=${{ steps.ecr.outputs.registry_url }}/aws-lc/fedora:31 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.fedora31 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.fedora31 }} ${{ steps.images.outputs.fedora31 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.fedora31 }}

@@ -1,0 +1,42 @@
+name: image-build
+on:
+  workflow_dispatch:
+    inputs:
+      rebuildUnsupportedImages:
+        type: boolean
+        default: false
+        description: |
+          Enable to rebuild images that no longer recieve updates from upstream.
+
+          Note: These images will still be rebuilt by their respective workflows if the Dockerfile or scripts
+          change.
+jobs:
+  amazonlinux2:
+    uses: ./.github/workflows/image-build-al2.yml
+  amazonlinux2023:
+    uses: ./.github/workflows/image-build-al2023.yml
+  ubuntu1004:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-ubuntu1004.yml
+  ubuntu1604:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-ubuntu1604.yml
+  ubuntu1804:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-ubuntu1804.yml
+  ubuntu2004:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-ubuntu2004.yml
+  ubuntu2204:
+    uses: ./.github/workflows/image-build-ubuntu2204.yml
+  ubuntu2404:
+    uses: ./.github/workflows/image-build-ubuntu2404.yml
+  centos7:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-centos7.yml
+  centos8:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-centos8.yml
+  fedora31:
+    if: ${{ inputs.rebuildUnsupportedImages }}
+    uses: ./.github/workflows/image-build-fedora31.yml

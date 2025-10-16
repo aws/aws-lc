@@ -1,0 +1,117 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+ENV DEPENDENCIES_DIR=/home/dependencies
+ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+ENV FUZZ_ROOT=${DEPENDENCIES_DIR}
+
+RUN <<EOF
+set -ex
+dnf -y upgrade --releasever=latest
+dnf install -y \
+    autoconf \
+    automake \
+    amazon-ssm-agent \
+    boost-devel \
+    ca-certificates \
+    clang \
+    cmake \
+    compiler-rt \
+    diffutils \
+    gcc \
+    gcc-c++ \
+    git \
+    jq \
+    libtool \
+    lld \
+    llvm \
+    llvm-devel \
+    patch \
+    perl \
+    tar \
+    zlib-devel \
+    make \
+    ninja-build \
+    unzip \
+    wget \
+    which \
+    valgrind \
+    valgrind-devel
+# valgrind is just the application and core resources.
+# valgrind/memcheck.h is provided by the valgrind-devel package on AL2. see P63119011.
+dnf clean packages
+dnf clean metadata
+dnf clean all
+rm -rf /tmp/*
+rm -rf /var/cache/dnf
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install SSM Agent Config
+RUN <<EOF
+set -ex
+arch="$(uname -m)"
+if [[ "${arch}" == "x86_64" ]]; then
+    curl -O --output-dir /etc/amazon/ssm https://raw.githubusercontent.com/aws/aws-codebuild-docker-images/refs/heads/master/al/x86_64/standard/5.0/amazon-ssm-agent.json
+elif [[ "${arch}" == "aarch64" ]]; then
+    curl -O --output-dir /etc/amazon/ssm https://raw.githubusercontent.com/aws/aws-codebuild-docker-images/refs/heads/master/al/aarch64/standard/3.0/amazon-ssm-agent.json
+else
+    false
+fi
+EOF
+
+# Install AWS CLI
+COPY --from=scripts setup-aws-cli.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/setup-aws-cli.sh"
+${setup_script}
+EOF
+
+# Install LLVM
+RUN <<EOF
+set -ex
+mkdir -p ${DEPENDENCIES_DIR}
+cd ${DEPENDENCIES_DIR}
+git clone https://github.com/llvm/llvm-project.git --branch llvmorg-15.0.6 --depth 1
+cd llvm-project
+rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)")
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+# Install CryptoFuzz, this is expected to be used with al2023 provided clang so set that here
+COPY --from=dependencies build_cryptofuzz_modules.sh cryptofuzz_data.zip ${FUZZ_ROOT}/
+RUN <<EOF
+set -ex
+cd ${FUZZ_ROOT}
+env CC=clang \
+    CXX=clang++ \
+    ./build_cryptofuzz_modules.sh
+rm -f ${FUZZ_ROOT}/build_cryptofuzz_modules.sh
+EOF
+
+RUN rm -rf /tmp/*
