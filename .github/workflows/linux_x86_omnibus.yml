@@ -265,5 +265,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
           env: |
             AWSLC_32BIT
-          run: ./tests/ci/run_legacy_avx_tests.sh
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_legacy_avx_tests.sh
           options: --privileged
