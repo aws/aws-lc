@@ -75,6 +75,7 @@ extern "C" {
 #define OPENSSL_NO_STATIC_ENGINE
 #define OPENSSL_NO_STORE
 #define OPENSSL_NO_TS
+#define OPENSSL_NO_UI_CONSOLE
 #define OPENSSL_NO_WHIRLPOOL
 
 
