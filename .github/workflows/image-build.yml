@@ -10,6 +10,8 @@ on:
 
           Note: These images will still be rebuilt by their respective workflows if the Dockerfile or scripts
           change.
+  schedule:
+    - cron: '30 15 * * 1'
 jobs:
   amazonlinux2:
     uses: ./.github/workflows/image-build-al2.yml
