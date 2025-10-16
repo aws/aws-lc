@@ -48,6 +48,8 @@ class AwsLcGitHubDockerActionsStack(AwsLcBaseCiStack):
         
         ecr_repos.append(staging_repo)
 
+        pull_through_caches = [ecr.Repository.from_repository_name(self, "quay-io", "quay.io/*")]
+
         inline_policies = {
             "metrics_policy": metrics_policy,
             "ecr": iam.PolicyDocument(
@@ -72,7 +74,15 @@ class AwsLcGitHubDockerActionsStack(AwsLcBaseCiStack):
                         ],
                         resources=[x for x in itertools.chain([
                             x.repository_arn for x in ecr_repos
-                        ], [ecr.Repository.from_repository_name(self, "quay-io", "quay.io/*").repository_arn])],
+                        ], [x.repository_arn for x in pull_through_caches])],
+                    ),
+                    iam.PolicyStatement(
+                        effect=iam.Effect.ALLOW,
+                        actions=[
+                            "ecr:BatchImportUpstreamImage",
+                        ],
+                        resources=[
+                            x.repository_arn for x in pull_through_caches]
                     ),
                 ],
             )
