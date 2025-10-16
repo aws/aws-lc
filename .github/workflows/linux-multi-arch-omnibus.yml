@@ -1,0 +1,516 @@
+name: linux-multi-arch-omnibus
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  posix_tests:
+    name: posix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ (matrix.arch == 'x86_64' && matrix.build32 && 'x86') || matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # AmazonLinux 2 (x86_64)
+          - image: amazonlinux:2
+            arch: x86_64
+            compiler: clang-11
+          - image: amazonlinux:2
+            arch: x86_64
+            compiler: gcc-7
+          # AmazonLinux 2 (aarch64)
+          - image: amazonlinux:2
+            arch: aarch64
+            compiler: clang-11
+          - image: amazonlinux:2
+            arch: aarch64
+            compiler: gcc-7
+
+          # AmazonLinux 2023 (x86_64)
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: clang-15
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: gcc-11
+          # AmazonLinux 2023 (aarch64)
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: clang-15
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: gcc-11
+
+          # CentOS 7 (x86_64, x86)
+          - image: centos:7
+            arch: x86_64
+            compiler: gcc-4
+            build32: 0
+          - image: centos:7
+            arch: x86_64
+            compiler: gcc-4
+            build32: 1
+
+          # CentOS 8 (x86_64)
+          - image: centos:8
+            arch: x86_64
+            compiler: gcc-8
+
+          # Fedora 31 (x86_64)
+          - image: fedora:31
+            arch: x86_64
+            compiler: clang-9
+
+          # Ubuntu 16.04 (x86_64, x86)
+          - image: ubuntu:16.04
+            arch: x86_64
+            compiler: gcc-5
+            build32: 0
+          - image: ubuntu:16.04
+            compiler: gcc-5
+            arch: x86_64
+            build32: 1
+
+          # Ubuntu 18.04 (x86_64)
+          - image: ubuntu:18.04
+            arch: x86_64
+            compiler: clang-6
+          - image: ubuntu:18.04
+            arch: x86_64
+            compiler: gcc-7
+
+          # Ubuntu 20.04 (x86_64)
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-7
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-8
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-9
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-10
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: gcc-7
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: gcc-8
+
+          # Ubuntu 20.04 (aarch64)
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-7
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-8
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-9
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-10
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: gcc-7
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: gcc-8
+
+          # Ubuntu 22.04 (x86_64)
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: gcc-10
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: gcc-11
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: gcc-12
+
+          # Ubuntu 22.04 (aarch64)
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: gcc-10
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: gcc-11
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: gcc-12
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        env:
+          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          env: |
+            AWSLC_32BIT
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_posix_tests.sh
+
+  fips_tests:
+    name: ${{ matrix.enableASAN && 'asan-' || '' }}fips-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # AmazonLinux 2 (x86_64)
+          - image: amazonlinux:2
+            arch: x86_64
+            compiler: clang-11
+          - image: amazonlinux:2
+            arch: x86_64
+            compiler: gcc-7
+          # AmazonLinux 2 (aarch64)
+          - image: amazonlinux:2
+            arch: aarch64
+            compiler: clang-11
+          - image: amazonlinux:2
+            arch: aarch64
+            compiler: gcc-7
+
+          # AmazonLinux 2023 (x86_64)
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: clang-15
+          - image: amazonlinux:2023
+            arch: x86_64
+            compiler: gcc-11
+          # AmazonLinux 2023 (aarch64)
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: clang-15
+          - image: amazonlinux:2023
+            arch: aarch64
+            compiler: gcc-11
+
+          # CentOS 7 (x86_64, x86)
+          - image: centos:7
+            arch: x86_64
+            compiler: gcc-4
+
+          # CentOS 8 (x86_64)
+          - image: centos:8
+            arch: x86_64
+            compiler: gcc-8
+
+          # Ubuntu 18.04 (x86_64)
+          - image: ubuntu:18.04
+            arch: x86_64
+            compiler: clang-6
+          - image: ubuntu:18.04
+            arch: x86_64
+            compiler: gcc-7
+
+          # Ubuntu 20.04 (x86_64)
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-7
+            enableASAN: 0
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-7
+            enableASAN: 1
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-8
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-9
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: clang-10
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: gcc-7
+          - image: ubuntu:20.04
+            arch: x86_64
+            compiler: gcc-8
+
+          # Ubuntu 20.04 (aarch64)
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-7
+            enableASAN: 0
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-7
+            enableASAN: 1
+            goTestTimeout: 120m
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-8
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-9
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: clang-10
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: gcc-7
+          - image: ubuntu:20.04
+            arch: aarch64
+            compiler: gcc-8
+
+          # Ubuntu 22.04 (x86_64)
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: gcc-10
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: gcc-11
+          - image: ubuntu:22.04
+            arch: x86_64
+            compiler: gcc-12
+
+          # Ubuntu 22.04 (aarch64)
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: gcc-10
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: gcc-11
+          - image: ubuntu:22.04
+            arch: aarch64
+            compiler: gcc-12
+    env:
+      AWSLC_ENABLE_FIPS_ASAN: ${{ matrix.enableASAN }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          env: |
+            AWSLC_ENABLE_FIPS_ASAN
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            if [[ "${{ matrix.goTestTimeout }}z" != "z" ]]; then
+              export AWS_LC_GO_TEST_TIMEOUT="${{ matrix.goTestTimeout }}"
+            fi
+            ./tests/ci/run_fips_tests.sh
+
+  prefix_tests:
+    name: prefix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+        include:
+          - image: amazonlinux:2
+            compiler: clang-11
+          - image: ubuntu:22.04
+            compiler: gcc-11
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_prefix_tests.sh
+
+  valgrind:
+    name: valgrind-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+          run: |
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./tests/ci/run_valgrind_tests.sh
+
+  valgrind-ssl-runner-part1:
+    name: valgrind-ssl-runner-part1-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:${{ matrix.arch == 'x86_64' && '2xlarge' || 'large' }}
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_END_INDEX: 4000
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_END_INDEX
+          options: --privileged
+          run: |
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./tests/ci/run_ssl_runner_valgrind_tests.sh
+
+  valgrind-ssl-runner-part2:
+    name: valgrind-ssl-runner-part2-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:${{ matrix.arch == 'x86_64' && '2xlarge' || 'large' }}
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_START_INDEX: 4001
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Repoistory URL
+        id: ecr
+        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_START_INDEX
+          options: --privileged
+          run: |
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./tests/ci/run_ssl_runner_valgrind_tests.sh
+
+  sanitizers:
+    name: sanitizers-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    env:
+      # Sanitizer is very slow on ARM.
+      # https://github.com/google/sanitizers/issues/1331
+      AWS_LC_GO_TEST_TIMEOUT: ${{ matrix.arch == 'x86_64' && '45m' || '60m' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: --privileged
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_posix_sanitizers.sh
+
+  benchmark:
+    name: benchmark-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run POSIX tests
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_benchmark_build_tests.sh
+
+  fips_callback:
+    name: fips-callback-${{ matrix.image }}-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+        include:
+          - image: amazonlinux:2
+            compiler: gcc-7
+          - image: amazonlinux:2023
+            compiler: gcc-11
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_fips_callback_tests.sh
