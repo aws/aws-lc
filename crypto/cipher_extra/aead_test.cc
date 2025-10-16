@@ -1630,6 +1630,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
 
         size_t ciphertext_len = 0;
+        
         // Invalid nonce and nonce size
         ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                                 plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
@@ -1640,6 +1641,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                                 plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                 nonce, 25, plaintext, plaintext_len, nullptr, 0));
+
         // Invalid max output size
         ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                                 plaintext_len + tag_size, nonce, 25, plaintext, plaintext_len, nullptr, 0));
