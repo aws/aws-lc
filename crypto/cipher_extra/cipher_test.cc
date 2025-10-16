@@ -1596,8 +1596,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
         
         // XAES-256-GCM Encryption 
-        ConvertToBytes(&key, "0303030303030303030303030303030303030303030303030303030303030303");
-        ConvertToBytes(&aad, "\"c2sp.org/XAES-256-GCM\"");
+        ASSERT_TRUE(ConvertToBytes(&key, "0303030303030303030303030303030303030303030303030303030303030303"));
+        ASSERT_TRUE(ConvertToBytes(&aad, "\"c2sp.org/XAES-256-GCM\""));
         ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
         int aad_len = aad.size();
         ASSERT_EQ(aad_len, EVP_Cipher(ctx.get(), NULL, aad.data(), aad_len));
@@ -1607,11 +1607,11 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), (uint8_t*)ciphertext.data() + ciphertext_len, &len));
         ciphertext_len += len;
         
-        ConvertToBytes(&output, "986ec1832593df5443a17943");
+        ASSERT_TRUE(ConvertToBytes(&output, "986ec1832593df5443a17943"));
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
 
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG, tag.size(), (void*)tag.data()));
-        ConvertToBytes(&output, "7fd083bf3fdb41abd740a21f71eb769d");
+        ASSERT_TRUE(ConvertToBytes(&output, "7fd083bf3fdb41abd740a21f71eb769d"));
         ASSERT_EQ(Bytes(tag), Bytes(output));
 
         // XAES-256-GCM Decryption 
@@ -1686,7 +1686,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
             ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len[0]));
         }
         std::vector<uint8_t> expected;
-        ConvertToBytes(&expected, "e6b9edf2df6cec60c8cbd864e2211b597fb69a529160cd040d56c0c210081939");
+        ASSERT_TRUE(ConvertToBytes(&expected, "e6b9edf2df6cec60c8cbd864e2211b597fb69a529160cd040d56c0c210081939"));
         uint8_t got[32] = {0};
         ASSERT_TRUE(EVP_DigestFinalXOF(d.get(), got, 32));
         ASSERT_EQ(Bytes(got, 32), Bytes(expected)); 
@@ -1750,7 +1750,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         }
 
         std::vector<uint8_t> expected;
-        ConvertToBytes(&expected, "2163ae1445985a30b60585ee67daa55674df06901b890593e824b8a7c885ab15");
+        ASSERT_TRUE(ConvertToBytes(&expected, "2163ae1445985a30b60585ee67daa55674df06901b890593e824b8a7c885ab15"));
         uint8_t got[32] = {0};
         ASSERT_TRUE(EVP_DigestFinalXOF(d.get(), got, 32));
         ASSERT_EQ(Bytes(got, 32), Bytes(expected)); 
