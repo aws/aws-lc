@@ -1511,8 +1511,12 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_FALSE(ConvertToBytes(&output, "z"));
         ASSERT_FALSE(ConvertToBytes(&output, "1z"));
         ASSERT_FALSE(ConvertToBytes(&output, "abc"));
+        ASSERT_FALSE(ConvertToBytes(&output, "ABC"));
+        ASSERT_TRUE(ConvertToBytes(&output, "ABCD"));
+        ASSERT_FALSE(ConvertToBytes(&output, "GHIJ"));
+        ASSERT_FALSE(ConvertToBytes(&output, "GHIJK"));
         ASSERT_FALSE(ConvertToBytes(&output, "ghijk")); 
-
+        
         ASSERT_TRUE(ConvertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2f"));
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
         
