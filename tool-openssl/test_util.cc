@@ -343,7 +343,6 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
   bool is_openssl_1_1_1 = openssl_path && strstr(openssl_path, "1_1_1");
 
   if (!is_openssl_1_1_1) {
-    std::cout << "DEBUG: Comparing extensions" << std::endl;
     int ext_count1 = X509_get_ext_count(cert1);
     int ext_count2 = X509_get_ext_count(cert2);
     if (ext_count1 != ext_count2) {
