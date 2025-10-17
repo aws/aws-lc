@@ -1764,7 +1764,7 @@ struct xaes_256_gcm_ctx {
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 #else 
-    uint8_t xaes_key[AES_BLOCK_SIZE * 2];
+    uint8_t xaes_key[XAES_256_GCM_KEY_LENGTH];
 #endif 
 };
 
@@ -1836,7 +1836,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     
     int ivlen = gctx->ivlen;
     
-    gctx->ivlen = 12;
+    gctx->ivlen = AES_GCM_NONCE_LENGTH;
     
     aes_gcm_init_key(ctx, derived_key, nonce + ivlen - 12, enc);
 
