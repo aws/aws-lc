@@ -4,11 +4,10 @@ import typing
 
 from aws_cdk import (
     Duration,
-    Stack,
     aws_codebuild as codebuild,
     aws_iam as iam,
-    aws_s3_assets,
     aws_logs as logs,
+    aws_ecr as ecr,
     Environment,
 )
 from constructs import Construct
@@ -18,7 +17,7 @@ from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import (
     code_build_publish_metrics_in_json,
 )
-from util.metadata import LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
+from util.metadata import AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, UBUNTU_ECR_REPO, WINDOWS_X86_ECR_REPO
 
 class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
     """Define a stack used to execute AWS-LC self-hosted GitHub Actions Runners."""
@@ -31,6 +30,12 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
         **kwargs
     ) -> None:
         super().__init__(scope, id, env=env, timeout=180, **kwargs)
+
+        # TODO: First 3 indices ordering is important for now as they are referenced directly for now.
+        repo_names = [LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO, UBUNTU_ECR_REPO,
+                      AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO]
+        ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
+                     for x in repo_names]
 
         # Define a IAM role for this stack.
         metrics_policy = iam.PolicyDocument.from_json(
@@ -55,12 +60,7 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                             "ecr:BatchCheckLayerAvailability",
                             "ecr:GetDownloadUrlForLayer",
                         ],
-                        resources=[
-                            "arn:aws:ecr:{}:{}:repository/{}"
-                                .format(env.region, env.account, repo) for repo in [LINUX_X86_ECR_REPO,
-                                                                                    LINUX_AARCH_ECR_REPO,
-                                                                                    WINDOWS_X86_ECR_REPO]
-                        ],
+                        resources=[x.repository_arn for x in ecr_repos],
                     ),
                 ],
             )
@@ -105,16 +105,18 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                 environment_variables={
                     "AWS_ACCOUNT_ID": codebuild.BuildEnvironmentVariable(value=env.account),
                     "AWS_ECR_REPO_LINUX_X86": codebuild.BuildEnvironmentVariable(
-                        value="{}.dkr.ecr.{}.amazonaws.com/{}".format(env.account, env.region, LINUX_X86_ECR_REPO)
+                        value=ecr_repos[0].repository_uri
                     ),
                     "AWS_ECR_REPO_LINUX_AARCH": codebuild.BuildEnvironmentVariable(
-                        value="{}.dkr.ecr.{}.amazonaws.com/{}".format(env.account, env.region, LINUX_AARCH_ECR_REPO)
+                        value=ecr_repos[1].repository_uri
                     ),
                     "AWS_ECR_REPO_WINDOWS_X86": codebuild.BuildEnvironmentVariable(
-                        value="{}.dkr.ecr.{}.amazonaws.com/{}".format(env.account, env.region, WINDOWS_X86_ECR_REPO)
+                        value=ecr_repos[2].repository_uri
                     ),
+                    "ECR_REGISTRY_URL": codebuild.BuildEnvironmentVariable(value=ecr_repos[0].registry_uri),
                 },
             ),
+            # TODO: We can do away with this if we use aws-actions/amazon-ecr-login@v2, just need to migrate
             build_spec=codebuild.BuildSpec.from_object({
                 "version": 0.2,
                 "phases": {

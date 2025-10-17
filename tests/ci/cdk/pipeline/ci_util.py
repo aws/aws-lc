@@ -6,11 +6,9 @@ from constructs import Construct
 from cdk.aws_lc_analytics_stack import AwsLcGitHubAnalyticsStack
 from cdk.aws_lc_android_ci_stack import AwsLcAndroidCIStack
 from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
-from cdk.aws_lc_github_actions_stack import AwsLcGitHubActionsStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_ci_x509_stack import AwsLcGitHubX509CIStack
 from cdk.aws_lc_github_fuzz_ci_stack import AwsLcGitHubFuzzCIStack
-
 
 # Define CodeBuild Batch jobs for testing code.
 def add_ci_stacks(
@@ -19,15 +17,7 @@ def add_ci_stacks(
 ):
     # define customized settings to run CodeBuild jobs from CodePipeline
     build_options = []
-
-    AwsLcGitHubActionsStack(
-        scope,
-        "aws-lc-ci-github-actions",
-        env=env,
-        ignore_failure=False,
-        stack_name="aws-lc-ci-github-actions",
-    )
-
+    
     x86_build_spec_file = "cdk/codebuild/github_ci_linux_x86_omnibus.yaml"
     AwsLcGitHubCIStack(
         scope,
@@ -115,3 +105,4 @@ def add_ci_stacks(
         ignore_failure=True,
         stack_name="aws-lc-ci-x509",
     )
+   
