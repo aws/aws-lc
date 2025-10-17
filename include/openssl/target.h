@@ -174,6 +174,10 @@
 #define OPENSSL_OPENBSD
 #endif
 
+#if defined(__NetBSD__)
+#define OPENSSL_NETBSD
+#endif
+
 #if defined(__illumos__) || (defined(__sun) && defined(__SVR4))
 #define OPENSSL_SOLARIS
 #endif

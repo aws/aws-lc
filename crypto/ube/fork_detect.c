@@ -30,7 +30,7 @@
   #if !defined(_GNU_SOURCE)
     #define _GNU_SOURCE  // Needed for madvise() and MAP_ANONYMOUS.
   #endif
-#elif defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+#elif defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD) || defined(OPENSSL_NETBSD)
   #define AWSLC_FORK_DETECTION_SUPPORTED
   // FreeBSD requires POSIX compatibility off for its syscalls
   // (enables __BSD_VISIBLE). Without the below line, <sys/mman.h> cannot be
@@ -114,7 +114,7 @@ static int init_fork_detect_wipeonfork(void *addr, long page_size) {
 #endif // defined(OPENSSL_LINUX)
 
 
-#if defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+#if defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD) || defined(OPENSSL_NETBSD)
 
 #include <sys/mman.h>
 #include <unistd.h>
