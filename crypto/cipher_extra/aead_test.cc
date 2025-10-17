@@ -1654,11 +1654,20 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         ConvertToBytes(&output, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
         ASSERT_EQ(Bytes(ciphertext), Bytes(output));
         
-        // XAES-256-GCM Decryption   
+        // Decryption   
         bssl::ScopedEVP_AEAD_CTX dctx;
         ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key, 32, tag_size, nullptr));
         
         decrypted.resize(plaintext_len);
+        // Invalid nonce and nonce size
+        ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nullptr, 24, ciphertext.data(), ciphertext.size(), nullptr, 0));
+        ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nonce, 19, ciphertext.data(), ciphertext.size(), nullptr, 0));
+        ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nonce, 25, ciphertext.data(), ciphertext.size(), nullptr, 0));
+        
+        // XAES-256-GCM Decryption   
         ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, ciphertext.size() - tag_size,
                                 nonce, 24, ciphertext.data(), ciphertext.size(), nullptr, 0));
         ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
@@ -1809,7 +1818,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, decrypted; 
     
-    // XAES-256-GCM Encryption
+    // Encryption
     ConvertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     ConvertToBytes(&iv, "cafebabefacedbad16aedbf5a0de6a57a637b39b9a6b5254");
     ConvertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
@@ -1830,8 +1839,10 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
                             iv.data(), 25, plaintext.data(), plaintext.size(), aad.data(), aad.size()));
     // Too small output size
+    ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, plaintext.size() + tag_size, 
+                            iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
     
-    
+    // XAES-256-GCM Encryption
     ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
                             iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
@@ -1852,6 +1863,17 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
                             iv.data(), iv.size(), ciphertext.data(),
                             ciphertext.size(), aad.data(), aad.size()));
     ASSERT_EQ(Bytes(decrypted), Bytes(plaintext));
+    
+    // Invalid nonce and nonce size
+    ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, 
+                            ciphertext.size() - tag_size - key_commitment_size, nullptr, 24, 
+                            ciphertext.data(),ciphertext.size(), aad.data(), aad.size()));
+    ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, 
+                            ciphertext.size() - tag_size - key_commitment_size, iv.data(), 19, 
+                            ciphertext.data(), ciphertext.size(), aad.data(), aad.size()));
+    ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), (uint8_t*)decrypted.data(), &plaintext_len, 
+                            ciphertext.size() - tag_size - key_commitment_size, iv.data(), 25, 
+                            ciphertext.data(), ciphertext.size(), aad.data(), aad.size()));
     
     // Invalid key commitment
     ciphertext[plaintext.size() + tag_size] ^= 0xFF;

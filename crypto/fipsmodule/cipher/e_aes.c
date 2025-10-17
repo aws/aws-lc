@@ -2166,17 +2166,20 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
 
     xaes_256_gcm_CMAC_get_key_commitment(xaes_ctx, nonce, nonce_len);
 
-    if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
+    if(max_out_tag_len < EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+        return 0;
+    }
+    
+    aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
                                 max_out_tag_len - XAES_256_GCM_KEY_COMMIT_SIZE,
                                 nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
                                 in, in_len, extra_in, extra_in_len, ad, ad_len, 
-                                ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE)) {
-        return 0;
-    }
+                                ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE);
 
     OPENSSL_memcpy(out_tag + *out_tag_len, xaes_ctx->kc, XAES_256_GCM_KEY_COMMIT_SIZE);
     *out_tag_len += XAES_256_GCM_KEY_COMMIT_SIZE;
-    
+
     return 1;
 }
 
