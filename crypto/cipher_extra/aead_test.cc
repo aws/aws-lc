@@ -1820,8 +1820,18 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
 
     bssl::ScopedEVP_AEAD_CTX ctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
-
     size_t ciphertext_len = 0;
+
+    // Invalid nonce size
+    ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                            plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
+                            iv.data(), 19, plaintext.data(), plaintext.size(), aad.data(), aad.size()));
+    ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
+                            plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
+                            iv.data(), 25, plaintext.data(), plaintext.size(), aad.data(), aad.size()));
+    // Too small output size
+    
+    
     ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
                             iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
@@ -1830,15 +1840,6 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     ConvertToBytes(&output, "dc53ee85e5a4009a4e21788e8b651dce12dcea87be36a81e1a97802ac7aaf326227060c2a820331704cbf8a720bff7d73e0ba5792b9c2dfa69ac8710b202a06b06fba2235a15aebe31b410afbb95b8b276a9b55b70e63ec996d11207b92bd38ca85ca4b7d1fd7021c94ada75");
     ASSERT_EQ(Bytes(ciphertext), Bytes(output));
 
-    // Invalid nonce size
-    ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, plaintext.size() + tag_size, 
-                                iv.data(), 19, plaintext.data(), plaintext.size(), aad.data(), aad.size()));
-    ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, plaintext.size() + tag_size, 
-                                iv.data(), 25, plaintext.data(), plaintext.size(), aad.data(), aad.size()));
-    // Too small output size
-    
-    
-    
     // XAES-256-GCM Decryption   
     decrypted.resize(plaintext.size());
     bssl::ScopedEVP_AEAD_CTX dctx;
