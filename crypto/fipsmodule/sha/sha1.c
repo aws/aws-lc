@@ -444,6 +444,14 @@ static void sha1_block_data_order(uint32_t state[5], const uint8_t *data,
 
 #if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 
+#if defined(SHA1_ASM_AVX)
+void sha1_block_data_order_avx(uint32_t state[5], const uint8_t *data,
+                               size_t num) {
+  perror("sha1_block_data_order_avx");
+  abort();
+}
+#endif // defined(ASH1_ASM_AVX2)
+
 #if defined(SHA1_ASM_AVX2)
 void sha1_block_data_order_avx2(uint32_t state[5], const uint8_t *data,
                                 size_t num) {
