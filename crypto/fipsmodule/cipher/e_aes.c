@@ -1983,15 +1983,11 @@ static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
     EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
 
-    if(iv != NULL && !xaes_256_gcm_CMAC_get_key_commitment(xaes_ctx, iv, gctx->ivlen)) {
-        return 0;
+    if(iv != NULL) {
+        xaes_256_gcm_CMAC_get_key_commitment(xaes_ctx, iv, gctx->ivlen);
     }
 
-    if(!xaes_256_gcm_set_gcm_key(ctx, iv, enc)) {
-        return 0;
-    }
-
-    return 1;
+    return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
 }
 
 static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
@@ -2171,7 +2167,7 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
     if(!xaes_256_gcm_CMAC_get_key_commitment(xaes_ctx, nonce, nonce_len)) {
         return 0;
     }
-    
+
     if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
                                 max_out_tag_len - XAES_256_GCM_KEY_COMMIT_SIZE,
                                 nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
