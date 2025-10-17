@@ -121,7 +121,8 @@
 
 #if !defined(OPENSSL_NO_ASM) &&                          \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) || \
-     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD) || \
+     defined(OPENSSL_NETBSD)) &&                        \
     defined(OPENSSL_AARCH64)
 
 #include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
@@ -1296,7 +1297,7 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
     if (!bn_wexpand(rr2, widthn)) {
         return ret;
     }
-    
+
     /*  Ensure that montgomery contexts are initialized */
     if (in_mont1 == NULL) {
         return ret;
