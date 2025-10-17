@@ -1619,9 +1619,9 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
         size_t plaintext_len = strlen((const char *)plaintext);
 
-        ciphertext.resize(36);
         const size_t tag_size = 16;
-        
+        ciphertext.resize(plaintext_len + tag_size);
+
         // Encryption
         bssl::ScopedEVP_AEAD_CTX ctx;
         // Invalid key length
@@ -1673,7 +1673,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 
         size_t tag_size = 16;
         ciphertext.resize(plaintext.size() + tag_size);
-
+        
         bssl::ScopedEVP_AEAD_CTX ctx;
         ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
 
@@ -1817,7 +1817,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
 
     unsigned tag_size = 16, key_commitment_size = 32; 
     ciphertext.resize(plaintext.size() + tag_size + key_commitment_size);
-    
+
     bssl::ScopedEVP_AEAD_CTX ctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
 
