@@ -1768,16 +1768,6 @@ struct xaes_256_gcm_ctx {
 #endif 
 };
 
-struct xaes_256_gcm_key_commit_ctx {
-#ifdef USE_OPTIMIZED_CMAC 
-    AES_KEY xaes_key; 
-    uint8_t k1[AES_BLOCK_SIZE]; 
-#else 
-    uint8_t xaes_key[AES_BLOCK_SIZE * 2];
-#endif 
-    uint8_t kc[XAES_256_GCM_KEY_COMMIT_SIZE];
-};
-
 #define BINARY_FIELD_MUL_X_128(out, in)             \
 do {                                                \
     unsigned i;                                     \
@@ -1917,6 +1907,18 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
 // ------------------------------------------------------------------------------
 // ---------------- EVP_CIPHER XAES-256-GCM With Key Commitment -----------------
 // ------------------------------------------------------------------------------
+
+struct xaes_256_gcm_key_commit_ctx {
+#ifdef USE_OPTIMIZED_CMAC 
+    AES_KEY xaes_key; 
+    uint8_t k1[AES_BLOCK_SIZE]; 
+#else 
+    uint8_t xaes_key[AES_BLOCK_SIZE * 2];
+#endif 
+    uint8_t kc[XAES_256_GCM_KEY_COMMIT_SIZE];
+};
+
+
 static int xaes_256_gcm_CMAC_get_key_commitment(struct xaes_256_gcm_key_commit_ctx *xaes_ctx, 
     const uint8_t* nonce, const unsigned nonce_len) {
 
