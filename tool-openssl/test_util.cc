@@ -355,8 +355,11 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
   std::set<int> cert2_nids;
   for (int i = 0; i < ext_count1; i++) {
     X509_EXTENSION *ext = X509_get_ext(cert1, i);
-    if (!ext)
+    if (!ext) {
+      std::cout << "Failed to obtain extension from AWS-LC's certificate"
+                << std::endl;
       return false;
+    }
     int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
     if (!cert1_nids.insert(nid).second) {
       std::cout << "AWS-LC's certificate has duplicate extensions" << std::endl;
@@ -366,14 +369,17 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
 
   for (int i = ext_count2 - 1; i >= 0; i--) {
     X509_EXTENSION *ext2 = X509_get_ext(cert2, i);
-    if (!ext2)
+    if (!ext2) {
+      std::cout << "Failed to obtain extension from OpenSSL's certificate"
+                << std::endl;
       return false;
+    }
 
     int nid2 = OBJ_obj2nid(X509_EXTENSION_get_object(ext2));
 
     // OpenSSL<=3.1 does not clear existing extensions, resulting in duplicates.
     // Skip over those duplicates
-    if (openssl_version && strcmp(openssl_version, "3.1") > 0) {
+    if (openssl_version && strcmp(openssl_version, "1.1.1") == 0) {
       if (!cert2_nids.insert(nid2).second) {
         continue;
       }
@@ -408,7 +414,7 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
         X509_EXTENSION_get_critical(ext2)) {
       std::cout << "Certificates have different extension critical flags"
                 << std::endl;
-      // return false;
+      return false;
     }
   }
   return true;
