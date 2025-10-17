@@ -1,5 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+import itertools
 import typing
 
 from aws_cdk import (
@@ -13,14 +14,13 @@ from aws_cdk import (
 from constructs import Construct
 
 from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
-from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import (
     code_build_publish_metrics_in_json,
 )
-from util.metadata import AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, UBUNTU_ECR_REPO, WINDOWS_X86_ECR_REPO
+from util.metadata import UBUNTU_ECR_REPO, AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO
 
-class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
-    """Define a stack used to execute AWS-LC self-hosted GitHub Actions Runners."""
+class AwsLcGitHubDockerActionsStack(AwsLcBaseCiStack):
+    """Define a stack used to execute AWS-LC self-hosted GitHub Actions Runners on Docker Images."""
 
     def __init__(
         self,
@@ -31,16 +31,24 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
     ) -> None:
         super().__init__(scope, id, env=env, timeout=180, **kwargs)
 
-        # TODO: First 3 indices ordering is important for now as they are referenced directly for now.
-        repo_names = [LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO, UBUNTU_ECR_REPO,
-                      AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO]
-        ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
-                     for x in repo_names]
-
         # Define a IAM role for this stack.
         metrics_policy = iam.PolicyDocument.from_json(
             code_build_publish_metrics_in_json(env)
         )
+
+        repo_names = [UBUNTU_ECR_REPO, AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO]
+        ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
+                     for x in repo_names]
+        
+        staging_repo = ecr.Repository(self, "aws-lc-ecr-staging",
+                              image_tag_mutability=ecr.TagMutability.IMMUTABLE,
+                              lifecycle_rules=[ecr.LifecycleRule(
+                                  max_image_age=Duration.days(7),
+                              )])
+        
+        ecr_repos.append(staging_repo)
+
+        pull_through_caches = [ecr.Repository.from_repository_name(self, "quay-io", "quay.io/*")]
 
         inline_policies = {
             "metrics_policy": metrics_policy,
@@ -58,9 +66,23 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                         actions=[
                             "ecr:BatchGetImage",
                             "ecr:BatchCheckLayerAvailability",
+                            "ecr:CompleteLayerUpload",
                             "ecr:GetDownloadUrlForLayer",
+                            "ecr:InitiateLayerUpload",
+                            "ecr:PutImage",
+                            "ecr:UploadLayerPart",
                         ],
-                        resources=[x.repository_arn for x in ecr_repos],
+                        resources=[x for x in itertools.chain([
+                            x.repository_arn for x in ecr_repos
+                        ], [x.repository_arn for x in pull_through_caches])],
+                    ),
+                    iam.PolicyStatement(
+                        effect=iam.Effect.ALLOW,
+                        actions=[
+                            "ecr:BatchImportUpstreamImage",
+                        ],
+                        resources=[
+                            x.repository_arn for x in pull_through_caches]
                     ),
                 ],
             )
@@ -104,39 +126,10 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 environment_variables={
                     "AWS_ACCOUNT_ID": codebuild.BuildEnvironmentVariable(value=env.account),
-                    "AWS_ECR_REPO_LINUX_X86": codebuild.BuildEnvironmentVariable(
-                        value=ecr_repos[0].repository_uri
-                    ),
-                    "AWS_ECR_REPO_LINUX_AARCH": codebuild.BuildEnvironmentVariable(
-                        value=ecr_repos[1].repository_uri
-                    ),
-                    "AWS_ECR_REPO_WINDOWS_X86": codebuild.BuildEnvironmentVariable(
-                        value=ecr_repos[2].repository_uri
-                    ),
-                    "ECR_REGISTRY_URL": codebuild.BuildEnvironmentVariable(value=ecr_repos[0].registry_uri),
+                    "ECR_REGISTRY_URL": codebuild.BuildEnvironmentVariable(value=staging_repo.registry_uri),
+                    "ECR_STAGING_REPO": codebuild.BuildEnvironmentVariable(value=staging_repo.repository_uri),
                 },
             ),
-            # TODO: We can do away with this if we use aws-actions/amazon-ecr-login@v2, just need to migrate
-            build_spec=codebuild.BuildSpec.from_object({
-                "version": 0.2,
-                "phases": {
-                    "pre_build": {
-                        "commands": [
-                            "mkdir -p /root/.docker",
-                            """\
-cat <<EOF > /root/.docker/config.json
-{
-  "credHelpers": {
-    "public.ecr.aws": "ecr-login",
-    "$AWS_ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com": "ecr-login"
-  }
-}
-EOF
-"""
-                        ]
-                    }
-                },
-            }),
         )
 
         cfn_project = project.node.default_child

@@ -10,375 +10,126 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
-  posix_tests:
-    name: posix-tests-${{ matrix.image }}-${{ matrix.build32 && 'x86' || 'x86_64' }}
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - amazonlinux-2_clang-7x_latest
-          - amazonlinux-2_gcc-7x_latest
-          - amazonlinux-2023_clang-15x_latest
-          - amazonlinux-2023_gcc-11x_latest
-          - ubuntu-20.04_clang-7x_latest
-          - ubuntu-20.04_clang-8x_latest
-          - ubuntu-20.04_clang-9x_latest
-          - ubuntu-20.04_clang-10x_latest
-          - ubuntu-20.04_gcc-7x_latest
-          - ubuntu-20.04_gcc-8x_latest
-          - ubuntu-22.04_gcc-11x_latest
-          - ubuntu-22.04_gcc-12x_latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
-        env:
-          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:${{ matrix.image }}
-          env: |
-            AWSLC_32BIT
-          run: |
-            [[ "${{ matrix.cc }}z" != "z" ]] && export CC="${{ matrix.cc }}" || true
-            [[ "${{ matrix.cxx }}z" != "z" ]] && export CXX="${{ matrix.cxx }}" || true
-            ./tests/ci/run_posix_tests.sh
-
-  fips_tests:
-    name: ${{ matrix.enableASAN && 'asan-' || '' }}fips-tests-${{ matrix.image }}
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - amazonlinux-2_clang-7x_latest
-          - amazonlinux-2_gcc-7x_latest
-          - amazonlinux-2023_clang-15x_latest
-          - amazonlinux-2023_gcc-11x_latest
-          - ubuntu-20.04_clang-8x_latest
-          - ubuntu-20.04_clang-9x_latest
-          - ubuntu-20.04_clang-10x_latest
-          - ubuntu-20.04_gcc-7x_latest
-          - ubuntu-20.04_gcc-8x_latest
-          - ubuntu-22.04_gcc-11x_latest
-          - ubuntu-22.04_gcc-12x_latest
-        include:
-          - image: ubuntu-20.04_clang-7x_latest
-            enableASAN: 1
-            goTestTimeout: 120m
-    env:
-      AWSLC_ENABLE_FIPS_ASAN: ${{ matrix.enableASAN || 0 }}
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:${{ matrix.image }}
-          env: |
-            AWSLC_ENABLE_FIPS_ASAN
-          run: |
-            [[ "${{ matrix.goTestTimeout }}z" != "z" ]] && export AWS_LC_GO_TEST_TIMEOUT="${{ matrix.goTestTimeout }}" || true
-            ./tests/ci/run_fips_tests.sh
-
-  prefix_tests:
-    name: prefix-tests-${{ matrix.image }}
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - amazonlinux-2_gcc-7x_latest
-          - ubuntu-20.04_clang-10x_latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:${{ matrix.image }}
-          run: ./tests/ci/run_prefix_tests.sh
-
   # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
   # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331,
   # https://github.com/google/sanitizers/issues/703, and fixed in https://reviews.llvm.org/D60243 which is pending a review.
-  # To reduce the total time, these tests will be executed in below CodeBuild dimensions:
-  #   1. amazonlinux_2023_clang_14x_ssl_asan1
-  #   2. amazonlinux_2023_clang_14x_ssl_asan2
-  #   3. amazonlinux_2023_clang_14x_ssl_asan3
-  #   4. amazonlinux_2023_clang_14x_ssl_asan4
-  # Env var |AWS_LC_SSL_RUNNER_START_INDEX| and |AWS_LC_SSL_RUNNER_END_INDEX| are used to filter the runner tests.
-
+  # To reduce the total time, these tests are broken into 4 distinct parts
   asan-ssl-part1:
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         instance-size:large
-        buildspec-override:true
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_END_INDEX: 3500
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_sanitizer_latest
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           env: |
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_END_INDEX
-          run: ./tests/ci/run_ssl_asan_tests.sh
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part2:
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         instance-size:large
-        buildspec-override:true
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_START_INDEX: 3501
       AWS_LC_SSL_RUNNER_END_INDEX: 5500
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_sanitizer_latest
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           env: |
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_START_INDEX
             AWS_LC_SSL_RUNNER_END_INDEX
-          run: ./tests/ci/run_ssl_asan_tests.sh
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part3:
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         instance-size:large
-        buildspec-override:true
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_START_INDEX: 5501
       AWS_LC_SSL_RUNNER_END_INDEX: 7000
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_sanitizer_latest
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           env: |
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_START_INDEX
             AWS_LC_SSL_RUNNER_END_INDEX
-          run: ./tests/ci/run_ssl_asan_tests.sh
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
 
   asan-ssl-part4:
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         instance-size:large
-        buildspec-override:true
     env:
       AWS_LC_GO_TEST_TIMEOUT: 60m
       AWS_LC_SSL_RUNNER_START_INDEX: 7001
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_sanitizer_latest
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           env: |
             AWS_LC_GO_TEST_TIMEOUT
             AWS_LC_SSL_RUNNER_START_INDEX
-          run: ./tests/ci/run_ssl_asan_tests.sh
-
-  valgrind:
-    name: valgrind
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    env:
-      AWS_LC_GO_TEST_TIMEOUT: 60m
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_gcc-11x_latest
-          env: |
-            AWS_LC_GO_TEST_TIMEOUT
-          run: ./tests/ci/run_valgrind_tests.sh
-
-  valgrind-ssl-runner-part1:
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    env:
-      AWS_LC_GO_TEST_TIMEOUT: 60m
-      AWS_LC_SSL_RUNNER_END_INDEX: 4000
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_gcc-11x_latest
-          env: |
-            AWS_LC_GO_TEST_TIMEOUT
-            AWS_LC_SSL_RUNNER_END_INDEX
-          run: ./tests/ci/run_ssl_runner_valgrind_tests.sh
-          options: --privileged
-
-  valgrind-ssl-runner-part2:
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    env:
-      AWS_LC_GO_TEST_TIMEOUT: 60m
-      AWS_LC_SSL_RUNNER_START_INDEX: 4001
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_gcc-11x_latest
-          env: |
-            AWS_LC_GO_TEST_TIMEOUT
-            AWS_LC_SSL_RUNNER_START_INDEX
-          run: ./tests/ci/run_ssl_runner_valgrind_tests.sh
-          options: --privileged
-
-  # Sanitizer is very slow on ARM.
-  # https://github.com/google/sanitizers/issues/1331
-  sanitizers:
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    env:
-      AWS_LC_GO_TEST_TIMEOUT: '60m'
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_sanitizer_latest
-          env: |
-            AWS_LC_GO_TEST_TIMEOUT
-          options: --privileged
-          run: ./tests/ci/run_posix_sanitizers.sh
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
 
   # Build and test aws-lc without Perl/Go.
   minimal_tests:
-    name: minimal-${{ matrix.image }}
+    name: minimal-ubuntu:22.04-clang-7-aarch64
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         instance-size:large
-        buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - ubuntu-20.04_clang-7x_latest
     steps:
       - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
+        name: Run Container
         with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:${{ matrix.image }}
-          run: ./tests/ci/run_minimal_tests.sh
-
-  fips_callback:
-    name: fips-callback-${{ matrix.image }}
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - amazonlinux-2_gcc-7x_latest
-          - amazonlinux-2023_gcc-11x_latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:${{ matrix.image }}
-          run: ./tests/ci/run_fips_callback_tests.sh
-
-  benchmark:
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:arm-3.0
-        instance-size:large
-        buildspec-override:true
-    steps:
-      - uses: actions/checkout@v5
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_AARCH=${AWS_ECR_REPO_LINUX_AARCH} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run POSIX tests
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_AARCH }}:amazonlinux-2023_clang-15x_latest
-          run: ./tests/ci/run_benchmark_build_tests.sh
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:20.04
+          run: |
+            source /opt/compiler-env/setup-clang-7.sh
+            ./tests/ci/run_minimal_tests.sh

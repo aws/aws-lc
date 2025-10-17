@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    ecparam.cc
     ec.cc
     genrsa.cc
     pass_util.cc
@@ -91,6 +92,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        ecparam.cc
+        ecparam_test.cc
         ec.cc
         ec_test.cc
         genrsa.cc

@@ -1,0 +1,111 @@
+name: image-build-ubuntu1004
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-ubuntu1004
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/ubuntu/Dockerfile.1004
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/ubuntu/Dockerfile.1004
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+jobs:
+  x86_64_build:
+    runs-on:
+      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:medium
+    outputs:
+      ubuntu1004: ${{ steps.images.outputs.ubuntu1004 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu1004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Get CMake v3.9.6 Source
+        id: dependencies
+        run: |
+          temp_dir="$(mktemp -d)"
+          curl -L -o cmake-3.9.6.tar.gz --output-dir "${temp_dir}" \
+            https://github.com/Kitware/CMake/releases/download/v3.9.6/cmake-3.9.6.tar.gz
+          echo directory=${temp_dir} >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+      - name: Import ubuntu:10.04 OCI Image
+        run: |
+          temp_dir="$(mktemp -d)"
+          curl -o container.tar --output-dir "${temp_dir}" https://d2yr98kym3baw0.cloudfront.net/ubuntu1004.tar
+          docker load < "${temp_dir}/container.tar"
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.1004
+          context: ./.github/docker_images/aws-lc/ubuntu
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+            dependencies=${{ steps.dependencies.outputs.directory }}
+          tags: ${{ steps.images.outputs.ubuntu1004 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.ubuntu1004 }}
+          run: |
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.9
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.10
+            # Check GCC 4.1 Compilers
+            source /opt/compiler-env/setup-gcc-4.1.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 4.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 4.1
+  x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_build
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu1004=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:10.04 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.ubuntu1004 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.ubuntu1004 }} ${{ steps.images.outputs.ubuntu1004 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.ubuntu1004 }}

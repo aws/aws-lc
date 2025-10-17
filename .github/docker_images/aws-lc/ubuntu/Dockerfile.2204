@@ -1,0 +1,234 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM public.ecr.aws/ubuntu/ubuntu:22.04 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEPENDENCIES_DIR=/home/dependencies
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+
+ENV BOOST_PACKAGE_NAME=boost_1_77_0
+ENV BOOST_TARBALL="${BOOST_PACKAGE_NAME}.tar.bz2"
+ENV BOOST_SRC_URL="https://d2yr98kym3baw0.cloudfront.net/${BOOST_TARBALL}"
+
+# llvm, llvm-dev, libcxx, and libcxxabi are needed for the sanitizer tests.
+# 11.1.0 is the latest stable release as of 2021-02-16.
+# See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
+RUN <<EOF
+set -ex
+apt-get update
+apt-get -y --no-install-recommends upgrade
+apt-get -y --no-install-recommends install \
+    autoconf \
+    autoconf-archive \
+    autogen \
+    automake \
+    binutils-dev \
+    bison \
+    build-essential \
+    ca-certificates \
+    check \
+    clang-14 \
+    clang++-14 \
+    clang-format \
+    cmake \
+    curl \
+    dnsutils \
+    doxygen \
+    dpkg-dev \
+    flex \
+    gcc-10 \
+    gcc-11 \
+    gcc-12 \
+    gcovr \
+    gettext \
+    git \
+    gnupg \
+    gnutls-dev \
+    gobject-introspection \
+    gperf \
+    groff \
+    g++-10 \
+    g++-11 \
+    g++-12 \
+    iproute2 \
+    jq \
+    lcov \
+    ldnsutils \
+    libcap-dev \
+    libcap-ng-dev \
+    libcmocka0 \
+    libcmocka-dev \
+    libcryptx-perl \
+    libcurl4-openssl-dev \
+    libev-dev \
+    libevent-dev \
+    libexpat1-dev \
+    libfstrm-dev \
+    libftdi-dev \
+    libgcrypt20-dev \
+    libglib2.0-dev \
+    libgmp-dev \
+    libicu-dev \
+    libini-config-dev \
+    libio-socket-ssl-perl \
+    libipc-run-perl \
+    libjemalloc-dev \
+    libjson-c-dev \
+    libjson-perl \
+    libltdl-dev \
+    liblua5.4-dev \
+    liblz4-dev \
+    liblzo2-dev \
+    libnet-dev \
+    libnet-ssleay-perl \
+    libnghttp2-dev \
+    libnl-3-dev \
+    libnl-genl-3-dev \
+    libpam-dev \
+    libpam0g-dev \
+    libpcap-dev \
+    libpcre2-dev \
+    libpcre3-dev \
+    libperl-dev \
+    libprocps-dev \
+    libprotobuf-c-dev \
+    libpsl-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libsystemd-dev \
+    libtool \
+    libudev-dev \
+    libunwind-dev \
+    liburcu-dev \
+    libusb-1.0-0-dev \
+    libuv1-dev \
+    libxml2-dev \
+    libyaml-dev \
+    lld \
+    llvm \
+    llvm-dev \
+    make \
+    meson \
+    net-tools \
+    netcat-openbsd \
+    ninja-build \
+    openjdk-11-jdk \
+    openssl \
+    pandoc \
+    patch \
+    perl \
+    pkg-config \
+    procps \
+    protobuf-c-compiler \
+    python3 \
+    python3-docutils \
+    python3-pip \
+    python3-pytest \
+    python3-six \
+    python3-sphinx \
+    ruby \
+    selinux-basics \
+    socat \
+    software-properties-common \
+    splint \
+    sudo \
+    unzip \
+    uthash-dev \
+    uuid-dev \
+    vim-common \
+    wget \
+    xxd \
+    zlib1g-dev
+apt-get autoremove --purge -y
+apt-get clean
+apt-get autoclean
+rm -rf /var/lib/apt/lists/*
+rm -rf /tmp/*
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install AWS CLI
+COPY --from=scripts setup-aws-cli.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/setup-aws-cli.sh"
+${setup_script}
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+# Install Ruby
+ENV RBENV_ROOT="/.rbenv"
+ENV PATH="${RBENV_ROOT}/shims:${RBENV_ROOT}/bin:$PATH"
+
+COPY --from=scripts setup-ruby.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-ruby.sh"
+${setup_script}
+EOF
+
+# Extract and install Boost 1.77.0. mySQL 8.33 depends on this specific version.
+RUN <<EOF
+set -ex
+mkdir -p ${DEPENDENCIES_DIR}
+cd ${DEPENDENCIES_DIR}
+wget ${BOOST_SRC_URL}
+tar xfj ${BOOST_TARBALL}
+mv ./${BOOST_PACKAGE_NAME} ./boost
+rm ${BOOST_TARBALL}
+EOF
+
+RUN rm -rf /tmp/*
+
+FROM tools AS ubuntu2204
+
+RUN <<EOF
+set -ex
+adduser --disabled-password --gecos '' integration
+adduser --disabled-password --gecos '' postgres
+adduser integration sudo
+adduser postgres sudo
+echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+EOF
+
+# Configure a base image with Intel SDE installed
+
+FROM tools AS ubuntu2204_sde
+
+ARG SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
+ARG SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/${SDE_VERSION_TAG}.tar.xz"
+
+RUN <<EOF
+set -ex
+if [[ "$(uname -m)" != "x86_64" ]]; then
+    false
+fi
+wget ${SDE_MIRROR_URL}
+tar -xf "${SDE_VERSION_TAG}.tar.xz"
+rm "${SDE_VERSION_TAG}.tar.xz"
+EOF
+
+ENV SDEROOT="/${SDE_VERSION_TAG}"
+ENV PATH="${SDEROOT}:$PATH"
