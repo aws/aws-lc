@@ -1841,8 +1841,6 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     return 1;
 }
 
-static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
-
 static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx, 
                             const uint8_t *key, const unsigned key_len) {
     if ((key_len << 3) != 256) {
@@ -1850,6 +1848,7 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
         return 0;
     }
 #ifdef USE_OPTIMIZED_CMAC 
+    static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
     uint8_t L[AES_BLOCK_SIZE];
     AES_set_encrypt_key(key, (key_len << 3), &xaes_ctx->xaes_key);
     AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
@@ -2170,7 +2169,7 @@ static int aead_xaes_256_gcm_seal_scatter_key_commit(
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
         return 0;
     }
-    
+
     aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
                                 max_out_tag_len - XAES_256_GCM_KEY_COMMIT_SIZE,
                                 nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,

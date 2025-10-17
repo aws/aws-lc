@@ -1830,7 +1830,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     bssl::ScopedEVP_AEAD_CTX ctx;
     ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm_key_commit(), key.data(), key.size(), tag_size, nullptr));
     size_t ciphertext_len = 0;
-
+    
     // Invalid nonce size
     ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
@@ -1838,6 +1838,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_KEY_COMMIT) {
     ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len,
                             plaintext.size() +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm_key_commit()), 
                             iv.data(), 25, plaintext.data(), plaintext.size(), aad.data(), aad.size()));
+    
     // Too small output size
     ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), (uint8_t*)ciphertext.data(), &ciphertext_len, plaintext.size() + tag_size, 
                             iv.data(), iv.size(), plaintext.data(), plaintext.size(), aad.data(), aad.size()));
