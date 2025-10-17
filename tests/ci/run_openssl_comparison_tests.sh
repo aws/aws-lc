@@ -32,9 +32,17 @@ declare -A openssl_branches=(
   ["$openssl_master_branch"]="lib64"
 )
 
+declare -A openssl_versions=(
+  ["$openssl_1_1_1_branch"]="1.1.1"
+  ["$openssl_3_1_branch"]="3.1"
+  ["$openssl_3_2_branch"]="3.2"
+  ["$openssl_master_branch"]="master"
+)
+
 # Run X509 Comparison Tests against all OpenSSL branches
 export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
 for branch in "${!openssl_branches[@]}"; do
+  export OPENSSL_TOOL_VERSION="${openssl_versions[$branch]}"
   export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
   echo "Running ${test} against OpenSSL ${branch}"
   LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test"

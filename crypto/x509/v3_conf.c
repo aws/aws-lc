@@ -82,6 +82,8 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
 static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,
                                    size_t *ext_len);
 
+static void delete_ext(STACK_OF(X509_EXTENSION) *sk, X509_EXTENSION *dext);
+
 X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx,
                                  const char *name, const char *value) {
   // If omitted, fill in an empty |X509V3_CTX|.
@@ -344,6 +346,16 @@ static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,
   return ext_der;
 }
 
+static void delete_ext(STACK_OF(X509_EXTENSION) *sk, X509_EXTENSION *dext) {
+  int idx = 0;
+  ASN1_OBJECT *obj = NULL;
+
+  obj = X509_EXTENSION_get_object(dext);
+  while ((idx = X509v3_get_ext_by_OBJ(sk, obj, -1)) >= 0) {
+    X509_EXTENSION_free(X509v3_delete_ext(sk, idx));
+  }
+}
+
 // This is the main function: add a bunch of extensions based on a config
 // file section to an extension STACK.
 
@@ -357,8 +369,19 @@ int X509V3_EXT_add_nconf_sk(const CONF *conf, const X509V3_CTX *ctx,
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
     X509_EXTENSION *ext = X509V3_EXT_nconf(conf, ctx, val->name, val->value);
-    int ok = ext != NULL &&  //
-             (sk == NULL || X509v3_add_ext(sk, ext, -1) != NULL);
+
+    int ok = 0;
+    if (ext) {
+      if (!sk) {
+        ok = 1;
+      } else {
+        if (ctx && ctx->flags == X509V3_CTX_REPLACE) {
+          delete_ext(*sk, ext);
+        }
+        ok = X509v3_add_ext(sk, ext, -1) != NULL;
+      }
+    }
+
     X509_EXTENSION_free(ext);
     if (!ok) {
       return 0;
@@ -418,9 +441,7 @@ const STACK_OF(CONF_VALUE) *X509V3_get_section(const X509V3_CTX *ctx,
   return NCONF_get_section(ctx->db, section);
 }
 
-void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf) {
-  ctx->db = conf;
-}
+void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf) { ctx->db = conf; }
 
 void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer, const X509 *subj,
                     const X509_REQ *req, const X509_CRL *crl, int flags) {
