@@ -1752,12 +1752,13 @@ TEST(CipherTest, XAES_256_GCM_KEY_COMMIT_EVP_CIPHER) {
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_xaes_256_gcm_key_commit(), NULL, NULL, NULL, 1));
     
     std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag, key_commitment; 
-    ciphertext.resize(60);
+    
     ConvertToBytes(&key, "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308");
     ConvertToBytes(&iv, "cafebabefacedbaddecaf8889313225df88406e555909c5a");
     ConvertToBytes(&aad, "feedfacedeadbeeffeedfacedeadbeefabaddad2");
     ConvertToBytes(&plaintext, "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39");
-
+    ciphertext.resize(plaintext.size());
+    
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), NULL));
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), iv.data(), -1));
 
