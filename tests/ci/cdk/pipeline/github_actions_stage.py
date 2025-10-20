@@ -7,7 +7,6 @@ from aws_cdk import (
     pipelines,
 )
 from cdk.aws_lc_github_actions_stack import AwsLcGitHubActionsStack
-from cdk.aws_lc_github_docker_actions_stack import AwsLcGitHubDockerActionsStack
 from constructs import Construct
 
 
@@ -36,8 +35,6 @@ class GitHubActionsStage(Stage):
             ignore_failure=False,
             stack_name="aws-lc-ci-github-actions",
         )
-
-        AwsLcGitHubDockerActionsStack(self, "aws-lc-github-docker-image-build", env=deploy_environment)
 
     @property
     def stacks(self):
