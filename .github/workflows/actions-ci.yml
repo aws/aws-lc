@@ -16,6 +16,9 @@ env:
   AWSLC_ENABLE_FIPS_ASAN: 1
   DEBIAN_FRONTEND: noninteractive
 
+permissions:
+  contents: read
+
 jobs:
   # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
   sanity-test-run:
