@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   CC: gcc
+permissions:
+  contents: read
+
 jobs:
   libssh2:
     if: github.repository_owner == 'aws'
