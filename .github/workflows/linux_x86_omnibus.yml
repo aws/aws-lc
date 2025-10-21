@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
 jobs:
   pre_push_checker:
     runs-on:
