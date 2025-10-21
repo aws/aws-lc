@@ -87,213 +87,6 @@ class ReqComparisonTest : public ::testing::Test {
     }
   }
 
- public:
-  int ExecuteCommand(const std::string &command) {
-    return system(command.c_str());
-  }
-
-  // Load a CSR from a PEM file
-  bssl::UniquePtr<X509_REQ> LoadCSR(const char *path) {
-    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
-    if (!bio) {
-      return NULL;
-    }
-
-    bssl::UniquePtr<X509_REQ> csr(
-        PEM_read_bio_X509_REQ(bio.get(), nullptr, nullptr, nullptr));
-    return csr;
-  }
-
-  // Load an X509 certificate from a PEM file
-  bssl::UniquePtr<X509> LoadCertificate(const char *path) {
-    bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
-    if (!bio) {
-      return NULL;
-    }
-
-    bssl::UniquePtr<X509> cert(
-        PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-    return cert;
-  }
-
-  bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
-    if (!csr1 || !csr2)
-      return false;
-
-    // 1. Compare subjects
-    X509_NAME *name1 = X509_REQ_get_subject_name(csr1);
-    X509_NAME *name2 = X509_REQ_get_subject_name(csr2);
-    if (X509_NAME_cmp(name1, name2) != 0)
-      return false;
-
-    // 2. Compare signature algorithms
-    int sig_nid1 = X509_REQ_get_signature_nid(csr1);
-    int sig_nid2 = X509_REQ_get_signature_nid(csr2);
-    if (sig_nid1 != sig_nid2)
-      return false;
-
-    // 3. Compare public key type and parameters
-    EVP_PKEY *pkey1 = X509_REQ_get0_pubkey(csr1);
-    EVP_PKEY *pkey2 = X509_REQ_get0_pubkey(csr2);
-    if (!pkey1 || !pkey2) {
-      return false;
-    }
-    if (EVP_PKEY_id(pkey1) != EVP_PKEY_id(pkey2)) {
-      return false;
-    }
-
-    // For RSA keys, check key size
-    if (EVP_PKEY_id(pkey1) == EVP_PKEY_RSA) {
-      RSA *rsa1 = EVP_PKEY_get0_RSA(pkey1);
-      RSA *rsa2 = EVP_PKEY_get0_RSA(pkey2);
-      if (!rsa1 || !rsa2) {
-        return false;
-      }
-      if (RSA_size(rsa1) != RSA_size(rsa2)) {
-        return false;
-      }
-    }
-
-    // 4. Verify that both CSRs have valid signatures
-    if (X509_REQ_verify(csr1, pkey1) != 1) {
-      return false;
-    }
-    if (X509_REQ_verify(csr2, pkey2) != 1) {
-      return false;
-    }
-
-    return true;
-  }
-
-  bool CheckCertificateValidityPeriod(X509 *cert, int expected_days) {
-    if (!cert)
-      return false;
-
-    const ASN1_TIME *not_before = X509_get0_notBefore(cert);
-    const ASN1_TIME *not_after = X509_get0_notAfter(cert);
-    if (!not_before || !not_after)
-      return false;
-
-    // Get the difference in days between not_before and not_after
-    int days, seconds;
-    if (!ASN1_TIME_diff(&days, &seconds, not_before, not_after)) {
-      return false;
-    }
-
-    return (days == expected_days);
-  }
-
-  // Improved certificate comparison function
-  bool CompareCertificates(X509 *cert1, X509 *cert2, int expected_days) {
-    if (!cert1 || !cert2) {
-      return false;
-    }
-
-    // 1. Compare subjects
-    X509_NAME *subj1 = X509_get_subject_name(cert1);
-    X509_NAME *subj2 = X509_get_subject_name(cert2);
-    if (X509_NAME_cmp(subj1, subj2) != 0) {
-      return false;
-    }
-
-    // 2. Compare issuers
-    X509_NAME *issuer1 = X509_get_issuer_name(cert1);
-    X509_NAME *issuer2 = X509_get_issuer_name(cert2);
-    if (X509_NAME_cmp(issuer1, issuer2) != 0) {
-      return false;
-    }
-
-    // 3. Both certificates should be self-signed
-    if (X509_NAME_cmp(subj1, issuer1) != 0) {
-      return false;
-    }
-    if (X509_NAME_cmp(subj2, issuer2) != 0) {
-      return false;
-    }
-
-    // 4. Compare signature algorithms
-    int sig_nid1 = X509_get_signature_nid(cert1);
-    int sig_nid2 = X509_get_signature_nid(cert2);
-    if (sig_nid1 != sig_nid2) {
-      return false;
-    }
-
-    // 5. Check validity periods
-    if (!CheckCertificateValidityPeriod(cert1, expected_days)) {
-      return false;
-    }
-    if (!CheckCertificateValidityPeriod(cert2, expected_days)) {
-      return false;
-    }
-
-    // 6. Check public key type and parameters
-    EVP_PKEY *pkey1 = X509_get0_pubkey(cert1);
-    EVP_PKEY *pkey2 = X509_get0_pubkey(cert2);
-    if (!pkey1 || !pkey2) {
-      return false;
-    }
-
-    if (EVP_PKEY_id(pkey1) != EVP_PKEY_id(pkey2)) {
-      return false;
-    }
-
-    // For RSA keys, check key size
-    if (EVP_PKEY_id(pkey1) == EVP_PKEY_RSA) {
-      RSA *rsa1 = EVP_PKEY_get0_RSA(pkey1);
-      RSA *rsa2 = EVP_PKEY_get0_RSA(pkey2);
-      if (!rsa1 || !rsa2) {
-        return false;
-      }
-
-      if (RSA_size(rsa1) != RSA_size(rsa2)) {
-        return false;
-      }
-    }
-
-    // 7. Verify signatures (self-signed)
-    if (X509_verify(cert1, pkey1) != 1) {
-      return false;
-    }
-    if (X509_verify(cert2, pkey2) != 1) {
-      return false;
-    }
-
-    // 8. Compare extensions - simplified approach
-    int ext_count1 = X509_get_ext_count(cert1);
-    int ext_count2 = X509_get_ext_count(cert2);
-    if (ext_count1 != ext_count2) {
-      return false;
-    }
-
-    // Compare each extension by index (assuming same order)
-    for (int i = 0; i < ext_count1; i++) {
-      X509_EXTENSION *ext1 = X509_get_ext(cert1, i);
-      X509_EXTENSION *ext2 = X509_get_ext(cert2, i);
-      if (!ext1 || !ext2) {
-        return false;
-      }
-
-      // Compare extension OIDs
-      ASN1_OBJECT *obj1 = X509_EXTENSION_get_object(ext1);
-      ASN1_OBJECT *obj2 = X509_EXTENSION_get_object(ext2);
-      if (!obj1 || !obj2) {
-        return false;
-      }
-
-      if (OBJ_cmp(obj1, obj2) != 0) {
-        return false;
-      }
-
-      // Compare critical flags
-      if (X509_EXTENSION_get_critical(ext1) !=
-          X509_EXTENSION_get_critical(ext2)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   char cert_path_openssl[PATH_MAX];
   char cert_path_awslc[PATH_MAX];
   char csr_path_openssl[PATH_MAX];
@@ -361,8 +154,8 @@ TEST_F(ReqComparisonTest, GenerateSelfSignedCertificate) {
   ExecuteCommand(openssl_command);
 
   // Load certificates
-  auto cert_tool = LoadCertificate(cert_path_awslc);
-  auto cert_openssl = LoadCertificate(cert_path_openssl);
+  auto cert_tool = LoadPEMCertificate(cert_path_awslc);
+  auto cert_openssl = LoadPEMCertificate(cert_path_openssl);
 
   ASSERT_TRUE(cert_tool != nullptr)
       << "Failed to load certificate generated by tool";
@@ -370,7 +163,8 @@ TEST_F(ReqComparisonTest, GenerateSelfSignedCertificate) {
       << "Failed to load certificate generated by OpenSSL";
 
   // Compare certificates in detail with 365 days validity period
-  ASSERT_TRUE(CompareCertificates(cert_tool.get(), cert_openssl.get(), 365))
+  ASSERT_TRUE(
+      CompareCertificates(cert_tool.get(), cert_openssl.get(), nullptr, 365))
       << "Certificates generated by tool and OpenSSL have different attributes";
 }
 
