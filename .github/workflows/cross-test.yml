@@ -135,3 +135,39 @@ jobs:
       - name: iOS Simulator Runner
         timeout-minutes: 45
         run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
+  netbsd:
+    runs-on: ${{ matrix.os }}
+    name: Test NetBSD
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: "ubuntu-latest"
+            arch: "x86_64"
+          - os: "ubuntu-24.04-arm"
+            arch: "aarch64"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test in NetBSD
+      id: test
+      uses: vmactions/netbsd-vm@v1
+      with:
+        release: "10.1"
+        arch: ${{ matrix.arch }}
+        envs: 'MYTOKEN MYTOKEN2'
+        usesh: true
+        run: |
+          /usr/sbin/pkg_add cmake
+          /usr/sbin/pkg_add gmake
+          /usr/sbin/pkg_add go
+          /usr/sbin/pkg_add ninja
+          /usr/sbin/pkg_add perl
+          export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+          curl -O https://dl.google.com/go/go1.25.2.netbsd-amd64.tar.gz
+          mkdir -p /usr/local
+          tar -C /usr/local -xzf go1.25.2.netbsd-amd64.tar.gz
+          export GOROOT=/usr/local/go
+          export PATH="$PATH:$GOROOT/bin"
+          cmake . -B ./build -DCMAKE_BUILD_TYPE=Release
+          cmake --build ./build -v --target all
+          cmake --build ./build -v --target run_tests
