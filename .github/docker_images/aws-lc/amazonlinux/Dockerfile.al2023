@@ -114,4 +114,51 @@ env CC=clang \
 rm -f ${FUZZ_ROOT}/build_cryptofuzz_modules.sh
 EOF
 
+FROM tools AS al2023
+
+# Mainly keeping x509 as a seperate target image to avoid polluting the al2023 with openssl-devel
+# by default.
+FROM tools AS x509
+
+RUN <<EOF
+set -ex
+dnf -y upgrade --releasever=latest
+dnf install -y \
+    bzip2-devel \
+    libffi-devel \
+    readline-devel \
+    openssl-devel
+dnf clean packages
+dnf clean metadata
+dnf clean all
+rm -rf /var/cache/dnf
+EOF
+
+# Install pyenv so we can get an updated python for use by x509-limbo
+ENV PYENV_ROOT="/.pyenv"
+ENV PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:$PATH"
+
+COPY --from=scripts setup-pyenv.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-pyenv.sh"
+${setup_script}
+EOF
+
+# Install 3.13.9
+RUN <<EOF
+pyenv install 3.13.9
+EOF
+
+# Install x509-limbo
+RUN <<EOF
+git clone --depth 1 https://github.com/C2SP/x509-limbo.git /x509-limbo
+cd /x509-limbo 
+eval "$(pyenv init -)"
+pyenv shell 3.13.9
+python3 -m venv .venv
+source .venv/bin/activate 
+pip install -e .
+deactivate
+EOF
+
 RUN rm -rf /tmp/*
