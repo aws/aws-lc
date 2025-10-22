@@ -737,3 +737,46 @@ jobs:
           run: |
             sudo pkg install -y git gmake cmake go ninja
             tests/ci/run_bsd_tests.sh
+  netbsd:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - "x86-64"
+          - "arm64"
+        version:
+          - "10.1"
+          - "9.4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - name: Prepare VM
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+          AWS_LC_GO_TEST_TIMEOUT: 90m
+          GOFLAGS: "-buildvcs=false"
+        with:
+          environment_variables: "AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          operating_system: freebsd
+          architecture: ${{ matrix.arch }}
+          version: ${{ matrix.version }}
+          shell: bash
+          memory: 12G
+          cpu_count: 3
+          run: |
+            /usr/sbin/pkg_add cmake gmake perl
+            ARCH=${{ (matrix.arch == 'x86_64' && 'amd') || 'arm' }}
+            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+            curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
+            mkdir -p /usr/local
+            tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
+            export GOROOT=/usr/local/go
+            export PATH="$PATH:$GOROOT/bin"
+            cmake . -B ./build -DCMAKE_BUILD_TYPE=Release
+            tests/ci/run_bsd_tests.sh
