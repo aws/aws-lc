@@ -12,6 +12,9 @@ on:
           change.
   schedule:
     - cron: '30 15 * * 1'
+permissions:
+  contents: read
+
 jobs:
   amazonlinux2:
     uses: ./.github/workflows/image-build-al2.yml

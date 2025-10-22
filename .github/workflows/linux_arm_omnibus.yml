@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
 jobs:
   # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
   # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331,

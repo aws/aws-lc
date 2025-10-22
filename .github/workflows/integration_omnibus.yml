@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
 jobs:
   integrations:
     name: ${{ matrix.name }}-${{ matrix.arch }}
