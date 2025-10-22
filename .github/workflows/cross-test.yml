@@ -136,16 +136,14 @@ jobs:
         timeout-minutes: 45
         run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
   netbsd:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     name: Test NetBSD
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: "ubuntu-latest"
-            arch: "x86_64"
-          - os: "ubuntu-24.04-arm"
-            arch: "aarch64"
+        arch:
+          - "x86_64"
+          - "aarch64"
     steps:
     - uses: actions/checkout@v4
     - name: Test in NetBSD
@@ -160,12 +158,13 @@ jobs:
           /usr/sbin/pkg_add cmake
           /usr/sbin/pkg_add gmake
           /usr/sbin/pkg_add go
-          /usr/sbin/pkg_add ninja
           /usr/sbin/pkg_add perl
+          ARCH=${{ (matrix.arch == 'x86_64' && 'amd') || 'arm' }}
+          export AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS=5
           export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
-          curl -O https://dl.google.com/go/go1.25.2.netbsd-amd64.tar.gz
+          curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
           mkdir -p /usr/local
-          tar -C /usr/local -xzf go1.25.2.netbsd-amd64.tar.gz
+          tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
           export GOROOT=/usr/local/go
           export PATH="$PATH:$GOROOT/bin"
           cmake . -B ./build -DCMAKE_BUILD_TYPE=Release
