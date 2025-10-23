@@ -103,7 +103,8 @@ inline int ExecuteCommand(const std::string &command) {
 std::string GetHash(const std::string &str);
 void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
                                   bssl::UniquePtr<EVP_PKEY> *pkey);
-bssl::UniquePtr<X509_REQ> LoadCSR(const char *path);
+bssl::UniquePtr<X509_REQ> LoadPEMCSR(const char *path);
+bssl::UniquePtr<X509_REQ> LoadDERCSR(const char *path);
 bssl::UniquePtr<X509> LoadPEMCertificate(const char *path);
 bssl::UniquePtr<X509> LoadDERCertificate(const char *path);
 bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2);

@@ -98,7 +98,7 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
 }
 
 // Load a CSR from a PEM file
-bssl::UniquePtr<X509_REQ> LoadCSR(const char *path) {
+bssl::UniquePtr<X509_REQ> LoadPEMCSR(const char *path) {
   bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
   if (!bio) {
     return nullptr;
@@ -106,6 +106,17 @@ bssl::UniquePtr<X509_REQ> LoadCSR(const char *path) {
 
   bssl::UniquePtr<X509_REQ> csr(
       PEM_read_bio_X509_REQ(bio.get(), nullptr, nullptr, nullptr));
+  return csr;
+}
+
+// Load a CSR from a DER file
+bssl::UniquePtr<X509_REQ> LoadDERCSR(const char *path) {
+  bssl::UniquePtr<BIO> bio(BIO_new_file(path, "rb"));
+  if (!bio) {
+    return nullptr;
+  }
+
+  bssl::UniquePtr<X509_REQ> csr(d2i_X509_REQ_bio(bio.get(), nullptr));
   return csr;
 }
 
@@ -134,20 +145,55 @@ bssl::UniquePtr<X509> LoadDERCertificate(const char *path) {
 
 bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
   if (!csr1 || !csr2) {
+    std::cout << "Invalid CSRs" << std::endl;
     return false;
   }
 
   // 1. Compare subjects
   X509_NAME *name1 = X509_REQ_get_subject_name(csr1);
   X509_NAME *name2 = X509_REQ_get_subject_name(csr2);
-  if (X509_NAME_cmp(name1, name2) != 0) {
+
+  if (!name1 || !name2)
     return false;
+
+  int count1 = X509_NAME_entry_count(name1);
+  int count2 = X509_NAME_entry_count(name2);
+  if (count1 < 0 || count2 < 0)
+    return false;
+  if (count1 != count2) {
+    std::cout << "CSRs have different number of subject entries" << std::endl;
+    return false;
+  }
+
+  // Check each entry in AWS-LC's CSR exists in OpenSSL's CSR
+  for (int i = 0; i < count1; i++) {
+    X509_NAME_ENTRY *entry1 = X509_NAME_get_entry(name1, i);
+    ASN1_OBJECT *obj1 = X509_NAME_ENTRY_get_object(entry1);
+    ASN1_STRING *data1 = X509_NAME_ENTRY_get_data(entry1);
+
+    int idx = X509_NAME_get_index_by_OBJ(name2, obj1, -1);
+    if (idx < 0) {
+      std::cout << "AWS-LC contains an entry for "
+                << OBJ_nid2ln(OBJ_obj2nid(obj1))
+                << " that is not present in OpenSSL's CSR" << std::endl;
+      return false;
+    }
+
+    X509_NAME_ENTRY *entry2 = X509_NAME_get_entry(name2, idx);
+    ASN1_STRING *data2 = X509_NAME_ENTRY_get_data(entry2);
+
+    if (ASN1_STRING_cmp(data1, data2) != 0) {
+      std::cout << "CSRs have different values for entry "
+                << OBJ_nid2ln(OBJ_obj2nid(obj1)) << std::endl;
+      return false;
+    }
   }
 
   // 2. Compare signature algorithms
   int sig_nid1 = X509_REQ_get_signature_nid(csr1);
   int sig_nid2 = X509_REQ_get_signature_nid(csr2);
   if (sig_nid1 != sig_nid2) {
+    std::cout << "CSRs use different signature algorithms" << std::endl;
     return false;
   }
 
@@ -155,9 +201,11 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
   EVP_PKEY *pkey1 = X509_REQ_get0_pubkey(csr1);
   EVP_PKEY *pkey2 = X509_REQ_get0_pubkey(csr2);
   if (!pkey1 || !pkey2) {
+    std::cout << "CSRs have different public keys" << std::endl;
     return false;
   }
   if (EVP_PKEY_id(pkey1) != EVP_PKEY_id(pkey2)) {
+    std::cout << "CSRs have different public key types" << std::endl;
     return false;
   }
 
@@ -166,18 +214,22 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     RSA *rsa1 = EVP_PKEY_get0_RSA(pkey1);
     RSA *rsa2 = EVP_PKEY_get0_RSA(pkey2);
     if (!rsa1 || !rsa2) {
+      std::cout << "Failed to obtain RSA keys from CSRs" << std::endl;
       return false;
     }
     if (RSA_size(rsa1) != RSA_size(rsa2)) {
+      std::cout << "CSRs have different RSA key sizes" << std::endl;
       return false;
     }
   }
 
   // 4. Verify that both CSRs have valid signatures
   if (X509_REQ_verify(csr1, pkey1) != 1) {
+    std::cout << "AWS-LC CSR has invalid signature" << std::endl;
     return false;
   }
   if (X509_REQ_verify(csr2, pkey2) != 1) {
+    std::cout << "OpenSSL CSR has invalid signature" << std::endl;
     return false;
   }
 
