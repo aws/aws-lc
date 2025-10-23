@@ -24,8 +24,17 @@ PLATFORM=$(uname -m)
 NUM_CPU_THREADS=''
 KERNEL_NAME=$(uname -s)
 if [[ "${KERNEL_NAME}" == "Darwin" || "${KERNEL_NAME}" =~ .*BSD ]]; then
-  # On MacOS, /proc/cpuinfo does not exist.
-  NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+  # sysctl is typically in /sbin or /usr/sbin on BSD systems
+  if command -v sysctl &> /dev/null; then
+    NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+  elif [[ -x /sbin/sysctl ]]; then
+    NUM_CPU_THREADS=$(/sbin/sysctl -n hw.ncpu)
+  elif [[ -x /usr/sbin/sysctl ]]; then
+    NUM_CPU_THREADS=$(/usr/sbin/sysctl -n hw.ncpu)
+  else
+    echo "Warning: Could not find sysctl, defaulting to 2 CPU threads"
+    NUM
+  fi
 else
   # Assume KERNEL_NAME is Linux.
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
