@@ -270,6 +270,13 @@ class DgstTest : public ::testing::Test {
     ASSERT_TRUE(pubkey_file);
     ASSERT_TRUE(PEM_write_PUBKEY(pubkey_file.get(), pkey.get()));
 
+    // Create a password-protected private key
+    ScopedFILE protected_key_file(fopen(protected_key_path, "wb"));
+    ASSERT_TRUE(protected_key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_key_file.get(), pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
+
     // Create a test input file with some data
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
@@ -377,9 +384,23 @@ TEST_F(DgstOptionUsageErrorsTest, InvalidCombinations) {
       // unsupported digest
       {"-sha3224", in_path},
       // hex and binary both specified
-      {"-hex", "-binary", in_path}};
+      {"-hex", "-binary", in_path},
+      // wrong and invalid passwords
+      {"-sign", protected_key_path, "-passin", "invalid : format", "-out",
+       sig_path, in_path},
+      {"-sign", protected_key_path, "-passin", "pass:wrongpassword", "-out",
+       sig_path, in_path}};
 
   for (const auto &args : invalid_combos) {
     TestOptionUsageErrors(args);
   }
+}
+
+// Test basic passin integration with password-protected key
+TEST_F(DgstTest, PassinBasicIntegrationTest) {
+  args_list_t args = {
+      "-sign", protected_key_path, "-passin", "pass:testpassword",
+      "-out",  sig_path,           in_path};
+  bool result = dgstTool(args);
+  ASSERT_TRUE(result);
 }

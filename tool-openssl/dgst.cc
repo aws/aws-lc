@@ -27,8 +27,7 @@ static const argument_t kArguments[] = {
     {"-hmac", kOptionalArgument,
      "Create a hashed MAC with the corresponding key"},
     {"-sigopt", kDuplicateArgument, "Signature parameter in n:v form"},
-    // TODO: Implement -passin
-    // {"-passin", kOptionalArgument, "Input file pass phrase source"},
+    {"-passin", kOptionalArgument, "Input file pass phrase source"},
     {"-sign", kOptionalArgument, "Sign digest using private key"},
     {"-out", kOptionalArgument, "Output to filename rather than stdout"},
     {"-verify", kOptionalArgument, "Verify a signature using public key"},
@@ -37,6 +36,7 @@ static const argument_t kArguments[] = {
     {"", kOptionalArgument, ""}};
 
 static bool LoadPrivateKey(const std::string &key_file_path,
+                           bssl::UniquePtr<std::string> &passin,
                            bssl::UniquePtr<EVP_PKEY> &pkey) {
   ScopedFILE key_file(fopen(key_file_path.c_str(), "rb"));
 
@@ -45,11 +45,13 @@ static bool LoadPrivateKey(const std::string &key_file_path,
     return false;
   }
 
-  // TODO: use -passin to read the key, if applicable
-  const char *password = nullptr;
+  if (!passin->empty() && !pass_util::ExtractPassword(passin)) {
+    fprintf(stderr, "Error: Failed to extract password\n");
+    return false;
+  }
 
   pkey.reset(PEM_read_PrivateKey(key_file.get(), nullptr, nullptr,
-                                 const_cast<char *>(password)));
+                                 const_cast<char *>(passin->c_str())));
 
   if (!pkey) {
     fprintf(stderr, "Failed to read private key from %s",
@@ -115,7 +117,7 @@ static std::string GetSigName(int nid) {
 
     default: {
       /* Try to output provider-registered sig alg name */
-      const char* name = OBJ_nid2sn(nid);
+      const char *name = OBJ_nid2sn(nid);
       return name ? std::string(name) : "UNKNOWN";
     }
   }
@@ -359,9 +361,10 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
     return false;
   }
 
-  std::string hmac, digest_name, passin, sign_key_file, out_path,
-      verify_key_file, signature_file, keyform;
+  std::string hmac, digest_name, sign_key_file, out_path, verify_key_file,
+      signature_file, keyform;
   std::vector<std::string> sigopts;
+  bssl::UniquePtr<std::string> passin(new std::string());
   bool out_bin = false, binary = false, hex = false;
 
   if (HasArgument(parsed_args, "-help")) {
@@ -372,7 +375,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   GetBoolArgument(&binary, "-binary", parsed_args);
   GetBoolArgument(&hex, "-hex", parsed_args);
   GetString(&hmac, "-hmac", "", parsed_args);
-  GetString(&passin, "-passin", "", parsed_args);
+  GetString(passin.get(), "-passin", "", parsed_args);
   GetString(&sign_key_file, "-sign", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&verify_key_file, "-verify", "", parsed_args);
@@ -471,7 +474,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
         return false;
       }
     } else if (!sign_key_file.empty()) {
-      if (!LoadPrivateKey(sign_key_file, pkey)) {
+      if (!LoadPrivateKey(sign_key_file, passin, pkey)) {
         return false;
       }
 
