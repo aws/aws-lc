@@ -392,7 +392,7 @@ static void sha256_block_data_order(uint32_t state[8], const uint8_t *data,
     return;
   }
 #endif
-#if defined(SHA256_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(SHA256_ASM_AVX)
   if (sha256_avx_capable()) {
     sha256_block_data_order_avx(state, data, num);
     return;
@@ -429,3 +429,15 @@ void SHA256_TransformBlocks(uint32_t state[8], const uint8_t *data,
 #undef Maj
 #undef ROUND_00_15
 #undef ROUND_16_63
+
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+
+#if defined(SHA256_ASM_AVX)
+void sha256_block_data_order_avx(uint32_t state[8], const uint8_t *data,
+                                 size_t num) {
+  perror("sha256_block_data_order_avx");
+  abort();
+}
+#endif // defined(SHA256_ASM_AVX)
+
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
