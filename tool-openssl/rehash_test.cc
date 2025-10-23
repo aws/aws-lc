@@ -1,10 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "internal.h"
-#include "../crypto/test/test_util.h"
-#include "test_util.h"
 #include <gtest/gtest.h>
+#include "../crypto/test/test_util.h"
+#include "internal.h"
+#include "test_util.h"
 
 #if !defined(OPENSSL_WINDOWS)
 #include <openssl/pem.h>
@@ -17,13 +17,14 @@ using ScopedCharBuffer = std::unique_ptr<char, FreeOpenSSLChar>;
 
 // Test fixture class
 class RehashTest : public ::testing::Test {
-protected:
-  BUCKET** hash_table = get_table();
+ protected:
+  BUCKET **hash_table = get_table();
 
-  void makePathInDir(ScopedCharBuffer &full_path, const char *dir, const char *filename) {
+  void makePathInDir(ScopedCharBuffer &full_path, const char *dir,
+                     const char *filename) {
     size_t buffer_len = strlen(dir) + strlen(filename) + 2;
-    char *buffer = (char *)OPENSSL_zalloc(sizeof(char)*buffer_len);
-    if(buffer == nullptr) {
+    char *buffer = (char *)OPENSSL_zalloc(sizeof(char) * buffer_len);
+    if (buffer == nullptr) {
       abort();
     }
     full_path.reset(buffer);
@@ -38,13 +39,14 @@ protected:
     makePathInDir(crl2_path, test_dir, "crl2.pem");
 
     ScopedFILE in_file(fopen(cert1_path.get(), "wb"));
-    bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
+    bssl::UniquePtr<X509> x509;
+    CreateAndSignX509Certificate(x509, nullptr);
     ASSERT_TRUE(x509);
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
 
     ScopedFILE in_file2(fopen(cert2_path.get(), "wb"));
-    x509.reset(CreateAndSignX509Certificate());
+    CreateAndSignX509Certificate(x509, nullptr);
     ASSERT_TRUE(x509);
     ASSERT_TRUE(in_file2);
     ASSERT_TRUE(PEM_write_X509(in_file2.get(), x509.get()));
@@ -71,15 +73,15 @@ protected:
   }
 
   // Helper function to create test entries
-  void CreateTestEntry(Type type, uint32_t hash, const char* filename,
-    uint8_t* digest) {
+  void CreateTestEntry(Type type, uint32_t hash, const char *filename,
+                       uint8_t *digest) {
     add_entry(type, hash, filename, digest);
   }
 
   // Helper to count entries in a bucket
-  size_t CountEntriesInBucket(BUCKET* bucket) {
+  size_t CountEntriesInBucket(BUCKET *bucket) {
     size_t count = 0;
-    HASH_ENTRY* entry = bucket ? bucket->first_entry : nullptr;
+    HASH_ENTRY *entry = bucket ? bucket->first_entry : nullptr;
     while (entry) {
       count++;
       entry = entry->next;
@@ -119,7 +121,7 @@ TEST_F(RehashTest, BucketCollision) {
   CreateTestEntry(TYPE_CRL, hash2, "crl.pem", digest2);
   CreateTestEntry(TYPE_CERT, hash3, "cert2.pem", digest3);
 
-  BUCKET* bucket = hash_table[idx1];
+  BUCKET *bucket = hash_table[idx1];
   ASSERT_NE(bucket, nullptr);
 
   // First bucket should be the most recently added
@@ -164,15 +166,15 @@ TEST_F(RehashTest, EntryCollision) {
   CreateTestEntry(TYPE_CERT, 0x12345678, "cert4.pem", digest1);
 
   uint32_t expected_idx = (TYPE_CERT + 0x12345678) % 257;
-  BUCKET* bucket = hash_table[expected_idx];
+  BUCKET *bucket = hash_table[expected_idx];
 
   ASSERT_NE(bucket, nullptr);
   EXPECT_EQ(bucket->num_entries, 3u);
   EXPECT_EQ(CountEntriesInBucket(bucket), 3u);
 
   // Verify entries are in correct order
-  HASH_ENTRY* entry = bucket->first_entry;
-  HASH_ENTRY* last = bucket->last_entry;
+  HASH_ENTRY *entry = bucket->first_entry;
+  HASH_ENTRY *last = bucket->last_entry;
   EXPECT_STREQ(entry->filename, "cert1.pem");
   entry = entry->next;
   EXPECT_STREQ(entry->filename, "cert2.pem");
@@ -219,19 +221,20 @@ TEST_F(RehashTest, ValidDirectory) {
 
   // Get hashes for certs and CRLs
   ScopedFILE cert_file(fopen(cert1_path.get(), "rb"));
-  bssl::UniquePtr<X509> cert(PEM_read_X509(
-    cert_file.get(), nullptr, nullptr, nullptr));
+  bssl::UniquePtr<X509> cert(
+      PEM_read_X509(cert_file.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(cert);
   uint32_t cert_hash = X509_subject_name_hash(cert.get());
 
   ScopedFILE crl_file(fopen(crl1_path.get(), "rb"));
-  bssl::UniquePtr<X509_CRL> crl(PEM_read_X509_CRL(
-    crl_file.get(), nullptr, nullptr, nullptr));
+  bssl::UniquePtr<X509_CRL> crl(
+      PEM_read_X509_CRL(crl_file.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(crl);
   uint32_t crl_hash = X509_NAME_hash(X509_CRL_get_issuer(crl.get()));
 
   // Check that symlinks exist with correct format and targets
-  size_t link_path_len = strlen(test_dir) + 13; // 13 = slash + hex + decimal + char + int + nul
+  size_t link_path_len =
+      strlen(test_dir) + 13;  // 13 = slash + hex + decimal + char + int + nul
   ScopedCharBuffer link_path(
       (char *)OPENSSL_zalloc(sizeof(char) * link_path_len));
   char link_target[PATH_MAX];
@@ -246,7 +249,8 @@ TEST_F(RehashTest, ValidDirectory) {
     ASSERT_EQ(0, lstat(link_path.get(), &st));
     ASSERT_TRUE(S_ISLNK(st.st_mode));
 
-    ssize_t len = readlink(link_path.get(), link_target, sizeof(link_target) - 1);
+    ssize_t len =
+        readlink(link_path.get(), link_target, sizeof(link_target) - 1);
     ASSERT_GT(len, 0);
     link_target[len] = '\0';
     ASSERT_TRUE(strstr(link_target, "cert") != nullptr);
@@ -260,10 +264,11 @@ TEST_F(RehashTest, ValidDirectory) {
     ASSERT_EQ(0, lstat(link_path.get(), &st));
     ASSERT_TRUE(S_ISLNK(st.st_mode));
 
-    ssize_t len = readlink(link_path.get(), link_target, sizeof(link_target) - 1);
+    ssize_t len =
+        readlink(link_path.get(), link_target, sizeof(link_target) - 1);
     ASSERT_GT(len, 0);
     link_target[len] = '\0';
-    ASSERT_TRUE(strstr(link_target, "crl") != nullptr);\
+    ASSERT_TRUE(strstr(link_target, "crl") != nullptr);
     unlink(link_path.get());
   }
 }
@@ -284,13 +289,13 @@ TEST(TmpDir, CreateTmpDir) {
   // Test we can create a file in the directory
   char testfile[PATH_MAX];
   snprintf(testfile, PATH_MAX, "%s\\test.txt", tempdir);
-  FILE* f = fopen(testfile, "w");
+  FILE *f = fopen(testfile, "w");
   ASSERT_TRUE(f != nullptr);
   fprintf(f, "test");
   fclose(f);
 
   // Cleanup
-  DeleteFileA(testfile);  // Delete test file
+  DeleteFileA(testfile);                   // Delete test file
   EXPECT_TRUE(RemoveDirectoryA(tempdir));  // Delete directory
 }
 

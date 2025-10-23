@@ -7,6 +7,11 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+env:
+  AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+permissions:
+  contents: read
+
 jobs:
   mingw:
     if: github.repository_owner == 'aws'
@@ -226,7 +231,7 @@ jobs:
           echo "GOPATH=${SYSROOT}" >> $GITHUB_ENV
           echo "GOROOT=${SYSROOT}/lib/go" >> $GITHUB_ENV
           echo "CMAKE_GENERATOR=${{ matrix.generator }}" >> $GITHUB_ENV
-          cygpath -w ${SYSROOT}/bin >> $GITHUB_PATH
+          cygpath -m ${SYSROOT}/bin >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup CMake
@@ -242,10 +247,5 @@ jobs:
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             CMAKE_BUILD_TYPE=Release \
       - name: Run tests
-        if: matrix.generator != 'MSYS Makefiles'
-        shell: 'bash'
-        run: cmake --build ./build --target run_tests
-      - name: Run tests
-        if: matrix.generator == 'MSYS Makefiles'
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests

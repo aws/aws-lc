@@ -1,3 +1,18 @@
+diff --git a/CMakeLists-implied-options.txt b/CMakeLists-implied-options.txt
+index f9381454..b0e39341 100644
+--- a/CMakeLists-implied-options.txt
++++ b/CMakeLists-implied-options.txt
+@@ -340,10 +340,6 @@ if (NOT LWS_WITHOUT_EXTENSIONS OR LWS_WITH_ZIP_FOPS)
+ 	set(LWS_WITH_ZLIB 1)
+ endif()
+
+-if (LWS_WITH_SECURE_STREAMS)
+-	set(LWS_WITH_SECURE_STREAMS_SYS_AUTH_API_AMAZON_COM 1)
+-endif()
+-
+ if (NOT (LWS_WITH_STATIC OR LWS_WITH_SHARED))
+ 	message(FATAL_ERROR "Makes no sense to compile with neither static nor shared libraries.")
+ endif()
 diff --git a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt
 index 3f9b3ba8..3f762b0b 100644
 --- a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/CMakeLists.txt
@@ -18,7 +33,7 @@ index 3f9b3ba8..3f762b0b 100644
 
  	if (LWS_CTEST_INTERNET_AVAILABLE AND NOT WIN32)
 diff --git a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c
-index 176b3d27..6c927dcc 100644
+index 176b3d27..caef4af2 100644
 --- a/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c
 +++ b/minimal-examples-lowlevel/secure-streams/minimal-secure-streams-testsfail/minimal-secure-streams-testsfail.c
 @@ -24,6 +24,12 @@ static lws_state_notify_link_t nl;

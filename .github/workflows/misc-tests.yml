@@ -7,6 +7,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+permissions:
+  contents: read
+
 jobs:
   pre-sandbox:
     if: github.repository_owner == 'aws'
@@ -82,10 +85,13 @@ jobs:
   path-has-spaces:
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.os }}
+    env:
+      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-14 ]
+        ninja: [ 0, 1 ]
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
@@ -98,14 +104,21 @@ jobs:
         with:
           path: "path has spaces/aws-lc"
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: Setup CMake
+      - name: Setup CMake (Ninja)
+        if:  ${{ matrix.ninja == '1' }}
         uses: threeal/cmake-action@v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
           generator: Ninja
+      - name: Setup CMake
+        if:  ${{ matrix.ninja != '1' }}
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build'
       - name: Build Project
-        run: cmake --build "path has spaces/build" --target all
+        run: cmake --build "path has spaces/build" --target ssl
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
       - name: Setup CMake FIPS

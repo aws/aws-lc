@@ -327,7 +327,7 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
-    SHAKE_Squeeze(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+    SHAKE_Squeeze(buf + off, &state, SHAKE128_BLOCKSIZE);
     buflen = SHAKE128_BLOCKSIZE + off;
     ctr += ml_dsa_rej_uniform(a->coeffs + ctr, ML_DSA_N - ctr, buf, buflen);
   }
@@ -372,19 +372,19 @@ static unsigned int rej_eta(ml_dsa_params *params,
     if (params->eta == 2) {
       if(t0 < 15) {
         t0 = t0 - (205*t0 >> 10)*5;
-        a[ctr++] = 2 - t0;
+        a[ctr++] = 2 - (int32_t)t0;
       }
       if(t1 < 15 && ctr < len) {
         t1 = t1 - (205*t1 >> 10)*5;
-        a[ctr++] = 2 - t1;
+        a[ctr++] = 2 - (int32_t)t1;
       }
     }
 
     else if (params->eta == 4) {
       if(t0 < 9)
-        a[ctr++] = 4 - t0;
+        a[ctr++] = 4 - (int32_t)t0;
       if(t1 < 9 && ctr < len)
-        a[ctr++] = 4 - t1;
+        a[ctr++] = 4 - (int32_t)t1;
     }
   }
   return ctr;

@@ -103,6 +103,12 @@ if(NOT OPENSSL_NO_ASM)
   else()
     if(ARCH STREQUAL "aarch64")
       set(PERLASM_STYLE win64)
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
+        # Provide debug in the default format
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      endif()
+
       set(ASM_EXT S)
       enable_language(ASM)
     else()
@@ -612,7 +618,11 @@ function(build_libcrypto)
     message(FATAL_ERROR "NAME, MODULE_SOURCE are required arguments to build_libcrypto")
   endif()
 
-  add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE} $<TARGET_OBJECTS:jitterentropy>)
+  add_library(${arg_NAME} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${arg_MODULE_SOURCE})
+
+  if(NOT DISABLE_CPU_JITTER_ENTROPY)
+    target_sources(${arg_NAME} PRIVATE $<TARGET_OBJECTS:jitterentropy>)
+  endif()
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${arg_NAME} bcm_o_target)
