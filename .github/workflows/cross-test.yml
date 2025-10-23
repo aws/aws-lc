@@ -152,7 +152,10 @@ jobs:
       with:
         release: "10.1"
         arch: ${{ matrix.arch }}
-        envs: 'MYTOKEN MYTOKEN2'
+        nat: |
+          "8080": "80"
+          "8443": "443"
+          udp:"8081": "80"
         usesh: true
         run: |
           /usr/sbin/pkg_add cmake
