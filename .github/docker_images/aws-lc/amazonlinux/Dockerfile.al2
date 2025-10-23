@@ -1,0 +1,109 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+ENV DEPENDENCIES_DIR=/home/dependencies
+ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+
+# llvm, llvm-devel, libcxx, and libcxxabi are needed for the sanitizer tests.
+# 11.1.0 is the latest stable release as of 2021-02-16.
+# See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
+# Install Valgrind for Valgrind test target even though it is not needed for the base test target.
+RUN <<EOF
+set -ex
+yum -y update
+yum install -y \
+    ca-certificates \
+    clang \
+    cmake \
+    cmake3 \
+    gcc \
+    gcc-c++ \
+    git \
+    glibc.i686 \
+    which \
+    wget \
+    tar \
+    llvm \
+    llvm-devel \
+    libselinux-utils \
+    ninja-build \
+    perl \
+    unzip \
+    valgrind \
+    valgrind-devel \
+    xz
+# valgrind is just the application and core resources.
+# valgrind/memcheck.h is provided by the valgrind-devel package on AL2. see P63119011.
+yum clean packages
+yum clean metadata
+yum clean all
+rm -rf /tmp/*
+rm -rf /var/cache/yum
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install AWS CLI
+COPY --from=scripts setup-aws-cli.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/setup-aws-cli.sh"
+${setup_script}
+EOF
+
+# Install LLVM
+RUN <<EOF
+set -ex
+# Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
+mkdir -p ${DEPENDENCIES_DIR}
+cd ${DEPENDENCIES_DIR}
+git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1
+cd llvm-project
+rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)")
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+RUN rm -rf /tmp/*
+
+FROM tools AS al2
+
+FROM al2 AS al2_sde
+
+ARG SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-lin
+ARG SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/${SDE_VERSION_TAG}.tar.xz"
+
+RUN <<EOF
+set -ex 
+if [[ "$(uname -m)" != "x86_64" ]]; then
+    false
+fi 
+wget ${SDE_MIRROR_URL}
+tar -xf "${SDE_VERSION_TAG}.tar.xz"
+rm "${SDE_VERSION_TAG}.tar.xz"
+EOF
+
+ENV SDEROOT="/${SDE_VERSION_TAG}"
+ENV PATH="${SDEROOT}:$PATH"

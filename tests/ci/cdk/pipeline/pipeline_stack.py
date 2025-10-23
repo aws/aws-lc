@@ -17,6 +17,8 @@ from aws_cdk.pipelines import CodeBuildStep, ManualApprovalStep
 from constructs import Construct
 
 from pipeline.ci_stage import CiStage
+from pipeline.ecr_stage import EcrStage
+from pipeline.github_actions_stage import GitHubActionsStage
 from pipeline.linux_docker_image_build_stage import LinuxDockerImageBuildStage
 from pipeline.setup_stage import SetupStage
 from pipeline.windows_docker_image_build_stage import WindowsDockerImageBuildStage
@@ -292,6 +294,16 @@ class AwsLcCiPipeline(Stack):
         )
 
         pipeline.add_stage(setup_stage)
+
+        ecr_stage = EcrStage(self, f"{deploy_environment_type.value}-EcrRepositories",
+                             pipeline_environment=pipeline_environment,
+                             deploy_environment=deploy_environment)
+        pipeline.add_stage(ecr_stage)
+
+        gh_actions_stage = GitHubActionsStage(self, f"{deploy_environment_type.value}-GithubActions",
+                                              pipeline_environment=pipeline_environment,
+                                              deploy_environment=deploy_environment)
+        pipeline.add_stage(gh_actions_stage)
 
         docker_build_wave = pipeline.add_wave(
             f"{deploy_environment_type.value}-DockerImageBuild"
