@@ -32,6 +32,22 @@ else()
         # https://gcc.gnu.org/wiki/NewWconversion.
         set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} -Wconversion")
     endif()
+
+    # See t/P319995887.
+    # At the moment, CPU Jitter source code needs to disable all optimizations.
+    # This means we can't inherit FORTITY_SOURCE and we therefore undefine
+    # the flag through U_FORTIFY_SOURCE. If one were to use annobin as a plugin
+    # and, simultaneously use LTO, annobin will emit a warning if FORTIFY_SOURCE
+    # is undefined. This is fatal if all warnings are treated as errors.
+    #
+    # The correct signal to use for below is annobin. But since we know that
+    # annobin is not necessarily being enabled through -fplugin, match with LTO
+    # and disable turning warnings into errors. This is also kinda fragile; LTO
+    # could be defined through other means similar to annobin. But it's what we
+    # have to work with atm.
+    if ("lto" MATCHES "${CMAKE_CFLAGS}")
+        set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} -Wno-error")
+    endif()
 endif()
 
 if(BORINGSSL_PREFIX)
