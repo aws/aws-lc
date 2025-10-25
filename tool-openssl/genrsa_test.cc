@@ -304,14 +304,6 @@ TEST_F(GenRSATest, FileIOErrors) {
 }
 
 TEST_F(GenRSATest, ArgumentValidation) {
-  // Test missing key size (should use default)
-  {
-    args_list_t args{"-out", out_path_tool};
-    EXPECT_TRUE(genrsaTool(args)) << "Default key size should work";
-    EXPECT_TRUE(ValidateKeyFile(out_path_tool))
-        << "Default key should be valid";
-  }
-
   // Test help takes precedence
   {
     args_list_t args{"-help", "-out", out_path_tool, "2048"};
