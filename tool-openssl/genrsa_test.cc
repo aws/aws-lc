@@ -20,14 +20,13 @@ const std::vector<unsigned> kStandardKeySizes = {1024, 2048, 3072, 4096};
 struct CipherTestCase {
   const char* cipher_flag;    // "-aes128", "-des3", etc.
   const char* cipher_name;    // "AES-128-CBC", "DES3-CBC", etc.
-  bool test_openssl_compat;   // whether to test OpenSSL compatibility
 };
 
 static const CipherTestCase kCipherTestCases[] = {
-  {"-des3", "DES3-CBC", true},
-  {"-aes128", "AES-128-CBC", true},
-  {"-aes192", "AES-192-CBC", true},
-  {"-aes256", "AES-256-CBC", true},
+  {"-des3", "DES3-CBC"},
+  {"-aes128", "AES-128-CBC"},
+  {"-aes192", "AES-192-CBC"},
+  {"-aes256", "AES-256-CBC"},
 };
 
 
@@ -221,10 +220,6 @@ TEST_P(GenRSACipherParamTest, EncryptedKeyGeneration) {
 
 TEST_P(GenRSACipherParamTest, OpenSSLCompatibility) {
   const CipherTestCase& cipher_test = GetParam();
-  
-  if (!cipher_test.test_openssl_compat) {
-    GTEST_SKIP() << "OpenSSL compatibility test disabled for " << cipher_test.cipher_name;
-  }
   
   if (!HasCrossCompatibilityTools()) {
     GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
