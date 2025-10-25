@@ -17,6 +17,20 @@
 
 const std::vector<unsigned> kStandardKeySizes = {1024, 2048, 3072, 4096};
 
+struct CipherTestCase {
+  const char* cipher_flag;    // "-aes128", "-des3", etc.
+  const char* cipher_name;    // "AES-128-CBC", "DES3-CBC", etc.
+  bool test_openssl_compat;   // whether to test OpenSSL compatibility
+};
+
+static const CipherTestCase kCipherTestCases[] = {
+  {"-des3", "DES3-CBC", true},
+  {"-aes128", "AES-128-CBC", true},
+  {"-aes192", "AES-192-CBC", true},
+  {"-aes256", "AES-256-CBC", true},
+  {"-des", "DES-CBC", true},
+};
+
 
 class GenRSATestBase : public ::testing::Test {
  protected:
@@ -142,6 +156,10 @@ class GenRSAParamTest : public GenRSATestBase,
                         public ::testing::WithParamInterface<unsigned> {};
 
 
+class GenRSACipherParamTest : public GenRSATestBase,
+                              public ::testing::WithParamInterface<CipherTestCase> {};
+
+
 TEST_P(GenRSAParamTest, GeneratesKeyFile) {
   unsigned key_size = GetParam();
   
@@ -192,6 +210,40 @@ TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
 
 INSTANTIATE_TEST_SUITE_P(StandardKeySizes, GenRSAParamTest,
                          ::testing::ValuesIn(kStandardKeySizes));
+
+TEST_P(GenRSACipherParamTest, EncryptedKeyGeneration) {
+  const CipherTestCase& cipher_test = GetParam();
+  
+  args_list_t args{cipher_test.cipher_flag, "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
+  EXPECT_TRUE(genrsaTool(args)) << cipher_test.cipher_name << " encrypted key generation should work";
+  EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
+      << cipher_test.cipher_name << " encrypted key should be valid";
+}
+
+TEST_P(GenRSACipherParamTest, OpenSSLCompatibility) {
+  const CipherTestCase& cipher_test = GetParam();
+  
+  if (!cipher_test.test_openssl_compat) {
+    GTEST_SKIP() << "OpenSSL compatibility test disabled for " << cipher_test.cipher_name;
+  }
+  
+  if (!HasCrossCompatibilityTools()) {
+    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
+                    "environment variables are not set";
+    return;
+  }
+
+  args_list_t args{cipher_test.cipher_flag, "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
+  EXPECT_TRUE(genrsaTool(args)) << "AWS-LC " << cipher_test.cipher_name << " key generation failed";
+
+  std::string verify_cmd = std::string(openssl_executable_path) + 
+                         " rsa -in " + out_path_tool + 
+                         " -passin pass:testpassword -check -noout";
+  EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC " << cipher_test.cipher_name << " key failed";
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCiphers, GenRSACipherParamTest,
+                         ::testing::ValuesIn(kCipherTestCases));
 
 TEST_F(GenRSATest, DefaultKeyGeneration) {
   args_list_t args{"-out", out_path_tool};
@@ -267,76 +319,6 @@ TEST_F(GenRSATest, ArgumentValidation) {
   }
 }
 
-TEST_F(GenRSATest, EncryptedKeyGeneration) {
-  // Test DES3 encryption with direct password
-  {
-    args_list_t args{"-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "Encrypted key generation should work";
-    EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
-        << "Encrypted key should be valid";
-  }
-}
-
-TEST_F(GenRSATest, EncryptedOpenSSLCompatibility) {
-  if (!HasCrossCompatibilityTools()) {
-    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
-                    "environment variables are not set";
-    return;
-  }
-
-  // Generate encrypted key with AWS-LC and verify with OpenSSL
-  {
-    args_list_t args{"-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AWS-LC encrypted key generation failed";
-
-    // Verify OpenSSL can read the encrypted key
-    std::string verify_cmd = std::string(openssl_executable_path) + 
-                           " rsa -in " + out_path_tool + 
-                           " -passin pass:testpassword -check -noout";
-    EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC encrypted key failed";
-  }
-}
-
-TEST_F(GenRSATest, AES128EncryptedKeyGeneration) {
-  // Test AES-128-CBC encryption with direct password
-  {
-    args_list_t args{"-aes128", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AES-128 encrypted key generation should work";
-    EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
-        << "AES-128 encrypted key should be valid";
-  }
-}
-
-TEST_F(GenRSATest, AES192EncryptedKeyGeneration) {
-  // Test AES-192-CBC encryption with direct password
-  {
-    args_list_t args{"-aes192", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AES-192 encrypted key generation should work";
-    EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
-        << "AES-192 encrypted key should be valid";
-  }
-}
-
-TEST_F(GenRSATest, AES256EncryptedKeyGeneration) {
-  // Test AES-256-CBC encryption with direct password
-  {
-    args_list_t args{"-aes256", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AES-256 encrypted key generation should work";
-    EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
-        << "AES-256 encrypted key should be valid";
-  }
-}
-
-TEST_F(GenRSATest, DESEncryptedKeyGeneration) {
-  // Test DES-CBC encryption with direct password
-  {
-    args_list_t args{"-des", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "DES encrypted key generation should work";
-    EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
-        << "DES encrypted key should be valid";
-  }
-}
-
 TEST_F(GenRSATest, CipherMutualExclusionValidation) {
   // Test that multiple cipher options are rejected
   {
@@ -348,56 +330,9 @@ TEST_F(GenRSATest, CipherMutualExclusionValidation) {
     args_list_t args{"-des", "-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
     EXPECT_FALSE(genrsaTool(args)) << "Command should fail with multiple cipher options";
   }
-}
 
-TEST_F(GenRSATest, AllCiphersOpenSSLCompatibility) {
-  if (!HasCrossCompatibilityTools()) {
-    GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
-                    "environment variables are not set";
-    return;
-  }
-
-  // Test AES-128 compatibility
   {
-    args_list_t args{"-aes128", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AWS-LC AES-128 key generation failed";
-
-    std::string verify_cmd = std::string(openssl_executable_path) + 
-                           " rsa -in " + out_path_tool + 
-                           " -passin pass:testpassword -check -noout";
-    EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC AES-128 key failed";
-  }
-
-  // Test AES-192 compatibility
-  {
-    args_list_t args{"-aes192", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AWS-LC AES-192 key generation failed";
-
-    std::string verify_cmd = std::string(openssl_executable_path) + 
-                           " rsa -in " + out_path_tool + 
-                           " -passin pass:testpassword -check -noout";
-    EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC AES-192 key failed";
-  }
-
-  // Test AES-256 compatibility
-  {
-    args_list_t args{"-aes256", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AWS-LC AES-256 key generation failed";
-
-    std::string verify_cmd = std::string(openssl_executable_path) + 
-                           " rsa -in " + out_path_tool + 
-                           " -passin pass:testpassword -check -noout";
-    EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC AES-256 key failed";
-  }
-
-  // Test DES compatibility
-  {
-    args_list_t args{"-des", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_TRUE(genrsaTool(args)) << "AWS-LC DES key generation failed";
-
-    std::string verify_cmd = std::string(openssl_executable_path) + 
-                           " rsa -in " + out_path_tool + 
-                           " -passin pass:testpassword -check -noout";
-    EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC DES key failed";
+    args_list_t args{"-aes192", "-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
+    EXPECT_FALSE(genrsaTool(args)) << "Command should fail with multiple cipher options";
   }
 }
