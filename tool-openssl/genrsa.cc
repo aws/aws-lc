@@ -21,7 +21,6 @@ static const argument_t kArguments[] = {
     {"-aes128", kBooleanArgument, "Encrypt the private key with AES-128-CBC"},
     {"-aes192", kBooleanArgument, "Encrypt the private key with AES-192-CBC"},
     {"-aes256", kBooleanArgument, "Encrypt the private key with AES-256-CBC"},
-    {"-des", kBooleanArgument, "Encrypt the private key with DES-CBC"},
     {"-des3", kBooleanArgument, "Encrypt the private key with DES3"},
     {"-passout", kOptionalArgument, "Output file pass phrase source"},
     {"", kOptionalArgument, ""}};
@@ -111,7 +110,7 @@ bool genrsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args{};
   std::string out_path;
-  bool help = false, aes128 = false, aes192 = false, aes256 = false, des = false, des3 = false;
+  bool help = false, aes128 = false, aes192 = false, aes256 = false, des3 = false;
   bssl::UniquePtr<std::string> passout_arg(new std::string());
   bssl::UniquePtr<BIO> bio;
   bssl::UniquePtr<EVP_PKEY> pkey;
@@ -136,7 +135,6 @@ bool genrsaTool(const args_list_t &args) {
   ordered_args::GetBoolArgument(&aes128, "-aes128", parsed_args);
   ordered_args::GetBoolArgument(&aes192, "-aes192", parsed_args);
   ordered_args::GetBoolArgument(&aes256, "-aes256", parsed_args);
-  ordered_args::GetBoolArgument(&des, "-des", parsed_args);
   ordered_args::GetBoolArgument(&des3, "-des3", parsed_args);
   ordered_args::GetString(passout_arg.get(), "-passout", "", parsed_args);
 
@@ -184,7 +182,7 @@ bool genrsaTool(const args_list_t &args) {
   }
 
   // Cipher selection and mutual exclusion validation
-  cipher_count = aes128 + aes192 + aes256 + des + des3;
+  cipher_count = aes128 + aes192 + aes256 + des3;
   if (cipher_count > 1) {
     fprintf(stderr, "Error: Only one encryption cipher may be specified\n");
     goto err;
@@ -196,8 +194,6 @@ bool genrsaTool(const args_list_t &args) {
     cipher = EVP_get_cipherbyname("aes-192-cbc");
   } else if (aes256) {
     cipher = EVP_get_cipherbyname("aes-256-cbc");
-  } else if (des) {
-    cipher = EVP_get_cipherbyname("des-cbc");
   } else if (des3) {
     cipher = EVP_get_cipherbyname("des-ede3-cbc");
   } else {

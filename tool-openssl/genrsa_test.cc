@@ -28,7 +28,6 @@ static const CipherTestCase kCipherTestCases[] = {
   {"-aes128", "AES-128-CBC", true},
   {"-aes192", "AES-192-CBC", true},
   {"-aes256", "AES-256-CBC", true},
-  {"-des", "DES-CBC", true},
 };
 
 
@@ -319,7 +318,7 @@ TEST_F(GenRSATest, CipherMutualExclusionValidation) {
   }
 
   {
-    args_list_t args{"-des", "-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
+    args_list_t args{"-aes128", "-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
     EXPECT_FALSE(genrsaTool(args)) << "Command should fail with multiple cipher options";
   }
 
