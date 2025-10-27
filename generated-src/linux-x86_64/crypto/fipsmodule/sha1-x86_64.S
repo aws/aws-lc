@@ -3735,6 +3735,7 @@ _CET_ENDBR
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	sha1_block_data_order_avx,.-sha1_block_data_order_avx
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	sha1_block_data_order_avx2
 .hidden sha1_block_data_order_avx2
 .type	sha1_block_data_order_avx2,@function
@@ -5430,6 +5431,7 @@ _CET_ENDBR
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	sha1_block_data_order_avx2,.-sha1_block_data_order_avx2
+#endif
 .section	.rodata
 .align	64
 K_XX_XX:
