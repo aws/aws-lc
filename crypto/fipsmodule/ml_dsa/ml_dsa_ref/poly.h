@@ -49,10 +49,22 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
                          const uint8_t seed[ML_DSA_SEEDBYTES],
                          uint16_t nonce);
 
+void ml_dsa_poly_uniform_x4(ml_dsa_poly *a0, ml_dsa_poly *a1, ml_dsa_poly *a2,
+                            ml_dsa_poly *a3, const uint8_t seed[ML_DSA_SEEDBYTES],
+                            uint16_t nonce);
+
 void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
                              ml_dsa_poly *a,
                              const uint8_t seed[ML_DSA_CRHBYTES],
                              uint16_t nonce);
+
+void ml_dsa_poly_uniform_eta_x4(ml_dsa_params *params,
+                      ml_dsa_poly *a1,
+                      ml_dsa_poly *a2,
+                      ml_dsa_poly *a3,
+                      ml_dsa_poly *a4,
+                      const uint8_t seed[ML_DSA_CRHBYTES],
+                      uint16_t nonce);
 
 void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
                                ml_dsa_poly *a,

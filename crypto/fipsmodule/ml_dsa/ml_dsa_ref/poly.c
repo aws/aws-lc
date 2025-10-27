@@ -336,6 +336,71 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
   OPENSSL_cleanse(&state, sizeof(state));
 }
 
+void ml_dsa_poly_uniform_x4(ml_dsa_poly *a0, ml_dsa_poly *a1, ml_dsa_poly *a2,
+                            ml_dsa_poly *a3, const uint8_t seed[ML_DSA_SEEDBYTES],
+                            uint16_t nonce)
+{
+  unsigned int i, ctr0, ctr1, ctr2, ctr3, off;
+  unsigned int buflen = POLY_UNIFORM_NBLOCKS*SHAKE128_BLOCKSIZE;
+  uint8_t buf[4][POLY_UNIFORM_NBLOCKS*SHAKE128_BLOCKSIZE + 2] = {{0}};
+
+  uint8_t nonces[4][2] = {{0}};
+
+  nonces[0][0] = nonce & 0xff;
+  nonces[0][1] = nonce >> 8;
+  nonce += 1;
+
+  nonces[1][0] = nonce & 0xff;
+  nonces[1][1] = nonce >> 8;
+  nonce += 1;
+
+  nonces[2][0] = nonce & 0xff;
+  nonces[2][1] = nonce >> 8;
+  nonce += 1;
+
+  nonces[3][0] = nonce & 0xff;
+  nonces[3][1] = nonce >> 8;
+  nonce += 1;
+
+  KECCAK1600_CTX_x4 state;
+  SHAKE128_Init_x4(&state);
+  SHAKE128_Absorb_x4(&state, seed, seed, seed, seed, ML_DSA_SEEDBYTES);
+  SHAKE128_Absorb_x4(&state, nonces[0], nonces[1], nonces[2], nonces[3], 2);
+  SHAKE128_Finalize_x4(&state);
+  SHAKE128_Squeezeblocks_x4(buf[0], buf[1], buf[2], buf[3], &state,
+                            POLY_UNIFORM_NBLOCKS);
+
+  ctr0 = ml_dsa_rej_uniform(a0->coeffs, ML_DSA_N, buf[0], buflen);
+  ctr1 = ml_dsa_rej_uniform(a1->coeffs, ML_DSA_N, buf[1], buflen);
+  ctr2 = ml_dsa_rej_uniform(a2->coeffs, ML_DSA_N, buf[2], buflen);
+  ctr3 = ml_dsa_rej_uniform(a3->coeffs, ML_DSA_N, buf[3], buflen);
+
+  while(ctr0 < ML_DSA_N ||
+        ctr1 < ML_DSA_N ||
+        ctr2 < ML_DSA_N ||
+        ctr3 < ML_DSA_N) {
+    off = buflen % 3;
+    for(i = 0; i < off; ++i) {
+      buf[0][i] = buf[0][buflen - off + i];
+      buf[1][i] = buf[1][buflen - off + i];
+      buf[2][i] = buf[2][buflen - off + i];
+      buf[3][i] = buf[3][buflen - off + i];
+    }
+
+    SHAKE128_Squeezeblocks_x4(buf[0] + off, buf[1] + off, buf[2] + off,
+                              buf[3] + off, &state, 1);
+    buflen = SHAKE128_BLOCKSIZE + off;
+    ctr0 += ml_dsa_rej_uniform(a0->coeffs + ctr0, ML_DSA_N - ctr0, buf[0], buflen);
+    ctr1 += ml_dsa_rej_uniform(a1->coeffs + ctr1, ML_DSA_N - ctr1, buf[1], buflen);
+    ctr2 += ml_dsa_rej_uniform(a2->coeffs + ctr2, ML_DSA_N - ctr2, buf[2], buflen);
+    ctr3 += ml_dsa_rej_uniform(a3->coeffs + ctr3, ML_DSA_N - ctr3, buf[3], buflen);
+  }
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(nonces, sizeof(nonces));
+  OPENSSL_cleanse(&state, sizeof(state));
+}
+
 /*************************************************
 * Name:        rej_eta
 *
@@ -431,6 +496,83 @@ void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(&state, sizeof(state));
+}
+
+/*************************************************
+* Name:        ml_dsa_poly_uniform_eta_x4
+*
+* Description: FIPS 204: Algorithm 31 RejBoundedPoly.
+*              Sample polynomial with uniformly random coefficients
+*              in [-ETA,ETA] by performing rejection sampling on the
+*              output stream from SHAKE256(seed|nonce), 4 at a time,
+*              using the vectorized SHAKE implementation.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - poly *a: pointer to output polynomial
+*              - const uint8_t seed[]: byte array with seed of length CRHBYTES
+*              - uint16_t nonce: 2-byte nonce
+**************************************************/
+void ml_dsa_poly_uniform_eta_x4(ml_dsa_params *params,
+                      ml_dsa_poly *a1,
+                      ml_dsa_poly *a2,
+                      ml_dsa_poly *a3,
+                      ml_dsa_poly *a4,
+                      const uint8_t seed[ML_DSA_CRHBYTES],
+                      uint16_t nonce)
+{
+  unsigned int ctr1;
+  unsigned int ctr2;
+  unsigned int ctr3;
+  unsigned int ctr4;
+
+  unsigned int buflen = ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE;
+
+  alignas(16) uint8_t bufs[4][ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE];
+  uint8_t nonces[4][2];
+  KECCAK1600_CTX_x4 state;
+
+  SHAKE256_Init_x4(&state);
+  SHAKE256_Absorb_x4(&state, seed, seed, seed, seed, ML_DSA_CRHBYTES);
+  nonces[0][0] = nonce & 0xff;
+  nonces[0][1] = nonce >> 8;
+  nonce += 1;
+
+  nonces[1][0] = nonce & 0xff;
+  nonces[1][1] = nonce >> 8;
+  nonce += 1;
+
+  nonces[2][0] = nonce & 0xff;
+  nonces[2][1] = nonce >> 8;
+  nonce += 1;
+
+  nonces[3][0] = nonce & 0xff;
+  nonces[3][1] = nonce >> 8;
+
+  SHAKE256_Absorb_x4(&state, nonces[0], nonces[1], nonces[2], nonces[3], 2);
+  SHAKE256_Finalize_x4(&state);
+  SHAKE256_Squeezeblocks_x4(bufs[0], bufs[1], bufs[2], bufs[3], &state,
+                            ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX);
+
+  ctr1 = rej_eta(params, a1->coeffs, ML_DSA_N, bufs[0], buflen);
+  ctr2 = rej_eta(params, a2->coeffs, ML_DSA_N, bufs[1], buflen);
+  ctr3 = rej_eta(params, a3->coeffs, ML_DSA_N, bufs[2], buflen);
+  ctr4 = rej_eta(params, a4->coeffs, ML_DSA_N, bufs[3], buflen);
+
+  while(ctr1 < ML_DSA_N ||
+        ctr2 < ML_DSA_N ||
+        ctr3 < ML_DSA_N ||
+        ctr4 < ML_DSA_N) {
+    SHAKE256_Squeezeblocks_x4(bufs[0], bufs[1], bufs[2], bufs[3], &state, 1);
+    ctr1 += rej_eta(params, a1->coeffs + ctr1, ML_DSA_N - ctr1, bufs[0], SHAKE256_BLOCKSIZE);
+    ctr2 += rej_eta(params, a2->coeffs + ctr2, ML_DSA_N - ctr2, bufs[1], SHAKE256_BLOCKSIZE);
+    ctr3 += rej_eta(params, a3->coeffs + ctr3, ML_DSA_N - ctr3, bufs[2], SHAKE256_BLOCKSIZE);
+    ctr4 += rej_eta(params, a4->coeffs + ctr4, ML_DSA_N - ctr4, bufs[3], SHAKE256_BLOCKSIZE);
+  }
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(bufs, sizeof(bufs));
+  OPENSSL_cleanse(nonces, sizeof(nonces));
   OPENSSL_cleanse(&state, sizeof(state));
 }
 

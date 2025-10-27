@@ -78,14 +78,14 @@ extern "C" {
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
 // Define state flag values for Keccak-based functions
-#define KECCAK1600_STATE_ABSORB     0 
+#define KECCAK1600_STATE_ABSORB     0
 // KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
-// It remains set while |SHAKE_Squeeze| is called repeatedly to output 
+// It remains set while |SHAKE_Squeeze| is called repeatedly to output
 // chunks of the XOF output.
-#define KECCAK1600_STATE_SQUEEZE    1  
-// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called 
+#define KECCAK1600_STATE_SQUEEZE    1
+// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called
 // so that |SHAKE_Squeeze| cannot be called anymore.
-#define KECCAK1600_STATE_FINAL      2 
+#define KECCAK1600_STATE_FINAL      2
 
 typedef struct keccak_ctx_st KECCAK1600_CTX;
 
@@ -114,7 +114,13 @@ OPENSSL_STATIC_ASSERT(sizeof(KECCAK1600_CTX) <= sizeof(union md_ctx_union),
 typedef struct keccak_ctx_st_x4 KECCAK1600_CTX_x4;
 
 struct keccak_ctx_st_x4 {
-  uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS];
+   uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS];
+   size_t buf_load;
+   bool finalized;
+   uint8_t buf0[SHA3_MAX_BLOCKSIZE];
+   uint8_t buf1[SHA3_MAX_BLOCKSIZE];
+   uint8_t buf2[SHA3_MAX_BLOCKSIZE];
+   uint8_t buf3[SHA3_MAX_BLOCKSIZE];
 };
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
@@ -569,11 +575,23 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
  * detailed above each SHAKE128_x4_ function signature, is satisfied.
  */
 
+ int SHAKE_Absorb_x4(KECCAK1600_CTX_x4 *ctx, const void *data0,
+                     const void *data1, const void *data2,
+                     const void *data3, size_t len, size_t r);
+
+ int SHAKE_Finalize_x4(KECCAK1600_CTX_x4* ctx, size_t r);
+
 // SHAKE128_Init_x4 is a batched API that operates on four independent
 // Keccak bitstates. It initialises all four |ctx| fields and returns
 // 1 on success and 0 on failure. When call-discipline is maintained,
 // this function never fails.
 OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
+
+OPENSSL_EXPORT int SHAKE128_Absorb_x4(KECCAK1600_CTX_x4 *ctx, const void *data0,
+                                      const void *data1, const void *data2,
+                                      const void *data3, size_t len);
+
+OPENSSL_EXPORT int SHAKE128_Finalize_x4(KECCAK1600_CTX_x4* ctx);
 
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs all four inputs |data0|, |data1|, |data2|, |data3|
@@ -597,6 +615,19 @@ OPENSSL_EXPORT int SHAKE128_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1, uint8_t
  * (a) the pointers passed to the functions are valid.
  */
 
+ OPENSSL_EXPORT int SHAKE256_Init_x4(KECCAK1600_CTX_x4 *ctx);
+
+ OPENSSL_EXPORT int SHAKE256_Absorb_x4(KECCAK1600_CTX_x4 *ctx, const void *data0,
+                                       const void *data1, const void *data2,
+                                       const void *data3, size_t len);
+
+ OPENSSL_EXPORT int SHAKE256_Finalize_x4(KECCAK1600_CTX_x4* ctx);
+
+
+ OPENSSL_EXPORT int SHAKE256_Squeezeblocks_x4(uint8_t *md0, uint8_t *md1,
+                                              uint8_t *md2, uint8_t *md3,
+                                              KECCAK1600_CTX_x4 *ctx, size_t blks);
+
 // SHAKE256_x4 is a batched API that operates on four independent
 // Keccak bitstates. It writes all four |out_len|-byte outputs from
 // |in_len|-byte inputs to |out0|, |out1|, |out2|, |out3| and returns
@@ -615,6 +646,13 @@ OPENSSL_EXPORT int SHAKE256_x4(const uint8_t *data0, const uint8_t *data1,
 // |len| bytes and returns the remaining number of bytes.
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
+
+// Keccak1600_Absorb_x4 absorbs the largest multiple of |r| out of |len| bytes
+// from four inputs and returns the remaining number of bytes.
+size_t Keccak1600_Absorb_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS],
+                            const uint8_t *inp0, const uint8_t *inp1,
+                            const uint8_t *inp2, const uint8_t *inp3,
+                            size_t len, size_t r);
 
 // Keccak1600_Absorb_once_x4 absorbs exactly |len| bytes from four inputs into four
 // Keccak states, applying padding character |p|. Unlike Keccak1600_Absorb, this

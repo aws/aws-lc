@@ -18,11 +18,18 @@
 void ml_dsa_polyvec_matrix_expand(ml_dsa_params *params,
                                   polyvecl *mat,
                                   const uint8_t rho[ML_DSA_SEEDBYTES]) {
-  unsigned int i, j;
+  unsigned int i;
   for(i = 0; i < params->k; ++i) {
-    for(j = 0; j < params->l; ++j) {
-      ml_dsa_poly_uniform(&mat[i].vec[j], rho, (i << 8) + j);
-    }
+      uint16_t base_nonce = i << 8;
+      ml_dsa_poly_uniform_x4(&mat[i].vec[0], &mat[i].vec[1],
+                             &mat[i].vec[2], &mat[i].vec[3], rho, base_nonce);
+      if (params->l >= 5) {
+          ml_dsa_poly_uniform(&mat[i].vec[4], rho, base_nonce + 4);
+          ml_dsa_poly_uniform(&mat[i].vec[5], rho, base_nonce + 5);
+      }
+      if (params->l == 7) {
+          ml_dsa_poly_uniform(&mat[i].vec[6], rho, base_nonce + 6);
+      }
   }
 }
 
@@ -67,9 +74,16 @@ void ml_dsa_polyvecl_uniform_eta(ml_dsa_params *params,
                                  polyvecl *v,
                                  const uint8_t seed[ML_DSA_CRHBYTES],
                                  uint16_t nonce) {
-  unsigned int i;
-  for(i = 0; i < params->l; ++i)
-    ml_dsa_poly_uniform_eta(params, &v->vec[i], seed, nonce++);
+  ml_dsa_poly_uniform_eta_x4(params, &v->vec[0], &v->vec[1],
+                             &v->vec[2], &v->vec[3], seed, nonce);
+  nonce += 4;
+  if (params->l >= 5) {
+    ml_dsa_poly_uniform_eta(params, &v->vec[4], seed, nonce++);
+    ml_dsa_poly_uniform_eta(params, &v->vec[5], seed, nonce++);
+  }
+  if (params->l == 7) {
+      ml_dsa_poly_uniform_eta(params, &v->vec[6], seed, nonce++);
+  }
 }
 
 /*************************************************
