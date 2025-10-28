@@ -13,7 +13,10 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
   }
 
   // Set version to X509v3
-  X509_set_version(x509.get(), X509_VERSION_3);
+  if (!X509_set_version(x509.get(), X509_VERSION_3)) {
+    fprintf(stderr, "Error setting certificate version\n");
+    return;
+  }
 
   // Set validity period for 30 days
   if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
