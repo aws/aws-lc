@@ -364,7 +364,7 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // included only to make it easier to compile code with BoringSSL.
 #define EVP_CIPH_OCB_MODE 0x9
 #define EVP_CIPH_WRAP_MODE 0xa
-#define EVP_CIPH_XAES_GCM_MODE 0x8000
+#define EVP_CIPH_XGCM_MODE 0x7
 
 // Cipher flags (for |EVP_CIPHER_flags|).
 
