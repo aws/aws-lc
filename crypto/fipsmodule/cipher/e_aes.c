@@ -1814,9 +1814,6 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
-    if(nonce == NULL) {
-        return aes_gcm_init_key(ctx, NULL, NULL, enc);
-    }
 
     EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
 
@@ -1882,8 +1879,13 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     if(key != NULL && !xaes_256_gcm_ctx_init(ctx, key)) {
         return 0;
     }
+    
     // Derive a subkey
-    return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
+    if(iv != NULL) {
+        return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
+    }
+
+    return 1;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
