@@ -1834,12 +1834,12 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     // AES-GCM uses 12-byte nonce
     gctx->ivlen = AES_GCM_NONCE_LENGTH;
-
+    
     // For nonce size <= 24 bytes
     // Reference: https://eprint.iacr.org/2025/758.pdf#page=24
-    aes_gcm_init_key(ctx, derived_key, nonce + ivlen - 12, enc);
+    aes_gcm_init_key(ctx, derived_key, nonce + ivlen - AES_GCM_NONCE_LENGTH, enc);
 
-    // Re-assign the 24-byte nonce size of XAES-256-GCM
+    // Re-assign the original nonce size of XAES-256-GCM (20 <= |N| <= 24)
     gctx->ivlen = ivlen;
 
     return 1;
