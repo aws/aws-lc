@@ -1769,9 +1769,9 @@ struct xaes_256_gcm_ctx {
 };
 
 /* 
-Left-shift a 128-bit register: https://words.filippo.io/xaes-256-gcm/ 
-If MSB₁(L) = 0, then K1 = L << 1;
-Else K1 = (L << 1) ⊕ (0x00, ..., 0x00, 0x87)
+Left-shift a 128-bit register: https://words.filippo.io/xaes-256-gcm/ (line 2)
+If MSB₁(L) = 0: K1 = L << 1;
+Else: K1 = (L << 1) ⊕ (0x00, ..., 0x00, 0x87)
 */
 #define BINARY_FIELD_MUL_X_128(out, in)             \
 do {                                                \
@@ -1834,7 +1834,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     // AES-GCM uses 12-byte nonce
     gctx->ivlen = AES_GCM_NONCE_LENGTH;
-    
+
     // For nonce size <= 24 bytes
     // Reference: https://eprint.iacr.org/2025/758.pdf#page=24
     aes_gcm_init_key(ctx, derived_key, nonce + ivlen - 12, enc);
