@@ -6,11 +6,11 @@
 
 #include "openssl/base.h"
 struct ui_st {
-  // EMPTY
+  char _unused;
 };
 
 struct ui_method_st {
-  // EMPTY
+  char _unused;
 };
 
 typedef struct ui_st UI;
