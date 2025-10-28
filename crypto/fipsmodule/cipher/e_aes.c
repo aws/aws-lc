@@ -354,9 +354,13 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-  assert(ctx->cipher->ctx_size ==
-         sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
-    
+  if(ctx->flags & EVP_CIPH_XAES_GCM_MODE) {
+    // placeholder XAES-256-GCM 
+  }
+  else {
+    assert(ctx->cipher->ctx_size ==
+            sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
+  }
   char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
   assert((uintptr_t)ptr % 4 == 0);
@@ -1892,7 +1896,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
                 + sizeof(struct xaes_256_gcm_ctx); 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
-                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
+                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_XAES_GCM_MODE;
     out->init = xaes_256_gcm_init;
     out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
