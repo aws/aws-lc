@@ -17,7 +17,7 @@ typedef struct ui_st UI;
 typedef struct ui_method_st UI_METHOD;
 
 /// UI_new does nothing, always returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED OPENSSL_EXPORT UI *UI_new(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED UI *UI_new(void);
 
 /// UI_free invokes OPENSSL_free on its parameter.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void UI_free(UI *ui);
