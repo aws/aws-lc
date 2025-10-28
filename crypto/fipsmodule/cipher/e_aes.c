@@ -1817,7 +1817,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
 
-    // Nonce size: 20 <= |N| <= 24
+    // Nonce size: 20 bytes <= |N| <= 24 bytes
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
     gctx->ivlen > XAES_256_GCM_MAX_NONCE_SIZE) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
@@ -1879,7 +1879,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     if(key != NULL && !xaes_256_gcm_ctx_init(ctx, key)) {
         return 0;
     }
-    
+
     // Derive a subkey
     if(iv != NULL) {
         return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
