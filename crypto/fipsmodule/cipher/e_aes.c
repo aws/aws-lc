@@ -1767,7 +1767,12 @@ struct xaes_256_gcm_ctx {
     uint8_t xaes_key[XAES_256_GCM_KEY_LENGTH];
 #endif 
 };
-
+ 
+/* 
+Left-shift a 128-bit register: https://words.filippo.io/xaes-256-gcm/ 
+If MSB₁(L) = 0, then K1 = L << 1;
+Else K1 = (L << 1) ⊕ (0x00, ..., 0x00, 0x87)
+*/
 #define BINARY_FIELD_MUL_X_128(out, in)             \
 do {                                                \
     unsigned i;                                     \
@@ -1779,7 +1784,7 @@ do {                                                \
 } while(0);
 
 static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx, 
-                                const uint8_t* nonce, uint8_t *derived_key) {
+                                const uint8_t* nonce, uint8_t *derived_key) { 
     uint8_t M1[AES_BLOCK_SIZE] = {0};
     uint8_t M2[AES_BLOCK_SIZE] = {0};
 
@@ -1805,13 +1810,13 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
-
     if(nonce == NULL) {
         return aes_gcm_init_key(ctx, NULL, NULL, enc);
     }
 
     EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
     
+    // Valid nonce size: 20 <= |N| <= 24
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
     gctx->ivlen > XAES_256_GCM_MAX_NONCE_SIZE) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
@@ -1827,10 +1832,14 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     
     int ivlen = gctx->ivlen;
     
+    // AES-GCM uses 96-bit nonce
     gctx->ivlen = AES_GCM_NONCE_LENGTH;
     
+    // For nonce size <= 24 bytes
+    // Reference: https://eprint.iacr.org/2025/758.pdf#page=24
     aes_gcm_init_key(ctx, derived_key, nonce + ivlen - 12, enc);
-
+    
+    // Re-assign the 192-bit nonce size of XAES-256-GCM
     gctx->ivlen = ivlen;
 
     return 1;
@@ -1838,6 +1847,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
 static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx, 
                             const uint8_t *key, const unsigned key_len) {
+    // Valid key length: 32 bytes
     if (key_len != XAES_256_GCM_KEY_LENGTH) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
         return 0;
@@ -1881,11 +1891,14 @@ static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, con
 // ------------------------------------------------------------------------------
 
 static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                            const uint8_t *iv, int enc) {
+                            const uint8_t *iv, int enc) { 
+    // Initialize the main key 
     if(key != NULL && !xaes_256_gcm_init_common(ctx, key, 
     sizeof(struct xaes_256_gcm_ctx))) {
         return 0;
     }
+
+    // Derive a subkey
     return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
 }
 
