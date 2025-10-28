@@ -354,13 +354,9 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-  if(ctx->flags & EVP_CIPH_XAES_GCM_MODE) {
-    // placeholder XAES-256-GCM 
-  }
-  else {
     assert(ctx->cipher->ctx_size ==
             sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
-  }
+    
   char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
   assert((uintptr_t)ptr % 4 == 0);
@@ -1820,7 +1816,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
 
-    // Valid nonce size: 20 <= |N| <= 24
+    // Nonce size: 20 <= |N| <= 24
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
     gctx->ivlen > XAES_256_GCM_MAX_NONCE_SIZE) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
@@ -1849,31 +1845,27 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     return 1;
 }
 
-static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx, 
-                            const uint8_t *key, const unsigned key_len) {
-    // Valid key length: 32 bytes
-    if (key_len != XAES_256_GCM_KEY_LENGTH) {
+static int xaes_256_gcm_ctx_init(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
+    // Key length: 32 bytes
+    if (ctx->key_len != XAES_256_GCM_KEY_LENGTH) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
         return 0;
     }
+
+    struct xaes_256_gcm_ctx *xaes_ctx =
+            (struct xaes_256_gcm_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+
 #ifdef USE_OPTIMIZED_CMAC 
     static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
     uint8_t L[AES_BLOCK_SIZE];
-    AES_set_encrypt_key(key, (key_len << 3), &xaes_ctx->xaes_key);
+    AES_set_encrypt_key(key, (ctx->key_len << 3), &xaes_ctx->xaes_key);
     AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
     BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
 #else 
     OPENSSL_memcpy(xaes_ctx->xaes_key, key, key_len);
 #endif 
+
     return 1;
-}
-
-static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, const unsigned extended_ctx_size) {
-
-    struct xaes_256_gcm_ctx *xaes_ctx =
-            (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-
-    return xaes_256_gcm_ctx_init(xaes_ctx, key, ctx->key_len);
 }
 
 // ------------------------------------------------------------------------------
@@ -1883,8 +1875,7 @@ static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, con
 static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) { 
     // Initialize the main key 
-    if(key != NULL && !xaes_256_gcm_init_common(ctx, key, 
-    sizeof(struct xaes_256_gcm_ctx))) {
+    if(key != NULL && !xaes_256_gcm_ctx_init(ctx, key)) {
         return 0;
     }
     // Derive a subkey
