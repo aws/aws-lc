@@ -354,9 +354,13 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-  assert(ctx->cipher->ctx_size ==
-         sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
-
+  if(EVP_CIPH_XAES_GCM_MODE) {
+    // placeholder XAES-256-GCM 
+  }
+  else {
+    assert(ctx->cipher->ctx_size ==
+            sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
+  }
   char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
   assert((uintptr_t)ptr % 4 == 0);
@@ -1835,7 +1839,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     // AES-GCM uses 12-byte nonce
     gctx->ivlen = AES_GCM_NONCE_LENGTH;
     
-    // For nonce size <= 24 bytes
+    // For nonce size < 24 bytes
     // Reference: https://eprint.iacr.org/2025/758.pdf#page=24
     aes_gcm_init_key(ctx, derived_key, nonce + ivlen - AES_GCM_NONCE_LENGTH, enc);
 
@@ -1865,20 +1869,6 @@ static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx,
 }
 
 static int xaes_256_gcm_init_common(EVP_CIPHER_CTX *ctx, const uint8_t *key, const unsigned extended_ctx_size) {
-    void *temp = ctx->cipher_data;
-    EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
-    ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + extended_ctx_size);
-
-    char *ptr = ctx->cipher_data;
-#if defined(OPENSSL_32_BIT)
-    assert((uintptr_t)ptr % 4 == 0);
-    ptr += (uintptr_t)ptr & 4;
-#endif
-    assert((uintptr_t)ptr % 8 == 0);
-    ptr += (uintptr_t)ptr & 8;
-
-    OPENSSL_memcpy(ptr, gctx, sizeof(EVP_AES_GCM_CTX));
-    OPENSSL_free(temp);
 
     struct xaes_256_gcm_ctx *xaes_ctx =
             (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
@@ -1897,30 +1887,8 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     sizeof(struct xaes_256_gcm_ctx))) {
         return 0;
     }
-
     // Derive a subkey
     return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
-}
-
-static int xaes_256_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
-    switch(type) {
-        case EVP_CTRL_COPY: 
-        {
-            EVP_CIPHER_CTX *out_ctx = (EVP_CIPHER_CTX*)ptr;
-            char *in_ptr = ctx->cipher_data;
-            if(out_ctx->cipher_data) {
-                OPENSSL_free(out_ctx->cipher_data);
-            }
-            out_ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + 
-                                            sizeof(struct xaes_256_gcm_ctx));
-            char *out_ptr = out_ctx->cipher_data;
-            OPENSSL_memcpy(out_ptr, in_ptr, ctx->cipher->ctx_size + 
-                        sizeof(struct xaes_256_gcm_ctx));
-            return aes_gcm_ctrl(ctx, type, arg, ptr);
-        }
-        default: 
-            return aes_gcm_ctrl(ctx, type, arg, ptr);
-    }
 }
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
@@ -1929,12 +1897,13 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->block_size = 1;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING; 
+    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING 
+                + sizeof(struct xaes_256_gcm_ctx); 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
-                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
+                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_XAES_GCM_MODE;
     out->init = xaes_256_gcm_init;
     out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
-    out->ctrl = xaes_256_gcm_ctrl;
+    out->ctrl = aes_gcm_ctrl;
 }
