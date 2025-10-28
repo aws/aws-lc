@@ -1461,8 +1461,7 @@ TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
-    // Source of test vectors: 
-    // https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
+    // Test invalid nonce sizes and key length
     {
         std::vector<uint8_t> key(32), nonce(24);
 
@@ -1485,7 +1484,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), nonce.data(), -1));
     }
 
-    // Source of many-loop tests: 
+    // Source of multiple-loop tests: 
     // https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM/go/XAES-256-GCM_test.go 
     const auto test = [](int n, const char *output) {
         bssl::ScopedEVP_MD_CTX s;        

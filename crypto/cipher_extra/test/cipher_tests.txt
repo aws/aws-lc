@@ -506,6 +506,8 @@ AAD = feedfacedeadbeeffeedfacedeadbeefabaddad2
 Tag = a44a8266ee1c8eb0c8b5d4cf5ae9f19b
 Operation = InvalidDecrypt
 
+# Source of test vectors: 
+# https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md 
 Cipher = XAES-256-GCM
 Key = 0101010101010101010101010101010101010101010101010101010101010101
 IV = 424242424242424242424242424242424242424242424242
