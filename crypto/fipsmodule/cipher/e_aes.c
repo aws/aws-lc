@@ -1747,9 +1747,9 @@ int EVP_has_aes_hardware(void) {
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
-// ------------------------------------------------------------------------------
-// ----------- XAES-256-GCM Auxiliary Data Structures and Subroutines -----------
-// ------------------------------------------------------------------------------
+/* ---------------------------- XAES-256-GCM ----------------------------
+Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md 
+-----------------------------------------------------------------------*/
 
 #define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_LENGTH      (AES_BLOCK_SIZE * 2)
@@ -1805,6 +1805,7 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
+
     if(nonce == NULL) {
         return aes_gcm_init_key(ctx, NULL, NULL, enc);
     }
@@ -1888,6 +1889,27 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
 }
 
+static int xaes_256_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
+    switch(type) {
+        case EVP_CTRL_COPY: 
+        {
+            EVP_CIPHER_CTX *out_ctx = (EVP_CIPHER_CTX*)ptr;
+            char *in_ptr = ctx->cipher_data;
+            if(out_ctx->cipher_data) {
+                OPENSSL_free(out_ctx->cipher_data);
+            }
+            out_ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size + 
+                                            sizeof(struct xaes_256_gcm_ctx));
+            char *out_ptr = out_ctx->cipher_data;
+            OPENSSL_memcpy(out_ptr, in_ptr, ctx->cipher->ctx_size + 
+                        sizeof(struct xaes_256_gcm_ctx));
+            return aes_gcm_ctrl(ctx, type, arg, ptr);
+        }
+        default: 
+            return aes_gcm_ctrl(ctx, type, arg, ptr);
+    }
+}
+
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
     out->nid = NID_xaes_256_gcm;
@@ -1901,7 +1923,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->init = xaes_256_gcm_init;
     out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
-    out->ctrl = aes_gcm_ctrl;
+    out->ctrl = xaes_256_gcm_ctrl;
 }
 
 // ------------------------------------------------------------------------------

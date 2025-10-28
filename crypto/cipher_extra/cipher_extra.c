@@ -89,6 +89,7 @@ static const struct {
     {NID_aes_256_ctr, "aes-256-ctr", EVP_aes_256_ctr},
     {NID_aes_256_ecb, "aes-256-ecb", EVP_aes_256_ecb},
     {NID_aes_256_gcm, "aes-256-gcm", EVP_aes_256_gcm},
+    {NID_xaes_256_gcm, "xaes-256-gcm", EVP_xaes_256_gcm},
     {NID_aes_256_ofb128, "aes-256-ofb", EVP_aes_256_ofb},
     {NID_aes_256_xts, "aes-256-xts", EVP_aes_256_xts},
     {NID_chacha20_poly1305, "chacha20-poly1305", EVP_chacha20_poly1305},
@@ -114,7 +115,8 @@ static const struct {
     {"aes128", "aes-128-cbc"},
     {"id-aes128-gcm", "aes-128-gcm"},
     {"id-aes192-gcm", "aes-192-gcm"},
-    {"id-aes256-gcm", "aes-256-gcm"}
+    {"id-aes256-gcm", "aes-256-gcm"},
+    {"id-xaes256-gcm", "xaes-256-gcm"}
 };
 
 const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
