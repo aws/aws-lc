@@ -354,7 +354,7 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-  if(ctx->flags & EVP_CIPH_XGCM_MODE) {
+  if(ctx->cipher->iv_len > 12) {
     // Placeholder for XAES-256-GCM 
   }
   else {
@@ -1896,7 +1896,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
                 + sizeof(struct xaes_256_gcm_ctx); 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
-                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_XGCM_MODE;
+                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
     out->init = xaes_256_gcm_init;
     out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
