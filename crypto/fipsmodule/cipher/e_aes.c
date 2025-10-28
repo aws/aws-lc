@@ -354,8 +354,8 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-    assert(ctx->cipher->ctx_size ==
-            sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
+  assert(ctx->cipher->ctx_size ==
+         sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
     
   char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
