@@ -1919,12 +1919,11 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
         return 0;
     }
 
-    struct xaes_256_gcm_ctx *xaes_ctx =
-        (struct xaes_256_gcm_ctx*)&ctx->state;
+    struct xaes_256_gcm_ctx *xaes_ctx = (struct xaes_256_gcm_ctx*)&ctx->state;
 
     xaes_256_gcm_ctx_init(xaes_ctx, key);
 
-    ctx->tag_len = requested_tag_len;
+    ctx->tag_len = (requested_tag_len > 0) ? requested_tag_len : EVP_AEAD_AES_GCM_TAG_LEN;
 
     return 1;
 }
@@ -1975,8 +1974,8 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *in, size_t in_len,
                                     const uint8_t *in_tag, size_t in_tag_len,
                                     const uint8_t *ad, size_t ad_len) {
-    struct xaes_256_gcm_ctx *xaes_ctx =
-        (struct xaes_256_gcm_ctx*)&ctx->state;
+
+    struct xaes_256_gcm_ctx *xaes_ctx = (struct xaes_256_gcm_ctx*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
 
     if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
