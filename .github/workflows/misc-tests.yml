@@ -154,7 +154,7 @@ jobs:
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
-        instance-size:small
+        instance-size:large
     steps:
       - uses: actions/checkout@v5
       - name: Login to Amazon ECR
@@ -164,7 +164,6 @@ jobs:
         name: Run Container
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:latest
-          options: --privileged
           run: |
             source /opt/compiler-env/setup-gcc.sh
             ./tests/ci/run_rpmbuild_tests.sh
