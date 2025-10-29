@@ -5,9 +5,7 @@
 #include <openssl/rsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <algorithm>
 #include <cstdio>
-#include <iostream>
 #include <string>
 #include "internal.h"
 #include "openssl/x509.h"
@@ -139,7 +137,7 @@ bool rsaTool(const args_list_t &args) {
         }
       }
     }
-    if (input_format == FORMAT_DER || (!rsa && input_format == FORMAT_UNKNOWN)) {
+    if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
       rsa.reset(PEM_read_RSA_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
       if (!rsa) {
         rewind(in_file.get());
@@ -163,11 +161,10 @@ bool rsaTool(const args_list_t &args) {
         }
       }
     }
-    if (input_format == FORMAT_DER || (!rsa && input_format == FORMAT_UNKNOWN)) {
+    if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
       rsa.reset(PEM_read_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
       if (!rsa) {
         rewind(in_file.get());
-        // Try PKCS#8 SubjectPublicKeyInfo format
         bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
         if (pkey) {
           rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
@@ -222,7 +219,7 @@ bool rsaTool(const args_list_t &args) {
         // Output private key
         if (output_format == FORMAT_DER) {
           // For DER output, use PKCS#8 PrivateKeyInfo format to match OpenSSL
-          write_success = i2d_PrivateKey_fp(out, pkey.get());
+          write_success = i2d_PKCS8PrivateKeyInfo_fp(out, pkey.get());
         } else {
           write_success = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
         }

@@ -100,6 +100,13 @@ TEST_F(RSAOptionUsageErrorsTest, RequiredOptionTests) {
   }
 }
 
+// Test invalid file path
+TEST_F(RSAOptionUsageErrorsTest, InvalidFilePathTest) {
+  args_list_t args = {"-in", "/nonexistent/path/to/key.pem"};
+  bool result = rsaTool(args);
+  ASSERT_FALSE(result);
+}
+
 // -------------------- RSA OpenSSL Comparison Tests --------------------------
 
 // Comparison tests cannot run without set up of environment variables:
@@ -561,6 +568,397 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusDERInputTest) {
 TEST_F(RSAFormatComparisonTest, RSAToolInformDERWithModulusTest) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_der_path + " -inform DER -modulus -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -modulus -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test -pubout with private key PEM input (extract public key)
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutFromPrivateKeyPEMTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -pubout -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify both outputs are valid public keys
+  ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out);
+  bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSA_PUBKEY(tool_out.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(tool_rsa);
+
+  ScopedFILE openssl_out(fopen(out_path_openssl, "rb"));
+  ASSERT_TRUE(openssl_out);
+  bssl::UniquePtr<RSA> openssl_rsa(PEM_read_RSA_PUBKEY(openssl_out.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(openssl_rsa);
+
+  // Compare moduli
+  const BIGNUM *tool_n = RSA_get0_n(tool_rsa.get());
+  const BIGNUM *openssl_n = RSA_get0_n(openssl_rsa.get());
+  ASSERT_EQ(BN_cmp(tool_n, openssl_n), 0);
+}
+
+// Test -pubout with private key DER input using -inform DER
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutFromPrivateKeyDERInputTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify both outputs are valid public keys
+  ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out);
+  bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSA_PUBKEY(tool_out.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(tool_rsa);
+
+  ScopedFILE openssl_out(fopen(out_path_openssl, "rb"));
+  ASSERT_TRUE(openssl_out);
+  bssl::UniquePtr<RSA> openssl_rsa(PEM_read_RSA_PUBKEY(openssl_out.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(openssl_rsa);
+
+  // Compare moduli
+  const BIGNUM *tool_n = RSA_get0_n(tool_rsa.get());
+  const BIGNUM *openssl_n = RSA_get0_n(openssl_rsa.get());
+  ASSERT_EQ(BN_cmp(tool_n, openssl_n), 0);
+}
+
+// Test -pubout with -outform DER (extract public key as DER)
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutDEROutputTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -pubout -outform DER -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -outform DER -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Read DER output and verify it's valid
+  ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out);
+  bssl::UniquePtr<RSA> tool_rsa(d2i_RSA_PUBKEY_fp(tool_out.get(), nullptr));
+  ASSERT_TRUE(tool_rsa);
+
+  ScopedFILE openssl_out(fopen(out_path_openssl, "rb"));
+  ASSERT_TRUE(openssl_out);
+  bssl::UniquePtr<RSA> openssl_rsa(d2i_RSA_PUBKEY_fp(openssl_out.get(), nullptr));
+  ASSERT_TRUE(openssl_rsa);
+
+  // Compare file contents should be identical for DER
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test -pubout with -inform DER and -outform DER (DER private to DER public)
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutDERtoDERTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -outform DER -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -outform DER -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // DER output should be identical
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test -pubout with -modulus
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutWithModulusTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -pubout -modulus -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -modulus -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Read output files and verify they contain modulus and public key
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+
+  // Both should contain "Modulus=" at the start
+  ASSERT_TRUE(tool_output_str.find("Modulus=") != std::string::npos);
+  ASSERT_TRUE(openssl_output_str.find("Modulus=") != std::string::npos);
+
+  trim(tool_output_str);
+  ASSERT_TRUE(CheckBoundaries(tool_output_str, MODULUS, PUBLIC_END, MODULUS, PUBLIC_END));
+  trim(openssl_output_str);
+  ASSERT_TRUE(CheckBoundaries(openssl_output_str, MODULUS, PUBLIC_END, MODULUS, PUBLIC_END));
+}
+
+// Test -pubout with -modulus and -noout (only modulus from private key)
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutWithModulusNooutTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -pubout -modulus -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -modulus -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test -pubout with DER to PEM conversion
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutDERtoPEMTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify PEM output with public key boundaries
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  trim(tool_output_str);
+  ASSERT_TRUE(tool_output_str.find(PUBLIC_BEGIN) != std::string::npos || tool_output_str.find(RSA_PUBLIC_BEGIN) != std::string::npos);
+  trim(openssl_output_str);
+  ASSERT_TRUE(openssl_output_str.find(PUBLIC_BEGIN) != std::string::npos || openssl_output_str.find(RSA_PUBLIC_BEGIN) != std::string::npos);
+}
+
+// Test -pubout with PEM to DER conversion
+TEST_F(RSAFormatComparisonTest, RSAToolPuboutPEMtoDERTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -pubout -outform DER -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -outform DER -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // DER output should be identical
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test modulus output with -outform DER (should still output modulus as text)
+TEST_F(RSAFormatComparisonTest, RSAToolModulusWithOutformDERTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -modulus -outform DER -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -modulus -outform DER -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Modulus output should be identical regardless of outform when using -noout
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test modulus with -inform DER and -outform DER, writing key to file
+TEST_F(RSAFormatComparisonTest, RSAToolModulusInformOutformDERTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_der_path + " -inform DER -modulus -outform DER -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -modulus -outform DER -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+}
+
+// Test modulus with public key and various format combinations
+TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusInformDERTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + pub_der_path + " -pubin -inform DER -modulus -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + pub_der_path + " -pubin -inform DER -modulus -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Read output files and verify they contain modulus and public key
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+
+  // Both should contain "Modulus=" at the start
+  ASSERT_TRUE(tool_output_str.find("Modulus=") != std::string::npos);
+  ASSERT_TRUE(openssl_output_str.find("Modulus=") != std::string::npos);
+}
+
+// Test modulus output to file (not stdout) with PEM input
+TEST_F(RSAFormatComparisonTest, RSAToolModulusToFileTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -modulus -out " + out_path_tool + " -noout";
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -modulus -out " + out_path_openssl + " -noout";
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Read files directly - they should contain only the modulus
+  tool_output_str = ReadFileToString(out_path_tool);
+  openssl_output_str = ReadFileToString(out_path_openssl);
+  trim(tool_output_str);
+  trim(openssl_output_str);
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+  ASSERT_TRUE(tool_output_str.find("Modulus=") == 0);
+}
+
+// Test modulus with -pubout and -outform DER
+TEST_F(RSAFormatComparisonTest, RSAToolModulusPuboutOutformDERTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -pubout -modulus -outform DER -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -modulus -outform DER -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+}
+
+// Test case-insensitive -inform option (pem, Pem, PEM)
+TEST_F(RSAFormatComparisonTest, RSAToolInformCaseInsensitiveTest) {
+  std::vector<std::string> formats = {"pem", "Pem", "PEM"};
+
+  for (const auto& format : formats) {
+    std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -inform " + format + " -out " + out_path_tool;
+    std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -out " + out_path_openssl;
+
+    RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+    // Verify output is valid
+    ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+    ASSERT_TRUE(tool_out);
+    bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSAPrivateKey(tool_out.get(), nullptr, nullptr, nullptr));
+    ASSERT_TRUE(tool_rsa);
+  }
+}
+
+// Test case-insensitive -inform DER option (der, Der, DER)
+TEST_F(RSAFormatComparisonTest, RSAToolInformDERCaseInsensitiveTest) {
+  std::vector<std::string> formats = {"der", "Der", "DER"};
+
+  for (const auto& format : formats) {
+    std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_der_path + " -inform " + format + " -out " + out_path_tool;
+    std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -out " + out_path_openssl;
+
+    RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+    // Verify output is valid
+    ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+    ASSERT_TRUE(tool_out);
+    bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSAPrivateKey(tool_out.get(), nullptr, nullptr, nullptr));
+    ASSERT_TRUE(tool_rsa);
+  }
+}
+
+// Test case-insensitive -outform option (pem, Pem, PEM)
+TEST_F(RSAFormatComparisonTest, RSAToolOutformCaseInsensitiveTest) {
+  std::vector<std::string> formats = {"pem", "Pem", "PEM"};
+
+  for (const auto& format : formats) {
+    std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -outform " + format + " -out " + out_path_tool;
+    std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -out " + out_path_openssl;
+
+    RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+    // Verify output is valid PEM
+    tool_output_str = ReadFileToString(out_path_tool);
+    trim(tool_output_str);
+    ASSERT_TRUE(CheckBoundaries(tool_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
+  }
+}
+
+// Test case-insensitive -outform DER option (der, Der, DER)
+TEST_F(RSAFormatComparisonTest, RSAToolOutformDERCaseInsensitiveTest) {
+  std::vector<std::string> formats = {"der", "Der", "DER"};
+
+  for (const auto& format : formats) {
+    std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -outform " + format + " -out " + out_path_tool;
+    std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -outform DER -out " + out_path_openssl;
+
+    RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+    // Verify output is valid DER
+    ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+    ASSERT_TRUE(tool_out);
+    bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_fp(tool_out.get(), nullptr));
+    ASSERT_TRUE(tool_pkey);
+  }
+}
+
+// Test case-insensitive formats with -pubin
+TEST_F(RSAFormatComparisonTest, RSAToolPubinCaseInsensitiveTest) {
+  std::vector<std::string> inform_formats = {"der", "Der", "DER"};
+  std::vector<std::string> outform_formats = {"pem", "Pem", "PEM"};
+
+  for (const auto& inform : inform_formats) {
+    for (const auto& outform : outform_formats) {
+      std::string tool_command = std::string(tool_executable_path) + " rsa -in " + pub_der_path + " -pubin -inform " + inform + " -outform " + outform + " -out " + out_path_tool;
+      std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + pub_der_path + " -pubin -inform DER -out " + out_path_openssl;
+
+      RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+      // Verify output is valid public key
+      ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+      ASSERT_TRUE(tool_out);
+      bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSA_PUBKEY(tool_out.get(), nullptr, nullptr, nullptr));
+      ASSERT_TRUE(tool_rsa);
+    }
+  }
+}
+
+// Test various parameter orderings with -modulus and -noout
+TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest1) {
+  // Test: -modulus before -noout
+  std::string tool_command1 = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -modulus -noout > " + out_path_tool;
+  std::string openssl_command1 = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -modulus -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command1, openssl_command1, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test various parameter orderings with -out before other flags
+TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest2) {
+  // Test: -out before -pubout
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -out " + out_path_tool + " -pubout";
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -out " + out_path_openssl + " -pubout";
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify both are valid public keys
+  ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out);
+  bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSA_PUBKEY(tool_out.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(tool_rsa);
+}
+
+// Test parameter ordering with all format flags
+TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest3) {
+  // Test: -outform before -inform
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -outform DER -inform PEM -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -inform PEM -outform DER -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify DER output
+  ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out);
+  bssl::UniquePtr<EVP_PKEY> tool_pkey(d2i_PrivateKey_fp(tool_out.get(), nullptr));
+  ASSERT_TRUE(tool_pkey);
+}
+
+// Test stdout output with modulus (no -out flag)
+TEST_F(RSAFormatComparisonTest, RSAToolStdoutWithModulusTest) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + priv_pem_path + " -modulus > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -modulus > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Both should contain modulus and key
+  tool_output_str = ReadFileToString(out_path_tool);
+  ASSERT_TRUE(tool_output_str.find("Modulus=") != std::string::npos);
+  trim(tool_output_str);
+  ASSERT_TRUE(CheckBoundaries(tool_output_str, MODULUS, RSA_END, MODULUS, END));
+}
+
+// Test complex parameter ordering with all flags
+TEST_F(RSAFormatComparisonTest, RSAToolComplexParameterOrderingTest) {
+  // Test: flags in unusual order
+  std::string tool_command = std::string(tool_executable_path) + " rsa -modulus -in " + priv_der_path + " -pubout -inform DER -out " + out_path_tool + " -outform PEM";
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_der_path + " -inform DER -pubout -modulus -outform PEM -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify output contains both modulus and public key
+  tool_output_str = ReadFileToString(out_path_tool);
+  ASSERT_TRUE(tool_output_str.find("Modulus=") != std::string::npos);
+  trim(tool_output_str);
+  ASSERT_TRUE(CheckBoundaries(tool_output_str, MODULUS, PUBLIC_END, MODULUS, PUBLIC_END));
+}
+
+// Test -in flag at different positions
+TEST_F(RSAFormatComparisonTest, RSAToolInFlagPositionTest) {
+  // Test: -in at the end
+  std::string tool_command = std::string(tool_executable_path) + " rsa -pubout -out " + out_path_tool + " -in " + priv_pem_path;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + priv_pem_path + " -pubout -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // Verify output is valid public key
+  ScopedFILE tool_out(fopen(out_path_tool, "rb"));
+  ASSERT_TRUE(tool_out);
+  bssl::UniquePtr<RSA> tool_rsa(PEM_read_RSA_PUBKEY(tool_out.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(tool_rsa);
+}
+
+// Test -pubin with -modulus in different order
+TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusOrderingTest) {
+  // Test: -pubin after -modulus
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in " + pub_pem_path + " -modulus -pubin -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in " + pub_pem_path + " -pubin -modulus -noout > " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
