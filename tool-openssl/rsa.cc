@@ -141,7 +141,6 @@ bool rsaTool(const args_list_t &args) {
       rsa.reset(PEM_read_RSA_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
       if (!rsa) {
         rewind(in_file.get());
-        // Try PKCS#8 SubjectPublicKeyInfo format
         bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
         if (pkey) {
           rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
