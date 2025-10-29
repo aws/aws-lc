@@ -22,6 +22,7 @@
 #include <openssl/aead.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
+#include <openssl/digest.h>
 
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
@@ -91,6 +92,9 @@ static const struct KnownAEAD kAEADs[] = {
 
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt",
      kCanTruncateTags | kVariableNonce},
+    
+    {"XAES_256_GCM", EVP_aead_xaes_256_gcm, "xaes_256_gcm_tests.txt",
+     kCanTruncateTags | kVariableNonce}, 
 
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
      kCanTruncateTags | kVariableNonce},
@@ -1437,6 +1441,8 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
      17},
     {"EVP_aead_aes_256_gcm", EVP_aead_aes_256_gcm(), kEvpAeadCtxKey, 32, 16,
      18},
+     {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+     29},
     {"EVP_aead_chacha20_poly1305", EVP_aead_chacha20_poly1305(), kEvpAeadCtxKey,
      32, 16, 5},
     {"EVP_aead_xchacha20_poly1305", EVP_aead_xchacha20_poly1305(),
@@ -1602,4 +1608,103 @@ TEST(EvpAeadCtxSerdeTest, ID) {
   for (size_t id = 1; id <= AEAD_MAX_ID; id++) {
     ASSERT_TRUE(identifiers[id]);
   }
+}
+
+TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
+    // Test invalid nonce sizes and key length
+    {
+        std::vector<uint8_t> key(32), nonce(24), plaintext(1), ciphertext(20);
+        const size_t tag_size = 16;
+        bssl::ScopedEVP_AEAD_CTX ctx;
+        // Invalid key length
+        int key_len = 24; 
+        ASSERT_FALSE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key_len, tag_size, nullptr));
+        // Use 256-bit key length
+        key_len = 32;
+        // Encryption
+        ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key_len, tag_size, nullptr));
+
+        int nonce_len = 24;
+        size_t plaintext_len = 0, ciphertext_len = 0;
+        // Invalid nonce and nonce size
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nullptr, nonce_len, plaintext.data(), plaintext_len, nullptr, 0)); 
+        nonce_len = 19;
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nonce.data(), nonce_len, plaintext.data(), plaintext_len, nullptr, 0));
+        nonce_len = 25;
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
+                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                nonce.data(), nonce_len, plaintext.data(), plaintext_len, nullptr, 0));
+
+        nonce_len = 24;
+        // Invalid max output size
+        ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
+                                plaintext_len, nonce.data(), nonce_len, plaintext.data(), 
+                                plaintext_len, nullptr, 0));
+
+        // Decryption   
+        bssl::ScopedEVP_AEAD_CTX dctx;
+        ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key_len, tag_size, nullptr));
+        // Invalid nonce and nonce size
+        nonce_len = 24;
+        ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), plaintext.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nullptr, nonce_len, ciphertext.data(), ciphertext.size(), nullptr, 0));
+        nonce_len = 19;
+        ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), plaintext.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nonce.data(), nonce_len, ciphertext.data(), ciphertext.size(), nullptr, 0));
+        nonce_len = 25;
+        ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), plaintext.data(), &plaintext_len, ciphertext.size() - tag_size,
+                                nonce.data(), nonce_len, ciphertext.data(), ciphertext.size(), nullptr, 0));
+    }
+
+    // Source of multi-loop tests: 
+    // https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM/go/XAES-256-GCM_test.go 
+    const auto test = [](int n, const char *output) {
+        bssl::ScopedEVP_MD_CTX s;        
+        ASSERT_TRUE(EVP_DigestInit(s.get(), EVP_shake128()));
+        bssl::ScopedEVP_MD_CTX d;        
+        ASSERT_TRUE(EVP_DigestInit(d.get(), EVP_shake128()));
+
+        std::vector<uint8_t> key(32), nonce(24), plaintext_len(1), plaintext(256);
+        std::vector<uint8_t> aad_len(1), aad(256), ciphertext(272), decrypted(256);
+        int key_len = 32, nonce_len = 24, tag_size = 16;
+
+        for(int i = 0; i < n; ++i) {    
+            ASSERT_TRUE(EVP_DigestSqueeze(s.get(), key.data(), key_len));
+            ASSERT_TRUE(EVP_DigestSqueeze(s.get(), nonce.data(), nonce_len));
+            ASSERT_TRUE(EVP_DigestSqueeze(s.get(), plaintext_len.data(), 1));
+            ASSERT_TRUE(EVP_DigestSqueeze(s.get(), plaintext.data(), plaintext_len[0]));
+            ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad_len.data(), 1));
+            ASSERT_TRUE(EVP_DigestSqueeze(s.get(), aad.data(), aad_len[0]));
+
+            // XAES-256-GCM Encryption
+            bssl::ScopedEVP_AEAD_CTX ctx;
+            ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key_len, tag_size, nullptr));
+
+            size_t ciphertext_len = 0;
+            ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
+                                    plaintext_len[0] +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                    nonce.data(), nonce_len, plaintext.data(), plaintext_len[0], aad.data(), aad_len[0]));
+            ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext.data(), ciphertext_len));
+
+            // XAES-256-GCM Decryption
+            bssl::ScopedEVP_AEAD_CTX dctx;
+            ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), 32, tag_size, nullptr));
+            size_t len = 0;
+            ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted.data(), &len, ciphertext_len - tag_size,
+                                    nonce.data(), nonce_len, ciphertext.data(), ciphertext_len, aad.data(), aad_len[0]));
+            ASSERT_EQ(Bytes(decrypted.data(), len), Bytes(plaintext.data(), plaintext_len[0]));
+        }
+        std::vector<uint8_t> expected;
+        ConvertToBytes(&expected, output);
+        uint8_t got[32] = {0};
+        ASSERT_TRUE(EVP_DigestFinalXOF(d.get(), got, 32));
+        ASSERT_EQ(Bytes(got, 32), Bytes(expected)); 
+    };
+
+    test(10000, "e6b9edf2df6cec60c8cbd864e2211b597fb69a529160cd040d56c0c210081939");
+    test(1000000, "2163ae1445985a30b60585ee67daa55674df06901b890593e824b8a7c885ab15");
 }
