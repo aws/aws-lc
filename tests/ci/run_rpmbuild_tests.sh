@@ -44,7 +44,9 @@ License:        Mock-do-not-use-1.0
 BuildRequires:  gcc
 BuildRequires:  cmake3
 BuildRequires:  ninja-build
-BuildRequires:  golang
+# Required build dependency. But the container used in the job installs Golang
+# manually without using packaged Golang.
+#BuildRequires:  golang
 BuildRequires:  perl
 
 %description
