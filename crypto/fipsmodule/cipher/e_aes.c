@@ -1754,7 +1754,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 /* ---------------------------- XAES-256-GCM ----------------------------
 Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md 
 -----------------------------------------------------------------------*/
-
 #define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_LENGTH      (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
@@ -1846,7 +1845,24 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     return 1;
 }
 
-static int xaes_256_gcm_ctx_init(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
+static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx, const uint8_t *key) {
+#ifdef USE_OPTIMIZED_CMAC 
+    static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
+    uint8_t L[AES_BLOCK_SIZE];
+    AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, &xaes_ctx->xaes_key);
+    AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
+    BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
+#else 
+    OPENSSL_memcpy(xaes_ctx->xaes_key, key, XAES_256_GCM_KEY_LENGTH);
+#endif 
+    return 1;
+}
+
+// ------------------------------------------------------------------------------
+// --------------- EVP_CIPHER XAES-256-GCM Without Key Commitment ---------------
+// ------------------------------------------------------------------------------
+static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                            const uint8_t *iv, int enc) { 
     // Key length: 32 bytes
     if (ctx->key_len != XAES_256_GCM_KEY_LENGTH) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
@@ -1856,27 +1872,8 @@ static int xaes_256_gcm_ctx_init(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
     struct xaes_256_gcm_ctx *xaes_ctx =
             (struct xaes_256_gcm_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
-#ifdef USE_OPTIMIZED_CMAC 
-    static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
-    uint8_t L[AES_BLOCK_SIZE];
-    AES_set_encrypt_key(key, (ctx->key_len << 3), &xaes_ctx->xaes_key);
-    AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
-    BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
-#else 
-    OPENSSL_memcpy(xaes_ctx->xaes_key, key, ctx->key_len);
-#endif 
-
-    return 1;
-}
-
-// ------------------------------------------------------------------------------
-// --------------- EVP_CIPHER XAES-256-GCM Without Key Commitment ---------------
-// ------------------------------------------------------------------------------
-
-static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                            const uint8_t *iv, int enc) { 
     // Initialize the main key 
-    if(key != NULL && !xaes_256_gcm_ctx_init(ctx, key)) {
+    if(key != NULL && !xaes_256_gcm_ctx_init(xaes_ctx, key)) {
         return 0;
     }
 
