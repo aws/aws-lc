@@ -1,0 +1,54 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM ubuntu:16.04 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+
+RUN <<EOF
+set -ex
+dpkg --add-architecture i386
+apt-get update
+apt-get -y --no-install-recommends upgrade
+apt-get -y --no-install-recommends install \
+    ca-certificates \
+    cmake \
+    gcc-5 \
+    gcc-5-multilib \
+    git \
+    g++-5 \
+    g++-5-multilib \
+    linux-libc-dev:i386 \
+    ninja-build \
+    perl \
+    wget
+apt-get autoremove --purge -y
+apt-get clean
+apt-get autoclean
+rm -rf /var/lib/apt/lists/*
+rm -rf /tmp/*
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+RUN rm -rf /tmp/*

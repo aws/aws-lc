@@ -18,6 +18,11 @@ static const char kKeyArgName[] = "key_size";
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display this summary"},
     {"-out", kOptionalArgument, "Output file to write the key to"},
+    {"-aes128", kBooleanArgument, "Encrypt the private key with AES-128-CBC"},
+    {"-aes192", kBooleanArgument, "Encrypt the private key with AES-192-CBC"},
+    {"-aes256", kBooleanArgument, "Encrypt the private key with AES-256-CBC"},
+    {"-des3", kBooleanArgument, "Encrypt the private key with DES3"},
+    {"-passout", kOptionalArgument, "Output file pass phrase source"},
     {"", kOptionalArgument, ""}};
 
 static void DisplayHelp(BIO *bio) {
@@ -105,10 +110,15 @@ bool genrsaTool(const args_list_t &args) {
   ordered_args::ordered_args_map_t parsed_args;
   args_list_t extra_args{};
   std::string out_path;
-  bool help = false;
+  bool help = false, aes128 = false, aes192 = false, aes256 = false, des3 = false;
+  bssl::UniquePtr<std::string> passout_arg(new std::string());
   bssl::UniquePtr<BIO> bio;
   bssl::UniquePtr<EVP_PKEY> pkey;
   unsigned KeySizeBits = 0;
+  const EVP_CIPHER *cipher = NULL;
+  const char *password = NULL;
+  int password_len = 0;
+  int cipher_count = 0;
 
   // Parse command line arguments
   if (!ordered_args::ParseOrderedKeyValueArguments(parsed_args, extra_args,
@@ -122,6 +132,11 @@ bool genrsaTool(const args_list_t &args) {
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
+  ordered_args::GetBoolArgument(&aes128, "-aes128", parsed_args);
+  ordered_args::GetBoolArgument(&aes192, "-aes192", parsed_args);
+  ordered_args::GetBoolArgument(&aes256, "-aes256", parsed_args);
+  ordered_args::GetBoolArgument(&des3, "-des3", parsed_args);
+  ordered_args::GetString(passout_arg.get(), "-passout", "", parsed_args);
 
   // Parse and validate key size first (catches multiple key sizes)
   if (!ParseKeySize(extra_args, KeySizeBits)) {
@@ -146,6 +161,13 @@ bool genrsaTool(const args_list_t &args) {
     return true;  // Help display is a successful exit
   }
 
+  if (!passout_arg->empty()) {
+    if (!pass_util::ExtractPassword(passout_arg)) {
+      fprintf(stderr, "Error: Failed to extract password\n");
+      goto err;
+    }
+  }
+
   // Set up output BIO
   bio = CreateOutputBIO(out_path);
   if (!bio) {
@@ -159,9 +181,32 @@ bool genrsaTool(const args_list_t &args) {
     goto err;
   }
 
-  // Write the key
-  if (!PEM_write_bio_PrivateKey(bio.get(), pkey.get(), NULL, NULL, 0, NULL,
-                                NULL)) {
+  // Cipher selection and mutual exclusion validation
+  cipher_count = aes128 + aes192 + aes256 + des3;
+  if (cipher_count > 1) {
+    fprintf(stderr, "Error: Only one encryption cipher may be specified\n");
+    goto err;
+  }
+
+  if (aes128) {
+    cipher = EVP_get_cipherbyname("aes-128-cbc");
+  } else if (aes192) {
+    cipher = EVP_get_cipherbyname("aes-192-cbc");
+  } else if (aes256) {
+    cipher = EVP_get_cipherbyname("aes-256-cbc");
+  } else if (des3) {
+    cipher = EVP_get_cipherbyname("des-ede3-cbc");
+  } else {
+    cipher = NULL;
+  }
+
+  // Write the key with optional encryption
+  password = (!passout_arg->empty()) ? passout_arg->c_str() : NULL;
+  password_len = (!passout_arg->empty()) ? static_cast<int>(passout_arg->length()) : 0;
+  
+  if (!PEM_write_bio_PrivateKey(bio.get(), pkey.get(), cipher,
+                                (unsigned char*)password, password_len,
+                                NULL, NULL)) {
     goto err;
   }
 

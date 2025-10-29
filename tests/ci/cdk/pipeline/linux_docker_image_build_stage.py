@@ -99,7 +99,7 @@ class LinuxDockerImageBuildStage(Stage):
                     "cd tests/ci/cdk/pipeline/scripts",
                     './cleanup_orphaned_images.sh --repos "${ECR_REPOS}"',
                     'trigger_conditions=$(./check_trigger_conditions.sh --build-type docker --platform linux --stacks "${STACKS}")',
-                    "export NEED_REBUILD=$(echo $trigger_conditions | sed -n -e 's/.*\(NEED_REBUILD=[0-9]*\).*/\\1/p' | cut -d'=' -f2 )",
+                    r"export NEED_REBUILD=$(echo $trigger_conditions | sed -n -e 's/.*\(NEED_REBUILD=[0-9]*\).*/\1/p' | cut -d'=' -f2 )",
                     "./build_target.sh --build-type docker --platform linux --max-retry ${MAX_RETRY} --timeout ${TIMEOUT}",
                 ],
                 env={

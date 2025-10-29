@@ -6,7 +6,7 @@ add_executable(
     ../tool/fd.cc
     ../tool/client.cc
     ../tool/transport_common.cc
-
+    
     crl.cc
     dgst.cc
     ecparam.cc
@@ -84,10 +84,10 @@ if(BUILD_TESTING)
         ../tool/args.cc
         ../tool/file.cc
         ../tool/fd.cc
-        ../crypto/test/test_util.cc
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        test_util.cc
         crl.cc
         crl_test.cc
         dgst.cc

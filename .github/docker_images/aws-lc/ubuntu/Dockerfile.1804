@@ -1,0 +1,52 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM public.ecr.aws/ubuntu/ubuntu:18.04 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+
+RUN <<EOF
+set -ex
+apt-get update
+apt-get -y --no-install-recommends upgrade
+apt-get -y --no-install-recommends install \
+    ca-certificates \
+    clang \
+    cmake \
+    gcc-7 \
+    git \
+    g++-7 \
+    ninja-build \
+    perl \
+    python3 \
+    wget
+apt-get autoremove --purge -y
+apt-get clean
+apt-get autoclean
+rm -rf /var/lib/apt/lists/*
+rm -rf /tmp/*
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+RUN rm -rf /tmp/*

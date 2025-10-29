@@ -1,0 +1,68 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+ARG IMAGE_REPO="quay.io/centos/centos"
+
+FROM ${IMAGE_REPO}:8 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+
+RUN <<EOF
+set -ex
+sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+dnf -y distro-sync
+yum -y --enablerepo=extras install epel-release
+yum -y --enablerepo=powertools install \
+    cmake3 \
+    gcc \
+    gcc-c++ \
+    git \
+    glibc-devel.i686 \
+    glibc-devel.x86_64 \
+    libgcc.i686 \
+    libstdc++-devel.i686 \
+    libstdc++-devel.x86_64 \
+    ninja-build \
+    perl \
+    unzip \
+    wget
+yum clean packages
+yum clean metadata
+yum clean all
+rm -rf /tmp/*
+rm -rf /var/cache/yum
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install AWS CLI
+COPY --from=scripts setup-aws-cli.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/setup-aws-cli.sh"
+${setup_script}
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+RUN rm -rf /tmp/*
