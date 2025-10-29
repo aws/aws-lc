@@ -1483,8 +1483,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
         ctx.get()->key_len = 24;
         ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), NULL, NULL, key.data(), nonce.data(), -1));
     }
-
-    // Source of multiple-loop tests: 
+    
+    // Source of multi-loop tests: 
     // https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM/go/XAES-256-GCM_test.go 
     const auto test = [](int n, const char *output) {
         bssl::ScopedEVP_MD_CTX s;        
