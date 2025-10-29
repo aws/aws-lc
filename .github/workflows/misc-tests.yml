@@ -1,12 +1,14 @@
 name: Miscellaneous test jobs
 on:
   push:
-    branches: [ '*' ]
+    branches: ["*"]
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
 permissions:
   contents: read
 
