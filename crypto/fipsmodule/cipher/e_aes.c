@@ -1863,7 +1863,7 @@ static int xaes_256_gcm_ctx_init(EVP_CIPHER_CTX *ctx, const uint8_t *key) {
     AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
     BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
 #else 
-    OPENSSL_memcpy(xaes_ctx->xaes_key, key, key_len);
+    OPENSSL_memcpy(xaes_ctx->xaes_key, key, ctx->key_len);
 #endif 
 
     return 1;
