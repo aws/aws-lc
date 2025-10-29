@@ -6,7 +6,6 @@
 
 #include <openssl/digest.h>
 #include <algorithm>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>

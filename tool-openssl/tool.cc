@@ -4,6 +4,7 @@
 #include <openssl/ssl.h>
 #include <array>
 #include <iostream>
+#include <sys/stat.h>
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -14,7 +15,6 @@
 #endif
 
 #include "./internal.h"
-    
 
 static const std::array<Tool, 16> kTools = {{
     {"crl", CRLTool},
@@ -49,6 +49,7 @@ static void usage(const std::string &name) {
 
 static void initialize() {
 #if defined(OPENSSL_WINDOWS)
+  _umask(0077);
   // Read and write in binary mode. This makes bssl on Windows consistent with
   // bssl on other platforms, and also makes it consistent with MSYS's commands
   // like diff(1) and md5sum(1). This is especially important for the digest
@@ -66,6 +67,7 @@ static void initialize() {
     exit(1);
   }
 #else
+  umask(0077);
   // Ignore SIGPIPE to prevent the process from terminating if it tries to
   // write to a pipe that has been closed by the reading end. SIGPIPE can be
   // received when writing to sockets or pipes that are no longer connected.
