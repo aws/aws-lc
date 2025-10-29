@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <string>
 #include "internal.h"
+#include "openssl/base.h"
+#include "openssl/bio.h"
 #include "openssl/x509.h"
 
 #define FORMAT_PEM 1
@@ -27,7 +29,8 @@ static const argument_t kArguments[] = {
   { "", kOptionalArgument, "" }
 };
 
-static bool handleModulus(RSA *rsa, ScopedFILE &out_file) {
+static bool handleModulus(RSA *rsa, BIO* out_file) {
+  bool ret_val = false;
   const BIGNUM *n = RSA_get0_n(rsa);
   if (!n) {
     fprintf(stderr, "Error: unable to load modulus\n");
@@ -41,13 +44,13 @@ static bool handleModulus(RSA *rsa, ScopedFILE &out_file) {
   for (char *p = hex_modulus; *p; ++p) {
     *p = toupper(*p);
   }
-  if (out_file) {
-    fprintf(out_file.get(), "Modulus=%s\n", hex_modulus);
-  } else {
-    printf("Modulus=%s\n", hex_modulus);
+  if(BIO_puts(out_file, "Modulus=") > 0 &&
+    BIO_puts(out_file, hex_modulus) > 0 &&
+    BIO_puts(out_file, "\n") > 0) {
+    ret_val = true;
   }
   OPENSSL_free(hex_modulus);
-  return true;
+  return ret_val;
 }
 
 // Map arguments using tool/args.cc
@@ -116,7 +119,7 @@ bool rsaTool(const args_list_t &args) {
     }
   }
 
-  ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
+  bssl::UniquePtr<BIO> in_file(BIO_new_file(in_path.c_str(), "rb"));
   if (!in_file) {
     fprintf(stderr, "Error: unable to load RSA key from '%s'\n", in_path.c_str());
     return false;
@@ -127,21 +130,19 @@ bool rsaTool(const args_list_t &args) {
   if (pubin) {
     if (input_format == FORMAT_DER || input_format == FORMAT_UNKNOWN) {
       // Try raw RSAPublicKey format first
-      rsa.reset(d2i_RSAPublicKey_fp(in_file.get(), nullptr));
-      if (!rsa) {
-        rewind(in_file.get());
+      rsa.reset(d2i_RSAPublicKey_bio(in_file.get(), nullptr));
+      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
         // Try PKCS#8 SubjectPublicKeyInfo format
-        bssl::UniquePtr<EVP_PKEY> pkey(d2i_PUBKEY_fp(in_file.get(), nullptr));
+        bssl::UniquePtr<EVP_PKEY> pkey(d2i_PUBKEY_bio(in_file.get(), nullptr));
         if (pkey) {
           rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
         }
       }
     }
     if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
-      rsa.reset(PEM_read_RSA_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
-      if (!rsa) {
-        rewind(in_file.get());
-        bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
+      rsa.reset(PEM_read_bio_RSA_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
+      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
+        bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
         if (pkey) {
           rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
         }
@@ -150,21 +151,19 @@ bool rsaTool(const args_list_t &args) {
   } else {
     if (input_format == FORMAT_DER || input_format == FORMAT_UNKNOWN) {
       // Try RSAPrivateKey format first
-      rsa.reset(d2i_RSAPrivateKey_fp(in_file.get(), nullptr));
-      if (!rsa) {
-        rewind(in_file.get());
+      rsa.reset(d2i_RSAPrivateKey_bio(in_file.get(), nullptr));
+      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
         // Try PKCS#8 PrivateKeyInfo format
-        bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey_fp(in_file.get(), nullptr));
+        bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey_bio(in_file.get(), nullptr));
         if (pkey) {
           rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
         }
       }
     }
     if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
-      rsa.reset(PEM_read_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
-      if (!rsa) {
-        rewind(in_file.get());
-        bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
+      rsa.reset(PEM_read_bio_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
+      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
+        bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
         if (pkey) {
           rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
         }
@@ -179,24 +178,26 @@ bool rsaTool(const args_list_t &args) {
     return false;
   }
 
-  ScopedFILE out_file;
+  bssl::UniquePtr<BIO> out_file;
   if (!out_path.empty()) {
-    out_file.reset(fopen(out_path.c_str(), "wb"));
-    if (!out_file) {
-      fprintf(stderr, "Error: unable to open output file '%s'\n", out_path.c_str());
-      return false;
-    }
+    out_file.reset(BIO_new_file(out_path.c_str(), "wb"));
+
+  } else {
+    out_file.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  }
+  if (!out_file) {
+    fprintf(stderr, "Error: unable to open output file '%s'\n", out_path.c_str());
+    return false;
   }
 
   // The "rsa" command does not order output based on parameters:
   if (HasArgument(parsed_args, "-modulus")) {
-    if (!handleModulus(rsa.get(), out_file)) {
+    if (!handleModulus(rsa.get(), out_file.get())) {
       return false;
     }
   }
 
   if (!noout) {
-    FILE *out = out_file ? out_file.get() : stdout;
     bool write_success = false;
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
     if (pkey && EVP_PKEY_set1_RSA(pkey.get(), rsa.release())) {
@@ -204,9 +205,9 @@ bool rsaTool(const args_list_t &args) {
       if (pubout) {
         // Output public key
         if (output_format == FORMAT_DER) {
-          write_success = i2d_PUBKEY_fp(out, pkey.get());
+          write_success = i2d_PUBKEY_bio(out_file.get(), pkey.get());
         } else {
-          write_success = PEM_write_PUBKEY(out, pkey.get());
+          write_success = PEM_write_bio_PUBKEY(out_file.get(), pkey.get());
         }
         if (!write_success) {
           fprintf(stderr, "Error: unable to write RSA public key%s\n",
@@ -218,9 +219,9 @@ bool rsaTool(const args_list_t &args) {
         // Output private key
         if (output_format == FORMAT_DER) {
           // For DER output, use PKCS#8 PrivateKeyInfo format to match OpenSSL
-          write_success = i2d_PKCS8PrivateKeyInfo_fp(out, pkey.get());
+          write_success = i2d_PKCS8PrivateKeyInfo_bio(out_file.get(), pkey.get());
         } else {
-          write_success = PEM_write_PrivateKey(out, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+          write_success = PEM_write_bio_PrivateKey(out_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
         }
         if (!write_success) {
           fprintf(stderr, "Error: unable to write RSA private key%s\n",
