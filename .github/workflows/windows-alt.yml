@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+permissions:
+  contents: read
+
 jobs:
   mingw:
     if: github.repository_owner == 'aws'

@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.62.0")
+set(SOFTWARE_VERSION "1.62.1")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -385,10 +385,14 @@ macro(check_compiler file_to_test flag_to_set)
     # Some build applications use regexes on build output to highlight build
     # errors. Below, we modify a compiler error message to avoid that a negative
     # probe is considered an error in such build applications.
-    string(REPLACE ": error:"
-      ": compiler_error:" ERROR_MESSAGE_PROCESSED
-      ${ERROR_MESSAGE})
-    message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
+    if(FEATURE_PROBE_VERBOSE)
+      string(REPLACE ": error:"
+        ": compiler_error:" ERROR_MESSAGE_PROCESSED
+        ${ERROR_MESSAGE})
+      message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
+    else()
+      message(STATUS "Use -DFEATURE_PROBE_VERBOSE=ON to view feature probe error output.")
+    endif()
   endif()
 endmacro()
 
