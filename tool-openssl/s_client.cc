@@ -25,6 +25,9 @@ static const argument_t kArguments[] = {
                 "Currently the verify operation continues after errors so all the problems "
                 "with a certificate chain can be seen. As a side effect the connection will "
                 "never fail due to a server certificate verify failure." },
+        { "-cipher", kOptionalArgument,
+                "A cipher suite string that configures the offered ciphers" },
+        { "-tls1_1", kBooleanArgument, "Just use TLSv1.1" },
         { "", kOptionalArgument, "" },
 };
 
@@ -49,6 +52,12 @@ bool SClientTool(const args_list_t &args) {
   std::map<std::string, std::string> args_map;
   for (const auto &arg_pair : parsed_args) {
     args_map[arg_pair.first] = arg_pair.second;
+  }
+
+  // Handle TLS version convenience flags, already handled in tool/client.cc
+  if (HasArgument(parsed_args, "-tls1_1")) {
+    args_map["-min-version"] = "tls1.1";
+    args_map["-max-version"] = "tls1.1";
   }
 
   return DoClient(args_map, true);
