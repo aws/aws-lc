@@ -14,9 +14,14 @@ set -ex
 apt-get update
 apt-get -y --no-install-recommends upgrade
 apt-get -y --no-install-recommends install \
+    autoconf \
+    binutils-dev \
+    bison \
+    build-essential \
     ca-certificates \
     cmake \
     curl \
+    gcc-12 \
     git \
     libffi-dev \
     libgmp-dev \
