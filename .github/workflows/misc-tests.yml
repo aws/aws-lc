@@ -164,6 +164,7 @@ jobs:
         name: Run Container
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:latest
+          options: --privileged
           run: |
             source /opt/compiler-env/setup-gcc.sh
             ./tests/ci/run_rpmbuild_tests.sh
