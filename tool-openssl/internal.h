@@ -195,4 +195,6 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               const ordered_args_map_t &args);
 }  // namespace ordered_args
 
+void SetUmaskForPrivateKey();
+
 #endif  // TOOL_OPENSSL_INTERNAL_H
