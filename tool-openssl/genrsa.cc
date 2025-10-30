@@ -96,6 +96,7 @@ static bssl::UniquePtr<BIO> CreateOutputBIO(const std::string &out_path) {
       return nullptr;
     }
   } else {
+    SetUmaskForPrivateKey();
     bio.reset(BIO_new_file(out_path.c_str(), "wb"));
     if (!bio) {
       fprintf(stderr, "Error: Could not open output file '%s'\n",
@@ -203,7 +204,7 @@ bool genrsaTool(const args_list_t &args) {
   // Write the key with optional encryption
   password = (!passout_arg->empty()) ? passout_arg->c_str() : NULL;
   password_len = (!passout_arg->empty()) ? static_cast<int>(passout_arg->length()) : 0;
-  
+
   if (!PEM_write_bio_PrivateKey(bio.get(), pkey.get(), cipher,
                                 (unsigned char*)password, password_len,
                                 NULL, NULL)) {
