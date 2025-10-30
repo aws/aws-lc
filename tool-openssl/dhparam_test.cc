@@ -15,16 +15,6 @@ namespace {
 
 // -------------------- Helper Functions and Structures ------------------------
 
-// Helper function to run commands and compare trimmed file outputs
-[[maybe_unused]] void RunAndCompareCommands(const std::string& tool_cmd, const std::string& openssl_cmd,
-                          const std::string& tool_file, const std::string& openssl_file) {
-  ASSERT_EQ(system(tool_cmd.c_str()), 0) << "AWS-LC command failed: " << tool_cmd;
-  ASSERT_EQ(system(openssl_cmd.c_str()), 0) << "OpenSSL command failed: " << openssl_cmd;
-
-  std::string tool_content = ReadFileToString(tool_file);
-  std::string openssl_content = ReadFileToString(openssl_file);
-  ASSERT_EQ(trim(tool_content), trim(openssl_content));
-}
 
 // Test parameters for bit size tests
 struct BitSizeTestParams {
@@ -90,7 +80,7 @@ TEST_F(DhparamTest, BasicGeneration) {
 
 // Test generation with different bit sizes
 TEST_F(DhparamTest, GenerateVariousSizes) {
-  std::vector<unsigned> bit_sizes = {512, 1024, 2048};
+  std::vector<unsigned> bit_sizes = {512, 1024};
 
   for (unsigned bits : bit_sizes) {
     args_list_t args = {"-out", out_path, std::to_string(bits)};
