@@ -106,7 +106,7 @@ bool X509Tool(const args_list_t &args);
 
 
 // Req Tool Utilities
-bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string);
+bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
 
 
 // Rehash tool Utils

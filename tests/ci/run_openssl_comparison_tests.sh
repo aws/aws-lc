@@ -44,6 +44,7 @@ export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
 for branch in "${!openssl_branches[@]}"; do
   export OPENSSL_TOOL_VERSION="${openssl_versions[$branch]}"
   export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
+  export OPENSSL_CONF="${install_dir}/openssl-${branch}/openssl.cnf"
   echo "Running ${test} against OpenSSL ${branch}"
   LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test"
 done
