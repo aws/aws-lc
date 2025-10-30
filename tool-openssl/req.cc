@@ -511,6 +511,7 @@ bool reqTool(const args_list_t &args) {
   }
 
   bssl::UniquePtr<BIO> out_bio;
+  SetUmaskForPrivateKey();
   if (!keyout.empty()) {
     fprintf(stderr, "Writing private key to %s\n", keyout.c_str());
     out_bio.reset(BIO_new_file(keyout.c_str(), "w"));

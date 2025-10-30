@@ -14,7 +14,6 @@
 #endif
 
 #include "./internal.h"
-    
 
 static const std::array<Tool, 16> kTools = {{
     {"crl", CRLTool},
