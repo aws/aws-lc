@@ -302,7 +302,8 @@ static const XTSTestCase kXTSTestCases[] = {
         "6f229c1b60833e2a50a041b360d991814c6ec7f3199d8b2482f5b19b64c32013"
         "a679f1361a011bf37b2e1565"
     },
-
+    // Same key and tweak as ACCP test vectore above for
+    // len = 40 bytes = 2 blocks + 8 bytes
     {
         "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
         "202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F",
