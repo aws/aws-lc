@@ -11,7 +11,8 @@
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
 #elif defined(OPENSSL_MACOS) || defined(OPENSSL_OPENBSD) || \
-    defined(OPENSSL_FREEBSD) || defined(OPENSSL_SOLARIS) || \
+    defined(OPENSSL_FREEBSD)  || defined(OPENSSL_NETBSD) || \
+    defined(OPENSSL_SOLARIS) || \
     (defined(OPENSSL_LINUX) && !defined(HAVE_LINUX_RANDOM_H))
 #define OPENSSL_RAND_GETENTROPY
 #elif defined(OPENSSL_IOS)
