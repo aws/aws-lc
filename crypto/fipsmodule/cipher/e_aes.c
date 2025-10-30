@@ -1924,7 +1924,7 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     xaes_256_gcm_ctx_init(xaes_ctx, key);
 
     ctx->tag_len = (requested_tag_len > 0) ? requested_tag_len : EVP_AEAD_AES_GCM_TAG_LEN;
-
+    
     return 1;
 }
 
