@@ -1613,7 +1613,7 @@ TEST(EvpAeadCtxSerdeTest, ID) {
 TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
     // Test invalid nonce sizes and key length
     {
-        std::vector<uint8_t> key(32), nonce(24), plaintext(1), ciphertext(20);
+        std::vector<uint8_t> key(32), nonce(24), plaintext, ciphertext(16);
         const size_t tag_size = 16;
         bssl::ScopedEVP_AEAD_CTX ctx;
         // Invalid key length
@@ -1628,15 +1628,15 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
         size_t plaintext_len = 0, ciphertext_len = 0;
         // Invalid nonce and nonce size
         ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
-                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                plaintext_len + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                 nullptr, nonce_len, plaintext.data(), plaintext_len, nullptr, 0)); 
         nonce_len = 19;
         ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
-                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                plaintext_len + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                 nonce.data(), nonce_len, plaintext.data(), plaintext_len, nullptr, 0));
         nonce_len = 25;
         ASSERT_FALSE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
-                                plaintext_len +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                plaintext_len + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                 nonce.data(), nonce_len, plaintext.data(), plaintext_len, nullptr, 0));
 
         nonce_len = 24;
@@ -1686,7 +1686,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD) {
 
             size_t ciphertext_len = 0;
             ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext.data(), &ciphertext_len,
-                                    plaintext_len[0] +  EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                    plaintext_len[0] + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                     nonce.data(), nonce_len, plaintext.data(), plaintext_len[0], aad.data(), aad_len[0]));
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext.data(), ciphertext_len));
 
