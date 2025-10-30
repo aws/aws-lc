@@ -23,10 +23,13 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
 jobs:
   x86_64_build:
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:small
     outputs:
@@ -80,7 +83,7 @@ jobs:
   x86_64_push:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:small
     needs:

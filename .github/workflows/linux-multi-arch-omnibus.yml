@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
 jobs:
   posix_tests:
     name: posix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ (matrix.arch == 'x86_64' && matrix.build32 && 'x86') || matrix.arch }}

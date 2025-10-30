@@ -12,6 +12,9 @@ on:
           change.
   schedule:
     - cron: '30 15 * * 1'
+permissions:
+  contents: read
+
 jobs:
   amazonlinux2:
     uses: ./.github/workflows/image-build-al2.yml
@@ -42,3 +45,5 @@ jobs:
   fedora31:
     if: ${{ inputs.rebuildUnsupportedImages }}
     uses: ./.github/workflows/image-build-fedora31.yml
+  windows:
+    uses: ./.github/workflows/image-build-windows.yml

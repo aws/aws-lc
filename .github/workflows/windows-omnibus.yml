@@ -1,0 +1,47 @@
+name: windows-omnibus
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+jobs:
+    windows2022_mscvc_compilers:
+      name: windows-${{ matrix.image }}-x86_64
+      runs-on:
+        - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+          image:windows-ec2-2022
+          instance-size:large
+      strategy:
+        fail-fast: false
+        matrix:
+          include:
+            - image: ltsc2022_vs2015
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
+            - image: ltsc2022_vs2017
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+            - image: ltsc2022_vs2019
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+            - image: ltsc2022_vs2022
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+            - image: ltsc2022_sde
+              envPath: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+              runSDE: true
+      steps:
+        - uses: actions/checkout@v5
+        - name: Login to Amazon ECR
+          id: login-ecr
+          uses: aws-actions/amazon-ecr-login@v2
+        - shell: pwsh
+          run: >
+            docker run
+            -v ${{ github.workspace }}:${{ github.workspace }}
+            -w ${{ github.workspace }}
+            ${{ steps.login-ecr.outputs.registry }}/aws-lc/windows:${{ matrix.image }}
+            cmd /S /C call .\tests\ci\run_windows_tests.bat "${{ matrix.envPath }}" x64 ${{ matrix.runSDE || false }}

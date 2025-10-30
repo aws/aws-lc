@@ -23,14 +23,18 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
 jobs:
   x86_64_build:
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:medium
     outputs:
       al2023: ${{ steps.images.outputs.al2023 }}
+      x509: ${{ steps.images.outputs.x509 }}
     steps:
       - uses: actions/checkout@v5
       - name: Login to Amazon ECR
@@ -44,6 +48,7 @@ jobs:
         id: images
         run: |
           echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+          echo x509=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
@@ -54,9 +59,10 @@ jobs:
             scripts=./.github/docker_images/scripts
             dependencies=./tests/ci/docker_images/dependencies
           tags: ${{ steps.images.outputs.al2023 }}
+          target: al2023
           push: true
       - uses: ./.github/actions/codebuild-docker-run
-        name: Validate Container
+        name: Validate Container (al2023)
         with:
           image: ${{ steps.images.outputs.al2023 }}
           run: |
@@ -80,10 +86,28 @@ jobs:
             source /opt/compiler-env/setup-clang-15.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+            dependencies=./tests/ci/docker_images/dependencies
+          tags: ${{ steps.images.outputs.x509 }}
+          target: x509
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container (x509)
+        with:
+          image: ${{ steps.images.outputs.x509 }}
+          run: |
+            cd /x509-limbo
+            source .venv/bin/activate
+            make ARGS="--version" run
 
   aarch64_build:
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:arm-3.0
       instance-size:medium
     outputs:
@@ -141,7 +165,7 @@ jobs:
   x86_64_push:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:medium
     needs:
@@ -160,20 +184,24 @@ jobs:
         id: images
         run: |
           echo al2023=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2023_x86_64 >> "$GITHUB_OUTPUT"
+          echo x509=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2023_x509 >> "$GITHUB_OUTPUT"
       - name: Pull Images From Staging
         run: |
           docker pull ${{ needs.x86_64_build.outputs.al2023 }}
+          docker pull ${{ needs.x86_64_build.outputs.x509 }}
       - name: Tag Images
         run: |
           docker tag ${{ needs.x86_64_build.outputs.al2023 }} ${{ steps.images.outputs.al2023 }}
+          docker tag ${{ needs.x86_64_build.outputs.x509 }} ${{ steps.images.outputs.x509 }}
       - name: Push Images
         run: |
           docker push ${{ steps.images.outputs.al2023 }}
+          docker push ${{ steps.images.outputs.x509 }}
 
   aarch64_push:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:arm-3.0
       instance-size:medium
     needs:
@@ -205,7 +233,7 @@ jobs:
   multiarch_manifest:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:small
     needs:

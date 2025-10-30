@@ -23,10 +23,13 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
 jobs:
   x86_64_build:
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:medium
     outputs:
@@ -122,7 +125,7 @@ jobs:
 
   aarch64_build:
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:arm-3.0
       instance-size:medium
     outputs:
@@ -181,7 +184,7 @@ jobs:
   x86_64_push:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:medium
     needs:
@@ -220,7 +223,7 @@ jobs:
   aarch64_push:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:arm-3.0
       instance-size:medium
     needs:
@@ -252,7 +255,7 @@ jobs:
   multiarch_manifest:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on:
-      codebuild-aws-lc-github-docker-image-build-${{ github.run_id }}-${{ github.run_attempt }}
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:small
     needs:
