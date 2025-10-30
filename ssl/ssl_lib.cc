@@ -505,9 +505,14 @@ void ssl_update_counter(SSL_CTX *ctx, SSL_stats_t &counter, bool lock) {
   }
 }
 
-static int ssl_read_counter(const SSL_CTX *ctx, int counter) {
+static int ssl_read_counter(const SSL_CTX *ctx, const int &counter) {
+#if defined(OPENSSL_STATS_C11_ATOMIC)
+  const std::atomic<SSL_stats_t> *count = reinterpret_cast<const std::atomic<SSL_stats_t>*>(&counter);
+  return count->load();
+#else
   MutexReadLock lock(const_cast<CRYPTO_MUTEX *>(&ctx->lock));
   return counter;
+#endif
 }
 
 void SSL_CTX_set_aes_hw_override_for_testing(SSL_CTX *ctx,
