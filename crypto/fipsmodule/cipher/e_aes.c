@@ -1888,7 +1888,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
     out->nid = NID_xaes_256_gcm;
-    out->block_size = 1;
+    out->block_size = AES_BLOCK_SIZE;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
     out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING 
