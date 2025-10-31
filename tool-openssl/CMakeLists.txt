@@ -114,6 +114,7 @@ if(BUILD_TESTING)
         rsa.cc
         rsa_test.cc
         s_client.cc
+        s_client_test.cc
         test_util.cc
         tool_util.cc
         verify.cc
