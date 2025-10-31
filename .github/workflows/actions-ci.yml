@@ -33,6 +33,42 @@ jobs:
           cmake -GNinja -Btest_build_dir
           ninja -C test_build_dir run_tests
 
+  macOS-x86:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "macos-15-intel"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Build ${{ env.PACKAGE_NAME }}
+        run: |
+          ./tests/ci/run_posix_tests.sh
+
+  macOS-x86-FIPS:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "macos-15-intel"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+        run: |
+          ./tests/ci/run_fips_tests.sh
+
   macOS-ARM:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
