@@ -354,13 +354,15 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
-  switch(ctx->cipher->nid) {
+  switch(ctx->cipher->nid) { 
+    // only execute assert checking with aes-gcm
     case NID_aes_128_gcm:
     case NID_aes_192_gcm:
     case NID_aes_256_gcm:
         assert(ctx->cipher->ctx_size ==
             sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
         break;
+    // not execute assert checking with xaes-256-gcm
     default: 
         break;
   }
@@ -1764,7 +1766,6 @@ Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
 #define XAES_256_GCM_CMAC_INPUT_SIZE (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_MAX_NONCE_SIZE  (AES_GCM_NONCE_LENGTH * 2)
 #define XAES_256_GCM_MIN_NONCE_SIZE  (20)
-#define USE_OPTIMIZED_CMAC                  
 
 typedef struct {
     AES_KEY xaes_key; 
