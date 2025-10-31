@@ -1766,18 +1766,23 @@ struct xaes_256_gcm_ctx {
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 };
-
 /* 
-Left-shift a 128-bit register: https://words.filippo.io/xaes-256-gcm/ (line 2)
-If MSB(L) = 0: K1 = L << 1;
-Else: K1 = (L << 1) ^ (0x00, ..., 0x00, 0x87)
-*/
+The following function performs the step #2 of CMAC specified in: 
+https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38b.pdf#page=14 
+Only K1 is needed as the CMAC input is always a complete block. 
+Also note that K1 only depends on the input main key. 
+Pseudocode:   
+    If MSB(L) = 0: K1 = L << 1;
+    Else: K1 = (L << 1) ^ (0x00, ..., 0x00, 0x87) 
+*/ 
 #define BINARY_FIELD_MUL_X_128(out, in)             \
 do {                                                \
     unsigned i;                                     \
+    /* Shift |in| to left, including carry. */      \
     for (i = 0; i < 15; i++) {                      \
         out[i] = (in[i] << 1) | (in[i+1] >> 7);     \
     }                                               \
+    /* If MSB set fixup with R. */                  \
     const uint8_t carry = in[0] >> 7;               \
     out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87);   \
 } while(0);
@@ -1814,7 +1819,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     // Nonce size: 20 bytes <= |N| <= 24 bytes
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
-    gctx->ivlen > XAES_256_GCM_MAX_NONCE_SIZE) {
+        gctx->ivlen > XAES_256_GCM_MAX_NONCE_SIZE) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
     }
@@ -1874,7 +1879,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     if(iv != NULL) {
         return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
     }
-    
+
     return 1;
 }
 
