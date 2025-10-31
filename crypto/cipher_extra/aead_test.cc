@@ -1486,7 +1486,11 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
     {"EVP_aead_aes_128_gcm_tls13", EVP_aead_aes_128_gcm_tls13(), kEvpAeadCtxKey,
      16, 16, 23},
     {"EVP_aead_aes_256_gcm_tls13", EVP_aead_aes_256_gcm_tls13(), kEvpAeadCtxKey,
-     32, 16, 24}};
+     32, 16, 24},
+    {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+     29},
+    {"EVP_aead_hmac_aes_256_gcm", EVP_aead_hmac_aes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+     30}};
 
 INSTANTIATE_TEST_SUITE_P(
     EvpAeadCtxSerdeTests, EvpAeadCtxSerdeTest,
@@ -1579,7 +1583,28 @@ TEST_P(EvpAeadCtxSerdeTest, FailUnknownCipherId) {
               CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID);
   }
 }
+#if 0
+struct aead_aes_gcm_ctx_2 {
+  union {
+    double align;
+    AES_KEY ks;
+  } ks;
+  GCM128_KEY gcm_key;
+  ctr128_f ctr;
+};
+#define XAES_KEY_COMMIT_SIZE  (2*AES_BLOCK_SIZE)
+struct aead_xaes_256_gcm_ctx_2 {
+  AES_KEY xaes_key; // Key K, used in CMAC and key commitment
+  uint8_t k1[AES_BLOCK_SIZE]; // only value needed from cmac_ctx_st
+  uint8_t kc[XAES_KEY_COMMIT_SIZE]; // key commitment
+};
 
+#include <openssl/hmac.h>
+struct aead_hmac_aes_256_gcm_ctx_2 {
+  HMAC_CTX hmac_ctx;
+  uint8_t kc[XAES_KEY_COMMIT_SIZE]; // key commitment
+};
+#endif
 TEST(EvpAeadCtxSerdeTest, ID) {
   bool identifiers[AEAD_MAX_ID + 1] = {false};
   for (EvpAeadCtxSerdeTestParams params : kEvpAeadCtxSerde) {
@@ -1594,6 +1619,11 @@ TEST(EvpAeadCtxSerdeTest, ID) {
     identifiers[id] = true;
   }
 
+  #if 0
+  // Finding out the sizes of the key committing AEAD structs, XAES and HMAC
+  EXPECT_EQ(sizeof(struct aead_xaes_256_gcm_ctx_2), (size_t)800);
+  EXPECT_EQ(sizeof(struct aead_hmac_aes_256_gcm_ctx_2), (size_t)800);
+  #endif
   // Nothing should have the unknown identifier (0)
   ASSERT_FALSE(identifiers[0]);
 
