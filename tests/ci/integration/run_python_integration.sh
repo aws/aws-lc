@@ -183,10 +183,6 @@ function python_patch() {
     local branch=${1}
     local src_dir="${PYTHON_SRC_FOLDER}/${branch}"
     local patch_dir="${PYTHON_PATCH_FOLDER}/${branch}"
-    if [[ ! $(find -L ${patch_dir} -type f -name '*.patch') ]]; then
-        echo "No patch for ${branch}!"
-        exit 1
-    fi
     git clone https://github.com/python/cpython.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
