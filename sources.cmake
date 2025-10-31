@@ -33,6 +33,7 @@ set(
   crypto/cipher_extra/test/aes_256_gcm_randnonce_tests.txt
   crypto/cipher_extra/test/aes_256_gcm_siv_tests.txt
   crypto/cipher_extra/test/aes_256_gcm_tests.txt
+  crypto/cipher_extra/test/xaes_256_gcm_tests.txt
   crypto/cipher_extra/test/aes_ccm_test.txt
   crypto/cipher_extra/test/chacha20_poly1305_tests.txt
   crypto/cipher_extra/test/xchacha20_poly1305_tests.txt
