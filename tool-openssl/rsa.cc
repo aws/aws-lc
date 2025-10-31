@@ -180,8 +180,10 @@ bool rsaTool(const args_list_t &args) {
 
   bssl::UniquePtr<BIO> out_file;
   if (!out_path.empty()) {
+    if (!pubout) {
+      SetUmaskForPrivateKey();
+    }
     out_file.reset(BIO_new_file(out_path.c_str(), "wb"));
-
   } else {
     out_file.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   }
