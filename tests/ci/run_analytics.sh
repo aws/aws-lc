@@ -10,7 +10,9 @@ source tests/ci/common_posix_setup.sh
 # In case there is a weird change over time this recorded additional information about the host to the logs.
 lscpu
 
-branch=$(echo "$CODEBUILD_WEBHOOK_TRIGGER" | cut -d '/' -f2)
+# The expected format here is inline with github.ref context value which passes
+# the push events reference as `refs/heads/<branch_name>`
+branch=$(echo "${ANALYTICS_BRANCH:?}" | cut -d '/' -f3)
 common_dimensions="Branch=${branch}"
 
 commit_timestamp=$(git show -s --format=%ct)
