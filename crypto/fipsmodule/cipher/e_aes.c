@@ -1754,6 +1754,67 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 /* ---------------------------- XAES-256-GCM ----------------------------
 Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md 
 -----------------------------------------------------------------------*/
+#ifdef __AVX512F__
+#include <immintrin.h>
+
+__attribute__((target("vaes,avx512f,aes,sse2")))
+static inline __m128i aes128_keyexpand(__m128i key)
+{
+    key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+    key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+    return _mm_xor_si128(key, _mm_slli_si128(key, 4));
+}
+
+#define KEYEXP128_H(K1, K2, I, S) _mm_xor_si128(aes128_keyexpand(K1), \
+        _mm_shuffle_epi32(_mm_aeskeygenassist_si128(K2, I), S))
+#define KEYEXP256(K1, K2, I)  KEYEXP128_H(K1, K2, I, 0xff)
+#define KEYEXP256_2(K1, K2) KEYEXP128_H(K1, K2, 0x00, 0xaa)
+
+__attribute__((target("vaes,avx512f,aes,sse2")))
+static inline void aes_key_setup_enc(__m128i rk[], const __m256i cipherKey)
+{
+    /* 256 bit key setup */
+    _mm256_storeu2_m128i(rk + 1, rk, cipherKey);
+    // rk[0] = _mm_loadu_si128((const block128*) cipherKey);
+    // rk[1] = _mm_loadu_si128((const block128*) (cipherKey+16));
+    rk[2] = KEYEXP256(rk[0], rk[1], 0x01);
+    rk[3] = KEYEXP256_2(rk[1], rk[2]);
+    rk[4] = KEYEXP256(rk[2], rk[3], 0x02);
+    rk[5] = KEYEXP256_2(rk[3], rk[4]);
+    rk[6] = KEYEXP256(rk[4], rk[5], 0x04);
+    rk[7] = KEYEXP256_2(rk[5], rk[6]);
+    rk[8] = KEYEXP256(rk[6], rk[7], 0x08);
+    rk[9] = KEYEXP256_2(rk[7], rk[8]);
+    rk[10] = KEYEXP256(rk[8], rk[9], 0x10);
+    rk[11] = KEYEXP256_2(rk[9], rk[10]);
+    rk[12] = KEYEXP256(rk[10], rk[11], 0x20);
+    rk[13] = KEYEXP256_2(rk[11], rk[12]);
+    rk[14] = KEYEXP256(rk[12], rk[13], 0x40);
+}
+
+__attribute__((target("vaes,avx512f,aes,sse2")))
+static int CMAC_KDF(uint8_t *in, uint8_t *out, uint8_t *xaes_key) {
+    __m128i rk[15];
+    aes_key_setup_enc(rk, _mm256_loadu_si256((__m256i*)xaes_key));
+
+    __m512i derived_key;
+    derived_key = _mm512_loadu_si512((__m512i*)in);
+    derived_key = _mm512_xor_si512(derived_key, _mm512_broadcast_i32x4(rk[0]));
+    
+    for(size_t r = 1; r < 14; ++r) {
+        derived_key = _mm512_aesenc_epi128(derived_key, 
+            _mm512_broadcast_i32x4(rk[r]));
+    }
+    
+    derived_key = _mm512_aesenclast_epi128(derived_key, 
+            _mm512_broadcast_i32x4(rk[14]));
+    
+    _mm512_storeu_si512((__m512i*)out, derived_key);
+
+    return 1;
+}
+#endif 
+
 #define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_LENGTH      (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
@@ -1763,6 +1824,10 @@ Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
 #define USE_OPTIMIZED_CMAC                  
 
 struct xaes_256_gcm_ctx {
+#ifdef __AVX512F__ 
+    uint8_t xaes_key[XAES_256_GCM_KEY_LENGTH];
+    uint8_t k1[AES_BLOCK_SIZE]; 
+#endif 
 #ifdef USE_OPTIMIZED_CMAC
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
@@ -1802,9 +1867,13 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
         M1[i] ^= xaes_ctx->k1[i];
         M2[i] ^= xaes_ctx->k1[i];
     }
-
+#ifdef __AVX512F__
+    CMAC_KDF(M, derived_key, xaes_ctx->xaes_key);
+#endif
+#ifdef USE_OPTIMIZED_CMAC
     AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
     AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+#endif 
 #else 
     AES_CMAC(derived_key, xaes_ctx->xaes_key, AES_BLOCK_SIZE * 2, M1, AES_BLOCK_SIZE);
     AES_CMAC(derived_key + AES_BLOCK_SIZE, xaes_ctx->xaes_key, AES_BLOCK_SIZE * 2, M2, AES_BLOCK_SIZE);
