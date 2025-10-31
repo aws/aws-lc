@@ -188,6 +188,13 @@ typedef int SSL_stats_t;
 #define OPENSSL_STATS_C11_ATOMIC
 #endif
 
+// Define the actual storage type for statistics counters
+#if defined(OPENSSL_STATS_C11_ATOMIC)
+#define SSL_STATS_COUNTER_TYPE std::atomic<SSL_stats_t>
+#else
+#define SSL_STATS_COUNTER_TYPE SSL_stats_t
+#endif
+
 BSSL_NAMESPACE_BEGIN
 
 struct SSL_CONFIG;
@@ -3765,7 +3772,7 @@ void ssl_set_read_error(SSL *ssl);
 
 // ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
 // set to false when the mutex in |SSL_CTX| has already been locked.
-void ssl_update_counter(SSL_CTX *ctx, SSL_stats_t &counter, bool lock);
+void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock);
 
 BSSL_NAMESPACE_END
 
@@ -3882,16 +3889,16 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
                                  int *copy) = nullptr;
 
   struct {
-    SSL_stats_t sess_connect = 0;              // SSL new conn - started
-    SSL_stats_t sess_connect_renegotiate = 0;  // SSL reneg - requested
-    SSL_stats_t sess_connect_good = 0;         // SSL new conne/reneg - finished
-    SSL_stats_t sess_accept = 0;               // SSL new accept - started
-    SSL_stats_t sess_accept_good = 0;          // SSL accept/reneg - finished
-    SSL_stats_t sess_miss = 0;                 // session lookup misses
-    SSL_stats_t sess_timeout = 0;              // reuse attempt on timeouted session
-    SSL_stats_t sess_cache_full = 0;           // session removed due to full cache
-    SSL_stats_t sess_hit = 0;                  // session reuse actually done
-    SSL_stats_t sess_cb_hit = 0;               // session-id that was not
+    SSL_STATS_COUNTER_TYPE sess_connect{};              // SSL new conn - started
+    SSL_STATS_COUNTER_TYPE sess_connect_renegotiate{};  // SSL reneg - requested
+    SSL_STATS_COUNTER_TYPE sess_connect_good{};         // SSL new conne/reneg - finished
+    SSL_STATS_COUNTER_TYPE sess_accept{};               // SSL new accept - started
+    SSL_STATS_COUNTER_TYPE sess_accept_good{};          // SSL accept/reneg - finished
+    SSL_STATS_COUNTER_TYPE sess_miss{};                 // session lookup misses
+    SSL_STATS_COUNTER_TYPE sess_timeout{};              // reuse attempt on timeouted session
+    SSL_STATS_COUNTER_TYPE sess_cache_full{};           // session removed due to full cache
+    SSL_STATS_COUNTER_TYPE sess_hit{};                  // session reuse actually done
+    SSL_STATS_COUNTER_TYPE sess_cb_hit{};               // session-id that was not
                                        // in the cache was
                                        // passed back via the callback. This
                                        // indicates that the application is
