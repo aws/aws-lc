@@ -478,7 +478,7 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
   X509 *err_cert = X509_STORE_CTX_get_current_cert(ctx);
   int err = X509_STORE_CTX_get_error(ctx);
   int depth = X509_STORE_CTX_get_error_depth(ctx);
-  bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_CLOSE));
+  bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_NOCLOSE));
 
   BIO_printf(bio_err.get(), "depth=%d ", depth);
   if (err_cert != NULL) {
@@ -783,5 +783,15 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
     }
   }
 
-  return DoConnection(ctx.get(), args_map, &TransferData, is_openssl_s_client);
+  bool result = DoConnection(ctx.get(), args_map, &TransferData, is_openssl_s_client);
+
+  // Clean up global state to prevent test pollution
+  if (g_keylog_file != nullptr) {
+    fclose(g_keylog_file);
+    g_keylog_file = nullptr;
+  }
+  session_out.reset();
+  resume_session.reset();
+
+  return result;
 }
