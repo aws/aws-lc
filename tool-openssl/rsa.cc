@@ -202,7 +202,7 @@ bool rsaTool(const args_list_t &args) {
   if (!noout) {
     bool write_success = false;
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-    if (pkey && EVP_PKEY_set1_RSA(pkey.get(), rsa.release())) {
+    if (pkey && EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
       fprintf(stderr, "writing RSA key\n");
       if (pubout) {
         // Output public key
