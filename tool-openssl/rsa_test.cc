@@ -107,6 +107,272 @@ TEST_F(RSAOptionUsageErrorsTest, InvalidFilePathTest) {
   ASSERT_FALSE(result);
 }
 
+// -------------------- RSA Functional Unit Tests -----------------------------
+
+class RSAFunctionalTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+    ASSERT_GT(createTempFILEpath(in_path), 0u);
+    ASSERT_GT(createTempFILEpath(out_path), 0u);
+    ASSERT_GT(createTempFILEpath(pub_path), 0u);
+
+    rsa.reset(CreateRSAKey());
+    ASSERT_TRUE(rsa);
+
+    // Write private key in PEM format
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    ASSERT_TRUE(PEM_write_RSAPrivateKey(in_file.get(), rsa.get(), nullptr, nullptr, 0, nullptr, nullptr));
+  }
+
+  void TearDown() override {
+    RemoveFile(in_path);
+    RemoveFile(out_path);
+    RemoveFile(pub_path);
+  }
+
+  char in_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char pub_path[PATH_MAX];
+  bssl::UniquePtr<RSA> rsa;
+};
+
+// Test PEM to PEM conversion (default)
+TEST_F(RSAFunctionalTest, PEMtoPEMConversion) {
+  args_list_t args = {"-in", in_path, "-out", out_path};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<RSA> parsed_rsa(PEM_read_RSAPrivateKey(out_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+}
+
+// Test PEM to DER conversion
+TEST_F(RSAFunctionalTest, PEMtoDERConversion) {
+  args_list_t args = {"-in", in_path, "-out", out_path, "-outform", "DER"};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey_fp(out_file.get(), nullptr));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<RSA> parsed_rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+}
+
+// Test DER to PEM conversion
+TEST_F(RSAFunctionalTest, DERtoPEMConversion) {
+  // First create a DER input file
+  char der_in_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(der_in_path), 0u);
+  {
+    ScopedFILE der_file(fopen(der_in_path, "wb"));
+    ASSERT_TRUE(der_file);
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    ASSERT_TRUE(pkey);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+    ASSERT_TRUE(i2d_PrivateKey_fp(der_file.get(), pkey.get()));
+  }
+
+  args_list_t args = {"-in", der_in_path, "-inform", "DER", "-out", out_path, "-outform", "PEM"};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<RSA> parsed_rsa(PEM_read_RSAPrivateKey(out_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+
+  RemoveFile(der_in_path);
+}
+
+// Test public key output
+TEST_F(RSAFunctionalTest, PublicKeyOutput) {
+  args_list_t args = {"-in", in_path, "-out", out_path, "-pubout"};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PUBKEY(out_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<RSA> parsed_rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches (public component)
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+  // Verify public exponent matches
+  EXPECT_EQ(BN_cmp(RSA_get0_e(rsa.get()), RSA_get0_e(parsed_rsa.get())), 0);
+  // Private key should not be present
+  EXPECT_EQ(RSA_get0_d(parsed_rsa.get()), nullptr);
+}
+
+// Test public key input and output
+TEST_F(RSAFunctionalTest, PublicKeyInputOutput) {
+  // First create a public key input file
+  {
+    ScopedFILE pub_file(fopen(pub_path, "wb"));
+    ASSERT_TRUE(pub_file);
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    ASSERT_TRUE(pkey);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+    ASSERT_TRUE(PEM_write_PUBKEY(pub_file.get(), pkey.get()));
+  }
+
+  args_list_t args = {"-in", pub_path, "-pubin", "-out", out_path};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PUBKEY(out_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<RSA> parsed_rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+}
+
+// Test public key DER to PEM conversion
+TEST_F(RSAFunctionalTest, PublicKeyDERtoPEM) {
+  // First create a DER public key input file
+  char der_pub_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(der_pub_path), 0u);
+  {
+    ScopedFILE der_file(fopen(der_pub_path, "wb"));
+    ASSERT_TRUE(der_file);
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    ASSERT_TRUE(pkey);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+    ASSERT_TRUE(i2d_PUBKEY_fp(der_file.get(), pkey.get()));
+  }
+
+  args_list_t args = {"-in", der_pub_path, "-inform", "DER", "-pubin", "-out", out_path, "-outform", "PEM"};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PUBKEY(out_file.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<RSA> parsed_rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+
+  RemoveFile(der_pub_path);
+}
+
+// Test modulus output
+TEST_F(RSAFunctionalTest, ModulusOutput) {
+  args_list_t args = {"-in", in_path, "-modulus", "-noout"};
+  ASSERT_TRUE(rsaTool(args));
+  // The output goes to stdout, just verify the command succeeds
+}
+
+// Test modulus with output file
+TEST_F(RSAFunctionalTest, ModulusWithOutput) {
+  args_list_t args = {"-in", in_path, "-modulus", "-out", out_path};
+  ASSERT_TRUE(rsaTool(args));
+
+  // Read output and verify it contains "Modulus="
+  std::string output = ReadFileToString(out_path);
+  EXPECT_TRUE(output.find("Modulus=") != std::string::npos);
+  EXPECT_TRUE(output.find("\n") != std::string::npos);
+
+  // Verify the modulus hex value is present and uppercase
+  const BIGNUM *n = RSA_get0_n(rsa.get());
+  ASSERT_TRUE(n);
+  char *hex_modulus = BN_bn2hex(n);
+  ASSERT_TRUE(hex_modulus);
+
+  // Convert to uppercase for comparison
+  std::string expected_hex(hex_modulus);
+  for (char &c : expected_hex) {
+    c = toupper(c);
+  }
+
+  EXPECT_TRUE(output.find(expected_hex) != std::string::npos);
+  OPENSSL_free(hex_modulus);
+}
+
+// Test noout option prevents key output
+TEST_F(RSAFunctionalTest, NooutPreventsKeyOutput) {
+  args_list_t args = {"-in", in_path, "-noout", "-out", out_path};
+  ASSERT_TRUE(rsaTool(args));
+
+  // Output file should be empty or not contain a key
+  std::string output = ReadFileToString(out_path);
+  EXPECT_TRUE(output.empty() || output.find("-----BEGIN") == std::string::npos);
+}
+
+// Test combined modulus and key output
+TEST_F(RSAFunctionalTest, ModulusAndKeyOutput) {
+  args_list_t args = {"-in", in_path, "-modulus", "-out", out_path};
+  ASSERT_TRUE(rsaTool(args));
+
+  std::string output = ReadFileToString(out_path);
+
+  // Should contain both modulus and key
+  EXPECT_TRUE(output.find("Modulus=") != std::string::npos);
+  EXPECT_TRUE(output.find("-----BEGIN") != std::string::npos);
+  EXPECT_TRUE(output.find("-----END") != std::string::npos);
+}
+
+// Test DER output with public key
+TEST_F(RSAFunctionalTest, PublicKeyDEROutput) {
+  args_list_t args = {"-in", in_path, "-pubout", "-outform", "DER", "-out", out_path};
+  ASSERT_TRUE(rsaTool(args));
+
+  ScopedFILE out_file(fopen(out_path, "rb"));
+  ASSERT_TRUE(out_file);
+  bssl::UniquePtr<EVP_PKEY> pkey(d2i_PUBKEY_fp(out_file.get(), nullptr));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<RSA> parsed_rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  ASSERT_TRUE(parsed_rsa);
+
+  // Verify modulus matches
+  EXPECT_EQ(BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(parsed_rsa.get())), 0);
+}
+
+// Test invalid inform value
+TEST_F(RSAFunctionalTest, InvalidInformValue) {
+  args_list_t args = {"-in", in_path, "-inform", "INVALID", "-out", out_path};
+  ASSERT_FALSE(rsaTool(args));
+}
+
+// Test invalid outform value
+TEST_F(RSAFunctionalTest, InvalidOutformValue) {
+  args_list_t args = {"-in", in_path, "-outform", "INVALID", "-out", out_path};
+  ASSERT_FALSE(rsaTool(args));
+}
+
+// Test help option
+TEST_F(RSAFunctionalTest, HelpOption) {
+  args_list_t args = {"-help"};
+  ASSERT_TRUE(rsaTool(args));
+}
+
+// Test case insensitive format arguments
+TEST_F(RSAFunctionalTest, CaseInsensitiveFormats) {
+  args_list_t args1 = {"-in", in_path, "-out", out_path, "-outform", "der"};
+  ASSERT_TRUE(rsaTool(args1));
+
+  args_list_t args2 = {"-in", in_path, "-out", out_path, "-outform", "pem"};
+  ASSERT_TRUE(rsaTool(args2));
+
+  args_list_t args3 = {"-in", in_path, "-out", out_path, "-outform", "DeR"};
+  ASSERT_TRUE(rsaTool(args3));
+}
+
 // -------------------- RSA OpenSSL Comparison Tests --------------------------
 
 // Comparison tests cannot run without set up of environment variables:

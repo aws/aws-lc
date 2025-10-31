@@ -18,7 +18,7 @@
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
-  { "-in", kRequiredArgument, "RSA key input file" },
+  { "-in", kOptionalArgument, "RSA key input file" },
   { "-inform", kOptionalArgument, "Input format (PEM or DER), default PEM" },
   { "-out", kOptionalArgument, "Output file to write to" },
   { "-outform", kOptionalArgument, "Output format (PEM or DER), default PEM" },
@@ -82,6 +82,12 @@ bool rsaTool(const args_list_t &args) {
   if (help) {
     PrintUsage(kArguments);
     return true;
+  }
+
+  if (!HasArgument(parsed_args, "-in")) {
+    fprintf(stderr, "Missing value for required argument: -in\n");
+    PrintUsage(kArguments);
+    return false;
   }
 
   if (pubin) {
