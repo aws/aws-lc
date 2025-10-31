@@ -1758,6 +1758,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 /* ---------------------------- XAES-256-GCM ----------------------------
 Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md 
 -----------------------------------------------------------------------*/
+#define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_LENGTH      (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_CMAC_INPUT_SIZE (AES_BLOCK_SIZE * 2)
@@ -1766,7 +1767,6 @@ Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
 #define USE_OPTIMIZED_CMAC                  
 
 struct xaes_256_gcm_ctx {
-    EVP_AES_GCM_CTX gctx;
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 };
@@ -1814,12 +1814,13 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
     return 1;
 }
 
+static struct xaes_256_gcm_ctx *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
+    return (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+}
+
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
 
-    struct xaes_256_gcm_ctx *xaes_ctx =
-        (struct xaes_256_gcm_ctx *)aes_gcm_from_cipher_ctx(ctx);
-
-    EVP_AES_GCM_CTX *gctx = &xaes_ctx->gctx;
+    EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
 
     // Nonce size: 20 bytes <= |N| <= 24 bytes
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
@@ -1828,6 +1829,8 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
         return 0;
     }
 
+    struct xaes_256_gcm_ctx *xaes_ctx = xaes_256_gcm_from_cipher_ctx(ctx);
+        
     uint8_t derived_key[XAES_256_GCM_KEY_LENGTH];
 
     xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key);
@@ -1869,9 +1872,8 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
         return 0;
     }
 
-    struct xaes_256_gcm_ctx *xaes_ctx =
-            (struct xaes_256_gcm_ctx *)aes_gcm_from_cipher_ctx(ctx);
-
+    struct xaes_256_gcm_ctx *xaes_ctx = xaes_256_gcm_from_cipher_ctx(ctx);
+    
     // When main key is provided, initialize the context and derive a subkey  
     if(key != NULL) { 
         if(!xaes_256_gcm_ctx_init(xaes_ctx, key)) {
@@ -1887,19 +1889,13 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     return 1;
 }
 
-#if defined(OPENSSL_32_BIT)
-#define EVP_XAES_256_GCM_CTX_PADDING (8)
-#else
-#define EVP_XAES_256_GCM_CTX_PADDING (4)
-#endif
-
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
     out->nid = NID_xaes_256_gcm;
     out->block_size = AES_BLOCK_SIZE;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(struct xaes_256_gcm_ctx) + EVP_XAES_256_GCM_CTX_PADDING; 
+    out->ctx_size = sizeof(struct xaes_256_gcm_ctx) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
