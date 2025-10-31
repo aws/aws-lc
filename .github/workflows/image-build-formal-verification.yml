@@ -1,0 +1,169 @@
+name: image-build-formal-verification
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-formal-verification
+        required: false
+        type: string
+  workflow_dispatch:
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
+jobs:
+  define_images:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    outputs:
+      images: ${{ steps.matrix.outputs.images }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Define Matrix
+        id: matrix
+        run: |
+          echo "images<<EOF" >> "$GITHUB_OUTPUT"
+          cat <<EOF >> "$GITHUB_OUTPUT"
+          {
+            "saw_x86": {
+              "name": "saw_x86",
+              "file": "./Dockerfile.saw_x86",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_x86"
+            },
+            "saw_x86_aes_gcm": {
+              "name": "saw_x86_aes_gcm",
+              "file": "./Dockerfile.saw_x86_aes_gcm",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_x86_aes_gcm"
+            },
+            "saw_aarch64": {
+              "name": "saw_aarch64",
+              "file": "./Dockerfile.saw_aarch64",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_aarch64"
+            },
+            "nsym": {
+              "name": "nsym",
+              "file": "./Dockerfile.nsym",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:nsym"
+            },
+            "saw_x86_fips2": {
+              "name": "saw_x86_fips2",
+              "branch": "fips-2022-11-02",
+              "file": "./Dockerfile",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_x86_fips2"
+            },
+            "saw_x86_fips3": {
+              "name": "saw_x86_fips3",
+              "branch": "fips-2024-09-27",
+              "file": "./Dockerfile.saw_x86",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_x86_fips3"
+            },
+            "saw_x86_aes_gcm_fips3": {
+              "name": "saw_x86_aes_gcm_fips3",
+              "branch": "fips-2024-09-27",
+              "file": "./Dockerfile.saw_x86_aes_gcm",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_x86_aes_gcm_fips3"
+            },
+            "saw_aarch64_fips3": {
+              "name": "saw_aarch64_fips3",
+              "branch": "fips-2024-09-27",
+              "file": "./Dockerfile.saw_aarch64",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:saw_aarch64_fips3"
+            },
+            "nsym_fips3": {
+              "name": "nsym_fips3",
+              "branch": "fips-2024-09-27",
+              "file": "./Dockerfile.nsym",
+              "staging": "${{ steps.ecr.outputs.staging_url }}:$(uuidgen)",
+              "publishing": "${{ steps.login-ecr.outputs.registry }}/aws-lc/verification:nsym_fips3"
+            }
+          }
+          EOF
+          echo EOF >> "${GITHUB_OUTPUT}"
+
+  build:
+    name: build-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:medium
+    needs:
+      - define_images
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.define_images.outputs.images).* }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: awslabs/aws-lc-verification
+          ref: ${{ matrix.branch || 'master' }}
+          path: '.'
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ${{ matrix.file }}
+          context: '.'
+          tags: ${{ matrix.staging }}
+          push: true
+
+  test:
+    needs:
+      - define_images
+      - build
+    uses: ./.github/workflows/formal-verification.yml
+    with:
+      concurrency_prefix: ${{ format('{0}-test', inputs.concurrency_prefix) }}
+      saw_x86: ${{ fromJSON(needs.define_images.outputs.images).saw_x86.staging }}
+      saw_x86_aes_gcm: ${{ fromJSON(needs.define_images.outputs.images).saw_x86_aes_gcm.staging }}
+      saw_aarch64: ${{ fromJSON(needs.define_images.outputs.images).saw_aarch64.staging }}
+      nsym: ${{ fromJSON(needs.define_images.outputs.images).nsym.staging }}
+
+  push:
+    name: push-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    needs:
+      - define_images
+      - test
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.define_images.outputs.images).* }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Pull Image From Staging
+        run: |
+          docker pull ${{ matrix.staging }}
+      - name: Tag Image
+        run: |
+          docker tag ${{ matrix.staging }} ${{ matrix.publishing }}
+      - name: Push Image
+        run: |
+          docker push ${{ matrix.publishing }}
