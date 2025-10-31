@@ -1769,8 +1769,8 @@ struct xaes_256_gcm_ctx {
 
 /* 
 Left-shift a 128-bit register: https://words.filippo.io/xaes-256-gcm/ (line 2)
-If MSB₁(L) = 0: K1 = L << 1;
-Else: K1 = (L << 1) ⊕ (0x00, ..., 0x00, 0x87)
+If MSB(L) = 0: K1 = L << 1;
+Else: K1 = (L << 1) ^ (0x00, ..., 0x00, 0x87)
 */
 #define BINARY_FIELD_MUL_X_128(out, in)             \
 do {                                                \
@@ -1863,18 +1863,18 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     struct xaes_256_gcm_ctx *xaes_ctx =
             (struct xaes_256_gcm_ctx *)aes_gcm_from_cipher_ctx(ctx);
 
-    // Initialize the main key  
+    // When main key is provided, initialize the context and derive a subkey  
     if(key != NULL) { 
         if(!xaes_256_gcm_ctx_init(xaes_ctx, key)) {
             return 0;
         }
     }
 
-    // Derive a subkey
+    // If iv is provided, even if main key is not, derive a subkey
     if(iv != NULL) {
         return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
     }
-
+    
     return 1;
 }
 
