@@ -1887,13 +1887,19 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     return 1;
 }
 
+#if defined(OPENSSL_32_BIT)
+#define EVP_XAES_256_GCM_CTX_PADDING (8)
+#else
+#define EVP_XAES_256_GCM_CTX_PADDING (4)
+#endif
+
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     OPENSSL_memset(out, 0, sizeof(EVP_CIPHER));
     out->nid = NID_xaes_256_gcm;
     out->block_size = AES_BLOCK_SIZE;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(struct xaes_256_gcm_ctx) + EVP_AES_GCM_CTX_PADDING; 
+    out->ctx_size = sizeof(struct xaes_256_gcm_ctx) + EVP_XAES_256_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
