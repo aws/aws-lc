@@ -1763,12 +1763,9 @@ Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
 #define USE_OPTIMIZED_CMAC                  
 
 struct xaes_256_gcm_ctx {
-#ifdef USE_OPTIMIZED_CMAC
+    EVP_AES_GCM_CTX gctx;
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
-#else 
-    uint8_t xaes_key[XAES_256_GCM_KEY_LENGTH];
-#endif 
 };
 
 /* 
@@ -1797,7 +1794,7 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
     OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
 
     M2[1] = 0x02;
-#ifdef USE_OPTIMIZED_CMAC
+
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
         M1[i] ^= xaes_ctx->k1[i];
         M2[i] ^= xaes_ctx->k1[i];
@@ -1805,16 +1802,16 @@ static int xaes_256_gcm_CMAC_derive_key(struct xaes_256_gcm_ctx *xaes_ctx,
 
     AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
     AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
-#else 
-    AES_CMAC(derived_key, xaes_ctx->xaes_key, AES_BLOCK_SIZE * 2, M1, AES_BLOCK_SIZE);
-    AES_CMAC(derived_key + AES_BLOCK_SIZE, xaes_ctx->xaes_key, AES_BLOCK_SIZE * 2, M2, AES_BLOCK_SIZE);
-#endif 
+
     return 1;
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
 
-    EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
+    struct xaes_256_gcm_ctx *xaes_ctx =
+        (struct xaes_256_gcm_ctx *)aes_gcm_from_cipher_ctx(ctx);
+
+    EVP_AES_GCM_CTX *gctx = &xaes_ctx->gctx;
 
     // Nonce size: 20 bytes <= |N| <= 24 bytes
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
@@ -1823,16 +1820,15 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
         return 0;
     }
 
-    struct xaes_256_gcm_ctx *xaes_ctx =
-        (struct xaes_256_gcm_ctx *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
-
     uint8_t derived_key[XAES_256_GCM_KEY_LENGTH];
 
     xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key);
 
     int ivlen = gctx->ivlen;
 
-    // AES-GCM uses 12-byte nonce
+    // AES-GCM uses a different size nonce than XAES-GCM,
+    // so to be able to call aes_gcm_init_key with ctx we temporarily
+    // set the nonce (iv) length to AES_GCM_NONCE_LENGTH.
     gctx->ivlen = AES_GCM_NONCE_LENGTH;
     
     // For nonce size < 24 bytes
@@ -1846,15 +1842,11 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 }
 
 static int xaes_256_gcm_ctx_init(struct xaes_256_gcm_ctx *xaes_ctx, const uint8_t *key) {
-#ifdef USE_OPTIMIZED_CMAC 
     static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
     uint8_t L[AES_BLOCK_SIZE];
     AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, &xaes_ctx->xaes_key);
     AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
     BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
-#else 
-    OPENSSL_memcpy(xaes_ctx->xaes_key, key, XAES_256_GCM_KEY_LENGTH);
-#endif 
     return 1;
 }
 
@@ -1870,11 +1862,13 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     }
 
     struct xaes_256_gcm_ctx *xaes_ctx =
-            (struct xaes_256_gcm_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+            (struct xaes_256_gcm_ctx *)aes_gcm_from_cipher_ctx(ctx);
 
-    // Initialize the main key 
-    if(key != NULL && !xaes_256_gcm_ctx_init(xaes_ctx, key)) {
-        return 0;
+    // Initialize the main key  
+    if(key != NULL) { 
+        if(!xaes_256_gcm_ctx_init(xaes_ctx, key)) {
+            return 0;
+        }
     }
 
     // Derive a subkey
@@ -1891,8 +1885,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->block_size = 1;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING 
-                + sizeof(struct xaes_256_gcm_ctx); 
+    out->ctx_size = sizeof(struct xaes_256_gcm_ctx) + EVP_AES_GCM_CTX_PADDING; 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
