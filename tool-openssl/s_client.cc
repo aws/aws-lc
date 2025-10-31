@@ -25,6 +25,11 @@ static const argument_t kArguments[] = {
                 "Currently the verify operation continues after errors so all the problems "
                 "with a certificate chain can be seen. As a side effect the connection will "
                 "never fail due to a server certificate verify failure." },
+        { "-cipher", kOptionalArgument,
+                "Cipher list to send to the server. This list will be used to specify the "
+                "ciphers that the client is willing to use during the SSL/TLS handshake." },
+        { "-tls1_1", kBooleanArgument,
+                "Use TLS version 1.1 only." },
         { "", kOptionalArgument, "" },
 };
 
