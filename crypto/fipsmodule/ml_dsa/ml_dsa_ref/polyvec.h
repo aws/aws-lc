@@ -41,7 +41,7 @@ void ml_dsa_polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
                                               const polyvecl *u,
                                               const polyvecl *v);
 
-int ml_dsa_polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t B);
+uint32_t ml_dsa_polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t B);
 
 typedef struct {
   ml_dsa_poly vec[ML_DSA_K_MAX];
@@ -77,7 +77,7 @@ void ml_dsa_polyveck_pointwise_poly_montgomery(ml_dsa_params *params,
                                                const ml_dsa_poly *a,
                                                const polyveck *v);
 
-int ml_dsa_polyveck_chknorm(ml_dsa_params *params, const polyveck *v, int32_t B);
+uint32_t ml_dsa_polyveck_chknorm(ml_dsa_params *params, const polyveck *v, int32_t B);
 
 void ml_dsa_polyveck_power2round(ml_dsa_params *params,
                                  polyveck *v1,

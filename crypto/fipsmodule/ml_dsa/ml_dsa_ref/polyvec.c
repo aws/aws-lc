@@ -223,16 +223,20 @@ void ml_dsa_polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
 *              - int32_t B: norm bound
 *
 * Returns 0 if norm of all polynomials is strictly smaller than B <= (Q-1)/8
-* and 1 otherwise.
+* and 0xFFFFFFFF otherwise.
 **************************************************/
-int ml_dsa_polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t bound)  {
+uint32_t ml_dsa_polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t bound)  {
   unsigned int i;
+  uint32_t r = 0;
+  
+    /* Reference: Leaks which polynomial violates the bound via a conditional.
+     * We are more conservative to reduce the number of declassifications in
+     * constant-time testing.
+     */
   for(i = 0; i < params->l; ++i) {
-    if(ml_dsa_poly_chknorm(&v->vec[i], bound)) {
-      return 1;
-    }
+    r |= ml_dsa_poly_chknorm(&v->vec[i], bound);
   }
-  return 0;
+  return r;
 }
 
 /**************************************************************/
@@ -418,16 +422,20 @@ void ml_dsa_polyveck_pointwise_poly_montgomery(ml_dsa_params *params,
 *              - int32_t B: norm bound
 *
 * Returns 0 if norm of all polynomials are strictly smaller than B <= (Q-1)/8
-* and 1 otherwise.
+* and 0xFFFFFFFF otherwise.
 **************************************************/
-int ml_dsa_polyveck_chknorm(ml_dsa_params *params, const polyveck *v, int32_t bound) {
+uint32_t ml_dsa_polyveck_chknorm(ml_dsa_params *params, const polyveck *v, int32_t bound) {
   unsigned int i;
+  uint32_t r = 0;
+  
+    /* Reference: Leaks which polynomial violates the bound via a conditional.
+     * We are more conservative to reduce the number of declassifications in
+     * constant-time testing.
+     */
   for(i = 0; i < params->k; ++i) {
-    if(ml_dsa_poly_chknorm(&v->vec[i], bound)) {
-      return 1;
-    }
+    r |= ml_dsa_poly_chknorm(&v->vec[i], bound);
   }
-  return 0;
+  return r;
 }
 
 /*************************************************

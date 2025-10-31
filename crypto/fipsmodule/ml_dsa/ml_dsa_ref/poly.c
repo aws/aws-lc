@@ -228,29 +228,34 @@ void ml_dsa_poly_use_hint(ml_dsa_params *params,
 * Arguments:   - const poly *a: pointer to polynomial
 *              - int32_t B: norm bound
 *
-* Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 1 otherwise.
+* Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 0xFFFFFFFF otherwise.
 **************************************************/
-int ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
+uint32_t ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
   unsigned int i;
   int32_t t;
+  uint32_t r = 0;
 
   if(B > (ML_DSA_Q-1)/8) {
-    return 1;
+    return 0xFFFFFFFF;
   }
 
-  /* It is ok to leak which coefficient violates the bound since
-     the probability for each coefficient is independent of secret
-     data but we must not leak the sign of the centralized representative. */
+  /* Constant-time implementation to avoid timing side-channel attacks.
+     We accumulate violations using bitwise OR instead of early exit.
+     
+     Note: This uses constant_time_ge_w(t, B) instead of the mldsa-native
+     pattern constant_time_msb_w(B - 1 - t) because AWS-LC's constant-time
+     utilities handle the >= comparison correctly, while the subtraction
+     approach can cause unsigned underflow issues when t < B. Both are
+     mathematically equivalent: (t >= B) == (B - 1 - t < 0). */
   for(i = 0; i < ML_DSA_N; ++i) {
     /* Absolute value */
     t = constant_time_select_int(constant_time_msb_w(a->coeffs[i]),
                                  -a->coeffs[i], a->coeffs[i]);
 
-    if(t >= B) {
-      return 1;
-    }
+    /* Check if t >= B and accumulate result */
+    r |= constant_time_ge_w((uint32_t)t, (uint32_t)B);
   }
-  return 0;
+  return r;
 }
 
 /*************************************************
