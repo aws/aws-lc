@@ -485,31 +485,17 @@ bool SSL_get_traffic_secrets(const SSL *ssl,
 }
 
 void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock) {
-  if (lock) {
 #if defined(OPENSSL_STATS_C11_ATOMIC)
-    // counter is already std::atomic<SSL_stats_t>, work with it directly
-    int expected = counter.load(std::memory_order_relaxed);
-
-    while (expected != INT_MAX) {
-      int new_value = expected + 1;
-      if (counter.compare_exchange_weak(expected, new_value,
-                                        std::memory_order_relaxed,
-                                        std::memory_order_relaxed)) {
-        break;
-      }
-    }
+  counter.fetch_add(1, std::memory_order_relaxed);
 #else
+  if (lock) {
     MutexWriteLock ctx_lock(&ctx->lock);
     counter++;
-#endif
-  } else if (counter != INT_MAX) {
+  } else {
     // Lock is already held by caller
-#if defined(OPENSSL_STATS_C11_ATOMIC)
-    counter.fetch_add(1, std::memory_order_relaxed);
-#else
     counter++;
-#endif
   }
+#endif
 }
 
 static int ssl_read_counter(const SSL_CTX *ctx, const SSL_STATS_COUNTER_TYPE &counter) {
