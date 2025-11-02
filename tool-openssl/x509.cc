@@ -91,15 +91,6 @@ static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio,
   return true;
 }
 
-static bool isCharUpperCaseEqual(char a, char b) {
-  return ::toupper(a) == ::toupper(b);
-}
-
-bool isStringUpperCaseEqual(const std::string &a, const std::string &b) {
-  return a.size() == b.size() &&
-         std::equal(a.begin(), a.end(), b.begin(), isCharUpperCaseEqual);
-}
-
 static int AdaptKeyIDExtension(X509 *cert, X509V3_CTX *ext_ctx,
                                const char *name, const char *value,
                                int add_if_missing) {

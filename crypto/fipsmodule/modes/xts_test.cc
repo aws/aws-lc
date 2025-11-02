@@ -34,6 +34,7 @@ struct XTSTestCase {
 };
 
 static const XTSTestCase kXTSTestCases[] = {
+
     // Test vectors from OpenSSL 1.1.1d.
     // plaintext length = 32 blocks = 512 bytes
     {
@@ -238,6 +239,17 @@ static const XTSTestCase kXTSTestCases[] = {
         "000102030405060708090a0b0c0d0e0f101112131415",
         "75e8188bcce59ada939f57de2cb9a489c30ca8f2ed57",
     },
+    // ACCP test vector
+    // https://github.com/corretto/amazon-corretto-crypto-provider/blob/a4c4876cceb6b3b8209b2a5cb57a2f38622146b9/tst/com/amazon/corretto/crypto/provider/test/AesXtsTest.java#L415
+    // len = 24 bytes = 1 block + 8 bytes
+    {
+        "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
+        "202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F",
+        "000102030405060708090A0B0C0D0E0F",
+        "000102030405060708090A0B0C0D0E0F1011121314151617",
+        "770407bac58070c22a0d2b1c8b0ad644b82298441f93d2a0",
+    },
+
     // https://github.com/BrianGladman/modes/blob/master/testvals/xts.6#L433
     // VEC 45, len = 31 bytes = 1 block + 15 bytes
     {
@@ -290,6 +302,18 @@ static const XTSTestCase kXTSTestCases[] = {
         "6f229c1b60833e2a50a041b360d991814c6ec7f3199d8b2482f5b19b64c32013"
         "a679f1361a011bf37b2e1565"
     },
+    // Same key and tweak as ACCP test vectore above for
+    // len = 40 bytes = 2 blocks + 8 bytes
+    {
+        "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
+        "202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F",
+        "000102030405060708090A0B0C0D0E0F",
+        "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
+        "202122232425262F",
+        "b82298441f93d2a0ad34668c7df66e4c8544720992ae2ecc0462c41fa816109f"
+        "9ce4d6a936a41f0f",
+    },
+
     // len = 51 bytes = 3 blocks + 3 bytes
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
