@@ -38,11 +38,8 @@ jobs:
       include: ${{ steps.matrix.outputs.include }}
     steps:
       - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-      - name: Get ECR Repoistory URL
         id: ecr
-        run: echo repo=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
+        uses: aws-actions/amazon-ecr-login@v2
       - name: Define Matrix
         id: matrix
         run: |
@@ -51,25 +48,25 @@ jobs:
           [
             {
               "name": "saw-x86_64",
-              "image": "${{ inputs.saw_x86 || format('{0}:ubuntu-20.04_clang-10x_formal-verification-saw-x86_64_latest', steps.ecr.outputs.repo) }}",
+              "image": "${{ inputs.saw_x86 || format('{0}/aws-lc/verification:saw_x86', steps.ecr.outputs.registry) }}",
               "size": "2xlarge",
               "entry": "SAW/scripts/x86_64/docker_entrypoint.sh"
             },
             {
               "name": "saw-x86_64-aes-gcm",
-              "image": "${{ inputs.saw_x86_aes_gcm || format('{0}:ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm_latest', steps.ecr.outputs.repo) }}",
+              "image": "${{ inputs.saw_x86_aes_gcm || format('{0}/aws-lc/verification:saw_x86_aes_gcm', steps.ecr.outputs.registry) }}",
               "size": "xlarge",
               "entry": "SAW/scripts/x86_64/docker_entrypoint_aes_gcm.sh"
             },
             {
               "name": "saw-aarch64",
-              "image": "${{ inputs.saw_aarch64 || format('{0}:ubuntu-20.04_clang-10x_formal-verification-saw-aarch64_latest', steps.ecr.outputs.repo) }}",
+              "image": "${{ inputs.saw_aarch64 || format('{0}/aws-lc/verification:saw_aarch64', steps.ecr.outputs.registry) }}",
               "size": "2xlarge",
               "entry": "SAW/scripts/aarch64/docker_entrypoint.sh"
             },
             {
               "name": "nsym-aarch64",
-              "image": "${{ inputs.nsym || format('{0}:ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64_latest', steps.ecr.outputs.repo) }}",
+              "image": "${{ inputs.nsym || format('{0}/aws-lc/verification:nsym', steps.ecr.outputs.registry) }}",
               "size": "2xlarge",
               "entry": "NSym/scripts/docker_entrypoint.sh"
             }
