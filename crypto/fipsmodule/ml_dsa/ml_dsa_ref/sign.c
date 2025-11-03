@@ -250,6 +250,9 @@ rej:
   ml_dsa_polyvecl_add(params, &z, &z, &y);
   ml_dsa_polyvecl_reduce(params, &z);
   z_invalid = ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta);
+  if(z_invalid) {
+    goto rej;
+  }
 
   /* FIPS 204: line 21 Check that subtracting cs2 does not change high bits of w and low bits
    * do not reveal secret information */
@@ -258,10 +261,7 @@ rej:
   ml_dsa_polyveck_sub(params, &w0, &w0, &h);
   ml_dsa_polyveck_reduce(params, &w0);
   w0_invalid = ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta);
-
-  /* FIPS 204: Algorithm 7 line 23 - Reject if either check fails (constant-time to avoid leaking
-     which check failed) */
-  if(z_invalid | w0_invalid) {
+  if(w0_invalid) {
     goto rej;
   }
 
