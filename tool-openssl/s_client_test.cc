@@ -33,3 +33,24 @@ TEST(SClientTest, SClientConnectVerifyShowcerts) {
   ASSERT_TRUE(result);
 }
 
+// Test -cipher
+TEST(SClientTest, SClientCipher) {
+  args_list_t args = {"-connect", "amazon.com:443", "-cipher", "AES128-SHA"};
+  bool result = SClientTool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -tls1_1
+TEST(SClientTest, SClientTls1_1) {
+  args_list_t args = {"-connect", "amazon.com:443", "-tls1_1"};
+  bool result = SClientTool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -cipher and -tls1_1 together
+TEST(SClientTest, SClientCipherAndTls1_1) {
+  args_list_t args = {"-connect", "amazon.com:443", "-cipher", "AES128-SHA", "-tls1_1"};
+  bool result = SClientTool(args);
+  ASSERT_TRUE(result);
+}
+
