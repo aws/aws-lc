@@ -229,8 +229,8 @@ install(DIRECTORY include/openssl
 )
 
 if (TEST_SYSGENID_PATH)
-  message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
-  add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
+  message(STATUS "Setting AWSLC_VM_UBE_TESTING=1")
+  add_definitions(-DAWSLC_VM_UBE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
 endif()

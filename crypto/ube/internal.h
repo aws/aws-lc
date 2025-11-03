@@ -38,13 +38,13 @@ OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation
 // (once per-process) to allow mocking the fork generation number.
 OPENSSL_EXPORT void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn);
 
-// set_snapsafe_generation_number_FOR_TESTING sets the snapsafe generation
-// number to the value |snapsafe_gn|. This value will be the snapsafe generation
+// set_vm_ube_generation_number_FOR_TESTING sets the vm_ube generation
+// number to the value |vm_ube_gn|. This value will be the vm_ube generation
 // value used by the UBE logic, overriding the generation number from the real
-// snapsafe detection.
+// vm_ube detection.
 // |allow_mocked_ube_detection_FOR_TESTING| must have been invoked (once
-// per-process) to allow mocking the snapsafe generation number.
-OPENSSL_EXPORT void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn);
+// per-process) to allow mocking the vm_ube generation number.
+OPENSSL_EXPORT void set_vm_ube_generation_number_FOR_TESTING(uint32_t vm_ube_gn);
 
 // allow_mocked_ube_detection_FOR_TESTING allows mocking UBE detection even
 // though real detection is not available. This function must be called in
