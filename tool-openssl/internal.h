@@ -6,7 +6,6 @@
 
 #include <openssl/digest.h>
 #include <algorithm>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -195,5 +194,7 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               std::string default_out_arg,
                               const ordered_args_map_t &args);
 }  // namespace ordered_args
+
+void SetUmaskForPrivateKey();
 
 #endif  // TOOL_OPENSSL_INTERNAL_H

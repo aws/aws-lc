@@ -6,7 +6,7 @@ add_executable(
     ../tool/fd.cc
     ../tool/client.cc
     ../tool/transport_common.cc
-    
+
     crl.cc
     dgst.cc
     ecparam.cc
@@ -22,6 +22,7 @@ add_executable(
     rsa.cc
     s_client.cc
     tool.cc
+    tool_util.cc
     verify.cc
     version.cc
     x509.cc
@@ -87,17 +88,17 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
-        test_util.cc
         crl.cc
         crl_test.cc
         dgst.cc
         dgst_test.cc
-        ecparam.cc
-        ecparam_test.cc
         ec.cc
         ec_test.cc
+        ecparam.cc
+        ecparam_test.cc
         genrsa.cc
         genrsa_test.cc
+        ordered_args.cc
         pass_util.cc
         pass_util_test.cc
         pkcs8.cc
@@ -113,7 +114,9 @@ if(BUILD_TESTING)
         rsa.cc
         rsa_test.cc
         s_client.cc
-        ordered_args.cc
+        s_client_test.cc
+        test_util.cc
+        tool_util.cc
         verify.cc
         verify_test.cc
         x509.cc
