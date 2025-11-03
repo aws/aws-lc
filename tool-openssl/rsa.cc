@@ -218,8 +218,7 @@ bool rsaTool(const args_list_t &args) {
           write_success = PEM_write_bio_PUBKEY(out_file.get(), pkey.get());
         }
         if (!write_success) {
-          fprintf(stderr, "Error: unable to write RSA public key%s\n",
-                  out_file ? " to output file" : "");
+          fprintf(stderr, "Error: unable to write RSA public key\n");
           ERR_print_errors_fp(stderr);
           return false;
         }
@@ -232,8 +231,7 @@ bool rsaTool(const args_list_t &args) {
           write_success = PEM_write_bio_PrivateKey(out_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
         }
         if (!write_success) {
-          fprintf(stderr, "Error: unable to write RSA private key%s\n",
-                  out_file ? " to output file" : "");
+          fprintf(stderr, "Error: unable to write RSA private key\n");
           ERR_print_errors_fp(stderr);
           return false;
         }
