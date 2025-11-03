@@ -9,6 +9,7 @@ add_executable(
 
     crl.cc
     dgst.cc
+    dhparam.cc
     ecparam.cc
     ec.cc
     genrsa.cc
@@ -92,6 +93,8 @@ if(BUILD_TESTING)
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        dhparam.cc
+        dhparam_test.cc
         ec.cc
         ec_test.cc
         ecparam.cc
@@ -114,6 +117,7 @@ if(BUILD_TESTING)
         rsa.cc
         rsa_test.cc
         s_client.cc
+        s_client_test.cc
         test_util.cc
         tool_util.cc
         verify.cc

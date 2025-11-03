@@ -5,7 +5,7 @@ import dataclasses
 import typing
 from aws_cdk import Environment, RemovalPolicy, Stack, Duration, aws_ecr as ecr, aws_iam as iam
 from constructs import Construct
-from util.metadata import AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, UBUNTU_ECR_REPO, WINDOWS_ECR_REPO
+from util.metadata import AMAZONLINUX_ECR_REPO, ANDROID_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, UBUNTU_ECR_REPO, VERIFICATION_ECR_REPO, WINDOWS_ECR_REPO
 
 
 class EcrStack(Stack):
@@ -90,6 +90,8 @@ class PrivateEcrStackV2(Stack):
             EcrRepoDataClass("aws-lc-ecr-fedora", FEDORA_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-centos", CENTOS_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-windows", WINDOWS_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-verification", VERIFICATION_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-android", ANDROID_ECR_REPO),
         ]:
             EcrPrivateRepo(self, x.cdk_id, repo_name=x.ecr_name)
 

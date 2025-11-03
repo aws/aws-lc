@@ -112,63 +112,6 @@ jobs:
             source /opt/compiler-env/setup-clang-9.sh
             ./tests/ci/run_install_shared_and_static.sh
 
-  # We parallel the quick check proof scripts.
-  # Since each proof script takes around 7GB of memory, this results in a high demand for memory.
-  # Current benchmarks show running quick check using 8 processes can consume more than 55 GB of memory.
-  # Therefore, BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is selected for quick check.
-  # SAW proofs on platform X86_64
-  formal_verification:
-    name: fv-${{ matrix.name }}
-    runs-on:
-      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
-        image:linux-5.0
-        instance-size:${{ matrix.size }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # We parallel the quick check proof scripts.
-          # Since each proof script takes around 7GB of memory, this results in a high demand for memory.
-          # Current benchmarks show running quick check using 8 processes can consume more than 55 GB of memory.
-          # Therefore, BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is selected for quick check.
-          # SAW proofs on platform X86_64
-          - name: saw-x86_64
-            image: ubuntu-20.04_clang-10x_formal-verification-saw-x86_64_latest
-            size: 2xlarge
-            entry: SAW/scripts/x86_64/docker_entrypoint.sh
-
-          # SAW proof for AES-GCM on platform x86
-          - name: saw-x86_64-aes-gcm
-            image: ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm_latest
-            size: xlarge
-            entry: SAW/scripts/x86_64/docker_entrypoint_aes_gcm.sh
-
-          # SAW proofs on platform AArch64
-          - name: saw-aarch64
-            image: ubuntu-20.04_clang-10x_formal-verification-saw-aarch64_latest
-            size: 2xlarge
-            entry: SAW/scripts/aarch64/docker_entrypoint.sh
-
-          - name: nysym-aarch64
-            image: ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64_latest
-            size: 2xlarge
-            entry: NSym/scripts/docker_entrypoint.sh
-
-          # NSym proofs on platform AArch64
-    steps:
-      - uses: actions/checkout@v5
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-      - name: Get ECR Repoistory URL
-        id: ecr
-        run: echo AWS_ECR_REPO_LINUX_X86=${AWS_ECR_REPO_LINUX_X86} >> "$GITHUB_OUTPUT"
-      - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
-        with:
-          image: ${{ steps.ecr.outputs.AWS_ECR_REPO_LINUX_X86 }}:${{ matrix.image }}
-          run: ./tests/ci/run_formal_verification.sh ${{ matrix.entry }}
-          options: --privileged
-
   # Build and test aws-lc without Perl/Go.
   minimal_tests:
     name: minimal-${{ matrix.image }}-${{ matrix.compiler }}-x86_64
