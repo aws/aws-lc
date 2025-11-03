@@ -1941,12 +1941,14 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     struct xaes_256_gcm_ctx *xaes_ctx =
             (struct xaes_256_gcm_ctx*)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 
-    // Initialize the main key 
-    if(key != NULL && !xaes_256_gcm_ctx_init(xaes_ctx, key)) {
-        return 0;
+    // When main key is provided, initialize the context and derive a subkey  
+    if(key != NULL) { 
+        if(!xaes_256_gcm_ctx_init(xaes_ctx, key)) {
+            return 0;
+        }
     }
 
-    // Derive a subkey
+    // If iv is provided, even if main key is not, derive a subkey
     if(iv != NULL) {
         return xaes_256_gcm_set_gcm_key(ctx, iv, enc);
     }
@@ -2033,8 +2035,8 @@ static int aead_xaes_256_gcm_seal_scatter(
     }
     
     return aead_aes_gcm_seal_scatter_impl(
-        &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len,
-        nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+        &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
+        nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
         in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len);
 }
 
@@ -2052,8 +2054,8 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
     }
     
     return aead_aes_gcm_open_gather_impl(
-        &gcm_ctx, out, nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
-        in, in_len, in_tag, in_tag_len,
+        &gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
+        AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
         ad, ad_len, ctx->tag_len);
 }
 
