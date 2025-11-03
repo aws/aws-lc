@@ -229,10 +229,6 @@ uint32_t ml_dsa_polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32
   unsigned int i;
   uint32_t r = 0;
   
-    /* Reference: Leaks which polynomial violates the bound via a conditional.
-     * We are more conservative to reduce the number of declassifications in
-     * constant-time testing.
-     */
   for(i = 0; i < params->l; ++i) {
     r |= ml_dsa_poly_chknorm(&v->vec[i], bound);
   }

@@ -239,14 +239,12 @@ uint32_t ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
     return 0xFFFFFFFF;
   }
 
-  /* Constant-time implementation to avoid timing side-channel attacks.
-     We accumulate violations using bitwise OR instead of early exit.
-     
-     Note: This uses constant_time_ge_w(t, B) instead of the mldsa-native
-     pattern constant_time_msb_w(B - 1 - t) because AWS-LC's constant-time
-     utilities handle the >= comparison correctly, while the subtraction
-     approach can cause unsigned underflow issues when t < B. Both are
-     mathematically equivalent: (t >= B) == (B - 1 - t < 0). */
+  /* Constant-time implementation as defense-in-depth. According to Section 5.5
+     of the Dilithium specification, it is safe to leak which coefficient violates
+     the bound, but we implement this in constant-time as additional hardening.
+     We accumulate violations using bitwise OR instead of early exit. See 5.5 in
+     https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+     */
   for(i = 0; i < ML_DSA_N; ++i) {
     /* Absolute value */
     t = constant_time_select_int(constant_time_msb_w(a->coeffs[i]),
