@@ -261,6 +261,11 @@ rej:
   ml_dsa_polyveck_sub(params, &w0, &w0, &h);
   ml_dsa_polyveck_reduce(params, &w0);
   w0_invalid = ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta);
+  /* Leaking the fact that a signature was rejected at this stage is acceptable as
+   * the next attempt at a signature will be (indistinguishable from) independent of
+   * this one. See 5.5 in
+   * https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+   */
   if(w0_invalid) {
     goto rej;
   }
