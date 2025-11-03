@@ -166,6 +166,7 @@
 #endif
 
 
+
 BSSL_NAMESPACE_BEGIN
 
 #define GUARD_SUSPENDED_STATE(ptr,code)                         \
@@ -483,18 +484,27 @@ bool SSL_get_traffic_secrets(const SSL *ssl,
   return true;
 }
 
-void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock) {
+void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock) {
+#if defined(OPENSSL_STATS_C11_ATOMIC)
+  counter.fetch_add(1, std::memory_order_relaxed);
+#else
   if (lock) {
     MutexWriteLock ctx_lock(&ctx->lock);
     counter++;
   } else {
+    // Lock is already held by caller
     counter++;
   }
+#endif
 }
 
-static int ssl_read_counter(const SSL_CTX *ctx, int counter) {
+static int ssl_read_counter(const SSL_CTX *ctx, const SSL_STATS_COUNTER_TYPE &counter) {
+#if defined(OPENSSL_STATS_C11_ATOMIC)
+  return counter.load(std::memory_order_relaxed);
+#else
   MutexReadLock lock(const_cast<CRYPTO_MUTEX *>(&ctx->lock));
   return counter;
+#endif
 }
 
 void SSL_CTX_set_aes_hw_override_for_testing(SSL_CTX *ctx,
