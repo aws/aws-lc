@@ -15,6 +15,8 @@
 #include <openssl/cipher.h>
 #include <openssl/aes.h>
 
+#include <openssl/rand.h>
+
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -22,6 +24,8 @@
 #include "../../internal.h"
 #include "internal.h"
 #include "../../test/test_util.h"
+
+#define AESXTS_RAND_MSG_MAX_LEN 4096
 
 #if defined(OPENSSL_LINUX)
 #include <sys/mman.h>
@@ -1202,7 +1206,7 @@ TEST(XTSTest, TestVectors) {
       in_p = in.get();
       out_p = out.get();
     #endif
-          for (bool in_place : {false, true}) {
+      for (bool in_place : {false, true}) {
         SCOPED_TRACE(in_place);
 
         // Test encryption.
@@ -1218,6 +1222,90 @@ TEST(XTSTest, TestVectors) {
         ASSERT_TRUE(
             EVP_EncryptUpdate(ctx.get(), out_p, &len, in_p, plaintext.size()));
         EXPECT_EQ(Bytes(ciphertext), Bytes(out_p, static_cast<size_t>(len)));
+
+        // Test decryption.
+
+        if (!in_place) {
+          OPENSSL_memset(in_p, 0, len);
+        }
+
+        ctx.Reset();
+        ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                      iv.data()));
+        ASSERT_TRUE(
+            EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, ciphertext.size()));
+        EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
+      }
+    }
+#if defined(OPENSSL_LINUX)
+  }
+  free_memory(in_buffer_end, pagesize);
+  free_memory(out_buffer_end, pagesize);
+#endif
+}
+
+TEST(XTSTest, EncryptDecyptRand) {
+#if defined(OPENSSL_LINUX)
+  int pagesize = sysconf(_SC_PAGE_SIZE);
+  ASSERT_GE(pagesize, 0);
+  uint8_t *in_buffer_beg = get_buffer_beg(pagesize);
+  uint8_t *out_buffer_beg = get_buffer_beg(pagesize);
+  uint8_t *in_buffer_end = in_buffer_beg + pagesize;
+  uint8_t *out_buffer_end = out_buffer_beg + pagesize;
+#endif
+
+const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+  // Test AESXTS Encrypt and Decrypt with random messages of incremental lenghts
+  for (size_t msg_len = 16; msg_len < AESXTS_RAND_MSG_MAX_LEN ; msg_len += 1) {
+
+    std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher)), iv(EVP_CIPHER_iv_length(cipher)),
+                          plaintext(msg_len), ciphertext(msg_len), plaintext_test(msg_len);
+    RAND_bytes(key.data(), EVP_CIPHER_key_length(cipher));
+    RAND_bytes(iv.data(), EVP_CIPHER_iv_length(cipher));
+    RAND_bytes(plaintext.data(), msg_len);
+    OPENSSL_memset(ciphertext.data(), 0, msg_len);
+    OPENSSL_memset(plaintext_test.data(), 0, msg_len);
+
+    SCOPED_TRACE(plaintext.size());
+
+    int len;
+    uint8_t *in_p, *out_p;
+  #if defined(OPENSSL_LINUX)
+    ASSERT_GE(pagesize, (int)plaintext.size());
+
+    for (bool beg: {false, true}) {
+      if (!beg) {
+        in_p = in_buffer_end - plaintext.size();
+        out_p = out_buffer_end - plaintext.size();
+      } else {
+        in_p = in_buffer_end - pagesize;
+        out_p = out_buffer_end - pagesize;
+      }
+      OPENSSL_memset(in_p, 0x00, plaintext.size());
+      OPENSSL_memset(out_p, 0x00, plaintext.size());
+    #else
+      std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
+      std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
+      in_p = in.get();
+      out_p = out.get();
+    #endif
+      for (bool in_place : {false, true}) {
+        SCOPED_TRACE(in_place);
+
+        // Test encryption.
+
+        OPENSSL_memcpy(in_p, plaintext.data(), plaintext.size());
+        if (in_place) {
+          out_p = in_p;
+        }
+
+        bssl::ScopedEVP_CIPHER_CTX ctx;
+        ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                      iv.data()));
+        ASSERT_TRUE(
+            EVP_EncryptUpdate(ctx.get(), out_p, &len, in_p, plaintext.size()));
+        OPENSSL_memcpy(ciphertext.data(), out_p, plaintext.size());
 
         // Test decryption.
 
