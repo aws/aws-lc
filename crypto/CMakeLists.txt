@@ -576,6 +576,7 @@ add_library(
   x509/x509name.c
   x509/x509rset.c
   x509/x509spki.c
+  ui/ui.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
   decrepit/cast/cast.c

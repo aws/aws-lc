@@ -1,12 +1,14 @@
 name: Miscellaneous test jobs
 on:
   push:
-    branches: [ '*' ]
+    branches: ["*"]
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
 permissions:
   contents: read
 
@@ -147,3 +149,21 @@ jobs:
           python-version: '3.11'
       - name: Check for git tag
         run: python ./util/git-tag-check/git-tag-check.py
+  rpmbuild:
+    if: github.repository_owner == 'aws'
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:latest
+          run: |
+            source /opt/compiler-env/setup-gcc.sh
+            ./tests/ci/run_rpmbuild_tests.sh

@@ -104,6 +104,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
 
 // Encryption
 .Lxts_enc:
+        mov   w19, #0x87
         cmp x2, #0x20
         b.lo .Lxts_enc_tail1x   // when input = 1 with tail
 
@@ -112,7 +113,6 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         // the five ivs stored into, v6.16b,v8.16b,v9.16b,v10.16b,v11.16b
         fmov  x9, d6
         fmov  x10, v6.d[1]
-        mov   w19, #0x87
         tweak(d8, v8.d[1])
 
         cmp x2, #0x30
