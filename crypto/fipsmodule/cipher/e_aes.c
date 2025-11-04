@@ -1817,6 +1817,7 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
+    // XAES_256_GCM_CTX data is put at the rear of ctx->cipher_data 
     return (XAES_256_GCM_CTX *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
 }
 

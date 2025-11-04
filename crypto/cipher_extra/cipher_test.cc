@@ -1504,7 +1504,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER) {
 
         std::vector<uint8_t> key(32), nonce(24), plaintext(256);
         std::vector<uint8_t> aad(256), ciphertext(256), tag(16);
-        uint8_t plaintext_len, aad_len;
+        uint8_t plaintext_len = 0, aad_len = 0;
 
         int tag_size = 16;
 
