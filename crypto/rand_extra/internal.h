@@ -53,7 +53,7 @@ OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
 // spinning loops.
 #define MAX_BACKOFF_RETRIES 9
 
-OPENSSL_EXPORT int snapsafe_fallback_get_seed(
+OPENSSL_EXPORT int vm_ube_fallback_get_seed(
     uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
 #if defined(__cplusplus)

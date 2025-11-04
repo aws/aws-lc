@@ -68,8 +68,8 @@
     "target_arch": "x86"
   },
   {
-    "comment": "Run snapsafe detection test suite",
-    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafeGenerationTest.*"],
+    "comment": "Run VM UBE detection test suite",
+    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=VmUbeGenerationTest.*"],
     "skip_valgrind": true,
     "shard": false
   },
