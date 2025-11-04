@@ -5,7 +5,8 @@ import dataclasses
 import typing
 from aws_cdk import Environment, RemovalPolicy, Stack, Duration, aws_ecr as ecr, aws_iam as iam
 from constructs import Construct
-from util.metadata import AMAZONLINUX_ECR_REPO, ANDROID_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, UBUNTU_ECR_REPO, VERIFICATION_ECR_REPO, WINDOWS_ECR_REPO
+from util.metadata import (AMAZONLINUX_ECR_REPO, ANDROID_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, UBUNTU_ECR_REPO,
+                           VERIFICATION_ECR_REPO, WINDOWS_ECR_REPO, SCRUTINICE_PRINCIPAL_ROLE_ARN)
 
 
 class EcrStack(Stack):
@@ -16,7 +17,7 @@ class EcrStack(Stack):
 
         repo = ecr.Repository(scope=self, id=id, repository_name=repo_name)
         repo.grant_pull_push(iam.ServicePrincipal("codebuild.amazonaws.com"))
-        repo.grant_pull(iam.ArnPrincipal("arn:aws:iam::222961743098:role/scrutini-ecr"))
+        repo.grant_pull(iam.ArnPrincipal(SCRUTINICE_PRINCIPAL_ROLE_ARN))
         repo.add_lifecycle_rule(
             description="Retain latest images",
             tag_pattern_list=["*_latest"],
@@ -39,6 +40,7 @@ class EcrStack(Stack):
 class EcrRepoDataClass:
     cdk_id: str
     ecr_name: str
+    allow_scrutinice_pull: bool = False
 
 
 class PrivateEcrStackV2(Stack):
@@ -86,20 +88,21 @@ class PrivateEcrStackV2(Stack):
 
         for x in [
             EcrRepoDataClass("aws-lc-ecr-ubuntu", UBUNTU_ECR_REPO),
-            EcrRepoDataClass("aws-lc-ecr-amazonlinux", AMAZONLINUX_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-amazonlinux",
+                             AMAZONLINUX_ECR_REPO, allow_scrutinice_pull=True),
             EcrRepoDataClass("aws-lc-ecr-fedora", FEDORA_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-centos", CENTOS_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-windows", WINDOWS_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-verification", VERIFICATION_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-android", ANDROID_ECR_REPO),
         ]:
-            EcrPrivateRepo(self, x.cdk_id, repo_name=x.ecr_name)
+            EcrPrivateRepo(self, x.cdk_id, repo_name=x.ecr_name, allow_scrutinice_pull=x.allow_scrutinice_pull)
 
 
 class EcrPrivateRepo(Construct):
     """Define private ECR repository to store container images."""
 
-    def __init__(self, scope: Construct, id: str, repo_name: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, repo_name: str, *, allow_scrutinice_pull: bool, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         self.repo = ecr.Repository(
@@ -109,3 +112,5 @@ class EcrPrivateRepo(Construct):
             tag_status=ecr.TagStatus.UNTAGGED,
             max_image_age=Duration.days(90),
         )
+        if allow_scrutinice_pull:
+            self.repo.grant_pull(iam.ArnPrincipal(SCRUTINICE_PRINCIPAL_ROLE_ARN))

@@ -140,21 +140,21 @@ TEST_F(ubeGenerationNumberTest, MockedDetectionMethodTests) {
 
   MockedDetectionMethodTest(
     [](uint32_t gn) {
-      set_snapsafe_generation_number_FOR_TESTING(gn);
+      set_vm_ube_generation_number_FOR_TESTING(gn);
     }
   );
 
   MockedDetectionMethodTest(
     [](uint32_t gn) {
       set_fork_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
-      set_snapsafe_generation_number_FOR_TESTING(gn);
+      set_vm_ube_generation_number_FOR_TESTING(gn);
     }
   );
 
   MockedDetectionMethodTest(
     [](uint32_t gn) {
       set_fork_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
-      set_snapsafe_generation_number_FOR_TESTING(gn + 1);
+      set_vm_ube_generation_number_FOR_TESTING(gn + 1);
     }
   );
 }
