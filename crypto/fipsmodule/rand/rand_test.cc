@@ -96,9 +96,9 @@ TEST_F(randTest, Basic) {
   ASSERT_TRUE(threadTest(number_of_threads, randBasicTests));
 }
 
-#if !defined(AWSLC_SNAPSAFE_TESTING)
-// Snapsafe testing is globally configured via a file. Predicting reseeding is
-// sensitive to testing snapsafe in parallel because a UBE-triggered reseed can
+#if !defined(AWSLC_VM_UBE_TESTING)
+// VM UBE testing is globally configured via a file. Predicting reseeding is
+// sensitive to testing VM UBE in parallel because a UBE-triggered reseed can
 // happen during execution.
 
 static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
@@ -232,7 +232,7 @@ TEST_F(randTest, UbeDetectionMocked) {
 
   MockedUbeDetection(
     [](uint64_t gn) {
-      set_snapsafe_generation_number_FOR_TESTING(static_cast<uint32_t>(gn));
+      set_vm_ube_generation_number_FOR_TESTING(static_cast<uint32_t>(gn));
     }
   );
 }

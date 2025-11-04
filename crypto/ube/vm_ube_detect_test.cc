@@ -5,9 +5,9 @@
 #include <cstdint>
 
 #include <gtest/gtest.h>
-#include "snapsafe_detect.h"
+#include "vm_ube_detect.h"
 
-#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_VM_UBE_TESTING)
 #include <fcntl.h>
 #include <cstring>
 #include <sys/mman.h>
@@ -60,19 +60,19 @@ static int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
   return 1;
 }
 
-TEST(SnapsafeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
+TEST(VmUbeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
   sgn_test_s sgn_test;
   ASSERT_TRUE(init_sgn_test(&sgn_test));
 
   ASSERT_TRUE(set_sgn(&sgn_test, 0));
 
-  EXPECT_EQ(1, CRYPTO_get_snapsafe_supported());
-  EXPECT_EQ(1, CRYPTO_get_snapsafe_active());
+  EXPECT_EQ(1, CRYPTO_get_vm_ube_supported());
+  EXPECT_EQ(1, CRYPTO_get_vm_ube_active());
 
-  uint32_t current_snapsafe_gen_num = 0;
+  uint32_t current_vm_ube_gen_num = 0;
   ASSERT_TRUE(set_sgn(&sgn_test, 7));
-  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-  ASSERT_EQ((uint32_t) 7, current_snapsafe_gen_num);
+  ASSERT_TRUE(CRYPTO_get_vm_ube_generation(&current_vm_ube_gen_num));
+  ASSERT_EQ((uint32_t) 7, current_vm_ube_gen_num);
 
   uint32_t test_sysgenid_values[NUMBER_OF_TEST_VALUES] = {
     0x03, // 2^0 + 2
@@ -86,30 +86,30 @@ TEST(SnapsafeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
     // Exercise all bytes of the 32-bit generation number.
     uint32_t new_sysgenid_value_hint = test_sysgenid_values[i];
     ASSERT_TRUE(set_sgn(&sgn_test, new_sysgenid_value_hint));
-    ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-    EXPECT_EQ(new_sysgenid_value_hint, current_snapsafe_gen_num);
+    ASSERT_TRUE(CRYPTO_get_vm_ube_generation(&current_vm_ube_gen_num));
+    EXPECT_EQ(new_sysgenid_value_hint, current_vm_ube_gen_num);
   }
 }
 #elif defined(OPENSSL_LINUX)
-TEST(SnapsafeGenerationTest, SysGenIDretrievalLinux) {
-  uint32_t current_snapsafe_gen_num = 0xffffffff;
-  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-  if (CRYPTO_get_snapsafe_supported()) {
-    ASSERT_TRUE(CRYPTO_get_snapsafe_active());
+TEST(VmUbeGenerationTest, SysGenIDretrievalLinux) {
+  uint32_t current_vm_ube_gen_num = 0xffffffff;
+  ASSERT_TRUE(CRYPTO_get_vm_ube_generation(&current_vm_ube_gen_num));
+  if (CRYPTO_get_vm_ube_supported()) {
+    ASSERT_TRUE(CRYPTO_get_vm_ube_active());
     // If we're on a system where the SysGenId is available, we won't
     // know what sgn value to expect, but we assume it's not 0xffffffff
-    ASSERT_NE(0xffffffff, current_snapsafe_gen_num);
+    ASSERT_NE(0xffffffff, current_vm_ube_gen_num);
   } else {
-    ASSERT_FALSE(CRYPTO_get_snapsafe_active());
-    ASSERT_EQ((uint32_t) 0, current_snapsafe_gen_num);
+    ASSERT_FALSE(CRYPTO_get_vm_ube_active());
+    ASSERT_EQ((uint32_t) 0, current_vm_ube_gen_num);
   }
 }
 #else
-TEST(SnapsafeGenerationTest, SysGenIDretrievalNonLinux) {
-  ASSERT_FALSE(CRYPTO_get_snapsafe_supported());
-  ASSERT_FALSE(CRYPTO_get_snapsafe_active());
-  uint32_t current_snapsafe_gen_num = 0xffffffff;
-  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-  ASSERT_EQ((uint32_t) 0, current_snapsafe_gen_num);
+TEST(VmUbeGenerationTest, SysGenIDretrievalNonLinux) {
+  ASSERT_FALSE(CRYPTO_get_vm_ube_supported());
+  ASSERT_FALSE(CRYPTO_get_vm_ube_active());
+  uint32_t current_vm_ube_gen_num = 0xffffffff;
+  ASSERT_TRUE(CRYPTO_get_vm_ube_generation(&current_vm_ube_gen_num));
+  ASSERT_EQ((uint32_t) 0, current_vm_ube_gen_num);
 }
 #endif // defined(OPENSSL_LINUX)

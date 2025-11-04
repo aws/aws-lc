@@ -5,7 +5,7 @@
 
 #include "internal.h"
 
-int snapsafe_fallback_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
+int vm_ube_fallback_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
     CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
     return 1;
 }
