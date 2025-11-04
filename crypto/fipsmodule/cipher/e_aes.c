@@ -1758,8 +1758,7 @@ Specification: https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
 #include <immintrin.h>
 
 __attribute__((target("vaes,avx512f,aes,sse2")))
-static inline __m128i aes128_keyexpand(__m128i key)
-{
+static inline __m128i aes128_keyexpand(__m128i key) {
     key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
     key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
     return _mm_xor_si128(key, _mm_slli_si128(key, 4));
@@ -1771,8 +1770,7 @@ static inline __m128i aes128_keyexpand(__m128i key)
 #define KEYEXP256_2(K1, K2) KEYEXP128_H(K1, K2, 0x00, 0xaa)
 
 __attribute__((target("vaes,avx512f,aes,sse2")))
-static inline void aes_key_setup_enc(__m128i rk[], const __m256i cipherKey)
-{
+static inline void aes_key_setup_enc(__m128i rk[], const __m256i cipherKey) {
     /* 256 bit key setup */
     _mm256_storeu2_m128i(rk + 1, rk, cipherKey);
     // rk[0] = _mm_loadu_si128((const block128*) cipherKey);
