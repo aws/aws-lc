@@ -1879,9 +1879,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     
     // When main key is provided, initialize the context and derive a subkey  
     if(key != NULL) { 
-        if(!xaes_256_gcm_ctx_init(xaes_ctx, key)) {
-            return 0;
-        }
+        xaes_256_gcm_ctx_init(xaes_ctx, key);
     }
 
     // If iv is provided, even if main key is not, derive a subkey
