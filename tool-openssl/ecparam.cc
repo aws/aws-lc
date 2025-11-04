@@ -144,16 +144,17 @@ bool ecparamTool(const args_list_t &args) {
       fprintf(stderr, "Failed to create EC key for curve\n");
       goto err;
     }
-    
+
     if (!EC_KEY_generate_key(eckey.get())) {
       fprintf(stderr, "Failed to generate EC key\n");
       goto err;
     }
-    
+
     // Set point conversion form on the key
     EC_KEY_set_conv_form(eckey.get(), point_form);
-    
+
     if (!noout) {
+      SetUmaskForPrivateKey();
       if (output_format == FORMAT_PEM) {
         if (!PEM_write_bio_ECPrivateKey(out_bio.get(), eckey.get(), nullptr, nullptr, 0, nullptr, nullptr)) {
           fprintf(stderr, "Failed to write private key in PEM format\n");

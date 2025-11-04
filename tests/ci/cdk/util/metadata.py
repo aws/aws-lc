@@ -38,6 +38,8 @@ AMAZONLINUX_ECR_REPO = "aws-lc/amazonlinux"
 CENTOS_ECR_REPO = "aws-lc/centos"
 FEDORA_ECR_REPO = "aws-lc/fedora"
 WINDOWS_ECR_REPO = "aws-lc/windows"
+VERIFICATION_ECR_REPO = "aws-lc/verification"
+ANDROID_ECR_REPO = "aws-lc/android"
 
 # Used when AWS CodeBuild needs to create web_hooks.
 GITHUB_REPO_OWNER = EnvUtil.get("GITHUB_REPO_OWNER", "aws")
