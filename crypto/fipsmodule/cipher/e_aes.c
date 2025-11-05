@@ -1770,7 +1770,13 @@ https://eprint.iacr.org/2025/758.pdf#page=24
 
 typedef struct {
     EVP_AES_GCM_CTX aes_gcm_ctx;
-    uint8_t: EVP_AES_GCM_CTX_PADDING;
+// Padding with EVP_AES_GCM_CTX_PADDING
+#if defined(OPENSSL_32_BIT)
+    uint32_t: 32;
+    uint64_t: 64;
+#else
+    uint64_t: 64;
+#endif
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 } XAES_256_GCM_CTX;
@@ -1820,7 +1826,7 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    // Alignment is done by following aes_gcm_from_cipher_ctx()
+    // alignment is the same as aes_gcm_from_cipher_ctx()
     char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
     assert((uintptr_t)ptr % 4 == 0);
@@ -1904,7 +1910,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->block_size = AES_BLOCK_SIZE;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(XAES_256_GCM_CTX); 
+    out->ctx_size = sizeof(XAES_256_GCM_CTX) + sizeof(EVP_AES_GCM_CTX_PADDING); 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
