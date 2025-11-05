@@ -1771,10 +1771,12 @@ https://eprint.iacr.org/2025/758.pdf#page=24
 typedef struct {
     EVP_AES_GCM_CTX aes_gcm_ctx;
 // Padding with EVP_AES_GCM_CTX_PADDING
-#if defined(OPENSSL_32_BIT)
+#if defined(OPENSSL_32_BIT) 
+    // 12-byte (96-bit) padding
     uint32_t: 32;
     uint64_t: 64;
 #else
+    // 8-byte (64-bit) padding
     uint64_t: 64;
 #endif
     AES_KEY xaes_key; 
