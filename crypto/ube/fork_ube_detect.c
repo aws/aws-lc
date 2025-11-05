@@ -26,12 +26,12 @@
 // can't do anything. In this case randomness generation falls back to
 // randomizing the state per-request.
 #if defined(OPENSSL_LINUX)
-  #define AWSLC_FORK_DETECTION_SUPPORTED
+  #define AWSLC_FORK_UBE_DETECTION_SUPPORTED
   #if !defined(_GNU_SOURCE)
     #define _GNU_SOURCE  // Needed for madvise() and MAP_ANONYMOUS.
   #endif
 #elif defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD) || defined(OPENSSL_NETBSD)
-  #define AWSLC_FORK_DETECTION_SUPPORTED
+  #define AWSLC_FORK_UBE_DETECTION_SUPPORTED
   // FreeBSD requires POSIX compatibility off for its syscalls
   // (enables __BSD_VISIBLE). Without the below line, <sys/mman.h> cannot be
   // imported (it requires __BSD_VISIBLE).
@@ -40,14 +40,14 @@
   #define AWSLC_PLATFORM_DOES_NOT_FORK
 #endif
 
-#include "fork_detect.h"
+#include "fork_ube_detect.h"
 #include "../internal.h"
 
 static struct CRYPTO_STATIC_MUTEX ignore_testing_lock = CRYPTO_STATIC_MUTEX_INIT;
 static int ignore_wipeonfork = 0;
 static int ignore_inheritzero = 0;
 
-#if defined(AWSLC_FORK_DETECTION_SUPPORTED)
+#if defined(AWSLC_FORK_UBE_DETECTION_SUPPORTED)
 
 #include <openssl/base.h>
 #include <openssl/type_check.h>
@@ -56,16 +56,16 @@ static int ignore_inheritzero = 0;
 
 #include <stdlib.h>
 
-static CRYPTO_once_t fork_detect_once = CRYPTO_ONCE_INIT;
-static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
+static CRYPTO_once_t fork_detect_ube_once = CRYPTO_ONCE_INIT;
+static struct CRYPTO_STATIC_MUTEX fork_detect_ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 // This value (pointed to) is |volatile| because the value pointed to may be
 // changed by external forces (i.e. the kernel wiping the page) thus the
 // compiler must not assume that it has exclusive access to it.
 static volatile char *fork_detect_addr = NULL;
-static uint64_t fork_generation = 0;
+static uint64_t fgn = 0;
 
-static int ignore_all_fork_detection(void) {
+static int ignore_all_fork_ube_detection(void) {
 
   CRYPTO_STATIC_MUTEX_lock_read(&ignore_testing_lock);
   if (ignore_wipeonfork == 1 &&
@@ -184,7 +184,7 @@ static void init_fork_detect(void) {
   void *addr = MAP_FAILED;
   long page_size = 0;
 
-  if (ignore_all_fork_detection() == 1) {
+  if (ignore_all_fork_ube_detection() == 1) {
     return;
   }
 
@@ -216,10 +216,10 @@ static void init_fork_detect(void) {
 
   *((volatile char *) addr) = 1;
   fork_detect_addr = addr;
-  fork_generation = 1;
+  fgn = 1;
 }
 
-uint64_t CRYPTO_get_fork_generation(void) {
+uint64_t CRYPTO_get_fork_ube_generation(void) {
   // In a single-threaded process, there are obviously no races because there's
   // only a single mutator in the address space.
   //
@@ -234,7 +234,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
   //
   // One cannot convert this to thread-local values to avoid locking. See e.g.
   // https://github.com/aws/s2n-tls/issues/3107.
-  CRYPTO_once(&fork_detect_once, init_fork_detect);
+  CRYPTO_once(&fork_detect_ube_once, init_fork_detect);
 
   volatile char *const flag_ptr = fork_detect_addr;
   if (flag_ptr == NULL) {
@@ -242,31 +242,31 @@ uint64_t CRYPTO_get_fork_generation(void) {
     return 0;
   }
 
-  struct CRYPTO_STATIC_MUTEX *const lock = &fork_detect_lock;
+  struct CRYPTO_STATIC_MUTEX *const lock = &fork_detect_ube_lock;
 
   CRYPTO_STATIC_MUTEX_lock_read(lock);
-  uint64_t current_generation = fork_generation;
+  uint64_t current_fgn = fgn;
   if (*flag_ptr) {
     CRYPTO_STATIC_MUTEX_unlock_read(lock);
-    return current_generation;
+    return current_fgn;
   }
 
   CRYPTO_STATIC_MUTEX_unlock_read(lock);
   CRYPTO_STATIC_MUTEX_lock_write(lock);
-  current_generation = fork_generation;
+  current_fgn = fgn;
   if (*flag_ptr == 0) {
     // A fork has occurred.
     *flag_ptr = 1;
 
-    current_generation++;
-    if (current_generation == 0) {
-      current_generation = 1;
+    current_fgn++;
+    if (current_fgn == 0) {
+      current_fgn = 1;
     }
-    fork_generation = current_generation;
+    fgn = current_fgn;
   }
   CRYPTO_STATIC_MUTEX_unlock_write(lock);
 
-  return current_generation;
+  return current_fgn;
 }
 
 #elif defined(AWSLC_PLATFORM_DOES_NOT_FORK)
@@ -275,7 +275,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
 // fork detection support. Returning a constant non zero value makes BoringSSL
 // assume address space duplication is not a concern and adding entropy to
 // every RAND_bytes call is not needed.
-uint64_t CRYPTO_get_fork_generation(void) { return 0xc0ffee; }
+uint64_t CRYPTO_get_fgn(void) { return 0xc0ffee; }
 
 #else
 
@@ -283,9 +283,9 @@ uint64_t CRYPTO_get_fork_generation(void) { return 0xc0ffee; }
 // place.  Returning a constant zero value makes BoringSSL assume that address
 // space duplication could have occured on any call entropy must be added to
 // every RAND_bytes call.
-uint64_t CRYPTO_get_fork_generation(void) { return 0; }
+uint64_t CRYPTO_get_fgn(void) { return 0; }
 
-#endif // defined(AWSLC_FORK_DETECTION_SUPPORTED)
+#endif // defined(AWSLC_FORK_UBE_DETECTION_SUPPORTED)
 
 void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
   CRYPTO_STATIC_MUTEX_lock_write(&ignore_testing_lock);

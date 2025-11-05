@@ -31,12 +31,12 @@ extern "C" {
 // entries will immediately return.
 OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number);
 
-// set_fork_generation_number_FOR_TESTING sets the fork generation number to the
-// value |fork_gn|. This value will be the fork generation value used by the UBE
-// logic, overriding the generation number from the real fork detection.
+// set_fork_ube_generation_number_FOR_TESTING sets the fork generation number to
+// the value |fork_gn|. This value will be the fork generation value used by the
+// UBE logic, overriding the generation number from the real fork detection.
 // |allow_mocked_ube_detection_FOR_TESTING| must have been invoked
 // (once per-process) to allow mocking the fork generation number.
-OPENSSL_EXPORT void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn);
+OPENSSL_EXPORT void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn);
 
 // set_vm_ube_generation_number_FOR_TESTING sets the vm_ube generation
 // number to the value |vm_ube_gn|. This value will be the vm_ube generation
