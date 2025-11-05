@@ -1763,13 +1763,14 @@ https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md
 Extension to support nonce size less than 24 bytes: 
 https://eprint.iacr.org/2025/758.pdf#page=24
 -----------------------------------------------------------------------*/
-#define XAES_256_GCM_CTX_OFFSET      (sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING)
 #define XAES_256_GCM_KEY_LENGTH      (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_MAX_NONCE_SIZE  (AES_GCM_NONCE_LENGTH * 2)
 #define XAES_256_GCM_MIN_NONCE_SIZE  (20)
 
 typedef struct {
+    EVP_AES_GCM_CTX aes_gcm_ctx;
+    uint8_t: EVP_AES_GCM_CTX_PADDING;
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 } XAES_256_GCM_CTX;
@@ -1819,13 +1820,20 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    // XAES_256_GCM_CTX data is put at the rear of ctx->cipher_data 
-    return (XAES_256_GCM_CTX *)((uint8_t*)ctx->cipher_data + XAES_256_GCM_CTX_OFFSET);
+    // Alignment is done by following aes_gcm_from_cipher_ctx()
+    char *ptr = ctx->cipher_data;
+#if defined(OPENSSL_32_BIT)
+    assert((uintptr_t)ptr % 4 == 0);
+    ptr += (uintptr_t)ptr & 4;
+#endif
+    assert((uintptr_t)ptr % 8 == 0);
+    ptr += (uintptr_t)ptr & 8;
+    return (XAES_256_GCM_CTX *)ptr;
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
-
-    EVP_AES_GCM_CTX *gctx = aes_gcm_from_cipher_ctx(ctx);
+    XAES_256_GCM_CTX *xaes_ctx = xaes_256_gcm_from_cipher_ctx(ctx);
+    EVP_AES_GCM_CTX *gctx = &xaes_ctx->aes_gcm_ctx;
 
     // Nonce size: 20 bytes <= |N| <= 24 bytes
     if(gctx->ivlen < XAES_256_GCM_MIN_NONCE_SIZE || 
@@ -1834,8 +1842,6 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
         return 0;
     }
 
-    XAES_256_GCM_CTX *xaes_ctx = xaes_256_gcm_from_cipher_ctx(ctx);
-        
     uint8_t derived_key[XAES_256_GCM_KEY_LENGTH];
 
     xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key);
@@ -1898,8 +1904,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->block_size = AES_BLOCK_SIZE;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING 
-                + sizeof(XAES_256_GCM_CTX); 
+    out->ctx_size = sizeof(XAES_256_GCM_CTX); 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
