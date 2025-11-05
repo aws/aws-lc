@@ -153,13 +153,16 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
   X509_NAME *name1 = X509_REQ_get_subject_name(csr1);
   X509_NAME *name2 = X509_REQ_get_subject_name(csr2);
 
-  if (!name1 || !name2)
+  if (!name1 || !name2) {
     return false;
+  }
 
   int count1 = X509_NAME_entry_count(name1);
   int count2 = X509_NAME_entry_count(name2);
-  if (count1 < 0 || count2 < 0)
+  if (count1 < 0 || count2 < 0) {
     return false;
+  }
+
   if (count1 != count2) {
     std::cout << "CSRs have different number of subject entries" << std::endl;
     return false;
@@ -470,4 +473,59 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
     }
   }
   return true;
+}
+
+// Helper function to decrypt a private key from a file
+EVP_PKEY *DecryptPrivateKey(const char *path, const char *password) {
+  if (!path) {
+    return nullptr;
+  }
+
+  // Use a BIO for better compatibility
+  bssl::UniquePtr<BIO> bio(BIO_new_file(path, "r"));
+  if (!bio) {
+    return nullptr;
+  }
+
+  EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr,
+                                           const_cast<char *>(password));
+  return pkey;
+}
+
+bool CompareKeys(EVP_PKEY *key1, EVP_PKEY *key2) {
+  // Early return if either pointer is null or keys are different types
+  if (!key1 || !key2 || EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) {
+    return false;
+  }
+
+  // Check if keys are RSA type
+  if (EVP_PKEY_id(key1) != EVP_PKEY_RSA) {
+    return false;
+  }
+
+  // Get RSA structures
+  const RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
+  const RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
+  if (!rsa1 || !rsa2) {
+    return false;
+  }
+
+  // Get key components
+  const BIGNUM *n1 = nullptr, *e1 = nullptr, *d1 = nullptr;
+  const BIGNUM *n2 = nullptr, *e2 = nullptr, *d2 = nullptr;
+  RSA_get0_key(rsa1, &n1, &e1, &d1);
+  RSA_get0_key(rsa2, &n2, &e2, &d2);
+
+  // Compare modulus first as it's most likely to be different
+  if (BN_cmp(n1, n2) != 0) {
+    return false;
+  }
+
+  // Compare public exponent next (usually smaller)
+  if (BN_cmp(e1, e2) != 0) {
+    return false;
+  }
+
+  // Finally compare private exponent
+  return BN_cmp(d1, d2) == 0;
 }

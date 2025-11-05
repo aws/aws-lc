@@ -39,7 +39,6 @@ inline std::string ReadFileToString(const std::string &file_path) {
     return "";
   }
 
-
   // Check if file exists first
   struct stat stat_buffer;
   if (stat(file_path.c_str(), &stat_buffer) != 0) {
@@ -111,5 +110,7 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2);
 bool CheckCertificateValidityPeriod(X509 *cert, int expected_days);
 bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
                          int expected_days);
+EVP_PKEY *DecryptPrivateKey(const char *path, const char *password);
+bool CompareKeys(EVP_PKEY *key1, EVP_PKEY *key2);
 
 #endif  // TEST_UTIL_H

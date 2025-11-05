@@ -86,7 +86,9 @@ static const argument_t kArguments[] = {
     {"-key", kOptionalArgument,
      "This specifies the key file path to be used for signing."},
     {"-passin", kOptionalArgument,
-     "This specifies the private key password source."},
+     "This specifies the input private key password source."},
+    {"-passout", kOptionalArgument,
+     "This specifies the output private key password source."},
     {"-keyout", kOptionalArgument,
      "This specifies the output filename for the "
      " private key or writes to a file called privkey.pem in the current "
@@ -681,6 +683,45 @@ static bool LoadPrivateKey(const std::string &key_file_path,
   return true;
 }
 
+static bool WritePrivateKey(std::string &out_path,
+                            bssl::UniquePtr<std::string> &passout,
+                            bssl::UniquePtr<EVP_PKEY> &pkey,
+                            const EVP_CIPHER *cipher) {
+  bssl::UniquePtr<BIO> out_bio;
+  if (out_path.empty()) {
+    // Default to privkey.pem in the current directory
+    out_path = "privkey.pem";
+  }
+
+  fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
+  out_bio.reset(BIO_new(BIO_s_file()));
+  if (!out_bio) {
+    fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
+    return false;
+  }
+
+  if (1 != BIO_write_filename(out_bio.get(), out_path.c_str())) {
+    fprintf(stderr, "Error: unable to write to '%s'\n", out_path.c_str());
+    return false;
+  }
+
+  if (!passout->empty() && !pass_util::ExtractPassword(passout)) {
+    fprintf(stderr, "Error: Failed to extract password\n");
+    return false;
+  }
+
+  if (!PEM_write_bio_PKCS8PrivateKey(
+          out_bio.get(), pkey.get(), cipher,
+          passout->empty() ? nullptr : passout->c_str(),
+          passout->empty() ? 0 : passout->length(), nullptr, nullptr)) {
+    fprintf(stderr, "Error: Failed to write private key.\n");
+    return false;
+  }
+
+
+  return true;
+}
+
 bool reqTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
@@ -694,7 +735,8 @@ bool reqTool(const args_list_t &args) {
 
   std::string newkey, subj, config_path, key_file_path, keyout, out_path,
       outform, ext_section, digest_name;
-  bssl::UniquePtr<std::string> passin(new std::string());
+  bssl::UniquePtr<std::string> passin(new std::string()),
+      passout(new std::string());
   unsigned int days;
   bool help = false, new_flag = false, x509_flag = false, nodes = false;
 
@@ -708,6 +750,7 @@ bool reqTool(const args_list_t &args) {
   GetString(&config_path, "-config", "", parsed_args);
   GetString(&key_file_path, "-key", "", parsed_args);
   GetString(passin.get(), "-passin", "", parsed_args);
+  GetString(passout.get(), "-passout", "", parsed_args);
   GetString(&keyout, "-keyout", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
@@ -841,41 +884,10 @@ bool reqTool(const args_list_t &args) {
   if (!nodes && encrypt_key) {
     cipher = EVP_des_ede3_cbc();
   }
-  (void)cipher;  // Mark as potentially unused
 
-  bssl::UniquePtr<BIO> out_bio;
   SetUmaskForPrivateKey();
-
-  if (keyout.empty()) {
-    // Default to privkey.pem in the current directory
-    keyout =
-        isStringUpperCaseEqual(outform, "PEM") ? "privkey.pem" : "privkey.asn1";
-  }
-
-  fprintf(stderr, "Writing private key to %s\n", keyout.c_str());
-  out_bio.reset(BIO_new(BIO_s_file()));
-  if (!out_bio) {
-    fprintf(stderr, "Error: unable to create file %s\n", keyout.c_str());
+  if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
     return false;
-  }
-
-  if (1 != BIO_write_filename(out_bio.get(), keyout.c_str())) {
-    fprintf(stderr, "Error: unable to write to '%s'\n", keyout.c_str());
-    return false;
-  }
-
-  // If encryption disabled, don't use password prompting callback
-  if (isStringUpperCaseEqual(outform, "DER")) {
-    if (!i2d_PrivateKey_bio(out_bio.get(), pkey.get())) {
-      fprintf(stderr, "Error: Failed to write private key.\n");
-      return false;
-    }
-  } else {
-    if (!PEM_write_bio_PrivateKey(out_bio.get(), pkey.get(), NULL, NULL, 0,
-                                  NULL, NULL)) {
-      fprintf(stderr, "Error: Failed to write private key.\n");
-      return false;
-    }
   }
 
   bool no_prompt = false;
@@ -969,6 +981,7 @@ bool reqTool(const args_list_t &args) {
     }
   }
 
+  bssl::UniquePtr<BIO> out_bio;
   if (!out_path.empty()) {
     out_bio.reset(BIO_new(BIO_s_file()));
     if (!out_bio) {
