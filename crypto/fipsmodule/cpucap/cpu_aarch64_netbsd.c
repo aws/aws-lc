@@ -40,8 +40,9 @@ static int get_cpu_id(int cpu_num, struct aarch64_sysctl_cpu_id *id) {
 void OPENSSL_cpuid_setup(void) {
   struct aarch64_sysctl_cpu_id cpu_id;
 
-  // NetBSD's machdep.cpuN.cpu_id sysctl reads each core's ID registers directly,
-  // so it reflects that specific core's capabilities, not a system-wide minimum.
+  // NetBSD's machdep.cpuN.cpu_id sysctl reads each core's ID registers
+  // directly, so it reflects that specific core's capabilities, not a
+  // system-wide minimum.
 
   // Initialize with all features enabled (we'll AND them together)
   uint64_t common_aa64isar0 = UINT64_MAX;
@@ -76,68 +77,55 @@ void OPENSSL_cpuid_setup(void) {
   // NEON (Advanced SIMD) is mandatory on all ARMv8-A cores
   OPENSSL_armcap_P |= ARMV7_NEON;
 
-  // Check for AES support across all cores
-  // NetBSD uses __SHIFTOUT() to extract bit fields from register values
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_AES) >= ID_AA64ISAR0_EL1_AES_AES) {
+  // Inspired by the implementation of `cpu_identify2` here:
+  // https://github.com/NetBSD/src/blob/62c785e59d064070166dab5d2a4492055effba89/sys/arch/aarch64/aarch64/cpu.c#L363
+
+  // Macros below found in "armreg.h"
+  // https://github.com/NetBSD/src/blame/62c785e59d064070166dab5d2a4492055effba89/sys/arch/aarch64/include/armreg.h
+
+  // Check for AES and PMULL
+  const uint64_t aes_detection =
+      __SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_AES);
+  if (aes_detection >= ID_AA64ISAR0_EL1_AES_AES) {
     OPENSSL_armcap_P |= ARMV8_AES;
   }
-
-  // Check for PMULL (polynomial multiply) support across all cores
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_AES) >= ID_AA64ISAR0_EL1_AES_PMUL) {
+  if (aes_detection >= ID_AA64ISAR0_EL1_AES_PMUL) {
     OPENSSL_armcap_P |= ARMV8_PMULL;
   }
 
   // Check for SHA1 support across all cores
-#ifdef ID_AA64ISAR0_EL1_SHA1_SHA1CPMHSU
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA1) >= ID_AA64ISAR0_EL1_SHA1_SHA1CPMHSU) {
+  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA1) >=
+      ID_AA64ISAR0_EL1_SHA1_SHA1CPMHSU) {
     OPENSSL_armcap_P |= ARMV8_SHA1;
   }
-#else
-  // Older NetBSD versions - check if field is non-zero
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA1) > ID_AA64ISAR0_EL1_SHA1_NONE) {
-    OPENSSL_armcap_P |= ARMV8_SHA1;
-  }
-#endif
 
   // Check for SHA256 support across all cores
-#ifdef ID_AA64ISAR0_EL1_SHA2_SHA256HSU
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA2) >= ID_AA64ISAR0_EL1_SHA2_SHA256HSU) {
+  const uint64_t sha2_detection =
+      __SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA2);
+  if (sha2_detection >= ID_AA64ISAR0_EL1_SHA2_SHA256HSU) {
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
-#else
-  // Older NetBSD versions - check if field is non-zero
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA2) > ID_AA64ISAR0_EL1_SHA2_NONE) {
-    OPENSSL_armcap_P |= ARMV8_SHA256;
-  }
-#endif
-
-  // Check for SHA512 support across all cores
-#ifdef ID_AA64ISAR0_EL1_SHA2_SHA512
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA2) >= ID_AA64ISAR0_EL1_SHA2_SHA512) {
+  if (sha2_detection >= ID_AA64ISAR0_EL1_SHA2_SHA512HSU) {
     OPENSSL_armcap_P |= ARMV8_SHA512;
   }
-#endif
 
   // Check for SHA3 support across all cores
-#ifdef ID_AA64ISAR0_EL1_SHA3_SHA3
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA3) >= ID_AA64ISAR0_EL1_SHA3_SHA3) {
+  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_SHA3) >=
+      ID_AA64ISAR0_EL1_SHA3_EOR3) {
     OPENSSL_armcap_P |= ARMV8_SHA3;
   }
-#endif
 
   // Check for RNG (RNDR/RNDRRS) support across all cores
-#ifdef ID_AA64ISAR0_EL1_RNDR_RNDRRS
-  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_RNDR) >= ID_AA64ISAR0_EL1_RNDR_RNDRRS) {
+  if (__SHIFTOUT(common_aa64isar0, ID_AA64ISAR0_EL1_RNDR) >=
+      ID_AA64ISAR0_EL1_RNDR_RNDRRS) {
     OPENSSL_armcap_P |= ARMV8_RNG;
   }
-#endif
 
   // Check for DIT (Data Independent Timing) support across all cores
-#ifdef ID_AA64PFR0_EL1_DIT_IMPL
-  if (__SHIFTOUT(common_aa64pfr0, ID_AA64PFR0_EL1_DIT) >= ID_AA64PFR0_EL1_DIT_IMPL) {
+  if (__SHIFTOUT(common_aa64pfr0, ID_AA64PFR0_EL1_DIT) >=
+      ID_AA64PFR0_EL1_DIT_IMPL) {
     OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
   }
-#endif
 }
 
 #endif  // OPENSSL_AARCH64 && OPENSSL_NETBSD && !OPENSSL_STATIC_ARMCAP
