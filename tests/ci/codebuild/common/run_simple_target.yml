@@ -10,4 +10,5 @@ env:
 phases:
   build:
     commands:
+      - source /opt/compiler-env/setup-${AWS_LC_CI_COMPILER_ENV}.sh
       - ./${AWS_LC_CI_TARGET}

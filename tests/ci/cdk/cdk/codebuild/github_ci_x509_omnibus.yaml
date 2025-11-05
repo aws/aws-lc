@@ -13,6 +13,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_x509_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc/amazonlinux:2023_x509
         variables:
+          AWS_LC_CI_COMPILER_ENV: gcc
           AWS_LC_CI_TARGET: "tests/ci/run_x509_limbo.sh"
