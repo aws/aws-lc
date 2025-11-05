@@ -1488,7 +1488,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
     * Source of test vectors: 
     * https://github.com/C2SP/C2SP/blob/main/XAES-256-GCM.md 
     */
-    std::vector<uint8_t> key, iv; 
+    std::vector<uint8_t> key; 
 
     /* ============ INITIALIZE ENCRYPTION CONTEXT ============ */ 
     bssl::UniquePtr<EVP_CIPHER_CTX> ectx(EVP_CIPHER_CTX_new());
@@ -1501,10 +1501,6 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
     ConvertToBytes(&key, "0101010101010101010101010101010101010101010101010101010101010101");
     ASSERT_TRUE(EVP_CipherInit_ex(ectx.get(), nullptr, nullptr, key.data(), nullptr, -1));
     
-    // Initiaze IV and derive a subkey 
-    ConvertToBytes(&iv, "424242424242424242424242424242424242424242424242");
-    ASSERT_TRUE(EVP_CipherInit_ex(ectx.get(), nullptr, nullptr, nullptr, iv.data(), -1));
-
     /* ============ INITIALIZE DECRYPTION CONTEXT ============ */ 
     bssl::UniquePtr<EVP_CIPHER_CTX> dctx(EVP_CIPHER_CTX_new());
     ASSERT_TRUE(dctx);
@@ -1513,14 +1509,14 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
 
     // Initialize the main key
     ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, key.data(), nullptr));
-
-    // Initiaze IV and derive a subkey 
-    ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, nullptr, iv.data()));
-
+    
     // Test encryption and decryption
-    const auto test = [&ectx, &dctx](const uint8_t *plaintext, size_t plaintext_len, 
+    const auto test = [&ectx, &dctx](std::vector<uint8_t> &iv, const uint8_t *plaintext, size_t plaintext_len, 
                                 std::vector<uint8_t> &expected_ciphertext, std::vector<uint8_t> &expected_tag) {
         // Encrypt
+        // Initiaze IV and derive a subkey 
+        ASSERT_TRUE(EVP_CipherInit_ex(ectx.get(), nullptr, nullptr, nullptr, iv.data(), -1));
+
         std::vector<uint8_t> ciphertext, tag; 
         ciphertext.resize(plaintext_len);
         int ciphertext_len = 0;
@@ -1538,6 +1534,9 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
         ASSERT_EQ(Bytes(tag), Bytes(expected_tag));
         
         // Decrypt
+        // Initiaze IV and derive a subkey 
+        ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, nullptr, iv.data()));
+
         std::vector<uint8_t> decrypted;
         decrypted.resize(ciphertext_len);
         int decrypted_len = 0;
@@ -1550,24 +1549,26 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
         ASSERT_EQ((size_t)decrypted_len, plaintext_len);
         ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
     };
+    
+    // Test with an IV
+    std::vector<uint8_t> iv; 
+    ConvertToBytes(&iv, "424242424242424242424242424242424242424242424242");
 
     // Test encryption and decryption with a plaintext
     const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
     std::vector<uint8_t> ciphertext, tag;
     ConvertToBytes(&ciphertext, "01e5f78bc99de880bd2eeff2870d361f0eab5b2f");
     ConvertToBytes(&tag, "c55268f34b14045878fe3668db980319");
-    test(plaintext, strlen((const char *)plaintext), ciphertext, tag);
+    test(iv, plaintext, strlen((const char *)plaintext), ciphertext, tag);
 
-    // Initiaze another IV and derive another subkey 
+    // Test with another IV
     ConvertToBytes(&iv, "4142434445464748494a4b4c4d4e4f505152535455565758");
-    ASSERT_TRUE(EVP_CipherInit_ex(ectx.get(), nullptr, nullptr, nullptr, iv.data(), -1));
-    ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, nullptr, iv.data()));
     
     // Test encryption and decryption again with anotherother plaintext
     plaintext = (const uint8_t *)"XAES-256-GCM";
     ConvertToBytes(&ciphertext, "ce546ef63c9cc60765923609");
     ConvertToBytes(&tag, "b33a9a1974e96e52daf2fcf7075e2271");
-    test(plaintext, strlen((const char *)plaintext), ciphertext, tag);
+    test(iv, plaintext, strlen((const char *)plaintext), ciphertext, tag);
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_MULTI_LOOP_TEST) {
