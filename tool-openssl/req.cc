@@ -77,9 +77,9 @@ static const argument_t kArguments[] = {
     // AWS-LC does not support config files by design, but some of our
     // dependencies
     // still use this cli command with -config. Therefore, we decided to
-    // implement -config but only parse a MINIMAL set of fields (e.g.,
+    // implement -config but will only parse a MINIMAL set of fields (e.g.,
     // default_md, distiguished_name, etc.). This set will be updated and
-    // re-evaluated on a need-based basis.
+    // re-evaluated on an as-needed basis.
     {"-config", kOptionalArgument, "This specifies the request template file"},
     {"-extensions", kOptionalArgument,
      "Cert or request extension section (override value in config file)"},
@@ -110,20 +110,24 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
   // Parse keyspec
   if (OPENSSL_strncasecmp(keyspec, "rsa:", 4) == 0) {
     char *endptr = NULL;
+    errno = 0;
     long value = strtol(keyspec + 4, &endptr, 10);
     if (endptr != keyspec + 4 && *endptr == '\0' && errno != ERANGE) {
       keylen = value;
     } else {
-      fprintf(stderr, "Invalid RSA key length: %s, using default length\n",
-              keyspec + 4);
+      fprintf(
+          stderr,
+          "Warning: Invalid RSA key length: %s, using default length of %ld "
+          "bits\n",
+          keyspec + 4, default_keylen);
     }
   } else if (OPENSSL_strcasecmp(keyspec, "rsa") == 0) {
     keylen = default_keylen;
   } else {
     fprintf(
         stderr,
-        "Unknown key specification: %s, using RSA key with 2048 bit length\n",
-        keyspec);
+        "Unknown key specification: %s, using RSA key with %ld bit length\n",
+        keyspec, default_keylen);
   }
 
   // Validate key length
@@ -669,7 +673,7 @@ static bool LoadPrivateKey(const std::string &key_file_path,
                                  const_cast<char *>(passin->c_str())));
 
   if (!pkey) {
-    fprintf(stderr, "Error: Failed to read private key from %s",
+    fprintf(stderr, "Error: Failed to read private key from %s\n",
             key_file_path.c_str());
     return false;
   }
@@ -774,27 +778,53 @@ bool reqTool(const args_list_t &args) {
 
   digest = EVP_get_digestbyname(digest_name.c_str());
 
+  bool encrypt_key = true;
+  const char *encrypt_key_str = NULL;
+  if (req_conf.get()) {
+    encrypt_key_str =
+        NCONF_get_string(req_conf.get(), REQ_SECTION, ENCRYPT_KEY);
+  }
+
+  if (encrypt_key_str != NULL &&
+      isStringUpperCaseEqual(encrypt_key_str, "no")) {
+    encrypt_key = false;
+  }
+
+  // Set private key
+  // - If sign key is provided: use that key
+  // - If no sign key is provided:
+  //   - Set default key size to 2048 bits or as provided in config file.
+  //   - If -newkey is given: generate key specified by -newkey
+  //   - Else: generate default RSA key
   bssl::UniquePtr<EVP_PKEY> pkey;
   if (key_file_path.empty()) {
+    // Before generating key, check if config has a default key length specified
+    long default_keylen = DEFAULT_KEY_LENGTH;
+    const char *bits_str = NULL;
+    if (req_conf.get()) {
+      bits_str = NCONF_get_string(req_conf.get(), REQ_SECTION, BITS);
+    }
+
+    if (bits_str) {
+      char *endptr = nullptr;
+      errno = 0;
+      long val = strtol(bits_str, &endptr, 10);
+      if (*endptr == '\0' && endptr != bits_str && errno != ERANGE) {
+        default_keylen = val;
+      } else {
+        fprintf(stderr,
+                "Warning: Invalid RSA key length from config file: %s. The "
+                "default key length is set to %d\n",
+                bits_str, DEFAULT_KEY_LENGTH);
+      }
+    }
+
     std::string keyspec = "rsa";
     if (!newkey.empty()) {
       keyspec = newkey;
     }
 
-    const char *bits_str = NULL;
-    if (req_conf.get()) {
-      bits_str = NCONF_get_string(req_conf.get(), REQ_SECTION, BITS);
-    }
-    long default_keylen = DEFAULT_KEY_LENGTH;
-
-    if (bits_str) {
-      char *endptr = nullptr;
-      long val = strtol(bits_str, &endptr, 10);
-      if (*endptr == '\0' && endptr != bits_str) {
-        default_keylen = val;
-      }
-    }
-
+    // Generate key
     pkey.reset(GenerateKey(keyspec.c_str(), default_keylen));
 
     if (!pkey) {
@@ -807,18 +837,6 @@ bool reqTool(const args_list_t &args) {
     }
   }
 
-  bool encrypt_key = true;
-  const char *encrypt_key_str = NULL;
-  if (req_conf.get()) {
-    encrypt_key_str =
-        NCONF_get_string(req_conf.get(), REQ_SECTION, ENCRYPT_KEY);
-  }
-
-  if (encrypt_key_str != NULL && strcmp(encrypt_key_str, "no") == 0) {
-    encrypt_key = true;
-  }
-
-  // Generate and write private key
   const EVP_CIPHER *cipher = NULL;
   if (!nodes && encrypt_key) {
     cipher = EVP_des_ede3_cbc();
@@ -866,7 +884,7 @@ bool reqTool(const args_list_t &args) {
     no_prompt_str = NCONF_get_string(req_conf.get(), REQ_SECTION, PROMPT);
   }
 
-  if (no_prompt_str != NULL && strcmp(no_prompt_str, "no") == 0) {
+  if (no_prompt_str != NULL && isStringUpperCaseEqual(no_prompt_str, "no")) {
     no_prompt = true;
   }
 
