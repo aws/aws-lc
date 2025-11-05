@@ -275,7 +275,7 @@ uint64_t CRYPTO_get_fork_ube_generation(void) {
 // fork detection support. Returning a constant non zero value makes BoringSSL
 // assume address space duplication is not a concern and adding entropy to
 // every RAND_bytes call is not needed.
-uint64_t CRYPTO_get_fgn(void) { return 0xc0ffee; }
+uint64_t CRYPTO_get_fork_ube_generation(void) { return 0xc0ffee; }
 
 #else
 
@@ -283,7 +283,7 @@ uint64_t CRYPTO_get_fgn(void) { return 0xc0ffee; }
 // place.  Returning a constant zero value makes BoringSSL assume that address
 // space duplication could have occured on any call entropy must be added to
 // every RAND_bytes call.
-uint64_t CRYPTO_get_fgn(void) { return 0; }
+uint64_t CRYPTO_get_fork_ube_generation(void) { return 0; }
 
 #endif // defined(AWSLC_FORK_UBE_DETECTION_SUPPORTED)
 
