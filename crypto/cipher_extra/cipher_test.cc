@@ -1564,7 +1564,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
     // Test with another IV
     ConvertToBytes(&iv, "4142434445464748494a4b4c4d4e4f505152535455565758");
     
-    // Test encryption and decryption again with anotherother plaintext
+    // Test encryption and decryption again with another plaintext
     plaintext = (const uint8_t *)"XAES-256-GCM";
     ConvertToBytes(&ciphertext, "ce546ef63c9cc60765923609");
     ConvertToBytes(&tag, "b33a9a1974e96e52daf2fcf7075e2271");
