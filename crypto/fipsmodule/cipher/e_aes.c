@@ -379,8 +379,7 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
       return (EVP_AES_GCM_CTX *)ptr;
     // XAES-256-GCM
     case NID_xaes_256_gcm: 
-      assert(ctx->cipher->ctx_size ==
-        sizeof(XAES_256_GCM_CTX));
+      assert(ctx->cipher->ctx_size == sizeof(XAES_256_GCM_CTX));
       ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
       assert((uintptr_t)ptr % 4 == 0);
