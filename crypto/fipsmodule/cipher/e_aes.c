@@ -1791,7 +1791,7 @@ static inline void aes_key_setup_enc(__m128i rk[], const __m256i cipherKey) {
 }
 
 __attribute__((target("vaes,avx512vl,aes,sse2")))
-static int CMAC_KDF(uint8_t *in, uint8_t *out, __m128i *rk) {
+static int CMAC_KDF_x2(uint8_t *in, uint8_t *out, __m128i *rk) {
     __m256i derived_key;
     derived_key = _mm256_loadu_si256((__m256i*)in);
     derived_key = _mm256_xor_si256(derived_key, _mm256_broadcast_i32x4(rk[0]));
@@ -1805,6 +1805,25 @@ static int CMAC_KDF(uint8_t *in, uint8_t *out, __m128i *rk) {
             _mm256_broadcast_i32x4(rk[14]));
     
     _mm256_storeu_si256((__m256i*)out, derived_key);
+
+    return 1;
+}
+
+__attribute__((target("vaes,avx512f,aes,sse2")))
+static int CMAC_KDF_x4(uint8_t *in, uint8_t *out, __m128i *rk) {
+    __m512i derived_key;
+    derived_key = _mm512_loadu_si512((__m512i*)in);
+    derived_key = _mm512_xor_si512(derived_key, _mm512_broadcast_i32x4(rk[0]));
+    
+    for(size_t r = 1; r < 14; ++r) {
+        derived_key = _mm512_aesenc_epi128(derived_key, 
+            _mm512_broadcast_i32x4(rk[r]));
+    }
+    
+    derived_key = _mm512_aesenclast_epi128(derived_key, 
+            _mm512_broadcast_i32x4(rk[14]));
+    
+    _mm512_storeu_si512((__m512i*)out, derived_key);
 
     return 1;
 }
@@ -1872,7 +1891,7 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    // alignment is the same as aes_gcm_from_cipher_ctx()
+    // alignment to be consistent with aes_gcm_from_cipher_ctx()
     char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
     assert((uintptr_t)ptr % 4 == 0);
@@ -2024,7 +2043,7 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 
     aead_xaes_256_gcm_ctx_init(xaes_ctx, key);
 
-    // requested_tag_len with value 0 means default tag length of AES_GCM
+    // requested_tag_len = 0 means using default tag length of AES_GCM
     ctx->tag_len = (requested_tag_len > 0) ? requested_tag_len : EVP_AEAD_AES_GCM_TAG_LEN;
     
     return 1;
