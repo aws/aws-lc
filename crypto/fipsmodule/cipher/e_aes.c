@@ -1770,15 +1770,6 @@ https://eprint.iacr.org/2025/758.pdf#page=24
 
 typedef struct {
     EVP_AES_GCM_CTX aes_gcm_ctx;
-// Padding by the value of EVP_AES_GCM_CTX_PADDING
-#if defined(OPENSSL_32_BIT) 
-    // 12-byte (96-bit) padding
-    uint32_t: 32;
-    uint64_t: 64;
-#else
-    // 8-byte (64-bit) padding
-    uint64_t: 64;
-#endif
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 } XAES_256_GCM_CTX;
@@ -1912,7 +1903,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->block_size = AES_BLOCK_SIZE;
     out->key_len = XAES_256_GCM_KEY_LENGTH;
     out->iv_len = XAES_256_GCM_MAX_NONCE_SIZE;
-    out->ctx_size = sizeof(XAES_256_GCM_CTX) + sizeof(EVP_AES_GCM_CTX_PADDING); 
+    out->ctx_size = sizeof(XAES_256_GCM_CTX); 
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
