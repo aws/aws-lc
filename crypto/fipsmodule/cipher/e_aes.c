@@ -1988,7 +1988,11 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
 // ------------------------------------------------------------------------------
 // ---------------- EVP_AEAD XAES-256-GCM Without Key Commitment ----------------
 // ------------------------------------------------------------------------------
+/* Since ctx->state capacity is 568 bytes, it does not have enough space 
+ * to contain both xaes_256_gcm_ctx data and aead_aes_gcm_ctx data which 
+ * require 804 bytes, so we store a pointer to aead_aes_gcm_ctx instead */
 typedef struct {
+    struct aead_aes_gcm_ctx *gcm_ctx;
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 } AEAD_XAES_256_GCM_CTX;
@@ -2009,6 +2013,9 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
 
+    // Allocate memory for xaes_ctx->gcm_ctx
+    xaes_ctx->gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_ctx));
+    
     xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
 
     // requested_tag_len = 0 means using the default tag length of AES_GCM
@@ -2017,8 +2024,8 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 1;
 }
 
-static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, struct aead_aes_gcm_ctx *gcm_ctx, 
-                                        const uint8_t *nonce, const size_t nonce_len) {
+static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, 
+                            const uint8_t *nonce, const size_t nonce_len) {
     if(!nonce || nonce_len < 20 || nonce_len > 24) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
@@ -2028,6 +2035,8 @@ static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, struct
 
     xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, gcm_key);
     
+    struct aead_aes_gcm_ctx *gcm_ctx = xaes_ctx->gcm_ctx;
+
     gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL,
                                 gcm_key, XAES_256_GCM_KEY_LENGTH);
     
@@ -2045,16 +2054,15 @@ static int aead_xaes_256_gcm_seal_scatter(
     const size_t ad_len) {
     
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
-    struct aead_aes_gcm_ctx gcm_ctx;
 
-    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, nonce, nonce_len)) {
         return 0;
     }
     
     // Reference for nonce size < 24 bytes: 
     // https://eprint.iacr.org/2025/758.pdf#page=24
     return aead_aes_gcm_seal_scatter_impl(
-        &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
+        xaes_ctx->gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
         nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
         in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len);
 }
@@ -2066,18 +2074,23 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *ad, size_t ad_len) {
 
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
-    struct aead_aes_gcm_ctx gcm_ctx;
 
-    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, nonce, nonce_len)) {
         return 0;
     }
     
     // Reference for nonce size < 24 bytes: 
     // https://eprint.iacr.org/2025/758.pdf#page=24
     return aead_aes_gcm_open_gather_impl(
-        &gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
+        xaes_ctx->gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
         AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
         ad, ad_len, ctx->tag_len);
+}
+
+static void aead_xaes_256_gcm_cleanup(EVP_AEAD_CTX *ctx) {
+  AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+  OPENSSL_free(xaes_ctx->gcm_ctx);
+  aead_aes_gcm_cleanup(ctx);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
@@ -2089,7 +2102,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
     out->aead_id = AEAD_XAES_256_GCM_ID;
 
     out->init = aead_xaes_256_gcm_init;
-    out->cleanup = aead_aes_gcm_cleanup;
+    out->cleanup = aead_xaes_256_gcm_cleanup;
     out->seal_scatter = aead_xaes_256_gcm_seal_scatter;
     out->open_gather = aead_xaes_256_gcm_open_gather;
 }
