@@ -347,6 +347,12 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
 #define EVP_AES_GCM_CTX_PADDING 8
 #endif
 
+typedef struct {
+    EVP_AES_GCM_CTX aes_gcm_ctx;
+    AES_KEY xaes_key; 
+    uint8_t k1[AES_BLOCK_SIZE]; 
+} XAES_256_GCM_CTX;
+
 static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
   OPENSSL_STATIC_ASSERT(
       alignof(EVP_AES_GCM_CTX) <= 16,
@@ -355,26 +361,29 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
   switch(ctx->cipher->nid) { 
-    // only execute assert checking with aes-gcm
+    // AES-GCM
     case NID_aes_128_gcm:
     case NID_aes_192_gcm:
     case NID_aes_256_gcm:
-        assert(ctx->cipher->ctx_size ==
-            sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
-        break;
-    // not execute assert checking with xaes-256-gcm
-    default: 
-        break;
-  }
-  
-  char *ptr = ctx->cipher_data;
+      assert(ctx->cipher->ctx_size ==
+        sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
+      char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
-  assert((uintptr_t)ptr % 4 == 0);
-  ptr += (uintptr_t)ptr & 4;
+      assert((uintptr_t)ptr % 4 == 0);
+      ptr += (uintptr_t)ptr & 4;
 #endif
-  assert((uintptr_t)ptr % 8 == 0);
-  ptr += (uintptr_t)ptr & 8;
-  return (EVP_AES_GCM_CTX *)ptr;
+      assert((uintptr_t)ptr % 8 == 0);
+      ptr += (uintptr_t)ptr & 8;
+      return (EVP_AES_GCM_CTX *)ptr;
+    // XAES-256-GCM
+    case NID_xaes_256_gcm: 
+      assert(ctx->cipher->ctx_size ==
+        sizeof(XAES_256_GCM_CTX));
+      return &((XAES_256_GCM_CTX *)ctx->cipher_data)->aes_gcm_ctx;
+    default:
+      break;
+  }
+  return NULL;
 }
 
 static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
@@ -1768,12 +1777,6 @@ https://eprint.iacr.org/2025/758.pdf#page=24
 #define XAES_256_GCM_MAX_NONCE_SIZE  (AES_GCM_NONCE_LENGTH * 2)
 #define XAES_256_GCM_MIN_NONCE_SIZE  (20)
 
-typedef struct {
-    EVP_AES_GCM_CTX aes_gcm_ctx;
-    AES_KEY xaes_key; 
-    uint8_t k1[AES_BLOCK_SIZE]; 
-} XAES_256_GCM_CTX;
-
 /* 
 The following function performs the step #2 of CMAC specified in: 
 https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38b.pdf#page=14 
@@ -1819,15 +1822,7 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    // alignment is the same as aes_gcm_from_cipher_ctx()
-    char *ptr = ctx->cipher_data;
-#if defined(OPENSSL_32_BIT)
-    assert((uintptr_t)ptr % 4 == 0);
-    ptr += (uintptr_t)ptr & 4;
-#endif
-    assert((uintptr_t)ptr % 8 == 0);
-    ptr += (uintptr_t)ptr & 8;
-    return (XAES_256_GCM_CTX *)ptr;
+    return (XAES_256_GCM_CTX *)ctx->cipher_data;
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
