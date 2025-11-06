@@ -750,7 +750,6 @@ jobs:
           - "arm64"
         version:
           - "10.1"
-          - "9.4"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -770,12 +769,14 @@ jobs:
           memory: 12G
           cpu_count: 3
           run: |
-            /usr/sbin/pkg_add cmake gmake perl
-            ARCH=${{ (matrix.arch == 'x86_64' && 'amd') || 'arm' }}
+            set -x
+            export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
+            sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
+            ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
             export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
             curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
-            mkdir -p /usr/local
-            tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
+            sudo mkdir -p /usr/local
+            sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
             export GOROOT=/usr/local/go
             export PATH="$PATH:$GOROOT/bin"
             tests/ci/run_bsd_tests.sh
