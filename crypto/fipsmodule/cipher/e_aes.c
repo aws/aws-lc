@@ -360,6 +360,8 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
 
   // |malloc| guarantees up to 4-byte alignment on 32-bit and 8-byte alignment
   // on 64-bit systems, so we need to adjust to reach 16-byte alignment.
+  char *ptr = NULL;
+
   switch(ctx->cipher->nid) { 
     // AES-GCM
     case NID_aes_128_gcm:
@@ -367,7 +369,7 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
     case NID_aes_256_gcm:
       assert(ctx->cipher->ctx_size ==
         sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING);
-      char *ptr = ctx->cipher_data;
+      ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
       assert((uintptr_t)ptr % 4 == 0);
       ptr += (uintptr_t)ptr & 4;
@@ -379,7 +381,14 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
     case NID_xaes_256_gcm: 
       assert(ctx->cipher->ctx_size ==
         sizeof(XAES_256_GCM_CTX));
-      return &((XAES_256_GCM_CTX *)ctx->cipher_data)->aes_gcm_ctx;
+      ptr = ctx->cipher_data;
+#if defined(OPENSSL_32_BIT)
+      assert((uintptr_t)ptr % 4 == 0);
+      ptr += (uintptr_t)ptr & 4;
+#endif
+      assert((uintptr_t)ptr % 8 == 0);
+      ptr += (uintptr_t)ptr & 8;
+      return &((XAES_256_GCM_CTX *)ptr)->aes_gcm_ctx;
     default:
       break;
   }
@@ -1822,7 +1831,14 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    return (XAES_256_GCM_CTX *)ctx->cipher_data;
+    char *ptr = ctx->cipher_data;
+#if defined(OPENSSL_32_BIT)
+    assert((uintptr_t)ptr % 4 == 0);
+    ptr += (uintptr_t)ptr & 4;
+#endif
+    assert((uintptr_t)ptr % 8 == 0);
+    ptr += (uintptr_t)ptr & 8;
+    return (XAES_256_GCM_CTX *)ptr;
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
