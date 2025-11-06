@@ -1479,7 +1479,20 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_INVALID_NONCE_KEY_LENGTH) {
     // Valid key length: 32 bytes 
     // Test invalid key length 
     ctx.get()->key_len = 24;
-    ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, key.data(), nonce.data(), -1));
+    ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, key.data(), nonce.data(), -1)); 
+
+    ctx.get()->key_len = 32;
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, key.data(), nonce.data(), -1)); 
+    
+    // EVP_CipherUpdate is not allowed after EVP_CipherFinal_ex
+    std::vector<uint8_t> plaintext(1), ciphertext(1);
+    int plaintext_len = 1, ciphertext_len = 0;
+    ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), ciphertext.data(), &ciphertext_len, 
+                plaintext.data(), plaintext_len));
+    int len = 0;
+    ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), ciphertext.data() + ciphertext_len, &len));
+    ASSERT_FALSE(EVP_CipherUpdate(ctx.get(), ciphertext.data(), &ciphertext_len, 
+                plaintext.data(), plaintext_len));
 }
 
 TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
