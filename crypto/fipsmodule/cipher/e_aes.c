@@ -1867,7 +1867,7 @@ do {                                                \
     out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87);   \
 } while(0);
 
-static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx, 
+static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1, 
                                 const uint8_t* nonce, uint8_t *derived_key) { 
     uint8_t M1[AES_BLOCK_SIZE] = {0};
     uint8_t M2[AES_BLOCK_SIZE] = {0};
@@ -1880,12 +1880,12 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
     M2[1] = 0x02;
 
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-        M1[i] ^= xaes_ctx->k1[i];
-        M2[i] ^= xaes_ctx->k1[i];
+        M1[i] ^= k1[i];
+        M2[i] ^= k1[i];
     }
 
-    AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
-    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+    AES_encrypt(M1, derived_key, xaes_key);
+    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, xaes_key);
 
     return 1;
 }
@@ -1915,7 +1915,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     uint8_t derived_key[XAES_256_GCM_KEY_LENGTH];
 
-    xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key);
+    xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, derived_key);
 
     int ivlen = gctx->ivlen;
 
@@ -1934,12 +1934,12 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     return 1;
 }
 
-static int xaes_256_gcm_ctx_init(XAES_256_GCM_CTX *xaes_ctx, const uint8_t *key) {
+static int xaes_256_gcm_ctx_init(AES_KEY *xaes_key, uint8_t *k1, const uint8_t *key) {
     static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
     uint8_t L[AES_BLOCK_SIZE];
-    AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, &xaes_ctx->xaes_key);
-    AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
-    BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
+    AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, xaes_key);
+    AES_encrypt(kZeroIn, L, xaes_key);
+    BINARY_FIELD_MUL_X_128(k1, L);
     return 1;
 }
 
@@ -1958,7 +1958,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     
     // When main key is provided, initialize the context and derive a subkey  
     if(key != NULL) { 
-        xaes_256_gcm_ctx_init(xaes_ctx, key);
+        xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
     }
 
     // If iv is provided, even if main key is not, derive a subkey
@@ -1993,38 +1993,6 @@ typedef struct {
     uint8_t k1[AES_BLOCK_SIZE]; 
 } AEAD_XAES_256_GCM_CTX;
 
-static int aead_xaes_256_gcm_CMAC_derive_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, 
-                                const uint8_t* nonce, uint8_t *derived_key) { 
-    uint8_t M1[AES_BLOCK_SIZE] = {0};
-    uint8_t M2[AES_BLOCK_SIZE] = {0};
-    
-    M1[1] = 0x01; 
-    M1[2] = 0x58; 
-    OPENSSL_memcpy(M1 + 4, nonce, 12);
-    OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
-
-    M2[1] = 0x02;
-
-    for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-        M1[i] ^= xaes_ctx->k1[i];
-        M2[i] ^= xaes_ctx->k1[i];
-    }
-
-    AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
-    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
-
-    return 1;
-}
-
-static int aead_xaes_256_gcm_ctx_init(AEAD_XAES_256_GCM_CTX *xaes_ctx, const uint8_t *key) {
-    static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
-    uint8_t L[AES_BLOCK_SIZE];
-    AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, &xaes_ctx->xaes_key);
-    AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
-    BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
-    return 1;
-}
-
 static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                             size_t key_len, size_t requested_tag_len) {
     // Key length: 32 bytes
@@ -2041,9 +2009,9 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
 
-    aead_xaes_256_gcm_ctx_init(xaes_ctx, key);
+    xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
 
-    // requested_tag_len = 0 means using default tag length of AES_GCM
+    // requested_tag_len = 0 means using the default tag length of AES_GCM
     ctx->tag_len = (requested_tag_len > 0) ? requested_tag_len : EVP_AEAD_AES_GCM_TAG_LEN;
     
     return 1;
@@ -2058,7 +2026,7 @@ static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, struct
 
     uint8_t gcm_key[XAES_256_GCM_KEY_LENGTH];
 
-    aead_xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, gcm_key);
+    xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, gcm_key);
     
     gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL,
                                 gcm_key, XAES_256_GCM_KEY_LENGTH);
