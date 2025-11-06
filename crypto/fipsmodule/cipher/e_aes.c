@@ -2064,6 +2064,8 @@ static int aead_xaes_256_gcm_seal_scatter(
         return 0;
     }
     
+    // Reference for nonce size < 24 bytes: 
+    // https://eprint.iacr.org/2025/758.pdf#page=24
     return aead_aes_gcm_seal_scatter_impl(
         &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
         nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
@@ -2083,6 +2085,8 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
         return 0;
     }
     
+    // Reference for nonce size < 24 bytes: 
+    // https://eprint.iacr.org/2025/758.pdf#page=24
     return aead_aes_gcm_open_gather_impl(
         &gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
         AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
