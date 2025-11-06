@@ -21,7 +21,6 @@ apt-get -y --no-install-recommends install \
     ca-certificates \
     cmake \
     curl \
-    gcc-12 \
     git \
     libffi-dev \
     libgmp-dev \
