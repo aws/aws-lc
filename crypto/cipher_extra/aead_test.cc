@@ -1616,7 +1616,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_INVALID_NONCE_KEY_LENGTH) {
     const size_t tag_size = 16;
     bssl::ScopedEVP_AEAD_CTX ctx;
     // Invalid key length
-    int key_len = 24; 
+    int key_len = 23; 
     ASSERT_FALSE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key_len, tag_size, nullptr));
     // Use 256-bit key length
     key_len = 32;
