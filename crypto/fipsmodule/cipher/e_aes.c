@@ -1830,6 +1830,7 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
+    // Handle alignment according to the way it is implemented for the AES-GCM context
     char *ptr = ctx->cipher_data;
 #if defined(OPENSSL_32_BIT)
     assert((uintptr_t)ptr % 4 == 0);
