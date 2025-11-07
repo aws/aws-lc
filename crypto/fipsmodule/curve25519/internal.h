@@ -109,7 +109,8 @@ int ED25519ph_verify_digest_no_self_test(
 #if ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) || \
      defined(OPENSSL_AARCH64)) &&                                              \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
-     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                  \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD) || \
+     defined(OPENSSL_NETBSD)) &&                  \
     !defined(OPENSSL_NO_ASM)
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif

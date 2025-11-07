@@ -124,7 +124,8 @@
 
 #if !defined(OPENSSL_NO_ASM) &&                          \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) || \
-     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                        \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD) || \
+     defined(OPENSSL_NETBSD) ) &&                        \
     defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
 
 #include "../../../third_party/s2n-bignum/s2n-bignum_aws-lc.h"
