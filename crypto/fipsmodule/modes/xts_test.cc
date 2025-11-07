@@ -1260,11 +1260,10 @@ const EVP_CIPHER *cipher = EVP_aes_256_xts();
   for (size_t msg_len = 16; msg_len < AESXTS_RAND_MSG_MAX_LEN ; msg_len += 1) {
 
     std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher)), iv(EVP_CIPHER_iv_length(cipher)),
-                          plaintext(msg_len), plaintext_test(msg_len);
+                          plaintext(msg_len);
     RAND_bytes(key.data(), EVP_CIPHER_key_length(cipher));
     RAND_bytes(iv.data(), EVP_CIPHER_iv_length(cipher));
     RAND_bytes(plaintext.data(), msg_len);
-    OPENSSL_memset(plaintext_test.data(), 0, msg_len);
 
     SCOPED_TRACE(plaintext.size());
 
