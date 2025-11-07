@@ -462,5 +462,5 @@ jobs:
             FIPS
           ipv6: true
           run: |
-            source /opt/compiler-env/setup-gcc-12.sh
+            source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}
