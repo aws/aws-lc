@@ -1999,18 +1999,12 @@ typedef struct {
 
 static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                             size_t key_len, size_t requested_tag_len) {
-    // Key length: 32 bytes
-    if (key_len != XAES_256_GCM_KEY_LENGTH) {
-        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
-        return 0;
-    }
-    
     // Max tag length: 16 bytes
     if(requested_tag_len > EVP_AEAD_AES_GCM_TAG_LEN) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
         return 0;
     }
-
+    
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
 
     // Allocate memory for xaes_ctx->gcm_ctx
