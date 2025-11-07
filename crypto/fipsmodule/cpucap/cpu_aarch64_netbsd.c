@@ -50,7 +50,7 @@ void OPENSSL_cpuid_setup(void) {
   int found_cpu = 0;
 
   // Query up to 256 CPUs (arbitrary but reasonable upper limit)
-  for (int cpu_num = 0; cpu_num < 256; cpu_num++) {
+  for (size_t cpu_num = 0; cpu_num < 256; cpu_num++) {
     if (get_cpu_id(cpu_num, &cpu_id) < 0) {
       // Failed to read this CPU - either it doesn't exist or is offline
       if (found_cpu > 0) {
@@ -126,6 +126,8 @@ void OPENSSL_cpuid_setup(void) {
       ID_AA64PFR0_EL1_DIT_IMPL) {
     OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
   }
+
+  OPENSSL_cpucap_initialized = 1;
 }
 
 #endif  // OPENSSL_AARCH64 && OPENSSL_NETBSD && !OPENSSL_STATIC_ARMCAP

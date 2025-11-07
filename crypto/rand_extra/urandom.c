@@ -30,11 +30,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#if defined(OPENSSL_NETBSD)
-#include <sys/ioctl.h>
-#include <sys/rndio.h>
-#endif
-
 #if defined(OPENSSL_LINUX)
 #if defined(AWS_LC_URANDOM_NEEDS_U32)
   // On old Linux OS: unknown type name '__u32' when include <linux/random.h>.
