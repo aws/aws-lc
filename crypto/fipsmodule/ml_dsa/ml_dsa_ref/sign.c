@@ -178,6 +178,7 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   uint8_t seedbuf[2*ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2*ML_DSA_CRHBYTES];
   uint8_t *rho, *tr, *key, *mu, *rhoprime;
   uint16_t nonce = 0;
+  uint32_t z_invalid, w0_invalid, h_invalid;
   polyvecl mat[ML_DSA_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
   ml_dsa_poly cp;
@@ -248,7 +249,8 @@ rej:
   ml_dsa_polyvecl_invntt_tomont(params, &z);
   ml_dsa_polyvecl_add(params, &z, &z, &y);
   ml_dsa_polyvecl_reduce(params, &z);
-  if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
+  z_invalid = ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta);
+  if(z_invalid) {
     goto rej;
   }
 
@@ -258,7 +260,13 @@ rej:
   ml_dsa_polyveck_invntt_tomont(params, &h);
   ml_dsa_polyveck_sub(params, &w0, &w0, &h);
   ml_dsa_polyveck_reduce(params, &w0);
-  if(ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
+  w0_invalid = ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta);
+  /* Leaking the fact that a signature was rejected at this stage is acceptable as
+   * the next attempt at a signature will be (indistinguishable from) independent of
+   * this one. See 5.5 in
+   * https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+   */
+  if(w0_invalid) {
     goto rej;
   }
 
@@ -266,7 +274,8 @@ rej:
   ml_dsa_polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
   ml_dsa_polyveck_invntt_tomont(params, &h);
   ml_dsa_polyveck_reduce(params, &h);
-  if(ml_dsa_polyveck_chknorm(params, &h, params->gamma2)) {
+  h_invalid = ml_dsa_polyveck_chknorm(params, &h, params->gamma2);
+  if(h_invalid) {
     goto rej;
   }
 
