@@ -34,10 +34,6 @@
 // hexdump writes |msg| to |fp| followed by the hex encoding of |len| bytes
 // from |in|.
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len); 
-// TODO: ConvertToBytes is totally the same as that of class FileTest  
-// in file_test.cc, we can declare that method as public to be invoked  
-// by creating an object of class FileTest, and remove this method 
-bool ConvertToBytes(std::vector<uint8_t> *out, const std::string &value);
 
 // Bytes is a wrapper over a byte slice which may be compared for equality. This
 // allows it to be used in EXPECT_EQ macros.
