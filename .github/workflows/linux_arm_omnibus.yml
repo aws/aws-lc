@@ -19,6 +19,8 @@ jobs:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         fleet:linux-graviton2-c6g-2xlarge
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
     strategy:
       fail-fast: false
       matrix:
@@ -48,6 +50,8 @@ jobs:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:arm-3.0
         fleet:linux-graviton4-r8g-2xlarge
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
     strategy:
       fail-fast: false
       matrix:
