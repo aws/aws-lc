@@ -1244,7 +1244,7 @@ TEST(XTSTest, TestVectors) {
 #endif
 }
 
-TEST(XTSTest, EncryptDecyptRand) {
+TEST(XTSTest, EncryptDecryptRand) {
 #if defined(OPENSSL_LINUX)
   int pagesize = sysconf(_SC_PAGE_SIZE);
   ASSERT_GE(pagesize, 0);
@@ -1260,17 +1260,17 @@ const EVP_CIPHER *cipher = EVP_aes_256_xts();
   for (size_t msg_len = 16; msg_len < AESXTS_RAND_MSG_MAX_LEN ; msg_len += 1) {
 
     std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher)), iv(EVP_CIPHER_iv_length(cipher)),
-                          plaintext(msg_len), ciphertext(msg_len), plaintext_test(msg_len);
+                          plaintext(msg_len), plaintext_test(msg_len);
     RAND_bytes(key.data(), EVP_CIPHER_key_length(cipher));
     RAND_bytes(iv.data(), EVP_CIPHER_iv_length(cipher));
     RAND_bytes(plaintext.data(), msg_len);
-    OPENSSL_memset(ciphertext.data(), 0, msg_len);
     OPENSSL_memset(plaintext_test.data(), 0, msg_len);
 
     SCOPED_TRACE(plaintext.size());
 
-    int len;
-    uint8_t *in_p, *out_p;
+    int len = 0;
+    size_t decrypted_len = 0, encrypted_len = 0;
+    uint8_t *in_p = nullptr, *out_p = nullptr;
   #if defined(OPENSSL_LINUX)
     ASSERT_GE(pagesize, (int)plaintext.size());
 
@@ -1305,7 +1305,9 @@ const EVP_CIPHER *cipher = EVP_aes_256_xts();
                                       iv.data()));
         ASSERT_TRUE(
             EVP_EncryptUpdate(ctx.get(), out_p, &len, in_p, plaintext.size()));
-        OPENSSL_memcpy(ciphertext.data(), out_p, plaintext.size());
+
+        encrypted_len = len;
+        ASSERT_EQ(encrypted_len, plaintext.size());
 
         // Test decryption.
 
@@ -1314,10 +1316,14 @@ const EVP_CIPHER *cipher = EVP_aes_256_xts();
         }
 
         ctx.Reset();
+        len = 0;
         ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
                                       iv.data()));
         ASSERT_TRUE(
-            EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, ciphertext.size()));
+            EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, plaintext.size()));
+
+        decrypted_len = len;
+        ASSERT_EQ(decrypted_len, plaintext.size());
         EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
       }
     }
