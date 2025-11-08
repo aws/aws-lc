@@ -128,8 +128,9 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
   } else {
     fprintf(
         stderr,
-        "Unknown key specification: %s, using RSA key with %ld bit length\n",
-        keyspec, default_keylen);
+        "Unknown key specification: %s. Only RSA key generation is supported\n",
+        keyspec);
+    return NULL;
   }
 
   // Validate key length
@@ -688,6 +689,7 @@ static bool WritePrivateKey(std::string &out_path,
                             bssl::UniquePtr<EVP_PKEY> &pkey,
                             const EVP_CIPHER *cipher) {
   bssl::UniquePtr<BIO> out_bio;
+  SetUmaskForPrivateKey();
   if (out_path.empty()) {
     // Default to privkey.pem in the current directory
     out_path = "privkey.pem";
