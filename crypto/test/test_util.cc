@@ -34,7 +34,6 @@
 #include "openssl/pem.h"
 #include "openssl/rand.h"
 
-
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
   const uint8_t *data = reinterpret_cast<const uint8_t *>(in);
 
