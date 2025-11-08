@@ -1563,6 +1563,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
 
         // ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), decrypted.data(), &decrypted_len, ciphertext.data(), ciphertext_len));
+        
         for(size_t i = 0; i < plaintext_len; ++i) { 
             // Test streaming input
             ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), decrypted.data() + decrypted_len, &len, 

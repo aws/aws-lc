@@ -92,6 +92,9 @@ static const struct KnownAEAD kAEADs[] = {
 
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt",
      kCanTruncateTags | kVariableNonce},
+    
+    {"XAES_256_GCM", EVP_aead_xaes_256_gcm, "xaes_256_gcm_tests.txt",
+     kCanTruncateTags | kVariableNonce}, 
 
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
      kCanTruncateTags | kVariableNonce},
@@ -1438,6 +1441,8 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
      17},
     {"EVP_aead_aes_256_gcm", EVP_aead_aes_256_gcm(), kEvpAeadCtxKey, 32, 16,
      18},
+    {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+     29},
     {"EVP_aead_chacha20_poly1305", EVP_aead_chacha20_poly1305(), kEvpAeadCtxKey,
      32, 16, 5},
     {"EVP_aead_xchacha20_poly1305", EVP_aead_xchacha20_poly1305(),
