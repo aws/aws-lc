@@ -15,6 +15,417 @@
 #include "internal.h"
 #include "test_util.h"
 
+class ReqTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ASSERT_GT(createTempFILEpath(input_key_path), 0u);
+    ASSERT_GT(createTempFILEpath(output_key_path), 0u);
+    ASSERT_GT(createTempFILEpath(csr_path), 0u);
+    ASSERT_GT(createTempFILEpath(cert_path), 0u);
+    ASSERT_GT(createTempFILEpath(config_path), 0u);
+    ASSERT_GT(createTempFILEpath(protected_key_path), 0u);
+
+    // Create a test private key
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    ASSERT_TRUE(pkey);
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    ASSERT_TRUE(rsa);
+    bssl::UniquePtr<BIGNUM> bn(BN_new());
+    ASSERT_TRUE(bn && rsa && BN_set_word(bn.get(), RSA_F4) &&
+                RSA_generate_key_ex(rsa.get(), 1024, bn.get(), nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
+
+    // Write unencrypted key for -key input
+    ScopedFILE key_file(fopen(input_key_path, "wb"));
+    ASSERT_TRUE(key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(key_file.get(), pkey.get(), nullptr,
+                                     nullptr, 0, nullptr, nullptr));
+
+    // Write encrypted key for -key input with -passin
+    ScopedFILE protected_key_file(fopen(protected_key_path, "wb"));
+    ASSERT_TRUE(protected_key_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(
+        protected_key_file.get(), pkey.get(), EVP_aes_256_cbc(),
+        (unsigned char *)"testpassword", 12, nullptr, nullptr));
+  }
+
+  void TearDown() override {
+    RemoveFile(input_key_path);
+    RemoveFile(output_key_path);
+    RemoveFile(csr_path);
+    RemoveFile(cert_path);
+    RemoveFile(config_path);
+    RemoveFile(protected_key_path);
+    RemoveFile("privkey.pem");
+  }
+
+  char input_key_path[PATH_MAX];   // For -key (input)
+  char output_key_path[PATH_MAX];  // For -keyout (output)
+  char csr_path[PATH_MAX];
+  char cert_path[PATH_MAX];
+  char config_path[PATH_MAX];
+  char protected_key_path[PATH_MAX];
+};
+
+TEST_F(ReqTest, GenerateRSAKey) {
+  args_list_t args = {
+      "-new",          "-newkey", "rsa:2048", "-nodes", "-keyout",
+      output_key_path, "-out",    csr_path,   "-subj",  "/CN=test.example.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+  ASSERT_TRUE(key);
+  EXPECT_EQ(EVP_PKEY_id(key.get()), EVP_PKEY_RSA);
+
+  const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+  ASSERT_TRUE(rsa);
+  EXPECT_EQ(RSA_bits(rsa), 2048u);
+}
+
+TEST_F(ReqTest, NewkeyRSADefault) {
+  args_list_t args = {"-new",    "-newkey",       "rsa",  "-nodes",
+                      "-keyout", output_key_path, "-out", csr_path,
+                      "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+  ASSERT_TRUE(key);
+  EXPECT_EQ(EVP_PKEY_id(key.get()), EVP_PKEY_RSA);
+
+  const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+  ASSERT_TRUE(rsa);
+  EXPECT_EQ(RSA_bits(rsa), 2048u);  // Should default to 2048
+}
+
+TEST_F(ReqTest, KeyLengthVariations) {
+  int key_sizes[] = {1024, 2048, 4096};
+  for (int size : key_sizes) {
+    std::string keyspec = "rsa:" + std::to_string(size);
+    args_list_t args = {"-new",    "-newkey",       keyspec.c_str(), "-nodes",
+                        "-keyout", output_key_path, "-out",          csr_path,
+                        "-subj",   "/CN=test.com"};
+
+    ASSERT_TRUE(reqTool(args));
+
+    bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+    ASSERT_TRUE(key);
+    const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+    EXPECT_EQ(RSA_bits(rsa), static_cast<unsigned int>(size));
+  }
+}
+
+TEST_F(ReqTest, InvalidKeySizeFallback) {
+  // Test that invalid key size (rsa:abc) defaults to default key length
+  args_list_t args = {"-new",    "-newkey",       "rsa:abc", "-nodes",
+                      "-keyout", output_key_path, "-out",    csr_path,
+                      "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+  ASSERT_TRUE(key);
+  EXPECT_EQ(EVP_PKEY_id(key.get()), EVP_PKEY_RSA);
+
+  const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+  ASSERT_TRUE(rsa);
+  EXPECT_EQ(RSA_bits(rsa), 2048u);  // Should default to 2048
+}
+
+TEST_F(ReqTest, DigestAlgorithms) {
+  std::vector<std::string> digests = {"-sha256", "-sha384", "-sha512", "-sha1"};
+  for (const auto &digest : digests) {
+    args_list_t args = {"-new",   digest.c_str(), "-newkey",       "rsa:1024",
+                        "-nodes", "-keyout",      output_key_path, "-out",
+                        csr_path, "-subj",        "/CN=test.com"};
+
+    EXPECT_TRUE(reqTool(args)) << "Failed with digest: " << digest;
+  }
+}
+
+TEST_F(ReqTest, EncryptedPrivateKey) {
+  args_list_t args = {"-new",          "-newkey", "rsa:1024",      "-passout",
+                      "pass:testpass", "-keyout", output_key_path, "-out",
+                      csr_path,        "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  std::string key_content = ReadFileToString(output_key_path);
+  EXPECT_TRUE(key_content.find("ENCRYPTED") != std::string::npos);
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, "testpass"));
+  ASSERT_TRUE(key);
+}
+
+TEST_F(ReqTest, DefaultKeyoutPath) {
+  // Test that key is written to privkey.pem when -keyout is not specified
+  args_list_t args = {"-new", "-newkey", "rsa:1024", "-nodes",
+                      "-out", csr_path,  "-subj",    "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  // Verify key was written to default privkey.pem
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey("privkey.pem", nullptr));
+  ASSERT_TRUE(key);
+  EXPECT_EQ(EVP_PKEY_id(key.get()), EVP_PKEY_RSA);
+}
+
+TEST_F(ReqTest, X509SelfSignedCert) {
+  args_list_t args = {"-new",          "-x509",    "-days",   "365",
+                      "-newkey",       "rsa:1024", "-nodes",  "-keyout",
+                      output_key_path, "-out",     cert_path, "-subj",
+                      "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  auto cert = LoadPEMCertificate(cert_path);
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+  ASSERT_TRUE(key);
+  EXPECT_EQ(X509_verify(cert.get(), key.get()), 1);
+}
+
+TEST_F(ReqTest, ConfigFileBasic) {
+  ScopedFILE config(fopen(config_path, "w"));
+  ASSERT_TRUE(config);
+  fprintf(config.get(),
+          "[req]\n"
+          "default_bits = 1024\n"
+          "default_md = sha384\n"
+          "distinguished_name = req_dn\n"
+          "[req_dn]\n"
+          "CN = Common Name\n");
+  fclose(config.release());
+
+  args_list_t args = {"-new",    "-config",       config_path, "-nodes",
+                      "-keyout", output_key_path, "-out",      csr_path,
+                      "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+  ASSERT_TRUE(key);
+  const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+  EXPECT_EQ(RSA_bits(rsa), 1024u);
+}
+
+TEST_F(ReqTest, ExistingKeyFile) {
+  // Use existing key for new CSR
+  args_list_t use_args = {"-new", "-key",   input_key_path, "-nodes",
+                          "-out", csr_path, "-subj",        "/CN=second.com"};
+  ASSERT_TRUE(reqTool(use_args));
+}
+
+TEST_F(ReqTest, SubjectNameParsing) {
+  std::vector<std::string> subjects = {
+      "/CN=test.com", "/C=US/ST=CA/L=SF/O=Test/CN=test.com",
+      "/CN=test.com/emailAddress=test@example.com"};
+
+  for (const auto &subj : subjects) {
+    args_list_t args = {"-new",    "-newkey",       "rsa:1024", "-nodes",
+                        "-keyout", output_key_path, "-out",     csr_path,
+                        "-subj",   subj.c_str()};
+
+    EXPECT_TRUE(reqTool(args)) << "Failed with subject: " << subj;
+  }
+}
+
+TEST_F(ReqTest, ConfigFileDigest) {
+  ScopedFILE config(fopen(config_path, "w"));
+  ASSERT_TRUE(config);
+  fprintf(config.get(),
+          "[req]\n"
+          "default_md = sha512\n"
+          "distinguished_name = req_dn\n"
+          "[req_dn]\n");
+  fclose(config.release());
+
+  args_list_t args = {"-new",     "-config", config_path, "-newkey",
+                      "rsa:1024", "-nodes",  "-keyout",   output_key_path,
+                      "-out",     csr_path,  "-subj",     "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+}
+
+TEST_F(ReqTest, ConfigFileEncryption) {
+  ScopedFILE config(fopen(config_path, "w"));
+  ASSERT_TRUE(config);
+  fprintf(config.get(),
+          "[req]\n"
+          "encrypt_key = yes\n"
+          "distinguished_name = req_dn\n"
+          "[req_dn]\n");
+  fclose(config.release());
+
+  args_list_t args = {"-new",          "-config",  config_path,     "-newkey",
+                      "rsa:1024",      "-passout", "pass:testpass", "-keyout",
+                      output_key_path, "-out",     csr_path,        "-subj",
+                      "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  std::string key_content = ReadFileToString(output_key_path);
+  EXPECT_TRUE(key_content.find("ENCRYPTED") != std::string::npos);
+}
+
+TEST_F(ReqTest, ConfigFileExtensions) {
+  ScopedFILE config(fopen(config_path, "w"));
+  ASSERT_TRUE(config);
+  fprintf(config.get(),
+          "[req]\n"
+          "distinguished_name = req_dn\n"
+          "req_extensions = v3_req\n"
+          "[req_dn]\n"
+          "[v3_req]\n"
+          "basicConstraints = CA:FALSE\n"
+          "keyUsage = nonRepudiation, digitalSignature, keyEncipherment\n");
+  fclose(config.release());
+
+  args_list_t args = {"-new",     "-config", config_path, "-newkey",
+                      "rsa:1024", "-nodes",  "-keyout",   output_key_path,
+                      "-out",     csr_path,  "-subj",     "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+}
+
+TEST_F(ReqTest, OutformPEM) {
+  args_list_t args = {"-new",     "-newkey", "rsa:1024", "-nodes",
+                      "-outform", "PEM",     "-keyout",  output_key_path,
+                      "-out",     csr_path,  "-subj",    "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  std::string csr_content = ReadFileToString(csr_path);
+  EXPECT_TRUE(csr_content.find("-----BEGIN CERTIFICATE REQUEST-----") !=
+              std::string::npos);
+  EXPECT_TRUE(csr_content.find("-----END CERTIFICATE REQUEST-----") !=
+              std::string::npos);
+}
+
+
+TEST_F(ReqTest, OutformDER) {
+  args_list_t args = {"-new",     "-newkey", "rsa:1024", "-nodes",
+                      "-outform", "DER",     "-keyout",  output_key_path,
+                      "-out",     csr_path,  "-subj",    "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  ScopedFILE file(fopen(csr_path, "rb"));
+  ASSERT_TRUE(file);
+  bssl::UniquePtr<X509_REQ> req(d2i_X509_REQ_fp(file.get(), nullptr));
+  EXPECT_TRUE(req);
+}
+
+TEST_F(ReqTest, OutformDERX509) {
+  args_list_t args = {"-new",          "-x509",    "-newkey", "rsa:1024",
+                      "-nodes",        "-outform", "DER",     "-keyout",
+                      output_key_path, "-out",     cert_path, "-subj",
+                      "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  ScopedFILE file(fopen(cert_path, "rb"));
+  ASSERT_TRUE(file);
+  bssl::UniquePtr<X509> cert(d2i_X509_fp(file.get(), nullptr));
+  EXPECT_TRUE(cert);
+}
+
+TEST_F(ReqTest, OutformPEMX509) {
+  args_list_t args = {"-new",          "-x509",    "-newkey", "rsa:1024",
+                      "-nodes",        "-outform", "PEM",     "-keyout",
+                      output_key_path, "-out",     cert_path, "-subj",
+                      "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  std::string cert_content = ReadFileToString(cert_path);
+  EXPECT_TRUE(cert_content.find("-----BEGIN CERTIFICATE-----") !=
+              std::string::npos);
+  EXPECT_TRUE(cert_content.find("-----END CERTIFICATE-----") !=
+              std::string::npos);
+}
+TEST_F(ReqTest, PassinWithKey) {
+  // Use pre-created encrypted key with -passin
+  args_list_t args = {"-new",        "-key",    protected_key_path,
+                      "-nodes",      "-passin", "pass:testpassword",
+                      "-out",        csr_path,  "-subj",
+                      "/CN=test.com"};
+  ASSERT_TRUE(reqTool(args));
+}
+
+TEST_F(ReqTest, PassinX509) {
+  // Use pre-created encrypted key for X.509 cert with -passin
+  args_list_t args = {"-new",
+                      "-x509",
+                      "-key",
+                      protected_key_path,
+                      "-nodes",
+                      "-passin",
+                      "pass:testpassword",
+                      "-out",
+                      cert_path,
+                      "-subj",
+                      "/CN=test.com"};
+  ASSERT_TRUE(reqTool(args));
+
+  auto cert = LoadPEMCertificate(cert_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(ReqTest, StdoutOutput) {
+  args_list_t args = {"-new", "-nodes", "-subj", "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+}
+
+// -------------------- Req Option Usage Error Tests --------------------------
+
+class ReqOptionUsageErrorsTest : public ReqTest {
+ protected:
+  void TestOptionUsageErrors(const std::vector<std::string> &args) {
+    args_list_t c_args;
+    for (const auto &arg : args) {
+      c_args.push_back(arg.c_str());
+    }
+    bool result = reqTool(c_args);
+    ASSERT_FALSE(result);
+  }
+};
+
+// Test invalid argument values
+TEST_F(ReqOptionUsageErrorsTest, InvalidArgTests) {
+  std::vector<std::vector<std::string>> testparams = {
+      {"-new", "-newkey", "rsa:256", "-nodes", "-out", csr_path, "-subj",
+       "/CN=test.com"},  // Key too small
+      {"-new", "-newkey", "rsa:32768", "-nodes", "-out", csr_path, "-subj",
+       "/CN=test.com"},  // Key too large
+      {"-new", "-newkey", "rsa:1024", "-nodes", "-outform", "INVALID", "-out",
+       csr_path, "-subj", "/CN=test.com"},  // Invalid outform
+      {"-new", "-newkey", "ec:prime256v1", "-nodes", "-out", csr_path, "-subj",
+       "/CN=test.com"},  // Unsupported EC key
+      {"-new", "-newkey", "dsa:1024", "-nodes", "-out", csr_path, "-subj",
+       "/CN=test.com"},  // Unsupported DSA key
+  };
+
+  for (const auto &args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
+
+// Test -passin with wrong passwords
+TEST_F(ReqOptionUsageErrorsTest, InvalidPassinTest) {
+  std::vector<std::vector<std::string>> testparams = {
+      {"-new", "-key", protected_key_path, "-passin", "pass:wrongpass", "-out",
+       csr_path, "-subj", "/CN=test.com"},
+  };
+
+  for (const auto &args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
+
 static void setup_config(char *openssl_config_path) {
   ScopedFILE config_file(fopen(openssl_config_path, "w"));
   if (!config_file) {
@@ -51,53 +462,6 @@ static void setup_config(char *openssl_config_path) {
           "authorityKeyIdentifier  = keyid:always,issuer:always\n"
           "basicConstraints        = critical, CA:true\n");
 }
-
-class ReqTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    ASSERT_GT(createTempFILEpath(cert_path), 0u);
-    ASSERT_GT(createTempFILEpath(csr_path), 0u);
-    ASSERT_GT(createTempFILEpath(out_key_path), 0u);
-    ASSERT_GT(createTempFILEpath(config_path), 0u);
-    ASSERT_GT(createTempFILEpath(sign_key_path), 0u);
-    ASSERT_GT(createTempFILEpath(protected_sign_key_path), 0u);
-
-    setup_config(config_path);
-
-    bssl::UniquePtr<EVP_PKEY> test_key(CreateTestKey(2048));
-    ASSERT_TRUE(test_key);
-
-    // Create unencrypted key file
-    ScopedFILE key_file(fopen(sign_key_path, "wb"));
-    ASSERT_TRUE(key_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(key_file.get(), test_key.get(), nullptr,
-                                     nullptr, 0, nullptr, nullptr));
-    key_file.reset();
-
-    // Create encrypted key file
-    ScopedFILE encrypted_key_file(fopen(protected_sign_key_path, "wb"));
-    ASSERT_TRUE(encrypted_key_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(
-        encrypted_key_file.get(), test_key.get(), EVP_aes_256_cbc(),
-        (unsigned char *)"testpassword", 12, nullptr, nullptr));
-  }
-
-  void TearDown() override {
-    RemoveFile(cert_path);
-    RemoveFile(csr_path);
-    RemoveFile(out_key_path);
-    RemoveFile(config_path);
-    RemoveFile(sign_key_path);
-    RemoveFile(protected_sign_key_path);
-  }
-
-  char cert_path[PATH_MAX];
-  char csr_path[PATH_MAX];
-  char out_key_path[PATH_MAX];
-  char config_path[PATH_MAX];
-  char sign_key_path[PATH_MAX];
-  char protected_sign_key_path[PATH_MAX];
-};
 
 class ReqComparisonTest : public ::testing::Test {
  protected:
@@ -415,7 +779,7 @@ TEST_F(ReqComparisonTest, ExistingPrivateKey) {
 }
 
 // Test -outform DER option
-TEST_F(ReqComparisonTest, DEROutputFormat) {
+TEST_F(ReqComparisonTest, OutformDER) {
   std::string subject = "/CN=der-test.example.com";
 
   // Test CSR generation
@@ -497,7 +861,7 @@ TEST_F(ReqComparisonTest, KeyConflict) {
       DecryptPrivateKey(key_path_openssl, nullptr));
 
   // Since no new key were generated, the out keys should match
-  ASSERT_TRUE(CompareKeys(awslc_key.get(), openssl_key.get()) == 0);
+  ASSERT_TRUE(CompareKeyEquality(awslc_key.get(), openssl_key.get()) == 0);
 }
 
 // Test digest algorithm selection
@@ -533,18 +897,21 @@ TEST_F(ReqComparisonTest, DigestSelectionFromConfig) {
   fprintf(config_file.get(),
           "[ req ]\n"
           "default_md = sha384\n"
-          "prompt = no\n");
+          "distinguished_name = req_distinguished_name\n"
+          "prompt = no\n"
+          "\n"
+          "[ req_distinguished_name ]\n"
+          "CN = encrypted-key.example.com\n");
   fclose(config_file.release());
 
-  std::string subject = "/CN=test.example.com";
-  std::string awslc_command =
-      std::string(tool_executable_path) + " req -new " + "-config " +
-      config_path + " -newkey rsa:2048 -nodes -keyout " + key_path_awslc +
-      " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " req -new " + "-config " +
-      config_path + " -newkey rsa:2048 -nodes -keyout " + key_path_openssl +
-      " -out " + csr_path_openssl + " -subj \"" + subject + "\"";
+  std::string awslc_command = std::string(tool_executable_path) + " req -new " +
+                              "-config " + config_path +
+                              " -newkey rsa:2048 -nodes -keyout " +
+                              key_path_awslc + " -out " + csr_path_awslc;
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " req -new " + "-config " + config_path +
+                                " -newkey rsa:2048 -nodes -keyout " +
+                                key_path_openssl + " -out " + csr_path_openssl;
 
   ASSERT_EQ(ExecuteCommand(awslc_command), 0);
   ASSERT_EQ(ExecuteCommand(openssl_command), 0);
@@ -653,19 +1020,15 @@ TEST_F(ReqComparisonTest, GenerateProtectedPrivateKey) {
 
   // Test with existing key (using the pre-generated sign_key_path) and config
   std::string awslc_command =
-      std::string(tool_executable_path) + " req -new " + "-config " +
-      config_path + " -key " + sign_key_path +
-      " -passout pass:testpassword -keyout " + key_path_awslc + " -out " +
-      csr_path_awslc + " -subj \"" + subject + "\"";
+      std::string(tool_executable_path) + " req -new -newkey rsa:1024 " +
+      "-config " + config_path + " -passout pass:testpassword -keyout " +
+      key_path_awslc + " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
 
   std::string openssl_command =
-      std::string(openssl_executable_path) + " req -new " + "-config " +
-      config_path + " -key " + sign_key_path +
-      " -passout pass:testpassword -keyout " + key_path_openssl + " -out " +
-      csr_path_openssl + " -subj \"" + subject + "\"";
-
-  std::cout << "AWS-LC command: " << awslc_command << std::endl;
-  std::cout << "OpenSSL command: " << openssl_command << std::endl;
+      std::string(openssl_executable_path) + " req -new -newkey rsa:1024 " +
+      "-config " + config_path + " -passout pass:testpassword -keyout " +
+      key_path_openssl + " -out " + csr_path_openssl + " -subj \"" + subject +
+      "\"";
 
   ASSERT_EQ(ExecuteCommand(awslc_command), 0);
   ASSERT_EQ(ExecuteCommand(openssl_command), 0);
@@ -681,26 +1044,17 @@ TEST_F(ReqComparisonTest, GenerateProtectedPrivateKey) {
                   "-----BEGIN ENCRYPTED PRIVATE KEY-----") != std::string::npos)
       << "OpenSSL private key should be encrypted PKCS#8";
 
-  // Load and compare the keys - they should be the same as the source key
-  bssl::UniquePtr<BIO> source_bio(BIO_new_file(sign_key_path, "r"));
-  ASSERT_TRUE(source_bio);
-
-  bssl::UniquePtr<EVP_PKEY> source_key(
-      DecryptPrivateKey(sign_key_path, nullptr));
   bssl::UniquePtr<EVP_PKEY> awslc_key(
       DecryptPrivateKey(key_path_awslc, "testpassword"));
   bssl::UniquePtr<EVP_PKEY> openssl_key(
       DecryptPrivateKey(key_path_openssl, "testpassword"));
 
-  ASSERT_TRUE(source_key) << "Failed to load source private key";
   ASSERT_TRUE(awslc_key) << "Failed to load AWS-LC private key";
   ASSERT_TRUE(openssl_key) << "Failed to load OpenSSL private key";
 
-  // Compare that both output keys match the source key
-  EXPECT_TRUE(CompareKeys(source_key.get(), awslc_key.get()))
-      << "AWS-LC output key should match source key";
-  EXPECT_TRUE(CompareKeys(source_key.get(), openssl_key.get()))
-      << "OpenSSL output key should match source key";
+  ASSERT_TRUE(
+      CompareRandomGeneratedKeys(awslc_key.get(), openssl_key.get(), 1024))
+      << "AWS-LC and OpenSSL private keys are different";
 }
 
 // Test -extensions option with -x509

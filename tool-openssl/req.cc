@@ -117,6 +117,10 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
     if (endptr != keyspec + 4 && *endptr == '\0' && errno != ERANGE) {
       keylen = value;
     } else {
+      // Note: For OpenSSL, if the second part of keyspec (after the colon `:`)
+      // is not a number, it will be treated as a parameter file path rather
+      // than a key size. We do not support that at the moment and choose to
+      // fall back to a default key size instead.
       fprintf(
           stderr,
           "Warning: Invalid RSA key length: %s, using default length of %ld "
@@ -693,9 +697,11 @@ static bool WritePrivateKey(std::string &out_path,
   if (out_path.empty()) {
     // Default to privkey.pem in the current directory
     out_path = "privkey.pem";
+    fprintf(stderr, "Writing private key to %s (default)\n", out_path.c_str());
+  } else {
+    fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
   }
 
-  fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
   out_bio.reset(BIO_new(BIO_s_file()));
   if (!out_bio) {
     fprintf(stderr, "Error: unable to create file %s\n", out_path.c_str());
@@ -775,6 +781,17 @@ bool reqTool(const args_list_t &args) {
     fprintf(stderr,
             "Warning: Not generating key via given -newkey option since -key "
             "is given\n");
+  }
+
+  // Check -outform has a valid value
+  if (!outform.empty()) {
+    if (!isStringUpperCaseEqual(outform, "DER") &&
+        !isStringUpperCaseEqual(outform, "PEM")) {
+      fprintf(
+          stderr,
+          "Error: '-outform' option must specify a valid encoding DER|PEM\n");
+      return false;
+    }
   }
 
   bssl::UniquePtr<CONF> req_conf(nullptr);

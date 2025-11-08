@@ -492,14 +492,21 @@ EVP_PKEY *DecryptPrivateKey(const char *path, const char *password) {
   return pkey;
 }
 
-bool CompareKeys(EVP_PKEY *key1, EVP_PKEY *key2) {
+bool CompareKeyEquality(EVP_PKEY *key1, EVP_PKEY *key2) {
   // Early return if either pointer is null or keys are different types
   if (!key1 || !key2 || EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) {
+    std::cout << "Keys are different" << std::endl;
     return false;
   }
 
   // Check if keys are RSA type
   if (EVP_PKEY_id(key1) != EVP_PKEY_RSA) {
+    std::cout << "AWS-LC key is not an RSA key" << std::endl;
+    return false;
+  }
+
+  if (EVP_PKEY_id(key2) != EVP_PKEY_RSA) {
+    std::cout << "OpenSSL key is not an RSA key" << std::endl;
     return false;
   }
 
@@ -507,6 +514,7 @@ bool CompareKeys(EVP_PKEY *key1, EVP_PKEY *key2) {
   const RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
   const RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
   if (!rsa1 || !rsa2) {
+    std::cout << "Failed to obtain RSA keys" << std::endl;
     return false;
   }
 
@@ -518,14 +526,57 @@ bool CompareKeys(EVP_PKEY *key1, EVP_PKEY *key2) {
 
   // Compare modulus first as it's most likely to be different
   if (BN_cmp(n1, n2) != 0) {
+    std::cout << "Modulus of keys do not match" << std::endl;
     return false;
   }
 
   // Compare public exponent next (usually smaller)
   if (BN_cmp(e1, e2) != 0) {
+    std::cout << "Public exponents of keys do not match" << std::endl;
     return false;
   }
 
   // Finally compare private exponent
   return BN_cmp(d1, d2) == 0;
+}
+
+bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
+                                unsigned int expected_bits) {
+  if (!key1 || !key2 || EVP_PKEY_id(key1) != EVP_PKEY_id(key2)) {
+    std::cout << "Keys are different" << std::endl;
+    return false;
+  }
+
+  // Check if keys are RSA type
+  if (EVP_PKEY_id(key1) != EVP_PKEY_RSA) {
+    std::cout << "AWS-LC key is not an RSA key" << std::endl;
+    return false;
+  }
+
+  if (EVP_PKEY_id(key2) != EVP_PKEY_RSA) {
+    std::cout << "OpenSSL key is not an RSA key" << std::endl;
+    return false;
+  }
+
+  // Get RSA structures
+  const RSA *rsa1 = EVP_PKEY_get0_RSA(key1);
+  const RSA *rsa2 = EVP_PKEY_get0_RSA(key2);
+  if (!rsa1 || !rsa2) {
+    std::cout << "Failed to obtain RSA keys" << std::endl;
+    return false;
+  }
+
+  if (RSA_bits(rsa1) != expected_bits) {
+    std::cout << "AWS-LC key has " << RSA_bits(rsa1) << " bits, expected "
+              << expected_bits << std::endl;
+    return false;
+  }
+
+  if (RSA_bits(rsa2) != expected_bits) {
+    std::cout << "OpenSSL key has " << RSA_bits(rsa2) << " bits, expected "
+              << expected_bits << std::endl;
+    return false;
+  }
+
+  return true;
 }

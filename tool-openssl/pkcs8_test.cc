@@ -355,7 +355,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL) {
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
 
   // Step 4: Compare with original key
-  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), decrypted_key.get()))
       << "Decrypted key doesn't match original";
 }
 
@@ -394,7 +394,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
 
   // Step 4: Compare with original key
-  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), decrypted_key.get()))
       << "Decrypted key doesn't match original";
 }
 
@@ -437,9 +437,9 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareEncryptedOpenSSL) {
   ASSERT_TRUE(aws_lc_decrypted) << "Failed to decrypt AWS-LC output";
   ASSERT_TRUE(openssl_decrypted) << "Failed to decrypt OpenSSL output";
 
-  ASSERT_TRUE(CompareKeys(key.get(), aws_lc_decrypted.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), aws_lc_decrypted.get()))
       << "AWS-LC encrypted key doesn't match original after decryption";
-  ASSERT_TRUE(CompareKeys(key.get(), openssl_decrypted.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), openssl_decrypted.get()))
       << "OpenSSL encrypted key doesn't match original after decryption";
 }
 
@@ -493,7 +493,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_AWSLC_To_OpenSSL_WithPRF) {
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
 
   // Step 4: Compare with original key
-  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), decrypted_key.get()))
       << "Decrypted key doesn't match original";
 }
 
@@ -534,7 +534,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
   ASSERT_TRUE(decrypted_key) << "Failed to load decrypted key";
 
   // Step 4: Compare with original key
-  ASSERT_TRUE(CompareKeys(key.get(), decrypted_key.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), decrypted_key.get()))
       << "Decrypted key doesn't match original";
 }
 
@@ -577,9 +577,9 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2prfOpenSSL) {
   ASSERT_TRUE(aws_lc_decrypted) << "Failed to decrypt AWS-LC output";
   ASSERT_TRUE(openssl_decrypted) << "Failed to decrypt OpenSSL output";
 
-  ASSERT_TRUE(CompareKeys(key.get(), aws_lc_decrypted.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), aws_lc_decrypted.get()))
       << "AWS-LC encrypted key doesn't match original after decryption";
-  ASSERT_TRUE(CompareKeys(key.get(), openssl_decrypted.get()))
+  ASSERT_TRUE(CompareKeyEquality(key.get(), openssl_decrypted.get()))
       << "OpenSSL encrypted key doesn't match original after decryption";
 }
 
