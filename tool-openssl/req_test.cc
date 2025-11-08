@@ -32,7 +32,7 @@ class ReqTest : public ::testing::Test {
     ASSERT_TRUE(rsa);
     bssl::UniquePtr<BIGNUM> bn(BN_new());
     ASSERT_TRUE(bn && rsa && BN_set_word(bn.get(), RSA_F4) &&
-                RSA_generate_key_ex(rsa.get(), 1024, bn.get(), nullptr));
+                RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
     ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
 
     // Write unencrypted key for -key input
@@ -69,7 +69,7 @@ class ReqTest : public ::testing::Test {
 
 TEST_F(ReqTest, GenerateRSAKey) {
   args_list_t args = {
-      "-new",          "-newkey", "rsa:2048", "-nodes", "-keyout",
+      "-new",          "-newkey", "rsa:3072", "-nodes", "-keyout",
       output_key_path, "-out",    csr_path,   "-subj",  "/CN=test.example.com"};
 
   ASSERT_TRUE(reqTool(args));
@@ -80,7 +80,7 @@ TEST_F(ReqTest, GenerateRSAKey) {
 
   const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
   ASSERT_TRUE(rsa);
-  EXPECT_EQ(RSA_bits(rsa), 2048u);
+  EXPECT_EQ(RSA_bits(rsa), 3072u);
 }
 
 TEST_F(ReqTest, NewkeyRSADefault) {
@@ -100,7 +100,7 @@ TEST_F(ReqTest, NewkeyRSADefault) {
 }
 
 TEST_F(ReqTest, KeyLengthVariations) {
-  int key_sizes[] = {1024, 2048, 4096};
+  int key_sizes[] = {2048, 3072, 4096};  // FIPS-compliant sizes
   for (int size : key_sizes) {
     std::string keyspec = "rsa:" + std::to_string(size);
     args_list_t args = {"-new",    "-newkey",       keyspec.c_str(), "-nodes",
@@ -112,6 +112,7 @@ TEST_F(ReqTest, KeyLengthVariations) {
     bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
     ASSERT_TRUE(key);
     const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+    ASSERT_TRUE(rsa);
     EXPECT_EQ(RSA_bits(rsa), static_cast<unsigned int>(size));
   }
 }
@@ -136,7 +137,7 @@ TEST_F(ReqTest, InvalidKeySizeFallback) {
 TEST_F(ReqTest, DigestAlgorithms) {
   std::vector<std::string> digests = {"-sha256", "-sha384", "-sha512", "-sha1"};
   for (const auto &digest : digests) {
-    args_list_t args = {"-new",   digest.c_str(), "-newkey",       "rsa:1024",
+    args_list_t args = {"-new",   digest.c_str(), "-newkey",       "rsa:2048",
                         "-nodes", "-keyout",      output_key_path, "-out",
                         csr_path, "-subj",        "/CN=test.com"};
 
@@ -145,7 +146,7 @@ TEST_F(ReqTest, DigestAlgorithms) {
 }
 
 TEST_F(ReqTest, EncryptedPrivateKey) {
-  args_list_t args = {"-new",          "-newkey", "rsa:1024",      "-passout",
+  args_list_t args = {"-new",          "-newkey", "rsa:2048",      "-passout",
                       "pass:testpass", "-keyout", output_key_path, "-out",
                       csr_path,        "-subj",   "/CN=test.com"};
 
@@ -160,7 +161,7 @@ TEST_F(ReqTest, EncryptedPrivateKey) {
 
 TEST_F(ReqTest, DefaultKeyoutPath) {
   // Test that key is written to privkey.pem when -keyout is not specified
-  args_list_t args = {"-new", "-newkey", "rsa:1024", "-nodes",
+  args_list_t args = {"-new", "-newkey", "rsa:2048", "-nodes",
                       "-out", csr_path,  "-subj",    "/CN=test.com"};
 
   ASSERT_TRUE(reqTool(args));
@@ -173,7 +174,7 @@ TEST_F(ReqTest, DefaultKeyoutPath) {
 
 TEST_F(ReqTest, X509SelfSignedCert) {
   args_list_t args = {"-new",          "-x509",    "-days",   "365",
-                      "-newkey",       "rsa:1024", "-nodes",  "-keyout",
+                      "-newkey",       "rsa:2048", "-nodes",  "-keyout",
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
 
@@ -192,7 +193,7 @@ TEST_F(ReqTest, ConfigFileBasic) {
   ASSERT_TRUE(config);
   fprintf(config.get(),
           "[req]\n"
-          "default_bits = 1024\n"
+          "default_bits = 3072\n"
           "default_md = sha384\n"
           "distinguished_name = req_dn\n"
           "[req_dn]\n"
@@ -208,7 +209,8 @@ TEST_F(ReqTest, ConfigFileBasic) {
   bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
   ASSERT_TRUE(key);
   const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
-  EXPECT_EQ(RSA_bits(rsa), 1024u);
+  ASSERT_TRUE(rsa);
+  EXPECT_EQ(RSA_bits(rsa), 3072u);
 }
 
 TEST_F(ReqTest, ExistingKeyFile) {
@@ -224,7 +226,7 @@ TEST_F(ReqTest, SubjectNameParsing) {
       "/CN=test.com/emailAddress=test@example.com"};
 
   for (const auto &subj : subjects) {
-    args_list_t args = {"-new",    "-newkey",       "rsa:1024", "-nodes",
+    args_list_t args = {"-new",    "-newkey",       "rsa:2048", "-nodes",
                         "-keyout", output_key_path, "-out",     csr_path,
                         "-subj",   subj.c_str()};
 
@@ -243,7 +245,7 @@ TEST_F(ReqTest, ConfigFileDigest) {
   fclose(config.release());
 
   args_list_t args = {"-new",     "-config", config_path, "-newkey",
-                      "rsa:1024", "-nodes",  "-keyout",   output_key_path,
+                      "rsa:2048", "-nodes",  "-keyout",   output_key_path,
                       "-out",     csr_path,  "-subj",     "/CN=test.com"};
 
   ASSERT_TRUE(reqTool(args));
@@ -260,7 +262,7 @@ TEST_F(ReqTest, ConfigFileEncryption) {
   fclose(config.release());
 
   args_list_t args = {"-new",          "-config",  config_path,     "-newkey",
-                      "rsa:1024",      "-passout", "pass:testpass", "-keyout",
+                      "rsa:2048",      "-passout", "pass:testpass", "-keyout",
                       output_key_path, "-out",     csr_path,        "-subj",
                       "/CN=test.com"};
 
@@ -284,14 +286,14 @@ TEST_F(ReqTest, ConfigFileExtensions) {
   fclose(config.release());
 
   args_list_t args = {"-new",     "-config", config_path, "-newkey",
-                      "rsa:1024", "-nodes",  "-keyout",   output_key_path,
+                      "rsa:2048", "-nodes",  "-keyout",   output_key_path,
                       "-out",     csr_path,  "-subj",     "/CN=test.com"};
 
   ASSERT_TRUE(reqTool(args));
 }
 
 TEST_F(ReqTest, OutformPEM) {
-  args_list_t args = {"-new",     "-newkey", "rsa:1024", "-nodes",
+  args_list_t args = {"-new",     "-newkey", "rsa:2048", "-nodes",
                       "-outform", "PEM",     "-keyout",  output_key_path,
                       "-out",     csr_path,  "-subj",    "/CN=test.com"};
 
@@ -306,7 +308,7 @@ TEST_F(ReqTest, OutformPEM) {
 
 
 TEST_F(ReqTest, OutformDER) {
-  args_list_t args = {"-new",     "-newkey", "rsa:1024", "-nodes",
+  args_list_t args = {"-new",     "-newkey", "rsa:2048", "-nodes",
                       "-outform", "DER",     "-keyout",  output_key_path,
                       "-out",     csr_path,  "-subj",    "/CN=test.com"};
 
@@ -319,7 +321,7 @@ TEST_F(ReqTest, OutformDER) {
 }
 
 TEST_F(ReqTest, OutformDERX509) {
-  args_list_t args = {"-new",          "-x509",    "-newkey", "rsa:1024",
+  args_list_t args = {"-new",          "-x509",    "-newkey", "rsa:2048",
                       "-nodes",        "-outform", "DER",     "-keyout",
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
@@ -333,7 +335,7 @@ TEST_F(ReqTest, OutformDERX509) {
 }
 
 TEST_F(ReqTest, OutformPEMX509) {
-  args_list_t args = {"-new",          "-x509",    "-newkey", "rsa:1024",
+  args_list_t args = {"-new",          "-x509",    "-newkey", "rsa:2048",
                       "-nodes",        "-outform", "PEM",     "-keyout",
                       output_key_path, "-out",     cert_path, "-subj",
                       "/CN=test.com"};
@@ -401,7 +403,7 @@ TEST_F(ReqOptionUsageErrorsTest, InvalidArgTests) {
        "/CN=test.com"},  // Key too small
       {"-new", "-newkey", "rsa:32768", "-nodes", "-out", csr_path, "-subj",
        "/CN=test.com"},  // Key too large
-      {"-new", "-newkey", "rsa:1024", "-nodes", "-outform", "INVALID", "-out",
+      {"-new", "-newkey", "rsa:2048", "-nodes", "-outform", "INVALID", "-out",
        csr_path, "-subj", "/CN=test.com"},  // Invalid outform
       {"-new", "-newkey", "ec:prime256v1", "-nodes", "-out", csr_path, "-subj",
        "/CN=test.com"},  // Unsupported EC key
@@ -660,7 +662,7 @@ TEST_F(ReqComparisonTest, InteractivePrompting) {
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
-// Test config rivate key length parsing
+// Test config private key length parsing
 TEST_F(ReqComparisonTest, PrivateKeyLengthFromConfig) {
   // Create config with custom key length
   char config_path[PATH_MAX];
@@ -696,13 +698,25 @@ TEST_F(ReqComparisonTest, PrivateKeyLengthFromConfig) {
   ASSERT_TRUE(csr_awslc != nullptr);
   ASSERT_TRUE(csr_openssl != nullptr);
   ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
+
+  bssl::UniquePtr<EVP_PKEY> awslc_key(
+      DecryptPrivateKey(key_path_awslc, "testpassword"));
+  bssl::UniquePtr<EVP_PKEY> openssl_key(
+      DecryptPrivateKey(key_path_openssl, "testpassword"));
+
+  ASSERT_TRUE(awslc_key) << "Failed to load AWS-LC private key";
+  ASSERT_TRUE(openssl_key) << "Failed to load OpenSSL private key";
+
+  ASSERT_TRUE(
+      CompareRandomGeneratedKeys(awslc_key.get(), openssl_key.get(), 4096u))
+      << "AWS-LC and OpenSSL private keys are different";
 }
 
 // Test key length validation
 TEST_F(ReqComparisonTest, KeyLengthValidation) {
   std::string subject = "/CN=test.example.com";
 
-  // Test minimum key length rejection
+  // Test minimum key length constraint
   std::string awslc_command = std::string(tool_executable_path) + " req -new " +
                               "-newkey rsa:256 -nodes -keyout " +
                               key_path_awslc + " -out " + csr_path_awslc +
@@ -714,6 +728,10 @@ TEST_F(ReqComparisonTest, KeyLengthValidation) {
 
   EXPECT_NE(ExecuteCommand(awslc_command), 0);
   EXPECT_NE(ExecuteCommand(openssl_command), 0);
+
+  // Note: we do not perform a comparison test for maximum length constraint
+  // because some versions of OpenSSL do not have a maximum length constraint.
+  // The constraint is covered in our unit test instead.
 }
 
 // Test with config fallback
@@ -1020,12 +1038,12 @@ TEST_F(ReqComparisonTest, GenerateProtectedPrivateKey) {
 
   // Test with existing key (using the pre-generated sign_key_path) and config
   std::string awslc_command =
-      std::string(tool_executable_path) + " req -new -newkey rsa:1024 " +
+      std::string(tool_executable_path) + " req -new -newkey rsa:2048 " +
       "-config " + config_path + " -passout pass:testpassword -keyout " +
       key_path_awslc + " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
 
   std::string openssl_command =
-      std::string(openssl_executable_path) + " req -new -newkey rsa:1024 " +
+      std::string(openssl_executable_path) + " req -new -newkey rsa:2048 " +
       "-config " + config_path + " -passout pass:testpassword -keyout " +
       key_path_openssl + " -out " + csr_path_openssl + " -subj \"" + subject +
       "\"";
@@ -1053,7 +1071,7 @@ TEST_F(ReqComparisonTest, GenerateProtectedPrivateKey) {
   ASSERT_TRUE(openssl_key) << "Failed to load OpenSSL private key";
 
   ASSERT_TRUE(
-      CompareRandomGeneratedKeys(awslc_key.get(), openssl_key.get(), 1024))
+      CompareRandomGeneratedKeys(awslc_key.get(), openssl_key.get(), 2048u))
       << "AWS-LC and OpenSSL private keys are different";
 }
 
