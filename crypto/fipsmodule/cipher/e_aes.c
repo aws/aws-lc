@@ -1806,7 +1806,7 @@ do {                                                \
     out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87);   \
 } while(0);
 
-static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx, 
+static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1, 
                                 const uint8_t* nonce, uint8_t *derived_key) { 
     uint8_t M1[AES_BLOCK_SIZE] = {0};
     uint8_t M2[AES_BLOCK_SIZE] = {0};
@@ -1819,12 +1819,12 @@ static int xaes_256_gcm_CMAC_derive_key(XAES_256_GCM_CTX *xaes_ctx,
     M2[1] = 0x02;
 
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-        M1[i] ^= xaes_ctx->k1[i];
-        M2[i] ^= xaes_ctx->k1[i];
+        M1[i] ^= k1[i];
+        M2[i] ^= k1[i];
     }
 
-    AES_encrypt(M1, derived_key, &xaes_ctx->xaes_key);
-    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+    AES_encrypt(M1, derived_key, xaes_key);
+    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, xaes_key);
 
     return 1;
 }
@@ -1854,7 +1854,7 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
 
     uint8_t derived_key[XAES_256_GCM_KEY_LENGTH];
 
-    xaes_256_gcm_CMAC_derive_key(xaes_ctx, nonce, derived_key);
+    xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, derived_key);
 
     int ivlen = gctx->ivlen;
 
@@ -1873,12 +1873,12 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     return 1;
 }
 
-static int xaes_256_gcm_ctx_init(XAES_256_GCM_CTX *xaes_ctx, const uint8_t *key) {
+static int xaes_256_gcm_ctx_init(AES_KEY *xaes_key, uint8_t *k1, const uint8_t *key) {
     static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
     uint8_t L[AES_BLOCK_SIZE];
-    AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, &xaes_ctx->xaes_key);
-    AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
-    BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
+    AES_set_encrypt_key(key, XAES_256_GCM_KEY_LENGTH << 3, xaes_key);
+    AES_encrypt(kZeroIn, L, xaes_key);
+    BINARY_FIELD_MUL_X_128(k1, L);
     return 1;
 }
 
@@ -1897,7 +1897,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     
     // When main key is provided, initialize the context and derive a subkey  
     if(key != NULL) { 
-        xaes_256_gcm_ctx_init(xaes_ctx, key);
+        xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
     }
 
     // If iv is provided, even if main key is not, derive a subkey
@@ -1922,4 +1922,120 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
     out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
     out->ctrl = aes_gcm_ctrl;
+}
+
+// ------------------------------------------------------------------------------
+// ---------------- EVP_AEAD XAES-256-GCM Without Key Commitment ----------------
+// ------------------------------------------------------------------------------
+/* Since ctx->state capacity is 568 bytes, it does not have enough space 
+ * to contain both xaes_256_gcm_ctx data and aead_aes_gcm_ctx data which 
+ * require 804 bytes, so we store a pointer to aead_aes_gcm_ctx instead */
+typedef struct {
+    struct aead_aes_gcm_ctx *gcm_ctx;
+    AES_KEY xaes_key; 
+    uint8_t k1[AES_BLOCK_SIZE]; 
+} AEAD_XAES_256_GCM_CTX;
+
+static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                            size_t key_len, size_t requested_tag_len) {
+    // Max tag length: 16 bytes
+    if(requested_tag_len > EVP_AEAD_AES_GCM_TAG_LEN) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
+        return 0;
+    }
+    
+    AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+
+    // Allocate memory for xaes_ctx->gcm_ctx
+    xaes_ctx->gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_ctx));
+    
+    xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
+
+    // requested_tag_len = 0 means using the default tag length of AES_GCM
+    ctx->tag_len = (requested_tag_len > 0) ? requested_tag_len : EVP_AEAD_AES_GCM_TAG_LEN;
+    
+    return 1;
+}
+
+static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, 
+                            const uint8_t *nonce, const size_t nonce_len) {
+    if(!nonce || nonce_len < 20 || nonce_len > 24) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
+        return 0;
+    }
+
+    uint8_t gcm_key[XAES_256_GCM_KEY_LENGTH];
+
+    xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, gcm_key);
+    
+    struct aead_aes_gcm_ctx *gcm_ctx = xaes_ctx->gcm_ctx;
+
+    gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL,
+                                gcm_key, XAES_256_GCM_KEY_LENGTH);
+    
+    return 1;
+}
+
+static int aead_xaes_256_gcm_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    uint8_t *out_tag, size_t *out_tag_len,
+    const size_t max_out_tag_len,
+    const uint8_t *nonce, const size_t nonce_len,
+    const uint8_t *in, const size_t in_len,
+    const uint8_t *extra_in,
+    const size_t extra_in_len, const uint8_t *ad,
+    const size_t ad_len) {
+    
+    AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, nonce, nonce_len)) {
+        return 0;
+    }
+    
+    // Reference for nonce size < 24 bytes: 
+    // https://eprint.iacr.org/2025/758.pdf#page=24
+    return aead_aes_gcm_seal_scatter_impl(
+        xaes_ctx->gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
+        nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+        in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len);
+}
+
+static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                    const uint8_t *nonce, size_t nonce_len,
+                                    const uint8_t *in, size_t in_len,
+                                    const uint8_t *in_tag, size_t in_tag_len,
+                                    const uint8_t *ad, size_t ad_len) {
+
+    AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, nonce, nonce_len)) {
+        return 0;
+    }
+    
+    // Reference for nonce size < 24 bytes: 
+    // https://eprint.iacr.org/2025/758.pdf#page=24
+    return aead_aes_gcm_open_gather_impl(
+        xaes_ctx->gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
+        AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
+        ad, ad_len, ctx->tag_len);
+}
+
+static void aead_xaes_256_gcm_cleanup(EVP_AEAD_CTX *ctx) {
+  AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+  OPENSSL_free(xaes_ctx->gcm_ctx);
+  aead_aes_gcm_cleanup(ctx);
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
+    OPENSSL_memset(out, 0, sizeof(EVP_AEAD));
+    out->key_len = XAES_256_GCM_KEY_LENGTH;
+    out->nonce_len = XAES_256_GCM_MAX_NONCE_SIZE;
+    out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
+    out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+    out->aead_id = AEAD_XAES_256_GCM_ID;
+
+    out->init = aead_xaes_256_gcm_init;
+    out->cleanup = aead_xaes_256_gcm_cleanup;
+    out->seal_scatter = aead_xaes_256_gcm_seal_scatter;
+    out->open_gather = aead_xaes_256_gcm_open_gather;
 }

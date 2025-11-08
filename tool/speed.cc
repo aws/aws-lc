@@ -3053,7 +3053,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedKEM(selected) ||
 #endif
 #if AWSLC_API_VERSION > 31
-       !SpeedDigestSign(selected) ||
+       !SpeedDigestSign(selected) || 
+       !SpeedAEADSeal(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
        !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
