@@ -1013,7 +1013,7 @@ bool reqTool(const args_list_t &args) {
     }
   } else {
     // Default to stdout
-    out_bio.reset(BIO_new_fp(stdout, BIO_CLOSE));
+    out_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   }
 
   // Handle writing out.
