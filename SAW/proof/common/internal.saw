@@ -66,7 +66,7 @@ let CRYPTO_MUTEX_lock_spec = do {
   crucible_execute_func [lock_ptr];
 };
 
-let CRYPTO_get_fork_generation_spec = do {
+let CRYPTO_get_fork_ube_generation_spec = do {
   crucible_execute_func [];
   ret <- crucible_fresh_var "ret" i64;
   crucible_return (crucible_term ret);
@@ -128,7 +128,7 @@ CRYPTO_MUTEX_unlock_write_ov <- crucible_llvm_unsafe_assume_spec
   "CRYPTO_MUTEX_unlock_write"
   CRYPTO_MUTEX_lock_spec;
 
-CRYPTO_get_fork_generation_ov <- crucible_llvm_unsafe_assume_spec
+CRYPTO_get_fork_ube_generation_ov <- crucible_llvm_unsafe_assume_spec
   m
-  "CRYPTO_get_fork_generation"
-  (CRYPTO_get_fork_generation_spec);
+  "CRYPTO_get_fork_ube_generation"
+  (CRYPTO_get_fork_ube_generation_spec);
