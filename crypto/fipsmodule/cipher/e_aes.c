@@ -1904,10 +1904,7 @@ do {                                                \
 
 static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1, 
                                 const uint8_t* nonce, uint8_t *derived_key) { 
-    uint8_t M[AES_BLOCK_SIZE] = {0};
-
-    M[1] = 0x01; 
-    M[2] = 0x58; 
+    uint8_t M[AES_BLOCK_SIZE] = {0x00, 0x01, 0x58, 0x00};
     OPENSSL_memcpy(M + 4, nonce, 12);
     
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
