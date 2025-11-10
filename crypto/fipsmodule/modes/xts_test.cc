@@ -1268,11 +1268,13 @@ TEST(XTSTest, EncryptDecryptRand) {
     int len = 0;
     uint8_t *in_p = nullptr, *out_p = nullptr;
   #if defined(OPENSSL_LINUX)
+    std::unique_ptr<uint8_t[]> in, out;
+
     for (bool beg: {false, true}) {
       if (pagesize < (int)plaintext.size() && !beg) {
         // For small page sizes skip page bound edge cases
-        std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
-        std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
+        in.reset(new uint8_t[plaintext.size()]);
+        out.reset(new uint8_t[plaintext.size()]);
         in_p = in.get();
         out_p = out.get();
       } else if (pagesize < (int)plaintext.size() && beg) {
