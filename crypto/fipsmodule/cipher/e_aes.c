@@ -2138,6 +2138,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
 
 // ------------------------------------------------------------------------------
 // ---------------- EVP_CIPHER XAES-256-GCM With Key Commitment -----------------
+// ----------- Reference: https://eprint.iacr.org/2025/758.pdf#page=6 -----------
 // ------------------------------------------------------------------------------
 static XAES_256_GCM_KC_CTX *xaes_256_gcm_kc_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
     // alignment to be consistent with aes_gcm_from_cipher_ctx()
