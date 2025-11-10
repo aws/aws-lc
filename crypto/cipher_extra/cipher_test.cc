@@ -241,12 +241,12 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
                                 /*engine=*/nullptr,
                                 /*key=*/nullptr, iv.data(), /*enc=*/-1));
 
-  // Verify key commitmen
+  // Verify key commitment
   if(is_kc && !encrypt) {
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_VERIFY_KC,
                                     kc.size(), const_cast<uint8_t *>(kc.data())));
   }
-
+  
   // CCM requires the full length of the plaintext to be known ahead of time.
   if (is_ccm) {
     int len;
