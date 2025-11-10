@@ -1904,23 +1904,19 @@ do {                                                \
 
 static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1, 
                                 const uint8_t* nonce, uint8_t *derived_key) { 
-    uint8_t M1[AES_BLOCK_SIZE] = {0};
-    uint8_t M2[AES_BLOCK_SIZE] = {0};
+    uint8_t M[AES_BLOCK_SIZE] = {0};
 
-    M1[1] = 0x01; 
-    M1[2] = 0x58; 
-    OPENSSL_memcpy(M1 + 4, nonce, 12);
-    OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
-
-    M2[1] = 0x02;
-
+    M[1] = 0x01; 
+    M[2] = 0x58; 
+    OPENSSL_memcpy(M + 4, nonce, 12);
+    
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-        M1[i] ^= k1[i];
-        M2[i] ^= k1[i];
+        M[i] ^= k1[i];
     }
 
-    AES_encrypt(M1, derived_key, xaes_key);
-    AES_encrypt(M2, derived_key + AES_BLOCK_SIZE, xaes_key);
+    AES_encrypt(M, derived_key, xaes_key);
+    M[1] ^= 0x03;
+    AES_encrypt(M, derived_key + AES_BLOCK_SIZE, xaes_key);
 
     return 1;
 }
@@ -2154,32 +2150,30 @@ static XAES_256_GCM_KC_CTX *xaes_256_gcm_kc_from_cipher_ctx(EVP_CIPHER_CTX *ctx)
 
 static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *k1,
            uint8_t *key_commitment, const uint8_t* nonce, const unsigned nonce_len) {
-    uint8_t W1[AES_BLOCK_SIZE];
-    uint8_t W2[AES_BLOCK_SIZE];
+    uint8_t W[AES_BLOCK_SIZE];
 
     uint8_t kc_prefix[4] = {0x58, 0x43, 0x4D, 0x54};
     uint8_t X1[AES_BLOCK_SIZE];
-    OPENSSL_memcpy(W1, kc_prefix, 4);
-    OPENSSL_memcpy(W1 + 4, nonce, AES_GCM_NONCE_LENGTH);
+    OPENSSL_memcpy(W, kc_prefix, 4);
+    OPENSSL_memcpy(W + 4, nonce, AES_GCM_NONCE_LENGTH);
     
-    AES_encrypt(W1, X1, xaes_key);
-    OPENSSL_memcpy(W1, nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH);
-    W1[AES_BLOCK_SIZE-4] = XAES_256_GCM_MAX_NONCE_SIZE - nonce_len;
-    W1[AES_BLOCK_SIZE-3] = 0x01;
-    W1[AES_BLOCK_SIZE-2] = 0x00;
-    W1[AES_BLOCK_SIZE-1] = 0x01;
+    AES_encrypt(W, X1, xaes_key);
+    // For nonce size < 24
+    // Reference: https://eprint.iacr.org/2025/758.pdf#page=24
+    OPENSSL_memcpy(W, nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH);
+    W[AES_BLOCK_SIZE-4] = XAES_256_GCM_MAX_NONCE_SIZE - nonce_len;
+    W[AES_BLOCK_SIZE-3] = 0x01;
+    W[AES_BLOCK_SIZE-2] = 0x00;
+    W[AES_BLOCK_SIZE-1] = 0x01;
     
-    OPENSSL_memcpy(W2, W1, AES_BLOCK_SIZE);
-    W2[AES_BLOCK_SIZE-1] = 0x02;
-
-    for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-        W1[i] ^= X1[i] ^ k1[i];
-        W2[i] ^= X1[i] ^ k1[i];
+    for (size_t i = 0; i < AES_BLOCK_SIZE; i++) { 
+        W[i] ^= X1[i] ^ k1[i];
     }
-
-    AES_encrypt(W1, key_commitment, xaes_key);
-    AES_encrypt(W2, key_commitment + AES_BLOCK_SIZE, xaes_key);
-
+    
+    AES_encrypt(W, key_commitment, xaes_key);
+    W[AES_BLOCK_SIZE-1] ^= 0x03;
+    AES_encrypt(W, key_commitment + AES_BLOCK_SIZE, xaes_key);
+    
     return 1;
 }
 
