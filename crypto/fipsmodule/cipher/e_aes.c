@@ -2157,14 +2157,14 @@ static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *
     uint8_t W1[AES_BLOCK_SIZE];
     uint8_t W2[AES_BLOCK_SIZE];
 
-    uint8_t kc_prefix[5] = {0x58, 0x43, 0x4D, 0x54, 0x00};
+    uint8_t kc_prefix[4] = {0x58, 0x43, 0x4D, 0x54};
     uint8_t X1[AES_BLOCK_SIZE];
     OPENSSL_memcpy(W1, kc_prefix, 4);
-    OPENSSL_memcpy(W1 + 4, nonce, 12);
+    OPENSSL_memcpy(W1 + 4, nonce, AES_GCM_NONCE_LENGTH);
     
     AES_encrypt(W1, X1, xaes_key);
-    OPENSSL_memcpy(W1, nonce + nonce_len - 12, 12);
-    W1[AES_BLOCK_SIZE-4] = 24 - nonce_len;
+    OPENSSL_memcpy(W1, nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH);
+    W1[AES_BLOCK_SIZE-4] = XAES_256_GCM_MAX_NONCE_SIZE - nonce_len;
     W1[AES_BLOCK_SIZE-3] = 0x01;
     W1[AES_BLOCK_SIZE-2] = 0x00;
     W1[AES_BLOCK_SIZE-1] = 0x01;
