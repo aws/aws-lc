@@ -228,29 +228,32 @@ void ml_dsa_poly_use_hint(ml_dsa_params *params,
 * Arguments:   - const poly *a: pointer to polynomial
 *              - int32_t B: norm bound
 *
-* Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 1 otherwise.
+* Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 0xFFFFFFFF otherwise.
 **************************************************/
-int ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
+uint32_t ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
   unsigned int i;
   int32_t t;
+  uint32_t r = 0;
 
   if(B > (ML_DSA_Q-1)/8) {
-    return 1;
+    return 0xFFFFFFFF;
   }
 
-  /* It is ok to leak which coefficient violates the bound since
-     the probability for each coefficient is independent of secret
-     data but we must not leak the sign of the centralized representative. */
+  /* Constant-time implementation as defense-in-depth. According to Section 5.5
+     of the Dilithium specification, it is safe to leak which coefficient violates
+     the bound, but we implement this in constant-time as additional hardening.
+     We accumulate violations using bitwise OR instead of early exit. See 5.5 in
+     https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+     */
   for(i = 0; i < ML_DSA_N; ++i) {
     /* Absolute value */
     t = constant_time_select_int(constant_time_msb_w(a->coeffs[i]),
                                  -a->coeffs[i], a->coeffs[i]);
 
-    if(t >= B) {
-      return 1;
-    }
+    /* Check if t >= B and accumulate result */
+    r |= constant_time_ge_w((uint32_t)t, (uint32_t)B);
   }
-  return 0;
+  return r;
 }
 
 /*************************************************
