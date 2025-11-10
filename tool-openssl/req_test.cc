@@ -7,6 +7,13 @@
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <string.h>
+#if defined(OPENSSL_WINDOWS)
+#include <direct.h>
+#include <io.h>
+#else
+#include <unistd.h>
+#include <sys/stat.h>
+#endif
 #include "../tool/internal.h"
 
 #include <gtest/gtest.h>
@@ -24,6 +31,17 @@ class ReqTest : public ::testing::Test {
     ASSERT_GT(createTempFILEpath(cert_path), 0u);
     ASSERT_GT(createTempFILEpath(config_path), 0u);
     ASSERT_GT(createTempFILEpath(protected_key_path), 0u);
+
+    // Create a temporary directory and change to it
+    // This allows testing the default "privkey.pem" behavior in an isolated location
+    ASSERT_GT(createTempDirPath(temp_dir_path), 0u);
+#if defined(OPENSSL_WINDOWS)
+    ASSERT_TRUE(_getcwd(original_dir, PATH_MAX) != nullptr);
+    ASSERT_EQ(_chdir(temp_dir_path), 0);
+#else
+    ASSERT_TRUE(getcwd(original_dir, PATH_MAX) != nullptr);
+    ASSERT_EQ(chdir(temp_dir_path), 0);
+#endif
 
     // Create a test private key
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
@@ -50,13 +68,31 @@ class ReqTest : public ::testing::Test {
   }
 
   void TearDown() override {
+    // Clean up files (note: we're still in temp_dir_path from SetUp)
     RemoveFile(input_key_path);
     RemoveFile(output_key_path);
     RemoveFile(csr_path);
     RemoveFile(cert_path);
     RemoveFile(config_path);
     RemoveFile(protected_key_path);
+
+    // Remove privkey.pem in current directory (temp_dir_path)
     RemoveFile("privkey.pem");
+
+    // Change back to original directory and remove temp directory
+    if (original_dir[0] != '\0') {
+#if defined(OPENSSL_WINDOWS)
+      int ret = _chdir(original_dir);
+      if (ret == 0 && temp_dir_path[0] != '\0') {
+        _rmdir(temp_dir_path);
+      }
+#else
+      int ret = chdir(original_dir);
+      if (ret == 0 && temp_dir_path[0] != '\0') {
+        rmdir(temp_dir_path);
+      }
+#endif
+    }
   }
 
   char input_key_path[PATH_MAX];   // For -key (input)
@@ -65,6 +101,8 @@ class ReqTest : public ::testing::Test {
   char cert_path[PATH_MAX];
   char config_path[PATH_MAX];
   char protected_key_path[PATH_MAX];
+  char temp_dir_path[PATH_MAX];    // Temporary directory for test isolation
+  char original_dir[PATH_MAX];     // Original working directory
 };
 
 TEST_F(ReqTest, GenerateRSAKey) {
