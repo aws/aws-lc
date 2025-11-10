@@ -25,9 +25,9 @@ Add the upstream git url of the new source to `sources.toml`. Now, you can add t
 
 The following command adds a new vectors and re-runs sync:
 ```
-./sync.py --new [UPSTREAM_REPO_PATH_TO_FILE] 
+./sync.py --new [SOURCE_NAME]/[UPSTREAM_REPO_PATH_TO_FILE] 
 ```
-The file path needs to be relative to the upstream repository, for example [`testvectors_v1/aes_gcm_test.json`](https://github.com/C2SP/wycheproof/blob/d043da76bf95b3dbe83bed6ba5fe93f5203ad6fb/testvectors_v1/aes_gcm_test.json).
+The path needs to include the source name from `sources.toml` and the file path relative to the upstream repository, for example `wycheproof/testvectors_v1/aes_gcm_test.json`.
 
 ### Notes
 
