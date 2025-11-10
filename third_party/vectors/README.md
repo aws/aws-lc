@@ -33,4 +33,4 @@ The file path needs to be relative to the upstream repository, for example [`tes
 
 - `./sync.py --skip-fetch` skips fetching upstream vectors.
 - `./sync.py --skip-convert` skips conversion.
-- `./sync.py --temp-dir [PATH_TO_DIR]` allows setting a custom temporary directory.
+- `./sync.py --tmpdir [PATH_TO_DIR]` allows setting a custom temporary directory.
