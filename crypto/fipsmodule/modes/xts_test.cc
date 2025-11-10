@@ -14,7 +14,6 @@
 
 #include <openssl/cipher.h>
 #include <openssl/aes.h>
-
 #include <openssl/rand.h>
 
 #include <vector>
@@ -25,7 +24,7 @@
 #include "internal.h"
 #include "../../test/test_util.h"
 
-#define AESXTS_RAND_MSG_MAX_LEN 4096
+static constexpr size_t AESXTS_RAND_MSG_MAX_LEN = 8192;
 
 #if defined(OPENSSL_LINUX)
 #include <sys/mman.h>
@@ -1254,43 +1253,55 @@ TEST(XTSTest, EncryptDecryptRand) {
   uint8_t *out_buffer_end = out_buffer_beg + pagesize;
 #endif
 
-const EVP_CIPHER *cipher = EVP_aes_256_xts();
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher)), iv(EVP_CIPHER_iv_length(cipher));
 
   // Test AESXTS Encrypt and Decrypt with random messages of incremental lenghts
-  for (size_t msg_len = 16; msg_len < AESXTS_RAND_MSG_MAX_LEN ; msg_len += 1) {
+  for (size_t msg_len = 16; msg_len < AESXTS_RAND_MSG_MAX_LEN; msg_len += 1) {
 
-    std::vector<uint8_t> key(EVP_CIPHER_key_length(cipher)), iv(EVP_CIPHER_iv_length(cipher)),
-                          plaintext(msg_len);
-    RAND_bytes(key.data(), EVP_CIPHER_key_length(cipher));
-    RAND_bytes(iv.data(), EVP_CIPHER_iv_length(cipher));
+    std::vector<uint8_t> plaintext(msg_len);
     RAND_bytes(plaintext.data(), msg_len);
 
     SCOPED_TRACE(plaintext.size());
 
     int len = 0;
-    size_t decrypted_len = 0, encrypted_len = 0;
     uint8_t *in_p = nullptr, *out_p = nullptr;
   #if defined(OPENSSL_LINUX)
-    ASSERT_GE(pagesize, (int)plaintext.size());
-
     for (bool beg: {false, true}) {
-      if (!beg) {
-        in_p = in_buffer_end - plaintext.size();
-        out_p = out_buffer_end - plaintext.size();
+      if (pagesize < (int)plaintext.size() && !beg) {
+        // For small page sizes skip page bound edge cases
+        std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
+        std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
+        in_p = in.get();
+        out_p = out.get();
+      } else if (pagesize < (int)plaintext.size() && beg) {
+        // Skip second iteration for small page sizes since it would use
+        // identical allocation for |in_p| and |out_p| buffers
+        continue;
       } else {
-        in_p = in_buffer_end - pagesize;
-        out_p = out_buffer_end - pagesize;
-      }
+        if (!beg) {
+          in_p = in_buffer_end - plaintext.size();
+          out_p = out_buffer_end - plaintext.size();
+        } else {
+          in_p = in_buffer_end - pagesize;
+          out_p = out_buffer_end - pagesize;
+        }
       OPENSSL_memset(in_p, 0x00, plaintext.size());
       OPENSSL_memset(out_p, 0x00, plaintext.size());
-    #else
+      }
+  #else
       std::unique_ptr<uint8_t[]> in(new uint8_t[plaintext.size()]);
       std::unique_ptr<uint8_t[]> out(new uint8_t[plaintext.size()]);
       in_p = in.get();
       out_p = out.get();
-    #endif
+  #endif
       for (bool in_place : {false, true}) {
         SCOPED_TRACE(in_place);
+
+        // Generate random key and iv for each encryption test
+        RAND_bytes(key.data(), EVP_CIPHER_key_length(cipher));
+        RAND_bytes(iv.data(), EVP_CIPHER_iv_length(cipher));
 
         // Test encryption.
 
@@ -1299,14 +1310,13 @@ const EVP_CIPHER *cipher = EVP_aes_256_xts();
           out_p = in_p;
         }
 
-        bssl::ScopedEVP_CIPHER_CTX ctx;
+        ctx.Reset();
+        len = 0;
         ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
                                       iv.data()));
         ASSERT_TRUE(
             EVP_EncryptUpdate(ctx.get(), out_p, &len, in_p, plaintext.size()));
-
-        encrypted_len = len;
-        ASSERT_EQ(encrypted_len, plaintext.size());
+        ASSERT_EQ(static_cast<size_t>(len), plaintext.size());
 
         // Test decryption.
 
@@ -1320,9 +1330,7 @@ const EVP_CIPHER *cipher = EVP_aes_256_xts();
                                       iv.data()));
         ASSERT_TRUE(
             EVP_DecryptUpdate(ctx.get(), in_p, &len, out_p, plaintext.size()));
-
-        decrypted_len = len;
-        ASSERT_EQ(decrypted_len, plaintext.size());
+        ASSERT_EQ(static_cast<size_t>(len), plaintext.size());
         EXPECT_EQ(Bytes(plaintext), Bytes(in_p, static_cast<size_t>(len)));
       }
     }
