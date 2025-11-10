@@ -393,7 +393,9 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // one.
 #define EVP_CIPH_FLAG_AEAD_CIPHER 0x800
 
-// EVP_CIPH_FLAG_KC_CIPHER specifies that the cipher supports key commitment
+// EVP_CIPH_FLAG_KC_CIPHER specifies that the cipher supports key commitment.
+// Currently, this flag is only used for test cases, i.e., to check whether
+// the cipher supports key commitment or not 
 #define EVP_CIPH_FLAG_KC_CIPHER 0x4000
 
 // EVP_CIPH_CUSTOM_COPY indicates that the |ctrl| callback should be called

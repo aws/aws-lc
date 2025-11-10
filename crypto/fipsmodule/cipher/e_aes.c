@@ -2153,33 +2153,32 @@ static XAES_256_GCM_KC_CTX *xaes_256_gcm_kc_from_cipher_ctx(EVP_CIPHER_CTX *ctx)
 
 static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *k1,
            uint8_t *key_commitment, const uint8_t* nonce, const unsigned nonce_len) {
-
-    uint8_t M1[AES_BLOCK_SIZE];
-    uint8_t M2[AES_BLOCK_SIZE];
+    uint8_t W1[AES_BLOCK_SIZE];
+    uint8_t W2[AES_BLOCK_SIZE];
 
     uint8_t kc_prefix[5] = {0x58, 0x43, 0x4D, 0x54, 0x00};
-    uint8_t C1[AES_BLOCK_SIZE];
-    OPENSSL_memcpy(M1, kc_prefix, 4);
-    OPENSSL_memcpy(M1 + 4, nonce, 12);
+    uint8_t X1[AES_BLOCK_SIZE];
+    OPENSSL_memcpy(W1, kc_prefix, 4);
+    OPENSSL_memcpy(W1 + 4, nonce, 12);
     
-    AES_encrypt(M1, C1, xaes_key);
-    OPENSSL_memcpy(M1, nonce + nonce_len - 12, 12);
-    M1[AES_BLOCK_SIZE-4] = 24 - nonce_len;
-    M1[AES_BLOCK_SIZE-3] = 0x01;
-    M1[AES_BLOCK_SIZE-2] = 0x00;
-    M1[AES_BLOCK_SIZE-1] = 0x01;
+    AES_encrypt(W1, X1, xaes_key);
+    OPENSSL_memcpy(W1, nonce + nonce_len - 12, 12);
+    W1[AES_BLOCK_SIZE-4] = 24 - nonce_len;
+    W1[AES_BLOCK_SIZE-3] = 0x01;
+    W1[AES_BLOCK_SIZE-2] = 0x00;
+    W1[AES_BLOCK_SIZE-1] = 0x01;
     
-    OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
-    M2[AES_BLOCK_SIZE-1] = 0x02;
+    OPENSSL_memcpy(W2, W1, AES_BLOCK_SIZE);
+    W2[AES_BLOCK_SIZE-1] = 0x02;
 
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
-        M1[i] ^= C1[i] ^ k1[i];
-        M2[i] ^= C1[i] ^ k1[i];
+        W1[i] ^= X1[i] ^ k1[i];
+        W2[i] ^= X1[i] ^ k1[i];
     }
 
-    AES_encrypt(M1, key_commitment, xaes_key);
-    AES_encrypt(M2, key_commitment + AES_BLOCK_SIZE, xaes_key);
-
+    AES_encrypt(W1, key_commitment, xaes_key);
+    AES_encrypt(W2, key_commitment + AES_BLOCK_SIZE, xaes_key);
+    
     return 1;
 }
 
@@ -2222,6 +2221,10 @@ static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, 
             }
             OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
             return 1;
+        /* Since the verification of key commitment (KC) can happen at any time, 
+         * not only at the end of decryption like for MAC tag, we create a control
+         * command for KC verification, rather than a command to set KC, then 
+         * verifying it at the end of decryption as for checking the MAC tag */ 
         case EVP_CTRL_AEAD_VERIFY_KC:
             if(arg < XAES_256_GCM_KEY_COMMIT_SIZE) {
                 OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
