@@ -559,7 +559,7 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
         "basicConstraints=critical,CA:true\n";
 
     // Create a BIO for the config
-    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(default_config, -1));
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(default_config, strlen(default_config)));
     if (!bio) {
       fprintf(stderr, "Failed to create memory BIO\n");
       return false;

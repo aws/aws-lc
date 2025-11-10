@@ -157,6 +157,10 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     return false;
   }
 
+  if(X509_NAME_cmp(name1, name2) != 0) {
+    return true;
+  }
+
   int count1 = X509_NAME_entry_count(name1);
   int count2 = X509_NAME_entry_count(name2);
   if (count1 < 0 || count2 < 0) {
@@ -501,12 +505,7 @@ bool CompareKeyEquality(EVP_PKEY *key1, EVP_PKEY *key2) {
 
   // Check if keys are RSA type
   if (EVP_PKEY_id(key1) != EVP_PKEY_RSA) {
-    std::cout << "AWS-LC key is not an RSA key" << std::endl;
-    return false;
-  }
-
-  if (EVP_PKEY_id(key2) != EVP_PKEY_RSA) {
-    std::cout << "OpenSSL key is not an RSA key" << std::endl;
+    std::cout << "Keys are not RSA keys" << std::endl;
     return false;
   }
 
@@ -549,12 +548,7 @@ bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
 
   // Check if keys are RSA type
   if (EVP_PKEY_id(key1) != EVP_PKEY_RSA) {
-    std::cout << "AWS-LC key is not an RSA key" << std::endl;
-    return false;
-  }
-
-  if (EVP_PKEY_id(key2) != EVP_PKEY_RSA) {
-    std::cout << "OpenSSL key is not an RSA key" << std::endl;
+    std::cout << "Keys are not RSA keys" << std::endl;
     return false;
   }
 
