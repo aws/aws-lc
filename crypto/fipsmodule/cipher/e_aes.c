@@ -1809,7 +1809,7 @@ do {                                                \
 static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1, 
                                 const uint8_t* nonce, uint8_t *derived_key) { 
     uint8_t M[AES_BLOCK_SIZE] = {0x00, 0x01, 0x58, 0x00};
-    OPENSSL_memcpy(M + 4, nonce, 12);
+    OPENSSL_memcpy(M + 4, nonce, AES_GCM_NONCE_LENGTH);
     
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
         M[i] ^= k1[i];
@@ -1888,7 +1888,7 @@ static int xaes_256_gcm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
     XAES_256_GCM_CTX *xaes_ctx = xaes_256_gcm_from_cipher_ctx(ctx);
     
-    // When main key is provided, initialize the context and derive a subkey  
+    // When main key is provided, initialize the xaes-256-gcm context 
     if(key != NULL) { 
         xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
     }
