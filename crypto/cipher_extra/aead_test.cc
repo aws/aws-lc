@@ -1200,7 +1200,7 @@ TEST(AEADTest, WycheproofAESGCMSIV) {
 }
 
 TEST(AEADTest, WycheproofAESGCM) {
-  FileTestGTest("third_party/wycheproof_testvectors/aes_gcm_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_test.txt",
                 [](FileTest *t) {
                   std::string key_size_str;
                   ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
