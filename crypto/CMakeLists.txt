@@ -504,7 +504,7 @@ add_library(
   trust_token/trust_token.c
   trust_token/voprf.c
   ube/ube.c
-  ube/fork_detect.c
+  ube/fork_ube_detect.c
   ube/vm_ube_detect.c
   x509/a_digest.c
   x509/a_sign.c
@@ -875,7 +875,7 @@ if(BUILD_TESTING)
     thread_test.cc
     trust_token/trust_token_test.cc
     ube/ube_test.cc
-    ube/fork_detect_test.cc
+    ube/fork_ube_detect_test.cc
     ube/vm_ube_detect_test.cc
     x509/tab_test.cc
     x509/x509_test.cc

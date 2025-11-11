@@ -38,6 +38,8 @@ jobs:
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           options: ${{ matrix.options || '' }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT=60m
           run: |
             source /opt/compiler-env/setup-clang-15.sh
             ${{ matrix.run }}
@@ -67,6 +69,8 @@ jobs:
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
           options: ${{ matrix.options || '' }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT=60m
           run: |
             source /opt/compiler-env/setup-clang-15.sh
             ${{ matrix.run }}
