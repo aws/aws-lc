@@ -38,7 +38,7 @@
 
 #include <gtest/gtest.h>
 
-#include "fork_detect.h"
+#include "fork_ube_detect.h"
 
 #include "../test/test_util.h"
 
@@ -56,7 +56,7 @@ static pid_t WaitpidEINTR(pid_t pid, int *out_status, int options) {
 // |stderr| and |_exit| rather than GTest.
 
 static void CheckGenerationInChild(const char *name, uint64_t expected) {
-  uint64_t generation = CRYPTO_get_fork_generation();
+  uint64_t generation = CRYPTO_get_fork_ube_generation();
   if (generation != expected) {
     fprintf(stderr, "%s generation (#1) was %" PRIu64 ", wanted %" PRIu64 ".\n",
             name, generation, expected);
@@ -64,7 +64,7 @@ static void CheckGenerationInChild(const char *name, uint64_t expected) {
   }
 
   // The generation should be stable.
-  generation = CRYPTO_get_fork_generation();
+  generation = CRYPTO_get_fork_ube_generation();
   if (generation != expected) {
     fprintf(stderr, "%s generation (#2) was %" PRIu64 ", wanted %" PRIu64 ".\n",
             name, generation, expected);
@@ -104,16 +104,16 @@ static void ForkInChild(std::function<void()> f) {
 
 TEST(ForkDetect, Test) {
 
-  maybeDisableSomeForkDetectMechanisms();
+  maybeDisableSomeForkUbeDetectMechanisms();
 
-  const uint64_t start = CRYPTO_get_fork_generation();
+  const uint64_t start = CRYPTO_get_fork_ube_generation();
   if (start == 0) {
     fprintf(stderr, "Fork detection not supported. Skipping test.\n");
     return;
   }
 
   // The fork generation should be stable.
-  EXPECT_EQ(start, CRYPTO_get_fork_generation());
+  EXPECT_EQ(start, CRYPTO_get_fork_ube_generation());
 
   fflush(stderr);
   const pid_t child = fork();
@@ -165,7 +165,7 @@ TEST(ForkDetect, Test) {
   EXPECT_EQ(0, WEXITSTATUS(status)) << "Error in child process";
 
   // We still observe |start|.
-  EXPECT_EQ(start, CRYPTO_get_fork_generation());
+  EXPECT_EQ(start, CRYPTO_get_fork_ube_generation());
 }
 
 #endif  // OPENSSL_LINUX && !OPENSSL_TSAN
