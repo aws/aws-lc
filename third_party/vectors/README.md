@@ -23,14 +23,8 @@ Add the upstream git url of the new source to `sources.toml`. Now, you can add t
 
 ### Adding New Test Vectors from Existing Source
 
-The following command adds a new vectors and re-runs sync:
+The following command adds a new vector and re-runs sync:
 ```
 ./sync.py --new [SOURCE_NAME]/[UPSTREAM_REPO_PATH_TO_FILE] 
 ```
 The path needs to include the source name from `sources.toml` and the file path relative to the upstream repository, for example `wycheproof/testvectors_v1/aes_gcm_test.json`.
-
-### Notes
-
-- `./sync.py --skip-fetch` skips fetching upstream vectors.
-- `./sync.py --skip-convert` skips conversion.
-- `./sync.py --tmpdir [PATH_TO_DIR]` allows setting a custom temporary directory.

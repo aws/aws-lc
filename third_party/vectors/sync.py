@@ -46,7 +46,7 @@ def fetch_sources(
                 capture_output=True,
             )
             if ret.returncode != 0:
-                utils.error(f"failed to fetch {source_name}\n{ret.stderr.decode()}")
+                utils.error(f"failed to clone {source_name}: {ret.stderr.decode().strip()}")
                 return False
 
         assert stmpdir.is_dir()
@@ -165,7 +165,7 @@ def main() -> int:
     cwd = pathlib.Path.cwd()
     if not (cwd.parts[-1] == "vectors" and cwd.parts[-2] == "third_party"):
         print(
-            f"ERROR: this script was run from {cwd}\nit must be run from [REPO_ROOT]/third_party/vectors",
+            f"ERROR: must run from [REPO_ROOT]/third_party/vectors, not {cwd}",
             file=sys.stderr,
         )
         return 1
@@ -174,23 +174,33 @@ def main() -> int:
 
     utils.info("script run from the correct directory")
 
-    parser = argparse.ArgumentParser("Manages third-party test vectors")
+    parser = argparse.ArgumentParser(
+        description="Sync third-party cryptographic test vectors"
+    )
     parser.add_argument(
         "--new",
-        required=False,
-        help="Specify new file to add as [SOURCE_NAME]/[UPSTREAM_REPO_PATH]",
+        metavar="SOURCE/PATH",
+        help="add new test vector file (e.g., wycheproof/testvectors_v1/aes_gcm_test.json)",
     )
     parser.add_argument(
-        "--check", action="store_true", help="Run checks without making any changes"
+        "--check",
+        action="store_true",
+        help="verify files are up-to-date without making changes",
     )
     parser.add_argument(
-        "--skip-fetch", action="store_true", help="Do not fetch upstream vectors"
+        "--skip-fetch",
+        action="store_true",
+        help="skip fetching from upstream repositories",
     )
     parser.add_argument(
-        "--skip-convert", action="store_true", help="Do not convert vectors"
+        "--skip-convert",
+        action="store_true",
+        help="skip converting vectors to file_test.h format",
     )
     parser.add_argument(
-        "--tmpdir", required=False, help="Specify custom temporary directory"
+        "--tmpdir",
+        metavar="DIR",
+        help="use custom temporary directory for cloned repositories",
     )
     args = parser.parse_args()
 
@@ -218,9 +228,6 @@ def main() -> int:
             ):
                 return 1
 
-    print(sources)
-
-    # TODO: Implement sync logic
     return 0
 
 
