@@ -118,7 +118,6 @@ def update_sources(
         shutil.copy2(local_file, upstream_file)
         utils.info(f"copied new file to upstream: {upstream_file}")
 
-    utils.warning("update_sources isn't yet fully implemented")
     return True
 
 
