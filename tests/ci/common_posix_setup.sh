@@ -223,6 +223,10 @@ function build_openssl {
     ./config --prefix="${install_dir}/openssl-${branch}" --openssldir="${install_dir}/openssl-${branch}" -d
     make "-j${NUM_CPU_THREADS}" > /dev/null
     make install_sw
+
+    # Copy openssl.cnf to openssldir
+    cp "${scratch_folder}/openssl-${branch}/apps/openssl.cnf" "${install_dir}/openssl-${branch}/openssl.cnf"
+
     popd
     rm -rf "${scratch_folder}/openssl-${branch}"
 }
