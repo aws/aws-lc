@@ -2353,7 +2353,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
         key_commitment_len = 0;
     }
 
-    // We verify key commitment only if it is reserved enough space
+    // We verify key commitment only if it is present
     if(key_commitment_len > 0) {
         uint8_t key_commitment[XAES_256_GCM_KEY_COMMIT_SIZE];
 
