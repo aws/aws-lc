@@ -119,14 +119,32 @@ def convert_sources(
     clone_dir: pathlib.Path,
     sources: dict,
 ):
-    condir = cwd / "converted"
-    condir.mkdir(parents=True, exist_ok=True)
-    for source_name, source_info in sources.items():
-        source_info["converted_path"] = condir / source_name
-        source_info["converted_path"].mkdir(parents=True, exist_ok=True)
-        assert source_info["converted_path"].is_dir()
+    from vectorslib import convert_vector
 
-    utils.warning("convert_sources isn't yet fully implemented")
+    converted_dir = cwd / "converted"
+    converted_dir.mkdir(parents=True, exist_ok=True)
+
+    for source_name, source_info in sources.items():
+        source_info["converted_path"] = converted_dir / source_name
+        source_info["converted_path"].mkdir(parents=True, exist_ok=True)
+
+    for source_name, source_info in sources.items():
+        upstream_path = source_info["upstream_path"]
+        converted_path = source_info["converted_path"]
+
+        for upstream_file in upstream_path.rglob("*.json"):
+            relative_path = upstream_file.relative_to(upstream_path)
+            converted_file = converted_path / relative_path.with_suffix(".txt")
+
+            converted_file.parent.mkdir(parents=True, exist_ok=True)
+
+            try:
+                convert_vector.convert_file(upstream_file, converted_file)
+                utils.info(f"converted {source_name}/{relative_path}")
+            except Exception as e:
+                error_msg = f"failed to convert {source_name}/{relative_path}: {e}"
+                utils.error(error_msg)
+                raise SyncError(error_msg)
 
 
 def sync_sources(
