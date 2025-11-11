@@ -2302,12 +2302,12 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
     else {
-        // If there is not enough space for at least 1-byte TAG and key commitment
+        // If there is not enough space for at least 1-byte tag and key commitment
         key_commitment_len = 0;
     }
 
     aead_aes_gcm_seal_scatter_impl(xaes_ctx->gcm_ctx, out, out_tag, out_tag_len, 
-                                max_out_tag_len - XAES_256_GCM_KEY_COMMIT_SIZE,
+                                max_out_tag_len - key_commitment_len,
                                 nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
                                 in, in_len, extra_in, extra_in_len, ad, ad_len, tag_len);
     
@@ -2349,7 +2349,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
     else {
-        // If there is not enough space for at least 1-byte TAG and key commitment
+        // If there is not enough space for at least 1-byte tag and key commitment
         key_commitment_len = 0;
     }
 
