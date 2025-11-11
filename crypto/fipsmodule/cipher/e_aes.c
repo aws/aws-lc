@@ -1952,11 +1952,16 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 
 static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, 
                             const uint8_t *nonce, const size_t nonce_len) {
-    if(!nonce || nonce_len < 20 || nonce_len > 24) {
+    if(nonce_len < 20 || nonce_len > 24) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
     }
 
+    if(!nonce) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE);
+        return 0;
+    }
+    
     uint8_t gcm_key[XAES_256_GCM_KEY_LENGTH];
 
     xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, gcm_key);
