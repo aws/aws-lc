@@ -1446,6 +1446,8 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
      18},
     {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
      29},
+    {"EVP_aead_xaes_256_gcm_kc", EVP_aead_xaes_256_gcm_kc(), kEvpAeadCtxKey, 32, 16,
+     30},
     {"EVP_aead_chacha20_poly1305", EVP_aead_chacha20_poly1305(), kEvpAeadCtxKey,
      32, 16, 5},
     {"EVP_aead_xchacha20_poly1305", EVP_aead_xchacha20_poly1305(),
