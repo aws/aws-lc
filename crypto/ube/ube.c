@@ -3,7 +3,7 @@
 
 #include <openssl/base.h>
 
-#include "fork_detect.h"
+#include "fork_ube_detect.h"
 #include "vm_ube_detect.h"
 
 #include "internal.h"
@@ -46,7 +46,7 @@ static uint8_t ube_detection_unavailable = 0;
 static uint8_t allow_mocked_detection = 0;
 
 static uint64_t override_fork_generation_number = 0;
-void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
+void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn) {
   CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   override_fork_generation_number = fork_gn;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
@@ -78,7 +78,7 @@ static int get_fork_generation_number(uint64_t *gn) {
     return 1;
   }
 
-  uint64_t fork_gn = CRYPTO_get_fork_generation();
+  uint64_t fork_gn = CRYPTO_get_fork_ube_generation();
   if (fork_gn == 0) {
     return 0;
   }
@@ -283,6 +283,6 @@ void disable_mocked_ube_detection_FOR_TESTING(void) {
   allow_mocked_detection = 0;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 
-  set_fork_generation_number_FOR_TESTING(0);
+  set_fork_ube_generation_number_FOR_TESTING(0);
   set_vm_ube_generation_number_FOR_TESTING(0);
 }

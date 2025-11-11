@@ -226,7 +226,7 @@ TEST_F(randTest, UbeDetectionMocked) {
 
   MockedUbeDetection(
     [](uint64_t gn) {
-      set_fork_generation_number_FOR_TESTING(gn);
+      set_fork_ube_generation_number_FOR_TESTING(gn);
     }
   );
 
@@ -245,7 +245,7 @@ TEST_F(randTest, UbeDetectionMocked) {
 TEST_F(randTest, NotObviouslyBroken) {
   static const uint8_t kZeros[256] = {0};
 
-  maybeDisableSomeForkDetectMechanisms();
+  maybeDisableSomeForkUbeDetectMechanisms();
 
   uint8_t buf1[256], buf2[256];
   RAND_bytes(buf1, sizeof(buf1));
@@ -330,7 +330,7 @@ static bool ForkAndRand(bssl::Span<uint8_t> out) {
 TEST_F(randTest, Fork) {
   static const uint8_t kZeros[16] = {0};
 
-  maybeDisableSomeForkDetectMechanisms();
+  maybeDisableSomeForkUbeDetectMechanisms();
 
   // Draw a little entropy to initialize any internal PRNG buffering.
   uint8_t byte;
@@ -393,7 +393,7 @@ TEST_F(randTest, Threads) {
   constexpr size_t kFewerThreads = 10;
   constexpr size_t kMoreThreads = 20;
 
-  maybeDisableSomeForkDetectMechanisms();
+  maybeDisableSomeForkUbeDetectMechanisms();
 
   // Draw entropy in parallel.
   RunConcurrentRands(kFewerThreads);

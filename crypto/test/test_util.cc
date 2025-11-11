@@ -30,7 +30,7 @@
 #include <openssl/err.h>
 
 #include "../internal.h"
-#include "../ube/fork_detect.h"
+#include "../ube/fork_ube_detect.h"
 #include "openssl/pem.h"
 #include "openssl/rand.h"
 
@@ -370,8 +370,8 @@ bool forkAndRunTest(std::function<bool()> child_func,
 #endif
 }
 
-void maybeDisableSomeForkDetectMechanisms(void) {
-  if (getenv("BORINGSSL_IGNORE_FORK_DETECTION")) {
+void maybeDisableSomeForkUbeDetectMechanisms(void) {
+  if (getenv("AWSLC_IGNORE_FORK_UBE_DETECTION")) {
     CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
     CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING();
   }

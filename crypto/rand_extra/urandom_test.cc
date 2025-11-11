@@ -37,7 +37,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 
-#include "../ube/fork_detect.h"
+#include "../ube/fork_ube_detect.h"
 #include "getrandom_fillin.h"
 
 #include "../test/test_util.h"
@@ -631,7 +631,7 @@ TEST(URandomTest, Test) {
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
-  maybeDisableSomeForkDetectMechanisms();
+  maybeDisableSomeForkUbeDetectMechanisms();
 
   return RUN_ALL_TESTS();
 }
