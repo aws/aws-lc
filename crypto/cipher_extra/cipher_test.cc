@@ -1130,6 +1130,7 @@ TEST(CipherTest, GetCipher) {
   test_get_cipher(NID_aes_192_gcm, "id-aes192-gcm");
   test_get_cipher(NID_aes_256_gcm, "id-aes256-gcm");
   test_get_cipher(NID_xaes_256_gcm, "id-xaes256-gcm");
+  test_get_cipher(NID_xaes_256_gcm_kc, "id-xaes256-gcm-kc");
 
   // error case
   EXPECT_FALSE(EVP_get_cipherbyname(nullptr));
