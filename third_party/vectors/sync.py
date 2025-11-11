@@ -6,6 +6,9 @@ import pathlib
 import tomllib
 import tempfile
 import subprocess
+import typing
+import shutil
+import filecmp
 
 from vectorslib import utils
 
@@ -47,7 +50,6 @@ def fetch_sources(
                 return False
 
         assert stmpdir.is_dir()
-        # Add the local path to the existing source dict
         source_info["local_path"] = stmpdir
 
     return True
@@ -55,21 +57,66 @@ def fetch_sources(
 
 def update_sources(
     cwd: pathlib.Path,
-    tmpdir: pathlib.Path,
     sources: dict,
+    new_file: typing.Optional[str],
     skip_fetch: bool,
 ):
     if skip_fetch:
         utils.info("skipping update")
         return True
 
-    updir = cwd / "upstream"
-    updir.mkdir(parents=True, exist_ok=True)
+    upstream_dir = cwd / "upstream"
+    upstream_dir.mkdir(parents=True, exist_ok=True)
 
     for source_name, source_info in sources.items():
-        source_info["upstream_path"] = updir / source_name
+        source_info["upstream_path"] = upstream_dir / source_name
         source_info["upstream_path"].mkdir(parents=True, exist_ok=True)
-        assert source_info["upstream_path"].is_dir()
+    
+    for source_name, source_info in sources.items():
+        upstream_path = source_info["upstream_path"]
+        local_path = source_info["local_path"]
+        
+        for upstream_file in upstream_path.rglob("*"):
+            if not upstream_file.is_file():
+                continue
+            
+            relative_path = upstream_file.relative_to(upstream_path)
+            local_file = local_path / relative_path
+            
+            if not local_file.exists():
+                utils.error(f"upstream file not found in cloned repo: {source_name}/{relative_path}")
+                return False
+            
+            if not filecmp.cmp(local_file, upstream_file, shallow=False):
+                shutil.copy2(local_file, upstream_file)
+                utils.info(f"updated upstream file: {source_name}/{relative_path}")
+
+    if new_file:
+        file_path = pathlib.Path(new_file)
+        source_name = file_path.parts[0]
+        
+        if source_name not in sources:
+            utils.error(f"unknown source '{source_name}', expected one of: {list(sources.keys())}")
+            return False
+        
+        relative_path = pathlib.Path(*file_path.parts[1:])
+        local_file = sources[source_name]["local_path"] / relative_path
+        
+        if not local_file.exists():
+            utils.error(f"file not found in upstream repo: {relative_path}")
+            return False
+        if local_file.is_dir():
+            utils.error(f"path is a directory, not a file: {relative_path}")
+            return False
+
+        upstream_file = sources[source_name]["upstream_path"] / relative_path
+        if upstream_file.exists():
+            utils.error(f"file already exists in upstream: {upstream_file}")
+            return False
+
+        upstream_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(local_file, upstream_file)
+        utils.info(f"copied new file to upstream: {upstream_file}")
 
     utils.warning("update_sources isn't yet fully implemented")
     return True
@@ -100,13 +147,14 @@ def sync_sources(
     cwd: pathlib.Path,
     tmpdir: pathlib.Path,
     sources: dict,
+    new_file: typing.Optional[str],
     skip_fetch: bool,
     skip_convert: bool,
     using_custom_tmpdir: bool = False,
 ):
     if not fetch_sources(tmpdir, sources, skip_fetch, using_custom_tmpdir):
         return False
-    if not update_sources(cwd, tmpdir, sources, skip_fetch):
+    if not update_sources(cwd, sources, new_file, skip_fetch):
         return False
     if not convert_sources(cwd, tmpdir, sources, skip_convert):
         return False
@@ -156,6 +204,7 @@ def main() -> int:
             cwd,
             tmpdir,
             sources,
+            args.new,
             args.skip_fetch,
             args.skip_convert,
             using_custom_tmpdir=True,
@@ -165,15 +214,11 @@ def main() -> int:
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmpdir = pathlib.Path(tmpdirname)
             if not sync_sources(
-                cwd, tmpdir, sources, args.skip_fetch, args.skip_convert
+                cwd, tmpdir, sources, args.new, args.skip_fetch, args.skip_convert
             ):
                 return 1
 
     print(sources)
-
-    if args.new:
-        # copy the new file from tmpdir to upstreamdir
-        utils.warning("new isn't yet implemented")
 
     # TODO: Implement sync logic
     return 0
