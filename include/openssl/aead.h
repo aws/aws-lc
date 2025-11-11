@@ -433,6 +433,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_tls13(void);
 
 // EVP_aead_xaes_256_gcm is AES-256 in Galois Counter Mode with CMAC-based KDF
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xaes_256_gcm(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xaes_256_gcm_kc(void);
 
 // Obscure functions.
 

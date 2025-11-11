@@ -96,6 +96,9 @@ static const struct KnownAEAD kAEADs[] = {
     {"XAES_256_GCM", EVP_aead_xaes_256_gcm, "xaes_256_gcm_tests.txt",
      kCanTruncateTags | kVariableNonce}, 
 
+    {"XAES_256_GCM_KC", EVP_aead_xaes_256_gcm_kc, "xaes_256_gcm_kc_tests.txt",
+     kCanTruncateTags | kVariableNonce}, 
+        
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
      kCanTruncateTags | kVariableNonce},
 
@@ -1441,7 +1444,7 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
      17},
     {"EVP_aead_aes_256_gcm", EVP_aead_aes_256_gcm(), kEvpAeadCtxKey, 32, 16,
      18},
-     {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+    {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
      29},
     {"EVP_aead_chacha20_poly1305", EVP_aead_chacha20_poly1305(), kEvpAeadCtxKey,
      32, 16, 5},
@@ -1671,14 +1674,14 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
     bssl::ScopedEVP_AEAD_CTX ectx;
     size_t tag_size = 16;
     // Initialize the main key
-    ConvertToBytes(&key, "0101010101010101010101010101010101010101010101010101010101010101");
+    DecodeHex(&key, "0101010101010101010101010101010101010101010101010101010101010101");
     ASSERT_TRUE(EVP_AEAD_CTX_init(ectx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
-    
+
     /* ============ INITIALIZE DECRYPTION CONTEXT ============ */ 
     bssl::ScopedEVP_AEAD_CTX dctx;
     // Initialize the main key
     ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
-    
+
     // Test encryption and decryption
     const auto test = [&ectx, &dctx, &tag_size](std::vector<uint8_t> &iv, const uint8_t *plaintext, size_t plaintext_len, 
                                     std::vector<uint8_t> &expected_ciphertext_and_tag) {
@@ -1692,36 +1695,36 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
                                     plaintext_len + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                     iv.data(), iv.size(), plaintext, plaintext_len, nullptr, 0));
         ASSERT_EQ(Bytes(ciphertext), Bytes(expected_ciphertext_and_tag));
-        
+
         // Decrypt                                        
         std::vector<uint8_t> decrypted;
         decrypted.resize(ciphertext_len - tag_size);
         size_t decrypted_len = 0;
-        
+
         // Initiaze IV, derive a subkey and decrypt
         ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted.data(), &decrypted_len, ciphertext_len - tag_size,
                                     iv.data(), iv.size(), ciphertext.data(), ciphertext_len, nullptr, 0));
-        
+
         ASSERT_EQ((size_t)decrypted_len, plaintext_len);
         ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
     };
-    
+
     // Test with an IV
     std::vector<uint8_t> iv; 
-    ConvertToBytes(&iv, "424242424242424242424242424242424242424242424242");
+    DecodeHex(&iv, "424242424242424242424242424242424242424242424242");
 
     // Test encryption and decryption with a plaintext
     const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
     std::vector<uint8_t> ciphertext_and_tag;
-    ConvertToBytes(&ciphertext_and_tag, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
+    DecodeHex(&ciphertext_and_tag, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
     test(iv, plaintext, strlen((const char *)plaintext), ciphertext_and_tag);
 
     // Test with another IV
-    ConvertToBytes(&iv, "4142434445464748494a4b4c4d4e4f505152535455565758");
-    
+    DecodeHex(&iv, "4142434445464748494a4b4c4d4e4f505152535455565758");
+
     // Test encryption and decryption again with another plaintext
     plaintext = (const uint8_t *)"XAES-256-GCM";
-    ConvertToBytes(&ciphertext_and_tag, "ce546ef63c9cc60765923609b33a9a1974e96e52daf2fcf7075e2271");
+    DecodeHex(&ciphertext_and_tag, "ce546ef63c9cc60765923609b33a9a1974e96e52daf2fcf7075e2271");
     test(iv, plaintext, strlen((const char *)plaintext), ciphertext_and_tag);
 }
 
@@ -1757,7 +1760,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_MULTI_LOOP_TEST) {
                                     plaintext_len + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
                                     nonce.data(), nonce_len, plaintext.data(), plaintext_len, aad.data(), aad_len));
             ASSERT_TRUE(EVP_DigestUpdate(d.get(), ciphertext.data(), ciphertext_len));
-            
+
             // XAES-256-GCM Decryption
             bssl::ScopedEVP_AEAD_CTX dctx;
             ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key_len, tag_size, nullptr));
@@ -1767,7 +1770,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_MULTI_LOOP_TEST) {
             ASSERT_EQ(Bytes(decrypted.data(), len), Bytes(plaintext.data(), plaintext_len));
         }
         std::vector<uint8_t> expected;
-        ConvertToBytes(&expected, output);
+        DecodeHex(&expected, output);
         uint8_t got[32] = {0};
         ASSERT_TRUE(EVP_DigestFinalXOF(d.get(), got, 32));
         ASSERT_EQ(Bytes(got, 32), Bytes(expected)); 
@@ -1775,4 +1778,64 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_MULTI_LOOP_TEST) {
 
     test(10000, "e6b9edf2df6cec60c8cbd864e2211b597fb69a529160cd040d56c0c210081939");
     test(1000000, "2163ae1445985a30b60585ee67daa55674df06901b890593e824b8a7c885ab15");
+}
+
+TEST(CipherTest, XAES_256_GCM_EVP_AEAD_SHORTER_NONCE) {
+    std::vector<uint8_t> key; 
+
+    /* ============ INITIALIZE ENCRYPTION CONTEXT ============ */ 
+    bssl::ScopedEVP_AEAD_CTX ectx;
+    size_t tag_size = 16;
+    // Initialize the main key
+    DecodeHex(&key, "0101010101010101010101010101010101010101010101010101010101010101");
+    ASSERT_TRUE(EVP_AEAD_CTX_init(ectx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
+
+    /* ============ INITIALIZE DECRYPTION CONTEXT ============ */ 
+    bssl::ScopedEVP_AEAD_CTX dctx;
+    // Initialize the main key
+    ASSERT_TRUE(EVP_AEAD_CTX_init(dctx.get(), EVP_aead_xaes_256_gcm(), key.data(), key.size(), tag_size, nullptr));
+
+    // Test encryption and decryption
+    const auto test = [&ectx, &dctx, &tag_size](std::vector<uint8_t> &iv, 
+                            const uint8_t *plaintext, size_t plaintext_len) {
+        // Encrypt
+        std::vector<uint8_t> ciphertext;
+        ciphertext.resize(plaintext_len + tag_size);
+        size_t ciphertext_len = 0;
+
+        // Initiaze IV, derive a subkey and encrypt
+        ASSERT_TRUE(EVP_AEAD_CTX_seal(ectx.get(), ciphertext.data(), &ciphertext_len,
+                                    plaintext_len + EVP_AEAD_max_overhead(EVP_aead_xaes_256_gcm()), 
+                                    iv.data(), iv.size(), plaintext, plaintext_len, nullptr, 0));
+
+        // Decrypt                                        
+        std::vector<uint8_t> decrypted;
+        decrypted.resize(ciphertext_len - tag_size);
+        size_t decrypted_len = 0;
+
+        // Initiaze IV, derive a subkey and decrypt
+        ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted.data(), &decrypted_len, ciphertext_len - tag_size,
+                                    iv.data(), iv.size(), ciphertext.data(), ciphertext_len, nullptr, 0));
+
+        ASSERT_EQ((size_t)decrypted_len, plaintext_len);
+        ASSERT_EQ(Bytes(decrypted), Bytes(plaintext, plaintext_len));
+    };
+
+    // Test with a 20-byte IV
+    std::vector<uint8_t> iv; 
+    DecodeHex(&iv, "4242424242424242424242424242424242424242");
+
+    // Test encryption and decryption with a plaintext
+    const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
+    std::vector<uint8_t> ciphertext_and_tag;
+    DecodeHex(&ciphertext_and_tag, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
+    test(iv, plaintext, strlen((const char *)plaintext));
+
+    // Test with a 23-byte IV
+    DecodeHex(&iv, "4142434445464748494a4b4c4d4e4f5051525354555657");
+
+    // Test encryption and decryption again with another plaintext
+    plaintext = (const uint8_t *)"XAES-256-GCM";
+    DecodeHex(&ciphertext_and_tag, "ce546ef63c9cc60765923609b33a9a1974e96e52daf2fcf7075e2271");
+    test(iv, plaintext, strlen((const char *)plaintext));
 }
