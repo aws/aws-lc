@@ -378,16 +378,20 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
   }
 
-  // TODO(davidben,eroman): Passing the previous |md| with a NULL |key| is
-  // ambiguous between using the empty key and reusing the previous key. There
-  // exist callers which intend the latter, but the former is an awkward edge
-  // case. Fix to API to avoid this.
-  if (key == NULL && (md == NULL || md == ctx->md)) {
-    // Reinitialize |md_ctx| from |i_ctx| to start fresh with the same key. This
-    // is the same behavior as Openssl.
-    OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
-    // If nothing is changing then we can return without doing any further work.
-    return 1;
+  if (hmac_ctx_is_initialized(ctx)) {
+    // TODO(davidben,eroman): Passing the previous |md| with a NULL |key| is
+    // ambiguous between using the empty key and reusing the previous key. There
+    // exist callers which intend the latter, but the former is an awkward edge
+    // case. Fix to API to avoid this.
+    if (key == NULL && (md == NULL || md == ctx->md)) {
+      if(HMAC_STATE_IN_PROGRESS == ctx->state) {
+        // Reinitialize |md_ctx| from |i_ctx| to start fresh with the same key. This
+        // is the same behavior as Openssl.
+        OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
+      }
+      // If nothing is changing then we can return without doing any further work.
+      return 1;
+    }
   }
 
   // At this point we *know* we need to change things and rekey because either the key has changed
