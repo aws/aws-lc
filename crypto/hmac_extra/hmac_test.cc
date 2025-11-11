@@ -635,3 +635,48 @@ TEST(HMACTest, HandlesNullOutputParameters) {
   ASSERT_TRUE(HMAC_Update(ctx.get(), &input[0], sizeof(input)));
   ASSERT_FALSE(HMAC_Final(ctx.get(), nullptr, &mac_len));
 }
+
+TEST(HMACTest, InitExResetsContext) {
+  bssl::ScopedHMAC_CTX ctx;
+  bssl::ScopedHMAC_CTX ctx_copy;
+
+  const EVP_MD *digest = EVP_sha256();
+
+  const uint8_t key1[] = "test_key_1";
+  const uint8_t data1[] = "first_message";
+
+  uint8_t mac1[EVP_MAX_MD_SIZE];
+  uint8_t mac2[EVP_MAX_MD_SIZE];
+  uint8_t mac3[EVP_MAX_MD_SIZE];
+  unsigned mac_len;
+
+  // First HMAC computation with |key1| and |data1|.
+  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key1, sizeof(key1), digest, nullptr));
+  ASSERT_TRUE(HMAC_Update(ctx.get(), data1, sizeof(data1)));
+  // Copy to |ctx_copy| and finalize that to preserve |HMAC_STATE_IN_PROGRESS|
+  // in |ctx|.
+  ASSERT_TRUE(HMAC_CTX_copy(ctx_copy.get(), ctx.get()));
+  ASSERT_TRUE(HMAC_Final(ctx_copy.get(), mac1, &mac_len));
+
+  // Reset context with NULL |key|/|digest| - should reuse previous key and
+  // reset state. This tests that |HMAC_Init_ex| properly resets even after
+  // Update/Final.
+  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
+  ASSERT_TRUE(HMAC_Update(ctx.get(), data1, sizeof(data1)));
+  ASSERT_TRUE(HMAC_Final(ctx.get(), mac2, &mac_len));
+
+  // |mac1| and |mac2| should be the same (same key reused, context reset).
+  EXPECT_EQ(Bytes(mac1, mac_len), Bytes(mac2, mac_len));
+
+  // Reset |ctx| with NULL |key| but explicit digest - should reuse previous
+  // key and reset state.
+  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr));
+  ASSERT_TRUE(HMAC_Update(ctx.get(), data1, sizeof(data1)));
+  // Copy to |ctx_copy| and finalize that to preserve |HMAC_STATE_IN_PROGRESS|
+  // in |ctx|.
+  ASSERT_TRUE(HMAC_CTX_copy(ctx_copy.get(), ctx.get()));
+  ASSERT_TRUE(HMAC_Final(ctx_copy.get(), mac3, &mac_len));
+
+  // |mac1| and |mac3| should be the same (same key reused, context reset).
+  EXPECT_EQ(Bytes(mac1, mac_len), Bytes(mac3, mac_len));
+}
