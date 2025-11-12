@@ -147,6 +147,28 @@ def convert_sources(
                 raise SyncError(error_msg)
 
 
+def generate_and_verify_spec(
+    cwd: pathlib.Path,
+    sources: dict,
+):
+    from vectorslib import generate_spec
+
+    generate_spec.write_spec(cwd, sources)
+    utils.info("generated vectors_spec.md")
+
+    duvet_result = subprocess.run(
+        ["duvet", "report", "--ci"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+    if duvet_result.returncode != 0:
+        utils.error("duvet verification failed")
+        utils.error(duvet_result.stderr)
+        raise SyncError("duvet verification failed")
+    utils.info("duvet verification passed")
+
+
 def sync_sources(
     cwd: pathlib.Path,
     clone_dir: pathlib.Path,
@@ -154,6 +176,7 @@ def sync_sources(
     new_file: typing.Optional[str],
     skip_update: bool,
     skip_convert: bool,
+    skip_spec: bool,
     using_custom_clone_dir: bool = False,
 ):
     if not skip_update:
@@ -166,6 +189,11 @@ def sync_sources(
         convert_sources(cwd, clone_dir, sources)
     else:
         utils.info("skipping convert")
+
+    if not skip_spec:
+        generate_and_verify_spec(cwd, sources)
+    else:
+        utils.info("skipping spec generation")
 
 
 def main() -> int:
@@ -203,6 +231,11 @@ def main() -> int:
         help="skip converting vectors to file_test.h format",
     )
     parser.add_argument(
+        "--skip-spec",
+        action="store_true",
+        help="skip generating vectors_spec.md and duvet verification",
+    )
+    parser.add_argument(
         "--clone-dir",
         metavar="DIR",
         help="use custom directory for cloned repositories (persistent across runs)",
@@ -223,6 +256,7 @@ def main() -> int:
                 args.new,
                 args.skip_update,
                 args.skip_convert,
+                args.skip_spec,
                 using_custom_clone_dir=True,
             )
         else:
@@ -235,6 +269,7 @@ def main() -> int:
                     args.new,
                     args.skip_update,
                     args.skip_convert,
+                    args.skip_spec,
                 )
     except SyncError as e:
         utils.error(str(e))

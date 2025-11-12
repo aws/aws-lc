@@ -1,0 +1,13 @@
+'$schema' = "https://awslabs.github.io/duvet/config/v0.4.0.json"
+
+[[source]]
+pattern = "../../crypto/**/*.cc"
+
+[[specification]]
+source = "vectors_spec.md"
+
+[report.html]
+enabled = true
+
+[report.snapshot]
+enabled = true
