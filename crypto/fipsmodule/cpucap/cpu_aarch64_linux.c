@@ -94,7 +94,7 @@ void OPENSSL_cpuid_setup(void) {
     }
     if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V2)) {
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_V2;
-      // CPU capabilities of N1 are a subset of CPU capabilities of V1
+      // CPU capabilities of N1 are a subset of CPU capabilities of V2
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
     }
   }
