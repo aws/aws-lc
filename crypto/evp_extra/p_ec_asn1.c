@@ -185,11 +185,7 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *oid, CBS *params, CBS *key, CBS
 static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
   const EC_KEY *ec_key = key->pkey.ec;
 
-  // Omit the redundant copy of the curve name. This contradicts RFC 5915 but
-  // aligns with PKCS #11. SEC 1 only says they may be omitted if known by other
-  // means. Both OpenSSL and NSS omit the redundant parameters, so we omit them
-  // as well.
-  unsigned enc_flags = EC_KEY_get_enc_flags(ec_key) | EC_PKEY_NO_PARAMETERS;
+  unsigned enc_flags = EC_KEY_get_enc_flags(ec_key);
 
   // See RFC 5915.
   CBB pkcs8, algorithm, oid, private_key;
