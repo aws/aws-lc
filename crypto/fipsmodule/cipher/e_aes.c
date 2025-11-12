@@ -1940,7 +1940,13 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
 
     // Allocate memory for xaes_ctx->gcm_ctx
-    xaes_ctx->gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_ctx));
+    if(!xaes_ctx->gcm_ctx) {
+        xaes_ctx->gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_ctx));
+        // If cannot allocate memory for gcm_ctx
+        if(!xaes_ctx->gcm_ctx) {
+            return 0;
+        }
+    }
     
     xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
 
