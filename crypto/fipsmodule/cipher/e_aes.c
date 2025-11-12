@@ -1934,8 +1934,10 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
         return 0;
     }
     
+    // ctx->state is a void pointer in the EVP_AEAD_CTX object pointing to an 
+    // opaque memory that can be used to store implementation-specific data
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
-
+    
     xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
 
     // requested_tag_len = 0 means using the default tag length of AES_GCM
