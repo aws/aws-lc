@@ -1947,7 +1947,7 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
             return 0;
         }
     }
-    
+
     xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
 
     // requested_tag_len = 0 means using the default tag length of AES_GCM
@@ -1997,7 +1997,10 @@ static int aead_xaes_256_gcm_seal_scatter(
     }
     
     // Reference for nonce size < 24 bytes: 
-    // https://eprint.iacr.org/2025/758.pdf#page=24
+    // https://eprint.iacr.org/2025/758.pdf#page=24 
+    /* When nonce size b < 24 bytes, it uses bytes [b-12:b]
+     * of input nonce as iv for the underlying AES encryption. 
+     * nonce_len is b in the referece, where 20 <= b <= 24 */
     return aead_aes_gcm_seal_scatter_impl(
         xaes_ctx->gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
         nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
@@ -2018,6 +2021,9 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
     
     // Reference for nonce size < 24 bytes: 
     // https://eprint.iacr.org/2025/758.pdf#page=24
+    /* When nonce size b < 24 bytes, it uses bytes [b-12:b]
+     * of input nonce as iv for the underlying AES decryption. 
+     * nonce_len is b in the referece, where 20 <= b <= 24 */
     return aead_aes_gcm_open_gather_impl(
         xaes_ctx->gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
         AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
@@ -2026,7 +2032,10 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
 static void aead_xaes_256_gcm_cleanup(EVP_AEAD_CTX *ctx) {
   AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
-  OPENSSL_free(xaes_ctx->gcm_ctx);
+  // Free memory of gcm_ctx
+  if(xaes_ctx->gcm_ctx) {
+    OPENSSL_free(xaes_ctx->gcm_ctx);
+  } 
   aead_aes_gcm_cleanup(ctx);
 }
 
