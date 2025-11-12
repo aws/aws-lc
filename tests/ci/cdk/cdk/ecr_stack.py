@@ -41,6 +41,7 @@ class EcrRepoDataClass:
     cdk_id: str
     ecr_name: str
     allow_scrutinice_pull: bool = False
+    allow_codebuild_pull: bool = False
 
 
 class PrivateEcrStackV2(Stack):
@@ -89,20 +90,25 @@ class PrivateEcrStackV2(Stack):
         for x in [
             EcrRepoDataClass("aws-lc-ecr-ubuntu", UBUNTU_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-amazonlinux",
-                             AMAZONLINUX_ECR_REPO, allow_scrutinice_pull=True),
+                             AMAZONLINUX_ECR_REPO,
+                             allow_scrutinice_pull=True,
+                             allow_codebuild_pull=True),
             EcrRepoDataClass("aws-lc-ecr-fedora", FEDORA_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-centos", CENTOS_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-windows", WINDOWS_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-verification", VERIFICATION_ECR_REPO),
             EcrRepoDataClass("aws-lc-ecr-android", ANDROID_ECR_REPO),
         ]:
-            EcrPrivateRepo(self, x.cdk_id, repo_name=x.ecr_name, allow_scrutinice_pull=x.allow_scrutinice_pull)
+            EcrPrivateRepo(self, x.cdk_id, repo_name=x.ecr_name,
+                           allow_scrutinice_pull=x.allow_scrutinice_pull,
+                           allow_codebuild_pull=x.allow_codebuild_pull)
 
 
 class EcrPrivateRepo(Construct):
     """Define private ECR repository to store container images."""
 
-    def __init__(self, scope: Construct, id: str, repo_name: str, *, allow_scrutinice_pull: bool, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, repo_name: str, *, allow_scrutinice_pull: bool,
+                 allow_codebuild_pull: bool, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         self.repo = ecr.Repository(
@@ -114,3 +120,5 @@ class EcrPrivateRepo(Construct):
         )
         if allow_scrutinice_pull:
             self.repo.grant_pull(iam.ArnPrincipal(SCRUTINICE_PRINCIPAL_ROLE_ARN))
+        if allow_codebuild_pull:
+            self.repo.grant_pull(iam.ServicePrincipal("codebuild.amazonaws.com"))
