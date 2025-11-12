@@ -235,8 +235,10 @@ static int ccm128_encrypt(const struct ccm128_context *ctx,
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, state->nonce, partial_buf,
                                 &num, ctx->ctr);
   } else {
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     CRYPTO_ctr128_encrypt(in, out, len, key, state->nonce, partial_buf, &num,
                           ctx->block);
+OPENSSL_END_ALLOW_DEPRECATED
   }
   return 1;
 }

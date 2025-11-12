@@ -93,8 +93,10 @@ void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
                                 vpaes_ctr32_encrypt_blocks_wrapper);
 #else
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     CRYPTO_ctr128_encrypt(in, out, len, key, ivec, ecount_buf, num,
                           vpaes_encrypt_wrapper);
+OPENSSL_END_ALLOW_DEPRECATED
 #endif
   } else {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,

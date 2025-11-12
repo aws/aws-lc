@@ -52,6 +52,7 @@
 #include <openssl/base.h>
 
 #include <openssl/aes.h>
+#include <openssl/crypto.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -68,17 +69,7 @@ extern "C" {
 // Reference IEEE Std 1619-2018.
 #define XTS_MAX_BLOCKS_PER_DATA_UNIT            (1<<20)
 
-// block128_f is the type of an AES block cipher implementation.
-//
-// Unlike upstream OpenSSL, it and the other functions in this file hard-code
-// |AES_KEY|. It is undefined in C to call a function pointer with anything
-// other than the original type. Thus we either must match |block128_f| to the
-// type signature of |AES_encrypt| and friends or pass in |void*| wrapper
-// functions.
-//
-// These functions are called exclusively with AES, so we use the former.
-typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
-                           const AES_KEY *key);
+
 
 OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
                                  const uint8_t b[16]) {
@@ -101,16 +92,6 @@ OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
 typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
                          const AES_KEY *key, const uint8_t ivec[16]);
 
-// CRYPTO_ctr128_encrypt encrypts (or decrypts, it's the same in CTR mode)
-// |len| bytes from |in| to |out| using |block| in counter mode. There's no
-// requirement that |len| be a multiple of any value and any partial blocks are
-// stored in |ecount_buf| and |*num|, which must be zeroed before the initial
-// call. The counter is a 128-bit, big-endian value in |ivec| and is
-// incremented by this function.
-void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const AES_KEY *key, uint8_t ivec[16],
-                           uint8_t ecount_buf[16], unsigned *num,
-                           block128_f block);
 
 // CRYPTO_ctr128_encrypt_ctr32 acts like |CRYPTO_ctr128_encrypt| but takes
 // |ctr|, a function that performs CTR mode but only deals with the lower 32

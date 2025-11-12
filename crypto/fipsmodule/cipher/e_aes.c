@@ -281,8 +281,10 @@ static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, &dat->ks.ks, ctx->iv, ctx->buf,
                                 &ctx->num, dat->stream.ctr);
   } else {
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     CRYPTO_ctr128_encrypt(in, out, len, &dat->ks.ks, ctx->iv, ctx->buf,
                           &ctx->num, dat->block);
+    OPENSSL_END_ALLOW_DEPRECATED
   }
   return 1;
 }

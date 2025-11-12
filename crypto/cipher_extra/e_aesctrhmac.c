@@ -165,9 +165,11 @@ static void aead_aes_ctr_hmac_sha256_crypt(
                                 partial_block_buffer, &partial_block_offset,
                                 aes_ctx->ctr);
   } else {
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     CRYPTO_ctr128_encrypt(in, out, len, &aes_ctx->ks.ks, counter,
                           partial_block_buffer, &partial_block_offset,
                           aes_ctx->block);
+OPENSSL_END_ALLOW_DEPRECATED
   }
 }
 

@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_CRYPTO_H
 
 #include <openssl/base.h>
+#include <openssl/aes.h>
 #include <openssl/err.h>
 #include <openssl/sha.h>
 
@@ -248,6 +249,29 @@ OPENSSL_EXPORT uint32_t FIPS_version(void);
 // the current BoringSSL and zero otherwise.
 OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
 #endif //BORINGSSL_FIPS_140_3
+
+// block128_f is the type of an AES block cipher implementation.
+//
+// Unlike upstream OpenSSL, it and the other functions in this file hard-code
+// |AES_KEY|. It is undefined in C to call a function pointer with anything
+// other than the original type. Thus we either must match |block128_f| to the
+// type signature of |AES_encrypt| and friends or pass in |void*| wrapper
+// functions.
+//
+// These functions are called exclusively with AES, so we use the former.
+typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
+                           const AES_KEY *key);
+
+// CRYPTO_ctr128_encrypt encrypts (or decrypts, it's the same in CTR mode)
+// |len| bytes from |in| to |out| using |block| in counter mode. There's no
+// requirement that |len| be a multiple of any value and any partial blocks are
+// stored in |ecount_buf| and |*num|, which must be zeroed before the initial
+// call. The counter is a 128-bit, big-endian value in |ivec| and is
+// incremented by this function.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                           const AES_KEY *key, uint8_t ivec[16],
+                           uint8_t ecount_buf[16], unsigned *num,
+                           block128_f block);
 
 
 #if defined(__cplusplus)
