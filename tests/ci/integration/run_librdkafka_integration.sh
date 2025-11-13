@@ -33,7 +33,7 @@ function kafka_build() {
   export LDFLAGS="-L${AWS_LC_INSTALL_FOLDER}/lib ${LDFLAGS}"
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
-  ./configure --prefix="$KAFKA_BUILD_PREFIX"
+  ./configure --prefix="$KAFKA_BUILD_PREFIX" --enable-devel
   make -j install
   make check
 
