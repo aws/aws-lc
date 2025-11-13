@@ -1784,7 +1784,6 @@ https://eprint.iacr.org/2025/758.pdf#page=24
 #define XAES_256_GCM_KEY_COMMIT_SIZE (AES_BLOCK_SIZE * 2)
 #define XAES_256_GCM_MAX_NONCE_SIZE  (AES_GCM_NONCE_LENGTH * 2)
 #define XAES_256_GCM_MIN_NONCE_SIZE  (20)
-
 /* 
 The following function performs the step #2 of CMAC specified in: 
 https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38b.pdf#page=14 
@@ -1805,6 +1804,15 @@ do {                                                \
     const uint8_t carry = in[0] >> 7;               \
     out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87);   \
 } while(0);
+
+// Reference for nonce size < 24 bytes: 
+// https://eprint.iacr.org/2025/758.pdf#page=24 
+/* When nonce size b < 24 bytes, it uses bytes [b-12:b]
+ * of input nonce as iv for the underlying AES encryption. 
+ * nonce_len is b in the referece, where 20 <= b <= 24 */
+static inline const uint8_t *get_iv_for_aes_gcm(const uint8_t *nonce, const size_t nonce_len) {
+    return nonce + nonce_len - AES_GCM_NONCE_LENGTH;
+}
 
 static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1, 
                                 const uint8_t* nonce, uint8_t *derived_key) { 
@@ -1859,10 +1867,8 @@ static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, i
     // set the nonce (iv) length to AES_GCM_NONCE_LENGTH.
     gctx->ivlen = AES_GCM_NONCE_LENGTH;
     
-    // For nonce size < 24 bytes
-    // Reference: https://eprint.iacr.org/2025/758.pdf#page=24
-    aes_gcm_init_key(ctx, derived_key, nonce + ivlen - AES_GCM_NONCE_LENGTH, enc);
-
+    aes_gcm_init_key(ctx, derived_key, get_iv_for_aes_gcm(nonce, ivlen), enc);
+    
     // Re-assign the original nonce size of XAES-256-GCM (20 <= |N| <= 24)
     gctx->ivlen = ivlen;
 
@@ -1988,14 +1994,9 @@ static int aead_xaes_256_gcm_seal_scatter(
         return 0;
     }
 
-    // Reference for nonce size < 24 bytes: 
-    // https://eprint.iacr.org/2025/758.pdf#page=24 
-    /* When nonce size b < 24 bytes, it uses bytes [b-12:b]
-     * of input nonce as iv for the underlying AES encryption. 
-     * nonce_len is b in the referece, where 20 <= b <= 24 */
     return aead_aes_gcm_seal_scatter_impl(
         &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
-        nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+        get_iv_for_aes_gcm(nonce, nonce_len), AES_GCM_NONCE_LENGTH,
         in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len);
 }
 
@@ -2013,13 +2014,8 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
         return 0;
     }
     
-    // Reference for nonce size < 24 bytes: 
-    // https://eprint.iacr.org/2025/758.pdf#page=24
-    /* When nonce size b < 24 bytes, it uses bytes [b-12:b]
-     * of input nonce as iv for the underlying AES decryption. 
-     * nonce_len is b in the referece, where 20 <= b <= 24 */
     return aead_aes_gcm_open_gather_impl(
-        &gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
+        &gcm_ctx, out, get_iv_for_aes_gcm(nonce, nonce_len), 
         AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
         ad, ad_len, ctx->tag_len);
 }
