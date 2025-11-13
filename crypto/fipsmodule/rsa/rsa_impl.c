@@ -70,7 +70,7 @@
 #include "../bn/internal.h"
 #include "../../internal.h"
 #include "../delocate.h"
-#include "../../ube/fork_detect.h"
+#include "../../ube/fork_ube_detect.h"
 
 static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
   if (*out != NULL) {
@@ -252,7 +252,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, size_t *index_used,
   assert(rsa->mont_n != NULL);
 
   BN_BLINDING *ret = NULL;
-  const uint64_t fork_generation = CRYPTO_get_fork_generation();
+  const uint64_t fork_generation = CRYPTO_get_fork_ube_generation();
   CRYPTO_MUTEX_lock_write(&rsa->lock);
 
   // Wipe the blinding cache on |fork|.

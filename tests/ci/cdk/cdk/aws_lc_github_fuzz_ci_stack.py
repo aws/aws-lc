@@ -5,7 +5,6 @@ import typing
 from aws_cdk import (
     Duration,
     Size,
-    Stack,
     aws_codebuild as codebuild,
     aws_iam as iam,
     aws_ec2 as ec2,
@@ -19,14 +18,6 @@ from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import (
     code_build_batch_policy_in_json,
     code_build_publish_metrics_in_json,
-)
-from util.metadata import (
-    GITHUB_PUSH_CI_BRANCH_TARGETS,
-    GITHUB_REPO_OWNER,
-    GITHUB_REPO_NAME,
-    PRE_PROD_ACCOUNT,
-    STAGING_GITHUB_REPO_OWNER,
-    STAGING_GITHUB_REPO_NAME,
 )
 from util.build_spec_loader import BuildSpecLoader
 

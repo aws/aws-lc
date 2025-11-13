@@ -22,10 +22,13 @@ static inline std::string &trim(std::string &s) {
             return !std::isspace(static_cast<unsigned char>(ch));
           }));
   s.erase(std::find_if(s.rbegin(), s.rend(),
+
                        [](unsigned char ch) {
                          return !std::isspace(static_cast<unsigned char>(ch));
                        })
+
               .base(),
+
           s.end());
   return s;
 }
@@ -47,8 +50,10 @@ inline std::string ReadFileToString(const std::string &file_path) {
     return "";
   }
 
+
   std::ostringstream output_buffer;
   output_buffer << file_stream.rdbuf();
+
 
   return output_buffer.str();
 }
@@ -88,7 +93,26 @@ inline void RemoveFile(const char *path) {
   }
 }
 
-// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
+inline int ExecuteCommand(const std::string &command) {
+  return system(command.c_str());
+}
+
+// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin)
+// ="
 std::string GetHash(const std::string &str);
+void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
+                                  bssl::UniquePtr<EVP_PKEY> *pkey);
+bssl::UniquePtr<X509_REQ> LoadPEMCSR(const char *path);
+bssl::UniquePtr<X509_REQ> LoadDERCSR(const char *path);
+bssl::UniquePtr<X509> LoadPEMCertificate(const char *path);
+bssl::UniquePtr<X509> LoadDERCertificate(const char *path);
+bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2);
+bool CheckCertificateValidityPeriod(X509 *cert, int expected_days);
+bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
+                         int expected_days);
+EVP_PKEY *DecryptPrivateKey(const char *path, const char *password);
+bool CompareKeyEquality(EVP_PKEY *key1, EVP_PKEY *key2);
+bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
+                                unsigned int expected_bits);
 
 #endif  // TEST_UTIL_H

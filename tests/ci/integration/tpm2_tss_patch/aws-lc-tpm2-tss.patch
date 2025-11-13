@@ -70,15 +70,6 @@ index 75e81141..79f77fdf 100644
      size_t ui;
      AUTHORITY_INFO_ACCESS *info = NULL;
      ASN1_IA5STRING *uri = NULL;
-@@ -463,7 +463,7 @@ ifapi_get_curl_buffer(unsigned char * url, unsigned char ** buffer,
-         goto out_easy_cleanup;
-     }
- 
--    rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-+    rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-     if (rc != CURLE_OK) {
-         LOG_ERROR("curl_easy_setopt for CURLOPT_FOLLOWLOCATION failed: %s",
-                   curl_easy_strerror(rc));
 diff --git a/src/tss2-fapi/ifapi_verify_cert_chain.c b/src/tss2-fapi/ifapi_verify_cert_chain.c
 index b495e512..c741c8ad 100644
 --- a/src/tss2-fapi/ifapi_verify_cert_chain.c

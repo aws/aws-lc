@@ -108,10 +108,12 @@ OPENSSL_EXPORT void HMAC_CTX_cleanse(HMAC_CTX *ctx);
 OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);
 
 // HMAC_Init_ex sets up an initialised |HMAC_CTX| to use |md| as the hash
-// function and |key| as the key. For a non-initial call, |md| may be NULL, in
-// which case the previous hash function will be used. If the hash function has
-// not changed and |key| is NULL, |ctx| reuses the previous key. It returns one
-// on success or zero on allocation failure.
+// function and |key| as the key. This function resets |HMAC_CTX| to a
+// fresh state, even if |HMAC_Update| or |HMAC_Final| have been called
+// previously. For a non-initial call, |md| may be NULL, in which case the
+// previous hash function will be used. If the hash function has not changed and
+// |key| is NULL, |ctx| reuses the previous key and resets to a clean state
+// ready for new data. It returns one on success or zero on allocation failure.
 //
 // WARNING: NULL and empty keys are ambiguous on non-initial calls. Passing NULL
 // |key| but repeating the previous |md| reuses the previous key rather than the

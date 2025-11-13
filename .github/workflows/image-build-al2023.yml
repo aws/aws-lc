@@ -1,0 +1,266 @@
+name: image-build-al2023
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-al2023
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
+jobs:
+  x86_64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:medium
+    outputs:
+      al2023: ${{ steps.images.outputs.al2023 }}
+      x509: ${{ steps.images.outputs.x509 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+          echo x509=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+            dependencies=./tests/ci/docker_images/dependencies
+          tags: ${{ steps.images.outputs.al2023 }}
+          target: al2023
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container (al2023)
+        with:
+          image: ${{ steps.images.outputs.al2023 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.32
+            # Check Default GCC Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
+            # Check Default Clang Compilers
+            source /opt/compiler-env/setup-clang.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+            # Check Clang 11 Compilers
+            source /opt/compiler-env/setup-clang-15.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+            dependencies=./tests/ci/docker_images/dependencies
+          tags: ${{ steps.images.outputs.x509 }}
+          target: x509
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container (x509)
+        with:
+          image: ${{ steps.images.outputs.x509 }}
+          run: |
+            cd /x509-limbo
+            source .venv/bin/activate
+            make ARGS="--version" run
+
+  aarch64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:medium
+    outputs:
+      al2023: ${{ steps.images.outputs.al2023 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo al2023=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2023
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+            dependencies=./tests/ci/docker_images/dependencies
+          tags: ${{ steps.images.outputs.al2023 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.al2023 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.22
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.32
+            # Check Default GCC Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
+            # Check Default Clang Compilers
+            source /opt/compiler-env/setup-clang.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+            # Check Clang 15 Compilers
+            source /opt/compiler-env/setup-clang-15.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 15.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 15.0
+
+  x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:medium
+    needs:
+      - x86_64_build
+    outputs:
+      al2023: ${{ steps.images.outputs.al2023 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Final Image Names
+        id: images
+        run: |
+          echo al2023=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2023_x86_64 >> "$GITHUB_OUTPUT"
+          echo x509=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2023_x509 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.al2023 }}
+          docker pull ${{ needs.x86_64_build.outputs.x509 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.al2023 }} ${{ steps.images.outputs.al2023 }}
+          docker tag ${{ needs.x86_64_build.outputs.x509 }} ${{ steps.images.outputs.x509 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.al2023 }}
+          docker push ${{ steps.images.outputs.x509 }}
+
+  aarch64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:medium
+    needs:
+      - aarch64_build
+    outputs:
+      al2023: ${{ steps.images.outputs.al2023 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Final Image Names
+        id: images
+        run: |
+          echo al2023=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2023_aarch64 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.aarch64_build.outputs.al2023 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.aarch64_build.outputs.al2023 }} ${{ steps.images.outputs.al2023 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.al2023 }}
+
+  multiarch_manifest:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_push
+      - aarch64_push
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Manifest Name
+        id: images
+        run: |
+          echo al2023=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2023 >> "$GITHUB_OUTPUT"
+          echo latest=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:latest >> "$GITHUB_OUTPUT"
+      - name: Create & Push Multi-platform Manifests
+        run: |
+          docker manifest create ${{ steps.images.outputs.al2023 }} \
+            ${{ needs.x86_64_push.outputs.al2023 }} \
+            ${{ needs.aarch64_push.outputs.al2023 }}
+          docker manifest create ${{ steps.images.outputs.latest }} \
+            ${{ needs.x86_64_push.outputs.al2023 }} \
+            ${{ needs.aarch64_push.outputs.al2023 }}
+      - name: Push Multi-platform manifests
+        run: |
+          docker manifest push ${{ steps.images.outputs.al2023 }}
+          docker manifest push ${{ steps.images.outputs.latest }}

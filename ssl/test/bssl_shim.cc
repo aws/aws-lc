@@ -61,7 +61,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <vector>
 
 #include "../../crypto/internal.h"
-#include "../../crypto/ube/snapsafe_detect.h"
+#include "../../crypto/ube/vm_ube_detect.h"
 #include "../internal.h"
 #include "async_bio.h"
 #include "handshake_util.h"
@@ -1433,7 +1433,7 @@ class StderrDelimiter {
 };
 
 int main(int argc, char **argv) {
-#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_VM_UBE_TESTING)
   if (1 != HAZMAT_init_sysgenid_file()) {
     abort();
   }

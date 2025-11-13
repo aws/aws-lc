@@ -10,6 +10,9 @@ concurrency:
 env:
   DOCKER_BUILDKIT: 1
   GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
 jobs:
   cmake:
     if: github.repository_owner == 'aws'

@@ -46,7 +46,7 @@ typedef struct {
 #define ML_DSA_C_TILDE_BYTES_MAX (64)
 #define ML_DSA_POLYW1_PACKEDBYTES_MAX (192)
 #define ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX ((227 + SHAKE256_BLOCKSIZE - 1)/SHAKE256_BLOCKSIZE)
-#define ML_DSA_POLYZ_PACKEDBYTES_MAX (576)
+#define ML_DSA_POLYZ_PACKEDBYTES_MAX (640)
 
 OPENSSL_EXPORT void ml_dsa_44_params_init(ml_dsa_params *params);
 OPENSSL_EXPORT void ml_dsa_65_params_init(ml_dsa_params *params);
