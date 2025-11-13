@@ -99,6 +99,7 @@ def update_sources(
         utils.info(f"copied new file to upstream: {upstream_file}")
 
     # Update existing files from all sources
+    missing_files = []
     for source_name, source_info in sources.items():
         upstream_path = source_info["upstream_path"]
         local_path = source_info["local_path"]
@@ -111,13 +112,16 @@ def update_sources(
             local_file = local_path / relative_path
 
             if not local_file.exists():
-                raise SyncError(
-                    f"upstream file not found in cloned repo: {source_name}/{relative_path}"
-                )
-
-            if not filecmp.cmp(local_file, upstream_file, shallow=False):
+                missing_files.append(f"{source_name}/{relative_path}")
+            elif not filecmp.cmp(local_file, upstream_file, shallow=False):
                 shutil.copy2(local_file, upstream_file)
                 utils.info(f"updated upstream file: {source_name}/{relative_path}")
+
+    if missing_files:
+        files_list = "\n  ".join(missing_files)
+        raise SyncError(
+            f"the following files are in ./upstream but cannot be found in a new clone of the source repo:\n  {files_list}"
+        )
 
 
 def convert_sources(
