@@ -110,7 +110,7 @@ void CRYPTO_pre_sandbox_init(void) {
 
   // The randomness generation subsystem has a few kernel touch points that
   // can be blocked when sandboxed. For example, /dev/urandom, MADV_WIPEONFORK
-  // tagged state, and snapsafe allocated state. All this is implemented lazily.
+  // tagged state, and VM UBE allocated state. All this is implemented lazily.
   // Invoke the top-level function that will kick off the lazy work pre-sandbox.
   uint8_t buf[10];
   if (RAND_bytes(buf, 10) != 1) {

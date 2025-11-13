@@ -137,7 +137,7 @@ bool threadTest(const size_t numberOfThreads,
 bool forkAndRunTest(std::function<bool()> child_func,
   std::function<bool()> parent_func);
 
-void maybeDisableSomeForkDetectMechanisms(void);
+void maybeDisableSomeForkUbeDetectMechanisms(void);
 bool runtimeEmulationIsIntelSde(void);
 bool addressSanitizerIsEnabled(void);
 

@@ -5,6 +5,9 @@ on:
     branches: [main]
   push:
     branches: [main]
+permissions:
+  contents: read
+
 jobs:
   nixflake:
     runs-on: ubuntu-latest

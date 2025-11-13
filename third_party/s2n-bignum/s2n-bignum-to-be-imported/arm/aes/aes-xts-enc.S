@@ -104,6 +104,7 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
 
 // Encryption
 .Lxts_enc:
+        mov   w19, #0x87
         cmp x2, #0x20
         b.lo .Lxts_enc_tail1x   // when input = 1 with tail
 
@@ -112,7 +113,6 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         // the five ivs stored into, v6.16b,v8.16b,v9.16b,v10.16b,v11.16b
         fmov  x9, d6
         fmov  x10, v6.d[1]
-        mov   w19, #0x87
         tweak(d8, v8.d[1])
 
         cmp x2, #0x30
@@ -576,22 +576,22 @@ S2N_BN_SYMBOL(aes_hw_xts_encrypt):
         eor  v26.16b,v26.16b,v6.16b
 
         // Encrypt the composite block to get the last second encrypted text block
-        ldr  w6,[x3,#240]        // load key schedule...
-        ld1  {v0.16b},[x3],#16
-        sub  w6,w6,#2
-        ld1  {v1.16b},[x3],#16     // load key schedule...
-.Loop_final_enc:
-        aesr(v26.16b, v0.16b)
-        ld1  {v0.4s},[x3],#16
-        subs  w6,w6,#2
-        aesr(v26.16b, v1.16b)
-        ld1  {v1.4s},[x3],#16
-        b.gt  .Loop_final_enc
+        aesr(v26.16b, v16.16b)
+        aesr(v26.16b, v17.16b)
+        aesr(v26.16b, v12.16b)
+        aesr(v26.16b, v13.16b)
+        aesr(v26.16b, v14.16b)
+        aesr(v26.16b, v15.16b)
+        aesr(v26.16b, v4.16b)
+        aesr(v26.16b, v5.16b)
+        aesr(v26.16b, v18.16b)
+        aesr(v26.16b, v19.16b)
+        aesr(v26.16b, v20.16b)
+        aesr(v26.16b, v21.16b)
+        aesr(v26.16b, v22.16b)
+        aese  v26.16b,v23.16b
+        eor  v26.16b,v26.16b,v7.16b
 
-        aesr(v26.16b, v0.16b)
-        ld1  {v0.4s},[x3]
-        aese  v26.16b,v1.16b
-        eor  v26.16b,v26.16b,v0.16b
         eor  v26.16b,v26.16b,v6.16b
         st1  {v26.16b},[x1]
 

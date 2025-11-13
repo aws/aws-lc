@@ -2,7 +2,6 @@ import typing
 
 from aws_cdk import (
     Duration,
-    Stack,
     aws_codebuild as codebuild,
     aws_s3 as s3,
     Environment,
@@ -11,15 +10,6 @@ from constructs import Construct
 
 from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
 from util.build_spec_loader import BuildSpecLoader
-from util.metadata import (
-    GITHUB_PUSH_CI_BRANCH_TARGETS,
-    GITHUB_REPO_NAME,
-    GITHUB_REPO_OWNER,
-    PRE_PROD_ACCOUNT,
-    STAGING_GITHUB_REPO_OWNER,
-    STAGING_GITHUB_REPO_NAME,
-)
-
 
 class AwsLcGitHubX509CIStack(AwsLcBaseCiStack):
     def __init__(

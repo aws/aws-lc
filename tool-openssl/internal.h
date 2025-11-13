@@ -6,7 +6,6 @@
 
 #include <openssl/digest.h>
 #include <algorithm>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,7 +23,7 @@ struct Tool {
 
 bool IsNumeric(const std::string &str);
 
-X509 *CreateAndSignX509Certificate();
+
 X509_CRL *createTestCRL();
 bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 
@@ -38,7 +37,7 @@ enum class Source : uint8_t {
   kEnv,    // Password from environment with env: prefix
   kStdin,  // Password from stdin
 #ifndef _WIN32
-  kFd,     // Password from file descriptor with fd: prefix (Unix only)
+  kFd,  // Password from file descriptor with fd: prefix (Unix only)
 #endif
 };
 
@@ -82,8 +81,6 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(std::string, pass_util::SensitiveStringDeleter)
 BSSL_NAMESPACE_END
 
-bool LoadPrivateKeyAndSignCertificate(X509 *x509,
-                                      const std::string &signkey_path);
 EVP_PKEY *CreateTestKey(int key_bits);
 
 tool_func_t FindTool(const std::string &name);
@@ -91,6 +88,7 @@ tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool CRLTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
+bool dhparamTool(const args_list_t &args);
 bool ecparamTool(const args_list_t &args);
 bool genrsaTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
@@ -108,7 +106,7 @@ bool X509Tool(const args_list_t &args);
 
 
 // Req Tool Utilities
-bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string);
+bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
 
 
 // Rehash tool Utils
@@ -197,5 +195,7 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               std::string default_out_arg,
                               const ordered_args_map_t &args);
 }  // namespace ordered_args
+
+void SetUmaskForPrivateKey();
 
 #endif  // TOOL_OPENSSL_INTERNAL_H
