@@ -20,3 +20,7 @@ def warning(s: str):
 
 def error(s: str):
     eprint(f"{Colors.RED}ERROR{Colors.RESET}: {s}")
+
+
+class SyncError(Exception):
+    pass

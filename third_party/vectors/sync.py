@@ -11,6 +11,7 @@ import shutil
 import filecmp
 
 from vectorslib import utils
+from vectorslib.utils import SyncError
 
 
 def fetch_sources(
@@ -21,7 +22,7 @@ def fetch_sources(
 ):
     if skip_fetch:
         utils.info("skipping fetch")
-        return True
+        return
 
     for source_name, source_info in sources.items():
         stmpdir = tmpdir / source_name
@@ -46,15 +47,12 @@ def fetch_sources(
                 capture_output=True,
             )
             if ret.returncode != 0:
-                utils.error(
+                raise SyncError(
                     f"failed to clone {source_name}: {ret.stderr.decode().strip()}"
                 )
-                return False
 
         assert stmpdir.is_dir()
         source_info["local_path"] = stmpdir
-
-    return True
 
 
 def update_sources(
@@ -65,7 +63,7 @@ def update_sources(
 ):
     if skip_fetch:
         utils.info("skipping update")
-        return True
+        return
 
     upstream_dir = cwd / "upstream"
     upstream_dir.mkdir(parents=True, exist_ok=True)
@@ -80,25 +78,21 @@ def update_sources(
         source_name = file_path.parts[0]
 
         if source_name not in sources:
-            utils.error(
+            raise SyncError(
                 f"unknown source '{source_name}', expected one of: {list(sources.keys())}"
             )
-            return False
 
         relative_path = pathlib.Path(*file_path.parts[1:])
         local_file = sources[source_name]["local_path"] / relative_path
 
         if not local_file.exists():
-            utils.error(f"file not found in upstream repo: {relative_path}")
-            return False
+            raise SyncError(f"file not found in upstream repo: {relative_path}")
         if local_file.is_dir():
-            utils.error(f"path is a directory, not a file: {relative_path}")
-            return False
+            raise SyncError(f"path is a directory, not a file: {relative_path}")
 
         upstream_file = sources[source_name]["upstream_path"] / relative_path
         if upstream_file.exists():
-            utils.error(f"file already exists in upstream: {upstream_file}")
-            return False
+            raise SyncError(f"file already exists in upstream: {upstream_file}")
 
         upstream_file.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(local_file, upstream_file)
@@ -117,16 +111,13 @@ def update_sources(
             local_file = local_path / relative_path
 
             if not local_file.exists():
-                utils.error(
+                raise SyncError(
                     f"upstream file not found in cloned repo: {source_name}/{relative_path}"
                 )
-                return False
 
             if not filecmp.cmp(local_file, upstream_file, shallow=False):
                 shutil.copy2(local_file, upstream_file)
                 utils.info(f"updated upstream file: {source_name}/{relative_path}")
-
-    return True
 
 
 def convert_sources(
@@ -137,7 +128,7 @@ def convert_sources(
 ):
     if skip_convert:
         utils.info("skipping convert")
-        return True
+        return
 
     condir = cwd / "converted"
     condir.mkdir(parents=True, exist_ok=True)
@@ -147,7 +138,6 @@ def convert_sources(
         assert source_info["converted_path"].is_dir()
 
     utils.warning("convert_sources isn't yet fully implemented")
-    return True
 
 
 def sync_sources(
@@ -159,13 +149,9 @@ def sync_sources(
     skip_convert: bool,
     using_custom_tmpdir: bool = False,
 ):
-    if not fetch_sources(tmpdir, sources, skip_fetch, using_custom_tmpdir):
-        return False
-    if not update_sources(cwd, sources, new_file, skip_fetch):
-        return False
-    if not convert_sources(cwd, tmpdir, sources, skip_convert):
-        return False
-    return True
+    fetch_sources(tmpdir, sources, skip_fetch, using_custom_tmpdir)
+    update_sources(cwd, sources, new_file, skip_fetch)
+    convert_sources(cwd, tmpdir, sources, skip_convert)
 
 
 def main() -> int:
@@ -176,8 +162,6 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-
-    from vectorslib import utils
 
     utils.info("script run from the correct directory")
 
@@ -214,26 +198,28 @@ def main() -> int:
     with open("sources.toml", "rb") as f:
         sources = tomllib.load(f)
 
-    if args.tmpdir:
-        tmpdir = pathlib.Path(args.tmpdir)
-        tmpdir.mkdir(parents=True, exist_ok=True)
-        if not sync_sources(
-            cwd,
-            tmpdir,
-            sources,
-            args.new,
-            args.skip_fetch,
-            args.skip_convert,
-            using_custom_tmpdir=True,
-        ):
-            return 1
-    else:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpdir = pathlib.Path(tmpdirname)
-            if not sync_sources(
-                cwd, tmpdir, sources, args.new, args.skip_fetch, args.skip_convert
-            ):
-                return 1
+    try:
+        if args.tmpdir:
+            tmpdir = pathlib.Path(args.tmpdir)
+            tmpdir.mkdir(parents=True, exist_ok=True)
+            sync_sources(
+                cwd,
+                tmpdir,
+                sources,
+                args.new,
+                args.skip_fetch,
+                args.skip_convert,
+                using_custom_tmpdir=True,
+            )
+        else:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                tmpdir = pathlib.Path(tmpdirname)
+                sync_sources(
+                    cwd, tmpdir, sources, args.new, args.skip_fetch, args.skip_convert
+                )
+    except SyncError as e:
+        utils.error(str(e))
+        return 1
 
     return 0
 
