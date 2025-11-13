@@ -1824,15 +1824,12 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_SHORTER_NONCE) {
 
     // Test encryption and decryption with a plaintext
     const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
-    std::vector<uint8_t> ciphertext_and_tag;
-    DecodeHex(&ciphertext_and_tag, "01e5f78bc99de880bd2eeff2870d361f0eab5b2fc55268f34b14045878fe3668db980319");
     test(iv, plaintext, strlen((const char *)plaintext));
 
     // Test with a 23-byte IV
     DecodeHex(&iv, "4142434445464748494a4b4c4d4e4f5051525354555657");
-
+    
     // Test encryption and decryption again with another plaintext
     plaintext = (const uint8_t *)"XAES-256-GCM";
-    DecodeHex(&ciphertext_and_tag, "ce546ef63c9cc60765923609b33a9a1974e96e52daf2fcf7075e2271");
     test(iv, plaintext, strlen((const char *)plaintext));
 }
