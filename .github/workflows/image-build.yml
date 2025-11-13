@@ -49,3 +49,5 @@ jobs:
     uses: ./.github/workflows/image-build-windows.yml
   verification:
     uses: ./.github/workflows/image-build-formal-verification.yml
+  android:
+    uses: ./.github/workflows/image-build-android.yml
