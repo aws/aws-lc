@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-13"
+          - "macos-15-intel"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -59,7 +59,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - "macos-13"
+          - "macos-15-intel"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -736,4 +736,47 @@ jobs:
           cpu_count: 3
           run: |
             sudo pkg install -y git gmake cmake go ninja
+            tests/ci/run_bsd_tests.sh
+  netbsd:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - "x86-64"
+          - "arm64"
+        version:
+          - "10.1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - name: Prepare VM
+        uses: cross-platform-actions/action@2d97d42e1972a17b045fd709a422f7e55a86230d
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+          AWS_LC_GO_TEST_TIMEOUT: 90m
+          GOFLAGS: "-buildvcs=false"
+        with:
+          environment_variables: "AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS"
+          operating_system: netbsd
+          architecture: ${{ matrix.arch }}
+          version: ${{ matrix.version }}
+          shell: bash
+          memory: 12G
+          cpu_count: 3
+          run: |
+            set -x
+            export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${{ (matrix.arch == 'arm64' && 'aarch64') || 'x86_64' }}/${{ matrix.version }}/All"
+            sudo -E pkg_add -u curl cmake gmake perl mozilla-rootcerts
+            ARCH=${{ (matrix.arch == 'x86-64' && 'amd') || 'arm' }}
+            export PATH="/usr/pkg/bin:/usr/pkg/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+            curl -O https://dl.google.com/go/go1.25.2.netbsd-${ARCH}64.tar.gz
+            sudo mkdir -p /usr/local
+            sudo tar -C /usr/local -xzf go1.25.2.netbsd-${ARCH}64.tar.gz
+            export GOROOT=/usr/local/go
+            export PATH="$PATH:$GOROOT/bin"
             tests/ci/run_bsd_tests.sh

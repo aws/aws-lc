@@ -482,7 +482,7 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/getentropy.c
   rand_extra/rand_extra.c
-  rand_extra/snapsafe_fallback.c
+  rand_extra/vm_ube_fallback.c
   rand_extra/urandom.c
   rand_extra/windows.c
   rc4/rc4.c
@@ -504,8 +504,8 @@ add_library(
   trust_token/trust_token.c
   trust_token/voprf.c
   ube/ube.c
-  ube/fork_detect.c
-  ube/snapsafe_detect.c
+  ube/fork_ube_detect.c
+  ube/vm_ube_detect.c
   x509/a_digest.c
   x509/a_sign.c
   x509/a_verify.c
@@ -576,6 +576,7 @@ add_library(
   x509/x509name.c
   x509/x509rset.c
   x509/x509spki.c
+  ui/ui.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
   decrepit/cast/cast.c
@@ -860,7 +861,7 @@ if(BUILD_TESTING)
     pool/pool_test.cc
     rand_extra/ccrandomgeneratebytes_test.cc
     rand_extra/getentropy_test.cc
-    rand_extra/snapsafe_fallback_test.cc
+    rand_extra/vm_ube_fallback_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc
     rsa_extra/rsassa_pss_asn1_test.cc
@@ -874,8 +875,8 @@ if(BUILD_TESTING)
     thread_test.cc
     trust_token/trust_token_test.cc
     ube/ube_test.cc
-    ube/fork_detect_test.cc
-    ube/snapsafe_detect_test.cc
+    ube/fork_ube_detect_test.cc
+    ube/vm_ube_detect_test.cc
     x509/tab_test.cc
     x509/x509_test.cc
     x509/x509_compat_test.cc

@@ -100,7 +100,7 @@ class CiStage(Stage):
             commands=[
                 "cd tests/ci/cdk/pipeline/scripts",
                 'trigger_conditions=$(./check_trigger_conditions.sh --build-type ci --stacks "${STACKS}")',
-                "export NEED_REBUILD=$(echo $trigger_conditions | sed -n 's/.*\(NEED_REBUILD=[0-9]*\).*/\\1/p' | cut -d'=' -f2 )",
+                r"export NEED_REBUILD=$(echo $trigger_conditions | sed -n 's/.*\(NEED_REBUILD=[0-9]*\).*/\1/p' | cut -d'=' -f2 )",
             ],
             env={
                 **env,

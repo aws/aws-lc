@@ -431,7 +431,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
       // Hard bail.
       abort();
     }
-  }  
+  }
 
   // Clear |errno| so it has defined value if |read| or |getrandom|
   // "successfully" returns zero.

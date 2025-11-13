@@ -19,6 +19,7 @@ from util.fleet_config_loader import (
     FleetConfigurationFile,
     validate_fleet_config
 )
+from util.metadata import IS_DEV
 
 
 class CodeBuildFleet(Construct):
@@ -50,9 +51,14 @@ class CodeBuildFleet(Construct):
         """Create the CodeBuild fleet based on configuration."""
         fleet_props = {
             "fleet_name": self.fleet_name,
-            "base_capacity": self.fleet_config.base_capacity,
             "environment_type": self._get_environment_type(),
         }
+
+        if IS_DEV:
+            # Save some money and force capacity to 1.
+            fleet_props["base_capacity"] = 1
+        else:
+            fleet_props["base_capacity"] = self.fleet_config.base_capacity
         
         # Add compute configuration based on type
         compute_config = self._get_compute_configuration()

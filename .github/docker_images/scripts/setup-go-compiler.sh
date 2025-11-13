@@ -5,10 +5,10 @@
 
 set -euo pipefail
 
-GO_ENVROOT="/.goenv"
+GO_ENVROOT="${GO_ENVROOT:-/.goenv}"
 GO_VERSION=${GO_VERSION:-1.25.1}
 
-git clone https://github.com/go-nv/goenv.git "${GO_ENVROOT}"
+git clone --depth 1 https://github.com/go-nv/goenv.git "${GO_ENVROOT}"
 
 goenv install "${GO_VERSION}"
 

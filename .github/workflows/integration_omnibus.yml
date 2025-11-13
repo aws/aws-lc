@@ -457,10 +457,10 @@ jobs:
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:24.04
           env: |
             FIPS
           ipv6: true
           run: |
-            source /opt/compiler-env/setup-gcc-12.sh
+            source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}

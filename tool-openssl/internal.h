@@ -6,7 +6,6 @@
 
 #include <openssl/digest.h>
 #include <algorithm>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -89,6 +88,7 @@ tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool CRLTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
+bool dhparamTool(const args_list_t &args);
 bool ecparamTool(const args_list_t &args);
 bool genrsaTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
@@ -106,7 +106,7 @@ bool X509Tool(const args_list_t &args);
 
 
 // Req Tool Utilities
-bssl::UniquePtr<X509_NAME> parse_subject_name(std::string &subject_string);
+bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
 
 
 // Rehash tool Utils
@@ -195,5 +195,7 @@ bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
                               std::string default_out_arg,
                               const ordered_args_map_t &args);
 }  // namespace ordered_args
+
+void SetUmaskForPrivateKey();
 
 #endif  // TOOL_OPENSSL_INTERNAL_H

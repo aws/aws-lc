@@ -22,11 +22,11 @@
 #include "abi_test.h"
 #include "gtest_main.h"
 #include "../internal.h"
-#include "../ube/snapsafe_detect.h"
+#include "../ube/vm_ube_detect.h"
 
 
 int main(int argc, char **argv) {
-#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_VM_UBE_TESTING)
   if (1 != HAZMAT_init_sysgenid_file()) {
     abort();
   }
