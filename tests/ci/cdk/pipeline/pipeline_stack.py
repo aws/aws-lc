@@ -195,45 +195,6 @@ class AwsLcCiPipeline(Stack):
             targets=[targets.CodePipeline(pipeline=base_pipeline)],
         )
 
-        # Pipeline is run everytime we push to main branch. Avoid unnecessary hold up if these updates are non-CI related
-        if not IS_DEV:
-            start_index = next(
-                (i for i, stage in enumerate(base_pipeline.stages) if stage.stage_name == "PromoteToProduction"),
-                None
-            )
-
-            override_condition = {
-                "Conditions": [
-                    {
-                        "Result": "SKIP",
-                        "Rules": [
-                            {
-                                "Name": "Skip_Prod_Deployment",
-                                "RuleTypeId": {
-                                    "Category": "Rule",
-                                    "Owner": "AWS",
-                                    "Provider": "VariableCheck",
-                                    "Version": "1"
-                                },
-                                "Configuration": {
-                                    "Variable": "#{Staging-CiTests@PrebuildCheck.NEED_REBUILD}",
-                                    "Value": "0",
-                                    "Operator": "NE"
-                                },
-                            }
-                        ]
-                    }
-                ]
-            }
-
-            l1_pipeline = base_pipeline.node.default_child
-
-            for i in range(start_index, int(base_pipeline.stage_count)):
-                l1_pipeline.add_override(
-                    f"Properties.Stages.{i}.BeforeEntry",
-                    override_condition
-                )
-
     def deploy_to_environment(
         self,
         deploy_environment_type: DeployEnvironmentType,
@@ -305,58 +266,6 @@ class AwsLcCiPipeline(Stack):
                                               deploy_environment=deploy_environment)
         pipeline.add_stage(gh_actions_stage)
 
-        docker_build_wave = pipeline.add_wave(
-            f"{deploy_environment_type.value}-DockerImageBuild"
-        )
-
-        linux_stage = LinuxDockerImageBuildStage(
-            self,
-            f"{deploy_environment_type.value}-LinuxDockerImageBuild",
-            pipeline_environment=pipeline_environment,
-            deploy_environment=deploy_environment,
-        )
-
-        linux_stage.add_stage_to_wave(
-            wave=docker_build_wave,
-            input=source.primary_output,
-            role=cross_account_role,
-            additional_stacks=setup_stage.stacks,
-            max_retry=MAX_TEST_RETRY,
-            env=codebuild_environment_variables,
-        )
-
-        windows_stage = WindowsDockerImageBuildStage(
-            self,
-            f"{deploy_environment_type.value}-WindowsDockerImageBuild",
-            pipeline_environment=pipeline_environment,
-            deploy_environment=deploy_environment,
-        )
-
-        windows_stage.add_stage_to_wave(
-            wave=docker_build_wave,
-            input=source.primary_output,
-            role=cross_account_role,
-            additional_stacks=setup_stage.stacks,
-            max_retry=MAX_TEST_RETRY,
-            env=codebuild_environment_variables,
-        )
-
-        docker_build_wave.add_post(
-            CodeBuildStep(
-                f"{deploy_environment_type.value}-FinalizeImages",
-                input=source,
-                commands=[
-                    "cd tests/ci/cdk/pipeline/scripts",
-                    './finalize_images.sh --repos "${ECR_REPOS}"',
-                ],
-                env={
-                    **codebuild_environment_variables,
-                    "ECR_REPOS": f"{' '.join(linux_stage.ecr_repo_names)} {' '.join(windows_stage.ecr_repo_names)}",
-                },
-                role=cross_account_role,
-            )
-        )
-
         ci_stage = CiStage(
             self,
             f"{deploy_environment_type.value}-CiTests",
@@ -371,6 +280,5 @@ class AwsLcCiPipeline(Stack):
             max_retry=MAX_TEST_RETRY,
             env={
                 **codebuild_environment_variables,
-                "PREVIOUS_REBUILDS": f"{linux_stage.need_rebuild} {linux_stage.need_rebuild}",
             },
         )
