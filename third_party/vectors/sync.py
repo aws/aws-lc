@@ -15,17 +15,17 @@ from vectorslib.utils import SyncError
 
 
 def fetch_sources(
-    tmpdir: pathlib.Path,
+    clone_dir: pathlib.Path,
     sources: dict,
-    using_custom_tmpdir: bool = False,
+    using_custom_clone_dir: bool = False,
 ):
     for source_name, source_info in sources.items():
-        stmpdir = tmpdir / source_name
+        source_clone_dir = clone_dir / source_name
 
-        if stmpdir.is_dir():
-            assert using_custom_tmpdir
+        if source_clone_dir.is_dir():
+            assert using_custom_clone_dir
             utils.warning(
-                f"using existing, potentially stale upstream clone of {source_name} at {stmpdir}"
+                f"using existing, potentially stale upstream clone of {source_name} at {source_clone_dir}"
             )
         else:
             ret = subprocess.run(
@@ -37,7 +37,7 @@ def fetch_sources(
                     "--depth",
                     "1",
                     source_info["git_url"],
-                    str(stmpdir),
+                    str(source_clone_dir),
                 ],
                 capture_output=True,
             )
@@ -46,8 +46,8 @@ def fetch_sources(
                     f"failed to clone {source_name}: {ret.stderr.decode().strip()}"
                 )
 
-        assert stmpdir.is_dir()
-        source_info["local_path"] = stmpdir
+        assert source_clone_dir.is_dir()
+        source_info["local_path"] = source_clone_dir
 
 
 def update_sources(
@@ -116,7 +116,7 @@ def update_sources(
 
 def convert_sources(
     cwd: pathlib.Path,
-    tmpdir: pathlib.Path,
+    clone_dir: pathlib.Path,
     sources: dict,
 ):
     condir = cwd / "converted"
@@ -131,21 +131,21 @@ def convert_sources(
 
 def sync_sources(
     cwd: pathlib.Path,
-    tmpdir: pathlib.Path,
+    clone_dir: pathlib.Path,
     sources: dict,
     new_file: typing.Optional[str],
     skip_update: bool,
     skip_convert: bool,
-    using_custom_tmpdir: bool = False,
+    using_custom_clone_dir: bool = False,
 ):
     if not skip_update:
-        fetch_sources(tmpdir, sources, using_custom_tmpdir)
+        fetch_sources(clone_dir, sources, using_custom_clone_dir)
         update_sources(cwd, sources, new_file)
     else:
         utils.info("skipping update")
 
     if not skip_convert:
-        convert_sources(cwd, tmpdir, sources)
+        convert_sources(cwd, clone_dir, sources)
     else:
         utils.info("skipping convert")
 
@@ -185,9 +185,9 @@ def main() -> int:
         help="skip converting vectors to file_test.h format",
     )
     parser.add_argument(
-        "--tmpdir",
+        "--clone-dir",
         metavar="DIR",
-        help="use custom temporary directory for cloned repositories",
+        help="use custom directory for cloned repositories (persistent across runs)",
     )
     args = parser.parse_args()
 
@@ -195,23 +195,28 @@ def main() -> int:
         sources = tomllib.load(f)
 
     try:
-        if args.tmpdir:
-            tmpdir = pathlib.Path(args.tmpdir)
-            tmpdir.mkdir(parents=True, exist_ok=True)
+        if args.clone_dir:
+            clone_dir = pathlib.Path(args.clone_dir)
+            clone_dir.mkdir(parents=True, exist_ok=True)
             sync_sources(
                 cwd,
-                tmpdir,
+                clone_dir,
                 sources,
                 args.new,
                 args.skip_update,
                 args.skip_convert,
-                using_custom_tmpdir=True,
+                using_custom_clone_dir=True,
             )
         else:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                tmpdir = pathlib.Path(tmpdirname)
+            with tempfile.TemporaryDirectory() as temp_clone_dir:
+                clone_dir = pathlib.Path(temp_clone_dir)
                 sync_sources(
-                    cwd, tmpdir, sources, args.new, args.skip_update, args.skip_convert
+                    cwd,
+                    clone_dir,
+                    sources,
+                    args.new,
+                    args.skip_update,
+                    args.skip_convert,
                 )
     except SyncError as e:
         utils.error(str(e))
