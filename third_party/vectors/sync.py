@@ -17,13 +17,8 @@ from vectorslib.utils import SyncError
 def fetch_sources(
     tmpdir: pathlib.Path,
     sources: dict,
-    skip_fetch: bool,
     using_custom_tmpdir: bool = False,
 ):
-    if skip_fetch:
-        utils.info("skipping fetch")
-        return
-
     for source_name, source_info in sources.items():
         stmpdir = tmpdir / source_name
 
@@ -59,12 +54,7 @@ def update_sources(
     cwd: pathlib.Path,
     sources: dict,
     new_file: typing.Optional[str],
-    skip_fetch: bool,
 ):
-    if skip_fetch:
-        utils.info("skipping update")
-        return
-
     upstream_dir = cwd / "upstream"
     upstream_dir.mkdir(parents=True, exist_ok=True)
 
@@ -128,12 +118,7 @@ def convert_sources(
     cwd: pathlib.Path,
     tmpdir: pathlib.Path,
     sources: dict,
-    skip_convert: bool,
 ):
-    if skip_convert:
-        utils.info("skipping convert")
-        return
-
     condir = cwd / "converted"
     condir.mkdir(parents=True, exist_ok=True)
     for source_name, source_info in sources.items():
@@ -149,13 +134,20 @@ def sync_sources(
     tmpdir: pathlib.Path,
     sources: dict,
     new_file: typing.Optional[str],
-    skip_fetch: bool,
+    skip_update: bool,
     skip_convert: bool,
     using_custom_tmpdir: bool = False,
 ):
-    fetch_sources(tmpdir, sources, skip_fetch, using_custom_tmpdir)
-    update_sources(cwd, sources, new_file, skip_fetch)
-    convert_sources(cwd, tmpdir, sources, skip_convert)
+    if not skip_update:
+        fetch_sources(tmpdir, sources, using_custom_tmpdir)
+        update_sources(cwd, sources, new_file)
+    else:
+        utils.info("skipping update")
+
+    if not skip_convert:
+        convert_sources(cwd, tmpdir, sources)
+    else:
+        utils.info("skipping convert")
 
 
 def main() -> int:
@@ -183,9 +175,9 @@ def main() -> int:
         help="verify files are up-to-date without making changes",
     )
     parser.add_argument(
-        "--skip-fetch",
+        "--skip-update",
         action="store_true",
-        help="skip fetching from upstream repositories",
+        help="skip fetching and updating from upstream repositories",
     )
     parser.add_argument(
         "--skip-convert",
@@ -211,7 +203,7 @@ def main() -> int:
                 tmpdir,
                 sources,
                 args.new,
-                args.skip_fetch,
+                args.skip_update,
                 args.skip_convert,
                 using_custom_tmpdir=True,
             )
@@ -219,7 +211,7 @@ def main() -> int:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tmpdir = pathlib.Path(tmpdirname)
                 sync_sources(
-                    cwd, tmpdir, sources, args.new, args.skip_fetch, args.skip_convert
+                    cwd, tmpdir, sources, args.new, args.skip_update, args.skip_convert
                 )
     except SyncError as e:
         utils.error(str(e))
