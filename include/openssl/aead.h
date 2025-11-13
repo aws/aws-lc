@@ -211,7 +211,7 @@ OPENSSL_EXPORT size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead);
 // AEAD operations.
 
 union evp_aead_ctx_st_state {
-  uint8_t opaque[808];
+  uint8_t opaque[564];
   uint64_t alignment;
   void *ptr;
 };

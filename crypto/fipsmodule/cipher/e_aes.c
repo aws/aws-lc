@@ -1814,8 +1814,11 @@ static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1,
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) {
         M[i] ^= k1[i];
     }
-
-    AES_encrypt(M, derived_key, xaes_key);
+    
+    AES_encrypt(M, derived_key, xaes_key); 
+    /* Since M1[i] and M2[i] are the same except at i = 1, where: 
+     * M1[1] = k1[1] ^ 0x01, and M2[1] = k1[1] ^ 0x02, we have:  
+     * M2[1] = M1[1] ^ 0x03 = (k1[1] ^ 0x01) ^ (0x01 ^ 0x02) = M2[1] */
     M[1] ^= 0x03;
     AES_encrypt(M, derived_key + AES_BLOCK_SIZE, xaes_key);
 
@@ -1921,7 +1924,6 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm) {
 // ---------------- EVP_AEAD XAES-256-GCM Without Key Commitment ----------------
 // ------------------------------------------------------------------------------
 typedef struct {
-    struct aead_aes_gcm_ctx gcm_ctx;
     AES_KEY xaes_key; 
     uint8_t k1[AES_BLOCK_SIZE]; 
 } AEAD_XAES_256_GCM_CTX;
@@ -1937,7 +1939,7 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     // ctx->state is a void pointer in the EVP_AEAD_CTX object pointing to an 
     // opaque memory that can be used to store implementation-specific data
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
-    
+
     xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
 
     // requested_tag_len = 0 means using the default tag length of AES_GCM
@@ -1946,8 +1948,8 @@ static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 1;
 }
 
-static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, 
-                            const uint8_t *nonce, const size_t nonce_len) {
+static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx, struct aead_aes_gcm_ctx *gcm_ctx, 
+                                         const uint8_t *nonce, const size_t nonce_len) {
     if(nonce_len < 20 || nonce_len > 24) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
         return 0;
@@ -1962,8 +1964,6 @@ static int aead_xaes_256_gcm_set_gcm_key(AEAD_XAES_256_GCM_CTX *xaes_ctx,
 
     xaes_256_gcm_CMAC_derive_key(&xaes_ctx->xaes_key, xaes_ctx->k1, nonce, gcm_key);
     
-    struct aead_aes_gcm_ctx *gcm_ctx = &xaes_ctx->gcm_ctx;
-
     gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL,
                                 gcm_key, XAES_256_GCM_KEY_LENGTH);
     
@@ -1982,17 +1982,19 @@ static int aead_xaes_256_gcm_seal_scatter(
     
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
 
-    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, nonce, nonce_len)) {
+    struct aead_aes_gcm_ctx gcm_ctx;
+
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
         return 0;
     }
-    
+
     // Reference for nonce size < 24 bytes: 
     // https://eprint.iacr.org/2025/758.pdf#page=24 
     /* When nonce size b < 24 bytes, it uses bytes [b-12:b]
      * of input nonce as iv for the underlying AES encryption. 
      * nonce_len is b in the referece, where 20 <= b <= 24 */
     return aead_aes_gcm_seal_scatter_impl(
-        &xaes_ctx->gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
+        &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len, 
         nonce + nonce_len - AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
         in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len);
 }
@@ -2004,8 +2006,10 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *ad, size_t ad_len) {
 
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+    
+    struct aead_aes_gcm_ctx gcm_ctx;
 
-    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, nonce, nonce_len)) {
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
         return 0;
     }
     
@@ -2015,7 +2019,7 @@ static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
      * of input nonce as iv for the underlying AES decryption. 
      * nonce_len is b in the referece, where 20 <= b <= 24 */
     return aead_aes_gcm_open_gather_impl(
-        &xaes_ctx->gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
+        &gcm_ctx, out, nonce + nonce_len - AES_GCM_NONCE_LENGTH, 
         AES_GCM_NONCE_LENGTH, in, in_len, in_tag, in_tag_len,
         ad, ad_len, ctx->tag_len);
 }
