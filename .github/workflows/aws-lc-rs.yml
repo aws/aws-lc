@@ -12,6 +12,9 @@ env:
   AWS_LC_SYS_CMAKE_BUILDER: 1
   RUST_NIGHTLY_TOOLCHAIN: nightly
   RUST_SCRIPT_NIGHTLY_TOOLCHAIN: nightly
+permissions:
+  contents: read
+
 jobs:
   aws-lc-rs-bindgen:
     if: github.repository_owner == 'aws'

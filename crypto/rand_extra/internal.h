@@ -11,7 +11,8 @@
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
 #elif defined(OPENSSL_MACOS) || defined(OPENSSL_OPENBSD) || \
-    defined(OPENSSL_FREEBSD) || defined(OPENSSL_SOLARIS) || \
+    defined(OPENSSL_FREEBSD)  || defined(OPENSSL_NETBSD) || \
+    defined(OPENSSL_SOLARIS) || \
     (defined(OPENSSL_LINUX) && !defined(HAVE_LINUX_RANDOM_H))
 #define OPENSSL_RAND_GETENTROPY
 #elif defined(OPENSSL_IOS)
@@ -53,7 +54,7 @@ OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
 // spinning loops.
 #define MAX_BACKOFF_RETRIES 9
 
-OPENSSL_EXPORT int snapsafe_fallback_get_seed(
+OPENSSL_EXPORT int vm_ube_fallback_get_seed(
     uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
 #if defined(__cplusplus)

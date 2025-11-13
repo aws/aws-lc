@@ -594,25 +594,23 @@ S2N_BN_SYMBOL(aes_hw_xts_decrypt):
 // Decrypt the second to last block
 .Lxts_dec_1st_done:
         eor    v26.16b,v0.16b,v8.16b
-        ldr    w6,[x3,#240]
-        ld1    {v0.4s},[x3],#16
-        sub    w6,w6,#2
-        ld1    {v1.4s},[x3],#16
-.Loop_final_2nd_dec:
-        aesd    v26.16b,v0.16b
-        aesimc    v26.16b,v26.16b
-        ld1    {v0.4s},[x3],#16     // load key schedule...
-        subs    w6,w6,#2
-        aesd    v26.16b,v1.16b
-        aesimc    v26.16b,v26.16b
-        ld1    {v1.4s},[x3],#16     // load key schedule...
-        b.gt    .Loop_final_2nd_dec
+     
+        aesdr(v26.16b, v16.16b)
+        aesdr(v26.16b, v17.16b)
+        aesdr(v26.16b, v12.16b)
+        aesdr(v26.16b, v13.16b)
+        aesdr(v26.16b, v14.16b)
+        aesdr(v26.16b, v15.16b)
+        aesdr(v26.16b, v4.16b)
+        aesdr(v26.16b, v5.16b)
+        aesdr(v26.16b, v18.16b)
+        aesdr(v26.16b, v19.16b)
+        aesdr(v26.16b, v20.16b)
+        aesdr(v26.16b, v21.16b)
+        aesdr(v26.16b, v22.16b)
+        aesd  v26.16b,v23.16b
+        eor  v26.16b,v26.16b,v7.16b
 
-        aesd    v26.16b,v0.16b
-        aesimc    v26.16b,v26.16b
-        ld1    {v0.4s},[x3]
-        aesd    v26.16b,v1.16b
-        eor    v26.16b,v26.16b,v0.16b
         eor    v26.16b,v26.16b,v8.16b
         st1    {v26.16b},[x1]
 
@@ -633,25 +631,22 @@ S2N_BN_SYMBOL(aes_hw_xts_decrypt):
         eor    v26.16b,v26.16b,v6.16b
 
         // Decrypt the composite block to get the last second plain text block
-        ldr    w6,[x7,#240]
-        ld1    {v0.16b},[x7],#16
-        sub    w6,w6,#2
-        ld1    {v1.16b},[x7],#16
-.Loop_final_dec:
-        aesd    v26.16b,v0.16b
-        aesimc    v26.16b,v26.16b
-        ld1    {v0.4s},[x7],#16     // load key schedule...
-        subs    w6,w6,#2
-        aesd    v26.16b,v1.16b
-        aesimc    v26.16b,v26.16b
-        ld1    {v1.4s},[x7],#16     // load key schedule...
-        b.gt    .Loop_final_dec
+        aesdr(v26.16b, v16.16b)
+        aesdr(v26.16b, v17.16b)
+        aesdr(v26.16b, v12.16b)
+        aesdr(v26.16b, v13.16b)
+        aesdr(v26.16b, v14.16b)
+        aesdr(v26.16b, v15.16b)
+        aesdr(v26.16b, v4.16b)
+        aesdr(v26.16b, v5.16b)
+        aesdr(v26.16b, v18.16b)
+        aesdr(v26.16b, v19.16b)
+        aesdr(v26.16b, v20.16b)
+        aesdr(v26.16b, v21.16b)
+        aesdr(v26.16b, v22.16b)
+        aesd  v26.16b,v23.16b
+        eor  v26.16b,v26.16b,v7.16b
 
-        aesd    v26.16b,v0.16b
-        aesimc    v26.16b,v26.16b
-        ld1    {v0.4s},[x7]
-        aesd    v26.16b,v1.16b
-        eor    v26.16b,v26.16b,v0.16b
         eor    v26.16b,v26.16b,v6.16b
         st1    {v26.16b},[x1]
 

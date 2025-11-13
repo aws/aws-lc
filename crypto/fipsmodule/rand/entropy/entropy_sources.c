@@ -8,7 +8,7 @@
 #include "../internal.h"
 #include "../../delocate.h"
 #include "../../../rand_extra/internal.h"
-#include "../../../ube/snapsafe_detect.h"
+#include "../../../ube/vm_ube_detect.h"
 
 DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
@@ -68,12 +68,12 @@ static void opt_out_cpu_jitter_free_thread(struct entropy_source_t *entropy_sour
 
 static int opt_out_cpu_jitter_get_seed_wrap(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
-  return snapsafe_fallback_get_seed(seed);
+  return vm_ube_fallback_get_seed(seed);
 }
 
 // Define conditions for not using CPU Jitter
-static int is_snapsafe_environment(void) {
-  return CRYPTO_get_snapsafe_supported();
+static int is_vm_ube_environment(void) {
+  return CRYPTO_get_vm_ube_supported();
 }
 
 static int has_explicitly_opted_out_of_cpu_jitter(void) {
@@ -86,7 +86,7 @@ static int has_explicitly_opted_out_of_cpu_jitter(void) {
 
 static int use_opt_out_cpu_jitter_entropy(void) {
   if (has_explicitly_opted_out_of_cpu_jitter() == 1 ||
-      is_snapsafe_environment() == 1) {
+      is_vm_ube_environment() == 1) {
     return 1;
   }
   return 0;

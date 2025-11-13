@@ -1,0 +1,207 @@
+name: image-build-ubuntu2404
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-ubuntu2404
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/ubuntu/Dockerfile.2404
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/ubuntu/Dockerfile.2404
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
+jobs:
+  x86_64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    outputs:
+      ubuntu2404: ${{ steps.images.outputs.ubuntu2404 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2404=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2404
+          context: ./.github/docker_images/aws-lc/ubuntu
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          tags: ${{ steps.images.outputs.ubuntu2404 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.ubuntu2404 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.28
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.38
+
+  x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_build
+    outputs:
+      ubuntu2404: ${{ steps.images.outputs.ubuntu2404 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2404=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:24.04_x86_64 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.ubuntu2404 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.ubuntu2404 }} ${{ steps.images.outputs.ubuntu2404 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.ubuntu2404 }}
+
+  aarch64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:small
+    outputs:
+      ubuntu2404: ${{ steps.images.outputs.ubuntu2404 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2404=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2404
+          context: ./.github/docker_images/aws-lc/ubuntu
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          tags: ${{ steps.images.outputs.ubuntu2404 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.ubuntu2404 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.28
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.38
+
+  aarch64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:small
+    needs:
+      - aarch64_build
+    outputs:
+      ubuntu2404: ${{ steps.images.outputs.ubuntu2404 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2404=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:24.04_aarch64 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.aarch64_build.outputs.ubuntu2404 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.aarch64_build.outputs.ubuntu2404 }} ${{ steps.images.outputs.ubuntu2404 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.ubuntu2404 }}
+
+  multiarch_manifest:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_push
+      - aarch64_push
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Manifest Name
+        id: images
+        run: |
+          echo ubuntu2404=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:24.04 >> "$GITHUB_OUTPUT"
+          echo latest=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:latest >> "$GITHUB_OUTPUT"
+      - name: Create & Push Multi-platform Manifests
+        run: |
+          docker manifest create ${{ steps.images.outputs.ubuntu2404 }} \
+            ${{ needs.x86_64_push.outputs.ubuntu2404 }} \
+            ${{ needs.aarch64_push.outputs.ubuntu2404 }}
+          docker manifest create ${{ steps.images.outputs.latest }} \
+            ${{ needs.x86_64_push.outputs.ubuntu2404 }} \
+            ${{ needs.aarch64_push.outputs.ubuntu2404 }}
+      - name: Push Multi-platform manifests
+        run: |
+          docker manifest push ${{ steps.images.outputs.ubuntu2404 }}
+          docker manifest push ${{ steps.images.outputs.latest }}

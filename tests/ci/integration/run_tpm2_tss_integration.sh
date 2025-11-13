@@ -47,7 +47,7 @@ function curl_build() {
 }
 
 function tpm2_tss_build() {
-  git apply "${SCRIPT_DIR}/tpm2_tss_patch/aws-lc-tpm2-tss.patch"
+  patch -p1 --quiet -i "${SCRIPT_DIR}/tpm2_tss_patch/aws-lc-tpm2-tss.patch"
   export PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig:${CURL_INSTALL_FOLDER}/lib/pkgconfig"
   /bin/sh ./bootstrap
   ./configure --enable-unit --with-crypto=ossl --prefix="${TPM2_TSS_INSTALL_FOLDER}"
@@ -67,7 +67,7 @@ function tpm2_abrmd_build() {
 }
 
 function tpm2_tools_build() {
-  git apply "${SCRIPT_DIR}/tpm2_tools_patch/aws-lc-tpm2-tools.patch"
+  patch -p1 --quiet -i "${SCRIPT_DIR}/tpm2_tools_patch/aws-lc-tpm2-tools.patch"
   export PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig:${TPM2_TSS_INSTALL_FOLDER}/lib/pkgconfig:${TPM2_ABRMD_INSTALL_FOLDER}/lib/pkgconfig"
   /bin/sh ./bootstrap
   ./configure --with-crypto=ossl

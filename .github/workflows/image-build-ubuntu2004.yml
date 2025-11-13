@@ -1,0 +1,250 @@
+name: image-build-ubuntu2004
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-ubuntu2004
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/ubuntu/Dockerfile.2004
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/ubuntu/Dockerfile.2004
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
+jobs:
+  x86_64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    outputs:
+      ubuntu2004: ${{ steps.images.outputs.ubuntu2004 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2004
+          context: ./.github/docker_images/aws-lc/ubuntu
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          tags: ${{ steps.images.outputs.ubuntu2004 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.ubuntu2004 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.16
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.30
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.5
+            # Check GCC 8 Compilers
+            source /opt/compiler-env/setup-gcc-8.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 8.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 8.4
+            # Check Clang 7 Compilers
+            source /opt/compiler-env/setup-clang-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 7.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 7.0
+            # Check Clang 8 Compilers
+            source /opt/compiler-env/setup-clang-8.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 8.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 8.0
+            # Check Clang 9 Compilers
+            source /opt/compiler-env/setup-clang-9.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 9.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 9.0
+            # Check Clang 10 Compilers
+            source /opt/compiler-env/setup-clang-10.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 10.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 10.0
+
+  x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_build
+    outputs:
+      ubuntu2004: ${{ steps.images.outputs.ubuntu2004 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2004=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:20.04_x86_64 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.ubuntu2004 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.ubuntu2004 }} ${{ steps.images.outputs.ubuntu2004 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.ubuntu2004 }}
+
+  aarch64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:small
+    outputs:
+      ubuntu2004: ${{ steps.images.outputs.ubuntu2004 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2004=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/ubuntu/Dockerfile.2004
+          context: ./.github/docker_images/aws-lc/ubuntu
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          tags: ${{ steps.images.outputs.ubuntu2004 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.ubuntu2004 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 3.16
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.30
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.5
+            # Check GCC 8 Compilers
+            source /opt/compiler-env/setup-gcc-8.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 8.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 8.4
+            # Check Clang 7 Compilers
+            source /opt/compiler-env/setup-clang-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 7.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 7.0
+            # Check Clang 8 Compilers
+            source /opt/compiler-env/setup-clang-8.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 8.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 8.0
+            # Check Clang 9 Compilers
+            source /opt/compiler-env/setup-clang-9.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 9.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 9.0
+            # Check Clang 10 Compilers
+            source /opt/compiler-env/setup-clang-10.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 10.0
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 10.0
+
+  aarch64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:small
+    needs:
+      - aarch64_build
+    outputs:
+      ubuntu2004: ${{ steps.images.outputs.ubuntu2004 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo ubuntu2004=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:20.04_aarch64 >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.aarch64_build.outputs.ubuntu2004 }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.aarch64_build.outputs.ubuntu2004 }} ${{ steps.images.outputs.ubuntu2004 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.ubuntu2004 }}
+
+  multiarch_manifest:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_push
+      - aarch64_push
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Manifest Name
+        id: images
+        run: |
+          echo ubuntu2004=${{ steps.ecr.outputs.registry_url }}/aws-lc/ubuntu:20.04 >> "$GITHUB_OUTPUT"
+      - name: Create & Push Multi-platform Manifests
+        run: |
+          docker manifest create ${{ steps.images.outputs.ubuntu2004 }} \
+            ${{ needs.x86_64_push.outputs.ubuntu2004 }} \
+            ${{ needs.aarch64_push.outputs.ubuntu2004 }}
+      - name: Push Multi-platform manifests
+        run: |
+          docker manifest push ${{ steps.images.outputs.ubuntu2004 }}
