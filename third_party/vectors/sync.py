@@ -46,7 +46,9 @@ def fetch_sources(
                 capture_output=True,
             )
             if ret.returncode != 0:
-                utils.error(f"failed to clone {source_name}: {ret.stderr.decode().strip()}")
+                utils.error(
+                    f"failed to clone {source_name}: {ret.stderr.decode().strip()}"
+                )
                 return False
 
         assert stmpdir.is_dir()
@@ -71,37 +73,21 @@ def update_sources(
     for source_name, source_info in sources.items():
         source_info["upstream_path"] = upstream_dir / source_name
         source_info["upstream_path"].mkdir(parents=True, exist_ok=True)
-    
-    for source_name, source_info in sources.items():
-        upstream_path = source_info["upstream_path"]
-        local_path = source_info["local_path"]
-        
-        for upstream_file in upstream_path.rglob("*"):
-            if not upstream_file.is_file():
-                continue
-            
-            relative_path = upstream_file.relative_to(upstream_path)
-            local_file = local_path / relative_path
-            
-            if not local_file.exists():
-                utils.error(f"upstream file not found in cloned repo: {source_name}/{relative_path}")
-                return False
-            
-            if not filecmp.cmp(local_file, upstream_file, shallow=False):
-                shutil.copy2(local_file, upstream_file)
-                utils.info(f"updated upstream file: {source_name}/{relative_path}")
 
+    # Add new file first to catch invalid file names and sources early
     if new_file:
         file_path = pathlib.Path(new_file)
         source_name = file_path.parts[0]
-        
+
         if source_name not in sources:
-            utils.error(f"unknown source '{source_name}', expected one of: {list(sources.keys())}")
+            utils.error(
+                f"unknown source '{source_name}', expected one of: {list(sources.keys())}"
+            )
             return False
-        
+
         relative_path = pathlib.Path(*file_path.parts[1:])
         local_file = sources[source_name]["local_path"] / relative_path
-        
+
         if not local_file.exists():
             utils.error(f"file not found in upstream repo: {relative_path}")
             return False
@@ -117,6 +103,28 @@ def update_sources(
         upstream_file.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(local_file, upstream_file)
         utils.info(f"copied new file to upstream: {upstream_file}")
+
+    # Update existing files from all sources
+    for source_name, source_info in sources.items():
+        upstream_path = source_info["upstream_path"]
+        local_path = source_info["local_path"]
+
+        for upstream_file in upstream_path.rglob("*"):
+            if not upstream_file.is_file():
+                continue
+
+            relative_path = upstream_file.relative_to(upstream_path)
+            local_file = local_path / relative_path
+
+            if not local_file.exists():
+                utils.error(
+                    f"upstream file not found in cloned repo: {source_name}/{relative_path}"
+                )
+                return False
+
+            if not filecmp.cmp(local_file, upstream_file, shallow=False):
+                shutil.copy2(local_file, upstream_file)
+                utils.info(f"updated upstream file: {source_name}/{relative_path}")
 
     return True
 
