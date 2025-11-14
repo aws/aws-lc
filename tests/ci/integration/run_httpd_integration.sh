@@ -105,7 +105,7 @@ function setup_python_env() {
   python3 -m venv venv
   source venv/bin/activate
   python3 -m pip install --upgrade pip
-  python3 -m pip install pyopenssl websockets pytest filelock python-multipart
+  python3 -m pip install pyopenssl websockets "pytest<7.0" filelock python-multipart
 }
 
 function httpd_run_tests() {
