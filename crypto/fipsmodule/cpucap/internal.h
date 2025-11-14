@@ -259,7 +259,10 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_RNDR_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_Neoverse_N1(void) {
-  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_N1) != 0;
+  // It is Neoverse N1 if only ARMV8_NEOVERSE_N1 = 1 and
+  // ARMV8_NEOVERSE_<V1|V2> = 0.
+  return ((OPENSSL_armcap_P & ARMV8_NEOVERSE_N1) != 0 &&
+          (OPENSSL_armcap_P & (ARMV8_NEOVERSE_V1 | ARMV8_NEOVERSE_V2)) == 0);
 }
 
 OPENSSL_INLINE int CRYPTO_is_Neoverse_V1(void) {
