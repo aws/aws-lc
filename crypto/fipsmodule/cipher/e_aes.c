@@ -2097,7 +2097,7 @@ static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *
      * W2[15] = W1[15] ^ 0x03 = (x1[15] ^ k1[15] ^ 0x01) ^ (0x01 ^ 0x02) = W2[15] */
     W[AES_BLOCK_SIZE-1] ^= 0x03;
     AES_encrypt(W, key_commitment + AES_BLOCK_SIZE, xaes_key);
-    
+
     return 1;
 }
 
@@ -2118,7 +2118,7 @@ static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
     // If iv is provided, even if main key is not, derive a subkey and its key commitment 
     /* Note: Unlike the MAC tag, key commitment only depends on the main key  
-     * and iv, not on plaintext and aad, therefore we extract it in init when  
+     * and iv, not on ciphertext and aad, therefore we extract it in init when  
      * deriving subkey instead of at the end of encrytion like the MAC tag */ 
     if(iv != NULL) { 
         // Derive subkey
