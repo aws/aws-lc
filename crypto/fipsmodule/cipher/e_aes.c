@@ -2069,7 +2069,7 @@ static XAES_256_GCM_KC_CTX *xaes_256_gcm_kc_from_cipher_ctx(EVP_CIPHER_CTX *ctx)
     return (XAES_256_GCM_KC_CTX *)ptr;
 }
 
-static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *k1,
+static int xaes_256_gcm_extract_key_commitment(AES_KEY *xaes_key, uint8_t *k1,
            uint8_t *key_commitment, const uint8_t* nonce, const unsigned nonce_len) {
     uint8_t W[AES_BLOCK_SIZE];
 
@@ -2101,7 +2101,7 @@ static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *
     return 1;
 }
 
-static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+static int xaes_256_gcm_kc_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
     // Key length: 32 bytes
     if (ctx->key_len != XAES_256_GCM_KEY_LENGTH) {
@@ -2125,13 +2125,13 @@ static int xaes_256_gcm_init_key_commit(EVP_CIPHER_CTX *ctx, const uint8_t *key,
         xaes_256_gcm_set_gcm_key(ctx, iv, enc); 
         // Extract key commitment
         EVP_AES_GCM_CTX *gctx = &xaes_ctx->aes_gcm_ctx;
-        xaes_256_gcm_CMAC_extract_key_commitment(&xaes_ctx->xaes_key, xaes_ctx->k1, xaes_ctx->kc, iv, gctx->ivlen);
+        xaes_256_gcm_extract_key_commitment(&xaes_ctx->xaes_key, xaes_ctx->k1, xaes_ctx->kc, iv, gctx->ivlen);
     }
 
     return 1;
 }
 
-static int xaes_256_gcm_key_commit_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
+static int xaes_256_gcm_kc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
 
     XAES_256_GCM_KC_CTX *xaes_ctx = xaes_256_gcm_kc_from_cipher_ctx(ctx);
 
@@ -2172,8 +2172,8 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_kc) {
     out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                 EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                 EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_FLAG_KC_CIPHER;
-    out->init = xaes_256_gcm_init_key_commit;
+    out->init = xaes_256_gcm_kc_init;
     out->cipher = aes_gcm_cipher;
     out->cleanup = aes_gcm_cleanup;
-    out->ctrl = xaes_256_gcm_key_commit_ctrl;
+    out->ctrl = xaes_256_gcm_kc_ctrl;
 }
