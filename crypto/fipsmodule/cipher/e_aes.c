@@ -2086,15 +2086,18 @@ static int xaes_256_gcm_CMAC_extract_key_commitment(AES_KEY *xaes_key, uint8_t *
     W[AES_BLOCK_SIZE-3] = 0x01;
     W[AES_BLOCK_SIZE-2] = 0x00;
     W[AES_BLOCK_SIZE-1] = 0x01;
-
+    
     for (size_t i = 0; i < AES_BLOCK_SIZE; i++) { 
         W[i] ^= X1[i] ^ k1[i];
     }
 
     AES_encrypt(W, key_commitment, xaes_key);
+    /* Since W1[i] and W2[i] are the same except at i = 15, where: 
+     * W1[15] = x1[15] ^ k1[15] ^ 0x01, and W2[15] = x1[15] ^ k1[15] ^ 0x02, we have:  
+     * W2[15] = W1[15] ^ 0x03 = (x1[15] ^ k1[15] ^ 0x01) ^ (0x01 ^ 0x02) = W2[15] */
     W[AES_BLOCK_SIZE-1] ^= 0x03;
     AES_encrypt(W, key_commitment + AES_BLOCK_SIZE, xaes_key);
-
+    
     return 1;
 }
 
