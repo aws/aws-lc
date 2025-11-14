@@ -393,6 +393,11 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // one.
 #define EVP_CIPH_FLAG_AEAD_CIPHER 0x800
 
+// EVP_CIPH_FLAG_KC_CIPHER specifies that the cipher supports key commitment.
+// Currently, this flag is only used for test cases, i.e., to check whether
+// the cipher supports key commitment or not 
+#define EVP_CIPH_FLAG_KC_CIPHER 0x4000
+
 // EVP_CIPH_CUSTOM_COPY indicates that the |ctrl| callback should be called
 // with |EVP_CTRL_COPY| at the end of normal |EVP_CIPHER_CTX_copy|
 // processing.
@@ -492,6 +497,7 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_xaes_256_gcm(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_xaes_256_gcm_kc(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);
@@ -601,6 +607,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
 // EVP_CTRL_GCM_SET_IV_INV sets the GCM invocation field, decrypt only
 #define EVP_CTRL_GCM_SET_IV_INV 0x18
 #define EVP_CTRL_GET_IVLEN 0x19
+
+// For extracting and verifying key commitment 
+#define EVP_CTRL_AEAD_GET_KC 0x20
+#define EVP_CTRL_AEAD_VERIFY_KC 0x21
 
 // The following constants are unused.
 #define EVP_GCM_TLS_FIXED_IV_LEN 4
@@ -735,5 +745,7 @@ BSSL_NAMESPACE_END
 #define CIPHER_R_ALIGNMENT_CHANGED 142
 #define CIPHER_R_SERIALIZATION_INVALID_SERDE_VERSION 143
 #define CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID 144
+// We're introducing a new error code for invalid key commitment
+#define CIPHER_R_KEY_COMMITMENT_INVALID 145
 
 #endif  // OPENSSL_HEADER_CIPHER_H

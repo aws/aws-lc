@@ -130,6 +130,8 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_aes_256_ccm();
   } else if (name == "XAES-256-GCM") {
     return EVP_xaes_256_gcm();
+  } else if (name == "XAES-256-GCM-KC") {
+    return EVP_xaes_256_gcm_kc();
   }
   return nullptr;
 }
@@ -186,7 +188,8 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
                           bssl::Span<const uint8_t> plaintext,
                           bssl::Span<const uint8_t> ciphertext,
                           bssl::Span<const uint8_t> aad,
-                          bssl::Span<const uint8_t> tag) {
+                          bssl::Span<const uint8_t> tag,
+                          bssl::Span<const uint8_t> kc = {}) {
   bool encrypt = op == Operation::kEncrypt;
   bool is_custom_cipher =
       EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_CUSTOM_CIPHER;
@@ -194,6 +197,7 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   bssl::Span<const uint8_t> expected = encrypt ? ciphertext : plaintext;
   bool is_aead = EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER;
   bool is_ccm = EVP_CIPHER_mode(cipher) == EVP_CIPH_CCM_MODE;
+  bool is_kc = EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER;
 
   // Some |EVP_CIPHER|s take a variable-length key, and need to first be
   // configured with the key length, which requires configuring the cipher.
@@ -235,6 +239,12 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), /*cipher=*/nullptr,
                                 /*engine=*/nullptr,
                                 /*key=*/nullptr, iv.data(), /*enc=*/-1));
+
+  // Verify key commitment
+  if(is_kc && !encrypt) {
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_VERIFY_KC,
+                                    kc.size(), const_cast<uint8_t *>(kc.data())));
+  }
 
   // CCM requires the full length of the plaintext to be known ahead of time.
   if (is_ccm) {
@@ -358,8 +368,17 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
       ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
                                       tag.size(), rtag));
       EXPECT_EQ(Bytes(tag), Bytes(rtag, tag.size()));
+    } 
+
+    if(encrypt & is_kc) {
+      uint8_t rkc[32];
+      ASSERT_LE(kc.size(), sizeof(rkc));
+      ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+      ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_KC,
+                                      kc.size(), rkc));
+      EXPECT_EQ(Bytes(kc), Bytes(rkc, kc.size()));
     }
-  }
+  } 
 }
 
 static void TestLowLevelAPI(
@@ -457,7 +476,8 @@ static void TestCipher(const EVP_CIPHER *cipher, Operation input_op,
                        bssl::Span<const uint8_t> plaintext,
                        bssl::Span<const uint8_t> ciphertext,
                        bssl::Span<const uint8_t> aad,
-                       bssl::Span<const uint8_t> tag) {
+                       bssl::Span<const uint8_t> tag, 
+                       bssl::Span<const uint8_t> kc = {}) {
   size_t block_size = EVP_CIPHER_block_size(cipher);
   bool is_ccm = EVP_CIPHER_mode(cipher) == EVP_CIPH_CCM_MODE;
   std::vector<Operation> ops;
@@ -487,11 +507,11 @@ static void TestCipher(const EVP_CIPHER *cipher, Operation input_op,
           SCOPED_TRACE(copy);
           TestCipherAPI(cipher, op, padding, copy, in_place,
                         /*use_evp_cipher=*/false, chunk_size, key, iv,
-                        plaintext, ciphertext, aad, tag);
+                        plaintext, ciphertext, aad, tag, kc);
           if (!padding && chunk_size % block_size == 0) {
             TestCipherAPI(cipher, op, padding, copy, in_place,
                           /*use_evp_cipher=*/true, chunk_size, key, iv,
-                          plaintext, ciphertext, aad, tag);
+                          plaintext, ciphertext, aad, tag, kc);
           }
         }
         if (!padding) {
@@ -509,7 +529,7 @@ static void CipherFileTest(FileTest *t) {
   const EVP_CIPHER *cipher = GetCipher(cipher_str);
   ASSERT_TRUE(cipher);
 
-  std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag;
+  std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag, kc;
   // Force an allocation of the underlying data-store so that v.data() is
   // non-NULL even for empty test vectors.
   plaintext.reserve(1);
@@ -523,6 +543,10 @@ static void CipherFileTest(FileTest *t) {
   if (EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER) {
     ASSERT_TRUE(t->GetBytes(&aad, "AAD"));
     ASSERT_TRUE(t->GetBytes(&tag, "Tag"));
+  }
+
+  if(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER) {
+    ASSERT_TRUE(t->GetBytes(&kc, "KC"));
   }
 
   Operation op = Operation::kBoth;
@@ -540,7 +564,7 @@ static void CipherFileTest(FileTest *t) {
   }
 
   TestCipher(cipher, op, /*padding=*/false, key, iv, plaintext, ciphertext, aad,
-             tag);
+             tag, kc);
 }
 
 TEST(CipherTest, TestVectors) {
@@ -1084,6 +1108,7 @@ TEST(CipherTest, GetCipher) {
   test_get_cipher(NID_aes_256_ecb, "aes-256-ecb");
   test_get_cipher(NID_aes_256_gcm, "aes-256-gcm");
   test_get_cipher(NID_xaes_256_gcm, "xaes-256-gcm");
+  test_get_cipher(NID_xaes_256_gcm_kc, "id-xaes256-gcm-kc");
   test_get_cipher(NID_aes_256_ofb128, "aes-256-ofb");
   test_get_cipher(NID_aes_256_xts, "aes-256-xts");
   test_get_cipher(NID_chacha20_poly1305, "chacha20-poly1305");
