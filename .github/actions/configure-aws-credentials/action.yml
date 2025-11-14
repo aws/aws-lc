@@ -20,8 +20,10 @@ runs:
       uses: aws-actions/configure-aws-credentials@v5
       with:
         role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
+        role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
     - name: Retrieve GitHub Actions Role Credentials
       uses: aws-actions/configure-aws-credentials@v5
       with:
         role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/${{ inputs.roleName }}
+        role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
         role-chaining: true
