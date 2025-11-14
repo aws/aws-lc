@@ -4391,6 +4391,11 @@ extern "C" {
 #define NID_xaes_256_gcm 999
 #define OBJ_xaes_256_gcm 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 49L
 
+#define SN_xaes_256_gcm_kc "id-xaes256-GCM-KC"
+#define LN_xaes_256_gcm_kc "xaes-256-gcm-kc"
+#define NID_xaes_256_gcm_kc 1000
+#define OBJ_xaes_256_gcm_kc 2L, 16L, 840L, 1L, 101L, 3L, 4L, 1L, 50L
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif
