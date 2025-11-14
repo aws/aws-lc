@@ -608,7 +608,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
 #define EVP_CTRL_GCM_SET_IV_INV 0x18
 #define EVP_CTRL_GET_IVLEN 0x19
 
-// For extracting and verifying key commitment 
 #define EVP_CTRL_AEAD_GET_KC 0x20
 #define EVP_CTRL_AEAD_VERIFY_KC 0x21
 
