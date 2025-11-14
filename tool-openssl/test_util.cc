@@ -193,8 +193,9 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     ASN1_STRING *data2 = X509_NAME_ENTRY_get_data(entry2);
 
     if (ASN1_STRING_cmp(data1, data2) != 0) {
+      const char* long_name = OBJ_nid2ln(OBJ_obj2nid(obj1));
       std::cout << "CSRs have different values for entry "
-                << OBJ_nid2ln(OBJ_obj2nid(obj1)) << std::endl;
+                << (long_name ? long_name : "<UNKNOWN>")  << std::endl;
       return false;
     }
   }
