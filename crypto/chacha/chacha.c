@@ -92,7 +92,7 @@ static void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
     return;
   }
 #endif
-#if defined(CHACHA20_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#if defined(CHACHA20_ASM_AVX2)
   if (ChaCha20_ctr32_avx2_capable(in_len)) {
     ChaCha20_ctr32_avx2(out, in, in_len, key, counter);
     return;
@@ -245,3 +245,15 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
 }
 
 #endif
+
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+
+#if defined(CHACHA20_ASM_AVX2)
+void ChaCha20_ctr32_avx2(uint8_t *out, const uint8_t *in, size_t in_len,
+                         const uint32_t key[8], const uint32_t counter[4]) {
+  perror("ChaCha20_ctr32_avx2");
+  abort();
+}
+#endif // defined(CHACHA20_ASM_AVX2)
+
+#endif // defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
