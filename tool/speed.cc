@@ -2950,7 +2950,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedEvpCipherGeneric(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
+#if AWSLC_API_VERSION > 34
        !SpeedEvpCipherGeneric(EVP_xaes_256_gcm(), "EVP-XAES-256-GCM", kTLSADLen, selected) ||
+#endif 
        !SpeedEvpCipherGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
@@ -3052,6 +3054,10 @@ bool Speed(const std::vector<std::string> &args) {
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
 #endif
+#if AWSLC_API_VERSION > 34
+       !SpeedAEADSeal(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+#endif 
 #if AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
 #endif
