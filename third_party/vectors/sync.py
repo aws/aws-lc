@@ -17,13 +17,13 @@ from vectorslib.utils import SyncError
 def fetch_sources(
     clone_dir: pathlib.Path,
     sources: dict,
-    using_custom_clone_dir: bool = False,
+    reuse_existing: bool,
 ):
     for source_name, source_info in sources.items():
         source_clone_dir = clone_dir / source_name
 
         if source_clone_dir.is_dir():
-            assert using_custom_clone_dir
+            assert reuse_existing
             utils.warning(
                 f"using existing, potentially stale upstream clone of {source_name} at {source_clone_dir}"
             )
@@ -175,8 +175,8 @@ def sync_sources(
         source_info["local_path"] = clone_dir / source_name
 
     if not args.skip_update:
-        using_custom_clone_dir = args.clone_dir is not None
-        fetch_sources(clone_dir, sources, using_custom_clone_dir)
+        reuse_existing = args.clone_dir is not None
+        fetch_sources(clone_dir, sources, reuse_existing)
         update_sources(cwd, sources, args.new)
     else:
         utils.info("skipping update")
