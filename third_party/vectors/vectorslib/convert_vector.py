@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Converts Wycheproof test vectors from JSON to file_test.h format.
+# Inspired by util/convert_wycheproof/convert_wycheproof.go
+
 import sys
 import tempfile
 import pathlib
