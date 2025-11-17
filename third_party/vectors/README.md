@@ -36,7 +36,7 @@ The `vectors_spec.md` file lists all test vectors using the MUST keyword. Test f
 ```cpp
 //= third_party/vectors/vectors_spec.md#wycheproof
 //= type=test
-//# AWS-LC MUST test `testvectors_v1/aes_gcm_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
 TEST(AEADTest, WycheproofAESGCM) { ... }
 ```
 

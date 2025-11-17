@@ -1201,7 +1201,7 @@ TEST(AEADTest, WycheproofAESGCMSIV) {
 
 //= third_party/vectors/vectors_spec.md#wycheproof
 //= type=test
-//# AWS-LC MUST test `testvectors_v1/aes_gcm_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
 TEST(AEADTest, WycheproofAESGCM) {
   FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_test.txt",
                 [](FileTest *t) {

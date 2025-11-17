@@ -4,5 +4,5 @@
 
 ## wycheproof
 
-AWS-LC MUST test `testvectors_v1/aes_gcm_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
 

@@ -21,7 +21,7 @@ def generate_spec(cwd: pathlib.Path, sources: dict) -> str:
             relative_path = vector_file.relative_to(upstream_path)
             converted_file = relative_path.with_suffix(".txt")
 
-            spec += f"AWS-LC MUST test `{converted_file}`.\n\n"
+            spec += f"AWS-LC MUST test against `{converted_file}`.\n\n"
 
     return spec
 
