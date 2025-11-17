@@ -4,6 +4,7 @@ import sys
 import tempfile
 import pathlib
 import json
+from typing import Union
 
 # Handle imports for both direct execution and module import
 try:
@@ -23,7 +24,7 @@ def format_header(filename: str, algorithm: str) -> str:
 """
 
 
-def write_instruction(out, name, value):
+def write_instruction(out, name: str, value: Union[str, int, dict]) -> None:
     """Write an instruction line: [name = value]"""
     if isinstance(value, (str, int)):
         out.write(f"[{name} = {value}]\n")
@@ -34,7 +35,7 @@ def write_instruction(out, name, value):
         raise ValueError(f"Unsupported type for instruction: {type(value)}")
 
 
-def write_attribute(out, name, value):
+def write_attribute(out, name: str, value: Union[str, int]) -> None:
     """Write an attribute line: name = value"""
     if isinstance(value, (str, int)):
         out.write(f"{name} = {value}\n")
@@ -42,7 +43,7 @@ def write_attribute(out, name, value):
         raise ValueError(f"Unsupported type for attribute: {type(value)}")
 
 
-def write_test_group(out, test_group):
+def write_test_group(out, test_group: dict) -> None:
     """Write test group instructions"""
     # Skip metadata fields
     skip_keys = {"tests", "type", "source", "jwk", "keyJwk", "privateKeyJwk", "keyPem", "privateKeyPem"}
@@ -53,7 +54,7 @@ def write_test_group(out, test_group):
     out.write("\n")
 
 
-def write_test(out, test):
+def write_test(out, test: dict) -> None:
     """Write a single test case"""
     out.write(f"# tcId = {test['tcId']}\n")
     
@@ -71,7 +72,7 @@ def write_test(out, test):
     out.write("\n")
 
 
-def convert_file(infile: pathlib.Path, outfile: pathlib.Path):
+def convert_file(infile: pathlib.Path, outfile: pathlib.Path) -> None:
     """Convert a Wycheproof JSON file to file_test.h format."""
     assert infile.is_file()
     outfile.parent.mkdir(parents=True, exist_ok=True)
