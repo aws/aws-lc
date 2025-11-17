@@ -166,10 +166,7 @@ def sync_sources(
     cwd: pathlib.Path,
     clone_dir: pathlib.Path,
     sources: dict,
-    new_file: typing.Optional[str],
-    skip_update: bool,
-    skip_convert: bool,
-    skip_spec: bool,
+    args: argparse.Namespace,
     using_custom_clone_dir: bool = False,
 ):
     # Set up directory paths that other phases depend on
@@ -178,18 +175,18 @@ def sync_sources(
         source_info["upstream_path"] = upstream_dir / source_name
         source_info["local_path"] = clone_dir / source_name
 
-    if not skip_update:
+    if not args.skip_update:
         fetch_sources(clone_dir, sources, using_custom_clone_dir)
-        update_sources(cwd, sources, new_file)
+        update_sources(cwd, sources, args.new)
     else:
         utils.info("skipping update")
 
-    if not skip_convert:
+    if not args.skip_convert:
         convert_sources(cwd, clone_dir, sources)
     else:
         utils.info("skipping convert")
 
-    if not skip_spec:
+    if not args.skip_spec:
         generate_and_verify_spec(cwd, sources)
     else:
         utils.info("skipping spec generation")
@@ -248,28 +245,11 @@ def main() -> int:
         if args.clone_dir:
             clone_dir = pathlib.Path(args.clone_dir)
             clone_dir.mkdir(parents=True, exist_ok=True)
-            sync_sources(
-                cwd,
-                clone_dir,
-                sources,
-                args.new,
-                args.skip_update,
-                args.skip_convert,
-                args.skip_spec,
-                using_custom_clone_dir=True,
-            )
+            sync_sources(cwd, clone_dir, sources, args, using_custom_clone_dir=True)
         else:
             with tempfile.TemporaryDirectory() as temp_clone_dir:
                 clone_dir = pathlib.Path(temp_clone_dir)
-                sync_sources(
-                    cwd,
-                    clone_dir,
-                    sources,
-                    args.new,
-                    args.skip_update,
-                    args.skip_convert,
-                    args.skip_spec,
-                )
+                sync_sources(cwd, clone_dir, sources, args)
     except SyncError as e:
         utils.error(str(e))
         return 1
