@@ -22,8 +22,9 @@ def fetch_sources(
     for source_name, source_info in sources.items():
         source_clone_dir = clone_dir / source_name
 
+        # Reuse existing clone if present, otherwise clone fresh
         if source_clone_dir.is_dir():
-            assert reuse_existing
+            assert reuse_existing  # Should only happen with --clone-dir, not with new temp dir
             utils.warning(
                 f"using existing, potentially stale upstream clone of {source_name} at {source_clone_dir}"
             )
