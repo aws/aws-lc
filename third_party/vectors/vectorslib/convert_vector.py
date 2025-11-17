@@ -45,8 +45,22 @@ def write_attribute(out, name: str, value: Union[str, int]) -> None:
 
 def write_test_group(out, test_group: dict) -> None:
     """Write test group instructions"""
-    # Skip metadata fields
-    skip_keys = {"tests", "type", "source", "jwk", "keyJwk", "privateKeyJwk", "keyPem", "privateKeyPem"}
+    # Skip metadata fields that don't affect test execution
+    skip_meta_keys = {
+        "tests",  # Array of test cases, processed separately
+        "type",   # Test type identifier, not used in file_test.h format
+        "source", # Source file reference, not needed in converted format
+    }
+    # Skip key formats we don't use (we use DER instead of PEM, and don't test with JWK)
+    skip_key_formats = {
+        "jwk",           # JSON Web Key format
+        "keyJwk",        # Public key in JWK format
+        "privateKeyJwk", # Private key in JWK format
+        "keyPem",        # Public key in PEM format
+        "privateKeyPem", # Private key in PEM format
+    }
+    
+    skip_keys = skip_meta_keys | skip_key_formats
     
     for key in sorted(test_group.keys()):
         if key not in skip_keys:
