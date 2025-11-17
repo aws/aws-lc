@@ -80,7 +80,9 @@ function(target_add_awslc_include_paths)
   add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
     $<$<BOOL:INCLUDE_PREFIX_HEADERS>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include/aws-lc>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/aws-lc>
     $<INSTALL_INTERFACE:include>)
 endfunction()
 
@@ -89,6 +91,7 @@ option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+option(ENABLE_OPENSSL_SHIM "Enable OpenSSL compatibility shim (pkgconfig files and symlinks)" ON)
 # Keeping this flag for now, for compatibility with existing build configs.
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
@@ -219,8 +222,8 @@ elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_BINDIR "bin")
 endif()
 
-install(DIRECTORY include/openssl
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+install(DIRECTORY include/aws-lc/openssl
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/aws-lc
         COMPONENT Development
         PATTERN boringssl_prefix_symbols.h EXCLUDE
         PATTERN boringssl_prefix_symbols_asm.h EXCLUDE
@@ -321,7 +324,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
             symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc)
 
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/aws-lc
           COMPONENT Development
   )
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
@@ -341,7 +344,7 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   add_custom_target(boringssl_prefix_symbols)
 
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/aws-lc
           COMPONENT Development
   )
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
@@ -351,8 +354,8 @@ elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
 else()
   add_custom_target(boringssl_prefix_symbols)
 
-  install(DIRECTORY include/openssl
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  install(DIRECTORY include/aws-lc/openssl
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/aws-lc
           COMPONENT Development
           FILES_MATCHING
           PATTERN boringssl_prefix_symbols.h
@@ -1359,25 +1362,55 @@ if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
 
-# AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
-# the downstream integration may build with the system's OpenSSL version instead.
-# Consider adjusting the PKG_CONFIG_PATH environment to get around this.
-file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
-
+# Configure pkgconfig files
 include(cmake/JoinPaths.cmake)
 join_paths(libdir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
 join_paths(includedir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
 
-foreach(in_file ${OPENSSL_PKGCONFIGS})
+# Always install AWS-LC native pkgconfig files
+file(GLOB AWSLC_PKGCONFIGS "pkgconfig/aws-lc.pc.in" "pkgconfig/libssl-awslc.pc.in" "pkgconfig/libcrypto-awslc.pc.in")
+foreach(in_file ${AWSLC_PKGCONFIGS})
   file(RELATIVE_PATH in_file ${AWSLC_SOURCE_DIR} ${in_file})
   string(REPLACE ".in" "" pc_file ${in_file})
   configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endforeach()
 
+# Optionally install OpenSSL compatibility pkgconfig files
+if(ENABLE_OPENSSL_SHIM)
+  file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/openssl.pc.in" "pkgconfig/libssl.pc.in" "pkgconfig/libcrypto.pc.in")
+  foreach(in_file ${OPENSSL_PKGCONFIGS})
+    file(RELATIVE_PATH in_file ${AWSLC_SOURCE_DIR} ${in_file})
+    string(REPLACE ".in" "" pc_file ${in_file})
+    configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+  endforeach()
+
+  # Create OpenSSL compatibility symlinks
+  if(BUILD_SHARED_LIBS)
+    if(PERFORM_SONAME_BUILD)
+      # When SONAME build is enabled, libraries have -awslc suffix
+      install(CODE "
+        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+          lib${CRYPTO_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so\")
+        execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+          lib${SSL_LIB_NAME}.so \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so\")
+      ")
+    else()
+      # When SONAME build is disabled, libraries are already named libcrypto.so/libssl.so
+      # so no symlinks needed for libraries, but we still need the include symlink
+    endif()
+    # Always create the include directory symlink for OpenSSL compatibility
+    install(CODE "
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        aws-lc/openssl \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/openssl\")
+    ")
+  endif()
+endif()
+
 if(ENABLE_SOURCE_MODIFICATION)
-  configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
-  configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
+  configure_file(include/aws-lc/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/base.h @ONLY)
+  configure_file(include/aws-lc/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/opensslv.h @ONLY)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
     configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
   endif()

@@ -2,9 +2,9 @@ prefix=@CMAKE_INSTALL_PREFIX@
 libdir=@libdir_for_pc_file@
 includedir=@includedir_for_pc_file@
 
-Name: AWS-LC-libssl
-Description: AWS-LC cryptography library (OpenSSL libssl SHIM)
+Name: libssl-awslc
+Description: AWS-LC SSL/TLS library
 Version: @REPORTED_PKGCONFIG_VERSION@
-Requires.private: libcrypto
+Requires.private: libcrypto-awslc
 Libs: -L${libdir} -lssl-awslc
-Cflags: -I${includedir}/aws-lc -I${includedir}
+Cflags: -I${includedir}/aws-lc

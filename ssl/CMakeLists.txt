@@ -117,7 +117,7 @@ install(TARGETS ssl
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY
           DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          NAMELINK_SKIP
+          NAMELINK_COMPONENT Development
 )
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
@@ -143,12 +143,3 @@ install(EXPORT ssl-targets
     NAMESPACE AWS::
     COMPONENT Development)
 
-if(PERFORM_SONAME_BUILD)
-  install(CODE "
-set(TGT lib${SSL_LIB_NAME}.so.${ABI_VERSION})
-set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libssl.so)
-message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
-"
-    COMPONENT Development)
-endif()

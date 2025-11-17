@@ -453,17 +453,17 @@ if(FIPS_DELOCATE)
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS} -DS2N_BN_HIDE_SYMBOLS"
     -s2n-bignum-include "${S2N_BIGNUM_INCLUDE_DIR}"
     ${DELOCATE_EXTRA_ARGS}
-    ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
-    ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
-    ${AWSLC_SOURCE_DIR}/include/openssl/target.h
+    ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/arm_arch.h
+    ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/asm_base.h
+    ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/target.h
     ${BCM_ASM_SOURCES}
     DEPENDS
     bcm_c_generated_asm
     delocate
     ${BCM_ASM_SOURCES}
-    ${AWSLC_SOURCE_DIR}/include/openssl/arm_arch.h
-    ${AWSLC_SOURCE_DIR}/include/openssl/asm_base.h
-    ${AWSLC_SOURCE_DIR}/include/openssl/target.h
+    ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/arm_arch.h
+    ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/asm_base.h
+    ${AWSLC_SOURCE_DIR}/include/aws-lc/openssl/target.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
