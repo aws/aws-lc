@@ -167,7 +167,6 @@ def sync_sources(
     clone_dir: pathlib.Path,
     sources: dict,
     args: argparse.Namespace,
-    using_custom_clone_dir: bool = False,
 ):
     # Set up directory paths that other phases depend on
     upstream_dir = cwd / "upstream"
@@ -176,6 +175,7 @@ def sync_sources(
         source_info["local_path"] = clone_dir / source_name
 
     if not args.skip_update:
+        using_custom_clone_dir = args.clone_dir is not None
         fetch_sources(clone_dir, sources, using_custom_clone_dir)
         update_sources(cwd, sources, args.new)
     else:
@@ -245,7 +245,7 @@ def main() -> int:
         if args.clone_dir:
             clone_dir = pathlib.Path(args.clone_dir)
             clone_dir.mkdir(parents=True, exist_ok=True)
-            sync_sources(cwd, clone_dir, sources, args, using_custom_clone_dir=True)
+            sync_sources(cwd, clone_dir, sources, args)
         else:
             with tempfile.TemporaryDirectory() as temp_clone_dir:
                 clone_dir = pathlib.Path(temp_clone_dir)
