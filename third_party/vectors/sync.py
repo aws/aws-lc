@@ -55,11 +55,8 @@ def update_sources(
     sources: dict,
     new_file: typing.Optional[str],
 ):
-    upstream_dir = cwd / "upstream"
-    upstream_dir.mkdir(parents=True, exist_ok=True)
-
+    # Ensure upstream directories exist
     for source_name, source_info in sources.items():
-        source_info["upstream_path"] = upstream_dir / source_name
         source_info["upstream_path"].mkdir(parents=True, exist_ok=True)
 
     # Add new file first to catch invalid file names and sources early
@@ -179,6 +176,12 @@ def sync_sources(
     skip_spec: bool,
     using_custom_clone_dir: bool = False,
 ):
+    # Set up directory paths that other phases depend on
+    upstream_dir = cwd / "upstream"
+    for source_name, source_info in sources.items():
+        source_info["upstream_path"] = upstream_dir / source_name
+        source_info["local_path"] = clone_dir / source_name
+
     if not skip_update:
         fetch_sources(clone_dir, sources, using_custom_clone_dir)
         update_sources(cwd, sources, new_file)
