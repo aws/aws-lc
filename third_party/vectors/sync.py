@@ -10,7 +10,7 @@ import typing
 import shutil
 import filecmp
 
-from vectorslib import utils
+from vectorslib import utils, convert_vector, generate_spec
 from vectorslib.utils import SyncError
 
 
@@ -116,8 +116,6 @@ def convert_sources(
     clone_dir: pathlib.Path,
     sources: dict,
 ):
-    from vectorslib import convert_vector
-
     converted_dir = cwd / "converted"
     converted_dir.mkdir(parents=True, exist_ok=True)
 
@@ -148,8 +146,6 @@ def generate_and_verify_spec(
     cwd: pathlib.Path,
     sources: dict,
 ):
-    from vectorslib import generate_spec
-
     generate_spec.write_spec(cwd, sources)
     utils.info("generated vectors_spec.md")
 
