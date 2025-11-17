@@ -23,6 +23,7 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   DOCKER_BUILD_RECORD_UPLOAD: false
+# Critical: Caution must be used when expanding permissions beyond these as we checkout untrusted pull request code
 permissions:
   id-token: write
   contents: read
@@ -37,6 +38,8 @@ jobs:
       android: ${{ steps.images.outputs.latest }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.ref || github.ref }}
       - name: Query Environment
         id: env
         run: |
@@ -70,7 +73,7 @@ jobs:
             ./.github/docker_images/scripts/verify-go-version.sh 1.25
 
   push:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request_target' }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
