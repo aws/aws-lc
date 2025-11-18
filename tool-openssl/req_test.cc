@@ -275,6 +275,32 @@ TEST_F(ReqTest, BasicConfig) {
   EXPECT_EQ(RSA_bits(rsa), 3072u);
 }
 
+TEST_F(ReqTest, NoReqSectionConfig) {
+  ScopedFILE config_file(fopen(config_path, "w"));
+  ASSERT_TRUE(config_file);
+  fprintf(config_file.get(),
+          "default_bits = 3072\n"
+          "default_md = sha384\n"
+          "distinguished_name = req_dn\n"
+          "prompt = no\n"
+          "encrypt_key = no\n"
+          "[req_dn]\n"
+          "CN = Common Name\n");
+  fclose(config_file.release());
+
+  args_list_t args = {"-new",    "-config",       config_path,
+                      "-keyout", output_key_path, "-out",
+                      csr_path,  "-subj",         "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  bssl::UniquePtr<EVP_PKEY> key(DecryptPrivateKey(output_key_path, nullptr));
+  ASSERT_TRUE(key);
+  const RSA *rsa = EVP_PKEY_get0_RSA(key.get());
+  ASSERT_TRUE(rsa);
+  EXPECT_EQ(RSA_bits(rsa), 3072u);
+}
+
 TEST_F(ReqTest, ExistingKeyFile) {
   // Use existing key for new CSR
   args_list_t use_args = {"-new", "-key",   input_key_path, "-nodes",
@@ -1187,18 +1213,17 @@ TEST_F(ReqComparisonTest, ReqExtensions) {
           "keyUsage = digitalSignature, keyEncipherment\n");
   fclose(config_file.release());
 
-  std::string subject = "/CN=extensions-test.example.com";
-  std::string awslc_command =
-      std::string(tool_executable_path) + " req -new " + "-config " +
-      config_path + " -extensions test_ext " +
-      "-newkey rsa:2048 -nodes -keyout " + key_path_awslc + " -out " +
-      csr_path_awslc + " -subj \"" + subject + "\"";
+  std::string awslc_command = std::string(tool_executable_path) + " req -new " +
+                              "-config " + config_path +
+                              " -extensions test_ext " +
+                              "-newkey rsa:2048 -nodes -keyout " +
+                              key_path_awslc + " -out " + csr_path_awslc;
 
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " req -new " + "-config " +
-      config_path + " -extensions test_ext " +
-      "-newkey rsa:2048 -nodes -keyout " + key_path_openssl + " -out " +
-      csr_path_openssl + " -subj \"" + subject + "\"";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " req -new " + "-config " + config_path +
+                                " -extensions test_ext " +
+                                "-newkey rsa:2048 -nodes -keyout " +
+                                key_path_openssl + " -out " + csr_path_openssl;
 
   ASSERT_EQ(ExecuteCommand(awslc_command), 0);
   ASSERT_EQ(ExecuteCommand(openssl_command), 0);
@@ -1229,18 +1254,17 @@ TEST_F(ReqComparisonTest, X509Extensions) {
           "subjectAltName = DNS:alt.example.com\n");
   fclose(config_file.release());
 
-  std::string subject = "/CN=extensions-test.example.com";
-  std::string awslc_command =
-      std::string(tool_executable_path) + " req -x509 -new " + "-config " +
-      config_path + " -extensions custom_ext " +
-      "-newkey rsa:2048 -nodes -days 365 -keyout " + key_path_awslc + " -out " +
-      cert_path_awslc + " -subj \"" + subject + "\"";
+  std::string awslc_command = std::string(tool_executable_path) +
+                              " req -x509 -new " + "-config " + config_path +
+                              " -extensions custom_ext " +
+                              "-newkey rsa:2048 -nodes -days 365 -keyout " +
+                              key_path_awslc + " -out " + cert_path_awslc;
 
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " req -x509 -new " + "-config " +
-      config_path + " -extensions custom_ext " +
-      "-newkey rsa:2048 -nodes -days 365 -keyout " + key_path_openssl +
-      " -out " + cert_path_openssl + " -subj \"" + subject + "\"";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " req -x509 -new " + "-config " + config_path +
+                                " -extensions custom_ext " +
+                                "-newkey rsa:2048 -nodes -days 365 -keyout " +
+                                key_path_openssl + " -out " + cert_path_openssl;
 
   ASSERT_EQ(ExecuteCommand(awslc_command), 0);
   ASSERT_EQ(ExecuteCommand(openssl_command), 0);
@@ -1412,6 +1436,44 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromEmptyConfig) {
   ASSERT_TRUE(cert_openssl != nullptr);
   ASSERT_TRUE(
       CompareCertificates(cert_awslc.get(), cert_openssl.get(), nullptr, 365));
+}
+
+// Test config that does not have req section
+TEST_F(ReqComparisonTest, NoReqSectionConfig) {
+  ScopedFILE config_file(fopen(config_path, "w"));
+  ASSERT_TRUE(config_file);
+  fprintf(config_file.get(),
+          "distinguished_name = req_distinguished_name\n"
+          "req_extensions = v3_req\n"
+          "prompt = no\n"
+          "\n"
+          "[ req_distinguished_name ]\n"
+          "CN = req-ext-test.example.com\n"
+          "\n"
+          "[ v3_req ]\n"
+          "subjectAltName = DNS:alt1.example.com,DNS:alt2.example.com\n"
+          "keyUsage = digitalSignature, keyEncipherment\n");
+  fclose(config_file.release());
+
+  std::string subject = "/CN=req-ext-test.example.com";
+  std::string awslc_command =
+      std::string(tool_executable_path) + " req -new " + "-config " +
+      config_path + " -newkey rsa:2048 -nodes -keyout " + key_path_awslc +
+      " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
+
+  std::string openssl_command =
+      std::string(openssl_executable_path) + " req -new " + "-config " +
+      config_path + " -newkey rsa:2048 -nodes -keyout " + key_path_openssl +
+      " -out " + csr_path_openssl + " -subj \"" + subject + "\"";
+
+  ASSERT_EQ(ExecuteCommand(awslc_command), 0);
+  ASSERT_EQ(ExecuteCommand(openssl_command), 0);
+
+  auto csr_awslc = LoadPEMCSR(csr_path_awslc);
+  auto csr_openssl = LoadPEMCSR(csr_path_openssl);
+  ASSERT_TRUE(csr_awslc != nullptr);
+  ASSERT_TRUE(csr_openssl != nullptr);
+  ASSERT_TRUE(CompareCSRs(csr_awslc.get(), csr_openssl.get()));
 }
 
 struct SubjectNameTestCase {

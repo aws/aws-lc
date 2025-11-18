@@ -326,8 +326,8 @@ const ReqField extra_attributes[] = {
      "An optional company name", NID_pkcs9_unstructuredName}};
 
 static bssl::UniquePtr<X509_NAME> BuildSubject(
-    X509_REQ *req, CONF *req_conf, bool is_csr, bool no_prompt,
-    unsigned long chtype = MBSTRING_ASC) {
+    X509_REQ *req, CONF *req_conf, const std::string &req_section, bool is_csr,
+    bool no_prompt, unsigned long chtype = MBSTRING_ASC) {
   // Get the subject name from the request
   bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
   if (!subj) {
@@ -354,7 +354,8 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
   char buffer[BUF_SIZE];
   const char *dn_section = NULL;
   if (req_conf) {
-    dn_section = NCONF_get_string(req_conf, REQ_SECTION, DISTINGUISHED_NAME);
+    dn_section =
+        NCONF_get_string(req_conf, req_section.c_str(), DISTINGUISHED_NAME);
   }
 
   // Process each subject field
@@ -396,7 +397,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 
   const char *attr_section = NULL;
   if (req_conf) {
-    attr_section = NCONF_get_string(req_conf, REQ_SECTION, ATTRIBUTES);
+    attr_section = NCONF_get_string(req_conf, req_section.c_str(), ATTRIBUTES);
   }
   // If this is a CSR, handle extra attributes
   if (is_csr) {
@@ -450,7 +451,8 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 
 static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
                                    std::string &subject_name, CONF *req_conf,
-                                   bool is_csr, bool no_prompt) {
+                                   const std::string &req_section, bool is_csr,
+                                   bool no_prompt) {
   bssl::UniquePtr<X509_NAME> name;
 
   // version 1
@@ -459,7 +461,7 @@ static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
   }
 
   if (subject_name.empty()) {  // Prompt the user
-    name = BuildSubject(req, req_conf, is_csr, no_prompt);
+    name = BuildSubject(req, req_conf, req_section, is_csr, no_prompt);
   } else {  // Parse user provided string
     name = ParseSubjectName(subject_name);
     if (!name) {
@@ -797,9 +799,15 @@ bool reqTool(const args_list_t &args) {
     return false;
   }
 
+  std::string req_section = REQ_SECTION;
+  if (req_conf.get() &&
+      NCONF_get_section(req_conf.get(), REQ_SECTION) == NULL) {
+    req_section = "default";
+  }
+
   if (ext_section.empty() && req_conf.get()) {
     const char *ext_str =
-        NCONF_get_string(req_conf.get(), REQ_SECTION,
+        NCONF_get_string(req_conf.get(), req_section.c_str(),
                          x509_flag ? V3_EXTENSIONS : REQ_EXTENSIONS);
     if (ext_str) {
       ext_section = ext_str;
@@ -823,7 +831,7 @@ bool reqTool(const args_list_t &args) {
   if (digest_name.empty()) {
     if (!config_path.empty()) {
       const char *digest_str =
-          NCONF_get_string(req_conf.get(), REQ_SECTION, DEFAULT_MD);
+          NCONF_get_string(req_conf.get(), req_section.c_str(), DEFAULT_MD);
       if (digest_str) {
         digest_name = digest_str;
       } else {
@@ -842,7 +850,7 @@ bool reqTool(const args_list_t &args) {
   const char *encrypt_key_str = NULL;
   if (req_conf.get()) {
     encrypt_key_str =
-        NCONF_get_string(req_conf.get(), REQ_SECTION, ENCRYPT_KEY);
+        NCONF_get_string(req_conf.get(), req_section.c_str(), ENCRYPT_KEY);
   }
 
   if (encrypt_key_str != NULL &&
@@ -866,7 +874,7 @@ bool reqTool(const args_list_t &args) {
     long default_keylen = DEFAULT_KEY_LENGTH;
     const char *bits_str = NULL;
     if (req_conf.get()) {
-      bits_str = NCONF_get_string(req_conf.get(), REQ_SECTION, BITS);
+      bits_str = NCONF_get_string(req_conf.get(), req_section.c_str(), BITS);
     }
 
     if (bits_str) {
@@ -904,8 +912,8 @@ bool reqTool(const args_list_t &args) {
   // set to privkey.pem)
   if (keyout.empty()) {
     if (req_conf) {
-      const char *default_keyfile =
-          NCONF_get_string(req_conf.get(), REQ_SECTION, DEFAULT_KEYFILE);
+      const char *default_keyfile = NCONF_get_string(
+          req_conf.get(), req_section.c_str(), DEFAULT_KEYFILE);
       keyout = default_keyfile != NULL ? default_keyfile : "";
     } else {
       keyout = "privkey.pem";
@@ -926,7 +934,8 @@ bool reqTool(const args_list_t &args) {
   bool no_prompt = false;
   const char *no_prompt_str = NULL;
   if (req_conf.get()) {
-    no_prompt_str = NCONF_get_string(req_conf.get(), REQ_SECTION, PROMPT);
+    no_prompt_str =
+        NCONF_get_string(req_conf.get(), req_section.c_str(), PROMPT);
   }
 
   if (no_prompt_str != NULL && isStringUpperCaseEqual(no_prompt_str, "no")) {
@@ -941,7 +950,7 @@ bool reqTool(const args_list_t &args) {
   // Always create a CSR first
   if (req == NULL ||
       !MakeCertificateRequest(req.get(), pkey.get(), subj, req_conf.get(),
-                              !x509_flag, no_prompt)) {
+                              req_section, !x509_flag, no_prompt)) {
     fprintf(stderr, "Failed to create certificate request\n");
     return false;
   }
