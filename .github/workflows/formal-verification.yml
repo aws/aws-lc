@@ -28,6 +28,8 @@ concurrency:
 env:
   GOPROXY: https://proxy.golang.org,direct
   DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
 jobs:
   define_matrix:
     runs-on:

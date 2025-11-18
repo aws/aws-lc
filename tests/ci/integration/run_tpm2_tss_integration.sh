@@ -60,7 +60,7 @@ function tpm2_tss_build() {
 function tpm2_abrmd_build() {
   export PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig:${TPM2_TSS_INSTALL_FOLDER}/lib/pkgconfig"
   /bin/sh ./bootstrap
-  ./configure --enable-unit --with-crypto=ossl --prefix="${TPM2_ABRMD_INSTALL_FOLDER}" 
+  ./configure --enable-unit --with-crypto=ossl --prefix="${TPM2_ABRMD_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}" all VERBOSE=1
   make -j "${NUM_CPU_THREADS}" check VERBOSE=1
   make -j "${NUM_CPU_THREADS}" install
@@ -108,5 +108,3 @@ tpm2_tools_build
 popd
 
 popd
-
-

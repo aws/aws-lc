@@ -12,7 +12,7 @@ from aws_cdk import (
 from constructs import Construct
 
 from util.metadata import (
-    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS)
+    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO)
 from util.iam_policies import (
     device_farm_access_policy_in_json
 )
@@ -93,6 +93,9 @@ def create_docker_image_build_role(scope: Construct, id: str,
 
     pull_through_caches = [ecr.Repository.from_repository_name(
         scope, "quay-io", "quay.io/*")]
+    
+    staging_repo = ecr.Repository.from_repository_name(
+        scope, IMAGE_STAGING_REPO.replace('/', '-'), IMAGE_STAGING_REPO)
 
     role = iam.Role(scope, id, role_name=id,
                     assumed_by=iam.SessionTagsPrincipal(principal),
@@ -132,7 +135,7 @@ def create_docker_image_build_role(scope: Construct, id: str,
                                     ],
                                     resources=[x for x in itertools.chain([
                                         x.repository_arn for x in repos
-                                    ], [x.repository_arn for x in pull_through_caches])],
+                                    ], [x.repository_arn for x in pull_through_caches], [staging_repo.repository_arn])],
                                 ),
                                 iam.PolicyStatement(
                                     effect=iam.Effect.ALLOW,
@@ -142,8 +145,8 @@ def create_docker_image_build_role(scope: Construct, id: str,
                                         "ecr:PutImage",
                                         "ecr:UploadLayerPart",
                                     ],
-                                    resources=[
-                                        x.repository_arn for x in repos],
+                                    resources=[x for x in itertools.chain([
+                                        x.repository_arn for x in repos], [staging_repo.repository_arn])],
                                 ),
                                 iam.PolicyStatement(
                                     effect=iam.Effect.ALLOW,

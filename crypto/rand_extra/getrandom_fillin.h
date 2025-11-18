@@ -31,7 +31,7 @@
 #define EXPECTED_NR_getrandom 278
 #elif defined(OPENSSL_ARM)
 #define EXPECTED_NR_getrandom 384
-#elif defined(OPENSSL_PPC64LE)
+#elif defined(OPENSSL_PPC64LE) || defined(OPENSSL_PPC32BE)
 #define EXPECTED_NR_getrandom 359
 #elif defined(OPENSSL_RISCV64)
 #define EXPECTED_NR_getrandom 278
