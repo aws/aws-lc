@@ -200,7 +200,8 @@ static ssize_t wrapper_dev_urandom(void *buf, size_t buf_len, int block) {
 
 static ssize_t wrapper_getrandom(void *buf, size_t buf_len, int block) {
 
-  ssize_t ret = 0;
+  ssize_t ret = -1;
+#if defined(USE_NR_getrandom)
   size_t retry_counter = 0;
   long backoff = INITIAL_BACKOFF_DELAY;
 
@@ -230,6 +231,7 @@ static ssize_t wrapper_getrandom(void *buf, size_t buf_len, int block) {
     __msan_unpoison(buf, ret);
   }
 #endif  // OPENSSL_MSAN
+#endif // defined(USE_NR_getrandom)
 
     return ret;
 }
@@ -431,7 +433,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
       // Hard bail.
       abort();
     }
-  }  
+  }
 
   // Clear |errno| so it has defined value if |read| or |getrandom|
   // "successfully" returns zero.

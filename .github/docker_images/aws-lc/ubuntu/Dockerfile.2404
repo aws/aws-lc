@@ -14,11 +14,19 @@ set -ex
 apt-get update
 apt-get -y --no-install-recommends upgrade
 apt-get -y --no-install-recommends install \
+    autoconf \
+    binutils-dev \
+    bison \
+    build-essential \
     ca-certificates \
     cmake \
     curl \
     git \
+    libffi-dev \
+    libgmp-dev \
+    libssl-dev \
     libunwind-dev \
+    libyaml-dev \
     lld \
     llvm \
     llvm-dev \
@@ -27,7 +35,8 @@ apt-get -y --no-install-recommends install \
     pkg-config \
     software-properties-common \
     unzip \
-    wget
+    wget \
+    zlib1g-dev
 apt-get autoremove --purge -y
 apt-get clean
 apt-get autoclean
@@ -60,6 +69,16 @@ ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
 COPY --from=scripts setup-go-compiler.sh /tmp
 RUN <<EOF
 setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+# Install Ruby
+ENV RBENV_ROOT="/.rbenv"
+ENV PATH="${RBENV_ROOT}/shims:${RBENV_ROOT}/bin:$PATH"
+
+COPY --from=scripts setup-ruby.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-ruby.sh"
 ${setup_script}
 EOF
 

@@ -8,6 +8,7 @@ from aws_cdk import (
 )
 from cdk.aws_lc_codebuild_fleets import AwsLcCodeBuildFleets
 from cdk.aws_lc_github_actions_stack import AwsLcGitHubActionsStack
+from cdk.aws_lc_github_oidc_stack import AwsLcGitHubOidcStack
 from constructs import Construct
 
 
@@ -32,15 +33,18 @@ class GitHubActionsStage(Stage):
         self.codebuild_fleets = AwsLcCodeBuildFleets(self, "aws-lc-codebuild-fleets",
                                                      env=deploy_environment,
                                                      stack_name="aws-lc-codebuild-fleets")
-
-        AwsLcGitHubActionsStack(
+        
+        self.odic_stack = AwsLcGitHubOidcStack(
+            self, "aws-lc-github-oidc", env=deploy_environment, **kwargs)
+        
+        self.actions_stack = AwsLcGitHubActionsStack(
             self,
             "aws-lc-ci-github-actions",
             env=deploy_environment,
             ignore_failure=False,
             stack_name="aws-lc-ci-github-actions",
         )
-
+        
     @property
     def stacks(self):
         return [child for child in self.node.children if isinstance(child, Stack)]

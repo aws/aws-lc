@@ -171,7 +171,7 @@ jobs:
             compiler: gcc-12
             run: ./tests/ci/integration/run_sslproxy_integration.sh
           - name: sslproxy
-            arch: aarch64 
+            arch: aarch64
             size: large
             image: ubuntu:22.04
             compiler: gcc-12
@@ -257,9 +257,9 @@ jobs:
             run: ./tests/ci/integration/run_openldap_integration.sh OPENLDAP_REL_ENG_2_5
 
           # Cyrus SASL Integration Tests
-          - name: cyrus-sasl 
+          - name: cyrus-sasl
             arch: x86_64
-            size: small 
+            size: small
             image: ubuntu:22.04
             compiler: gcc-12
             run: ./tests/ci/integration/run_cyrus_sasl_integration.sh
@@ -279,7 +279,7 @@ jobs:
             compiler: gcc-12
             accp_fips: true
             run: ./tests/ci/integration/run_accp_integration.sh
-        
+
           # NMAP Integration Tests
           - name: nmap
             arch: x86_64
@@ -303,7 +303,7 @@ jobs:
             image: ubuntu:22.04
             compiler: gcc-12
             run: ./tests/ci/integration/run_libwebsockets_integration.sh
-          
+
           # GRPC Integration Tests
           - name: grpc
             arch: x86_64
@@ -321,7 +321,9 @@ jobs:
             compiler: gcc-12
             ipv6: true
             options: --privileged
-            run: ./tests/ci/integration/run_bind9_integration.sh
+            run: |
+              python3 -m pip install --upgrade meson
+              ./tests/ci/integration/run_bind9_integration.sh
 
           # strongSwan Integration Tests
           - name: strongswan
@@ -457,10 +459,10 @@ jobs:
       - uses: ./.github/actions/codebuild-docker-run
         name: Run Container
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:24.04
           env: |
             FIPS
           ipv6: true
           run: |
-            source /opt/compiler-env/setup-gcc-12.sh
+            source /opt/compiler-env/setup-gcc-13.sh
             ./tests/ci/integration/run_ruby_integration.sh ${{ matrix.version }}

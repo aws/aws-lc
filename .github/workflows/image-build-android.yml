@@ -1,0 +1,105 @@
+name: image-build-android
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-android
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/android/Dockerfile
+      - .github/docker_images/scripts/**
+  pull_request_target:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/android/Dockerfile
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+# Critical: Caution must be used when expanding permissions beyond these as we checkout untrusted pull request code
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    outputs:
+      android: ${{ steps.images.outputs.latest }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.ref || github.ref }}
+      - name: Query Environment
+        id: env
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDockerImageBuildRole
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo latest=${{ steps.env.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/android/Dockerfile
+          context: ./.github/docker_images/aws-lc/android
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          tags: ${{ steps.images.outputs.latest }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.latest }}
+          run: |
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+
+  push:
+    if: ${{ github.event_name != 'pull_request_target' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - build
+    outputs:
+      android: ${{ steps.images.outputs.android }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo latest=${{ steps.ecr.outputs.registry_url }}/aws-lc/android:latest >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.build.outputs.android }}
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.build.outputs.android }} ${{ steps.images.outputs.latest }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.latest }}

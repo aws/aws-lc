@@ -37,6 +37,17 @@ UBUNTU_ECR_REPO = "aws-lc/ubuntu"
 AMAZONLINUX_ECR_REPO = "aws-lc/amazonlinux"
 CENTOS_ECR_REPO = "aws-lc/centos"
 FEDORA_ECR_REPO = "aws-lc/fedora"
+WINDOWS_ECR_REPO = "aws-lc/windows"
+VERIFICATION_ECR_REPO = "aws-lc/verification"
+ANDROID_ECR_REPO = "aws-lc/android"
+IMAGE_STAGING_REPO = "aws-lc/staging"
+
+ECR_REPOS = [UBUNTU_ECR_REPO, AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO,
+             FEDORA_ECR_REPO, WINDOWS_ECR_REPO, VERIFICATION_ECR_REPO,
+             ANDROID_ECR_REPO]
+
+AWS_LC_METRIC_NS = "AWS-LC"
+AWS_LC_FUZZ_METRIC_NS = "AWS-LC-Fuzz"
 
 # Used when AWS CodeBuild needs to create web_hooks.
 GITHUB_REPO_OWNER = EnvUtil.get("GITHUB_REPO_OWNER", "aws")
@@ -60,3 +71,4 @@ S3_FOR_WIN_DOCKER_IMG_BUILD = EnvUtil.get(
 )
 
 GITHUB_PUSH_CI_BRANCH_TARGETS = r"(main|fips-\d{4}-\d{2}-\d{2}.*)"
+SCRUTINICE_PRINCIPAL_ROLE_ARN = "arn:aws:iam::222961743098:role/scrutini-ecr"

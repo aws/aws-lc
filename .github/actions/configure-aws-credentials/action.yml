@@ -1,0 +1,29 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: 'configure-aws-credentials'
+description: 'A helper for configure AWS credentials for AWS-LC GitHub actions'
+inputs:
+  roleName:
+    description: "The target IAM role to assume using the OIDC role credentials"
+    required: true
+    default: 'AwsLcGitHubActionStandardRole'
+runs:
+  using: 'composite'
+  steps:
+    - name: Query Environment
+      id: env
+      shell: bash
+      run: |
+        echo aws_account_id=${AWS_ACCOUNT_ID} >> "$GITHUB_OUTPUT"
+    - name: Retrieve OIDC Role Credentials
+      uses: aws-actions/configure-aws-credentials@v5
+      with:
+        role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/AwsLcGitHubActionsOidcRole
+        role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Retrieve GitHub Actions Role Credentials
+      uses: aws-actions/configure-aws-credentials@v5
+      with:
+        role-to-assume: arn:aws:iam::${{ steps.env.outputs.aws_account_id }}:role/${{ inputs.roleName }}
+        role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
+        role-chaining: true

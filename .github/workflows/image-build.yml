@@ -13,6 +13,7 @@ on:
   schedule:
     - cron: '30 15 * * 1'
 permissions:
+  id-token: write
   contents: read
 
 jobs:
@@ -45,3 +46,9 @@ jobs:
   fedora31:
     if: ${{ inputs.rebuildUnsupportedImages }}
     uses: ./.github/workflows/image-build-fedora31.yml
+  windows:
+    uses: ./.github/workflows/image-build-windows.yml
+  verification:
+    uses: ./.github/workflows/image-build-formal-verification.yml
+  android:
+    uses: ./.github/workflows/image-build-android.yml

@@ -21,13 +21,13 @@
 #include "getrandom_fillin.h"
 #include "internal.h"
 #include "../ube/internal.h"
-#include "../ube/snapsafe_detect.h"
+#include "../ube/vm_ube_detect.h"
 
 #if defined(OPENSSL_RAND_URANDOM) && \
     defined(OPENSSL_X86_64) && \
     !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
-    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING) && \
+    defined(USE_NR_getrandom) && !defined(AWSLC_VM_UBE_TESTING) && \
     !defined(DISABLE_CPU_JITTER_ENTROPY)
 
 #include <linux/types.h>
@@ -37,7 +37,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 
-#include "../ube/fork_detect.h"
+#include "../ube/fork_ube_detect.h"
 #include "getrandom_fillin.h"
 
 #include "../test/test_util.h"
@@ -631,7 +631,7 @@ TEST(URandomTest, Test) {
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
-  maybeDisableSomeForkDetectMechanisms();
+  maybeDisableSomeForkUbeDetectMechanisms();
 
   return RUN_ALL_TESTS();
 }
@@ -644,4 +644,4 @@ int main(int argc, char **argv) {
 }
 
 #endif  // X86_64 && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE &&
-        // USE_NR_getrandom && !AWSLC_SNAPSAFE_TESTING
+        // USE_NR_getrandom && !AWSLC_VM_UBE_TESTING

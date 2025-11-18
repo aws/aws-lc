@@ -5,12 +5,12 @@
 
 set -euo pipefail
 
-RBENV_ROOT="/.rbenv"
+RBENV_ROOT="${RBENV_ROOT:-/.rbenv}"
 RUBY_VERSION=${RUBY_VERSION:-3.4.3}
 
-git clone https://github.com/rbenv/rbenv.git "${RBENV_ROOT}"
+git clone --depth 1 https://github.com/rbenv/rbenv.git "${RBENV_ROOT}"
 mkdir -p "${RBENV_ROOT}/plugins"
-git clone https://github.com/rbenv/ruby-build.git "${RBENV_ROOT}/plugins/ruby-build"
+git clone --depth 1 https://github.com/rbenv/ruby-build.git "${RBENV_ROOT}/plugins/ruby-build"
 sh ${RBENV_ROOT}/plugins/ruby-build/install.sh
 
 rbenv install "${RUBY_VERSION}"

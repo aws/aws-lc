@@ -94,22 +94,6 @@ class CiStage(Stage):
 
         env = env or {}
 
-        prebuild_check_step = pipelines.CodeBuildStep(
-            "PrebuildCheck",
-            input=input,
-            commands=[
-                "cd tests/ci/cdk/pipeline/scripts",
-                'trigger_conditions=$(./check_trigger_conditions.sh --build-type ci --stacks "${STACKS}")',
-                "export NEED_REBUILD=$(echo $trigger_conditions | sed -n 's/.*\(NEED_REBUILD=[0-9]*\).*/\\1/p' | cut -d'=' -f2 )",
-            ],
-            env={
-                **env,
-                "STACKS": " ".join(stack_names),
-            },
-            role=role,
-            timeout=Duration.minutes(60),
-        )
-
         batch_timeout = max([stack.timeout for stack in self.stacks]) * (max_retry + 1)
         batch_build_jobs = {
             "build-list": [
@@ -142,14 +126,11 @@ class CiStage(Stage):
             env={
                 **env,
                 "MAX_RETRY": max_retry,
-                "NEED_REBUILD": prebuild_check_step.exported_variable("NEED_REBUILD"),
             },
         )
-
-        ci_run_step.add_step_dependency(prebuild_check_step)
 
         pipeline.add_stage(
             self,
             pre=[private_repo_sync_step] if private_repo_sync_step else None,
-            post=[prebuild_check_step, ci_run_step],
+            post=[ci_run_step],
         )
