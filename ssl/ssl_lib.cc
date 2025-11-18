@@ -2247,6 +2247,7 @@ int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
                                 false /* not strict */,
                                 false /* don't configure TLSv1.3 ciphers */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
 
@@ -2259,6 +2260,7 @@ int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   if (!ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
                                 true /* strict */,
                                 false /* don't configure TLSv1.3 ciphers */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
 
@@ -2291,6 +2293,7 @@ int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
   if (!ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
                                 false /* not strict */,
                                 true /* only configure TLSv1.3 ciphers */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
 
@@ -2307,6 +2310,7 @@ int SSL_set_ciphersuites(SSL *ssl, const char *str) {
   if (!ssl_create_cipher_list(&ssl->config->tls13_cipher_list,
                                 has_aes_hw, str, false /* not strict */,
                                 true /* configure TLSv1.3 ciphers */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
 
