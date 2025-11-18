@@ -1378,16 +1378,15 @@ TEST_F(ReqComparisonTest, ReqExtentionsFromEmptyConfig) {
           "\n");
   fclose(config_file.release());
 
-  std::string subject = "/CN=req-ext-test.example.com";
-  std::string awslc_command =
-      std::string(tool_executable_path) + " req -new " + "-config " +
-      config_path + " -newkey rsa:2048 -nodes -keyout " + key_path_awslc +
-      " -out " + csr_path_awslc + " -subj \"" + subject + "\"";
+  std::string awslc_command = std::string(tool_executable_path) + " req -new " +
+                              "-config " + config_path +
+                              " -newkey rsa:2048 -nodes -keyout " +
+                              key_path_awslc + " -out " + csr_path_awslc;
 
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " req -new " + "-config " +
-      config_path + " -newkey rsa:2048 -nodes -keyout " + key_path_openssl +
-      " -out " + csr_path_openssl + " -subj \"" + subject + "\"";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " req -new " + "-config " + config_path +
+                                " -newkey rsa:2048 -nodes -keyout " +
+                                key_path_openssl + " -out " + csr_path_openssl;
 
   ASSERT_EQ(ExecuteCommand(awslc_command), 0);
   ASSERT_EQ(ExecuteCommand(openssl_command), 0);
@@ -1413,18 +1412,15 @@ TEST_F(ReqComparisonTest, X509ExtensionsFromEmptyConfig) {
           "\n");
   fclose(config_file.release());
 
-  std::string subject = "/CN=x509-ext-test.example.com";
   std::string awslc_command = std::string(tool_executable_path) +
                               " req -x509 -new " + "-config " + config_path +
                               " -newkey rsa:2048 -nodes -days 365 -keyout " +
-                              key_path_awslc + " -out " + cert_path_awslc +
-                              " -subj \"" + subject + "\"";
+                              key_path_awslc + " -out " + cert_path_awslc;
 
-  std::string openssl_command =
-      std::string(openssl_executable_path) + " req -x509 -new " + "-config " +
-      config_path + " -newkey rsa:2048 -nodes -days 365 -keyout " +
-      key_path_openssl + " -out " + cert_path_openssl + " -subj \"" + subject +
-      "\"";
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " req -x509 -new " + "-config " + config_path +
+                                " -newkey rsa:2048 -nodes -days 365 -keyout " +
+                                key_path_openssl + " -out " + cert_path_openssl;
 
   ASSERT_EQ(ExecuteCommand(awslc_command), 0);
   ASSERT_EQ(ExecuteCommand(openssl_command), 0);

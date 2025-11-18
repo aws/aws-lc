@@ -531,17 +531,19 @@ static bool LoadConfig(const std::string &config_path,
 static bool AddCertExtensions(X509 *cert, CONF *req_conf,
                               std::string &ext_section) {
   // Set up X509V3 context for certificate
-  bool result = false;
+  bool result = true;
   X509V3_CTX ext_ctx;
   X509V3_set_ctx(&ext_ctx, cert, cert, NULL, NULL,
                  X509V3_CTX_REPLACE);  // self-signed
 
-  if (req_conf != NULL && !ext_section.empty()) {
+  if (req_conf != NULL) {
     X509V3_set_nconf(&ext_ctx, req_conf);
 
     // Add extensions from config to the certificate
-    result = X509V3_EXT_add_nconf(req_conf, &ext_ctx, ext_section.c_str(),
-                                  cert) != 0;
+    if (!ext_section.empty()) {
+      result = X509V3_EXT_add_nconf(req_conf, &ext_ctx, ext_section.c_str(),
+                                    cert) != 0;
+    }
 
     /* Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER */
     if (!AdaptKeyIDExtension(cert, &ext_ctx, "subjectKeyIdentifier", "hash",
@@ -593,7 +595,7 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
 static bool AddReqExtensions(X509_REQ *req, CONF *req_conf,
                              std::string &ext_section) {
   // Set up X509V3 context for certificate
-  bool result = false;
+  bool result = true;
   X509V3_CTX ext_ctx;
   X509V3_set_ctx(&ext_ctx, NULL, NULL, req, NULL,
                  X509V3_CTX_REPLACE);  // self-signed
