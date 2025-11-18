@@ -161,7 +161,7 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *see
 *              - uint8_t *sk:     pointer to bit-packed secret key
 *              - int external_mu: indicates input message m is to be processed as mu
 *
-* Returns 0 (success) or -1 (context string too long)
+* Returns 0 (success) or -1 (context string or message too long)
 **************************************************/
 int ml_dsa_sign_internal(ml_dsa_params *params,
                          uint8_t *sig,
@@ -205,6 +205,10 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
+    // When external_mu is true, m is expected to be exactly ML_DSA_CRHBYTES
+    if (mlen != ML_DSA_CRHBYTES) {
+      return -1;
+    }
     OPENSSL_memcpy(mu, m, mlen);
   }
 
@@ -492,6 +496,10 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
+    // When external_mu is true, m is expected to be exactly ML_DSA_CRHBYTES
+    if (mlen != ML_DSA_CRHBYTES) {
+      return -1;
+    }
     OPENSSL_memcpy(mu, m, mlen);
   }
 
