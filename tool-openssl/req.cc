@@ -17,6 +17,7 @@
 #define REQ_SECTION "req"
 #define BITS "default_bits"
 #define DEFAULT_MD "default_md"
+#define DEFAULT_KEYFILE "default_keyfile"
 #define PROMPT "prompt"
 #define ENCRYPT_KEY "encrypt_key"
 #define DISTINGUISHED_NAME "distinguished_name"
@@ -30,13 +31,20 @@
 #define BUF_SIZE 1024
 #define DEFAULT_CHAR_TYPE MBSTRING_ASC
 
-// Notes: -x509 option assumes -new when -in is not passed in with OpenSSL. We
-// do not support -in as of now, so -new is implied with -x509.
+// NOTES:
+// 1. We do not support -in as of now, so -new is implied with -x509.
 //
-// In general, OpenSSL supports a default config file which it defaults to when
-// user input is not provided. We don't support this default config file
-// interface. For fields that are not overriden by user input, we hardcode
-// default values (e.g. X509 extensions, -keyout defaults to privkey.pem, etc.)
+// 2. AWS-LC does not support config files by design, but some of our
+// dependencies still use this cli command with -config. Therefore, we decided
+// to implement -config but will only parse a MINIMAL set of fields (e.g.,
+// default_md, distiguished_name, etc.). This set will be updated and
+// re-evaluated on an as-needed basis.
+//
+// 3. OpenSSL has a default config file when user input is not provided.
+// https://github.com/openssl/openssl/blob/master/apps/openssl.cnf
+// We don't support this default config file interface. For fields that are not
+// overriden by user input, we hardcode default values (e.g. X509 extensions,
+// -keyout defaults to privkey.pem, etc.)
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
@@ -74,12 +82,6 @@ static const argument_t kArguments[] = {
      "be formatted as /type0=value0/type1=value1/type2=.... "
      "Keyword characters may be escaped by \\ (backslash), and "
      "whitespace is retained."},
-    // AWS-LC does not support config files by design, but some of our
-    // dependencies
-    // still use this cli command with -config. Therefore, we decided to
-    // implement -config but will only parse a MINIMAL set of fields (e.g.,
-    // default_md, distiguished_name, etc.). This set will be updated and
-    // re-evaluated on an as-needed basis.
     {"-config", kOptionalArgument, "This specifies the request template file"},
     {"-extensions", kOptionalArgument,
      "Cert or request extension section (override value in config file)"},
@@ -532,7 +534,7 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
   X509V3_set_ctx(&ext_ctx, cert, cert, NULL, NULL,
                  X509V3_CTX_REPLACE);  // self-signed
 
-  if (req_conf != NULL) {
+  if (req_conf != NULL && !ext_section.empty()) {
     X509V3_set_nconf(&ext_ctx, req_conf);
 
     // Add extensions from config to the certificate
@@ -559,7 +561,8 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
         "basicConstraints=critical,CA:true\n";
 
     // Create a BIO for the config
-    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(default_config, strlen(default_config)));
+    bssl::UniquePtr<BIO> bio(
+        BIO_new_mem_buf(default_config, strlen(default_config)));
     if (!bio) {
       fprintf(stderr, "Failed to create memory BIO\n");
       return false;
@@ -694,13 +697,8 @@ static bool WritePrivateKey(std::string &out_path,
                             const EVP_CIPHER *cipher) {
   bssl::UniquePtr<BIO> out_bio;
   SetUmaskForPrivateKey();
-  if (out_path.empty()) {
-    // Default to privkey.pem in the current directory
-    out_path = "privkey.pem";
-    fprintf(stderr, "Writing private key to %s (default)\n", out_path.c_str());
-  } else {
-    fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
-  }
+
+  fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
 
   out_bio.reset(BIO_new(BIO_s_file()));
   if (!out_bio) {
@@ -859,7 +857,11 @@ bool reqTool(const args_list_t &args) {
   //   - If -newkey is given: generate key specified by -newkey
   //   - Else: generate default RSA key
   bssl::UniquePtr<EVP_PKEY> pkey;
-  if (key_file_path.empty()) {
+  if (!key_file_path.empty()) {
+    if (!LoadPrivateKey(key_file_path, passin, pkey)) {
+      return false;
+    }
+  } else {
     // Before generating key, check if config has a default key length specified
     long default_keylen = DEFAULT_KEY_LENGTH;
     const char *bits_str = NULL;
@@ -893,20 +895,32 @@ bool reqTool(const args_list_t &args) {
       fprintf(stderr, "Error: Failed to generate private key.\n");
       return false;
     }
-  } else {
-    if (!LoadPrivateKey(key_file_path, passin, pkey)) {
-      return false;
+  }
+
+  // If keyout is not provided:
+  // 1. If -config, use it to set keyout
+  // 2. If no -config, output key to privkey.pem (this imitates how OpenSSL
+  // would default to the default openssl.conf file, which has default_keyfile
+  // set to privkey.pem)
+  if (keyout.empty()) {
+    if (req_conf) {
+      const char *default_keyfile =
+          NCONF_get_string(req_conf.get(), REQ_SECTION, DEFAULT_KEYFILE);
+      keyout = default_keyfile != NULL ? default_keyfile : "";
+    } else {
+      keyout = "privkey.pem";
     }
   }
 
-  const EVP_CIPHER *cipher = NULL;
-  if (!nodes && encrypt_key) {
-    cipher = EVP_des_ede3_cbc();
-  }
+  if (!keyout.empty()) {
+    const EVP_CIPHER *cipher = NULL;
+    if (!nodes && encrypt_key) {
+      cipher = EVP_des_ede3_cbc();
+    }
 
-  SetUmaskForPrivateKey();
-  if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
-    return false;
+    if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
+      return false;
+    }
   }
 
   bool no_prompt = false;
@@ -990,7 +1004,7 @@ bool reqTool(const args_list_t &args) {
   } else {
     // Add extensions to request
     if (!AddReqExtensions(req.get(), req_conf.get(), ext_section)) {
-      fprintf(stderr, "Failed to add extensions to certificate\n");
+      fprintf(stderr, "Failed to add extensions to CSR\n");
       return false;
     }
 
