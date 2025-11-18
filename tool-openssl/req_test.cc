@@ -12,7 +12,6 @@
 #include <io.h>
 #else
 #include <sys/stat.h>
-#include <unistd.h>
 #endif
 #include "../tool/internal.h"
 
@@ -230,8 +229,8 @@ TEST_F(ReqTest, SuppressedKeyWrite) {
   ASSERT_TRUE(reqTool(args));
 
   // Verify that privkey.pem was NOT created
-  EXPECT_FALSE(access("privkey.pem", F_OK) == 0)
-      << "privkey.pem should not be created";
+  ScopedFILE f(fopen("privkey.pem", "r"));
+  EXPECT_FALSE(f) << "privkey.pem should not be created";
 }
 
 TEST_F(ReqTest, X509SelfSignedCert) {
