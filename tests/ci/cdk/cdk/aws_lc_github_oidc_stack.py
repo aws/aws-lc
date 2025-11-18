@@ -61,7 +61,7 @@ class AwsLcGitHubOidcStack(Stack):
             self.minimal_oidc_role)
 
         self.device_farm_role = create_device_farm_role(
-            self, "AwsLcGitHubActionDeviceFarmRole", env, self.minimal_oidc_role)
+            self, "AwsLcGitHubActionDeviceFarmRole", env, self.minimal_oidc_role, ecr_repos)
         self.device_farm_role.grant_assume_role(self.minimal_oidc_role)
 
         self.docker_image_build_role = create_docker_image_build_role(
@@ -72,7 +72,8 @@ class AwsLcGitHubOidcStack(Stack):
 
 def create_device_farm_role(scope: Construct, id: str,
                             env: typing.Union[Environment, typing.Dict[str, typing.Any]],
-                            principal: iam.IPrincipal) -> iam.Role:
+                            principal: iam.IPrincipal,
+                            repos: typing.List[ecr.IRepository]) -> iam.Role:
     device_farm_policy = iam.PolicyDocument.from_json(
         device_farm_access_policy_in_json(env)
     )
@@ -81,6 +82,44 @@ def create_device_farm_role(scope: Construct, id: str,
                                 assumed_by=iam.SessionTagsPrincipal(principal),
                                 inline_policies={
                                     "device_farm_policy": device_farm_policy,
+                                    "metrics_policy": iam.PolicyDocument(
+                                        statements=[
+                                            iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=[
+                                                    "cloudwatch:PutMetricData"
+                                                ],
+                                                resources=["*"],
+                                                conditions={
+                                                    "StringEquals": {
+                                                        "aws:RequestedRegion": [env.region],
+                                                        "cloudwatch:namespace": [AWS_LC_METRIC_NS],
+                                                    }
+                                                }
+                                            ),
+                                        ]
+                                    ),
+                                    "ecr": iam.PolicyDocument(
+                                        statements=[
+                                            iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=[
+                                                    "ecr:GetAuthorizationToken",
+                                                ],
+                                                resources=["*"],
+                                            ),
+                                            iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=[
+                                                    "ecr:BatchGetImage",
+                                                    "ecr:BatchCheckLayerAvailability",
+                                                    "ecr:GetDownloadUrlForLayer",
+                                                ],
+                                                resources=[
+                                                    x.repository_arn for x in repos],
+                                            ),
+                                        ],
+                                    ),
                                 })
 
     return device_farm_role

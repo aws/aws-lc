@@ -24,11 +24,11 @@ inputs:
   ipv6:
     description: 'Enables IPv6 networking in the container. Implies --privileged'
     required: false
-    default: false
+    default: ''
   withCredentials:
     description: 'Whether to passthru the CodeBuild credentials'
     required: false
-    default: false
+    default: ''
   user:
     description: 'Run the docker container as a non-root user'
     required: false
