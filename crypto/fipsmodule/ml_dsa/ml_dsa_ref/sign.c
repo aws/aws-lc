@@ -161,7 +161,7 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *see
 *              - uint8_t *sk:     pointer to bit-packed secret key
 *              - int external_mu: indicates input message m is to be processed as mu
 *
-* Returns 0 (success) or -1 (context string or message too long)
+* Returns 0 (success) or -1 (context string or mlen too long)
 **************************************************/
 int ml_dsa_sign_internal(ml_dsa_params *params,
                          uint8_t *sig,
@@ -207,6 +207,11 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   else {
     // When external_mu is true, m is expected to be exactly ML_DSA_CRHBYTES
     if (mlen != ML_DSA_CRHBYTES) {
+      /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+      OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
+      OPENSSL_cleanse(&t0, sizeof(t0));
+      OPENSSL_cleanse(&s1, sizeof(s1));
+      OPENSSL_cleanse(&s2, sizeof(s2));
       return -1;
     }
     OPENSSL_memcpy(mu, m, mlen);
@@ -498,6 +503,12 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   else {
     // When external_mu is true, m is expected to be exactly ML_DSA_CRHBYTES
     if (mlen != ML_DSA_CRHBYTES) {
+      /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+      OPENSSL_cleanse(rho, sizeof(rho));
+      OPENSSL_cleanse(&t1, sizeof(t1));
+      OPENSSL_cleanse(c, sizeof(c));
+      OPENSSL_cleanse(&z, sizeof(z));
+      OPENSSL_cleanse(&h, sizeof(h));
       return -1;
     }
     OPENSSL_memcpy(mu, m, mlen);
