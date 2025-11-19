@@ -18,7 +18,11 @@ on:
       - .github/docker_images/aws-lc/android/Dockerfile
       - .github/docker_images/scripts/**
 concurrency:
-  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  group: >
+    ${{ inputs.concurrency_prefix || github.workflow }}-
+    ${{ github.event_name == 'pull_request_target'
+      && format('pr-{0}', github.event.pull_request.number)
+      || format('{0}-{1}', github.ref_type || 'ref', github.ref_name || github.ref) }}
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
@@ -29,7 +33,21 @@ permissions:
   contents: read
 
 jobs:
+  authorization-check:
+    outputs:
+      approval-env: ${{ steps.authz.outputs.approval-env }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/check-authorization
+        id: authz 
+
   build:
+    needs: [authorization-check]
+    environment: ${{ needs.authorization-check.outputs.approval-env }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
@@ -39,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
       - name: Query Environment
         id: env
         run: |
@@ -74,11 +92,13 @@ jobs:
 
   push:
     if: ${{ github.event_name != 'pull_request_target' }}
+    environment: ${{ needs.authorization-check.outputs.approval-env }}
     runs-on:
       codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
       image:linux-5.0
       instance-size:small
     needs:
+      - authorization-check
       - build
     outputs:
       android: ${{ steps.images.outputs.android }}
