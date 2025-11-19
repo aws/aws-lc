@@ -161,7 +161,7 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *see
 *              - uint8_t *sk:     pointer to bit-packed secret key
 *              - int external_mu: indicates input message m is to be processed as mu
 *
-* Returns 0 (success) or -1 (context string or mlen too long)
+* Returns 0 (success) or -1 (context string too long or incorrect mlen in external mu)
 **************************************************/
 int ml_dsa_sign_internal(ml_dsa_params *params,
                          uint8_t *sig,
