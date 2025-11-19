@@ -390,23 +390,11 @@ static EVP_AES_GCM_CTX *aes_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) {
     case NID_xaes_256_gcm: 
       assert(ctx->cipher->ctx_size == sizeof(XAES_256_GCM_CTX));
       ptr = ctx->cipher_data;
-#if defined(OPENSSL_32_BIT)
-      assert((uintptr_t)ptr % 4 == 0);
-      ptr += (uintptr_t)ptr & 4;
-#endif
-      assert((uintptr_t)ptr % 8 == 0);
-      ptr += (uintptr_t)ptr & 8;
       return &((XAES_256_GCM_CTX *)ptr)->aes_gcm_ctx;
     // XAES-256-GCM-KC
     case NID_xaes_256_gcm_kc:
       assert(ctx->cipher->ctx_size == sizeof(XAES_256_GCM_KC_CTX));
       ptr = ctx->cipher_data;
-#if defined(OPENSSL_32_BIT)
-      assert((uintptr_t)ptr % 4 == 0);
-      ptr += (uintptr_t)ptr & 4;
-#endif
-      assert((uintptr_t)ptr % 8 == 0);
-      ptr += (uintptr_t)ptr & 8;
       return &((XAES_256_GCM_KC_CTX *)ptr)->aes_gcm_ctx;
     default:
       break;
@@ -1853,15 +1841,7 @@ static int xaes_256_gcm_CMAC_derive_key(AES_KEY *xaes_key, uint8_t *k1,
 }
 
 static XAES_256_GCM_CTX *xaes_256_gcm_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    // Handle alignment according to the way it is implemented for the AES-GCM context
-    char *ptr = ctx->cipher_data;
-#if defined(OPENSSL_32_BIT)
-    assert((uintptr_t)ptr % 4 == 0);
-    ptr += (uintptr_t)ptr & 4;
-#endif
-    assert((uintptr_t)ptr % 8 == 0);
-    ptr += (uintptr_t)ptr & 8;
-    return (XAES_256_GCM_CTX *)ptr;
+    return (XAES_256_GCM_CTX *)ctx->cipher_data;
 }
 
 static int xaes_256_gcm_set_gcm_key(EVP_CIPHER_CTX *ctx, const uint8_t *nonce, int enc) {
@@ -2058,15 +2038,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
 // ----------- Reference: https://eprint.iacr.org/2025/758.pdf#page=6 -----------
 // ------------------------------------------------------------------------------
 static XAES_256_GCM_KC_CTX *xaes_256_gcm_kc_from_cipher_ctx(EVP_CIPHER_CTX *ctx) { 
-    // alignment to be consistent with aes_gcm_from_cipher_ctx()
-    char *ptr = ctx->cipher_data;
-#if defined(OPENSSL_32_BIT)
-    assert((uintptr_t)ptr % 4 == 0);
-    ptr += (uintptr_t)ptr & 4;
-#endif
-    assert((uintptr_t)ptr % 8 == 0);
-    ptr += (uintptr_t)ptr & 8;
-    return (XAES_256_GCM_KC_CTX *)ptr;
+    return (XAES_256_GCM_KC_CTX *)ctx->cipher_data;
 }
 
 static int xaes_256_gcm_extract_key_commitment(AES_KEY *xaes_key, uint8_t *k1,
@@ -2132,13 +2104,17 @@ static int xaes_256_gcm_kc_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 static int xaes_256_gcm_kc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
-
+    
     XAES_256_GCM_KC_CTX *xaes_ctx = xaes_256_gcm_kc_from_cipher_ctx(ctx);
 
     switch(type) {
         case EVP_CTRL_AEAD_GET_KC:
             if(arg < XAES_256_GCM_KEY_COMMIT_SIZE) {
                 OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+                return 0;
+            }
+            if(!ptr) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_INVALID);
                 return 0;
             }
             OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
@@ -2150,6 +2126,10 @@ static int xaes_256_gcm_kc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *pt
         case EVP_CTRL_AEAD_VERIFY_KC:
             if(arg < XAES_256_GCM_KEY_COMMIT_SIZE) {
                 OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+                return 0;
+            }
+            if(!ptr) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_INVALID);
                 return 0;
             }
             if(OPENSSL_memcmp(xaes_ctx->kc, ptr, XAES_256_GCM_KEY_COMMIT_SIZE)) {

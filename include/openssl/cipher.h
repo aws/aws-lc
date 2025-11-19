@@ -744,7 +744,8 @@ BSSL_NAMESPACE_END
 #define CIPHER_R_ALIGNMENT_CHANGED 142
 #define CIPHER_R_SERIALIZATION_INVALID_SERDE_VERSION 143
 #define CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID 144
-// We're introducing a new error code for invalid key commitment
+// We're introducing a new error code for invalid key commitment and invalid buffer
 #define CIPHER_R_KEY_COMMITMENT_INVALID 145
+#define CIPHER_R_BUFFER_INVALID 146
 
 #endif  // OPENSSL_HEADER_CIPHER_H
