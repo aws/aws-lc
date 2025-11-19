@@ -42,6 +42,12 @@ int ml_dsa_44_keypair_internal_no_self_test(uint8_t *public_key   /* OUT */,
                                             uint8_t *private_key  /* OUT */,
                                             const uint8_t *seed   /* IN */) {
   int ret = mldsa44_keypair_internal(public_key, private_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (ret != 0) {
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+  }
+#endif
   return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success -> AWS-LC 1=success
 }
 
@@ -58,6 +64,12 @@ int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
   }
   
   int ret = mldsa44_keypair_internal(public_key, private_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (ret != 0) {
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+  }
+#endif
   
   FIPS_service_indicator_unlock_state();
   if (ret == 0) {
@@ -245,6 +257,12 @@ int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
   }
   
   int ret = mldsa65_keypair_internal(public_key, private_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (ret != 0) {
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+  }
+#endif
   
   FIPS_service_indicator_unlock_state();
   if (ret == 0) {
@@ -265,6 +283,12 @@ int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
                                const uint8_t *seed   /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
   int ret = mldsa65_keypair_internal(public_key, private_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (ret != 0) {
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+  }
+#endif
   return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success -> AWS-LC 1=success
 }
 
@@ -417,6 +441,12 @@ int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
   }
   
   int ret = mldsa87_keypair_internal(public_key, private_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (ret != 0) {
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+  }
+#endif
   
   FIPS_service_indicator_unlock_state();
   if (ret == 0) {
@@ -437,6 +467,12 @@ int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
                                const uint8_t *seed   /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
   int ret = mldsa87_keypair_internal(public_key, private_key, seed);
+#if defined(AWSLC_FIPS)
+  /* PCT failure is the only failure condition for key generation. */
+  if (ret != 0) {
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
+  }
+#endif
   return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success -> AWS-LC 1=success
 }
 
