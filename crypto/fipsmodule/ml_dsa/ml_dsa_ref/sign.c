@@ -350,12 +350,12 @@ int ml_dsa_sign(ml_dsa_params *params,
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
-  ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk, 0);
+  int ret = ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk, 0);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(pre, sizeof(pre));
   OPENSSL_cleanse(rnd, sizeof(rnd));
-  return 0;
+  return ret;
 }
 
 /*************************************************
@@ -384,11 +384,11 @@ int ml_dsa_extmu_sign(ml_dsa_params *params,
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
-  ml_dsa_sign_internal(params, sig, siglen, mu, mulen, NULL, 0, rnd, sk, 1);
+  int ret = ml_dsa_sign_internal(params, sig, siglen, mu, mulen, NULL, 0, rnd, sk, 1);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(rnd, sizeof(rnd));
-  return 0;
+  return ret;
 }
 
 /*************************************************
