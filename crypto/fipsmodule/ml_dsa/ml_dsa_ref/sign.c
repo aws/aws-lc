@@ -184,6 +184,10 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   ml_dsa_poly cp;
   KECCAK1600_CTX state;
 
+  if (external_mu && mlen != ML_DSA_CRHBYTES) {
+       return -1;
+  }
+
   rho = seedbuf;
   tr = rho + ML_DSA_SEEDBYTES;
   key = tr + ML_DSA_TRBYTES;
@@ -205,15 +209,6 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
-    // When external_mu is true, m is expected to be exactly ML_DSA_CRHBYTES
-    if (mlen != ML_DSA_CRHBYTES) {
-      /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
-      OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
-      OPENSSL_cleanse(&t0, sizeof(t0));
-      OPENSSL_cleanse(&s1, sizeof(s1));
-      OPENSSL_cleanse(&s2, sizeof(s2));
-      return -1;
-    }
     OPENSSL_memcpy(mu, m, mlen);
   }
 
@@ -478,6 +473,11 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   if(siglen != params->bytes) {
     return -1;
   }
+
+  if (external_mu && mlen != ML_DSA_CRHBYTES) {
+       return -1;
+  }
+
   /* FIPS 204: line 1 */
   ml_dsa_unpack_pk(params, rho, &t1, pk);
   /* FIPS 204: line 2 */
@@ -501,16 +501,6 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
-    // When external_mu is true, m is expected to be exactly ML_DSA_CRHBYTES
-    if (mlen != ML_DSA_CRHBYTES) {
-      /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
-      OPENSSL_cleanse(rho, sizeof(rho));
-      OPENSSL_cleanse(&t1, sizeof(t1));
-      OPENSSL_cleanse(c, sizeof(c));
-      OPENSSL_cleanse(&z, sizeof(z));
-      OPENSSL_cleanse(&h, sizeof(h));
-      return -1;
-    }
     OPENSSL_memcpy(mu, m, mlen);
   }
 
