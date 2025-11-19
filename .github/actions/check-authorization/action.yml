@@ -16,6 +16,12 @@ runs:
       with:
         result-encoding: string
         script: |
+          // Skip authorization check if event is not pull_request_target
+          if (context.eventName !== 'pull_request_target') {
+            console.log(`Event type is ${context.eventName}, skipping authorization check`);
+            return null;
+          }
+          
           try {
             const permissionResponse = await github.rest.repos.getCollaboratorPermissionLevel({
               owner: context.repo.owner,
