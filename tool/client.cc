@@ -583,9 +583,21 @@ bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_cli
 
   uint16_t max_version = TLS1_3_VERSION;
 
-  if (args_map.count("-tls1_1") != 0) {
-    max_version = TLS1_1_VERSION;
-    if (!SSL_CTX_set_min_proto_version(ctx.get(), TLS1_1_VERSION)) {
+  int tls_version_flags = 0;
+  uint16_t selected_version = 0;
+
+  if (args_map.count("-tls1_1") != 0) { tls_version_flags++; selected_version = TLS1_1_VERSION; }
+  if (args_map.count("-tls1_2") != 0) { tls_version_flags++; selected_version = TLS1_2_VERSION; }
+  if (args_map.count("-tls1_3") != 0) { tls_version_flags++; selected_version = TLS1_3_VERSION; }
+
+  if (tls_version_flags > 1) {
+    fprintf(stderr, "Cannot supply multiple protocol flags\n");
+    return false;
+  }
+
+  if (tls_version_flags == 1) {
+    max_version = selected_version;
+    if (!SSL_CTX_set_min_proto_version(ctx.get(), selected_version)) {
       return false;
     }
   }
