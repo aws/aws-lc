@@ -2122,12 +2122,14 @@ static int xaes_256_gcm_kc_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
      * deriving subkey instead of at the end of encrytion like the MAC tag */ 
     if(iv != NULL) { 
         // Derive subkey
-        xaes_256_gcm_set_gcm_key(ctx, iv, enc); 
+        if(!xaes_256_gcm_set_gcm_key(ctx, iv, enc)) {
+            return 0;
+        }
         // Extract key commitment
         EVP_AES_GCM_CTX *gctx = &xaes_ctx->aes_gcm_ctx;
         xaes_256_gcm_extract_key_commitment(&xaes_ctx->xaes_key, xaes_ctx->k1, xaes_ctx->kc, iv, gctx->ivlen);
     }
-
+    
     return 1;
 }
 
