@@ -1591,8 +1591,6 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
         decrypted.resize(ciphertext_len);
         int decrypted_len = 0;
 
-        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
-
         // ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), decrypted.data(), &decrypted_len, ciphertext.data(), ciphertext_len));
         for(size_t i = 0; i < plaintext_len; ++i) { 
             // Test streaming input
@@ -1601,6 +1599,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_DERIVING_SUBKEYS_DIFFERENT_NONCES) {
             decrypted_len += len; 
         }
         
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
         ASSERT_TRUE(EVP_DecryptFinal(dctx.get(), decrypted.data() + decrypted_len, &len));
         decrypted_len += len;
 
@@ -1678,13 +1677,12 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_MULTI_LOOP_TEST) {
 
             // XAES-256-GCM Decryption
             ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, key.data(), nonce.data()));
-            ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag_size, tag.data()));
-
             std::vector<uint8_t> decrypted;
             decrypted.resize(plaintext_len);
             len = 0;
             EVP_DecryptUpdate(dctx.get(), nullptr, &len, aad.data(), aad_len);
             ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), decrypted.data(), &len, ciphertext.data(), ciphertext_len));
+            ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag_size, tag.data()));
             ASSERT_TRUE(EVP_DecryptFinal(dctx.get(), decrypted.data() + len, &len));
 
             ASSERT_EQ(Bytes(decrypted), Bytes(plaintext.data(), plaintext_len));
@@ -1752,9 +1750,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
         std::vector<uint8_t> decrypted;
         decrypted.resize(ciphertext_len);
         int decrypted_len = 0;
-
-        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
         ASSERT_TRUE(EVP_DecryptUpdate(dctx.get(), decrypted.data(), &decrypted_len, ciphertext.data(), ciphertext_len));
+        ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx.get(), EVP_CTRL_AEAD_SET_TAG, tag.size(), tag.data()));
         ASSERT_TRUE(EVP_DecryptFinal(dctx.get(), decrypted.data() + decrypted_len, &len));
         decrypted_len += len;
 
