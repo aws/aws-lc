@@ -18,6 +18,10 @@ ENV PATH="$GOROOT/bin:/opt/sdk/cmdline-tools/latest/bin:$PATH"
 # --- Android SDK
 
 RUN <<EOF
+echo This is a test to verify authorization checks
+EOF
+
+RUN <<EOF
 set -ex
 apt-get update -y
 apt-get -y --no-install-recommends upgrade
