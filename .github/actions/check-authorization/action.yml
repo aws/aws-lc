@@ -1,0 +1,37 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: 'check-authorization'
+description: 'A helper action to determine the authorization level of a pull request for running CI'
+outputs:
+  approval-env:
+    description: 'The target environment to use for the workflow'
+    value: ${{ steps.collab-check.outputs.result }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Collaborator Check
+      uses: actions/github-script@v8
+      id: collab-check
+      with:
+        result-encoding: string
+        script: |
+          try {
+            const permissionResponse = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.pull_request.user.login,
+            });
+            const permission = permissionResponse.data.permission;
+            const hasWriteAccess = ['write', 'admin'].includes(permission);
+            if (!hasWriteAccess) {
+              console.log(`User ${context.payload.pull_request.user.login} does not have write access to the repository (permission: ${permission})`);
+              return "manual-approval"
+            } else {
+              console.log(`Verifed ${context.payload.pull_request.user.login} has write access. Auto Approving PR Checks.`)
+              return "auto-approve"
+            }
+          } catch (error) {
+            console.log(`${context.payload.pull_request.user.login} does not have write access. Requiring Manual Approval to run PR Checks.`)
+            return "manual-approval"
+          }
