@@ -62,7 +62,7 @@
 #define MLD_CONFIG_CUSTOM_CAPABILITY_FUNC
 #if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
-MLD_INLINE int mld_sys_check_capability(int cap)
+static MLD_INLINE int mld_sys_check_capability(int cap)
 {
 #if defined(MLD_SYS_X86_64)
   if (cap == 1) // MLD_SYS_CAP_AVX2
@@ -78,7 +78,7 @@ MLD_INLINE int mld_sys_check_capability(int cap)
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 #define MLD_CONFIG_KEYGEN_PCT_BREAKAGE_TEST
 #if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
-MLD_INLINE int mld_break_pct(void) {
+static MLD_INLINE int mld_break_pct(void) {
   return boringssl_fips_break_test("MLDSA_PWCT");
 }
 #endif // !__ASSEMBLER__
@@ -95,7 +95,7 @@ MLD_INLINE int mld_break_pct(void) {
 #if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
 #include <openssl/base.h>
-MLD_INLINE void mld_zeroize_native(void *ptr, size_t len) {
+static MLD_INLINE void mld_zeroize_native(void *ptr, size_t len) {
     OPENSSL_cleanse(ptr, len);
 }
 #endif // !__ASSEMBLER__
@@ -105,7 +105,7 @@ MLD_INLINE void mld_zeroize_native(void *ptr, size_t len) {
 #if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
 #include <openssl/rand.h>
-MLD_INLINE void mld_randombytes(uint8_t *ptr, size_t len) {
+static MLD_INLINE void mld_randombytes(uint8_t *ptr, size_t len) {
     RAND_bytes(ptr, len);
 }
 #endif // !__ASSEMBLER__
