@@ -1,28 +1,35 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+// mldsa-native source code
+
+// Include level-independent code
+#define MLD_CONFIG_FILE "../mldsa_native_config.h"
+#define MLD_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS
+
+// MLDSA-44
+#define MLD_CONFIG_PARAMETER_SET 44
+#define MLD_CONFIG_MULTILEVEL_WITH_SHARED  // Include level-independent code
+#include "mldsa/mldsa_native_bcm.c"
+// MLDSA-65
+#undef MLD_CONFIG_PARAMETER_SET
+#define MLD_CONFIG_PARAMETER_SET 65
+#define MLD_CONFIG_MULTILEVEL_NO_SHARED  // Exclude level-independent code
+#include "mldsa/mldsa_native_bcm.c"
+// MLDSA-87
+#undef MLD_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS
+#undef MLD_CONFIG_PARAMETER_SET
+#define MLD_CONFIG_PARAMETER_SET 87
+#include "mldsa/mldsa_native_bcm.c"
+
+// End of mldsa-native source code
+
+#include "./ml_dsa.h"
 #include "../../evp_extra/internal.h"
 #include "../evp/internal.h"
 #include "../service_indicator/internal.h"
-#include "ml_dsa.h"
-#include "ml_dsa_ref/params.h"
-#include "ml_dsa_ref/sign.h"
 
-// These includes are required to compile ML-DSA. These can be moved to bcm.c
-// when ML-DSA is added to the fipsmodule directory.
-#include "./ml_dsa_ref/ntt.c"
-#include "./ml_dsa_ref/packing.c"
-#include "./ml_dsa_ref/params.c"
-#include "./ml_dsa_ref/poly.c"
-#include "./ml_dsa_ref/polyvec.c"
-#include "./ml_dsa_ref/reduce.c"
-#include "./ml_dsa_ref/rounding.c"
-#include "./ml_dsa_ref/sign.c"
-
-// Note: These methods currently default to using the reference code for
-// ML-DSA. In a future where AWS-LC has optimized options available,
-// those can be conditionally (or based on compile-time flags) called here,
-// depending on platform support.
+// Note: These methods provide AWS-LC-specific wrappers around mldsa-native.
 
 int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
@@ -34,9 +41,8 @@ int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
 int ml_dsa_44_keypair_internal_no_self_test(uint8_t *public_key   /* OUT */,
                                             uint8_t *private_key  /* OUT */,
                                             const uint8_t *seed   /* IN */) {
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
+  int ret = mldsa44_keypair_internal(public_key, private_key, seed);
+  return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success -> AWS-LC 1=success
 }
 
 int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
@@ -44,22 +50,27 @@ int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *seed         /* OUT */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
-  FIPS_service_indicator_unlock_state();
-  if (ret) {
-    FIPS_service_indicator_update_state();
+  
+  // Generate seed
+  if (!RAND_bytes(seed, MLDSA44_KEYGEN_SEED_BYTES)) {
+    FIPS_service_indicator_unlock_state();
+    return 0;
   }
-  return ret;
+  
+  int ret = mldsa44_keypair_internal(public_key, private_key, seed);
+  
+  FIPS_service_indicator_unlock_state();
+  if (ret == 0) {
+    FIPS_service_indicator_update_state();
+    return 1;
+  }
+  return 0;
 }
 
 int ml_dsa_44_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
                               const uint8_t *private_key   /* IN  */) {
-
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
+  int ret = mldsa44_pk_from_sk(public_key, private_key);
+  return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success, -1=failure -> AWS-LC 1=success, 0=failure
 }
 
 int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
@@ -71,15 +82,16 @@ int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
                    size_t ctx_string_len      /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  int ret = ml_dsa_sign(&params, sig, sig_len, message, message_len,
-                        ctx_string, ctx_string_len, private_key) == 0;
+  
+  int ret = mldsa44_signature(sig, sig_len, message, message_len,
+                               ctx_string, ctx_string_len, private_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_extmu_44_sign(const uint8_t *private_key /* IN */,
@@ -89,14 +101,17 @@ int ml_dsa_extmu_44_sign(const uint8_t *private_key /* IN */,
                          size_t mu_len              /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  int ret = ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  
+  // mu_len is ignored - extmu always uses MLDSA_CRHBYTES (64 bytes)
+  (void)mu_len;
+  int ret = mldsa44_signature_extmu(sig, sig_len, mu, private_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_44_sign_internal(const uint8_t *private_key  /* IN */,
@@ -120,10 +135,9 @@ int ml_dsa_44_sign_internal_no_self_test(const uint8_t *private_key  /* IN */,
                                          const uint8_t *pre          /* IN */,
                                          size_t pre_len              /* IN */,
                                          const uint8_t *rnd          /* IN */) {
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
-                              pre, pre_len, rnd, private_key, 0) == 0;
+  int ret = mldsa44_signature_internal(sig, sig_len, message, message_len,
+                                        pre, pre_len, rnd, private_key, 0);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_extmu_44_sign_internal(const uint8_t *private_key  /* IN */,
@@ -135,10 +149,9 @@ int ml_dsa_extmu_44_sign_internal(const uint8_t *private_key  /* IN */,
                                   size_t pre_len              /* IN */,
                                   const uint8_t *rnd          /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_sign_internal(&params, sig, sig_len, mu, mu_len,
-                              pre, pre_len, rnd, private_key, 1) == 0;
+  int ret = mldsa44_signature_internal(sig, sig_len, mu, mu_len,
+                                        pre, pre_len, rnd, private_key, 1);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_44_verify(const uint8_t *public_key /* IN */,
@@ -150,15 +163,16 @@ int ml_dsa_44_verify(const uint8_t *public_key /* IN */,
                      size_t ctx_string_len     /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  int ret = ml_dsa_verify(&params, sig, sig_len, message, message_len,
-                          ctx_string, ctx_string_len, public_key) == 0;
+  
+  int ret = mldsa44_verify(sig, sig_len, message, message_len,
+                            ctx_string, ctx_string_len, public_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_extmu_44_verify(const uint8_t *public_key /* IN */,
@@ -168,14 +182,17 @@ int ml_dsa_extmu_44_verify(const uint8_t *public_key /* IN */,
                            size_t mu_len             /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  int ret = ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  
+  // mu_len is ignored - extmu always uses MLDSA_CRHBYTES (64 bytes)
+  (void)mu_len;
+  int ret = mldsa44_verify_extmu(sig, sig_len, mu, public_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_44_verify_internal(const uint8_t *public_key /* IN */,
@@ -197,10 +214,9 @@ int ml_dsa_44_verify_internal_no_self_test(const uint8_t *public_key /* IN */,
                                            size_t message_len        /* IN */,
                                            const uint8_t *pre        /* IN */,
                                            size_t pre_len            /* IN */) {
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
-                                pre, pre_len, public_key, 0) == 0;
+  int ret = mldsa44_verify_internal(sig, sig_len, message, message_len,
+                                     pre, pre_len, public_key, 0);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key /* IN */,
@@ -211,41 +227,45 @@ int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key /* IN */,
                                     const uint8_t *pre        /* IN */,
                                     size_t pre_len            /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len,
-                                pre, pre_len, public_key, 1) == 0;
+  int ret = mldsa44_verify_internal(sig, sig_len, mu, mu_len,
+                                     pre, pre_len, public_key, 1);
+  return (ret == 0) ? 1 : 0;
 }
 
+// ML-DSA-65 implementations
 int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */,
                       uint8_t *seed         /* OUT */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
-  FIPS_service_indicator_unlock_state();
-  if (ret) {
-    FIPS_service_indicator_update_state();
+  
+  if (!RAND_bytes(seed, MLDSA65_KEYGEN_SEED_BYTES)) {
+    FIPS_service_indicator_unlock_state();
+    return 0;
   }
-  return ret;
+  
+  int ret = mldsa65_keypair_internal(public_key, private_key, seed);
+  
+  FIPS_service_indicator_unlock_state();
+  if (ret == 0) {
+    FIPS_service_indicator_update_state();
+    return 1;
+  }
+  return 0;
 }
 
 int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
                               const uint8_t *private_key   /* IN  */) {
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
+  int ret = mldsa65_pk_from_sk(public_key, private_key);
+  return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success, -1=failure -> AWS-LC 1=success, 0=failure
 }
 
 int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
                                const uint8_t *seed   /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
+  int ret = mldsa65_keypair_internal(public_key, private_key, seed);
+  return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success -> AWS-LC 1=success
 }
 
 int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
@@ -257,15 +277,16 @@ int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
                    size_t ctx_string_len      /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  int ret = ml_dsa_sign(&params, sig, sig_len, message, message_len,
-                        ctx_string, ctx_string_len, private_key) == 0;
+  
+  int ret = mldsa65_signature(sig, sig_len, message, message_len,
+                               ctx_string, ctx_string_len, private_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_extmu_65_sign(const uint8_t *private_key /* IN */,
@@ -275,14 +296,17 @@ int ml_dsa_extmu_65_sign(const uint8_t *private_key /* IN */,
                          size_t mu_len              /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  int ret = ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  
+  // mu_len is ignored - extmu always uses MLDSA_CRHBYTES (64 bytes)
+  (void)mu_len;
+  int ret = mldsa65_signature_extmu(sig, sig_len, mu, private_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
@@ -294,10 +318,9 @@ int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
                             size_t pre_len              /* IN */,
                             const uint8_t *rnd          /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
-                              pre, pre_len, rnd, private_key, 0) == 0;
+  int ret = mldsa65_signature_internal(sig, sig_len, message, message_len,
+                                        pre, pre_len, rnd, private_key, 0);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_extmu_65_sign_internal(const uint8_t *private_key  /* IN */,
@@ -309,10 +332,9 @@ int ml_dsa_extmu_65_sign_internal(const uint8_t *private_key  /* IN */,
                                   size_t pre_len              /* IN */,
                                   const uint8_t *rnd          /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_sign_internal(&params, sig, sig_len, mu, mu_len,
-                              pre, pre_len, rnd, private_key, 1) == 0;
+  int ret = mldsa65_signature_internal(sig, sig_len, mu, mu_len,
+                                        pre, pre_len, rnd, private_key, 1);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
@@ -324,15 +346,16 @@ int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
                      size_t ctx_string_len     /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  int ret = ml_dsa_verify(&params, sig, sig_len, message, message_len,
-                          ctx_string, ctx_string_len, public_key) == 0;
+  
+  int ret = mldsa65_verify(sig, sig_len, message, message_len,
+                            ctx_string, ctx_string_len, public_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_extmu_65_verify(const uint8_t *public_key /* IN */,
@@ -342,14 +365,17 @@ int ml_dsa_extmu_65_verify(const uint8_t *public_key /* IN */,
                            size_t mu_len             /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  int ret = ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  
+  // mu_len is ignored - extmu always uses MLDSA_CRHBYTES (64 bytes)
+  (void)mu_len;
+  int ret = mldsa65_verify_extmu(sig, sig_len, mu, public_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_65_verify_internal(const uint8_t *public_key /* IN */,
@@ -360,10 +386,9 @@ int ml_dsa_65_verify_internal(const uint8_t *public_key /* IN */,
                               const uint8_t *pre        /* IN */,
                               size_t pre_len            /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
-                                pre, pre_len, public_key, 0) == 0;
+  int ret = mldsa65_verify_internal(sig, sig_len, message, message_len,
+                                     pre, pre_len, public_key, 0);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key /* IN */,
@@ -374,42 +399,45 @@ int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key /* IN */,
                                     const uint8_t *pre        /* IN */,
                                     size_t pre_len            /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len,
-                                pre, pre_len, public_key, 1) == 0;
+  int ret = mldsa65_verify_internal(sig, sig_len, mu, mu_len,
+                                     pre, pre_len, public_key, 1);
+  return (ret == 0) ? 1 : 0;
 }
 
+// ML-DSA-87 implementations
 int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */,
                       uint8_t *seed         /* OUT */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  int ret = ml_dsa_keypair(&params, public_key, private_key, seed) == 0;
-  FIPS_service_indicator_unlock_state();
-  if (ret) {
-    FIPS_service_indicator_update_state();
+  
+  if (!RAND_bytes(seed, MLDSA87_KEYGEN_SEED_BYTES)) {
+    FIPS_service_indicator_unlock_state();
+    return 0;
   }
-  return ret;
+  
+  int ret = mldsa87_keypair_internal(public_key, private_key, seed);
+  
+  FIPS_service_indicator_unlock_state();
+  if (ret == 0) {
+    FIPS_service_indicator_update_state();
+    return 1;
+  }
+  return 0;
 }
 
 int ml_dsa_87_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
                               const uint8_t *private_key   /* IN  */) {
-
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
+  int ret = mldsa87_pk_from_sk(public_key, private_key);
+  return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success, -1=failure -> AWS-LC 1=success, 0=failure
 }
 
 int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
                                const uint8_t *seed   /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
+  int ret = mldsa87_keypair_internal(public_key, private_key, seed);
+  return (ret == 0) ? 1 : 0;  // Convert: mldsa 0=success -> AWS-LC 1=success
 }
 
 int ml_dsa_87_sign(const uint8_t *private_key /* IN */,
@@ -421,15 +449,16 @@ int ml_dsa_87_sign(const uint8_t *private_key /* IN */,
                    size_t ctx_string_len      /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  int ret = ml_dsa_sign(&params, sig, sig_len, message, message_len,
-                        ctx_string, ctx_string_len, private_key) == 0;
+  
+  int ret = mldsa87_signature(sig, sig_len, message, message_len,
+                               ctx_string, ctx_string_len, private_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_extmu_87_sign(const uint8_t *private_key /* IN */,
@@ -439,14 +468,17 @@ int ml_dsa_extmu_87_sign(const uint8_t *private_key /* IN */,
                          size_t mu_len              /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  int ret = ml_dsa_extmu_sign(&params, sig, sig_len, mu, mu_len, private_key) == 0;
+  
+  // mu_len is ignored - extmu always uses MLDSA_CRHBYTES (64 bytes)
+  (void)mu_len;
+  int ret = mldsa87_signature_extmu(sig, sig_len, mu, private_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
@@ -458,10 +490,9 @@ int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
                             size_t pre_len              /* IN */,
                             const uint8_t *rnd          /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
-                              pre, pre_len, rnd, private_key, 0) == 0;
+  int ret = mldsa87_signature_internal(sig, sig_len, message, message_len,
+                                        pre, pre_len, rnd, private_key, 0);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_extmu_87_sign_internal(const uint8_t *private_key  /* IN */,
@@ -473,10 +504,9 @@ int ml_dsa_extmu_87_sign_internal(const uint8_t *private_key  /* IN */,
                                   size_t pre_len              /* IN */,
                                   const uint8_t *rnd          /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_sign_internal(&params, sig, sig_len, mu, mu_len,
-                              pre, pre_len, rnd, private_key, 1) == 0;
+  int ret = mldsa87_signature_internal(sig, sig_len, mu, mu_len,
+                                        pre, pre_len, rnd, private_key, 1);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_87_verify(const uint8_t *public_key /* IN */,
@@ -488,15 +518,16 @@ int ml_dsa_87_verify(const uint8_t *public_key /* IN */,
                      size_t ctx_string_len     /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  int ret = ml_dsa_verify(&params, sig, sig_len, message, message_len,
-                          ctx_string, ctx_string_len, public_key) == 0;
+  
+  int ret = mldsa87_verify(sig, sig_len, message, message_len,
+                            ctx_string, ctx_string_len, public_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_extmu_87_verify(const uint8_t *public_key /* IN */,
@@ -506,14 +537,17 @@ int ml_dsa_extmu_87_verify(const uint8_t *public_key /* IN */,
                            size_t mu_len             /* IN */) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  int ret = ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len, NULL, 0, public_key, 1) == 0;
+  
+  // mu_len is ignored - extmu always uses MLDSA_CRHBYTES (64 bytes)
+  (void)mu_len;
+  int ret = mldsa87_verify_extmu(sig, sig_len, mu, public_key);
+  
   FIPS_service_indicator_unlock_state();
-  if (ret) {
+  if (ret == 0) {
     FIPS_service_indicator_update_state();
+    return 1;
   }
-  return ret;
+  return 0;
 }
 
 int ml_dsa_87_verify_internal(const uint8_t *public_key /* IN */,
@@ -524,10 +558,9 @@ int ml_dsa_87_verify_internal(const uint8_t *public_key /* IN */,
                               const uint8_t *pre        /* IN */,
                               size_t pre_len            /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
-                                pre, pre_len, public_key, 0) == 0;
+  int ret = mldsa87_verify_internal(sig, sig_len, message, message_len,
+                                     pre, pre_len, public_key, 0);
+  return (ret == 0) ? 1 : 0;
 }
 
 int ml_dsa_extmu_87_verify_internal(const uint8_t *public_key /* IN */,
@@ -538,8 +571,7 @@ int ml_dsa_extmu_87_verify_internal(const uint8_t *public_key /* IN */,
                                     const uint8_t *pre        /* IN */,
                                     size_t pre_len            /* IN */) {
   boringssl_ensure_ml_dsa_self_test();
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len,
-                                pre, pre_len, public_key, 1) == 0;
+  int ret = mldsa87_verify_internal(sig, sig_len, mu, mu_len,
+                                     pre, pre_len, public_key, 1);
+  return (ret == 0) ? 1 : 0;
 }
