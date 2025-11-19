@@ -22,7 +22,7 @@
 // Define MLD_ALWAYS_INLINE for type casting functions
 #if !defined(MLD_ALWAYS_INLINE)
 #if defined(__GNUC__) || defined(__clang__)
-#define MLD_ALWAYS_INLINE __attribute__((always_inline))
+#define MLD_ALWAYS_INLINE inline __attribute__((always_inline))
 #elif defined(_MSC_VER)
 #define MLD_ALWAYS_INLINE __forceinline
 #else
@@ -114,7 +114,7 @@ MLD_INLINE void mld_randombytes(uint8_t *ptr, size_t len) {
 #define MLD_CONFIG_CUSTOM_MEMCPY
 #if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
-MLD_INLINE void *mld_memcpy(void *dest, const void *src, size_t n) {
+static MLD_INLINE void *mld_memcpy(void *dest, const void *src, size_t n) {
     return OPENSSL_memcpy(dest, src, n);
 }
 #endif // !__ASSEMBLER__
@@ -123,7 +123,7 @@ MLD_INLINE void *mld_memcpy(void *dest, const void *src, size_t n) {
 #define MLD_CONFIG_CUSTOM_MEMSET
 #if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
-MLD_INLINE void *mld_memset(void *s, int c, size_t n) {
+static MLD_INLINE void *mld_memset(void *s, int c, size_t n) {
     return OPENSSL_memset(s, c, n);
 }
 #endif // !__ASSEMBLER__
