@@ -32,6 +32,7 @@ static const uint64_t kCtrDrbgReseedInterval = 4096;
 
 #define RAND_NO_USER_PRED_RESISTANCE 0
 #define RAND_USE_USER_PRED_RESISTANCE 1
+#define CTR_DRBG_NONCE_LEN 16
 
 OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
 OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
@@ -55,6 +56,19 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                                  const uint8_t *personalization,
                                  size_t personalization_len);
+
+OPENSSL_EXPORT void CTR_DRBG_get_nonce(uint8_t nonce[CTR_DRBG_NONCE_LEN]);
+OPENSSL_EXPORT int CTR_DRBG_init_df(CTR_DRBG_STATE *drbg,
+                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
+                  const uint8_t *personalization, size_t personalization_len,
+                  const uint8_t nonce[CTR_DRBG_NONCE_LEN]);
+OPENSSL_EXPORT int CTR_DRBG_reseed_df(CTR_DRBG_STATE *drbg,
+                    const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
+                    const uint8_t *additional_data,
+                    size_t additional_data_len);
+OPENSSL_EXPORT int CTR_DRBG_generate_df(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
+                      const uint8_t *additional_data,
+                      size_t additional_data_len);
 
 #if defined(__cplusplus)
 }  // extern C

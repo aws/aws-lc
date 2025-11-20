@@ -105,6 +105,7 @@ set(
   crypto/fipsmodule/ml_kem/kat/mlkem1024.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
+  crypto/fipsmodule/rand/ctrdrbg_vectors_df.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHA3_224LongMsg.txt
