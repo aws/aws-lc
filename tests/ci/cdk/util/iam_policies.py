@@ -3,6 +3,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+from util.metadata import (AWS_LC_METRIC_NS, AWS_LC_FUZZ_METRIC_NS)
+
 
 def ec2_policies_in_json(
     ec2_role_name, ec2_security_group_id, ec2_subnet_id, ec2_vpc_id, env
@@ -136,7 +138,7 @@ def code_build_publish_metrics_in_json(env):
                 "Condition": {
                     "StringEquals": {
                         "aws:RequestedRegion": [env.region],
-                        "cloudwatch:namespace": ["AWS-LC-Fuzz", "AWS-LC"],
+                        "cloudwatch:namespace": [AWS_LC_FUZZ_METRIC_NS, AWS_LC_METRIC_NS],
                     }
                 },
             }

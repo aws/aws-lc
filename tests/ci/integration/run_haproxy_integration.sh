@@ -23,7 +23,7 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
-  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
+  make CC="${CC:-cc}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 USE_QUIC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
       SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 
   set +e
