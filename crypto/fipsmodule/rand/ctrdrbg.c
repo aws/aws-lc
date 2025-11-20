@@ -202,7 +202,6 @@ CTR_DRBG_STATE *CTR_DRBG_new(const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
   return drbg;
 }
 
-
 void CTR_DRBG_free(CTR_DRBG_STATE *state) {
   SET_DIT_AUTO_RESET;
   OPENSSL_free(state);
@@ -254,14 +253,14 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
 }
 
 static void nonce_increment(uint8_t counter[CTR_DRBG_NONCE_LEN]) {
-  uint32_t n = 16, c = 1;
+  size_t index = CTR_DRBG_NONCE_LEN, carry = 1;
 
   do {
-    --n;
-    c += counter[n];
-    counter[n] = (uint8_t) c;
-    c >>= 8;
-  } while (n);
+    --index;
+    carry += counter[index];
+    counter[index] = (uint8_t) carry;
+    carry >>= 8;
+  } while (index);
 }
 
 void CTR_DRBG_get_nonce(uint8_t nonce[CTR_DRBG_NONCE_LEN]) {
