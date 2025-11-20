@@ -25,17 +25,32 @@ Lone:
 .endef
 .align	5
 ChaCha20_ctr32_nohw:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
+.cfi_def_cfa_offset	96
+.cfi_offset	x29, -96
+.cfi_offset	x30, -88
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 96
 
 	adrp	x5,Lsigma
 	add	x5,x5,:lo12:Lsigma
 	stp	x19,x20,[sp,#16]
+.cfi_offset	x19, -80
+.cfi_offset	x20, -72
 	stp	x21,x22,[sp,#32]
+.cfi_offset	x21, -64
+.cfi_offset	x22, -56
 	stp	x23,x24,[sp,#48]
+.cfi_offset	x23, -48
+.cfi_offset	x24, -40
 	stp	x25,x26,[sp,#64]
+.cfi_offset	x25, -32
+.cfi_offset	x26, -24
 	stp	x27,x28,[sp,#80]
+.cfi_offset	x27, -16
+.cfi_offset	x28, -8
 	sub	sp,sp,#64
 
 	ldp	x22,x23,[x5]		// load sigma
@@ -232,12 +247,25 @@ Loop:
 	b.hi	Loop_outer
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
@@ -288,14 +316,28 @@ Loop_tail:
 	stp	xzr,xzr,[sp,#48]
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 
 .globl	ChaCha20_ctr32_neon
@@ -305,17 +347,32 @@ Loop_tail:
 .endef
 .align	5
 ChaCha20_ctr32_neon:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
+.cfi_def_cfa_offset	96
+.cfi_offset	x30, -88
+.cfi_offset	x29, -96
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 96
 
 	adrp	x5,Lsigma
 	add	x5,x5,:lo12:Lsigma
 	stp	x19,x20,[sp,#16]
+.cfi_offset	x19, -80
+.cfi_offset	x20, -72
 	stp	x21,x22,[sp,#32]
+.cfi_offset	x21, -64
+.cfi_offset	x22, -56
 	stp	x23,x24,[sp,#48]
+.cfi_offset	x23, -48
+.cfi_offset	x24, -40
 	stp	x25,x26,[sp,#64]
+.cfi_offset	x25, -32
+.cfi_offset	x26, -24
 	stp	x27,x28,[sp,#80]
+.cfi_offset	x27, -16
+.cfi_offset	x28, -8
 	cmp	x2,#512
 	b.hs	L512_or_more_neon
 
@@ -680,12 +737,25 @@ Loop_neon:
 	b.hi	Loop_outer_neon
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
@@ -790,31 +860,60 @@ Loop_tail_neon:
 
 Ldone_neon:
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 .def ChaCha20_512_neon
    .type 32
 .endef
 .align	5
 ChaCha20_512_neon:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
+.cfi_def_cfa_offset	96
+.cfi_offset	x30, -88
+.cfi_offset	x29, -96
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 96
 
 	adrp	x5,Lsigma
 	add	x5,x5,:lo12:Lsigma
 	stp	x19,x20,[sp,#16]
+.cfi_offset	x19, -80
+.cfi_offset	x20, -72
 	stp	x21,x22,[sp,#32]
+.cfi_offset	x21, -64
+.cfi_offset	x22, -56
 	stp	x23,x24,[sp,#48]
+.cfi_offset	x23, -48
+.cfi_offset	x24, -40
 	stp	x25,x26,[sp,#64]
+.cfi_offset	x25, -32
+.cfi_offset	x26, -24
 	stp	x27,x28,[sp,#80]
+.cfi_offset	x27, -16
+.cfi_offset	x28, -8
 
 L512_or_more_neon:
 	sub	sp,sp,#128+64
@@ -1962,13 +2061,27 @@ Loop_lower_neon:
 
 Ldone_512_neon:
 	ldp	x19,x20,[x29,#16]
+.cfi_restore	x19
+.cfi_restore	x20
 	add	sp,sp,#128+64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore	x21
+.cfi_restore	x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore	x23
+.cfi_restore	x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore	x25
+.cfi_restore	x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore	x27
+.cfi_restore	x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(_WIN32)
