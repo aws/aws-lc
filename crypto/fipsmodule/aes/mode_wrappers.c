@@ -87,13 +87,7 @@ static inline void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
   aes_nohw_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
 
-#if defined(BSAES)
-static inline void vpaes_ctr32_encrypt_blocks_with_bsaes_wrapper(
-    const uint8_t *in, uint8_t *out, size_t len, const AES_KEY *key,
-    const uint8_t ivec[16]) {
-  vpaes_ctr32_encrypt_blocks_with_bsaes(in, out, len, key, ivec);
-}
-#elif defined(VPAES_CTR32)
+#if defined(VPAES_CTR32)
 static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                       uint8_t *out, size_t len,
                                                       const AES_KEY *key,
