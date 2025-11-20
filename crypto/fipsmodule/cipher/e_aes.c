@@ -2220,7 +2220,7 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
     if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
-        // The tag is truncated but leave enough space for key commitment
+        // The tag is truncated but leaves enough space for key commitment
         // Evaluate the remaining space size for MAC 
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
@@ -2243,13 +2243,13 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     }
 
     if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
-                                rectified_max_out_tag_len,
-                                get_iv_for_aes_gcm(nonce, nonce_len), 
-                                AES_GCM_NONCE_LENGTH, in, in_len, extra_in, 
-                                extra_in_len, ad, ad_len, tag_len)) {
+                                       rectified_max_out_tag_len,
+                                       get_iv_for_aes_gcm(nonce, nonce_len), 
+                                       AES_GCM_NONCE_LENGTH, in, in_len, extra_in, 
+                                       extra_in_len, ad, ad_len, tag_len)) {
         return 0;
     }
-
+    
     // We extract key commitment only if it is reserved enough space
     if(key_commitment_len > 0) {
         uint8_t key_commitment[XAES_256_GCM_KEY_COMMIT_SIZE];
@@ -2276,7 +2276,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
     if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
-        // The tag is truncated but leave enough space for key commitment
+        // The tag is truncated but leaves enough space for key commitment
         // Evaluate the remaining space size for MAC 
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
@@ -2311,7 +2311,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
             return 0;
         }
     }
-    
+
     return aead_aes_gcm_open_gather_impl(
         &gcm_ctx, out, get_iv_for_aes_gcm(nonce, nonce_len), AES_GCM_NONCE_LENGTH,
         in, in_len, in_tag, rectified_in_tag_len, ad, ad_len, tag_len);
