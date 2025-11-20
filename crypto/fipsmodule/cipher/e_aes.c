@@ -322,7 +322,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     }
 #if defined(BSAES)
     assert(bsaes_capable());
-    return vpaes_ctr32_encrypt_blocks_with_bsaes_wrapper;
+    return vpaes_ctr32_encrypt_blocks_with_bsaes;
 #elif defined(VPAES_CTR32)
     return vpaes_ctr32_encrypt_blocks_wrapper;
 #else
