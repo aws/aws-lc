@@ -2219,13 +2219,19 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
      * take into account the cases where there is not enough space for key commitment */
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
-    if(ctx->tag_len > XAES_256_GCM_KEY_COMMIT_SIZE) { 
+    if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
         // Evaluate the remaning space size for MAC 
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
     else {
-        // If there is not enough space for at least 1-byte tag and key commitment
+        // If there is not enough space for key commitment
         key_commitment_len = 0;
+    }
+    
+    // Update max_out_tag_len as well
+    size_t rectified_max_out_tag_len = 0;
+    if(max_out_tag_len > key_commitment_len) {
+        rectified_max_out_tag_len = max_out_tag_len - key_commitment_len;
     }
 
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
@@ -2235,11 +2241,13 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
         return 0;
     }
 
-    aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
-                                max_out_tag_len - key_commitment_len,
+    if(!aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
+                                rectified_max_out_tag_len,
                                 get_iv_for_aes_gcm(nonce, nonce_len), 
-                                AES_GCM_NONCE_LENGTH,in, in_len, extra_in, 
-                                extra_in_len, ad, ad_len, tag_len);
+                                AES_GCM_NONCE_LENGTH, in, in_len, extra_in, 
+                                extra_in_len, ad, ad_len, tag_len)) {
+        return 0;
+    }
 
     // We extract key commitment only if it is reserved enough space
     if(key_commitment_len > 0) {
@@ -2266,16 +2274,16 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
      * take into account the cases where there is not enough space for key commitment */
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
-    if(ctx->tag_len > XAES_256_GCM_KEY_COMMIT_SIZE) { 
+    if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
         // The tag is truncated but leave enough space for key commitment
         // We need to evaluate the remaning space size for MAC 
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
     else {
-        // If there is not enough space for at least 1-byte tag and key commitment
+        // If there is not enough space for key commitment
         key_commitment_len = 0;
     }
-
+    
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
 
