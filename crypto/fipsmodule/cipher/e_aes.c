@@ -2181,3 +2181,137 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_kc) {
     out->cleanup = aes_gcm_cleanup;
     out->ctrl = xaes_256_gcm_kc_ctrl;
 }
+
+// -----------------------------------------------------------------------------
+// ------------------ EVP_AEAD XAES-256-GCM With Key Commitment ----------------
+// ----------- Reference: https://eprint.iacr.org/2025/758.pdf#page=6 -----------
+// -----------------------------------------------------------------------------
+static int aead_xaes_256_gcm_kc_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                            size_t key_len, size_t requested_tag_len) {
+    // Max tag and key commitment length: 16 + 32 bytes
+    if(requested_tag_len > EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
+        return 0;
+    }
+
+    AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+
+    xaes_256_gcm_ctx_init(&xaes_ctx->xaes_key, xaes_ctx->k1, key);
+
+    // requested_tag_len = 0 means using the default tag length of XAES_256_GCM_KC
+    ctx->tag_len = (requested_tag_len > 0) ? requested_tag_len : 
+                   (EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE);
+
+    return 1;
+}
+
+static int aead_xaes_256_gcm_key_commit_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    uint8_t *out_tag, size_t *out_tag_len,
+    const size_t max_out_tag_len,
+    const uint8_t *nonce, const size_t nonce_len,
+    const uint8_t *in, const size_t in_len,
+    const uint8_t *extra_in,
+    const size_t extra_in_len, const uint8_t *ad,
+    const size_t ad_len) {
+    /* The tag is constituted by two components: the MAC part concatenated with the 
+     * key commitment part. Truncating the key commitment is currently unsupported. We    
+     * take into account the cases where there is not enough space for key commitment */
+    size_t tag_len = ctx->tag_len;
+    size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
+    if(ctx->tag_len > XAES_256_GCM_KEY_COMMIT_SIZE) { 
+        // Evaluate the remaning space size for MAC 
+        tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
+    }
+    else {
+        // If there is not enough space for at least 1-byte tag and key commitment
+        key_commitment_len = 0;
+    }
+
+    AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+    struct aead_aes_gcm_ctx gcm_ctx;
+
+    if(!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
+        return 0;
+    }
+
+    aead_aes_gcm_seal_scatter_impl(&gcm_ctx, out, out_tag, out_tag_len, 
+                                max_out_tag_len - key_commitment_len,
+                                get_iv_for_aes_gcm(nonce, nonce_len), 
+                                AES_GCM_NONCE_LENGTH,in, in_len, extra_in, 
+                                extra_in_len, ad, ad_len, tag_len);
+
+    // We extract key commitment only if it is reserved enough space
+    if(key_commitment_len > 0) {
+        uint8_t key_commitment[XAES_256_GCM_KEY_COMMIT_SIZE];
+
+        xaes_256_gcm_extract_key_commitment(&xaes_ctx->xaes_key, xaes_ctx->k1, 
+                                            key_commitment, nonce, nonce_len); 
+
+        OPENSSL_memcpy(out_tag + *out_tag_len, key_commitment, key_commitment_len);
+        *out_tag_len += key_commitment_len;
+    }
+
+    return 1;
+}
+
+static int aead_xaes_256_gcm_key_commit_open_gather(
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    const uint8_t *nonce, size_t nonce_len,
+    const uint8_t *in, size_t in_len,
+    const uint8_t *in_tag, size_t in_tag_len,
+    const uint8_t *ad, size_t ad_len) {
+    /* The tag is constituted by two components: the MAC part concatenated with the 
+     * key commitment part. Truncating the key commitment is currently unsupported. We    
+     * take into account the cases where there is not enough space for key commitment */
+    size_t tag_len = ctx->tag_len;
+    size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
+    if(ctx->tag_len > XAES_256_GCM_KEY_COMMIT_SIZE) { 
+        // The tag is truncated but leave enough space for key commitment
+        // We need to evaluate the remaning space size for MAC 
+        tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
+    }
+    else {
+        // If there is not enough space for at least 1-byte tag and key commitment
+        key_commitment_len = 0;
+    }
+
+    AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
+    struct aead_aes_gcm_ctx gcm_ctx;
+
+    if (!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
+        return 0;
+    }
+
+    // We verify key commitment only if it is present
+    if(key_commitment_len > 0) {
+        uint8_t key_commitment[XAES_256_GCM_KEY_COMMIT_SIZE];
+
+        xaes_256_gcm_extract_key_commitment(&xaes_ctx->xaes_key, xaes_ctx->k1, 
+                                            key_commitment, nonce, nonce_len); 
+
+        if(OPENSSL_memcmp(in_tag + (in_tag_len - key_commitment_len), 
+                    key_commitment, key_commitment_len)) {
+            OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_KEY_COMMITMENT_INVALID);            
+            return 0;
+        }
+    }
+
+    return aead_aes_gcm_open_gather_impl(
+        &gcm_ctx, out, get_iv_for_aes_gcm(nonce, nonce_len), AES_GCM_NONCE_LENGTH,
+        in, in_len, in_tag, in_tag_len - key_commitment_len, ad, ad_len, tag_len);
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_kc) {
+    OPENSSL_memset(out, 0, sizeof(EVP_AEAD));
+    out->key_len = XAES_256_GCM_KEY_LENGTH;
+    out->nonce_len = XAES_256_GCM_MAX_NONCE_SIZE;
+    out->overhead = EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE;
+    out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE;
+    out->aead_id = AEAD_XAES_256_GCM_KC_ID;
+
+    out->init = aead_xaes_256_gcm_kc_init;
+    out->cleanup = aead_aes_gcm_cleanup;
+    out->seal_scatter = aead_xaes_256_gcm_key_commit_seal_scatter;
+    out->open_gather = aead_xaes_256_gcm_key_commit_open_gather;
+}
