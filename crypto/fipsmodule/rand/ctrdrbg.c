@@ -168,7 +168,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
   //
   // The key is derived from the 32 left-most bytes of BCC output per
   // 10.3.2 (10). K = entropy_output[0:2*AES_BLOCK_SIZE-1]
-  AES_KEY block_encrypt_key = { 0 };
+  AES_KEY block_encrypt_key;
   AES_set_encrypt_key(entropy_output, 256, &block_encrypt_key);
 
   // The initial input is the remaining 16 right-most bytes of BCC output per
