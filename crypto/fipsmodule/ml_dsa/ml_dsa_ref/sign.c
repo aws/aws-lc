@@ -185,7 +185,7 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   KECCAK1600_CTX state;
 
   if (external_mu && mlen != ML_DSA_CRHBYTES) {
-       return -1;
+    return -1;
   }
 
   rho = seedbuf;
@@ -475,7 +475,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   }
 
   if (external_mu && mlen != ML_DSA_CRHBYTES) {
-       return -1;
+    return -1;
   }
 
   /* FIPS 204: line 1 */
