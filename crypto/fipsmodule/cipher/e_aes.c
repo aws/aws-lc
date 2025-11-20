@@ -2284,6 +2284,12 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
         key_commitment_len = 0;
     }
     
+    // Update in_tag_len as well
+    size_t rectified_in_tag_len = 0;
+    if(in_tag_len > key_commitment_len) {
+        rectified_in_tag_len = in_tag_len - key_commitment_len;
+    }
+
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
 
@@ -2307,7 +2313,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
 
     return aead_aes_gcm_open_gather_impl(
         &gcm_ctx, out, get_iv_for_aes_gcm(nonce, nonce_len), AES_GCM_NONCE_LENGTH,
-        in, in_len, in_tag, in_tag_len - key_commitment_len, ad, ad_len, tag_len);
+        in, in_len, in_tag, rectified_in_tag_len, ad, ad_len, tag_len);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_kc) {
