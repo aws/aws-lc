@@ -28,7 +28,7 @@ function put_metric {
 
 # Return the size of an object or total for the folder (summarize)
 function size {
-  du --bytes --apparent-size --summarize "$@" | cut -f1
+  du --bytes --apparent-size --summarize --exclude=.git "$@" | cut -f1
 }
 
 SOURCE_CODE_SIZE=$(size "$SRC_ROOT")
