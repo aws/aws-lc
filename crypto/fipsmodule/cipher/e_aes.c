@@ -2305,13 +2305,13 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
         xaes_256_gcm_extract_key_commitment(&xaes_ctx->xaes_key, xaes_ctx->k1, 
                                             key_commitment, nonce, nonce_len); 
 
-        if(OPENSSL_memcmp(in_tag + (in_tag_len - key_commitment_len), 
+        if(OPENSSL_memcmp(in_tag + rectified_in_tag_len, 
                     key_commitment, key_commitment_len)) {
             OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_KEY_COMMITMENT_INVALID);            
             return 0;
         }
     }
-
+    
     return aead_aes_gcm_open_gather_impl(
         &gcm_ctx, out, get_iv_for_aes_gcm(nonce, nonce_len), AES_GCM_NONCE_LENGTH,
         in, in_len, in_tag, rectified_in_tag_len, ad, ad_len, tag_len);
