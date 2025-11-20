@@ -2220,7 +2220,8 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
     if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
-        // Evaluate the remaning space size for MAC 
+        // The tag is truncated but leave enough space for key commitment
+        // Evaluate the remaining space size for MAC 
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
     else {
@@ -2276,7 +2277,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
     if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
         // The tag is truncated but leave enough space for key commitment
-        // We need to evaluate the remaning space size for MAC 
+        // Evaluate the remaining space size for MAC 
         tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
     }
     else {
