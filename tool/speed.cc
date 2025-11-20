@@ -2952,6 +2952,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedEvpCipherGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
 #if AWSLC_API_VERSION > 34
        !SpeedEvpCipherGeneric(EVP_xaes_256_gcm(), "EVP-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_xaes_256_gcm_kc(), "EVP-XAES-256-GCM-KC", kTLSADLen, selected) ||
 #endif 
        !SpeedEvpCipherGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||

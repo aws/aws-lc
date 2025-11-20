@@ -894,9 +894,9 @@ aes 45			: id-aes256-wrap
 aes 46			: id-aes256-GCM		: aes-256-gcm
 aes 47			: id-aes256-CCM		: aes-256-ccm
 aes 48			: id-aes256-wrap-pad 
-# We're introducing a new OID for XAES-256-GCM 
+# We're introducing a new OID for XAES-256-GCM and XAES-256-GCM-KC
 aes 49			: id-xaes256-GCM    : xaes-256-gcm
-
+aes 50			: id-xaes256-GCM-KC    : xaes-256-gcm-kc
 # There are no OIDs for these modes...
 
 			: AES-128-CFB1		: aes-128-cfb1
