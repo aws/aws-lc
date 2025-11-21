@@ -191,7 +191,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
   ret = 1;
 
 out:
-  OPENSSL_free(IV_S, df_iv_s_length);
+  OPENSSL_free(IV_S);
   // used as temporary buffer
   if (ret == 0) {
     OPENSSL_cleanse(entropy_output, CTR_DRBG_ENTROPY_LEN);
