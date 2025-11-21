@@ -20,7 +20,7 @@
 
 #include "internal.h"
 #include "../cipher/internal.h"
-
+#include "../delocate.h"
 
 // Section references in this file refer to SP 800-90Ar1:
 // http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90Ar1.pdf
