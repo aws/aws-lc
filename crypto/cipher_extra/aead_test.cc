@@ -1822,9 +1822,10 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_SHORTER_NONCE) {
         
         // If key commitment is supported
         if(tag_size > 16) {
-            // Modify the last byte of key commitment 
+            // Inverse the last byte of key commitment: 
+            // ciphertext[ciphertext_len - 1] = ~ciphertext[ciphertext_len - 1]; 
             ciphertext[ciphertext_len - 1] ^= 0xFF; 
-
+            
             // Failed due to invalid key commitment
             ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), decrypted.data(), &decrypted_len, ciphertext_len - tag_size,
                                         iv.data(), iv.size(), ciphertext.data(), ciphertext_len, nullptr, 0));

@@ -1754,7 +1754,8 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
         ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, nullptr, iv.data()));
         // Verify key commitment
         if(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER) {
-            // Modify the first byte of key commitment
+            // Inverse the first byte of key commitment
+            // key_commitment[0] = ~key_commitment[0];  
             key_commitment[0] ^= 0xFF; 
             // Failed due to invalid key commitment
             ASSERT_FALSE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_VERIFY_KC, key_commitment.size(), (void*)key_commitment.data()));
