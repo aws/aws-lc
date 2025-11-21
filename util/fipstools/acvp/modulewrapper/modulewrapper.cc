@@ -1789,17 +1789,16 @@ static bool AES_CFB(const Span<const uint8_t> args[],
   if (SetKey(args[0].data(), args[0].size() * 8, &key) != 0) {
     return false;
   }
-  if (args[1].size() % AES_BLOCK_SIZE != 0 || args[1].empty() ||
-      args[2].size() != AES_BLOCK_SIZE) {
+  if (args[1].empty() || args[2].size() != AES_BLOCK_SIZE) {
     return false;
   }
   std::vector<uint8_t> input(args[1].begin(), args[1].end());
   std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+  const uint32_t iterations = GetIterations(args[3]);
 
   std::vector<uint8_t> result(input.size());
   std::vector<uint8_t> prev_result, prev_input;
 
-  const uint32_t iterations = 100;
   int num = 0;
   for (uint32_t j = 0; j < iterations; j++) {
     prev_result = result;
@@ -3453,12 +3452,12 @@ static struct {
     {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
-    {"AES-CFB1/encrypt", 3, AES_CFB<AES_set_encrypt_key, AES_cfb1_encrypt, AES_ENCRYPT>},
-    {"AES-CFB1/decrypt", 3, AES_CFB<AES_set_decrypt_key, AES_cfb1_encrypt, AES_DECRYPT>},
-    {"AES-CFB8/encrypt", 3, AES_CFB<AES_set_encrypt_key, AES_cfb8_encrypt, AES_ENCRYPT>},
-    {"AES-CFB8/decrypt", 3, AES_CFB<AES_set_decrypt_key, AES_cfb8_encrypt, AES_DECRYPT>},
-    {"AES-CFB128/encrypt", 3, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_ENCRYPT>},
-    {"AES-CFB128/decrypt", 3, AES_CFB<AES_set_decrypt_key, AES_cfb128_encrypt, AES_DECRYPT>},
+    {"AES-CFB1/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb1_encrypt, AES_ENCRYPT>},
+    {"AES-CFB1/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb1_encrypt, AES_DECRYPT>},
+    {"AES-CFB8/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb8_encrypt, AES_ENCRYPT>},
+    {"AES-CFB8/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb8_encrypt, AES_DECRYPT>},
+    {"AES-CFB128/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_ENCRYPT>},
+    {"AES-CFB128/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb128_encrypt, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},
     {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
