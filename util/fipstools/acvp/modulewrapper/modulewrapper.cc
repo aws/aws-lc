@@ -1800,7 +1800,7 @@ static bool AES_CFB(const Span<const uint8_t> args[],
     // CipherOp will mutate the given IV, but we need it later.
     uint8_t iv_copy[AES_BLOCK_SIZE];
     memcpy(iv_copy, iv.data(), sizeof(iv_copy));
-    int num = 0;
+    int num = j;
     CipherOp(input.data(), result.data(), input.size(), &key, iv_copy,
             &num, Direction);
 
