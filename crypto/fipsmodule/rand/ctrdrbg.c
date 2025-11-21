@@ -21,6 +21,7 @@
 #include "internal.h"
 #include "../cipher/internal.h"
 #include "../delocate.h"
+#include "../service_indicator/internal.h"
 
 // Section references in this file refer to SP 800-90Ar1:
 // http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90Ar1.pdf
@@ -92,6 +93,13 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
 
   int ret = 0;
 
+  if (drbg == NULL ||
+      entropy_input == NULL ||
+      entropy_output == NULL ||
+      entropy_input_len == 0) {
+    return 0;
+  }
+
   // 10.3.2 (8) is constant when key length is constant. Initialise an AES
   // object once which can be used read-only by all threads. 
   CRYPTO_once(bcc_init_once_bss_get(), init_df_bcc_once);
@@ -131,6 +139,9 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
 
   // Zeroise to avoid zero padding later.
   uint8_t *IV_S = OPENSSL_zalloc(df_iv_s_length);
+  if (IV_S == NULL) {
+    return 0;
+  }
 
   // IV_S = IV || L || N || entropy_input
   CRYPTO_store_u32_be(IV_S + df_iv_length, (uint32_t) entropy_input_len);
@@ -180,7 +191,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
   ret = 1;
 
 out:
-  OPENSSL_cleanse(IV_S, df_iv_s_length);
+  OPENSSL_free(IV_S, df_iv_s_length);
   // used as temporary buffer
   if (ret == 0) {
     OPENSSL_cleanse(entropy_output, CTR_DRBG_ENTROPY_LEN);
@@ -254,6 +265,10 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
 
 static void nonce_increment(uint8_t counter[CTR_DRBG_NONCE_LEN]) {
   size_t index = CTR_DRBG_NONCE_LEN, carry = 1;
+
+  if (counter == NULL) {
+    abort();
+  }
 
   do {
     --index;
