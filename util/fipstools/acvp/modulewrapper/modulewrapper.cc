@@ -341,18 +341,6 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [128, 192, 256]
       },
       {
-        "algorithm": "ACVP-AES-CFB1",
-        "revision": "1.0",
-        "direction": ["encrypt", "decrypt"],
-        "keyLen": [128, 192, 256]
-      },
-      {
-        "algorithm": "ACVP-AES-CFB8",
-        "revision": "1.0",
-        "direction": ["encrypt", "decrypt"],
-        "keyLen": [128, 192, 256]
-      },
-      {
         "algorithm": "ACVP-AES-CFB128",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
@@ -3452,10 +3440,6 @@ static struct {
     {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
-    {"AES-CFB1/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb1_encrypt, AES_ENCRYPT>},
-    {"AES-CFB1/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb1_encrypt, AES_DECRYPT>},
-    {"AES-CFB8/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb8_encrypt, AES_ENCRYPT>},
-    {"AES-CFB8/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb8_encrypt, AES_DECRYPT>},
     {"AES-CFB128/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_ENCRYPT>},
     {"AES-CFB128/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb128_encrypt, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},
