@@ -1819,6 +1819,20 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_SHORTER_NONCE) {
         std::vector<uint8_t> decrypted;
         decrypted.resize(ciphertext_len - tag_size);
         size_t decrypted_len = 0;
+        
+        // If key commitment is supported
+        if(tag_size > 16) {
+            // Modify the last byte of key commitment 
+            uint8_t temp = ciphertext[ciphertext_len - 1];
+            ciphertext[ciphertext_len - 1] ^= 0xFF; 
+
+            // Failed due to invalid key commitment
+            ASSERT_FALSE(EVP_AEAD_CTX_open(dctx.get(), decrypted.data(), &decrypted_len, ciphertext_len - tag_size,
+                                        iv.data(), iv.size(), ciphertext.data(), ciphertext_len, nullptr, 0));
+            ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_KEY_COMMITMENT_INVALID);
+            // Recover the correct key commitment value
+            ciphertext[ciphertext_len - 1] = temp;
+        }
 
         // Initiaze IV, derive a subkey and decrypt
         ASSERT_TRUE(EVP_AEAD_CTX_open(dctx.get(), decrypted.data(), &decrypted_len, ciphertext_len - tag_size,

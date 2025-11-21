@@ -1729,7 +1729,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
         // Initiaze IV and derive a subkey 
         ASSERT_TRUE(EVP_CipherInit_ex(ectx.get(), nullptr, nullptr, nullptr, iv.data(), -1));
 
-        std::vector<uint8_t> ciphertext, tag; 
+        std::vector<uint8_t> ciphertext, tag, key_commitment; 
         ciphertext.resize(plaintext_len);
         int ciphertext_len = 0;
         
@@ -1741,11 +1741,29 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
         
         size_t tag_size = 16;
         tag.resize(tag_size);
+        // Get MAC tag
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_GET_TAG, tag.size(), (void*)tag.data()));
+        // Get key commitment
+        if(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER) {
+            key_commitment.resize(32);
+            ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_GET_KC, key_commitment.size(), (void*)key_commitment.data()));
+        }
         
         // Decrypt
         // Initiaze IV and derive a subkey 
         ASSERT_TRUE(EVP_DecryptInit_ex(dctx.get(), nullptr, nullptr, nullptr, iv.data()));
+        // Verify key commitment
+        if(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER) {
+            // Modify the first byte of key commitment
+            uint8_t temp = key_commitment[0];
+            key_commitment[0] ^= 0xFF; 
+            // Failed due to invalid key commitment
+            ASSERT_FALSE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_VERIFY_KC, key_commitment.size(), (void*)key_commitment.data()));
+            ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_KEY_COMMITMENT_INVALID);
+            // Recover the correct key commitment value
+            key_commitment[0] = temp;
+            ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_VERIFY_KC, key_commitment.size(), (void*)key_commitment.data()));
+        }
 
         std::vector<uint8_t> decrypted;
         decrypted.resize(ciphertext_len);
