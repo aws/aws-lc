@@ -30,6 +30,10 @@ static const argument_t kArguments[] = {
                 "ciphers that the client is willing to use during the SSL/TLS handshake." },
         { "-tls1_1", kBooleanArgument,
                 "Use TLS version 1.1 only." },
+        { "-tls1_2", kBooleanArgument,
+                "Use TLS version 1.2 only." },
+        { "-tls1_3", kBooleanArgument,
+                "Use TLS version 1.3 only." },
         { "", kOptionalArgument, "" },
 };
 
