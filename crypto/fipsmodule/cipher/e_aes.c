@@ -2226,14 +2226,15 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
         tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
         key_commitment_len = ctx->tag_len - EVP_AEAD_AES_GCM_TAG_LEN;
     }
-
-    // Rectify max_out_tag_len as well
+    
+    // If output tag does not have space enough for key commitment as configured
     if(max_out_tag_len < key_commitment_len) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
         return 0;
     }
+    // Rectify max_out_tag_len as well
     max_out_tag_len -= key_commitment_len;
-    
+
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
 
@@ -2281,11 +2282,12 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
         key_commitment_len = ctx->tag_len - EVP_AEAD_AES_GCM_TAG_LEN;
     }
 
-    // Rectify in_tag_len as well 
+    // If input tag does not have space enough for key commitment as configured
     if(in_tag_len < key_commitment_len) {
         OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
         return 0;
     }
+    // Rectify in_tag_len as well 
     in_tag_len -= key_commitment_len;
 
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
