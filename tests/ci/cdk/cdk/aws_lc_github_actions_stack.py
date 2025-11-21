@@ -17,7 +17,7 @@ from cdk.aws_lc_base_ci_stack import AwsLcBaseCiStack
 from util.iam_policies import (
     code_build_publish_metrics_in_json,
 )
-from util.metadata import AMAZONLINUX_ECR_REPO, ANDROID_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, UBUNTU_ECR_REPO, VERIFICATION_ECR_REPO, WINDOWS_ECR_REPO, WINDOWS_X86_ECR_REPO
+from util.metadata import ECR_REPOS, IMAGE_STAGING_REPO, LINUX_AARCH_ECR_REPO, LINUX_X86_ECR_REPO, WINDOWS_X86_ECR_REPO
 
 class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
     """Define a stack used to execute AWS-LC self-hosted GitHub Actions Runners."""
@@ -32,19 +32,19 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
         super().__init__(scope, id, env=env, timeout=180, **kwargs)
 
         # TODO: First 3 indices ordering is important for now as they are referenced directly for now.
-        repo_names = [LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO, UBUNTU_ECR_REPO,
-                      AMAZONLINUX_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, WINDOWS_ECR_REPO, VERIFICATION_ECR_REPO,
-                      ANDROID_ECR_REPO]
+        repo_names = [LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO]
+        repo_names.extend(ECR_REPOS)
         ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
                      for x in repo_names]
+
+        self.staging_repo = ecr.Repository(self, IMAGE_STAGING_REPO.replace('/', '-'),
+                                           repository_name=IMAGE_STAGING_REPO,
+                                           image_tag_mutability=ecr.TagMutability.IMMUTABLE,
+                                           lifecycle_rules=[ecr.LifecycleRule(
+                                               max_image_age=Duration.days(1),
+                                           )])
         
-        staging_repo = ecr.Repository(self, "aws-lc-ecr-staging",
-                              image_tag_mutability=ecr.TagMutability.IMMUTABLE,
-                              lifecycle_rules=[ecr.LifecycleRule(
-                                  max_image_age=Duration.days(1),
-                              )])
-        
-        ecr_repos.append(staging_repo)
+        ecr_repos.append(self.staging_repo)
 
         pull_through_caches = [ecr.Repository.from_repository_name(self, "quay-io", "quay.io/*")]
 
@@ -145,7 +145,7 @@ class AwsLcGitHubActionsStack(AwsLcBaseCiStack):
                         value=ecr_repos[2].repository_uri
                     ),
                     "ECR_REGISTRY_URL": codebuild.BuildEnvironmentVariable(value=ecr_repos[0].registry_uri),
-                    "ECR_STAGING_REPO": codebuild.BuildEnvironmentVariable(value=staging_repo.repository_uri),
+                    "ECR_STAGING_REPO": codebuild.BuildEnvironmentVariable(value=self.staging_repo.repository_uri),
                 },
             ),
         )

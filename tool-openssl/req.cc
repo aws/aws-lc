@@ -17,6 +17,7 @@
 #define REQ_SECTION "req"
 #define BITS "default_bits"
 #define DEFAULT_MD "default_md"
+#define DEFAULT_KEYFILE "default_keyfile"
 #define PROMPT "prompt"
 #define ENCRYPT_KEY "encrypt_key"
 #define DISTINGUISHED_NAME "distinguished_name"
@@ -30,13 +31,20 @@
 #define BUF_SIZE 1024
 #define DEFAULT_CHAR_TYPE MBSTRING_ASC
 
-// Notes: -x509 option assumes -new when -in is not passed in with OpenSSL. We
-// do not support -in as of now, so -new is implied with -x509.
+// NOTES:
+// 1. We do not support -in as of now, so -new is implied with -x509.
 //
-// In general, OpenSSL supports a default config file which it defaults to when
-// user input is not provided. We don't support this default config file
-// interface. For fields that are not overriden by user input, we hardcode
-// default values (e.g. X509 extensions, -keyout defaults to privkey.pem, etc.)
+// 2. AWS-LC does not support config files by design, but some of our
+// dependencies still use this cli command with -config. Therefore, we decided
+// to implement -config but will only parse a MINIMAL set of fields (e.g.,
+// default_md, distiguished_name, etc.). This set will be updated and
+// re-evaluated on an as-needed basis.
+//
+// 3. OpenSSL has a default config file when user input is not provided.
+// https://github.com/openssl/openssl/blob/master/apps/openssl.cnf
+// We don't support this default config file interface. For fields that are not
+// overriden by user input, we hardcode default values (e.g. X509 extensions,
+// -keyout defaults to privkey.pem, etc.)
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-md5", kExclusiveBooleanArgument, "Supported digest function"},
@@ -74,12 +82,6 @@ static const argument_t kArguments[] = {
      "be formatted as /type0=value0/type1=value1/type2=.... "
      "Keyword characters may be escaped by \\ (backslash), and "
      "whitespace is retained."},
-    // AWS-LC does not support config files by design, but some of our
-    // dependencies
-    // still use this cli command with -config. Therefore, we decided to
-    // implement -config but will only parse a MINIMAL set of fields (e.g.,
-    // default_md, distiguished_name, etc.). This set will be updated and
-    // re-evaluated on an as-needed basis.
     {"-config", kOptionalArgument, "This specifies the request template file"},
     {"-extensions", kOptionalArgument,
      "Cert or request extension section (override value in config file)"},
@@ -324,8 +326,8 @@ const ReqField extra_attributes[] = {
      "An optional company name", NID_pkcs9_unstructuredName}};
 
 static bssl::UniquePtr<X509_NAME> BuildSubject(
-    X509_REQ *req, CONF *req_conf, bool is_csr, bool no_prompt,
-    unsigned long chtype = MBSTRING_ASC) {
+    X509_REQ *req, CONF *req_conf, const std::string &req_section, bool is_csr,
+    bool no_prompt, unsigned long chtype = MBSTRING_ASC) {
   // Get the subject name from the request
   bssl::UniquePtr<X509_NAME> subj(X509_NAME_new());
   if (!subj) {
@@ -352,7 +354,8 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
   char buffer[BUF_SIZE];
   const char *dn_section = NULL;
   if (req_conf) {
-    dn_section = NCONF_get_string(req_conf, REQ_SECTION, DISTINGUISHED_NAME);
+    dn_section =
+        NCONF_get_string(req_conf, req_section.c_str(), DISTINGUISHED_NAME);
   }
 
   // Process each subject field
@@ -394,7 +397,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 
   const char *attr_section = NULL;
   if (req_conf) {
-    attr_section = NCONF_get_string(req_conf, REQ_SECTION, ATTRIBUTES);
+    attr_section = NCONF_get_string(req_conf, req_section.c_str(), ATTRIBUTES);
   }
   // If this is a CSR, handle extra attributes
   if (is_csr) {
@@ -448,7 +451,8 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 
 static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
                                    std::string &subject_name, CONF *req_conf,
-                                   bool is_csr, bool no_prompt) {
+                                   const std::string &req_section, bool is_csr,
+                                   bool no_prompt) {
   bssl::UniquePtr<X509_NAME> name;
 
   // version 1
@@ -457,7 +461,7 @@ static bool MakeCertificateRequest(X509_REQ *req, EVP_PKEY *pkey,
   }
 
   if (subject_name.empty()) {  // Prompt the user
-    name = BuildSubject(req, req_conf, is_csr, no_prompt);
+    name = BuildSubject(req, req_conf, req_section, is_csr, no_prompt);
   } else {  // Parse user provided string
     name = ParseSubjectName(subject_name);
     if (!name) {
@@ -527,7 +531,7 @@ static bool LoadConfig(const std::string &config_path,
 static bool AddCertExtensions(X509 *cert, CONF *req_conf,
                               std::string &ext_section) {
   // Set up X509V3 context for certificate
-  bool result = false;
+  bool result = true;
   X509V3_CTX ext_ctx;
   X509V3_set_ctx(&ext_ctx, cert, cert, NULL, NULL,
                  X509V3_CTX_REPLACE);  // self-signed
@@ -536,8 +540,10 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
     X509V3_set_nconf(&ext_ctx, req_conf);
 
     // Add extensions from config to the certificate
-    result = X509V3_EXT_add_nconf(req_conf, &ext_ctx, ext_section.c_str(),
-                                  cert) != 0;
+    if (!ext_section.empty()) {
+      result = X509V3_EXT_add_nconf(req_conf, &ext_ctx, ext_section.c_str(),
+                                    cert) != 0;
+    }
 
     /* Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER */
     if (!AdaptKeyIDExtension(cert, &ext_ctx, "subjectKeyIdentifier", "hash",
@@ -559,7 +565,8 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
         "basicConstraints=critical,CA:true\n";
 
     // Create a BIO for the config
-    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(default_config, strlen(default_config)));
+    bssl::UniquePtr<BIO> bio(
+        BIO_new_mem_buf(default_config, strlen(default_config)));
     if (!bio) {
       fprintf(stderr, "Failed to create memory BIO\n");
       return false;
@@ -588,7 +595,7 @@ static bool AddCertExtensions(X509 *cert, CONF *req_conf,
 static bool AddReqExtensions(X509_REQ *req, CONF *req_conf,
                              std::string &ext_section) {
   // Set up X509V3 context for certificate
-  bool result = false;
+  bool result = true;
   X509V3_CTX ext_ctx;
   X509V3_set_ctx(&ext_ctx, NULL, NULL, req, NULL,
                  X509V3_CTX_REPLACE);  // self-signed
@@ -694,13 +701,8 @@ static bool WritePrivateKey(std::string &out_path,
                             const EVP_CIPHER *cipher) {
   bssl::UniquePtr<BIO> out_bio;
   SetUmaskForPrivateKey();
-  if (out_path.empty()) {
-    // Default to privkey.pem in the current directory
-    out_path = "privkey.pem";
-    fprintf(stderr, "Writing private key to %s (default)\n", out_path.c_str());
-  } else {
-    fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
-  }
+
+  fprintf(stderr, "Writing private key to %s\n", out_path.c_str());
 
   out_bio.reset(BIO_new(BIO_s_file()));
   if (!out_bio) {
@@ -799,9 +801,15 @@ bool reqTool(const args_list_t &args) {
     return false;
   }
 
+  std::string req_section = REQ_SECTION;
+  if (req_conf.get() &&
+      NCONF_get_section(req_conf.get(), REQ_SECTION) == NULL) {
+    req_section = "default";
+  }
+
   if (ext_section.empty() && req_conf.get()) {
     const char *ext_str =
-        NCONF_get_string(req_conf.get(), REQ_SECTION,
+        NCONF_get_string(req_conf.get(), req_section.c_str(),
                          x509_flag ? V3_EXTENSIONS : REQ_EXTENSIONS);
     if (ext_str) {
       ext_section = ext_str;
@@ -825,7 +833,7 @@ bool reqTool(const args_list_t &args) {
   if (digest_name.empty()) {
     if (!config_path.empty()) {
       const char *digest_str =
-          NCONF_get_string(req_conf.get(), REQ_SECTION, DEFAULT_MD);
+          NCONF_get_string(req_conf.get(), req_section.c_str(), DEFAULT_MD);
       if (digest_str) {
         digest_name = digest_str;
       } else {
@@ -844,7 +852,7 @@ bool reqTool(const args_list_t &args) {
   const char *encrypt_key_str = NULL;
   if (req_conf.get()) {
     encrypt_key_str =
-        NCONF_get_string(req_conf.get(), REQ_SECTION, ENCRYPT_KEY);
+        NCONF_get_string(req_conf.get(), req_section.c_str(), ENCRYPT_KEY);
   }
 
   if (encrypt_key_str != NULL &&
@@ -859,12 +867,16 @@ bool reqTool(const args_list_t &args) {
   //   - If -newkey is given: generate key specified by -newkey
   //   - Else: generate default RSA key
   bssl::UniquePtr<EVP_PKEY> pkey;
-  if (key_file_path.empty()) {
+  if (!key_file_path.empty()) {
+    if (!LoadPrivateKey(key_file_path, passin, pkey)) {
+      return false;
+    }
+  } else {
     // Before generating key, check if config has a default key length specified
     long default_keylen = DEFAULT_KEY_LENGTH;
     const char *bits_str = NULL;
     if (req_conf.get()) {
-      bits_str = NCONF_get_string(req_conf.get(), REQ_SECTION, BITS);
+      bits_str = NCONF_get_string(req_conf.get(), req_section.c_str(), BITS);
     }
 
     if (bits_str) {
@@ -893,26 +905,39 @@ bool reqTool(const args_list_t &args) {
       fprintf(stderr, "Error: Failed to generate private key.\n");
       return false;
     }
-  } else {
-    if (!LoadPrivateKey(key_file_path, passin, pkey)) {
-      return false;
+  }
+
+  // If keyout is not provided:
+  // 1. If -config, use it to set keyout
+  // 2. If no -config, output key to privkey.pem (this imitates how OpenSSL
+  // would default to the default openssl.conf file, which has default_keyfile
+  // set to privkey.pem)
+  if (keyout.empty()) {
+    if (req_conf) {
+      const char *default_keyfile = NCONF_get_string(
+          req_conf.get(), req_section.c_str(), DEFAULT_KEYFILE);
+      keyout = default_keyfile != NULL ? default_keyfile : "";
+    } else {
+      keyout = "privkey.pem";
     }
   }
 
-  const EVP_CIPHER *cipher = NULL;
-  if (!nodes && encrypt_key) {
-    cipher = EVP_des_ede3_cbc();
-  }
+  if (!keyout.empty()) {
+    const EVP_CIPHER *cipher = NULL;
+    if (!nodes && encrypt_key) {
+      cipher = EVP_des_ede3_cbc();
+    }
 
-  SetUmaskForPrivateKey();
-  if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
-    return false;
+    if (!WritePrivateKey(keyout, passout, pkey, cipher)) {
+      return false;
+    }
   }
 
   bool no_prompt = false;
   const char *no_prompt_str = NULL;
   if (req_conf.get()) {
-    no_prompt_str = NCONF_get_string(req_conf.get(), REQ_SECTION, PROMPT);
+    no_prompt_str =
+        NCONF_get_string(req_conf.get(), req_section.c_str(), PROMPT);
   }
 
   if (no_prompt_str != NULL && isStringUpperCaseEqual(no_prompt_str, "no")) {
@@ -927,7 +952,7 @@ bool reqTool(const args_list_t &args) {
   // Always create a CSR first
   if (req == NULL ||
       !MakeCertificateRequest(req.get(), pkey.get(), subj, req_conf.get(),
-                              !x509_flag, no_prompt)) {
+                              req_section, !x509_flag, no_prompt)) {
     fprintf(stderr, "Failed to create certificate request\n");
     return false;
   }
@@ -990,7 +1015,7 @@ bool reqTool(const args_list_t &args) {
   } else {
     // Add extensions to request
     if (!AddReqExtensions(req.get(), req_conf.get(), ext_section)) {
-      fprintf(stderr, "Failed to add extensions to certificate\n");
+      fprintf(stderr, "Failed to add extensions to CSR\n");
       return false;
     }
 

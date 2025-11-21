@@ -13,7 +13,10 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
   }
 
   // Set version to X509v3
-  X509_set_version(x509.get(), X509_VERSION_3);
+  if (!X509_set_version(x509.get(), X509_VERSION_3)) {
+    fprintf(stderr, "Error setting certificate version\n");
+    return;
+  }
 
   // Set validity period for 30 days
   if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
@@ -190,8 +193,9 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     ASN1_STRING *data2 = X509_NAME_ENTRY_get_data(entry2);
 
     if (ASN1_STRING_cmp(data1, data2) != 0) {
+      const char* long_name = OBJ_nid2ln(OBJ_obj2nid(obj1));
       std::cout << "CSRs have different values for entry "
-                << OBJ_nid2ln(OBJ_obj2nid(obj1)) << std::endl;
+                << (long_name ? long_name : "<UNKNOWN>")  << std::endl;
       return false;
     }
   }

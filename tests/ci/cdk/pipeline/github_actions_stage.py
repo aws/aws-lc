@@ -36,7 +36,7 @@ class GitHubActionsStage(Stage):
         
         self.odic_stack = AwsLcGitHubOidcStack(
             self, "aws-lc-github-oidc", env=deploy_environment, **kwargs)
-
+        
         self.actions_stack = AwsLcGitHubActionsStack(
             self,
             "aws-lc-ci-github-actions",
@@ -44,7 +44,7 @@ class GitHubActionsStage(Stage):
             ignore_failure=False,
             stack_name="aws-lc-ci-github-actions",
         )
-
+        
     @property
     def stacks(self):
         return [child for child in self.node.children if isinstance(child, Stack)]

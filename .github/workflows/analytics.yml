@@ -30,6 +30,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2
           env: |
             ANALYTICS_BRANCH
+          withCredentials: true
           run: |
             source /opt/compiler-env/setup-gcc-7.sh
             ./tests/ci/run_analytics.sh
