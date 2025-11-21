@@ -2246,7 +2246,7 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
         return 0;
     }
     
-    // We extract key commitment only if it is reserved enough space
+    // Extract key commitment only if it exists
     if(key_commitment_len > 0) {
         uint8_t key_commitment[XAES_256_GCM_KEY_COMMIT_SIZE];
 
@@ -2290,8 +2290,8 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
     if (!aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len)) {
         return 0;
     }
-
-    // We verify key commitment only if it is present
+    
+    // Verify key commitment only if it exists
     if(key_commitment_len > 0) {
         uint8_t key_commitment[XAES_256_GCM_KEY_COMMIT_SIZE];
 
