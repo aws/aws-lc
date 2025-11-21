@@ -2184,7 +2184,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_xaes_256_gcm_kc) {
 
 // -----------------------------------------------------------------------------
 // ------------------ EVP_AEAD XAES-256-GCM With Key Commitment ----------------
-// ----------- Reference: https://eprint.iacr.org/2025/758.pdf#page=6 -----------
+// ----------- Reference: https://eprint.iacr.org/2025/758.pdf#page=6 ----------
 // -----------------------------------------------------------------------------
 static int aead_xaes_256_gcm_kc_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                             size_t key_len, size_t requested_tag_len) {
