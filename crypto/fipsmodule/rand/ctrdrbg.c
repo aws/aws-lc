@@ -146,7 +146,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
   // IV_S = IV || L || N || entropy_input
   CRYPTO_store_u32_be(IV_S + df_iv_length, (uint32_t) entropy_input_len);
   CRYPTO_store_u32_be(IV_S + df_iv_length + 4, (uint32_t) CTR_DRBG_ENTROPY_LEN); 
-  memcpy(IV_S + df_iv_length + df_s_prefix_length, entropy_input, entropy_input_len);
+  OPENSSL_memcpy(IV_S + df_iv_length + df_s_prefix_length, entropy_input, entropy_input_len);
 
   // IV_S = IV || L || N || entropy_input || 0x80
   // Implicitly, zero-padded.
