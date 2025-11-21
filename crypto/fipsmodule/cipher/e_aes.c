@@ -2214,26 +2214,20 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     const uint8_t *extra_in,
     const size_t extra_in_len, const uint8_t *ad,
     const size_t ad_len) {
-    /* We consider the following possible cases of tag_len: 
-     * tag_len >= 32        : tag includes (tag_len - 32)-byte MAC tag and 32-byte key commitment 
-     * 16 <= tag_len < 32   : tag includes 16-byte MAC tag and (tag_len - 16)-byte key commitment   
-     * tag_len < 16         : tag includes only (tag_len)-byte MAC tag and 0-byte key commitment */
+    /* Assume tag includes MAC concatenated with key commitment
+     * i.e., TAG = MAC (16-byte) || KEY_COMMITMENT (32-byte) 
+     * Therefore, truncating happens to key commitment first
+     * We consider the following possible cases of tag_len: 
+     * tag_len > 16 : tag includes 16-byte MAC tag and (tag_len - 16)-byte key commitment   
+     * tag_len <= 16: tag includes only (tag_len)-byte MAC tag and 0-byte key commitment */
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
-    if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
-        // The tag is truncated but leaves enough space for key commitment
-        // Evaluate the remaining space size for MAC 
-        tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
+    if(ctx->tag_len > EVP_AEAD_AES_GCM_TAG_LEN) {
+        tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+        key_commitment_len = ctx->tag_len - EVP_AEAD_AES_GCM_TAG_LEN;
     }
-    else {
-        // If there is not enough space for key commitment
-        // But there is more than space needed for mac 
-        if(ctx->tag_len >= EVP_AEAD_AES_GCM_TAG_LEN) {
-            key_commitment_len = ctx->tag_len - EVP_AEAD_AES_GCM_TAG_LEN;
-        }
-        else {
-            key_commitment_len = 0;
-        }
+    else { 
+        key_commitment_len = 0;
     }
     
     // Update max_out_tag_len as well
@@ -2277,26 +2271,20 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
     const uint8_t *in, size_t in_len,
     const uint8_t *in_tag, size_t in_tag_len,
     const uint8_t *ad, size_t ad_len) {
-    /* We consider the following possible cases of tag_len: 
-     * tag_len >= 32        : tag includes (tag_len - 32)-byte MAC tag and 32-byte key commitment 
-     * 16 <= tag_len < 32   : tag includes 16-byte MAC tag and (tag_len - 16)-byte key commitment   
-     * tag_len < 16         : tag includes only (tag_len)-byte MAC tag and 0-byte key commitment */
+    /* Assume tag includes MAC concatenated with key commitment
+     * i.e., TAG = MAC (16-byte) || KEY_COMMITMENT (32-byte) 
+     * Therefore, truncating happens to key commitment first
+     * We consider the following possible cases of tag_len: 
+     * tag_len > 16 : tag includes 16-byte MAC tag and (tag_len - 16)-byte key commitment   
+     * tag_len <= 16: tag includes only (tag_len)-byte MAC tag and 0-byte key commitment */
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
-    if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
-        // The tag is truncated but leaves enough space for key commitment
-        // Evaluate the remaining space size for MAC 
-        tag_len = ctx->tag_len - XAES_256_GCM_KEY_COMMIT_SIZE;
+    if(ctx->tag_len > EVP_AEAD_AES_GCM_TAG_LEN) {
+        tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+        key_commitment_len = ctx->tag_len - EVP_AEAD_AES_GCM_TAG_LEN;
     }
     else {
-        // If there is not enough space for key commitment 
-        // But there is more than space needed for mac 
-        if(ctx->tag_len >= EVP_AEAD_AES_GCM_TAG_LEN) {
-            key_commitment_len = ctx->tag_len - EVP_AEAD_AES_GCM_TAG_LEN;
-        }
-        else {
-            key_commitment_len = 0;
-        }
+        key_commitment_len = 0;
     }
     
     // Update in_tag_len as well
