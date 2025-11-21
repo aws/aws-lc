@@ -2229,11 +2229,11 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
 
     // Rectify max_out_tag_len as well
     if(max_out_tag_len < key_commitment_len) {
-        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
         return 0;
     }
     max_out_tag_len -= key_commitment_len;
-
+    
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
 
@@ -2283,11 +2283,11 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
 
     // Rectify in_tag_len as well 
     if(in_tag_len < key_commitment_len) {
-        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
         return 0;
     }
     in_tag_len -= key_commitment_len;
-    
+
     AEAD_XAES_256_GCM_CTX *xaes_ctx = (AEAD_XAES_256_GCM_CTX*)&ctx->state;
     struct aead_aes_gcm_ctx gcm_ctx;
 
