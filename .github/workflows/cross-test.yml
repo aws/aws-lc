@@ -135,3 +135,15 @@ jobs:
       - name: iOS Simulator Runner
         timeout-minutes: 45
         run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
+  powerpc-old-glibc:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/rust-lang/rust-ci:3afb64da05021f4e35690ff82852d9f0fa0028c30a5676cdb3844a697e863e7c1d3648c4243300ab8578d65d1f7a5bb727da01026e762b7e9ae6733339d8446b
+    env:
+      CC: /x-tools/powerpc-unknown-linux-gnu/bin/powerpc-unknown-linux-gnu-gcc
+      CXX: /x-tools/powerpc-unknown-linux-gnu/bin/powerpc-unknown-linux-gnu-g++
+    steps:
+      - uses: actions/checkout@v4
+      - name: Perform Build
+        run: ./util/build_and_test.sh --build-only -G "Unix Makefiles" -DDISABLE_GO=ON -DDISABLE_PERL=ON -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_FIND_ROOT_PATH=/x-tools/powerpc-unknown-linux-gnu/powerpc-unknown-linux-gnu/

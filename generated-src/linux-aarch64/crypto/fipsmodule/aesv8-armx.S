@@ -23,6 +23,7 @@
 .type	aes_hw_set_encrypt_key,%function
 .align	5
 aes_hw_set_encrypt_key:
+.cfi_startproc
 .Lenc_key:
 #ifdef BORINGSSL_DISPATCH_TEST
 
@@ -34,7 +35,11 @@ aes_hw_set_encrypt_key:
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	mov	x3,#-1
 	cmp	x0,#0
 	b.eq	.Lenc_key_abort
@@ -193,7 +198,10 @@ aes_hw_set_encrypt_key:
 .Lenc_key_abort:
 	mov	x0,x3			// return value
 	ldr	x29,[sp],#16
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 .size	aes_hw_set_encrypt_key,.-aes_hw_set_encrypt_key
 
 .globl	aes_hw_set_decrypt_key
@@ -201,9 +209,14 @@ aes_hw_set_encrypt_key:
 .type	aes_hw_set_decrypt_key,%function
 .align	5
 aes_hw_set_decrypt_key:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	bl	.Lenc_key
 
 	cmp	x0,#0
@@ -235,14 +248,19 @@ aes_hw_set_decrypt_key:
 	eor	x0,x0,x0		// return value
 .Ldec_key_abort:
 	ldp	x29,x30,[sp],#16
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 .size	aes_hw_set_decrypt_key,.-aes_hw_set_decrypt_key
 .globl	aes_hw_encrypt
 .hidden	aes_hw_encrypt
 .type	aes_hw_encrypt,%function
 .align	5
 aes_hw_encrypt:
+.cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -275,12 +293,14 @@ aes_hw_encrypt:
 
 	st1	{v2.16b},[x1]
 	ret
+.cfi_endproc
 .size	aes_hw_encrypt,.-aes_hw_encrypt
 .globl	aes_hw_decrypt
 .hidden	aes_hw_decrypt
 .type	aes_hw_decrypt,%function
 .align	5
 aes_hw_decrypt:
+.cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -313,16 +333,22 @@ aes_hw_decrypt:
 
 	st1	{v2.16b},[x1]
 	ret
+.cfi_endproc
 .size	aes_hw_decrypt,.-aes_hw_decrypt
 .globl	aes_hw_cbc_encrypt
 .hidden	aes_hw_cbc_encrypt
 .type	aes_hw_cbc_encrypt,%function
 .align	5
 aes_hw_cbc_encrypt:
+.cfi_startproc
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	subs	x2,x2,#16
 	mov	x8,#16
 	b.lo	.Lcbc_abort
@@ -605,13 +631,17 @@ aes_hw_cbc_encrypt:
 	st1	{v6.16b},[x4]
 .Lcbc_abort:
 	ldr	x29,[sp],#16
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 .size	aes_hw_cbc_encrypt,.-aes_hw_cbc_encrypt
 .globl	aes_hw_ctr32_encrypt_blocks
 .hidden	aes_hw_ctr32_encrypt_blocks
 .type	aes_hw_ctr32_encrypt_blocks,%function
 .align	5
 aes_hw_ctr32_encrypt_blocks:
+.cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -622,7 +652,11 @@ aes_hw_ctr32_encrypt_blocks:
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	ldr	w5,[x3,#240]
 
 	ldr	w8, [x4, #12]
@@ -812,7 +846,10 @@ aes_hw_ctr32_encrypt_blocks:
 
 .Lctr32_done:
 	ldr	x29,[sp],#16
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 .size	aes_hw_ctr32_encrypt_blocks,.-aes_hw_ctr32_encrypt_blocks
 #endif
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(__ELF__)
