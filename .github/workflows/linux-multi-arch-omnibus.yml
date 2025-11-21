@@ -318,6 +318,17 @@ jobs:
               export AWS_LC_GO_TEST_TIMEOUT="${{ matrix.goTestTimeout }}"
             fi
             ./tests/ci/run_fips_tests.sh
+      - name: Debug Assembly on Failure
+        if: failure()
+        run: |
+          cd test_build_dir
+          ar p crypto/fipsmodule/libbcm_c_generated_asm.a > /tmp/asm.s
+          echo "=== Lines around 185838 ==="
+          sed -n '185835,185845p' /tmp/asm.s
+          echo "=== Line 185838 with special characters ==="
+          sed -n '185838p' /tmp/asm.s | cat -A
+          echo "=== Character positions 1-35 ==="
+          sed -n '185838p' /tmp/asm.s | cut -c1-35
 
   prefix_tests:
     name: prefix-tests-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.arch }}
