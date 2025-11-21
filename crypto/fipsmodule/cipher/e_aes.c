@@ -2216,7 +2216,7 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     const size_t ad_len) {
     /* Assume tag includes MAC concatenated with key commitment
      * i.e., TAG = MAC (16-byte) || KEY_COMMITMENT (32-byte) 
-     * Therefore, truncating happens to key commitment first
+     * Therefore, truncating tag happens to key commitment first
      * We consider the following possible cases of tag_len: 
      * tag_len > 16 : tag includes 16-byte MAC tag and (tag_len - 16)-byte key commitment   
      * tag_len <= 16: tag includes only (tag_len)-byte MAC tag and 0-byte key commitment */
@@ -2271,7 +2271,7 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
     const uint8_t *ad, size_t ad_len) {
     /* Assume tag includes MAC concatenated with key commitment
      * i.e., TAG = MAC (16-byte) || KEY_COMMITMENT (32-byte) 
-     * Therefore, truncating happens to key commitment first
+     * Therefore, truncating tag happens to key commitment first
      * We consider the following possible cases of tag_len: 
      * tag_len > 16 : tag includes 16-byte MAC tag and (tag_len - 16)-byte key commitment   
      * tag_len <= 16: tag includes only (tag_len)-byte MAC tag and 0-byte key commitment */
