@@ -10,20 +10,21 @@ import typing
 import shutil
 import filecmp
 
-from vectorslib import utils
+from vectorslib import utils, convert_vector, generate_spec
 from vectorslib.utils import SyncError
 
 
 def fetch_sources(
     clone_dir: pathlib.Path,
     sources: dict,
-    using_custom_clone_dir: bool = False,
+    reuse_existing: bool,
 ):
     for source_name, source_info in sources.items():
         source_clone_dir = clone_dir / source_name
 
+        # Reuse existing clone if present, otherwise clone fresh
         if source_clone_dir.is_dir():
-            assert using_custom_clone_dir
+            assert reuse_existing  # Should only happen with --clone-dir, not with new temp dir
             utils.warning(
                 f"using existing, potentially stale upstream clone of {source_name} at {source_clone_dir}"
             )
@@ -55,11 +56,8 @@ def update_sources(
     sources: dict,
     new_file: typing.Optional[str],
 ):
-    upstream_dir = cwd / "upstream"
-    upstream_dir.mkdir(parents=True, exist_ok=True)
-
+    # Ensure upstream directories exist
     for source_name, source_info in sources.items():
-        source_info["upstream_path"] = upstream_dir / source_name
         source_info["upstream_path"].mkdir(parents=True, exist_ok=True)
 
     # Add new file first to catch invalid file names and sources early
@@ -119,35 +117,80 @@ def convert_sources(
     clone_dir: pathlib.Path,
     sources: dict,
 ):
-    condir = cwd / "converted"
-    condir.mkdir(parents=True, exist_ok=True)
-    for source_name, source_info in sources.items():
-        source_info["converted_path"] = condir / source_name
-        source_info["converted_path"].mkdir(parents=True, exist_ok=True)
-        assert source_info["converted_path"].is_dir()
+    converted_dir = cwd / "converted"
+    converted_dir.mkdir(parents=True, exist_ok=True)
 
-    utils.warning("convert_sources isn't yet fully implemented")
+    for source_name, source_info in sources.items():
+        source_info["converted_path"] = converted_dir / source_name
+        source_info["converted_path"].mkdir(parents=True, exist_ok=True)
+
+    for source_name, source_info in sources.items():
+        upstream_path = source_info["upstream_path"]
+        converted_path = source_info["converted_path"]
+
+        for upstream_file in upstream_path.rglob("*.json"):
+            relative_path = upstream_file.relative_to(upstream_path)
+            converted_file = converted_path / relative_path.with_suffix(".txt")
+
+            converted_file.parent.mkdir(parents=True, exist_ok=True)
+
+            try:
+                convert_vector.convert_file(upstream_file, converted_file)
+                utils.info(f"converted {source_name}/{relative_path}")
+            except Exception as e:
+                error_msg = f"failed to convert {source_name}/{relative_path}: {e}"
+                utils.error(error_msg)
+                raise SyncError(error_msg)
+
+
+def generate_and_verify_spec(
+    cwd: pathlib.Path,
+    sources: dict,
+):
+    generate_spec.write_spec(cwd, sources)
+    utils.info("generated vectors_spec.md")
+
+    duvet_result = subprocess.run(
+        ["duvet", "report", "--ci"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+    if duvet_result.returncode != 0:
+        utils.error("duvet verification failed")
+        utils.error(duvet_result.stderr)
+        raise SyncError("duvet verification failed")
+    utils.info("duvet verification passed")
 
 
 def sync_sources(
     cwd: pathlib.Path,
     clone_dir: pathlib.Path,
     sources: dict,
-    new_file: typing.Optional[str],
-    skip_update: bool,
-    skip_convert: bool,
-    using_custom_clone_dir: bool = False,
+    args: argparse.Namespace,
 ):
-    if not skip_update:
-        fetch_sources(clone_dir, sources, using_custom_clone_dir)
-        update_sources(cwd, sources, new_file)
+    # Set up directory paths that other phases depend on
+    upstream_dir = cwd / "upstream"
+    for source_name, source_info in sources.items():
+        source_info["upstream_path"] = upstream_dir / source_name
+        source_info["local_path"] = clone_dir / source_name
+
+    if not args.skip_update:
+        reuse_existing = args.clone_dir is not None
+        fetch_sources(clone_dir, sources, reuse_existing)
+        update_sources(cwd, sources, args.new)
     else:
         utils.info("skipping update")
 
-    if not skip_convert:
+    if not args.skip_convert:
         convert_sources(cwd, clone_dir, sources)
     else:
         utils.info("skipping convert")
+
+    if not args.skip_spec:
+        generate_and_verify_spec(cwd, sources)
+    else:
+        utils.info("skipping spec generation")
 
 
 def main() -> int:
@@ -185,6 +228,11 @@ def main() -> int:
         help="skip converting vectors to file_test.h format",
     )
     parser.add_argument(
+        "--skip-spec",
+        action="store_true",
+        help="skip generating vectors_spec.md and duvet verification",
+    )
+    parser.add_argument(
         "--clone-dir",
         metavar="DIR",
         help="use custom directory for cloned repositories (persistent across runs)",
@@ -198,26 +246,11 @@ def main() -> int:
         if args.clone_dir:
             clone_dir = pathlib.Path(args.clone_dir)
             clone_dir.mkdir(parents=True, exist_ok=True)
-            sync_sources(
-                cwd,
-                clone_dir,
-                sources,
-                args.new,
-                args.skip_update,
-                args.skip_convert,
-                using_custom_clone_dir=True,
-            )
+            sync_sources(cwd, clone_dir, sources, args)
         else:
             with tempfile.TemporaryDirectory() as temp_clone_dir:
                 clone_dir = pathlib.Path(temp_clone_dir)
-                sync_sources(
-                    cwd,
-                    clone_dir,
-                    sources,
-                    args.new,
-                    args.skip_update,
-                    args.skip_convert,
-                )
+                sync_sources(cwd, clone_dir, sources, args)
     except SyncError as e:
         utils.error(str(e))
         return 1
