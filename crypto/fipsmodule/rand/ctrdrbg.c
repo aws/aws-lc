@@ -21,6 +21,7 @@
 #include "internal.h"
 #include "../cipher/internal.h"
 #include "../delocate.h"
+#include "../modes/internal.h"
 #include "../service_indicator/internal.h"
 
 // Section references in this file refer to SP 800-90Ar1:
@@ -29,13 +30,12 @@
 // See table 3.
 static const uint64_t kMaxReseedCount = UINT64_C(1) << 48;
 
-
 struct generation_nonce {
   uint8_t nonce[CTR_DRBG_NONCE_LEN];
 };
 
 DEFINE_BSS_GET(AES_KEY, bcc_key)
-DEFINE_BSS_GET(struct generation_nonce *, generation_nonce)
+DEFINE_BSS_GET(struct generation_nonce, generation_nonce)
 DEFINE_STATIC_ONCE(bcc_init_once)
 DEFINE_STATIC_MUTEX(generation_nonce_lock)
 
@@ -69,14 +69,12 @@ static void u32_add_one(uint8_t *in) {
 static int df_bcc(uint8_t *input, size_t input_len,
   uint8_t output[AES_BLOCK_SIZE], AES_KEY *key) {
 
-  if (input_len >= AES_BLOCK_SIZE && input_len % AES_BLOCK_SIZE != 0) {
+  if (input_len < AES_BLOCK_SIZE || input_len % AES_BLOCK_SIZE != 0) {
     return 0;
   }
 
   for (size_t block = 0; block < input_len; block += AES_BLOCK_SIZE) {
-    for (size_t j = 0; j < AES_BLOCK_SIZE; j++) {
-      output[j] = output[j] ^ input[block + j];
-    }
+    CRYPTO_xor16(output, output, &input[block]);
     AES_encrypt(output, output, key);
   }
   return 1;
@@ -282,7 +280,7 @@ void CTR_DRBG_get_nonce(uint8_t nonce[CTR_DRBG_NONCE_LEN]) {
   OPENSSL_STATIC_ASSERT(CTR_DRBG_NONCE_LEN == 16, ctr_drbg_nonce_len_is_not_16)
 
   CRYPTO_STATIC_MUTEX_lock_write(generation_nonce_lock_bss_get());
-  struct generation_nonce *const nonce_counter_ptr = *generation_nonce_bss_get();
+  struct generation_nonce *const nonce_counter_ptr = generation_nonce_bss_get();
   OPENSSL_memcpy(nonce, nonce_counter_ptr->nonce, CTR_DRBG_NONCE_LEN);
   nonce_increment(nonce_counter_ptr->nonce);
   CRYPTO_STATIC_MUTEX_unlock_write(generation_nonce_lock_bss_get());
