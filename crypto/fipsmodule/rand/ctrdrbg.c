@@ -103,8 +103,10 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
   CRYPTO_once(bcc_init_once_bss_get(), init_df_bcc_once);
 
   // Generally, integer values for 10.3.2 must be representable by a
-  // 32-bit integer.
-  if (entropy_input_len > 0xFFFFFFFF) {
+  // 32-bit integer. First condition is to capture cases were the size_t type
+  // is smaller than 0xFFFFFFFF e.g. 32-bit Android and the compiler throwing
+  // warnings.
+  if (SIZE_MAX > UINT32_MAX && entropy_input_len > UINT32_MAX) {
     return 0;
   }
 
