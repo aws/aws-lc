@@ -2215,11 +2215,10 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     const size_t extra_in_len, const uint8_t *ad,
     const size_t ad_len) {
     /* We consider the following possible cases of tag_len: 
-     * tag_len > 32 bytes: tag includes 32-byte key commitment and (tag_len - 32)-byte MAC 
-     * tag_len = 32 bytes: tag includes 32-byte key commitment and 0-byte MAC
-     * 16 <= tag_len < 32: tag includes 16-byte MAC tag and (tag_len - 16)-byte MAC   
-     * tag_len < 16:       only (tag_len)-byte MAC, 0-byte key commitment 
-    */
+     * tag_len > 32         : tag includes 32-byte key commitment and (tag_len - 32)-byte MAC 
+     * tag_len = 32         : tag includes 32-byte key commitment and 0-byte MAC
+     * 16 <= tag_len < 32   : tag includes 16-byte MAC tag and (tag_len - 16)-byte MAC   
+     * tag_len < 16         : only (tag_len)-byte MAC, 0-byte key commitment */
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
     if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
@@ -2280,11 +2279,10 @@ static int aead_xaes_256_gcm_key_commit_open_gather(
     const uint8_t *in_tag, size_t in_tag_len,
     const uint8_t *ad, size_t ad_len) {
     /* We consider the following possible cases of tag_len: 
-     * tag_len > 32 bytes: tag includes 32-byte key commitment and (tag_len - 32)-byte MAC 
-     * tag_len = 32 bytes: tag includes 32-byte key commitment and 0-byte MAC
-     * 16 <= tag_len < 32: tag includes 16-byte MAC tag and (tag_len - 16)-byte MAC   
-     * tag_len < 16:       only (tag_len)-byte MAC, 0-byte key commitment 
-    */
+     * tag_len > 32         : tag includes 32-byte key commitment and (tag_len - 32)-byte MAC 
+     * tag_len = 32         : tag includes 32-byte key commitment and 0-byte MAC
+     * 16 <= tag_len < 32   : tag includes 16-byte MAC tag and (tag_len - 16)-byte MAC   
+     * tag_len < 16         : only (tag_len)-byte MAC, 0-byte key commitment */
     size_t tag_len = ctx->tag_len;
     size_t key_commitment_len = XAES_256_GCM_KEY_COMMIT_SIZE;
     if(ctx->tag_len >= XAES_256_GCM_KEY_COMMIT_SIZE) { 
