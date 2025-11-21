@@ -1755,16 +1755,15 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
         // Verify key commitment
         if(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER) {
             // Modify the first byte of key commitment
-            uint8_t temp = key_commitment[0];
             key_commitment[0] ^= 0xFF; 
             // Failed due to invalid key commitment
             ASSERT_FALSE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_VERIFY_KC, key_commitment.size(), (void*)key_commitment.data()));
             ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_KEY_COMMITMENT_INVALID);
             // Recover the correct key commitment value
-            key_commitment[0] = temp;
+            key_commitment[0] ^= 0xFF; 
             ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_VERIFY_KC, key_commitment.size(), (void*)key_commitment.data()));
         }
-
+        
         std::vector<uint8_t> decrypted;
         decrypted.resize(ciphertext_len);
         int decrypted_len = 0;

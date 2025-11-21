@@ -1823,7 +1823,6 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_SHORTER_NONCE) {
         // If key commitment is supported
         if(tag_size > 16) {
             // Modify the last byte of key commitment 
-            uint8_t temp = ciphertext[ciphertext_len - 1];
             ciphertext[ciphertext_len - 1] ^= 0xFF; 
 
             // Failed due to invalid key commitment
@@ -1831,7 +1830,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_AEAD_SHORTER_NONCE) {
                                         iv.data(), iv.size(), ciphertext.data(), ciphertext_len, nullptr, 0));
             ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_KEY_COMMITMENT_INVALID);
             // Recover the correct key commitment value
-            ciphertext[ciphertext_len - 1] = temp;
+            ciphertext[ciphertext_len - 1] ^= 0xFF; 
         }
 
         // Initiaze IV, derive a subkey and decrypt
