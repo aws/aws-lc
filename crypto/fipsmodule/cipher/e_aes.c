@@ -2229,7 +2229,7 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     
     // If output tag does not have space enough for key commitment as configured
     if(max_out_tag_len < key_commitment_len) {
-        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
         return 0;
     }
     // Rectify max_out_tag_len as well
