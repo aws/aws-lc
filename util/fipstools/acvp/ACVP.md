@@ -53,6 +53,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | AES-CBC-CS3/encrypt  | Key, plaintext, IV, num iterations²  | Result |
 | AES-CCM/open         | Tag length, key, ciphertext, nonce, ad | One-byte success flag, plaintext or empty |
 | AES-CCM/seal         | Tag length, key, plaintext, nonce, ad | Ciphertext |
+| AES-CFB128/decrypt   | Key, ciphertext, IV, num iterations¹ | Plaintext |
+| AES-CFB128/encrypt   | Key, plaintexttext, IV, num iterations¹ | Ciphertext |
 | AES-CTR/decrypt      | Key, ciphertext, initial counter, constant 1 | Plaintext |
 | AES-CTR/encrypt      | Key, plaintexttext, initial counter, constant 1 | Ciphertext |
 | AES-GCM/open         | Tag length, key, ciphertext, nonce, ad | One-byte success flag, plaintext or empty |
