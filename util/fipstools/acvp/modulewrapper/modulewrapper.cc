@@ -58,7 +58,6 @@
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa.h"
-#include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa_ref/params.h"
 #include "modulewrapper.h"
 
 
@@ -3172,34 +3171,35 @@ static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   const Span<const uint8_t> seed = args[0];
 
-  //init params of the correct size based on provided nid
-  ml_dsa_params params;
+  // Determine key sizes based on NID
+  size_t public_key_bytes, private_key_bytes;
   if (nid == NID_MLDSA44) {
-    ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
-    ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
-    ml_dsa_87_params_init(&params);
+    public_key_bytes = MLDSA44_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA44_PRIVATE_KEY_BYTES;
+  } else if (nid == NID_MLDSA65) {
+    public_key_bytes = MLDSA65_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA65_PRIVATE_KEY_BYTES;
+  } else if (nid == NID_MLDSA87) {
+    public_key_bytes = MLDSA87_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA87_PRIVATE_KEY_BYTES;
+  } else {
+    return false;
   }
 
   // create public and private key buffers
-  std::vector<uint8_t> public_key(params.public_key_bytes);
-  std::vector<uint8_t> private_key(params.secret_key_bytes);
+  std::vector<uint8_t> public_key(public_key_bytes);
+  std::vector<uint8_t> private_key(private_key_bytes);
 
   // generate the keys
   if (nid == NID_MLDSA44) {
     if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
-  }
-  else if (nid == NID_MLDSA65) {
+  } else if (nid == NID_MLDSA65) {
     if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
-  }
-  else if (nid == NID_MLDSA87) {
+  } else if (nid == NID_MLDSA87) {
     if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
@@ -3217,18 +3217,18 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   const Span<const uint8_t> rnd = args[3];
   const Span<const uint8_t> extmu = args[4];
 
-  ml_dsa_params params;
+  // Determine signature size based on NID
+  size_t signature_len;
   if (nid == NID_MLDSA44) {
-    ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
-    ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
-    ml_dsa_87_params_init(&params);
+    signature_len = MLDSA44_SIGNATURE_BYTES;
+  } else if (nid == NID_MLDSA65) {
+    signature_len = MLDSA65_SIGNATURE_BYTES;
+  } else if (nid == NID_MLDSA87) {
+    signature_len = MLDSA87_SIGNATURE_BYTES;
+  } else {
+    return false;
   }
 
-  size_t signature_len = params.bytes;
   std::vector<uint8_t> signature(signature_len);
 
   // generate the signatures raw sign mode
