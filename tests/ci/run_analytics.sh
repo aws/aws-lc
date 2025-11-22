@@ -19,18 +19,16 @@ commit_timestamp=$(git show -s --format=%ct)
 
 function put_metric {
   # This call to publish the metric could fail but we don't want to fail the build +e turns off exit on error
-  set +e
   aws cloudwatch put-metric-data \
     --timestamp "$commit_timestamp" \
     --namespace AWS-LC \
     "$@" || echo "Publishing metric failed, continuing with the rest of the build"
   # Turn it back on for the rest of the build
-  set -e
 }
 
 # Return the size of an object or total for the folder (summarize)
 function size {
-  du --bytes --apparent-size --summarize "$@" | cut -f1
+  du --bytes --apparent-size --summarize --exclude=.git "$@" | cut -f1
 }
 
 SOURCE_CODE_SIZE=$(size "$SRC_ROOT")

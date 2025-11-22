@@ -24,6 +24,8 @@ env:
   GOPROXY: https://proxy.golang.org,direct
   DOCKER_BUILD_RECORD_UPLOAD: false
   DOCKER_BUILDKIT: 0
+permissions:
+  contents: read
 jobs:
   x86_64_build:
     # TODO: For some odd reason instance-size needs to be set here otherwise it won't use the fleet?

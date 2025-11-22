@@ -161,3 +161,36 @@ TEST(Blowfish, CFB) {
     EXPECT_EQ(Bytes(test.plaintext), Bytes(out));
   }
 }
+
+TEST(Blowfish, CFB64) {
+  unsigned test_num = 0;
+  for (const auto &test : kTests) {
+    test_num++;
+    SCOPED_TRACE(test_num);
+
+    uint8_t out[sizeof(test.cfb_ciphertext)];
+    int out_bytes, final_bytes;
+
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_bf_cfb64(), nullptr, test.key,
+                                   test.iv));
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &out_bytes, test.plaintext,
+                                  sizeof(test.plaintext)));
+    ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), out + out_bytes, &final_bytes));
+    EXPECT_EQ(static_cast<size_t>(out_bytes + final_bytes),
+              sizeof(test.plaintext));
+    EXPECT_EQ(Bytes(test.cfb_ciphertext), Bytes(out));
+
+    bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), EVP_bf_cfb64(), nullptr,
+                                   test.key, test.iv));
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), out, &out_bytes,
+                                  test.cfb_ciphertext,
+                                  sizeof(test.cfb_ciphertext)));
+    ASSERT_TRUE(
+        EVP_DecryptFinal_ex(decrypt_ctx.get(), out + out_bytes, &final_bytes));
+    EXPECT_EQ(static_cast<size_t>(out_bytes + final_bytes),
+              sizeof(test.plaintext));
+    EXPECT_EQ(Bytes(test.plaintext), Bytes(out));
+  }
+}
