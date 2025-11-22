@@ -3819,6 +3819,7 @@ $L$epilogue_avx:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_sha1_block_data_order_avx:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 global	sha1_block_data_order_avx2
 
 ALIGN	16
@@ -5538,6 +5539,7 @@ $L$epilogue_avx2:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_sha1_block_data_order_avx2:
+%endif
 section	.rdata rdata align=8
 ALIGN	64
 K_XX_XX:
