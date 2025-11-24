@@ -176,5 +176,28 @@ TEST(CTRDRBGTest, TestVectorsDf) {
   });
 }
 
-// TODO: test nonce
+static bool nonceIsGreater(const uint8_t nonce1[CTR_DRBG_NONCE_LEN],
+  const uint8_t nonce2[CTR_DRBG_NONCE_LEN]) {
 
+  for (size_t i = 0; i < CTR_DRBG_NONCE_LEN; i++) {
+    if (nonce2[i] > nonce1[i]) {
+      return true;
+    }
+    if (nonce2[i] < nonce1[i]) {
+      return false;
+    }
+  }
+  // If equal
+  return false;
+}
+
+// This test could fail in theory. But it would require 2^128 increments.
+TEST(CTRDRBGTest, TestNonce) {
+  std::vector<uint8_t> prev(CTR_DRBG_NONCE_LEN), current(CTR_DRBG_NONCE_LEN);
+  CTR_DRBG_get_nonce(prev.data());
+  for (int i = 0; i < 100; i++) {
+    CTR_DRBG_get_nonce(current.data());
+    ASSERT_TRUE(nonceIsGreater(prev.data(), current.data())) << "Failed index " << i;
+    OPENSSL_memcpy(prev.data(), current.data(), CTR_DRBG_NONCE_LEN);
+  }
+}
