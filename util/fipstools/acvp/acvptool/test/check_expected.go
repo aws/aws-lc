@@ -194,6 +194,8 @@ func doTest(test invocation) error {
 		if *update {
 			writeUpdate(test.expectedPath, result)
 		}
+		os.WriteFile("expectedBytes", expectedBytes, 0644)
+		os.WriteFile("result", result, 0644)
 		return fmt.Errorf("Mismatch for %q", test.expectedPath)
 	}
 
