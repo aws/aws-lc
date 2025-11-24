@@ -38,6 +38,9 @@ extern "C" {
 #define OPENSSL_RAND_URANDOM
 #endif
 
+#define CTR_DRBG_NONCE_LEN 16
+#define RAND_PRED_RESISTANCE_LEN 32
+
 // RAND_bytes_with_additional_data samples from the RNG after mixing 32 bytes
 // from |user_additional_data| in.
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
@@ -96,6 +99,18 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
                                  const uint8_t *personalization,
                                  size_t personalization_len);
+OPENSSL_EXPORT void CTR_DRBG_get_nonce(uint8_t nonce[CTR_DRBG_NONCE_LEN]);
+OPENSSL_EXPORT int CTR_DRBG_init_df(CTR_DRBG_STATE *drbg,
+                  const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
+                  const uint8_t *personalization, size_t personalization_len,
+                  const uint8_t nonce[CTR_DRBG_NONCE_LEN]);
+OPENSSL_EXPORT int CTR_DRBG_reseed_df(CTR_DRBG_STATE *drbg,
+                    const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
+                    const uint8_t *additional_data,
+                    size_t additional_data_len);
+OPENSSL_EXPORT int CTR_DRBG_generate_df(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
+                      const uint8_t *additional_data,
+                      size_t additional_data_len);
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 

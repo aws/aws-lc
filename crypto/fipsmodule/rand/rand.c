@@ -73,11 +73,12 @@
 #endif
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-static const unsigned kReseedInterval = 16777216;
+  static const unsigned kReseedInterval = 16777216;
 #elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-static const unsigned kReseedInterval = 4096;
+  #define FIPS_USE_CTR_DRBG_DF 1
+  static const unsigned kReseedInterval = 4096;
 #else
-#error "A FIPS entropy source must be explicitly defined"
+  #error "A FIPS entropy source must be explicitly defined"
 #endif
 
 #else // defined(BORINGSSL_FIPS)
@@ -458,10 +459,20 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       &personalization_len, want_additional_input);
 #endif
 
+#if defined(FIPS_USE_CTR_DRBG_DF)
+    uint8_t nonce[CTR_DRBG_NONCE_LEN];
+    CTR_DRBG_get_nonce(nonce);
+    if (!CTR_DRBG_init_df(&state->drbg, seed, personalization,
+                       personalization_len, nonce)) {
+      abort();
+    }
+#else
     if (!CTR_DRBG_init(&state->drbg, seed, personalization,
                        personalization_len)) {
       abort();
     }
+#endif
+
     state->calls = 0;
     state->fork_generation = fork_generation;
     state->fork_unsafe_buffering = fork_unsafe_buffering;
@@ -515,10 +526,17 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     rand_state_fips_maybe_want_additional_input(add_data_for_reseed,
       &add_data_for_reseed_len, want_additional_input);
 #endif
+#if defined(FIPS_USE_CTR_DRBG_DF)
+    if (!CTR_DRBG_reseed_df(&state->drbg, seed,
+                         add_data_for_reseed, add_data_for_reseed_len)) {
+      abort();
+    }
+#else
     if (!CTR_DRBG_reseed(&state->drbg, seed,
                          add_data_for_reseed, add_data_for_reseed_len)) {
       abort();
     }
+#endif
     state->calls = 0;
     state->fork_generation = fork_generation;
     state->fork_unsafe_buffering = fork_unsafe_buffering;
@@ -538,10 +556,17 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       todo = CTR_DRBG_MAX_GENERATE_LENGTH;
     }
 
+#if defined(FIPS_USE_CTR_DRBG_DF)
+    if (!CTR_DRBG_generate_df(&state->drbg, out, todo, additional_data,
+                           first_call ? sizeof(additional_data) : 0)) {
+      abort();
+    }
+#else
     if (!CTR_DRBG_generate(&state->drbg, out, todo, additional_data,
                            first_call ? sizeof(additional_data) : 0)) {
       abort();
     }
+#endif
 
     out += todo;
     out_len -= todo;
