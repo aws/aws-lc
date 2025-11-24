@@ -1787,6 +1787,7 @@ static bool AES_CFB(const Span<const uint8_t> args[],
   std::vector<uint8_t> result(input.size());
   std::vector<uint8_t> prev_result, prev_input;
 
+  int num = 0;
   for (uint32_t j = 0; j < iterations; j++) {
     prev_result = result;
     if (j > 0) {
@@ -1800,7 +1801,6 @@ static bool AES_CFB(const Span<const uint8_t> args[],
     // CipherOp will mutate the given IV, but we need it later.
     uint8_t iv_copy[AES_BLOCK_SIZE];
     memcpy(iv_copy, iv.data(), sizeof(iv_copy));
-    int num = j;
     CipherOp(input.data(), result.data(), input.size(), &key, iv_copy,
             &num, Direction);
 
