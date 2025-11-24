@@ -1199,8 +1199,11 @@ TEST(AEADTest, WycheproofAESGCMSIV) {
                 });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//= type=test
+//# AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
 TEST(AEADTest, WycheproofAESGCM) {
-  FileTestGTest("third_party/wycheproof_testvectors/aes_gcm_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_test.txt",
                 [](FileTest *t) {
                   std::string key_size_str;
                   ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
