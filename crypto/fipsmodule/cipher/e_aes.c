@@ -2140,8 +2140,8 @@ static int xaes_256_gcm_kc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *pt
     switch(type) {
         case EVP_CTRL_AEAD_GET_KC:
             GUARD_PTR(ptr);
-            if(arg < XAES_256_GCM_KEY_COMMIT_SIZE) {
-                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+            if(arg < 0 || arg > XAES_256_GCM_KEY_COMMIT_SIZE) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_KEY_COMMITMENT_SIZE);
                 return 0;
             }
             OPENSSL_memcpy(ptr, xaes_ctx->kc, arg);
@@ -2152,11 +2152,11 @@ static int xaes_256_gcm_kc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *pt
          * verifying it at the end of decryption as for checking the MAC tag */ 
         case EVP_CTRL_AEAD_VERIFY_KC:
             GUARD_PTR(ptr);
-            if(arg < XAES_256_GCM_KEY_COMMIT_SIZE) {
-                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+            if(arg < 0 || arg > XAES_256_GCM_KEY_COMMIT_SIZE) {
+                OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_KEY_COMMITMENT_SIZE);
                 return 0;
             }
-            if(OPENSSL_memcmp(xaes_ctx->kc, ptr, XAES_256_GCM_KEY_COMMIT_SIZE)) {
+            if(OPENSSL_memcmp(xaes_ctx->kc, ptr, arg)) {
                 OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_KEY_COMMITMENT_INVALID);
                 return 0;
             }
