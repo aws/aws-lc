@@ -39,6 +39,9 @@ struct WycheproofResult {
   // test result of "acceptable" is treated as valid if all flags are included
   // in |acceptable_flags| and invalid otherwise.
   bool IsValid(const std::vector<std::string> &acceptable_flags = {}) const;
+
+  // HasFlag returns true if |flag| is present in the flags vector.
+  bool HasFlag(const std::string &flag) const;
 };
 
 // GetWycheproofResult sets |*out| to the parsed "result" and "flags" keys of |t|.

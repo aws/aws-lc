@@ -47,6 +47,10 @@ bool WycheproofResult::IsValid(
   abort();
 }
 
+bool WycheproofResult::HasFlag(const std::string &flag) const {
+  return std::find(flags.begin(), flags.end(), flag) != flags.end();
+}
+
 bool GetWycheproofResult(FileTest *t, WycheproofResult *out) {
   std::string result;
   if (!t->GetAttribute(&result, "result")) {
