@@ -129,7 +129,11 @@ static int mem_new(BIO *bio) {
   return 1;
 }
 
-static int mem_free(BIO *bio) {
+static int mem_buf_free(BIO *bio) {
+  if (bio == NULL) {
+    return 0;
+  }
+
   if (!bio->shutdown || !bio->init || bio->ptr == NULL) {
     return 1;
   }
@@ -141,8 +145,19 @@ static int mem_free(BIO *bio) {
     b->data = NULL;
   }
   BUF_MEM_free(b);
-  bio->ptr = NULL;
 
+  return 1;
+}
+
+static int mem_free(BIO *bio) {
+  if (bio == NULL) {
+    return 0;
+  }
+  BIO_BUF_MEM *bbm = (BIO_BUF_MEM *)bio->ptr;
+  if (!mem_buf_free(bio)) {
+    return 0;
+  }
+  bio->ptr = NULL;
   OPENSSL_free(bbm);
   return 1;
 }
