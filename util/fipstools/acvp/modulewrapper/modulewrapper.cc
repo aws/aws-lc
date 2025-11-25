@@ -543,9 +543,9 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "reseedImplemented": true,
         "capabilities": [{
           "mode": "AES-256",
-          "derFuncEnabled": false,
+          "derFuncEnabled": true,
           "entropyInputLen": [384],
-          "nonceLen": [0],
+          "nonceLen": [126],
           "persoStringLen": [{"min": 0, "max": 384, "increment": 16}],
           "additionalInputLen": [
             {"min": 0, "max": 384, "increment": 16}
@@ -2204,10 +2204,8 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   uint32_t out_len;
   if (out_len_bytes.size() != sizeof(out_len) ||
       entropy.size() != CTR_DRBG_ENTROPY_LEN ||
-      (!reseed_entropy.empty() &&
-       reseed_entropy.size() != CTR_DRBG_ENTROPY_LEN) ||
-      // nonces are not supported
-      nonce.size() != 0) {
+      (!reseed_entropy.empty() && reseed_entropy.size() != CTR_DRBG_ENTROPY_LEN) ||
+      nonce.size() != CTR_DRBG_NONCE_LEN) {
     return false;
   }
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
@@ -2217,15 +2215,15 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   std::vector<uint8_t> out(out_len);
 
   CTR_DRBG_STATE drbg;
-  if (!CTR_DRBG_init(&drbg, entropy.data(), personalisation.data(),
-                     personalisation.size()) ||
+  if (!CTR_DRBG_init_df(&drbg, entropy.data(), personalisation.data(),
+                     personalisation.size(), nonce.data()) ||
       (!reseed_entropy.empty() &&
-       !CTR_DRBG_reseed(&drbg, reseed_entropy.data(),
+       !CTR_DRBG_reseed_df(&drbg, reseed_entropy.data(),
                         reseed_additional_data.data(),
                         reseed_additional_data.size())) ||
-      !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data1.data(),
+      !CTR_DRBG_generate_df(&drbg, out.data(), out_len, additional_data1.data(),
                          additional_data1.size()) ||
-      !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data2.data(),
+      !CTR_DRBG_generate_df(&drbg, out.data(), out_len, additional_data2.data(),
                          additional_data2.size())) {
     return false;
   }
