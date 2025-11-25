@@ -32,6 +32,9 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 function openldap_build() {
     local branch=${1}
     pushd ${branch}
+    # The configure script can out of sync. Regenerate it from configure.ac.
+    rm ./configure
+    autoconf
     # Modify CFLAGS and LDFLAGS so compiler and linker can find AWS-LC's artifacts
     export STRICT_C_COMPILER="gcc"
     export CPPFLAGS="-I$AWS_LC_INSTALL_FOLDER/include"
