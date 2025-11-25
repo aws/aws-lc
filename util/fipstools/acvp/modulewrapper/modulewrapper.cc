@@ -1803,8 +1803,6 @@ static bool AES_CFB(const Span<const uint8_t> args[],
     int num = 0;
     CipherOp(input.data(), result.data(), input.size(), &key, iv_copy,
             &num, Direction);
-    //CipherOp(input.data(), result.data(), input.size(), &key, iv.data(),
-            //&num, Direction);
 
     if (Direction == AES_DECRYPT) {
       prev_input = input;
@@ -3443,7 +3441,7 @@ static struct {
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
     {"AES-CFB128/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_ENCRYPT>},
-    {"AES-CFB128/decrypt", 4, AES_CFB<AES_set_decrypt_key, AES_cfb128_encrypt, AES_DECRYPT>},
+    {"AES-CFB128/decrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},
     {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
