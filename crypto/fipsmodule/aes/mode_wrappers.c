@@ -82,6 +82,11 @@ static inline void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
   aes_nohw_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
 
+static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                         const AES_KEY *key) {
+  vpaes_encrypt(in, out, key);
+}
+
 #if defined(VPAES_CTR32)
 static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                       uint8_t *out, size_t len,
@@ -89,12 +94,7 @@ static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                       const uint8_t ivec[16]) {
   vpaes_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
-#else // VPAES_CTR32
-static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
-                                         const AES_KEY *key) {
-  vpaes_encrypt(in, out, key);
-}
-#endif // !VPAES_CTR32
+#endif
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
