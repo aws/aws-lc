@@ -58,37 +58,46 @@
 // function pointer calculation in AES_ctr128_encrypt. Without it,
 // on AArch64 there is risk of the calculations requiring a PC-relative
 // offset outside of the range (-1MB,1MB) addressable using `ADR`.
-static inline void aes_hw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+//
+// On Windows, these wrappers must not be inlined to ensure consistent
+// binary layout between FIPS hash capture and runtime.
+#if defined(_MSC_VER)
+#define AES_WRAPPER_INLINE static
+#else
+#define AES_WRAPPER_INLINE static inline
+#endif
+
+AES_WRAPPER_INLINE void aes_hw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
                                           const AES_KEY *key) {
   aes_hw_encrypt(in, out, key);
 }
 
-static inline void aes_nohw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+AES_WRAPPER_INLINE void aes_nohw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
                                             const AES_KEY *key) {
   aes_nohw_encrypt(in, out, key);
 }
 
-static inline void aes_hw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+AES_WRAPPER_INLINE void aes_hw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                        uint8_t *out, size_t len,
                                                        const AES_KEY *key,
                                                        const uint8_t ivec[16]) {
   aes_hw_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
 
-static inline void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+AES_WRAPPER_INLINE void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                          uint8_t *out, size_t len,
                                                          const AES_KEY *key,
                                                          const uint8_t ivec[16]) {
   aes_nohw_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
 
-static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+AES_WRAPPER_INLINE void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
                                          const AES_KEY *key) {
   vpaes_encrypt(in, out, key);
 }
 
 #if defined(VPAES_CTR32)
-static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+AES_WRAPPER_INLINE void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                       uint8_t *out, size_t len,
                                                       const AES_KEY *key,
                                                       const uint8_t ivec[16]) {
