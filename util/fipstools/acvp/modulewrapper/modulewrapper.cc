@@ -1766,15 +1766,14 @@ static bool AES_CBC(const Span<const uint8_t> args[],
       {Span<const uint8_t>(result), Span<const uint8_t>(prev_result)});
 }
 
-template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
-          void (*CipherOp)(const uint8_t *in, uint8_t *out,
+template <void (*CipherOp)(const uint8_t *in, uint8_t *out,
                           size_t bits, const AES_KEY *key,
                           uint8_t *ivec, int *num, int enc),
           int Direction>
 static bool AES_CFB(const Span<const uint8_t> args[],
                     ReplyCallback write_reply) {
   AES_KEY key;
-  if (SetKey(args[0].data(), args[0].size() * 8, &key) != 0) {
+  if (AES_set_encrypt_key(args[0].data(), args[0].size() * 8, &key) != 0) {
     return false;
   }
   if (args[1].empty() || args[2].size() != AES_BLOCK_SIZE) {
@@ -3440,8 +3439,8 @@ static struct {
     {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
-    {"AES-CFB128/encrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_ENCRYPT>},
-    {"AES-CFB128/decrypt", 4, AES_CFB<AES_set_encrypt_key, AES_cfb128_encrypt, AES_DECRYPT>},
+    {"AES-CFB128/encrypt", 4, AES_CFB<AES_cfb128_encrypt, AES_ENCRYPT>},
+    {"AES-CFB128/decrypt", 4, AES_CFB<AES_cfb128_encrypt, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},
     {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},

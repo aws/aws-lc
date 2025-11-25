@@ -116,7 +116,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ACVP-AES-ECB":      &blockCipher{"AES", 16, 2, true, false, iterateAES},
 		"ACVP-AES-CBC":      &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CBC-CS3":  &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
-		// NOTE: CFB's ACVP MCT is same as AES CBC's
+		// NOTE: AES CFB128's ACVP MCT outer loop is the same as AES CBC's
 		// https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/aes/AESAVS.pdf
 		"ACVP-AES-CFB128":    &blockCipher{"AES-CFB128", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CTR":      &blockCipher{"AES-CTR", 16, 1, false, true, nil},
