@@ -2046,7 +2046,8 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
     out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
     out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
     out->aead_id = AEAD_XAES_256_GCM_ID;
-
+    out->seal_scatter_supports_extra_in = 1;
+    
     out->init = aead_xaes_256_gcm_init;
     out->cleanup = aead_aes_gcm_cleanup;
     out->seal_scatter = aead_xaes_256_gcm_seal_scatter;
@@ -2322,6 +2323,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_kc) {
     out->overhead = EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE;
     out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN + XAES_256_GCM_KEY_COMMIT_SIZE;
     out->aead_id = AEAD_XAES_256_GCM_KC_ID;
+    out->seal_scatter_supports_extra_in = 1;
 
     out->init = aead_xaes_256_gcm_kc_init;
     out->cleanup = aead_aes_gcm_cleanup;
