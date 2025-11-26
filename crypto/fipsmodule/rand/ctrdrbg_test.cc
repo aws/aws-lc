@@ -127,3 +127,77 @@ TEST(CTRDRBGTest, TestVectors) {
     EXPECT_EQ(Bytes(expected), Bytes(out));
   });
 }
+
+TEST(CTRDRBGTest, TestVectorsDf) {
+  FileTestGTest("crypto/fipsmodule/rand/ctrdrbg_df_vectors.txt", [](FileTest *t) {
+    std::vector<uint8_t> seed, reseed, nonce, personalisation1,
+        personalisation2, prediction1, prediction2, expected;
+    ASSERT_TRUE(t->GetBytes(&seed, "EntropyInput"));
+    ASSERT_TRUE(t->GetBytes(&reseed, "EntropyInputReseed"));
+    ASSERT_TRUE(t->GetBytes(&nonce, "NonceInput"));
+    ASSERT_TRUE(t->GetBytes(&personalisation1, "PersonalizationString1"));
+    ASSERT_TRUE(t->GetBytes(&personalisation2, "PersonalizationString2"));
+    ASSERT_TRUE(t->GetBytes(&prediction1, "Prediction1"));
+    ASSERT_TRUE(t->GetBytes(&prediction2, "Prediction2"));
+    ASSERT_TRUE(t->GetBytes(&expected, "ReturnedBits"));
+
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), seed.size());
+    ASSERT_EQ(reseed.empty() ? 0 : static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), reseed.size());
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_NONCE_LEN), nonce.size());
+    ASSERT_EQ(personalisation1.empty() ? 0 : static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), personalisation1.size());
+    ASSERT_EQ(personalisation2.empty() ? 0 : static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), personalisation2.size());
+    ASSERT_EQ(prediction1.empty() ? 0 : static_cast<size_t>(RAND_PRED_RESISTANCE_LEN), prediction1.size());
+    ASSERT_EQ(prediction2.empty() ? 0 : static_cast<size_t>(RAND_PRED_RESISTANCE_LEN), prediction2.size());
+
+    CTR_DRBG_STATE drbg;
+    CTR_DRBG_init_df(&drbg, seed.data(),
+                  personalisation1.empty() ? nullptr : personalisation1.data(),
+                  personalisation1.size(), nonce.data());
+
+    std::vector<uint8_t> out;
+    out.resize(expected.size());
+
+    CTR_DRBG_generate_df(&drbg, out.data(), out.size(),
+                      prediction1.empty() ? nullptr : prediction1.data(), prediction1.size());
+
+    if (reseed.empty()) {
+      EXPECT_EQ(Bytes(expected), Bytes(out));
+      return;
+    }
+
+    CTR_DRBG_reseed_df(&drbg, reseed.data(),
+                    personalisation2.empty() ? nullptr : personalisation2.data(),
+                    personalisation2.size());
+
+    CTR_DRBG_generate_df(&drbg, out.data(), out.size(),
+                      prediction2.empty() ? nullptr : prediction2.data(), prediction2.size());
+
+    EXPECT_EQ(Bytes(expected), Bytes(out));
+  });
+}
+
+static bool nonceIsGreater(const uint8_t nonce1[CTR_DRBG_NONCE_LEN],
+  const uint8_t nonce2[CTR_DRBG_NONCE_LEN]) {
+
+  for (size_t i = 0; i < CTR_DRBG_NONCE_LEN; i++) {
+    if (nonce2[i] > nonce1[i]) {
+      return true;
+    }
+    if (nonce2[i] < nonce1[i]) {
+      return false;
+    }
+  }
+  // If equal
+  return false;
+}
+
+// This test could fail in theory. But it would require 2^128 increments.
+TEST(CTRDRBGTest, TestNonce) {
+  std::vector<uint8_t> prev(CTR_DRBG_NONCE_LEN), current(CTR_DRBG_NONCE_LEN);
+  CTR_DRBG_get_nonce(prev.data());
+  for (int i = 0; i < 100; i++) {
+    CTR_DRBG_get_nonce(current.data());
+    ASSERT_TRUE(nonceIsGreater(prev.data(), current.data())) << "Failed index " << i;
+    OPENSSL_memcpy(prev.data(), current.data(), CTR_DRBG_NONCE_LEN);
+  }
+}
