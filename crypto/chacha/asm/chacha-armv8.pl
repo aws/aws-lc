@@ -141,17 +141,32 @@ $code.=<<___;
 .type	ChaCha20_ctr32_nohw,%function
 .align	5
 ChaCha20_ctr32_nohw:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
+.cfi_def_cfa_offset 96
+.cfi_offset x29, -96
+.cfi_offset x30, -88
 	add	x29,sp,#0
+.cfi_def_cfa x29, 96
 
 	adrp	@x[0],:pg_hi21:.Lsigma
 	add	@x[0],@x[0],:lo12:.Lsigma
 	stp	x19,x20,[sp,#16]
+.cfi_offset x19, -80
+.cfi_offset x20, -72
 	stp	x21,x22,[sp,#32]
+.cfi_offset x21, -64
+.cfi_offset x22, -56
 	stp	x23,x24,[sp,#48]
+.cfi_offset x23, -48
+.cfi_offset x24, -40
 	stp	x25,x26,[sp,#64]
+.cfi_offset x25, -32
+.cfi_offset x26, -24
 	stp	x27,x28,[sp,#80]
+.cfi_offset x27, -16
+.cfi_offset x28, -8
 	sub	sp,sp,#64
 
 	ldp	@d[0],@d[1],[@x[0]]		// load sigma
@@ -256,12 +271,25 @@ $code.=<<___;
 	b.hi	.Loop_outer
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore x19
+.cfi_restore x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore x21
+.cfi_restore x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore x23
+.cfi_restore x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore x25
+.cfi_restore x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore x27
+.cfi_restore x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore x29
+.cfi_restore x30
+.cfi_def_cfa_offset 0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
@@ -312,14 +340,28 @@ $code.=<<___;
 	stp	xzr,xzr,[sp,#48]
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore x19
+.cfi_restore x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore x21
+.cfi_restore x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore x23
+.cfi_restore x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore x25
+.cfi_restore x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore x27
+.cfi_restore x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore x29
+.cfi_restore x30
+.cfi_def_cfa_offset 0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 .size	ChaCha20_ctr32_nohw,.-ChaCha20_ctr32_nohw
 ___
 
@@ -365,17 +407,32 @@ $code.=<<___;
 .type	ChaCha20_ctr32_neon,%function
 .align	5
 ChaCha20_ctr32_neon:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
+.cfi_def_cfa_offset 96
+.cfi_offset x30, -88
+.cfi_offset x29, -96
 	add	x29,sp,#0
+.cfi_def_cfa x29, 96
 
 	adrp	@x[0],:pg_hi21:.Lsigma
 	add	@x[0],@x[0],:lo12:.Lsigma
 	stp	x19,x20,[sp,#16]
+.cfi_offset x19, -80
+.cfi_offset x20, -72
 	stp	x21,x22,[sp,#32]
+.cfi_offset x21, -64
+.cfi_offset x22, -56
 	stp	x23,x24,[sp,#48]
+.cfi_offset x23, -48
+.cfi_offset x24, -40
 	stp	x25,x26,[sp,#64]
+.cfi_offset x25, -32
+.cfi_offset x26, -24
 	stp	x27,x28,[sp,#80]
+.cfi_offset x27, -16
+.cfi_offset x28, -8
 	cmp	$len,#512
 	b.hs	.L512_or_more_neon
 
@@ -559,12 +616,25 @@ $code.=<<___;
 	b.hi	.Loop_outer_neon
 
 	ldp	x19,x20,[x29,#16]
+.cfi_restore x19
+.cfi_restore x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore x21
+.cfi_restore x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore x23
+.cfi_restore x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore x25
+.cfi_restore x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore x27
+.cfi_restore x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore x29
+.cfi_restore x30
+.cfi_def_cfa_offset 0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
@@ -669,14 +739,28 @@ $code.=<<___;
 
 .Ldone_neon:
 	ldp	x19,x20,[x29,#16]
+.cfi_restore x19
+.cfi_restore x20
 	add	sp,sp,#64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore x21
+.cfi_restore x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore x23
+.cfi_restore x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore x25
+.cfi_restore x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore x27
+.cfi_restore x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore x29
+.cfi_restore x30
+.cfi_def_cfa_offset 0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 .size	ChaCha20_ctr32_neon,.-ChaCha20_ctr32_neon
 ___
 {
@@ -688,17 +772,32 @@ $code.=<<___;
 .type	ChaCha20_512_neon,%function
 .align	5
 ChaCha20_512_neon:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-96]!
+.cfi_def_cfa_offset 96
+.cfi_offset x30, -88
+.cfi_offset x29, -96
 	add	x29,sp,#0
+.cfi_def_cfa x29, 96
 
 	adrp	@x[0],:pg_hi21:.Lsigma
 	add	@x[0],@x[0],:lo12:.Lsigma
 	stp	x19,x20,[sp,#16]
+.cfi_offset x19, -80
+.cfi_offset x20, -72
 	stp	x21,x22,[sp,#32]
+.cfi_offset x21, -64
+.cfi_offset x22, -56
 	stp	x23,x24,[sp,#48]
+.cfi_offset x23, -48
+.cfi_offset x24, -40
 	stp	x25,x26,[sp,#64]
+.cfi_offset x25, -32
+.cfi_offset x26, -24
 	stp	x27,x28,[sp,#80]
+.cfi_offset x27, -16
+.cfi_offset x28, -8
 
 .L512_or_more_neon:
 	sub	sp,sp,#128+64
@@ -1102,14 +1201,28 @@ $code.=<<___;
 
 .Ldone_512_neon:
 	ldp	x19,x20,[x29,#16]
+.cfi_restore x19
+.cfi_restore x20
 	add	sp,sp,#128+64
 	ldp	x21,x22,[x29,#32]
+.cfi_restore x21
+.cfi_restore x22
 	ldp	x23,x24,[x29,#48]
+.cfi_restore x23
+.cfi_restore x24
 	ldp	x25,x26,[x29,#64]
+.cfi_restore x25
+.cfi_restore x26
 	ldp	x27,x28,[x29,#80]
+.cfi_restore x27
+.cfi_restore x28
 	ldp	x29,x30,[sp],#96
+.cfi_restore x29
+.cfi_restore x30
+.cfi_def_cfa_offset 0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 .size	ChaCha20_512_neon,.-ChaCha20_512_neon
 ___
 }

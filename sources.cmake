@@ -289,11 +289,11 @@ set(
   crypto/x509/test/trailing_data_leaf_name_constraints.pem
   crypto/x509/test/trailing_data_leaf_subject_alt_name.pem
   crypto/x509/test/trailing_data_leaf_subject_key_identifier.pem
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_test.txt
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
   third_party/wycheproof_testvectors/aes_ccm_test.txt
   third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
-  third_party/wycheproof_testvectors/aes_gcm_test.txt
   third_party/wycheproof_testvectors/chacha20_poly1305_test.txt
   third_party/wycheproof_testvectors/dsa_test.txt
   third_party/wycheproof_testvectors/ecdh_secp224r1_test.txt
