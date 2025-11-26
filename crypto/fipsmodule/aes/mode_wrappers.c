@@ -114,7 +114,7 @@ void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif
   } else {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                aes_nohw_ctr32_encrypt_blocks);
+                                aes_nohw_ctr32_encrypt_blocks_wrapper);
   }
 
   FIPS_service_indicator_update_state();
