@@ -56,6 +56,8 @@ OPENSSL_STATIC_ASSERT(CTR_DRBG_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
                       not_a_multiple_of_AES_block_size)
 
 static void init_df_bcc_once(void) {
+
+  // defined in SP800-90A 10.3.2 (8).
   static const uint8_t staticBccKey[32] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
@@ -136,7 +138,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
   //
   // Using these values, we construct IV_S = IV || S used in 10.3.2 (9.2).
 
-  static const size_t df_s_prefix_length = 8; // 2x 32-bit integers
+  static const size_t df_s_prefix_length = 2 * sizeof(uint32_t); // 2x 32-bit integers
   // Compute required zero-padding (might be zero). +1 because of 0x80
   // delimiter in S.
   size_t df_s_zero_padding = (-(df_s_prefix_length + entropy_input_len + 1)) & (AES_BLOCK_SIZE-1);
@@ -146,7 +148,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
 
   // Since the length of the IV is fixed when the output length is fixed, we can
   // compute the length of IV || S.
-  static const size_t df_iv_length = 16;
+  static const size_t df_iv_length = AES_BLOCK_SIZE;
   size_t df_iv_s_length = df_iv_length + df_s_length;
 
   // Zeroise to avoid zero padding later.
@@ -157,7 +159,7 @@ static int CTR_DRBG_df(CTR_DRBG_STATE *drbg,
 
   // IV_S = IV || L || N || entropy_input
   CRYPTO_store_u32_be(IV_S + df_iv_length, (uint32_t) entropy_input_len);
-  CRYPTO_store_u32_be(IV_S + df_iv_length + 4, (uint32_t) CTR_DRBG_ENTROPY_LEN); 
+  CRYPTO_store_u32_be(IV_S + df_iv_length + sizeof(uint32_t), (uint32_t) CTR_DRBG_ENTROPY_LEN);
   OPENSSL_memcpy(IV_S + df_iv_length + df_s_prefix_length, entropy_input, entropy_input_len);
 
   // IV_S = IV || L || N || entropy_input || 0x80
