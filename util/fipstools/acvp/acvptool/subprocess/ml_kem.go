@@ -98,10 +98,10 @@ type mlKemEncapDecapTestGroup struct {
 	Type         string               `json:"testType"`
 	ParameterSet string               `json:"parameterSet"`
 	Function     string               `json:"function"`
-	DK           hexEncodedByteString `json:"dk"`
 	Tests        []struct {
 		ID uint64               `json:"tcId"`
 		EK hexEncodedByteString `json:"ek"`
+		DK hexEncodedByteString `json:"dk"`
 		M  hexEncodedByteString `json:"m"`
 		C  hexEncodedByteString `json:"c"`
 	}
@@ -147,7 +147,7 @@ func processMlKemEncapDecap(vectors json.RawMessage, m Transactable) (interface{
 			case strings.EqualFold(group.Function, "encapsulation"):
 				testResponse, err = processMlKemEncapTestCase(test.ID, group.ParameterSet, test.EK, test.M, m)
 			case strings.EqualFold(group.Function, "decapsulation"):
-				testResponse, err = processMlKemDecapTestCase(test.ID, group.ParameterSet, group.DK, test.C, m)
+				testResponse, err = processMlKemDecapTestCase(test.ID, group.ParameterSet, test.DK, test.C, m)
 			default:
 				return nil, fmt.Errorf("unknown encDecap function: %v", group.Function)
 			}
