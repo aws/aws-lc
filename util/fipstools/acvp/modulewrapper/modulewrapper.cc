@@ -493,6 +493,46 @@ static bool GetConfig(const Span<const uint8_t> args[],
         }]
       },
       {
+        "algorithm": "HMAC-SHA3-224",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 224, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA3-256",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 256, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA3-384",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 384, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA3-512",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 512, "increment": 8
+        }]
+      },
+      {
         "vsId": 0,
         "algorithm": "PBKDF",
         "revision": "1.0",
@@ -2275,21 +2315,25 @@ static bool HMAC(const Span<const uint8_t> args[], ReplyCallback write_reply) {
     return false;
   }
 
-  // HMAC computation with precomputed keys
-  // The purpose of this call is to test |HMAC_set_precomputed_key_export| and
-  // |HMAC_get_precomputed_key|, which are called by |HMAC_with_precompute|.
-  uint8_t digest_with_precompute[EVP_MAX_MD_SIZE];
-  unsigned digest_with_precompute_len;
-  if (::HMAC_with_precompute(md, args[1].data(), args[1].size(), args[0].data(),
-                             args[0].size(), digest_with_precompute,
-                             &digest_with_precompute_len) == nullptr) {
-    return false;
-  }
+  // SHA3 does not support pre-computed keys. See aws/aws-lc@80f986b.
+  if (md != EVP_sha3_224() && md != EVP_sha3_256() && md != EVP_sha3_384() &&
+    md != EVP_sha3_512()) {
+    // HMAC computation with precomputed keys
+    // The purpose of this call is to test |HMAC_set_precomputed_key_export| and
+    // |HMAC_get_precomputed_key|, which are called by |HMAC_with_precompute|.
+    uint8_t digest_with_precompute[EVP_MAX_MD_SIZE];
+    unsigned digest_with_precompute_len;
+    if (::HMAC_with_precompute(md, args[1].data(), args[1].size(), args[0].data(),
+                               args[0].size(), digest_with_precompute,
+                               &digest_with_precompute_len) == nullptr) {
+      return false;
+    }
 
-  // The two HMAC computations must yield exactly the same results
-  if (digest_len != digest_with_precompute_len ||
-      memcmp(digest, digest_with_precompute, digest_len) != 0) {
-    return false;
+    // The two HMAC computations must yield exactly the same results
+    if (digest_len != digest_with_precompute_len ||
+        memcmp(digest, digest_with_precompute, digest_len) != 0) {
+      return false;
+    }
   }
 
   return write_reply({Span<const uint8_t>(digest, digest_len)});
@@ -3462,6 +3506,10 @@ static struct {
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
     {"HMAC-SHA2-512/224", 2, HMAC<EVP_sha512_224>},
     {"HMAC-SHA2-512/256", 2, HMAC<EVP_sha512_256>},
+    {"HMAC-SHA3-224", 2, HMAC<EVP_sha3_224>},
+    {"HMAC-SHA3-256", 2, HMAC<EVP_sha3_256>},
+    {"HMAC-SHA3-384", 2, HMAC<EVP_sha3_384>},
+    {"HMAC-SHA3-512", 2, HMAC<EVP_sha3_512>},
     {"ctrDRBG/AES-256", 6, DRBG<false>},
     {"ctrDRBG-reseed/AES-256", 8, DRBG<true>},
     {"ECDSA/keyGen", 1, ECDSAKeyGen},
