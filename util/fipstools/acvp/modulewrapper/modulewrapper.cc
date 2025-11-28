@@ -341,6 +341,12 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [128, 192, 256]
       },
       {
+        "algorithm": "ACVP-AES-CFB128",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256]
+      },
+      {
         "algorithm": "ACVP-AES-GCM",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
@@ -1744,6 +1750,58 @@ static bool AES_CBC(const Span<const uint8_t> args[],
     memcpy(iv_copy, iv.data(), sizeof(iv_copy));
     AES_cbc_encrypt(input.data(), result.data(), input.size(), &key, iv_copy,
                     Direction);
+
+    if (Direction == AES_DECRYPT) {
+      prev_input = input;
+    }
+
+    if (j == 0) {
+      input = iv;
+    } else {
+      input = prev_result;
+    }
+  }
+
+  return write_reply(
+      {Span<const uint8_t>(result), Span<const uint8_t>(prev_result)});
+}
+
+template <void (*CipherOp)(const uint8_t *in, uint8_t *out,
+                          size_t bits, const AES_KEY *key,
+                          uint8_t *ivec, int *num, int enc),
+          int Direction>
+static bool AES_CFB(const Span<const uint8_t> args[],
+                    ReplyCallback write_reply) {
+  AES_KEY key;
+  if (AES_set_encrypt_key(args[0].data(), args[0].size() * 8, &key) != 0) {
+    return false;
+  }
+  if (args[1].empty() || args[2].size() != AES_BLOCK_SIZE) {
+    return false;
+  }
+  std::vector<uint8_t> input(args[1].begin(), args[1].end());
+  std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+  const uint32_t iterations = GetIterations(args[3]);
+
+  std::vector<uint8_t> result(input.size());
+  std::vector<uint8_t> prev_result, prev_input;
+
+  for (uint32_t j = 0; j < iterations; j++) {
+    prev_result = result;
+    if (j > 0) {
+      if (Direction == AES_ENCRYPT) {
+        iv = result;
+      } else {
+        iv = prev_input;
+      }
+    }
+
+    // CipherOp will mutate the given IV, but we need it later.
+    uint8_t iv_copy[AES_BLOCK_SIZE];
+    memcpy(iv_copy, iv.data(), sizeof(iv_copy));
+    int num = 0;
+    CipherOp(input.data(), result.data(), input.size(), &key, iv_copy,
+            &num, Direction);
 
     if (Direction == AES_DECRYPT) {
       prev_input = input;
@@ -3381,6 +3439,8 @@ static struct {
     {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
+    {"AES-CFB128/encrypt", 4, AES_CFB<AES_cfb128_encrypt, AES_ENCRYPT>},
+    {"AES-CFB128/decrypt", 4, AES_CFB<AES_cfb128_encrypt, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},
     {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
