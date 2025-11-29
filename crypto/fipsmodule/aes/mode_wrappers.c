@@ -58,12 +58,33 @@
 // function pointer calculation in AES_ctr128_encrypt. Without it,
 // on AArch64 there is risk of the calculations requiring a PC-relative
 // offset outside of the range (-1MB,1MB) addressable using `ADR`.
+static inline void aes_hw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                          const AES_KEY *key) {
+  aes_hw_encrypt(in, out, key);
+}
+
+static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                         const AES_KEY *key) {
+  vpaes_encrypt(in, out, key);
+}
+
+static inline void aes_nohw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                            const AES_KEY *key) {
+  aes_nohw_encrypt(in, out, key);
+}
+
 static inline void aes_hw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
-						       uint8_t *out, size_t len,
-						       const AES_KEY *key,
-						       const uint8_t ivec[16])
-{
-    aes_hw_ctr32_encrypt_blocks(in, out, len, key, ivec);
+                                                       uint8_t *out, size_t len,
+                                                       const AES_KEY *key,
+                                                       const uint8_t ivec[16]) {
+  aes_hw_ctr32_encrypt_blocks(in, out, len, key, ivec);
+}
+
+static inline void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+                                                         uint8_t *out, size_t len,
+                                                         const AES_KEY *key,
+                                                         const uint8_t ivec[16]) {
+  aes_nohw_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
 
 #if defined(VPAES_CTR32)
@@ -73,12 +94,7 @@ static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
                                                       const uint8_t ivec[16]) {
   vpaes_ctr32_encrypt_blocks(in, out, len, key, ivec);
 }
-#else // VPAES_CTR32
-static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
-                                         const AES_KEY *key) {
-  vpaes_encrypt(in, out, key);
-}
-#endif // !VPAES_CTR32
+#endif
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
@@ -98,7 +114,7 @@ void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif
   } else {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                aes_nohw_ctr32_encrypt_blocks);
+                                aes_nohw_ctr32_encrypt_blocks_wrapper);
   }
 
   FIPS_service_indicator_update_state();
