@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
       0xef, 0x29, 0x81, 0x22, 0x45, 0x40, 0x43, 0x70, 0xce, 0x0f};
   const uint8_t kDRBGEntropy[48] =
       "DBRG Initial Entropy                            ";
+  const uint8_t kDRBGNonce[CTR_DRBG_NONCE_LEN] = "DBRG Nonce      ";
   const uint8_t kDRBGPersonalization[18] = "BCMPersonalization";
   const uint8_t kDRBGAD[16] = "BCM DRBG AD     ";
   const uint8_t kDRBGEntropy2[48] =
@@ -396,14 +397,14 @@ int main(int argc, char **argv) {
 
   /* DBRG */
   CTR_DRBG_STATE drbg;
-  printf("About to seed CTR-DRBG with ");
+  printf("About to seed CTR-DRBG (with derivation function) with ");
   hexdump(kDRBGEntropy, sizeof(kDRBGEntropy));
-  if (!CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
-                     sizeof(kDRBGPersonalization)) ||
-      !CTR_DRBG_generate(&drbg, output, sizeof(output), kDRBGAD,
+  if (!CTR_DRBG_init_df(&drbg, kDRBGEntropy, kDRBGPersonalization,
+                     sizeof(kDRBGPersonalization), kDRBGNonce) ||
+      !CTR_DRBG_generate_df(&drbg, output, sizeof(output), kDRBGAD,
                          sizeof(kDRBGAD)) ||
-      !CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD)) ||
-      !CTR_DRBG_generate(&drbg, output, sizeof(output), kDRBGAD,
+      !CTR_DRBG_reseed_df(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD)) ||
+      !CTR_DRBG_generate_df(&drbg, output, sizeof(output), kDRBGAD,
                          sizeof(kDRBGAD))) {
     printf("DRBG failed\n");
     goto err;
