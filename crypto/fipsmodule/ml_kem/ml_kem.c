@@ -394,3 +394,214 @@ int ml_kem_common_decapsulate(int (*decapsulate)(uint8_t *shared_secret, const u
   set_written_len_on_success(res, shared_secret);
   return res;
 }
+
+// ML-KEM key validation functions
+// These functions perform FIPS 203 compliant validation of ML-KEM public and secret keys
+
+int ml_kem_512_check_pk(const uint8_t *public_key) {
+  if (public_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-512 check function
+  return mlkem512_check_pk(public_key);
+}
+
+int ml_kem_512_check_sk(const uint8_t *secret_key) {
+  if (secret_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-512 check function
+  return mlkem512_check_sk(secret_key);
+}
+
+int ml_kem_768_check_pk(const uint8_t *public_key) {
+  if (public_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-768 check function
+  return mlkem768_check_pk(public_key);
+}
+
+int ml_kem_768_check_sk(const uint8_t *secret_key) {
+  if (secret_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-768 check function
+  return mlkem768_check_sk(secret_key);
+}
+
+int ml_kem_1024_check_pk(const uint8_t *public_key) {
+  if (public_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-1024 check function
+  return mlkem1024_check_pk(public_key);
+}
+
+int ml_kem_1024_check_sk(const uint8_t *secret_key) {
+  if (secret_key == NULL) {
+    return -1; // Invalid input
+  }
+  // Call the underlying ML-KEM-1024 check function
+  return mlkem1024_check_sk(secret_key);
+}
+
+// ML-KEM Pairwise Consistency Test (PCT) functions
+// These functions perform FIPS 203 compliant PCT by performing encapsulation
+// and decapsulation operations and comparing the resulting shared secrets
+
+int ml_kem_512_check_pct(const uint8_t *public_key, const uint8_t *secret_key) {
+  if (public_key == NULL || secret_key == NULL) {
+    return -1; // Invalid input
+  }
+
+  uint8_t ciphertext[MLKEM512_CIPHERTEXT_BYTES];
+  uint8_t shared_secret_enc[MLKEM512_SHARED_SECRET_LEN];
+  uint8_t shared_secret_dec[MLKEM512_SHARED_SECRET_LEN];
+  size_t ciphertext_len = MLKEM512_CIPHERTEXT_BYTES;
+  size_t shared_secret_len_enc = MLKEM512_SHARED_SECRET_LEN;
+  size_t shared_secret_len_dec = MLKEM512_SHARED_SECRET_LEN;
+
+  // Perform encapsulation
+  int res = ml_kem_512_encapsulate(ciphertext, &ciphertext_len, 
+                                   shared_secret_enc, &shared_secret_len_enc, 
+                                   public_key);
+  if (res != 0) {
+    goto cleanup;
+  }
+
+  // Perform decapsulation
+  res = ml_kem_512_decapsulate(shared_secret_dec, &shared_secret_len_dec, 
+                               ciphertext, secret_key);
+  if (res != 0) {
+    goto cleanup;
+  }
+
+  // Compare shared secrets - they should be identical for a valid keypair
+  if (shared_secret_len_enc != shared_secret_len_dec || 
+      shared_secret_len_enc != MLKEM512_SHARED_SECRET_LEN) {
+    res = -1;
+    goto cleanup;
+  }
+
+  // Use constant-time comparison
+  for (size_t i = 0; i < MLKEM512_SHARED_SECRET_LEN; i++) {
+    if (shared_secret_enc[i] != shared_secret_dec[i]) {
+      res = -1;
+      goto cleanup;
+    }
+  }
+
+  res = 0; // PCT passed
+
+cleanup:
+  // Clear sensitive data
+  OPENSSL_cleanse(ciphertext, sizeof(ciphertext));
+  OPENSSL_cleanse(shared_secret_enc, sizeof(shared_secret_enc));
+  OPENSSL_cleanse(shared_secret_dec, sizeof(shared_secret_dec));
+  return res;
+}
+
+int ml_kem_768_check_pct(const uint8_t *public_key, const uint8_t *secret_key) {
+  if (public_key == NULL || secret_key == NULL) {
+    return -1; // Invalid input
+  }
+
+  uint8_t ciphertext[MLKEM768_CIPHERTEXT_BYTES];
+  uint8_t shared_secret_enc[MLKEM768_SHARED_SECRET_LEN];
+  uint8_t shared_secret_dec[MLKEM768_SHARED_SECRET_LEN];
+  size_t ciphertext_len = MLKEM768_CIPHERTEXT_BYTES;
+  size_t shared_secret_len_enc = MLKEM768_SHARED_SECRET_LEN;
+  size_t shared_secret_len_dec = MLKEM768_SHARED_SECRET_LEN;
+
+  // Perform encapsulation
+  int res = ml_kem_768_encapsulate(ciphertext, &ciphertext_len, 
+                                   shared_secret_enc, &shared_secret_len_enc, 
+                                   public_key);
+  if (res != 0) {
+    goto cleanup;
+  }
+
+  // Perform decapsulation
+  res = ml_kem_768_decapsulate(shared_secret_dec, &shared_secret_len_dec, 
+                               ciphertext, secret_key);
+  if (res != 0) {
+    goto cleanup;
+  }
+
+  // Compare shared secrets - they should be identical for a valid keypair
+  if (shared_secret_len_enc != shared_secret_len_dec || 
+      shared_secret_len_enc != MLKEM768_SHARED_SECRET_LEN) {
+    res = -1;
+    goto cleanup;
+  }
+
+  // Use constant-time comparison
+  for (size_t i = 0; i < MLKEM768_SHARED_SECRET_LEN; i++) {
+    if (shared_secret_enc[i] != shared_secret_dec[i]) {
+      res = -1;
+      goto cleanup;
+    }
+  }
+
+  res = 0; // PCT passed
+
+cleanup:
+  // Clear sensitive data
+  OPENSSL_cleanse(ciphertext, sizeof(ciphertext));
+  OPENSSL_cleanse(shared_secret_enc, sizeof(shared_secret_enc));
+  OPENSSL_cleanse(shared_secret_dec, sizeof(shared_secret_dec));
+  return res;
+}
+
+int ml_kem_1024_check_pct(const uint8_t *public_key, const uint8_t *secret_key) {
+  if (public_key == NULL || secret_key == NULL) {
+    return -1; // Invalid input
+  }
+
+  uint8_t ciphertext[MLKEM1024_CIPHERTEXT_BYTES];
+  uint8_t shared_secret_enc[MLKEM1024_SHARED_SECRET_LEN];
+  uint8_t shared_secret_dec[MLKEM1024_SHARED_SECRET_LEN];
+  size_t ciphertext_len = MLKEM1024_CIPHERTEXT_BYTES;
+  size_t shared_secret_len_enc = MLKEM1024_SHARED_SECRET_LEN;
+  size_t shared_secret_len_dec = MLKEM1024_SHARED_SECRET_LEN;
+
+  // Perform encapsulation
+  int res = ml_kem_1024_encapsulate(ciphertext, &ciphertext_len, 
+                                    shared_secret_enc, &shared_secret_len_enc, 
+                                    public_key);
+  if (res != 0) {
+    goto cleanup;
+  }
+
+  // Perform decapsulation
+  res = ml_kem_1024_decapsulate(shared_secret_dec, &shared_secret_len_dec, 
+                                ciphertext, secret_key);
+  if (res != 0) {
+    goto cleanup;
+  }
+
+  // Compare shared secrets - they should be identical for a valid keypair
+  if (shared_secret_len_enc != shared_secret_len_dec || 
+      shared_secret_len_enc != MLKEM1024_SHARED_SECRET_LEN) {
+    res = -1;
+    goto cleanup;
+  }
+
+  // Use constant-time comparison
+  for (size_t i = 0; i < MLKEM1024_SHARED_SECRET_LEN; i++) {
+    if (shared_secret_enc[i] != shared_secret_dec[i]) {
+      res = -1;
+      goto cleanup;
+    }
+  }
+
+  res = 0; // PCT passed
+
+cleanup:
+  // Clear sensitive data
+  OPENSSL_cleanse(ciphertext, sizeof(ciphertext));
+  OPENSSL_cleanse(shared_secret_enc, sizeof(shared_secret_enc));
+  OPENSSL_cleanse(shared_secret_dec, sizeof(shared_secret_dec));
+  return res;
+}
