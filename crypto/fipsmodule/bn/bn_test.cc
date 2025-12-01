@@ -2959,14 +2959,12 @@ TEST_F(BNTest, BNMulMontABI) {
     b[0] = 42;
 
 #if defined(OPENSSL_X86_64)
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     if (bn_mulx4x_mont_capable(words)) {
       CHECK_ABI(bn_mulx4x_mont, r.data(), a.data(), b.data(), mont->N.d,
                 mont->n0, words);
       CHECK_ABI(bn_mulx4x_mont, r.data(), a.data(), a.data(), mont->N.d,
                 mont->n0, words);
     }
-#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     if (bn_mul4x_mont_capable(words)) {
       CHECK_ABI(bn_mul4x_mont, r.data(), a.data(), b.data(), mont->N.d,
                 mont->n0, words);
@@ -2977,12 +2975,10 @@ TEST_F(BNTest, BNMulMontABI) {
               mont->n0, words);
     CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), a.data(), mont->N.d,
               mont->n0, words);
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     if (bn_sqr8x_mont_capable(words)) {
       CHECK_ABI(bn_sqr8x_mont, r.data(), a.data(), bn_mulx_adx_capable(),
                 mont->N.d, mont->n0, words);
     }
-#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 #elif defined(OPENSSL_ARM)
     if (bn_mul8x_mont_neon_capable(words)) {
       CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), b.data(), mont->N.d,
@@ -3028,17 +3024,34 @@ TEST_F(BNTest, BNMulMont5ABI) {
       bn_scatter5(r.data(), words, table.data(), i);
     }
     CHECK_ABI(bn_gather5, r.data(), words, table.data(), 13);
-
-    CHECK_ABI(bn_mul_mont_gather5, r.data(), r.data(), table.data(), m->d,
+    if (bn_mulx4x_mont_gather5_capable(words)) {
+      CHECK_ABI(bn_mulx4x_mont_gather5, r.data(), r.data(), table.data(), m->d,
+                mont->n0, words, 13);
+      CHECK_ABI(bn_mulx4x_mont_gather5, r.data(), a.data(), table.data(), m->d,
+                mont->n0, words, 13);
+    }
+    if (bn_mul4x_mont_gather5_capable(words)) {
+      CHECK_ABI(bn_mul4x_mont_gather5, r.data(), r.data(), table.data(), m->d,
+                mont->n0, words, 13);
+      CHECK_ABI(bn_mul4x_mont_gather5, r.data(), a.data(), table.data(), m->d,
+                mont->n0, words, 13);
+    }
+    CHECK_ABI(bn_mul_mont_gather5_nohw, r.data(), r.data(), table.data(), m->d,
               mont->n0, words, 13);
-    CHECK_ABI(bn_mul_mont_gather5, r.data(), a.data(), table.data(), m->d,
+    CHECK_ABI(bn_mul_mont_gather5_nohw, r.data(), a.data(), table.data(), m->d,
               mont->n0, words, 13);
 
-    if (words % 8 == 0) {
-      CHECK_ABI(bn_power5, r.data(), r.data(), table.data(), m->d, mont->n0,
+    if (bn_powerx5_capable(words)) {
+      CHECK_ABI(bn_powerx5, r.data(), r.data(), table.data(), m->d, mont->n0,
                 words, 13);
-      CHECK_ABI(bn_power5, r.data(), a.data(), table.data(), m->d, mont->n0,
+      CHECK_ABI(bn_powerx5, r.data(), a.data(), table.data(), m->d, mont->n0,
                 words, 13);
+    }
+    if (bn_power5_capable(words)) {
+      CHECK_ABI(bn_power5_nohw, r.data(), r.data(), table.data(), m->d,
+                mont->n0, words, 13);
+      CHECK_ABI(bn_power5_nohw, r.data(), a.data(), table.data(), m->d,
+                mont->n0, words, 13);
     }
   }
 }
