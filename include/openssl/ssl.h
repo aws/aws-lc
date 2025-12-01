@@ -1781,10 +1781,6 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
-//
-// Note: TLS 1.3 ciphersuites are only configurable via
-// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
-// no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
