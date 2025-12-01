@@ -253,8 +253,9 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
     seed_material[i] ^= kInitMask[i];
   }
 
+  // keylen is 32 bytes and block length is AES_BLOCK_SIZE.
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32);
-  OPENSSL_memcpy(drbg->counter, seed_material + 32, 16);
+  OPENSSL_memcpy(drbg->counter, seed_material + 32, AES_BLOCK_SIZE);
   drbg->reseed_counter = 1;
 
   return 1;
@@ -316,8 +317,9 @@ int CTR_DRBG_init_df(CTR_DRBG_STATE *drbg,
     seed_material[i] ^= kInitMask[i];
   }
 
+  // keylen is 32 bytes and block length is AES_BLOCK_SIZE.
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32);
-  OPENSSL_memcpy(drbg->counter, seed_material + 32, 16);
+  OPENSSL_memcpy(drbg->counter, seed_material + 32, AES_BLOCK_SIZE);
   drbg->reseed_counter = 1;
 
   return 1;
