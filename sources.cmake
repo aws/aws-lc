@@ -80,6 +80,7 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
+  crypto/fipsmodule/rand/ctrdrbg_df_vectors.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt
