@@ -307,6 +307,9 @@ bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
 }
 
 static const uint16_t kDefaultGroups[] = {
+    SSL_GROUP_X25519_MLKEM768,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    SSL_GROUP_SECP384R1_MLKEM1024,
     SSL_GROUP_X25519,
     SSL_GROUP_SECP256R1,
     SSL_GROUP_SECP384R1,
