@@ -75,7 +75,7 @@ class MLDSATest : public testing::TestWithParam<MLDSAParamSet> {
                                  params->public_key_bytes));
     ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx.get(), new_tr.data(), new_tr.size()));
 
-    // Repack the corrupted key
+    // Repack the better corrupted key
     ml_dsa_pack_sk(params, better_corrupted_key.data(), rho, new_tr.data(),
                    new_pk.data(), &t0, &s1, &s2);
     EXPECT_NE(std::memcmp(better_corrupted_key.data(), corrupted_key.data(),
@@ -83,7 +83,7 @@ class MLDSATest : public testing::TestWithParam<MLDSAParamSet> {
               0)
         << "Better corrupted key should differ from the simple corrupted key";
 
-    // Try to import the corrupted key
+    // Try to import the better corrupted key
     bssl::UniquePtr<EVP_PKEY> better_corrupted_pkey(
         EVP_PKEY_pqdsa_new_raw_private_key(kMLDSA.nid, corrupted_key.data(),
                                            corrupted_key.size()));
