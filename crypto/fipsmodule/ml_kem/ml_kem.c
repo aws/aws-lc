@@ -394,3 +394,45 @@ int ml_kem_common_decapsulate(int (*decapsulate)(uint8_t *shared_secret, const u
   set_written_len_on_success(res, shared_secret);
   return res;
 }
+
+int ml_kem_512_check_pk(const uint8_t *public_key, size_t public_key_len) {
+  if (public_key == NULL || public_key_len != MLKEM512_PUBLIC_KEY_BYTES) {
+    return -1;
+  }
+  return mlkem512_check_pk(public_key);
+}
+
+int ml_kem_512_check_sk(const uint8_t *secret_key, size_t secret_key_len) {
+  if (secret_key == NULL || secret_key_len != MLKEM512_SECRET_KEY_BYTES) {
+    return -1;
+  }
+  return mlkem512_check_sk(secret_key);
+}
+
+int ml_kem_768_check_pk(const uint8_t *public_key, size_t public_key_len) {
+  if (public_key == NULL || public_key_len != MLKEM768_PUBLIC_KEY_BYTES) {
+    return -1;
+  }
+  return mlkem768_check_pk(public_key);
+}
+
+int ml_kem_768_check_sk(const uint8_t *secret_key, size_t secret_key_len) {
+  if (secret_key == NULL || secret_key_len != MLKEM768_SECRET_KEY_BYTES) {
+    return -1;
+  }
+  return mlkem768_check_sk(secret_key);
+}
+
+int ml_kem_1024_check_pk(const uint8_t *public_key, size_t public_key_len) {
+  if (public_key == NULL || public_key_len != MLKEM1024_PUBLIC_KEY_BYTES) {
+    return -1;
+  }
+  return mlkem1024_check_pk(public_key);
+}
+
+int ml_kem_1024_check_sk(const uint8_t *secret_key, size_t secret_key_len) {
+  if (secret_key == NULL || secret_key_len != MLKEM1024_SECRET_KEY_BYTES) {
+    return -1;
+  }
+  return mlkem1024_check_sk(secret_key);
+}

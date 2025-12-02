@@ -175,7 +175,7 @@ jobs:
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
-        instance-size:large
+        instance-size:${{ matrix.build32 && 'xlarge' || 'large' }}
     strategy:
       fail-fast: false
       matrix:
