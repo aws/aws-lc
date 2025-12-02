@@ -4,6 +4,9 @@
 #include <cstddef>
 #include <functional>
 
+// For OPENSSL_memcmp
+#include "../internal.h"
+
 // Need ML-DSA internal headers to manipulate the expanded private key
 extern "C" {
 #include "../fipsmodule/ml_dsa/ml_dsa_ref/packing.h"
@@ -49,8 +52,8 @@ class MLDSATest : public testing::TestWithParam<MLDSAParamSet> {
     ml_dsa_pack_sk(params, corrupted_key.data(), rho, tr, key, &t0, &s1, &s2);
 
     // Verify the corrupted key differs from the honest key
-    EXPECT_NE(std::memcmp(corrupted_key.data(), honest_key_bytes,
-                          params->secret_key_bytes),
+    EXPECT_NE(OPENSSL_memcmp(corrupted_key.data(), honest_key_bytes,
+                             params->secret_key_bytes),
               0)
         << "Corrupted " << component_name << " should differ from honest key";
 
@@ -78,8 +81,8 @@ class MLDSATest : public testing::TestWithParam<MLDSAParamSet> {
     // Repack the better corrupted key
     ml_dsa_pack_sk(params, better_corrupted_key.data(), rho, new_tr.data(),
                    new_pk.data(), &t0, &s1, &s2);
-    EXPECT_NE(std::memcmp(better_corrupted_key.data(), corrupted_key.data(),
-                          params->secret_key_bytes),
+    EXPECT_NE(OPENSSL_memcmp(better_corrupted_key.data(), corrupted_key.data(),
+                             params->secret_key_bytes),
               0)
         << "Better corrupted key should differ from the simple corrupted key";
 
