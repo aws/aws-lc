@@ -59,6 +59,8 @@
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa_ref/params.h"
+#include "../../../../crypto/fipsmodule/ml_kem/ml_kem.h"
+
 #include "modulewrapper.h"
 
 
@@ -1386,7 +1388,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "mode": "encapDecap",
         "revision": "FIPS203",
         "parameterSets": ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"],
-        "functions": ["encapsulation", "decapsulation"]
+        "functions": ["encapsulation", "decapsulation", "encapsulationKeyCheck", "decapsulationKeyCheck"]
       },)"
       R"({
         "algorithm": "EDDSA",
@@ -3112,6 +3114,58 @@ static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
       {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
 }
 
+template <int nid>
+static bool MLKEM_ENCAP_CHECK(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> ek = args[0];
+
+  int (*check_fn)(const uint8_t*, size_t) = nullptr;
+  if(nid == NID_MLKEM512) {
+    check_fn = ml_kem_512_check_pk;
+  } else if(nid == NID_MLKEM768) {
+    check_fn = ml_kem_768_check_pk;
+  } else if(nid == NID_MLKEM1024) {
+    check_fn = ml_kem_1024_check_pk;
+  } else {
+    return false;
+  }
+
+  // The check_sk function validates mandated by FIPS 203 Section 7.2.
+  uint8_t success_flag[1] = {0};
+  if(check_fn(ek.data(), ek.size()) != 0) {
+    return write_reply({Span<const uint8_t>(success_flag)});
+  }
+
+  success_flag[0] = 1;
+  return write_reply({Span<const uint8_t>(success_flag)});
+}
+
+template <int nid>
+static bool MLKEM_DECAP_CHECK(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> dk = args[0];
+
+  int (*check_fn)(const uint8_t*, size_t) = nullptr;
+  if(nid == NID_MLKEM512) {
+    check_fn = ml_kem_512_check_sk;
+  } else if(nid == NID_MLKEM768) {
+    check_fn = ml_kem_768_check_sk;
+  } else if(nid == NID_MLKEM1024) {
+    check_fn = ml_kem_1024_check_sk;
+  } else {
+    return false;
+  }
+
+  // The check_sk function validates mandated by FIPS 203 Section 7.3.
+  uint8_t success_flag[1] = {0};
+  if(check_fn(dk.data(), dk.size()) != 0) {
+    return write_reply({Span<const uint8_t>(success_flag)});
+  }
+
+  success_flag[0] = 1;
+  return write_reply({Span<const uint8_t>(success_flag)});
+}
+
 static bool ED25519KeyGen(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
@@ -3625,6 +3679,12 @@ static struct {
     {"ML-KEM/ML-KEM-512/decap", 2, ML_KEM_DECAP<NID_MLKEM512>},
     {"ML-KEM/ML-KEM-768/decap", 2, ML_KEM_DECAP<NID_MLKEM768>},
     {"ML-KEM/ML-KEM-1024/decap", 2, ML_KEM_DECAP<NID_MLKEM1024>},
+    {"ML-KEM/ML-KEM-512/encapKeyCheck", 1, MLKEM_ENCAP_CHECK<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/encapKeyCheck", 1, MLKEM_ENCAP_CHECK<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/encapKeyCheck", 1, MLKEM_ENCAP_CHECK<NID_MLKEM1024>},
+    {"ML-KEM/ML-KEM-512/decapKeyCheck", 1, MLKEM_DECAP_CHECK<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/decapKeyCheck", 1, MLKEM_DECAP_CHECK<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/decapKeyCheck", 1, MLKEM_DECAP_CHECK<NID_MLKEM1024>},
     {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
     {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
     {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
