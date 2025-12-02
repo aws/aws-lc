@@ -113,9 +113,10 @@ type mlKemEncDecapTestGroupResponse struct {
 }
 
 type mlKemEncDecapTestCaseResponse struct {
-	ID uint64               `json:"tcId"`
-	C  hexEncodedByteString `json:"c,omitempty"`
-	K  hexEncodedByteString `json:"k,omitempty"`
+	ID     uint64               `json:"tcId"`
+	C      hexEncodedByteString `json:"c,omitempty"`
+	K      hexEncodedByteString `json:"k,omitempty"`
+	Passed *bool                `json:"testPassed,omitempty"`
 }
 
 func processMlKemEncapDecap(vectors json.RawMessage, m Transactable) (interface{}, error) {
@@ -129,7 +130,9 @@ func processMlKemEncapDecap(vectors json.RawMessage, m Transactable) (interface{
 
 	for _, group := range groups {
 		if (strings.EqualFold(group.Function, "encapsulation") && !strings.EqualFold(group.Type, "AFT")) ||
-			(strings.EqualFold(group.Function, "decapsulation") && !strings.EqualFold(group.Type, "VAL")) {
+			(strings.EqualFold(group.Function, "decapsulation") && !strings.EqualFold(group.Type, "VAL")) ||
+			(strings.EqualFold(group.Function, "decapsulationKeyCheck") && !strings.EqualFold(group.Type, "VAL")) ||
+			(strings.EqualFold(group.Function, "encapsulationKeyCheck") && !strings.EqualFold(group.Type, "VAL")) {
 			return nil, fmt.Errorf("unsupported encapDecap function and test group type pair: (%v, %v)", group.Function, group.Type)
 		}
 
@@ -148,6 +151,10 @@ func processMlKemEncapDecap(vectors json.RawMessage, m Transactable) (interface{
 				testResponse, err = processMlKemEncapTestCase(test.ID, group.ParameterSet, test.EK, test.M, m)
 			case strings.EqualFold(group.Function, "decapsulation"):
 				testResponse, err = processMlKemDecapTestCase(test.ID, group.ParameterSet, test.DK, test.C, m)
+			case strings.EqualFold(group.Function, "encapsulationKeyCheck"):
+				testResponse, err = processMlKemEncapKeyCheckTestCase(test.ID, group.ParameterSet, test.EK, m)
+			case strings.EqualFold(group.Function, "decapsulationKeyCheck"):
+				testResponse, err = processMlKemDecapKeyCheckTestCase(test.ID, group.ParameterSet, test.DK, m)
 			default:
 				return nil, fmt.Errorf("unknown encDecap function: %v", group.Function)
 			}
@@ -192,3 +199,32 @@ func processMlKemDecapTestCase(id uint64, algorithm string, dk []byte, c []byte,
 		K:  k,
 	}, nil
 }
+
+func processMlKemEncapKeyCheckTestCase(id uint64, algorithm string, ek []byte, t Transactable) (mlKemEncDecapTestCaseResponse, error) {
+	results, err := t.Transact("ML-KEM/"+algorithm+"/encapKeyCheck", 1, ek)
+	if err != nil {
+		return mlKemEncDecapTestCaseResponse{}, err
+	}
+
+    testPassed := results[0][0] == 1
+
+	return mlKemEncDecapTestCaseResponse{
+		ID: id,
+		Passed: &testPassed,
+	}, nil
+}
+
+func processMlKemDecapKeyCheckTestCase(id uint64, algorithm string, dk []byte, t Transactable) (mlKemEncDecapTestCaseResponse, error) {
+	results, err := t.Transact("ML-KEM/"+algorithm+"/decapKeyCheck", 1, dk)
+	if err != nil {
+		return mlKemEncDecapTestCaseResponse{}, err
+	}
+
+	testPassed := results[0][0] == 1
+
+	return mlKemEncDecapTestCaseResponse{
+		ID: id,
+		Passed: &testPassed,
+	}, nil
+}
+
