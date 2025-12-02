@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <functional>
 
-// Need ML-DSA internal headers to manipulate and validate the private key
+// Need ML-DSA internal headers to manipulate the expanded private key
 extern "C" {
 #include "../fipsmodule/ml_dsa/ml_dsa_ref/packing.h"
 #include "../fipsmodule/ml_dsa/ml_dsa_ref/params.h"
@@ -165,8 +165,8 @@ TEST_P(MLDSATest, ExpandedKeyValidation) {
                                            &key_len));
 
   for (auto i = 0; i < params.l; i++) {
-    for (auto j :
-         {0 /* first coeff */, 127, 255 /* last coeff */, 95, 42, 224}) {
+    // 0 is first coeff, 255 is last coeff, and a few random ones
+    for (auto j : {0, 255, 127, 95, 42, 224}) {
       // Test 1: Corrupt s1
       TestCorruptedKey(
           ps, &params, key_bytes.data(),
