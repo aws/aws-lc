@@ -1839,6 +1839,8 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 // |ssl->config->tls13_cipher_list| and otherwise falling back to
 // |ssl->ctx->tls13_cipher_list|.
 //
+// Equal-preference groups cannot be configured for TLS 1.3 through these APIs.
+//
 // It returns one on success and zero on failure.
 //
 // Prefer to use |SSL_set_strict_cipher_list|. This function tolerates garbage
