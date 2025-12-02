@@ -1769,8 +1769,8 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // The |DEFAULT| directive, when appearing at the front of the string, expands
 // to the default ordering of available ciphers.
 //
-// If configuring a server, one may also configure equal-preference groups to
-// partially respect the client's preferences when
+// For TLS < 1.3, if configuring a server, one may also configure
+// equal-preference groups to partially respect the client's preferences when
 // |SSL_OP_CIPHER_SERVER_PREFERENCE| is enabled. Ciphers in an equal-preference
 // group have equal priority and use the client order. This may be used to
 // enforce that AEADs are preferred but select AES-GCM vs. ChaCha20-Poly1305
