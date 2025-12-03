@@ -2206,7 +2206,7 @@ static int aead_xaes_256_gcm_kc_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 1;
 }
 
-static int aead_xaes_256_gcm_key_commit_seal_scatter(
+static int aead_xaes_256_gcm_kc_seal_scatter(
     const EVP_AEAD_CTX *ctx, uint8_t *out,
     uint8_t *out_tag, size_t *out_tag_len,
     size_t max_out_tag_len,
@@ -2264,7 +2264,7 @@ static int aead_xaes_256_gcm_key_commit_seal_scatter(
     return 1;
 }
 
-static int aead_xaes_256_gcm_key_commit_open_gather(
+static int aead_xaes_256_gcm_kc_open_gather(
     const EVP_AEAD_CTX *ctx, uint8_t *out,
     const uint8_t *nonce, size_t nonce_len,
     const uint8_t *in, size_t in_len,
@@ -2327,6 +2327,6 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_kc) {
 
     out->init = aead_xaes_256_gcm_kc_init;
     out->cleanup = aead_aes_gcm_cleanup;
-    out->seal_scatter = aead_xaes_256_gcm_key_commit_seal_scatter;
-    out->open_gather = aead_xaes_256_gcm_key_commit_open_gather;
+    out->seal_scatter = aead_xaes_256_gcm_kc_seal_scatter;
+    out->open_gather = aead_xaes_256_gcm_kc_open_gather;
 }
