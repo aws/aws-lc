@@ -1701,7 +1701,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_MULTI_LOOP_TEST) {
 TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
     // Test encryption and decryption
     const auto test = [](const EVP_CIPHER *cipher, std::vector<uint8_t> &iv, int iv_len, 
-                        const uint8_t *plaintext, size_t plaintext_len) {
+                        const uint8_t *plaintext, size_t plaintext_len, size_t key_commitment_len) {
         std::vector<uint8_t> key; 
 
         /* ============ INITIALIZE ENCRYPTION CONTEXT ============ */ 
@@ -1745,7 +1745,7 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
         ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_GET_TAG, tag.size(), (void*)tag.data()));
         // Get key commitment
         if(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_KC_CIPHER) {
-            key_commitment.resize(32);
+            key_commitment.resize(key_commitment_len);
             ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ectx.get(), EVP_CTRL_AEAD_GET_KC, key_commitment.size(), (void*)key_commitment.data()));
         }
         
@@ -1782,12 +1782,16 @@ TEST(CipherTest, XAES_256_GCM_EVP_CIPHER_SHORTER_NONCE) {
     DecodeHex(&iv, "4242424242424242424242424242424242424242");
     const uint8_t *plaintext = (const uint8_t *)"Hello, XAES-256-GCM!";
     std::vector<uint8_t> ciphertext, tag;
-    test(EVP_xaes_256_gcm(), iv, iv.size(), plaintext, strlen((const char *)plaintext));
-    test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext));
+    test(EVP_xaes_256_gcm(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 0);
+    test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 32);
+    // Test truncated key commitment
+    test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 16);
 
     // Test with a 23-byte IV
     DecodeHex(&iv, "4142434445464748494a4b4c4d4e4f5051525354555657");
     plaintext = (const uint8_t *)"XAES-256-GCM";
-    test(EVP_xaes_256_gcm(), iv, iv.size(), plaintext, strlen((const char *)plaintext));
-    test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext));
+    test(EVP_xaes_256_gcm(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 0);
+    test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 32);
+    // Test truncated key commitment
+    test(EVP_xaes_256_gcm_kc(), iv, iv.size(), plaintext, strlen((const char *)plaintext), 16);
 }
