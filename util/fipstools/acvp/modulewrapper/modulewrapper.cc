@@ -58,7 +58,6 @@
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa.h"
-#include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa_ref/params.h"
 #include "../../../../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "modulewrapper.h"
 
