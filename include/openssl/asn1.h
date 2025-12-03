@@ -329,6 +329,10 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 // the C type corresponding to an |ASN1_ITEM|.
 typedef struct ASN1_VALUE_st ASN1_VALUE;
 
+// ASN1_parse performs an ASN.1 dump of the contents pointed to by |pp| of length |len|,
+// and writes it to |bp|. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int ASN1_parse(BIO *bp, const unsigned char *pp, long len, int indent);
+
 // ASN1_item_new allocates a new value of the C type corresponding to |it|, or
 // NULL on error. On success, the caller must release the value with
 // |ASN1_item_free|, or the corresponding C type's free function, when done. The
