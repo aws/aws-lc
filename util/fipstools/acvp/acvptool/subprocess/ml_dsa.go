@@ -150,7 +150,7 @@ func processMlDsaSigGen(vectors json.RawMessage, m Transactable) (interface{}, e
 
 		for _, test := range group.Tests {
 			results, err := m.Transact("ML-DSA/"+group.ParameterSet+"/sigGen",
-				1, test.SK, test.Message, test.MU, test.RND, boolToBytes(group.ExternalMu))
+				1, test.SK, test.Message, test.MU, test.RND, test.Context, boolToBytes(group.ExternalMu))
 			if err != nil {
 				return nil, err
 			}
@@ -216,7 +216,7 @@ func processMlDsaSigVer(vectors json.RawMessage, m Transactable) (interface{}, e
 
 		for _, test := range group.Tests {
 			results, err := m.Transact("ML-DSA/"+group.ParameterSet+"/sigVer", 1,
-				test.Signature, test.PK, test.Message, test.MU, boolToBytes(group.ExternalMu))
+				test.Signature, test.PK, test.Message, test.MU, test.Context, boolToBytes(group.ExternalMu))
 			if err != nil {
 				return nil, err
 			}
