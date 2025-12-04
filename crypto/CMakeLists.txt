@@ -817,6 +817,7 @@ if(BUILD_TESTING)
     evp_extra/p_pqdsa_test.cc
     evp_extra/p_kem_test.cc
     evp_extra/scrypt_test.cc
+    evp_extra/mldsa_test.cc
     fips_callback_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
