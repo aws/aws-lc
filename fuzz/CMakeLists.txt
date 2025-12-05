@@ -15,6 +15,7 @@ macro(fuzzer name)
   add_dependencies(all_fuzz_tests ${name})
 endmacro()
 
+fuzzer(asn1parse)
 fuzzer(arm_cpuinfo)
 fuzzer(blowfish)
 fuzzer(bn_div)
