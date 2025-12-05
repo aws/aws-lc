@@ -116,6 +116,61 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
   ASSERT_TRUE(result);
 }
 
+// Verify failure output contains "Error decrypting key"
+TEST_F(PKCS8Test, PKCS8ErrorDecryptingKey) {
+  {
+   const char* passwd = "test1234";
+   bssl::UniquePtr<BIO> pass_bio(BIO_new_file(pass_path, "wb"));
+   BIO_write(pass_bio.get(), passwd, strlen(passwd));
+   BIO_flush(pass_bio.get());
+  }
+
+  std::string passfile = std::string("file:") + pass_path;
+
+  // Phase 1: Encrypt the key
+  args_list_t args_encrypt = {
+    "-passin", "pass:''",
+    "-inform", "PEM",
+    "-in", in_path,
+    "-topk8",
+    "-v2", "aes-256-cbc",
+    "-passout", passfile.c_str(),
+    "-outform", "PEM",
+    "-out", out_path
+  };
+
+  ASSERT_TRUE(pkcs8Tool(args_encrypt));
+
+  // Phase 2: Try to decrypt with wrong password (should fail)
+  args_list_t args_verify = {
+    "-passin", "pass:''",
+    "-inform", "PEM",
+    "-in", out_path,
+    "-outform", "PEM",
+    "-out", "/dev/null"
+  };
+
+  // Capture stderr to verify the error message
+  testing::internal::CaptureStderr();
+  bool verify_result = pkcs8Tool(args_verify);
+  std::string captured_stderr = testing::internal::GetCapturedStderr();
+
+  ASSERT_FALSE(verify_result) << "Expected decryption to fail with wrong password";
+  EXPECT_TRUE(captured_stderr.find("Error decrypting key") != std::string::npos)
+      << "Expected 'Error decrypting key' in stderr, but got: " << captured_stderr;
+
+  // Phase 3: Decrypt with correct password (should succeed)
+  args_list_t args_decrypt = {
+    "-passin", passfile.c_str(),
+    "-inform", "PEM",
+    "-in", out_path,
+    "-outform", "PEM",
+    "-out", "/dev/null"
+  };
+
+  ASSERT_TRUE(pkcs8Tool(args_decrypt));
+}
+
 // Test with a direct password rather than using environment variables
 TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
   // Phase 1: Create an unencrypted PKCS8 file first
