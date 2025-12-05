@@ -147,7 +147,6 @@ TEST_F(PKCS8Test, PKCS8ErrorDecryptingKey) {
     "-inform", "PEM",
     "-in", out_path,
     "-outform", "PEM",
-    "-out", "/dev/null"
   };
 
   // Capture stderr to verify the error message
@@ -165,7 +164,6 @@ TEST_F(PKCS8Test, PKCS8ErrorDecryptingKey) {
     "-inform", "PEM",
     "-in", out_path,
     "-outform", "PEM",
-    "-out", "/dev/null"
   };
 
   ASSERT_TRUE(pkcs8Tool(args_decrypt));
