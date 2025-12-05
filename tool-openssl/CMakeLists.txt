@@ -7,6 +7,7 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    asn1parse.cc
     crl.cc
     dgst.cc
     dhparam.cc
@@ -89,6 +90,8 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        asn1parse.cc
+        asn1parse_test.cc
         crl.cc
         crl_test.cc
         dgst.cc

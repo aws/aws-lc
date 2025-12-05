@@ -87,6 +87,7 @@ tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool CRLTool(const args_list_t &args);
+bool asn1parseTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool dhparamTool(const args_list_t &args);
 bool ecparamTool(const args_list_t &args);
