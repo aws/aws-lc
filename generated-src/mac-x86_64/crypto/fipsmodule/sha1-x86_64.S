@@ -3735,6 +3735,7 @@ L$epilogue_avx:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .globl	_sha1_block_data_order_avx2
 .private_extern _sha1_block_data_order_avx2
 
@@ -5430,6 +5431,7 @@ L$epilogue_avx2:
 	.byte	0xf3,0xc3
 
 
+#endif
 .section	__DATA,__const
 .p2align	6
 K_XX_XX:
