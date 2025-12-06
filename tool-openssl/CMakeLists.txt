@@ -12,6 +12,7 @@ add_executable(
     dhparam.cc
     ecparam.cc
     ec.cc
+    enc.cc
     genrsa.cc
     pass_util.cc
     pkcs8.cc
@@ -99,6 +100,8 @@ if(BUILD_TESTING)
         ec_test.cc
         ecparam.cc
         ecparam_test.cc
+        enc.cc
+        enc_test.cc
         genrsa.cc
         genrsa_test.cc
         ordered_args.cc
