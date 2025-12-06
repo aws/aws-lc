@@ -3430,7 +3430,10 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
     }
   } else {
     // |context| is unique to signatureInterface: external.
-    // Prepare |pre| exactly how |ml_dsa_sign| is doing.
+    //
+    // Prepare |pre| exactly how |ml_dsa_sign| is doing. The maximum |context| size
+    // for ML-DSA is 255 bytes. We append a 0 and the size as two additional bytes
+    // before |context| to become the prefix string.
     uint8_t pre[257];
     pre[0] = 0;
     pre[1] = context.size();
