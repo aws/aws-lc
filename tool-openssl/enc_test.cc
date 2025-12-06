@@ -241,6 +241,26 @@ TEST_F(EncOptionUsageErrorsTest, InvalidHexIVTest) {
   }
 }
 
+// Test hex string size mismatch for key and IV
+TEST_F(EncOptionUsageErrorsTest, HexStringSizeMismatchTest) {
+  std::vector<std::vector<std::string>> testparams = {
+      // Key too short (AES-128 needs 32 hex chars, providing 30)
+      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcd", "-iv",
+       "0123456789abcdef0123456789abcdef", "-in", in_path},
+      // Key too long (AES-128 needs 32 hex chars, providing 34)
+      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef01", "-iv",
+       "0123456789abcdef0123456789abcdef", "-in", in_path},
+      // IV too short (AES-128-CBC needs 32 hex chars, providing 30)
+      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-iv",
+       "0123456789abcdef0123456789abcd", "-in", in_path},
+      // IV too long (AES-128-CBC needs 32 hex chars, providing 34)
+      {"-e", "-aes-128-cbc", "-K", "0123456789abcdef0123456789abcdef", "-iv",
+       "0123456789abcdef0123456789abcdef01", "-in", in_path}};
+  for (const auto &args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
+
 // Test missing IV for cipher that requires it
 TEST_F(EncOptionUsageErrorsTest, MissingIVTest) {
   std::vector<std::vector<std::string>> testparams = {

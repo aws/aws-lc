@@ -9,6 +9,8 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
+#define BUF_SIZE 1024
+
 static const argument_t kArguments[] = {
     // General options
     {"-help", kBooleanArgument, "Display option summary"},
@@ -21,13 +23,17 @@ static const argument_t kArguments[] = {
     {"-aes-128-cbc", kExclusiveBooleanArgument, "Supported cipher"},
     {"", kOptionalArgument, ""}};
 
-static bool HexToBinary(bssl::UniquePtr<uint8_t> &buffer,
-                        const std::string &hex_string, int size) {
+static bool HexToBinary(bssl::UniquePtr<uint8_t[]> &buffer,
+                        const std::string &hex_string, unsigned int size) {
   // First validate that the string contains only valid hex characters
   for (char c : hex_string) {
     if (!OPENSSL_isxdigit(c)) {
       return false;
     }
+  }
+
+  if (hex_string.size() != size * 2) {
+    return false;
   }
 
   BIGNUM *raw = NULL;
@@ -94,7 +100,7 @@ bool encTool(const args_list_t &args) {
   } else {
     in_file.reset(fopen(in_path.c_str(), "rb"));
     if (!in_file) {
-      fprintf(stderr, "Error: unable to load certificate from '%s'\n",
+      fprintf(stderr, "Error: unable to load data from '%s'\n",
               in_path.c_str());
       return false;
     }
@@ -107,8 +113,13 @@ bool encTool(const args_list_t &args) {
   }
   const EVP_CIPHER *cipher = EVP_get_cipherbyname(cipher_name.c_str());
 
-  int iv_length = EVP_CIPHER_iv_length(cipher);
-  bssl::UniquePtr<uint8_t> iv((uint8_t *)OPENSSL_zalloc(EVP_MAX_IV_LENGTH));
+  if (cipher == nullptr) {
+    fprintf(stderr, "Error: Unknown cipher %s\n", cipher_name.c_str());
+    return false;
+  }
+
+  unsigned int iv_length = EVP_CIPHER_iv_length(cipher);
+  bssl::UniquePtr<uint8_t[]> iv((uint8_t *)OPENSSL_zalloc(EVP_MAX_IV_LENGTH));
 
   if (!hiv.empty()) {
     if (iv_length == 0) {
@@ -128,15 +139,13 @@ bool encTool(const args_list_t &args) {
     }
   }
 
-  bssl::UniquePtr<uint8_t> key((uint8_t *)OPENSSL_zalloc(EVP_MAX_KEY_LENGTH));
+  bssl::UniquePtr<uint8_t[]> key((uint8_t *)OPENSSL_zalloc(EVP_MAX_KEY_LENGTH));
 
   if (!hkey->empty()) {
     if (!HexToBinary(key, *hkey, EVP_CIPHER_key_length(cipher))) {
       fprintf(stderr, "Error: Invalid hex key value\n");
-      // pass_util::SensitiveStringDeleter(&hkey);
       return false;
     }
-    // pass_util::SensitiveStringDeleter(&hkey);
   }
 
   bssl::UniquePtr<BIO> output_bio;
@@ -159,12 +168,23 @@ bool encTool(const args_list_t &args) {
   }
 
   // Process the input file
-  uint8_t inbuf[1024];
-  bssl::UniquePtr<uint8_t> outbuf(
-      (uint8_t *)OPENSSL_zalloc(1024 + EVP_CIPHER_block_size(cipher)));
-  int inlen, outlen;
+  uint8_t inbuf[BUF_SIZE];
+  bssl::UniquePtr<uint8_t[]> outbuf(
+      (uint8_t *)OPENSSL_zalloc(BUF_SIZE + EVP_CIPHER_block_size(cipher)));
+  int inlen = 0, outlen = 0;
 
-  while ((inlen = fread(inbuf, 1, sizeof(inbuf), in_file.get())) > 0) {
+  for (;;) {
+    if (feof(in_file.get())) {
+      break;
+    }
+
+    inlen = fread(inbuf, 1, sizeof(inbuf), in_file.get());
+
+    if (ferror(in_file.get())) {
+      fprintf(stderr, "Error reading from '%s'.\n", in_path.c_str());
+      return false;
+    }
+
     if (!EVP_CipherUpdate(ctx.get(), outbuf.get(), &outlen, inbuf, inlen)) {
       fprintf(stderr, "Error: Cipher update failed\n");
       return false;
@@ -177,6 +197,7 @@ bool encTool(const args_list_t &args) {
     fprintf(stderr, "Error: Cipher final failed\n");
     return false;
   }
+
   BIO_write(output_bio.get(), outbuf.get(), outlen);
 
   return true;
