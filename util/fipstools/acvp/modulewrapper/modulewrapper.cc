@@ -3380,8 +3380,6 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   const Span<const uint8_t> context = args[4];
   const Span<const uint8_t> extmu = args[5];
 
-  using SignFunc = int (*)(const uint8_t*, uint8_t*, size_t*,
-                           const uint8_t*, size_t, const uint8_t*, size_t);
   using SignInternalFunc = int (*)(const uint8_t*, uint8_t*, size_t*,
                                    const uint8_t*, size_t,
                                    const uint8_t*, size_t, const uint8_t*);
@@ -3389,22 +3387,22 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   // Group all related functions for each variant
   struct MLDSA_functions {
     void (*params_init)(ml_dsa_params*);
-    SignFunc sign;
     SignInternalFunc sign_internal;
     SignInternalFunc extmu_sign_internal;
   };
 
-  // Select function set based on NID
+  // Select function set based on NID. We must use |ml_dsa_*_sign_internal| here,
+  // to account for the random inputs (rnd).
   MLDSA_functions mldsa_funcs;
   if (nid == NID_MLDSA44) {
-    mldsa_funcs = {ml_dsa_44_params_init, ml_dsa_44_sign,
-                   ml_dsa_44_sign_internal, ml_dsa_extmu_44_sign_internal};
+    mldsa_funcs = {ml_dsa_44_params_init, ml_dsa_44_sign_internal,
+                   ml_dsa_extmu_44_sign_internal};
   } else if (nid == NID_MLDSA65) {
-    mldsa_funcs = {ml_dsa_65_params_init, ml_dsa_65_sign,
-                   ml_dsa_65_sign_internal, ml_dsa_extmu_65_sign_internal};
+    mldsa_funcs = {ml_dsa_65_params_init, ml_dsa_65_sign_internal,
+                   ml_dsa_extmu_65_sign_internal};
   } else if (nid == NID_MLDSA87) {
-    mldsa_funcs = {ml_dsa_87_params_init, ml_dsa_87_sign,
-                   ml_dsa_87_sign_internal, ml_dsa_extmu_87_sign_internal};
+    mldsa_funcs = {ml_dsa_87_params_init, ml_dsa_87_sign_internal,
+                   ml_dsa_extmu_87_sign_internal};
   } else {
     return false;
   }
@@ -3415,12 +3413,8 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   size_t signature_len = params.bytes;
   std::vector<uint8_t> signature(signature_len);
 
-  if (!context.empty()) {
-    if (!mldsa_funcs.sign(sk.data(), signature.data(), &signature_len,
-                        msg.data(), msg.size(), context.data(), context.size())) {
-      return false;
-    }
-  } else {
+  if (!extmu.empty()) {
+    // Only signatureInterface: internal contains the externalMu field.
     if (extmu.data()[0] == 0) {
       // generate the signatures raw sign mode
       if (!mldsa_funcs.sign_internal(sk.data(), signature.data(), &signature_len,
@@ -3433,6 +3427,20 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
                                             mu.data(), mu.size(), nullptr, 0, rnd.data())) {
         return false;
       }
+    }
+  } else {
+    // |context| is unique to signatureInterface: external.
+    //
+    // Prepare |pre| exactly how |ml_dsa_sign| is doing. The maximum |context| size
+    // for ML-DSA is 255 bytes. We append a 0 and the size as two additional bytes
+    // before |context| to become the prefix string.
+    uint8_t pre[257];
+    pre[0] = 0;
+    pre[1] = context.size();
+    OPENSSL_memcpy(pre + 2 , context.data(), context.size());
+    if (!mldsa_funcs.sign_internal(sk.data(), signature.data(), &signature_len,
+                        msg.data(), msg.size(), pre, 2 + context.size(), rnd.data())) {
+      return false;
     }
   }
 
@@ -3476,12 +3484,8 @@ static bool ML_DSA_SIGVER(const Span<const uint8_t> args[], ReplyCallback write_
   }
 
   uint8_t reply[1] = {0};
-  if (!context.empty()) {
-    if (mldsa_funcs.verify(pk.data(), sig.data(), sig.size(), msg.data(),
-                          msg.size(), context.data(), context.size())) {
-      reply[0] = 1;
-    }
-  } else {
+  if (!extmu.empty()) {
+    // Only signatureInterface: internal contains the externalMu field.
     if (extmu.data()[0] == 0) {
       // verify the signatures raw sign mode
       if (mldsa_funcs.verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
@@ -3494,6 +3498,12 @@ static bool ML_DSA_SIGVER(const Span<const uint8_t> args[], ReplyCallback write_
                                             mu.size(), nullptr, 0)) {
         reply[0] = 1;
       }
+    }
+  } else {
+    // |context| is unique to signatureInterface: external.
+    if (mldsa_funcs.verify(pk.data(), sig.data(), sig.size(), msg.data(),
+                          msg.size(), context.data(), context.size())) {
+      reply[0] = 1;
     }
   }
 
