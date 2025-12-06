@@ -511,3 +511,6 @@ bool dgstTool(const args_list_t &args) {
 bool md5Tool(const args_list_t &args) {
   return dgstToolInternal(args, EVP_md5());
 }
+bool sha1Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_sha1());
+}

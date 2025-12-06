@@ -246,6 +246,47 @@ TEST_F(DgstComparisonTest, SignAndVerify) {
   EXPECT_EQ(awslc_hash, openssl_hash);
 }
 
+class MD5ComparisonTest : public DgstComparisonTest {};
+
+TEST_F(MD5ComparisonTest, Digest) {
+  // default digest
+  std::string awslc_command = std::string(awslc_executable_path) +
+                              " md5 -out " + out_path_awslc + " " + in_path;
+
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " md5 -out " + out_path_openssl + " " + in_path;
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string awslc_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(awslc_hash, openssl_hash);
+}
+
+class SHA1ComparisonTest : public DgstComparisonTest {};
+
+TEST_F(SHA1ComparisonTest, Digest) {
+  // default digest
+  std::string awslc_command = std::string(awslc_executable_path) +
+                              " sha1 -out " + out_path_awslc + " " + in_path;
+
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " sha1 -out " + out_path_openssl + " " +
+                                in_path;
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string awslc_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(awslc_hash, openssl_hash);
+}
+
 class DgstTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -330,7 +371,7 @@ TEST_F(DgstTest, DigestDefault) {
   EXPECT_TRUE(dgstTool(args));
 }
 
-TEST_F(DgstTest, DigestSHA1) {
+TEST_F(DgstTest, CustomDigest) {
   args_list_t args = {"-sha1", in_path};
   EXPECT_TRUE(dgstTool(args));
 }
@@ -403,4 +444,18 @@ TEST_F(DgstTest, PassinBasicIntegrationTest) {
       "-out",  sig_path,           in_path};
   bool result = dgstTool(args);
   ASSERT_TRUE(result);
+}
+
+class MD5Test : public DgstTest {};
+
+TEST_F(MD5Test, Sign) {
+  args_list_t args = {in_path};
+  EXPECT_TRUE(md5Tool(args));
+}
+
+class SHA1Test : public DgstTest {};
+
+TEST_F(SHA1Test, Sign) {
+  args_list_t args = {in_path};
+  EXPECT_TRUE(sha1Tool(args));
 }
