@@ -61,6 +61,8 @@ def write_test_group(out, test_group: dict) -> None:
         "privateKeyJwk", # Private key in JWK format
         "keyPem",        # Public key in PEM format
         "privateKeyPem", # Private key in PEM format
+        "publicKeyPem",  # Public key in PEM format
+        "privateKeyPkcs8", # Private key in PKCS8 format
     }
     
     skip_keys = skip_meta_keys | skip_key_formats
