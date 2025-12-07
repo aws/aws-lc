@@ -704,7 +704,12 @@ static void RunWycheproofVerifyTest(const char *path) {
     t->IgnoreAllUnusedInstructions();
 
     std::vector<uint8_t> der;
-    ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
+    // Try publicKeyDer first (new format), fall back to keyDer (old format)
+    if (t->HasInstruction("publicKeyDer")) {
+      ASSERT_TRUE(t->GetInstructionBytes(&der, "publicKeyDer"));
+    } else {
+      ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
+    }
     CBS cbs;
     CBS_init(&cbs, der.data(), der.size());
     bssl::UniquePtr<EVP_PKEY> key(EVP_parse_public_key(&cbs));
@@ -772,47 +777,77 @@ static void RunWycheproofVerifyTest(const char *path) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/dsa_2048_256_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/dsa_3072_256_sha256_test.txt`.
 TEST(EVPTest, WycheproofDSA) {
-  RunWycheproofVerifyTest("third_party/wycheproof_testvectors/dsa_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha224_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_256_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_3072_256_sha256_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP224) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha224_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha224_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256r1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP256) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP384) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp384r1_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp384r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP521) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp521r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256k1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256k1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAsecp256k1) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256k1_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256k1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
 TEST(EVPTest, WycheproofEdDSA) {
-  RunWycheproofVerifyTest("third_party/wycheproof_testvectors/eddsa_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt");
 }
 
 TEST(EVPTest, WycheproofRSAPKCS1) {

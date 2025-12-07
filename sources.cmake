@@ -295,22 +295,25 @@ set(
   third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
   third_party/wycheproof_testvectors/chacha20_poly1305_test.txt
-  third_party/wycheproof_testvectors/dsa_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_256_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_3072_256_sha256_test.txt
   third_party/wycheproof_testvectors/ecdh_secp224r1_test.txt
   third_party/wycheproof_testvectors/ecdh_secp256r1_test.txt
   third_party/wycheproof_testvectors/ecdh_secp384r1_test.txt
   third_party/wycheproof_testvectors/ecdh_secp521r1_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp224r1_sha224_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp224r1_sha256_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp224r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256r1_sha256_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp384r1_sha384_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp384r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256k1_sha256_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256k1_sha512_test.txt
-  third_party/wycheproof_testvectors/eddsa_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp521r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt
   third_party/wycheproof_testvectors/hkdf_sha1_test.txt
   third_party/wycheproof_testvectors/hkdf_sha256_test.txt
   third_party/wycheproof_testvectors/hkdf_sha384_test.txt
