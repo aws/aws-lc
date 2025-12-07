@@ -1108,13 +1108,17 @@ static void RunWycheproofPKCS1DecryptTest(const char *path) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_test.txt`.
 TEST(EVPTest, WycheproofRSAPKCS1Decrypt) {
   RunWycheproofPKCS1DecryptTest(
-      "third_party/wycheproof_testvectors/rsa_pkcs1_2048_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_2048_test.txt");
   RunWycheproofPKCS1DecryptTest(
-      "third_party/wycheproof_testvectors/rsa_pkcs1_3072_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_3072_test.txt");
   RunWycheproofPKCS1DecryptTest(
-      "third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_4096_test.txt");
 }
 
 struct ectlsencodedpoint_test_data {

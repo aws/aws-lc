@@ -42,9 +42,15 @@ AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
 
 AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.
 
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_test.txt`.
+
 AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt`.
 
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_test.txt`.
+
 AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_test.txt`.
 
 AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha224_test.txt`.
 
