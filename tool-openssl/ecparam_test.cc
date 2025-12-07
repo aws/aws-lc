@@ -149,6 +149,29 @@ TEST_F(EcparamTest, EcparamToolNooutTest) {
       << "Output file should be empty with -noout";
 }
 
+TEST_F(EcparamTest, EcparamToolNooutExceptionTest) {
+  args_list_t args = {"-name",  "prime256v1", "-genkey",
+                      "-noout", "-out",       out_path};
+
+  EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
+
+  // Validate it's actually a parseable EC key
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
+  ASSERT_TRUE(bio) << "Cannot open generated key file";
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey) << "Generated key is not parseable";
+  ASSERT_EQ(EVP_PKEY_EC, EVP_PKEY_id(pkey.get()))
+      << "Generated key is not EC type";
+
+  // Verify it's the correct curve
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(ec_key);
+  const EC_GROUP *group = EC_KEY_get0_group(ec_key);
+  ASSERT_EQ(NID_X9_62_prime256v1, EC_GROUP_get_curve_name(group))
+      << "Wrong curve generated";
+}
+
 TEST_F(EcparamTest, EcparamToolGenkeyTest) {
   args_list_t args = {"-name", "prime256v1", "-genkey", "-out", out_path};
 

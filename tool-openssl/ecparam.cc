@@ -160,21 +160,20 @@ bool ecparamTool(const args_list_t &args) {
     // Set point conversion form on the key
     EC_KEY_set_conv_form(eckey.get(), point_form);
 
-    if (!noout) {
-      SetUmaskForPrivateKey();
-      if (output_format == FORMAT_PEM) {
-        if (!PEM_write_bio_ECPrivateKey(out_bio.get(), eckey.get(), nullptr,
-                                        nullptr, 0, nullptr, nullptr)) {
-          fprintf(stderr, "Failed to write private key in PEM format\n");
-          goto err;
-        }
-      } else {
-        if (!i2d_ECPrivateKey_bio(out_bio.get(), eckey.get())) {
-          fprintf(stderr, "Failed to write private key in DER format\n");
-          goto err;
-        }
+    SetUmaskForPrivateKey();
+    if (output_format == FORMAT_PEM) {
+      if (!PEM_write_bio_ECPrivateKey(out_bio.get(), eckey.get(), nullptr,
+                                      nullptr, 0, nullptr, nullptr)) {
+        fprintf(stderr, "Failed to write private key in PEM format\n");
+        goto err;
+      }
+    } else {
+      if (!i2d_ECPrivateKey_bio(out_bio.get(), eckey.get())) {
+        fprintf(stderr, "Failed to write private key in DER format\n");
+        goto err;
       }
     }
+
   } else if (!noout) {
     // Output parameters
     if (output_format == FORMAT_PEM) {
