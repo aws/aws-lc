@@ -36,3 +36,37 @@ AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
 
 AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
 
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha224_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha256_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha384_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha512_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha256_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha384_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha512_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha384_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha512_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha256_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha384_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha512_test.txt`.
+

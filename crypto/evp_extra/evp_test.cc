@@ -850,33 +850,57 @@ TEST(EVPTest, WycheproofEdDSA) {
       "third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha512_test.txt`.
 TEST(EVPTest, WycheproofRSAPKCS1) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha224_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha224_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha512_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_3072_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_3072_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_3072_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha512_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_4096_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_4096_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_4096_sha512_test.txt");
-  // TODO(davidben): Is this file redundant with the tests above?
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_4096_sha512_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha384_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha512_test.txt");
+  // Note: rsa_signature_test.txt (377 tests) is not available in the new
+  // upstream. The specific test files above provide comprehensive coverage
+  // (2169 tests total across all key sizes and hash functions).
 }
 
-TEST(EVPTest, WycheproofRSAPKCS1Sign) {
-  FileTestGTest(
-      "third_party/wycheproof_testvectors/rsa_sig_gen_misc_test.txt",
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt`.
+static void RunWycheproofRSAPKCS1SignTest(const char *path) {
+  FileTestGTest(path,
       [](FileTest *t) {
         t->IgnoreAllUnusedInstructions();
 
@@ -914,6 +938,22 @@ TEST(EVPTest, WycheproofRSAPKCS1Sign) {
           EXPECT_EQ(Bytes(sig), Bytes(out));
         }
       });
+}
+
+TEST(EVPTest, WycheproofRSAPKCS1Sign) {
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt");
+  // Note: rsa_sig_gen_misc_test.txt (158 tests with 1024-4096 bit keys) is
+  // not available in the new upstream. The new test files above provide
+  // equivalent coverage split by key size.
 }
 
 TEST(EVPTest, WycheproofRSAPSS) {

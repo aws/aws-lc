@@ -62,7 +62,7 @@ def write_test_group(out, test_group: dict) -> None:
         "keyPem",        # Public key in PEM format
         "privateKeyPem", # Private key in PEM format
         "publicKeyPem",  # Public key in PEM format
-        "privateKeyPkcs8", # Private key in PKCS8 format
+        # Note: privateKeyPkcs8 is NOT skipped because it's used by RSA signature generation tests
     }
     
     skip_keys = skip_meta_keys | skip_key_formats
