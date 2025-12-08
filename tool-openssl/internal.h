@@ -100,6 +100,7 @@ bool pkeyutlTool(const args_list_t &args);
 bool RehashTool(const args_list_t &args);
 bool reqTool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
+bool sha1Tool(const args_list_t &args);
 bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
