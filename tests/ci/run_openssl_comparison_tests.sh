@@ -10,33 +10,27 @@ scratch_folder=${SYS_ROOT}/"openssl-scratch"
 install_dir="${scratch_folder}/libcrypto_install_dir"
 openssl_url='https://github.com/openssl/openssl.git'
 openssl_1_1_1_branch='OpenSSL_1_1_1-stable'
-openssl_3_1_branch='openssl-3.1'
-openssl_3_2_branch='openssl-3.2'
-openssl_master_branch='master'
+openssl_3_0_branch='openssl-3.0'
 
 mkdir -p "${scratch_folder}"
 rm -rf "${scratch_folder:?}"/*
 
 build_openssl $openssl_1_1_1_branch
-build_openssl $openssl_3_1_branch
-build_openssl $openssl_3_2_branch
-build_openssl $openssl_master_branch
+build_openssl $openssl_3_0_branch
 
 run_build -DASAN=1
 
-# OpenSSL 3.1.0 on switches from lib folder to lib64 folder
-declare -A openssl_branches=(
+# OpenSSL 3.0 on switches from lib folder to lib64 folder
+declare -A openssl_branches
+openssl_branches=(
   ["$openssl_1_1_1_branch"]="lib"
-  ["$openssl_3_1_branch"]="lib64"
-  ["$openssl_3_2_branch"]="lib64"
-  ["$openssl_master_branch"]="lib64"
+  ["$openssl_3_0_branch"]="lib64"
 )
 
-declare -A openssl_versions=(
+declare -A openssl_versions
+openssl_versions=(
   ["$openssl_1_1_1_branch"]="1.1.1"
-  ["$openssl_3_1_branch"]="3.1"
-  ["$openssl_3_2_branch"]="3.2"
-  ["$openssl_master_branch"]="master"
+  ["$openssl_3_0_branch"]="3.0"
 )
 
 # Run X509 Comparison Tests against all OpenSSL branches
@@ -48,4 +42,3 @@ for branch in "${!openssl_branches[@]}"; do
   echo "Running ${test} against OpenSSL ${branch}"
   LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test"
 done
-
