@@ -26,6 +26,7 @@ struct BlowfishTestCase {
   uint8_t ecb_ciphertext[16];
   uint8_t cbc_ciphertext[24];
   uint8_t cfb_ciphertext[16];
+  uint8_t ofb_ciphertext[16];
 };
 
 static const BlowfishTestCase kTests[] = {
@@ -43,6 +44,8 @@ static const BlowfishTestCase kTests[] = {
          0xd5, 0xf8, 0x1a, 0x6c, 0xf0, 0x99, 0x34, 0x94},
         {0xfd, 0x65, 0xc5, 0xa6, 0x07, 0x07, 0xb5, 0xf3, 0x2e, 0xfb, 0x12, 0xc3,
          0x7f, 0x45, 0x37, 0x54},
+        {0xfd, 0x65, 0xc5, 0xa6, 0x07, 0x07, 0xb5, 0xf3, 0x3a, 0x27, 0x62, 0xbe,
+         0xfe, 0xb8, 0x14, 0x91},
     },
     {
         {0x5d, 0x98, 0xa9, 0xd2, 0x27, 0x5d, 0xc8, 0x8c, 0x8c, 0xee, 0x23, 0x7f,
@@ -57,6 +60,8 @@ static const BlowfishTestCase kTests[] = {
          0x0a, 0xd3, 0xa9, 0x63, 0x78, 0xac, 0x82, 0x64},
         {0x43, 0x2f, 0xf3, 0x23, 0xf4, 0x5c, 0xbf, 0x05, 0x53, 0x3c, 0x9e, 0xd6,
          0xd3, 0xd2, 0xc0, 0xf0},
+        {0x43, 0x2f, 0xf3, 0x23, 0xf4, 0x5c, 0xbf, 0x05, 0xeb, 0x7e, 0xde, 0xc5,
+         0xd7, 0xe4, 0xf4, 0x3e},
     },
 };
 
@@ -194,3 +199,37 @@ TEST(Blowfish, CFB64) {
     EXPECT_EQ(Bytes(test.plaintext), Bytes(out));
   }
 }
+
+TEST(Blowfish, OFB) {
+  unsigned test_num = 0;
+  for (const auto &test : kTests) {
+    test_num++;
+    SCOPED_TRACE(test_num);
+
+    uint8_t out[sizeof(test.ofb_ciphertext)];
+    int out_bytes = 0, final_bytes = 0;
+
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), EVP_bf_ofb(), nullptr, test.key,
+                                   test.iv));
+    ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out, &out_bytes, test.plaintext,
+                                  sizeof(test.plaintext)));
+    ASSERT_TRUE(EVP_EncryptFinal_ex(ctx.get(), out + out_bytes, &final_bytes));
+    EXPECT_EQ(static_cast<size_t>(out_bytes + final_bytes),
+              sizeof(test.plaintext));
+    EXPECT_EQ(Bytes(test.ofb_ciphertext), Bytes(out));
+
+    bssl::ScopedEVP_CIPHER_CTX decrypt_ctx;
+    ASSERT_TRUE(EVP_DecryptInit_ex(decrypt_ctx.get(), EVP_bf_ofb(), nullptr,
+                                   test.key, test.iv));
+    ASSERT_TRUE(EVP_DecryptUpdate(decrypt_ctx.get(), out, &out_bytes,
+                                  test.ofb_ciphertext,
+                                  sizeof(test.ofb_ciphertext)));
+    ASSERT_TRUE(
+        EVP_DecryptFinal_ex(decrypt_ctx.get(), out + out_bytes, &final_bytes));
+    EXPECT_EQ(static_cast<size_t>(out_bytes + final_bytes),
+              sizeof(test.plaintext));
+    EXPECT_EQ(Bytes(test.plaintext), Bytes(out));
+  }
+}
+
