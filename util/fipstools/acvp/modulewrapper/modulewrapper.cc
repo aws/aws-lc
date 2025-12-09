@@ -3385,7 +3385,7 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
 
   // Group all related functions for each variant
   struct MLDSA_functions {
-    void (*params_init)(ml_dsa_params*);
+    size_t signature_bytes;
     SignInternalFunc sign_internal;
     SignInternalFunc extmu_sign_internal;
   };
@@ -3394,19 +3394,19 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   // to account for the random inputs (rnd).
   MLDSA_functions mldsa_funcs;
   if (nid == NID_MLDSA44) {
-    mldsa_funcs = {ml_dsa_44_params_init, ml_dsa_44_sign_internal,
+    mldsa_funcs = {MLDSA44_SIGNATURE_BYTES, ml_dsa_44_sign_internal,
                    ml_dsa_extmu_44_sign_internal};
   } else if (nid == NID_MLDSA65) {
-    mldsa_funcs = {ml_dsa_65_params_init, ml_dsa_65_sign_internal,
+    mldsa_funcs = {MLDSA65_SIGNATURE_BYTES, ml_dsa_65_sign_internal,
                    ml_dsa_extmu_65_sign_internal};
   } else if (nid == NID_MLDSA87) {
-    mldsa_funcs = {ml_dsa_87_params_init, ml_dsa_87_sign_internal,
+    mldsa_funcs = {MLDSA87_SIGNATURE_BYTES, ml_dsa_87_sign_internal,
                    ml_dsa_extmu_87_sign_internal};
   } else {
     return false;
   }
 
-  size_t signature_len = params.bytes;
+  size_t signature_len = mldsa_funcs.signature_bytes;
   std::vector<uint8_t> signature(signature_len);
 
   if (!extmu.empty()) {
