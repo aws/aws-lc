@@ -100,6 +100,45 @@ static bssl::UniquePtr<EVP_PKEY> read_private_der(BIO *in_bio,
   return bssl::UniquePtr<EVP_PKEY>(d2i_PrivateKey_bio(in_bio, nullptr));
 }
 
+// Returns 1 if PEM is encrypted, 0 if not, -1 on error
+static int is_pem_encrypted(BIO *bio) {
+    char *name_ptr = nullptr;
+    char *header_ptr = nullptr;
+    unsigned char *data_ptr = nullptr;
+    long len = 0;
+
+    // Read the PEM block
+    if (!PEM_read_bio(bio, &name_ptr, &header_ptr, &data_ptr, &len)) {
+        return -1;  // Error reading PEM
+    }
+
+    // We are responsible for freeing these
+    bssl::UniquePtr<char> name(name_ptr);
+    bssl::UniquePtr<char> header(header_ptr);
+    bssl::UniquePtr<uint8_t> data(data_ptr);
+
+    int is_encrypted = 0;
+
+    // Check if there's a header with encryption info
+    if (name && strcmp(name.get(), "ENCRYPTED PRIVATE KEY") == 0) {
+        is_encrypted = 1;
+    }
+    // Check for traditional PEM encryption (by header)
+    else if (header && header.get()[0] != '\0') {
+        EVP_CIPHER_INFO cipher;
+        if (PEM_get_EVP_CIPHER_INFO(header.get(), &cipher)) {
+            is_encrypted = (cipher.cipher != nullptr) ? 1 : 0;
+        }
+    }
+
+    // Rewind buffer so it can be parsed to obtain a private key
+    if (BIO_seek(bio, 0) >= 0) {
+      return is_encrypted;
+    }
+
+    return -1;
+}
+
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-in", kOptionalArgument, "Input file"},
@@ -133,7 +172,7 @@ bool pkcs8Tool(const args_list_t &args) {
   bssl::UniquePtr<EVP_PKEY> pkey;
   const EVP_CIPHER *cipher = nullptr;
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
-
+  bool input_is_encrypted = false;
 
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
                                      kArguments)) {
@@ -193,6 +232,18 @@ bool pkcs8Tool(const args_list_t &args) {
   if (!in) {
     fprintf(stderr, "Cannot open input file\n");
     return false;
+  } else if (inform == "PEM") {
+    switch(is_pem_encrypted(in.get())) {
+      case 0:
+        input_is_encrypted = false;
+        break;
+      case 1:
+        input_is_encrypted = true;
+        break;
+      default:
+        fprintf(stderr, "Unable to load PEM file\n");
+        return false;
+    }
   }
   if (!validate_bio_size(in.get())) {
     return false;
@@ -218,7 +269,11 @@ bool pkcs8Tool(const args_list_t &args) {
                 in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str())
                 .release());
   if (!pkey) {
-    fprintf(stderr, "Unable to load private key\n");
+    if (input_is_encrypted) {
+      fprintf(stderr, "Error decrypting key\n");
+    } else {
+      fprintf(stderr, "Unable to load private key\n");
+    }
     return false;
   }
 
