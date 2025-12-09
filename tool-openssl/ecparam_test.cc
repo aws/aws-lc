@@ -123,6 +123,24 @@ TEST_F(EcparamTest, EcparamToolBasicTest) {
       << "Wrong curve in output";
 }
 
+// Test basic functionality
+TEST_F(EcparamTest, secp256r1) {
+  args_list_t args = {"-name", "secp256r1", "-out", out_path};
+
+  EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
+
+  // Validate it's actually parseable EC parameters in PEM format
+  bssl::UniquePtr<BIO> bio(BIO_new_file(out_path, "r"));
+  ASSERT_TRUE(bio) << "Cannot open output file";
+  bssl::UniquePtr<EC_GROUP> group(
+      PEM_read_bio_ECPKParameters(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(group) << "Output is not valid EC parameters";
+
+  // Verify it's the correct curve
+  ASSERT_EQ(NID_X9_62_prime256v1, EC_GROUP_get_curve_name(group.get()))
+      << "Wrong curve in output";
+}
+
 TEST_F(EcparamTest, EcparamToolNooutTest) {
   args_list_t args = {"-name", "prime256v1", "-noout", "-out", out_path};
 

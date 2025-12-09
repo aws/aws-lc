@@ -17,6 +17,12 @@ static bssl::UniquePtr<EC_GROUP> ValidateAndCreateECGroup(
     nid = EC_curve_nist2nid(curve_name.c_str());
   }
 
+  // We only allow 1 short name per NID but P-256 are synonymously addressible
+  // by secp256r1 and prime256v1
+  if (nid == NID_undef && isStringUpperCaseEqual(curve_name, "secp256r1")) {
+    nid = NID_X9_62_prime256v1;
+  }
+
   bssl::UniquePtr<EC_GROUP> group;
   if (nid != NID_undef) {
     group.reset(EC_GROUP_new_by_curve_name(nid));
