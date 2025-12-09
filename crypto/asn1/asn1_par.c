@@ -56,6 +56,7 @@
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
+#include "../internal.h"
 
 // Forward declarations
 static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, int offset,
@@ -117,6 +118,8 @@ const char *ASN1_tag2str(int tag) {
 }
 
 int ASN1_parse(BIO *bp, const unsigned char *pp, long len, int indent) {
+  GUARD_PTR(bp);
+  GUARD_PTR(pp);
   return asn1_parse2(bp, &pp, len, 0, 0, indent, 0);
 }
 
@@ -173,21 +176,21 @@ static int asn1_parse_constructed_type(
     const unsigned char *original_start, long *object_length, int parse_flags,
     int offset, int depth, int indent, int dump) {
   const unsigned char *start_pos = *current_pos;
-  const unsigned char *constructed_end = *current_pos + *object_length;
-  int parse_result;
 
-  if (!bp || !current_pos || !total_end || !original_start || !object_length) {
-    return 0;
-  }
+  GUARD_PTR(bp);
+  GUARD_PTR(current_pos);
+  GUARD_PTR(total_end);
+  GUARD_PTR(original_start);
+  GUARD_PTR(object_length);
 
   if (BIO_write(bp, "\n", 1) <= 0) {
     return 0;
   }
 
-  if ((parse_flags == 0x21) && (*object_length == 0)) {
+  if ((parse_flags == (V_ASN1_CONSTRUCTED | 1)) && (*object_length == 0)) {
     // Indefinite length constructed object
     for (;;) {
-      parse_result = asn1_parse2(
+      const int parse_result = asn1_parse2(
           bp, current_pos, (long)(total_end - *current_pos),
           offset + (*current_pos - original_start), depth + 1, indent, dump);
       if (parse_result == 0) {
@@ -200,13 +203,18 @@ static int asn1_parse_constructed_type(
     }
   } else {
     // Definite length constructed object
+    const unsigned char *constructed_end = *current_pos + *object_length;
     long remaining_length = *object_length;
+
+    if(constructed_end > total_end) {
+      return 0;
+    }
 
     while (*current_pos < constructed_end) {
       start_pos = *current_pos;
-      parse_result = asn1_parse2(bp, current_pos, remaining_length,
-                                 offset + (*current_pos - original_start),
-                                 depth + 1, indent, dump);
+      const int parse_result = asn1_parse2(
+          bp, current_pos, remaining_length,
+          offset + (*current_pos - original_start), depth + 1, indent, dump);
       if (parse_result == 0) {
         return 0;
       }
@@ -241,6 +249,9 @@ static int asn1_parse_primitive_type(BIO *bp, const unsigned char *object_start,
       (tag == V_ASN1_UTCTIME) || (tag == V_ASN1_GENERALIZEDTIME)) {
     if (BIO_write(bp, ":", 1) <= 0) {
       goto end;
+    }
+    if(object_length > INT_MAX) {
+      return 0;
     }
     if ((object_length > 0) &&
         BIO_write(bp, (const char *)current_pos, (int)object_length) !=
@@ -444,13 +455,12 @@ end:
 static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                        int offset, int depth, int indent, int dump) {
   const unsigned char *current_pos, *total_end, *object_start;
-  long object_length;
+  long object_length = 0;
   int tag, xclass, return_value = 0;
-  int header_length, parse_flags;
+  int header_length = 0, parse_flags = 0;
 
-  if (!bp || !pp) {
-    return 0;
-  }
+  GUARD_PTR(bp);
+  GUARD_PTR(pp);
 
   if (depth > ASN1_PARSE_MAXDEPTH) {
     BIO_puts(bp, "BAD RECURSION DEPTH\n");
