@@ -939,7 +939,8 @@ struct WycheproofKEM {
   size_t ciphertext_len;
   size_t shared_secret_len;
   const char *encaps_test;
-  const char *decaps_test;
+  const char *decaps_seed_test;
+  const char *decaps_noseed_test;
 };
 
 //= third_party/vectors/vectors_spec.md#wycheproof
@@ -957,6 +958,7 @@ static const struct WycheproofKEM kWycheproofKEMs[] = {
         32,
         "mlkem_512_encaps_test.txt",
         "mlkem_512_test.txt",
+        "mlkem_512_decaps_test.txt",
     },
     {
         "ML-KEM-768",
@@ -965,6 +967,7 @@ static const struct WycheproofKEM kWycheproofKEMs[] = {
         32,
         "mlkem_768_encaps_test.txt",
         "mlkem_768_test.txt",
+        "mlkem_768_decaps_test.txt",
     },
     {
         "ML-KEM-1024",
@@ -973,6 +976,7 @@ static const struct WycheproofKEM kWycheproofKEMs[] = {
         32,
         "mlkem_1024_encaps_test.txt",
         "mlkem_1024_test.txt",
+        "mlkem_1024_decaps_test.txt",
     },
 };
 
@@ -1044,7 +1048,7 @@ TEST_P(WycheproofKEMTest, Encaps) {
   });
 }
 
-TEST_P(WycheproofKEMTest, Decaps) {
+TEST_P(WycheproofKEMTest, DecapsSeed) {
   std::string test_path =
       std::string(kWycheproofV1Path) + GetParam().decaps_test;
   FileTestGTest(test_path.c_str(), [&](FileTest *t) {
@@ -1098,6 +1102,69 @@ TEST_P(WycheproofKEMTest, Decaps) {
       EXPECT_TRUE(decaps_result);
       EXPECT_EQ(Bytes(shared_secret.data(), shared_secret_len),
                 Bytes(expected_k));
+    } else {
+      EXPECT_FALSE(decaps_result)
+          << "Expected decapsulation to fail for flags: "
+          << result.StringifyFlags();
+    }
+  });
+}
+
+// Test decapsulation with expanded decaps keys
+TEST_P(WycheproofKEMTest, DecapsNoSeed) {
+  std::string test_path =
+      std::string(kWycheproofV1Path) + GetParam().decaps_raw_key_test;
+  FileTestGTest(test_path.c_str(), [&](FileTest *t) {
+    std::vector<uint8_t> dk, ciphertext;
+    std::string param_set;
+
+    ASSERT_TRUE(t->GetInstruction(&param_set, "parameterSet"));
+    ASSERT_EQ(param_set, GetParam().name);
+
+    ASSERT_TRUE(t->GetBytes(&dk, "dk"));
+    ASSERT_TRUE(t->GetBytes(&ciphertext, "c"));
+
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    // Create key from raw private key bytes
+    bssl::UniquePtr<EVP_PKEY> pkey(
+        EVP_PKEY_kem_new_raw_secret_key(GetParam().nid, dk.data(), dk.size()));
+
+    // Key creation should fail for incorrect key length
+    if (result.HasFlag("IncorrectDecapsulationKeyLength")) {
+      EXPECT_FALSE(pkey)
+          << "Expected key creation to fail for incorrect key length";
+      return;
+    }
+
+    // Warn if we successfully imported an invalid private key
+    if (pkey && result.HasFlag("InvalidDecapsulationKey")) {
+      fprintf(stderr,
+              "WARNING: Successfully imported correct-length-but-invalid %s "
+              "decapsulation key. This is allowed by FIPS 203.\n",
+              param_set.c_str());
+    }
+
+    // For valid test cases, key creation should succeed
+    if (result.IsValid()) {
+      ASSERT_TRUE(pkey) << "Key creation failed unexpectedly for flags: "
+                        << result.StringifyFlags();
+    }
+
+    // Perform decapsulation
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+
+    std::vector<uint8_t> shared_secret(GetParam().shared_secret_len);
+    size_t shared_secret_len = shared_secret.size();
+    int decaps_result = EVP_PKEY_decapsulate(
+        ctx.get(), shared_secret.data(), &shared_secret_len, ciphertext.data(),
+        ciphertext.size());
+
+    if (result.IsValid()) {
+      EXPECT_TRUE(decaps_result)
+          << "Expected decapsulation to succeed for valid test case";
     } else {
       EXPECT_FALSE(decaps_result)
           << "Expected decapsulation to fail for flags: "
