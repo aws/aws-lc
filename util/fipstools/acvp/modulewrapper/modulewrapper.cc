@@ -58,7 +58,6 @@
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa.h"
-#include "../../../../crypto/fipsmodule/ml_dsa/ml_dsa_ref/params.h"
 #include "../../../../crypto/fipsmodule/ml_kem/ml_kem.h"
 
 #include "modulewrapper.h"
@@ -3334,34 +3333,36 @@ static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   const Span<const uint8_t> seed = args[0];
 
-  //init params of the correct size based on provided nid
-  ml_dsa_params params;
+  size_t public_key_bytes;
+  size_t private_key_bytes;
+
   if (nid == NID_MLDSA44) {
-    ml_dsa_44_params_init(&params);
-  }
-  else if (nid == NID_MLDSA65) {
-    ml_dsa_65_params_init(&params);
-  }
-  else if (nid == NID_MLDSA87) {
-    ml_dsa_87_params_init(&params);
+    public_key_bytes = MLDSA44_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA44_PRIVATE_KEY_BYTES;
+  } else if (nid == NID_MLDSA65) {
+    public_key_bytes = MLDSA65_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA65_PRIVATE_KEY_BYTES;
+  } else if (nid == NID_MLDSA87) {
+    public_key_bytes = MLDSA87_PUBLIC_KEY_BYTES;
+    private_key_bytes = MLDSA87_PRIVATE_KEY_BYTES;
+  } else {
+    return false;
   }
 
   // create public and private key buffers
-  std::vector<uint8_t> public_key(params.public_key_bytes);
-  std::vector<uint8_t> private_key(params.secret_key_bytes);
+  std::vector<uint8_t> public_key(public_key_bytes);
+  std::vector<uint8_t> private_key(private_key_bytes);
 
   // generate the keys
   if (nid == NID_MLDSA44) {
     if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
-  }
-  else if (nid == NID_MLDSA65) {
+  } else if (nid == NID_MLDSA65) {
     if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
-  }
-  else if (nid == NID_MLDSA87) {
+  } else if (nid == NID_MLDSA87) {
     if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
       return false;
     }
@@ -3386,7 +3387,6 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
 
   // Group all related functions for each variant
   struct MLDSA_functions {
-    void (*params_init)(ml_dsa_params*);
     SignInternalFunc sign_internal;
     SignInternalFunc extmu_sign_internal;
   };
@@ -3394,23 +3394,22 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   // Select function set based on NID. We must use |ml_dsa_*_sign_internal| here,
   // to account for the random inputs (rnd).
   MLDSA_functions mldsa_funcs;
+  size_t signature_bytes;
+  
   if (nid == NID_MLDSA44) {
-    mldsa_funcs = {ml_dsa_44_params_init, ml_dsa_44_sign_internal,
-                   ml_dsa_extmu_44_sign_internal};
+    mldsa_funcs = {ml_dsa_44_sign_internal, ml_dsa_extmu_44_sign_internal};
+    signature_bytes = MLDSA44_SIGNATURE_BYTES;
   } else if (nid == NID_MLDSA65) {
-    mldsa_funcs = {ml_dsa_65_params_init, ml_dsa_65_sign_internal,
-                   ml_dsa_extmu_65_sign_internal};
+    mldsa_funcs = {ml_dsa_65_sign_internal, ml_dsa_extmu_65_sign_internal};
+    signature_bytes = MLDSA65_SIGNATURE_BYTES;
   } else if (nid == NID_MLDSA87) {
-    mldsa_funcs = {ml_dsa_87_params_init, ml_dsa_87_sign_internal,
-                   ml_dsa_extmu_87_sign_internal};
+    mldsa_funcs = {ml_dsa_87_sign_internal, ml_dsa_extmu_87_sign_internal};
+    signature_bytes = MLDSA87_SIGNATURE_BYTES;
   } else {
     return false;
   }
 
-  ml_dsa_params params;
-  mldsa_funcs.params_init(&params);
-
-  size_t signature_len = params.bytes;
+  size_t signature_len = signature_bytes;
   std::vector<uint8_t> signature(signature_len);
 
   if (!extmu.empty()) {
