@@ -7,6 +7,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/rsa.h>
 
 #include "../internal.h"
 #include "internal.h"

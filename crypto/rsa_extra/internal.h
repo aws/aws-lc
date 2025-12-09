@@ -67,11 +67,6 @@ OPENSSL_EXPORT int RSASSA_PSS_PARAMS_create(const EVP_MD *sigmd,
                                             const EVP_MD *mgf1md, int saltlen,
                                             RSASSA_PSS_PARAMS **out);
 
-// RSASSA_PSS_PARAMS_get return one on success and zero on failure.
-// When success, |*md|, |*mgf1md| and |saltlen| will get assigned.
-OPENSSL_EXPORT int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss,
-                                         const EVP_MD **md,
-                                         const EVP_MD **mgf1md, int *saltlen);
 
 int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
                                       size_t max_out, const uint8_t *from,
