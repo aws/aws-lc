@@ -1,0 +1,177 @@
+name: image-build-windows
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-windows
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+  DOCKER_BUILDKIT: 0
+permissions:
+  contents: read
+jobs:
+  x86_64_build:
+    # TODO: For some odd reason instance-size needs to be set here otherwise it won't use the fleet?
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:windows-ec2-2022
+        instance-size:medium
+        fleet:windows-image-build-large
+    outputs:
+      ltsc2022: ${{ steps.images.outputs.ltsc2022 }}
+      vs2015: ${{ steps.images.outputs.vs2015 }}
+      vs2017: ${{ steps.images.outputs.vs2017 }}
+      vs2019: ${{ steps.images.outputs.vs2019 }}
+      vs2022: ${{ steps.images.outputs.vs2022 }}
+      sde: ${{ steps.images.outputs.sde }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        shell: pwsh
+        run: |
+          "staging_url=$env:ECR_STAGING_REPO" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Generate Stagining Image Names
+        id: images
+        shell: pwsh
+        run: |
+          $ltsc2022 = [guid]::NewGuid().ToString()
+          $vs2015   = [guid]::NewGuid().ToString()
+          $vs2017   = [guid]::NewGuid().ToString()
+          $vs2019   = [guid]::NewGuid().ToString()
+          $vs2022   = [guid]::NewGuid().ToString()
+          $sde      = [guid]::NewGuid().ToString()
+          $staging = "${{ steps.ecr.outputs.staging_url }}"
+          "ltsc2022=${staging}:$ltsc2022" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2015=${staging}:$vs2015"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2017=${staging}:$vs2017"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2019=${staging}:$vs2019"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2022=${staging}:$vs2022"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sde=${staging}:$sde"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Build Container (ltsc2022)
+        shell: pwsh
+        run: >
+          docker build
+          -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+          -t ${{ steps.images.outputs.ltsc2022 }}
+          --target base
+          ./.github/docker_images/aws-lc/windows
+      - name: Build Container (vs2015)
+        shell: pwsh
+        run: >
+          docker build
+          -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+          -t ${{ steps.images.outputs.vs2015 }}
+          --target vs2015
+          ./.github/docker_images/aws-lc/windows
+      - name: Build Container (vs2017)
+        shell: pwsh
+        run: >
+          docker build
+          -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+          -t ${{ steps.images.outputs.vs2017 }}
+          --target vs2017
+          ./.github/docker_images/aws-lc/windows
+      - name: Build Container (vs2019)
+        shell: pwsh
+        run: >
+          docker build
+          -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+          -t ${{ steps.images.outputs.vs2019 }}
+          --target vs2019
+          ./.github/docker_images/aws-lc/windows
+      - name: Build Container (vs2022)
+        shell: pwsh
+        run: >
+          docker build
+          -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+          -t ${{ steps.images.outputs.vs2022 }}
+          --target vs2022
+          ./.github/docker_images/aws-lc/windows
+      - name: Build Container (sde)
+        shell: pwsh
+        run: >
+          docker build
+          -f ./.github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
+          -t ${{ steps.images.outputs.sde }}
+          --target ltsc2022_sde
+          ./.github/docker_images/aws-lc/windows
+      - name: Push Container to Staging
+        shell: pwsh
+        run: |
+          docker push ${{ steps.images.outputs.ltsc2022 }}
+          docker push ${{ steps.images.outputs.vs2015 }}
+          docker push ${{ steps.images.outputs.vs2017 }}
+          docker push ${{ steps.images.outputs.vs2019 }}
+          docker push ${{ steps.images.outputs.vs2022 }}
+          docker push ${{ steps.images.outputs.sde }}
+
+  # TODO: For some odd reason instance-size needs to be set here otherwise it won't use the fleet?
+  x86_64_push:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:windows-ec2-2022
+        instance-size:medium
+        fleet:windows-image-build-large
+    needs:
+      - x86_64_build
+    outputs:
+      ltsc2022: ${{ steps.images.outputs.ltsc2022 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Pull Docker Images
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.ltsc2022 }}
+          docker pull ${{ needs.x86_64_build.outputs.vs2015 }}
+          docker pull ${{ needs.x86_64_build.outputs.vs2017 }}
+          docker pull ${{ needs.x86_64_build.outputs.vs2019 }}
+          docker pull ${{ needs.x86_64_build.outputs.vs2022 }}
+          docker pull ${{ needs.x86_64_build.outputs.sde }}
+      - name: Generate Image Names
+        id: images
+        run: |
+          $registry = "${{ steps.login-ecr.outputs.registry }}/aws-lc/windows"
+          "ltsc2022=${registry}:ltsc2022"      | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2015=${registry}:ltsc2022_vs2015" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2017=${registry}:ltsc2022_vs2017" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2019=${registry}:ltsc2022_vs2019" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "vs2022=${registry}:ltsc2022_vs2022" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sde=${registry}:ltsc2022_sde"       | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Tag Container
+        shell: pwsh
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.ltsc2022 }} ${{ steps.images.outputs.ltsc2022 }}
+          docker tag ${{ needs.x86_64_build.outputs.vs2015 }} ${{ steps.images.outputs.vs2015 }}
+          docker tag ${{ needs.x86_64_build.outputs.vs2017 }} ${{ steps.images.outputs.vs2017 }}
+          docker tag ${{ needs.x86_64_build.outputs.vs2019 }} ${{ steps.images.outputs.vs2019 }}
+          docker tag ${{ needs.x86_64_build.outputs.vs2022 }} ${{ steps.images.outputs.vs2022 }}
+          docker tag ${{ needs.x86_64_build.outputs.sde }} ${{ steps.images.outputs.sde }}
+          docker push ${{ steps.images.outputs.ltsc2022 }}
+          docker push ${{ steps.images.outputs.vs2015 }}
+          docker push ${{ steps.images.outputs.vs2017 }}
+          docker push ${{ steps.images.outputs.vs2019 }}
+          docker push ${{ steps.images.outputs.vs2022 }}
+          docker push ${{ steps.images.outputs.sde }}

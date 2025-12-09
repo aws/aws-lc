@@ -6,6 +6,11 @@ set -ex
 
 source tests/ci/common_posix_setup.sh
 
+# Our NetBSD CI environment gives a "No route to host" error when connecting to `ocsp.sectigo.com:80`.
+if [[ "$KERNEL_NAME" == "NetBSD" ]]; then
+  export GTEST_FILTER="-*.AmazonTrustServices*"
+fi
+
 if [ "$PLATFORM" != "amd64" ] && [ "$PLATFORM" != "x86_64" ]; then
     # ARM64 platforms are tested via emulation.
     # We narrow testing to libcrypto to avoid exceeding 1 hour duration
@@ -41,8 +46,11 @@ build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 echo "Testing AWS-LC static library in release mode."
 build_and_test -DCMAKE_BUILD_TYPE=Release
 
-echo "Testing AWS-LC shared library in FIPS Release mode."
-fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
+# The FIPS builds fail on NetBSD
+if [[ "$KERNEL_NAME" != "NetBSD" ]]; then
+  echo "Testing AWS-LC shared library in FIPS Release mode."
+  fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
-echo "Testing AWS-LC static library in FIPS Release mode."
-fips_build_and_test -DCMAKE_BUILD_TYPE=Release
+  echo "Testing AWS-LC static library in FIPS Release mode."
+  fips_build_and_test -DCMAKE_BUILD_TYPE=Release
+fi

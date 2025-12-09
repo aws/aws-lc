@@ -8,7 +8,7 @@
 
 static const argument_t kArguments[] = {
         { "-help", kBooleanArgument, "Display option summary" },
-        { "-connect", kRequiredArgument,
+        { "-connect", kOptionalArgument,
                 "The hostname and port of the server to connect to, e.g. foo.com:443" },
         { "-CAfile", kOptionalArgument,
                 "A file containing trusted certificates to use during server authentication "
@@ -25,6 +25,15 @@ static const argument_t kArguments[] = {
                 "Currently the verify operation continues after errors so all the problems "
                 "with a certificate chain can be seen. As a side effect the connection will "
                 "never fail due to a server certificate verify failure." },
+        { "-cipher", kOptionalArgument,
+                "Cipher list to send to the server. This list will be used to specify the "
+                "ciphers that the client is willing to use during the SSL/TLS handshake." },
+        { "-tls1_1", kBooleanArgument,
+                "Use TLS version 1.1 only." },
+        { "-tls1_2", kBooleanArgument,
+                "Use TLS version 1.2 only." },
+        { "-tls1_3", kBooleanArgument,
+                "Use TLS version 1.3 only." },
         { "", kOptionalArgument, "" },
 };
 
@@ -43,6 +52,13 @@ bool SClientTool(const args_list_t &args) {
     fprintf(stderr, "Usage: s_client [options] [host:port]\n");
     PrintUsage(kArguments);
     return true;
+  }
+
+  // Validate that -connect is provided
+  if (!HasArgument(parsed_args, "-connect")) {
+    fprintf(stderr, "Missing value for required argument: -connect\n");
+    PrintUsage(kArguments);
+    return false;
   }
 
   // Convert to std::map for DoClient compatibility

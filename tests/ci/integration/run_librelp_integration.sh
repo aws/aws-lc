@@ -10,14 +10,14 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - librelp
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
-#      - LIBRELP_BUILD_FOLDER
+#  - SCRATCH_FOLDER
+#    - librelp
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
+#    - LIBRELP_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/LIBRELP_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/LIBRELP_BUILD_ROOT"
 LIBRELP_SRC_FOLDER="${SCRATCH_FOLDER}/librelp"
 LIBRELP_BUILD_FOLDER="${SCRATCH_FOLDER}/librelp-aws-lc"
 LIBRELP_PATCH_BUILD_FOLDER="${SRC_ROOT}/tests/ci/integration/librelp_patch"
@@ -26,7 +26,7 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
 function librelp_build() {
   autoreconf -fi  
-  PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure --enable-tls-openssl
+  PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure --enable-tls-openssl --enable-compile-warnings=yes
   make -j ${NUM_CPU_THREADS}
 }
 

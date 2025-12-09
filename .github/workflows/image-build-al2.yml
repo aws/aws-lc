@@ -1,0 +1,283 @@
+name: image-build-al2
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: image-build-al2
+        required: false
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+      - .github/docker_images/scripts/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+      - .github/docker_images/scripts/**
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+
+jobs:
+  x86_64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:medium
+    outputs:
+      al2: ${{ steps.images.outputs.al2 }}
+      al2_sde: ${{ steps.images.outputs.al2_sde }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Stagining Image Names
+        id: images
+        run: |
+          echo al2=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+          echo al2_sde=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          target: al2
+          tags: ${{ steps.images.outputs.al2 }}
+          push: true
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          target: al2_sde
+          tags: ${{ steps.images.outputs.al2_sde }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container (al2)
+        with:
+          image: ${{ steps.images.outputs.al2 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 2.8
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake3 3.17
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.16
+            # Check Default GCC Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.3
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.3
+            # Check Default Clang Compilers
+            source /opt/compiler-env/setup-clang.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
+            # Check Clang 11 Compilers
+            source /opt/compiler-env/setup-clang-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container (al2_sde)
+        with:
+          image: ${{ steps.images.outputs.al2_sde }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 2.8
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake3 3.17
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.16
+            # Check Default GCC Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.3
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.3
+            # Check Default Clang Compilers
+            source /opt/compiler-env/setup-clang.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
+            # Check Clang 11 Compilers
+            source /opt/compiler-env/setup-clang-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
+            sde --version | grep 9.44
+
+  aarch64_build:
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:medium
+    outputs:
+      al2: ${{ steps.images.outputs.al2 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Generate Staging Image Names
+        id: images
+        run: |
+          echo al2=${{ steps.ecr.outputs.staging_url }}:$(uuidgen) >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          file: ./.github/docker_images/aws-lc/amazonlinux/Dockerfile.al2
+          context: ./.github/docker_images/aws-lc/amazonlinux
+          build-contexts: |
+            scripts=./.github/docker_images/scripts
+          target: al2
+          tags: ${{ steps.images.outputs.al2 }}
+          push: true
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Validate Container
+        with:
+          image: ${{ steps.images.outputs.al2 }}
+          run: |
+            ./.github/docker_images/scripts/verify-aws-cli-version.sh 2
+            ./.github/docker_images/scripts/verify-go-version.sh 1.25
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake 2.8
+            ./.github/docker_images/scripts/verify-cmake-version.sh cmake3 3.17
+            ./.github/docker_images/scripts/verify-perl-version.sh 5.16
+            # Check Default GCC Compilers
+            source /opt/compiler-env/setup-gcc.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.3
+            # Check GCC 7 Compilers
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 7.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 7.3
+            # Check Default Clang Compilers
+            source /opt/compiler-env/setup-clang.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
+            # Check Clang 11 Compilers
+            source /opt/compiler-env/setup-clang-11.sh
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC clang 11.1
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX clang 11.1
+
+  x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:medium
+    needs:
+      - x86_64_build
+    outputs:
+      al2: ${{ steps.images.outputs.al2 }}
+      al2_sde: ${{ steps.images.outputs.al2_sde }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.x86_64_build.outputs.al2 }}
+          docker pull ${{ needs.x86_64_build.outputs.al2_sde }}
+      - name: Generate Final Image Names
+        id: images
+        run: |
+          echo al2=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2_x86_64 >> "$GITHUB_OUTPUT"
+          echo al2_sde=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2_sde >> "$GITHUB_OUTPUT"
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.x86_64_build.outputs.al2 }} \
+            ${{ steps.images.outputs.al2 }}
+          docker tag ${{ needs.x86_64_build.outputs.al2_sde }} \
+            ${{ steps.images.outputs.al2_sde }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.al2 }}
+          docker push ${{ steps.images.outputs.al2_sde }}
+
+  aarch64_push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:arm-3.0
+      instance-size:medium
+    needs:
+      - aarch64_build
+    outputs:
+      al2: ${{ steps.images.outputs.al2 }}
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Pull Images From Staging
+        run: |
+          docker pull ${{ needs.aarch64_build.outputs.al2 }}
+      - name: Generate Final Image Names
+        id: images
+        run: |
+          echo al2=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2_aarch64 >> "$GITHUB_OUTPUT"
+      - name: Tag Images
+        run: |
+          docker tag ${{ needs.aarch64_build.outputs.al2 }} ${{ steps.images.outputs.al2 }}
+      - name: Push Images
+        run: |
+          docker push ${{ steps.images.outputs.al2 }}
+
+  multiarch_manifest:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on:
+      codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+      image:linux-5.0
+      instance-size:small
+    needs:
+      - x86_64_push
+      - aarch64_push
+    steps:
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Get ECR Registry & Repository Details
+        id: ecr
+        run: |
+          echo registry_url=${ECR_REGISTRY_URL} >> "$GITHUB_OUTPUT"
+      - name: Generate Manifest Name
+        id: images
+        run: |
+          echo al2=${{ steps.ecr.outputs.registry_url }}/aws-lc/amazonlinux:2 >> "$GITHUB_OUTPUT"
+      - name: Create & Push Multi-platform manifest
+        run: |
+          docker manifest create ${{ steps.images.outputs.al2 }} \
+            ${{ needs.x86_64_push.outputs.al2 }} \
+            ${{ needs.aarch64_push.outputs.al2 }}
+      - name: Push Multi-platform manifest
+        run: |
+          docker manifest push ${{ steps.images.outputs.al2 }}

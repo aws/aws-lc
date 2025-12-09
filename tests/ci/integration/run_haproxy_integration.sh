@@ -9,13 +9,13 @@ source tests/ci/common_posix_setup.sh
 # Set up environment.
 
 # SRC_ROOT(aws-lc)
-#  - SCRATCH_FOLDER
-#    - HAPROXY_SRC
-#    - AWS_LC_BUILD_FOLDER
-#    - AWS_LC_INSTALL_FOLDER
+# - SCRATCH_FOLDER
+#   - HAPROXY_SRC
+#   - AWS_LC_BUILD_FOLDER
+#   - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER=${SRC_ROOT}/"scratch"
+SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 HAPROXY_SRC="${SCRATCH_FOLDER}/haproxy"
@@ -23,7 +23,7 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
-  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
+  make CC="${CC:-cc}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 USE_QUIC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
       SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 
   set +e

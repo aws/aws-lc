@@ -1,8 +1,12 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-from aws_cdk import Stack, Duration, aws_ecr as ecr, aws_iam as iam
+import dataclasses
+import typing
+from aws_cdk import Environment, RemovalPolicy, Stack, Duration, aws_ecr as ecr, aws_iam as iam
 from constructs import Construct
+from util.metadata import (AMAZONLINUX_ECR_REPO, ANDROID_ECR_REPO, CENTOS_ECR_REPO, FEDORA_ECR_REPO, UBUNTU_ECR_REPO,
+                           VERIFICATION_ECR_REPO, WINDOWS_ECR_REPO, SCRUTINICE_PRINCIPAL_ROLE_ARN)
 
 
 class EcrStack(Stack):
@@ -13,7 +17,7 @@ class EcrStack(Stack):
 
         repo = ecr.Repository(scope=self, id=id, repository_name=repo_name)
         repo.grant_pull_push(iam.ServicePrincipal("codebuild.amazonaws.com"))
-        repo.grant_pull(iam.ArnPrincipal("arn:aws:iam::222961743098:role/scrutini-ecr"))
+        repo.grant_pull(iam.ArnPrincipal(SCRUTINICE_PRINCIPAL_ROLE_ARN))
         repo.add_lifecycle_rule(
             description="Retain latest images",
             tag_pattern_list=["*_latest"],
@@ -30,3 +34,91 @@ class EcrStack(Stack):
             tag_status=ecr.TagStatus.UNTAGGED,
             max_image_age=Duration.days(1),
         )
+
+
+@dataclasses.dataclass
+class EcrRepoDataClass:
+    cdk_id: str
+    ecr_name: str
+    allow_scrutinice_pull: bool = False
+    allow_codebuild_pull: bool = False
+
+
+class PrivateEcrStackV2(Stack):
+    def __init__(self,
+                 scope: Construct,
+                 id: str,
+                 env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+                 **kwargs) -> None:
+        super().__init__(scope, id, env=env, **kwargs)
+
+        ecr.CfnRepositoryCreationTemplate(self, "pull-through-cache-template",
+                                          applied_for=["PULL_THROUGH_CACHE"],
+                                          description="Used to create pull through cache repositories",
+                                          prefix="ROOT",
+                                          image_tag_mutability="MUTABLE",
+                                          encryption_configuration={
+                                                "encryptionType": "AES256"
+                                          },
+                                          lifecycle_policy="""
+{
+    "rules": [
+        {
+            "rulePriority": 1,
+            "description": "Expire images older than 30 days",
+            "selection": {
+                "tagStatus": "untagged",
+                "countType": "sinceImagePushed",
+                "countUnit": "days",
+                "countNumber": 30
+            },
+            "action": {
+                "type": "expire"
+            }
+        }
+    ]
+}
+""")
+        
+        quay_io_prefixes = ["centos"]
+        for repo in quay_io_prefixes:
+            ecr.CfnPullThroughCacheRule(self, f"quay-io-{repo}",
+                                        ecr_repository_prefix=f"quay.io/{repo}",
+                                        upstream_registry_url="quay.io",
+                                        upstream_repository_prefix=repo)
+
+        for x in [
+            EcrRepoDataClass("aws-lc-ecr-ubuntu", UBUNTU_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-amazonlinux",
+                             AMAZONLINUX_ECR_REPO,
+                             allow_scrutinice_pull=True,
+                             allow_codebuild_pull=True),
+            EcrRepoDataClass("aws-lc-ecr-fedora", FEDORA_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-centos", CENTOS_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-windows", WINDOWS_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-verification", VERIFICATION_ECR_REPO),
+            EcrRepoDataClass("aws-lc-ecr-android", ANDROID_ECR_REPO),
+        ]:
+            EcrPrivateRepo(self, x.cdk_id, repo_name=x.ecr_name,
+                           allow_scrutinice_pull=x.allow_scrutinice_pull,
+                           allow_codebuild_pull=x.allow_codebuild_pull)
+
+
+class EcrPrivateRepo(Construct):
+    """Define private ECR repository to store container images."""
+
+    def __init__(self, scope: Construct, id: str, repo_name: str, *, allow_scrutinice_pull: bool,
+                 allow_codebuild_pull: bool, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
+
+        self.repo = ecr.Repository(
+            scope=self, id=id, repository_name=repo_name, removal_policy=RemovalPolicy.RETAIN)
+        self.repo.add_lifecycle_rule(
+            description="Remove untagged images after 1 day",
+            tag_status=ecr.TagStatus.UNTAGGED,
+            max_image_age=Duration.days(90),
+        )
+        if allow_scrutinice_pull:
+            self.repo.grant_pull(iam.ArnPrincipal(SCRUTINICE_PRINCIPAL_ROLE_ARN))
+        if allow_codebuild_pull:
+            self.repo.grant_pull(iam.ServicePrincipal("codebuild.amazonaws.com"))

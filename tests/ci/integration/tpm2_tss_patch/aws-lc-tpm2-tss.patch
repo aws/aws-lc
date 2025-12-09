@@ -1,18 +1,18 @@
-From 6eb70474d5767afc3a9111cfbfab8ed83f673d87 Mon Sep 17 00:00:00 2001
+From addb67ba10371f03a7ab42a82016f117f2efde10 Mon Sep 17 00:00:00 2001
 From: Justin W Smith <justsmth@amazon.com>
-Date: Fri, 25 Apr 2025 21:18:07 +0000
-Subject: [PATCH] AWS-LC support
+Date: Fri, 14 Nov 2025 13:26:27 +0000
+Subject: [PATCH] Support AWS-LC
 
 ---
  configure.ac                            | 6 ------
  src/tss2-esys/esys_crypto_ossl.c        | 2 +-
- src/tss2-fapi/ifapi_curl.c              | 8 ++++----
+ src/tss2-fapi/ifapi_curl.c              | 6 +++---
  src/tss2-fapi/ifapi_verify_cert_chain.c | 2 +-
- test/unit/fapi-eventlog.c               | 8 +++++---
- 5 files changed, 11 insertions(+), 15 deletions(-)
+ test/unit/fapi-eventlog.c               | 2 +-
+ 5 files changed, 6 insertions(+), 12 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index 6cc3efc8..9029383d 100644
+index 9df86bce..d5f3bbe2 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -189,12 +189,6 @@ AS_IF([test "x$enable_esys" = xyes],
@@ -29,63 +29,52 @@ index 6cc3efc8..9029383d 100644
             TSS2_ESYS_LDFLAGS_CRYPTO="$CRYPTO_LIBS"
         ], [test "x$with_crypto" = xmbed], [
 diff --git a/src/tss2-esys/esys_crypto_ossl.c b/src/tss2-esys/esys_crypto_ossl.c
-index 15e534ce..75043897 100644
+index 50d00c4b..84b16347 100644
 --- a/src/tss2-esys/esys_crypto_ossl.c
 +++ b/src/tss2-esys/esys_crypto_ossl.c
-@@ -752,7 +752,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC * pub_tpm_key,
-                    "Could not duplicate OAEP label", cleanup);
+@@ -711,7 +711,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC *pub_tpm_key,
+         goto_error(r, TSS2_ESYS_RC_MEMORY, "Could not duplicate OAEP label", cleanup);
      }
  
--    if (1 != EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label_copy, (int) strlen(label_copy)+1)) {
-+    if (1 != EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, (uint8_t*)label_copy, strlen(label_copy)+1)) {
+-    if (1 != EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label_copy, (int)strlen(label_copy) + 1)) {
++    if (1 != EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, (uint8_t*)label_copy, (int)strlen(label_copy) + 1)) {
          OPENSSL_free(label_copy);
-         goto_error(r, TSS2_ESYS_RC_GENERAL_FAILURE,
-                    "Could not set RSA label.", cleanup);
+         goto_error(r, TSS2_ESYS_RC_GENERAL_FAILURE, "Could not set RSA label.", cleanup);
+     }
 diff --git a/src/tss2-fapi/ifapi_curl.c b/src/tss2-fapi/ifapi_curl.c
-index 75e81141..79f77fdf 100644
+index 2b92210d..65096b5f 100644
 --- a/src/tss2-fapi/ifapi_curl.c
 +++ b/src/tss2-fapi/ifapi_curl.c
-@@ -88,13 +88,13 @@ ifapi_get_crl_from_cert(X509 *cert, X509_CRL **crl)
+@@ -89,11 +89,11 @@ ifapi_get_crl_from_cert(X509 *cert, X509_CRL **crl) {
      int curl_rc;
  
      *crl = NULL;
--    for (int i = 0; i < sk_DIST_POINT_num(dist_points); i++)
-+    for (size_t i = 0; i < sk_DIST_POINT_num(dist_points); i++)
-     {
-         DIST_POINT *dp = sk_DIST_POINT_value(dist_points, i);
-         DIST_POINT_NAME    *distpoint = dp->distpoint;
-         if (distpoint->type==0)
-         {
--            for (int j = 0; j < sk_GENERAL_NAME_num(distpoint->name.fullname); j++)
-+            for (size_t j = 0; j < sk_GENERAL_NAME_num(distpoint->name.fullname); j++)
-             {
-                 GENERAL_NAME *gen_name = sk_GENERAL_NAME_value(distpoint->name.fullname, j);
+-    for (int i = 0; i < sk_DIST_POINT_num(dist_points); i++) {
++    for (size_t i = 0; i < sk_DIST_POINT_num(dist_points); i++) {
+         DIST_POINT      *dp = sk_DIST_POINT_value(dist_points, i);
+         DIST_POINT_NAME *distpoint = dp->distpoint;
+         if (distpoint->type == 0) {
+-            for (int j = 0; j < sk_GENERAL_NAME_num(distpoint->name.fullname); j++) {
++            for (size_t j = 0; j < sk_GENERAL_NAME_num(distpoint->name.fullname); j++) {
+                 GENERAL_NAME   *gen_name = sk_GENERAL_NAME_value(distpoint->name.fullname, j);
                  ASN1_IA5STRING *asn1_str = gen_name->d.uniformResourceIdentifier;
-@@ -179,7 +179,7 @@ ifapi_curl_verify_ek_cert(
-     X509_STORE_CTX *ctx = NULL;
-     X509_CRL *crl_intermed = NULL;
-     X509_CRL *crl_ek = NULL;
--    int i;
-+    size_t i;
-     size_t ui;
+                 SAFE_FREE(url);
+@@ -173,7 +173,7 @@ ifapi_curl_verify_ek_cert(char *root_cert_pem, char *intermed_cert_pem, char *ek
+     X509_STORE_CTX        *ctx = NULL;
+     X509_CRL              *crl_intermed = NULL;
+     X509_CRL              *crl_ek = NULL;
+-    int                    i;
++    size_t                    i;
+     size_t                 ui;
      AUTHORITY_INFO_ACCESS *info = NULL;
-     ASN1_IA5STRING *uri = NULL;
-@@ -463,7 +463,7 @@ ifapi_get_curl_buffer(unsigned char * url, unsigned char ** buffer,
-         goto out_easy_cleanup;
-     }
- 
--    rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-+    rc = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-     if (rc != CURLE_OK) {
-         LOG_ERROR("curl_easy_setopt for CURLOPT_FOLLOWLOCATION failed: %s",
-                   curl_easy_strerror(rc));
+     ASN1_IA5STRING        *uri = NULL;
 diff --git a/src/tss2-fapi/ifapi_verify_cert_chain.c b/src/tss2-fapi/ifapi_verify_cert_chain.c
-index b495e512..c741c8ad 100644
+index df295d99..3fb475dc 100644
 --- a/src/tss2-fapi/ifapi_verify_cert_chain.c
 +++ b/src/tss2-fapi/ifapi_verify_cert_chain.c
-@@ -64,7 +64,7 @@ char* get_issuer_url(X509 *cert) {
-     AUTHORITY_INFO_ACCESS *info = X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
-     if (!info) return NULL;
+@@ -65,7 +65,7 @@ get_issuer_url(X509 *cert) {
+     if (!info)
+         return NULL;
  
 -    for (int i = 0; i < sk_ACCESS_DESCRIPTION_num(info); i++) {
 +    for (size_t i = 0; i < sk_ACCESS_DESCRIPTION_num(info); i++) {
@@ -93,43 +82,12 @@ index b495e512..c741c8ad 100644
          if (OBJ_obj2nid(ad->method) == NID_ad_ca_issuers && ad->location->type == GEN_URI) {
              ASN1_IA5STRING *uri = ad->location->d.uniformResourceIdentifier;
 diff --git a/test/unit/fapi-eventlog.c b/test/unit/fapi-eventlog.c
-index 3b859e39..796894ee 100644
+index 7e49e112..d3077a96 100644
 --- a/test/unit/fapi-eventlog.c
 +++ b/test/unit/fapi-eventlog.c
-@@ -130,6 +130,7 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
-     uint8_t *eventlog;
-     size_t size;
-     json_object *json_event_list = NULL;
-+#if HAVE_EVP_SM3
-     IFAPI_PCR_REG pcrs[TPM2_MAX_PCRS];
- 
-     TPML_PCR_SELECTION pcr_selection =
-@@ -149,19 +150,20 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
-          .buffer = { 0x15, 0xf4, 0xe6, 0xca, 0x45, 0x7d, 0x1a, 0xf6, 0xbc, 0x49,
-                      0x51, 0x1a, 0x93, 0xba, 0x35, 0x00, 0xad, 0x69, 0xac, 0xc5 },
-         };
--
-+#endif
-     /* Read file to get file size for comparison. */
-     eventlog = file_to_buffer(file, &size);
-     assert_non_null(eventlog);
- 
-     r = ifapi_get_tcg_firmware_event_list(file, pcr_list, pcr_list_size, &json_event_list);
-     assert_int_equal (r, TSS2_RC_SUCCESS);
--
-+#if HAVE_EVP_SM3
-     r = ifapi_calculate_pcrs(json_event_list, &pcr_selection, TPM2_ALG_SHA1, NULL, &pcrs[0]);
-     assert_int_equal (r, TSS2_RC_SUCCESS);
- 
-     /* Compare with the pcr0 value got from system with HCRTM events */
-     assert_true(!memcmp(&expected_pcr0.buffer[0], &pcrs[0].value.buffer[0], 20));
-+#endif
- 
-     json_object_put(json_event_list);
-     SAFE_FREE(eventlog);
-@@ -171,7 +173,7 @@ static void
- check_bios_hcrtm(void **state)
- {
+@@ -163,7 +163,7 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
+ static void
+ check_bios_hcrtm(void **state) {
  
 -#ifdef __FreeBSD__
 +#ifndef HAVE_EVP_SM3

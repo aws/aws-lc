@@ -1,12 +1,17 @@
 name: Miscellaneous test jobs
 on:
   push:
-    branches: [ '*' ]
+    branches: ["*"]
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
 jobs:
   pre-sandbox:
     if: github.repository_owner == 'aws'
@@ -82,10 +87,13 @@ jobs:
   path-has-spaces:
     if: github.repository_owner == 'aws'
     runs-on: ${{ matrix.os }}
+    env:
+      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-14 ]
+        ninja: [ 0, 1 ]
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
@@ -98,14 +106,21 @@ jobs:
         with:
           path: "path has spaces/aws-lc"
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: Setup CMake
+      - name: Setup CMake (Ninja)
+        if:  ${{ matrix.ninja == '1' }}
         uses: threeal/cmake-action@v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
           generator: Ninja
+      - name: Setup CMake
+        if:  ${{ matrix.ninja != '1' }}
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build'
       - name: Build Project
-        run: cmake --build "path has spaces/build" --target all
+        run: cmake --build "path has spaces/build" --target ssl
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
       - name: Setup CMake FIPS
@@ -134,3 +149,21 @@ jobs:
           python-version: '3.11'
       - name: Check for git tag
         run: python ./util/git-tag-check/git-tag-check.py
+  rpmbuild:
+    if: github.repository_owner == 'aws'
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:latest
+          run: |
+            source /opt/compiler-env/setup-gcc.sh
+            ./tests/ci/run_rpmbuild_tests.sh

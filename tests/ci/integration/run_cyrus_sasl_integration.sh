@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - CYRUS_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - CYRUS_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/CYRUS_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/CYRUS_BUILD_ROOT"
 CYRUS_SRC_FOLDER="${SCRATCH_FOLDER}/cyrus"
 CYRUS_BUILD_PREFIX="${CYRUS_SRC_FOLDER}/build/install"
 CYRUS_BUILD_EPREFIX="${CYRUS_SRC_FOLDER}/build/exec-install"

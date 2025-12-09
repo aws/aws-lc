@@ -15,15 +15,21 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 12> kTools = {{
+static const std::array<Tool, 18> kTools = {{
     {"crl", CRLTool},
     {"dgst", dgstTool},
+    {"dhparam", dhparamTool},
+    {"ec", ecTool},
+    {"ecparam", ecparamTool},
+    {"genrsa", genrsaTool},
     {"md5", md5Tool},
     {"pkcs8", pkcs8Tool},
     {"pkey", pkeyTool},
+    {"pkeyutl", pkeyutlTool},
     {"rehash", RehashTool},
     {"req", reqTool},
     {"rsa", rsaTool},
+    {"sha1", sha1Tool},
     {"s_client", SClientTool},
     {"verify", VerifyTool},
     {"version", VersionTool},
@@ -104,7 +110,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  args_list_t args;
+  args_list_t args{};
   for (int i = starting_arg; i < argc; i++) {
     args.emplace_back(argv[i]);
   }

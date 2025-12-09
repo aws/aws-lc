@@ -1,0 +1,36 @@
+name: aws-lc-analytics
+on:
+  push:
+    branches: [main]
+    tags-ignore: ['**']
+permissions:
+  contents: read
+env:
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  analytics:
+    name: analytics-${{ matrix.arch }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:${{ matrix.arch == 'x86_64' && 'linux-5.0' || matrix.arch == 'aarch64' && 'arm-3.0' }}
+        instance-size:large
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+    env:
+      ANALYTICS_BRANCH: ${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2
+          env: |
+            ANALYTICS_BRANCH
+          withCredentials: true
+          run: |
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./tests/ci/run_analytics.sh

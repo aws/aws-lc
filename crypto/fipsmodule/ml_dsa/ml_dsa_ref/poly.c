@@ -228,29 +228,32 @@ void ml_dsa_poly_use_hint(ml_dsa_params *params,
 * Arguments:   - const poly *a: pointer to polynomial
 *              - int32_t B: norm bound
 *
-* Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 1 otherwise.
+* Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 0xFFFFFFFF otherwise.
 **************************************************/
-int ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
+uint32_t ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B) {
   unsigned int i;
   int32_t t;
+  uint32_t r = 0;
 
   if(B > (ML_DSA_Q-1)/8) {
-    return 1;
+    return 0xFFFFFFFF;
   }
 
-  /* It is ok to leak which coefficient violates the bound since
-     the probability for each coefficient is independent of secret
-     data but we must not leak the sign of the centralized representative. */
+  /* Constant-time implementation as defense-in-depth. According to Section 5.5
+     of the Dilithium specification, it is safe to leak which coefficient violates
+     the bound, but we implement this in constant-time as additional hardening.
+     We accumulate violations using bitwise OR instead of early exit. See 5.5 in
+     https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+     */
   for(i = 0; i < ML_DSA_N; ++i) {
     /* Absolute value */
     t = constant_time_select_int(constant_time_msb_w(a->coeffs[i]),
                                  -a->coeffs[i], a->coeffs[i]);
 
-    if(t >= B) {
-      return 1;
-    }
+    /* Check if t >= B and accumulate result */
+    r |= constant_time_ge_w((uint32_t)t, (uint32_t)B);
   }
-  return 0;
+  return r;
 }
 
 /*************************************************
@@ -327,7 +330,7 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
-    SHAKE_Squeeze(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+    SHAKE_Squeeze(buf + off, &state, SHAKE128_BLOCKSIZE);
     buflen = SHAKE128_BLOCKSIZE + off;
     ctr += ml_dsa_rej_uniform(a->coeffs + ctr, ML_DSA_N - ctr, buf, buflen);
   }
@@ -372,19 +375,19 @@ static unsigned int rej_eta(ml_dsa_params *params,
     if (params->eta == 2) {
       if(t0 < 15) {
         t0 = t0 - (205*t0 >> 10)*5;
-        a[ctr++] = 2 - t0;
+        a[ctr++] = 2 - (int32_t)t0;
       }
       if(t1 < 15 && ctr < len) {
         t1 = t1 - (205*t1 >> 10)*5;
-        a[ctr++] = 2 - t1;
+        a[ctr++] = 2 - (int32_t)t1;
       }
     }
 
     else if (params->eta == 4) {
       if(t0 < 9)
-        a[ctr++] = 4 - t0;
+        a[ctr++] = 4 - (int32_t)t0;
       if(t1 < 9 && ctr < len)
-        a[ctr++] = 4 - t1;
+        a[ctr++] = 4 - (int32_t)t1;
     }
   }
   return ctr;

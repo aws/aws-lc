@@ -23,6 +23,8 @@ bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
   out_args.clear();
   extra_args.clear();
 
+  std::vector<std::string> exclusive_boolean_args;
+
   for (size_t i = 0; i < args.size(); i++) {
     const std::string &arg = args[i];
     const argument_t *templ = nullptr;
@@ -45,20 +47,34 @@ bool ParseOrderedKeyValueArguments(ordered_args_map_t &out_args,
     // Check for duplicate arguments - allowed for order preservation
     // but warn about it when debugging
 #ifndef NDEBUG
-    if (HasArgument(out_args, arg)) {
+    if (templ->type != kDuplicateArgument && HasArgument(out_args, arg)) {
       fprintf(stderr, "Warning: Duplicate argument: %s\n", arg.c_str());
     }
 #endif
 
-    if (templ->type == kBooleanArgument) {
+    if (templ->type == kBooleanArgument ||
+        templ->type == kExclusiveBooleanArgument) {
       out_args.push_back(std::pair<std::string, std::string>(arg, ""));
+      if (templ->type == kExclusiveBooleanArgument) {
+        exclusive_boolean_args.push_back(arg);
+      }
     } else {
       if (i + 1 >= args.size()) {
         fprintf(stderr, "Missing argument for option: %s\n", arg.c_str());
         return false;
       }
+
       out_args.push_back(std::pair<std::string, std::string>(arg, args[++i]));
     }
+  }
+
+  if (exclusive_boolean_args.size() > 1) {
+    fprintf(stderr, "These arguments cannot be used together: ");
+    for (size_t i = 0; i < exclusive_boolean_args.size(); ++i) {
+      fprintf(stderr, "%s%s", exclusive_boolean_args[i].c_str(),
+              (i < exclusive_boolean_args.size() - 1) ? ", " : "\n");
+    }
+    return false;
   }
 
   for (size_t j = 0; templates[j].name[0] != 0; j++) {
@@ -130,4 +146,22 @@ bool GetBoolArgument(bool *out, const std::string &arg_name,
   return true;
 }
 
+bool GetExclusiveBoolArgument(std::string *out_arg, const argument_t *templates,
+                              std::string default_out_arg,
+                              const ordered_args_map_t &args) {
+  *out_arg = std::move(default_out_arg);
+
+  for (size_t i = 0; templates[i].name[0] != 0; i++) {
+    const argument_t *templ = &templates[i];
+    if (templ->type == kExclusiveBooleanArgument) {
+      auto it = FindArg(args, templ->name);
+      if (it != args.end()) {
+        *out_arg = templ->name;
+        break;
+      }
+    }
+  }
+
+  return true;
+}
 }  // namespace ordered_args

@@ -444,6 +444,20 @@ TEST(BIOTest, MemWritable) {
   EXPECT_EQ(BIO_eof(bio.get()), 1);
 }
 
+TEST(BIOTest, BioGetMemLeak) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<BUF_MEM> bufmem;
+  BUF_MEM *buf_mem = nullptr;
+  ASSERT_TRUE(bio);
+  ASSERT_EQ(BIO_puts(bio.get(), "Hello World\n"), 12);
+  ASSERT_TRUE(BIO_get_mem_ptr(bio.get(), &buf_mem));
+  // Take ownership of the pointer so it will free on function exit
+  bufmem.reset(buf_mem);
+  ASSERT_GT(BIO_set_close(bio.get(), BIO_NOCLOSE), 0);
+  bio.reset();
+  ASSERT_EQ(Bytes(buf_mem->data, buf_mem->length), Bytes("Hello World\n"));
+}
+
 TEST(BIOTest, Gets) {
   const struct {
     std::string bio;

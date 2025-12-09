@@ -3,8 +3,10 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/crypto.h>
+
 #include "internal.h"
-#include "../../../ube/snapsafe_detect.h"
+#include "../../../ube/vm_ube_detect.h"
 
 #define MAX_MULTIPLE_FROM_RNG (16)
 
@@ -72,16 +74,27 @@ TEST(EntropySources, Configuration) {
   uint8_t buf[1];
   ASSERT_TRUE(RAND_bytes(buf, sizeof(buf)));
 
-// Snapsafe detection is only defined for Linux. So, only strongly assert on
+// VM UBE detection is only defined for Linux. So, only strongly assert on
 // that kernel.
-#if defined(AWSLC_SNAPSAFE_TESTING) && defined(OPENSSL_LINUX)
-  EXPECT_EQ(SNAPSAFE_FALLBACK_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+#if defined(AWSLC_VM_UBE_TESTING) && defined(OPENSSL_LINUX)
+  EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+
+// If entropy build configuration choose to explicitly opt-out of CPU Jitter
+// Entropy
+#elif defined(DISABLE_CPU_JITTER_ENTROPY)
+  EXPECT_EQ(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+
 #else
   int expected_entropy_source_id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
-  if (CRYPTO_get_snapsafe_supported()) {
-    expected_entropy_source_id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;
+  if (CRYPTO_get_vm_ube_supported()) {
+    expected_entropy_source_id = OPT_OUT_CPU_JITTER_ENTROPY_SOURCE;
   }
 
   EXPECT_EQ(expected_entropy_source_id, get_entropy_source_method_id_FOR_TESTING());
+
+  // For FIPS build we can strongly assert.
+  if (FIPS_mode() == 1 && CRYPTO_get_vm_ube_supported() != 1) {
+    EXPECT_NE(OPT_OUT_CPU_JITTER_ENTROPY_SOURCE, get_entropy_source_method_id_FOR_TESTING());
+  }
 #endif
 }

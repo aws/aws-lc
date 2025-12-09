@@ -25,6 +25,7 @@ Lrcon:
 .endef
 .align	5
 aes_hw_set_encrypt_key:
+.cfi_startproc
 Lenc_key:
 #ifdef BORINGSSL_DISPATCH_TEST
 
@@ -36,7 +37,11 @@ Lenc_key:
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	mov	x3,#-1
 	cmp	x0,#0
 	b.eq	Lenc_key_abort
@@ -195,7 +200,10 @@ Ldone:
 Lenc_key_abort:
 	mov	x0,x3			// return value
 	ldr	x29,[sp],#16
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 
 
 .globl	aes_hw_set_decrypt_key
@@ -205,9 +213,14 @@ Lenc_key_abort:
 .endef
 .align	5
 aes_hw_set_decrypt_key:
+.cfi_startproc
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	bl	Lenc_key
 
 	cmp	x0,#0
@@ -239,8 +252,12 @@ Loop_imc:
 	eor	x0,x0,x0		// return value
 Ldec_key_abort:
 	ldp	x29,x30,[sp],#16
+.cfi_restore	x29
+.cfi_restore	x30
+.cfi_def_cfa_offset	0
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
+.cfi_endproc
 
 .globl	aes_hw_encrypt
 
@@ -249,6 +266,7 @@ Ldec_key_abort:
 .endef
 .align	5
 aes_hw_encrypt:
+.cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -281,6 +299,7 @@ Loop_enc:
 
 	st1	{v2.16b},[x1]
 	ret
+.cfi_endproc
 
 .globl	aes_hw_decrypt
 
@@ -289,6 +308,7 @@ Loop_enc:
 .endef
 .align	5
 aes_hw_decrypt:
+.cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -321,6 +341,7 @@ Loop_dec:
 
 	st1	{v2.16b},[x1]
 	ret
+.cfi_endproc
 
 .globl	aes_hw_cbc_encrypt
 
@@ -329,10 +350,15 @@ Loop_dec:
 .endef
 .align	5
 aes_hw_cbc_encrypt:
+.cfi_startproc
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	subs	x2,x2,#16
 	mov	x8,#16
 	b.lo	Lcbc_abort
@@ -615,7 +641,10 @@ Lcbc_done:
 	st1	{v6.16b},[x4]
 Lcbc_abort:
 	ldr	x29,[sp],#16
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 
 .globl	aes_hw_ctr32_encrypt_blocks
 
@@ -624,6 +653,7 @@ Lcbc_abort:
 .endef
 .align	5
 aes_hw_ctr32_encrypt_blocks:
+.cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	adrp	x9,BORINGSSL_function_hit
@@ -634,7 +664,11 @@ aes_hw_ctr32_encrypt_blocks:
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
+.cfi_def_cfa_offset	16
+.cfi_offset	x29, -16
+.cfi_offset	x30, -8
 	add	x29,sp,#0
+.cfi_def_cfa	x29, 16
 	ldr	w5,[x3,#240]
 
 	ldr	w8, [x4, #12]
@@ -824,7 +858,10 @@ Lctr32_tail:
 
 Lctr32_done:
 	ldr	x29,[sp],#16
+.cfi_restore	x29
+.cfi_def_cfa_offset	0
 	ret
+.cfi_endproc
 
 #endif
 #endif  // !OPENSSL_NO_ASM && defined(OPENSSL_AARCH64) && defined(_WIN32)

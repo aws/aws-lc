@@ -16,18 +16,18 @@ AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO=${AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO:-"0"}
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - PYTHON_SRC_FOLDER
-#        - 3.10
-#        ...
-#      - PYTHON_PATCH_FOLDER
-#        - 3.10
-#        ...
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - PYTHON_SRC_FOLDER
+#      - 3.10
+#      ...
+#    - PYTHON_PATCH_FOLDER
+#      - 3.10
+#      ...
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/PYTHON_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/PYTHON_BUILD_ROOT"
 CRT_SRC_FOLDER="${SCRATCH_FOLDER}/aws-crt-python"
 PYTHON_SRC_FOLDER="${SCRATCH_FOLDER}/python-src"
 PYTHON_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/python_patch"
@@ -141,11 +141,13 @@ function python_run_3rd_party_tests() {
     install_crt_python
     python -m pip install 'boto3[crt]'
     # cffi install is busted on newer release candidates, so allow install
-    # failure for cryptography and pyopenssl on >= 3.14 for now.
-    python -m pip install 'cryptography' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
+    # failure for cryptography and pyopenssl on >= 3.15 for now.
+    # Pin cryptography version due to cffi change in v46
+    # https://cryptography.io/en/latest/changelog/#v46-0-0
+    python -m pip install 'cryptography<46' \
+        || python -c 'import sys; assert sys.version_info.minor >= 3.15'
     python -m pip install 'pyopenssl' \
-        || python -c 'import sys; assert sys.version_info.minor >= 3.14'
+        || python -c 'import sys; assert sys.version_info.minor >= 3.15'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
         python ${test}
@@ -181,10 +183,6 @@ function python_patch() {
     local branch=${1}
     local src_dir="${PYTHON_SRC_FOLDER}/${branch}"
     local patch_dir="${PYTHON_PATCH_FOLDER}/${branch}"
-    if [[ ! $(find -L ${patch_dir} -type f -name '*.patch') ]]; then
-        echo "No patch for ${branch}!"
-        exit 1
-    fi
     git clone https://github.com/python/cpython.git ${src_dir} \
         --depth 1 \
         --branch ${branch}

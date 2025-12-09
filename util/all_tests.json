@@ -68,8 +68,8 @@
     "target_arch": "x86"
   },
   {
-    "comment": "Run snapsafe detection test suite",
-    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafeGenerationTest.*"],
+    "comment": "Run VM UBE detection test suite",
+    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=VmUbeGenerationTest.*"],
     "skip_valgrind": true,
     "shard": false
   },
@@ -88,35 +88,35 @@
     "target_arch": "x86"
   },
   {
-    "comment": "No RDRAND and without fork detection",
+    "comment": "No RDRAND and without fork UBE detection",
     "cmd": ["crypto/urandom_test"],
-    "env": ["OPENSSL_ia32cap=~0x4000000000000000", "BORINGSSL_IGNORE_FORK_DETECTION=1"],
+    "env": ["OPENSSL_ia32cap=~0x4000000000000000", "AWSLC_IGNORE_FORK_UBE_DETECTION=1"],
     "skip_valgrind": true,
     "target_arch": "x86"
   },
   {
-    "comment": "Potentially with RDRAND, but not Intel, and without fork detection",
+    "comment": "Potentially with RDRAND, but not Intel, and without fork UBE detection",
     "cmd": ["crypto/urandom_test"],
-    "env": ["OPENSSL_ia32cap=~0x0000000040000000", "BORINGSSL_IGNORE_FORK_DETECTION=1"],
+    "env": ["OPENSSL_ia32cap=~0x0000000040000000", "AWSLC_IGNORE_FORK_UBE_DETECTION=1"],
     "skip_valgrind": true,
     "target_arch": "x86"
   },
   {
-    "comment": "Run RAND test suite without fork detection",
+    "comment": "Run RAND test suite without fork UBE detection",
     "cmd": ["crypto/crypto_test", "--gtest_filter=RandTest.*:-RandTest.Fork"],
-    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
+    "env": ["AWSLC_IGNORE_FORK_UBE_DETECTION=1"],
     "skip_valgrind": true
   },
   {
     "comment": "Run RAND test suite without MADV_WIPEONFORK enabled",
     "cmd": ["crypto/crypto_test", "--gtest_filter=RandTest.*"],
-    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
+    "env": ["AWSLC_IGNORE_FORK_UBE_DETECTION=1"],
     "skip_valgrind": true
   },
   {
     "comment": "Run fork detection test suite without MADV_WIPEONFORK enabled",
     "cmd": ["crypto/crypto_test", "--gtest_filter=ForkDetect.*"],
-    "env": ["BORINGSSL_IGNORE_FORK_DETECTION=1"],
+    "env": ["AWSLC_IGNORE_FORK_UBE_DETECTION=1"],
     "skip_valgrind": true
   },
   {

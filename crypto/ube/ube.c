@@ -3,8 +3,8 @@
 
 #include <openssl/base.h>
 
-#include "fork_detect.h"
-#include "snapsafe_detect.h"
+#include "fork_ube_detect.h"
+#include "vm_ube_detect.h"
 
 #include "internal.h"
 #include "../internal.h"
@@ -46,28 +46,28 @@ static uint8_t ube_detection_unavailable = 0;
 static uint8_t allow_mocked_detection = 0;
 
 static uint64_t override_fork_generation_number = 0;
-void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
+void set_fork_ube_generation_number_FOR_TESTING(uint64_t fork_gn) {
   CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
   override_fork_generation_number = fork_gn;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
-static uint32_t override_snapsafe_generation_number = 0;
-void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn) {
+static uint32_t override_vm_ube_generation_number = 0;
+void set_vm_ube_generation_number_FOR_TESTING(uint32_t vm_ube_gn) {
   CRYPTO_STATIC_MUTEX_lock_write(&ube_testing_lock);
-  override_snapsafe_generation_number = snapsafe_gn;
+  override_vm_ube_generation_number = vm_ube_gn;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 }
 
-static int get_snapsafe_generation_number(uint32_t *gn) {
+static int get_vm_ube_generation_number(uint32_t *gn) {
   if (allow_mocked_detection == 1) {
     CRYPTO_STATIC_MUTEX_lock_read(&ube_testing_lock);
-    *gn = override_snapsafe_generation_number;
+    *gn = override_vm_ube_generation_number;
     CRYPTO_STATIC_MUTEX_unlock_read(&ube_testing_lock);
     return 1;
   }
 
-  return CRYPTO_get_snapsafe_generation(gn);
+  return CRYPTO_get_vm_ube_generation(gn);
 }
 
 static int get_fork_generation_number(uint64_t *gn) {
@@ -78,7 +78,7 @@ static int get_fork_generation_number(uint64_t *gn) {
     return 1;
   }
 
-  uint64_t fork_gn = CRYPTO_get_fork_generation();
+  uint64_t fork_gn = CRYPTO_get_fork_ube_generation();
   if (fork_gn == 0) {
     return 0;
   }
@@ -97,7 +97,7 @@ static int get_fork_generation_number(uint64_t *gn) {
 struct ube_state {
   uint64_t generation_number;
   uint64_t cached_fork_gn;
-  uint32_t cached_snapsafe_gn;
+  uint32_t cached_vm_ube_gn;
 };
 static struct ube_state ube_global_state = { 0, 0, 0 };
 
@@ -106,7 +106,7 @@ static struct ube_state ube_global_state = { 0, 0, 0 };
 struct detection_gn {
 #define NUMBER_OF_DETECTION_GENERATION_NUMBERS 2
   uint64_t current_fork_gn;
-  uint32_t current_snapsafe_gn;
+  uint32_t current_vm_ube_gn;
 };
 
 // set_ube_detection_unavailable_once is the single mutation point of
@@ -129,10 +129,10 @@ static void ube_state_initialize(void) {
   ube_global_state.generation_number = 0;
   int ret_fork_gn = get_fork_generation_number(
                       &(ube_global_state.cached_fork_gn));
-  int ret_snapsafe_gn = get_snapsafe_generation_number(
-                          &(ube_global_state.cached_snapsafe_gn));
+  int ret_vm_ube_gn = get_vm_ube_generation_number(
+                          &(ube_global_state.cached_vm_ube_gn));
 
-  if (ret_fork_gn == 0 || ret_snapsafe_gn == 0) {
+  if (ret_fork_gn == 0 || ret_vm_ube_gn == 0) {
     ube_failed();
   }
 }
@@ -145,10 +145,10 @@ static void ube_update_state(struct detection_gn *current_detection_gn) {
   ube_global_state.generation_number += 1;
 
   // Make sure we cache all new generation numbers. Otherwise, we might detect
-  // a fork UBE but, in fact, both a fork and snapsafe UBE occurred. Then next
+  // a fork UBE but, in fact, both a fork and vm_ube UBE occurred. Then next
   // time we enter, a redundant reseed will be emitted.
   ube_global_state.cached_fork_gn = current_detection_gn->current_fork_gn;
-  ube_global_state.cached_snapsafe_gn = current_detection_gn->current_snapsafe_gn;
+  ube_global_state.cached_vm_ube_gn = current_detection_gn->current_vm_ube_gn;
 }
 
 // ube_get_detection_generation_numbers loads the current detection generation
@@ -166,10 +166,10 @@ static int ube_get_detection_generation_numbers(
 
   int ret_detect_gn = get_fork_generation_number(
                         &(current_detection_gn->current_fork_gn));
-  int ret_snapsafe_gn = get_snapsafe_generation_number(
-                          &(current_detection_gn->current_snapsafe_gn));
+  int ret_vm_ube_gn = get_vm_ube_generation_number(
+                          &(current_detection_gn->current_vm_ube_gn));
 
-  if (ret_detect_gn == 0 || ret_snapsafe_gn == 0) {
+  if (ret_detect_gn == 0 || ret_vm_ube_gn == 0) {
     return 0;
   }
 
@@ -188,7 +188,7 @@ static int ube_get_detection_generation_numbers(
 static int ube_is_detected(struct detection_gn *current_detection_gn) {
 
   if (ube_global_state.cached_fork_gn != current_detection_gn->current_fork_gn ||
-      ube_global_state.cached_snapsafe_gn != current_detection_gn->current_snapsafe_gn) {
+      ube_global_state.cached_vm_ube_gn != current_detection_gn->current_vm_ube_gn) {
     return 1;
   }
   return 0;
@@ -283,6 +283,6 @@ void disable_mocked_ube_detection_FOR_TESTING(void) {
   allow_mocked_detection = 0;
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_testing_lock);
 
-  set_fork_generation_number_FOR_TESTING(0);
-  set_snapsafe_generation_number_FOR_TESTING(0);
+  set_fork_ube_generation_number_FOR_TESTING(0);
+  set_vm_ube_generation_number_FOR_TESTING(0);
 }

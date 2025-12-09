@@ -1,0 +1,217 @@
+name: linux-x86-omnibus
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
+jobs:
+  pre_push_checker:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:20.04
+          run: |
+            source /opt/compiler-env/setup-clang-8.sh
+            ./tests/check_objects_and_errors.sh
+            ./tests/check_cmake_configure.sh
+            go run ./tests/check_licenses.go
+            ./tests/check_generated_src.sh
+            ./tests/coding_guidelines/style.sh
+            (cd util && go run ./doc.go)
+
+  c99_cplusplus98_checker:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04
+          run: |
+            source /opt/compiler-env/setup-gcc-12.sh
+            ./tests/coding_guidelines/c99_cplusplus98_test.sh
+
+  sde_tests:
+    name: sde-tests
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2_sde
+          run: |
+            source /opt/compiler-env/setup-gcc-7.sh
+            ./tests/ci/run_tests_with_sde.sh
+          options: --privileged
+
+  asan_sde_tests:
+    name: asan-sde-tests
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:2xlarge
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:22.04_sde
+          run: |
+            source /opt/compiler-env/setup-clang-14.sh
+            ./tests/ci/run_tests_with_sde_asan.sh
+          options: --privileged
+
+  install_shared_and_static:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:20.04
+          run: |
+            source /opt/compiler-env/setup-clang-9.sh
+            ./tests/ci/run_install_shared_and_static.sh
+
+  # Build and test aws-lc without Perl/Go.
+  minimal_tests:
+    name: minimal-${{ matrix.image }}-${{ matrix.compiler }}-x86_64
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: amazonlinux:2
+            compiler: gcc-7
+          - image: centos:7
+            compiler: gcc-4
+          - image: ubuntu:16.04
+            compiler: gcc-5
+          - image: ubuntu:18.04
+            compiler: clang-6
+          - image: ubuntu:20.04
+            compiler: clang-8
+          - image: ubuntu:20.04
+            compiler: clang-9
+          - image: ubuntu:20.04
+            compiler: gcc-7
+          - image: ubuntu:20.04
+            compiler: gcc-8
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_minimal_tests.sh
+
+  legacy_build:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:10.04
+          run: |
+            source /opt/compiler-env/setup-gcc-4.1.sh
+            ./tests/ci/run_legacy_build.sh
+
+  legacy_avx_tests:
+    name: legacy-avx-${{ matrix.image }}-${{ matrix.build32 && 'x86' || 'x86_64' }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:large
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: amazonlinux:2
+            compiler: gcc-7
+          - image: centos:7
+            compiler: gcc-4
+            build32: 0
+          - image: centos:7
+            compiler: gcc-4
+            build32: 1
+          - image: centos:8
+            compiler: gcc-8
+          - image: ubuntu:16.04
+            compiler: gcc-5
+            build32: 0
+          - image: ubuntu:16.04
+            compiler: gcc-5
+            build32: 1
+          - image: ubuntu:18.04
+            compiler: clang-6
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        env:
+          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          env: |
+            AWSLC_32BIT
+          run: |
+            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
+            ./tests/ci/run_legacy_avx_tests.sh
+          options: --privileged

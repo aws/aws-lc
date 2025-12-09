@@ -8,7 +8,7 @@
 #include "../internal.h"
 #include "../../delocate.h"
 #include "../../../rand_extra/internal.h"
-#include "../../../ube/snapsafe_detect.h"
+#include "../../../ube/vm_ube_detect.h"
 
 DEFINE_BSS_GET(const struct entropy_source_methods *, entropy_source_methods_override)
 DEFINE_BSS_GET(int, allow_entropy_source_methods_override)
@@ -36,6 +36,7 @@ static int entropy_get_extra_entropy(
   return 1;
 }
 
+// Tree-DRBG entropy source configuration.
 // - Tree DRBG with Jitter Entropy as root for seeding.
 // - OS as personalization string source.
 // - If run-time is on an x86_64 or Arm64 CPU and it supports rdrand
@@ -56,43 +57,59 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->id = TREE_DRBG_JITTER_ENTROPY_SOURCE;
 }
 
-static int snapsafe_fallback_initialize(
+static int opt_out_cpu_jitter_initialize(
   struct entropy_source_t *entropy_source) {
   return 1;
 }
 
-static void snapsafe_fallback_zeroize_thread(struct entropy_source_t *entropy_source) {}
+static void opt_out_cpu_jitter_zeroize_thread(struct entropy_source_t *entropy_source) {}
 
-static void snapsafe_fallback_free_thread(struct entropy_source_t *entropy_source) {}
+static void opt_out_cpu_jitter_free_thread(struct entropy_source_t *entropy_source) {}
 
-static int snapsafe_fallback_get_seed_wrap(
+static int opt_out_cpu_jitter_get_seed_wrap(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
-  return snapsafe_fallback_get_seed(seed);
+  return vm_ube_fallback_get_seed(seed);
 }
 
-static int use_snapsafe_fallback_entropy(void) {
-  return CRYPTO_get_snapsafe_supported();
+// Define conditions for not using CPU Jitter
+static int is_vm_ube_environment(void) {
+  return CRYPTO_get_vm_ube_supported();
 }
 
-// Snapsafe fallback environment configurations
-// CPU source required for rule-of-two.
+static int has_explicitly_opted_out_of_cpu_jitter(void) {
+#if defined(DISABLE_CPU_JITTER_ENTROPY)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+static int use_opt_out_cpu_jitter_entropy(void) {
+  if (has_explicitly_opted_out_of_cpu_jitter() == 1 ||
+      is_vm_ube_environment() == 1) {
+    return 1;
+  }
+  return 0;
+}
+
+// Out-out CPU Jitter configurations. CPU source required for rule-of-two.
 // - OS as seed source source.
 // - Uses rdrand or rndr, if supported, for personalization string. Otherwise
 // falls back to OS source.
-DEFINE_LOCAL_DATA(struct entropy_source_methods, snapsafe_fallback_entropy_source_methods) {
-  out->initialize = snapsafe_fallback_initialize;
-  out->zeroize_thread = snapsafe_fallback_zeroize_thread;
-  out->free_thread = snapsafe_fallback_free_thread;
-  out->get_seed = snapsafe_fallback_get_seed_wrap;
+DEFINE_LOCAL_DATA(struct entropy_source_methods, opt_out_cpu_jitter_entropy_source_methods) {
+  out->initialize = opt_out_cpu_jitter_initialize;
+  out->zeroize_thread = opt_out_cpu_jitter_zeroize_thread;
+  out->free_thread = opt_out_cpu_jitter_free_thread;
+  out->get_seed = opt_out_cpu_jitter_get_seed_wrap;
   if (have_hw_rng_x86_64() == 1 ||
       have_hw_rng_aarch64() == 1) {
     out->get_extra_entropy = entropy_get_prediction_resistance;
   } else {
     // Fall back to seed source because a second source must always be present.
-    out->get_extra_entropy = snapsafe_fallback_get_seed_wrap;
+    out->get_extra_entropy = opt_out_cpu_jitter_get_seed_wrap;
   }
   out->get_prediction_resistance = NULL;
-  out->id = SNAPSAFE_FALLBACK_ENTROPY_SOURCE;
+  out->id = OPT_OUT_CPU_JITTER_ENTROPY_SOURCE;
 }
 
 static const struct entropy_source_methods * get_entropy_source_methods(void) {
@@ -100,8 +117,8 @@ static const struct entropy_source_methods * get_entropy_source_methods(void) {
     return *entropy_source_methods_override_bss_get();
   }
 
-  if (use_snapsafe_fallback_entropy()) {
-    return snapsafe_fallback_entropy_source_methods();
+  if (use_opt_out_cpu_jitter_entropy()) {
+    return opt_out_cpu_jitter_entropy_source_methods();
   }
 
   return tree_jitter_entropy_source_methods();

@@ -1769,8 +1769,8 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // The |DEFAULT| directive, when appearing at the front of the string, expands
 // to the default ordering of available ciphers.
 //
-// If configuring a server, one may also configure equal-preference groups to
-// partially respect the client's preferences when
+// For TLS < 1.3, if configuring a server, one may also configure
+// equal-preference groups to partially respect the client's preferences when
 // |SSL_OP_CIPHER_SERVER_PREFERENCE| is enabled. Ciphers in an equal-preference
 // group have equal priority and use the client order. This may be used to
 // enforce that AEADs are preferred but select AES-GCM vs. ChaCha20-Poly1305
@@ -1781,10 +1781,6 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
-//
-// Note: TLS 1.3 ciphersuites are only configurable via
-// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
-// no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -1842,6 +1838,8 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 // any configured TLS 1.3 cipher suites by first checking
 // |ssl->config->tls13_cipher_list| and otherwise falling back to
 // |ssl->ctx->tls13_cipher_list|.
+//
+// Equal-preference groups cannot be configured for TLS 1.3 through these APIs.
 //
 // It returns one on success and zero on failure.
 //

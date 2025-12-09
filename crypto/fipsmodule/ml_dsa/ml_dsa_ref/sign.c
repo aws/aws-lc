@@ -161,7 +161,7 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk, uint8_t *see
 *              - uint8_t *sk:     pointer to bit-packed secret key
 *              - int external_mu: indicates input message m is to be processed as mu
 *
-* Returns 0 (success) or -1 (context string too long)
+* Returns 0 (success) or -1 (context string too long or incorrect mlen in external mu)
 **************************************************/
 int ml_dsa_sign_internal(ml_dsa_params *params,
                          uint8_t *sig,
@@ -178,10 +178,15 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   uint8_t seedbuf[2*ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2*ML_DSA_CRHBYTES];
   uint8_t *rho, *tr, *key, *mu, *rhoprime;
   uint16_t nonce = 0;
+  uint32_t z_invalid, w0_invalid, h_invalid;
   polyvecl mat[ML_DSA_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
   ml_dsa_poly cp;
   KECCAK1600_CTX state;
+
+  if (external_mu && mlen != ML_DSA_CRHBYTES) {
+    return -1;
+  }
 
   rho = seedbuf;
   tr = rho + ML_DSA_SEEDBYTES;
@@ -248,7 +253,8 @@ rej:
   ml_dsa_polyvecl_invntt_tomont(params, &z);
   ml_dsa_polyvecl_add(params, &z, &z, &y);
   ml_dsa_polyvecl_reduce(params, &z);
-  if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
+  z_invalid = ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta);
+  if(z_invalid) {
     goto rej;
   }
 
@@ -258,7 +264,13 @@ rej:
   ml_dsa_polyveck_invntt_tomont(params, &h);
   ml_dsa_polyveck_sub(params, &w0, &w0, &h);
   ml_dsa_polyveck_reduce(params, &w0);
-  if(ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
+  w0_invalid = ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta);
+  /* Leaking the fact that a signature was rejected at this stage is acceptable as
+   * the next attempt at a signature will be (indistinguishable from) independent of
+   * this one. See 5.5 in
+   * https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+   */
+  if(w0_invalid) {
     goto rej;
   }
 
@@ -266,7 +278,8 @@ rej:
   ml_dsa_polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
   ml_dsa_polyveck_invntt_tomont(params, &h);
   ml_dsa_polyveck_reduce(params, &h);
-  if(ml_dsa_polyveck_chknorm(params, &h, params->gamma2)) {
+  h_invalid = ml_dsa_polyveck_chknorm(params, &h, params->gamma2);
+  if(h_invalid) {
     goto rej;
   }
 
@@ -337,12 +350,12 @@ int ml_dsa_sign(ml_dsa_params *params,
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
-  ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk, 0);
+  int ret = ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk, 0);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(pre, sizeof(pre));
   OPENSSL_cleanse(rnd, sizeof(rnd));
-  return 0;
+  return ret;
 }
 
 /*************************************************
@@ -371,11 +384,11 @@ int ml_dsa_extmu_sign(ml_dsa_params *params,
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
-  ml_dsa_sign_internal(params, sig, siglen, mu, mulen, NULL, 0, rnd, sk, 1);
+  int ret = ml_dsa_sign_internal(params, sig, siglen, mu, mulen, NULL, 0, rnd, sk, 1);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(rnd, sizeof(rnd));
-  return 0;
+  return ret;
 }
 
 /*************************************************
@@ -460,6 +473,11 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   if(siglen != params->bytes) {
     return -1;
   }
+
+  if (external_mu && mlen != ML_DSA_CRHBYTES) {
+    return -1;
+  }
+
   /* FIPS 204: line 1 */
   ml_dsa_unpack_pk(params, rho, &t1, pk);
   /* FIPS 204: line 2 */

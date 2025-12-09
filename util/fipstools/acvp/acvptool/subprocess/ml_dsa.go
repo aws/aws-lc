@@ -100,7 +100,7 @@ type mlDsaSigGenTestGroup struct {
 	ParameterSet       string `json:"parameterSet"`
 	Deterministic      bool   `json:"deterministic"`
 	SignatureInterface string `json:"signatureInterface"`
-	ExternalMu         bool   `json:"externalMu`
+	ExternalMu         *bool   `json:"externalMu`
 	Tests              []struct {
 		ID      uint64               `json:"tcId"`
 		Message hexEncodedByteString `json:"message"`
@@ -123,8 +123,11 @@ type mlDsaSigGenTestCaseResponse struct {
 }
 
 // Convert boolean to byte slice (using 1 for true, 0 for false)
-func boolToBytes(b bool) []byte {
-	if b {
+func boolToBytes(b *bool) []byte {
+	if b == nil {
+		return nil  // Field doesn't exist
+	}
+	if *b {
 		return []byte{1}
 	}
 	return []byte{0}
@@ -150,7 +153,7 @@ func processMlDsaSigGen(vectors json.RawMessage, m Transactable) (interface{}, e
 
 		for _, test := range group.Tests {
 			results, err := m.Transact("ML-DSA/"+group.ParameterSet+"/sigGen",
-				1, test.SK, test.Message, test.MU, test.RND, boolToBytes(group.ExternalMu))
+				1, test.SK, test.Message, test.MU, test.RND, test.Context, boolToBytes(group.ExternalMu))
 			if err != nil {
 				return nil, err
 			}
@@ -174,7 +177,7 @@ type mlDsaSigVerTestGroup struct {
 	ParameterSet       string `json:"parameterSet"`
 	Deterministic      bool   `json:"deterministic"`
 	SignatureInterface string `json:"signatureInterface"`
-	ExternalMu         bool   `json:"externalMu`
+	ExternalMu         *bool   `json:"externalMu`
 	Tests              []struct {
 		ID        uint64               `json:"tcId"`
 		PK        hexEncodedByteString `json:"pk"`
@@ -216,7 +219,7 @@ func processMlDsaSigVer(vectors json.RawMessage, m Transactable) (interface{}, e
 
 		for _, test := range group.Tests {
 			results, err := m.Transact("ML-DSA/"+group.ParameterSet+"/sigVer", 1,
-				test.Signature, test.PK, test.Message, test.MU, boolToBytes(group.ExternalMu))
+				test.Signature, test.PK, test.Message, test.MU, test.Context, boolToBytes(group.ExternalMu))
 			if err != nil {
 				return nil, err
 			}
