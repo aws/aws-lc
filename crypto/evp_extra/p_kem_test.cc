@@ -1050,7 +1050,7 @@ TEST_P(WycheproofKEMTest, Encaps) {
 
 TEST_P(WycheproofKEMTest, DecapsSeed) {
   std::string test_path =
-      std::string(kWycheproofV1Path) + GetParam().decaps_test;
+      std::string(kWycheproofV1Path) + GetParam().decaps_seed_test;
   FileTestGTest(test_path.c_str(), [&](FileTest *t) {
     std::vector<uint8_t> ek, seed, expected_k, ciphertext;
     std::string param_set;
@@ -1113,7 +1113,7 @@ TEST_P(WycheproofKEMTest, DecapsSeed) {
 // Test decapsulation with expanded decaps keys
 TEST_P(WycheproofKEMTest, DecapsNoSeed) {
   std::string test_path =
-      std::string(kWycheproofV1Path) + GetParam().decaps_raw_key_test;
+      std::string(kWycheproofV1Path) + GetParam().decaps_noseed_test;
   FileTestGTest(test_path.c_str(), [&](FileTest *t) {
     std::vector<uint8_t> dk, ciphertext;
     std::string param_set;
