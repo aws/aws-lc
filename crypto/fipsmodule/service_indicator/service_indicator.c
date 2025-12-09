@@ -56,7 +56,8 @@ static struct fips_service_indicator_state *service_indicator_get(void) {
 
     if (!CRYPTO_set_thread_local(
             AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, free)) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      //OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      free(indicator);
       return NULL;
     }
   }
