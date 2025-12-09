@@ -454,20 +454,15 @@ func instructionArgs(node *node32) (argNodes []*node32) {
 // gotHelperName returns the name of a synthesised function that returns an
 // address from the GOT.
 func gotHelperName(symbol string) string {
-	// Sanitize the symbol name to be a valid assembly identifier
-	// Replace + and - with _plus_ and _minus_ respectively
-	symbol = strings.Replace(symbol, "+", "_plus_", -1)
-	symbol = strings.Replace(symbol, "-", "_minus_", -1)
 	return ".Lboringssl_loadgot_" + symbol
 }
 
 // loadAarch64Address emits instructions to put the address of |symbol|
 // (optionally adjusted by |offsetStr|) into |targetReg|.
 func (d *delocation) loadAarch64Address(statement *node32, targetReg string, symbol string, offsetStr string) (*node32, error) {
-	// To avoid "fixup value out of range" errors when the FIPS module grows too large,
-	// we always use helper functions for address loading instead of relying on adr's
-	// limited ±1MiB range. This ensures all symbols, including local ones, can be
-	// reached regardless of module size.
+	// There are two paths here: either the symbol is known to be local in which
+	// case adr is used to get the address (within 1MiB), or a GOT reference is
+	// really needed in which case the code needs to jump to a helper function.
 	//
 	// A helper function is needed because using code appears to be the only way
 	// to load a GOT value. On other platforms we have ".quad foo@GOT" outside of
@@ -480,31 +475,31 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 
 	_, isKnown := d.symbols[symbol]
 	isLocal := strings.HasPrefix(symbol, ".L")
-	
-	// Map local symbols to their unique names
-	if isLocal {
-		symbol = d.mapLocalSymbol(symbol)
-	} else if isKnown {
-		symbol = localTargetName(symbol)
+	if isKnown || isLocal || isSynthesized(symbol, aarch64) {
+		if isLocal {
+			symbol = d.mapLocalSymbol(symbol)
+		} else if isKnown {
+			symbol = localTargetName(symbol)
+		}
+
+		d.output.WriteString("\tadr " + targetReg + ", " + symbol + offsetStr + "\n")
+
+		return statement, nil
 	}
 
-	// Store the full symbol name including offset for the helper function lookup
-	symbolWithOffset := symbol + offsetStr
-	
+	if len(offsetStr) != 0 {
+		panic("non-zero offset for helper-based reference")
+	}
+
 	var helperFunc string
-	if symbol == "OPENSSL_armcap_P" && len(offsetStr) == 0 {
+	if symbol == "OPENSSL_armcap_P" {
 		helperFunc = ".LOPENSSL_armcap_P_addr"
-	} else if isKnown || isLocal || isSynthesized(symbol, aarch64) {
-		// For known/local symbols, create a local helper that uses adrp+add
-		// The helper itself is outside the FIPS module, so it can use adrp safely
-		d.gotExternalsNeeded[symbolWithOffset] = struct{}{}
-		helperFunc = gotHelperName(symbolWithOffset)
 	} else {
-		// For truly external symbols, use GOT
-		// External symbols shouldn't have offsets in adrp
-		if len(offsetStr) != 0 {
-			panic("non-zero offset for external GOT reference")
-		}
+		// GOT helpers also dereference the GOT entry, thus the subsequent ldr
+		// instruction, which would normally do the dereferencing, needs to be
+		// dropped. GOT helpers have to include the dereference because the
+		// assembler doesn't support ":got_lo12:foo" offsets except in an ldr
+		// instruction.
 		d.gotExternalsNeeded[symbol] = struct{}{}
 		helperFunc = gotHelperName(symbol)
 	}
@@ -2450,24 +2445,9 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		externalNames := sortedSet(d.gotExternalsNeeded)
 		for _, symbol := range externalNames {
 			writeAarch64Function(w, gotHelperName(symbol), func(w stringWriter) {
-				// Check if this is a local/known symbol or a truly external symbol
-				// Local/known symbols use adrp+add, external symbols use GOT
-				_, isKnown := d.symbols[symbol]
-				isLocal := strings.HasPrefix(symbol, ".L")
-				isSynth := isSynthesized(symbol, aarch64)
-				
-				if isKnown || isLocal || isSynth {
-					// For local/known symbols, use adrp+add to load the address directly
-					// This is safe because the helper is outside the FIPS module
-					w.WriteString("\tadrp x0, " + symbol + "\n")
-					w.WriteString("\tadd x0, x0, :lo12:" + symbol + "\n")
-					w.WriteString("\tret\n")
-				} else {
-					// For truly external symbols, use GOT
-					w.WriteString("\tadrp x0, :got:" + symbol + "\n")
-					w.WriteString("\tldr x0, [x0, :got_lo12:" + symbol + "]\n")
-					w.WriteString("\tret\n")
-				}
+				w.WriteString("\tadrp x0, :got:" + symbol + "\n")
+				w.WriteString("\tldr x0, [x0, :got_lo12:" + symbol + "]\n")
+				w.WriteString("\tret\n")
 			})
 		}
 
