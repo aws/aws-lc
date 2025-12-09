@@ -1815,6 +1815,8 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
 
+OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size);
+
 // i2a_ASN1_INTEGER writes a human-readable representation of |a| to |bp|. It
 // returns the number of bytes written on success, or a negative number on
 // error. On error, this function may have written a partial output to |bp|.
