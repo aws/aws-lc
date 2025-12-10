@@ -24,6 +24,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/experimental/kem_deterministic_api.h>
@@ -1908,6 +1909,71 @@ TEST(EVPExtraTest, Ed25519Keygen) {
       EVP_DigestVerifyInit(ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestVerify(ctx.get(), sig, len,
                                reinterpret_cast<const uint8_t *>("hello"), 5));
+}
+
+TEST(EVPExtraTest, Ed25519ParseTest) {
+  // Generate Ed25519 keypair
+  uint8_t public_key[32], private_key[64];
+  ED25519_keypair(public_key, private_key);
+  
+  // Create EVP_PKEY from private key seed (first 32 bytes)
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_ED25519, nullptr, private_key, 32));
+  ASSERT_TRUE(pkey);
+  
+  // Encode to DER using i2d_PrivateKey
+  uint8_t *der_buf = nullptr;
+  int der_len = i2d_PrivateKey(pkey.get(), &der_buf);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_ptr(der_buf);
+  
+  // Decode from DER using d2i_PrivateKey
+  const uint8_t *der_data = der_buf;
+  bssl::UniquePtr<EVP_PKEY> decoded_pkey(
+      d2i_PrivateKey(EVP_PKEY_ED25519, nullptr, &der_data, der_len));
+  ASSERT_TRUE(decoded_pkey);
+  
+  // Extract raw private keys and compare
+  uint8_t original_raw[32], decoded_raw[32];
+  size_t original_len = sizeof(original_raw), decoded_len = sizeof(decoded_raw);
+  
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), original_raw, &original_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(decoded_pkey.get(), decoded_raw, &decoded_len));
+  
+  EXPECT_EQ(original_len, decoded_len);
+  EXPECT_EQ(Bytes(original_raw, original_len), Bytes(decoded_raw, decoded_len));
+}
+
+TEST(EVPExtraTest, Ed25519PublicKeyParseTest) {
+  // Generate Ed25519 keypair
+  uint8_t public_key[32], private_key[64];
+  ED25519_keypair(public_key, private_key);
+  
+  // Create EVP_PKEY from public key
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(
+      EVP_PKEY_ED25519, nullptr, public_key, 32));
+  ASSERT_TRUE(pkey);
+  
+  // Encode to DER using i2d_PUBKEY
+  uint8_t *der_buf = nullptr;
+  int der_len = i2d_PUBKEY(pkey.get(), &der_buf);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> der_ptr(der_buf);
+  
+  // Decode from DER using d2i_PUBKEY
+  const uint8_t *der_data = der_buf;
+  bssl::UniquePtr<EVP_PKEY> decoded_pkey(d2i_PUBKEY(nullptr, &der_data, der_len));
+  ASSERT_TRUE(decoded_pkey);
+  
+  // Extract raw public keys and compare
+  uint8_t original_raw[32], decoded_raw[32];
+  size_t original_len = sizeof(original_raw), decoded_len = sizeof(decoded_raw);
+  
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), original_raw, &original_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(decoded_pkey.get(), decoded_raw, &decoded_len));
+  
+  EXPECT_EQ(original_len, decoded_len);
+  EXPECT_EQ(Bytes(original_raw, original_len), Bytes(decoded_raw, decoded_len));
 }
 
 // Test that |EVP_DigestSignFinal| and |EVP_DigestSignVerify| work with a
