@@ -476,36 +476,7 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	_, isKnown := d.symbols[symbol]
 	isLocal := strings.HasPrefix(symbol, ".L")
 
-	// For known symbols that might exceed adr range (±1MiB), use GOT helpers to avoid
-	// "pc-relative address offset out of range" errors in large FIPS modules.
-	// Only use GOT helpers when there's no offset, since GOT helpers can't handle offsets.
-	if isKnown && !isLocal && !isSynthesized(symbol, aarch64) && len(offsetStr) == 0 {
-		// Use GOT helper for known symbols that might exceed adr range
-		d.gotExternalsNeeded[symbol] = struct{}{}
-		helperFunc := gotHelperName(symbol)
 
-		// Clear the red-zone
-		d.output.WriteString("\tsub sp, sp, 128\n")
-
-		// Save x0 and link register, call helper
-		d.output.WriteString("\tstp x0, x30, [sp, #-16]!\n")
-		d.output.WriteString("\tbl " + helperFunc + "\n")
-
-		if targetReg == "x0" {
-			d.output.WriteString("\tldp xzr, x30, [sp], #16\n")
-		} else if targetReg == "x30" {
-			d.output.WriteString("\tmov " + targetReg + ", x0\n")
-			d.output.WriteString("\tldp x0, xzr, [sp], #16\n")
-		} else {
-			d.output.WriteString("\tmov " + targetReg + ", x0\n")
-			d.output.WriteString("\tldp x0, x30, [sp], #16\n")
-		}
-
-		// Revert red-zone adjustment
-		d.output.WriteString("\tadd sp, sp, 128\n")
-
-		return statement, nil
-	}
 
 	if isKnown || isLocal || isSynthesized(symbol, aarch64) {
 		if isLocal {
@@ -514,15 +485,29 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 			symbol = localTargetName(symbol)
 		}
 
-		d.output.WriteString("\tadr " + targetReg + ", " + symbol + offsetStr + "\n")
+		// For specific symbols known to be problematic in large modules, use adrp+add
+		if strings.Contains(symbol, "vpaes_ctr32_encrypt_blocks") || 
+		   strings.Contains(symbol, "aes") && len(symbol) > 20 {
+			d.writeCommentedNode(statement)
+			if len(offsetStr) == 0 {
+				d.output.WriteString("\tadrp " + targetReg + ", " + symbol + "\n")
+				d.output.WriteString("\tadd " + targetReg + ", " + targetReg + ", :lo12:" + symbol + "\n")
+			} else {
+				d.output.WriteString("\tadrp " + targetReg + ", " + symbol + "\n")
+				d.output.WriteString("\tadd " + targetReg + ", " + targetReg + ", :lo12:" + symbol + offsetStr + "\n")
+			}
+		} else {
+			d.output.WriteString("\tadr " + targetReg + ", " + symbol + offsetStr + "\n")
+		}
 
 		return statement, nil
 	}
 
 	if len(offsetStr) != 0 {
-		// GOT helpers cannot handle symbol offsets, so fall back to adr.
-		// If the offset is out of range, the assembler will report the error.
-		d.output.WriteString("\tadr " + targetReg + ", " + symbol + offsetStr + "\n")
+		// For symbols with offsets that exceed adr range, use adrp+add sequence
+		d.writeCommentedNode(statement)
+		d.output.WriteString("\tadrp " + targetReg + ", " + symbol + "\n")
+		d.output.WriteString("\tadd " + targetReg + ", " + targetReg + ", :lo12:" + symbol + offsetStr + "\n")
 		return statement, nil
 	}
 
@@ -2943,3 +2928,4 @@ func sortedSet(m map[string]struct{}) []string {
 	sort.Strings(ret)
 	return ret
 }
+
