@@ -340,22 +340,12 @@ void gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                   size_t len);
 
-// Wrappers to avoid delocator PC-relative offset issues
-void gcm_gmult_v8_wrapper(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_v8_wrapper(uint8_t Xi[16], const u128 Htable[16],
-                          const uint8_t *inp, size_t len);
-
 OPENSSL_INLINE int gcm_neon_capable(void) { return CRYPTO_is_NEON_capable(); }
 
 void gcm_init_neon(u128 Htable[16], const uint64_t H[2]);
 void gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
-
-// Wrappers to avoid delocator PC-relative offset issues
-void gcm_gmult_neon_wrapper(uint8_t Xi[16], const u128 Htable[16]);
-void gcm_ghash_neon_wrapper(uint8_t Xi[16], const u128 Htable[16],
-                            const uint8_t *inp, size_t len);
 
 #if defined(OPENSSL_AARCH64)
 #define HW_GCM
