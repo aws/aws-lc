@@ -475,6 +475,38 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 
 	_, isKnown := d.symbols[symbol]
 	isLocal := strings.HasPrefix(symbol, ".L")
+
+	// For known symbols that might exceed adr range (±1MiB), use GOT helpers to avoid
+	// "pc-relative address offset out of range" errors in large FIPS modules.
+	// Only use GOT helpers when there's no offset, since GOT helpers can't handle offsets.
+	if isKnown && !isLocal && !isSynthesized(symbol, aarch64) && len(offsetStr) == 0 {
+		// Use GOT helper for known symbols that might exceed adr range
+		d.gotExternalsNeeded[symbol] = struct{}{}
+		helperFunc := gotHelperName(symbol)
+
+		// Clear the red-zone
+		d.output.WriteString("\tsub sp, sp, 128\n")
+
+		// Save x0 and link register, call helper
+		d.output.WriteString("\tstp x0, x30, [sp, #-16]!\n")
+		d.output.WriteString("\tbl " + helperFunc + "\n")
+
+		if targetReg == "x0" {
+			d.output.WriteString("\tldp xzr, x30, [sp], #16\n")
+		} else if targetReg == "x30" {
+			d.output.WriteString("\tmov " + targetReg + ", x0\n")
+			d.output.WriteString("\tldp x0, xzr, [sp], #16\n")
+		} else {
+			d.output.WriteString("\tmov " + targetReg + ", x0\n")
+			d.output.WriteString("\tldp x0, x30, [sp], #16\n")
+		}
+
+		// Revert red-zone adjustment
+		d.output.WriteString("\tadd sp, sp, 128\n")
+
+		return statement, nil
+	}
+
 	if isKnown || isLocal || isSynthesized(symbol, aarch64) {
 		if isLocal {
 			symbol = d.mapLocalSymbol(symbol)
@@ -488,7 +520,10 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	}
 
 	if len(offsetStr) != 0 {
-		panic("non-zero offset for helper-based reference")
+		// GOT helpers cannot handle symbol offsets, so fall back to adr.
+		// If the offset is out of range, the assembler will report the error.
+		d.output.WriteString("\tadr " + targetReg + ", " + symbol + offsetStr + "\n")
+		return statement, nil
 	}
 
 	var helperFunc string
