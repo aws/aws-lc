@@ -71,7 +71,7 @@
    LL ^=                                                                  \
    (((S[((int)(R >> 24) & 0xff)] + S[0x0100 + ((int)(R >> 16) & 0xff)]) ^ \
      S[0x0200 + ((int)(R >> 8) & 0xff)]) +                                \
-    S[0x0300 + ((int)(R)&0xff)]) &                                        \
+    S[0x0300 + ((int)(R) & 0xff)]) &                                      \
    0xffffffffL)
 
 void BF_encrypt(uint32_t *data, const BF_KEY *key) {
@@ -510,7 +510,7 @@ void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                       const BF_KEY *schedule, uint8_t *ivec, int *num,
                       int encrypt) {
   uint32_t v0, v1, t;
-  int n = *num;
+  int n = *num & 0x07;
   size_t l = length;
   uint32_t ti[2];
   uint8_t c, cc;
@@ -563,9 +563,9 @@ void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 }
 
 void BF_ofb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                             const BF_KEY *schedule, uint8_t *ivec, int *num) {
+                      const BF_KEY *schedule, uint8_t *ivec, int *num) {
   uint32_t v0 = 0, v1 = 0, t = 0;
-  int n = *num;
+  int n = *num & 0x07;
   size_t l = length;
   uint8_t d[8] = {0};
   uint8_t *dp = NULL;
@@ -647,7 +647,8 @@ static int bf_cfb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
-static int bf_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in, size_t len) {
+static int bf_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                         size_t len) {
   BF_KEY *bf_key = ctx->cipher_data;
   int num = ctx->num;
   BF_ofb64_encrypt(in, out, len, bf_key, ctx->iv, &num);
