@@ -23,8 +23,8 @@ static const argument_t kArguments[] = {
     {"-aes-128-cbc", kExclusiveBooleanArgument, "Supported cipher"},
     {"", kOptionalArgument, ""}};
 
-static bool HexToBinary(bssl::UniquePtr<uint8_t[]> &buffer,
-                        const std::string &hex_string, unsigned int size) {
+static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
+                        unsigned int size) {
   // First validate that the string contains only valid hex characters
   for (char c : hex_string) {
     if (!OPENSSL_isxdigit(c)) {
@@ -41,7 +41,7 @@ static bool HexToBinary(bssl::UniquePtr<uint8_t[]> &buffer,
     return false;
   }
 
-  int ret = BN_bn2binpad(raw, buffer.get(), size);
+  int ret = BN_bn2binpad(raw, buffer, size);
   BN_free(raw);
   return ret != -1;
 }
@@ -119,7 +119,7 @@ bool encTool(const args_list_t &args) {
   }
 
   unsigned int iv_length = EVP_CIPHER_iv_length(cipher);
-  bssl::UniquePtr<uint8_t[]> iv((uint8_t *)OPENSSL_zalloc(EVP_MAX_IV_LENGTH));
+  uint8_t iv[EVP_MAX_IV_LENGTH];
 
   if (!hiv.empty()) {
     if (iv_length == 0) {
@@ -139,7 +139,7 @@ bool encTool(const args_list_t &args) {
     }
   }
 
-  bssl::UniquePtr<uint8_t[]> key((uint8_t *)OPENSSL_zalloc(EVP_MAX_KEY_LENGTH));
+  uint8_t key[EVP_MAX_KEY_LENGTH];
 
   if (!hkey->empty()) {
     if (!HexToBinary(key, *hkey, EVP_CIPHER_key_length(cipher))) {
@@ -161,16 +161,14 @@ bool encTool(const args_list_t &args) {
 
   // Create and initialize cipher context
   bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
-  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.get(), iv.get(),
-                         enc)) {
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv, enc)) {
     fprintf(stderr, "Error: Failed to initialize cipher\n");
     return false;
   }
 
   // Process the input file
   uint8_t inbuf[BUF_SIZE];
-  bssl::UniquePtr<uint8_t[]> outbuf(
-      (uint8_t *)OPENSSL_zalloc(BUF_SIZE + EVP_CIPHER_block_size(cipher)));
+  uint8_t outbuf[BUF_SIZE + EVP_MAX_BLOCK_LENGTH];
   int inlen = 0, outlen = 0;
 
   for (;;) {
@@ -185,20 +183,20 @@ bool encTool(const args_list_t &args) {
       return false;
     }
 
-    if (!EVP_CipherUpdate(ctx.get(), outbuf.get(), &outlen, inbuf, inlen)) {
+    if (!EVP_CipherUpdate(ctx.get(), outbuf, &outlen, inbuf, inlen)) {
       fprintf(stderr, "Error: Cipher update failed\n");
       return false;
     }
-    BIO_write(output_bio.get(), outbuf.get(), outlen);
+    BIO_write(output_bio.get(), outbuf, outlen);
   }
 
   // Finalize
-  if (!EVP_CipherFinal_ex(ctx.get(), outbuf.get(), &outlen)) {
+  if (!EVP_CipherFinal_ex(ctx.get(), outbuf, &outlen)) {
     fprintf(stderr, "Error: Cipher final failed\n");
     return false;
   }
 
-  BIO_write(output_bio.get(), outbuf.get(), outlen);
+  BIO_write(output_bio.get(), outbuf, outlen);
 
   return true;
 }
