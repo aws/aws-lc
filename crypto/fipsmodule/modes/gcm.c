@@ -224,6 +224,29 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 #endif  // HW_GCM && AARCH64
 
+// Trampolines for GCM function pointers to avoid delocator issues with adr
+// on AArch64. Without these wrappers, the function pointer calculations
+// may require PC-relative offsets outside the addressable range.
+#if defined(GHASH_ASM_ARM)
+static inline void gcm_gmult_v8_wrapper(uint8_t Xi[16], const u128 Htable[16]) {
+  gcm_gmult_v8(Xi, Htable);
+}
+
+static inline void gcm_ghash_v8_wrapper(uint8_t Xi[16], const u128 Htable[16],
+                                        const uint8_t *inp, size_t len) {
+  gcm_ghash_v8(Xi, Htable, inp, len);
+}
+
+static inline void gcm_gmult_neon_wrapper(uint8_t Xi[16], const u128 Htable[16]) {
+  gcm_gmult_neon(Xi, Htable);
+}
+
+static inline void gcm_ghash_neon_wrapper(uint8_t Xi[16], const u128 Htable[16],
+                                          const uint8_t *inp, size_t len) {
+  gcm_ghash_neon(Xi, Htable, inp, len);
+}
+#endif
+
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 out_table[16], int *out_is_avx,
                        const uint8_t gcm_key[16]) {
