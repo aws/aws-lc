@@ -265,14 +265,28 @@ jobs:
             run: ./tests/ci/integration/run_cyrus_sasl_integration.sh
 
           # Amazon Corretto Crypto Provider Integration Tests
-          - name: accp
+          - name: accp-aarch64
+            arch: aarch64
+            size: 2xlarge
+            image: ubuntu:22.04
+            compiler: gcc-12
+            accp_fips: false
+            run: ./tests/ci/integration/run_accp_integration.sh
+          - name: accp-fips-aarch64
+            arch: aarch64
+            size: 2xlarge
+            image: ubuntu:22.04
+            compiler: gcc-12
+            accp_fips: true
+            run: ./tests/ci/integration/run_accp_integration.sh
+          - name: accp-x86_64
             arch: x86_64
             size: 2xlarge
             image: ubuntu:22.04
             compiler: gcc-12
             accp_fips: false
             run: ./tests/ci/integration/run_accp_integration.sh
-          - name: accp-fips
+          - name: accp-fips-x86_64
             arch: x86_64
             size: 2xlarge
             image: ubuntu:22.04
