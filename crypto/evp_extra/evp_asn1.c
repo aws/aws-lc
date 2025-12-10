@@ -64,6 +64,7 @@
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "../bytestring/internal.h"
 #include "../fipsmodule/dh/internal.h"
@@ -268,47 +269,6 @@ int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key) {
   return key->ameth->priv_encode_v2(cbb, key);
 }
 
-static EVP_PKEY *old_priv_decode(CBS *cbs, int type) {
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  switch (type) {
-    case EVP_PKEY_EC: {
-      EC_KEY *ec_key = EC_KEY_parse_private_key(cbs, NULL);
-      if (ec_key == NULL || !EVP_PKEY_assign_EC_KEY(ret, ec_key)) {
-        EC_KEY_free(ec_key);
-        goto err;
-      }
-      return ret;
-    }
-    case EVP_PKEY_DSA: {
-      DSA *dsa = DSA_parse_private_key(cbs);
-      if (dsa == NULL || !EVP_PKEY_assign_DSA(ret, dsa)) {
-        DSA_free(dsa);
-        goto err;
-      }
-      return ret;
-    }
-    case EVP_PKEY_RSA: {
-      RSA *rsa = RSA_parse_private_key(cbs);
-      if (rsa == NULL || !EVP_PKEY_assign_RSA(ret, rsa)) {
-        RSA_free(rsa);
-        goto err;
-      }
-      return ret;
-    }
-    default:
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_PUBLIC_KEY_TYPE);
-      goto err;
-  }
-
-err:
-  EVP_PKEY_free(ret);
-  return NULL;
-}
-
 int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
   if (ctx == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
@@ -392,23 +352,16 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
     return NULL;
   }
 
-  // Parse with the legacy format.
   CBS cbs;
   CBS_init(&cbs, *inp, (size_t)len);
-  EVP_PKEY *ret = old_priv_decode(&cbs, type);
+  EVP_PKEY *ret = EVP_parse_private_key(&cbs);
   if (ret == NULL) {
-    // Try again with PKCS#8.
-    ERR_clear_error();
-    CBS_init(&cbs, *inp, (size_t)len);
-    ret = EVP_parse_private_key(&cbs);
-    if (ret == NULL) {
-      return NULL;
-    }
-    if (ret->type != type) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
-      EVP_PKEY_free(ret);
-      return NULL;
-    }
+    return NULL;
+  }
+  if (ret->type != type) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
+    EVP_PKEY_free(ret);
+    return NULL;
   }
 
   if (out != NULL) {

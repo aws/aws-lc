@@ -18,6 +18,8 @@
 #include <gtest/gtest.h>
 
 #include <openssl/curve25519.h>
+#include <openssl/evp.h>
+#include <openssl/x509.h>
 
 #include "../../internal.h"
 #include "../../test/file_test.h"
@@ -130,6 +132,8 @@ TEST(Ed25519Test, KeypairFromSeed) {
   EXPECT_EQ(Bytes(public_key1), Bytes(public_key2));
   EXPECT_EQ(Bytes(private_key1), Bytes(private_key2));
 }
+
+
 
 TEST(Ed25519phTest, TestVectors) {
   FileTestGTest("crypto/fipsmodule/curve25519/ed25519ph_tests.txt", [](FileTest *t) {
