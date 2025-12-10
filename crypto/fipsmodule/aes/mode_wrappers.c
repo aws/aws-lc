@@ -58,84 +58,26 @@
 // function pointer calculation in AES_ctr128_encrypt. Without it,
 // on AArch64 there is risk of the calculations requiring a PC-relative
 // offset outside of the range (-1MB,1MB) addressable using `ADR`.
-static inline void aes_hw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
-                                          const AES_KEY *key) {
-  aes_hw_encrypt(in, out, key);
-}
-
-static inline void aes_nohw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
-                                            const AES_KEY *key) {
-  aes_nohw_encrypt(in, out, key);
-}
-
-static inline void aes_hw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
-                                                       uint8_t *out, size_t len,
-                                                       const AES_KEY *key,
-                                                       const uint8_t ivec[16]) {
-  aes_hw_ctr32_encrypt_blocks(in, out, len, key, ivec);
-}
-
-static inline void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
-                                                         uint8_t *out, size_t len,
-                                                         const AES_KEY *key,
-                                                         const uint8_t ivec[16]) {
-  aes_nohw_ctr32_encrypt_blocks(in, out, len, key, ivec);
-}
-
-static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
-                                         const AES_KEY *key) {
-  vpaes_encrypt(in, out, key);
-}
-
-#if defined(VPAES_CTR32)
-static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
-                                                      uint8_t *out, size_t len,
-                                                      const AES_KEY *key,
-                                                      const uint8_t ivec[16]) {
-  vpaes_ctr32_encrypt_blocks(in, out, len, key, ivec);
-}
-#endif
-
-// GCM wrappers for AArch64 to avoid delocator issues
-#if defined(GHASH_ASM_ARM)
-static inline void gcm_gmult_v8_wrapper(uint8_t Xi[16], const u128 Htable[16]) {
-  gcm_gmult_v8(Xi, Htable);
-}
-
-static inline void gcm_ghash_v8_wrapper(uint8_t Xi[16], const u128 Htable[16],
-                                        const uint8_t *inp, size_t len) {
-  gcm_ghash_v8(Xi, Htable, inp, len);
-}
-
-static inline void gcm_gmult_neon_wrapper(uint8_t Xi[16], const u128 Htable[16]) {
-  gcm_gmult_neon(Xi, Htable);
-}
-
-static inline void gcm_ghash_neon_wrapper(uint8_t Xi[16], const u128 Htable[16],
-                                          const uint8_t *inp, size_t len) {
-  gcm_ghash_neon(Xi, Htable, inp, len);
-}
-#endif
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
                         uint8_t ecount_buf[AES_BLOCK_SIZE], unsigned int *num) {
   if (hwaes_capable()) {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                aes_hw_ctr32_encrypt_blocks_wrapper);
+                                aes_hw_ctr32_encrypt_blocks);
   } else if (vpaes_capable()) {
 #if defined(VPAES_CTR32)
     // TODO(davidben): On ARM, where |BSAES| is additionally defined, this could
     // use |vpaes_ctr32_encrypt_blocks_with_bsaes|.
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                vpaes_ctr32_encrypt_blocks_wrapper);
+                                vpaes_ctr32_encrypt_blocks);
 #else
     CRYPTO_ctr128_encrypt(in, out, len, key, ivec, ecount_buf, num,
-                          vpaes_encrypt_wrapper);
+                          vpaes_encrypt);
 #endif
   } else {
     CRYPTO_ctr128_encrypt_ctr32(in, out, len, key, ivec, ecount_buf, num,
-                                aes_nohw_ctr32_encrypt_blocks_wrapper);
+                                aes_nohw_ctr32_encrypt_blocks);
   }
 
   FIPS_service_indicator_update_state();
