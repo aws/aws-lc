@@ -296,6 +296,48 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
+// Wrapper functions to ensure the delocator can handle function pointer
+// calculations. Without them, on AArch64 there is risk of the calculations
+// requiring a PC-relative offset outside of the range (-1MB,1MB) addressable
+// using ADR.
+static inline void aes_hw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                          const AES_KEY *key) {
+  aes_hw_encrypt(in, out, key);
+}
+
+static inline void aes_nohw_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                            const AES_KEY *key) {
+  aes_nohw_encrypt(in, out, key);
+}
+
+static inline void aes_hw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+                                                       uint8_t *out, size_t len,
+                                                       const AES_KEY *key,
+                                                       const uint8_t ivec[16]) {
+  aes_hw_ctr32_encrypt_blocks(in, out, len, key, ivec);
+}
+
+static inline void aes_nohw_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+                                                         uint8_t *out, size_t len,
+                                                         const AES_KEY *key,
+                                                         const uint8_t ivec[16]) {
+  aes_nohw_ctr32_encrypt_blocks(in, out, len, key, ivec);
+}
+
+static inline void vpaes_encrypt_wrapper(const uint8_t *in, uint8_t *out,
+                                         const AES_KEY *key) {
+  vpaes_encrypt(in, out, key);
+}
+
+#if defined(VPAES_CTR32)
+static inline void vpaes_ctr32_encrypt_blocks_wrapper(const uint8_t *in,
+                                                      uint8_t *out, size_t len,
+                                                      const AES_KEY *key,
+                                                      const uint8_t ivec[16]) {
+  vpaes_ctr32_encrypt_blocks(in, out, len, key, ivec);
+}
+#endif
+
 ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes) {
