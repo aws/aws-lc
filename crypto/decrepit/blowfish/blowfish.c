@@ -562,7 +562,7 @@ void BF_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
   *num = n;
 }
 
-static void BF_ofb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+void BF_ofb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                              const BF_KEY *schedule, uint8_t *ivec, int *num) {
   uint32_t v0 = 0, v1 = 0, t = 0;
   int n = *num;
