@@ -549,11 +549,8 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_ecb(void);
 // EVP_bf_cbc is Blowfish in CBC mode and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cbc(void);
 
-// EVP_bf_cfb is an alias for |EVP_bf_cfb64| and is deprecated.
+// EVP_bf_cfb is Blowfish in 64-bit CFB mode and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb(void);
-
-// EVP_bf_cfb64 is Blowfish in 64-bit CFB mode and is deprecated.
-OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb64(void);
 
 // EVP_cast5_ecb is CAST5 in ECB mode and is deprecated.
 OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_ecb(void);
