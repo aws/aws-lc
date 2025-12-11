@@ -140,9 +140,8 @@ bool rsaTool(const args_list_t &args) {
       }
       if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
         // Try raw RSAPublicKey format.
-        // TODO: This is behind the "RSAPublicKey_in" flag in OpenSSL and they don't
-        // use a fallback. We can keep this fallback, but we may want to support the
-        // flag as well.
+        // This is the "RSAPublicKey_in" flag in OpenSSL, but we support
+        // this behind a no-op flag and an automatic fallback.
         rsa.reset(d2i_RSAPublicKey_bio(in_file.get(), nullptr));
       }
     }
@@ -162,11 +161,20 @@ bool rsaTool(const args_list_t &args) {
       if (pkey) {
         rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
       }
+      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
+        // Try RSAPrivateKey format. OpenSSL's |d2i_PrivateKey_bio| automatically
+        // falls back to PKCS1, if PKCS8 is unsuccessful. We have to do things
+        // manually here.
+        rsa.reset(d2i_RSAPrivateKey_bio(in_file.get(), nullptr));
+      }
     }
     if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
       bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
       if (pkey) {
         rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
+      }
+      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
+        rsa.reset(PEM_read_bio_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
       }
     }
   }
