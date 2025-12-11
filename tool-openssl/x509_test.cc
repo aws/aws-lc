@@ -369,7 +369,7 @@ TEST_F(X509Test, X509ToolSetSerialTest) {
   // Read first serial number
   std::string serial1 = ReadFileToString(srl_path.c_str());
   ASSERT_FALSE(serial1.empty());
-  serial1 = serial1.substr(0, serial1.find('\n'));  // Remove newline
+  serial1 = serial1.substr(0, serial1.find_first_of("\r\n"));  // Remove newline (handles both \r\n and \n)
 
   // Verify the first certificate serial matches the .srl file content
   auto cert1 = LoadPEMCertificate(out_path);
@@ -394,7 +394,7 @@ TEST_F(X509Test, X509ToolSetSerialTest) {
   // Read updated serial number
   std::string serial2 = ReadFileToString(srl_path.c_str());
   ASSERT_FALSE(serial2.empty());
-  serial2 = serial2.substr(0, serial2.find('\n'));  // Remove newline
+  serial2 = serial2.substr(0, serial2.find_first_of("\r\n"));  // Remove newline (handles both \r\n and \n)
 
   // Serial numbers should be different
   ASSERT_NE(serial1, serial2);
@@ -469,7 +469,9 @@ TEST_F(X509Test, X509ToolSetSerialExistingFileTest) {
   ASSERT_FALSE(new_serial.empty());
 
   // Serial should be incremented from 1234ABCD to 1234ABCE
-  ASSERT_EQ("1234ABCE\n", new_serial);
+  // Strip trailing newline characters for comparison (handles both \r\n and \n)
+  new_serial = new_serial.substr(0, new_serial.find_first_of("\r\n"));
+  ASSERT_EQ("1234ABCE", new_serial);
 
   // Verify the certificate serial matches the .srl file content
   auto cert = LoadPEMCertificate(out_path);
@@ -482,7 +484,7 @@ TEST_F(X509Test, X509ToolSetSerialExistingFileTest) {
   bssl::UniquePtr<char> hex_str(BN_bn2hex(bn.get()));
   ASSERT_TRUE(hex_str != nullptr);
 
-  new_serial = new_serial.substr(0, new_serial.find('\n'));
+  // new_serial already stripped above, no need to strip again
   ASSERT_EQ(new_serial, std::string(hex_str.get()));
 
   // Clean up
