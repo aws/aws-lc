@@ -59,7 +59,7 @@
 #include "../internal.h"
 
 // Forward declarations
-static int asn1_parse2(BIO *bp, const uint8_t **pp, long len, int offset,
+static int asn1_parse2(BIO *bp, const uint8_t **pp, long len, long offset,
                        int depth, int indent, int dump);
 static int asn1_print_info(BIO *bp, int tag, int xclass, int constructed,
                            int indent);
@@ -67,11 +67,11 @@ static int asn1_parse_constructed_type(BIO *bp, const uint8_t **current_pos,
                                        const uint8_t *total_end,
                                        const uint8_t *original_start,
                                        long *object_len, int parse_flags,
-                                       int offset, int depth, int indent,
+                                       long offset, int depth, int indent,
                                        int dump);
 static int asn1_parse_primitive_type(BIO *bp, const uint8_t *object_start,
                                      const uint8_t *current_pos,
-                                     long object_len, int header_len, int tag,
+                                     long object_len, long header_len, int tag,
                                      int dump);
 
 const char *ASN1_tag2str(int tag) {
@@ -177,13 +177,17 @@ static int asn1_parse_constructed_type(BIO *bp, const uint8_t **current_pos,
                                        const uint8_t *total_end,
                                        const uint8_t *original_start,
                                        long *object_len, int parse_flags,
-                                       int offset, int depth, int indent,
+                                       long offset, int depth, int indent,
                                        int dump) {
   GUARD_PTR(bp);
   GUARD_PTR(current_pos);
   GUARD_PTR(total_end);
   GUARD_PTR(original_start);
   GUARD_PTR(object_len);
+
+  if (offset < 0 || depth < 0 || indent < 0) {
+    return 0;
+  }
 
   const uint8_t *start_pos = *current_pos;
 
@@ -275,6 +279,10 @@ static int asn1_parse_boolean_type(BIO *bp, const uint8_t *data, long len,
   GUARD_PTR(data);
   GUARD_PTR(dump_as_hex);
 
+  if (len < 0) {
+    return 0;
+  }
+
   if (len != 1) {
     if (BIO_puts(bp, ":BAD BOOLEAN") <= 0) {
       return 0;
@@ -295,6 +303,10 @@ static int asn1_parse_octet_string_type(BIO *bp, const uint8_t *data, long len,
   GUARD_PTR(data);
   GUARD_PTR(newline_printed);
 
+  if (len < 0) {
+    return 0;
+  }
+
   const unsigned char *parse_pos = data;
   int return_code = 0;
   int dump_indent = 6;
@@ -305,7 +317,7 @@ static int asn1_parse_octet_string_type(BIO *bp, const uint8_t *data, long len,
     int printable = 1;
     parse_pos = octet_string->data;
 
-    // Test whether the octet string is printable
+    // Test whether the octet string is printable (i.e. ASCII)
     for (int i = 0; i < octet_string->length; i++) {
       if (((parse_pos[i] < ' ') && (parse_pos[i] != '\n') &&
            (parse_pos[i] != '\r') && (parse_pos[i] != '\t')) ||
@@ -364,6 +376,10 @@ static int asn1_parse_integer_type(BIO *bp, const uint8_t *object_start,
   GUARD_PTR(object_start);
   GUARD_PTR(dump_as_hex);
 
+  if (object_len < 0 || header_len < 0) {
+    return 0;
+  }
+
   const uint8_t *parse_pos = object_start;
   int return_code = 0;
 
@@ -408,6 +424,10 @@ static int asn1_parse_enumerated_type(BIO *bp, const uint8_t *object_start,
   GUARD_PTR(bp);
   GUARD_PTR(object_start);
   GUARD_PTR(dump_as_hex);
+
+  if (object_len < 0 || header_len < 0) {
+    return 0;
+  }
 
   const uint8_t *parse_pos = object_start;
   int return_code = 0;
@@ -456,7 +476,11 @@ static int asn1_parse_hex_dump(BIO *bp, const uint8_t *object_start,
   GUARD_PTR(current_pos);
   GUARD_PTR(newline_printed);
 
-  int dump_indent = 6;
+  if (object_len < 0 || header_len < 0) {
+    return 0;
+  }
+
+  const int dump_indent = 6;
 
   if (object_len > 0 && dump) {
     if (!*newline_printed) {
@@ -477,6 +501,10 @@ static int asn1_parse_hex_dump(BIO *bp, const uint8_t *object_start,
 // Helper function to output hex data when dump_as_hex flag is set
 static int asn1_output_hex_data(BIO *bp, const uint8_t *object_start,
                                 long object_len, int header_len) {
+  if (object_len < 0 || header_len < 0) {
+    return 0;
+  }
+
   const uint8_t *hex_data = object_start + header_len;
 
   if (BIO_puts(bp, ":[") <= 0) {
@@ -496,15 +524,19 @@ static int asn1_output_hex_data(BIO *bp, const uint8_t *object_start,
 // Refactored main function to parse primitive ASN.1 types
 static int asn1_parse_primitive_type(BIO *bp, const uint8_t *object_start,
                                      const uint8_t *current_pos,
-                                     long object_len, int header_len, int tag,
+                                     long object_len, long header_len, int tag,
                                      int dump) {
-  int newline_printed = 0;
-  int dump_as_hex = 0;
-  int result = 0;
-
   GUARD_PTR(bp);
   GUARD_PTR(object_start);
   GUARD_PTR(current_pos);
+
+  if (object_len < 0 || header_len < 0) {
+    return 0;
+  }
+
+  int newline_printed = 0;
+  int dump_as_hex = 0;
+  int result = 0;
 
   // Handle different primitive types
   if ((tag == V_ASN1_PRINTABLESTRING) || (tag == V_ASN1_T61STRING) ||
@@ -554,13 +586,17 @@ static int asn1_parse_primitive_type(BIO *bp, const uint8_t *object_start,
   return 1;
 }
 
-static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, int offset,
+static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, long offset,
                        int depth, int indent, int dump) {
   GUARD_PTR(bp);
   GUARD_PTR(pp);
 
+  if (length < 0 || offset < 0 || depth < 0 || indent < 0) {
+    return 0;
+  }
+
   const uint8_t *current_pos, *total_end, *object_start;
-  long object_length = 0;
+  long content_length = 0;
   int tag, xclass, return_value = 0;
   int header_length = 0, parse_flags = 0;
 
@@ -574,7 +610,7 @@ static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, int offset,
   while (length > 0) {
     object_start = current_pos;
     parse_flags =
-        ASN1_get_object(&current_pos, &object_length, &tag, &xclass, length);
+        ASN1_get_object(&current_pos, &content_length, &tag, &xclass, length);
     if (parse_flags & 0x80) {
       if (BIO_write(bp, "Error in encoding\n", 18) <= 0) {
         goto end;
@@ -595,7 +631,7 @@ static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, int offset,
 
     if (parse_flags != (V_ASN1_CONSTRUCTED | 1)) {
       if (BIO_printf(bp, "d=%-2d hl=%ld l=%4ld ", depth, (long)header_length,
-                     object_length) <= 0) {
+                     content_length) <= 0) {
         goto end;
       }
     } else {
@@ -608,34 +644,34 @@ static int asn1_parse2(BIO *bp, const uint8_t **pp, long length, int offset,
       goto end;
     }
     if (parse_flags & V_ASN1_CONSTRUCTED) {
-      if (object_length > length) {
+      if (content_length > length) {
         BIO_printf(bp, "length is greater than %ld\n", length);
         return_value = 0;
         goto end;
       }
       if (!asn1_parse_constructed_type(bp, &current_pos, total_end, *pp,
-                                       &object_length, parse_flags, offset,
+                                       &content_length, parse_flags, offset,
                                        depth, indent, dump)) {
         return_value = 0;
         goto end;
       }
     } else if (xclass != 0) {
-      current_pos += object_length;
+      current_pos += content_length;
       if (BIO_write(bp, "\n", 1) <= 0) {
         goto end;
       }
     } else {
       if (!asn1_parse_primitive_type(bp, object_start, current_pos,
-                                     object_length, header_length, tag, dump)) {
+                                     content_length, header_length, tag, dump)) {
         goto end;
       }
-      current_pos += object_length;
+      current_pos += content_length;
       if ((tag == V_ASN1_EOC) && (xclass == 0)) {
         return_value = 2; /* End of sequence */
         goto end;
       }
     }
-    length -= object_length;
+    length -= content_length;
   }
   return_value = 1;
 end:
