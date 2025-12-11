@@ -481,6 +481,40 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
   ASSERT_TRUE(CheckBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
 }
 
+// Test against OpenSSL output reading from stdin "openssl rsa -in"
+TEST_F(RSAComparisonTest, StdinRSA) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in "
+                             + std::string(in_path) + " -pubout | " +
+                             std::string(tool_executable_path) +
+                             " rsa -pubin -inform PEM -outform DER > " + out_path_tool;
+  std::string openssl_command = std::string(tool_executable_path) + " rsa -in "
+                             + std::string(in_path) + " -pubout | " +
+                             std::string(tool_executable_path) +
+                             " rsa -pubin -inform PEM -outform DER > " + out_path_tool;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " rsa -in "
+                 + std::string(in_path) + " -pubout -outform DER | " +
+                 std::string(tool_executable_path) +
+                 " rsa -pubin -inform DER -outform PEM > " + out_path_tool;
+  openssl_command = std::string(tool_executable_path) + " rsa -in "
+                 + std::string(in_path) + " -pubout -outform DER | " +
+                 std::string(tool_executable_path) +
+                 " rsa -pubin -inform DER -outform PEM > " + out_path_tool;
+
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file -noout"
 // Only modulus is printed to output file
 TEST_F(RSAComparisonTest, RSAToolCompareModulusOutNooutOpenSSL) {
