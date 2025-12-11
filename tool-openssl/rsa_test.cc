@@ -487,10 +487,10 @@ TEST_F(RSAComparisonTest, StdinRSA) {
                              + std::string(in_path) + " -pubout | " +
                              std::string(tool_executable_path) +
                              " rsa -pubin -inform PEM -outform DER > " + out_path_tool;
-  std::string openssl_command = std::string(tool_executable_path) + " rsa -in "
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in "
                              + std::string(in_path) + " -pubout | " +
-                             std::string(tool_executable_path) +
-                             " rsa -pubin -inform PEM -outform DER > " + out_path_tool;
+                             std::string(openssl_executable_path) +
+                             " rsa -pubin -inform PEM -outform DER > " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
                               out_path_openssl, tool_output_str,
@@ -502,10 +502,10 @@ TEST_F(RSAComparisonTest, StdinRSA) {
                  + std::string(in_path) + " -pubout -outform DER | " +
                  std::string(tool_executable_path) +
                  " rsa -pubin -inform DER -outform PEM > " + out_path_tool;
-  openssl_command = std::string(tool_executable_path) + " rsa -in "
+  openssl_command = std::string(openssl_executable_path) + " rsa -in "
                  + std::string(in_path) + " -pubout -outform DER | " +
-                 std::string(tool_executable_path) +
-                 " rsa -pubin -inform DER -outform PEM > " + out_path_tool;
+                 std::string(openssl_executable_path) +
+                 " rsa -pubin -inform DER -outform PEM > " + out_path_openssl;
 
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
