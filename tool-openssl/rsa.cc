@@ -26,6 +26,9 @@ static const argument_t kArguments[] = {
   { "-pubout", kBooleanArgument, "Output only public components" },
   { "-noout", kBooleanArgument, "Prevents output of the encoded version of the RSA key" },
   { "-modulus", kBooleanArgument, "Prints out the value of the modulus of the RSA key" },
+  { "-RSAPublicKey_in", kOptionalArgument,
+    "Pass in the RSAPublicKey format. (no-op, we fallback to this"
+    " format if the initial parse is unsuccessful)" },
   { "", kOptionalArgument, "" }
 };
 
@@ -159,20 +162,11 @@ bool rsaTool(const args_list_t &args) {
       if (pkey) {
         rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
       }
-      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
-        // Try RSAPrivateKey format.
-        // TODO: Can we remove this, OpenSSL doesn't really expect this format through the CLI?
-        rsa.reset(d2i_RSAPrivateKey_bio(in_file.get(), nullptr));
-      }
     }
     if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
       bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
       if (pkey) {
         rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
-      }
-      if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
-        // TODO: Can we remove this, OpenSSL doesn't really expect this format through the CLI?
-        rsa.reset(PEM_read_bio_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
       }
     }
   }
