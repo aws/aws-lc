@@ -12,9 +12,28 @@ struct TestCorpus {
   std::string name;
   std::string hex;
   std::string format;
-  bool awslc_success;
-  bool match_openssl;
+  bool awslc_success = false;
+  bool match_openssl = false;
+
+  // Constructor for explicit initialization
+  TestCorpus(const std::string &n, const std::string &h, const std::string &f,
+             bool aws_success, bool match_ssl)
+      : name(n),
+        hex(h),
+        format(f),
+        awslc_success(aws_success),
+        match_openssl(match_ssl) {}
+
+  // Default constructor - explicitly initialize all members
+  TestCorpus() : awslc_success(false), match_openssl(false) {}
 };
+
+// Custom printer for TestCorpus to avoid GoogleTest's byte-level printing
+static void PrintTo(const TestCorpus &corpus, std::ostream *os) {
+  *os << "TestCorpus{name=\"" << corpus.name << "\", format=\"" << corpus.format
+      << "\", awslc_success=" << (corpus.awslc_success ? "true" : "false")
+      << ", match_openssl=" << (corpus.match_openssl ? "true" : "false") << "}";
+}
 
 #define FORMAT_PEM "PEM"
 #define FORMAT_DER "DER"
