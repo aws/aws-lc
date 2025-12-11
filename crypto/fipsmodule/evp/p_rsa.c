@@ -734,6 +734,8 @@ static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     // "max" and "auto" are not supported
     long saltlen;
 
+    // A value of "digest" or "-1" causes the salt to be the same length as the
+    // digest in the signature
     if (!strcmp(value, "digest") || !strcmp(value, "-1")) {
       saltlen = RSA_PSS_SALTLEN_DIGEST;
     } else {

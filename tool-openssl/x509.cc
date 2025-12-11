@@ -142,7 +142,13 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
   if (ca_file_path.empty() || !file) {
     bn = BN_new();
 
-    // Randomly generate a serial number
+    /*
+     * Randomly generate a serial number
+     *
+     * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+     * so that the first bit will never be one, so that the DER encoding
+     * rules won't force a leading octet.
+     */
     constexpr int SERIAL_RAND_BITS = 159;
     if (!BN_rand(bn, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
       BN_free(bn);
@@ -155,10 +161,18 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
       return false;
     }
 
-    size_t len = strlen(buf);
+    size_t len = OPENSSL_strnlen(buf, sizeof(buf));
     if (len > 0 && buf[len - 1] == '\n') {
       buf[len - 1] = '\0';
+      len--;
     }
+
+#if defined(_WIN32)
+    if (len > 0 && buf[len - 1] == '\r') {
+      buf[len - 1] = '\0';
+      len--;
+    }
+#endif
 
     bn = BN_new();
 
