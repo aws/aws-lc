@@ -26,6 +26,9 @@ static const argument_t kArguments[] = {
   { "-pubout", kBooleanArgument, "Output only public components" },
   { "-noout", kBooleanArgument, "Prevents output of the encoded version of the RSA key" },
   { "-modulus", kBooleanArgument, "Prints out the value of the modulus of the RSA key" },
+  { "-RSAPublicKey_in", kOptionalArgument,
+    "Pass in the RSAPublicKey format. (no-op, we fallback to this"
+    " format if the initial parse is unsuccessful)" },
   { "", kOptionalArgument, "" }
 };
 
@@ -84,21 +87,22 @@ bool rsaTool(const args_list_t &args) {
     return true;
   }
 
-  if (!HasArgument(parsed_args, "-in")) {
-    fprintf(stderr, "Missing value for required argument: -in\n");
-    PrintUsage(kArguments);
-    return false;
-  }
-
   if (pubin) {
     // If reading a public key, then we can only output a public key.
     pubout = true;
   }
 
-  // Check for required option -in
+  // Read from stdin if no -in path provided
+  bssl::UniquePtr<BIO> in_file;
   if (in_path.empty()) {
-    fprintf(stderr, "Error: missing required argument '-in'\n");
-    return false;
+      in_file.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
+    } else {
+      in_file.reset(BIO_new_file(in_path.c_str(), "rb"));
+      if (!in_file) {
+        fprintf(stderr, "Error: unable to load RSA key from '%s'\n",
+            in_path.c_str());
+        return false;
+      }
   }
 
   // Check input format
@@ -125,54 +129,52 @@ bool rsaTool(const args_list_t &args) {
     }
   }
 
-  bssl::UniquePtr<BIO> in_file(BIO_new_file(in_path.c_str(), "rb"));
-  if (!in_file) {
-    fprintf(stderr, "Error: unable to load RSA key from '%s'\n", in_path.c_str());
-    return false;
-  }
-
   bssl::UniquePtr<RSA> rsa;
   // Load the key
   if (pubin) {
     if (input_format == FORMAT_DER || input_format == FORMAT_UNKNOWN) {
-      // Try raw RSAPublicKey format first
-      rsa.reset(d2i_RSAPublicKey_bio(in_file.get(), nullptr));
+      // OpenSSL prioritizes PKCS#8 SubjectPublicKeyInfo format first.
+      bssl::UniquePtr<EVP_PKEY> pkey(d2i_PUBKEY_bio(in_file.get(), nullptr));
+      if (pkey) {
+        rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
+      }
       if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
-        // Try PKCS#8 SubjectPublicKeyInfo format
-        bssl::UniquePtr<EVP_PKEY> pkey(d2i_PUBKEY_bio(in_file.get(), nullptr));
-        if (pkey) {
-          rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
-        }
+        // Try raw RSAPublicKey format.
+        // This is the "RSAPublicKey_in" flag in OpenSSL, but we support
+        // this behind a no-op flag and an automatic fallback.
+        rsa.reset(d2i_RSAPublicKey_bio(in_file.get(), nullptr));
       }
     }
     if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
-      rsa.reset(PEM_read_bio_RSA_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
+      bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
+      if (pkey) {
+        rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
+      }
       if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
-        bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
-        if (pkey) {
-          rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
-        }
+        rsa.reset(PEM_read_bio_RSA_PUBKEY(in_file.get(), nullptr, nullptr, nullptr));
       }
     }
   } else {
     if (input_format == FORMAT_DER || input_format == FORMAT_UNKNOWN) {
-      // Try RSAPrivateKey format first
-      rsa.reset(d2i_RSAPrivateKey_bio(in_file.get(), nullptr));
+      // OpenSSL prioritizes PKCS#8 PrivateKeyInfo format first.
+      bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey_bio(in_file.get(), nullptr));
+      if (pkey) {
+        rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
+      }
       if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
-        // Try PKCS#8 PrivateKeyInfo format
-        bssl::UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey_bio(in_file.get(), nullptr));
-        if (pkey) {
-          rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
-        }
+        // Try RSAPrivateKey format. OpenSSL's |d2i_PrivateKey_bio| automatically
+        // falls back to PKCS1, if PKCS8 is unsuccessful. We have to do things
+        // manually here.
+        rsa.reset(d2i_RSAPrivateKey_bio(in_file.get(), nullptr));
       }
     }
     if (input_format == FORMAT_PEM || (!rsa && input_format == FORMAT_UNKNOWN)) {
-      rsa.reset(PEM_read_bio_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
+      bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
+      if (pkey) {
+        rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
+      }
       if (!rsa && BIO_seek(in_file.get(), 0) == 0) {
-        bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(in_file.get(), nullptr, nullptr, nullptr));
-        if (pkey) {
-          rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
-        }
+        rsa.reset(PEM_read_bio_RSAPrivateKey(in_file.get(), nullptr, nullptr, nullptr));
       }
     }
   }
