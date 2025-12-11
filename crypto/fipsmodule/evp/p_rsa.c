@@ -65,9 +65,9 @@
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 
-#include "internal.h"
-#include "../rsa/internal.h"
 #include "../../rsa_extra/internal.h"
+#include "../rsa/internal.h"
+#include "internal.h"
 
 #define NO_PSS_SALT_LEN_RESTRICTION -1
 
@@ -123,7 +123,8 @@ static int rsa_set_pss_param(RSA *rsa, EVP_PKEY_CTX *ctx) {
     return 1;
   }
   RSA_PKEY_CTX *rctx = ctx->data;
-  return RSASSA_PSS_PARAMS_create(rctx->md, rctx->mgf1md, rctx->saltlen, &(rsa->pss));
+  return RSASSA_PSS_PARAMS_create(rctx->md, rctx->mgf1md, rctx->saltlen,
+                                  &(rsa->pss));
 }
 
 // Called for PSS sign or verify initialisation: checks PSS parameter
@@ -181,9 +182,7 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
 // does not have the ability to handle ".data" sections. Splitting
 // |pkey_pss_init| into two functions: |pkey_pss_init_sign| and
 // |pkey_pss_init_verify|, gets around this undesired behaviour.
-static int pkey_pss_init_sign(EVP_PKEY_CTX *ctx) {
-  return pkey_pss_init(ctx);
-}
+static int pkey_pss_init_sign(EVP_PKEY_CTX *ctx) { return pkey_pss_init(ctx); }
 
 static int pkey_pss_init_verify(EVP_PKEY_CTX *ctx) {
   return pkey_pss_init(ctx);
@@ -303,9 +302,8 @@ static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
   return RSA_sign_raw(rsa, siglen, sig, *siglen, tbs, tbslen, rctx->pad_mode);
 }
 
-static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
-                           size_t siglen, const uint8_t *tbs,
-                           size_t tbslen) {
+static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
+                           const uint8_t *tbs, size_t tbslen) {
   RSA_PKEY_CTX *rctx = ctx->data;
   RSA *rsa = ctx->pkey->pkey.rsa;
 
@@ -328,8 +326,7 @@ static int pkey_rsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   if (!setup_tbuf(rctx, ctx) ||
       !RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, siglen,
                       rctx->pad_mode) ||
-      rslen != tbslen ||
-      CRYPTO_memcmp(tbs, rctx->tbuf, rslen) != 0) {
+      rslen != tbslen || CRYPTO_memcmp(tbs, rctx->tbuf, rslen) != 0) {
     return 0;
   }
 
@@ -432,9 +429,8 @@ static int pkey_rsa_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
   return RSA_encrypt(rsa, outlen, out, *outlen, in, inlen, rctx->pad_mode);
 }
 
-static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
-                            size_t *outlen, const uint8_t *in,
-                            size_t inlen) {
+static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
+                            const uint8_t *in, size_t inlen) {
   RSA_PKEY_CTX *rctx = ctx->data;
   RSA *rsa = ctx->pkey->pkey.rsa;
   const size_t key_len = EVP_PKEY_size(ctx->pkey);
@@ -616,7 +612,8 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       } else {
         // Check if the hashAlgorithm is matched.
         // Sec 3.3 https://tools.ietf.org/html/rfc4055#section-3.3
-        if (!pss_hash_algorithm_match(ctx, rctx->min_saltlen, rctx->mgf1md, p2)) {
+        if (!pss_hash_algorithm_match(ctx, rctx->min_saltlen, rctx->mgf1md,
+                                      p2)) {
           OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_MGF1_MD);
           return 0;
         }
@@ -676,7 +673,8 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     evp_pkey_set_cb_translate(pkey_ctx_cb, ctx);
   }
 
-  // In FIPS build, |RSA_generate_key_fips| updates the service indicator so lock it here
+  // In FIPS build, |RSA_generate_key_fips| updates the service indicator so
+  // lock it here
   FIPS_service_indicator_lock_state();
   if ((!is_fips_build() &&
        !RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, pkey_ctx_cb)) ||
@@ -716,7 +714,7 @@ static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
       pm = RSA_PKCS1_PADDING;
     } else if (strcmp(value, "none") == 0) {
       pm = RSA_NO_PADDING;
-    // OpenSSL also supports the typo.
+      // OpenSSL also supports the typo.
     } else if (strcmp(value, "oeap") == 0) {
       pm = RSA_PKCS1_OAEP_PADDING;
     } else if (strcmp(value, "oaep") == 0) {
@@ -737,9 +735,9 @@ static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     if (!strcmp(value, "digest")) {
       saltlen = RSA_PSS_SALTLEN_DIGEST;
     } else {
-      char* str_end;
+      char *str_end;
       saltlen = strtol(value, &str_end, 10);
-      if(str_end == value || saltlen < 0 || saltlen > INT_MAX) {
+      if (str_end == value || saltlen < 0 || saltlen > INT_MAX) {
         OPENSSL_PUT_ERROR(EVP, RSA_R_INTERNAL_ERROR);
         return -2;
       }
@@ -748,7 +746,7 @@ static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
   }
 
   if (strcmp(type, "rsa_keygen_bits") == 0) {
-    char* str_end;
+    char *str_end;
     long nbits = strtol(value, &str_end, 10);
     if (str_end == value || nbits <= 0 || nbits > INT_MAX) {
       OPENSSL_PUT_ERROR(EVP, RSA_R_INTERNAL_ERROR);
@@ -805,52 +803,53 @@ static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pkey_meth) {
-    out->pkey_id = EVP_PKEY_RSA;
-    out->init = pkey_rsa_init;
-    out->copy = pkey_rsa_copy;
-    out->cleanup = pkey_rsa_cleanup;
-    out->keygen = pkey_rsa_keygen;
-    out->sign_init = NULL; /* sign_init */
-    out->sign = pkey_rsa_sign;
-    out->sign_message = NULL; /* sign_message */
-    out->verify_init = NULL; /* verify_init */
-    out->verify = pkey_rsa_verify;
-    out->verify_message = NULL; /* verify_message */
-    out->verify_recover = pkey_rsa_verify_recover; /* verify_recover */
-    out->encrypt = pkey_rsa_encrypt; /* encrypt */
-    out->decrypt = pkey_rsa_decrypt; /* decrypt */
-    out->derive = NULL;
-    out->paramgen = NULL;
-    out->ctrl = pkey_rsa_ctrl;
-    out->ctrl_str = pkey_rsa_ctrl_str;
+  out->pkey_id = EVP_PKEY_RSA;
+  out->init = pkey_rsa_init;
+  out->copy = pkey_rsa_copy;
+  out->cleanup = pkey_rsa_cleanup;
+  out->keygen = pkey_rsa_keygen;
+  out->sign_init = NULL; /* sign_init */
+  out->sign = pkey_rsa_sign;
+  out->sign_message = NULL; /* sign_message */
+  out->verify_init = NULL;  /* verify_init */
+  out->verify = pkey_rsa_verify;
+  out->verify_message = NULL;                    /* verify_message */
+  out->verify_recover = pkey_rsa_verify_recover; /* verify_recover */
+  out->encrypt = pkey_rsa_encrypt;               /* encrypt */
+  out->decrypt = pkey_rsa_decrypt;               /* decrypt */
+  out->derive = NULL;
+  out->paramgen = NULL;
+  out->ctrl = pkey_rsa_ctrl;
+  out->ctrl_str = pkey_rsa_ctrl_str;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
-    out->pkey_id = EVP_PKEY_RSA_PSS;
-    out->init = pkey_rsa_init;
-    out->copy = pkey_rsa_copy;
-    out->cleanup = pkey_rsa_cleanup;
-    out->keygen = pkey_rsa_keygen;
-    out->sign_init = pkey_pss_init_sign; /* sign_init */
-    out->sign = pkey_rsa_sign;
-    out->sign_message = NULL; /* sign_message */
-    out->verify_init = pkey_pss_init_verify; /* verify_init */
-    out->verify = pkey_rsa_verify;
-    out->verify_message = NULL; /* verify_message */
-    out->verify_recover = NULL; /* verify_recover */
-    out->encrypt = NULL; /* encrypt */
-    out->decrypt = NULL; /* decrypt */
-    out->derive = NULL;
-    out->paramgen = NULL;
-    out->ctrl = pkey_rsa_ctrl;
-    out->ctrl_str = pkey_rsa_ctrl_str;
+  out->pkey_id = EVP_PKEY_RSA_PSS;
+  out->init = pkey_rsa_init;
+  out->copy = pkey_rsa_copy;
+  out->cleanup = pkey_rsa_cleanup;
+  out->keygen = pkey_rsa_keygen;
+  out->sign_init = pkey_pss_init_sign; /* sign_init */
+  out->sign = pkey_rsa_sign;
+  out->sign_message = NULL;                /* sign_message */
+  out->verify_init = pkey_pss_init_verify; /* verify_init */
+  out->verify = pkey_rsa_verify;
+  out->verify_message = NULL; /* verify_message */
+  out->verify_recover = NULL; /* verify_recover */
+  out->encrypt = NULL;        /* encrypt */
+  out->decrypt = NULL;        /* decrypt */
+  out->derive = NULL;
+  out->paramgen = NULL;
+  out->ctrl = pkey_rsa_ctrl;
+  out->ctrl_str = pkey_rsa_ctrl_str;
 }
 
-int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
+int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1,
+                          void *p2) {
   /* If key type is not RSA or RSA-PSS return error */
-  if ((ctx != NULL) && (ctx->pmeth != NULL)
-      && (ctx->pmeth->pkey_id != EVP_PKEY_RSA)
-      && (ctx->pmeth->pkey_id != EVP_PKEY_RSA_PSS)) {
+  if ((ctx != NULL) && (ctx->pmeth != NULL) &&
+      (ctx->pmeth->pkey_id != EVP_PKEY_RSA) &&
+      (ctx->pmeth->pkey_id != EVP_PKEY_RSA_PSS)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
@@ -858,11 +857,13 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 }
 
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding) {
-  return EVP_RSA_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_CTRL_RSA_PADDING, padding, NULL);
+  return EVP_RSA_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_CTRL_RSA_PADDING, padding,
+                               NULL);
 }
 
 int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx, int *out_padding) {
-  return EVP_RSA_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_CTRL_GET_RSA_PADDING, 0, out_padding);
+  return EVP_RSA_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_CTRL_GET_RSA_PADDING, 0,
+                               out_padding);
 }
 
 int EVP_PKEY_CTX_set_rsa_pss_keygen_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
@@ -879,25 +880,24 @@ int EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(EVP_PKEY_CTX *ctx,
 }
 
 int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int salt_len) {
-  return EVP_RSA_PKEY_CTX_ctrl(ctx,
-                           (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
-                           EVP_PKEY_CTRL_RSA_PSS_SALTLEN, salt_len, NULL);
+  return EVP_RSA_PKEY_CTX_ctrl(ctx, (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
+                               EVP_PKEY_CTRL_RSA_PSS_SALTLEN, salt_len, NULL);
 }
 
 int EVP_PKEY_CTX_get_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int *out_salt_len) {
-  return EVP_RSA_PKEY_CTX_ctrl(ctx,
-                           (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
-                           EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN, 0, out_salt_len);
+  return EVP_RSA_PKEY_CTX_ctrl(ctx, (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
+                               EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN, 0,
+                               out_salt_len);
 }
 
 int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx, int bits) {
   return EVP_RSA_PKEY_CTX_ctrl(ctx, EVP_PKEY_OP_KEYGEN,
-                           EVP_PKEY_CTRL_RSA_KEYGEN_BITS, bits, NULL);
+                               EVP_PKEY_CTRL_RSA_KEYGEN_BITS, bits, NULL);
 }
 
 int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx, BIGNUM *e) {
   return EVP_RSA_PKEY_CTX_ctrl(ctx, EVP_PKEY_OP_KEYGEN,
-                           EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, e);
+                               EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, e);
 }
 
 int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
@@ -907,19 +907,19 @@ int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
 
 int EVP_PKEY_CTX_get_rsa_oaep_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,
-                           EVP_PKEY_CTRL_GET_RSA_OAEP_MD, 0, (void*) out_md);
+                           EVP_PKEY_CTRL_GET_RSA_OAEP_MD, 0, (void *)out_md);
 }
 
 int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
   return EVP_RSA_PKEY_CTX_ctrl(ctx,
-                           EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
-                           EVP_PKEY_CTRL_RSA_MGF1_MD, 0, (void*) md);
+                               EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
+                               EVP_PKEY_CTRL_RSA_MGF1_MD, 0, (void *)md);
 }
 
 int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
-  return EVP_RSA_PKEY_CTX_ctrl(ctx,
-                           EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
-                           EVP_PKEY_CTRL_GET_RSA_MGF1_MD, 0, (void*) out_md);
+  return EVP_RSA_PKEY_CTX_ctrl(
+      ctx, EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT,
+      EVP_PKEY_CTRL_GET_RSA_MGF1_MD, 0, (void *)out_md);
 }
 
 int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx, uint8_t *label,
