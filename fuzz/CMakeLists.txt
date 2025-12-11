@@ -16,6 +16,7 @@ macro(fuzzer name)
 endmacro()
 
 fuzzer(arm_cpuinfo)
+fuzzer(blowfish)
 fuzzer(bn_div)
 fuzzer(bn_mod_exp)
 fuzzer(cert)
