@@ -90,9 +90,10 @@ bool CRLTool(const args_list_t &args);
 bool asn1parseTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool dhparamTool(const args_list_t &args);
-bool ecparamTool(const args_list_t &args);
-bool genrsaTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
+bool ecparamTool(const args_list_t &args);
+bool encTool(const args_list_t &args);
+bool genrsaTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool pkcs8Tool(const args_list_t &args);
 bool pkeyTool(const args_list_t &args);
@@ -105,7 +106,6 @@ bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
-
 
 // Req Tool Utilities
 bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
