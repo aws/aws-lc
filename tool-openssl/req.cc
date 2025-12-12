@@ -647,6 +647,13 @@ static bool GenerateSerial(X509 *cert) {
     return false;
   }
 
+  /*
+   * Randomly generate a serial number
+   *
+   * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+   * so that the first bit will never be one, so that the DER encoding
+   * rules won't force a leading octet.
+   */
   constexpr int SERIAL_RAND_BITS = 159;
   if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
                BN_RAND_BOTTOM_ANY)) {
@@ -912,7 +919,7 @@ bool reqTool(const args_list_t &args) {
   // 2. If no -config, output key to privkey.pem (this imitates how OpenSSL
   // would default to the default openssl.conf file, which has default_keyfile
   // set to privkey.pem)
-  if (keyout.empty()) {
+  if (keyout.empty() && key_file_path.empty()) {
     if (req_conf) {
       const char *default_keyfile = NCONF_get_string(
           req_conf.get(), req_section.c_str(), DEFAULT_KEYFILE);

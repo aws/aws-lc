@@ -350,6 +350,147 @@ TEST_F(X509Test, X509ToolPassinReqSignkeyTest) {
   ASSERT_TRUE(result);
 }
 
+// Test SetSerial functionality with CA certificate
+TEST_F(X509Test, X509ToolSetSerialTest) {
+  // Test 1: First certificate with CA - should create .srl file
+  args_list_t args = {"-in",    in_path,     "-CA",  ca_cert_path,
+                      "-CAkey", ca_key_path, "-out", out_path};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  // Check that .srl file was created
+  std::string srl_path =
+      std::string(ca_cert_path)
+          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
+      ".srl";
+  ScopedFILE srl_file(fopen(srl_path.c_str(), "r"));
+  ASSERT_TRUE(srl_file);
+
+  // Read first serial number
+  std::string serial1 = ReadFileToString(srl_path.c_str());
+  ASSERT_FALSE(serial1.empty());
+  serial1 = serial1.substr(0, serial1.find_first_of("\r\n"));  // Remove newline (handles both \r\n and \n)
+
+  // Verify the first certificate serial matches the .srl file content
+  auto cert1 = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert1 != nullptr);
+  ASN1_INTEGER *cert_serial = X509_get_serialNumber(cert1.get());
+  ASSERT_TRUE(cert_serial != nullptr);
+
+  bssl::UniquePtr<BIGNUM> bn(ASN1_INTEGER_to_BN(cert_serial, nullptr));
+  ASSERT_TRUE(bn != nullptr);
+  bssl::UniquePtr<char> hex_str(BN_bn2hex(bn.get()));
+  ASSERT_TRUE(hex_str != nullptr);
+
+  ASSERT_EQ(serial1, std::string(hex_str.get()));
+  srl_file.reset();
+
+  // Test 2: Second certificate with same CA - should increment serial
+  args = {"-in",    in_path,     "-CA",  ca_cert_path,
+          "-CAkey", ca_key_path, "-out", out_path};
+  result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  // Read updated serial number
+  std::string serial2 = ReadFileToString(srl_path.c_str());
+  ASSERT_FALSE(serial2.empty());
+  serial2 = serial2.substr(0, serial2.find_first_of("\r\n"));  // Remove newline (handles both \r\n and \n)
+
+  // Serial numbers should be different
+  ASSERT_NE(serial1, serial2);
+
+  // Verify the certificate serial matches the .srl file content
+  auto cert2 = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert2 != nullptr);
+  cert_serial = X509_get_serialNumber(cert2.get());
+  ASSERT_TRUE(cert_serial != nullptr);
+
+  // Convert certificate serial to hex string for comparison
+  bn.reset(ASN1_INTEGER_to_BN(cert_serial, nullptr));
+  ASSERT_TRUE(bn != nullptr);
+  hex_str.reset(BN_bn2hex(bn.get()));
+  ASSERT_TRUE(hex_str != nullptr);
+
+  ASSERT_EQ(serial2, std::string(hex_str.get()));
+
+  // Clean up
+  RemoveFile(srl_path.c_str());
+}
+
+// Test SetSerial functionality without CA (random serial generation)
+TEST_F(X509Test, X509ToolSetSerialRandomTest) {
+  // Test self-signed certificates - should generate random serials
+  args_list_t args = {"-in",        in_path, "-signkey",
+                      signkey_path, "-out",  out_path};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+
+  auto cert1 = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert1 != nullptr);
+
+  args = {"-in", in_path, "-signkey", signkey_path, "-out", out_path};
+  result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  auto cert2 = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert2 != nullptr);
+
+  // Verify certificates have different serial numbers
+  ASN1_INTEGER *serial1 = X509_get_serialNumber(cert1.get());
+  ASN1_INTEGER *serial2 = X509_get_serialNumber(cert2.get());
+  ASSERT_TRUE(serial1 != nullptr);
+  ASSERT_TRUE(serial2 != nullptr);
+
+  // Serial numbers should be different
+  ASSERT_NE(0, ASN1_INTEGER_cmp(serial1, serial2));
+}
+
+// Test SetSerial functionality with existing .srl file
+TEST_F(X509Test, X509ToolSetSerialExistingFileTest) {
+  // Create existing .srl file with known serial number
+  std::string srl_path =
+      std::string(ca_cert_path)
+          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
+      ".srl";
+  ScopedFILE srl_file(fopen(srl_path.c_str(), "w"));
+  ASSERT_TRUE(srl_file);
+  fprintf(srl_file.get(), "1234ABCD\n");
+  srl_file.reset();
+
+  // Generate certificate with CA - should read from existing .srl file
+  args_list_t args = {"-in",    in_path,     "-CA",  ca_cert_path,
+                      "-CAkey", ca_key_path, "-out", out_path};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  // Read updated serial number from .srl file
+  std::string new_serial = ReadFileToString(srl_path.c_str());
+  ASSERT_FALSE(new_serial.empty());
+
+  // Serial should be incremented from 1234ABCD to 1234ABCE
+  // Strip trailing newline characters for comparison (handles both \r\n and \n)
+  new_serial = new_serial.substr(0, new_serial.find_first_of("\r\n"));
+  ASSERT_EQ("1234ABCE", new_serial);
+
+  // Verify the certificate serial matches the .srl file content
+  auto cert = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert != nullptr);
+  ASN1_INTEGER *cert_serial = X509_get_serialNumber(cert.get());
+  ASSERT_TRUE(cert_serial != nullptr);
+
+  bssl::UniquePtr<BIGNUM> bn(ASN1_INTEGER_to_BN(cert_serial, nullptr));
+  ASSERT_TRUE(bn != nullptr);
+  bssl::UniquePtr<char> hex_str(BN_bn2hex(bn.get()));
+  ASSERT_TRUE(hex_str != nullptr);
+
+  // new_serial already stripped above, no need to strip again
+  ASSERT_EQ(new_serial, std::string(hex_str.get()));
+
+  // Clean up
+  RemoveFile(srl_path.c_str());
+}
+
 // -------------------- X590 Option Usage Error Tests --------------------------
 
 class X509OptionUsageErrorsTest : public X509Test {
@@ -1343,6 +1484,76 @@ TEST_F(X509ComparisonTest, X509ToolCompareExtensionsOpenSSL) {
       CompareCertificates(cert_tool.get(), cert_openssl.get(), nullptr, 30));
 
   RemoveFile(ext_path);
+}
+
+// Test SetSerial functionality against OpenSSL with CA certificate
+TEST_F(X509ComparisonTest, X509ToolCompareSetSerialCAOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
+                             in_path + " -CA " + ca_cert_path + " -CAkey " +
+                             ca_key_path + " -out " + out_path_tool;
+  std::string openssl_command =
+      std::string(openssl_executable_path) + " x509 -in " + in_path + " -CA " +
+      ca_cert_path + " -CAkey " + ca_key_path + " -out " + out_path_openssl;
+
+  ExecuteCommand(tool_command);
+  ExecuteCommand(openssl_command);
+
+  auto cert_tool = LoadPEMCertificate(out_path_tool);
+  auto cert_openssl = LoadPEMCertificate(out_path_openssl);
+
+  ASSERT_TRUE(cert_tool != nullptr);
+  ASSERT_TRUE(cert_openssl != nullptr);
+
+  // Both should have valid serial numbers (non-zero)
+  ASN1_INTEGER *serial_tool = X509_get_serialNumber(cert_tool.get());
+  ASN1_INTEGER *serial_openssl = X509_get_serialNumber(cert_openssl.get());
+  ASSERT_TRUE(serial_tool != nullptr);
+  ASSERT_TRUE(serial_openssl != nullptr);
+
+  // Clean up .srl files
+  std::string srl_path =
+      std::string(ca_cert_path)
+          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
+      ".srl";
+  RemoveFile(srl_path.c_str());
+}
+
+// Test SetSerial functionality against OpenSSL with existing .srl file
+TEST_F(X509ComparisonTest, X509ToolCompareSetSerialExistingFileOpenSSL) {
+  // Create existing .srl file with known serial number
+  std::string srl_path =
+      std::string(ca_cert_path)
+          .substr(0, std::string(ca_cert_path).find_last_of('.')) +
+      ".srl";
+  ScopedFILE srl_file(fopen(srl_path.c_str(), "w"));
+  ASSERT_TRUE(srl_file);
+  fprintf(srl_file.get(), "1234ABCD\n");
+  srl_file.reset();
+
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
+                             in_path + " -CA " + ca_cert_path + " -CAkey " +
+                             ca_key_path + " -out " + out_path_tool;
+  std::string openssl_command =
+      std::string(openssl_executable_path) + " x509 -in " + in_path + " -CA " +
+      ca_cert_path + " -CAkey " + ca_key_path + " -out " + out_path_openssl;
+
+  ExecuteCommand(tool_command);
+  ExecuteCommand(openssl_command);
+
+  auto cert_tool = LoadPEMCertificate(out_path_tool);
+  auto cert_openssl = LoadPEMCertificate(out_path_openssl);
+
+  ASSERT_TRUE(cert_tool != nullptr);
+  ASSERT_TRUE(cert_openssl != nullptr);
+
+  // Both should have incremented the serial number
+  ASN1_INTEGER *serial_tool = X509_get_serialNumber(cert_tool.get());
+  ASN1_INTEGER *serial_openssl = X509_get_serialNumber(cert_openssl.get());
+  ASSERT_TRUE(serial_tool != nullptr);
+  ASSERT_TRUE(serial_openssl != nullptr);
+
+  // Clean up .srl files
+  RemoveFile(srl_path.c_str());
 }
 
 // Test AdaptKeyIDExtension with existing valid key identifier extensions

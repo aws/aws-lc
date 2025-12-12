@@ -198,7 +198,8 @@ TEST_F(ReqTest, EncryptedPrivateKey) {
 }
 
 TEST_F(ReqTest, DefaultKeyoutPath) {
-  // Test that key is written to privkey.pem when -keyout is not specified
+  // Test that key is written to privkey.pem when -newkey is present even with
+  // no -keyout
   args_list_t args = {"-new", "-newkey", "rsa:2048", "-nodes",
                       "-out", csr_path,  "-subj",    "/CN=test.com"};
 
@@ -225,6 +226,30 @@ TEST_F(ReqTest, SuppressedKeyWrite) {
 
   args_list_t args = {"-new",   "-config", config_path,   "-out",
                       csr_path, "-subj",   "/CN=test.com"};
+
+  ASSERT_TRUE(reqTool(args));
+
+  // Verify that privkey.pem was NOT created
+  ScopedFILE f(fopen("privkey.pem", "r"));
+  EXPECT_FALSE(f) << "privkey.pem should not be created";
+}
+
+TEST_F(ReqTest, ExistingKeyNoWrite) {
+  // Verify if -key is provided, no key write should happen
+  ScopedFILE config_file(fopen(config_path, "w"));
+  ASSERT_TRUE(config_file);
+  fprintf(config_file.get(),
+          "[req]\n"
+          "default_keyfile = privkey.pem\n"
+          "distinguished_name = req_dn\n"
+          "encrypt_key = yes\n"
+          "[req_dn]\n"
+          "CN = Common Name\n");
+  fclose(config_file.release());
+
+  args_list_t args = {"-new",   "-config",      config_path,
+                      "-key",   input_key_path, "-out",
+                      csr_path, "-subj",        "/CN=primary"};
 
   ASSERT_TRUE(reqTool(args));
 
