@@ -2,6 +2,7 @@
 
 [[source]]
 pattern = "../../crypto/**/*test.cc"
+type = "test"
 
 [[specification]]
 source = "vectors_spec.md"
