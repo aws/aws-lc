@@ -919,7 +919,7 @@ bool reqTool(const args_list_t &args) {
   // 2. If no -config, output key to privkey.pem (this imitates how OpenSSL
   // would default to the default openssl.conf file, which has default_keyfile
   // set to privkey.pem)
-  if (keyout.empty()) {
+  if (keyout.empty() && key_file_path.empty()) {
     if (req_conf) {
       const char *default_keyfile = NCONF_get_string(
           req_conf.get(), req_section.c_str(), DEFAULT_KEYFILE);
