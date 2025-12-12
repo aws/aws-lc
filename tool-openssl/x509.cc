@@ -4,10 +4,10 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <string.h>
 #include <algorithm>
 #include <ctime>
 #include <iostream>
-#include <string>
 #include "internal.h"
 
 static const argument_t kArguments[] = {
@@ -116,9 +116,105 @@ static int AdaptKeyIDExtension(X509 *cert, X509V3_CTX *ext_ctx,
   return !add_if_missing || X509_add_ext(cert, new_keyid_ext.get(), -1);
 }
 
+static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
+  std::string serial_file_path = "";
+  ScopedFILE file;
+
+  ASN1_INTEGER *serial = X509_get_serialNumber(cert);
+  if (!serial) {
+    fprintf(stderr, "Error: Failed to get certificate serial number field\n");
+    return false;
+  }
+
+  // If CA cert is provided, the serial file associated with the CA is
+  // <ca_file_name>.srl
+  if (!ca_file_path.empty()) {
+    size_t pos = ca_file_path.find_last_of('.');
+    serial_file_path = ca_file_path.substr(0, pos) + ".srl";
+    file.reset(fopen(serial_file_path.c_str(), "r"));  // Check if file exists
+  }
+
+  BIGNUM *bn = NULL;
+
+  // 1. If no CA provided or serial file not found, generate a random serial
+  // number
+  // 2. Otherwise, read serial number from serial file
+  if (ca_file_path.empty() || !file) {
+    bn = BN_new();
+
+    /*
+     * Randomly generate a serial number
+     *
+     * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+     * so that the first bit will never be one, so that the DER encoding
+     * rules won't force a leading octet.
+     */
+    constexpr int SERIAL_RAND_BITS = 159;
+    if (!BN_rand(bn, SERIAL_RAND_BITS, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
+      BN_free(bn);
+      fprintf(stderr, "Error: Failed to generate random serial number\n");
+      return false;
+    }
+  } else {
+    char buf[1024];
+    if (!fgets(buf, sizeof(buf), file.get())) {
+      return false;
+    }
+
+    size_t len = OPENSSL_strnlen(buf, sizeof(buf));
+    if (len > 0 && buf[len - 1] == '\n') {
+      buf[len - 1] = '\0';
+      len--;
+    }
+
+#if defined(_WIN32)
+    if (len > 0 && buf[len - 1] == '\r') {
+      buf[len - 1] = '\0';
+      len--;
+    }
+#endif
+
+    bn = BN_new();
+
+    if (!BN_hex2bn(&bn, buf)) {
+      BN_free(bn);
+      return false;
+    }
+  }
+
+  if (!BN_add_word(bn, 1)) {
+    BN_free(bn);
+    fprintf(stderr, "Error: Failed to increment serial number\n");
+    return false;
+  }
+
+  // Convert serial number to ASN1_INTEGER and assign it to cert
+  if (!BN_to_ASN1_INTEGER(bn, serial)) {
+    BN_free(bn);
+    fprintf(stderr, "Error: Failed to convert serial number to ASN1_INTEGER\n");
+    return false;
+  }
+
+  // Write serial number to serial file
+  if (!ca_file_path.empty()) {
+    file.reset(fopen(serial_file_path.c_str(), "w"));
+    if (!file) {
+      fprintf(stderr, "Error: Failed to create new serial file %s\n",
+              serial_file_path.c_str());
+      return false;
+    }
+
+    bssl::UniquePtr<char> hex_str(BN_bn2hex(bn));
+    fprintf(file.get(), "%s\n", hex_str.get());
+  }
+
+  BN_free(bn);
+  return true;
+}
+
 static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
                                              EVP_PKEY *pkey,
-                                             const std::string pkey_path,
+                                             const std::string &pkey_path,
                                              const std::string &ext_file_path,
                                              std::string &ext_section) {
   X509V3_CTX ext_ctx;
@@ -194,6 +290,18 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
                            "keyid, issuer", !self_sign)) {
     fprintf(stderr, "Error: Failed to handle authority key identifier\n");
     return false;
+  }
+
+  if (self_sign) {
+    if (!SetSerial(subject, "")) {
+      fprintf(stderr, "Error: unable to set serial number\n");
+      return false;
+    }
+  } else {
+    if (!SetSerial(subject, pkey_path)) {
+      fprintf(stderr, "Error: unable to set serial number\n");
+      return false;
+    }
   }
 
   // TODO: make customizable with -digest option
