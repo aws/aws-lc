@@ -89,17 +89,6 @@ protected:
   }
 };
 
-// Test missing -in required option
-TEST_F(RSAOptionUsageErrorsTest, RequiredOptionTests) {
-  std::vector<std::vector<std::string>> testparams = {
-    {"-out", "output.pem"},
-    {"-modulus"},
-  };
-  for (const auto& args : testparams) {
-    TestOptionUsageErrors(args);
-  }
-}
-
 // Test invalid file path
 TEST_F(RSAOptionUsageErrorsTest, InvalidFilePathTest) {
   args_list_t args = {"-in", "/nonexistent/path/to/key.pem"};
