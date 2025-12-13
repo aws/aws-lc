@@ -76,12 +76,17 @@ echo "Pull source code from remote repository..."
 mkdir $SRC
 cp $TMP/mldsa/src/* $SRC
 
-# Copy x86_64 NTT native backend (ntt.S and intt.S only)
-echo "Copying x86_64 NTT native backend..."
+# Copy x86_64 assembly files
+echo "Copying x86_64 assembly files..."
 if [ -d "$TMP/mldsa/src/native/x86_64/src" ]; then
     mkdir -p $SRC/native/x86_64/src
     cp $TMP/mldsa/src/native/x86_64/src/ntt.S $SRC/native/x86_64/src/ 2>/dev/null || true
     cp $TMP/mldsa/src/native/x86_64/src/intt.S $SRC/native/x86_64/src/ 2>/dev/null || true
+    cp $TMP/mldsa/src/native/x86_64/src/nttunpack.S $SRC/native/x86_64/src/ 2>/dev/null || true
+    cp $TMP/mldsa/src/native/x86_64/src/pointwise.S $SRC/native/x86_64/src/ 2>/dev/null || true
+    cp $TMP/mldsa/src/native/x86_64/src/pointwise_acc_l4.S $SRC/native/x86_64/src/ 2>/dev/null || true
+    cp $TMP/mldsa/src/native/x86_64/src/pointwise_acc_l5.S $SRC/native/x86_64/src/ 2>/dev/null || true
+    cp $TMP/mldsa/src/native/x86_64/src/pointwise_acc_l7.S $SRC/native/x86_64/src/ 2>/dev/null || true
 fi
 
 # We use the custom `mldsa_native_config.h`, so can remove the default one
