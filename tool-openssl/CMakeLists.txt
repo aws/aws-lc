@@ -7,11 +7,13 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    asn1parse.cc
     crl.cc
     dgst.cc
     dhparam.cc
     ecparam.cc
     ec.cc
+    enc.cc
     genrsa.cc
     pass_util.cc
     pkcs8.cc
@@ -89,6 +91,8 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        asn1parse.cc
+        asn1parse_test.cc
         crl.cc
         crl_test.cc
         dgst.cc
@@ -99,6 +103,8 @@ if(BUILD_TESTING)
         ec_test.cc
         ecparam.cc
         ecparam_test.cc
+        enc.cc
+        enc_test.cc
         genrsa.cc
         genrsa_test.cc
         ordered_args.cc
