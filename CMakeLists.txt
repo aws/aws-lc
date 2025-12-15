@@ -595,6 +595,7 @@ if(GCC OR CLANG)
     endif()
   endif()
 
+  check_compiler("explicit_bzero.c" AWS_LC_HAVE_EXPLICIT_BZERO)
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
 

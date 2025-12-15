@@ -54,6 +54,16 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#if defined(AWS_LC_HAVE_EXPLICIT_BZERO)
+#if !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE
+#endif
+#include <strings.h>
+#elif __STDC_VERSION__ >= 201112L
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <string.h>
+#endif
+
 #include <openssl/mem.h>
 
 #include <assert.h>
@@ -314,6 +324,10 @@ void OPENSSL_cleanse(void *ptr, size_t len) {
 
 #if defined(OPENSSL_WINDOWS)
   SecureZeroMemory(ptr, len);
+#elif defined(AWS_LC_HAVE_EXPLICIT_BZERO)
+  explicit_bzero(ptr, len);
+#elif __STDC_LIB_EXT1__
+  memset_s(ptr, len, 0, len);
 #else
   OPENSSL_memset(ptr, 0, len);
 
