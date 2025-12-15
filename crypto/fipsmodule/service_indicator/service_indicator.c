@@ -24,7 +24,11 @@ int is_fips_build(void) {
 // This function is intentionally not inlined to ensure the __FILE__ string
 // literal reference stays close to the call site, avoiding the ±1MB PC-relative
 // addressing limit of the ARM64 ADR instruction.
-static void put_set_thread_local_error(void) __attribute__((noinline));
+#if defined(_MSC_VER)
+__declspec(noinline)
+#else
+__attribute__((noinline))
+#endif
 static void put_set_thread_local_error(void) {
   OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
 }
