@@ -24,15 +24,15 @@ static const argument_t kArguments[] = {
   { "", kOptionalArgument, "" }
 };
 
-static bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int output_format) {
-  if (output_format == FORMAT_DER) {
-    if (!i2d_PrivateKey_bio(output_bio.get(), pkey)) {
+bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &out, int format) {
+  if (format == FORMAT_DER) {
+    if (!i2d_PrivateKey_bio(out.get(), pkey)) {
       fprintf(stderr, "Error: error writing private key in DER format\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-  } else {
-    if (!PEM_write_bio_PrivateKey(output_bio.get(), pkey, nullptr, nullptr, 0, nullptr, nullptr)) {
+  } else { // FORMAT_PEM
+    if (!PEM_write_bio_PrivateKey(out.get(), pkey, nullptr, nullptr, 0, nullptr, nullptr)) {
       fprintf(stderr, "Error: error writing private key in PEM format\n");
       ERR_print_errors_fp(stderr);
       return false;
@@ -49,7 +49,7 @@ static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int
       return false;
     }
     return true;
-  } else if (output_format == FORMAT_PEM) {
+  } else { // FORMAT_PEM
     if (!PEM_write_bio_PUBKEY(output_bio.get(), pkey)) {
       fprintf(stderr, "Error: failed to write public key in PEM format\n");
       ERR_print_errors_fp(stderr);
@@ -57,9 +57,6 @@ static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int
     }
     return true;
   }
-
-  fprintf(stderr, "Error: unsupported output format\n");
-  return false;
 }
 
 
