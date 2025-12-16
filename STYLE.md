@@ -19,11 +19,30 @@ In general, `@file` should not include the (optional name parameter)[https://www
 
 #### All new or modified functions in a public headers must have documentation
 When a function is added to a public header or an existing function is modified, the documentation for the
-function must included. This is to include a description of the function if one doesn't already exist.
+function must included. This is to include a description of the function if one doesn't already exist. Documentation
+should be ordered as follows:
+```C
+/**
+ * @brief One-line description
+ *
+ * @details 
+ * More info.
+ * Across multiple lines or paragraphs.
+ *
+ * @param dir param_1 Description
+ * @param dir param_2 Description
+ *
+ * @return Description
+ *  or
+ * @retval val1 Description
+ * @retval val2 Description
+ */
+```
+Warnings, todos, and deprecated commands can be in any order but should be at the end of the standard block above.
 
 ##### All function parameters will be documented
 [`@param`](https://www.doxygen.nl/manual/commands.html#cmdparam) tags for each parameter, including direction (in/out/in,out)
-will be added.
+will be added. Parameters should be in the same order as the function declaration.
 ```C
 /**
  * Copies a block of data into a buffer.
@@ -35,7 +54,7 @@ will be added.
 ```
 
 ##### The return value will be documented if the return type is not void
-[`@return`](https://www.doxygen.nl/manual/commands.html#cmdreturn) or [`@retval`](https://www.doxygen.nl/manual/commands.html#cmdretval)
+[`@returns`](https://www.doxygen.nl/manual/commands.html#cmdreturns) or [`@retval`](https://www.doxygen.nl/manual/commands.html#cmdretval)
 should be used.
 ```C
 /**
