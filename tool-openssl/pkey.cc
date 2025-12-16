@@ -48,15 +48,14 @@ static bool WritePublicKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &output_bio, int
       ERR_print_errors_fp(stderr);
       return false;
     }
-    return true;
   } else { // FORMAT_PEM
     if (!PEM_write_bio_PUBKEY(output_bio.get(), pkey)) {
       fprintf(stderr, "Error: failed to write public key in PEM format\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    return true;
   }
+  return true;
 }
 
 

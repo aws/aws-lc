@@ -33,12 +33,13 @@ bool ApplyPkeyCtrlString(EVP_PKEY_CTX *ctx, const char *pkeyopt) {
     return false;
   }
 
+  // The OpenSSL algorithm options are defined using the pattern "opt:value".
   char *vtmp = strchr(stmp.get(), ':');
   if (!vtmp) {
     return false;
   }
 
-  *vtmp = 0;
+  *vtmp = '\0';
   vtmp++;
 
   OPENSSL_BEGIN_ALLOW_DEPRECATED

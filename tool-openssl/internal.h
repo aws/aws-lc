@@ -135,11 +135,12 @@ BUCKET **get_table();
 void cleanup_hash_table();
 
 // ApplyPkeyCtrlString parses the options in |pkeyopt| and passes them to
-// |EVP_PKEY_CTX_ctrl_str|.
+// |EVP_PKEY_CTX_ctrl_str|. It returns false if the parsing or memory allocation
+// during string duplication was unsuccesful.
 bool ApplyPkeyCtrlString(EVP_PKEY_CTX *ctx, const char *pkeyopt);
 
 // WritePrivateKey writes the private key contents of |pkey| to |out| based on
-// |format|.
+// |format|. It returns false if the write was unsuccessful.
 bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &out, int format);
 
 // Ordered argument processing (specific to tool-openssl)

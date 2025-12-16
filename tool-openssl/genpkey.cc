@@ -18,8 +18,6 @@ static const argument_t kArguments[] = {
     {"", kOptionalArgument, ""}};
 
 static EVP_PKEY_CTX *init_gen_str(std::string algorithm) {
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-  int pkey_id = 0;
   const EVP_PKEY_ASN1_METHOD *ameth =
       EVP_PKEY_asn1_find_str(nullptr, algorithm.c_str(), algorithm.size());
   if (!ameth) {
@@ -27,10 +25,11 @@ static EVP_PKEY_CTX *init_gen_str(std::string algorithm) {
     return nullptr;
   }
 
-  ERR_clear_error();
-
-  EVP_PKEY_asn1_get0_info(&pkey_id, nullptr, nullptr, nullptr, nullptr, ameth);
-  ctx.reset(EVP_PKEY_CTX_new_id(pkey_id, nullptr));
+  int pkey_id = 0;
+  if (!EVP_PKEY_asn1_get0_info(&pkey_id, nullptr, nullptr, nullptr, nullptr, ameth)) {
+    return nullptr;
+  };
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(pkey_id, nullptr));
   if (!ctx) {
     return nullptr;
   }
@@ -72,7 +71,7 @@ bool genpkeyTool(const args_list_t &args) {
     out.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
   } else {
     out.reset(BIO_new(BIO_s_file()));
-    if (BIO_write_filename(out.get(), out_path.c_str()) <= 0) {
+    if (!BIO_write_filename(out.get(), out_path.c_str())) {
       fprintf(stderr, "Error: failed to open output file '%s'\n",
               out_path.c_str());
       return false;
@@ -90,7 +89,7 @@ bool genpkeyTool(const args_list_t &args) {
   }
 
   EVP_PKEY *tmp_key = nullptr;
-  if (EVP_PKEY_keygen(ctx.get(), &tmp_key) <= 0) {
+  if (!EVP_PKEY_keygen(ctx.get(), &tmp_key)) {
     fprintf(stderr, "Error generating key\n");
     return false;
   }
