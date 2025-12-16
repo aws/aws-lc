@@ -113,34 +113,6 @@ static bool ReadInputData(const std::string &in_path,
   return true;
 }
 
-static bool ApplyPKeyParam(EVP_PKEY_CTX *ctx, const char *pkeyopt) {
-  char *stmp = OPENSSL_strdup(pkeyopt);
-  if (!stmp) {
-    return false;
-  }
-
-  char *vtmp = strchr(stmp, ':');
-  if (!vtmp) {
-    OPENSSL_free(stmp);
-    return false;
-  }
-
-  *vtmp = 0;
-  vtmp++;
-
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
-  const char *value = vtmp;
-  // Keep OpenSSL's numeric spelling at the CLI boundary, outside the module.
-  if (strcmp(stmp, "rsa_pss_saltlen") == 0 && strcmp(value, "-1") == 0) {
-    value = "digest";
-  }
-  int result = EVP_PKEY_CTX_ctrl_str(ctx, stmp, value);
-  OPENSSL_END_ALLOW_DEPRECATED
-
-  OPENSSL_free(stmp);
-  return result == 1;
-}
-
 static bool DoSign(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
                    const std::vector<std::string> &pkeyopts,
                    std::vector<uint8_t> &signature) {
@@ -158,7 +130,7 @@ static bool DoSign(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
 
   if (pkeyopts.size() > 0) {
     for (const auto &pkeyopt : pkeyopts) {
-      if (!ApplyPKeyParam(ctx.get(), pkeyopt.c_str())) {
+      if (!ApplyPkeyCtrlString(ctx.get(), pkeyopt.c_str())) {
         fprintf(stderr, "Signature parameter error \"%s\"\n", pkeyopt.c_str());
         return false;
       }
@@ -202,7 +174,7 @@ static bool DoVerify(EVP_PKEY *pkey, const std::vector<uint8_t> &input_data,
 
   if (pkeyopts.size() > 0) {
     for (const auto &pkeyopt : pkeyopts) {
-      if (!ApplyPKeyParam(ctx.get(), pkeyopt.c_str())) {
+      if (!ApplyPkeyCtrlString(ctx.get(), pkeyopt.c_str())) {
         fprintf(stderr, "Signature parameter error \"%s\"\n", pkeyopt.c_str());
         return false;
       }

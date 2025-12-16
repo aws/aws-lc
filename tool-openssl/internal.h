@@ -93,6 +93,7 @@ bool dhparamTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
 bool ecparamTool(const args_list_t &args);
 bool encTool(const args_list_t &args);
+bool genpkeyTool(const args_list_t &args);
 bool genrsaTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool pkcs8Tool(const args_list_t &args);
@@ -132,6 +133,15 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
                const uint8_t *digest);
 BUCKET **get_table();
 void cleanup_hash_table();
+
+// ApplyPkeyCtrlString parses the options in |pkeyopt| and passes them to
+// |EVP_PKEY_CTX_ctrl_str|. It returns false if the parsing or memory allocation
+// during string duplication was unsuccesful.
+bool ApplyPkeyCtrlString(EVP_PKEY_CTX *ctx, const char *pkeyopt);
+
+// WritePrivateKey writes the private key contents of |pkey| to |out| based on
+// |format|. It returns false if the write was unsuccessful.
+bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &out, int format);
 
 // Ordered argument processing (specific to tool-openssl)
 namespace ordered_args {
