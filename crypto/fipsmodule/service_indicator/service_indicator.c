@@ -20,6 +20,19 @@ int is_fips_build(void) {
 
 #if defined(AWSLC_FIPS)
 
+// Trampoline function to avoid ARM64 ADR range issues in large FIPS module.
+// This function is intentionally not inlined to ensure the __FILE__ string
+// literal reference stays close to the call site, avoiding the ±1MB PC-relative
+// addressing limit of the ARM64 ADR instruction.
+#if defined(_MSC_VER)
+__declspec(noinline)
+#else
+__attribute__((noinline))
+#endif
+static void put_set_thread_local_error(void) {
+  OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+}
+
 #define STATE_UNLOCKED 0
 #define TLS_MD_EXTENDED_MASTER_SECRET_CONST "extended master secret"
 #define TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE 22
@@ -56,7 +69,7 @@ static struct fips_service_indicator_state *service_indicator_get(void) {
 
     if (!CRYPTO_set_thread_local(
             AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, free)) {
-      free(indicator);
+      put_set_thread_local_error();
       return NULL;
     }
   }
