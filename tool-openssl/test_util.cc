@@ -578,3 +578,32 @@ bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
 
   return true;
 }
+
+bool CheckKeyBoundaries(const std::string &content,
+                        const std::string &begin1,
+                        const std::string &end1,
+                        const std::string &begin2,
+                        const std::string &end2) {
+  if (content.empty() || begin1.empty() || end1.empty()) {
+    return false;
+  }
+
+  if (content.size() < begin1.size() + end1.size()) {
+    return false;
+  }
+
+  bool primary_match =
+      content.compare(0, begin1.size(), begin1) == 0 &&
+      content.compare(content.size() - end1.size(), end1.size(), end1) == 0;
+
+  if (primary_match || begin2.empty() || end2.empty()) {
+    return primary_match;
+  }
+
+  if (content.size() < begin2.size() + end2.size()) {
+    return false;
+  }
+
+  return content.compare(0, begin2.size(), begin2) == 0 &&
+         content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
+}
