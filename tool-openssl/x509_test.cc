@@ -491,6 +491,82 @@ TEST_F(X509Test, X509ToolSetSerialExistingFileTest) {
   RemoveFile(srl_path.c_str());
 }
 
+// Test AKID serial number
+TEST_F(X509Test, X509ToolAKIDSerialWithCATest) {
+  char ext_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(ext_path), 0u);
+
+  // Create extension file with authorityKeyIdentifier
+  ScopedFILE ext_file(fopen(ext_path, "w"));
+  ASSERT_TRUE(ext_file);
+  fprintf(ext_file.get(), "[test_ext]\n");
+  fprintf(ext_file.get(), "authorityKeyIdentifier=keyid,issuer:always\n");
+  fprintf(ext_file.get(), "basicConstraints=CA:FALSE\n");
+  ext_file.reset();
+
+  args_list_t args = {"-in",         in_path,     "-CA",      ca_cert_path,
+                      "-CAkey",      ca_key_path, "-extfile", ext_path,
+                      "-extensions", "test_ext",  "-out",     out_path};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  // Verify the certificate serial matches the .srl file content
+  auto cert = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert);
+  ASN1_INTEGER *cert_serial = X509_get_serialNumber(cert.get());
+  ASSERT_TRUE(cert_serial);
+
+  // Verify cert serial number does not match CA serial number
+  auto ca_cert = LoadPEMCertificate(ca_cert_path);
+  ASN1_INTEGER *ca_serial = X509_get_serialNumber(ca_cert.get());
+  ASSERT_TRUE(ca_serial);
+  ASSERT_NE(ASN1_INTEGER_cmp(ca_serial, cert_serial), 0);
+
+  // Verify AKID serial number matches CA serial number
+  bssl::UniquePtr<AUTHORITY_KEYID> akid(static_cast<AUTHORITY_KEYID *>(
+      X509_get_ext_d2i(cert.get(), NID_authority_key_identifier, NULL, NULL)));
+  ASSERT_TRUE(akid);
+  ASSERT_TRUE(akid.get()->serial);
+  ASSERT_EQ(ASN1_INTEGER_cmp(ca_serial, akid->serial), 0);
+
+  RemoveFile(ext_path);
+}
+
+// Test AKID serial number
+TEST_F(X509Test, X509ToolAKIDSerialSelfSignedTest) {
+  char ext_path[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(ext_path), 0u);
+
+  // Create extension file with authorityKeyIdentifier
+  ScopedFILE ext_file(fopen(ext_path, "w"));
+  ASSERT_TRUE(ext_file);
+  fprintf(ext_file.get(), "[test_ext]\n");
+  fprintf(ext_file.get(),
+          "authorityKeyIdentifier=keyid:always,issuer:always\n");
+  fprintf(ext_file.get(), "basicConstraints=CA:FALSE\n");
+  ext_file.reset();
+
+  args_list_t args = {"-in",      in_path,  "-signkey",    signkey_path,
+                      "-extfile", ext_path, "-extensions", "test_ext",
+                      "-out",     out_path};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  // Verify the certificate serial matches the .srl file content
+  auto cert = LoadPEMCertificate(out_path);
+  ASSERT_TRUE(cert);
+  ASN1_INTEGER *cert_serial = X509_get_serialNumber(cert.get());
+  ASSERT_TRUE(cert_serial);
+
+  // Verify AKID serial number matches CA serial number
+  bssl::UniquePtr<AUTHORITY_KEYID> akid(static_cast<AUTHORITY_KEYID *>(
+      X509_get_ext_d2i(cert.get(), NID_authority_key_identifier, NULL, NULL)));
+  ASSERT_TRUE(akid);
+  ASSERT_EQ(ASN1_INTEGER_cmp(cert_serial, akid->serial), 0);
+
+  RemoveFile(ext_path);
+}
+
 // -------------------- X590 Option Usage Error Tests --------------------------
 
 class X509OptionUsageErrorsTest : public X509Test {
