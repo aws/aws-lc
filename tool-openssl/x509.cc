@@ -220,6 +220,23 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
   X509V3_CTX ext_ctx;
   bssl::UniquePtr<CONF> ext_conf(nullptr);
 
+  // Determine if this is a self-signed certificate
+  int self_sign = X509_check_private_key(subject, pkey);
+
+  // Set serial number
+  if (self_sign) {
+    if (!SetSerial(subject, "")) {
+      fprintf(stderr, "Error: unable to set serial number\n");
+      return false;
+    }
+  } else {
+    if (!SetSerial(subject, pkey_path)) {
+      fprintf(stderr, "Error: unable to set serial number\n");
+      return false;
+    }
+  }
+
+  // Handle extensions
   X509V3_set_ctx(&ext_ctx, issuer, subject, NULL, NULL, X509V3_CTX_REPLACE);
 
   if (ext_file_path.empty()) {
@@ -253,7 +270,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
       ext_section = res ? res : "default";
     }
 
-    // validate extension config
+    // Validate extension config
     X509V3_set_ctx_test(&temp_ctx);
     X509V3_set_nconf(&temp_ctx, ext_conf.get());
     if (!X509V3_EXT_add_nconf(ext_conf.get(), &temp_ctx, ext_section.c_str(),
@@ -262,7 +279,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
       return false;
     }
 
-    // initialize actual extension context
+    // Initialize actual extension context
     X509V3_set_nconf(&ext_ctx, ext_conf.get());
 
     if (!X509V3_EXT_add_nconf(ext_conf.get(), &ext_ctx, ext_section.c_str(),
@@ -278,30 +295,17 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
     return false;
   }
 
-  /* Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER */
+  // Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER
   if (!AdaptKeyIDExtension(subject, &ext_ctx, "subjectKeyIdentifier", "hash",
                            1)) {
     fprintf(stderr, "Error: Failed to handle subject key identifier\n");
     return false;
   }
-  /* Prevent X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER */
-  int self_sign = X509_check_private_key(subject, pkey);
+  // Prevent X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER
   if (!AdaptKeyIDExtension(subject, &ext_ctx, "authorityKeyIdentifier",
                            "keyid, issuer", !self_sign)) {
     fprintf(stderr, "Error: Failed to handle authority key identifier\n");
     return false;
-  }
-
-  if (self_sign) {
-    if (!SetSerial(subject, "")) {
-      fprintf(stderr, "Error: unable to set serial number\n");
-      return false;
-    }
-  } else {
-    if (!SetSerial(subject, pkey_path)) {
-      fprintf(stderr, "Error: unable to set serial number\n");
-      return false;
-    }
   }
 
   // TODO: make customizable with -digest option
