@@ -68,6 +68,28 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
   };
   X509_NAME_free(subject_name);
 
+  // Set a randomly generated serial number
+
+  bn.reset(BN_new());
+
+  constexpr int SERIAL_RAND_BITS = 159;
+  if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
+               BN_RAND_BOTTOM_ANY)) {
+    fprintf(stderr, "Error: Failed to generate random serial number\n");
+    return;
+  }
+
+  ASN1_INTEGER *serial = X509_get_serialNumber(x509.get());
+  if (!serial) {
+    fprintf(stderr, "Error: Failed to get certificate serial number field\n");
+    return;
+  }
+
+  if (!BN_to_ASN1_INTEGER(bn.get(), serial)) {
+    fprintf(stderr, "Error: Failed to convert BIGNUM to ASN1_INTEGER\n");
+    return;
+  }
+
   // Add X509v3 extensions
   X509V3_CTX ctx;
   X509V3_set_ctx_nodb(&ctx);
@@ -160,7 +182,7 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     return false;
   }
 
-  if(X509_NAME_cmp(name1, name2) != 0) {
+  if (X509_NAME_cmp(name1, name2) != 0) {
     return true;
   }
 
@@ -193,9 +215,9 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     ASN1_STRING *data2 = X509_NAME_ENTRY_get_data(entry2);
 
     if (ASN1_STRING_cmp(data1, data2) != 0) {
-      const char* long_name = OBJ_nid2ln(OBJ_obj2nid(obj1));
+      const char *long_name = OBJ_nid2ln(OBJ_obj2nid(obj1));
       std::cout << "CSRs have different values for entry "
-                << (long_name ? long_name : "<UNKNOWN>")  << std::endl;
+                << (long_name ? long_name : "<UNKNOWN>") << std::endl;
       return false;
     }
   }
@@ -440,8 +462,8 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
 
     int nid2 = OBJ_obj2nid(X509_EXTENSION_get_object(ext2));
 
-    // OpenSSL<=3.1 does not clear existing extensions, resulting in duplicates.
-    // Skip over those duplicates
+    // OpenSSL<=3.1 does not clear existing extensions, resulting in
+    // duplicates. Skip over those duplicates
     if (openssl_version && strcmp(openssl_version, "1.1.1") == 0) {
       if (!cert2_nids.insert(nid2).second) {
         continue;
@@ -480,6 +502,7 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
       return false;
     }
   }
+
   return true;
 }
 
@@ -577,4 +600,33 @@ bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
   }
 
   return true;
+}
+
+bool CheckKeyBoundaries(const std::string &content,
+                        const std::string &begin1,
+                        const std::string &end1,
+                        const std::string &begin2,
+                        const std::string &end2) {
+  if (content.empty() || begin1.empty() || end1.empty()) {
+    return false;
+  }
+
+  if (content.size() < begin1.size() + end1.size()) {
+    return false;
+  }
+
+  bool primary_match =
+      content.compare(0, begin1.size(), begin1) == 0 &&
+      content.compare(content.size() - end1.size(), end1.size(), end1) == 0;
+
+  if (primary_match || begin2.empty() || end2.empty()) {
+    return primary_match;
+  }
+
+  if (content.size() < begin2.size() + end2.size()) {
+    return false;
+  }
+
+  return content.compare(0, begin2.size(), begin2) == 0 &&
+         content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
 }

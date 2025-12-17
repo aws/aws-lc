@@ -350,6 +350,9 @@ OPENSSL_EXPORT int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb);
 // RSA_PKCS1_OAEP_PADDING denotes the RSAES-OAEP encryption scheme.
 #define RSA_PKCS1_OAEP_PADDING 4
 
+// RSA_X931_PADDING is not supported. It's included so consumer compilations can succeed.
+#define RSA_X931_PADDING 5
+
 // RSA_PKCS1_PSS_PADDING denotes the RSASSA-PSS signature scheme. This value may
 // not be passed into |RSA_sign_raw|, only |EVP_PKEY_CTX_set_rsa_padding|. See
 // also |RSA_sign_pss_mgf1| and |RSA_verify_pss_mgf1|.
@@ -607,7 +610,7 @@ OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 // is available on the error queue.
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
-// RSA_check_fips performs two FIPS related checks in addition to basic 
+// RSA_check_fips performs two FIPS related checks in addition to basic
 // validity tests from RSA_check_key:
 //   - partial public key validation (SP 800-89),
 //   - pair-wise consistency test.

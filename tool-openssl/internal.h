@@ -87,11 +87,14 @@ tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool CRLTool(const args_list_t &args);
+bool asn1parseTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool dhparamTool(const args_list_t &args);
-bool ecparamTool(const args_list_t &args);
-bool genrsaTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
+bool ecparamTool(const args_list_t &args);
+bool encTool(const args_list_t &args);
+bool genpkeyTool(const args_list_t &args);
+bool genrsaTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool pkcs8Tool(const args_list_t &args);
 bool pkeyTool(const args_list_t &args);
@@ -99,11 +102,11 @@ bool pkeyutlTool(const args_list_t &args);
 bool RehashTool(const args_list_t &args);
 bool reqTool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
+bool sha1Tool(const args_list_t &args);
 bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
-
 
 // Req Tool Utilities
 bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
@@ -130,6 +133,15 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
                const uint8_t *digest);
 BUCKET **get_table();
 void cleanup_hash_table();
+
+// ApplyPkeyCtrlString parses the options in |pkeyopt| and passes them to
+// |EVP_PKEY_CTX_ctrl_str|. It returns false if the parsing or memory allocation
+// during string duplication was unsuccesful.
+bool ApplyPkeyCtrlString(EVP_PKEY_CTX *ctx, const char *pkeyopt);
+
+// WritePrivateKey writes the private key contents of |pkey| to |out| based on
+// |format|. It returns false if the write was unsuccessful.
+bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &out, int format);
 
 // Ordered argument processing (specific to tool-openssl)
 namespace ordered_args {

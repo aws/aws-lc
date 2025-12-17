@@ -12,39 +12,6 @@
 #include <unordered_set>
 #include "internal.h"
 
-// Maximum size for crypto files to prevent loading excessively large files
-// (1MB)
-static constexpr long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
-
-// Checks if BIO size is within allowed limits
-static bool validate_bio_size(BIO *bio,
-                              long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
-  if (!bio) {
-    return false;
-  }
-  const long current_pos = BIO_tell(bio);
-  if (current_pos < 0) {
-    return false;
-  }
-  if (BIO_seek(bio, 0) < 0) {
-    return false;
-  }
-  long size = 0;
-  char buffer[4096] = {};
-  int bytes_read = 0;
-  while ((bytes_read = BIO_read(bio, buffer, sizeof(buffer))) > 0) {
-    size += bytes_read;
-    if (size > max_size) {
-      BIO_seek(bio, current_pos);
-      fprintf(stderr, "File exceeds maximum allowed size\n");
-      return false;
-    }
-  }
-  if (BIO_seek(bio, current_pos) < 0) {
-    return false;
-  }
-  return true;
-}
 
 // Validates input/output format is PEM or DER
 static bool validate_format(const std::string &format) {
@@ -100,6 +67,45 @@ static bssl::UniquePtr<EVP_PKEY> read_private_der(BIO *in_bio,
   return bssl::UniquePtr<EVP_PKEY>(d2i_PrivateKey_bio(in_bio, nullptr));
 }
 
+// Returns 1 if PEM is encrypted, 0 if not, -1 on error
+static int is_pem_encrypted(BIO *bio) {
+    char *name_ptr = nullptr;
+    char *header_ptr = nullptr;
+    unsigned char *data_ptr = nullptr;
+    long len = 0;
+
+    // Read the PEM block
+    if (!PEM_read_bio(bio, &name_ptr, &header_ptr, &data_ptr, &len)) {
+        return -1;  // Error reading PEM
+    }
+
+    // We are responsible for freeing these
+    bssl::UniquePtr<char> name(name_ptr);
+    bssl::UniquePtr<char> header(header_ptr);
+    bssl::UniquePtr<uint8_t> data(data_ptr);
+
+    int is_encrypted = 0;
+
+    // Check if there's a header with encryption info
+    if (name && strcmp(name.get(), "ENCRYPTED PRIVATE KEY") == 0) {
+        is_encrypted = 1;
+    }
+    // Check for traditional PEM encryption (by header)
+    else if (header && header.get()[0] != '\0') {
+        EVP_CIPHER_INFO cipher;
+        if (PEM_get_EVP_CIPHER_INFO(header.get(), &cipher)) {
+            is_encrypted = (cipher.cipher != nullptr) ? 1 : 0;
+        }
+    }
+
+    // Rewind buffer so it can be parsed to obtain a private key
+    if (BIO_seek(bio, 0) >= 0) {
+      return is_encrypted;
+    }
+
+    return -1;
+}
+
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display option summary"},
     {"-in", kOptionalArgument, "Input file"},
@@ -128,12 +134,11 @@ bool pkcs8Tool(const args_list_t &args) {
   bssl::UniquePtr<std::string> passin_arg(new std::string());
   bssl::UniquePtr<std::string> passout_arg(new std::string());
 
-  bssl::UniquePtr<BIO> in;
   bssl::UniquePtr<BIO> out;
   bssl::UniquePtr<EVP_PKEY> pkey;
   const EVP_CIPHER *cipher = nullptr;
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> p8inf;
-
+  bool input_is_encrypted = false;
 
   if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
                                      kArguments)) {
@@ -148,12 +153,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
 
   GetString(&in_path, "-in", "", parsed_args);
-  if (in_path.empty()) {
-    fprintf(stderr, "Input file required\n");
-    return false;
-  }
   GetString(&out_path, "-out", "", parsed_args);
-
   GetString(&inform, "-inform", "PEM", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
   if (!validate_format(inform) || !validate_format(outform)) {
@@ -189,13 +189,31 @@ bool pkcs8Tool(const args_list_t &args) {
     return false;
   }
 
-  in.reset(BIO_new_file(in_path.c_str(), "rb"));
-  if (!in) {
-    fprintf(stderr, "Cannot open input file\n");
-    return false;
+  // Read from stdin if no -in path provided
+  bssl::UniquePtr<BIO> in;
+  if (in_path.empty()) {
+    in.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
+  } else {
+    in.reset(BIO_new_file(in_path.c_str(), "rb"));
+    if (!in) {
+      fprintf(stderr, "Cannot open input file\n");
+      return false;
+    }
   }
-  if (!validate_bio_size(in.get())) {
-    return false;
+
+  // stdin is not rewindable.
+  if (!in_path.empty() && inform == "PEM") {
+    switch(is_pem_encrypted(in.get())) {
+      case 0:
+        input_is_encrypted = false;
+        break;
+      case 1:
+        input_is_encrypted = true;
+        break;
+      default:
+        fprintf(stderr, "Unable to load PEM file\n");
+        return false;
+    }
   }
 
   if (!out_path.empty()) {
@@ -218,7 +236,11 @@ bool pkcs8Tool(const args_list_t &args) {
                 in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str())
                 .release());
   if (!pkey) {
-    fprintf(stderr, "Unable to load private key\n");
+    if (input_is_encrypted) {
+      fprintf(stderr, "Error decrypting key\n");
+    } else {
+      fprintf(stderr, "Unable to load private key\n");
+    }
     return false;
   }
 
@@ -233,7 +255,7 @@ bool pkcs8Tool(const args_list_t &args) {
                                            nullptr, 0, nullptr, nullptr);
   } else {
     // -topk8: output PKCS#8 format (encrypted by default unless -nocrypt)
-    cipher = (nocrypt) ? nullptr
+    cipher = nocrypt ? nullptr
                        : (v2_cipher.empty()
                               ? EVP_aes_256_cbc()
                               : EVP_get_cipherbyname(v2_cipher.c_str()));

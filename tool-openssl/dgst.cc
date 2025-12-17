@@ -81,29 +81,6 @@ static bool LoadPublicKey(const std::string &key_file_path,
   return true;
 }
 
-static bool ApplySignatureParam(EVP_PKEY_CTX *ctx, const char *sigopt) {
-  char *stmp = OPENSSL_strdup(sigopt);
-  if (!stmp) {
-    return false;
-  }
-
-  char *vtmp = strchr(stmp, ':');
-  if (!vtmp) {
-    OPENSSL_free(stmp);
-    return false;
-  }
-
-  *vtmp = 0;
-  vtmp++;
-
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
-  int result = EVP_PKEY_CTX_ctrl_str(ctx, stmp, vtmp);
-  OPENSSL_END_ALLOW_DEPRECATED
-
-  OPENSSL_free(stmp);
-  return result == 1;
-}
-
 static std::string GetSigName(int nid) {
   switch (nid) {
     case EVP_PKEY_RSA:
@@ -216,7 +193,7 @@ static bool GenerateSignature(EVP_PKEY *pkey, FILE *in_file,
 
   if (sigopts.size() > 0) {
     for (const auto &sigopt : sigopts) {
-      if (!ApplySignatureParam(pctx, sigopt.c_str())) {
+      if (!ApplyPkeyCtrlString(pctx, sigopt.c_str())) {
         fprintf(stderr, "Signature parameter error \"%s\"\n", sigopt.c_str());
         return false;
       }
@@ -269,7 +246,7 @@ static bool VerifySignature(EVP_PKEY *pkey, FILE *in_file,
 
   if (sigopts.size() > 0) {
     for (const auto &sigopt : sigopts) {
-      if (!ApplySignatureParam(pctx, sigopt.c_str())) {
+      if (!ApplyPkeyCtrlString(pctx, sigopt.c_str())) {
         fprintf(stderr, "Signature parameter error \"%s\"\n", sigopt.c_str());
         return false;
       }
@@ -510,4 +487,7 @@ bool dgstTool(const args_list_t &args) {
 }
 bool md5Tool(const args_list_t &args) {
   return dgstToolInternal(args, EVP_md5());
+}
+bool sha1Tool(const args_list_t &args) {
+  return dgstToolInternal(args, EVP_sha1());
 }
