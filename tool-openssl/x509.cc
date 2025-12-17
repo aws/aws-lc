@@ -221,7 +221,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
   bssl::UniquePtr<CONF> ext_conf(nullptr);
 
   // Determine if this is a self-signed certificate
-  int self_sign = X509_check_private_key(subject, pkey);
+  bool self_sign = (issuer == subject);
 
   // Set serial number
   if (self_sign) {
