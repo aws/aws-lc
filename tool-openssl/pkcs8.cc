@@ -12,39 +12,6 @@
 #include <unordered_set>
 #include "internal.h"
 
-// Maximum size for crypto files to prevent loading excessively large files
-// (1MB)
-static constexpr long DEFAULT_MAX_CRYPTO_FILE_SIZE = 1024 * 1024;
-
-// Checks if BIO size is within allowed limits
-static bool validate_bio_size(BIO *bio,
-                              long max_size = DEFAULT_MAX_CRYPTO_FILE_SIZE) {
-  if (!bio) {
-    return false;
-  }
-  const long current_pos = BIO_tell(bio);
-  if (current_pos < 0) {
-    return false;
-  }
-  if (BIO_seek(bio, 0) < 0) {
-    return false;
-  }
-  long size = 0;
-  char buffer[4096] = {};
-  int bytes_read = 0;
-  while ((bytes_read = BIO_read(bio, buffer, sizeof(buffer))) > 0) {
-    size += bytes_read;
-    if (size > max_size) {
-      BIO_seek(bio, current_pos);
-      fprintf(stderr, "File exceeds maximum allowed size\n");
-      return false;
-    }
-  }
-  if (BIO_seek(bio, current_pos) < 0) {
-    return false;
-  }
-  return true;
-}
 
 // Validates input/output format is PEM or DER
 static bool validate_format(const std::string &format) {
@@ -167,7 +134,6 @@ bool pkcs8Tool(const args_list_t &args) {
   bssl::UniquePtr<std::string> passin_arg(new std::string());
   bssl::UniquePtr<std::string> passout_arg(new std::string());
 
-  bssl::UniquePtr<BIO> in;
   bssl::UniquePtr<BIO> out;
   bssl::UniquePtr<EVP_PKEY> pkey;
   const EVP_CIPHER *cipher = nullptr;
@@ -187,12 +153,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
 
   GetString(&in_path, "-in", "", parsed_args);
-  if (in_path.empty()) {
-    fprintf(stderr, "Input file required\n");
-    return false;
-  }
   GetString(&out_path, "-out", "", parsed_args);
-
   GetString(&inform, "-inform", "PEM", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
   if (!validate_format(inform) || !validate_format(outform)) {
@@ -228,11 +189,20 @@ bool pkcs8Tool(const args_list_t &args) {
     return false;
   }
 
-  in.reset(BIO_new_file(in_path.c_str(), "rb"));
-  if (!in) {
-    fprintf(stderr, "Cannot open input file\n");
-    return false;
-  } else if (inform == "PEM") {
+  // Read from stdin if no -in path provided
+  bssl::UniquePtr<BIO> in;
+  if (in_path.empty()) {
+    in.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
+  } else {
+    in.reset(BIO_new_file(in_path.c_str(), "rb"));
+    if (!in) {
+      fprintf(stderr, "Cannot open input file\n");
+      return false;
+    }
+  }
+
+  // stdin is not rewindable.
+  if (!in_path.empty() && inform == "PEM") {
     switch(is_pem_encrypted(in.get())) {
       case 0:
         input_is_encrypted = false;
@@ -244,9 +214,6 @@ bool pkcs8Tool(const args_list_t &args) {
         fprintf(stderr, "Unable to load PEM file\n");
         return false;
     }
-  }
-  if (!validate_bio_size(in.get())) {
-    return false;
   }
 
   if (!out_path.empty()) {
@@ -288,7 +255,7 @@ bool pkcs8Tool(const args_list_t &args) {
                                            nullptr, 0, nullptr, nullptr);
   } else {
     // -topk8: output PKCS#8 format (encrypted by default unless -nocrypt)
-    cipher = (nocrypt) ? nullptr
+    cipher = nocrypt ? nullptr
                        : (v2_cipher.empty()
                               ? EVP_aes_256_cbc()
                               : EVP_get_cipherbyname(v2_cipher.c_str()));
