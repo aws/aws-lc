@@ -6,7 +6,6 @@
 #include <openssl/pem.h>
 #include <cctype>
 #include "../crypto/test/test_util.h"
-#include "../crypto/x509/internal.h"
 #include "internal.h"
 #include "test_util.h"
 
@@ -528,7 +527,7 @@ TEST_F(X509Test, X509ToolAKIDSerialWithCATest) {
       X509_get_ext_d2i(cert.get(), NID_authority_key_identifier, NULL, NULL)));
   ASSERT_TRUE(akid);
   ASSERT_TRUE(akid.get()->serial);
-  ASSERT_EQ(X509_check_akid(ca_cert.get(), akid.get()), 0);
+  ASSERT_EQ(ASN1_INTEGER_cmp(ca_serial, akid->serial), 0);
 
   RemoveFile(ext_path);
 }
@@ -563,7 +562,7 @@ TEST_F(X509Test, X509ToolAKIDSerialSelfSignedTest) {
   bssl::UniquePtr<AUTHORITY_KEYID> akid(static_cast<AUTHORITY_KEYID *>(
       X509_get_ext_d2i(cert.get(), NID_authority_key_identifier, NULL, NULL)));
   ASSERT_TRUE(akid);
-  ASSERT_EQ(X509_check_akid(cert.get(), akid.get()), 0);
+  ASSERT_EQ(ASN1_INTEGER_cmp(cert_serial, akid->serial), 0);
 
   RemoveFile(ext_path);
 }
