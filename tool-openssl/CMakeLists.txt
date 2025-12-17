@@ -14,6 +14,7 @@ add_executable(
     ecparam.cc
     ec.cc
     enc.cc
+    genpkey.cc
     genrsa.cc
     pass_util.cc
     pkcs8.cc
@@ -107,6 +108,8 @@ if(BUILD_TESTING)
         enc_test.cc
         genrsa.cc
         genrsa_test.cc
+        genpkey.cc
+        genpkey_test.cc
         ordered_args.cc
         pass_util.cc
         pass_util_test.cc
