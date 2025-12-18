@@ -573,30 +573,38 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 // When call-discipline is maintained, this function never fails.
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
-/*
- * SHAKE128_x4_ batched APIs implement x4 SHAKE functionalities on top of
- * KeccakSponge API layer
- *
- * SHAKE128_x4_ context must go through the flow: (a) Init_x4, (b) Absorb_once_x4 [one time;
- * maximum input length of |SHAKE128_BLOCKSIZE - 1|] (c) Squeezeblocks_x4 [multiple times]
- *
- * SHAKE128_x4_ functions never fail when the later call-discipline is adhered to:
- * (a) the context execution flow is followed (b) the pointers passed to the
- * functions are valid (c) any additional per-function parameter value conditions,
- * detailed above each SHAKE128_x4_ function signature, is satisfied.
- */
+// SHAKE_Init_x4 is a batched API that operates on four independent
+// Keccak bitstates. It initializes all four states and the context may
+// be used with either SHAKE128 or SHAKE256 batched absorb and squeeze
+// functions. When call-discipline is maintained, this function never fails.
+OPENSSL_EXPORT int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx);
 
-// SHAKE128_Init_x4 is a batched API that operates on four independent
-// Keccak bitstates. It initialises all four |ctx| fields and returns
-// 1 on success and 0 on failure. When call-discipline is maintained,
-// this function never fails.
-OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
+/*
+ * Incremental SHAKE x4 batched APIs implement x4 SHAKE functionality on top of
+ * the KeccakSponge API layer.
+ *
+ * An incremental SHAKE x4 context must go through the flow:
+ * (a) SHAKE_Init_x4,
+ * (b) the variant-specific Absorb_once_x4 for SHAKE128 or SHAKE256 [one time],
+ * and
+ * (c) the corresponding variant-specific Squeezeblocks_x4 [multiple times].
+ *
+ * The absorb and squeeze operations must use the same variant: either SHAKE128
+ * for both or SHAKE256 for both.
+ *
+ * Incremental SHAKE x4 functions never fail when the following call-discipline
+ * is adhered to: (a) the context execution flow is followed, (b) the pointers
+ * passed to the functions are valid, and (c) any additional per-function
+ * parameter value conditions, detailed above each function signature, are
+ * satisfied.
+ */
 
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs all four inputs |data0|, |data1|, |data2|, |data3|
-// of equal length of |len| bytes returns 1 on success and 0 on failure. When
-// is maintained and |len| value corresponds to the input messages length
-// call-discipline (including zero), this function never fails.
+// of equal length of |len| bytes. The maximum input length is
+// |SHAKE128_BLOCKSIZE - 1|. It returns 1 on success and 0 on failure. When
+// call-discipline is maintained and |len| corresponds to the input message
+// length (including zero), this function never fails.
 OPENSSL_EXPORT int SHAKE128_Absorb_once_x4(KECCAK1600_CTX_x4 *ctx, const void *data0, const void *data1,
                                   const void *data2, const void *data3, size_t len);
 

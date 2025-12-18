@@ -44,7 +44,7 @@ static MLD_INLINE void mld_shake128x4_squeezeblocks(uint8_t *out0, uint8_t *out1
 static MLD_INLINE void mld_shake128x4_init(mld_shake128x4ctx *state) {
   // Return code check can be omitted
   // since mldsa-native adheres to call discipline
-  (void) SHAKE128_Init_x4(state);
+  (void) SHAKE_Init_x4(state);
 }
 
 static MLD_INLINE void mld_shake128x4_release(mld_shake128x4ctx *state) {
