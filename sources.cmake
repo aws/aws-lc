@@ -52,6 +52,7 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
+  crypto/evp_extra/mldsa_corrupted_key_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
   crypto/evp_extra/evp_tests.txt
   crypto/evp_extra/scrypt_tests.txt
