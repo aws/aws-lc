@@ -454,7 +454,7 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
 /*
  * SHAKE batched (x4) APIs implement SHAKE functionalities in batches of four on top of SHAKE API layer
  */
-int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx) {
+int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(KECCAK1600_CTX_x4));
   return 1;
 }
