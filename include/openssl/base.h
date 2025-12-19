@@ -363,6 +363,12 @@ typedef struct evp_aead_st EVP_AEAD;
 typedef struct evp_aead_ctx_st EVP_AEAD_CTX;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
+
+/**
+ * @typedef EVP_ENCODE_CTX
+ * @copydoc evp_encode_ctx_st
+ * @see evp_encode_ctx_st
+ */
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
 typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
 typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
