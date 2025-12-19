@@ -11,7 +11,7 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
-
+docs/api/html/
 util/bot/android_ndk
 util/bot/android_sdk/public
 util/bot/cmake
