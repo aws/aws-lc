@@ -54,7 +54,10 @@
 #define OPENSSL_HEADER_BASE_H
 
 
-// This file should be the first included by all BoringSSL headers.
+/**
+ * @file
+ * @brief This file should be the first included by all AWS-LC headers.
+ */
 
 #include <stddef.h>
 #include <stdint.h>
