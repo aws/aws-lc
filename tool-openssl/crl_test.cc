@@ -86,28 +86,28 @@ class CRLTest : public ::testing::Test {
 // ----------------------------- CRL Option Tests -----------------------------
 
 // Test -in
-TEST_F(CRLTest, CRLTestIn) {
+TEST_F(CRLTest, In) {
   args_list_t args = {"-in", in_path};
   bool result = CRLTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -hash
-TEST_F(CRLTest, CRLTestHash) {
+TEST_F(CRLTest, Hash) {
   args_list_t args = {"-in", in_path, "-hash"};
   bool result = CRLTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -fingerprint
-TEST_F(CRLTest, CRLTestFingerprint) {
+TEST_F(CRLTest, Fingerprint) {
   args_list_t args = {"-in", in_path, "-fingerprint"};
   bool result = CRLTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -noout
-TEST_F(CRLTest, CRLTestNoout) {
+TEST_F(CRLTest, Noout) {
   args_list_t args = {"-in", in_path, "-noout"};
   bool result = CRLTool(args);
   ASSERT_TRUE(result);
@@ -161,7 +161,7 @@ class CRLComparisonTest : public ::testing::Test {
 };
 
 // Test against OpenSSL output "openssl crl -in file"
-TEST_F(CRLComparisonTest, CRLToolCompareOpenSSL) {
+TEST_F(CRLComparisonTest, Basic) {
   std::string tool_command = std::string(tool_executable_path) + " crl -in " +
                              in_path + " > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -174,7 +174,7 @@ TEST_F(CRLComparisonTest, CRLToolCompareOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl crl -in file -hash -fingerprint"
-TEST_F(CRLComparisonTest, CRLToolCompareHashFingerprintOpenSSL) {
+TEST_F(CRLComparisonTest, HashFingerprint) {
   std::string tool_command = std::string(tool_executable_path) + " crl -in " +
                              in_path + " -hash -fingerprint > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -187,7 +187,7 @@ TEST_F(CRLComparisonTest, CRLToolCompareHashFingerprintOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl crl -in file -hash -fingerprint -noout"
-TEST_F(CRLComparisonTest, CRLToolCompareHashFingerprintNoOutOpenSSL) {
+TEST_F(CRLComparisonTest, HashFingerprintNoOut) {
   std::string tool_command = std::string(tool_executable_path) + " crl -in " +
                              in_path + " -hash -fingerprint -noout > " +
                              out_path_tool;
@@ -201,7 +201,7 @@ TEST_F(CRLComparisonTest, CRLToolCompareHashFingerprintNoOutOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl crl -in file -fingerprint -hash"
-TEST_F(CRLComparisonTest, CRLToolCompareReorderedHashFingerprintOpenSSL) {
+TEST_F(CRLComparisonTest, ReorderedHashFingerprint) {
   std::string tool_command = std::string(tool_executable_path) + " crl -in " +
                              in_path + " -fingerprint -hash > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -214,7 +214,7 @@ TEST_F(CRLComparisonTest, CRLToolCompareReorderedHashFingerprintOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl crl -in file -fingerprint -hash -noout"
-TEST_F(CRLComparisonTest, CRLToolCompareReorderedHashFingerprintNoOutOpenSSL) {
+TEST_F(CRLComparisonTest, ReorderedHashFingerprintNoOut) {
   std::string tool_command = std::string(tool_executable_path) + " crl -in " +
                              in_path + " -fingerprint -hash -noout > " +
                              out_path_tool;
@@ -228,7 +228,7 @@ TEST_F(CRLComparisonTest, CRLToolCompareReorderedHashFingerprintNoOutOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl crl -in file -noout -fingerprint -hash"
-TEST_F(CRLComparisonTest, CRLToolCompareReorderedNoOutHashFingerprintOpenSSL) {
+TEST_F(CRLComparisonTest, ReorderedNoOutHashFingerprint) {
   std::string tool_command = std::string(tool_executable_path) + " crl -in " +
                              in_path + " -noout -fingerprint -hash > " +
                              out_path_tool;

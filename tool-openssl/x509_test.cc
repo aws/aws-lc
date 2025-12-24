@@ -125,7 +125,7 @@ class X509Test : public ::testing::Test {
 // ----------------------------- X509 Option Tests -----------------------------
 
 // Test -in and -out
-TEST_F(X509Test, X509ToolInOutTest) {
+TEST_F(X509Test, InOut) {
   args_list_t args = {"-in", in_path, "-out", out_path};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
@@ -139,21 +139,21 @@ TEST_F(X509Test, X509ToolInOutTest) {
 }
 
 // Test -modulus
-TEST_F(X509Test, X509ToolModulusTest) {
+TEST_F(X509Test, Modulus) {
   args_list_t args = {"-in", in_path, "-modulus"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -subject
-TEST_F(X509Test, X509ToolSubjectTest) {
+TEST_F(X509Test, Subject) {
   args_list_t args = {"-in", in_path, "-subject"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -subject_hash and -subject_hash_old
-TEST_F(X509Test, X509ToolSubjectHashTest) {
+TEST_F(X509Test, SubjectHash) {
   args_list_t args = {"-in", in_path, "-subject_hash"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
@@ -164,21 +164,21 @@ TEST_F(X509Test, X509ToolSubjectHashTest) {
 }
 
 // Test -fingerprint
-TEST_F(X509Test, X509ToolFingerprintTest) {
+TEST_F(X509Test, Fingerprint) {
   args_list_t args = {"-in", in_path, "-fingerprint"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test signkey
-TEST_F(X509Test, X509ToolSignkeyTest) {
+TEST_F(X509Test, Signkey) {
   args_list_t args = {"-in", in_path, "-signkey", signkey_path};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -days
-TEST_F(X509Test, X509ToolDaysTest) {
+TEST_F(X509Test, Days) {
   args_list_t args = {"-in",      in_path,      "-out",  out_path,
                       "-signkey", signkey_path, "-days", "365"};
   bool result = X509Tool(args);
@@ -186,21 +186,21 @@ TEST_F(X509Test, X509ToolDaysTest) {
 }
 
 // Test -dates
-TEST_F(X509Test, X509ToolDatesTest) {
+TEST_F(X509Test, Daest) {
   args_list_t args = {"-in", in_path, "-dates"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -enddate
-TEST_F(X509Test, X509ToolEnddateTest) {
+TEST_F(X509Test, Enddate) {
   args_list_t args = {"-in", in_path, "-enddate"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -inform
-TEST_F(X509Test, X509ToolInformTest) {
+TEST_F(X509Test, Inform) {
   args_list_t args = {"-in", der_cert_path, "-inform", "DER"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
@@ -211,7 +211,7 @@ TEST_F(X509Test, X509ToolInformTest) {
 }
 
 // Test -outform
-TEST_F(X509Test, X509ToolOutformTest) {
+TEST_F(X509Test, Outform) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-outform", "DER"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
@@ -232,14 +232,14 @@ TEST_F(X509Test, X509ToolOutformTest) {
 }
 
 // Test -checkend
-TEST_F(X509Test, X509ToolCheckendTest) {
+TEST_F(X509Test, Checkend) {
   args_list_t args = {"-in", in_path, "-checkend", "3600"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -req
-TEST_F(X509Test, X509ToolReqTest) {
+TEST_F(X509Test, Req) {
   args_list_t args = {"-in",        csr_path, "-req",  "-signkey",
                       signkey_path, "-out",   out_path};
   bool result = X509Tool(args);
@@ -247,14 +247,14 @@ TEST_F(X509Test, X509ToolReqTest) {
 }
 
 // Test -pubkey
-TEST_F(X509Test, X509ToolPubkeyTest) {
+TEST_F(X509Test, Pubkey) {
   args_list_t args = {"-in", in_path, "-pubkey"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -CA and -CAkey
-TEST_F(X509Test, X509ToolCATest) {
+TEST_F(X509Test, CA) {
   args_list_t args = {"-in",        in_path,  "-CA",
                       ca_cert_path, "-CAkey", ca_key_path};
   bool result = X509Tool(args);
@@ -270,7 +270,7 @@ TEST_F(X509Test, X509ToolCATest) {
 }
 
 // Test -extfile and -extensions
-TEST_F(X509Test, X509ToolExtensionTest) {
+TEST_F(X509Test, Extension) {
   char ext_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(ext_path), 0u);
 
@@ -314,7 +314,7 @@ TEST_F(X509Test, X509ToolExtensionTest) {
 }
 
 // Test -passin with -signkey
-TEST_F(X509Test, X509ToolPassinSignkeyTest) {
+TEST_F(X509Test, PassinSignkey) {
   args_list_t args = {"-in",      in_path,
                       "-signkey", protected_signkey_path,
                       "-passin",  "pass:testpassword"};
@@ -323,7 +323,7 @@ TEST_F(X509Test, X509ToolPassinSignkeyTest) {
 }
 
 // Test -passin with -CA (key in CA file)
-TEST_F(X509Test, X509ToolPassinCATest) {
+TEST_F(X509Test, PassinCA) {
   args_list_t args = {"-in",     in_path,
                       "-CA",     protected_ca_cert_path,
                       "-passin", "pass:testpassword"};
@@ -332,7 +332,7 @@ TEST_F(X509Test, X509ToolPassinCATest) {
 }
 
 // Test -passin with -CA and -CAkey
-TEST_F(X509Test, X509ToolPassinCAkeyTest) {
+TEST_F(X509Test, PassinCAkey) {
   args_list_t args = {"-in",     in_path,
                       "-CA",     ca_cert_path,
                       "-CAkey",  protected_ca_key_path,
@@ -342,7 +342,7 @@ TEST_F(X509Test, X509ToolPassinCAkeyTest) {
 }
 
 // Test -passin with -req and -signkey
-TEST_F(X509Test, X509ToolPassinReqSignkeyTest) {
+TEST_F(X509Test, PassinReqSignkey) {
   args_list_t args = {
       "-in",     csr_path,           "-req", "-signkey", protected_signkey_path,
       "-passin", "pass:testpassword"};
@@ -351,7 +351,7 @@ TEST_F(X509Test, X509ToolPassinReqSignkeyTest) {
 }
 
 // Test SetSerial functionality with CA certificate
-TEST_F(X509Test, X509ToolSetSerialTest) {
+TEST_F(X509Test, SetSerial) {
   // Test 1: First certificate with CA - should create .srl file
   args_list_t args = {"-in",    in_path,     "-CA",  ca_cert_path,
                       "-CAkey", ca_key_path, "-out", out_path};
@@ -369,7 +369,9 @@ TEST_F(X509Test, X509ToolSetSerialTest) {
   // Read first serial number
   std::string serial1 = ReadFileToString(srl_path.c_str());
   ASSERT_FALSE(serial1.empty());
-  serial1 = serial1.substr(0, serial1.find_first_of("\r\n"));  // Remove newline (handles both \r\n and \n)
+  serial1 = serial1.substr(
+      0, serial1.find_first_of(
+             "\r\n"));  // Remove newline (handles both \r\n and \n)
 
   // Verify the first certificate serial matches the .srl file content
   auto cert1 = LoadPEMCertificate(out_path);
@@ -394,7 +396,9 @@ TEST_F(X509Test, X509ToolSetSerialTest) {
   // Read updated serial number
   std::string serial2 = ReadFileToString(srl_path.c_str());
   ASSERT_FALSE(serial2.empty());
-  serial2 = serial2.substr(0, serial2.find_first_of("\r\n"));  // Remove newline (handles both \r\n and \n)
+  serial2 = serial2.substr(
+      0, serial2.find_first_of(
+             "\r\n"));  // Remove newline (handles both \r\n and \n)
 
   // Serial numbers should be different
   ASSERT_NE(serial1, serial2);
@@ -417,8 +421,8 @@ TEST_F(X509Test, X509ToolSetSerialTest) {
   RemoveFile(srl_path.c_str());
 }
 
-// Test SetSerial functionality without CA (random serial generation)
-TEST_F(X509Test, X509ToolSetSerialRandomTest) {
+// Test serial generation without CA (random serial generation)
+TEST_F(X509Test, BasicSerialGeneration) {
   // Test self-signed certificates - should generate random serials
   args_list_t args = {"-in",        in_path, "-signkey",
                       signkey_path, "-out",  out_path};
@@ -446,8 +450,8 @@ TEST_F(X509Test, X509ToolSetSerialRandomTest) {
   ASSERT_NE(0, ASN1_INTEGER_cmp(serial1, serial2));
 }
 
-// Test SetSerial functionality with existing .srl file
-TEST_F(X509Test, X509ToolSetSerialExistingFileTest) {
+// Test serial generation with existing .srl file
+TEST_F(X509Test, SerialGenerationExistingFile) {
   // Create existing .srl file with known serial number
   std::string srl_path =
       std::string(ca_cert_path)
@@ -492,7 +496,7 @@ TEST_F(X509Test, X509ToolSetSerialExistingFileTest) {
 }
 
 // Test AKID serial number
-TEST_F(X509Test, X509ToolAKIDSerialWithCATest) {
+TEST_F(X509Test, AKIDSerialWithCA) {
   char ext_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(ext_path), 0u);
 
@@ -533,7 +537,7 @@ TEST_F(X509Test, X509ToolAKIDSerialWithCATest) {
 }
 
 // Test AKID serial number
-TEST_F(X509Test, X509ToolAKIDSerialSelfSignedTest) {
+TEST_F(X509Test, AKIDSerialSelfSigned) {
   char ext_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(ext_path), 0u);
 
@@ -582,7 +586,7 @@ class X509OptionUsageErrorsTest : public X509Test {
 };
 
 //  Test mutually exclusive options
-TEST_F(X509OptionUsageErrorsTest, MutuallyExclusiveOptionsTests) {
+TEST_F(X509OptionUsageErrorsTest, MutuallyExclusiveOptions) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-req", "-signkey", signkey_path, "-dates"},
       {"-in", in_path, "-req", "-signkey", signkey_path, "-checkend", "3600"},
@@ -598,7 +602,7 @@ TEST_F(X509OptionUsageErrorsTest, MutuallyExclusiveOptionsTests) {
   }
 }
 
-TEST_F(X509OptionUsageErrorsTest, RequiredOptionTests) {
+TEST_F(X509OptionUsageErrorsTest, RequiredOptions) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-req"},                // Test -req without -signkey
       {"-in", in_path, "-CAkey", ca_key_path}  // Test -CAkey without -CA
@@ -610,7 +614,7 @@ TEST_F(X509OptionUsageErrorsTest, RequiredOptionTests) {
 
 // Test argument errors for -days: !<0 || non-integer, -checkend: !<=0 ||
 // non-integer, -inform != {DER, PEM}
-TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
+TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgs) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-checkend", "abc"},
       {"-in", in_path, "-checkend", "-1"},
@@ -623,7 +627,7 @@ TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
   }
 }
 
-TEST_F(X509OptionUsageErrorsTest, InvalidArgTests) {
+TEST_F(X509OptionUsageErrorsTest, InvalidArgs) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-inform", "RANDOM"},
       {"-in", in_path, "-out", out_path, "-outform", "RANDOM"}};
@@ -633,7 +637,7 @@ TEST_F(X509OptionUsageErrorsTest, InvalidArgTests) {
 }
 
 // Test -passin with invalid formats and wrong passwords
-TEST_F(X509OptionUsageErrorsTest, InvalidPassinTest) {
+TEST_F(X509OptionUsageErrorsTest, InvalidPassin) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-signkey", protected_signkey_path, "-passin",
        "pass:wrongpassword"},
@@ -780,7 +784,7 @@ static std::string normalize_subject(std::string input) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -text -noout"
-TEST_F(X509ComparisonTest, X509ToolCompareTextOpenSSL) {
+TEST_F(X509ComparisonTest, Text) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -text -noout> " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -818,7 +822,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareTextOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -modulus"
-TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
+TEST_F(X509ComparisonTest, Modulus) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -modulus > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -844,7 +848,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -subject"
-TEST_F(X509ComparisonTest, X509ToolCompareSubjectOpenSSL) {
+TEST_F(X509ComparisonTest, Subject) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -subject > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -881,7 +885,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareSubjectOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -fingerprint -subject_hash
 // -subject_hash_old"
-TEST_F(X509ComparisonTest, X509ToolCompareFingerprintOpenSSL) {
+TEST_F(X509ComparisonTest, Fingerprint) {
   std::string tool_command =
       std::string(tool_executable_path) + " x509 -in " + in_path +
       " -subject_hash -subject_hash_old -fingerprint > " + out_path_tool;
@@ -911,7 +915,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareFingerprintOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -fingerprint -subject_hash
 // -subject_hash_old"
-TEST_F(X509ComparisonTest, X509ToolCompareReorderedFingerprintOpenSSL) {
+TEST_F(X509ComparisonTest, ReorderedFingerprint) {
   std::string tool_command =
       std::string(tool_executable_path) + " x509 -in " + in_path +
       " -subject_hash -fingerprint -subject_hash_old > " + out_path_tool;
@@ -941,7 +945,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareReorderedFingerprintOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -fingerprint -subject_hash
 // -subject_hash_old"
-TEST_F(X509ComparisonTest, X509ToolCompareHashFingerprintOpenSSL) {
+TEST_F(X509ComparisonTest, HashFingerprint) {
   std::string tool_command = std::string(tool_executable_path) +
                              " x509 -subject_hash -fingerprint -noout -in " +
                              in_path + " > " + out_path_tool;
@@ -957,7 +961,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareHashFingerprintOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -pubkey"
-TEST_F(X509ComparisonTest, X509ToolComparePubkeyOpenSSL) {
+TEST_F(X509ComparisonTest, Pubkey) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -pubkey > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -973,7 +977,7 @@ TEST_F(X509ComparisonTest, X509ToolComparePubkeyOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -noout -subject
 // -fingerprint"
-TEST_F(X509ComparisonTest, X509ToolCompareSubjectFingerprintOpenSSL) {
+TEST_F(X509ComparisonTest, SubjectFingerprint) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -noout -subject -fingerprint > " +
                              out_path_tool;
@@ -1012,7 +1016,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareSubjectFingerprintOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -noout -subject
 // -fingerprint"
-TEST_F(X509ComparisonTest, X509ToolCompareReorderedSubjectFingerprintOpenSSL) {
+TEST_F(X509ComparisonTest, ReorderedSubjectFingerprint) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -noout -fingerprint -subject > " +
                              out_path_tool;
@@ -1050,7 +1054,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareReorderedSubjectFingerprintOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in in_file -checkend 0"
-TEST_F(X509ComparisonTest, X509ToolCompareCheckendOpenSSL) {
+TEST_F(X509ComparisonTest, Checkend) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -checkend 0 > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -1066,7 +1070,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareCheckendOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -req -in csr_file -signkey
 // private_key_file -days 80 -out out_file"
-TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
+TEST_F(X509ComparisonTest, ReqSignkeyDays) {
   std::string tool_command = std::string(tool_executable_path) +
                              " x509 -req -in " + csr_path + " -signkey " +
                              signkey_path + " -days 80 -out " + out_path_tool;
@@ -1093,7 +1097,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -dates -noout"
-TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
+TEST_F(X509ComparisonTest, DatesNoout) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -dates -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -1120,7 +1124,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -dates -enddate", notAfter
 // date should only be printed out once
-TEST_F(X509ComparisonTest, X509ToolCompareDatesEnddateOpenSSL) {
+TEST_F(X509ComparisonTest, DatesEnddate) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -dates -enddate > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -1146,7 +1150,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareDatesEnddateOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -inform DER -enddate"
-TEST_F(X509ComparisonTest, X509ToolCompareInformDEREnddateOpenSSL) {
+TEST_F(X509ComparisonTest, InformDEREnddate) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              der_cert_path + " -inform DER -enddate > " +
                              out_path_tool;
@@ -1174,7 +1178,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareInformDEREnddateOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl x509 -in file -inform DER -enddate"
-TEST_F(X509ComparisonTest, X509ToolCompareInformPEMEnddateOpenSSL) {
+TEST_F(X509ComparisonTest, InformPEMEnddate) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -inform PEM -enddate > " +
                              out_path_tool;
@@ -1202,7 +1206,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareInformPEMEnddateOpenSSL) {
 
 // Test against OpenSSL output reading from stdin "openssl x509 -fingerprint
 // -dates"
-TEST_F(X509ComparisonTest, X509ToolCompareStdinFingerprintDatesOpenSSL) {
+TEST_F(X509ComparisonTest, StdinFingerprintDates) {
   std::string tool_command = "cat " + std::string(in_path) + " | " +
                              std::string(tool_executable_path) +
                              " x509 -fingerprint -dates > " + out_path_tool;
@@ -1233,7 +1237,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareStdinFingerprintDatesOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in in_file (-req) -signkey
 // private_key_file -out out_file -outform PEM"
-TEST_F(X509ComparisonTest, X509ToolCompareSignkeyOutformPEMOpenSSL) {
+TEST_F(X509ComparisonTest, SignkeyOutformPEM) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -signkey " + signkey_path +
                              " -outform PEM -out " + out_path_tool;
@@ -1286,7 +1290,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareSignkeyOutformPEMOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in in_file (-req) -signkey
 // private_key_file -out out_file -outform DER"
-TEST_F(X509ComparisonTest, X509ToolCompareSignkeyOutformDEROpenSSL) {
+TEST_F(X509ComparisonTest, SignkeyOutformDER) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -signkey " + signkey_path +
                              " -outform DER -out " + out_path_tool;
@@ -1339,7 +1343,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareSignkeyOutformDEROpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in in_file -CA certfile -CAkey
 // keyfile"
-TEST_F(X509ComparisonTest, X509ToolCompareCAOpenSSL) {
+TEST_F(X509ComparisonTest, CA) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -CA " + ca_cert_path + " -out " +
                              out_path_tool;
@@ -1393,7 +1397,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareCAOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in in_file -CA certfile -CAkey
 // keyfile"
-TEST_F(X509ComparisonTest, X509ToolCompareReqCAOpenSSL) {
+TEST_F(X509ComparisonTest, ReqCA) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              csr_path + " -req -CA " + ca_cert_path + " -out " +
                              out_path_tool;
@@ -1446,7 +1450,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareReqCAOpenSSL) {
 }
 
 // Test against OpenSSL output with -passin option
-TEST_F(X509ComparisonTest, X509ToolComparePassinOpenSSL) {
+TEST_F(X509ComparisonTest, Passin) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -signkey " + protected_signkey_path +
                              " -passin pass:testpassword -out " + out_path_tool;
@@ -1475,7 +1479,7 @@ TEST_F(X509ComparisonTest, X509ToolComparePassinOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -extfile extfile -extensions
 // extension_header"
-TEST_F(X509ComparisonTest, X509ToolCompareExtensionsOpenSSL) {
+TEST_F(X509ComparisonTest, Extensions) {
   char ext_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(ext_path), 0u);
 
@@ -1562,8 +1566,8 @@ TEST_F(X509ComparisonTest, X509ToolCompareExtensionsOpenSSL) {
   RemoveFile(ext_path);
 }
 
-// Test SetSerial functionality against OpenSSL with CA certificate
-TEST_F(X509ComparisonTest, X509ToolCompareSetSerialCAOpenSSL) {
+// Test serial generation against OpenSSL
+TEST_F(X509ComparisonTest, BasicSerialGeneration) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " +
                              in_path + " -CA " + ca_cert_path + " -CAkey " +
                              ca_key_path + " -out " + out_path_tool;
@@ -1594,8 +1598,8 @@ TEST_F(X509ComparisonTest, X509ToolCompareSetSerialCAOpenSSL) {
   RemoveFile(srl_path.c_str());
 }
 
-// Test SetSerial functionality against OpenSSL with existing .srl file
-TEST_F(X509ComparisonTest, X509ToolCompareSetSerialExistingFileOpenSSL) {
+// Test serial generation against OpenSSL with existing .srl file
+TEST_F(X509ComparisonTest, SerialGenerationExistingFile) {
   // Create existing .srl file with known serial number
   std::string srl_path =
       std::string(ca_cert_path)
@@ -1633,7 +1637,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareSetSerialExistingFileOpenSSL) {
 }
 
 // Test AdaptKeyIDExtension with existing valid key identifier extensions
-TEST_F(X509ComparisonTest, X509ToolCompareKeyIDExtensionValidOpenSSL) {
+TEST_F(X509ComparisonTest, KeyIDExtensionValid) {
   char ext_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(ext_path), 0u);
 
@@ -1670,7 +1674,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareKeyIDExtensionValidOpenSSL) {
 }
 
 // Test AdaptKeyIDExtension with self-signed cert missing authorityKeyIdentifier
-TEST_F(X509ComparisonTest, X509ToolCompareKeyIDExtensionSelfSignedOpenSSL) {
+TEST_F(X509ComparisonTest, KeyIDExtensionSelfSigned) {
   char ext_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(ext_path), 0u);
 

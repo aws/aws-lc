@@ -51,7 +51,7 @@ class RSATest : public ::testing::Test {
 // ----------------------------- RSA Option Tests -----------------------------
 
 // Test -in and -out
-TEST_F(RSATest, RSAToolInOutTest) {
+TEST_F(RSATest, InOut) {
   args_list_t args = {"-in", in_path, "-out", out_path};
   bool result = rsaTool(args);
   ASSERT_TRUE(result);
@@ -65,14 +65,14 @@ TEST_F(RSATest, RSAToolInOutTest) {
 }
 
 // Test -modulus
-TEST_F(RSATest, RSAToolModulusTest) {
+TEST_F(RSATest, Modulus) {
   args_list_t args = {"-in", in_path, "-modulus"};
   bool result = rsaTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -noout
-TEST_F(RSATest, RSAToolNooutTest) {
+TEST_F(RSATest, Noout) {
   args_list_t args = {"-in", in_path, "-noout"};
   bool result = rsaTool(args);
   ASSERT_TRUE(result);
@@ -651,7 +651,7 @@ const std::string PUBLIC_BEGIN = "-----BEGIN PUBLIC KEY-----";
 const std::string PUBLIC_END = "-----END PUBLIC KEY-----";
 
 // Test -pubin with PEM input (default format)
-TEST_F(RSAFormatComparisonTest, RSAToolPubinPEMTest) {
+TEST_F(RSAFormatComparisonTest, PubinPEM) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_pem_path + " -pubin -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -682,7 +682,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinPEMTest) {
 }
 
 // Test -pubin with DER input using -inform DER
-TEST_F(RSAFormatComparisonTest, RSAToolPubinDERInputTest) {
+TEST_F(RSAFormatComparisonTest, PubinDERInput) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_der_path + " -pubin -inform DER -out " +
                              out_path_tool;
@@ -709,7 +709,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinDERInputTest) {
 }
 
 // Test -pubin with -outform DER
-TEST_F(RSAFormatComparisonTest, RSAToolPubinDEROutputTest) {
+TEST_F(RSAFormatComparisonTest, PubinDEROutput) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_pem_path + " -pubin -outform DER -out " +
                              out_path_tool;
@@ -740,7 +740,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinDEROutputTest) {
 }
 
 // Test -inform DER with private key
-TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDERInputTest) {
+TEST_F(RSAFormatComparisonTest, PrivateKeyDERInput) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_der_path + " -inform DER -out " +
                              out_path_tool;
@@ -767,7 +767,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDERInputTest) {
 }
 
 // Test -outform DER with private key
-TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDEROutputTest) {
+TEST_F(RSAFormatComparisonTest, PrivateKeyDEROutput) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -outform DER -out " +
                              out_path_tool;
@@ -804,7 +804,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDEROutputTest) {
 }
 
 // Test DER to DER conversion (private key)
-TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDERtoDERTest) {
+TEST_F(RSAFormatComparisonTest, PrivateKeyDERtoDER) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_der_path + " -inform DER -outform DER -out " +
                              out_path_tool;
@@ -840,7 +840,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDERtoDERTest) {
 }
 
 // Test DER to PEM conversion (private key)
-TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDERtoPEMTest) {
+TEST_F(RSAFormatComparisonTest, PrivateKeyDERtoPEM) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_der_path + " -inform DER -out " +
                              out_path_tool;
@@ -863,7 +863,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyDERtoPEMTest) {
 }
 
 // Test PEM to DER conversion (private key)
-TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyPEMtoDERTest) {
+TEST_F(RSAFormatComparisonTest, PrivateKeyPEMtoDER) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -outform DER -out " +
                              out_path_tool;
@@ -899,7 +899,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPrivateKeyPEMtoDERTest) {
 }
 
 // Test DER to DER conversion (public key with -pubin)
-TEST_F(RSAFormatComparisonTest, RSAToolPublicKeyDERtoDERTest) {
+TEST_F(RSAFormatComparisonTest, PublicKeyDERtoDER) {
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -in " + pub_der_path +
       " -pubin -inform DER -outform DER -out " + out_path_tool;
@@ -918,7 +918,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPublicKeyDERtoDERTest) {
 }
 
 // Test DER to PEM conversion (public key with -pubin)
-TEST_F(RSAFormatComparisonTest, RSAToolPublicKeyDERtoPEMTest) {
+TEST_F(RSAFormatComparisonTest, PublicKeyDERtoPEM) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_der_path + " -pubin -inform DER -out " +
                              out_path_tool;
@@ -945,7 +945,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPublicKeyDERtoPEMTest) {
 }
 
 // Test PEM to DER conversion (public key with -pubin)
-TEST_F(RSAFormatComparisonTest, RSAToolPublicKeyPEMtoDERTest) {
+TEST_F(RSAFormatComparisonTest, PublicKeyPEMtoDER) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_pem_path + " -pubin -outform DER -out " +
                              out_path_tool;
@@ -964,7 +964,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPublicKeyPEMtoDERTest) {
 }
 
 // Test -pubin with -modulus and PEM input
-TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusTest) {
+TEST_F(RSAFormatComparisonTest, PubinModulus) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_pem_path + " -pubin -modulus -noout > " +
                              out_path_tool;
@@ -980,7 +980,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusTest) {
 }
 
 // Test -pubin with -modulus and DER input
-TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusDERInputTest) {
+TEST_F(RSAFormatComparisonTest, PubinModulusDERInput) {
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -in " + pub_der_path +
       " -pubin -inform DER -modulus -noout > " + out_path_tool;
@@ -996,7 +996,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusDERInputTest) {
 }
 
 // Test -inform with modulus
-TEST_F(RSAFormatComparisonTest, RSAToolInformDERWithModulusTest) {
+TEST_F(RSAFormatComparisonTest, InformDERWithModulus) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_der_path + " -inform DER -modulus -noout > " +
                              out_path_tool;
@@ -1012,7 +1012,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolInformDERWithModulusTest) {
 }
 
 // Test -pubout with private key PEM input (extract public key)
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutFromPrivateKeyPEMTest) {
+TEST_F(RSAFormatComparisonTest, PuboutFromPrivateKeyPEM) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -pubout -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -1043,7 +1043,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutFromPrivateKeyPEMTest) {
 }
 
 // Test -pubout with private key DER input using -inform DER
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutFromPrivateKeyDERInputTest) {
+TEST_F(RSAFormatComparisonTest, PuboutFromPrivateKeyDERInput) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_der_path + " -inform DER -pubout -out " +
                              out_path_tool;
@@ -1075,7 +1075,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutFromPrivateKeyDERInputTest) {
 }
 
 // Test -pubout with -outform DER (extract public key as DER)
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutDEROutputTest) {
+TEST_F(RSAFormatComparisonTest, PuboutDEROutput) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -pubout -outform DER -out " +
                              out_path_tool;
@@ -1106,7 +1106,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutDEROutputTest) {
 }
 
 // Test -pubout with -inform DER and -outform DER (DER private to DER public)
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutDERtoDERTest) {
+TEST_F(RSAFormatComparisonTest, PuboutDERtoDER) {
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -in " + priv_der_path +
       " -inform DER -pubout -outform DER -out " + out_path_tool;
@@ -1125,7 +1125,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutDERtoDERTest) {
 }
 
 // Test -pubout with -modulus
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutWithModulusTest) {
+TEST_F(RSAFormatComparisonTest, PuboutWithModulus) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -pubout -modulus -out " +
                              out_path_tool;
@@ -1154,7 +1154,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutWithModulusTest) {
 }
 
 // Test -pubout with -modulus and -noout (only modulus from private key)
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutWithModulusNooutTest) {
+TEST_F(RSAFormatComparisonTest, PuboutWithModulusNoout) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -pubout -modulus -noout > " +
                              out_path_tool;
@@ -1170,7 +1170,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutWithModulusNooutTest) {
 }
 
 // Test -pubout with DER to PEM conversion
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutDERtoPEMTest) {
+TEST_F(RSAFormatComparisonTest, PuboutDERtoPEM) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_der_path + " -inform DER -pubout -out " +
                              out_path_tool;
@@ -1194,7 +1194,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutDERtoPEMTest) {
 }
 
 // Test -pubout with PEM to DER conversion
-TEST_F(RSAFormatComparisonTest, RSAToolPuboutPEMtoDERTest) {
+TEST_F(RSAFormatComparisonTest, PuboutPEMtoDER) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -pubout -outform DER -out " +
                              out_path_tool;
@@ -1213,7 +1213,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPuboutPEMtoDERTest) {
 }
 
 // Test modulus output with -outform DER (should still output modulus as text)
-TEST_F(RSAFormatComparisonTest, RSAToolModulusWithOutformDERTest) {
+TEST_F(RSAFormatComparisonTest, ModulusWithOutformDER) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path +
                              " -modulus -outform DER -noout > " + out_path_tool;
@@ -1230,7 +1230,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolModulusWithOutformDERTest) {
 }
 
 // Test modulus with -inform DER and -outform DER, writing key to file
-TEST_F(RSAFormatComparisonTest, RSAToolModulusInformOutformDERTest) {
+TEST_F(RSAFormatComparisonTest, ModulusInformOutformDER) {
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -in " + priv_der_path +
       " -inform DER -modulus -outform DER -out " + out_path_tool;
@@ -1244,7 +1244,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolModulusInformOutformDERTest) {
 }
 
 // Test modulus with public key and various format combinations
-TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusInformDERTest) {
+TEST_F(RSAFormatComparisonTest, PubinModulusInformDER) {
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -in " + pub_der_path +
       " -pubin -inform DER -modulus -out " + out_path_tool;
@@ -1266,7 +1266,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusInformDERTest) {
 }
 
 // Test modulus output to file (not stdout) with PEM input
-TEST_F(RSAFormatComparisonTest, RSAToolModulusToFileTest) {
+TEST_F(RSAFormatComparisonTest, ModulusToFile) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -modulus -out " + out_path_tool +
                              " -noout";
@@ -1288,7 +1288,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolModulusToFileTest) {
 }
 
 // Test modulus with -pubout and -outform DER
-TEST_F(RSAFormatComparisonTest, RSAToolModulusPuboutOutformDERTest) {
+TEST_F(RSAFormatComparisonTest, ModulusPuboutOutformDER) {
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -in " + priv_pem_path +
       " -pubout -modulus -outform DER -out " + out_path_tool;
@@ -1302,7 +1302,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolModulusPuboutOutformDERTest) {
 }
 
 // Test case-insensitive -inform option (pem, Pem, PEM)
-TEST_F(RSAFormatComparisonTest, RSAToolInformCaseInsensitiveTest) {
+TEST_F(RSAFormatComparisonTest, InformCaseInsensitive) {
   std::vector<std::string> formats = {"pem", "Pem", "PEM"};
 
   for (const auto &format : formats) {
@@ -1327,7 +1327,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolInformCaseInsensitiveTest) {
 }
 
 // Test case-insensitive -inform DER option (der, Der, DER)
-TEST_F(RSAFormatComparisonTest, RSAToolInformDERCaseInsensitiveTest) {
+TEST_F(RSAFormatComparisonTest, InformDERCaseInsensitive) {
   std::vector<std::string> formats = {"der", "Der", "DER"};
 
   for (const auto &format : formats) {
@@ -1352,7 +1352,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolInformDERCaseInsensitiveTest) {
 }
 
 // Test case-insensitive -outform option (pem, Pem, PEM)
-TEST_F(RSAFormatComparisonTest, RSAToolOutformCaseInsensitiveTest) {
+TEST_F(RSAFormatComparisonTest, OutformCaseInsensitive) {
   std::vector<std::string> formats = {"pem", "Pem", "PEM"};
 
   for (const auto &format : formats) {
@@ -1376,7 +1376,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolOutformCaseInsensitiveTest) {
 }
 
 // Test case-insensitive -outform DER option (der, Der, DER)
-TEST_F(RSAFormatComparisonTest, RSAToolOutformDERCaseInsensitiveTest) {
+TEST_F(RSAFormatComparisonTest, OutformDERCaseInsensitive) {
   std::vector<std::string> formats = {"der", "Der", "DER"};
 
   for (const auto &format : formats) {
@@ -1401,7 +1401,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolOutformDERCaseInsensitiveTest) {
 }
 
 // Test case-insensitive formats with -pubin
-TEST_F(RSAFormatComparisonTest, RSAToolPubinCaseInsensitiveTest) {
+TEST_F(RSAFormatComparisonTest, PubinCaseInsensitive) {
   std::vector<std::string> inform_formats = {"der", "Der", "DER"};
   std::vector<std::string> outform_formats = {"pem", "Pem", "PEM"};
 
@@ -1430,7 +1430,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolPubinCaseInsensitiveTest) {
 }
 
 // Test various parameter orderings with -modulus and -noout
-TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest1) {
+TEST_F(RSAFormatComparisonTest, ParameterOrdering1) {
   // Test: -modulus before -noout
   std::string tool_command1 = std::string(tool_executable_path) + " rsa -in " +
                               priv_pem_path + " -modulus -noout > " +
@@ -1446,7 +1446,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest1) {
 }
 
 // Test various parameter orderings with -out before other flags
-TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest2) {
+TEST_F(RSAFormatComparisonTest, ParameterOrdering2) {
   // Test: -out before -pubout
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -out " + out_path_tool +
@@ -1468,7 +1468,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest2) {
 }
 
 // Test parameter ordering with all format flags
-TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest3) {
+TEST_F(RSAFormatComparisonTest, ParameterOrdering3) {
   // Test: -outform before -inform
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -outform DER -inform PEM -out " +
@@ -1490,7 +1490,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolParameterOrderingTest3) {
 }
 
 // Test stdout output with modulus (no -out flag)
-TEST_F(RSAFormatComparisonTest, RSAToolStdoutWithModulusTest) {
+TEST_F(RSAFormatComparisonTest, StdoutWithModulus) {
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              priv_pem_path + " -modulus > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -1509,7 +1509,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolStdoutWithModulusTest) {
 }
 
 // Test complex parameter ordering with all flags
-TEST_F(RSAFormatComparisonTest, RSAToolComplexParameterOrderingTest) {
+TEST_F(RSAFormatComparisonTest, ComplexParameterOrdering) {
   // Test: flags in unusual order
   std::string tool_command =
       std::string(tool_executable_path) + " rsa -modulus -in " + priv_der_path +
@@ -1531,7 +1531,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolComplexParameterOrderingTest) {
 }
 
 // Test -in flag at different positions
-TEST_F(RSAFormatComparisonTest, RSAToolInFlagPositionTest) {
+TEST_F(RSAFormatComparisonTest, InFlagPosition) {
   // Test: -in at the end
   std::string tool_command = std::string(tool_executable_path) +
                              " rsa -pubout -out " + out_path_tool + " -in " +
@@ -1553,7 +1553,7 @@ TEST_F(RSAFormatComparisonTest, RSAToolInFlagPositionTest) {
 }
 
 // Test -pubin with -modulus in different order
-TEST_F(RSAFormatComparisonTest, RSAToolPubinModulusOrderingTest) {
+TEST_F(RSAFormatComparisonTest, PubinModulusOrdering) {
   // Test: -pubin after -modulus
   std::string tool_command = std::string(tool_executable_path) + " rsa -in " +
                              pub_pem_path + " -modulus -pubin -noout > " +
