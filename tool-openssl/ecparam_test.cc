@@ -106,7 +106,7 @@ class EcparamTest : public ::testing::Test {
 };
 
 // Test basic functionality
-TEST_F(EcparamTest, EcparamToolBasicTest) {
+TEST_F(EcparamTest, Basic) {
   args_list_t args = {"-name", "prime256v1", "-out", out_path};
 
   EXPECT_TRUE(ecparamTool(args)) << "Basic ecparam functionality failed";
@@ -141,7 +141,7 @@ TEST_F(EcparamTest, secp256r1) {
       << "Wrong curve in output";
 }
 
-TEST_F(EcparamTest, EcparamToolNooutTest) {
+TEST_F(EcparamTest, Noout) {
   args_list_t args = {"-name", "prime256v1", "-noout", "-out", out_path};
 
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -noout failed";
@@ -149,7 +149,7 @@ TEST_F(EcparamTest, EcparamToolNooutTest) {
       << "Output file should be empty with -noout";
 }
 
-TEST_F(EcparamTest, EcparamToolNooutExceptionTest) {
+TEST_F(EcparamTest, NooutException) {
   args_list_t args = {"-name",  "prime256v1", "-genkey",
                       "-noout", "-out",       out_path};
 
@@ -172,7 +172,7 @@ TEST_F(EcparamTest, EcparamToolNooutExceptionTest) {
       << "Wrong curve generated";
 }
 
-TEST_F(EcparamTest, EcparamToolGenkeyTest) {
+TEST_F(EcparamTest, Genkey) {
   args_list_t args = {"-name", "prime256v1", "-genkey", "-out", out_path};
 
   EXPECT_TRUE(ecparamTool(args)) << "Ecparam -genkey failed";
@@ -194,7 +194,7 @@ TEST_F(EcparamTest, EcparamToolGenkeyTest) {
       << "Wrong curve generated";
 }
 
-TEST_F(EcparamTest, EcparamToolConvFormTest) {
+TEST_F(EcparamTest, ConvForm) {
   args_list_t args = {"-name",      "prime256v1", "-genkey", "-conv_form",
                       "compressed", "-out",       out_path};
 
@@ -216,7 +216,7 @@ TEST_F(EcparamTest, EcparamToolConvFormTest) {
       << "Key not using compressed format";
 }
 
-TEST_F(EcparamTest, EcparamToolOutformTest) {
+TEST_F(EcparamTest, Outform) {
   args_list_t args = {"-name", "prime256v1", "-outform",
                       "DER",   "-out",       out_path};
 
@@ -241,17 +241,17 @@ class EcparamOptionUsageErrorsTest : public ::testing::Test {
   }
 };
 
-TEST_F(EcparamOptionUsageErrorsTest, InvalidCurveTest) {
+TEST_F(EcparamOptionUsageErrorsTest, InvalidCurve) {
   args_list_t args = {"-name", "invalid_curve"};
   TestOptionUsageErrors(args);
 }
 
-TEST_F(EcparamOptionUsageErrorsTest, InvalidConvFormTest) {
+TEST_F(EcparamOptionUsageErrorsTest, InvalidConvForm) {
   args_list_t args = {"-name", "prime256v1", "-conv_form", "invalid"};
   TestOptionUsageErrors(args);
 }
 
-TEST_F(EcparamOptionUsageErrorsTest, InvalidOutformTest) {
+TEST_F(EcparamOptionUsageErrorsTest, InvalidOutform) {
   args_list_t args = {"-name", "prime256v1", "-outform", "INVALID"};
   TestOptionUsageErrors(args);
 }
@@ -425,7 +425,7 @@ class EcparamComparisonTest : public ::testing::Test {
 };
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -noout"
-TEST_F(EcparamComparisonTest, EcparamToolCompareNooutOpenSSL) {
+TEST_F(EcparamComparisonTest, Noout) {
   std::string tool_command = std::string(tool_executable_path) +
                              " ecparam -name prime256v1 -noout > " +
                              out_path_tool;
@@ -440,7 +440,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareNooutOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -outform DER"
-TEST_F(EcparamComparisonTest, EcparamToolCompareDERFormatOpenSSL) {
+TEST_F(EcparamComparisonTest, DERFormat) {
   std::string tool_command = std::string(tool_executable_path) +
                              " ecparam -name prime256v1 -outform DER -out " +
                              out_path_tool;
@@ -455,7 +455,7 @@ TEST_F(EcparamComparisonTest, EcparamToolCompareDERFormatOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -out file"
-TEST_F(EcparamComparisonTest, EcparamToolCompareFileOutputOpenSSL) {
+TEST_F(EcparamComparisonTest, FileOutput) {
   std::string tool_command = std::string(tool_executable_path) +
                              " ecparam -name prime256v1 -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +

@@ -47,7 +47,7 @@ class PKCS8Test : public ::testing::Test {
 };
 
 // Test -in, -out, -topk8, and -nocrypt
-TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
+TEST_F(PKCS8Test, Basic) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-nocrypt"};
   bool result = pkcs8Tool(args);
   ASSERT_TRUE(result);
@@ -63,7 +63,7 @@ TEST_F(PKCS8Test, PKCS8ToolBasicTest) {
 }
 
 // Test -inform and -outform
-TEST_F(PKCS8Test, PKCS8ToolFormatTest) {
+TEST_F(PKCS8Test, Format) {
   args_list_t args = {"-in",      in_path,   "-out", out_path,   "-topk8",
                       "-nocrypt", "-inform", "PEM",  "-outform", "PEM"};
   bool result = pkcs8Tool(args);
@@ -71,7 +71,7 @@ TEST_F(PKCS8Test, PKCS8ToolFormatTest) {
 }
 
 // Test -v2 with aes-256-cbc and -passout
-TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
+TEST_F(PKCS8Test, Encryption) {
   std::string passout = std::string("file:") + pass_path;
   args_list_t args = {"-in",         in_path,    "-out",
                       out_path,      "-topk8",   "-v2",
@@ -126,7 +126,7 @@ TEST_F(PKCS8Test, PKCS8ErrorDecryptingKey) {
 }
 
 // Test with a direct password rather than using environment variables
-TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
+TEST_F(PKCS8Test, EnvVarPassword) {
   // Phase 1: Create an unencrypted PKCS8 file first
   {
     args_list_t args = {"-in", in_path, "-out", out_path, "-topk8", "-nocrypt"};
@@ -162,7 +162,7 @@ TEST_F(PKCS8Test, PKCS8ToolEnvVarPasswordTest) {
 }
 
 // Test -v2 option with the default cipher (aes-256-cbc)
-TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
+TEST_F(PKCS8Test, V2Default) {
   // Use direct password instead of file for simplicity
   std::string passout = "pass:testpassword";
   args_list_t args = {"-in",         in_path,    "-out",
@@ -191,7 +191,7 @@ TEST_F(PKCS8Test, PKCS8ToolV2DefaultTest) {
 }
 
 // Test -v2prf with hmacWithSHA1 (only supported PRF in AWS-LC)
-TEST_F(PKCS8Test, PKCS8ToolPRFTest) {
+TEST_F(PKCS8Test, PRF) {
   std::string passout = std::string("file:") + pass_path;
   args_list_t args = {"-in",          in_path,    "-out",         out_path,
                       "-topk8",       "-v2",      "aes-256-cbc",  "-v2prf",
@@ -201,7 +201,7 @@ TEST_F(PKCS8Test, PKCS8ToolPRFTest) {
 }
 
 // Test that unsupported PRF algorithms are rejected
-TEST_F(PKCS8Test, PKCS8ToolUnsupportedPRFTest) {
+TEST_F(PKCS8Test, UnsupportedPRF) {
   std::string passout = std::string("file:") + pass_path;
   args_list_t args = {"-in",         in_path,        "-out",
                       out_path,      "-topk8",       "-v2",
@@ -221,7 +221,7 @@ class PKCS8OptionUsageErrorsTest : public PKCS8Test {
 };
 
 // Test invalid format
-TEST_F(PKCS8OptionUsageErrorsTest, InvalidFormatTest) {
+TEST_F(PKCS8OptionUsageErrorsTest, InvalidFormat) {
   std::vector<std::vector<std::string>> testparams = {
       {"-in", in_path, "-inform", "INVALID"},
       {"-in", in_path, "-outform", "INVALID"},
@@ -293,7 +293,7 @@ class PKCS8ComparisonTest : public ::testing::Test {
 
 // Test against OpenSSL output "openssl pkcs8 -topk8 -nocrypt -in file -out
 // file"
-TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareUnencryptedOpenSSL) {
+TEST_F(PKCS8ComparisonTest, Unencrypted) {
   std::string tool_command = std::string(tool_executable_path) +
                              " pkcs8 -topk8 -nocrypt -in " + in_path +
                              " -out " + out_path_tool;
@@ -397,7 +397,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC) {
 }
 
 // Original format comparison test kept for backward compatibility
-TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareEncryptedOpenSSL) {
+TEST_F(PKCS8ComparisonTest, Encrypted) {
   std::string tool_command =
       std::string(tool_executable_path) + " pkcs8 -topk8 -v2 aes-256-cbc -in " +
       in_path + " -out " + out_path_tool + " -passout file:" + pass_path;
@@ -442,7 +442,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareEncryptedOpenSSL) {
 }
 
 // Test against OpenSSL output with DER format
-TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareDERFormatOpenSSL) {
+TEST_F(PKCS8ComparisonTest, DERFormat) {
   std::string tool_command = std::string(tool_executable_path) +
                              " pkcs8 -topk8 -nocrypt -in " + in_path +
                              " -outform DER -out " + out_path_tool;
@@ -537,7 +537,7 @@ TEST_F(PKCS8ComparisonTest, PKCS8ToolCrossCompat_OpenSSL_To_AWSLC_WithPRF) {
 }
 
 // Original format comparison test with PRF kept for backward compatibility
-TEST_F(PKCS8ComparisonTest, PKCS8ToolCompareV2prfOpenSSL) {
+TEST_F(PKCS8ComparisonTest, V2prf) {
   std::string tool_command =
       std::string(tool_executable_path) +
       " pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA1 -in " + in_path +

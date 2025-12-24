@@ -64,7 +64,7 @@ class PKeyTest : public ::testing::Test {
 // ----------------------------- PKey Option Tests -----------------------------
 
 // Test -in and -out
-TEST_F(PKeyTest, PKeyToolInOutTest) {
+TEST_F(PKeyTest, InOut) {
   args_list_t args = {"-in", in_path, "-out", out_path};
   bool result = pkeyTool(args);
   ASSERT_TRUE(result);
@@ -78,7 +78,7 @@ TEST_F(PKeyTest, PKeyToolInOutTest) {
 }
 
 // Test -inform DER
-TEST_F(PKeyTest, PKeyToolInformDERTest) {
+TEST_F(PKeyTest, InformDER) {
   args_list_t args = {"-in", der_key_path, "-inform", "DER", "-out", out_path};
   bool result = pkeyTool(args);
   ASSERT_TRUE(result);
@@ -92,7 +92,7 @@ TEST_F(PKeyTest, PKeyToolInformDERTest) {
 }
 
 // Test -outform DER
-TEST_F(PKeyTest, PKeyToolOutformDERTest) {
+TEST_F(PKeyTest, OutformDER) {
   args_list_t args = {"-in", in_path, "-outform", "DER", "-out", out_path};
   bool result = pkeyTool(args);
   ASSERT_TRUE(result);
@@ -106,7 +106,7 @@ TEST_F(PKeyTest, PKeyToolOutformDERTest) {
 }
 
 // Test -pubout
-TEST_F(PKeyTest, PKeyToolPuboutTest) {
+TEST_F(PKeyTest, Pubout) {
   args_list_t args = {"-in", in_path, "-pubout", "-out", out_path};
   bool result = pkeyTool(args);
   ASSERT_TRUE(result);
@@ -120,7 +120,7 @@ TEST_F(PKeyTest, PKeyToolPuboutTest) {
 }
 
 // Test -pubin
-TEST_F(PKeyTest, PKeyToolPubinTest) {
+TEST_F(PKeyTest, Pubin) {
   // First create a public key file
   {
     args_list_t args = {"-in", in_path, "-pubout", "-out", out_path};
@@ -148,14 +148,14 @@ TEST_F(PKeyTest, PKeyToolPubinTest) {
 }
 
 // Test -text
-TEST_F(PKeyTest, PKeyToolTextTest) {
+TEST_F(PKeyTest, Text) {
   args_list_t args = {"-in", in_path, "-text", "-noout"};
   bool result = pkeyTool(args);
   ASSERT_TRUE(result);
 }
 
 // Test -text_pub
-TEST_F(PKeyTest, PKeyToolTextPubTest) {
+TEST_F(PKeyTest, TextPub) {
   args_list_t args = {"-in", in_path, "-text_pub", "-noout"};
   bool result = pkeyTool(args);
   ASSERT_TRUE(result);
@@ -253,7 +253,7 @@ class PKeyComparisonTest : public ::testing::Test {
 };
 
 // Test against OpenSSL output "openssl pkey -in file -text -noout"
-TEST_F(PKeyComparisonTest, PKeyToolCompareTextOpenSSL) {
+TEST_F(PKeyComparisonTest, Text) {
   std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
                              in_path + " -text -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -281,7 +281,7 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareTextOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl pkey -in file -text_pub -noout"
-TEST_F(PKeyComparisonTest, PKeyToolCompareTextPubOpenSSL) {
+TEST_F(PKeyComparisonTest, TextPub) {
   std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
                              in_path + " -text_pub -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -309,7 +309,7 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareTextPubOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl pkey -in file -pubout"
-TEST_F(PKeyComparisonTest, PKeyToolComparePuboutOpenSSL) {
+TEST_F(PKeyComparisonTest, Pubout) {
   std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
                              in_path + " -pubout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -331,7 +331,7 @@ TEST_F(PKeyComparisonTest, PKeyToolComparePuboutOpenSSL) {
 }
 
 // Test against OpenSSL output "openssl pkey -in file -inform DER"
-TEST_F(PKeyComparisonTest, PKeyToolCompareInformDEROpenSSL) {
+TEST_F(PKeyComparisonTest, InformDER) {
   std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
                              der_key_path + " -inform DER > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -353,7 +353,7 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareInformDEROpenSSL) {
 }
 
 // Test against OpenSSL output "openssl pkey -in file -outform DER"
-TEST_F(PKeyComparisonTest, PKeyToolCompareOutformDEROpenSSL) {
+TEST_F(PKeyComparisonTest, OutformDER) {
   std::string tool_command = std::string(tool_executable_path) + " pkey -in " +
                              in_path + " -outform DER -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -366,7 +366,7 @@ TEST_F(PKeyComparisonTest, PKeyToolCompareOutformDEROpenSSL) {
 }
 
 // Test against OpenSSL output "openssl pkey -in file -pubin -pubout"
-TEST_F(PKeyComparisonTest, PKeyToolComparePubinPuboutOpenSSL) {
+TEST_F(PKeyComparisonTest, PubinPubout) {
   // First create a public key file
   std::string create_pubkey_cmd = std::string(tool_executable_path) +
                                   " pkey -in " + in_path + " -pubout -out " +
@@ -400,7 +400,7 @@ TEST_F(PKeyComparisonTest, PKeyToolComparePubinPuboutOpenSSL) {
 }
 
 // Test against OpenSSL output reading from stdin "cat file | openssl pkey"
-TEST_F(PKeyComparisonTest, PKeyToolCompareStdinOpenSSL) {
+TEST_F(PKeyComparisonTest, Stdin) {
   std::string tool_command = "cat " + std::string(in_path) + " | " +
                              std::string(tool_executable_path) + " pkey > " +
                              out_path_tool;
