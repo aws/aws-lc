@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Zig C++ compiler wrapper 
+
+# Check if zig is available
+if ! command -v zig &> /dev/null; then
+    echo "Error: zig compiler not found in PATH" >&2
+    echo "Please install zig from https://ziglang.org/download/" >&2
+    exit 1
+fi
+
+# Function to map problematic architecture flags to zig equivalents
+filter_problematic_flags() {
+    local args=()
+    
+    for arg in "$@"; do
+        case "$arg" in
+            -march=armv8.4-a+sha3)
+                # Replace the specific problematic flag with a compatible one
+                args+=("-mcpu=generic+v8.4a+sha3")
+                ;;
+            *)
+                # Keep all other arguments including mcpu, mtune, and other march flags
+                args+=("$arg")
+                ;;
+        esac
+    done
+    
+    printf '%s\n' "${args[@]}"
+}
+
+# Process arguments to filter only problematic architecture flags
+filtered_args=($(filter_problematic_flags "$@"))
+
+# Execute zig c++ with sanitizers disabled by default and filtered arguments
+exec zig c++ -fno-sanitize=undefined -fno-sanitize=address -fno-sanitize=memory "${filtered_args[@]}"
