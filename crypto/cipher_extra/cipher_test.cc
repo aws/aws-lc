@@ -1501,6 +1501,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(RandomizedCipherTest, EncryptDecrypt) {
 
+  // This is an arbitrary max input size that I chose such that
+  // the test runs for about 2 seconds.
   const size_t max_input_size = 1601;
   const size_t num_tests_per_input_size = 10;
 
@@ -1564,12 +1566,12 @@ TEST_P(RandomizedCipherTest, EncryptDecrypt) {
                                      iv_len > 0 ? iv.data() : nullptr));
 
       if (is_ccm) {
-        int len;
+        int len = 0;
         ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), nullptr, &len, nullptr, pt_len));
       }
 
       if (!aad.empty()) {
-        int len;
+        int len = 0;
         ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), nullptr, &len, aad.data(), aad.size()));
       }
 
@@ -1611,12 +1613,12 @@ TEST_P(RandomizedCipherTest, EncryptDecrypt) {
                                      iv_len > 0 ? iv.data() : nullptr));
 
       if (is_ccm) {
-        int len;
+        int len = 0;
         ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), nullptr, &len, nullptr, ct_len));
       }
 
       if (!aad.empty()) {
-        int len;
+        int len = 0;
         ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), nullptr, &len, aad.data(), aad.size()));
       }
 
