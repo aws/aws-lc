@@ -1521,7 +1521,7 @@ TEST_P(RandomizedCipherTest, EncryptDecrypt) {
   const bool is_xts = mode == EVP_CIPH_XTS_MODE;
 
   for (size_t pt_len = 0; pt_len <= max_input_size; pt_len++) {
-    // Filter based on cipher mode constraints
+    // Filter based on cipher mode constraints.
     if (is_xts && pt_len < 16) {
       continue;  // XTS requires at least 16 bytes
     }
