@@ -1500,6 +1500,9 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 TEST_P(RandomizedCipherTest, EncryptDecrypt) {
+  if (runtimeEmulationIsIntelSde() && addressSanitizerIsEnabled()) {
+    GTEST_SKIP() << "Test not supported under Intel SDE + ASAN";
+  }
 
   // This is an arbitrary max input size that I chose such that
   // the test runs for about 2 seconds.
