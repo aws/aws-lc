@@ -321,7 +321,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
 
 static bool LoadPrivateKey(bssl::UniquePtr<EVP_PKEY> &pkey,
                            const std::string &signkey_path,
-                           bssl::UniquePtr<std::string> &passin) {
+                           Password &passin) {
   ScopedFILE signkey_file(fopen(signkey_path.c_str(), "rb"));
   if (!signkey_file) {
     fprintf(stderr, "Error: unable to load private key from '%s'\n",
@@ -329,7 +329,7 @@ static bool LoadPrivateKey(bssl::UniquePtr<EVP_PKEY> &pkey,
     return false;
   }
   pkey.reset(PEM_read_PrivateKey(signkey_file.get(), nullptr, nullptr,
-                                 const_cast<char *>(passin->c_str())));
+                                 const_cast<char *>(passin.get().c_str())));
   if (!pkey) {
     fprintf(stderr, "Error: error reading private key from '%s'\n",
             signkey_path.c_str());
@@ -343,7 +343,7 @@ static bool LoadPrivateKey(bssl::UniquePtr<EVP_PKEY> &pkey,
 static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
                    const std::string &ca_file_path,
                    const std::string &ca_key_path,
-                   bssl::UniquePtr<std::string> &passin) {
+                   Password &passin) {
   ScopedFILE ca_file(fopen(ca_file_path.c_str(), "rb"));
 
   if (!ca_file) {
@@ -367,10 +367,10 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
     }
 
     ca_key.reset(PEM_read_PrivateKey(ca_key_file.get(), nullptr, nullptr,
-                                     const_cast<char *>(passin->c_str())));
+                                     const_cast<char *>(passin.get().c_str())));
   } else {
     ca_key.reset(PEM_read_PrivateKey(ca_file.get(), nullptr, nullptr,
-                                     const_cast<char *>(passin->c_str())));
+                                     const_cast<char *>(passin.get().c_str())));
   }
 
   if (!ca_key) {
@@ -574,7 +574,7 @@ bool X509Tool(const args_list_t &args) {
       ca_file_path, ca_key_path, ext_file_path, ext_section;
   bool noout = false, dates = false, req = false, help = false;
   std::unique_ptr<unsigned> days;
-  bssl::UniquePtr<std::string> passin(new std::string());
+  Password passin;
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&in_path, "-in", "", parsed_args);
@@ -589,7 +589,7 @@ bool X509Tool(const args_list_t &args) {
   ordered_args::GetString(&ca_key_path, "-CAkey", "", parsed_args);
   ordered_args::GetString(&ext_file_path, "-extfile", "", parsed_args);
   ordered_args::GetString(&ext_section, "-extensions", "", parsed_args);
-  ordered_args::GetString(passin.get(), "-passin", "", parsed_args);
+  ordered_args::GetString(&passin.get(), "-passin", "", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
@@ -684,7 +684,7 @@ bool X509Tool(const args_list_t &args) {
   }
 
   // Extract password
-  if (!passin->empty() && !pass_util::ExtractPassword(passin)) {
+  if (!passin.empty() && !pass_util::ExtractPassword(passin)) {
     fprintf(stderr, "Error: Failed to extract password\n");
     return false;
   }
