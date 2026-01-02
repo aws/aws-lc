@@ -41,7 +41,7 @@ static bool HexToBinary(uint8_t *buffer, const std::string &hex_string,
     return false;
   }
 
-  int ret = BN_bn2binpad(raw, buffer, size);
+  int ret = BN_bn2bin_padded(buffer, size, raw);
   BN_free(raw);
   return ret != -1;
 }
@@ -56,17 +56,17 @@ bool encTool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, hiv, cipher_name;
-  Password hkey;
-  bool help = false, e = false, d = false;
+  std::string in_path, out_path, hex_iv, cipher_name;
+  Password hex_key;
+  bool help = false, encode = false, decode = false;
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&in_path, "-in", "", parsed_args);
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
-  ordered_args::GetBoolArgument(&e, "-e", parsed_args);
-  ordered_args::GetBoolArgument(&d, "-d", parsed_args);
-  ordered_args::GetString(&hkey.get(), "-K", "", parsed_args);
-  ordered_args::GetString(&hiv, "-iv", "", parsed_args);
+  ordered_args::GetBoolArgument(&encode, "-e", parsed_args);
+  ordered_args::GetBoolArgument(&decode, "-d", parsed_args);
+  ordered_args::GetString(&hex_key.get(), "-K", "", parsed_args);
+  ordered_args::GetString(&hex_iv, "-iv", "", parsed_args);
   ordered_args::GetExclusiveBoolArgument(&cipher_name, kArguments, "",
                                          parsed_args);
 
@@ -78,20 +78,17 @@ bool encTool(const args_list_t &args) {
 
   // Since we do not implement key generation, a raw key is required
   // TODO: remove/modify if we ever implement -k, -kfile, or -S
-  if (hkey.empty()) {
+  if (hex_key.empty()) {
     fprintf(stderr, "Error: A raw key is required\n");
     return false;
   }
 
-  if (e && d) {
+  if (encode && decode) {
     fprintf(stderr, "Error: -e and -d are mutually exclusive\n");
     return false;
   }
 
-  bool enc = true;
-  if (d) {
-    enc = false;
-  }
+  encode = !decode;
 
   // Read from stdin if no -in path provided
   ScopedFILE in_file;
@@ -121,12 +118,12 @@ bool encTool(const args_list_t &args) {
   unsigned int iv_length = EVP_CIPHER_iv_length(cipher);
   uint8_t iv[EVP_MAX_IV_LENGTH];
 
-  if (!hiv.empty()) {
+  if (!hex_iv.empty()) {
     if (iv_length == 0) {
       fprintf(stderr, "Warning: IV is not used by cipher %s\n",
               cipher_name.c_str());
     } else {
-      if (!HexToBinary(iv, hiv, iv_length)) {
+      if (!HexToBinary(iv, hex_iv, iv_length)) {
         fprintf(stderr, "Error: Invalid hex IV value\n");
         return false;
       }
@@ -141,8 +138,8 @@ bool encTool(const args_list_t &args) {
 
   uint8_t key[EVP_MAX_KEY_LENGTH];
 
-  if (!hkey.empty()) {
-    if (!HexToBinary(key, hkey.get(), EVP_CIPHER_key_length(cipher))) {
+  if (!hex_key.empty()) {
+    if (!HexToBinary(key, hex_key.get(), EVP_CIPHER_key_length(cipher))) {
       fprintf(stderr, "Error: Invalid hex key value\n");
       return false;
     }
@@ -161,7 +158,7 @@ bool encTool(const args_list_t &args) {
 
   // Create and initialize cipher context
   bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
-  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv, enc)) {
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv, encode)) {
     fprintf(stderr, "Error: Failed to initialize cipher\n");
     return false;
   }
