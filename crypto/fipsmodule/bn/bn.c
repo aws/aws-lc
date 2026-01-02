@@ -393,7 +393,7 @@ int bn_expand(BIGNUM *bn, size_t bits) {
 }
 
 int bn_resize_words(BIGNUM *bn, size_t words) {
-#if defined(OPENSSL_PPC64LE)
+#if (defined(OPENSSL_PPC64LE) || defined(OPENSSL_PPC64BE)) && defined(__clang__) && __clang_major__ < 10
   // This is a workaround for a miscompilation bug in Clang 7.0.1 on POWER.
   // The unittests catch the miscompilation, if it occurs, and it manifests
   // as a crash in |bn_fits_in_words|.
