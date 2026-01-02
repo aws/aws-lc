@@ -86,8 +86,8 @@ class PassUtilTest : public ::testing::Test {
     UnsetTestEnvVar("TEST_PASSWORD_ENV");
   }
 
-  char pass_path[PATH_MAX];
-  char pass_path2[PATH_MAX];
+  char pass_path[PATH_MAX] = {};
+  char pass_path2[PATH_MAX] = {};
 };
 
 
@@ -420,7 +420,6 @@ TEST_F(PassUtilTest, FdExtraction) {
   ASSERT_GE(fd, 0);
 
   std::string fd_source = "fd:" + std::to_string(fd);
-<<<<<<< HEAD
   Password source(fd_source);
 
   EXPECT_TRUE(pass_util::ExtractPassword(source));
@@ -432,19 +431,6 @@ TEST_F(PassUtilTest, FdExtraction) {
   EXPECT_FALSE(pass_util::ExtractPassword(source));
 
   source = Password("fd:invalid");
-=======
-  bssl::UniquePtr<std::string> source(new std::string(fd_source));
-
-  EXPECT_TRUE(pass_util::ExtractPassword(source));
-  EXPECT_EQ(*source, "testpassword");
-
-  close(fd);
-
-  source.reset(new std::string("fd:-1"));
-  EXPECT_FALSE(pass_util::ExtractPassword(source));
-
-  source.reset(new std::string("fd:invalid"));
->>>>>>> e94b502ca (Reformat with clang-format)
   EXPECT_FALSE(pass_util::ExtractPassword(source));
 }
 #endif
@@ -459,19 +445,11 @@ TEST_F(PassUtilTest, StdinExtraction) {
 
   ASSERT_EQ(write(pipefd[1], "stdinpass\n", 10), 10);
   close(pipefd[1]);
-<<<<<<< HEAD
 
   Password source("stdin");
   EXPECT_TRUE(pass_util::ExtractPassword(source));
   EXPECT_EQ(source.get(), "stdinpass");
-  
-=======
 
-  bssl::UniquePtr<std::string> source(new std::string("stdin"));
-  EXPECT_TRUE(pass_util::ExtractPassword(source));
-  EXPECT_EQ(*source, "stdinpass");
-
->>>>>>> e94b502ca (Reformat with clang-format)
   dup2(old_stdin, STDIN_FILENO);
   close(old_stdin);
   close(pipefd[0]);
@@ -487,19 +465,11 @@ TEST_F(PassUtilTest, StdinExtraction) {
 
   int old_stdin = _dup(_fileno(stdin));
   _dup2(_fileno(temp_file), _fileno(stdin));
-<<<<<<< HEAD
 
   Password source("stdin");
   EXPECT_TRUE(pass_util::ExtractPassword(source));
   EXPECT_EQ(source.get(), "stdinpass");
-  
-=======
 
-  bssl::UniquePtr<std::string> source(new std::string("stdin"));
-  EXPECT_TRUE(pass_util::ExtractPassword(source));
-  EXPECT_EQ(*source, "stdinpass");
-
->>>>>>> e94b502ca (Reformat with clang-format)
   // Restore stdin
   _dup2(old_stdin, _fileno(stdin));
   _close(old_stdin);
@@ -517,7 +487,6 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
 
   ASSERT_EQ(write(pipefd[1], "firstpass\nsecondpass\n", 20), 20);
   close(pipefd[1]);
-<<<<<<< HEAD
 
   Password passin("stdin");
   Password passout("stdin");
@@ -525,17 +494,7 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(passin.get(), "firstpass");
   EXPECT_EQ(passout.get(), "secondpass");
-  
-=======
 
-  bssl::UniquePtr<std::string> passin(new std::string("stdin"));
-  bssl::UniquePtr<std::string> passout(new std::string("stdin"));
-
-  EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
-  EXPECT_EQ(*passin, "firstpass");
-  EXPECT_EQ(*passout, "secondpass");
-
->>>>>>> e94b502ca (Reformat with clang-format)
   dup2(old_stdin, STDIN_FILENO);
   close(old_stdin);
   close(pipefd[0]);
@@ -551,7 +510,6 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
 
   int old_stdin = _dup(_fileno(stdin));
   _dup2(_fileno(temp_file), _fileno(stdin));
-<<<<<<< HEAD
 
   Password passin("stdin");
   Password passout("stdin");
@@ -559,17 +517,7 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(passin.get(), "firstpass");
   EXPECT_EQ(passout.get(), "secondpass");
-  
-=======
 
-  bssl::UniquePtr<std::string> passin(new std::string("stdin"));
-  bssl::UniquePtr<std::string> passout(new std::string("stdin"));
-
-  EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
-  EXPECT_EQ(*passin, "firstpass");
-  EXPECT_EQ(*passout, "secondpass");
-
->>>>>>> e94b502ca (Reformat with clang-format)
   // Restore stdin
   _dup2(old_stdin, _fileno(stdin));
   _close(old_stdin);
