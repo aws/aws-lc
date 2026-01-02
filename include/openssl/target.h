@@ -63,6 +63,10 @@
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
 #define OPENSSL_BIG_ENDIAN
+#elif defined(__MIPSEB__) && defined(__LP64__)
+#define OPENSSL_64_BIT
+#define OPENSSL_MIPS
+#define OPENSSL_BIG_ENDIAN
 #elif defined(__riscv) && __SIZEOF_POINTER__ == 8
 #define OPENSSL_64_BIT
 #define OPENSSL_RISCV64
