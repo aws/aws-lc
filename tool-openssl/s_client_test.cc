@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <gtest/gtest.h>
-#include "internal.h"
 #include <openssl/ssl.h>
+#include "internal.h"
 
 // Test -connect
 TEST(SClientTest, SClientConnect) {
@@ -49,8 +49,8 @@ TEST(SClientTest, SClientTls1_1) {
 
 // Test -cipher and -tls1_1 together
 TEST(SClientTest, SClientCipherAndTls1_1) {
-  args_list_t args = {"-connect", "amazon.com:443", "-cipher", "AES128-SHA", "-tls1_1"};
+  args_list_t args = {"-connect", "amazon.com:443", "-cipher", "AES128-SHA",
+                      "-tls1_1"};
   bool result = SClientTool(args);
   ASSERT_TRUE(result);
 }
-
