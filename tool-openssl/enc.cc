@@ -187,16 +187,21 @@ bool encTool(const args_list_t &args) {
       fprintf(stderr, "Error: Cipher update failed\n");
       return false;
     }
-    BIO_write(output_bio.get(), outbuf, outlen);
+    if (BIO_write(output_bio.get(), outbuf, outlen) <= 0) {
+      fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
+      return false;
+    }
   }
 
-  // Finalize
   if (!EVP_CipherFinal_ex(ctx.get(), outbuf, &outlen)) {
     fprintf(stderr, "Error: Cipher final failed\n");
     return false;
   }
 
-  BIO_write(output_bio.get(), outbuf, outlen);
+  if (BIO_write(output_bio.get(), outbuf, outlen) <= 0) {
+    fprintf(stderr, "Error: Error writing to '%s'\n", out_path.c_str());
+    return false;
+  }
 
   return true;
 }
