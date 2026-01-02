@@ -37,63 +37,63 @@ bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
 // Password class that wraps std::string with secure memory clearing
 class Password {
 private:
-    std::string data_;
-    
-    // Helper method to securely clear current data
-    void secure_clear() {
-        if (!data_.empty()) {
-            OPENSSL_cleanse(&data_[0], data_.size());
-        }
+  std::string data_;
+
+  // Helper method to securely clear current data
+  void secure_clear() {
+    if (!data_.empty()) {
+      OPENSSL_cleanse(&data_[0], data_.size());
     }
+  }
 
 public:
-    // Default constructor
-    Password() = default;
-    
-    // String constructor
-    explicit Password(const std::string& str) : data_(str) {}
-    explicit Password(std::string&& str) : data_(std::move(str)) {}
-    
-    // Copy constructor and assignment
-    Password(const Password& other) : data_(other.data_) {}
-    Password& operator=(const Password& other) {
-        if (this != &other) {
-            secure_clear();
-            data_ = other.data_;
-        }
-        return *this;
+  // Default constructor
+  Password() = default;
+
+  // String constructor
+  explicit Password(const std::string& str) : data_(str) {}
+  explicit Password(std::string&& str) : data_(std::move(str)) {}
+
+  // Copy constructor and assignment
+  Password(const Password& other) : data_(other.data_) {}
+  Password& operator=(const Password& other) {
+    if (this != &other) {
+      secure_clear();
+      data_ = other.data_;
     }
-    
-    // Move constructor and assignment
-    Password(Password&& other) noexcept : data_(std::move(other.data_)) {}
-    Password& operator=(Password&& other) noexcept {
-        if (this != &other) {
-            secure_clear();
-            data_ = std::move(other.data_);
-        }
-        return *this;
+    return *this;
+  }
+
+  // Move constructor and assignment
+  Password(Password&& other) noexcept : data_(std::move(other.data_)) {}
+  Password& operator=(Password&& other) noexcept {
+    if (this != &other) {
+      secure_clear();
+      data_ = std::move(other.data_);
     }
-    
-    // Destructor with secure clearing
-    ~Password() {
-        secure_clear();
-    }
-    
-    // Access methods
-    std::string& get() { return data_; }
-    const std::string& get() const { return data_; }
-    
-    // Implicit conversion for ease of use
-    operator std::string&() { return data_; }
-    operator const std::string&() const { return data_; }
-    
-    // Common string operations
-    bool empty() const { return data_.empty(); }
-    size_t size() const { return data_.size(); }
-    void clear() { 
-        secure_clear();
-        data_.clear(); 
-    }
+    return *this;
+  }
+
+  // Destructor with secure clearing
+  ~Password() {
+    clear();
+  }
+
+  // Access methods
+  std::string& get() { return data_; }
+  const std::string& get() const { return data_; }
+
+  // Implicit conversion for ease of use
+  operator std::string&() { return data_; }
+  operator const std::string&() const { return data_; }
+
+  // Common string operations
+  bool empty() const { return data_.empty(); }
+  size_t size() const { return data_.size(); }
+  void clear() {
+    secure_clear();
+    data_.clear();
+  }
 };
 
 // Password extracting utility for -passin and -passout options
