@@ -35,33 +35,33 @@ static void PrintTo(const TestCorpus &corpus, std::ostream *os) {
       << ", match_openssl=" << (corpus.match_openssl ? "true" : "false") << "}";
 }
 
-#define FORMAT_PEM "PEM"
-#define FORMAT_DER "DER"
+#define PEM_STRING "PEM"
+#define DER_STRING "DER"
 
 static const TestCorpus kTestCorpora[] = {
     // SEQUENCE using definite length encoding
-    TestCorpus{"DerSimpleSeq", "300702012A0C024869", FORMAT_DER, true, true},
+    TestCorpus{"DerSimpleSeq", "300702012A0C024869", DER_STRING, true, true},
 
     // SEQUENCE using definite length encoding, with a nested SEQUENCE within
     // using definite length encoding
-    TestCorpus{"DerNestedSeq", "300B0201013006020102020103", FORMAT_DER, true,
+    TestCorpus{"DerNestedSeq", "300B0201013006020102020103", DER_STRING, true,
                true},
 
     // SEQUENCE using indefinite length encoding
-    TestCorpus{"BerIndefSeqSimple", "30800201010201020000", FORMAT_DER, true,
+    TestCorpus{"BerIndefSeqSimple", "30800201010201020000", DER_STRING, true,
                true},
 
     // SEQUENCE using indefinite length encoding, with a nested sequence within
     // it also indefinite length encoded
     TestCorpus{"BerIndefSeqNested", "3080308002010500000C0248690000",
-               FORMAT_DER, true, true},
+               DER_STRING, true, true},
 
     // OCTET STRING using indefinite length encoding
     TestCorpus{"BerOctetConstructedIndef", "248004030102030402A0A10000",
-               FORMAT_DER, true, true},
+               DER_STRING, true, true},
 
     // BIT STRING using indefinite length encoding
-    TestCorpus{"BerBitConstructedIndef", "2380030200AA030203A00000", FORMAT_DER,
+    TestCorpus{"BerBitConstructedIndef", "2380030200AA030203A00000", DER_STRING,
                true, true},
 
     // SEQUENCE with a non-minimal long-form length
@@ -71,16 +71,16 @@ static const TestCorpus kTestCorpora[] = {
         "000000000000000000000000000000000000000000000000000000000000000000"
         "000000000000000000000000000000000000000000000000000000000000000000"
         "00000000000000000000000000000000000000000000000000000000000000",
-        FORMAT_DER, true, true},
+        DER_STRING, true, true},
 
     // SET requires an order to the components, namely ascending order by tag,
     // for DER
-    TestCorpus{"BerSetNonCanonical", "3106020102020101", FORMAT_DER, true,
+    TestCorpus{"BerSetNonCanonical", "3106020102020101", DER_STRING, true,
                true},
 
     // INTEGER with extra leading zeros (non-minimal encoding) inside a
     // SEQUENCE. BER permits it; DER wouldn’t.
-    TestCorpus{"BerIntegerLeadingZeros", "30050203000080", FORMAT_DER, true,
+    TestCorpus{"BerIntegerLeadingZeros", "30050203000080", DER_STRING, true,
                true},
 
     // SEQUENCE containing a UTCTime and a GeneralizedTime using BER-legal
@@ -88,28 +88,28 @@ static const TestCorpus kTestCorpora[] = {
     TestCorpus{"BerTimesUtcGeneralized",
                "302C17113939313233313233353935392B3035303018173230323431323"
                "3313233353935392E3132332D31313330",
-               FORMAT_DER, true, true},
+               DER_STRING, true, true},
 
     // Context-specific EXPLICIT tag [0] around a SEQUENCE, plus an extra
     // INTEGER sibling.
-    TestCorpus{"CtxExplicitTagged", "300AA0053003020105020109", FORMAT_DER,
+    TestCorpus{"CtxExplicitTagged", "300AA0053003020105020109", DER_STRING,
                true, true},
 
     // Context-specific high-tag-number [31] primitive OCTET STRING "A" inside a
     // SEQUENCE.
-    TestCorpus{"CtxHighTag31", "30049F1F0141", FORMAT_DER, true, true},
+    TestCorpus{"CtxHighTag31", "30049F1F0141", DER_STRING, true, true},
 
     // Indefinite-length SEQUENCE with no end-of-contents marker.
-    TestCorpus{"MalformedMissingEoc", "3080020101", FORMAT_DER, true, true},
+    TestCorpus{"MalformedMissingEoc", "3080020101", DER_STRING, true, true},
 
     // Definite-length SEQUENCE whose length says 5, but only 3 bytes follow, 2
     // bytes missing
-    TestCorpus{"MalformedTruncatedLength", "3005020101", FORMAT_DER, false,
+    TestCorpus{"MalformedTruncatedLength", "3005020101", DER_STRING, false,
                true},
 
     // BIT STRING with an invalid unused-bits value (8). The first value byte of
     // a BIT STRING must be 0–7.
-    TestCorpus{"MalformedBitstringUnusedBits", "3003030108", FORMAT_DER, true,
+    TestCorpus{"MalformedBitstringUnusedBits", "3003030108", DER_STRING, true,
                true},
 
     // PEM PKCS#8 RSA-2048 private key
@@ -164,7 +164,7 @@ static const TestCorpus kTestCorpora[] = {
         "61417a4c6e41536e454e6d776b6f6f696a6c526844646d38705769475a3951416c356b"
         "4e72424b6f75380a69576d3149424c5538434966523346534250764361673d3d0a2d2d"
         "2d2d2d454e442050524956415445204b45592d2d2d2d2d0a",
-        FORMAT_PEM, true, true},
+        PEM_STRING, true, true},
 
     // PEM RSA-2048 public key
     TestCorpus{
@@ -182,7 +182,7 @@ static const TestCorpus kTestCorpora[] = {
         "310a4f456d467158764f357464463770722f4741376f34755031685931584c4c44624d"
         "68516b70714a32773837776d6e693350764b73524b2f5841453568436c4e4c0a2f7749"
         "44415141420a2d2d2d2d2d454e44205055424c4943204b45592d2d2d2d2d0a",
-        FORMAT_PEM, true, true},
+        PEM_STRING, true, true},
 
     // PEM PKCS#8 EC P-256 private key
     TestCorpus{
@@ -194,7 +194,7 @@ static const TestCorpus kTestCorpora[] = {
         "3265577a6c4b6a554d6b7632774e754d590a664c5a772f364d6d6933325a7769396d64"
         "653052615a69716545536565634a624c6f31544e5a776b4e7a322b2f387a6564654b43"
         "323762410a2d2d2d2d2d454e442050524956415445204b45592d2d2d2d2d0a",
-        FORMAT_PEM, true, true},
+        PEM_STRING, true, true},
 
     // PEM EC P-256 public key
     TestCorpus{"PemEcP256PublicKey",
@@ -204,7 +204,7 @@ static const TestCorpus kTestCorpora[] = {
                "93263502b6a4a6f74396d6349765a6e587445576d59716e68456e6e6e435779"
                "364e557a57634a44633976762f4d336e58696774753277413d3d0a2d2d2d2d2"
                "d454e44205055424c4943204b45592d2d2d2d2d0a",
-               FORMAT_PEM, true, true},
+               PEM_STRING, true, true},
 
     // PEM PKCS#8 Ed25519 Private Key
     TestCorpus{"PemPkcs8Ed25519PrivateKey",
@@ -212,7 +212,7 @@ static const TestCorpus kTestCorpora[] = {
                "341514177425159444b32567742434945494f304e69786672794364392b4851"
                "626f373156634b6539497a2b6b7a356d7546416d58395251744c7558560a2d2"
                "d2d2d2d454e442050524956415445204b45592d2d2d2d2d0a",
-               FORMAT_PEM, true, true},
+               PEM_STRING, true, true},
 
     // PEM Ed25519 Public Key
     TestCorpus{"PemEd25519PublicKey",
@@ -220,7 +220,7 @@ static const TestCorpus kTestCorpora[] = {
                "25159444b32567741794541394e3455724a42356d744e65384a6f7a3941784a"
                "65394c33695053574e4b5a6f416272654158686d674e553d0a2d2d2d2d2d454"
                "e44205055424c4943204b45592d2d2d2d2d0a",
-               FORMAT_PEM, true, true},
+               PEM_STRING, true, true},
 
     // Self-signed X.509 certificate using EC P-256
     TestCorpus{
@@ -242,7 +242,7 @@ static const TestCorpus kTestCorpora[] = {
         "3466354a7a3079344a45377375314b63576f482f70416941614e772f793579784b714d"
         "79732b665243364a6175335968424f79516944495a560a4d43474c78716b5875773d3d"
         "0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
-        FORMAT_PEM, true, true}};
+        PEM_STRING, true, true}};
 
 class CorpusTest : public ::testing::TestWithParam<TestCorpus> {
  protected:
