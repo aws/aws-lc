@@ -213,7 +213,11 @@ static bool WriteOutput(const std::vector<uint8_t> &data,
     return false;
   }
 
-  BIO_write(output_bio.get(), data.data(), data.size());
+  if (BIO_write(output_bio.get(), data.data(), data.size()) <= 0) {
+    fprintf(stderr, "Error: failed to write output data\n");
+    return false;
+  }
+
   return true;
 }
 
