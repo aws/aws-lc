@@ -36,7 +36,7 @@ enum class Source : uint8_t {
   kFile,   // Password from file with file: prefix
   kEnv,    // Password from environment with env: prefix
   kStdin,  // Password from stdin
-#ifndef _WIN32
+#if !defined(OPENSSL_WINDOWS)
   kFd,  // Password from file descriptor with fd: prefix (Unix only)
 #endif
 };

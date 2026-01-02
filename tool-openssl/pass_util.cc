@@ -9,33 +9,32 @@
 #include <string>
 #include "internal.h"
 
-// Use PEM_BUFSIZE (defined in openssl/pem.h) for password buffer size to ensure
-// compatibility with PEM functions and password callbacks throughout AWS-LC
+namespace pass_util {
 
 // Detect the type of password source
-static pass_util::Source DetectSource(
+static Source DetectSource(
     const bssl::UniquePtr<std::string> &source) {
   if (!source || source->empty()) {
-    return pass_util::Source::kNone;
+    return Source::kNone;
   }
   if (source->compare(0, 5, "pass:") == 0) {
-    return pass_util::Source::kPass;
+    return Source::kPass;
   }
   if (source->compare(0, 5, "file:") == 0) {
-    return pass_util::Source::kFile;
+    return Source::kFile;
   }
   if (source->compare(0, 4, "env:") == 0) {
-    return pass_util::Source::kEnv;
+    return Source::kEnv;
   }
   if (source->compare("stdin") == 0) {
-    return pass_util::Source::kStdin;
+    return Source::kStdin;
   }
-#ifndef _WIN32
+#if !defined(OPENSSL_WINDOWS)
   if (source->compare(0, 3, "fd:") == 0) {
-    return pass_util::Source::kFd;
+    return Source::kFd;
   }
 #endif
-  return pass_util::Source::kNone;
+  return Source::kNone;
 }
 
 // Helper function to validate password sources and detect same-file case
@@ -56,8 +55,8 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
 
   // Validate passin format (if not empty)
   if (!passin->empty()) {
-    pass_util::Source passin_type = DetectSource(passin);
-    if (passin_type == pass_util::Source::kNone) {
+    Source passin_type = DetectSource(passin);
+    if (passin_type == Source::kNone) {
       fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
       return false;
     }
@@ -65,20 +64,20 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
 
   // Validate passout format (if provided and not empty)
   if (passout && *passout && !(*passout)->empty()) {
-    pass_util::Source passout_type = DetectSource(*passout);
-    if (passout_type == pass_util::Source::kNone) {
+    Source passout_type = DetectSource(*passout);
+    if (passout_type == Source::kNone) {
       fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
       return false;
     }
 
     // Detect same-file case if requested
     if (same_file && !passin->empty()) {
-      pass_util::Source passin_type = DetectSource(passin);
+      Source passin_type = DetectSource(passin);
       *same_file =
-          (passin_type == pass_util::Source::kFile &&
-           passout_type == pass_util::Source::kFile && *passin == **passout) ||
-          (passin_type == pass_util::Source::kStdin &&
-           passout_type == pass_util::Source::kStdin);
+          (passin_type == Source::kFile &&
+           passout_type == Source::kFile && *passin == **passout) ||
+          (passin_type == Source::kStdin &&
+           passout_type == Source::kStdin);
     }
   }
 
@@ -110,31 +109,31 @@ static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
 }
 
 static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
-                                      pass_util::Source source_type,
+                                      Source source_type,
                                       bool skip_first_line = false,
                                       bssl::UniquePtr<std::string> *passout = nullptr) {
   char buf[PEM_BUFSIZE] = {};
   bssl::UniquePtr<BIO> bio;
-  
+
   // Initialize BIO based on source type
-  if (source_type == pass_util::Source::kStdin) {
-#ifdef _WIN32
+  if (source_type == Source::kStdin) {
+#ifdef OPENSSL_WINDOWS
     bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE | BIO_FP_TEXT));
 #else
     bio.reset(BIO_new_fp(stdin, BIO_NOCLOSE));
 #endif
-  } else if (source_type == pass_util::Source::kFile) {
+  } else if (source_type == Source::kFile) {
     source->erase(0, 5); // Remove "file:" prefix
     bio.reset(BIO_new_file(source->c_str(), "r"));
-#ifndef _WIN32
-  } else if (source_type == pass_util::Source::kFd) {
+#if !defined(OPENSSL_WINDOWS)
+  } else if (source_type == Source::kFd) {
     source->erase(0, 3);
-    
+
     if (source->empty() || strspn(source->c_str(), "0123456789") != source->length()) {
       fprintf(stderr, "Invalid file descriptor: %s\n", source->c_str());
       return false;
     }
-    
+
     int fd = atoi(source->c_str());
     if (fd < 0) {
       fprintf(stderr, "Invalid file descriptor: %s\n", source->c_str());
@@ -146,12 +145,12 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     fprintf(stderr, "Unsupported source type for stream extraction\n");
     return false;
   }
-  
+
   if (!bio) {
-    if (source_type == pass_util::Source::kStdin) {
+    if (source_type == Source::kStdin) {
       fprintf(stderr, "Cannot open stdin\n");
-#ifndef _WIN32
-    } else if (source_type == pass_util::Source::kFd) {
+#if !defined(OPENSSL_WINDOWS)
+    } else if (source_type == Source::kFd) {
       fprintf(stderr, "Cannot open file descriptor\n");
 #endif
     } else {
@@ -164,10 +163,10 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     int len = BIO_gets(bio.get(), buf, sizeof(buf));
     if (len <= 0) {
       OPENSSL_cleanse(buf, sizeof(buf));
-      if (source_type == pass_util::Source::kStdin) {
+      if (source_type == Source::kStdin) {
         fprintf(stderr, "Failed to read password from stdin\n");
-#ifndef _WIN32
-      } else if (source_type == pass_util::Source::kFd) {
+#if !defined(OPENSSL_WINDOWS)
+      } else if (source_type == Source::kFd) {
         fprintf(stderr, "Failed to read password from file descriptor\n");
 #endif
       } else {
@@ -177,13 +176,13 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     }
 
     // Check for possible truncation
-    if (static_cast<size_t>(len) == PEM_BUFSIZE - 1 && 
+    if (static_cast<size_t>(len) == PEM_BUFSIZE - 1 &&
         buf[len - 1] != '\n' && buf[len - 1] != '\r') {
       OPENSSL_cleanse(buf, sizeof(buf));
-      if (source_type == pass_util::Source::kStdin) {
+      if (source_type == Source::kStdin) {
         fprintf(stderr, "Password from stdin too long (maximum %d bytes)\n", PEM_BUFSIZE);
-#ifndef _WIN32
-      } else if (source_type == pass_util::Source::kFd) {
+#if !defined(OPENSSL_WINDOWS)
+      } else if (source_type == Source::kFd) {
         fprintf(stderr, "Password from file descriptor too long (maximum %d bytes)\n", PEM_BUFSIZE);
 #endif
       } else {
@@ -196,7 +195,7 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
       len--;
     }
-    
+
     target.assign(buf, len);
     return true;
   };
@@ -214,7 +213,7 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
         return false;
       }
     }
-    
+
     // Read single password
     if (!read_password_line(*source)) {
       return false;
@@ -258,24 +257,24 @@ static bool ExtractPasswordFromEnv(bssl::UniquePtr<std::string> &source) {
 
 // Internal helper to extract password based on source type
 static bool ExtractPasswordFromSource(bssl::UniquePtr<std::string> &source,
-                                      pass_util::Source type,
+                                      Source type,
                                       bool skip_first_line = false,
                                       bssl::UniquePtr<std::string> *passout = nullptr) {
   switch (type) {
-    case pass_util::Source::kPass:
+    case Source::kPass:
       return ExtractDirectPassword(source);
-    case pass_util::Source::kFile:
+    case Source::kFile:
       return ExtractPasswordFromStream(source, type, skip_first_line, passout);
-    case pass_util::Source::kEnv:
+    case Source::kEnv:
       return ExtractPasswordFromEnv(source);
-    case pass_util::Source::kStdin:
+    case Source::kStdin:
       return ExtractPasswordFromStream(source, type, skip_first_line, passout);
-#ifndef _WIN32
-    case pass_util::Source::kFd:
+#if !defined(OPENSSL_WINDOWS)
+    case Source::kFd:
       return ExtractPasswordFromStream(source, type, skip_first_line, passout);
 #endif
     default:
-#ifndef _WIN32
+#if !defined(OPENSSL_WINDOWS)
       fprintf(stderr, "Invalid password format (use pass:, file:, env:, fd:, or stdin)\n");
 #else
       fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
@@ -283,8 +282,6 @@ static bool ExtractPasswordFromSource(bssl::UniquePtr<std::string> &source,
       return false;
   }
 }
-
-namespace pass_util {
 
 void SensitiveStringDeleter(std::string *str) {
   if (str && !str->empty()) {
@@ -303,7 +300,7 @@ bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
     return false;
   }
 
-  pass_util::Source type = DetectSource(source);
+  Source type = DetectSource(source);
   return ExtractPasswordFromSource(source, type);
 }
 
@@ -317,13 +314,13 @@ bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
 
   // Handle same_file case with single extraction call
   if (same_file && !passin->empty() && !passout->empty()) {
-    pass_util::Source source_type = DetectSource(passin);
+    Source source_type = DetectSource(passin);
     return ExtractPasswordFromSource(passin, source_type, same_file, &passout);
   }
 
   // Extract passin (always from first line)
   if (!passin->empty()) {
-    pass_util::Source passin_type = DetectSource(passin);
+    Source passin_type = DetectSource(passin);
     if (!ExtractPasswordFromSource(passin, passin_type, false)) {
       return false;
     }
@@ -332,7 +329,7 @@ bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
   // Extract passout (from first line if different files, second line if same
   // file)
   if (!passout->empty()) {
-    pass_util::Source passout_type = DetectSource(passout);
+    Source passout_type = DetectSource(passout);
     if (!ExtractPasswordFromSource(passout, passout_type, same_file)) {
       return false;
     }

@@ -167,7 +167,7 @@ static bool SetSerial(X509 *cert, const std::string &ca_file_path) {
       len--;
     }
 
-#if defined(_WIN32)
+#if defined(OPENSSL_WINDOWS)
     if (len > 0 && buf[len - 1] == '\r') {
       buf[len - 1] = '\0';
       len--;
