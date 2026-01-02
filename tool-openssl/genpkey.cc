@@ -7,8 +7,6 @@
 #include <openssl/pem.h>
 #include "internal.h"
 
-enum OutputFormat { FORMAT_PEM = 1, FORMAT_DER = 2 };
-
 static const argument_t kArguments[] = {
     {"-help", kBooleanArgument, "Display this summary"},
     {"-out", kOptionalArgument, "Output file to write the key to"},

@@ -14,6 +14,13 @@
 #define O_BINARY 0
 #endif
 
+// Format enum for PEM and DER output/input formats
+enum Format {
+  FORMAT_PEM = 1,
+  FORMAT_DER = 2,
+  FORMAT_UNKNOWN = 3
+};
+
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 struct Tool {
