@@ -86,8 +86,8 @@ class PassUtilTest : public ::testing::Test {
     UnsetTestEnvVar("TEST_PASSWORD_ENV");
   }
 
-  char pass_path[PATH_MAX] = {};
-  char pass_path2[PATH_MAX] = {};
+  char pass_path[PATH_MAX];
+  char pass_path2[PATH_MAX];
 };
 
 

@@ -45,8 +45,8 @@ class DhparamTest : public ::testing::Test {
     RemoveFile(in_path);
   }
 
-  char out_path[PATH_MAX] = {};
-  char in_path[PATH_MAX] = {};
+  char out_path[PATH_MAX];
+  char in_path[PATH_MAX];
 };
 
 // Test help option
@@ -274,7 +274,7 @@ class DhparamErrorTest : public ::testing::Test {
 
   void TearDown() override { RemoveFile(out_path); }
 
-  char out_path[PATH_MAX] = {};
+  char out_path[PATH_MAX];
 };
 
 // Test invalid bit size (too small)
@@ -334,8 +334,6 @@ class DhparamBitSizeComparisonTest
       public ::testing::WithParamInterface<BitSizeTestParams> {
  protected:
   void SetUp() override {
-    memset(out_path_tool, '\0', PATH_MAX);
-    memset(out_path_openssl, '\0', PATH_MAX);
     tool_executable_path = getenv("AWSLC_TOOL_PATH");
     openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -347,18 +345,16 @@ class DhparamBitSizeComparisonTest
   }
 
   void TearDown() override {
-    if (strnlen(out_path_tool, PATH_MAX) > 0) {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(out_path_tool);
-    }
-    if (strnlen(out_path_openssl, PATH_MAX) > 0) {
       RemoveFile(out_path_openssl);
     }
   }
 
   const char *tool_executable_path;
   const char *openssl_executable_path;
-  char out_path_tool[PATH_MAX] = {};
-  char out_path_openssl[PATH_MAX] = {};
+  char out_path_tool[PATH_MAX];
+  char out_path_openssl[PATH_MAX];
 };
 
 TEST_P(DhparamBitSizeComparisonTest, CrossCompatibility) {
@@ -403,9 +399,6 @@ INSTANTIATE_TEST_SUITE_P(
 class DhparamComparisonTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    memset(out_path_tool, '\0', PATH_MAX);
-    memset(out_path_openssl, '\0', PATH_MAX);
-    memset(params_path, '\0', PATH_MAX);
     tool_executable_path = getenv("AWSLC_TOOL_PATH");
     openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -418,22 +411,18 @@ class DhparamComparisonTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (strnlen(out_path_tool, PATH_MAX) > 0) {
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       RemoveFile(out_path_tool);
-    }
-    if (strnlen(out_path_openssl, PATH_MAX) > 0) {
       RemoveFile(out_path_openssl);
-    }
-    if (strnlen(params_path, PATH_MAX) > 0) {
       RemoveFile(params_path);
     }
   }
 
   const char *tool_executable_path;
   const char *openssl_executable_path;
-  char out_path_tool[PATH_MAX] = {};
-  char out_path_openssl[PATH_MAX] = {};
-  char params_path[PATH_MAX] = {};
+  char out_path_tool[PATH_MAX];
+  char out_path_openssl[PATH_MAX];
+  char params_path[PATH_MAX];
 };
 
 // Test -noout flag comparison
