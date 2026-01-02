@@ -101,8 +101,8 @@ class EcparamTest : public ::testing::Test {
     RemoveFile(key_path);
   }
 
-  char out_path[PATH_MAX] = {};
-  char key_path[PATH_MAX] = {};
+  char out_path[PATH_MAX];
+  char key_path[PATH_MAX];
 };
 
 // Test basic functionality
@@ -264,8 +264,6 @@ class EcparamCurveComparisonTest
       public ::testing::WithParamInterface<CurveTestParams> {
  protected:
   void SetUp() override {
-    memset(out_path_tool, '\0', PATH_MAX);
-    memset(out_path_openssl, '\0', PATH_MAX);
     tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
     openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -278,20 +276,16 @@ class EcparamCurveComparisonTest
   }
 
   void TearDown() override {
-    if (strnlen(out_path_tool, PATH_MAX) >
-        0) {  // Only remove if path was created
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       RemoveFile(out_path_tool);
-    }
-    if (strnlen(out_path_openssl, PATH_MAX) >
-        0) {  // Only remove if path was created
       RemoveFile(out_path_openssl);
     }
   }
 
   const char *tool_executable_path;
   const char *openssl_executable_path;
-  char out_path_tool[PATH_MAX] = {};
-  char out_path_openssl[PATH_MAX] = {};
+  char out_path_tool[PATH_MAX];
+  char out_path_openssl[PATH_MAX];
 };
 
 TEST_P(EcparamCurveComparisonTest, CompareParameters) {
@@ -319,7 +313,6 @@ class EcparamKeyGenComparisonTest
       public ::testing::WithParamInterface<KeyGenTestParams> {
  protected:
   void SetUp() override {
-    memset(key_path_tool, '\0', PATH_MAX);
     tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
     openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -331,15 +324,14 @@ class EcparamKeyGenComparisonTest
   }
 
   void TearDown() override {
-    if (strnlen(key_path_tool, PATH_MAX) >
-        0) {  // Only remove if path was created
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       RemoveFile(key_path_tool);
     }
   }
 
   const char *tool_executable_path;
   const char *openssl_executable_path;
-  char key_path_tool[PATH_MAX] = {};
+  char key_path_tool[PATH_MAX];
 };
 
 TEST_P(EcparamKeyGenComparisonTest, KeyGenCompatibility) {
@@ -379,10 +371,6 @@ INSTANTIATE_TEST_SUITE_P(
 class EcparamComparisonTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    memset(out_path_tool, '\0', PATH_MAX);
-    memset(out_path_openssl, '\0', PATH_MAX);
-    memset(key_path_tool, '\0', PATH_MAX);
-    memset(key_path_openssl, '\0', PATH_MAX);
     tool_executable_path = getenv("AWS_LC_TOOL_EXECUTABLE_PATH");
     openssl_executable_path = getenv("OPENSSL_EXECUTABLE_PATH");
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
@@ -397,20 +385,10 @@ class EcparamComparisonTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (strnlen(out_path_tool, PATH_MAX) >
-        0) {  // Only remove if path was created
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       RemoveFile(out_path_tool);
-    }
-    if (strnlen(out_path_openssl, PATH_MAX) >
-        0) {  // Only remove if path was created
       RemoveFile(out_path_openssl);
-    }
-    if (strnlen(key_path_tool, PATH_MAX) >
-        0) {  // Only remove if path was created
       RemoveFile(key_path_tool);
-    }
-    if (strnlen(key_path_openssl, PATH_MAX) >
-        0) {  // Only remove if path was created
       RemoveFile(key_path_openssl);
     }
   }
@@ -418,10 +396,10 @@ class EcparamComparisonTest : public ::testing::Test {
   const char *tool_executable_path;
   const char *openssl_executable_path;
 
-  char out_path_tool[PATH_MAX] = {};
-  char out_path_openssl[PATH_MAX] = {};
-  char key_path_tool[PATH_MAX] = {};
-  char key_path_openssl[PATH_MAX] = {};
+  char out_path_tool[PATH_MAX];
+  char out_path_openssl[PATH_MAX];
+  char key_path_tool[PATH_MAX];
+  char key_path_openssl[PATH_MAX];
 };
 
 // Test against OpenSSL output "openssl ecparam -name prime256v1 -noout"

@@ -40,9 +40,9 @@ class PKCS8Test : public ::testing::Test {
     RemoveFile(pass_path);
   }
 
-  char in_path[PATH_MAX] = {};
-  char out_path[PATH_MAX] = {};
-  char pass_path[PATH_MAX] = {};
+  char in_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char pass_path[PATH_MAX];
   bssl::UniquePtr<EVP_PKEY> key;
 };
 
@@ -279,11 +279,11 @@ class PKCS8ComparisonTest : public ::testing::Test {
     }
   }
 
-  char in_path[PATH_MAX] = {};
-  char out_path_tool[PATH_MAX] = {};
-  char out_path_openssl[PATH_MAX] = {};
-  char pass_path[PATH_MAX] = {};
-  char decrypt_path[PATH_MAX] = {};
+  char in_path[PATH_MAX];
+  char out_path_tool[PATH_MAX];
+  char out_path_openssl[PATH_MAX];
+  char pass_path[PATH_MAX];
+  char decrypt_path[PATH_MAX];
   bssl::UniquePtr<EVP_PKEY> key;
   const char *tool_executable_path;
   const char *openssl_executable_path;
