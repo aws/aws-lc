@@ -6,20 +6,15 @@
 #include <openssl/bio.h>
 #include <openssl/mem.h>
 #include <openssl/pem.h>
+#include <stdlib.h>
 #include <string>
-#ifndef _WIN32
+#if !defined(_OPENSSL_WINDOWS)
 #include <fcntl.h>
 #include <unistd.h>
 #endif
-#ifdef _WIN32
-#include <stdlib.h>   // for _putenv_s
-#include <windows.h>  // for CreatePipe, SetStdHandle
-#endif
+
 #include "internal.h"
 #include "test_util.h"
-
-// Use PEM_BUFSIZE (defined in openssl/pem.h) for password buffer size testing
-// to match the implementation in pass_util.cc
 
 namespace {
 // Helper functions to encapsulate common operations
@@ -44,7 +39,7 @@ void WriteTestFile(const char *path, const char *content,
 }
 
 void SetTestEnvVar(const char *name, const char *value) {
-#ifdef _WIN32
+#if defined(_OPENSSL_WINDOWS)
   _putenv_s(name, value);
 #else
   setenv(name, value, 1);
@@ -52,7 +47,7 @@ void SetTestEnvVar(const char *name, const char *value) {
 }
 
 void UnsetTestEnvVar(const char *name) {
-#ifdef _WIN32
+#if defined(_OPENSSL_WINDOWS)
   _putenv_s(name, "");
 #else
   unsetenv(name);
@@ -458,7 +453,7 @@ TEST_F(PassUtilTest, ExtractPasswordsSameFileEdgeCases) {
   EXPECT_EQ(*passout, "line2");
 }
 
-#ifndef _WIN32
+#ifndef OPENSSL_WINDOWS
 TEST_F(PassUtilTest, FdExtraction) {
   int fd = open(pass_path, O_RDONLY);
   ASSERT_GE(fd, 0);
@@ -479,7 +474,7 @@ TEST_F(PassUtilTest, FdExtraction) {
 }
 #endif
 
-#ifndef _WIN32
+#ifndef OPENSSL_WINDOWS
 TEST_F(PassUtilTest, StdinExtraction) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
@@ -521,7 +516,7 @@ TEST_F(PassUtilTest, StdinExtraction) {
 }
 #endif
 
-#ifndef _WIN32
+#ifndef OPENSSL_WINDOWS
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
