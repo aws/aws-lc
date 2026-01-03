@@ -36,7 +36,7 @@ static const argument_t kArguments[] = {
     {"", kOptionalArgument, ""}};
 
 static bool LoadPrivateKey(const std::string &key_file_path,
-                           bssl::UniquePtr<std::string> &passin,
+                           Password &passin,
                            bssl::UniquePtr<EVP_PKEY> &pkey) {
   ScopedFILE key_file(fopen(key_file_path.c_str(), "rb"));
 
@@ -45,13 +45,13 @@ static bool LoadPrivateKey(const std::string &key_file_path,
     return false;
   }
 
-  if (!passin->empty() && !pass_util::ExtractPassword(passin)) {
+  if (!passin.empty() && !pass_util::ExtractPassword(passin)) {
     fprintf(stderr, "Error: Failed to extract password\n");
     return false;
   }
 
   pkey.reset(PEM_read_PrivateKey(key_file.get(), nullptr, nullptr,
-                                 const_cast<char *>(passin->c_str())));
+                                 const_cast<char *>(passin.get().c_str())));
 
   if (!pkey) {
     fprintf(stderr, "Failed to read private key from %s",
@@ -341,7 +341,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   std::string hmac, digest_name, sign_key_file, out_path, verify_key_file,
       signature_file, keyform;
   std::vector<std::string> sigopts;
-  bssl::UniquePtr<std::string> passin(new std::string());
+  Password passin;
   bool out_bin = false, binary = false, hex = false;
 
   if (HasArgument(parsed_args, "-help")) {
@@ -352,7 +352,7 @@ static bool dgstToolInternal(const args_list_t &args, const EVP_MD *digest) {
   GetBoolArgument(&binary, "-binary", parsed_args);
   GetBoolArgument(&hex, "-hex", parsed_args);
   GetString(&hmac, "-hmac", "", parsed_args);
-  GetString(passin.get(), "-passin", "", parsed_args);
+  GetString(&passin.get(), "-passin", "", parsed_args);
   GetString(&sign_key_file, "-sign", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&verify_key_file, "-verify", "", parsed_args);
