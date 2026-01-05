@@ -12,10 +12,6 @@
 #include "openssl/bio.h"
 #include "openssl/x509.h"
 
-#define FORMAT_PEM 1
-#define FORMAT_DER 2
-#define FORMAT_UNKNOWN 3
-
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "-in", kOptionalArgument, "RSA key input file" },
