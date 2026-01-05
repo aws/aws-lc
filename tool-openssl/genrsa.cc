@@ -112,7 +112,7 @@ bool genrsaTool(const args_list_t &args) {
   args_list_t extra_args{};
   std::string out_path;
   bool help = false, aes128 = false, aes192 = false, aes256 = false, des3 = false;
-  bssl::UniquePtr<std::string> passout_arg(new std::string());
+  Password passout_arg;
   bssl::UniquePtr<BIO> bio;
   bssl::UniquePtr<EVP_PKEY> pkey;
   unsigned KeySizeBits = 0;
@@ -137,7 +137,7 @@ bool genrsaTool(const args_list_t &args) {
   ordered_args::GetBoolArgument(&aes192, "-aes192", parsed_args);
   ordered_args::GetBoolArgument(&aes256, "-aes256", parsed_args);
   ordered_args::GetBoolArgument(&des3, "-des3", parsed_args);
-  ordered_args::GetString(passout_arg.get(), "-passout", "", parsed_args);
+  ordered_args::GetString(&passout_arg.get(), "-passout", "", parsed_args);
 
   // Parse and validate key size first (catches multiple key sizes)
   if (!ParseKeySize(extra_args, KeySizeBits)) {
@@ -162,7 +162,7 @@ bool genrsaTool(const args_list_t &args) {
     return true;  // Help display is a successful exit
   }
 
-  if (!passout_arg->empty()) {
+  if (!passout_arg.empty()) {
     if (!pass_util::ExtractPassword(passout_arg)) {
       fprintf(stderr, "Error: Failed to extract password\n");
       goto err;
@@ -202,8 +202,8 @@ bool genrsaTool(const args_list_t &args) {
   }
 
   // Write the key with optional encryption
-  password = (!passout_arg->empty()) ? passout_arg->c_str() : NULL;
-  password_len = (!passout_arg->empty()) ? static_cast<int>(passout_arg->length()) : 0;
+  password = (!passout_arg.empty()) ? passout_arg.get().c_str() : NULL;
+  password_len = (!passout_arg.empty()) ? static_cast<int>(passout_arg.get().length()) : 0;
 
   if (!PEM_write_bio_PrivateKey(bio.get(), pkey.get(), cipher,
                                 (unsigned char*)password, password_len,

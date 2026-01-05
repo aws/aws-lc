@@ -57,7 +57,7 @@ bool encTool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, hiv, cipher_name;
-  bssl::UniquePtr<std::string> hkey(new std::string);
+  Password hkey;
   bool help = false, e = false, d = false;
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
@@ -65,7 +65,7 @@ bool encTool(const args_list_t &args) {
   ordered_args::GetString(&out_path, "-out", "", parsed_args);
   ordered_args::GetBoolArgument(&e, "-e", parsed_args);
   ordered_args::GetBoolArgument(&d, "-d", parsed_args);
-  ordered_args::GetString(hkey.get(), "-K", "", parsed_args);
+  ordered_args::GetString(&hkey.get(), "-K", "", parsed_args);
   ordered_args::GetString(&hiv, "-iv", "", parsed_args);
   ordered_args::GetExclusiveBoolArgument(&cipher_name, kArguments, "",
                                          parsed_args);
@@ -78,7 +78,7 @@ bool encTool(const args_list_t &args) {
 
   // Since we do not implement key generation, a raw key is required
   // TODO: remove/modify if we ever implement -k, -kfile, or -S
-  if (hkey->empty()) {
+  if (hkey.empty()) {
     fprintf(stderr, "Error: A raw key is required\n");
     return false;
   }
@@ -141,8 +141,8 @@ bool encTool(const args_list_t &args) {
 
   uint8_t key[EVP_MAX_KEY_LENGTH];
 
-  if (!hkey->empty()) {
-    if (!HexToBinary(key, *hkey, EVP_CIPHER_key_length(cipher))) {
+  if (!hkey.empty()) {
+    if (!HexToBinary(key, hkey.get(), EVP_CIPHER_key_length(cipher))) {
       fprintf(stderr, "Error: Invalid hex key value\n");
       return false;
     }
