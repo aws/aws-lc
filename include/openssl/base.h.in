@@ -238,6 +238,16 @@ extern "C" {
 // C99-compatible static assertion using bit-field width trick.
 // A negative bit-field width causes a compile-time error.
 //
+// Previously we defined |OPENSSL_STATIC_ASSERT| to use one of two keywords:
+// |Static_assert| or |static_assert|. The latter was used if we were compiling
+// a C++ translation unit or on Windows (excluding when using a Clang compiler).
+// The former was used in other cases. However, these two keywords are not
+// defined before C11. So, we can't rely on these when we want to be C99
+// compliant. If we at some point decide that we want to only be compliant with
+// C11 (and up), we can reintroduce these keywords. Instead, use a method that
+// is guaranteed to be C99 compliant and still give us an equivalent static
+// assert mechanism.
+//
 // The solution below defines a struct type containing a bit field.
 // The name of that type is |static_assertion_msg|. |msg| is a concatenation of
 // a user-chosen error (which should be chosen with respect to actual assertion)
