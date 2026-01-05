@@ -41,7 +41,7 @@
 #elif defined(__ARMEL__) || defined(_M_ARM)
 #define OPENSSL_ARM
 #elif defined(OPENSSL_64_BIT) && (defined(__powerpc__) || defined(__ppc__) || defined(_ARCH_PPC) || \
-    defined(__PPC__) || defined(__ppc64__) || defined(__PPC64__) || \
+    defined(__PPC__) || defined(__ppc64__) || defined(__PPC64__) || defined(_ARCH_PPC64)  || \
     defined(__ppc64le__) || defined(__powerpc64__))
 #  if defined(OPENSSL_BIG_ENDIAN)
 #    define OPENSSL_PPC64BE
