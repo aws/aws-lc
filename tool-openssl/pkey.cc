@@ -7,8 +7,7 @@
 #include "internal.h"
 #include <string>
 
-#define FORMAT_PEM 1
-#define FORMAT_DER 2
+
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
