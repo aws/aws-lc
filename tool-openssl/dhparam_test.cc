@@ -411,7 +411,7 @@ class DhparamComparisonTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(out_path_tool);
       RemoveFile(out_path_openssl);
       RemoveFile(params_path);

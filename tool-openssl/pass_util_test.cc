@@ -7,13 +7,9 @@
 #include <openssl/mem.h>
 #include <openssl/pem.h>
 #include <string>
-#ifndef _WIN32
+#if !defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
 #include <unistd.h>
-#endif
-#ifdef _WIN32
-#include <stdlib.h>   // for _putenv_s
-#include <windows.h>  // for CreatePipe, SetStdHandle
 #endif
 #include "internal.h"
 #include "test_util.h"
@@ -44,7 +40,7 @@ void WriteTestFile(const char *path, const char *content,
 }
 
 void SetTestEnvVar(const char *name, const char *value) {
-#ifdef _WIN32
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, value);
 #else
   setenv(name, value, 1);
@@ -52,7 +48,7 @@ void SetTestEnvVar(const char *name, const char *value) {
 }
 
 void UnsetTestEnvVar(const char *name) {
-#ifdef _WIN32
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, "");
 #else
   unsetenv(name);
