@@ -276,7 +276,7 @@ class EcparamCurveComparisonTest
   }
 
   void TearDown() override {
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(out_path_tool);
       RemoveFile(out_path_openssl);
     }
@@ -324,7 +324,7 @@ class EcparamKeyGenComparisonTest
   }
 
   void TearDown() override {
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(key_path_tool);
     }
   }
@@ -385,7 +385,7 @@ class EcparamComparisonTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(out_path_tool);
       RemoveFile(out_path_openssl);
       RemoveFile(key_path_tool);

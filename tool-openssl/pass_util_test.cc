@@ -8,7 +8,7 @@
 #include <openssl/pem.h>
 #include <stdlib.h>
 #include <string>
-#if !defined(_OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
 #include <unistd.h>
 #endif
@@ -39,7 +39,7 @@ void WriteTestFile(const char *path, const char *content,
 }
 
 void SetTestEnvVar(const char *name, const char *value) {
-#if defined(_OPENSSL_WINDOWS)
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, value);
 #else
   setenv(name, value, 1);
@@ -47,7 +47,7 @@ void SetTestEnvVar(const char *name, const char *value) {
 }
 
 void UnsetTestEnvVar(const char *name) {
-#if defined(_OPENSSL_WINDOWS)
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, "");
 #else
   unsetenv(name);
