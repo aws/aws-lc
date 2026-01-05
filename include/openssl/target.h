@@ -64,8 +64,10 @@
 #  else
 #    define OPENSSL_MIPS
 #  endif
-#elif defined(__riscv) && defined(OPENSSL_64_BIT)
-#define OPENSSL_RISCV64
+#elif defined(__riscv)
+#  if defined(OPENSSL_64_BIT)
+#    define OPENSSL_RISCV64
+#  endif
 #elif defined(__loongarch_lp64)
 #define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
