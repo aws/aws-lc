@@ -22,8 +22,23 @@
 // <openssl/base.h> and <openssl/asm_base.h>. Prefer to include those headers
 // instead.
 
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) &&  __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-#define OPENSSL_BIG_ENDIAN
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+#  if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#    define OPENSSL_BIG_ENDIAN
+#  endif
+#elif defined(__has_include)
+#  if __has_include(<endian.h>)
+#    include <endian.h>
+#  elif __has_include(<sys/param.h>)
+#    include <sys/param.h>
+#  endif
+#  if (defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && __BYTE_ORDER == __BIG_ENDIAN) || \
+      (defined(_BYTE_ORDER) && defined(_BIG_ENDIAN) && _BYTE_ORDER == _BIG_ENDIAN) || \
+      (defined(BYTE_ORDER)  && defined(BIG_ENDIAN)  && BYTE_ORDER == BIG_ENDIAN)
+#    define OPENSSL_BIG_ENDIAN
+#  endif
+#elif defined(_M_PPC)
+#  define OPENSSL_BIG_ENDIAN
 #endif
 
 #if (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8) || defined(__LP64__) || defined(_WIN64)
@@ -42,13 +57,13 @@
 #define OPENSSL_ARM
 #elif defined(OPENSSL_64_BIT) && (defined(__powerpc__) || defined(__ppc__) || defined(_ARCH_PPC) || \
     defined(__PPC__) || defined(__ppc64__) || defined(__PPC64__) || defined(_ARCH_PPC64)  || \
-    defined(__ppc64le__) || defined(__powerpc64__))
+    defined(__ppc64le__) || defined(__powerpc64__) || defined(_M_PPC))
 #  if defined(OPENSSL_BIG_ENDIAN)
 #    define OPENSSL_PPC64BE
 #  else
 #    define OPENSSL_PPC64LE
 #  endif
-#elif defined(__powerpc__) || defined(__ppc__) || defined(_ARCH_PPC) || defined(__PPC__)
+#elif defined(__powerpc__) || defined(__ppc__) || defined(_ARCH_PPC) || defined(__PPC__) || defined(_M_PPC)
 #  if defined(OPENSSL_BIG_ENDIAN)
 #    define OPENSSL_PPC32BE
 #  else
