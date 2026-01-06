@@ -6,21 +6,21 @@
 
 AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
 
-AWS-LC MUST test against `testvectors_v1/mlkem_1024_decaps_test.txt`.
-
 AWS-LC MUST test against `testvectors_v1/mlkem_1024_encaps_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt`.
 
 AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
 
-AWS-LC MUST test against `testvectors_v1/mlkem_512_decaps_test.txt`.
-
 AWS-LC MUST test against `testvectors_v1/mlkem_512_encaps_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt`.
 
 AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
 
-AWS-LC MUST test against `testvectors_v1/mlkem_768_decaps_test.txt`.
-
 AWS-LC MUST test against `testvectors_v1/mlkem_768_encaps_test.txt`.
+
+AWS-LC MUST test against `testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt`.
 
 AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
 
