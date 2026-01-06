@@ -704,7 +704,7 @@ static void RunWycheproofVerifyTest(const char *path) {
     t->IgnoreAllUnusedInstructions();
 
     std::vector<uint8_t> der;
-    // Try publicKeyDer first (new format), fall back to keyDer (old format)
+    // Try publicKeyDer first (Wycheproof v1), fall back to keyDer (Wycheproof v0)
     if (t->HasInstruction("publicKeyDer")) {
       ASSERT_TRUE(t->GetInstructionBytes(&der, "publicKeyDer"));
     } else {
