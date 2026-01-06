@@ -1028,14 +1028,16 @@ TEST_P(WycheproofKEMTest, Encaps) {
       bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
       ASSERT_TRUE(ctx);
 
-      // Perform encapsulation
+      // Perform deterministic encapsulation using the m field as seed
+      // see https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf#algorithm.17
       std::vector<uint8_t> ciphertext(GetParam().ciphertext_len);
       std::vector<uint8_t> shared_secret(GetParam().shared_secret_len);
       size_t ciphertext_len = ciphertext.size();
       size_t shared_secret_len = shared_secret.size();
+      size_t seed_len = m.size();
       int encaps_result =
-          EVP_PKEY_encapsulate(ctx.get(), ciphertext.data(), &ciphertext_len,
-                               shared_secret.data(), &shared_secret_len);
+          EVP_PKEY_encapsulate_deterministic(ctx.get(), ciphertext.data(), &ciphertext_len,
+                               shared_secret.data(), &shared_secret_len, m.data(), &seed_len);
 
       if (result.IsValid()) {
         EXPECT_TRUE(encaps_result);
@@ -1061,13 +1063,12 @@ TEST_P(WycheproofKEMTest, DecapsSeed) {
     ASSERT_TRUE(t->GetInstruction(&param_set, "parameterSet"));
     ASSERT_EQ(param_set, GetParam().name);
 
-    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
-    ASSERT_TRUE(t->GetBytes(&ek, "ek"));
-    ASSERT_TRUE(t->GetBytes(&ciphertext, "c"));
     ASSERT_TRUE(t->GetBytes(&expected_k, "K"));
-
+    ASSERT_TRUE(t->GetBytes(&ciphertext, "c"));
+    
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
+    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
 
     // Initialize using provided seed
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(
@@ -1077,20 +1078,30 @@ TEST_P(WycheproofKEMTest, DecapsSeed) {
     EVP_PKEY *raw = nullptr;
     ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
     size_t seed_len = seed.size();
-    ASSERT_TRUE(
-        EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed.data(), &seed_len));
+    int keygen_result = EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed.data(), &seed_len);
+    
+    // For invalid test cases, key generation might fail
+    if (!result.IsValid() && !keygen_result) {
+      // Expected failure in key generation for invalid cases
+      return;
+    }
+    
+    ASSERT_TRUE(keygen_result);
     ASSERT_TRUE(raw);
     bssl::UniquePtr<EVP_PKEY> pkey(raw);
 
-    // Verify the generated public key matches the expected public key
-    size_t actual_ek_len = 0;
-    ASSERT_TRUE(
-        EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &actual_ek_len));
-    ASSERT_EQ(actual_ek_len, ek.size());
-    std::vector<uint8_t> actual_ek(actual_ek_len);
-    ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), actual_ek.data(),
-                                            &actual_ek_len));
-    EXPECT_EQ(Bytes(actual_ek), Bytes(ek));
+    // Verify the generated public key matches the expected public key (if provided)
+    if (t->HasAttribute("ek")) {
+      ASSERT_TRUE(t->GetBytes(&ek, "ek"));
+      size_t actual_ek_len = 0;
+      ASSERT_TRUE(
+          EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &actual_ek_len));
+      ASSERT_EQ(actual_ek_len, ek.size());
+      std::vector<uint8_t> actual_ek(actual_ek_len);
+      ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), actual_ek.data(),
+                                              &actual_ek_len));
+      EXPECT_EQ(Bytes(actual_ek), Bytes(ek));
+    }
 
     // Perform decapsulation
     ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
