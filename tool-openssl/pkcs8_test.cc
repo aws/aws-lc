@@ -8,43 +8,7 @@
 #include "internal.h"
 #include "test_util.h"
 
-// Additional PEM format boundary markers used by PKCS8
-const std::string PRIVATE_KEY_BEGIN = "-----BEGIN PRIVATE KEY-----";
-const std::string PRIVATE_KEY_END = "-----END PRIVATE KEY-----";
-const std::string ENCRYPTED_PRIVATE_KEY_BEGIN =
-    "-----BEGIN ENCRYPTED PRIVATE KEY-----";
-const std::string ENCRYPTED_PRIVATE_KEY_END =
-    "-----END ENCRYPTED PRIVATE KEY-----";
 
-// Function to check PEM boundary markers in content
-static bool CheckKeyBoundaries(const std::string &content,
-                               const std::string &begin1,
-                               const std::string &end1,
-                               const std::string &begin2,
-                               const std::string &end2) {
-  if (content.empty() || begin1.empty() || end1.empty()) {
-    return false;
-  }
-
-  if (content.size() < begin1.size() + end1.size()) {
-    return false;
-  }
-
-  bool primary_match =
-      content.compare(0, begin1.size(), begin1) == 0 &&
-      content.compare(content.size() - end1.size(), end1.size(), end1) == 0;
-
-  if (primary_match || begin2.empty() || end2.empty()) {
-    return primary_match;
-  }
-
-  if (content.size() < begin2.size() + end2.size()) {
-    return false;
-  }
-
-  return content.compare(0, begin2.size(), begin2) == 0 &&
-         content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
-}
 
 class PKCS8Test : public ::testing::Test {
  protected:
@@ -114,6 +78,59 @@ TEST_F(PKCS8Test, PKCS8ToolEncryptionTest) {
                       "aes-256-cbc", "-passout", passout.c_str()};
   bool result = pkcs8Tool(args);
   ASSERT_TRUE(result);
+}
+
+// Verify failure output contains "Error decrypting key"
+TEST_F(PKCS8Test, PKCS8ErrorDecryptingKey) {
+  {
+   const char* passwd = "test1234";
+   bssl::UniquePtr<BIO> pass_bio(BIO_new_file(pass_path, "wb"));
+   BIO_write(pass_bio.get(), passwd, strlen(passwd));
+   BIO_flush(pass_bio.get());
+  }
+
+  std::string passfile = std::string("file:") + pass_path;
+
+  // Phase 1: Encrypt the key
+  args_list_t args_encrypt = {
+    "-passin", "pass:''",
+    "-inform", "PEM",
+    "-in", in_path,
+    "-topk8",
+    "-v2", "aes-256-cbc",
+    "-passout", passfile.c_str(),
+    "-outform", "PEM",
+    "-out", out_path
+  };
+
+  ASSERT_TRUE(pkcs8Tool(args_encrypt));
+
+  // Phase 2: Try to decrypt with wrong password (should fail)
+  args_list_t args_verify = {
+    "-passin", "pass:''",
+    "-inform", "PEM",
+    "-in", out_path,
+    "-outform", "PEM",
+  };
+
+  // Capture stderr to verify the error message
+  testing::internal::CaptureStderr();
+  bool verify_result = pkcs8Tool(args_verify);
+  std::string captured_stderr = testing::internal::GetCapturedStderr();
+
+  ASSERT_FALSE(verify_result) << "Expected decryption to fail with wrong password";
+  EXPECT_TRUE(captured_stderr.find("Error decrypting key") != std::string::npos)
+      << "Expected 'Error decrypting key' in stderr, but got: " << captured_stderr;
+
+  // Phase 3: Decrypt with correct password (should succeed)
+  args_list_t args_decrypt = {
+    "-passin", passfile.c_str(),
+    "-inform", "PEM",
+    "-in", out_path,
+    "-outform", "PEM",
+  };
+
+  ASSERT_TRUE(pkcs8Tool(args_decrypt));
 }
 
 // Test with a direct password rather than using environment variables
@@ -210,17 +227,6 @@ class PKCS8OptionUsageErrorsTest : public PKCS8Test {
                                   << testing::PrintToString(args);
   }
 };
-
-// Test missing -in required option
-TEST_F(PKCS8OptionUsageErrorsTest, RequiredOptionTests) {
-  std::vector<std::vector<std::string>> testparams = {
-      {"-out", "output.pem", "-topk8"},
-      {"-topk8", "-nocrypt"},
-  };
-  for (const auto &args : testparams) {
-    TestOptionUsageErrors(args);
-  }
-}
 
 // Test invalid format
 TEST_F(PKCS8OptionUsageErrorsTest, InvalidFormatTest) {

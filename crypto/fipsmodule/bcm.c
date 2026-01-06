@@ -168,7 +168,7 @@
 
 static const void* function_entry_ptr(const void* func_sym) {
 #if defined(OPENSSL_PPC64BE)
-  // Function pointers on ppc64 point to a function descriptor.
+  // Function pointers on ppc64be point to a function descriptor.
   // https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-ADDRESS
   return (const void*)(((uint64_t *)func_sym)[0]);
 #else
@@ -271,9 +271,6 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-// TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
-// PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
-// to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
 #if defined(HAS_OPENSSL_CPUID_SETUP) && !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
 #endif

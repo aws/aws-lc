@@ -14,6 +14,13 @@
 #define O_BINARY 0
 #endif
 
+// Format enum for PEM and DER output/input formats
+enum Format {
+  FORMAT_PEM = 1,
+  FORMAT_DER = 2,
+  FORMAT_UNKNOWN = 3
+};
+
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 struct Tool {
@@ -26,6 +33,68 @@ bool IsNumeric(const std::string &str);
 
 X509_CRL *createTestCRL();
 bool isStringUpperCaseEqual(const std::string &a, const std::string &b);
+
+// Password class that wraps std::string with secure memory clearing
+class Password {
+private:
+  std::string data_;
+
+  // Helper method to securely clear current data
+  void secure_clear() {
+    if (!data_.empty()) {
+      OPENSSL_cleanse(&data_[0], data_.size());
+    }
+  }
+
+public:
+  // Default constructor
+  Password() = default;
+
+  // String constructor
+  explicit Password(const std::string& str) : data_(str) {}
+  explicit Password(std::string&& str) : data_(std::move(str)) {}
+
+  // Copy constructor and assignment
+  Password(const Password& other) : data_(other.data_) {}
+  Password& operator=(const Password& other) {
+    if (this != &other) {
+      secure_clear();
+      data_ = other.data_;
+    }
+    return *this;
+  }
+
+  // Move constructor and assignment
+  Password(Password&& other) noexcept : data_(std::move(other.data_)) {}
+  Password& operator=(Password&& other) noexcept {
+    if (this != &other) {
+      secure_clear();
+      data_ = std::move(other.data_);
+    }
+    return *this;
+  }
+
+  // Destructor with secure clearing
+  ~Password() {
+    clear();
+  }
+
+  // Access methods
+  std::string& get() { return data_; }
+  const std::string& get() const { return data_; }
+
+  // Implicit conversion for ease of use
+  operator std::string&() { return data_; }
+  operator const std::string&() const { return data_; }
+
+  // Common string operations
+  bool empty() const { return data_.empty(); }
+  size_t size() const { return data_.size(); }
+  void clear() {
+    secure_clear();
+    data_.clear();
+  }
+};
 
 // Password extracting utility for -passin and -passout options
 namespace pass_util {
@@ -40,11 +109,6 @@ enum class Source : uint8_t {
   kFd,  // Password from file descriptor with fd: prefix (Unix only)
 #endif
 };
-
-// Custom deleter for sensitive strings that securely clears memory before
-// deletion. This ensures passwords are securely removed from memory when no
-// longer needed, preventing potential exposure in memory dumps or swap files.
-void SensitiveStringDeleter(std::string *str);
 
 // Extracts password from a source string, modifying it in place if successful.
 // source: Password source string in one of the following formats:
@@ -62,7 +126,7 @@ void SensitiveStringDeleter(std::string *str);
 //   - File access errors (file not found, permission denied)
 //   - Environment variable not set
 //   - Memory allocation failures
-bool ExtractPassword(bssl::UniquePtr<std::string> &source);
+bool ExtractPassword(Password &source);
 
 // Same process as ExtractPassword but used for -passin and -passout within same
 // tool. Special handling:
@@ -71,15 +135,9 @@ bool ExtractPassword(bssl::UniquePtr<std::string> &source);
 //   behavior
 // - If stdin is used for both passwords, reads first line for passin
 //   and second line for passout from standard input matching OpenSSL behavior
-bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
-                      bssl::UniquePtr<std::string> &passout);
+bool ExtractPasswords(Password &passin, Password &passout);
 
 }  // namespace pass_util
-
-// Custom deleter used for -passin -passout options
-BSSL_NAMESPACE_BEGIN
-BORINGSSL_MAKE_DELETER(std::string, pass_util::SensitiveStringDeleter)
-BSSL_NAMESPACE_END
 
 EVP_PKEY *CreateTestKey(int key_bits);
 
@@ -87,11 +145,14 @@ tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool CRLTool(const args_list_t &args);
+bool asn1parseTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);
 bool dhparamTool(const args_list_t &args);
-bool ecparamTool(const args_list_t &args);
-bool genrsaTool(const args_list_t &args);
 bool ecTool(const args_list_t &args);
+bool ecparamTool(const args_list_t &args);
+bool encTool(const args_list_t &args);
+bool genpkeyTool(const args_list_t &args);
+bool genrsaTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool pkcs8Tool(const args_list_t &args);
 bool pkeyTool(const args_list_t &args);
@@ -99,11 +160,11 @@ bool pkeyutlTool(const args_list_t &args);
 bool RehashTool(const args_list_t &args);
 bool reqTool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
+bool sha1Tool(const args_list_t &args);
 bool SClientTool(const args_list_t &args);
 bool VerifyTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
-
 
 // Req Tool Utilities
 bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string);
@@ -130,6 +191,15 @@ void add_entry(enum Type type, uint32_t hash, const char *filename,
                const uint8_t *digest);
 BUCKET **get_table();
 void cleanup_hash_table();
+
+// ApplyPkeyCtrlString parses the options in |pkeyopt| and passes them to
+// |EVP_PKEY_CTX_ctrl_str|. It returns false if the parsing or memory allocation
+// during string duplication was unsuccesful.
+bool ApplyPkeyCtrlString(EVP_PKEY_CTX *ctx, const char *pkeyopt);
+
+// WritePrivateKey writes the private key contents of |pkey| to |out| based on
+// |format|. It returns false if the write was unsuccessful.
+bool WritePrivateKey(EVP_PKEY *pkey, bssl::UniquePtr<BIO> &out, int format);
 
 // Ordered argument processing (specific to tool-openssl)
 namespace ordered_args {
