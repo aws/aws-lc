@@ -9,11 +9,6 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
-enum OutputFormat {
-  FORMAT_PEM = 1,
-  FORMAT_DER = 2
-};
-
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "-in", kOptionalArgument, "Input file, default stdin" },
@@ -94,8 +89,8 @@ bool dhparamTool(const args_list_t &args) {
   bool ret = false;
   std::string in_path, out_path, inform_str, outform_str;
   bool text = false, noout = false;
-  OutputFormat inform = FORMAT_PEM;
-  OutputFormat outform = FORMAT_PEM;
+  Format inform = FORMAT_PEM;
+  Format outform = FORMAT_PEM;
   unsigned numbits = 0;
   bssl::UniquePtr<DH> dh;
   bssl::UniquePtr<BIO> in_bio;
