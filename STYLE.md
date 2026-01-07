@@ -1,4 +1,238 @@
-# BoringSSL Style Guide
+# AWS-LC Style Guide
+AWS-LC followings the #BoringSSL-Style-Guide conventions unless specified otherwise here.
+
+## Documentation
+This section provides a brief overview of how to use [Doxygen](https://www.doxygen.nl/manual/index.html) as well as the standard conventions we follow in our code.
+
+### All public headers must have API documentation
+All public headers (files in the `include` directory generally) must have the appropriate documentation. Besides documentation on the exported symbols, the file should have at least a brief description of its purpose.
+```C
+/**
+ * @file 
+ * @brief A short description.
+ * 
+ * @details
+ * A longer, optional description of the file's purpose.
+ */
+```
+In general, `@file` should not include the (optional name parameter)[https://www.doxygen.nl/manual/commands.html#cmdfile].
+
+#### All new or modified functions in a public headers must have documentation
+When a function is added to a public header or an existing function is modified, the documentation for the
+function must included. This is to include a description of the function if one doesn't already exist. Documentation
+should be ordered as follows:
+```C
+/**
+ * @brief One-line description
+ *
+ * @details 
+ * More info.
+ * Across multiple lines or paragraphs.
+ *
+ * @param dir param_1 Description
+ * @param dir param_2 Description
+ *
+ * @return Description
+ *  or
+ * @retval val1 Description
+ * @retval val2 Description
+ */
+```
+Warnings, todos, and deprecated commands can be in any order but should be at the end of the standard block above.
+
+##### All function parameters will be documented
+[`@param`](https://www.doxygen.nl/manual/commands.html#cmdparam) tags for each parameter, including direction (in/out/in,out)
+will be added. Parameters should be in the same order as the function declaration.
+```C
+/**
+ * Copies a block of data into a buffer.
+ * @param[in]     x Integer between 1 and 10
+ * @param[in,out] y If x is odd, add to *y
+ * @param[out]    z Stores x cubed
+ */
+ int weird_compute(int x, int *y, int *z);
+```
+
+##### The return value will be documented if the return type is not void
+[`@returns`](https://www.doxygen.nl/manual/commands.html#cmdreturns) or [`@retval`](https://www.doxygen.nl/manual/commands.html#cmdretval)
+should be used.
+```C
+/**
+ * @return The number of bytes written to the buffer.
+ */
+```
+or
+```C
+/**
+ * @retval -1 Error
+ * @retval 0  Success
+ */
+```
+
+#### All new or modified symbols in a public headers must have documentation
+When a symbol is added to a public header or an existing one is modified, the documentation must be included and/or updated.
+
+### General Style Guidelines
+
+#### Use C-Style Blocks
+Use the double asterisk C-style Doxygen blocks (`/** */`) instead of C++ lines (`///`) or comment block formats. The starting symbol `/**` and closing symbol `*/` should be on their own lines:
+```C
+/**
+ * ... Documentation ...
+ */
+```
+except when closing a member group:
+```C
+/** @} Member Group Name */
+```
+
+#### Documentation Precedes What it Defines
+```C
+struct buf_mem_st {
+ /** current number of bytes */
+ size_t length;
+ /** data buffer */
+ char *data;
+ /** size of buffer */
+ size_t max;
+};
+```
+should be used, not:
+```C
+struct buf_mem_st {
+  size_t length; /** current number of bytes */
+  char *data; /** data buffer */
+  size_t max; /** size of buffer */
+};
+```
+
+#### Use `@` for Commands
+Use `@` to prefix all commands instead of `\`.
+
+#### Explicitly use the `@brief` command.
+Instead of relying on Doxygen to generate a brief description, explicitly use the `@brief` command. For readability, this should end with a period and if there's further documentation, an empty line should follow the command in the block.
+```C
+/**
+ * @brief A short description.
+ */
+
+/**
+ * @brief A short description followed by details.
+ * 
+ * ... More documentation ...
+ */
+```
+
+#### Explicitly use the `@details` command.
+Instead of relying on Doxygen to decide what is the details section, the `@details` command should be used. The command should be on its own line.
+```C
+/**
+ * @details
+ * ... Detailed information...
+ */
+```
+
+#### Use backticks around inline code
+When including code inline, to get typewriter font, use backticks instead of the `@c` command. This should also be used when referncing the symbols being documented.
+```C
+/**
+ * @details
+ * `this_function` encodes...
+ */
+int this_function()
+```
+
+#### Use `@code`/`@endcode` for full lines of source code
+If your documentation includes full lines of code (such as examples), surround the line(s) by `@code`/`@endcode` for syntax highlighting and automatic generation of links to documentation for the symbols used. For readability, empty lines should surround the block and the commands should be on their own lines.
+```C
+/**
+ * @details
+ * ... Documentation ...
+ * 
+ * @code{.c}
+ * uint8_t dst = allocate(max_len);
+ * size_t len = encode_bytes(dst, src, src_len);
+ * @endcode
+ */
+```
+
+#### Add Grouping to Files as Needed
+When a group of functions in a header file are related, use [grouping](https://www.doxygen.nl/manual/grouping.html#memgroup).
+Use the group type that makes the most sense but avoid the use of `@defgroup`.
+
+#### When a Comment Applies to a Set of Functions or Definitions...
+Use grouping or the [`@copydoc`](https://www.doxygen.nl/manual/commands.html#cmdcopydoc) to avoid duplication.
+
+#### Deprecated Functions Should Be Marked
+Add the [`@deprecated`](https://www.doxygen.nl/manual/commands.html#cmddeprecated) tag to all code that is marked as 
+deprecated. Adding a description is optional.
+
+Note: The `@copy...` commands don't work correctly in the index of deprecated functions, so text may need to be copied.
+
+#### Structs Should Be Marked as Such
+Before each struct, use the [`@struct](https://www.doxygen.nl/manual/commands.html#cmdstruct) command for proper
+documentation linking.
+
+#### Special Handling of Typedefs
+Typedefs require special handling for correct format linking in our code base. Use the following block 
+before each `typedef` to avoid recursion errors and allow users to navigate the documentation easily:
+```C
+/**
+ * @typedef EVP_ENCODE_CTX
+ * @copydoc evp_encode_ctx_st
+ * @see evp_encode_ctx_st
+ */
+typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
+```
+
+#### Use the Warning Command
+This command changes just changes how text is displayed. If the block includes a warning, include that text 
+inside a [`@warning`](https://www.doxygen.nl/manual/commands.html#cmdwarning) command.
+
+#### Use the TODO Command Instead of TODO Comments
+Use of the [`@todo`](https://www.doxygen.nl/manual/commands.html#cmdtodo) command allows for list generation
+as needed.
+
+#### Use Manual Links if Necessary
+In some cases, Doxygen may not be able to automatically link to symbols. Explicit links may be needed:
+https://www.doxygen.nl/manual/autolink.html.
+
+### Formatting Text
+
+#### Use Underscores for Italic Text
+When documentation should be in italics, use the Markdown underscore syntax.
+```
+Roman text _italic text_ Roman text
+```
+
+#### Use Double Asterisks for Bold Text
+When documentation should be in bold, use the Markdown double asterisk syntax.
+```
+Roman text **bold text** Roman text
+```
+
+#### Lists
+For unordered lists, use `*` for each item, not `-` or `+`. For orded lists, use `1.` for each item. Do not use other numbers, allow them to be generated automatically. Nested lists should be indented by two spaces.
+```
+1. First enumerated point (level 1)
+1. Second enuemrated point (level 1)
+  * First unordered point (level 2)
+  * Second unordered point (level 2)
+1. Third enumerated point (level 1)
+```
+
+#### Use `@verbatim` for Pre-Formatted Lines
+When lines, such as command line examples, are included use the [`@verbatim`](https://www.doxygen.nl/manual/commands.html#cmdverbatim)
+command.
+
+#### Use Markdown Table Syntax
+If tables are needed, [Markdown Tables](https://www.doxygen.nl/manual/markdown.html#md_tables) should be used.
+
+#### Conventions
+* `NULL` should be used to refer to the null value
+* Integer values should be written in (-1 not "negative one" or "negative 1")
+
+# BoringSSL Code Style Guide
 
 BoringSSL usually follows the
 [Google C++ style guide](https://google.github.io/styleguide/cppguide.html),
@@ -183,43 +417,6 @@ For example,
      * ASN.1 object can be written. The |tag| argument will be used as the tag for
      * the object. It returns one on success or zero on error. */
     OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag);
-
-
-## Documentation
-
-All public symbols must have a documentation comment in their header
-file. The style is based on that of Go. The first sentence begins with
-the symbol name, optionally prefixed with "A" or "An". Apart from the
-initial mention of symbol, references to other symbols or parameter
-names should be surrounded by |pipes|.
-
-Documentation should be concise but completely describe the exposed
-behavior of the function. Pay special note to success/failure behaviors
-and caller obligations on object lifetimes. If this sacrifices
-conciseness, consider simplifying the function's behavior.
-
-    // EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
-    // will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
-    // zero otherwise.
-    OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
-                                              size_t len);
-
-Explicitly mention any surprising edge cases or deviations from common
-return value patterns in legacy functions.
-
-    // RSA_private_encrypt encrypts |flen| bytes from |from| with the private key in
-    // |rsa| and writes the encrypted data to |to|. The |to| buffer must have at
-    // least |RSA_size| bytes of space. It returns the number of bytes written, or
-    // -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
-    // values. If in doubt, |RSA_PKCS1_PADDING| is the most common.
-    //
-    // WARNING: this function is dangerous because it breaks the usual return value
-    // convention. Use |RSA_sign_raw| instead.
-    OPENSSL_EXPORT int RSA_private_encrypt(int flen, const uint8_t *from,
-                                           uint8_t *to, RSA *rsa, int padding);
-
-Document private functions in their `internal.h` header or, if static,
-where defined.
 
 
 ## Build logic
