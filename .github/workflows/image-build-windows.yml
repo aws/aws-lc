@@ -17,6 +17,7 @@ on:
     paths:
       - .github/docker_images/aws-lc/windows/Dockerfile.ltsc2022
       - .github/docker_images/scripts/**
+      - .github/workflows/image-build-windows.yml
 concurrency:
   group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -42,6 +43,8 @@ jobs:
       vs2022: ${{ steps.images.outputs.vs2022 }}
       sde: ${{ steps.images.outputs.sde }}
     steps:
+      - name: Enable long paths
+        run: git config --global core.longpaths true
       - uses: actions/checkout@v5
       - name: Login to Amazon ECR
         id: login-ecr
@@ -138,6 +141,8 @@ jobs:
     outputs:
       ltsc2022: ${{ steps.images.outputs.ltsc2022 }}
     steps:
+      - name: Enable long paths
+        run: git config --global core.longpaths true
       - uses: actions/checkout@v5
       - name: Login to Amazon ECR
         id: login-ecr
