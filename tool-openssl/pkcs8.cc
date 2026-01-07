@@ -131,8 +131,8 @@ bool pkcs8Tool(const args_list_t &args) {
   bool topk8 = false, nocrypt = false;
 
   // Sensitive strings will be automatically cleared on function exit
-  bssl::UniquePtr<std::string> passin_arg(new std::string());
-  bssl::UniquePtr<std::string> passout_arg(new std::string());
+  Password passin_arg;
+  Password passout_arg;
 
   bssl::UniquePtr<BIO> out;
   bssl::UniquePtr<EVP_PKEY> pkey;
@@ -172,8 +172,8 @@ bool pkcs8Tool(const args_list_t &args) {
     return false;
   }
 
-  GetString(passin_arg.get(), "-passin", "", parsed_args);
-  GetString(passout_arg.get(), "-passout", "", parsed_args);
+  GetString(&passin_arg.get(), "-passin", "", parsed_args);
+  GetString(&passout_arg.get(), "-passout", "", parsed_args);
 
   // Extract passwords (handles same-file case where both passwords are in one
   // file)
@@ -183,7 +183,7 @@ bool pkcs8Tool(const args_list_t &args) {
   }
 
   // Check for contradictory arguments
-  if (nocrypt && !passin_arg->empty() && !passout_arg->empty()) {
+  if (nocrypt && !passin_arg.empty() && !passout_arg.empty()) {
     fprintf(stderr,
             "Error: -nocrypt cannot be used with both -passin and -passout\n");
     return false;
@@ -230,10 +230,10 @@ bool pkcs8Tool(const args_list_t &args) {
       (inform == "PEM")
           ? PEM_read_bio_PrivateKey(
                 in.get(), nullptr, nullptr,
-                passin_arg->empty() ? nullptr
-                                    : const_cast<char *>(passin_arg->c_str()))
+                passin_arg.empty() ? nullptr
+                                    : const_cast<char *>(passin_arg.get().c_str()))
           : read_private_der(
-                in.get(), passin_arg->empty() ? nullptr : passin_arg->c_str())
+                in.get(), passin_arg.empty() ? nullptr : passin_arg.get().c_str())
                 .release());
   if (!pkey) {
     if (input_is_encrypted) {
@@ -263,13 +263,13 @@ bool pkcs8Tool(const args_list_t &args) {
     result = (outform == "PEM")
                  ? PEM_write_bio_PKCS8PrivateKey(
                        out.get(), pkey.get(), cipher,
-                       passout_arg->empty() ? nullptr : passout_arg->c_str(),
-                       passout_arg->empty() ? 0 : passout_arg->length(),
+                       passout_arg.empty() ? nullptr : passout_arg.get().c_str(),
+                       passout_arg.empty() ? 0 : passout_arg.get().length(),
                        nullptr, nullptr)
                  : i2d_PKCS8PrivateKey_bio(
                        out.get(), pkey.get(), cipher,
-                       passout_arg->empty() ? nullptr : passout_arg->c_str(),
-                       passout_arg->empty() ? 0 : passout_arg->length(),
+                       passout_arg.empty() ? nullptr : passout_arg.get().c_str(),
+                       passout_arg.empty() ? 0 : passout_arg.get().length(),
                        nullptr, nullptr);
   }
 

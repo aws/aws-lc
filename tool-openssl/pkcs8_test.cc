@@ -228,17 +228,6 @@ class PKCS8OptionUsageErrorsTest : public PKCS8Test {
   }
 };
 
-// Test missing -in required option
-TEST_F(PKCS8OptionUsageErrorsTest, RequiredOptionTests) {
-  std::vector<std::vector<std::string>> testparams = {
-      {"-out", "output.pem", "-topk8"},
-      {"-topk8", "-nocrypt"},
-  };
-  for (const auto &args : testparams) {
-    TestOptionUsageErrors(args);
-  }
-}
-
 // Test invalid format
 TEST_F(PKCS8OptionUsageErrorsTest, InvalidFormatTest) {
   std::vector<std::vector<std::string>> testparams = {

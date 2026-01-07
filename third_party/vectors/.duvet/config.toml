@@ -2,11 +2,15 @@
 
 [[source]]
 pattern = "../../crypto/**/*test.cc"
+type = "test"
 
 [[specification]]
 source = "vectors_spec.md"
 
 [report.html]
+enabled = true
+
+[report.json]
 enabled = true
 
 [report.snapshot]
