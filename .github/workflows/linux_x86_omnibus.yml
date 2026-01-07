@@ -171,15 +171,20 @@ jobs:
             ./tests/ci/run_legacy_build.sh
 
   legacy_avx_tests:
-    name: legacy-avx-${{ matrix.image }}-${{ matrix.build32 && 'x86' || 'x86_64' }}
+    name: legacy-${{ matrix.avx_config.type }}-${{ matrix.config.image }}-${{ matrix.config.build32 && 'x86' || 'x86_64' }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:linux-5.0
-        instance-size:large
+        instance-size:${{ matrix.config.build32 && 'xlarge' || 'large' }}
     strategy:
       fail-fast: false
       matrix:
-        include:
+        avx_config:
+          - type: avx
+            flag: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
+          - type: 512avx
+            flag: MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+        config:
           - image: amazonlinux:2
             compiler: gcc-7
           - image: centos:7
@@ -204,14 +209,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - uses: ./.github/actions/codebuild-docker-run
-        name: Run Container (${{ matrix.image }})
+        name: Run Container (${{ matrix.config.image }})
         env:
-          AWSLC_32BIT: ${{ matrix.build32 || 0 }}
+          AWSLC_32BIT: ${{ matrix.config.build32 || 0 }}
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.image }}
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/${{ matrix.config.image }}
           env: |
             AWSLC_32BIT
           run: |
-            source /opt/compiler-env/setup-${{ matrix.compiler }}.sh
-            ./tests/ci/run_legacy_avx_tests.sh
+            source /opt/compiler-env/setup-${{ matrix.config.compiler }}.sh
+            ./tests/ci/run_legacy_avx_tests.sh ${{ matrix.avx_config.flag }}
           options: --privileged

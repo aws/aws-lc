@@ -220,6 +220,23 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
   X509V3_CTX ext_ctx;
   bssl::UniquePtr<CONF> ext_conf(nullptr);
 
+  // Determine if this is a self-signed certificate
+  bool self_sign = (issuer == subject);
+
+  // Set serial number
+  if (self_sign) {
+    if (!SetSerial(subject, "")) {
+      fprintf(stderr, "Error: unable to set serial number\n");
+      return false;
+    }
+  } else {
+    if (!SetSerial(subject, pkey_path)) {
+      fprintf(stderr, "Error: unable to set serial number\n");
+      return false;
+    }
+  }
+
+  // Handle extensions
   X509V3_set_ctx(&ext_ctx, issuer, subject, NULL, NULL, X509V3_CTX_REPLACE);
 
   if (ext_file_path.empty()) {
@@ -253,7 +270,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
       ext_section = res ? res : "default";
     }
 
-    // validate extension config
+    // Validate extension config
     X509V3_set_ctx_test(&temp_ctx);
     X509V3_set_nconf(&temp_ctx, ext_conf.get());
     if (!X509V3_EXT_add_nconf(ext_conf.get(), &temp_ctx, ext_section.c_str(),
@@ -262,7 +279,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
       return false;
     }
 
-    // initialize actual extension context
+    // Initialize actual extension context
     X509V3_set_nconf(&ext_ctx, ext_conf.get());
 
     if (!X509V3_EXT_add_nconf(ext_conf.get(), &ext_ctx, ext_section.c_str(),
@@ -278,30 +295,17 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
     return false;
   }
 
-  /* Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER */
+  // Prevent X509_V_ERR_MISSING_SUBJECT_KEY_IDENTIFIER
   if (!AdaptKeyIDExtension(subject, &ext_ctx, "subjectKeyIdentifier", "hash",
                            1)) {
     fprintf(stderr, "Error: Failed to handle subject key identifier\n");
     return false;
   }
-  /* Prevent X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER */
-  int self_sign = X509_check_private_key(subject, pkey);
+  // Prevent X509_V_ERR_MISSING_AUTHORITY_KEY_IDENTIFIER
   if (!AdaptKeyIDExtension(subject, &ext_ctx, "authorityKeyIdentifier",
                            "keyid, issuer", !self_sign)) {
     fprintf(stderr, "Error: Failed to handle authority key identifier\n");
     return false;
-  }
-
-  if (self_sign) {
-    if (!SetSerial(subject, "")) {
-      fprintf(stderr, "Error: unable to set serial number\n");
-      return false;
-    }
-  } else {
-    if (!SetSerial(subject, pkey_path)) {
-      fprintf(stderr, "Error: unable to set serial number\n");
-      return false;
-    }
   }
 
   // TODO: make customizable with -digest option
@@ -317,7 +321,7 @@ static bool LoadExtensionsAndSignCertificate(const X509 *issuer, X509 *subject,
 
 static bool LoadPrivateKey(bssl::UniquePtr<EVP_PKEY> &pkey,
                            const std::string &signkey_path,
-                           bssl::UniquePtr<std::string> &passin) {
+                           Password &passin) {
   ScopedFILE signkey_file(fopen(signkey_path.c_str(), "rb"));
   if (!signkey_file) {
     fprintf(stderr, "Error: unable to load private key from '%s'\n",
@@ -325,7 +329,7 @@ static bool LoadPrivateKey(bssl::UniquePtr<EVP_PKEY> &pkey,
     return false;
   }
   pkey.reset(PEM_read_PrivateKey(signkey_file.get(), nullptr, nullptr,
-                                 const_cast<char *>(passin->c_str())));
+                                 const_cast<char *>(passin.get().c_str())));
   if (!pkey) {
     fprintf(stderr, "Error: error reading private key from '%s'\n",
             signkey_path.c_str());
@@ -339,7 +343,7 @@ static bool LoadPrivateKey(bssl::UniquePtr<EVP_PKEY> &pkey,
 static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
                    const std::string &ca_file_path,
                    const std::string &ca_key_path,
-                   bssl::UniquePtr<std::string> &passin) {
+                   Password &passin) {
   ScopedFILE ca_file(fopen(ca_file_path.c_str(), "rb"));
 
   if (!ca_file) {
@@ -363,10 +367,10 @@ static bool LoadCA(bssl::UniquePtr<X509> &ca, bssl::UniquePtr<EVP_PKEY> &ca_key,
     }
 
     ca_key.reset(PEM_read_PrivateKey(ca_key_file.get(), nullptr, nullptr,
-                                     const_cast<char *>(passin->c_str())));
+                                     const_cast<char *>(passin.get().c_str())));
   } else {
     ca_key.reset(PEM_read_PrivateKey(ca_file.get(), nullptr, nullptr,
-                                     const_cast<char *>(passin->c_str())));
+                                     const_cast<char *>(passin.get().c_str())));
   }
 
   if (!ca_key) {
@@ -570,7 +574,7 @@ bool X509Tool(const args_list_t &args) {
       ca_file_path, ca_key_path, ext_file_path, ext_section;
   bool noout = false, dates = false, req = false, help = false;
   std::unique_ptr<unsigned> days;
-  bssl::UniquePtr<std::string> passin(new std::string());
+  Password passin;
 
   ordered_args::GetBoolArgument(&help, "-help", parsed_args);
   ordered_args::GetString(&in_path, "-in", "", parsed_args);
@@ -585,7 +589,7 @@ bool X509Tool(const args_list_t &args) {
   ordered_args::GetString(&ca_key_path, "-CAkey", "", parsed_args);
   ordered_args::GetString(&ext_file_path, "-extfile", "", parsed_args);
   ordered_args::GetString(&ext_section, "-extensions", "", parsed_args);
-  ordered_args::GetString(passin.get(), "-passin", "", parsed_args);
+  ordered_args::GetString(&passin.get(), "-passin", "", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
@@ -680,7 +684,7 @@ bool X509Tool(const args_list_t &args) {
   }
 
   // Extract password
-  if (!passin->empty() && !pass_util::ExtractPassword(passin)) {
+  if (!passin.empty() && !pass_util::ExtractPassword(passin)) {
     fprintf(stderr, "Error: Failed to extract password\n");
     return false;
   }

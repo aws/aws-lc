@@ -8,8 +8,6 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
-enum OutputFormat { FORMAT_PEM = 1, FORMAT_DER = 2 };
-
 static bssl::UniquePtr<EC_GROUP> ValidateAndCreateECGroup(
     const std::string &curve_name) {
   int nid = OBJ_sn2nid(curve_name.c_str());
@@ -85,7 +83,7 @@ bool ecparamTool(const args_list_t &args) {
   std::string curve_name, out_path, outform, conv_form;
   bool noout = false, genkey = false;
   point_conversion_form_t point_form = POINT_CONVERSION_UNCOMPRESSED;
-  OutputFormat output_format = FORMAT_PEM;
+  Format output_format = FORMAT_PEM;
   bssl::UniquePtr<EC_GROUP> group;
   bssl::UniquePtr<EC_KEY> eckey;
   bssl::UniquePtr<BIO> out_bio;

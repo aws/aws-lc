@@ -32,6 +32,12 @@ int ml_dsa_pack_pk_from_sk(ml_dsa_params *params,
   //unpack sk
   ml_dsa_unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
 
+  // check s1 and s2 have coefficients in [-ETA, ETA]
+  if (ml_dsa_polyvecl_chknorm(params, &s1, params->eta + 1) ||
+      ml_dsa_polyveck_chknorm(params, &s2, params->eta + 1)) {
+    return 1;
+  }
+
   // generate matrix A
   ml_dsa_polyvec_matrix_expand(params, mat, rho);
 

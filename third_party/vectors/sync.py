@@ -54,37 +54,38 @@ def fetch_sources(
 def update_sources(
     cwd: pathlib.Path,
     sources: dict,
-    new_file: typing.Optional[str],
+    new_files: typing.Optional[typing.List[str]],
 ):
     # Ensure upstream directories exist
     for source_name, source_info in sources.items():
         source_info["upstream_path"].mkdir(parents=True, exist_ok=True)
 
-    # Add new file first to catch invalid file names and sources early
-    if new_file:
-        file_path = pathlib.Path(new_file)
-        source_name = file_path.parts[0]
+    # Add new files first to catch invalid file names and sources early
+    if new_files:
+        for new_file in new_files:
+            file_path = pathlib.Path(new_file)
+            source_name = file_path.parts[0]
 
-        if source_name not in sources:
-            raise SyncError(
-                f"unknown source '{source_name}', expected one of: {list(sources.keys())}"
-            )
+            if source_name not in sources:
+                raise SyncError(
+                    f"unknown source '{source_name}', expected one of: {list(sources.keys())}"
+                )
 
-        relative_path = pathlib.Path(*file_path.parts[1:])
-        local_file = sources[source_name]["local_path"] / relative_path
+            relative_path = pathlib.Path(*file_path.parts[1:])
+            local_file = sources[source_name]["local_path"] / relative_path
 
-        if not local_file.exists():
-            raise SyncError(f"file not found in upstream repo: {relative_path}")
-        if local_file.is_dir():
-            raise SyncError(f"path is a directory, not a file: {relative_path}")
+            if not local_file.exists():
+                raise SyncError(f"file not found in upstream repo: {relative_path}")
+            if local_file.is_dir():
+                raise SyncError(f"path is a directory, not a file: {relative_path}")
 
-        upstream_file = sources[source_name]["upstream_path"] / relative_path
-        if upstream_file.exists():
-            raise SyncError(f"file already exists in upstream: {upstream_file}")
+            upstream_file = sources[source_name]["upstream_path"] / relative_path
+            if upstream_file.exists():
+                raise SyncError(f"file already exists in upstream: {upstream_file}")
 
-        upstream_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(local_file, upstream_file)
-        utils.info(f"copied new file to upstream: {upstream_file}")
+            upstream_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(local_file, upstream_file)
+            utils.info(f"copied new file to upstream: {upstream_file}")
 
     # Update existing files from all sources
     missing_files = []
@@ -146,12 +147,19 @@ def convert_sources(
 def generate_and_verify_spec(
     cwd: pathlib.Path,
     sources: dict,
+    new_file_added: bool,
 ):
     generate_spec.write_spec(cwd, sources)
     utils.info("generated vectors_spec.md")
 
+    duvet_args = ["duvet", "report"]
+    if not new_file_added:
+        # use existing snapshot, when not adding new files
+        # this ensures that we do not accidentally reduce coverage
+        duvet_args += ["--ci"]
+
     duvet_result = subprocess.run(
-        ["duvet", "report", "--ci"],
+        duvet_args,
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -188,7 +196,7 @@ def sync_sources(
         utils.info("skipping convert")
 
     if not args.skip_spec:
-        generate_and_verify_spec(cwd, sources)
+        generate_and_verify_spec(cwd, sources, args.new)
     else:
         utils.info("skipping spec generation")
 
@@ -210,7 +218,8 @@ def main() -> int:
     parser.add_argument(
         "--new",
         metavar="SOURCE/PATH",
-        help="add new test vector file (e.g., wycheproof/testvectors_v1/aes_gcm_test.json)",
+        action="append",
+        help="add new test vector file (e.g., wycheproof/testvectors_v1/aes_gcm_test.json), can be specified multiple times",
     )
     parser.add_argument(
         "--check",
