@@ -10,5 +10,8 @@ source = "vectors_spec.md"
 [report.html]
 enabled = true
 
+[report.json]
+enabled = true
+
 [report.snapshot]
 enabled = true
