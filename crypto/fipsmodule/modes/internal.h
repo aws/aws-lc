@@ -198,6 +198,9 @@ int crypto_gcm_clmul_enabled(void);
 // crypto_gcm_avx512_enabled returns one if the AVX512 VAES + VPCLMULQDQ
 // implementation of GCM is used.
 int crypto_gcm_avx512_enabled(void);
+// crypto_gcm_avx2_enabled returns one if the AVX2 VAES + VPCLMULQDQ
+// implementation of GCM is used (for CPUs like AMD Zen 3 without AVX512).
+int crypto_gcm_avx2_enabled(void);
 #endif
 
 // CRYPTO_ghash_init writes a precomputed table of powers of |gcm_key| to
@@ -299,6 +302,19 @@ void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                    size_t len);
+
+// AVX2 + VAES + VPCLMULQDQ functions (for CPUs like AMD Zen 3)
+void gcm_init_vpclmulqdq_avx2(u128 Htable[16], const uint64_t H[2]);
+void gcm_gmult_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_vpclmulqdq_avx2(uint8_t Xi[16], const u128 Htable[16],
+                               const uint8_t *in, size_t len);
+void aes_gcm_enc_update_vaes_avx2(const uint8_t *in, uint8_t *out, size_t len,
+                                  const AES_KEY *key, const uint8_t ivec[16],
+                                  const u128 Htable[16], uint8_t Xi[16]);
+void aes_gcm_dec_update_vaes_avx2(const uint8_t *in, uint8_t *out, size_t len,
+                                  const AES_KEY *key, const uint8_t ivec[16],
+                                  const u128 Htable[16], uint8_t Xi[16]);
+
 #if  !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 void gcm_init_avx512(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx512(uint8_t Xi[2], const u128 Htable[16]);
