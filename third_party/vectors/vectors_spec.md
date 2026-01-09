@@ -20,6 +20,15 @@ AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha384_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_1024_encaps_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_512_encaps_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_768_encaps_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.
