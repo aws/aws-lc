@@ -38,21 +38,9 @@ static Source DetectSource(
 }
 
 // Helper function to validate password sources and detect same-file case
-static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
-                           bssl::UniquePtr<std::string> *passout = nullptr,
+static bool ValidateSource(Password &passin,
+                           Password *passout = nullptr,
                            bool *same_file = nullptr) {
-  // Validate passin
-  if (!passin) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
-    return false;
-  }
-
-  // Validate passout if provided
-  if (passout && !*passout) {
-    fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
-    return false;
-  }
-
   // Validate passin format (if not empty)
   if (!passin->empty()) {
     Source passin_type = DetectSource(passin);
@@ -82,36 +70,36 @@ static bool ValidateSource(bssl::UniquePtr<std::string> &passin,
   }
 
   // Initialize same_file to false if not detected
-  if (same_file && (!passout || !*passout)) {
+  if (same_file && (!passout || passout->empty())) {
     *same_file = false;
   }
 
   return true;
 }
 
-static bool ExtractDirectPassword(bssl::UniquePtr<std::string> &source) {
+static bool ExtractDirectPassword(Password &source) {
   // Check for additional colons in password portion after prefix
-  if (source->find(':', 5) != std::string::npos) {
+  if (source.get().find(':', 5) != std::string::npos) {
     fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
     return false;
   }
 
   // Check length before modification
-  if (source->length() - 5 > PEM_BUFSIZE) {
+  if (source.get().length() - 5 > PEM_BUFSIZE) {
     fprintf(stderr, "Password exceeds maximum allowed length (%d bytes)\n",
             PEM_BUFSIZE);
     return false;
   }
 
   // Remove "pass:" prefix by shifting the remaining content to the beginning
-  source->erase(0, 5);
+  source.get().erase(0, 5);
   return true;
 }
 
-static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
+static bool ExtractPasswordFromStream(Password &source,
                                       Source source_type,
                                       bool skip_first_line = false,
-                                      bssl::UniquePtr<std::string> *passout = nullptr) {
+                                      Password *passout = nullptr) {
   char buf[PEM_BUFSIZE] = {};
   bssl::UniquePtr<BIO> bio;
 
@@ -136,7 +124,7 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
 
     int fd = atoi(source->c_str());
     if (fd < 0) {
-      fprintf(stderr, "Invalid file descriptor: %s\n", source->c_str());
+      fprintf(stderr, "Invalid file descriptor: %s\n", source.get().c_str());
       return false;
     }
     bio.reset(BIO_new_fd(fd, BIO_NOCLOSE));
@@ -202,7 +190,7 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
 
   // Handle same-file case (read both passwords)
   if (passout) {
-    if (!read_password_line(*source) || !read_password_line(**passout)) {
+    if (!read_password_line(source.get()) || !read_password_line(passout->get())) {
       return false;
     }
   } else {
@@ -215,7 +203,7 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
     }
 
     // Read single password
-    if (!read_password_line(*source)) {
+    if (!read_password_line(source.get())) {
       return false;
     }
   }
@@ -224,24 +212,24 @@ static bool ExtractPasswordFromStream(bssl::UniquePtr<std::string> &source,
   return true;
 }
 
-static bool ExtractPasswordFromEnv(bssl::UniquePtr<std::string> &source) {
+static bool ExtractPasswordFromEnv(Password &source) {
   // Remove "env:" prefix
-  source->erase(0, 4);
+  source.get().erase(0, 4);
 
-  if (source->empty()) {
+  if (source.empty()) {
     fprintf(stderr, "Empty environment variable name\n");
     return false;
   }
 
-  const char *env_val = getenv(source->c_str());
+  const char *env_val = getenv(source.get().c_str());
   if (!env_val) {
-    fprintf(stderr, "Environment variable '%s' not set\n", source->c_str());
+    fprintf(stderr, "Environment variable '%s' not set\n", source.get().c_str());
     return false;
   }
 
   size_t env_val_len = strlen(env_val);
   if (env_val_len == 0) {
-    fprintf(stderr, "Environment variable '%s' is empty\n", source->c_str());
+    fprintf(stderr, "Environment variable '%s' is empty\n", source.get().c_str());
     return false;
   }
   if (env_val_len > PEM_BUFSIZE) {
@@ -251,15 +239,15 @@ static bool ExtractPasswordFromEnv(bssl::UniquePtr<std::string> &source) {
   }
 
   // Replace source content with environment value
-  *source = std::string(env_val);
+  source.get() = std::string(env_val);
   return true;
 }
 
 // Internal helper to extract password based on source type
-static bool ExtractPasswordFromSource(bssl::UniquePtr<std::string> &source,
+static bool ExtractPasswordFromSource(Password &source,
                                       Source type,
                                       bool skip_first_line = false,
-                                      bssl::UniquePtr<std::string> *passout = nullptr) {
+                                      Password *passout = nullptr) {
   switch (type) {
     case Source::kPass:
       return ExtractDirectPassword(source);
@@ -283,19 +271,14 @@ static bool ExtractPasswordFromSource(bssl::UniquePtr<std::string> &source,
   }
 }
 
-void SensitiveStringDeleter(std::string *str) {
-  if (str && !str->empty()) {
-    OPENSSL_cleanse(&(*str)[0], str->size());
-  }
-  delete str;
-}
+namespace pass_util {
 
-bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
+bool ExtractPassword(Password &source) {
   if (!ValidateSource(source)) {
     return false;
   }
 
-  if (source->empty()) {
+  if (source.empty()) {
     fprintf(stderr, "Invalid password format (use pass:, file:, env:, or stdin)\n");
     return false;
   }
@@ -304,8 +287,7 @@ bool ExtractPassword(bssl::UniquePtr<std::string> &source) {
   return ExtractPasswordFromSource(source, type);
 }
 
-bool ExtractPasswords(bssl::UniquePtr<std::string> &passin,
-                      bssl::UniquePtr<std::string> &passout) {
+bool ExtractPasswords(Password &passin, Password &passout) {
   // Use ValidateSource for all validation and same-file detection
   bool same_file = false;
   if (!ValidateSource(passin, &passout, &same_file)) {

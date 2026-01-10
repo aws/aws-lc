@@ -48,3 +48,10 @@ Duvet runs automatically when `sync.py` executes. To manually verify:
 cd third_party/vectors
 duvet report --ci
 ```
+
+After adding new duvet annotations to test files, update the snapshot:
+
+```bash
+cd third_party/vectors
+duvet report
+```

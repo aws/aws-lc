@@ -15,7 +15,7 @@
 
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_local_state {
-  // Thread-local CTR-DRBG state. UBE volatile state.
+  // Thread-local CTR-DRBG state. UBE unique state.
   CTR_DRBG_STATE drbg;
 
   // generate_calls_since_seed is the number of generate calls made on |drbg|
@@ -31,7 +31,7 @@ struct rand_thread_local_state {
   // generation_number caches the UBE generation number.
   uint64_t generation_number;
 
-  // Entropy source. UBE volatile state.
+  // Entropy source. UBE unique state.
   struct entropy_source_t *entropy_source;
 
   // Backward and forward references to nodes in a doubly-linked list.
