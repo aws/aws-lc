@@ -364,6 +364,11 @@ const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa) {
   return NULL;
 }
 
+const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa) {
+  SET_DIT_AUTO_RESET;
+  return rsa->pss;
+}
+
 void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
                          const BIGNUM **out_dmq1, const BIGNUM **out_iqmp) {
   SET_DIT_AUTO_RESET;
