@@ -6,20 +6,15 @@
 #include <openssl/bio.h>
 #include <openssl/mem.h>
 #include <openssl/pem.h>
+#include <stdlib.h>
 #include <string>
-#ifndef _WIN32
+#if !defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
 #include <unistd.h>
 #endif
-#ifdef _WIN32
-#include <stdlib.h>  // for _putenv_s
-#include <windows.h> // for CreatePipe, SetStdHandle
-#endif
+
 #include "internal.h"
 #include "test_util.h"
-
-// Use PEM_BUFSIZE (defined in openssl/pem.h) for password buffer size testing
-// to match the implementation in pass_util.cc
 
 namespace {
 // Helper functions to encapsulate common operations
@@ -44,7 +39,7 @@ void WriteTestFile(const char *path, const char *content,
 }
 
 void SetTestEnvVar(const char *name, const char *value) {
-#ifdef _WIN32
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, value);
 #else
   setenv(name, value, 1);
@@ -52,7 +47,7 @@ void SetTestEnvVar(const char *name, const char *value) {
 }
 
 void UnsetTestEnvVar(const char *name) {
-#ifdef _WIN32
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, "");
 #else
   unsetenv(name);
@@ -86,8 +81,8 @@ class PassUtilTest : public ::testing::Test {
     UnsetTestEnvVar("TEST_PASSWORD_ENV");
   }
 
-  char pass_path[PATH_MAX] = {};
-  char pass_path2[PATH_MAX] = {};
+  char pass_path[PATH_MAX];
+  char pass_path2[PATH_MAX];
 };
 
 
@@ -113,9 +108,7 @@ TEST_F(PassUtilTest, FileEdgeCases) {
       << "Should fail on too long file content";
 
   // Test empty file
-  {
-    WriteTestFile(pass_path, "");
-  }
+  { WriteTestFile(pass_path, ""); }
 
   source = Password(std::string("file:") + pass_path);
   EXPECT_FALSE(pass_util::ExtractPassword(source))
@@ -421,11 +414,11 @@ TEST_F(PassUtilTest, ExtractPasswordsSameFileEdgeCases) {
   EXPECT_EQ(passout.get(), "line2");
 }
 
-#ifndef _WIN32
+#ifndef OPENSSL_WINDOWS
 TEST_F(PassUtilTest, FdExtraction) {
   int fd = open(pass_path, O_RDONLY);
   ASSERT_GE(fd, 0);
-  
+
   std::string fd_source = "fd:" + std::to_string(fd);
   Password source(fd_source);
   
@@ -442,14 +435,14 @@ TEST_F(PassUtilTest, FdExtraction) {
 }
 #endif
 
-#ifndef _WIN32
+#ifndef OPENSSL_WINDOWS
 TEST_F(PassUtilTest, StdinExtraction) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
-  
+
   int old_stdin = dup(STDIN_FILENO);
   dup2(pipefd[0], STDIN_FILENO);
-  
+
   ASSERT_EQ(write(pipefd[1], "stdinpass\n", 10), 10);
   close(pipefd[1]);
   
@@ -465,11 +458,11 @@ TEST_F(PassUtilTest, StdinExtraction) {
 TEST_F(PassUtilTest, StdinExtraction) {
   // Use existing temp file infrastructure instead of pipes
   WriteTestFile(pass_path, "stdinpass\n", true);
-  
+
   // Redirect stdin to temp file using _dup2
-  FILE* temp_file = fopen(pass_path, "r");
+  FILE *temp_file = fopen(pass_path, "r");
   ASSERT_TRUE(temp_file) << "Failed to open temp file";
-  
+
   int old_stdin = _dup(_fileno(stdin));
   _dup2(_fileno(temp_file), _fileno(stdin));
   
@@ -484,14 +477,14 @@ TEST_F(PassUtilTest, StdinExtraction) {
 }
 #endif
 
-#ifndef _WIN32
+#ifndef OPENSSL_WINDOWS
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
-  
+
   int old_stdin = dup(STDIN_FILENO);
   dup2(pipefd[0], STDIN_FILENO);
-  
+
   ASSERT_EQ(write(pipefd[1], "firstpass\nsecondpass\n", 20), 20);
   close(pipefd[1]);
   
@@ -510,11 +503,11 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   // Use existing temp file infrastructure for multi-line input
   WriteTestFile(pass_path, "firstpass\nsecondpass\n", true);
-  
+
   // Redirect stdin to temp file using _dup2
-  FILE* temp_file = fopen(pass_path, "r");
+  FILE *temp_file = fopen(pass_path, "r");
   ASSERT_TRUE(temp_file) << "Failed to open temp file";
-  
+
   int old_stdin = _dup(_fileno(stdin));
   _dup2(_fileno(temp_file), _fileno(stdin));
   

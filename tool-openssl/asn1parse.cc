@@ -20,7 +20,8 @@ bool asn1parseTool(const args_list_t &args) {
   using namespace ordered_args;
   ordered_args_map_t parsed_args;
   args_list_t extra_args;
-  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args, kArguments)) {
+  if (!ParseOrderedKeyValueArguments(parsed_args, extra_args, args,
+                                     kArguments)) {
     PrintUsage(kArguments);
     return false;
   }
@@ -31,7 +32,7 @@ bool asn1parseTool(const args_list_t &args) {
   uint8_t *raw_input_bytes = nullptr;
   ossl_uint8_ptr input_bytes(nullptr, &OPENSSL_free);
   size_t input_bytes_len = 0;
-  
+
   bool help = false;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -49,7 +50,8 @@ bool asn1parseTool(const args_list_t &args) {
   } else if (isStringUpperCaseEqual(inform_str, "PEM")) {
     input_format = FORMAT_PEM;
   } else {
-    fprintf(stderr, "Error: Invalid input format '%s'. Must be PEM or DER\n", inform_str.c_str());
+    fprintf(stderr, "Error: Invalid input format '%s'. Must be PEM or DER\n",
+            inform_str.c_str());
     goto err;
   }
 
@@ -80,8 +82,8 @@ bool asn1parseTool(const args_list_t &args) {
 
     input_bytes_len = 0;
     int i = 0;
-    // We could use BIO_read_asn1 here, but it does have some limitations. So match the OpenSSL behavior
-    // here instead.
+    // We could use BIO_read_asn1 here, but it does have some limitations. So
+    // match the OpenSSL behavior here instead.
     for (;;) {
       if (!BUF_MEM_grow(buf.get(), input_bytes_len + BUFSIZ)) {
         goto err;
@@ -104,11 +106,13 @@ bool asn1parseTool(const args_list_t &args) {
     ossl_char_ptr name(nullptr, &OPENSSL_free);
     ossl_char_ptr header(nullptr, &OPENSSL_free);
 
-    // Technically this is the `-strictpem` behavior from OpenSSL in combination with `-inform PEM`. Otherwise OpenSSL
-    // would try to base64 decode outside of PEM blocks. This seems like a niche edge case so adopting the strict
+    // Technically this is the `-strictpem` behavior from OpenSSL in combination
+    // with `-inform PEM`. Otherwise OpenSSL would try to base64 decode outside
+    // of PEM blocks. This seems like a niche edge case so adopting the strict
     // behavior for now.
     long input_len = 0;
-    if (!PEM_read_bio(input_bio.get(), &raw_name, &raw_header, &raw_input_bytes, &input_len)) {
+    if (!PEM_read_bio(input_bio.get(), &raw_name, &raw_header, &raw_input_bytes,
+                      &input_len)) {
       fprintf(stderr, "Error reading PEM file\n");
       goto err;
     }

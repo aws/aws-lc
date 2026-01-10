@@ -280,7 +280,7 @@ static const char *PromptField(const ReqField &field, char *buffer,
     buffer[len - 1] = '\0';
     len--;
   }
-#if defined(_WIN32)
+#if defined(OPENSSL_WINDOWS)
   if (len > 0 && buffer[len - 1] == '\r') {
     buffer[len - 1] = '\0';
     len--;
@@ -380,7 +380,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
     }
 
     // Only add non-empty values
-    if (value && OPENSSL_strnlen(value, BUF_SIZE) > 0) {
+    if (value && OPENSSL_strnlen(value, sizeof(buffer)) > 0) {
       if (!X509_NAME_add_entry_by_NID(
               subj.get(), field.nid, chtype,
               reinterpret_cast<const unsigned char *>(value), -1, -1, 0)) {
@@ -428,7 +428,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
       }
 
       // Only add non-empty attributes
-      if (value && OPENSSL_strnlen(value, BUF_SIZE) > 0) {
+      if (value && OPENSSL_strnlen(value, sizeof(buffer)) > 0) {
         bssl::UniquePtr<X509_ATTRIBUTE> x509_attr(X509_ATTRIBUTE_create_by_NID(
             nullptr, attr.nid, MBSTRING_ASC,
             reinterpret_cast<const unsigned char *>(value), -1));
@@ -647,13 +647,11 @@ static bool GenerateSerial(X509 *cert) {
     return false;
   }
 
-  /*
-   * Randomly generate a serial number
-   *
-   * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
-   * so that the first bit will never be one, so that the DER encoding
-   * rules won't force a leading octet.
-   */
+  // Randomly generate a serial number
+  //
+  // IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+  // so that the first bit will never be one, so that the DER encoding
+  // rules won't force a leading octet.
   constexpr int SERIAL_RAND_BITS = 159;
   if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
                BN_RAND_BOTTOM_ANY)) {
