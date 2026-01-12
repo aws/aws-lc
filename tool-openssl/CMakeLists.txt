@@ -101,6 +101,7 @@ if(BUILD_TESTING)
         asn1parse.cc
         asn1parse_test.cc
         ca.cc
+        ca_test.cc
         ca_req_common.cc
         crl.cc
         crl_test.cc

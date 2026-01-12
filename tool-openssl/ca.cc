@@ -380,8 +380,9 @@ static uint32_t index_serial_hash(const OPENSSL_STRING *a) {
   const char *n;
 
   n = a[DB_serial];
-  while (*n == '0')
+  while (*n == '0') {
     n++;
+  }
   return OPENSSL_strhash(n);
 }
 
@@ -581,10 +582,12 @@ static int RandSerial(bssl::UniquePtr<BIGNUM> &b, ASN1_INTEGER *ai) {
    * so that the first bit will never be one, so that the DER encoding
    * rules won't force a leading octet.
    */
-  if (!BN_rand(b.get(), 159, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY))
+  if (!BN_rand(b.get(), 159, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
     goto end;
-  if (ai && !BN_to_ASN1_INTEGER(b.get(), ai))
+  }
+  if (ai && !BN_to_ASN1_INTEGER(b.get(), ai)) {
     goto end;
+  }
 
   ret = 1;
 
@@ -605,8 +608,9 @@ static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
   }
 
   in = bssl::UniquePtr<BIO>(BIO_new_file(serialfile.c_str(), "r"));
-  if (exists != NULL)
+  if (exists != NULL) {
     *exists = in != NULL;
+  }
   if (!in) {
     if (!create) {
       perror(serialfile.c_str());
@@ -640,15 +644,18 @@ err:
 static int SetCertTimes(X509 *x, std::string startdate, std::string enddate,
                         int days) {
   if (startdate.empty() || strcmp(startdate.c_str(), "today") == 0) {
-    if (X509_gmtime_adj(X509_getm_notBefore(x), 0) == NULL)
+    if (X509_gmtime_adj(X509_getm_notBefore(x), 0) == NULL) {
       return 0;
+    }
   } else {
-    if (!ASN1_TIME_set_string_X509(X509_getm_notBefore(x), startdate.c_str()))
+    if (!ASN1_TIME_set_string_X509(X509_getm_notBefore(x), startdate.c_str())) {
       return 0;
+    }
   }
   if (enddate.empty()) {
-    if (X509_time_adj_ex(X509_getm_notAfter(x), days, 0, NULL) == NULL)
+    if (X509_time_adj_ex(X509_getm_notAfter(x), days, 0, NULL) == NULL) {
       return 0;
+    }
   } else if (!ASN1_TIME_set_string_X509(X509_getm_notAfter(x),
                                         enddate.c_str())) {
     return 0;
@@ -1787,7 +1794,11 @@ bool caTool(const args_list_t &args) {
         fprintf(stderr, "writing %s\n", new_cert);
       }
 
-      outfile_bio = bssl::UniquePtr<BIO>(BIO_new_file(outfile.c_str(), "w"));
+      if (outfile.empty()) {
+        outfile_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+      } else {
+        outfile_bio.reset(BIO_new_file(outfile.c_str(), "w"));
+      }
       if (!outfile_bio) {
         goto err;
       }

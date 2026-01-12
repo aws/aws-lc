@@ -19,6 +19,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/conf.h>
+#include "../test/test_util.h"
 
 #include <gtest/gtest.h>
 
@@ -86,10 +87,16 @@ static void ExpectConfEquals(const CONF *conf, const ConfModel &model) {
                                "must_not_appear_in_tests"),
               nullptr);
     if (!model.begin()->second.empty()) {
-      // Invalid section, valid name.
-      EXPECT_EQ(NCONF_get_string(conf, "must_not_appear_in_tests",
-                                 model.begin()->second.front().first.c_str()),
-                nullptr);
+      // Invalid section, matching valid name in default returns value from
+      // default.
+      auto key = model.begin()->second.front().first.c_str();
+      auto default_value = NCONF_get_string(conf, "default", key);
+      auto retrieved = NCONF_get_string(conf, "must_not_appear_in_tests", key);
+      if (default_value) {
+        EXPECT_EQ(Bytes(retrieved), Bytes(default_value));
+      } else {
+        EXPECT_EQ(retrieved, nullptr);
+      }
     }
   }
 
@@ -315,6 +322,20 @@ key7 = value7  # section1
               {"default", {{"key.1", "value"}}},
           },
       },
+
+      // Variable references have been readded.
+      {
+          R"(
+key1 = value1
+key2 = $key1
+)",
+          {
+              {
+                  "default",
+                  {{"key1", "value1"}, {"key2", "value1"}},
+              },
+          },
+      },
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.in);
@@ -338,8 +359,6 @@ key7 = value7  # section1
       // Keys can only contain alphanumeric characters, punctuaion, and escapes.
       "key name = value",
       "\"key\" = value",
-      // Variable references have been removed.
-      "key1 = value1\nkey2 = $key1",
   };
   for (const auto &t : kInvalidTests) {
     SCOPED_TRACE(t);

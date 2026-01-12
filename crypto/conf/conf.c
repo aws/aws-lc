@@ -364,9 +364,9 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
     }
   }
 
-  uint8_t defaultSectionName[] = {0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x00};
+  char defaultSectionName[] = "default";
 
-  template.section = (char *)defaultSectionName;
+  template.section = defaultSectionName;
   template.name = (char *)name;
   value = lh_CONF_VALUE_retrieve(conf->data, &template);
   if (value != NULL) {
