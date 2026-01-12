@@ -172,9 +172,9 @@ static bssl::UniquePtr<CA_DB> LoadIndex(const std::string dbfile,
 
   retdb.reset((CA_DB *)OPENSSL_malloc(sizeof(CA_DB)));
   retdb->db = tmpdb.release();
-  if (db_attr)
+  if (db_attr) {
     retdb->attributes = *db_attr;
-  else {
+  } else {
     retdb->attributes.unique_subject = 1;
   }
 
@@ -208,10 +208,10 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
                          bssl::UniquePtr<ASN1_GENERALIZEDTIME> &pinvtm,
                          std::string str) {
   ossl_char_ptr tmp = ossl_char_ptr(nullptr, OPENSSL_free);
-  char *rtime_str, *reason_str = NULL, *arg_str = NULL, *p;
+  char *rtime_str = NULL, *reason_str = NULL, *arg_str = NULL, *p = NULL;
   int reason_code = -1;
   int ret = 0;
-  unsigned int i;
+  unsigned int i = 0;
   bssl::UniquePtr<ASN1_OBJECT> hold;
   bssl::UniquePtr<ASN1_GENERALIZEDTIME> comp_time;
 
@@ -292,15 +292,17 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
         fprintf(stderr, "invalid compromised time %s\n", arg_str);
         goto end;
       }
-      if (reason_code == 9)
+      if (reason_code == 9) {
         reason_code = OCSP_REVOKED_STATUS_KEYCOMPROMISE;
-      else
+      } else {
         reason_code = OCSP_REVOKED_STATUS_CACOMPROMISE;
+      }
     }
   }
 
-  if (preason)
+  if (preason) {
     *preason = reason_code;
+  }
   if (pinvtm) {
     pinvtm = std::move(comp_time);
   }
@@ -321,7 +323,7 @@ end:
  */
 static int MakeRevoked(X509_REVOKED *rev, std::string str) {
   int reason_code = -1;
-  int i, ret = 0;
+  int i = 0, ret = 0;
   bssl::UniquePtr<ASN1_OBJECT> hold;
   bssl::UniquePtr<ASN1_GENERALIZEDTIME> comp_time;
   bssl::UniquePtr<ASN1_ENUMERATED> rtmp;
@@ -377,7 +379,7 @@ static int CheckTimeFormat(std::string str) {
 }
 
 static uint32_t index_serial_hash(const OPENSSL_STRING *a) {
-  const char *n;
+  const char *n = nullptr;
 
   n = a[DB_serial];
   while (*n == '0') {
@@ -387,7 +389,7 @@ static uint32_t index_serial_hash(const OPENSSL_STRING *a) {
 }
 
 static int index_serial_cmp(const OPENSSL_STRING *a, const OPENSSL_STRING *b) {
-  const char *aa, *bb;
+  const char *aa = nullptr, *bb = nullptr;
 
   for (aa = a[DB_serial]; *aa == '0'; aa++) {
   }
@@ -428,18 +430,18 @@ static int SaveIndex(std::string dbfile, std::string suffix,
                      bssl::UniquePtr<CA_DB> &db) {
   char buf[3][BSIZE];
   bssl::UniquePtr<BIO> out;
-  int j;
+  int j = 0;
 
   j = strlen(dbfile.c_str()) + strlen(suffix.c_str());
   if (j + 6 >= BSIZE) {
     fprintf(stderr, "file name too long\n");
     goto err;
   }
-  j = BIO_snprintf(buf[2], sizeof(buf[2]), "%s.attr", dbfile.c_str());
-  j = BIO_snprintf(buf[1], sizeof(buf[1]), "%s.attr.%s", dbfile.c_str(),
-                   suffix.c_str());
-  j = BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", dbfile.c_str(),
-                   suffix.c_str());
+  (void)BIO_snprintf(buf[2], sizeof(buf[2]), "%s.attr", dbfile.c_str());
+  (void)BIO_snprintf(buf[1], sizeof(buf[1]), "%s.attr.%s", dbfile.c_str(),
+                     suffix.c_str());
+  (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", dbfile.c_str(),
+                     suffix.c_str());
   out.reset(BIO_new_file(buf[0], "w"));
   if (out == NULL) {
     perror(dbfile.c_str());
@@ -468,7 +470,7 @@ err:
 static int RotateIndex(std::string dbfile, std::string new_suffix,
                        std::string old_suffix) {
   char buf[5][BSIZE];
-  int i, j;
+  int i = 0, j = 0;
 
   i = strlen(dbfile.c_str()) + strlen(old_suffix.c_str());
   j = strlen(dbfile.c_str()) + strlen(new_suffix.c_str());
@@ -479,15 +481,15 @@ static int RotateIndex(std::string dbfile, std::string new_suffix,
     fprintf(stderr, "file name too long\n");
     goto err;
   }
-  j = BIO_snprintf(buf[4], sizeof(buf[4]), "%s.attr", dbfile.c_str());
-  j = BIO_snprintf(buf[3], sizeof(buf[3]), "%s.attr.%s", dbfile.c_str(),
-                   old_suffix.c_str());
-  j = BIO_snprintf(buf[2], sizeof(buf[2]), "%s.attr.%s", dbfile.c_str(),
-                   new_suffix.c_str());
-  j = BIO_snprintf(buf[1], sizeof(buf[1]), "%s.%s", dbfile.c_str(),
-                   old_suffix.c_str());
-  j = BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", dbfile.c_str(),
-                   new_suffix.c_str());
+  (void)BIO_snprintf(buf[4], sizeof(buf[4]), "%s.attr", dbfile.c_str());
+  (void)BIO_snprintf(buf[3], sizeof(buf[3]), "%s.attr.%s", dbfile.c_str(),
+                     old_suffix.c_str());
+  (void)BIO_snprintf(buf[2], sizeof(buf[2]), "%s.attr.%s", dbfile.c_str(),
+                     new_suffix.c_str());
+  (void)BIO_snprintf(buf[1], sizeof(buf[1]), "%s.%s", dbfile.c_str(),
+                     old_suffix.c_str());
+  (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", dbfile.c_str(),
+                     new_suffix.c_str());
   if (rename(dbfile.c_str(), buf[1]) < 0 && errno != ENOENT &&
       errno != ENOTDIR) {
     fprintf(stderr, "unable to rename %s to %s\n", dbfile.c_str(), buf[1]);
@@ -665,9 +667,9 @@ static int SetCertTimes(X509 *x, std::string startdate, std::string enddate,
 
 static int CopyExtensions(X509 *x, X509_REQ *req, EXT_COPY_TYPE copy_type) {
   STACK_OF(X509_EXTENSION) *exts = NULL;
-  X509_EXTENSION *ext, *tmpext;
-  ASN1_OBJECT *obj;
-  int idx, ret = 0;
+  X509_EXTENSION *ext = nullptr, *tmpext = nullptr;
+  ASN1_OBJECT *obj = nullptr;
+  int idx = 0, ret = 0;
   if (!x || !req || (copy_type == EXT_COPY_NONE)) {
     return 1;
   }
@@ -733,9 +735,9 @@ static void WriteNewCertificate(bssl::UniquePtr<BIO> &bp, X509 *x,
 
 static int old_entry_print(bssl::UniquePtr<BIO> &bio_err,
                            const ASN1_OBJECT *obj, const ASN1_STRING *str) {
-  char buf[25], *pbuf;
-  const char *p;
-  int j;
+  char buf[25], *pbuf = nullptr;
+  const char *p = nullptr;
+  int j = 0;
 
   j = i2a_ASN1_OBJECT(bio_err.get(), obj);
   pbuf = buf;
@@ -786,19 +788,20 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
                   int selfsign, int preserve) {
   X509_NAME *name = nullptr;
   bssl::UniquePtr<X509_NAME> CAname, subject;
-  const ASN1_TIME *tm;
-  ASN1_STRING *str, *str2;
-  ASN1_OBJECT *obj;
+  const ASN1_TIME *tm = nullptr;
+  ASN1_STRING *str = nullptr, *str2 = nullptr;
+  ASN1_OBJECT *obj = nullptr;
   bssl::UniquePtr<X509> ret;
-  X509_NAME_ENTRY *ne, *tne;
-  EVP_PKEY *pktmp;
-  int ok = -1, i, j, last, nid;
-  const char *p;
-  CONF_VALUE *cv;
+  X509_NAME_ENTRY *ne = nullptr, *tne = nullptr;
+  EVP_PKEY *pktmp = nullptr;
+  int ok = -1, i = 0, j = 0, last = 0, nid = 0;
+  const char *p = nullptr;
+  CONF_VALUE *cv = nullptr;
   OPENSSL_STRING row[DB_NUMBER];
   ossl_string_ptr irow(nullptr, OPENSSL_free);
   OPENSSL_STRING *rrow = NULL;
   bssl::UniquePtr<X509_NAME> dn_subject;
+  X509_NAME_ENTRY *tmpne = nullptr;
 
   for (i = 0; i < DB_NUMBER; i++) {
     row[i] = nullptr;
@@ -888,8 +891,12 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
       last = j;
 
       /* depending on the 'policy', decide what to do. */
-      if (strcmp(cv->value, "optional") == 0 && tne != nullptr) {
-        push = tne;
+      if (strcmp(cv->value, "optional") == 0) {
+        if (tne != nullptr) {
+          push = tne;
+        }
+        // If tne is nullptr for optional fields, just don't add anything -
+        // that's fine
       } else if (strcmp(cv->value, "supplied") == 0) {
         if (tne == NULL) {
           BIO_printf(bio_err.get(),
@@ -900,15 +907,13 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
           push = tne;
         }
       } else if (strcmp(cv->value, "match") == 0) {
-        int last2;
+        int last2 = -1;
 
         if (tne == NULL) {
           BIO_printf(bio_err.get(), "The mandatory %s field was missing\n",
                      cv->name);
           goto end;
         }
-
-        last2 = -1;
 
       again2:
         j = X509_NAME_get_index_by_OBJ(CAname.get(), obj, last2);
@@ -924,8 +929,9 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
           str = X509_NAME_ENTRY_get_data(tne);
           str2 = X509_NAME_ENTRY_get_data(push);
           last2 = j;
-          if (ASN1_STRING_cmp(str, str2) != 0)
+          if (ASN1_STRING_cmp(str, str2) != 0) {
             goto again2;
+          }
         }
         if (j < 0) {
           BIO_printf(bio_err.get(),
@@ -1053,9 +1059,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
         "The subject name appears to be ok, checking data base for clashes\n");
   }
 
-
   /* Build the correct Subject if no e-mail is wanted in the subject. */
-  X509_NAME_ENTRY *tmpne;
 
   /*
    * Its best to dup the subject DN and then delete any email addresses
@@ -1253,7 +1257,7 @@ static int Certify(X509 **ret, std::string infile,
   bssl::UniquePtr<X509_REQ> req;
   bssl::UniquePtr<BIO> in;
   EVP_PKEY *pktmp = NULL;
-  int ok = -1, i;
+  int ok = -1, i = 0;
   bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_NOCLOSE));
   if (!bio_err) {
     goto end;
@@ -1331,8 +1335,8 @@ static int SaveSerial(std::string serialfile, std::string suffix,
   if (suffix.empty()) {
     OPENSSL_strlcpy(buf[0], serialfile.c_str(), BSIZE);
   } else {
-    j = BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
-                     suffix.c_str());
+    (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
+                       suffix.c_str());
   }
   out.reset(BIO_new_file(buf[0], "w"));
   if (!out) {
@@ -1353,20 +1357,21 @@ err:
 static int RotateSerial(std::string serialfile, std::string new_suffix,
                         std::string old_suffix) {
   char buf[2][BSIZE];
-  int i, j;
+  int i = 0, j = 0;
 
   i = strlen(serialfile.c_str()) + strlen(old_suffix.c_str());
   j = strlen(serialfile.c_str()) + strlen(new_suffix.c_str());
-  if (i > j)
+  if (i > j) {
     j = i;
+  }
   if (j + 1 >= BSIZE) {
     fprintf(stderr, "file name too long\n");
     goto err;
   }
-  j = BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
-                   new_suffix.c_str());
-  j = BIO_snprintf(buf[1], sizeof(buf[1]), "%s.%s", serialfile.c_str(),
-                   old_suffix.c_str());
+  (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
+                     new_suffix.c_str());
+  (void)BIO_snprintf(buf[1], sizeof(buf[1]), "%s.%s", serialfile.c_str(),
+                     old_suffix.c_str());
   if (rename(serialfile.c_str(), buf[1]) < 0 && errno != ENOENT &&
       errno != ENOTDIR) {
     fprintf(stderr, "unable to rename %s to %s\n", serialfile.c_str(), buf[1]);
@@ -1396,11 +1401,11 @@ bool caTool(const args_list_t &args) {
 
   std::string in_path, outfile, config_path, start_date, end_date, outdir,
       dbfile;
-  bool help = false, self_sign = true, notext = false, batch = true,
+  bool help = false, self_sign = false, notext = false, batch = true,
        preserveDN = false, rand_serial = false;
   std::string ca_section, policy, keyfile, serialfile, extensions;
   EXT_COPY_TYPE copy_extensions = EXT_COPY_NONE;
-  DB_ATTR dbattr = {};
+  DB_ATTR dbattr = {0};
   bssl::UniquePtr<CA_DB> db(nullptr);
   const EVP_MD *md = nullptr;
   DEF_DGST_USAGE md_usage = DEF_DGST_UNKNOWN;
@@ -1425,7 +1430,7 @@ bool caTool(const args_list_t &args) {
   GetString(&start_date, "-startdate", "", parsed_args);
   GetString(&end_date, "-enddate", "", parsed_args);
   GetBoolArgument(&notext, "-notext", parsed_args);
-  // GetBoolArgument(&self_sign, "-selfsign", parsed_args);
+  GetBoolArgument(&self_sign, "-selfsign", parsed_args);
   // GetBoolArgument(&batch, "-batch", parsed_args);
   (void)self_sign;
   (void)batch;
@@ -1574,19 +1579,15 @@ bool caTool(const args_list_t &args) {
   // Assumption: Not supporting -extfile or -extensions flags only supporting
   // conf file configuration.
 
-  // TODO: OpenSSL CLI internally sets batch=1 if req is set, which is the
-  // only case we support. So probably can no-op the -batch flag given our
-  // assumptions so far.
-
   // Figure out the signing digest to use
   md_usage = EVP_PKEY_get_default_digest_nid(pkey, &md);
   {
     auto value = GetSectionValue(ca_conf, ca_section, CA_DFLT_MD_OPT);
     if (value) {
-      if (strcasecmp(value->c_str(), "default") != 0 &&
-          md_usage == DEF_DGST_REQUIRED) {
-        goto err;
-      } else {
+      if (strcasecmp(value->c_str(), "default") != 0) {
+        if (md_usage == DEF_DGST_REQUIRED) {
+          goto err;
+        }
         md = EVP_get_digestbyname(value->c_str());
         if (!md) {
           goto err;
@@ -1623,7 +1624,7 @@ bool caTool(const args_list_t &args) {
 
   {
     auto value = GetSectionValue(ca_conf, ca_section, CA_X509_EXT_OPT);
-    if (!value) {
+    if (value) {
       /* Check syntax of file */
       X509V3_CTX ctx;
       X509V3_set_ctx_test(&ctx);
@@ -1633,8 +1634,8 @@ bool caTool(const args_list_t &args) {
                 extensions.c_str());
         goto err;
       }
+      extensions = std::move(*value);
     }
-    extensions = std::move(*value);
   }
 
   if (start_date.empty()) {
@@ -1671,9 +1672,11 @@ bool caTool(const args_list_t &args) {
     goto err;
   }
 
-  if (rand_serial && !RandSerial(serial, nullptr)) {
-    fprintf(stderr, "error generating serial number\n");
-    goto err;
+  if (rand_serial) {
+    if (!RandSerial(serial, nullptr)) {
+      fprintf(stderr, "error generating serial number\n");
+      goto err;
+    }
   } else {
     serial = LoadSerial(serialfile, NULL, 0);
     if (!serial) {
