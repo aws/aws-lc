@@ -186,7 +186,7 @@ err:
 }
 
 static int str_copy(CONF *conf, char *section, char **pto, char *from) {
-  int q, to = 0, len = 0, r = 0;
+  int q = 0, to = 0, len = 0, r = 0;
   char *rrp = NULL, *s = NULL, *cp = NULL, *e = NULL, *rp = NULL, *np = NULL;
   const char *p = NULL;
   char rr = 0;
@@ -237,20 +237,22 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
     } else if (IS_EOF(conf, *from)) {
       break;
     } else if (*from == '$') {
-      size_t newsize;
+      size_t newsize = 0;
 
       // try to expand it
       rrp = NULL;
       s = &(from[1]);
-      if (*s == '{')
+      if (*s == '{') {
         q = '}';
-      else if (*s == '(')
+      } else if (*s == '(') {
         q = ')';
-      else
+      } else {
         q = 0;
+      }
 
-      if (q)
+      if (q) {
         s++;
+      }
       cp = section;
       e = np = s;
       while (IS_ALPHA_NUMERIC(conf, *e)) {

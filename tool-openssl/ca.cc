@@ -973,7 +973,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
         "Everything appears to be ok, creating and signing the certificate\n");
   }
 
-  ret = bssl::UniquePtr<X509>(X509_new());
+  ret.reset(X509_new());
   if (!ret) {
     goto end;
   }
@@ -1238,7 +1238,7 @@ end:
   }
 
   if (ok <= 0) {
-    ret.release();
+    ret.reset();
   } else {
     *xret = ret.release();
   }
@@ -1410,7 +1410,7 @@ bool caTool(const args_list_t &args) {
   const EVP_MD *md = nullptr;
   DEF_DGST_USAGE md_usage = DEF_DGST_UNKNOWN;
   bssl::UniquePtr<BIGNUM> serial;
-  const STACK_OF(CONF_VALUE) *attribs = sk_CONF_VALUE_new_null();
+  const STACK_OF(CONF_VALUE) *attribs = nullptr;
   auto cert_sk = sk_X509_new_null();
   int total = 0, total_done = 0;
   long days = 0;
@@ -1706,8 +1706,9 @@ bool caTool(const args_list_t &args) {
     out_owner.reset(out);
     total_done++;
     fprintf(stderr, "\n");
-    if (!BN_add_word(serial.get(), 1))
+    if (!BN_add_word(serial.get(), 1)) {
       goto err;
+    }
     if (!sk_X509_push(cert_sk, out_owner.get())) {
       fprintf(stderr, "Memory allocation failure\n");
       goto err;
@@ -1755,8 +1756,8 @@ bool caTool(const args_list_t &args) {
     }
   }
 
-  outdirlen = OPENSSL_strlcpy(new_cert, outdir.c_str(), sizeof(new_cert));
-  outdirlen = OPENSSL_strlcat(new_cert, "/", sizeof(new_cert));
+  (void)OPENSSL_strlcpy(new_cert, outdir.c_str(), sizeof(new_cert));
+  (void)OPENSSL_strlcat(new_cert, "/", sizeof(new_cert));
 
   if (verbose) {
     fprintf(stderr, "writing new certificates\n");
@@ -1838,5 +1839,6 @@ err:
   if (!ret) {
     ERR_print_errors_fp(stderr);
   }
+  sk_X509_pop_free(cert_sk, X509_free);
   return ret;
 }

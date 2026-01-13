@@ -25,14 +25,14 @@
 TXT_DB *TXT_DB_read(BIO *in, int num) {
   TXT_DB *ret = NULL;
   int esc = 0;
-  int i, add, n;
+  int i = 0, add = 0, n = 0;
   int size = BUFSIZE;
   int offset = 0;
-  char *p, *f;
-  OPENSSL_STRING *pp;
-  BUF_MEM *buf = BUF_MEM_new();
+  char *p = nullptr, *f = nullptr;
+  OPENSSL_STRING *pp = nullptr;
+  bssl::UniquePtr<BUF_MEM> buf(BUF_MEM_new());
 
-  if (buf == NULL || !BUF_MEM_grow(buf, size)) {
+  if (!buf || !BUF_MEM_grow(buf.get(), size)) {
     goto err;
   }
 
@@ -61,7 +61,7 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
   for (;;) {
     if (offset != 0) {
       size += BUFSIZE;
-      if (!BUF_MEM_grow_clean(buf, size)) {
+      if (!BUF_MEM_grow_clean(buf.get(), size)) {
         goto err;
       }
     }
@@ -88,7 +88,6 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
     p += add;
     n = 0;
     pp[n++] = p;
-    i = 0;
     f = buf->data;
 
     esc = 0;
@@ -124,10 +123,8 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
       goto err;
     }
   }
-  BUF_MEM_free(buf);
   return ret;
 err:
-  BUF_MEM_free(buf);
   if (ret != NULL) {
     sk_OPENSSL_PSTRING_free(ret->data);
     OPENSSL_free(ret->index);
@@ -139,8 +136,8 @@ err:
 
 OPENSSL_STRING *TXT_DB_get_by_index(TXT_DB *db, int idx,
                                     OPENSSL_STRING *value) {
-  OPENSSL_STRING *ret;
-  LHASH_OF(OPENSSL_STRING) *lh;
+  OPENSSL_STRING *ret = nullptr;
+  LHASH_OF(OPENSSL_STRING) *lh = nullptr;
 
   if (idx >= db->num_fields) {
     db->error = DB_ERROR_INDEX_OUT_OF_RANGE;
@@ -159,9 +156,9 @@ OPENSSL_STRING *TXT_DB_get_by_index(TXT_DB *db, int idx,
 int TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
                         lhash_OPENSSL_STRING_hash_func hash,
                         lhash_OPENSSL_STRING_cmp_func cmp) {
-  LHASH_OF(OPENSSL_STRING) *idx;
-  OPENSSL_STRING *r, *k;
-  int i, n;
+  LHASH_OF(OPENSSL_STRING) *idx = nullptr;
+  OPENSSL_STRING *r = nullptr, *k = nullptr;
+  int i = 0, n = 0;
 
   if (field >= db->num_fields) {
     db->error = DB_ERROR_INDEX_OUT_OF_RANGE;
@@ -197,12 +194,12 @@ int TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
 }
 
 long TXT_DB_write(BIO *out, TXT_DB *db) {
-  long n, nn, l, tot = 0;
-  char *p, **pp, *f;
-  BUF_MEM *buf = NULL;
+  long n = 0, nn = 0, l = 0, tot = 0;
+  char *p = nullptr, **pp = nullptr, *f = nullptr;
+  bssl::UniquePtr<BUF_MEM> buf(BUF_MEM_new());
   long ret = -1;
 
-  if ((buf = BUF_MEM_new()) == NULL) {
+  if (!buf) {
     goto err;
   }
   n = sk_OPENSSL_PSTRING_num(db->data);
@@ -210,14 +207,14 @@ long TXT_DB_write(BIO *out, TXT_DB *db) {
   for (long i = 0; i < n; i++) {
     pp = sk_OPENSSL_PSTRING_value(db->data, i);
 
-    long j;
+    long j = 0;
     l = 0;
     for (j = 0; j < nn; j++) {
       if (pp[j] != NULL) {
         l += strlen(pp[j]);
       }
     }
-    if (!BUF_MEM_grow_clean(buf, (int)(l * 2 + nn))) {
+    if (!BUF_MEM_grow_clean(buf.get(), (int)(l * 2 + nn))) {
       goto err;
     }
 
@@ -246,18 +243,18 @@ long TXT_DB_write(BIO *out, TXT_DB *db) {
   }
   ret = tot;
 err:
-  BUF_MEM_free(buf);
   return ret;
 }
 
 int TXT_DB_insert(TXT_DB *db, OPENSSL_STRING *row) {
-  int i;
-  OPENSSL_STRING *r;
+  OPENSSL_STRING *r = nullptr;
+  int i = 0;
 
   for (i = 0; i < db->num_fields; i++) {
     if (db->index[i] != NULL) {
-      if ((db->qual[i] != NULL) && (db->qual[i](row) == 0))
+      if ((db->qual[i] != NULL) && (db->qual[i](row) == 0)) {
         continue;
+      }
       r = lh_OPENSSL_STRING_retrieve(db->index[i], row);
       if (r != NULL) {
         db->error = DB_ERROR_INDEX_CLASH;
@@ -274,7 +271,7 @@ int TXT_DB_insert(TXT_DB *db, OPENSSL_STRING *row) {
       if ((db->qual[i] != NULL) && (db->qual[i](row) == 0)) {
         continue;
       }
-      OPENSSL_STRING *old_data;
+      OPENSSL_STRING *old_data = nullptr;
       lh_OPENSSL_STRING_insert(db->index[i], &old_data, row);
       if (lh_OPENSSL_STRING_retrieve(db->index[i], row) == NULL) {
         goto err1;
@@ -301,8 +298,8 @@ err:
 }
 
 void TXT_DB_free(TXT_DB *db) {
-  int i, n;
-  char **p, *max;
+  int i = 0, n = 0;
+  char **p = nullptr, *max = nullptr;
 
   if (db == NULL) {
     return;
