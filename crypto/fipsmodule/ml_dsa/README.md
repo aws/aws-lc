@@ -95,7 +95,7 @@ assumptions and guarantees upheld by the code.
 
 ## Testing
 
-We KAT ML-DSA with test vectors obtained from https://github.com/post-quantum-cryptography/KAT within `PQDSAParameterTest.KAT`. We select the KATs for the signing mode `hedged`, which derives the signing private random seed (rho) pseudorandomly from the signer's private key, the message to be signed, and a 256-bit string `rnd` which is generated at random. The `pure` variant of these KATs were used, as they provide test vector inputs for "pure" i.e., non-pre-hashed messages. The KAT files have been modified to insert linebreaks between each test vector set.
+We test ML-DSA with Known Answer Test (KAT) vectors obtained from https://github.com/post-quantum-cryptography/KAT within `PQDSAParameterTest.KAT`. We select the KATs for the signing mode `hedged`, which derives the signing private random seed (rho) pseudorandomly from the signer's private key, the message to be signed, and a 256-bit string `rnd` which is generated at random. The `pure` variant of these KATs were used, as they provide test vector inputs for "pure" i.e., non-pre-hashed messages. The KAT files have been modified to insert linebreaks between each test vector set.
 
 We also run the ACVP test vectors obtained from https://github.com/usnistgov/ACVP-Server within the three functions `PerMLDSATest.ACVPKeyGen`, `PerMLDSATest.ACVPSigGen` and `PerMLDSATest.ACVPSigVer`. These correspond to the tests found at [ML-DSA-keyGen-FIPS204](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-keyGen-FIPS204), [ML-DSA-sigGen-FIPS204](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigGen-FIPS204), and [ML-DSA-sigVer-FIPS204](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204).
 To test ML-DSA pure, non-deterministic mode, we use `tgId = 19, 21, 23` of sigGen and `tgId = 7, 9, 11` of sigVer.
@@ -141,8 +141,6 @@ The following gives an overview of the major changes:
 - FIPS 204 compliance: Introduced optional PCT (FIPS 204, Section 4.4, Pairwise
   Consistency) and zeroization of stack buffers as required by (FIPS 204, 
   Section 3.6.3, Destruction of intermediate values).
-- Introduction of native backend implementations for AVX2. Those are drop-in
-  replacements for the corresponding C functions and dispatched at compile-time.
 - Restructuring of files to separate level-specific from level-generic
   functionality. This is needed to enable a multi-level build of mldsa-native
   where level-generic code is shared between levels.
