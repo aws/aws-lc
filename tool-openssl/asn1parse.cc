@@ -11,11 +11,6 @@ static const argument_t kArguments[] = {
     {"-inform", kOptionalArgument, "Input file format: PEM or DER"},
     {"", kOptionalArgument, ""}};
 
-enum Format {
-  FORMAT_PEM = 1,
-  FORMAT_DER = 2
-};
-
 using ossl_free = decltype(&OPENSSL_free);
 
 using ossl_uint8_ptr = std::unique_ptr<uint8_t, ossl_free>;

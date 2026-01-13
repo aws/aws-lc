@@ -647,6 +647,13 @@ static bool GenerateSerial(X509 *cert) {
     return false;
   }
 
+  /*
+   * Randomly generate a serial number
+   *
+   * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+   * so that the first bit will never be one, so that the DER encoding
+   * rules won't force a leading octet.
+   */
   constexpr int SERIAL_RAND_BITS = 159;
   if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
                BN_RAND_BOTTOM_ANY)) {
@@ -669,7 +676,7 @@ static bool GenerateSerial(X509 *cert) {
 }
 
 static bool LoadPrivateKey(const std::string &key_file_path,
-                           bssl::UniquePtr<std::string> &passin,
+                           Password &passin,
                            bssl::UniquePtr<EVP_PKEY> &pkey) {
   ScopedFILE key_file(fopen(key_file_path.c_str(), "rb"));
 
@@ -678,13 +685,13 @@ static bool LoadPrivateKey(const std::string &key_file_path,
     return false;
   }
 
-  if (!passin->empty() && !pass_util::ExtractPassword(passin)) {
+  if (!passin.empty() && !pass_util::ExtractPassword(passin)) {
     fprintf(stderr, "Error: Failed to extract password\n");
     return false;
   }
 
   pkey.reset(PEM_read_PrivateKey(key_file.get(), nullptr, nullptr,
-                                 const_cast<char *>(passin->c_str())));
+                                 const_cast<char *>(passin.get().c_str())));
 
   if (!pkey) {
     fprintf(stderr, "Error: Failed to read private key from %s\n",
@@ -696,7 +703,7 @@ static bool LoadPrivateKey(const std::string &key_file_path,
 }
 
 static bool WritePrivateKey(std::string &out_path,
-                            bssl::UniquePtr<std::string> &passout,
+                            Password &passout,
                             bssl::UniquePtr<EVP_PKEY> &pkey,
                             const EVP_CIPHER *cipher) {
   bssl::UniquePtr<BIO> out_bio;
@@ -715,15 +722,15 @@ static bool WritePrivateKey(std::string &out_path,
     return false;
   }
 
-  if (!passout->empty() && !pass_util::ExtractPassword(passout)) {
+  if (!passout.empty() && !pass_util::ExtractPassword(passout)) {
     fprintf(stderr, "Error: Failed to extract password\n");
     return false;
   }
 
   if (!PEM_write_bio_PKCS8PrivateKey(
           out_bio.get(), pkey.get(), cipher,
-          passout->empty() ? nullptr : passout->c_str(),
-          passout->empty() ? 0 : passout->length(), nullptr, nullptr)) {
+          passout.empty() ? nullptr : passout.get().c_str(),
+          passout.empty() ? 0 : passout.get().length(), nullptr, nullptr)) {
     fprintf(stderr, "Error: Failed to write private key.\n");
     return false;
   }
@@ -745,8 +752,7 @@ bool reqTool(const args_list_t &args) {
 
   std::string newkey, subj, config_path, key_file_path, keyout, out_path,
       outform, ext_section, digest_name;
-  bssl::UniquePtr<std::string> passin(new std::string()),
-      passout(new std::string());
+  Password passin, passout;
   unsigned int days;
   bool help = false, new_flag = false, x509_flag = false, nodes = false;
 
@@ -759,8 +765,8 @@ bool reqTool(const args_list_t &args) {
   GetString(&subj, "-subj", "", parsed_args);
   GetString(&config_path, "-config", "", parsed_args);
   GetString(&key_file_path, "-key", "", parsed_args);
-  GetString(passin.get(), "-passin", "", parsed_args);
-  GetString(passout.get(), "-passout", "", parsed_args);
+  GetString(&passin.get(), "-passin", "", parsed_args);
+  GetString(&passout.get(), "-passout", "", parsed_args);
   GetString(&keyout, "-keyout", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
@@ -912,7 +918,7 @@ bool reqTool(const args_list_t &args) {
   // 2. If no -config, output key to privkey.pem (this imitates how OpenSSL
   // would default to the default openssl.conf file, which has default_keyfile
   // set to privkey.pem)
-  if (keyout.empty()) {
+  if (keyout.empty() && key_file_path.empty()) {
     if (req_conf) {
       const char *default_keyfile = NCONF_get_string(
           req_conf.get(), req_section.c_str(), DEFAULT_KEYFILE);
