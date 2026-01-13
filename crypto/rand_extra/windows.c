@@ -27,7 +27,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 
 // ProcessPrng` (from `bcryptprimitives.dll`) is only available on Windows 8+.
-#if defined(_WIN32_WINNT) && _WIN32_WINNT <= _WIN32_WINNT_WIN7
+#if !defined(__MINGW32__) && defined(_WIN32_WINNT) && _WIN32_WINNT <= _WIN32_WINNT_WIN7
 #define AWSLC_WINDOWS_7_COMPAT
 #endif
 
