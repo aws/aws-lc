@@ -6,30 +6,6 @@
 
 #if !defined(__ASSEMBLER__)
 #include "../../internal.h"
-
-// Define inline before mldsa-native headers are included
-// Note: mldsa-native code uses "static MLD_INLINE", so MLD_INLINE should not include static
-#if !defined(MLD_INLINE)
-#if defined(__GNUC__) || defined(__clang__)
-#define MLD_INLINE inline __attribute__((always_inline))
-#elif defined(_MSC_VER)
-#define MLD_INLINE __forceinline
-#else
-#define MLD_INLINE inline
-#endif
-#endif
-
-// Define MLD_ALWAYS_INLINE for type casting functions
-#if !defined(MLD_ALWAYS_INLINE)
-#if defined(__GNUC__) || defined(__clang__)
-#define MLD_ALWAYS_INLINE inline __attribute__((always_inline))
-#elif defined(_MSC_VER)
-#define MLD_ALWAYS_INLINE __forceinline
-#else
-#define MLD_ALWAYS_INLINE inline
-#endif
-#endif
-
 #endif
 
 // Namespacing: All symbols are of the form mldsa*. Level-specific
@@ -60,24 +36,25 @@
 
 // Map the CPU capability function to the ones used by AWS-LC
 #define MLD_CONFIG_CUSTOM_CAPABILITY_FUNC
-#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
+#if !defined(__ASSEMBLER__)
 #include <stdint.h>
-static MLD_INLINE int mld_sys_check_capability(int cap)
+#include "mldsa/sys.h"
+static MLD_INLINE int mld_sys_check_capability(mld_sys_cap cap)
 {
 #if defined(MLD_SYS_X86_64)
-  if (cap == 1) // MLD_SYS_CAP_AVX2
+  if (cap == MLD_SYS_CAP_AVX2)
   {
     return CRYPTO_is_AVX2_capable();
   }
 #endif
-  (void)cap;
   return 0;
 }
 #endif
 
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 #define MLD_CONFIG_KEYGEN_PCT_BREAKAGE_TEST
-#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
+#if !defined(__ASSEMBLER__)
+#include "mldsa/sys.h"
 static MLD_INLINE int mld_break_pct(void) {
   return boringssl_fips_break_test("MLDSA_PWCT");
 }
@@ -92,8 +69,9 @@ static MLD_INLINE int mld_break_pct(void) {
 
 // Map zeroization function to the one used by AWS-LC
 #define MLD_CONFIG_CUSTOM_ZEROIZE
-#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
+#if !defined(__ASSEMBLER__)
 #include <stdint.h>
+#include "mldsa/sys.h"
 #include <openssl/base.h>
 static MLD_INLINE void mld_zeroize_native(void *ptr, size_t len) {
     OPENSSL_cleanse(ptr, len);
@@ -102,8 +80,9 @@ static MLD_INLINE void mld_zeroize_native(void *ptr, size_t len) {
 
 // Map randombytes function to the one used by AWS-LC
 #define MLD_CONFIG_CUSTOM_RANDOMBYTES
-#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
+#if !defined(__ASSEMBLER__)
 #include <stdint.h>
+#include "mldsa/sys.h"
 #include <openssl/rand.h>
 static MLD_INLINE void mld_randombytes(uint8_t *ptr, size_t len) {
     RAND_bytes(ptr, len);
@@ -112,8 +91,9 @@ static MLD_INLINE void mld_randombytes(uint8_t *ptr, size_t len) {
 
 // Map memcpy function to the one used by AWS-LC
 #define MLD_CONFIG_CUSTOM_MEMCPY
-#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
+#if !defined(__ASSEMBLER__)
 #include <stdint.h>
+#include "mldsa/sys.h"
 static MLD_INLINE void *mld_memcpy(void *dest, const void *src, size_t n) {
     return OPENSSL_memcpy(dest, src, n);
 }
@@ -121,8 +101,9 @@ static MLD_INLINE void *mld_memcpy(void *dest, const void *src, size_t n) {
 
 // Map memset function to the one used by AWS-LC
 #define MLD_CONFIG_CUSTOM_MEMSET
-#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
+#if !defined(__ASSEMBLER__)
 #include <stdint.h>
+#include "mldsa/sys.h"
 static MLD_INLINE void *mld_memset(void *s, int c, size_t n) {
     return OPENSSL_memset(s, c, n);
 }
