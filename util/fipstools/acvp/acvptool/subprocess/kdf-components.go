@@ -15,7 +15,6 @@
 package subprocess
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -203,7 +202,7 @@ func HandleTLS(test kdfCompTest, k *kdfComp, m Transactable, method string, grou
 	)
 
 	var outLenBytes [4]byte
-	binary.LittleEndian.PutUint32(outLenBytes[:], uint32(masterSecretLength))
+	NativeEndian.PutUint32(outLenBytes[:], uint32(masterSecretLength))
 	var result [][]byte
 	switch k.algo {
 	case "kdf-components":
@@ -216,7 +215,7 @@ func HandleTLS(test kdfCompTest, k *kdfComp, m Transactable, method string, grou
 	if err != nil {
 		return err
 	}
-	binary.LittleEndian.PutUint32(outLenBytes[:], uint32(group.KeyBlockBits/8))
+	NativeEndian.PutUint32(outLenBytes[:], uint32(group.KeyBlockBits/8))
 	// TLS 1.0, 1.1, and 1.2 use a different order for the client and server
 	// randoms when computing the key block.
 	result2, err := m.Transact(method, 1, outLenBytes[:], result[0], []byte(keyBlockLabel), serverRandom, clientRandom)
