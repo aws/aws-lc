@@ -16,9 +16,9 @@ extern "C" {
 // following property: if queried in an address space and then subsequently
 // queried, after an UBE occurred, a greater value will be observed.
 //
-// This function should be used to protect volatile memory. First cache a UBE
-// generation number associating it to the volatile memory at
-// creation/initialization time. Before using the volatile memory check whether
+// This function should be used to protect unique memory. First cache a UBE
+// generation number associating it to the unique memory at
+// creation/initialization time. Before using the unique memory check whether
 // the generation number has changed. Note, however, that detection methods rely
 // on technology that is unique to a platform. Hence, support for UBE detection
 // also depends on the platform AWS-LC is executed on.
@@ -26,7 +26,7 @@ extern "C" {
 // The parameter |current_generation_number| must be synchronized by the caller.
 //
 // Returns 1 on success and 0 if not supported. 0 means that UBE detection is
-// not supported and any volatile state must randomize before usage.
+// not supported and any unique state must randomize before usage.
 // In case of an error or if UBE detection is unavailable, all subsequent
 // entries will immediately return.
 OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number);
