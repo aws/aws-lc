@@ -68,6 +68,8 @@ apply_patch "noinline-EVP_DigestSignUpdate"
 apply_patch "noinline-EVP_DigestVerifyUpdate"
 apply_patch "noinline-p384_inv_square"
 apply_patch "noinline_ec_GFp_simple_is_at_infinity"
+apply_patch "noinline_aes_hw_encrypt_wrapper"
+apply_patch "noinline_aes_hw_ctr32_encrypt_blocks_wrapper"
 
 # Check the proofs using CMake's Release settings...
 

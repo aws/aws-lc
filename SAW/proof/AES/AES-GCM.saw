@@ -178,7 +178,7 @@ let points_to_gcm128_key_st ptr ctx = do {
   crucible_points_to_untyped (crucible_elem ptr 0) (crucible_term {{ get_Htable ctx.key }});
   crucible_points_to (crucible_elem ptr 1) (crucible_global "gcm_gmult_avx");
   crucible_points_to (crucible_elem ptr 2) (crucible_global "gcm_ghash_avx");
-  crucible_points_to (crucible_elem ptr 3) (crucible_global "aes_hw_encrypt");
+  crucible_points_to (crucible_elem ptr 3) (crucible_global "aes_hw_encrypt_wrapper");
   crucible_points_to (crucible_elem ptr 4) (crucible_term {{ 1 : [8] }});
 };
 
@@ -211,7 +211,7 @@ let points_to_EVP_AES_GCM_CTX ptr ctx mres iv_set taglen = do {
   crucible_points_to (crucible_field ptr "ivlen") (crucible_term {{ `aes_iv_len : [32] }});
   crucible_points_to (crucible_field ptr "taglen") (crucible_term {{ `taglen : [32] }});
   crucible_points_to (crucible_field ptr "iv_gen") (crucible_term {{ 0 : [32] }});
-  crucible_points_to (crucible_field ptr "ctr") (crucible_global "aes_hw_ctr32_encrypt_blocks");
+  crucible_points_to (crucible_field ptr "ctr") (crucible_global "aes_hw_ctr32_encrypt_blocks_wrapper");
 };
 
 

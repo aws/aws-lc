@@ -121,7 +121,7 @@ aes_hw_ctr32_copy_thms <- for (eval_list {{ [ 1:[16] .. < MIN_BULK_BLOCKS ] }}) 
 
 // For each possible number of blocks, prove `aes_hw_ctr32_encrypt_blocks_spec`
 // and use it to refine `aes_hw_ctr32_encrypt_blocks_array_spec`.
-aes_hw_ctr32_encrypt_blocks_concrete_ovs <- for (eval_list {{ [ 1:[16] .. < MIN_BULK_BLOCKS ] }}) (\i -> do {
+aes_hw_ctr32_encrypt_blocks_concrete_asm_ovs <- for (eval_list {{ [ 1:[16] .. < MIN_BULK_BLOCKS ] }}) (\i -> do {
   let blocks = eval_int i;
   print (str_concat "aes_hw_ctr32_encrypt blocks=" (show blocks));
   // track %r11 across function calls during x86 code discovery, resulting in
@@ -144,11 +144,19 @@ aes_hw_ctr32_encrypt_blocks_concrete_ovs <- for (eval_list {{ [ 1:[16] .. < MIN_
 // Now that we've proven `aes_hw_ctr32_encrypt_blocks_array_spec` overrides at
 // all possible block lengths, use the overrides to refine a proof for
 // `aes_hw_ctr32_encrypt_bounded_array_spec`.
-aes_hw_ctr32_encrypt_blocks_bounded_array_ov <- llvm_refine_spec' m "aes_hw_ctr32_encrypt_blocks"
-  aes_hw_ctr32_encrypt_blocks_concrete_ovs
+aes_hw_ctr32_encrypt_blocks_bounded_array_asm_ov <- llvm_refine_spec' m "aes_hw_ctr32_encrypt_blocks"
+  aes_hw_ctr32_encrypt_blocks_concrete_asm_ovs
   aes_hw_ctr32_encrypt_bounded_array_spec
   (do {
     simplify (addsimps aes_hw_ctr32_copy_thms (cryptol_ss ()));
+    w4_unint_z3 ["aes_ctr32_encrypt_blocks_array"];
+  });
+
+aes_hw_ctr32_encrypt_blocks_bounded_array_ov <- llvm_verify m "aes_hw_ctr32_encrypt_blocks_wrapper"
+  [aes_hw_ctr32_encrypt_blocks_bounded_array_asm_ov]
+  true
+  aes_hw_ctr32_encrypt_bounded_array_spec
+  (do {
     w4_unint_z3 ["aes_ctr32_encrypt_blocks_array"];
   });
 

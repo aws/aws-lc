@@ -118,7 +118,8 @@ aes_hw_set_encrypt_key_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_te
     w4_unint_yices ["SubByte'"];
   });
 
-aes_hw_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_encrypt"
+// First verify the actual assembly function
+aes_hw_encrypt_asm_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_encrypt"
   []
   true
   aes_hw_encrypt_spec
@@ -127,7 +128,8 @@ aes_hw_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes
     simplify (addsimps slice_384_thms basic_ss);
     w4_unint_yices ["AESRound", "AESFinalRound"];
   });
-aes_hw_encrypt_in_place_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_encrypt"
+
+aes_hw_encrypt_in_place_asm_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_encrypt"
   []
   true
   aes_hw_encrypt_in_place_spec
@@ -135,6 +137,22 @@ aes_hw_encrypt_in_place_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_t
     simplify (cryptol_ss ());
     simplify (addsimps slice_384_thms basic_ss);
     w4_unint_yices ["AESRound", "AESFinalRound"];
+  });
+
+// Then verify the wrapper using the assembly override
+aes_hw_encrypt_ov <- llvm_verify m  "aes_hw_encrypt_wrapper"
+  [aes_hw_encrypt_asm_ov]
+  true
+  aes_hw_encrypt_spec
+  (do {
+    w4_unint_yices ["aes_hw_encrypt"];
+  });
+aes_hw_encrypt_in_place_ov <- llvm_verify m "aes_hw_encrypt_wrapper"
+  [aes_hw_encrypt_in_place_asm_ov]
+  true
+  aes_hw_encrypt_in_place_spec
+  (do {
+    w4_unint_yices ["aes_hw_encrypt"];
   });
 
 aes_hw_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_decrypt"
@@ -155,4 +173,3 @@ aes_hw_decrypt_in_place_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_t
     simplify (addsimps slice_384_thms basic_ss);
     w4_unint_yices ["AESInvRound", "AESFinalInvRound"];
   });
-
