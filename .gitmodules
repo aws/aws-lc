@@ -1,7 +1,7 @@
 [submodule "src"]
 	path = src
-	branch = import-mldsa-native-again
-	url = https://github.com/jakemas/aws-lc.git
+	branch = main
+	url = https://github.com/aws/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs
 	branch = sha-imperative
