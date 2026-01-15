@@ -3,7 +3,6 @@
 
 #include <openssl/base.h>
 
-#include "../../kyber/kem_kyber.h"
 #include "../delocate.h"
 #include "../ml_kem/ml_kem.h"
 #include "internal.h"
@@ -209,13 +208,6 @@ const KEM *KEM_find_kem_by_nid(int nid) {
       return KEM_ml_kem_768();
     case NID_MLKEM1024:
       return KEM_ml_kem_1024();
-    // Try legacy KEMs.
-    case NID_KYBER512_R3:
-      return get_legacy_kem_kyber512_r3();
-    case NID_KYBER768_R3:
-      return get_legacy_kem_kyber768_r3();
-    case NID_KYBER1024_R3:
-      return get_legacy_kem_kyber1024_r3();
     default:
       return NULL;
   }
