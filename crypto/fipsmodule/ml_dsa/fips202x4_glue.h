@@ -14,17 +14,6 @@
 
 #include "fips202_glue.h"
 
-// Define MLD_INLINE if not already defined
-#if !defined(MLD_INLINE)
-#if defined(__GNUC__) || defined(__clang__)
-#define MLD_INLINE inline __attribute__((always_inline))
-#elif defined(_MSC_VER)
-#define MLD_INLINE __forceinline
-#else
-#define MLD_INLINE inline
-#endif
-#endif
-
 // Use AWS-LC's existing KECCAK1600_CTX_x4 structure for SHAKE128
 #define mld_shake128x4ctx KECCAK1600_CTX_x4
 
