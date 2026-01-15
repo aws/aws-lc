@@ -8,17 +8,6 @@
 
 #include "../sha/internal.h"
 
-// Define MLD_INLINE if not already defined
-#if !defined(MLD_INLINE)
-#if defined(__GNUC__) || defined(__clang__)
-#define MLD_INLINE inline __attribute__((always_inline))
-#elif defined(_MSC_VER)
-#define MLD_INLINE __forceinline
-#else
-#define MLD_INLINE inline
-#endif
-#endif
-
 #define SHAKE128_RATE 168
 #define SHAKE256_RATE 136
 #define SHA3_256_RATE 136
