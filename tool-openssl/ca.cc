@@ -80,6 +80,66 @@ using ossl_string_ptr = std::unique_ptr<OPENSSL_STRING, ossl_free>;
 using ossl_uint8_ptr = std::unique_ptr<uint8_t, ossl_free>;
 using ossl_char_ptr = std::unique_ptr<char, ossl_free>;
 
+#ifdef _WIN32
+
+#define rename(from,to) WIN32_rename((from),(to))
+
+#undef fileno
+#define fileno(a) (int)_fileno(a)
+
+#include <windows.h>
+#include <tchar.h>
+
+static int WIN32_rename(const char *from, const char *to) {
+  TCHAR *tfrom = nullptr, *tto = nullptr;
+  DWORD err = 0;
+  int ret = 0;
+
+  if (sizeof(TCHAR) == 1) {
+    tfrom = (TCHAR *)from;
+    tto = (TCHAR *)to;
+  } else { /* UNICODE path */
+    size_t i, flen = strlen(from) + 1, tlen = strlen(to) + 1;
+    tfrom = (TCHAR*)malloc(sizeof(TCHAR) * (flen + tlen));
+    if (tfrom == NULL) {
+      goto err;
+    }
+    tto = tfrom + flen;
+    for (i = 0; i < flen; i++) {
+      tfrom[i] = (TCHAR)from[i];
+    }
+    for (i = 0; i < tlen; i++) {
+      tto[i] = (TCHAR)to[i];
+    }
+  }
+
+  if (MoveFile(tfrom, tto)) {
+    goto ok;
+  }
+  err = GetLastError();
+  if (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS) {
+    if (DeleteFile(tto) && MoveFile(tfrom, tto)) {
+      goto ok;
+    }
+    err = GetLastError();
+  }
+  if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) {
+    errno = ENOENT;
+  } else if (err == ERROR_ACCESS_DENIED) {
+    errno = EACCES;
+  } else {
+    errno = EINVAL; /* we could map more codes... */
+  }
+err:
+  ret = -1;
+ok:
+  if (tfrom != NULL && tfrom != (TCHAR *)from) {
+    free(tfrom);
+  }
+  return ret;
+}
+#endif
+
 static std::unique_ptr<std::string> GetSectionValue(bssl::UniquePtr<CONF> &conf,
                                                     std::string section,
                                                     std::string key) {
@@ -864,8 +924,8 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
   }
   str = str2 = NULL;
 
-  for (size_t i = 0; i < sk_CONF_VALUE_num(policy); i++) {
-    cv = sk_CONF_VALUE_value(policy, i); /* get the object id */
+  for (size_t policy_i = 0; policy_i < sk_CONF_VALUE_num(policy); policy_i++) {
+    cv = sk_CONF_VALUE_value(policy, policy_i); /* get the object id */
     if ((j = OBJ_txt2nid(cv->name)) == NID_undef) {
       BIO_printf(bio_err.get(),
                  "%s:unknown object type in 'policy' configuration\n",

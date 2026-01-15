@@ -199,6 +199,18 @@ class CATest : public ::testing::Test {
     fprintf(serial_file.get(), "01\n");
   }
 
+  // Helper function to escape backslashes in file paths for configuration files
+  std::string EscapeConfigPath(const char* path) {
+    std::string result(path);
+    // Replace all backslashes with double backslashes
+    size_t pos = 0;
+    while ((pos = result.find('\\', pos)) != std::string::npos) {
+      result.replace(pos, 1, "\\\\");
+      pos += 2; // Skip the newly inserted backslashes
+    }
+    return result;
+  }
+
   void CreateBasicConfig() {
     ScopedFILE config_file(fopen(config_path, "w"));
     ASSERT_TRUE(config_file);
@@ -208,11 +220,11 @@ class CATest : public ::testing::Test {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 x509_extensions = v3_ca
@@ -245,11 +257,11 @@ keyUsage = digitalSignature, keyEncipherment
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 x509_extensions = usr_cert
@@ -511,11 +523,11 @@ TEST_F(CATest, MissingPrivateKey) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
 private_key = nonexistent_key.pem
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 
@@ -576,11 +588,11 @@ TEST_F(CATest, PasswordProtectedKey) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(protected_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(protected_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 days = 365
@@ -620,11 +632,11 @@ TEST_F(CATest, WrongPassword) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(protected_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(protected_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 days = 365
@@ -766,11 +778,11 @@ TEST_F(CATest, PolicyValidation) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_strict
 
@@ -805,11 +817,11 @@ TEST_F(CATest, CopyExtensionsNone) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 copy_extensions = none
@@ -849,11 +861,11 @@ TEST_F(CATest, CopyExtensionsCopy) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 copy_extensions = copy
@@ -927,11 +939,11 @@ TEST_F(CATest, CustomDigestAlgorithm) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha384
 policy = policy_anything
 days = 365
@@ -971,11 +983,11 @@ TEST_F(CATest, RandomSerialNumber) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
 rand_serial = yes
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 days = 365
@@ -1015,11 +1027,11 @@ TEST_F(CATest, MultipleCertificatesSigning) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 days = 365
@@ -1124,11 +1136,11 @@ TEST_F(CATest, PreserveDN) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 preserve = yes
@@ -1169,11 +1181,11 @@ TEST_F(CATest, InvalidDigestAlgorithm) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = invalid_digest
 policy = policy_anything
 
@@ -1204,11 +1216,11 @@ TEST_F(CATest, CopyExtensionsCopyAll) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 copy_extensions = copyall
@@ -1249,11 +1261,11 @@ TEST_F(CATest, InvalidCopyExtensionsValue) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 copy_extensions = invalid_value
@@ -1306,10 +1318,10 @@ default_ca = CA_default
 
 [ CA_default ]
 database = /nonexistent/path/database
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ca_key_path) + R"(
-certificate = )" + std::string(ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 
@@ -1417,11 +1429,11 @@ TEST_F(CATest, PolicyMatchRequirement) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(match_ca_key_path) + R"(
-certificate = )" + std::string(match_ca_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(match_ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(match_ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_match
 days = 365
@@ -1490,11 +1502,11 @@ TEST_F(CATest, ED25519BasicCertificateSigning) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ed25519_key_path) + R"(
-certificate = )" + std::string(ed25519_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ed25519_key_path) + R"(
+certificate = )" + EscapeConfigPath(ed25519_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 policy = policy_anything
 days = 365
 
@@ -1539,11 +1551,11 @@ TEST_F(CATest, ED25519WithDefaultDigest) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ed25519_key_path) + R"(
-certificate = )" + std::string(ed25519_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ed25519_key_path) + R"(
+certificate = )" + EscapeConfigPath(ed25519_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = default
 policy = policy_anything
 days = 365
@@ -1583,11 +1595,11 @@ TEST_F(CATest, ED25519WithExplicitDigestFails) {
 default_ca = CA_default
 
 [ CA_default ]
-database = )" + std::string(db_path) + R"(
-serial = )" + std::string(serial_path) + R"(
-private_key = )" + std::string(ed25519_key_path) + R"(
-certificate = )" + std::string(ed25519_cert_path) + R"(
-new_certs_dir = )" + std::string(new_certs_dir) + R"(
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ed25519_key_path) + R"(
+certificate = )" + EscapeConfigPath(ed25519_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
 default_md = sha256
 policy = policy_anything
 days = 365

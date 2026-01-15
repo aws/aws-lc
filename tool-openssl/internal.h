@@ -14,6 +14,19 @@
 #define O_BINARY 0
 #endif
 
+// Windows compatibility layer
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#define strcasecmp _stricmp
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+#else
+#include <unistd.h>
+#include <limits.h>
+#endif
+
 // Format enum for PEM and DER output/input formats
 enum Format {
   FORMAT_PEM = 1,
