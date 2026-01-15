@@ -104,7 +104,7 @@ static void free_it(EVP_PKEY *pkey) {
   }
   pkey->pkey.ptr = NULL;
   pkey->type = EVP_PKEY_NONE;
-  pkey->ameth = nullptr;
+  pkey->ameth = NULL;
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
