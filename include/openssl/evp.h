@@ -80,7 +80,7 @@ extern "C" {
 // EVP abstracts over public/private key algorithms.
 
 
-// Public key objects.
+// Public/private key objects.
 //
 // An |EVP_PKEY| object represents a public or private key. A given object may
 // be used concurrently on multiple threads by non-mutating functions, provided
@@ -166,9 +166,9 @@ OPENSSL_EXPORT int EVP_read_pw_string_min(char *buf, int min_length, int length,
                                           const char *prompt, int verify);
 
 
-// Getting and setting concrete public key types.
+// Getting and setting concrete key types.
 //
-// The following functions get and set the underlying public key in an
+// The following functions get and set the underlying key representation in an
 // |EVP_PKEY| object. The |set1| functions take an additional reference to the
 // underlying key and return one on success or zero if |key| is NULL. The
 // |assign| functions adopt the caller's reference and return one on success or
