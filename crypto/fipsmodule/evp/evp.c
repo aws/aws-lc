@@ -101,9 +101,10 @@ EVP_PKEY *EVP_PKEY_new(void) {
 static void free_it(EVP_PKEY *pkey) {
   if (pkey->ameth && pkey->ameth->pkey_free) {
     pkey->ameth->pkey_free(pkey);
-    pkey->pkey.ptr = NULL;
-    pkey->type = EVP_PKEY_NONE;
   }
+  pkey->pkey.ptr = NULL;
+  pkey->type = EVP_PKEY_NONE;
+  pkey->ameth = nullptr;
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
