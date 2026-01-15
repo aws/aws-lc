@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"unsafe"
 )
 
 // Transactable provides an interface to allow test injection of transactions
@@ -48,6 +49,19 @@ type Subprocess struct {
 	pendingReads chan pendingRead
 	// readerFinished is a channel that is closed if `readerRoutine` has finished (e.g. because of a read error).
 	readerFinished chan struct{}
+}
+
+// TODO: Migrate to directly use binary.NativeEndian when we can upgrade to go1.21+.
+// represents the platform's Endian type.
+var	NativeEndian binary.ByteOrder
+
+func init() {
+	var i uint16 = 0x0001
+    if *(*byte)(unsafe.Pointer(&i)) == 0x01 {
+        NativeEndian = binary.LittleEndian
+    } else {
+        NativeEndian = binary.BigEndian
+    }
 }
 
 // pendingRead represents an expected response from the modulewrapper.
@@ -169,8 +183,8 @@ func (m *Subprocess) flush() error {
 
 	const cmd = "flush"
 	buf := make([]byte, 8, 8+len(cmd))
-	binary.LittleEndian.PutUint32(buf, 1)
-	binary.LittleEndian.PutUint32(buf[4:], uint32(len(cmd)))
+	NativeEndian.PutUint32(buf, 1)
+	NativeEndian.PutUint32(buf[4:], uint32(len(cmd)))
 	buf = append(buf, []byte(cmd)...)
 
 	if _, err := m.stdin.Write(buf); err != nil {
@@ -216,10 +230,10 @@ func (m *Subprocess) TransactAsync(cmd string, expectedNumResults int, args [][]
 	}
 
 	buf := make([]byte, 4*(2+len(args)), 4*(2+len(args))+argLength)
-	binary.LittleEndian.PutUint32(buf, uint32(1+len(args)))
-	binary.LittleEndian.PutUint32(buf[4:], uint32(len(cmd)))
+	NativeEndian.PutUint32(buf, uint32(1+len(args)))
+	NativeEndian.PutUint32(buf[4:], uint32(len(cmd)))
 	for i, arg := range args {
-		binary.LittleEndian.PutUint32(buf[4*(i+2):], uint32(len(arg)))
+		NativeEndian.PutUint32(buf[4*(i+2):], uint32(len(arg)))
 	}
 	buf = append(buf, []byte(cmd)...)
 	for _, arg := range args {
@@ -306,7 +320,7 @@ func (m *Subprocess) readResult(cmd string, expectedNumResults int) ([][]byte, e
 		return nil, err
 	}
 
-	numResults := binary.LittleEndian.Uint32(buf)
+	numResults := NativeEndian.Uint32(buf)
 	if int(numResults) != expectedNumResults {
 		return nil, fmt.Errorf("expected %d results from %q but got %d", expectedNumResults, cmd, numResults)
 	}
@@ -318,7 +332,7 @@ func (m *Subprocess) readResult(cmd string, expectedNumResults int) ([][]byte, e
 
 	var resultsLength uint64
 	for i := uint32(0); i < numResults; i++ {
-		resultsLength += uint64(binary.LittleEndian.Uint32(buf[4*i:]))
+		resultsLength += uint64(NativeEndian.Uint32(buf[4*i:]))
 	}
 
 	if resultsLength > (1 << 30) {
@@ -333,7 +347,7 @@ func (m *Subprocess) readResult(cmd string, expectedNumResults int) ([][]byte, e
 	ret := make([][]byte, 0, numResults)
 	var offset int
 	for i := uint32(0); i < numResults; i++ {
-		length := binary.LittleEndian.Uint32(buf[4*i:])
+		length := NativeEndian.Uint32(buf[4*i:])
 		ret = append(ret, results[offset:offset+int(length)])
 		offset += int(length)
 	}
@@ -391,6 +405,6 @@ type primitive interface {
 
 func uint32le(n uint32) []byte {
 	var ret [4]byte
-	binary.LittleEndian.PutUint32(ret[:], n)
+	NativeEndian.PutUint32(ret[:], n)
 	return ret[:]
 }
