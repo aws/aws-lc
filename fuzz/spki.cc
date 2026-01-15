@@ -20,22 +20,21 @@
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   CBS cbs;
   CBS_init(&cbs, buf, len);
-  EVP_PKEY *pkey = EVP_parse_public_key(&cbs);
-  if (pkey == NULL) {
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_parse_public_key(&cbs));
+  if (pkey == nullptr) {
     ERR_clear_error();
     return 0;
   }
 
-  uint8_t *der;
-  size_t der_len;
-  CBB cbb;
-  if (CBB_init(&cbb, 0) &&
-      EVP_marshal_public_key(&cbb, pkey) &&
-      CBB_finish(&cbb, &der, &der_len)) {
-    OPENSSL_free(der);
-  }
-  CBB_cleanup(&cbb);
-  EVP_PKEY_free(pkey);
+  // Every parsed public key should be serializable.
+  bssl::ScopedCBB cbb;
+  BSSL_CHECK(CBB_init(cbb.get(), 0));
+  BSSL_CHECK(EVP_marshal_public_key(cbb.get(), pkey.get()));
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  EVP_PKEY_print_params(bio.get(), pkey.get(), 0, nullptr);
+  EVP_PKEY_print_public(bio.get(), pkey.get(), 0, nullptr);
+
   ERR_clear_error();
   return 0;
 }
