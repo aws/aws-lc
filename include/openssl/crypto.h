@@ -121,24 +121,6 @@ OPENSSL_EXPORT int FIPS_mode(void);
 // for AWS-LC. Otherwise, returns 0;
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
-// fips_counter_t denotes specific APIs/algorithms. A counter is maintained for
-// each in FIPS mode so that tests can be written to assert that the expected,
-// FIPS functions are being called by a certain peice of code.
-enum fips_counter_t {
-  fips_counter_evp_aes_128_gcm = 0,
-  fips_counter_evp_aes_256_gcm = 1,
-  fips_counter_evp_aes_128_ctr = 2,
-  fips_counter_evp_aes_256_ctr = 3,
-
-  fips_counter_max = 3
-};
-
-// FIPS_read_counter returns a counter of the number of times the specific
-// function denoted by |counter| has been used. This always returns zero unless
-// BoringSSL was built with BORINGSSL_FIPS_COUNTERS defined.
-OPENSSL_EXPORT size_t FIPS_read_counter(enum fips_counter_t counter);
-
-
 // Deprecated functions.
 
 // OPENSSL_VERSION_TEXT contains a string the identifies the version of
@@ -230,25 +212,6 @@ OPENSSL_EXPORT int FIPS_mode_set(int on);
 OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
 
 #define CRYPTO_MEM_CHECK_ON 0
-
-#if defined(BORINGSSL_FIPS_140_3)
-
-// FIPS_module_name returns the name of the FIPS module.
-OPENSSL_EXPORT const char *FIPS_module_name(void);
-
-// FIPS_version returns the version of the FIPS module, or zero if the build
-// isn't exactly at a verified version. The version, expressed in base 10, will
-// be a date in the form yyyymmddXX where XX is often "00", but can be
-// incremented if multiple versions are defined on a single day.
-//
-// (This format exceeds a |uint32_t| in the year 4294.)
-OPENSSL_EXPORT uint32_t FIPS_version(void);
-
-// FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
-// the current BoringSSL and zero otherwise.
-OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
-#endif //BORINGSSL_FIPS_140_3
-
 
 #if defined(__cplusplus)
 }  // extern C
