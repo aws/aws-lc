@@ -206,9 +206,6 @@ are met:
    written permission.
 
 
-The code in crypto/kyber/pqcrystals-kyber_kyber512_ref and
-crypto/ml_kem/ml_kem_ipd_ref_common carries the Public Domain license:
-
 Public Domain (https://creativecommons.org/share-your-work/public-domain/cc0/)
 
 For Keccak and AES we are using public-domain
