@@ -73,19 +73,22 @@ static MLD_INLINE int mld_break_pct(void) {
 #include <stdint.h>
 #include "mldsa/sys.h"
 #include <openssl/base.h>
-static MLD_INLINE void mld_zeroize_native(void *ptr, size_t len) {
+static MLD_INLINE void mld_zeroize(void *ptr, size_t len) {
     OPENSSL_cleanse(ptr, len);
 }
 #endif // !__ASSEMBLER__
 
 // Map randombytes function to the one used by AWS-LC
+// Note: mldsa-native expects int return (0 on success, non-zero on failure)
+// unlike mlkem-native which expects void return
 #define MLD_CONFIG_CUSTOM_RANDOMBYTES
 #if !defined(__ASSEMBLER__)
 #include <stdint.h>
 #include "mldsa/sys.h"
 #include <openssl/rand.h>
-static MLD_INLINE void mld_randombytes(uint8_t *ptr, size_t len) {
-    RAND_bytes(ptr, len);
+static MLD_INLINE int mld_randombytes(uint8_t *ptr, size_t len) {
+    // RAND_bytes returns 1 on success, 0 or -1 on failure
+    return RAND_bytes(ptr, len) == 1 ? 0 : -1;
 }
 #endif // !__ASSEMBLER__
 
