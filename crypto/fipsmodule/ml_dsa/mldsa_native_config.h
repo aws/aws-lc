@@ -53,7 +53,7 @@ static MLD_INLINE int mld_sys_check_capability(mld_sys_cap cap)
 
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 #define MLD_CONFIG_KEYGEN_PCT_BREAKAGE_TEST
-#if !defined(__ASSEMBLER__)
+#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include "mldsa/sys.h"
 static MLD_INLINE int mld_break_pct(void) {
   return boringssl_fips_break_test("MLDSA_PWCT");
@@ -69,7 +69,7 @@ static MLD_INLINE int mld_break_pct(void) {
 
 // Map zeroization function to the one used by AWS-LC
 #define MLD_CONFIG_CUSTOM_ZEROIZE
-#if !defined(__ASSEMBLER__)
+#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
 #include "mldsa/sys.h"
 #include <openssl/base.h>
@@ -82,7 +82,7 @@ static MLD_INLINE void mld_zeroize(void *ptr, size_t len) {
 // Note: mldsa-native expects int return (0 on success, non-zero on failure)
 // unlike mlkem-native which expects void return
 #define MLD_CONFIG_CUSTOM_RANDOMBYTES
-#if !defined(__ASSEMBLER__)
+#if !defined(__ASSEMBLER__) && !defined(MLD_CONFIG_MULTILEVEL_NO_SHARED)
 #include <stdint.h>
 #include "mldsa/sys.h"
 #include <openssl/rand.h>
