@@ -19,6 +19,7 @@ IncludeBlocks: Preserve
 # as "attributes" so they don't get increasingly indented line after line
 BreakBeforeBraces: Allman
 InsertBraces: true
+IndentExternBlock: NoIndent
 WhitespaceSensitiveMacros: ['__contract__', '__loop__' ]
 Macros:
  # Make this artifically long to avoid function bodies after short contracts

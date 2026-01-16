@@ -12,14 +12,14 @@
 #include "debug.h"
 
 /* check-magic: -4186625 == pow(2,32,MLDSA_Q) */
-#define MONT -4186625
+#define MLD_MONT -4186625
 
 /* Upper bound for domain of mld_reduce32() */
-#define REDUCE32_DOMAIN_MAX (INT32_MAX - (1 << 22))
+#define MLD_REDUCE32_DOMAIN_MAX (INT32_MAX - (1 << 22))
 
 /* Absolute bound for range of mld_reduce32() */
-/* check-magic: 6283009 == (REDUCE32_DOMAIN_MAX - 255 * MLDSA_Q + 1) */
-#define REDUCE32_RANGE_MAX 6283009
+/* check-magic: 6283009 == (MLD_REDUCE32_DOMAIN_MAX - 255 * MLDSA_Q + 1) */
+#define MLD_REDUCE32_RANGE_MAX 6283009
 
 /*************************************************
  * Name:        mld_montgomery_reduce
@@ -91,7 +91,7 @@ __contract__(
  *
  * Description: For finite field element a with a <= 2^{31} - 2^{22} - 1,
  *              compute r \equiv a (mod MLDSA_Q) such that
- *              -REDUCE32_RANGE_MAX <= r < REDUCE32_RANGE_MAX.
+ *              -MLD_REDUCE32_RANGE_MAX <= r < MLD_REDUCE32_RANGE_MAX.
  *
  * Arguments:   - int32_t: finite field element a
  *
@@ -99,9 +99,9 @@ __contract__(
  **************************************************/
 static MLD_INLINE int32_t mld_reduce32(int32_t a)
 __contract__(
-  requires(a <= REDUCE32_DOMAIN_MAX)
-  ensures(return_value >= -REDUCE32_RANGE_MAX)
-  ensures(return_value <   REDUCE32_RANGE_MAX)
+  requires(a <= MLD_REDUCE32_DOMAIN_MAX)
+  ensures(return_value >= -MLD_REDUCE32_RANGE_MAX)
+  ensures(return_value <   MLD_REDUCE32_RANGE_MAX)
 )
 {
   int32_t t;

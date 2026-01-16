@@ -106,34 +106,42 @@
 #endif
 
 /*
- * C90 does not have the inline compiler directive yet.
- * We don't use it in C90 builds.
- * However, in that case the compiler warns about some inline functions in
- * header files not being used in every compilation unit that includes that
- * header. To work around it we silence that warning in that case using
- * __attribute__((unused)).
+ * MLD_INLINE: Hint for inlining.
+ * - MSVC: __inline
+ * - C99+: inline
+ * - GCC/Clang C90: __attribute__((unused)) to silence warnings
+ * - Other C90: empty
  */
-
-/* Do not use inline for C90 builds*/
 #if !defined(MLD_INLINE)
-#if !defined(inline)
 #if defined(_MSC_VER)
 #define MLD_INLINE __inline
-/* Don't combine __inline and __forceinline */
-#define MLD_ALWAYS_INLINE __forceinline
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#elif defined(inline) || \
+    (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
 #define MLD_INLINE inline
+#elif defined(__GNUC__) || defined(__clang__)
+#define MLD_INLINE __attribute__((unused))
+#else
+#define MLD_INLINE
+#endif
+#endif /* !MLD_INLINE */
+
+/*
+ * MLD_ALWAYS_INLINE: Force inlining.
+ * - MSVC: __forceinline
+ * - GCC/Clang C99+: MLD_INLINE __attribute__((always_inline))
+ * - Other: MLD_INLINE (no forced inlining)
+ */
+#if !defined(MLD_ALWAYS_INLINE)
+#if defined(_MSC_VER)
+#define MLD_ALWAYS_INLINE __forceinline
+#elif (defined(__GNUC__) || defined(__clang__)) && \
+    (defined(inline) ||                            \
+     (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L))
 #define MLD_ALWAYS_INLINE MLD_INLINE __attribute__((always_inline))
 #else
-#define MLD_INLINE __attribute__((unused))
 #define MLD_ALWAYS_INLINE MLD_INLINE
 #endif
-
-#else /* !inline */
-#define MLD_INLINE inline
-#define MLD_ALWAYS_INLINE MLD_INLINE __attribute__((always_inline))
-#endif /* inline */
-#endif /* !MLD_INLINE */
+#endif /* !MLD_ALWAYS_INLINE */
 
 #ifndef MLD_STATIC_TESTABLE
 #define MLD_STATIC_TESTABLE static
@@ -209,7 +217,7 @@
   } while (0)
 #endif /* !(MLD_CONFIG_CT_TESTING_ENABLED && !__ASSEMBLER__) */
 
-#if defined(__GNUC__) || defined(clang)
+#if defined(__GNUC__) || defined(__clang__)
 #define MLD_MUST_CHECK_RETURN_VALUE __attribute__((warn_unused_result))
 #else
 #define MLD_MUST_CHECK_RETURN_VALUE
@@ -230,6 +238,9 @@ typedef enum
 #include "cbmc.h"
 
 static MLD_INLINE int mld_sys_check_capability(mld_sys_cap cap)
+__contract__(
+  ensures(return_value == 0 || return_value == 1)
+)
 {
   /* By default, we rely on compile-time feature detection/specification:
    * If a feature is enabled at compile-time, we assume it is supported by

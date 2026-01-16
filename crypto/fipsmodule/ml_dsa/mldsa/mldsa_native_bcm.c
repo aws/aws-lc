@@ -61,7 +61,6 @@
 
 #include "ct.c"
 #include "debug.c"
-#include "ntt.c"
 #include "packing.c"
 #include "poly.c"
 #include "poly_kl.c"
@@ -156,7 +155,11 @@
 #undef MLD_CONFIG_API_PARAMETER_SET
 #undef MLD_CONFIG_API_QUALIFIER
 #undef MLD_DOMAIN_SEPARATION_MAX_BYTES
+#undef MLD_ERR_FAIL
+#undef MLD_ERR_OUT_OF_MEMORY
+#undef MLD_ERR_RNG_FAIL
 #undef MLD_H
+#undef MLD_MAX3_
 #undef MLD_PREHASH_NONE
 #undef MLD_PREHASH_SHA2_224
 #undef MLD_PREHASH_SHA2_256
@@ -170,6 +173,24 @@
 #undef MLD_PREHASH_SHA3_512
 #undef MLD_PREHASH_SHAKE_128
 #undef MLD_PREHASH_SHAKE_256
+#undef MLD_TOTAL_ALLOC_44
+#undef MLD_TOTAL_ALLOC_44_KEYPAIR
+#undef MLD_TOTAL_ALLOC_44_KEYPAIR_NO_PCT
+#undef MLD_TOTAL_ALLOC_44_KEYPAIR_PCT
+#undef MLD_TOTAL_ALLOC_44_SIGN
+#undef MLD_TOTAL_ALLOC_44_VERIFY
+#undef MLD_TOTAL_ALLOC_65
+#undef MLD_TOTAL_ALLOC_65_KEYPAIR
+#undef MLD_TOTAL_ALLOC_65_KEYPAIR_NO_PCT
+#undef MLD_TOTAL_ALLOC_65_KEYPAIR_PCT
+#undef MLD_TOTAL_ALLOC_65_SIGN
+#undef MLD_TOTAL_ALLOC_65_VERIFY
+#undef MLD_TOTAL_ALLOC_87
+#undef MLD_TOTAL_ALLOC_87_KEYPAIR
+#undef MLD_TOTAL_ALLOC_87_KEYPAIR_NO_PCT
+#undef MLD_TOTAL_ALLOC_87_KEYPAIR_PCT
+#undef MLD_TOTAL_ALLOC_87_SIGN
+#undef MLD_TOTAL_ALLOC_87_VERIFY
 #undef crypto_sign
 #undef crypto_sign_keypair
 #undef crypto_sign_open
@@ -177,28 +198,46 @@
 #undef crypto_sign_verify
 /* mldsa/src/common.h */
 #undef MLD_ADD_PARAM_SET
+#undef MLD_ALLOC
+#undef MLD_APPLY
 #undef MLD_ASM_FN_SYMBOL
 #undef MLD_ASM_NAMESPACE
 #undef MLD_BUILD_INTERNAL
 #undef MLD_COMMON_H
 #undef MLD_CONCAT
 #undef MLD_CONCAT_
+#undef MLD_CONTEXT_PARAMETERS_0
+#undef MLD_CONTEXT_PARAMETERS_1
+#undef MLD_CONTEXT_PARAMETERS_2
+#undef MLD_CONTEXT_PARAMETERS_3
+#undef MLD_CONTEXT_PARAMETERS_4
+#undef MLD_CONTEXT_PARAMETERS_5
+#undef MLD_CONTEXT_PARAMETERS_6
+#undef MLD_CONTEXT_PARAMETERS_7
+#undef MLD_CONTEXT_PARAMETERS_8
+#undef MLD_CONTEXT_PARAMETERS_9
 #undef MLD_EMPTY_CU
+#undef MLD_ERR_FAIL
+#undef MLD_ERR_OUT_OF_MEMORY
+#undef MLD_ERR_RNG_FAIL
 #undef MLD_EXTERNAL_API
 #undef MLD_FIPS202X4_HEADER_FILE
 #undef MLD_FIPS202_HEADER_FILE
+#undef MLD_FREE
 #undef MLD_INTERNAL_API
 #undef MLD_MULTILEVEL_BUILD
 #undef MLD_NAMESPACE
 #undef MLD_NAMESPACE_KL
 #undef MLD_NAMESPACE_PREFIX
 #undef MLD_NAMESPACE_PREFIX_KL
+#undef MLK_UNION_OR_STRUCT
 #undef mld_memcpy
 #undef mld_memset
 /* mldsa/src/packing.h */
 #undef MLD_PACKING_H
 #undef mld_pack_pk
-#undef mld_pack_sig
+#undef mld_pack_sig_c_h
+#undef mld_pack_sig_z
 #undef mld_pack_sk
 #undef mld_unpack_pk
 #undef mld_unpack_sig
@@ -250,6 +289,7 @@
 /* mldsa/src/polyvec.h */
 #undef MLD_POLYVEC_H
 #undef mld_polymat
+#undef mld_polymat_get_row
 #undef mld_polyvec_matrix_expand
 #undef mld_polyvec_matrix_pointwise_montgomery
 #undef mld_polyveck
@@ -272,15 +312,10 @@
 #undef mld_polyveck_unpack_t0
 #undef mld_polyveck_use_hint
 #undef mld_polyvecl
-#undef mld_polyvecl_add
 #undef mld_polyvecl_chknorm
-#undef mld_polyvecl_invntt_tomont
 #undef mld_polyvecl_ntt
 #undef mld_polyvecl_pack_eta
-#undef mld_polyvecl_pack_z
 #undef mld_polyvecl_pointwise_acc_montgomery
-#undef mld_polyvecl_pointwise_poly_montgomery
-#undef mld_polyvecl_reduce
 #undef mld_polyvecl_uniform_gamma1
 #undef mld_polyvecl_unpack_eta
 #undef mld_polyvecl_unpack_z
@@ -292,7 +327,6 @@
 #undef mld_power2round
 #undef mld_use_hint
 /* mldsa/src/sign.h */
-#undef MLD_CONFIG_NO_SUPERCOP
 #undef MLD_DOMAIN_SEPARATION_MAX_BYTES
 #undef MLD_PREHASH_NONE
 #undef MLD_PREHASH_SHA2_224
@@ -308,22 +342,22 @@
 #undef MLD_PREHASH_SHAKE_128
 #undef MLD_PREHASH_SHAKE_256
 #undef MLD_SIGN_H
-#undef crypto_sign
-#undef crypto_sign_keypair
-#undef crypto_sign_keypair_internal
-#undef crypto_sign_open
-#undef crypto_sign_pk_from_sk
-#undef crypto_sign_signature
-#undef crypto_sign_signature_extmu
-#undef crypto_sign_signature_internal
-#undef crypto_sign_signature_pre_hash_internal
-#undef crypto_sign_signature_pre_hash_shake256
-#undef crypto_sign_verify
-#undef crypto_sign_verify_extmu
-#undef crypto_sign_verify_internal
-#undef crypto_sign_verify_pre_hash_internal
-#undef crypto_sign_verify_pre_hash_shake256
 #undef mld_prepare_domain_separation_prefix
+#undef mld_sign
+#undef mld_sign_keypair
+#undef mld_sign_keypair_internal
+#undef mld_sign_open
+#undef mld_sign_pk_from_sk
+#undef mld_sign_signature
+#undef mld_sign_signature_extmu
+#undef mld_sign_signature_internal
+#undef mld_sign_signature_pre_hash_internal
+#undef mld_sign_signature_pre_hash_shake256
+#undef mld_sign_verify
+#undef mld_sign_verify_extmu
+#undef mld_sign_verify_internal
+#undef mld_sign_verify_pre_hash_internal
+#undef mld_sign_verify_pre_hash_shake256
 
 #if !defined(MLD_CONFIG_MONOBUILD_KEEP_SHARED_HEADERS)
 /*
@@ -342,13 +376,9 @@
 #undef mld_assert_bound_2d
 #undef mld_debug_check_assert
 #undef mld_debug_check_bounds
-/* mldsa/src/ntt.h */
+/* mldsa/src/poly.h */
 #undef MLD_INTT_BOUND
 #undef MLD_NTT_BOUND
-#undef MLD_NTT_H
-#undef mld_invntt_tomont
-#undef mld_ntt
-/* mldsa/src/poly.h */
 #undef MLD_POLY_H
 #undef mld_poly_add
 #undef mld_poly_caddq
@@ -369,14 +399,14 @@
 /* mldsa/src/randombytes.h */
 #undef MLD_RANDOMBYTES_H
 /* mldsa/src/reduce.h */
+#undef MLD_MONT
+#undef MLD_REDUCE32_DOMAIN_MAX
+#undef MLD_REDUCE32_RANGE_MAX
 #undef MLD_REDUCE_H
-#undef MONT
-#undef REDUCE32_DOMAIN_MAX
-#undef REDUCE32_RANGE_MAX
 /* mldsa/src/symmetric.h */
+#undef MLD_STREAM128_BLOCKBYTES
+#undef MLD_STREAM256_BLOCKBYTES
 #undef MLD_SYMMETRIC_H
-#undef STREAM128_BLOCKBYTES
-#undef STREAM256_BLOCKBYTES
 #undef mld_xof128_absorb_once
 #undef mld_xof128_ctx
 #undef mld_xof128_init
@@ -518,9 +548,6 @@
 #undef MLD_USE_NATIVE_REJ_UNIFORM
 #undef MLD_USE_NATIVE_REJ_UNIFORM_ETA2
 #undef MLD_USE_NATIVE_REJ_UNIFORM_ETA4
-/* mldsa/src/native/x86_64/src/align.h */
-#undef MLD_ALIGNED_INT32
-#undef MLD_NATIVE_X86_64_SRC_ALIGN_H
 /* mldsa/src/native/x86_64/src/arith_native_x86_64.h */
 #undef MLD_AVX2_REJ_UNIFORM_BUFLEN
 #undef MLD_AVX2_REJ_UNIFORM_ETA2_BUFLEN

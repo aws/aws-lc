@@ -14,7 +14,6 @@
 #include "mldsa_native_config.h"
 #endif
 
-#include "cbmc.h"
 #include "params.h"
 #include "sys.h"
 
@@ -155,18 +154,147 @@
 #include <string.h>
 #define mld_memset memset
 #endif
+
+/* Allocation macros for large local structures
+ *
+ * MLD_ALLOC(v, T, N) declares T *v and attempts to point it to an T[N]
+ * MLD_FREE(v, T, N) zeroizes and frees the allocation
+ *
+ * Default implementation uses stack allocation.
+ * Can be overridden by setting the config option MLD_CONFIG_CUSTOM_ALLOC_FREE
+ * and defining MLD_CUSTOM_ALLOC and MLD_CUSTOM_FREE.
+ */
+#if defined(MLD_CONFIG_CUSTOM_ALLOC_FREE) != \
+    (defined(MLD_CUSTOM_ALLOC) && defined(MLD_CUSTOM_FREE))
+#error Bad configuration: MLD_CONFIG_CUSTOM_ALLOC_FREE must be set together with MLD_CUSTOM_ALLOC and MLD_CUSTOM_FREE
+#endif
+
+/*
+ * If the integration wants to provide a context parameter for use in
+ * platform-specific hooks, then it should define this parameter.
+ *
+ * The MLD_CONTEXT_PARAMETERS_n macros are intended to be used with macros
+ * defining the function names and expand to either pass or discard the context
+ * argument as required by the current build.  If there is no context parameter
+ * requested then these are removed from the prototypes and from all calls.
+ */
+#ifdef MLD_CONFIG_CONTEXT_PARAMETER
+#define MLD_CONTEXT_PARAMETERS_0(context) (context)
+#define MLD_CONTEXT_PARAMETERS_1(arg0, context) (arg0, context)
+#define MLD_CONTEXT_PARAMETERS_2(arg0, arg1, context) (arg0, arg1, context)
+#define MLD_CONTEXT_PARAMETERS_3(arg0, arg1, arg2, context) \
+  (arg0, arg1, arg2, context)
+#define MLD_CONTEXT_PARAMETERS_4(arg0, arg1, arg2, arg3, context) \
+  (arg0, arg1, arg2, arg3, context)
+#define MLD_CONTEXT_PARAMETERS_5(arg0, arg1, arg2, arg3, arg4, context) \
+  (arg0, arg1, arg2, arg3, arg4, context)
+#define MLD_CONTEXT_PARAMETERS_6(arg0, arg1, arg2, arg3, arg4, arg5, context) \
+  (arg0, arg1, arg2, arg3, arg4, arg5, context)
+#define MLD_CONTEXT_PARAMETERS_7(arg0, arg1, arg2, arg3, arg4, arg5, arg6, \
+                                 context)                                  \
+  (arg0, arg1, arg2, arg3, arg4, arg5, arg6, context)
+#define MLD_CONTEXT_PARAMETERS_8(arg0, arg1, arg2, arg3, arg4, arg5, arg6, \
+                                 arg7, context)                            \
+  (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, context)
+#define MLD_CONTEXT_PARAMETERS_9(arg0, arg1, arg2, arg3, arg4, arg5, arg6, \
+                                 arg7, arg8, context)                      \
+  (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, context)
+#else /* MLD_CONFIG_CONTEXT_PARAMETER */
+#define MLD_CONTEXT_PARAMETERS_0(context) ()
+#define MLD_CONTEXT_PARAMETERS_1(arg0, context) (arg0)
+#define MLD_CONTEXT_PARAMETERS_2(arg0, arg1, context) (arg0, arg1)
+#define MLD_CONTEXT_PARAMETERS_3(arg0, arg1, arg2, context) (arg0, arg1, arg2)
+#define MLD_CONTEXT_PARAMETERS_4(arg0, arg1, arg2, arg3, context) \
+  (arg0, arg1, arg2, arg3)
+#define MLD_CONTEXT_PARAMETERS_5(arg0, arg1, arg2, arg3, arg4, context) \
+  (arg0, arg1, arg2, arg3, arg4)
+#define MLD_CONTEXT_PARAMETERS_6(arg0, arg1, arg2, arg3, arg4, arg5, context) \
+  (arg0, arg1, arg2, arg3, arg4, arg5)
+#define MLD_CONTEXT_PARAMETERS_7(arg0, arg1, arg2, arg3, arg4, arg5, arg6, \
+                                 context)                                  \
+  (arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+#define MLD_CONTEXT_PARAMETERS_8(arg0, arg1, arg2, arg3, arg4, arg5, arg6, \
+                                 arg7, context)                            \
+  (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+#define MLD_CONTEXT_PARAMETERS_9(arg0, arg1, arg2, arg3, arg4, arg5, arg6, \
+                                 arg7, arg8, context)                      \
+  (arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+#endif /* !MLD_CONFIG_CONTEXT_PARAMETER */
+
+#if defined(MLD_CONFIG_CONTEXT_PARAMETER_TYPE) != \
+    defined(MLD_CONFIG_CONTEXT_PARAMETER)
+#error MLD_CONFIG_CONTEXT_PARAMETER_TYPE must be defined if and only if MLD_CONFIG_CONTEXT_PARAMETER is defined
+#endif
+
+#if !defined(MLD_CONFIG_CUSTOM_ALLOC_FREE)
+/* Default: stack allocation */
+
+#define MLD_ALLOC(v, T, N, context) \
+  MLD_ALIGN T mld_alloc_##v[N];     \
+  T *v = mld_alloc_##v
+
+/* TODO: This leads to a circular dependency between common and ct.h
+ * It just works out before we're at the end of the file, but it's still
+ * prone to issues in the future. */
+#include "ct.h"
+#define MLD_FREE(v, T, N, context)                     \
+  do                                                   \
+  {                                                    \
+    mld_zeroize(mld_alloc_##v, sizeof(mld_alloc_##v)); \
+    (v) = NULL;                                        \
+  } while (0)
+
+#else /* !MLD_CONFIG_CUSTOM_ALLOC_FREE */
+
+/* Custom allocation */
+
+/*
+ * The indirection here is necessary to use MLD_CONTEXT_PARAMETERS_3 here.
+ */
+#define MLD_APPLY(f, args) f args
+
+#define MLD_ALLOC(v, T, N, context) \
+  MLD_APPLY(MLD_CUSTOM_ALLOC, MLD_CONTEXT_PARAMETERS_3(v, T, N, context))
+
+#define MLD_FREE(v, T, N, context)                                            \
+  do                                                                          \
+  {                                                                           \
+    if (v != NULL)                                                            \
+    {                                                                         \
+      mld_zeroize(v, sizeof(T) * (N));                                        \
+      MLD_APPLY(MLD_CUSTOM_FREE, MLD_CONTEXT_PARAMETERS_3(v, T, N, context)); \
+      v = NULL;                                                               \
+    }                                                                         \
+  } while (0)
+
+#endif /* MLD_CONFIG_CUSTOM_ALLOC_FREE */
+
+/*
+ * We are facing severe CBMC performance issues when using unions.
+ * As a temporary workaround, we use unions only when MLD_CONFIG_REDUCE_RAM is
+ * set.
+ * TODO: Remove the workaround once
+ * https://github.com/diffblue/cbmc/issues/8813
+ * is resolved
+ */
+#if defined(MLD_CONFIG_REDUCE_RAM)
+#define MLK_UNION_OR_STRUCT union
+#else
+#define MLK_UNION_OR_STRUCT struct
+#endif
+
+/****************************** Error codes ***********************************/
+
+/* Generic failure condition */
+#define MLD_ERR_FAIL -1
+/* An allocation failed. This can only happen if MLD_CONFIG_CUSTOM_ALLOC_FREE
+ * is defined and the provided MLD_CUSTOM_ALLOC can fail. */
+#define MLD_ERR_OUT_OF_MEMORY -2
+/* An rng failure occured. Might be due to insufficient entropy or
+ * system misconfiguration. */
+#define MLD_ERR_RNG_FAIL -3
+
+
 #endif /* !__ASSEMBLER__ */
-
-/* Just in case we want to include mldsa_native.h, set the configuration
- * for that header in accordance with the configuration used here. */
-
-/* Double-check that this is not conflicting with pre-existing definitions. */
-#if defined(MLD_CONFIG_API_PARAMETER_SET) ||    \
-    defined(MLD_CONFIG_API_NAMESPACE_PREFIX) || \
-    defined(MLD_CONFIG_API_NO_SUPERCOP) ||      \
-    defined(MLD_CONFIG_API_CONSTANTS_ONLY)
-#error Pre-existing MLD_CONFIG_API_XXX configuration is neither useful nor allowed during an mldsa-native build
-#endif /* MLD_CONFIG_API_PARAMETER_SET || MLD_CONFIG_API_NAMESPACE_PREFIX || \
-          MLD_CONFIG_API_NO_SUPERCOP || MLD_CONFIG_API_CONSTANTS_ONLY */
 
 #endif /* !MLD_COMMON_H */

@@ -21,18 +21,21 @@
  *              Assumes coefficients to be standard representatives.
  *
  * Arguments:   - mld_poly *a1: pointer to output polynomial with coefficients
- *c1
- *              - mld_poly *a0: pointer to output polynomial with coefficients
- *c0
- *              - const mld_poly *a: pointer to input polynomial
+ *                              c1
+ *              - mld_poly *a0: pointer to input/output polynomial. Output
+ *                              polynomial has coefficients c0
+ *
+ * Reference: The reference implementation has the input polynomial as a
+ *            separate argument that may be aliased with either of the outputs.
+ *            Removing the aliasing eases CBMC proofs.
+ *
  **************************************************/
 MLD_INTERNAL_API
-void mld_poly_decompose(mld_poly *a1, mld_poly *a0, const mld_poly *a)
+void mld_poly_decompose(mld_poly *a1, mld_poly *a0)
 __contract__(
   requires(memory_no_alias(a1,  sizeof(mld_poly)))
   requires(memory_no_alias(a0, sizeof(mld_poly)))
-  requires(memory_no_alias(a, sizeof(mld_poly)))
-  requires(array_bound(a->coeffs, 0, MLDSA_N, 0, MLDSA_Q))
+  requires(array_bound(a0->coeffs, 0, MLDSA_N, 0, MLDSA_Q))
   assigns(memory_slice(a1, sizeof(mld_poly)))
   assigns(memory_slice(a0, sizeof(mld_poly)))
   ensures(array_bound(a1->coeffs, 0, MLDSA_N, 0, (MLDSA_Q-1)/(2*MLDSA_GAMMA2)))

@@ -134,7 +134,7 @@
   {                                                                    \
     unsigned qvar;                                                     \
     ((qvar_lb) <= (qvar) && (qvar) < (qvar_ub)) ==>                    \
-    ((array_var)[(qvar)]) == (old(* (int16_t (*)[(qvar_ub)])(array_var)))[(qvar)] \
+    ((array_var)[(qvar)]) == (old(* (int32_t (*)[(qvar_ub)])(array_var)))[(qvar)] \
   }
 
 #define array_unchanged(array_var, N) \

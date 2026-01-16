@@ -69,16 +69,16 @@ __contract__(
 );
 
 
-#define mld_pack_sig MLD_NAMESPACE_KL(pack_sig)
+#define mld_pack_sig_c_h MLD_NAMESPACE_KL(pack_sig_c_h)
 /*************************************************
- * Name:        mld_pack_sig
+ * Name:        mld_pack_sig_c_h
  *
- * Description: Bit-pack signature sig = (c, z, h).
+ * Description: Bit-pack c and h component of sig = (c, z, h).
+ *              The z component is packed separately using mld_pack_sig_z.
  *
  * Arguments:   - uint8_t sig[]: output byte array
  *              - const uint8_t *c:  pointer to challenge hash length
  *                                   MLDSA_SEEDBYTES
- *              - const mld_polyvecl *z: pointer to vector z
  *              - const mld_polyveck *h: pointer to hint vector h
  *              - const unsigned int number_of_hints: total
  *                                   hints in *h
@@ -88,19 +88,40 @@ __contract__(
  * proof of type safety.
  **************************************************/
 MLD_INTERNAL_API
-void mld_pack_sig(uint8_t sig[MLDSA_CRYPTO_BYTES],
-                  const uint8_t c[MLDSA_CTILDEBYTES], const mld_polyvecl *z,
-                  const mld_polyveck *h, const unsigned int number_of_hints)
+void mld_pack_sig_c_h(uint8_t sig[MLDSA_CRYPTO_BYTES],
+                      const uint8_t c[MLDSA_CTILDEBYTES], const mld_polyveck *h,
+                      const unsigned int number_of_hints)
 __contract__(
   requires(memory_no_alias(sig, MLDSA_CRYPTO_BYTES))
   requires(memory_no_alias(c, MLDSA_CTILDEBYTES))
-  requires(memory_no_alias(z, sizeof(mld_polyvecl)))
   requires(memory_no_alias(h, sizeof(mld_polyveck)))
-  requires(forall(k0, 0, MLDSA_L,
-    array_bound(z->vec[k0].coeffs, 0, MLDSA_N, -(MLDSA_GAMMA1 - 1), MLDSA_GAMMA1 + 1)))
   requires(forall(k1, 0, MLDSA_K,
     array_bound(h->vec[k1].coeffs, 0, MLDSA_N, 0, 2)))
   requires(number_of_hints <= MLDSA_OMEGA)
+  assigns(memory_slice(sig, MLDSA_CRYPTO_BYTES))
+);
+
+#define mld_pack_sig_z MLD_NAMESPACE_KL(pack_sig_z)
+/*************************************************
+ * Name:        mld_pack_sig_z
+ *
+ * Description: Bit-pack single polynomial of z component of sig = (c, z, h).
+ *              The c and h components are packed separately using
+ *              mld_pack_sig_c_h.
+ *
+ * Arguments:   - uint8_t sig[]: output byte array
+ *              - const mld_poly *zi: pointer to a single polynomial in z
+ *              - const unsigned int i: index of zi in vector z
+ *
+ **************************************************/
+MLD_INTERNAL_API
+void mld_pack_sig_z(uint8_t sig[MLDSA_CRYPTO_BYTES], const mld_poly *zi,
+                    unsigned i)
+__contract__(
+  requires(memory_no_alias(sig, MLDSA_CRYPTO_BYTES))
+  requires(memory_no_alias(zi, sizeof(mld_poly)))
+  requires(i < MLDSA_L)
+  requires(array_bound(zi->coeffs, 0, MLDSA_N, -(MLDSA_GAMMA1 - 1), MLDSA_GAMMA1 + 1))
   assigns(memory_slice(sig, MLDSA_CRYPTO_BYTES))
 );
 
@@ -183,6 +204,7 @@ __contract__(
  *
  * Returns 1 in case of malformed signature; otherwise 0.
  **************************************************/
+MLD_MUST_CHECK_RETURN_VALUE
 MLD_INTERNAL_API
 int mld_unpack_sig(uint8_t c[MLDSA_CTILDEBYTES], mld_polyvecl *z,
                    mld_polyveck *h, const uint8_t sig[MLDSA_CRYPTO_BYTES])

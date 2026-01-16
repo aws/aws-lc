@@ -99,16 +99,16 @@ void mld_unpack_sk(uint8_t rho[MLDSA_SEEDBYTES], uint8_t tr[MLDSA_TRBYTES],
 }
 
 MLD_INTERNAL_API
-void mld_pack_sig(uint8_t sig[MLDSA_CRYPTO_BYTES],
-                  const uint8_t c[MLDSA_CTILDEBYTES], const mld_polyvecl *z,
-                  const mld_polyveck *h, const unsigned int number_of_hints)
+void mld_pack_sig_c_h(uint8_t sig[MLDSA_CRYPTO_BYTES],
+                      const uint8_t c[MLDSA_CTILDEBYTES], const mld_polyveck *h,
+                      const unsigned int number_of_hints)
 {
   unsigned int i, j, k;
 
   mld_memcpy(sig, c, MLDSA_CTILDEBYTES);
   sig += MLDSA_CTILDEBYTES;
 
-  mld_polyvecl_pack_z(sig, z);
+  /* skip z component - packed via mld_pack_sig_z */
   sig += MLDSA_L * MLDSA_POLYZ_PACKEDBYTES;
 
   /* Encode hints h */
@@ -166,6 +166,15 @@ void mld_pack_sig(uint8_t sig[MLDSA_CRYPTO_BYTES],
     /* coefficient in the final K bytes                          */
     sig[MLDSA_OMEGA + i] = (uint8_t)k;
   }
+}
+
+MLD_INTERNAL_API
+void mld_pack_sig_z(uint8_t sig[MLDSA_CRYPTO_BYTES], const mld_poly *zi,
+                    unsigned i)
+{
+  sig += MLDSA_CTILDEBYTES;
+  sig += i * MLDSA_POLYZ_PACKEDBYTES;
+  mld_polyz_pack(sig, zi);
 }
 
 /*************************************************

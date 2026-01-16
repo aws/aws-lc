@@ -8,9 +8,13 @@
 #include <stdint.h>
 #include "cbmc.h"
 #include "common.h"
-#include "ntt.h"
 #include "reduce.h"
 #include "rounding.h"
+
+/* Absolute exclusive upper bound for the output of the forward NTT */
+#define MLD_NTT_BOUND (9 * MLDSA_Q)
+/* Absolute exclusive upper bound for the output of the inverse NTT*/
+#define MLD_INTT_BOUND MLDSA_Q
 
 typedef struct
 {
@@ -22,7 +26,8 @@ typedef struct
  * Name:        mld_poly_reduce
  *
  * Description: Inplace reduction of all coefficients of polynomial to
- *              representative in [-REDUCE32_RANGE_MAX,REDUCE32_RANGE_MAX].
+ *              representative in
+ *[-MLD_REDUCE32_RANGE_MAX,MLD_REDUCE32_RANGE_MAX].
  *
  * Arguments:   - mld_poly *a: pointer to input/output polynomial
  **************************************************/
@@ -30,9 +35,9 @@ MLD_INTERNAL_API
 void mld_poly_reduce(mld_poly *a)
 __contract__(
   requires(memory_no_alias(a, sizeof(mld_poly)))
-  requires(array_bound(a->coeffs, 0, MLDSA_N, INT32_MIN, REDUCE32_DOMAIN_MAX))
+  requires(array_bound(a->coeffs, 0, MLDSA_N, INT32_MIN, MLD_REDUCE32_DOMAIN_MAX))
   assigns(memory_slice(a, sizeof(mld_poly)))
-  ensures(array_bound(a->coeffs, 0, MLDSA_N, -REDUCE32_RANGE_MAX, REDUCE32_RANGE_MAX))
+  ensures(array_bound(a->coeffs, 0, MLDSA_N, -MLD_REDUCE32_RANGE_MAX, MLD_REDUCE32_RANGE_MAX))
 );
 
 #define mld_poly_caddq MLD_NAMESPACE(poly_caddq)
@@ -73,11 +78,11 @@ void mld_poly_add(mld_poly *r, const mld_poly *b)
 __contract__(
   requires(memory_no_alias(b, sizeof(mld_poly)))
   requires(memory_no_alias(r, sizeof(mld_poly)))
-  requires(forall(k0, 0, MLDSA_N, (int64_t) r->coeffs[k0] + b->coeffs[k0] < REDUCE32_DOMAIN_MAX))
+  requires(forall(k0, 0, MLDSA_N, (int64_t) r->coeffs[k0] + b->coeffs[k0] < MLD_REDUCE32_DOMAIN_MAX))
   requires(forall(k1, 0, MLDSA_N, (int64_t) r->coeffs[k1] + b->coeffs[k1] >= INT32_MIN))
   assigns(memory_slice(r, sizeof(mld_poly)))
   ensures(forall(k2, 0, MLDSA_N, r->coeffs[k2] == old(*r).coeffs[k2] + b->coeffs[k2]))
-  ensures(forall(k3, 0, MLDSA_N, r->coeffs[k3] < REDUCE32_DOMAIN_MAX))
+  ensures(forall(k3, 0, MLDSA_N, r->coeffs[k3] < MLD_REDUCE32_DOMAIN_MAX))
   ensures(forall(k4, 0, MLDSA_N, r->coeffs[k4] >= INT32_MIN))
 );
 
@@ -104,7 +109,7 @@ __contract__(
   requires(array_abs_bound(r->coeffs, 0, MLDSA_N, MLDSA_Q))
   requires(array_abs_bound(b->coeffs, 0, MLDSA_N, MLDSA_Q))
   assigns(memory_slice(r, sizeof(mld_poly)))
-  ensures(array_bound(r->coeffs, 0, MLDSA_N, INT32_MIN, REDUCE32_DOMAIN_MAX))
+  ensures(array_bound(r->coeffs, 0, MLDSA_N, INT32_MIN, MLD_REDUCE32_DOMAIN_MAX))
 );
 
 #define mld_poly_shiftl MLD_NAMESPACE(poly_shiftl)
@@ -238,7 +243,7 @@ __contract__(
   ensures(array_bound(a->coeffs, 0, MLDSA_N, 0, MLDSA_Q))
 );
 
-#if !defined(MLD_CONFIG_SERIAL_FIPS202_ONLY)
+#if !defined(MLD_CONFIG_SERIAL_FIPS202_ONLY) && !defined(MLD_CONFIG_REDUCE_RAM)
 #define mld_poly_uniform_4x MLD_NAMESPACE(poly_uniform_4x)
 /*************************************************
  * Name:        mld_poly_uniform_x4
@@ -272,7 +277,7 @@ __contract__(
   ensures(array_bound(vec2->coeffs, 0, MLDSA_N, 0, MLDSA_Q))
   ensures(array_bound(vec3->coeffs, 0, MLDSA_N, 0, MLDSA_Q))
 );
-#endif /* !MLD_CONFIG_SERIAL_FIPS202_ONLY */
+#endif /* !MLD_CONFIG_SERIAL_FIPS202_ONLY && !MLD_CONFIG_REDUCE_RAM */
 
 #define mld_polyt1_pack MLD_NAMESPACE(polyt1_pack)
 /*************************************************
@@ -364,13 +369,13 @@ __contract__(
  *              - int32_t B: norm bound
  *
  * Returns 0 if norm is strictly smaller than
- * B <= (MLDSA_Q - REDUCE32_RANGE_MAX) and 0xFFFFFFFF otherwise.
+ * B <= (MLDSA_Q - MLD_REDUCE32_RANGE_MAX) and 0xFFFFFFFF otherwise.
  *
  * Specification: The definition of this FIPS-204 requires signed canonical
  *                reduction prior to applying the bounds check.
  *                However, `-B < (a mod± MLDSA_Q) < B` is equivalent to
  *                `-B < a < B` under the assumption that
- *                `B <= MLDSA_Q - REDUCE32_RANGE_MAX` (cf. the assertion in
+ *                `B <= MLDSA_Q - MLD_REDUCE32_RANGE_MAX` (cf. the assertion in
  *                the code). Hence, the present spec and implementation are
  *                correct without reduction.
  *
@@ -379,8 +384,8 @@ MLD_INTERNAL_API
 uint32_t mld_poly_chknorm(const mld_poly *a, int32_t B)
 __contract__(
   requires(memory_no_alias(a, sizeof(mld_poly)))
-  requires(0 <= B && B <= MLDSA_Q - REDUCE32_RANGE_MAX)
-  requires(array_bound(a->coeffs, 0, MLDSA_N, -REDUCE32_RANGE_MAX, REDUCE32_RANGE_MAX))
+  requires(0 <= B && B <= MLDSA_Q - MLD_REDUCE32_RANGE_MAX)
+  requires(array_bound(a->coeffs, 0, MLDSA_N, -MLD_REDUCE32_RANGE_MAX, MLD_REDUCE32_RANGE_MAX))
   ensures(return_value == 0 || return_value == 0xFFFFFFFF)
   ensures((return_value == 0) == array_abs_bound(a->coeffs, 0, MLDSA_N, B))
 );
