@@ -442,11 +442,6 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kyber/kyber512r3_ref.c
-  kyber/kyber768r3_ref.c
-  kyber/kyber1024r3_ref.c
-  kyber/pqcrystals_kyber_ref_common/fips202.c
-  kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
   obj/obj.c

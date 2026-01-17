@@ -13,7 +13,7 @@ To support these initiatives, the U.S. Department of Commerce’s National Insti
 
 ## AWS-LC Post-Quantum Algorithms
 
-AWS-LC provides two post-quantum Key Encapsulation Mechanisms (KEMs), FIPS 203 ML-KEM and KyberR3, and a post-quantum digital signature scheme FIPS 204 ML-DSA. For details on the KEM API and how it can be used please see [README](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/kem/README.md).
+AWS-LC supports the post-quantum Key Encapsulation Mechanisms (KEMs) FIPS 203 ML-KEM and the post-quantum digital signature scheme FIPS 204 ML-DSA. For details on the KEM API and how it can be used please see [README](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/kem/README.md).
 
 ### FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM)
 
@@ -29,10 +29,6 @@ Performance benchmarks for key generation, encapsulation, and decapsulation are 
 
 ```aws-lc-build % ./tool/bssl speed -filter ML-KEM```
 
-#### KyberR3
-
-Round 3 Kyber (KyberR3) was added to AWS-LC in September 2021 ([README](https://github.com/aws/aws-lc/blob/main/crypto/kyber/README.md)). Once all existing deployments of Kyber are migrated over to ML-KEM we will be removing support for Kyber from AWS-LC.
-
 ### FIPS 204: Module-Lattice-Based Digital Signature Algorithm (ML-DSA)
 
 | Algorithm  | Public Key (B)  | Private Key (B)  | Signature (B)  |
@@ -47,19 +43,21 @@ The parameter set ML-DSA-44 is claimed to be in security strength category 2, ML
 
 ### Hybrid Post-Quantum TLS Specifications
 
-To utilize Post-Quantum key exchange in TLS we recommend using our open-source TLS implementation s2n-tls that now supports Hybrid key exchange in TLS 1.3 (draft-ietf-tls-hybrid-design). s2n-tls also provides support for Post-Quantum hybrid ECDHE-MLKEM Key Agreement for TLSv1.3 (draft-kwiatkowski-tls-ecdhe-mlkem) with a proposal for new key share identifies for x25519 and ML-KEM-768.
-
+To utilize Post-Quantum key exchange in TLS we recommend using our open-source TLS implementation s2n-tls. However, AWS-LC libssl also supports Post-Quantum key exchange in TLS. Namely, ML-KEM-based cipher suites for TLSv1.3 (draft-kwiatkowski-tls-ecdhe-mlkem)
 
 | Supported Group       | IANA ID (Hex)  | IANA ID (Dec)  |
 |-----------------------|----------------|----------------|
-| x25519_kyber512       | 0x2f39         | 12089          |
-| p256_kyber512         | 0x2f3a         | 12090          |
-| X25519Kyber768Draft00 | 0x6399         | 25497          |
-| X25519Kyber768Draft00 | 0x639a         | 25498          |
 | SecP256r1MLKEM768     | 0x11eb         | 4587           |
+| SecP384r1MLKEM1024    | 0x11ed         | 4589           |
 | X25519MLKEM768        | 0x11ec         | 4588           |
 
-Note that pre-standard groups (those that include Kyber)  will stop being supported after the Kyber deprecation described above.
+In addition, AWS-LC libssl supports "pure" ML-KEM cipher suites (https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html).
+
+| Supported Group       | IANA ID (Hex)  | IANA ID (Dec)  |
+|-----------------------|----------------|----------------|
+| MLKEM512              | 0x0200         | 512            |
+| MLKEM768              | 0x0201         | 513            |
+| MLKEM1024             | 0x0202         | 514            |
 
 ### AWS Java V2 SDK
 
