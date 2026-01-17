@@ -2856,7 +2856,8 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   if (!ssl->config) {
     return NULL;
   }
-  if (ssl->ctx.get() == ctx) {
+
+  if (!ctx || ssl->ctx.get() == ctx) {
     return ssl->ctx.get();
   }
 
