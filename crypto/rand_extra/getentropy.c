@@ -28,6 +28,15 @@
 #define GETENTROPY_MAX 256
 #endif
 
+#if defined(__ANDROID__)
+#ifndef getentropy
+#ifdef __cplusplus
+extern "C"
+#endif
+int getentropy(void *buffer, size_t length);
+#endif
+#endif
+
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   // getentropy max request size is GETENTROPY_MAX.
   while (requested > 0) {
