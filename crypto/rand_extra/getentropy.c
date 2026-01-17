@@ -29,12 +29,18 @@
 #endif
 
 #if defined(__ANDROID__)
-#ifndef getentropy
-#ifdef __cplusplus
-extern "C"
-#endif
-int getentropy(void *buffer, size_t length);
-#endif
+#include <errno.h>
+#include <stdlib.h>
+
+static int android_getentropy(void *buffer, size_t length) {
+    if (length > 256) {
+        errno = EIO;
+        return -1;
+    }
+    arc4random_buf(buffer, length);
+    return 0;
+}
+#define getentropy android_getentropy
 #endif
 
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
