@@ -37,10 +37,10 @@ The `ctx` variable above is a pointer to a “context” object of type `EVP_PKE
 
 ```
 1. EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
-   EVP_PKEY_CTX_kem_set_params(ctx, NID_KYBER512_R3);
+   EVP_PKEY_CTX_kem_set_params(ctx, NID_MLKEM768);
 ```
 
-This creates a fresh context of type `EVP_PKEY_KEM` and sets the specific KEM parameters (Kyber512 in this example). The context is now ready for key generation (`EVP_PKEY_keygen`). However, the context created in this way doesn’t have an associated key (`EVP_PKEY`), so obviously, we can’t encapsulate/decapsulate with it. Therefore, this is useful for key generation only, i.e. before we have a key.
+This creates a fresh context of type `EVP_PKEY_KEM` and sets the specific KEM parameters (ML-KEM 768 in this example). The context is now ready for key generation (`EVP_PKEY_keygen`). However, the context created in this way doesn’t have an associated key (`EVP_PKEY`), so obviously, we can’t encapsulate/decapsulate with it. Therefore, this is useful for key generation only, i.e. before we have a key.
 
 The second way to create a context is with an already existing key (`EVP_PKEY`):
 
@@ -84,11 +84,11 @@ will store the size of the ciphertext and the shared secret (of the KEM specifie
 
 ## Full example
 
-Simulation of one KEM protocol execution using Kyber512:
+Simulation of one KEM protocol execution using ML-KEM 768:
 
 ```
                               ALICE                                  |                                      BOB
-// START                              Alice and Bob have agreed which KEM to use (Kyber512 in this case)
+// START                              Alice and Bob have agreed which KEM to use (ML-KEM 768 in this case)
 
 // Generate a (public, secret) key pair for the desired KEM.
 int generate_key_pair(/* OUT */ EVP_PKEY **key,
@@ -143,9 +143,9 @@ int get_raw_public_key(/* IN  */ EVP_PKEY *key,
 
 // With the two helper functions above you can:
 //
-//   1. Generate the key (Kyber512 key in our example),
+//   1. Generate the key (ML-KEM 768 key in our example),
 EVP_PKEY *key = NULL;
-if (generate_key_pair(&key, NID_KYBER512_R3) != SUCCESS) {
+if (generate_key_pair(&key, NID_MLKEM768) != SUCCESS) {
   return FAIL;
 }
 
@@ -222,7 +222,7 @@ Note: you can use the generated |key| directly                                  
                                                                                   uint8_t *ct = NULL, *ss = NULL; // ciphertext and shared secret,
                                                                                   size_t ct_len, ss_len;          // and their lengths.
 
-                                                                                  int ret = encapsulate(NID_KYBER512_R3, pub_key, pub_key_len,
+                                                                                  int ret = encapsulate(NID_MLKEM768, pub_key, pub_key_len,
                                                                                                         &ct, &ct_len, &ss, &ss_len);
 
                                                                                   // On |ret| being SUCCESS, |ss| is the generated shared secret you can use,

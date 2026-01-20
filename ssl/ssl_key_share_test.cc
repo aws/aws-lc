@@ -25,7 +25,6 @@
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "../crypto/internal.h"
-#include "../crypto/kyber/kem_kyber.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 
@@ -61,36 +60,6 @@ struct HybridGroupTest {
 };
 
 const HybridGroupTest kHybridGroupTests[] = {
-    {
-        NID_SecP256r1Kyber768Draft00,
-        SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-        P256_KEYSHARE_SIZE + KYBER768_R3_PUBLIC_KEY_BYTES,
-        P256_KEYSHARE_SIZE + KYBER768_R3_CIPHERTEXT_BYTES,
-        P256_SECRET_SIZE + KYBER_R3_SHARED_SECRET_LEN,
-        {
-            P256_KEYSHARE_SIZE,            // offer_share_sizes[0]
-            KYBER768_R3_PUBLIC_KEY_BYTES,  // offer_share_sizes[1]
-        },
-        {
-            P256_KEYSHARE_SIZE,            // accept_share_sizes[0]
-            KYBER768_R3_CIPHERTEXT_BYTES,  // accept_share_sizes[1]
-        },
-    },
-    {
-        NID_X25519Kyber768Draft00,
-        SSL_GROUP_X25519_KYBER768_DRAFT00,
-        X25519_KEYSHARE_SIZE + KYBER768_R3_PUBLIC_KEY_BYTES,
-        X25519_KEYSHARE_SIZE + KYBER768_R3_CIPHERTEXT_BYTES,
-        X25519_SECRET_SIZE + KYBER_R3_SHARED_SECRET_LEN,
-        {
-            X25519_KEYSHARE_SIZE,          // offer_share_sizes[0]
-            KYBER768_R3_PUBLIC_KEY_BYTES,  // offer_share_sizes[1]
-        },
-        {
-            X25519_KEYSHARE_SIZE,          // accept_share_sizes[0]
-            KYBER768_R3_CIPHERTEXT_BYTES,  // accept_share_sizes[1]
-        },
-    },
     {
         NID_SecP256r1MLKEM768,
         SSL_GROUP_SECP256R1_MLKEM768,
@@ -146,11 +115,11 @@ const HybridGroupTest kHybridGroupTests[] = {
 
 const GroupTest kKemGroupTests[] = {
     {
-        NID_KYBER768_R3,
-        SSL_GROUP_KYBER768_R3,
-        KYBER768_R3_PUBLIC_KEY_BYTES,
-        KYBER768_R3_CIPHERTEXT_BYTES,
-        KYBER_R3_SHARED_SECRET_LEN,
+        NID_MLKEM512,
+        SSL_GROUP_MLKEM512,
+        MLKEM512_PUBLIC_KEY_BYTES,
+        MLKEM512_CIPHERTEXT_BYTES,
+        MLKEM512_SHARED_SECRET_LEN,
     },
     {
         NID_MLKEM768,
@@ -158,6 +127,13 @@ const GroupTest kKemGroupTests[] = {
         MLKEM768_PUBLIC_KEY_BYTES,
         MLKEM768_CIPHERTEXT_BYTES,
         MLKEM768_SHARED_SECRET_LEN,
+    },
+    {
+        NID_MLKEM1024,
+        SSL_GROUP_MLKEM1024,
+        MLKEM1024_PUBLIC_KEY_BYTES,
+        MLKEM1024_CIPHERTEXT_BYTES,
+        MLKEM1024_SHARED_SECRET_LEN,
     },
 };
 
@@ -1077,7 +1053,6 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
         // continue with the handshake, then verify that the client and
         // server ultimately arrived at different shared secrets.
         EXPECT_TRUE(
-            hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
             hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
             hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM1024 ||
             hybrid_group->component_group_ids[i] == SSL_GROUP_X25519);
@@ -1375,7 +1350,6 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
         // continue with the handshake, then verify that the client and
         // server ultimately arrived at different shared secrets.
         EXPECT_TRUE(
-            hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
             hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
             hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM1024 ||
             hybrid_group->component_group_ids[i] == SSL_GROUP_X25519);
