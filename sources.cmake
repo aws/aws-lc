@@ -377,4 +377,13 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha512_test.txt
   third_party/wycheproof_testvectors/x25519_test.txt
   third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_test.txt
 )

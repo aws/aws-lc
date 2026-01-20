@@ -47,6 +47,21 @@ bool WycheproofResult::IsValid(
   abort();
 }
 
+bool WycheproofResult::HasFlag(const std::string &flag) const {
+  return std::find(flags.begin(), flags.end(), flag) != flags.end();
+}
+
+std::string WycheproofResult::StringifyFlags() {
+  std::string flags_str;
+  for (size_t i = 0; i < flags.size(); i++) {
+    if (i > 0) {
+      flags_str += ", ";
+    }
+    flags_str += flags[i];
+  }
+  return flags_str;
+}
+
 bool GetWycheproofResult(FileTest *t, WycheproofResult *out) {
   std::string result;
   if (!t->GetAttribute(&result, "result")) {
