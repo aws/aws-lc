@@ -1220,9 +1220,9 @@ if(BUILD_TESTING)
       add_custom_target(
         build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool/testmodulewrapper
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})

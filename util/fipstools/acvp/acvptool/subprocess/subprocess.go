@@ -55,15 +55,15 @@ type Subprocess struct {
 
 // TODO: Migrate to directly use binary.NativeEndian when we can upgrade to go1.21+.
 // represents the platform's Endian type.
-var	NativeEndian binary.ByteOrder
+var NativeEndian binary.ByteOrder
 
 func init() {
 	var i uint16 = 0x0001
-    if *(*byte)(unsafe.Pointer(&i)) == 0x01 {
-        NativeEndian = binary.LittleEndian
-    } else {
-        NativeEndian = binary.BigEndian
-    }
+	if *(*byte)(unsafe.Pointer(&i)) == 0x01 {
+		NativeEndian = binary.LittleEndian
+	} else {
+		NativeEndian = binary.BigEndian
+	}
 }
 
 // pendingRead represents an expected response from the modulewrapper.
@@ -125,14 +125,14 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"SHA3-384":     &hashPrimitive{"SHA3-384", 48},
 		"SHA3-512":     &hashPrimitive{"SHA3-512", 64},
 		// NOTE: SHAKE does not have a predifined digest output size
-		"SHAKE-128":         &hashPrimitive{"SHAKE-128", -1},
-		"SHAKE-256":         &hashPrimitive{"SHAKE-256", -1},
-		"ACVP-AES-ECB":      &blockCipher{"AES", 16, 2, true, false, iterateAES},
-		"ACVP-AES-CBC":      &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
-		"ACVP-AES-CBC-CS3":  &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
+		"SHAKE-128":        &hashPrimitive{"SHAKE-128", -1},
+		"SHAKE-256":        &hashPrimitive{"SHAKE-256", -1},
+		"ACVP-AES-ECB":     &blockCipher{"AES", 16, 2, true, false, iterateAES},
+		"ACVP-AES-CBC":     &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
+		"ACVP-AES-CBC-CS3": &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
 		// NOTE: AES CFB128's ACVP MCT outer loop is the same as AES CBC's
 		// https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/aes/AESAVS.pdf
-		"ACVP-AES-CFB128":    &blockCipher{"AES-CFB128", 16, 2, true, true, iterateAESCBC},
+		"ACVP-AES-CFB128":   &blockCipher{"AES-CFB128", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CTR":      &blockCipher{"AES-CTR", 16, 1, false, true, nil},
 		"ACVP-TDES-ECB":     &blockCipher{"3DES-ECB", 8, 3, true, false, iterate3DES},
 		"ACVP-TDES-CBC":     &blockCipher{"3DES-CBC", 8, 3, true, true, iterate3DESCBC},
