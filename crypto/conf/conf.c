@@ -309,15 +309,7 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
         buf->data[to++] = *(p++);
       }
 
-      // Since we change the pointer 'from', we also have to change the
-      // perceived length of the string it points at.  /RL
-      len -= e - from;
       from = e;
-
-      // In case there were no braces or parenthesis around the
-      // variable reference, we have to put back the character that was
-      // replaced with a '\0'.  /RL
-      *rp = r;
     } else {
       buf->data[to++] = *(from++);
     }

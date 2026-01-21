@@ -336,6 +336,214 @@ key2 = $key1
               },
           },
       },
+
+      // Variable expansion with curly braces ${foo}
+      {
+          R"(
+key1 = value1
+key2 = ${key1}
+)",
+          {
+              {
+                  "default",
+                  {{"key1", "value1"}, {"key2", "value1"}},
+              },
+          },
+      },
+
+      // Variable expansion with parentheses $(foo)
+      {
+          R"(
+key1 = value1
+key2 = $(key1)
+)",
+          {
+              {
+                  "default",
+                  {{"key1", "value1"}, {"key2", "value1"}},
+              },
+          },
+      },
+
+      // Variable expansion with mixed content (prefix and suffix)
+      {
+          R"(
+key1 = middle
+key2 = prefix_${key1}_suffix
+)",
+          {
+              {
+                  "default",
+                  {{"key1", "middle"}, {"key2", "prefix_middle_suffix"}},
+              },
+          },
+      },
+
+      // Multiple variable expansions in one value
+      {
+          R"(
+key1 = hello
+key2 = world
+key3 = $key1 $key2
+)",
+          {
+              {
+                  "default",
+                  {{"key1", "hello"}, {"key2", "world"}, {"key3", "hello world"}},
+              },
+          },
+      },
+
+      // Chained variable expansion
+      {
+          R"(
+key1 = base
+key2 = $key1
+key3 = $key2
+)",
+          {
+              {
+                  "default",
+                  {{"key1", "base"}, {"key2", "base"}, {"key3", "base"}},
+              },
+          },
+      },
+
+      // Cross-section variable reference with ${section::key}
+      {
+          R"(
+[section1]
+key1 = from_section1
+
+[section2]
+key2 = ${section1::key1}
+)",
+          {
+              {"default", {}},
+              {"section1", {{"key1", "from_section1"}}},
+              {"section2", {{"key2", "from_section1"}}},
+          },
+      },
+
+      // Cross-section variable reference with $section::key (no braces)
+      {
+          R"(
+[section1]
+key1 = from_section1
+
+[section2]
+key2 = $section1::key1
+)",
+          {
+              {"default", {}},
+              {"section1", {{"key1", "from_section1"}}},
+              {"section2", {{"key2", "from_section1"}}},
+          },
+      },
+
+      // Cross-section reference to default section
+      {
+          R"(
+key1 = from_default
+
+[section1]
+key2 = ${default::key1}
+)",
+          {
+              {"default", {{"key1", "from_default"}}},
+              {"section1", {{"key2", "from_default"}}},
+          },
+      },
+
+      // Variable name with underscore
+      {
+          R"(
+key_with_underscore = value1
+key2 = $key_with_underscore
+)",
+          {
+              {
+                  "default",
+                  {{"key_with_underscore", "value1"}, {"key2", "value1"}},
+              },
+          },
+      },
+
+      // Variable name with numbers
+      {
+          R"(
+key123 = value1
+key2 = $key123
+)",
+          {
+              {
+                  "default",
+                  {{"key123", "value1"}, {"key2", "value1"}},
+              },
+          },
+      },
+
+      // Variable at start, middle, and end
+      {
+          R"(
+v = X
+start = $v is here
+middle = here $v is
+end = here is $v
+)",
+          {
+              {
+                  "default",
+                  {{"v", "X"},
+                   {"start", "X is here"},
+                   {"middle", "here X is"},
+                   {"end", "here is X"}},
+              },
+          },
+      },
+
+      // Variable referencing same section implicitly
+      {
+          R"(
+[mysection]
+base = myvalue
+derived = $base
+)",
+          {
+              {"default", {}},
+              {"mysection", {{"base", "myvalue"}, {"derived", "myvalue"}}},
+          },
+      },
+
+      // Variable reference with parentheses and cross-section
+      {
+          R"(
+[section1]
+key1 = paren_value
+
+[section2]
+key2 = $(section1::key1)
+)",
+          {
+              {"default", {}},
+              {"section1", {{"key1", "paren_value"}}},
+              {"section2", {{"key2", "paren_value"}}},
+          },
+      },
+
+      // Empty variable expansion (variable with empty value)
+      {
+          R"(
+empty =
+key2 = prefix${empty}suffix
+)",
+          {
+              {
+                  "default",
+                  {{"empty", ""}, {"key2", "prefixsuffix"}},
+              },
+          },
+      },
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.in);
@@ -359,6 +567,14 @@ key2 = $key1
       // Keys can only contain alphanumeric characters, punctuaion, and escapes.
       "key name = value",
       "\"key\" = value",
+      // Variable expansion: undefined variable.
+      "key = $undefined_var",
+      // Variable expansion: missing closing brace.
+      "key = ${foo",
+      // Variable expansion: missing closing parenthesis.
+      "key = $(foo",
+      // Variable expansion: undefined cross-section variable.
+      "key = ${nonexistent_section::key}",
   };
   for (const auto &t : kInvalidTests) {
     SCOPED_TRACE(t);
