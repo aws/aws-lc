@@ -108,7 +108,6 @@ int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size) {
       }
     }
     k = 0;
-    i -= again;
     if (i % 2 != 0) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_ODD_NUMBER_OF_CHARS);
       OPENSSL_free(s);
@@ -116,14 +115,14 @@ int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size) {
     }
     i /= 2;
     if (num + i > slen) {
-      sp = OPENSSL_realloc(s, num + i * 2);
+      sp = OPENSSL_realloc(s, num + i);
       if (sp == NULL) {
         OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
         OPENSSL_free(s);
         return 0;
       }
       s = sp;
-      slen = num + i * 2;
+      slen = num + i;
     }
     for (j = 0; j < i; j++, k += 2) {
       for (n = 0; n < 2; n++) {
