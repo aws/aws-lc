@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.66.2")
+set(SOFTWARE_VERSION "1.67.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -1220,9 +1220,9 @@ if(BUILD_TESTING)
       add_custom_target(
         build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool/testmodulewrapper
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})

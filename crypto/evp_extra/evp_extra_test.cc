@@ -2200,9 +2200,6 @@ struct KnownKEM {
 };
 
 static const struct KnownKEM kKEMs[] = {
-  {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, 64, 32, "kyber/kat/kyber512r3.txt"},
-  {"Kyber768r3", NID_KYBER768_R3, 1184, 2400, 1088, 32, 64, 32, "kyber/kat/kyber768r3.txt"},
-  {"Kyber1024r3", NID_KYBER1024_R3, 1568, 3168, 1568, 32, 64, 32, "kyber/kat/kyber1024r3.txt"},
   {"MLKEM512", NID_MLKEM512, 800, 1632, 768, 32, 64, 32, "fipsmodule/ml_kem/kat/mlkem512.txt"},
   {"MLKEM768", NID_MLKEM768, 1184, 2400, 1088, 32, 64, 32, "fipsmodule/ml_kem/kat/mlkem768.txt"},
   {"MLKEM1024", NID_MLKEM1024, 1568, 3168, 1568, 32, 64, 32, "fipsmodule/ml_kem/kat/mlkem1024.txt"},

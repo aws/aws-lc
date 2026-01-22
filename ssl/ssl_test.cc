@@ -45,7 +45,6 @@
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 #include "../crypto/internal.h"
-#include "../crypto/kyber/kem_kyber.h"
 #include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"

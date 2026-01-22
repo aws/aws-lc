@@ -46,9 +46,9 @@ import (
 	"syscall"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/ssl_transfer"
-	"boringssl.googlesource.com/boringssl/util/testresult"
+	"github.com/aws/aws-lc/ssl/test/runner/hpke"
+	"github.com/aws/aws-lc/ssl/test/runner/ssl_transfer"
+	"github.com/aws/aws-lc/util/testresult"
 	"golang.org/x/crypto/cryptobyte"
 )
 
@@ -19739,13 +19739,13 @@ func addMultipleCertSlotTests() {
 	}
 	multipleCertsFlag := "-multiple-certs-slot"
 	rsaCertSlot := []string{
-		multipleCertsFlag, rsaCertificate.ChainPath  + "," + rsaCertificate.KeyPath,
+		multipleCertsFlag, rsaCertificate.ChainPath + "," + rsaCertificate.KeyPath,
 	}
 	ecdsaCertSlot := []string{
-		multipleCertsFlag, ecdsaP256Certificate.ChainPath  + "," + ecdsaP256Certificate.KeyPath,
+		multipleCertsFlag, ecdsaP256Certificate.ChainPath + "," + ecdsaP256Certificate.KeyPath,
 	}
 	ed25519CertSlot := []string{
-		multipleCertsFlag, ed25519Certificate.ChainPath  + "," + ed25519Certificate.KeyPath,
+		multipleCertsFlag, ed25519Certificate.ChainPath + "," + ed25519Certificate.KeyPath,
 	}
 	certificateSlotFlags := append([]string{}, rsaCertSlot...)
 	certificateSlotFlags = append(certificateSlotFlags, ecdsaCertSlot...)
@@ -19831,7 +19831,7 @@ func addMultipleCertSlotTests() {
 					MaxVersion:                ver.version,
 					VerifySignatureAlgorithms: []signatureAlgorithm{alg.id},
 					ClientAuth:                RequireAnyClientCert,
-					Chains:              []CertificateChain{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
+					Chains:                    []CertificateChain{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
 				},
 				flags: func() []string {
 					flags := append([]string{}, certificateSlotFlags...)
