@@ -36,7 +36,7 @@ TEST_F(TxtDbTest, ReadEmptyDatabase) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(empty_data, strlen(empty_data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 3));
+  auto db = TXT_DB_read(bio, 3);
   ASSERT_TRUE(db);
   EXPECT_EQ(db->num_fields, 3);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 0u);
@@ -51,7 +51,7 @@ TEST_F(TxtDbTest, ReadDatabaseWithComments) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 3));
+  auto db = TXT_DB_read(bio, 3);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 2u);
 
@@ -74,7 +74,7 @@ TEST_F(TxtDbTest, ReadDatabaseWithEscapedTabs) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 3));
+  auto db = TXT_DB_read(bio, 3);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 1u);
 
@@ -91,7 +91,7 @@ TEST_F(TxtDbTest, ReadDatabaseWrongNumFields) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 3));
+  auto db = TXT_DB_read(bio, 3);
   EXPECT_FALSE(db);
 }
 
@@ -101,7 +101,7 @@ TEST_F(TxtDbTest, ReadDatabaseTooManyFields) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 3));
+  auto db = TXT_DB_read(bio, 3);
   EXPECT_FALSE(db);
 }
 
@@ -112,13 +112,13 @@ TEST_F(TxtDbTest, WriteDatabase) {
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(read_bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(read_bio.get(), 3));
+  auto db = TXT_DB_read(read_bio, 3);
   ASSERT_TRUE(db);
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(write_bio);
 
-  long written = TXT_DB_write(write_bio.get(), db.get());
+  long written = TXT_DB_write(write_bio, db);
   EXPECT_GT(written, 0);
 
   // Read back the written data
@@ -137,13 +137,13 @@ TEST_F(TxtDbTest, WriteDatabaseWithTabs) {
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(read_bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(read_bio.get(), 3));
+  auto db = TXT_DB_read(read_bio, 3);
   ASSERT_TRUE(db);
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(write_bio);
 
-  long written = TXT_DB_write(write_bio.get(), db.get());
+  long written = TXT_DB_write(write_bio, db);
   EXPECT_GT(written, 0);
 
   // Read back and verify tabs are escaped
@@ -163,11 +163,11 @@ TEST_F(TxtDbTest, CreateIndex) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field
-  EXPECT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  EXPECT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
   EXPECT_TRUE(db->index[0] != nullptr);
 }
 
@@ -177,11 +177,11 @@ TEST_F(TxtDbTest, CreateIndexOutOfRange) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Try to create index on field 5 (out of range)
-  EXPECT_FALSE(TXT_DB_create_index(db.get(), 5, nullptr, string_hash, string_cmp));
+  EXPECT_FALSE(TXT_DB_create_index(db, 5, nullptr, string_hash, string_cmp));
   EXPECT_EQ(db->error, DB_ERROR_INDEX_OUT_OF_RANGE);
 }
 
@@ -192,11 +192,11 @@ TEST_F(TxtDbTest, CreateIndexWithDuplicates) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field - should fail due to duplicates
-  EXPECT_FALSE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  EXPECT_FALSE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
   EXPECT_EQ(db->error, DB_ERROR_INDEX_CLASH);
 }
 
@@ -208,17 +208,17 @@ TEST_F(TxtDbTest, GetByIndex) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
 
   // Search for key2
   const char *search_key = "key2";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
   
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 0, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 0, search_row);
   ASSERT_TRUE(result);
   EXPECT_STREQ(result[0], "key2");
   EXPECT_STREQ(result[1], "value2");
@@ -231,17 +231,17 @@ TEST_F(TxtDbTest, GetByIndexNotFound) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
 
   // Search for non-existent key
   const char *search_key = "nonexistent";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
   
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 0, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 0, search_row);
   EXPECT_FALSE(result);
   EXPECT_EQ(db->error, DB_ERROR_OK);
 }
@@ -252,14 +252,14 @@ TEST_F(TxtDbTest, GetByIndexNoIndex) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Try to get without creating index first
   const char *search_key = "key1";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
   
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 0, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 0, search_row);
   EXPECT_FALSE(result);
   EXPECT_EQ(db->error, DB_ERROR_NO_INDEX);
 }
@@ -270,13 +270,13 @@ TEST_F(TxtDbTest, GetByIndexOutOfRange) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   const char *search_key = "key1";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
   
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 10, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 10, search_row);
   EXPECT_FALSE(result);
   EXPECT_EQ(db->error, DB_ERROR_INDEX_OUT_OF_RANGE);
 }
@@ -287,7 +287,7 @@ TEST_F(TxtDbTest, InsertRow) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 1u);
 
@@ -298,7 +298,7 @@ TEST_F(TxtDbTest, InsertRow) {
   new_row[1] = OPENSSL_strdup("value2");
   new_row[2] = nullptr;  // Mark as new row (max == NULL)
 
-  EXPECT_TRUE(TXT_DB_insert(db.get(), new_row));
+  EXPECT_TRUE(TXT_DB_insert(db, new_row));
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 2u);
 
   // Verify the inserted row
@@ -313,11 +313,11 @@ TEST_F(TxtDbTest, InsertRowIndexClash) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
 
   // Try to insert a row with duplicate key
   OPENSSL_STRING *new_row = (OPENSSL_STRING *)OPENSSL_malloc(sizeof(OPENSSL_STRING) * 3);
@@ -326,7 +326,7 @@ TEST_F(TxtDbTest, InsertRowIndexClash) {
   new_row[1] = OPENSSL_strdup("value2");
   new_row[2] = nullptr;
 
-  EXPECT_FALSE(TXT_DB_insert(db.get(), new_row));
+  EXPECT_FALSE(TXT_DB_insert(db, new_row));
   EXPECT_EQ(db->error, DB_ERROR_INDEX_CLASH);
 
   // Clean up the failed insertion's memory
@@ -341,11 +341,11 @@ TEST_F(TxtDbTest, InsertAndRetrieve) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
 
   // Insert a new row
   OPENSSL_STRING *new_row = (OPENSSL_STRING *)OPENSSL_malloc(sizeof(OPENSSL_STRING) * 3);
@@ -354,13 +354,13 @@ TEST_F(TxtDbTest, InsertAndRetrieve) {
   new_row[1] = OPENSSL_strdup("value2");
   new_row[2] = nullptr;
 
-  EXPECT_TRUE(TXT_DB_insert(db.get(), new_row));
+  EXPECT_TRUE(TXT_DB_insert(db, new_row));
 
   // Now retrieve the inserted row
   const char *search_key = "key2";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
   
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 0, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 0, search_row);
   ASSERT_TRUE(result);
   EXPECT_STREQ(result[0], "key2");
   EXPECT_STREQ(result[1], "value2");
@@ -384,23 +384,23 @@ TEST_F(TxtDbTest, CreateIndexWithQualifier) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index with qualifier - only even numbered rows will be indexed
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, qualifier_skip_odd, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, qualifier_skip_odd, string_hash, string_cmp));
 
   // Search for 2key (should be found)
   const char *search_key2 = "2key";
   OPENSSL_STRING search_row2[2] = {const_cast<char *>(search_key2), nullptr};
-  OPENSSL_STRING *result2 = TXT_DB_get_by_index(db.get(), 0, search_row2);
+  OPENSSL_STRING *result2 = TXT_DB_get_by_index(db, 0, search_row2);
   ASSERT_TRUE(result2);
   EXPECT_STREQ(result2[1], "value2");
 
   // Search for 1key (should NOT be found - odd)
   const char *search_key1 = "1key";
   OPENSSL_STRING search_row1[2] = {const_cast<char *>(search_key1), nullptr};
-  OPENSSL_STRING *result1 = TXT_DB_get_by_index(db.get(), 0, search_row1);
+  OPENSSL_STRING *result1 = TXT_DB_get_by_index(db, 0, search_row1);
   EXPECT_FALSE(result1);
 }
 
@@ -412,7 +412,7 @@ TEST_F(TxtDbTest, ReadMultipleRows) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 6));
+  auto db = TXT_DB_read(bio, 6);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 3u);
 
@@ -441,13 +441,13 @@ TEST_F(TxtDbTest, RoundTrip) {
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(original_data, strlen(original_data)));
   ASSERT_TRUE(read_bio);
 
-  bssl::UniquePtr<TXT_DB> db1(TXT_DB_read(read_bio.get(), 2));
+  auto db1 = TXT_DB_read(read_bio, 2);
   ASSERT_TRUE(db1);
 
   // Write to memory BIO
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(write_bio);
-  long written = TXT_DB_write(write_bio.get(), db1.get());
+  long written = TXT_DB_write(write_bio, db1);
   EXPECT_GT(written, 0);
 
   // Read from the written data
@@ -457,7 +457,7 @@ TEST_F(TxtDbTest, RoundTrip) {
   bssl::UniquePtr<BIO> read_bio2(BIO_new_mem_buf(buf, len));
   ASSERT_TRUE(read_bio2);
 
-  bssl::UniquePtr<TXT_DB> db2(TXT_DB_read(read_bio2.get(), 2));
+  auto db2 = TXT_DB_read(read_bio2, 2);
   ASSERT_TRUE(db2);
   
   // Verify the databases have the same content
@@ -480,7 +480,7 @@ TEST_F(TxtDbTest, ReadDatabaseWithEmptyFields) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 3));
+  auto db = TXT_DB_read(bio, 3);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 2u);
 
@@ -504,24 +504,24 @@ TEST_F(TxtDbTest, ReplaceIndex) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
 
   // Verify it works
   const char *search_key = "key1";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 0, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 0, search_row);
   ASSERT_TRUE(result);
   EXPECT_STREQ(result[1], "valueA");
 
   // Create a new index on the same field (should replace the old one)
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
 
   // Verify it still works
-  result = TXT_DB_get_by_index(db.get(), 0, search_row);
+  result = TXT_DB_get_by_index(db, 0, search_row);
   ASSERT_TRUE(result);
   EXPECT_STREQ(result[1], "valueA");
 }
@@ -545,13 +545,13 @@ TEST_F(TxtDbTest, CADatabaseFormat) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 6));
+  auto db = TXT_DB_read(bio, 6);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 3u);
   EXPECT_EQ(db->num_fields, 6);
 
   // Create index on serial number (field 3) with field 3-specific hash/cmp
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 3, nullptr, string_hash_field3, string_cmp_field3));
+  ASSERT_TRUE(TXT_DB_create_index(db, 3, nullptr, string_hash_field3, string_cmp_field3));
 
   // Look up by serial number - the hash function uses field 3
   const char *search_serial = "02";
@@ -559,7 +559,7 @@ TEST_F(TxtDbTest, CADatabaseFormat) {
                                    const_cast<char *>(search_serial), 
                                    nullptr, nullptr};
   
-  OPENSSL_STRING *result = TXT_DB_get_by_index(db.get(), 3, search_row);
+  OPENSSL_STRING *result = TXT_DB_get_by_index(db, 3, search_row);
   ASSERT_TRUE(result);
   EXPECT_STREQ(result[0], "R");  // Status should be Revoked
   EXPECT_STREQ(result[5], "/CN=Revoked Cert");
@@ -571,11 +571,11 @@ TEST_F(TxtDbTest, InsertWithQualifier) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index with qualifier - only even numbered rows will be indexed
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, qualifier_skip_odd, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, qualifier_skip_odd, string_hash, string_cmp));
 
   // Insert a row that should be skipped by qualifier (odd)
   OPENSSL_STRING *odd_row = (OPENSSL_STRING *)OPENSSL_malloc(sizeof(OPENSSL_STRING) * 3);
@@ -585,7 +585,7 @@ TEST_F(TxtDbTest, InsertWithQualifier) {
   odd_row[2] = nullptr;
 
   // This should succeed because the row is not indexed (skipped by qualifier)
-  EXPECT_TRUE(TXT_DB_insert(db.get(), odd_row));
+  EXPECT_TRUE(TXT_DB_insert(db, odd_row));
 
   // Insert a row that would clash if indexed (even) - but with different key
   OPENSSL_STRING *even_row = (OPENSSL_STRING *)OPENSSL_malloc(sizeof(OPENSSL_STRING) * 3);
@@ -594,7 +594,7 @@ TEST_F(TxtDbTest, InsertWithQualifier) {
   even_row[1] = OPENSSL_strdup("value4");
   even_row[2] = nullptr;
 
-  EXPECT_TRUE(TXT_DB_insert(db.get(), even_row));
+  EXPECT_TRUE(TXT_DB_insert(db, even_row));
   
   // Verify both rows were inserted
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 3u);
@@ -608,7 +608,7 @@ TEST_F(TxtDbTest, SingleFieldDatabase) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 1));
+  auto db = TXT_DB_read(bio, 1);
   ASSERT_TRUE(db);
   EXPECT_EQ(db->num_fields, 1);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 3u);
@@ -623,13 +623,13 @@ TEST_F(TxtDbTest, WriteEmptyDatabase) {
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(empty_data, strlen(empty_data)));
   ASSERT_TRUE(read_bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(read_bio.get(), 2));
+  auto db = TXT_DB_read(read_bio, 2);
   ASSERT_TRUE(db);
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(write_bio);
 
-  long written = TXT_DB_write(write_bio.get(), db.get());
+  long written = TXT_DB_write(write_bio, db);
   EXPECT_EQ(written, 0);  // Empty database should write 0 bytes
 }
 
@@ -651,26 +651,26 @@ TEST_F(TxtDbTest, MultipleIndexes) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Create index on first field (field 0) with field 0 hash/cmp
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
   
   // Create index on second field (field 1) with field 1 hash/cmp
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 1, nullptr, string_hash_field1, string_cmp_field1));
+  ASSERT_TRUE(TXT_DB_create_index(db, 1, nullptr, string_hash_field1, string_cmp_field1));
 
   // Search by first field
   const char *search_key1 = "key2";
   OPENSSL_STRING search_row1[2] = {const_cast<char *>(search_key1), nullptr};
-  OPENSSL_STRING *result1 = TXT_DB_get_by_index(db.get(), 0, search_row1);
+  OPENSSL_STRING *result1 = TXT_DB_get_by_index(db, 0, search_row1);
   ASSERT_TRUE(result1);
   EXPECT_STREQ(result1[1], "val_b");
 
   // Search by second field
   const char *search_key2 = "val_c";
   OPENSSL_STRING search_row2[2] = {nullptr, const_cast<char *>(search_key2)};
-  OPENSSL_STRING *result2 = TXT_DB_get_by_index(db.get(), 1, search_row2);
+  OPENSSL_STRING *result2 = TXT_DB_get_by_index(db, 1, search_row2);
   ASSERT_TRUE(result2);
   EXPECT_STREQ(result2[0], "key3");
 }
@@ -684,7 +684,7 @@ TEST_F(TxtDbTest, LongLines) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data.c_str(), data.length()));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 1u);
 
@@ -699,7 +699,7 @@ TEST_F(TxtDbTest, LineWithoutNewline) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
   // The line without newline should not be parsed as a complete row
   EXPECT_EQ(sk_OPENSSL_PSTRING_num(db->data), 0u);
@@ -711,20 +711,20 @@ TEST_F(TxtDbTest, ErrorCodes) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, strlen(data)));
   ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<TXT_DB> db(TXT_DB_read(bio.get(), 2));
+  auto db = TXT_DB_read(bio, 2);
   ASSERT_TRUE(db);
 
   // Initially error should be OK (or uninitialized)
   // After a successful operation
-  ASSERT_TRUE(TXT_DB_create_index(db.get(), 0, nullptr, string_hash, string_cmp));
+  ASSERT_TRUE(TXT_DB_create_index(db, 0, nullptr, string_hash, string_cmp));
   
   const char *search_key = "key1";
   OPENSSL_STRING search_row[2] = {const_cast<char *>(search_key), nullptr};
   
-  TXT_DB_get_by_index(db.get(), 0, search_row);
+  TXT_DB_get_by_index(db, 0, search_row);
   EXPECT_EQ(db->error, DB_ERROR_OK);
 
   // After an out of range error
-  TXT_DB_get_by_index(db.get(), 99, search_row);
+  TXT_DB_get_by_index(db, 99, search_row);
   EXPECT_EQ(db->error, DB_ERROR_INDEX_OUT_OF_RANGE);
 }

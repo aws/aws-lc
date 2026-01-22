@@ -42,18 +42,21 @@ struct txt_db_st {
   OPENSSL_STRING *arg_row;
 };
 
-TXT_DB *TXT_DB_read(BIO *in, int num);
-long TXT_DB_write(BIO *out, TXT_DB *db);
-int TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
+bssl::UniquePtr<TXT_DB> TXT_DB_read(bssl::UniquePtr<BIO> &in, int num);
+void TXT_DB_free(TXT_DB *db);
+long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db);
+int TXT_DB_create_index(bssl::UniquePtr<TXT_DB> &db, int field,
+                        int (*qual)(OPENSSL_STRING *),
                         lhash_OPENSSL_STRING_hash_func hash,
                         lhash_OPENSSL_STRING_cmp_func cmp);
-void TXT_DB_free(TXT_DB *db);
-OPENSSL_STRING *TXT_DB_get_by_index(TXT_DB *db, int idx, OPENSSL_STRING *value);
-int TXT_DB_insert(TXT_DB *db, OPENSSL_STRING *value);
+OPENSSL_STRING *TXT_DB_get_by_index(bssl::UniquePtr<TXT_DB> &db, int idx,
+                                    OPENSSL_STRING *value);
+int TXT_DB_insert(bssl::UniquePtr<TXT_DB> &db, OPENSSL_STRING *value);
 
 BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(TXT_DB, TXT_DB_free);
+BORINGSSL_MAKE_DELETER(LHASH_OF(OPENSSL_STRING), lh_OPENSSL_STRING_free);
 
 BSSL_NAMESPACE_END
 

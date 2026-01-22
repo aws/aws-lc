@@ -20,8 +20,8 @@
 #define BUFSIZE 512
 
 
-TXT_DB *TXT_DB_read(BIO *in, int num) {
-  TXT_DB *ret = NULL;
+bssl::UniquePtr<TXT_DB> TXT_DB_read(bssl::UniquePtr<BIO> &in, int num) {
+  bssl::UniquePtr<TXT_DB> ret;
   int esc = 0;
   int i = 0, add = 0, n = 0;
   int size = BUFSIZE;
@@ -34,7 +34,8 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
     goto err;
   }
 
-  if ((ret = (TXT_DB *)OPENSSL_malloc(sizeof(TXT_DB))) == NULL) {
+  ret.reset((TXT_DB *)OPENSSL_malloc(sizeof(TXT_DB)));
+  if (!ret) {
     goto err;
   }
   ret->num_fields = num;
@@ -64,7 +65,7 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
       }
     }
     buf->data[offset] = '\0';
-    BIO_gets(in, &(buf->data[offset]), size - offset);
+    BIO_gets(in.get(), &(buf->data[offset]), size - offset);
     if (buf->data[offset] == '\0') {
       break;
     }
@@ -124,16 +125,11 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
   }
   return ret;
 err:
-  if (ret != NULL) {
-    sk_OPENSSL_PSTRING_free(ret->data);
-    OPENSSL_free(ret->index);
-    OPENSSL_free(ret->qual);
-    OPENSSL_free(ret);
-  }
-  return NULL;
+  ret.reset();
+  return ret;
 }
 
-OPENSSL_STRING *TXT_DB_get_by_index(TXT_DB *db, int idx,
+OPENSSL_STRING *TXT_DB_get_by_index(bssl::UniquePtr<TXT_DB> &db, int idx,
                                     OPENSSL_STRING *value) {
   OPENSSL_STRING *ret = nullptr;
   LHASH_OF(OPENSSL_STRING) *lh = nullptr;
@@ -152,10 +148,10 @@ OPENSSL_STRING *TXT_DB_get_by_index(TXT_DB *db, int idx,
   return ret;
 }
 
-int TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
+int TXT_DB_create_index(bssl::UniquePtr<TXT_DB> &db, int field, int (*qual)(OPENSSL_STRING *),
                         lhash_OPENSSL_STRING_hash_func hash,
                         lhash_OPENSSL_STRING_cmp_func cmp) {
-  LHASH_OF(OPENSSL_STRING) *idx = nullptr;
+  bssl::UniquePtr<LHASH_OF(OPENSSL_STRING)> idx;
   OPENSSL_STRING *r = nullptr, *k = nullptr;
   int i = 0, n = 0;
 
@@ -163,7 +159,8 @@ int TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
     db->error = DB_ERROR_INDEX_OUT_OF_RANGE;
     return 0;
   }
-  if ((idx = lh_OPENSSL_STRING_new(hash, cmp)) == NULL) {
+  idx.reset(lh_OPENSSL_STRING_new(hash, cmp));
+  if (!idx) {
     db->error = DB_ERROR_MALLOC;
     return 0;
   }
@@ -173,26 +170,24 @@ int TXT_DB_create_index(TXT_DB *db, int field, int (*qual)(OPENSSL_STRING *),
     if ((qual != NULL) && (qual(r) == 0)) {
       continue;
     }
-    if (!lh_OPENSSL_STRING_insert(idx, &k, r) || k != NULL) {
+    if (!lh_OPENSSL_STRING_insert(idx.get(), &k, r) || k != NULL) {
       db->error = DB_ERROR_INDEX_CLASH;
       db->arg1 = sk_OPENSSL_PSTRING_find(db->data, k);
       db->arg2 = i;
-      lh_OPENSSL_STRING_free(idx);
       return 0;
     }
-    if (lh_OPENSSL_STRING_retrieve(idx, r) == NULL) {
+    if (lh_OPENSSL_STRING_retrieve(idx.get(), r) == NULL) {
       db->error = DB_ERROR_MALLOC;
-      lh_OPENSSL_STRING_free(idx);
       return 0;
     }
   }
   lh_OPENSSL_STRING_free(db->index[field]);
-  db->index[field] = idx;
+  db->index[field] = idx.release();
   db->qual[field] = qual;
   return 1;
 }
 
-long TXT_DB_write(BIO *out, TXT_DB *db) {
+long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
   long n = 0, nn = 0, l = 0, tot = 0;
   char *p = nullptr, **pp = nullptr, *f = nullptr;
   bssl::UniquePtr<BUF_MEM> buf(BUF_MEM_new());
@@ -235,7 +230,7 @@ long TXT_DB_write(BIO *out, TXT_DB *db) {
     }
     p[-1] = '\n';
     j = p - buf->data;
-    if (BIO_write(out, buf->data, (int)j) != j) {
+    if (BIO_write(out.get(), buf->data, (int)j) != j) {
       goto err;
     }
     tot += j;
@@ -245,7 +240,7 @@ err:
   return ret;
 }
 
-int TXT_DB_insert(TXT_DB *db, OPENSSL_STRING *row) {
+int TXT_DB_insert(bssl::UniquePtr<TXT_DB> &db, OPENSSL_STRING *row) {
   OPENSSL_STRING *r = nullptr;
   int i = 0;
 
