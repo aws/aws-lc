@@ -54,12 +54,13 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/digest.h>
-
 #include <string.h>
 
+#include <openssl/base.h>
 #include <openssl/blake2.h>
 #include <openssl/bytestring.h>
+#include <openssl/digest.h>
+#include <openssl/md5.h>
 #include <openssl/obj.h>
 #include <openssl/nid.h>
 
@@ -255,6 +256,36 @@ const EVP_MD *EVP_get_digestbyname(const char *name) {
 
   return NULL;
 }
+
+static void md5_init(EVP_MD_CTX *ctx) {
+  CHECK(MD5_Init(ctx->md_data));
+}
+
+static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  // MD5_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return MD5_Update(ctx->md_data, data, count);
+}
+
+static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
+  CHECK(MD5_Final(out, ctx->md_data));
+}
+
+static const EVP_MD evp_md_md5 = {
+  NID_md5,
+  MD5_DIGEST_LENGTH,
+  0,
+  md5_init,
+  md5_update,
+  md5_final,
+  64,
+  sizeof(MD5_CTX),
+  NULL, // squeezeXOF
+  NULL  // finalXOF
+};
+
+const EVP_MD *EVP_md5(void) { return &evp_md_md5; }
 
 static void blake2b256_init(EVP_MD_CTX *ctx) { BLAKE2B256_Init(ctx->md_data); }
 

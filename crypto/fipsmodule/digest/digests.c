@@ -69,12 +69,6 @@
 #include "../sha/internal.h"
 #include "internal.h"
 
-#if defined(NDEBUG)
-#define CHECK(x) (void) (x)
-#else
-#define CHECK(x) assert(x)
-#endif
-
 
 static void md4_init(EVP_MD_CTX *ctx) {
   CHECK(MD4_Init(ctx->md_data));
@@ -102,35 +96,6 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md4) {
   out->finalXOF = NULL;
   out->block_size = 64;
   out->ctx_size = sizeof(MD4_CTX);
-}
-
-
-static void md5_init(EVP_MD_CTX *ctx) {
-  CHECK(MD5_Init(ctx->md_data));
-}
-
-static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  // MD5_Update always returns 1. Internally called function
-  // |crypto_md32_update| is void. For test consistency and future
-  // compatibility, the return value is propagated and returned
-  return MD5_Update(ctx->md_data, data, count);
-}
-
-static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(MD5_Final(out, ctx->md_data));
-}
-
-DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5) {
-  out->type = NID_md5;
-  out->md_size = MD5_DIGEST_LENGTH;
-  out->flags = 0;
-  out->init = md5_init;
-  out->update = md5_update;
-  out->final = md5_final;
-  out->squeezeXOF = NULL;
-  out->finalXOF = NULL;
-  out->block_size = 64;
-  out->ctx_size = sizeof(MD5_CTX);
 }
 
 

@@ -66,7 +66,7 @@
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
 
-#include "../md5/internal.h"
+#include "../../md5/internal.h"
 #include "../sha/internal.h"
 
 typedef int (*HashInit)(void *);
