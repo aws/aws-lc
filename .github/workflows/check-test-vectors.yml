@@ -6,8 +6,8 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  issues: write
 
 jobs:
   check-vectors:
@@ -40,28 +40,15 @@ jobs:
             echo "❌ Test vectors are outdated"
           fi
 
-      - name: Create Pull Request for outdated vectors
-        if: steps.check_vectors.outputs.vectors_outdated == 'true'
-        uses: peter-evans/create-pull-request@v8
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update-third-party-vectors
-          delete-branch: true
-          title: 'Update third-party test vectors'
-          body: |
-            ### Issues:
-            Automated check detected that some third-party test vectors in `third_party/vectors` need to be updated.
-
-            ### Next Steps
-            - Run `cd third_party/vectors && python3 ./sync.py` locally to update vectors
-            - Review any new test vectors that are added
-            - Run `ninja -C build crypto_test` to ensure all tests pass
-            - Run `python3 util/generate_build_files.py` to update build files
-            - Verify `cd third_party/vectors && python3 ./sync.py --check` returns success
-
-            By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license and the ISC license.
-          assignees: sgmenda
-          draft: false
+      - name: Create an issue for outdated vectors
+        run: |
+          gh issue create \
+          --title "Update third-party test vectors" \
+          --template "update-vectors" \
+          --body "Automated check detected that some third-party test vectors need to be updated."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Vectors up-to-date summary
         if: steps.check_vectors.outputs.vectors_outdated == 'false'
