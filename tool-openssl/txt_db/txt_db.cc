@@ -1,11 +1,9 @@
-/*
- * Copyright 1995-2023 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2023 The OpenSSL Project Authors. All Rights Reserved.
+// 
+// Licensed under the OpenSSL license (the "License").  You may not use
+// this file except in compliance with the License.  You can obtain a copy
+// in the file LICENSE in the source distribution or at
+// https://www.openssl.org/source/license.html
 
 #include "txt_db.h"
 
@@ -79,7 +77,8 @@ TXT_DB *TXT_DB_read(BIO *in, int num) {
       continue;
     } else {
       buf->data[offset - 1] = '\0'; /* blat the '\n' */
-      if ((p = (char *)OPENSSL_malloc(add + offset)) == NULL) {
+      p = (char *)OPENSSL_malloc(add + offset);
+      if (p == NULL) {
         goto err;
       }
       offset = 0;

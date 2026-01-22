@@ -97,6 +97,7 @@ if(BUILD_TESTING)
         ../tool/transport_common.cc
 
         txt_db/txt_db.cc
+        txt_db/txt_db_test.cc
 
         asn1parse.cc
         asn1parse_test.cc

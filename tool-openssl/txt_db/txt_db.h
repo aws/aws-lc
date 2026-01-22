@@ -27,9 +27,6 @@
 
 DEFINE_LHASH_OF(OPENSSL_STRING);
 
-// TODO: What is the purpose of this typedef?
-// typedef OPENSSL_STRING *OPENSSL_PSTRING;
-
 DEFINE_NAMED_STACK_OF(OPENSSL_PSTRING, OPENSSL_STRING);
 
 typedef struct txt_db_st TXT_DB;
