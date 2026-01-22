@@ -1206,7 +1206,7 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 		}
 
 		if typ != recordTypeHandshake && c.config.Bugs.MaxRecordSize > 0 && c.config.Bugs.MaxRecordSize < m {
-		    m = c.config.Bugs.MaxRecordSize
+			m = c.config.Bugs.MaxRecordSize
 		}
 
 		explicitIVLen := 0

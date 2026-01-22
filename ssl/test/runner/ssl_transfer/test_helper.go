@@ -36,7 +36,7 @@ type TestHelper struct {
 	test_case_names map[string]struct{}
 	// A channel to collect test cases new test case that should be converted to
 	// test SSL transfer.
-	// A channel(instead of map) is used because the test cases are executed by 
+	// A channel(instead of map) is used because the test cases are executed by
 	// multiple goroutines.
 	new_test_case_chann chan string
 }

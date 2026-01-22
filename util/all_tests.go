@@ -33,8 +33,8 @@ import (
 	"syscall"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/util/testconfig"
-	"boringssl.googlesource.com/boringssl/util/testresult"
+	"github.com/aws/aws-lc/util/testconfig"
+	"github.com/aws/aws-lc/util/testresult"
 )
 
 // TODO(davidben): Link tests with the malloc shim and port -malloc-test to this runner.
@@ -104,7 +104,7 @@ var sdeCPUs []string
 
 func initSDECPUs() {
 	sdeCPUs = append([]string{}, defaultCPUs...)
-	if (runtime.GOOS == "windows") {
+	if runtime.GOOS == "windows" {
 		cmd := exec.Command("cmd", "/C", "ver")
 		output, err := cmd.Output()
 		if err != nil {

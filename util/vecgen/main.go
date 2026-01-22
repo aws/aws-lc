@@ -22,17 +22,17 @@ func generateReproducibleSeed(length int) []byte {
 
 func main() {
 	fmt.Println("Generating test vectors...")
-	
+
 	// Create output directory
 	err := os.MkdirAll(outputDir, 0755)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	// Generate ML-KEM vectors
 	mlkemTestData := generateMLKEMDecapsVectors()
-	
+
 	// Create test files and write them
 	for filename, testData := range mlkemTestData {
 		// Create test file structure
@@ -53,7 +53,7 @@ func main() {
 				},
 			},
 		}
-		
+
 		// Marshal to JSON with indentation
 		jsonData, err := json.MarshalIndent(testFile, "", "  ")
 		if err != nil {
@@ -61,7 +61,7 @@ func main() {
 			os.Exit(1)
 		}
 		jsonData = append(jsonData, '\n')
-		
+
 		// Write to file
 		outputPath := filepath.Join(outputDir, filename)
 		err = os.WriteFile(outputPath, jsonData, 0644)
@@ -69,9 +69,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", outputPath, err)
 			os.Exit(1)
 		}
-		
+
 		fmt.Printf("Generated test vectors -> %s\n", outputPath)
 	}
-	
+
 	fmt.Println("Done!")
 }

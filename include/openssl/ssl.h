@@ -6171,7 +6171,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 //
 // See PORTING.md in the BoringSSL source tree for a table of corresponding
 // functions.
-// https://boringssl.googlesource.com/boringssl/+/master/PORTING.md#Replacements-for-values
+// https://github.com/aws/aws-lc/blob/main/PORTING.md#replacements-for-ctrl-values
 
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist

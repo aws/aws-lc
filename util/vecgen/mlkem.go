@@ -227,7 +227,7 @@ func generateMLKEMDecapsVectors() map[string]TestData[MLKEMDecapsTestVector] {
 		// Convert ML-KEM-512 -> mlkem_512
 		filePrefix := fmt.Sprintf("mlkem_%s", params.Name[7:]) // Extract "512", "768", or "1024"
 		filename := fmt.Sprintf("%s_semi_expanded_decaps_test.json", filePrefix)
-		
+
 		testData[filename] = TestData[MLKEMDecapsTestVector]{
 			ParameterSet: params.Name,
 			Type:         "MLKEMDecapsValidationTest",
@@ -248,6 +248,6 @@ func generateMLKEMDecapsVectors() map[string]TestData[MLKEMDecapsTestVector] {
 			Tests: tests,
 		}
 	}
-	
+
 	return testData
 }
