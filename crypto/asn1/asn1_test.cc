@@ -3363,8 +3363,8 @@ TEST(ASN1Test, I2aA2iASN1IntegerRoundTrip) {
     ASSERT_GT(written, 0);
 
     // Get the hex string
-    const uint8_t *hex_data;
-    size_t hex_len;
+    const uint8_t *hex_data = nullptr;
+    size_t hex_len = 0;
     ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &hex_data, &hex_len));
 
     // Parse it back via a2i_ASN1_INTEGER
@@ -3408,8 +3408,8 @@ TEST(ASN1Test, I2aA2iASN1IntegerRoundTripLong) {
   ASSERT_GT(written, 0);
 
   // Get the hex string (should contain "\\\n" continuation)
-  const uint8_t *hex_data;
-  size_t hex_len;
+  const uint8_t *hex_data = nullptr;
+  size_t hex_len = 0;
   ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &hex_data, &hex_len));
 
   // Verify that continuation is present

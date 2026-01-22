@@ -122,7 +122,7 @@ TEST_F(TxtDbTest, WriteDatabase) {
   EXPECT_GT(written, 0);
 
   // Read back the written data
-  char *buf;
+  char *buf = nullptr;
   long len = BIO_get_mem_data(write_bio.get(), &buf);
   std::string output(buf, len);
 
@@ -147,7 +147,7 @@ TEST_F(TxtDbTest, WriteDatabaseWithTabs) {
   EXPECT_GT(written, 0);
 
   // Read back and verify tabs are escaped
-  char *buf;
+  char *buf = nullptr;
   long len = BIO_get_mem_data(write_bio.get(), &buf);
   std::string output(buf, len);
 
@@ -451,7 +451,7 @@ TEST_F(TxtDbTest, RoundTrip) {
   EXPECT_GT(written, 0);
 
   // Read from the written data
-  char *buf;
+  char *buf = nullptr;
   long len = BIO_get_mem_data(write_bio.get(), &buf);
   
   bssl::UniquePtr<BIO> read_bio2(BIO_new_mem_buf(buf, len));
