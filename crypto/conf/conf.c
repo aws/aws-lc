@@ -218,6 +218,9 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
       }
       if (*from == q) {
         from++;
+      } else {
+        OPENSSL_PUT_ERROR(CONF, CONF_R_NO_CLOSE_QUOTE);
+        goto err;
       }
     } else if (IS_ESC(conf, *from)) {
       from++;

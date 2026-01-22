@@ -575,6 +575,10 @@ key2 = prefix${empty}suffix
       "key = $(foo",
       // Variable expansion: undefined cross-section variable.
       "key = ${nonexistent_section::key}",
+      // Unterminated quotes (CONF_R_NO_CLOSE_QUOTE).
+      "key = \"unterminated",
+      "key = 'unterminated",
+      "key = `unterminated",
   };
   for (const auto &t : kInvalidTests) {
     SCOPED_TRACE(t);
