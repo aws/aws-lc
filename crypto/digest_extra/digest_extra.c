@@ -258,7 +258,9 @@ const EVP_MD *EVP_get_digestbyname(const char *name) {
   return NULL;
 }
 
-static void md4_init(EVP_MD_CTX *ctx) { MD4_Init(ctx->md_data); }
+static void md4_init(EVP_MD_CTX *ctx) {
+  CHECK(MD4_Init(ctx->md_data));
+}
 
 static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   // MD4_Update always returns 1. Internally called function
@@ -268,7 +270,7 @@ static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  MD4_Final(out, ctx->md_data);
+  CHECK(MD4_Final(out, ctx->md_data));
 }
 
 static const EVP_MD evp_md_md4 = {
@@ -280,7 +282,7 @@ static const EVP_MD evp_md_md4 = {
   md4_final,
   64,
   sizeof(MD4_CTX),
-  NULL, // finalOOF
+  NULL, // finalXOF
   NULL  // squeezeXOF
 };
 
