@@ -936,8 +936,6 @@ OPENSSL_EXPORT int RSA_print_fp(FILE *fp, const RSA *rsa, int indent);
 // the id-RSASSA-PSS key encoding.
 OPENSSL_EXPORT const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa);
 
-OPENSSL_EXPORT const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa);
-
 // RSA_new_method_no_e returns a newly-allocated |RSA| object backed by
 // |engine|, with a public modulus of |n| and no known public exponent.
 //
@@ -945,12 +943,6 @@ OPENSSL_EXPORT const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa);
 // should be replaced with a more sound mechanism. See
 // https://crbug.com/boringssl/602.
 OPENSSL_EXPORT RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n);
-
-// RSASSA_PSS_PARAMS_get return one on success and zero on failure.
-// When success, |*md|, |*mgf1md| and |saltlen| will get assigned.
-OPENSSL_EXPORT int RSASSA_PSS_PARAMS_get(const RSASSA_PSS_PARAMS *pss,
-                                         const EVP_MD **md,
-                                         const EVP_MD **mgf1md, int *saltlen);
 
 
 #if defined(__cplusplus)

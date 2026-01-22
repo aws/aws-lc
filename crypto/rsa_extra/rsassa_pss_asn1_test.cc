@@ -9,7 +9,6 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/nid.h>
-#include <openssl/rsa.h>
 
 #include "internal.h"
 

@@ -16,6 +16,8 @@
 #include <openssl/ocsp.h>
 #include <openssl/pem.h>
 #include "txt_db/txt_db.h"
+#include "../crypto/fipsmodule/rsa/internal.h"
+#include "../crypto/rsa_extra/internal.h"
 
 #include "ca_req_common.h"
 #include "internal.h"
