@@ -232,7 +232,7 @@ class PKeyUtlOptionUsageErrorsTest : public PKeyUtlTest {
 };
 
 // Test invalid option combinations
-TEST_F(PKeyUtlOptionUsageErrorsTest, InvalidOptionCombinationsTest) {
+TEST_F(PKeyUtlOptionUsageErrorsTest, InvalidOptionCombinations) {
   std::vector<std::vector<std::string>> testparams = {
       // Both sign and verify specified
       {"-sign", "-verify", "-inkey", key_path, "-in", in_path},
@@ -324,7 +324,7 @@ class PKeyUtlComparisonTest : public ::testing::Test {
 };
 
 // Test signing operation against OpenSSL
-TEST_F(PKeyUtlComparisonTest, SignCompareOpenSSL) {
+TEST_F(PKeyUtlComparisonTest, Sign) {
   std::string tool_command = std::string(tool_executable_path) +
                              " pkeyutl -sign -inkey " + key_path + " -in " +
                              in_path + " -out " + sig_path_tool;
@@ -402,7 +402,7 @@ TEST_F(PKeyUtlComparisonTest, SignCompareOpenSSL) {
 }
 
 // Test pkeyopt functionality against OpenSSL
-TEST_F(PKeyUtlComparisonTest, PkeyoptCompareOpenSSL) {
+TEST_F(PKeyUtlComparisonTest, Pkeyopt) {
   char hashed_in_path[PATH_MAX];
   ASSERT_GT(createTempFILEpath(hashed_in_path), 0u);
 

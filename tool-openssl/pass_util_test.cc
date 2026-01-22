@@ -7,13 +7,9 @@
 #include <openssl/mem.h>
 #include <openssl/pem.h>
 #include <string>
-#ifndef _WIN32
+#if !defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
 #include <unistd.h>
-#endif
-#ifdef _WIN32
-#include <stdlib.h>  // for _putenv_s
-#include <windows.h> // for CreatePipe, SetStdHandle
 #endif
 #include "internal.h"
 #include "test_util.h"
@@ -44,7 +40,7 @@ void WriteTestFile(const char *path, const char *content,
 }
 
 void SetTestEnvVar(const char *name, const char *value) {
-#ifdef _WIN32
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, value);
 #else
   setenv(name, value, 1);
@@ -52,7 +48,7 @@ void SetTestEnvVar(const char *name, const char *value) {
 }
 
 void UnsetTestEnvVar(const char *name) {
-#ifdef _WIN32
+#if defined(OPENSSL_WINDOWS)
   _putenv_s(name, "");
 #else
   unsetenv(name);
@@ -113,9 +109,7 @@ TEST_F(PassUtilTest, FileEdgeCases) {
       << "Should fail on too long file content";
 
   // Test empty file
-  {
-    WriteTestFile(pass_path, "");
-  }
+  { WriteTestFile(pass_path, ""); }
 
   source = Password(std::string("file:") + pass_path);
   EXPECT_FALSE(pass_util::ExtractPassword(source))
@@ -149,64 +143,58 @@ TEST_F(PassUtilTest, FileEdgeCases) {
       << "Password should not include newline and should be max length - 2";
 
   // Test Windows carriage return behavior (CRLF)
-  {
-    WriteTestFile(pass_path, "windowspassword\r\n", true);
-  }
-  
+  { WriteTestFile(pass_path, "windowspassword\r\n", true); }
+
   source = Password(std::string("file:") + pass_path);
   result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed with Windows CRLF line ending";
-  EXPECT_EQ(source.get(), "windowspassword") << "Should trim both \\r and \\n from Windows CRLF";
+  EXPECT_EQ(source.get(), "windowspassword")
+      << "Should trim both \\r and \\n from Windows CRLF";
 
   // Test old Mac carriage return behavior (CR only)
-  {
-    WriteTestFile(pass_path, "macpassword\r", true);
-  }
-  
+  { WriteTestFile(pass_path, "macpassword\r", true); }
+
   source = Password(std::string("file:") + pass_path);
   result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed with old Mac CR line ending";
-  EXPECT_EQ(source.get(), "macpassword") << "Should trim \\r from old Mac line ending";
+  EXPECT_EQ(source.get(), "macpassword")
+      << "Should trim \\r from old Mac line ending";
 
   // Test mixed trailing line endings
-  {
-    WriteTestFile(pass_path, "mixedpassword\r\n\r", true);
-  }
-  
+  { WriteTestFile(pass_path, "mixedpassword\r\n\r", true); }
+
   source = Password(std::string("file:") + pass_path);
   result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed with mixed trailing line endings";
-  EXPECT_EQ(source.get(), "mixedpassword") << "Should trim multiple trailing \\r and \\n characters";
+  EXPECT_EQ(source.get(), "mixedpassword")
+      << "Should trim multiple trailing \\r and \\n characters";
 
   // Test password with embedded carriage return (should be preserved)
-  {
-    WriteTestFile(pass_path, "pass\rwith\rembedded\r\n", true);
-  }
-  
+  { WriteTestFile(pass_path, "pass\rwith\rembedded\r\n", true); }
+
   source = Password(std::string("file:") + pass_path);
   result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed with embedded carriage returns";
-  EXPECT_EQ(source.get(), "pass\rwith\rembedded") << "Embedded \\r should be preserved, only trailing trimmed";
+  EXPECT_EQ(source.get(), "pass\rwith\rembedded")
+      << "Embedded \\r should be preserved, only trailing trimmed";
 
   // Test file with only CRLF
-  {
-    WriteTestFile(pass_path, "\r\n", true);
-  }
-  
+  { WriteTestFile(pass_path, "\r\n", true); }
+
   source = Password(std::string("file:") + pass_path);
   result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed on CRLF-only file";
-  EXPECT_TRUE(source.empty()) << "CRLF-only file should result in empty password";
+  EXPECT_TRUE(source.empty())
+      << "CRLF-only file should result in empty password";
 
   // Test file with multiple CRLF lines
-  {
-    WriteTestFile(pass_path, "\r\n\r\n\r\n", true);
-  }
-  
+  { WriteTestFile(pass_path, "\r\n\r\n\r\n", true); }
+
   source = Password(std::string("file:") + pass_path);
   result = pass_util::ExtractPassword(source);
   EXPECT_TRUE(result) << "Should succeed on multiple CRLF-only lines";
-  EXPECT_TRUE(source.empty()) << "Multiple CRLF-only lines should result in empty password";
+  EXPECT_TRUE(source.empty())
+      << "Multiple CRLF-only lines should result in empty password";
 }
 
 
@@ -288,20 +276,21 @@ TEST_F(PassUtilTest, ExtractPasswordsSameFile) {
 
   // Test same-file functionality with Windows CRLF
   WriteTestFile(pass_path, "firstpass\r\nsecondpass\r\n", true);
-  
+
   passin = Password(std::string("file:") + pass_path);
   passout = Password(std::string("file:") + pass_path);
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(passin.get(), "firstpass") << "First line should have CRLF trimmed";
-  EXPECT_EQ(passout.get(), "secondpass") << "Second line should have CRLF trimmed";
+  EXPECT_EQ(passout.get(), "secondpass")
+      << "Second line should have CRLF trimmed";
 
   // Test mixed line endings in same-file scenario
   WriteTestFile(pass_path, "unixpass\nsecondpass\r\n", true);
-  
+
   passin = Password(std::string("file:") + pass_path);
   passout = Password(std::string("file:") + pass_path);
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(passin.get(), "unixpass") << "Unix LF should be trimmed";
   EXPECT_EQ(passout.get(), "secondpass") << "Windows CRLF should be trimmed";
@@ -425,18 +414,18 @@ TEST_F(PassUtilTest, ExtractPasswordsSameFileEdgeCases) {
 TEST_F(PassUtilTest, FdExtraction) {
   int fd = open(pass_path, O_RDONLY);
   ASSERT_GE(fd, 0);
-  
+
   std::string fd_source = "fd:" + std::to_string(fd);
   Password source(fd_source);
-  
+
   EXPECT_TRUE(pass_util::ExtractPassword(source));
   EXPECT_EQ(source.get(), "testpassword");
-  
+
   close(fd);
-  
+
   source = Password("fd:-1");
   EXPECT_FALSE(pass_util::ExtractPassword(source));
-  
+
   source = Password("fd:invalid");
   EXPECT_FALSE(pass_util::ExtractPassword(source));
 }
@@ -446,17 +435,17 @@ TEST_F(PassUtilTest, FdExtraction) {
 TEST_F(PassUtilTest, StdinExtraction) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
-  
+
   int old_stdin = dup(STDIN_FILENO);
   dup2(pipefd[0], STDIN_FILENO);
-  
+
   ASSERT_EQ(write(pipefd[1], "stdinpass\n", 10), 10);
   close(pipefd[1]);
-  
+
   Password source("stdin");
   EXPECT_TRUE(pass_util::ExtractPassword(source));
   EXPECT_EQ(source.get(), "stdinpass");
-  
+
   dup2(old_stdin, STDIN_FILENO);
   close(old_stdin);
   close(pipefd[0]);
@@ -465,18 +454,18 @@ TEST_F(PassUtilTest, StdinExtraction) {
 TEST_F(PassUtilTest, StdinExtraction) {
   // Use existing temp file infrastructure instead of pipes
   WriteTestFile(pass_path, "stdinpass\n", true);
-  
+
   // Redirect stdin to temp file using _dup2
-  FILE* temp_file = fopen(pass_path, "r");
+  FILE *temp_file = fopen(pass_path, "r");
   ASSERT_TRUE(temp_file) << "Failed to open temp file";
-  
+
   int old_stdin = _dup(_fileno(stdin));
   _dup2(_fileno(temp_file), _fileno(stdin));
-  
+
   Password source("stdin");
   EXPECT_TRUE(pass_util::ExtractPassword(source));
   EXPECT_EQ(source.get(), "stdinpass");
-  
+
   // Restore stdin
   _dup2(old_stdin, _fileno(stdin));
   _close(old_stdin);
@@ -488,20 +477,20 @@ TEST_F(PassUtilTest, StdinExtraction) {
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
-  
+
   int old_stdin = dup(STDIN_FILENO);
   dup2(pipefd[0], STDIN_FILENO);
-  
+
   ASSERT_EQ(write(pipefd[1], "firstpass\nsecondpass\n", 20), 20);
   close(pipefd[1]);
-  
+
   Password passin("stdin");
   Password passout("stdin");
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(passin.get(), "firstpass");
   EXPECT_EQ(passout.get(), "secondpass");
-  
+
   dup2(old_stdin, STDIN_FILENO);
   close(old_stdin);
   close(pipefd[0]);
@@ -510,21 +499,21 @@ TEST_F(PassUtilTest, StdinExtractPasswords) {
 TEST_F(PassUtilTest, StdinExtractPasswords) {
   // Use existing temp file infrastructure for multi-line input
   WriteTestFile(pass_path, "firstpass\nsecondpass\n", true);
-  
+
   // Redirect stdin to temp file using _dup2
-  FILE* temp_file = fopen(pass_path, "r");
+  FILE *temp_file = fopen(pass_path, "r");
   ASSERT_TRUE(temp_file) << "Failed to open temp file";
-  
+
   int old_stdin = _dup(_fileno(stdin));
   _dup2(_fileno(temp_file), _fileno(stdin));
-  
+
   Password passin("stdin");
   Password passout("stdin");
-  
+
   EXPECT_TRUE(pass_util::ExtractPasswords(passin, passout));
   EXPECT_EQ(passin.get(), "firstpass");
   EXPECT_EQ(passout.get(), "secondpass");
-  
+
   // Restore stdin
   _dup2(old_stdin, _fileno(stdin));
   _close(old_stdin);

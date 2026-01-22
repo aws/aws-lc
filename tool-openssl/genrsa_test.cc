@@ -14,19 +14,18 @@
 #include "internal.h"
 #include "test_util.h"
 
-
 const std::vector<unsigned> kStandardKeySizes = {1024, 2048, 3072, 4096};
 
 struct CipherTestCase {
-  const char* cipher_flag;    // "-aes128", "-des3", etc.
-  const char* cipher_name;    // "AES-128-CBC", "DES3-CBC", etc.
+  const char *cipher_flag;  // "-aes128", "-des3", etc.
+  const char *cipher_name;  // "AES-128-CBC", "DES3-CBC", etc.
 };
 
 static const CipherTestCase kCipherTestCases[] = {
-  {"-des3", "DES3-CBC"},
-  {"-aes128", "AES-128-CBC"},
-  {"-aes192", "AES-192-CBC"},
-  {"-aes256", "AES-256-CBC"},
+    {"-des3", "DES3-CBC"},
+    {"-aes128", "AES-128-CBC"},
+    {"-aes192", "AES-192-CBC"},
+    {"-aes256", "AES-256-CBC"},
 };
 
 
@@ -75,7 +74,7 @@ class GenRSATestBase : public ::testing::Test {
       unsigned actual_bits = RSA_bits(rsa.get());
       if (actual_bits != expected_bits) {
         ADD_FAILURE() << "Key size mismatch. Expected: " << expected_bits
-                     << " bits, Got: " << actual_bits << " bits";
+                      << " bits, Got: " << actual_bits << " bits";
         return false;
       }
     }
@@ -83,7 +82,8 @@ class GenRSATestBase : public ::testing::Test {
     return true;
   }
 
-  bool ValidateEncryptedKeyFile(const char *path, const char *password, unsigned expected_bits = 0) {
+  bool ValidateEncryptedKeyFile(const char *path, const char *password,
+                                unsigned expected_bits = 0) {
     if (!path) {
       ADD_FAILURE() << "Path parameter is null";
       return false;
@@ -100,9 +100,8 @@ class GenRSATestBase : public ::testing::Test {
       return false;
     }
 
-    bssl::UniquePtr<RSA> rsa(
-        PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, 
-                                  const_cast<char*>(password)));
+    bssl::UniquePtr<RSA> rsa(PEM_read_bio_RSAPrivateKey(
+        bio.get(), nullptr, nullptr, const_cast<char *>(password)));
     if (!rsa) {
       ADD_FAILURE() << "Failed to parse encrypted RSA key from PEM file";
       return false;
@@ -117,7 +116,7 @@ class GenRSATestBase : public ::testing::Test {
       unsigned actual_bits = RSA_bits(rsa.get());
       if (actual_bits != expected_bits) {
         ADD_FAILURE() << "Key size mismatch. Expected: " << expected_bits
-                     << " bits, Got: " << actual_bits << " bits";
+                      << " bits, Got: " << actual_bits << " bits";
         return false;
       }
     }
@@ -154,24 +153,27 @@ class GenRSAParamTest : public GenRSATestBase,
                         public ::testing::WithParamInterface<unsigned> {};
 
 
-class GenRSACipherParamTest : public GenRSATestBase,
-                              public ::testing::WithParamInterface<CipherTestCase> {};
+class GenRSACipherParamTest
+    : public GenRSATestBase,
+      public ::testing::WithParamInterface<CipherTestCase> {};
 
 
 TEST_P(GenRSAParamTest, GeneratesKeyFile) {
   unsigned key_size = GetParam();
-  
+
   // FIPS builds require 2048-bit minimum - check both compile-time and runtime
   bool is_fips = false;
 #if defined(BORINGSSL_FIPS)
   is_fips = true;
 #endif
   is_fips = is_fips || FIPS_mode();
-  
+
   if (is_fips && key_size < 2048) {
-    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS build/mode (minimum 2048 bits required)";
+    GTEST_SKIP()
+        << "Skipping " << key_size
+        << "-bit key test in FIPS build/mode (minimum 2048 bits required)";
   }
-  
+
   EXPECT_TRUE(GenerateKey(key_size, out_path_tool)) << "Key generation failed";
   EXPECT_TRUE(ValidateKeyFile(out_path_tool, key_size))
       << "Generated key file validation failed";
@@ -180,18 +182,20 @@ TEST_P(GenRSAParamTest, GeneratesKeyFile) {
 
 TEST_P(GenRSAParamTest, OpenSSLCompatibility) {
   unsigned key_size = GetParam();
-  
+
   // FIPS builds require 2048-bit minimum - check both compile-time and runtime
   bool is_fips = false;
 #if defined(BORINGSSL_FIPS)
   is_fips = true;
 #endif
   is_fips = is_fips || FIPS_mode();
-  
+
   if (is_fips && key_size < 2048) {
-    GTEST_SKIP() << "Skipping " << key_size << "-bit key test in FIPS build/mode (minimum 2048 bits required)";
+    GTEST_SKIP()
+        << "Skipping " << key_size
+        << "-bit key test in FIPS build/mode (minimum 2048 bits required)";
   }
-  
+
   if (!HasCrossCompatibilityTools()) {
     GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
                     "environment variables are not set";
@@ -210,30 +214,38 @@ INSTANTIATE_TEST_SUITE_P(StandardKeySizes, GenRSAParamTest,
                          ::testing::ValuesIn(kStandardKeySizes));
 
 TEST_P(GenRSACipherParamTest, EncryptedKeyGeneration) {
-  const CipherTestCase& cipher_test = GetParam();
-  
-  args_list_t args{cipher_test.cipher_flag, "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-  EXPECT_TRUE(genrsaTool(args)) << cipher_test.cipher_name << " encrypted key generation should work";
+  const CipherTestCase &cipher_test = GetParam();
+
+  args_list_t args{cipher_test.cipher_flag, "-passout",
+                   "pass:testpassword",     "-out",
+                   out_path_tool,           "2048"};
+  EXPECT_TRUE(genrsaTool(args))
+      << cipher_test.cipher_name << " encrypted key generation should work";
   EXPECT_TRUE(ValidateEncryptedKeyFile(out_path_tool, "testpassword"))
       << cipher_test.cipher_name << " encrypted key should be valid";
 }
 
 TEST_P(GenRSACipherParamTest, OpenSSLCompatibility) {
-  const CipherTestCase& cipher_test = GetParam();
-  
+  const CipherTestCase &cipher_test = GetParam();
+
   if (!HasCrossCompatibilityTools()) {
     GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH "
                     "environment variables are not set";
     return;
   }
 
-  args_list_t args{cipher_test.cipher_flag, "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-  EXPECT_TRUE(genrsaTool(args)) << "AWS-LC " << cipher_test.cipher_name << " key generation failed";
+  args_list_t args{cipher_test.cipher_flag, "-passout",
+                   "pass:testpassword",     "-out",
+                   out_path_tool,           "2048"};
+  EXPECT_TRUE(genrsaTool(args))
+      << "AWS-LC " << cipher_test.cipher_name << " key generation failed";
 
-  std::string verify_cmd = std::string(openssl_executable_path) + 
-                         " rsa -in " + out_path_tool + 
-                         " -passin pass:testpassword -check -noout";
-  EXPECT_EQ(system(verify_cmd.c_str()), 0) << "OpenSSL verification of AWS-LC " << cipher_test.cipher_name << " key failed";
+  std::string verify_cmd = std::string(openssl_executable_path) + " rsa -in " +
+                           out_path_tool +
+                           " -passin pass:testpassword -check -noout";
+  EXPECT_EQ(system(verify_cmd.c_str()), 0)
+      << "OpenSSL verification of AWS-LC " << cipher_test.cipher_name
+      << " key failed";
 }
 
 INSTANTIATE_TEST_SUITE_P(AllCiphers, GenRSACipherParamTest,
@@ -308,17 +320,23 @@ TEST_F(GenRSATest, ArgumentValidation) {
 TEST_F(GenRSATest, CipherMutualExclusionValidation) {
   // Test that multiple cipher options are rejected
   {
-    args_list_t args{"-aes128", "-aes256", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_FALSE(genrsaTool(args)) << "Command should fail with multiple cipher options";
+    args_list_t args{"-aes128", "-aes256",     "-passout", "pass:testpassword",
+                     "-out",    out_path_tool, "2048"};
+    EXPECT_FALSE(genrsaTool(args))
+        << "Command should fail with multiple cipher options";
   }
 
   {
-    args_list_t args{"-aes128", "-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_FALSE(genrsaTool(args)) << "Command should fail with multiple cipher options";
+    args_list_t args{"-aes128", "-des3",       "-passout", "pass:testpassword",
+                     "-out",    out_path_tool, "2048"};
+    EXPECT_FALSE(genrsaTool(args))
+        << "Command should fail with multiple cipher options";
   }
 
   {
-    args_list_t args{"-aes192", "-des3", "-passout", "pass:testpassword", "-out", out_path_tool, "2048"};
-    EXPECT_FALSE(genrsaTool(args)) << "Command should fail with multiple cipher options";
+    args_list_t args{"-aes192", "-des3",       "-passout", "pass:testpassword",
+                     "-out",    out_path_tool, "2048"};
+    EXPECT_FALSE(genrsaTool(args))
+        << "Command should fail with multiple cipher options";
   }
 }
