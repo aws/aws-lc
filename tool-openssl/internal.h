@@ -15,7 +15,7 @@
 #endif
 
 // Windows compatibility layer
-#ifdef _WIN32
+#ifdef OPENSSL_WINDOWS
 #include <windows.h>
 #include <io.h>
 #define strcasecmp _stricmp

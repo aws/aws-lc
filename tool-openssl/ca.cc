@@ -8,7 +8,6 @@
 #include <cstring>
 #include <memory>
 
-// TODO: figure out windows
 #include <sys/stat.h>
 
 #include <openssl/asn1.h>
@@ -69,7 +68,7 @@ struct db_attr_st {
 
 struct ca_db_st {
   DB_ATTR attributes;
-  TXT_DB *db;
+  bssl::UniquePtr<TXT_DB> db;
   char *dbfname;
   struct stat dbst;
 };
@@ -80,15 +79,15 @@ using ossl_string_ptr = std::unique_ptr<OPENSSL_STRING, ossl_free>;
 using ossl_uint8_ptr = std::unique_ptr<uint8_t, ossl_free>;
 using ossl_char_ptr = std::unique_ptr<char, ossl_free>;
 
-#ifdef _WIN32
+#ifdef OPENSSL_WINDOWS
 
-#define rename(from,to) WIN32_rename((from),(to))
+#define rename(from, to) WIN32_rename((from), (to))
 
 #undef fileno
 #define fileno(a) (int)_fileno(a)
 
-#include <windows.h>
 #include <tchar.h>
+#include <windows.h>
 
 static int WIN32_rename(const char *from, const char *to) {
   TCHAR *tfrom = nullptr, *tto = nullptr;
@@ -100,7 +99,7 @@ static int WIN32_rename(const char *from, const char *to) {
     tto = (TCHAR *)to;
   } else { /* UNICODE path */
     size_t i, flen = strlen(from) + 1, tlen = strlen(to) + 1;
-    tfrom = (TCHAR*)malloc(sizeof(TCHAR) * (flen + tlen));
+    tfrom = (TCHAR *)malloc(sizeof(TCHAR) * (flen + tlen));
     if (tfrom == NULL) {
       goto err;
     }
@@ -210,28 +209,33 @@ static bssl::UniquePtr<CA_DB> LoadIndex(const std::string dbfile,
 
   bssl::UniquePtr<BIO> in(BIO_new_file(dbfile.c_str(), "r"));
   if (!in) {
-    goto err;
+    return retdb;
   }
 
   if (!BIO_get_fp(in.get(), &dbfp) || fstat(fileno(dbfp), &dbst) == -1) {
     OPENSSL_PUT_SYSTEM_ERROR();
-    goto err;
+    return retdb;
   }
 
-  tmpdb.reset(TXT_DB_read(in.get(), DB_NUMBER));
+  tmpdb = TXT_DB_read(in, DB_NUMBER);
 
   if (!tmpdb) {
-    goto err;
+    return retdb;
   }
 
   BIO_snprintf(buf, sizeof(buf), "%s.attr", dbfile.c_str());
 
   if (!NCONF_load(dbattr_conf.get(), buf, nullptr)) {
-    goto err;
+    return retdb;
   }
 
-  retdb.reset((CA_DB *)OPENSSL_malloc(sizeof(CA_DB)));
-  retdb->db = tmpdb.release();
+  retdb.reset((CA_DB *)OPENSSL_zalloc(sizeof(CA_DB)));
+  if (!retdb) {
+    return retdb;
+  }
+  // Construct the UniquePtr member in-place since OPENSSL_zalloc doesn't call
+  // constructors
+  new (&retdb->db) bssl::UniquePtr<TXT_DB>(std::move(tmpdb));
   if (db_attr) {
     retdb->attributes = *db_attr;
   } else {
@@ -248,7 +252,6 @@ static bssl::UniquePtr<CA_DB> LoadIndex(const std::string dbfile,
   retdb->dbfname = OPENSSL_strdup(dbfile.c_str());
   retdb->dbst = dbst;
 
-err:
   return retdb;
 }
 
@@ -497,6 +500,7 @@ static int SaveIndex(std::string dbfile, std::string suffix,
     fprintf(stderr, "file name too long\n");
     goto err;
   }
+  // lengths have already been checked, and strings will be nul terminated
   (void)BIO_snprintf(buf[2], sizeof(buf[2]), "%s.attr", dbfile.c_str());
   (void)BIO_snprintf(buf[1], sizeof(buf[1]), "%s.attr.%s", dbfile.c_str(),
                      suffix.c_str());
@@ -508,7 +512,7 @@ static int SaveIndex(std::string dbfile, std::string suffix,
     fprintf(stderr, "unable to open '%s'\n", dbfile.c_str());
     goto err;
   }
-  j = TXT_DB_write(out.get(), db->db);
+  j = TXT_DB_write(out, db->db);
   if (j <= 0) {
     goto err;
   }
@@ -541,6 +545,7 @@ static int RotateIndex(std::string dbfile, std::string new_suffix,
     fprintf(stderr, "file name too long\n");
     goto err;
   }
+  // lengths have already been checked, and strings will be nul terminated
   (void)BIO_snprintf(buf[4], sizeof(buf[4]), "%s.attr", dbfile.c_str());
   (void)BIO_snprintf(buf[3], sizeof(buf[3]), "%s.attr.%s", dbfile.c_str(),
                      old_suffix.c_str());
@@ -586,7 +591,8 @@ void FreeIndex(CA_DB *db) {
   if (!db) {
     return;
   }
-  TXT_DB_free(db->db);
+  // Explicitly destruct the UniquePtr member since it was placement-new'd
+  db->db.reset();
   OPENSSL_free(db->dbfname);
   OPENSSL_free(db);
 }
@@ -1395,6 +1401,7 @@ static int SaveSerial(std::string serialfile, std::string suffix,
   if (suffix.empty()) {
     OPENSSL_strlcpy(buf[0], serialfile.c_str(), BSIZE);
   } else {
+    // lengths have already been checked, and strings will be nul terminated
     (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
                        suffix.c_str());
   }
@@ -1428,6 +1435,7 @@ static int RotateSerial(std::string serialfile, std::string new_suffix,
     fprintf(stderr, "file name too long\n");
     goto err;
   }
+  // lengths have already been checked, and strings will be nul terminated
   (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
                      new_suffix.c_str());
   (void)BIO_snprintf(buf[1], sizeof(buf[1]), "%s.%s", serialfile.c_str(),
@@ -1461,8 +1469,8 @@ bool caTool(const args_list_t &args) {
 
   std::string in_path, outfile, config_path, start_date, end_date, outdir,
       dbfile;
-  bool help = false, self_sign = false, notext = false, batch = true,
-       preserveDN = false, rand_serial = false;
+  bool help = false, self_sign = false, notext = false, preserveDN = false,
+       rand_serial = false;
   std::string ca_section, policy, keyfile, serialfile, extensions;
   EXT_COPY_TYPE copy_extensions = EXT_COPY_NONE;
   DB_ATTR dbattr = {0};
@@ -1471,8 +1479,7 @@ bool caTool(const args_list_t &args) {
   DEF_DGST_USAGE md_usage = DEF_DGST_UNKNOWN;
   bssl::UniquePtr<BIGNUM> serial;
   const STACK_OF(CONF_VALUE) *attribs = nullptr;
-  auto cert_sk = sk_X509_new_null();
-  int total = 0, total_done = 0;
+  bssl::UniquePtr<STACK_OF(X509)> cert_sk(sk_X509_new_null());
   long days = 0;
   char new_cert[PATH_MAX];
   size_t outdirlen = 0;
@@ -1491,9 +1498,6 @@ bool caTool(const args_list_t &args) {
   GetString(&end_date, "-enddate", "", parsed_args);
   GetBoolArgument(&notext, "-notext", parsed_args);
   GetBoolArgument(&self_sign, "-selfsign", parsed_args);
-  // GetBoolArgument(&batch, "-batch", parsed_args);
-  (void)self_sign;
-  (void)batch;
 
   // Assumption: we default as if `-noemailDN` was provided and don't support
   // `email_in_dn` attribute in the configuration file Per RFC 5280 for v3
@@ -1756,7 +1760,6 @@ bool caTool(const args_list_t &args) {
     X509 *signer = nullptr;  // Only supporting self-sign use-case
     X509 *out = nullptr;
     bssl::UniquePtr<X509> out_owner;
-    total++;
     j = Certify(&out, in_path, pkey, signer, md, attribs, db, serial, "",
                 MBSTRING_ASC, start_date, end_date, days, extensions, ca_conf,
                 verbose, copy_extensions, 1, preserveDN);
@@ -1764,12 +1767,11 @@ bool caTool(const args_list_t &args) {
       goto err;
     }
     out_owner.reset(out);
-    total_done++;
     fprintf(stderr, "\n");
     if (!BN_add_word(serial.get(), 1)) {
       goto err;
     }
-    if (!sk_X509_push(cert_sk, out_owner.get())) {
+    if (!sk_X509_push(cert_sk.get(), out_owner.get())) {
       fprintf(stderr, "Memory allocation failure\n");
       goto err;
     }
@@ -1778,20 +1780,18 @@ bool caTool(const args_list_t &args) {
       if (i > INT_MAX) {
         goto err;
       }
-      total++;
       j = Certify(&out, extra_args[i], pkey, signer, md, attribs, db, serial,
                   "", MBSTRING_ASC, start_date, end_date, days, extensions,
                   ca_conf, verbose, copy_extensions, 1, preserveDN);
       if (j <= 0) {
         goto err;
       }
-      total_done++;
       out_owner.reset(out);
       fprintf(stderr, "\n");
       if (!BN_add_word(serial.get(), 1)) {
         goto err;
       }
-      if (!sk_X509_push(cert_sk, out_owner.get())) {
+      if (!sk_X509_push(cert_sk.get(), out_owner.get())) {
         fprintf(stderr, "Memory allocation failure\n");
         goto err;
       }
@@ -1803,9 +1803,9 @@ bool caTool(const args_list_t &args) {
    * we have a stack of newly certified certificates and a data base
    * and serial number that need updating
    */
-  if (sk_X509_num(cert_sk) > 0) {
+  if (sk_X509_num(cert_sk.get()) > 0) {
     fprintf(stderr, "Write out database with %zu new entries\n",
-            sk_X509_num(cert_sk));
+            sk_X509_num(cert_sk.get()));
 
     if (!serialfile.empty() && !SaveSerial(serialfile, "new", serial)) {
       goto err;
@@ -1824,9 +1824,9 @@ bool caTool(const args_list_t &args) {
   }
 
   {
-    for (size_t i = 0; i < sk_X509_num(cert_sk); i++) {
+    for (size_t i = 0; i < sk_X509_num(cert_sk.get()); i++) {
       bssl::UniquePtr<BIO> new_cert_bio, outfile_bio;
-      X509 *xi = sk_X509_value(cert_sk, i);
+      X509 *xi = sk_X509_value(cert_sk.get(), i);
       ASN1_INTEGER *serialNumber = X509_get_serialNumber(xi);
       const unsigned char *psn = ASN1_STRING_get0_data(serialNumber);
       const int snl = ASN1_STRING_length(serialNumber);
@@ -1877,7 +1877,7 @@ bool caTool(const args_list_t &args) {
     }
   }
 
-  if (sk_X509_num(cert_sk)) {
+  if (sk_X509_num(cert_sk.get())) {
     /* Rename the database and the serial file */
     if (!serialfile.empty() && !RotateSerial(serialfile, "new", "old")) {
       goto err;
@@ -1890,15 +1890,11 @@ bool caTool(const args_list_t &args) {
     fprintf(stderr, "Data Base Updated\n");
   }
 
-  (void)total;
-  (void)total_done;
-
   ret = true;
 
 err:
   if (!ret) {
     ERR_print_errors_fp(stderr);
   }
-  sk_X509_pop_free(cert_sk, X509_free);
   return ret;
 }

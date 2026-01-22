@@ -39,7 +39,7 @@ const char *PromptField(const ReqField &field, char *buffer,
     buffer[len - 1] = '\0';
     len--;
   }
-#if defined(_WIN32)
+#ifdef OPENSSL_WINDOWS
   if (len > 0 && buffer[len - 1] == '\r') {
     buffer[len - 1] = '\0';
     len--;

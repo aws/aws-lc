@@ -719,7 +719,7 @@ bool ValidateCertificateKeyPair(X509 *cert, EVP_PKEY *private_key) {
     }
     
     // Compare the raw public key material
-    if (memcmp(cert_pubkey_raw, priv_pubkey_raw, 32) != 0) {
+    if (OPENSSL_memcmp(cert_pubkey_raw, priv_pubkey_raw, 32) != 0) {
       std::cout << "ED25519 certificate public key does not match private key" << std::endl;
       return false;
     }
