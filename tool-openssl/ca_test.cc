@@ -1104,6 +1104,119 @@ commonName = supplied
   RemoveFile(output_path2);
 }
 
+// Multi-certificate signing with positional arguments test
+TEST_F(CATest, MultipleCertificatesSigningPositional) {
+  // Test passing multiple CSRs: first via -in, rest as positional arguments
+  ScopedFILE config_file(fopen(config_path, "w"));
+  ASSERT_TRUE(config_file);
+  
+  std::string config_content = R"(
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+database = )" + EscapeConfigPath(db_path) + R"(
+serial = )" + EscapeConfigPath(serial_path) + R"(
+private_key = )" + EscapeConfigPath(ca_key_path) + R"(
+certificate = )" + EscapeConfigPath(ca_cert_path) + R"(
+new_certs_dir = )" + EscapeConfigPath(new_certs_dir) + R"(
+default_md = sha256
+policy = policy_anything
+days = 365
+
+[ policy_anything ]
+commonName = supplied
+)";
+  
+  fprintf(config_file.get(), "%s", config_content.c_str());
+  fflush(config_file.get());
+  config_file.reset();
+
+  // Create additional CSR files using the same CA key (for self-signed)
+  char csr_path2[PATH_MAX];
+  char csr_path3[PATH_MAX];
+  char output_path2[PATH_MAX];
+  char output_path3[PATH_MAX];
+  ASSERT_GT(createTempFILEpath(csr_path2), 0u);
+  ASSERT_GT(createTempFILEpath(csr_path3), 0u);
+  ASSERT_GT(createTempFILEpath(output_path2), 0u);
+  ASSERT_GT(createTempFILEpath(output_path3), 0u);
+
+  // Create second CSR with different subject but same key (self-signed requirement)
+  {
+    bssl::UniquePtr<X509_REQ> req2(X509_REQ_new());
+    ASSERT_TRUE(req2);
+    
+    bssl::UniquePtr<X509_NAME> name2(X509_NAME_new());
+    ASSERT_TRUE(name2);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(name2.get(), "CN", MBSTRING_ASC,
+                                           (unsigned char*)"second.example.com", -1, -1, 0));
+    ASSERT_TRUE(X509_REQ_set_subject_name(req2.get(), name2.get()));
+    ASSERT_TRUE(X509_REQ_set_pubkey(req2.get(), test_ca_key_.get()));
+    ASSERT_TRUE(X509_REQ_sign(req2.get(), test_ca_key_.get(), EVP_sha256()));
+
+    ScopedFILE csr_file2(fopen(csr_path2, "wb"));
+    ASSERT_TRUE(csr_file2);
+    ASSERT_TRUE(PEM_write_X509_REQ(csr_file2.get(), req2.get()));
+  }
+
+  // Create third CSR with different subject but same key (self-signed requirement)
+  {
+    bssl::UniquePtr<X509_REQ> req3(X509_REQ_new());
+    ASSERT_TRUE(req3);
+    
+    bssl::UniquePtr<X509_NAME> name3(X509_NAME_new());
+    ASSERT_TRUE(name3);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(name3.get(), "CN", MBSTRING_ASC,
+                                           (unsigned char*)"third.example.com", -1, -1, 0));
+    ASSERT_TRUE(X509_REQ_set_subject_name(req3.get(), name3.get()));
+    ASSERT_TRUE(X509_REQ_set_pubkey(req3.get(), test_ca_key_.get()));
+    ASSERT_TRUE(X509_REQ_sign(req3.get(), test_ca_key_.get(), EVP_sha256()));
+
+    ScopedFILE csr_file3(fopen(csr_path3, "wb"));
+    ASSERT_TRUE(csr_file3);
+    ASSERT_TRUE(PEM_write_X509_REQ(csr_file3.get(), req3.get()));
+  }
+
+  // Sign all certificates in a single call: first via -in, rest as positional args
+  // Note: -out file will be overwritten for each certificate, so we don't use it here
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      csr_path2,  // positional argument
+      csr_path3   // positional argument
+  };
+  ASSERT_TRUE(caTool(args));
+
+  // Verify serial numbers are different (checking via database update)
+  std::string updated_serial = ReadFileToString(serial_path);
+  // After signing 3 certificates starting from 01, serial should be 04
+  EXPECT_TRUE(updated_serial.find("04") != std::string::npos);
+
+  // Verify database has 3 entries
+  std::string db_content = ReadFileToString(db_path);
+  // Count the number of "V\t" entries (valid certificates)
+  size_t count = 0;
+  size_t pos = 0;
+  while ((pos = db_content.find("V\t", pos)) != std::string::npos) {
+    count++;
+    pos += 2;
+  }
+  EXPECT_EQ(count, 3u);
+
+  // Verify each subject is in the database
+  EXPECT_TRUE(db_content.find("test.example.com") != std::string::npos);
+  EXPECT_TRUE(db_content.find("second.example.com") != std::string::npos);
+  EXPECT_TRUE(db_content.find("third.example.com") != std::string::npos);
+
+  // Clean up temporary files
+  RemoveFile(csr_path2);
+  RemoveFile(csr_path3);
+  RemoveFile(output_path2);
+  RemoveFile(output_path3);
+}
+
 // Today date handling test
 TEST_F(CATest, TodayDateHandling) {
   CreateBasicConfig();
