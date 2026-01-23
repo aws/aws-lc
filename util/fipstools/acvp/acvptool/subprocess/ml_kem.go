@@ -94,10 +94,10 @@ func processMlKemKeyGen(vectors json.RawMessage, m Transactable) (interface{}, e
 }
 
 type mlKemEncapDecapTestGroup struct {
-	ID           uint64               `json:"tgId"`
-	Type         string               `json:"testType"`
-	ParameterSet string               `json:"parameterSet"`
-	Function     string               `json:"function"`
+	ID           uint64 `json:"tgId"`
+	Type         string `json:"testType"`
+	ParameterSet string `json:"parameterSet"`
+	Function     string `json:"function"`
 	Tests        []struct {
 		ID uint64               `json:"tcId"`
 		EK hexEncodedByteString `json:"ek"`
@@ -206,10 +206,10 @@ func processMlKemEncapKeyCheckTestCase(id uint64, algorithm string, ek []byte, t
 		return mlKemEncDecapTestCaseResponse{}, err
 	}
 
-    testPassed := results[0][0] == 1
+	testPassed := results[0][0] == 1
 
 	return mlKemEncDecapTestCaseResponse{
-		ID: id,
+		ID:     id,
 		Passed: &testPassed,
 	}, nil
 }
@@ -223,8 +223,7 @@ func processMlKemDecapKeyCheckTestCase(id uint64, algorithm string, dk []byte, t
 	testPassed := results[0][0] == 1
 
 	return mlKemEncDecapTestCaseResponse{
-		ID: id,
+		ID:     id,
 		Passed: &testPassed,
 	}, nil
 }
-
