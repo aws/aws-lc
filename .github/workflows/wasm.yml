@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  EMSDK_VERSION: "3.1.51"
+  EMSDK_VERSION: "4.0.23"
 
 jobs:
   wasm-build-test:
