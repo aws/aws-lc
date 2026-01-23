@@ -1,0 +1,74 @@
+name: Check Test Vectors
+on:
+  schedule:
+    # Run weekly on Wednesdays at 10 AM PT (6 PM UTC)
+    - cron: "0 18 * * 3"
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-vectors:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Rust and Cargo
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install duvet
+        run: cargo install duvet --locked
+
+      - name: Check test vectors are up-to-date
+        id: check_vectors
+        run: |
+          cd third_party/vectors
+          if python3 ./sync.py --check; then
+            echo "vectors_outdated=false" >> $GITHUB_OUTPUT
+            echo "✅ Test vectors are up-to-date"
+          else
+            echo "vectors_outdated=true" >> $GITHUB_OUTPUT
+            echo "❌ Test vectors are outdated"
+          fi
+
+      # https://docs.github.com/en/actions/tutorials/manage-your-work/schedule-issue-creation
+      - name: Check for existing issue
+        id: check_issues
+        if: steps.check_vectors.outputs.vectors_outdated == 'true'
+        run: |
+          previous_issue_number=$(gh issue list \
+            --label "$LABELS" \
+            --json number \
+            --jq '.[0].number')
+          if [[ -n $previous_issue_number ]]; then
+            echo "no_issues=false" >> $GITHUB_OUTPUT
+            echo "🚧 There is an existing issue: ${previous_issue_number}"
+          else
+            echo "no_issues=true" >> $GITHUB_OUTPUT
+            echo "❌ There is no issue"
+          fi
+
+      - name: Create an issue for outdated vectors
+        if: steps.check_issues.outputs.no_issues == 'true'
+        run: |
+          gh issue create \
+          --title "Update third-party test vectors" \
+          --template "update-vectors" \
+          --body "Automated check detected that some third-party test vectors need to be updated."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Vectors up-to-date summary
+        if: steps.check_vectors.outputs.vectors_outdated == 'false'
+        run: |
+          echo "✅ Test vectors are up-to-date. No action needed."
