@@ -26,7 +26,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     return 0;
   }
 
-  if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA_PSS) {
+  if (EVP_PKEY_id(pkey.get()) != EVP_PKEY_RSA_PSS) {
     // Every parsed private key should be serializable.
     bssl::ScopedCBB cbb;
     BSSL_CHECK(CBB_init(cbb.get(), 0));
