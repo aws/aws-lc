@@ -1,11 +1,11 @@
-# AWS-LC WASM Toolchain File
+# AWS-LC Emscripten Toolchain File
 #
 # This is a wrapper toolchain file for building AWS-LC with Emscripten.
 # It includes the standard Emscripten toolchain and configures pthread support
 # for multithreaded WASM builds.
 #
 # Usage:
-#   cmake -DCMAKE_TOOLCHAIN_FILE=util/wasm-toolchain.cmake ...
+#   cmake -DCMAKE_TOOLCHAIN_FILE=util/emscripten-toolchain.cmake ...
 #
 # Prerequisites:
 #   - EMSDK environment must be sourced before running cmake
@@ -27,19 +27,15 @@ if(NOT EXISTS "${EMSCRIPTEN_TOOLCHAIN_FILE}")
     message(FATAL_ERROR "Emscripten toolchain file not found at: ${EMSCRIPTEN_TOOLCHAIN_FILE}")
 endif()
 
+# The Emscripten toolchain file defaults CMAKE_SYSTEM_PROCESSOR to "x86" via
+# EMSCRIPTEN_SYSTEM_PROCESSOR. We must set this BEFORE including the toolchain
+# to ensure AWS-LC's architecture detection uses "generic" instead of x86,
+# which would add incompatible flags like -msse2.
+set(EMSCRIPTEN_SYSTEM_PROCESSOR wasm32)
+
 # Include the standard Emscripten toolchain file
+# This sets CMAKE_SYSTEM_NAME to "Emscripten" and CMAKE_CROSSCOMPILING to TRUE.
 include("${EMSCRIPTEN_TOOLCHAIN_FILE}")
-
-# Override CMAKE_SYSTEM_NAME to "Generic" so AWS-LC treats this as an embedded
-# target and skips the pthread requirement check in its CMakeLists.txt.
-# The Emscripten toolchain sets this to "Emscripten" but AWS-LC's CMakeLists.txt
-# only recognizes "Generic" and "Android" as systems that don't require pthreads
-# validation (we handle pthreads via Emscripten's own implementation).
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_PROCESSOR wasm32)
-
-# Ensure cross-compiling is still set
-set(CMAKE_CROSSCOMPILING TRUE)
 
 # Enable pthread support for multithreaded WASM builds.
 # Emscripten implements pthreads using Web Workers and SharedArrayBuffer.
