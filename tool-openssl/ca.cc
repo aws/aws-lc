@@ -15,9 +15,9 @@
 #include <openssl/digest.h>
 #include <openssl/ocsp.h>
 #include <openssl/pem.h>
-#include "txt_db/txt_db.h"
 #include "../crypto/fipsmodule/rsa/internal.h"
 #include "../crypto/rsa_extra/internal.h"
+#include "txt_db/txt_db.h"
 
 #include "ca_req_common.h"
 #include "internal.h"
@@ -99,7 +99,7 @@ static int WIN32_rename(const char *from, const char *to) {
   if (sizeof(TCHAR) == 1) {
     tfrom = (TCHAR *)from;
     tto = (TCHAR *)to;
-  } else { /* UNICODE path */
+  } else {  // UNICODE path
     size_t i, flen = strlen(from) + 1, tlen = strlen(to) + 1;
     tfrom = (TCHAR *)malloc(sizeof(TCHAR) * (flen + tlen));
     if (tfrom == NULL) {
@@ -129,7 +129,7 @@ static int WIN32_rename(const char *from, const char *to) {
   } else if (err == ERROR_ACCESS_DENIED) {
     errno = EACCES;
   } else {
-    errno = EINVAL; /* we could map more codes... */
+    errno = EINVAL; // we could map more codes...
   }
 err:
   ret = -1;
@@ -188,17 +188,15 @@ static EXT_COPY_TYPE ParseCopyExtensionValue(std::string value) {
 #define DB_type 0
 #define DB_exp_date 1
 #define DB_rev_date 2
-#define DB_serial 3 /* index - unique */
+#define DB_serial 3  // index - unique
 #define DB_file 4
-#define DB_name                           \
-  5 /* index - unique when active and not \
-     * disabled */
+#define DB_name 5  // index - unique when active and not disabled
 #define DB_NUMBER 6
 
-#define DB_TYPE_REV 'R'  /* Revoked  */
-#define DB_TYPE_EXP 'E'  /* Expired  */
-#define DB_TYPE_VAL 'V'  /* Valid ; inserted with: ca ... -valid */
-#define DB_TYPE_SUSP 'S' /* Suspended  */
+#define DB_TYPE_REV 'R'   // Revoked
+#define DB_TYPE_EXP 'E'   // Expired
+#define DB_TYPE_VAL 'V'   // Valid; inserted with: ca ... -valid
+#define DB_TYPE_SUSP 'S'  // Suspended
 
 static bssl::UniquePtr<CA_DB> LoadIndex(const std::string dbfile,
                                         DB_ATTR *db_attr) {
@@ -258,10 +256,10 @@ static bssl::UniquePtr<CA_DB> LoadIndex(const std::string dbfile,
 }
 
 static const char *crl_reasons[] = {
-    /* CRL reason strings */
+    // CRL reason strings
     "unspecified", "keyCompromise", "CACompromise", "affiliationChanged",
     "superseded", "cessationOfOperation", "certificateHold", "removeFromCRL",
-    /* Additional pseudo reasons */
+    // Additional pseudo reasons
     "holdInstruction", "keyTime", "CAkeyTime"};
 
 #define ARR_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -275,7 +273,6 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
   ossl_char_ptr tmp = ossl_char_ptr(nullptr, OPENSSL_free);
   char *rtime_str = NULL, *reason_str = NULL, *arg_str = NULL, *p = NULL;
   int reason_code = -1;
-  int ret = 0;
   unsigned int i = 0;
   bssl::UniquePtr<ASN1_OBJECT> hold;
   bssl::UniquePtr<ASN1_GENERALIZEDTIME> comp_time;
@@ -283,7 +280,7 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
   tmp.reset(OPENSSL_strdup(str.c_str()));
   if (!tmp) {
     fprintf(stderr, "memory allocation failure\n");
-    goto end;
+    return 0;
   }
 
   p = strchr(tmp.get(), ',');
@@ -304,11 +301,11 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
   prevtm.reset(ASN1_UTCTIME_new());
   if (!prevtm) {
     fprintf(stderr, "memory allocation failure\n");
-    goto end;
+    return 0;
   }
   if (!ASN1_UTCTIME_set_string(prevtm.get(), rtime_str)) {
     fprintf(stderr, "invalid revocation date %s\n", rtime_str);
-    goto end;
+    return 0;
   }
 
   if (reason_str) {
@@ -320,22 +317,22 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
     }
     if (reason_code == OCSP_REVOKED_STATUS_NOSTATUS) {
       fprintf(stderr, "invalid reason code %s\n", reason_str);
-      goto end;
+      return 0;
     }
 
     if (reason_code == 7) {
       reason_code = OCSP_REVOKED_STATUS_REMOVEFROMCRL;
-    } else if (reason_code == 8) { /* Hold instruction */
+    } else if (reason_code == 8) {  // Hold instruction
       if (!arg_str) {
         fprintf(stderr, "missing hold instruction\n");
-        goto end;
+        return 0;
       }
       reason_code = OCSP_REVOKED_STATUS_CERTIFICATEHOLD;
       hold.reset(OBJ_txt2obj(arg_str, 0));
 
       if (!hold) {
         fprintf(stderr, "invalid object identifier %s\n", arg_str);
-        goto end;
+        return 0;
       }
       if (phold) {
         phold = std::move(hold);
@@ -345,16 +342,16 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
     } else if ((reason_code == 9) || (reason_code == 10)) {
       if (!arg_str) {
         fprintf(stderr, "missing compromised time\n");
-        goto end;
+        return 0;
       }
       comp_time.reset(ASN1_GENERALIZEDTIME_new());
       if (!comp_time) {
         fprintf(stderr, "memory allocation failure\n");
-        goto end;
+        return 0;
       }
       if (!ASN1_GENERALIZEDTIME_set_string(comp_time.get(), arg_str)) {
         fprintf(stderr, "invalid compromised time %s\n", arg_str);
-        goto end;
+        return 0;
       }
       if (reason_code == 9) {
         reason_code = OCSP_REVOKED_STATUS_KEYCOMPROMISE;
@@ -371,20 +368,14 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
     pinvtm = std::move(comp_time);
   }
 
-  ret = 1;
-
-end:
-
-  return ret;
+  return 1;
 }
 
-/*-
- * Convert revocation field to X509_REVOKED entry
- * return code:
- * 0 error
- * 1 OK
- * 2 OK and some extensions added (i.e. V2 CRL)
- */
+// Convert revocation field to X509_REVOKED entry
+// return code:
+// 0 error
+// 1 OK
+// 2 OK and some extensions added (i.e. V2 CRL)
 static int MakeRevoked(X509_REVOKED *rev, std::string str) {
   int reason_code = -1;
   int i = 0, ret = 0;
@@ -397,33 +388,33 @@ static int MakeRevoked(X509_REVOKED *rev, std::string str) {
   i = UnpackRevinfo(revDate, &reason_code, hold, comp_time, str);
 
   if (i == 0) {
-    goto end;
+    return 0;
   }
 
   if (rev && !X509_REVOKED_set_revocationDate(rev, revDate.get())) {
-    goto end;
+    return 0;
   }
 
   if (rev && (reason_code != OCSP_REVOKED_STATUS_NOSTATUS)) {
     rtmp.reset(ASN1_ENUMERATED_new());
     if (rtmp == NULL || !ASN1_ENUMERATED_set(rtmp.get(), reason_code)) {
-      goto end;
+      return 0;
     }
     if (!X509_REVOKED_add1_ext_i2d(rev, NID_crl_reason, rtmp.get(), 0, 0)) {
-      goto end;
+      return 0;
     }
   }
 
   if (rev && comp_time) {
     if (!X509_REVOKED_add1_ext_i2d(rev, NID_invalidity_date, comp_time.get(), 0,
                                    0)) {
-      goto end;
+      return 0;
     }
   }
   if (rev && hold) {
     if (!X509_REVOKED_add1_ext_i2d(rev, NID_hold_instruction_code, hold.get(),
                                    0, 0)) {
-      goto end;
+      return 0;
     }
   }
 
@@ -432,8 +423,6 @@ static int MakeRevoked(X509_REVOKED *rev, std::string str) {
   } else {
     ret = 1;
   }
-
-end:
 
   return ret;
 }
@@ -499,7 +488,7 @@ static int SaveIndex(std::string dbfile, std::string suffix,
   j = strlen(dbfile.c_str()) + strlen(suffix.c_str());
   if (j + 6 >= BSIZE) {
     fprintf(stderr, "file name too long\n");
-    goto err;
+    return 0;
   }
   // lengths have already been checked, and strings will be nul terminated
   (void)BIO_snprintf(buf[2], sizeof(buf[2]), "%s.attr", dbfile.c_str());
@@ -511,25 +500,23 @@ static int SaveIndex(std::string dbfile, std::string suffix,
   if (out == NULL) {
     perror(dbfile.c_str());
     fprintf(stderr, "unable to open '%s'\n", dbfile.c_str());
-    goto err;
+    return 0;
   }
   j = TXT_DB_write(out, db->db);
   if (j <= 0) {
-    goto err;
+    return 0;
   }
 
   out.reset(BIO_new_file(buf[1], "w"));
   if (out == NULL) {
     perror(buf[2]);
     fprintf(stderr, "unable to open '%s'\n", buf[2]);
-    goto err;
+    return 0;
   }
   BIO_printf(out.get(), "unique_subject = %s\n",
              db->attributes.unique_subject ? "yes" : "no");
 
   return 1;
-err:
-  return 0;
 }
 
 static int RotateIndex(std::string dbfile, std::string new_suffix,
@@ -544,7 +531,7 @@ static int RotateIndex(std::string dbfile, std::string new_suffix,
   }
   if (j + 6 >= BSIZE) {
     fprintf(stderr, "file name too long\n");
-    goto err;
+    return 0;
   }
   // lengths have already been checked, and strings will be nul terminated
   (void)BIO_snprintf(buf[4], sizeof(buf[4]), "%s.attr", dbfile.c_str());
@@ -560,20 +547,20 @@ static int RotateIndex(std::string dbfile, std::string new_suffix,
       errno != ENOTDIR) {
     fprintf(stderr, "unable to rename %s to %s\n", dbfile.c_str(), buf[1]);
     perror("reason");
-    goto err;
+    return 0;
   }
   if (rename(buf[0], dbfile.c_str()) < 0) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[0], dbfile.c_str());
     perror("reason");
     rename(buf[1], dbfile.c_str());
-    goto err;
+    return 0;
   }
   if (rename(buf[4], buf[3]) < 0 && errno != ENOENT && errno != ENOTDIR) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[4], buf[3]);
     perror("reason");
     rename(dbfile.c_str(), buf[0]);
     rename(buf[1], dbfile.c_str());
-    goto err;
+    return 0;
   }
   if (rename(buf[2], buf[4]) < 0) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[2], buf[4]);
@@ -581,11 +568,9 @@ static int RotateIndex(std::string dbfile, std::string new_suffix,
     rename(buf[3], buf[4]);
     rename(dbfile.c_str(), buf[0]);
     rename(buf[1], dbfile.c_str());
-    goto err;
+    return 0;
   }
   return 1;
-err:
-  return 0;
 }
 
 void FreeIndex(CA_DB *db) {
@@ -637,31 +622,24 @@ static DEF_DGST_USAGE EVP_PKEY_get_default_digest_nid(
 }
 
 static int RandSerial(bssl::UniquePtr<BIGNUM> &b, ASN1_INTEGER *ai) {
-  int ret = 0;
-
   if (!b) {
     b.reset(BN_new());
     if (!b) {
-      goto end;
+      return 0;
     }
   }
 
-  /*
-   * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
-   * so that the first bit will never be one, so that the DER encoding
-   * rules won't force a leading octet.
-   */
+  // IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+  // so that the first bit will never be one, so that the DER encoding
+  // rules won't force a leading octet.
   if (!BN_rand(b.get(), 159, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
-    goto end;
+    return 0;
   }
   if (ai && !BN_to_ASN1_INTEGER(b.get(), ai)) {
-    goto end;
+    return 0;
   }
 
-  ret = 1;
-
-end:
-  return ret;
+  return 1;
 }
 
 static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
@@ -673,7 +651,7 @@ static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
 
   ai.reset(ASN1_INTEGER_new());
   if (ai == NULL) {
-    goto err;
+    return 0;
   }
 
   in = bssl::UniquePtr<BIO>(BIO_new_file(serialfile.c_str(), "r"));
@@ -683,7 +661,7 @@ static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
   if (!in) {
     if (!create) {
       perror(serialfile.c_str());
-      goto err;
+      return 0;
     }
     ERR_clear_error();
     ret = bssl::UniquePtr<BIGNUM>(BN_new());
@@ -697,16 +675,15 @@ static bssl::UniquePtr<BIGNUM> LoadSerial(std::string serialfile, int *exists,
   } else {
     if (!a2i_ASN1_INTEGER(in.get(), ai.get(), buf, 1024)) {
       fprintf(stderr, "unable to load number from %s\n", serialfile.c_str());
-      goto err;
+      return 0;
     }
     ret.reset(ASN1_INTEGER_to_BN(ai.get(), NULL));
     if (!ret) {
       fprintf(stderr, "error converting number from bin to BIGNUM\n");
-      goto err;
+      return 0;
     }
   }
 
-err:
   return ret;
 }
 
@@ -733,26 +710,26 @@ static int SetCertTimes(X509 *x, std::string startdate, std::string enddate,
 }
 
 static int CopyExtensions(X509 *x, X509_REQ *req, EXT_COPY_TYPE copy_type) {
-  STACK_OF(X509_EXTENSION) *exts = NULL;
+  bssl::UniquePtr<STACK_OF(X509_EXTENSION)> exts;
   X509_EXTENSION *ext = nullptr, *tmpext = nullptr;
   ASN1_OBJECT *obj = nullptr;
-  int idx = 0, ret = 0;
+  int idx = 0;
   if (!x || !req || (copy_type == EXT_COPY_NONE)) {
     return 1;
   }
-  exts = X509_REQ_get_extensions(req);
+  exts.reset(X509_REQ_get_extensions(req));
 
-  for (size_t i = 0; i < sk_X509_EXTENSION_num(exts); i++) {
-    ext = sk_X509_EXTENSION_value(exts, i);
+  for (size_t i = 0; i < sk_X509_EXTENSION_num(exts.get()); i++) {
+    ext = sk_X509_EXTENSION_value(exts.get(), i);
     obj = X509_EXTENSION_get_object(ext);
     idx = X509_get_ext_by_OBJ(x, obj, -1);
-    /* Does extension exist? */
+    // Does extension exist?
     if (idx != -1) {
-      /* If normal copy don't override existing extension */
+      // If normal copy don't override existing extension
       if (copy_type == EXT_COPY_ADD) {
         continue;
       }
-      /* Delete all extensions of same type */
+      // Delete all extensions of same type
       do {
         tmpext = X509_get_ext(x, idx);
         X509_delete_ext(x, idx);
@@ -761,31 +738,22 @@ static int CopyExtensions(X509 *x, X509_REQ *req, EXT_COPY_TYPE copy_type) {
       } while (idx != -1);
     }
     if (!X509_add_ext(x, ext, -1)) {
-      goto end;
+      return 0;
     }
   }
 
-  ret = 1;
-
-end:
-
-  sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
-
-  return ret;
+  return 1;
 }
 
 static int DoX509Sign(bssl::UniquePtr<X509> &x, bssl::UniquePtr<EVP_PKEY> &pkey,
                       const EVP_MD *md) {
-  int rv = 0;
   EVP_PKEY_CTX *pkctx = NULL;
   bssl::UniquePtr<EVP_MD_CTX> mctx(EVP_MD_CTX_new());
 
   if (!EVP_DigestSignInit(mctx.get(), &pkctx, md, nullptr, pkey.get())) {
-    goto err;
+    return 0;
   }
-  rv = X509_sign_ctx(x.get(), mctx.get());
-err:
-  return rv;
+  return X509_sign_ctx(x.get(), mctx.get());
 }
 
 static void WriteNewCertificate(bssl::UniquePtr<BIO> &bp, X509 *x,
@@ -912,14 +880,14 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     old_entry_print(bio_err, obj, str);
   }
 
-  /* Ok, now we check the 'policy' stuff. */
+  // Ok, now we check the 'policy' stuff.
   subject = bssl::UniquePtr<X509_NAME>(X509_NAME_new());
   if (!subject) {
     BIO_printf(bio_err.get(), "Memory allocation failure\n");
     goto end;
   }
 
-  /* take a copy of the issuer name before we mess with it. */
+  // take a copy of the issuer name before we mess with it.
   if (selfsign) {
     CAname = bssl::UniquePtr<X509_NAME>(X509_NAME_dup(name));
   } else {
@@ -932,7 +900,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
   str = str2 = NULL;
 
   for (size_t policy_i = 0; policy_i < sk_CONF_VALUE_num(policy); policy_i++) {
-    cv = sk_CONF_VALUE_value(policy, policy_i); /* get the object id */
+    cv = sk_CONF_VALUE_value(policy, policy_i);  // get the object id
     if ((j = OBJ_txt2nid(cv->name)) == NID_undef) {
       BIO_printf(bio_err.get(),
                  "%s:unknown object type in 'policy' configuration\n",
@@ -945,7 +913,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     for (;;) {
       X509_NAME_ENTRY *push = NULL;
 
-      /* lookup the object in the supplied name list */
+      // lookup the object in the supplied name list
       j = X509_NAME_get_index_by_OBJ(name, obj, last);
       if (j < 0) {
         if (last != -1) {
@@ -957,7 +925,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
       }
       last = j;
 
-      /* depending on the 'policy', decide what to do. */
+      // depending on the 'policy', decide what to do.
       if (strcmp(cv->value, "optional") == 0) {
         if (tne != nullptr) {
           push = tne;
@@ -1033,7 +1001,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     }
   }
 
-  /* We are now totally happy, lets make and sign the certificate */
+  // We are now totally happy, lets make and sign the certificate
   if (verbose) {
     BIO_printf(
         bio_err.get(),
@@ -1047,7 +1015,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
 
   // Assumption: We should only support V3 certificates
 
-  /* Make it an X509 v3 certificate. */
+  // Make it an X509 v3 certificate.
   if (!X509_set_version(ret.get(), 2)) {
     goto end;
   }
@@ -1088,18 +1056,18 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     goto end;
   }
 
-  /* Lets add the extensions, if there are any */
+  // Lets add the extensions, if there are any
   if (!ext_sect.empty()) {
     X509V3_CTX ctx;
 
-    /* Initialize the context structure */
+    // Initialize the context structure
     if (selfsign) {
       X509V3_set_ctx(&ctx, ret.get(), ret.get(), req.get(), nullptr, 0);
     } else {
       X509V3_set_ctx(&ctx, x509, ret.get(), req.get(), nullptr, 0);
     }
 
-    /* We found extensions to be set from config file */
+    // We found extensions to be set from config file
     X509V3_set_nconf(&ctx, lconf.get());
 
     if (!X509V3_EXT_add_nconf(lconf.get(), &ctx, ext_sect.c_str(), ret.get())) {
@@ -1113,7 +1081,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     }
   }
 
-  /* Copy extensions from request (if any) */
+  // Copy extensions from request (if any)
 
   if (!CopyExtensions(ret.get(), req.get(), ext_copy)) {
     BIO_printf(bio_err.get(), "ERROR: adding extensions from request\n");
@@ -1126,12 +1094,10 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
         "The subject name appears to be ok, checking data base for clashes\n");
   }
 
-  /* Build the correct Subject if no e-mail is wanted in the subject. */
+  // Build the correct Subject if no e-mail is wanted in the subject.
 
-  /*
-   * Its best to dup the subject DN and then delete any email addresses
-   * because this retains its structure.
-   */
+  // Its best to dup the subject DN and then delete any email addresses
+  // because this retains its structure.
   dn_subject.reset(X509_NAME_dup(subject.get()));
   if (!dn_subject) {
     BIO_printf(bio_err.get(), "Memory allocation failure\n");
@@ -1165,11 +1131,9 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
   }
 
   if (row[DB_name][0] == '\0') {
-    /*
-     * An empty subject! We'll use the serial number instead. If
-     * unique_subject is in use then we don't want different entries with
-     * empty subjects matching each other.
-     */
+    // An empty subject! We'll use the serial number instead. If
+    // unique_subject is in use then we don't want different entries with
+    // empty subjects matching each other.
     OPENSSL_free(row[DB_name]);
     row[DB_name] = OPENSSL_strdup(row[DB_serial]);
     if (row[DB_name] == NULL) {
@@ -1237,7 +1201,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
       p = "undef";
     }
     BIO_printf(bio_err.get(), "Subject Name  :%s\n", p);
-    ok = -1; /* This is now a 'bad' error. */
+    ok = -1;  // This is now a 'bad' error.
     goto end;
   }
 
@@ -1261,7 +1225,7 @@ static int DoBody(bssl::UniquePtr<BIO> &bio_err, X509 **xret,
     goto end;
   }
 
-  /* We now just add it to the database as DB_TYPE_VAL('V') */
+  // We now just add it to the database as DB_TYPE_VAL('V')
   row[DB_type] = OPENSSL_strdup("V");
   tm = X509_get0_notAfter(ret.get());
   if ((row[DB_exp_date] = (OPENSSL_STRING)OPENSSL_malloc(tm->length + 1)) ==
@@ -1324,22 +1288,22 @@ static int Certify(X509 **ret, std::string infile,
   bssl::UniquePtr<X509_REQ> req;
   bssl::UniquePtr<BIO> in;
   EVP_PKEY *pktmp = NULL;
-  int ok = -1, i = 0;
+  int i = 0;
   bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_NOCLOSE));
   if (!bio_err) {
-    goto end;
+    return 0;
   }
 
   in = bssl::UniquePtr<BIO>(BIO_new_file(infile.c_str(), "r"));
   if (!in) {
-    goto end;
+    return 0;
   }
   req = bssl::UniquePtr<X509_REQ>(
       PEM_read_bio_X509_REQ(in.get(), nullptr, nullptr, nullptr));
   if (!req) {
     BIO_printf(bio_err.get(), "Error reading certificate request in %s\n",
                infile.c_str());
-    goto end;
+    return 0;
   }
   if (verbose) {
     X509_REQ_print_ex(bio_err.get(), req.get(), 0, X509_FLAG_COMPAT);
@@ -1350,34 +1314,28 @@ static int Certify(X509 **ret, std::string infile,
   if (selfsign && !X509_REQ_check_private_key(req.get(), pkey.get())) {
     BIO_printf(bio_err.get(),
                "Certificate request and CA private key do not match\n");
-    ok = 0;
-    goto end;
+    return 0;
   }
   if ((pktmp = X509_REQ_get0_pubkey(req.get())) == NULL) {
     BIO_printf(bio_err.get(), "error unpacking public key\n");
-    goto end;
+    return 0;
   }
   i = X509_REQ_verify(req.get(), pktmp);
   if (i < 0) {
-    ok = 0;
     BIO_printf(bio_err.get(), "Signature verification problems....\n");
-    goto end;
+    return 0;
   }
   if (i == 0) {
-    ok = 0;
     BIO_printf(bio_err.get(),
                "Signature did not match the certificate request\n");
-    goto end;
+    return 0;
   } else {
     BIO_printf(bio_err.get(), "Signature ok\n");
   }
 
-  ok = DoBody(bio_err, ret, pkey, x509, dgst, policy, db, serial, subj, chtype,
-              startdate, enddate, days, verbose, req, ext_sect, lconf, ext_copy,
-              selfsign, preserve);
-
-end:
-  return ok;
+  return DoBody(bio_err, ret, pkey, x509, dgst, policy, db, serial, subj,
+                chtype, startdate, enddate, days, verbose, req, ext_sect, lconf,
+                ext_copy, selfsign, preserve);
 }
 
 static int SaveSerial(std::string serialfile, std::string suffix,
@@ -1385,7 +1343,6 @@ static int SaveSerial(std::string serialfile, std::string suffix,
   char buf[1][BSIZE];
   bssl::UniquePtr<BIO> out;
   ossl_char_ptr hex(nullptr, OPENSSL_free);
-  int ret = 0;
   bssl::UniquePtr<ASN1_INTEGER> ai;
   int j = 0;
 
@@ -1396,7 +1353,7 @@ static int SaveSerial(std::string serialfile, std::string suffix,
   }
   if (j >= BSIZE) {
     fprintf(stderr, "file name too long\n");
-    goto err;
+    return 0;
   }
 
   if (suffix.empty()) {
@@ -1408,18 +1365,16 @@ static int SaveSerial(std::string serialfile, std::string suffix,
   }
   out.reset(BIO_new_file(buf[0], "w"));
   if (!out) {
-    goto err;
+    return 0;
   }
   ai.reset(BN_to_ASN1_INTEGER(serial.get(), NULL));
   if (!ai) {
     fprintf(stderr, "error converting serial to ASN.1 format\n");
-    goto err;
+    return 0;
   }
   i2a_ASN1_INTEGER(out.get(), ai.get());
   BIO_puts(out.get(), "\n");
-  ret = 1;
-err:
-  return ret;
+  return 1;
 }
 
 static int RotateSerial(std::string serialfile, std::string new_suffix,
@@ -1434,7 +1389,7 @@ static int RotateSerial(std::string serialfile, std::string new_suffix,
   }
   if (j + 1 >= BSIZE) {
     fprintf(stderr, "file name too long\n");
-    goto err;
+    return 0;
   }
   // lengths have already been checked, and strings will be nul terminated
   (void)BIO_snprintf(buf[0], sizeof(buf[0]), "%s.%s", serialfile.c_str(),
@@ -1445,17 +1400,15 @@ static int RotateSerial(std::string serialfile, std::string new_suffix,
       errno != ENOTDIR) {
     fprintf(stderr, "unable to rename %s to %s\n", serialfile.c_str(), buf[1]);
     perror("reason");
-    goto err;
+    return 0;
   }
   if (rename(buf[0], serialfile.c_str()) < 0) {
     fprintf(stderr, "unable to rename %s to %s\n", buf[0], serialfile.c_str());
     perror("reason");
     rename(buf[1], serialfile.c_str());
-    goto err;
+    return 0;
   }
   return 1;
-err:
-  return 0;
 }
 
 bool caTool(const args_list_t &args) {
@@ -1531,19 +1484,17 @@ bool caTool(const args_list_t &args) {
     }
     ca_section = std::move(*value);
   }
-
-  /*
-   * These features we are choosing not to support regarding CA options:
-   * RANDFILE
-   * oid_file
-   * oid_section
-   * name_opt
-   * cert_opt
-   * crlnumber
-   * msie_hack
-   * string_mask (not documented as a feature in OpenSSL 3.x CLIs but 1.1.1
-   * seemed to read)
-   */
+  
+  // These features we are choosing not to support regarding CA options:
+  // RANDFILE
+  // oid_file
+  // oid_section
+  // name_opt
+  // cert_opt
+  // crlnumber
+  // msie_hack
+  // string_mask (not documented as a feature in OpenSSL 3.x CLIs but 1.1.1
+  // seemed to read)
 
   dbattr.unique_subject =
       ParseBoolSectionValue(ca_conf, ca_section, CA_UNIQ_SUBJ_OPT, 1);
@@ -1601,7 +1552,7 @@ bool caTool(const args_list_t &args) {
     goto err;
   }
 
-  /* Lets check some fields */
+  // Lets check some fields
   for (size_t i = 0; i < sk_OPENSSL_PSTRING_num(db.get()->db->data); i++) {
     auto pp = sk_OPENSSL_PSTRING_value(db->db->data, i);
     if ((pp[DB_type][0] != DB_TYPE_REV) && (pp[DB_rev_date][0] != '\0')) {
@@ -1690,7 +1641,7 @@ bool caTool(const args_list_t &args) {
   {
     auto value = GetSectionValue(ca_conf, ca_section, CA_X509_EXT_OPT);
     if (value) {
-      /* Check syntax of file */
+      // Check syntax of file
       X509V3_CTX ctx;
       X509V3_set_ctx_test(&ctx);
       X509V3_set_nconf(&ctx, ca_conf.get());
@@ -1800,10 +1751,8 @@ bool caTool(const args_list_t &args) {
     }
   }
 
-  /*
-   * we have a stack of newly certified certificates and a data base
-   * and serial number that need updating
-   */
+  // we have a stack of newly certified certificates and a data base
+  // and serial number that need updating
   if (sk_X509_num(cert_sk.get()) > 0) {
     fprintf(stderr, "Write out database with %zu new entries\n",
             sk_X509_num(cert_sk.get()));
@@ -1854,7 +1803,7 @@ bool caTool(const args_list_t &args) {
       *(n++) = 'p';
       *(n++) = 'e';
       *(n++) = 'm';
-      *n = '\0'; /* closing new_cert */
+      *n = '\0'; // closing new_cert
       if (verbose) {
         fprintf(stderr, "writing %s\n", new_cert);
       }
@@ -1879,7 +1828,7 @@ bool caTool(const args_list_t &args) {
   }
 
   if (sk_X509_num(cert_sk.get())) {
-    /* Rename the database and the serial file */
+    // Rename the database and the serial file
     if (!serialfile.empty() && !RotateSerial(serialfile, "new", "old")) {
       goto err;
     }

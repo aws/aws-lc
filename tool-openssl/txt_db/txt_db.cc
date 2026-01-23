@@ -77,7 +77,7 @@ bssl::UniquePtr<TXT_DB> TXT_DB_read(bssl::UniquePtr<BIO> &in, int num) {
     if (buf->data[offset - 1] != '\n') {
       continue;
     } else {
-      buf->data[offset - 1] = '\0'; /* blat the '\n' */
+      buf->data[offset - 1] = '\0'; // blat the '\n'
       p = (char *)OPENSSL_malloc(add + offset);
       if (p == NULL) {
         goto err;
@@ -191,10 +191,9 @@ long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
   long n = 0, nn = 0, l = 0, tot = 0;
   char *p = nullptr, **pp = nullptr, *f = nullptr;
   bssl::UniquePtr<BUF_MEM> buf(BUF_MEM_new());
-  long ret = -1;
 
   if (!buf) {
-    goto err;
+    return 0;
   }
   n = sk_OPENSSL_PSTRING_num(db->data);
   nn = db->num_fields;
@@ -209,7 +208,7 @@ long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
       }
     }
     if (!BUF_MEM_grow_clean(buf.get(), (int)(l * 2 + nn))) {
-      goto err;
+      return 0;
     }
 
     p = buf->data;
@@ -231,13 +230,11 @@ long TXT_DB_write(bssl::UniquePtr<BIO> &out, bssl::UniquePtr<TXT_DB> &db) {
     p[-1] = '\n';
     j = p - buf->data;
     if (BIO_write(out.get(), buf->data, (int)j) != j) {
-      goto err;
+      return 0;
     }
     tot += j;
   }
-  ret = tot;
-err:
-  return ret;
+  return tot;
 }
 
 int TXT_DB_insert(bssl::UniquePtr<TXT_DB> &db, OPENSSL_STRING *row) {
@@ -307,13 +304,11 @@ void TXT_DB_free(TXT_DB *db) {
   OPENSSL_free(db->qual);
   if (db->data != NULL) {
     for (i = sk_OPENSSL_PSTRING_num(db->data) - 1; i >= 0; i--) {
-      /*
-       * check if any 'fields' have been allocated from outside of the
-       * initial block
-       */
+      // check if any 'fields' have been allocated from outside of the
+      // initial block
       p = sk_OPENSSL_PSTRING_value(db->data, i);
-      max = p[db->num_fields]; /* last address */
-      if (max == NULL) {       /* new row */
+      max = p[db->num_fields]; // last address
+      if (max == NULL) {       // new row
         for (n = 0; n < db->num_fields; n++) {
           OPENSSL_free(p[n]);
         }

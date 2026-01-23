@@ -89,17 +89,17 @@ bool parse_bool(const char *str, bool default_value) {
     return default_value;
   }
   switch (*str) {
-    case 'f': /* false */
-    case 'F': /* FALSE */
-    case 'n': /* no */
-    case 'N': /* NO */
-    case '0': /* 0 */
+    case 'f':  // false
+    case 'F':  // FALSE
+    case 'n':  // no
+    case 'N':  // NO
+    case '0':  // 0
       return false;
-    case 't': /* true */
-    case 'T': /* TRUE */
-    case 'y': /* yes */
-    case 'Y': /* YES */
-    case '1': /* 1 */
+    case 't':  // true
+    case 'T':  // TRUE
+    case 'y':  // yes
+    case 'Y':  // YES
+    case '1':  // 1
       return true;
     default:
       return default_value;
@@ -217,4 +217,3 @@ bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string) {
 
   return name;
 }
-
