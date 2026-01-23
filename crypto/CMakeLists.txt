@@ -180,6 +180,9 @@ if(PERL_EXECUTABLE)
       perlasm(cipher_extra/aesni-sha1-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha1-x86_64.pl)
       perlasm(cipher_extra/aesni-sha256-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha256-x86_64.pl)
   endif()
+  perlasm(md5/md5-586.${ASM_EXT} md5/asm/md5-586.pl)
+  perlasm(md5/md5-armv8.${ASM_EXT} md5/asm/md5-armv8.pl)
+  perlasm(md5/md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
   perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
   perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
   perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
@@ -241,6 +244,7 @@ if(ARCH STREQUAL "aarch64")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv8.${ASM_EXT}
+    md5/md5-armv8.${ASM_EXT}
     test/trampoline-armv8.${ASM_EXT}
     cipher_extra/chacha20_poly1305_armv8.${ASM_EXT}
   )
@@ -259,6 +263,7 @@ if(ARCH STREQUAL "x86")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-x86.${ASM_EXT}
+    md5/md5-586.${ASM_EXT}
     test/trampoline-x86.${ASM_EXT}
   )
 endif()
@@ -276,6 +281,7 @@ if(ARCH STREQUAL "x86_64")
       chacha/chacha-x86_64.${ASM_EXT}
       cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
       cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+      md5/md5-x86_64.${ASM_EXT}
       test/trampoline-x86_64.${ASM_EXT}
       hrss/asm/poly_rq_mul.S
     )
@@ -288,6 +294,7 @@ if(ARCH STREQUAL "x86_64")
       cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
       cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
       cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
+      md5/md5-x86_64.${ASM_EXT}
       test/trampoline-x86_64.${ASM_EXT}
       hrss/asm/poly_rq_mul.S
     )
@@ -443,6 +450,7 @@ add_library(
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
+  md5/md5.c
   mem.c
   obj/obj.c
   obj/obj_xref.c
@@ -825,7 +833,6 @@ if(BUILD_TESTING)
     fipsmodule/ecdsa/ecdsa_test.cc
     fipsmodule/evp/evp_ctx_test.cc
     fipsmodule/kdf/kdf_test.cc
-    fipsmodule/md5/md5_test.cc
     fipsmodule/ml_kem/ml_kem_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
@@ -846,6 +853,7 @@ if(BUILD_TESTING)
     hrss/hrss_test.cc
     impl_dispatch_test.cc
     lhash/lhash_test.cc
+    md5/md5_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
     pem/pem_test.cc

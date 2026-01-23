@@ -34,9 +34,9 @@
 #include <openssl/ripemd.h>
 #include <openssl/sha.h>
 
-#include "../fipsmodule/md5/internal.h"
 #include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
+#include "../md5/internal.h"
 #include "../test/test_util.h"
 
 
@@ -399,6 +399,8 @@ TEST(DigestTest, Getters) {
   EXPECT_EQ(nullptr, EVP_get_digestbyname("nonsense"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("SHA512"));
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512"));
+  EXPECT_EQ(EVP_md5(), EVP_get_digestbyname("md5"));
+  EXPECT_EQ(EVP_md5(), EVP_get_digestbyname("MD5"));
 
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbynid(NID_sha512));
   EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_sha512WithRSAEncryption));

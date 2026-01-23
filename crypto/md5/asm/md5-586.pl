@@ -12,7 +12,7 @@ if ($#ARGV < 1) { die "Not enough arguments provided.
 $normal=0;
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-push(@INC,"${dir}","${dir}../../../perlasm");
+push(@INC,"${dir}","${dir}../../perlasm");
 require "x86asm.pl";
 
 $output=$ARGV[1];

@@ -54,14 +54,13 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/md5.h>
-
 #include <string.h>
 
+#include <openssl/md5.h>
 #include <openssl/mem.h>
 
-#include "../../internal.h"
-#include "../digest/md32_common.h"
+#include "../internal.h"
+#include "../fipsmodule/digest/md32_common.h"
 #include "internal.h"
 
 
