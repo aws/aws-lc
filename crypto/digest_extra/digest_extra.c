@@ -259,7 +259,7 @@ const EVP_MD *EVP_get_digestbyname(const char *name) {
 }
 
 static void md4_init(EVP_MD_CTX *ctx) {
-  CHECK(MD4_Init(ctx->md_data));
+  AWSLC_ASSERT(MD4_Init(ctx->md_data));
 }
 
 static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -270,7 +270,7 @@ static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(MD4_Final(out, ctx->md_data));
+  AWSLC_ASSERT(MD4_Final(out, ctx->md_data));
 }
 
 static const EVP_MD evp_md_md4 = {

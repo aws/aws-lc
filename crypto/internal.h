@@ -1452,9 +1452,9 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 #define GUARD_PTR_ABORT(ptr) __AWS_LC_ENSURE((ptr) != NULL, abort())
 
 #if defined(NDEBUG)
-#define CHECK(x) (void) (x)
+#define AWSLC_ASSERT(x) (void) (x)
 #else
-#define CHECK(x) __AWS_LC_ENSURE(x, abort())
+#define AWSLC_ASSERT(x) __AWS_LC_ENSURE(x, abort())
 #endif
 
 // Windows doesn't really support weak symbols as of May 2019, and Clang on
@@ -1466,6 +1466,7 @@ rettype name args __attribute__((weak));
 #else
 #define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
 #endif
+
 
 #if defined(__cplusplus)
 }  // extern C
