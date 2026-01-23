@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  EMSDK_VERSION: "3.1.51"
+  EMSDK_VERSION: "4.0.23"
 
 jobs:
   wasm-build-test:
@@ -43,8 +43,8 @@ jobs:
           emcc --version
           node --version
 
-      - name: Run WASM tests
+      - name: Run Emscripten tests
         env:
           EMSDK_PATH: ${{ env.EMSDK }}
         run: |
-          ./tests/ci/run_wasm_tests.sh
+          ./tests/ci/run_emscripten_tests.sh

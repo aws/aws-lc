@@ -2,7 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# CI script for testing AWS-LC WASM builds using Emscripten
+# CI script for testing AWS-LC Emscripten builds
 #
 # This script builds AWS-LC for WebAssembly and runs the crypto_test and ssl_test
 # test binaries using Node.js.
@@ -96,7 +96,7 @@ function run_wasm_build {
 
     ${CMAKE_COMMAND} \
         -GNinja \
-        -DCMAKE_TOOLCHAIN_FILE="${SRC_ROOT}/util/wasm-toolchain.cmake" \
+        -DCMAKE_TOOLCHAIN_FILE="${SRC_ROOT}/util/emscripten-toolchain.cmake" \
         -DCMAKE_BUILD_TYPE="${build_type}" \
         -DDISABLE_CPU_JITTER_ENTROPY=ON \
         -DDISABLE_GO=ON \
@@ -129,11 +129,11 @@ function verify_wasm_artifacts {
     fi
     echo "Found: ${BUILD_ROOT}/ssl/libssl.a"
 
-    # Check for test executables (Emscripten generates JS wrapper files without extension)
+    # Check for test executables (Emscripten generates .js wrapper files and .wasm binaries)
     local test_binaries=(
-        "crypto/crypto_test"
-        "crypto/urandom_test"
-        "ssl/ssl_test"
+        "crypto/crypto_test.js"
+        "crypto/urandom_test.js"
+        "ssl/ssl_test.js"
     )
 
     for test_binary in "${test_binaries[@]}"; do
@@ -193,17 +193,17 @@ function run_wasm_tests {
     local failed_tests=()
 
     # Run crypto_test (excluding fork and socket tests)
-    if ! run_single_wasm_test "crypto/crypto_test" --gtest_filter="${WASM_GTEST_FILTER}"; then
+    if ! run_single_wasm_test "crypto/crypto_test.js" --gtest_filter="${WASM_GTEST_FILTER}"; then
         failed_tests+=("crypto_test")
     fi
 
     # Run urandom_test
-    if ! run_single_wasm_test "crypto/urandom_test"; then
+    if ! run_single_wasm_test "crypto/urandom_test.js"; then
         failed_tests+=("urandom_test")
     fi
 
     # Run ssl_test (excluding fork and socket tests)
-    if ! run_single_wasm_test "ssl/ssl_test" --gtest_filter="${WASM_GTEST_FILTER}"; then
+    if ! run_single_wasm_test "ssl/ssl_test.js" --gtest_filter="${WASM_GTEST_FILTER}"; then
         failed_tests+=("ssl_test")
     fi
 
