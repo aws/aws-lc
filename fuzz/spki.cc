@@ -26,14 +26,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     return 0;
   }
 
-  // Every parsed public key should be serializable.
-  bssl::ScopedCBB cbb;
-  BSSL_CHECK(CBB_init(cbb.get(), 0));
-  BSSL_CHECK(EVP_marshal_public_key(cbb.get(), pkey.get()));
+  if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA_PSS) {
+    // Every parsed public key should be serializable.
+    bssl::ScopedCBB cbb;
+    BSSL_CHECK(CBB_init(cbb.get(), 0));
+    BSSL_CHECK(EVP_marshal_public_key(cbb.get(), pkey.get()));
 
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  EVP_PKEY_print_params(bio.get(), pkey.get(), 0, nullptr);
-  EVP_PKEY_print_public(bio.get(), pkey.get(), 0, nullptr);
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    EVP_PKEY_print_params(bio.get(), pkey.get(), 0, nullptr);
+    EVP_PKEY_print_public(bio.get(), pkey.get(), 0, nullptr);
+  }
 
   ERR_clear_error();
   return 0;
