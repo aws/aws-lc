@@ -1622,3 +1622,530 @@ commonName = supplied
   // This should fail because ED25519 has DEF_DGST_REQUIRED and explicit digest is not allowed
   ASSERT_FALSE(caTool(args));
 }
+
+// MakeRevoked and UnpackRevinfo Tests - Exercised through database validation in caTool
+
+TEST_F(CATest, DatabaseWithRevokedEntryBasicTimestamp) {
+  // Test database with revoked entry containing only timestamp (no reason)
+  // This exercises MakeRevoked and UnpackRevinfo basic parsing
+  CreateBasicConfig();
+
+  // Create database with a revoked entry - just timestamp
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Format: type\texp_date\trev_date\tserial\tfile\tname
+  // R = Revoked, timestamp format is YYMMDDHHMMSSZ
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should succeed - database with valid revoked entry loads correctly
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(ValidateCertificateKeyPair(cert.get(), test_ca_key_.get()));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryUnspecifiedReason) {
+  // Test database with revoked entry using "unspecified" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,unspecified\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryKeyCompromise) {
+  // Test database with revoked entry using "keyCompromise" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyCompromise\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryCACompromise) {
+  // Test database with revoked entry using "CACompromise" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,CACompromise\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryAffiliationChanged) {
+  // Test database with revoked entry using "affiliationChanged" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,affiliationChanged\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntrySuperseded) {
+  // Test database with revoked entry using "superseded" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,superseded\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryCessationOfOperation) {
+  // Test database with revoked entry using "cessationOfOperation" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,cessationOfOperation\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryCertificateHold) {
+  // Test database with revoked entry using "certificateHold" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,certificateHold\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryRemoveFromCRL) {
+  // Test database with revoked entry using "removeFromCRL" reason code
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,removeFromCRL\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryHoldInstruction) {
+  // Test database with revoked entry using "holdInstruction" reason with OID argument
+  // This exercises the hold instruction parsing path in UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // holdInstruction requires an OID argument - using holdInstructionNone (1.2.840.10040.2.1)
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,holdInstruction,1.2.840.10040.2.1\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryKeyTime) {
+  // Test database with revoked entry using "keyTime" reason with compromised time
+  // This exercises the keyTime parsing path in UnpackRevinfo (maps to OCSP_REVOKED_STATUS_KEYCOMPROMISE)
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // keyTime requires a GeneralizedTime argument
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyTime,20240101120000Z\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTime) {
+  // Test database with revoked entry using "CAkeyTime" reason with compromised time
+  // This exercises the CAkeyTime parsing path in UnpackRevinfo (maps to OCSP_REVOKED_STATUS_CACOMPROMISE)
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // CAkeyTime requires a GeneralizedTime argument
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,CAkeyTime,20240101120000Z\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryInvalidTimestamp) {
+  // Test database with revoked entry having invalid timestamp format.
+  // This should fail during database validation via MakeRevoked/UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Invalid timestamp format (missing Z, wrong format)
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\tinvalid_timestamp\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - invalid revocation date format
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryInvalidReasonCode) {
+  // Test database with revoked entry having invalid reason code
+  // This should fail during database validation via UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Invalid reason code
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,invalidReason\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - invalid reason code
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryHoldInstructionMissingArg) {
+  // Test database with revoked entry using holdInstruction but missing OID argument
+  // This should fail during database validation via UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // holdInstruction without required OID argument
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,holdInstruction\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - missing hold instruction argument
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryKeyTimeMissingArg) {
+  // Test database with revoked entry using keyTime but missing compromised time argument
+  // This should fail during database validation via UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // keyTime without required compromised time argument
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyTime\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - missing compromised time argument
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryCAkeyTimeMissingArg) {
+  // Test database with revoked entry using CAkeyTime but missing compromised time argument
+  // This should fail during database validation via UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // CAkeyTime without required compromised time argument
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,CAkeyTime\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - missing compromised time argument
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryInvalidHoldInstructionOID) {
+  // Test database with revoked entry using holdInstruction with invalid OID
+  // This should fail during database validation via UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // holdInstruction with invalid OID
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,holdInstruction,not.a.valid.oid\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - invalid OID format
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithRevokedEntryInvalidKeyTimeFormat) {
+  // Test database with revoked entry using keyTime with invalid time format
+  // This should fail during database validation via UnpackRevinfo
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // keyTime with invalid GeneralizedTime format
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyTime,invalid_time\tAA\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - invalid compromised time format
+  ASSERT_FALSE(caTool(args));
+}
+
+TEST_F(CATest, DatabaseWithMultipleRevokedEntries) {
+  // Test database with multiple revoked entries using different reason codes
+  // Exercises MakeRevoked and UnpackRevinfo with various inputs in sequence
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // Use serials "AA", "AB", "AC" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyCompromise\tAA\tunknown\t/CN=revoked1.example.com\n");
+  fprintf(db_file.get(), "R\t251231235959Z\t240201120000Z,CACompromise\tAB\tunknown\t/CN=revoked2.example.com\n");
+  fprintf(db_file.get(), "R\t251231235959Z\t240301120000Z,superseded\tAC\tunknown\t/CN=revoked3.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithMixedValidAndRevokedEntries) {
+  // Test database with both valid and revoked entries
+  // Verifies that MakeRevoked is only called for revoked entries
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // V = Valid entry (should not trigger MakeRevoked validation)
+  // Use serials "AA", "AB" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "V\t251231235959Z\t\tAA\tunknown\t/CN=valid.example.com\n");
+  // R = Revoked entry (triggers MakeRevoked validation)
+  fprintf(db_file.get(), "R\t251231235959Z\t240101120000Z,keyCompromise\tAB\tunknown\t/CN=revoked.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  ASSERT_TRUE(caTool(args));
+
+  auto cert = LoadPEMCertificate(output_path);
+  ASSERT_TRUE(cert);
+}
+
+TEST_F(CATest, DatabaseWithValidEntryAndRevocationDate) {
+  // Test that valid entries with non-empty revocation date are rejected
+  // The database validation should catch this inconsistency
+  CreateBasicConfig();
+
+  ScopedFILE db_file(fopen(db_path, "w"));
+  ASSERT_TRUE(db_file);
+  // V = Valid but has revocation date (invalid state)
+  // Use serial "AA" to avoid conflict with serial file starting at "01"
+  fprintf(db_file.get(), "V\t251231235959Z\t240101120000Z\tAA\tunknown\t/CN=invalid.example.com\n");
+  fclose(db_file.release());
+
+  args_list_t args = {
+      "-config", config_path,
+      "-selfsign",
+      "-in", csr_path,
+      "-out", output_path
+  };
+
+  // Should fail - valid entry should not have revocation date
+  ASSERT_FALSE(caTool(args));
+}

@@ -301,17 +301,16 @@ static int UnpackRevinfo(bssl::UniquePtr<ASN1_TIME> &prevtm, int *preason,
     }
   }
 
-  if (prevtm) {
-    prevtm.reset(ASN1_UTCTIME_new());
-    if (!prevtm) {
-      fprintf(stderr, "memory allocation failure\n");
-      goto end;
-    }
-    if (!ASN1_UTCTIME_set_string(prevtm.get(), rtime_str)) {
-      fprintf(stderr, "invalid revocation date %s\n", rtime_str);
-      goto end;
-    }
+  prevtm.reset(ASN1_UTCTIME_new());
+  if (!prevtm) {
+    fprintf(stderr, "memory allocation failure\n");
+    goto end;
   }
+  if (!ASN1_UTCTIME_set_string(prevtm.get(), rtime_str)) {
+    fprintf(stderr, "invalid revocation date %s\n", rtime_str);
+    goto end;
+  }
+
   if (reason_str) {
     for (i = 0; i < NUM_REASONS; i++) {
       if (strcasecmp(reason_str, crl_reasons[i]) == 0) {
@@ -1611,7 +1610,7 @@ bool caTool(const args_list_t &args) {
       goto err;
     }
     if ((pp[DB_type][0] == DB_TYPE_REV) &&
-        !MakeRevoked(NULL, pp[DB_rev_date])) {
+        !MakeRevoked(nullptr, pp[DB_rev_date])) {
       fprintf(stderr, " in entry %zu\n", i + 1);
       goto err;
     }
