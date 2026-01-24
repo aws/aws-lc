@@ -67,7 +67,12 @@
 #include "../fipsmodule/rsa/internal.h"
 #include "../bytestring/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
+
+const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa) {
+  return rsa->pss;
+}
 
 static int parse_integer(CBS *cbs, BIGNUM **out) {
   assert(*out == NULL);

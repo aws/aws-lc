@@ -630,3 +630,117 @@ bool CheckKeyBoundaries(const std::string &content,
   return content.compare(0, begin2.size(), begin2) == 0 &&
          content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
 }
+
+// Validate that a certificate's public key corresponds to the given private key
+// and that the certificate signature is valid
+bool ValidateCertificateKeyPair(X509 *cert, EVP_PKEY *private_key) {
+  if (!cert || !private_key) {
+    std::cout << "Invalid certificate or private key provided" << std::endl;
+    return false;
+  }
+
+  // 1. Get the public key from the certificate
+  EVP_PKEY *cert_pubkey = X509_get0_pubkey(cert);
+  if (!cert_pubkey) {
+    std::cout << "Failed to extract public key from certificate" << std::endl;
+    return false;
+  }
+
+  // 2. Verify that the certificate's public key corresponds to the private key
+  // This is done by comparing the public key derived from the private key
+  // with the public key in the certificate
+  if (EVP_PKEY_id(cert_pubkey) != EVP_PKEY_id(private_key)) {
+    std::cout << "Certificate public key type does not match private key type" << std::endl;
+    return false;
+  }
+
+  // For RSA keys, compare the public components (n, e)
+  if (EVP_PKEY_id(private_key) == EVP_PKEY_RSA) {
+    const RSA *cert_rsa = EVP_PKEY_get0_RSA(cert_pubkey);
+    const RSA *priv_rsa = EVP_PKEY_get0_RSA(private_key);
+    if (!cert_rsa || !priv_rsa) {
+      std::cout << "Failed to extract RSA components" << std::endl;
+      return false;
+    }
+
+    // Get public key components from both keys
+    const BIGNUM *cert_n = nullptr, *cert_e = nullptr;
+    const BIGNUM *priv_n = nullptr, *priv_e = nullptr;
+    RSA_get0_key(cert_rsa, &cert_n, &cert_e, nullptr);
+    RSA_get0_key(priv_rsa, &priv_n, &priv_e, nullptr);
+
+    // Compare modulus (n) and public exponent (e)
+    if (!cert_n || !cert_e || !priv_n || !priv_e) {
+      std::cout << "Failed to get RSA key components" << std::endl;
+      return false;
+    }
+
+    if (BN_cmp(cert_n, priv_n) != 0) {
+      std::cout << "Certificate public key modulus does not match private key" << std::endl;
+      return false;
+    }
+
+    if (BN_cmp(cert_e, priv_e) != 0) {
+      std::cout << "Certificate public key exponent does not match private key" << std::endl;
+      return false;
+    }
+  } else if (EVP_PKEY_id(private_key) == EVP_PKEY_ED25519) {
+    // For ED25519 keys, compare the raw key material
+    size_t cert_pubkey_len = 0, priv_pubkey_len = 0;
+    
+    // Get the public key from the certificate
+    if (EVP_PKEY_get_raw_public_key(cert_pubkey, nullptr, &cert_pubkey_len) != 1) {
+      std::cout << "Failed to get ED25519 certificate public key length" << std::endl;
+      return false;
+    }
+    
+    // Get the public key derived from the private key
+    if (EVP_PKEY_get_raw_public_key(private_key, nullptr, &priv_pubkey_len) != 1) {
+      std::cout << "Failed to get ED25519 private key public key length" << std::endl;
+      return false;
+    }
+    
+    if (cert_pubkey_len != priv_pubkey_len || cert_pubkey_len != 32) {
+      std::cout << "ED25519 public key lengths do not match or are invalid" << std::endl;
+      return false;
+    }
+    
+    uint8_t cert_pubkey_raw[32];
+    uint8_t priv_pubkey_raw[32];
+    
+    if (EVP_PKEY_get_raw_public_key(cert_pubkey, cert_pubkey_raw, &cert_pubkey_len) != 1) {
+      std::cout << "Failed to extract ED25519 certificate public key" << std::endl;
+      return false;
+    }
+    
+    if (EVP_PKEY_get_raw_public_key(private_key, priv_pubkey_raw, &priv_pubkey_len) != 1) {
+      std::cout << "Failed to extract ED25519 private key public key" << std::endl;
+      return false;
+    }
+    
+    // Compare the raw public key material
+    if (OPENSSL_memcmp(cert_pubkey_raw, priv_pubkey_raw, 32) != 0) {
+      std::cout << "ED25519 certificate public key does not match private key" << std::endl;
+      return false;
+    }
+  }
+
+  // 3. Verify the certificate signature using the private key
+  // For self-signed certificates, this verifies the certificate against its own key
+  if (X509_verify(cert, private_key) != 1) {
+    std::cout << "Certificate signature verification failed against the provided private key" << std::endl;
+    return false;
+  }
+
+  // 4. Additional validation: verify certificate is properly self-signed
+  // (issuer and subject should be the same for self-signed certs)
+  X509_NAME *subject = X509_get_subject_name(cert);
+  X509_NAME *issuer = X509_get_issuer_name(cert);
+  if (X509_NAME_cmp(subject, issuer) != 0) {
+    std::cout << "Warning: Certificate is not self-signed (subject != issuer)" << std::endl;
+    // Don't fail here as this might be intentional for some tests
+  }
+
+  std::cout << "Certificate-key pair validation successful" << std::endl;
+  return true;
+}
