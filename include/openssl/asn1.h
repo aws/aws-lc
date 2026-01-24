@@ -1815,6 +1815,17 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
 
+// a2i_ASN1_INTEGER reads a hexadecimal string from |bp| and converts it to an
+// INTEGER, writing the result to |bs|. |buf| is a caller-provided temporary
+// buffer of |size| bytes that the function uses for reading lines from |bp|.
+// It returns one on success and zero on error.
+//
+// The input should consist of hexadecimal digits, optionally with a leading
+// "00" (which is skipped). Lines can be continued with a trailing backslash
+// (\). The hexadecimal string must have an even number of digits.
+OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf,
+                                    int size);
+
 // i2a_ASN1_INTEGER writes a human-readable representation of |a| to |bp|. It
 // returns the number of bytes written on success, or a negative number on
 // error. On error, this function may have written a partial output to |bp|.
