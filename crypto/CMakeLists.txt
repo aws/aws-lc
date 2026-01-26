@@ -424,6 +424,7 @@ add_library(
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
+  md4/md4.c
   mem.c
   obj/obj.c
   obj/obj_xref.c
