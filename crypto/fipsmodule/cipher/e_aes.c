@@ -304,27 +304,27 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt, 1);
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt_wrapper, 1);
     }
     if (out_block) {
-      *out_block = aes_hw_encrypt;
+      *out_block = aes_hw_encrypt_wrapper;
     }
-    return aes_hw_ctr32_encrypt_blocks;
+    return aes_hw_ctr32_encrypt_blocks_wrapper;
   }
 
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (out_block) {
-      *out_block = vpaes_encrypt;
+      *out_block = vpaes_encrypt_wrapper;
     }
     if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt, 0);
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt_wrapper, 0);
     }
 #if defined(BSAES)
     assert(bsaes_capable());
     return vpaes_ctr32_encrypt_blocks_with_bsaes;
 #elif defined(VPAES_CTR32)
-    return vpaes_ctr32_encrypt_blocks;
+    return vpaes_ctr32_encrypt_blocks_wrapper;
 #else
     return NULL;
 #endif
@@ -332,12 +332,12 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
 
   aes_nohw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
   if (gcm_key != NULL) {
-    CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt, 0);
+    CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt_wrapper, 0);
   }
   if (out_block) {
-    *out_block = aes_nohw_encrypt;
+    *out_block = aes_nohw_encrypt_wrapper;
   }
-  return aes_nohw_ctr32_encrypt_blocks;
+  return aes_nohw_ctr32_encrypt_blocks_wrapper;
 }
 
 #if defined(OPENSSL_32_BIT)

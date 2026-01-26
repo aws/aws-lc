@@ -68,6 +68,28 @@ void CreateAndSignX509Certificate(bssl::UniquePtr<X509> &x509,
   };
   X509_NAME_free(subject_name);
 
+  // Set a randomly generated serial number
+
+  bn.reset(BN_new());
+
+  constexpr int SERIAL_RAND_BITS = 159;
+  if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
+               BN_RAND_BOTTOM_ANY)) {
+    fprintf(stderr, "Error: Failed to generate random serial number\n");
+    return;
+  }
+
+  ASN1_INTEGER *serial = X509_get_serialNumber(x509.get());
+  if (!serial) {
+    fprintf(stderr, "Error: Failed to get certificate serial number field\n");
+    return;
+  }
+
+  if (!BN_to_ASN1_INTEGER(bn.get(), serial)) {
+    fprintf(stderr, "Error: Failed to convert BIGNUM to ASN1_INTEGER\n");
+    return;
+  }
+
   // Add X509v3 extensions
   X509V3_CTX ctx;
   X509V3_set_ctx_nodb(&ctx);
@@ -160,7 +182,7 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     return false;
   }
 
-  if(X509_NAME_cmp(name1, name2) != 0) {
+  if (X509_NAME_cmp(name1, name2) != 0) {
     return true;
   }
 
@@ -193,9 +215,9 @@ bool CompareCSRs(X509_REQ *csr1, X509_REQ *csr2) {
     ASN1_STRING *data2 = X509_NAME_ENTRY_get_data(entry2);
 
     if (ASN1_STRING_cmp(data1, data2) != 0) {
-      const char* long_name = OBJ_nid2ln(OBJ_obj2nid(obj1));
+      const char *long_name = OBJ_nid2ln(OBJ_obj2nid(obj1));
       std::cout << "CSRs have different values for entry "
-                << (long_name ? long_name : "<UNKNOWN>")  << std::endl;
+                << (long_name ? long_name : "<UNKNOWN>") << std::endl;
       return false;
     }
   }
@@ -440,8 +462,8 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
 
     int nid2 = OBJ_obj2nid(X509_EXTENSION_get_object(ext2));
 
-    // OpenSSL<=3.1 does not clear existing extensions, resulting in duplicates.
-    // Skip over those duplicates
+    // OpenSSL<=3.1 does not clear existing extensions, resulting in
+    // duplicates. Skip over those duplicates
     if (openssl_version && strcmp(openssl_version, "1.1.1") == 0) {
       if (!cert2_nids.insert(nid2).second) {
         continue;
@@ -480,6 +502,7 @@ bool CompareCertificates(X509 *cert1, X509 *cert2, X509 *ca_cert,
       return false;
     }
   }
+
   return true;
 }
 
@@ -576,5 +599,148 @@ bool CompareRandomGeneratedKeys(EVP_PKEY *key1, EVP_PKEY *key2,
     return false;
   }
 
+  return true;
+}
+
+bool CheckKeyBoundaries(const std::string &content,
+                        const std::string &begin1,
+                        const std::string &end1,
+                        const std::string &begin2,
+                        const std::string &end2) {
+  if (content.empty() || begin1.empty() || end1.empty()) {
+    return false;
+  }
+
+  if (content.size() < begin1.size() + end1.size()) {
+    return false;
+  }
+
+  bool primary_match =
+      content.compare(0, begin1.size(), begin1) == 0 &&
+      content.compare(content.size() - end1.size(), end1.size(), end1) == 0;
+
+  if (primary_match || begin2.empty() || end2.empty()) {
+    return primary_match;
+  }
+
+  if (content.size() < begin2.size() + end2.size()) {
+    return false;
+  }
+
+  return content.compare(0, begin2.size(), begin2) == 0 &&
+         content.compare(content.size() - end2.size(), end2.size(), end2) == 0;
+}
+
+// Validate that a certificate's public key corresponds to the given private key
+// and that the certificate signature is valid
+bool ValidateCertificateKeyPair(X509 *cert, EVP_PKEY *private_key) {
+  if (!cert || !private_key) {
+    std::cout << "Invalid certificate or private key provided" << std::endl;
+    return false;
+  }
+
+  // 1. Get the public key from the certificate
+  EVP_PKEY *cert_pubkey = X509_get0_pubkey(cert);
+  if (!cert_pubkey) {
+    std::cout << "Failed to extract public key from certificate" << std::endl;
+    return false;
+  }
+
+  // 2. Verify that the certificate's public key corresponds to the private key
+  // This is done by comparing the public key derived from the private key
+  // with the public key in the certificate
+  if (EVP_PKEY_id(cert_pubkey) != EVP_PKEY_id(private_key)) {
+    std::cout << "Certificate public key type does not match private key type" << std::endl;
+    return false;
+  }
+
+  // For RSA keys, compare the public components (n, e)
+  if (EVP_PKEY_id(private_key) == EVP_PKEY_RSA) {
+    const RSA *cert_rsa = EVP_PKEY_get0_RSA(cert_pubkey);
+    const RSA *priv_rsa = EVP_PKEY_get0_RSA(private_key);
+    if (!cert_rsa || !priv_rsa) {
+      std::cout << "Failed to extract RSA components" << std::endl;
+      return false;
+    }
+
+    // Get public key components from both keys
+    const BIGNUM *cert_n = nullptr, *cert_e = nullptr;
+    const BIGNUM *priv_n = nullptr, *priv_e = nullptr;
+    RSA_get0_key(cert_rsa, &cert_n, &cert_e, nullptr);
+    RSA_get0_key(priv_rsa, &priv_n, &priv_e, nullptr);
+
+    // Compare modulus (n) and public exponent (e)
+    if (!cert_n || !cert_e || !priv_n || !priv_e) {
+      std::cout << "Failed to get RSA key components" << std::endl;
+      return false;
+    }
+
+    if (BN_cmp(cert_n, priv_n) != 0) {
+      std::cout << "Certificate public key modulus does not match private key" << std::endl;
+      return false;
+    }
+
+    if (BN_cmp(cert_e, priv_e) != 0) {
+      std::cout << "Certificate public key exponent does not match private key" << std::endl;
+      return false;
+    }
+  } else if (EVP_PKEY_id(private_key) == EVP_PKEY_ED25519) {
+    // For ED25519 keys, compare the raw key material
+    size_t cert_pubkey_len = 0, priv_pubkey_len = 0;
+    
+    // Get the public key from the certificate
+    if (EVP_PKEY_get_raw_public_key(cert_pubkey, nullptr, &cert_pubkey_len) != 1) {
+      std::cout << "Failed to get ED25519 certificate public key length" << std::endl;
+      return false;
+    }
+    
+    // Get the public key derived from the private key
+    if (EVP_PKEY_get_raw_public_key(private_key, nullptr, &priv_pubkey_len) != 1) {
+      std::cout << "Failed to get ED25519 private key public key length" << std::endl;
+      return false;
+    }
+    
+    if (cert_pubkey_len != priv_pubkey_len || cert_pubkey_len != 32) {
+      std::cout << "ED25519 public key lengths do not match or are invalid" << std::endl;
+      return false;
+    }
+    
+    uint8_t cert_pubkey_raw[32];
+    uint8_t priv_pubkey_raw[32];
+    
+    if (EVP_PKEY_get_raw_public_key(cert_pubkey, cert_pubkey_raw, &cert_pubkey_len) != 1) {
+      std::cout << "Failed to extract ED25519 certificate public key" << std::endl;
+      return false;
+    }
+    
+    if (EVP_PKEY_get_raw_public_key(private_key, priv_pubkey_raw, &priv_pubkey_len) != 1) {
+      std::cout << "Failed to extract ED25519 private key public key" << std::endl;
+      return false;
+    }
+    
+    // Compare the raw public key material
+    if (OPENSSL_memcmp(cert_pubkey_raw, priv_pubkey_raw, 32) != 0) {
+      std::cout << "ED25519 certificate public key does not match private key" << std::endl;
+      return false;
+    }
+  }
+
+  // 3. Verify the certificate signature using the private key
+  // For self-signed certificates, this verifies the certificate against its own key
+  if (X509_verify(cert, private_key) != 1) {
+    std::cout << "Certificate signature verification failed against the provided private key" << std::endl;
+    return false;
+  }
+
+  // 4. Additional validation: verify certificate is properly self-signed
+  // (issuer and subject should be the same for self-signed certs)
+  X509_NAME *subject = X509_get_subject_name(cert);
+  X509_NAME *issuer = X509_get_issuer_name(cert);
+  if (X509_NAME_cmp(subject, issuer) != 0) {
+    std::cout << "Warning: Certificate is not self-signed (subject != issuer)" << std::endl;
+    // Don't fail here as this might be intentional for some tests
+  }
+
+  std::cout << "Certificate-key pair validation successful" << std::endl;
   return true;
 }

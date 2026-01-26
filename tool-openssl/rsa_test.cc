@@ -89,17 +89,6 @@ protected:
   }
 };
 
-// Test missing -in required option
-TEST_F(RSAOptionUsageErrorsTest, RequiredOptionTests) {
-  std::vector<std::vector<std::string>> testparams = {
-    {"-out", "output.pem"},
-    {"-modulus"},
-  };
-  for (const auto& args : testparams) {
-    TestOptionUsageErrors(args);
-  }
-}
-
 // Test invalid file path
 TEST_F(RSAOptionUsageErrorsTest, InvalidFilePathTest) {
   args_list_t args = {"-in", "/nonexistent/path/to/key.pem"};
@@ -479,6 +468,40 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
 
   trim(openssl_output_str);
   ASSERT_TRUE(CheckBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
+}
+
+// Test against OpenSSL output reading from stdin "openssl rsa -in"
+TEST_F(RSAComparisonTest, StdinRSA) {
+  std::string tool_command = std::string(tool_executable_path) + " rsa -in "
+                             + std::string(in_path) + " -pubout | " +
+                             std::string(tool_executable_path) +
+                             " rsa -pubin -inform PEM -outform DER > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " rsa -in "
+                             + std::string(in_path) + " -pubout | " +
+                             std::string(openssl_executable_path) +
+                             " rsa -pubin -inform PEM -outform DER > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " rsa -in "
+                 + std::string(in_path) + " -pubout -outform DER | " +
+                 std::string(tool_executable_path) +
+                 " rsa -pubin -inform DER -outform PEM > " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " rsa -in "
+                 + std::string(in_path) + " -pubout -outform DER | " +
+                 std::string(openssl_executable_path) +
+                 " rsa -pubin -inform DER -outform PEM > " + out_path_openssl;
+
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool,
+                              out_path_openssl, tool_output_str,
+                              openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file -noout"

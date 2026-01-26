@@ -33,8 +33,8 @@ import (
 	"syscall"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/util/testconfig"
-	"boringssl.googlesource.com/boringssl/util/testresult"
+	"github.com/aws/aws-lc/util/testconfig"
+	"github.com/aws/aws-lc/util/testresult"
 )
 
 // TODO(davidben): Link tests with the malloc shim and port -malloc-test to this runner.
@@ -104,7 +104,7 @@ var sdeCPUs []string
 
 func initSDECPUs() {
 	sdeCPUs = append([]string{}, defaultCPUs...)
-	if (runtime.GOOS == "windows") {
+	if runtime.GOOS == "windows" {
 		cmd := exec.Command("cmd", "/C", "ver")
 		output, err := cmd.Output()
 		if err != nil {
@@ -190,8 +190,8 @@ func sdeOf(ctx context.Context, cpu, path string, args ...string) (context.Conte
 	sdeArgs = append(sdeArgs, args...)
 
 	// TODO(CryptoAlg-2154):SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
-	// Current workaround is to manually cancel the run after 20 minutes and check the output.
-	ctx, cancel := context.WithTimeout(ctx, 1800*time.Second)
+	// Current workaround is to manually cancel the run after 40 minutes and check the output.
+	ctx, cancel := context.WithTimeout(ctx, 2400*time.Second)
 
 	return ctx, cancel, exec.CommandContext(ctx, *sdePath, sdeArgs...)
 }

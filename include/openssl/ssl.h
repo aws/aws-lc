@@ -1769,8 +1769,8 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 // The |DEFAULT| directive, when appearing at the front of the string, expands
 // to the default ordering of available ciphers.
 //
-// If configuring a server, one may also configure equal-preference groups to
-// partially respect the client's preferences when
+// For TLS < 1.3, if configuring a server, one may also configure
+// equal-preference groups to partially respect the client's preferences when
 // |SSL_OP_CIPHER_SERVER_PREFERENCE| is enabled. Ciphers in an equal-preference
 // group have equal priority and use the client order. This may be used to
 // enforce that AEADs are preferred but select AES-GCM vs. ChaCha20-Poly1305
@@ -1781,10 +1781,6 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
-//
-// Note: TLS 1.3 ciphersuites are only configurable via
-// |SSL_CTX_set_ciphersuites| or |SSL_set_ciphersuites|. Other setter functions have
-// no impact on TLS 1.3 ciphersuites.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.
@@ -1842,6 +1838,8 @@ OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
 // any configured TLS 1.3 cipher suites by first checking
 // |ssl->config->tls13_cipher_list| and otherwise falling back to
 // |ssl->ctx->tls13_cipher_list|.
+//
+// Equal-preference groups cannot be configured for TLS 1.3 through these APIs.
 //
 // It returns one on success and zero on failure.
 //
@@ -2793,26 +2791,11 @@ OPENSSL_EXPORT int SSL_get_negotiated_group(const SSL *ssl);
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
 
-// SSL_GROUP_SECP256R1_KYBER768_DRAFT00 is defined at
-// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
-#define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
-
-// SSL_GROUP_X25519_KYBER768_DRAFT00 is defined at
-// https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
-#define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
-
 // The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
 #define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
 #define SSL_GROUP_X25519_MLKEM768 0x11EC
 #define SSL_GROUP_SECP384R1_MLKEM1024 0x11ED
-
-// The following PQ and hybrid group IDs are not yet standardized. Current IDs
-// are driven by community consensus and are defined at:
-// https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
-#define SSL_GROUP_KYBER512_R3 0x023A
-#define SSL_GROUP_KYBER768_R3 0x023C
-#define SSL_GROUP_KYBER1024_R3 0x023D
 
 // The following are defined at
 // https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
@@ -5814,9 +5797,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CURVE_SECP384R1 SSL_GROUP_SECP384R1
 #define SSL_CURVE_SECP521R1 SSL_GROUP_SECP521R1
 #define SSL_CURVE_X25519 SSL_GROUP_X25519
-#define SSL_CURVE_SECP256R1_KYBER768_DRAFT00 \
-  SSL_GROUP_SECP256R1_KYBER768_DRAFT00
-#define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
 // TLSEXT_nid_unknown is a constant used in OpenSSL for
 // |SSL_get_negotiated_group| to return an unrecognized group. AWS-LC never
@@ -6191,7 +6171,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 //
 // See PORTING.md in the BoringSSL source tree for a table of corresponding
 // functions.
-// https://boringssl.googlesource.com/boringssl/+/master/PORTING.md#Replacements-for-values
+// https://github.com/aws/aws-lc/blob/main/PORTING.md#replacements-for-ctrl-values
 
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist

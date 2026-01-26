@@ -7,11 +7,18 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    txt_db/txt_db.cc
+
+    asn1parse.cc
+    ca.cc
+    ca_req_common.cc
     crl.cc
     dgst.cc
     dhparam.cc
     ecparam.cc
     ec.cc
+    enc.cc
+    genpkey.cc
     genrsa.cc
     pass_util.cc
     pkcs8.cc
@@ -89,6 +96,14 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        txt_db/txt_db.cc
+        txt_db/txt_db_test.cc
+
+        asn1parse.cc
+        asn1parse_test.cc
+        ca.cc
+        ca_test.cc
+        ca_req_common.cc
         crl.cc
         crl_test.cc
         dgst.cc
@@ -99,8 +114,12 @@ if(BUILD_TESTING)
         ec_test.cc
         ecparam.cc
         ecparam_test.cc
+        enc.cc
+        enc_test.cc
         genrsa.cc
         genrsa_test.cc
+        genpkey.cc
+        genpkey_test.cc
         ordered_args.cc
         pass_util.cc
         pass_util_test.cc

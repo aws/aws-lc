@@ -1,35 +1,27 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <cstdio>
+#include <cstring>
+
+#include <algorithm>
+#include <iostream>
+
 #include <openssl/base.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <stdio.h>
-#include <string.h>
-#include <algorithm>
-#include <iostream>
 #include "../tool/internal.h"
-#include "internal.h"
 
-#define REQ_SECTION "req"
-#define BITS "default_bits"
-#define DEFAULT_MD "default_md"
-#define DEFAULT_KEYFILE "default_keyfile"
-#define PROMPT "prompt"
-#define ENCRYPT_KEY "encrypt_key"
-#define DISTINGUISHED_NAME "distinguished_name"
-#define ATTRIBUTES "attributes"
-#define V3_EXTENSIONS "x509_extensions"
-#define REQ_EXTENSIONS "req_extensions"
+#include "ca_req_common.h"
+#include "internal.h"
 
 #define DEFAULT_KEY_LENGTH 2048
 #define MIN_KEY_LENGTH 512
 #define MAX_KEY_LENGTH 16384
 #define BUF_SIZE 1024
-#define DEFAULT_CHAR_TYPE MBSTRING_ASC
 
 // NOTES:
 // 1. We do not support -in as of now, so -new is implied with -x509.
@@ -165,166 +157,6 @@ static EVP_PKEY *GenerateKey(const char *keyspec, long default_keylen) {
   return pkey;
 }
 
-// Parse the subject string provided by a user with the -subj option.
-bssl::UniquePtr<X509_NAME> ParseSubjectName(std::string &subject_string) {
-  const char *subject_name_ptr = subject_string.c_str();
-
-  if (*subject_name_ptr++ != '/') {
-    fprintf(stderr,
-            "name is expected to be in the format "
-            "/type0=value0/type1=value1/type2=... where characters may "
-            "be escaped by \\. This name is not in that format: '%s'\n",
-            --subject_name_ptr);
-    return nullptr;
-  }
-
-  // Create new X509_NAME
-  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
-  if (!name) {
-    return nullptr;
-  }
-
-  std::string type;
-  std::string value;
-
-  while (*subject_name_ptr) {
-    // Reset strings for new iteration
-    type.clear();
-    value.clear();
-
-    // Parse type
-    while (*subject_name_ptr && *subject_name_ptr != '=') {
-      type += *subject_name_ptr++;
-    }
-
-    if (!*subject_name_ptr) {
-      fprintf(stderr, "Hit end of string before finding the equals.\n");
-      return nullptr;
-    }
-
-    // Skip '='
-    subject_name_ptr++;
-
-    // Parse value
-    while (*subject_name_ptr && *subject_name_ptr != '/') {
-      if (*subject_name_ptr == '\\' && *(subject_name_ptr + 1)) {
-        // Handle escaped character
-        subject_name_ptr++;
-        value += *subject_name_ptr++;
-      } else {
-        value += *subject_name_ptr++;
-      }
-    }
-
-    // Skip trailing '/' if present
-    if (*subject_name_ptr == '/') {
-      subject_name_ptr++;
-    }
-
-    // Convert type to NID, skip unknown attributes
-    int nid = OBJ_txt2nid(type.c_str());
-    if (nid == NID_undef) {
-      fprintf(stderr, "Warning: Skipping unknown attribute \"%s\"\n",
-              type.c_str());
-      // Skip unknown attributes
-      continue;
-    }
-
-    // Skip empty values
-    if (value.empty()) {
-      fprintf(stderr,
-              "Warning: No value specified for attribute \"%s\", Skipped\n",
-              type.c_str());
-      continue;
-    }
-
-    // Add entry to the name
-    if (!X509_NAME_add_entry_by_NID(name.get(), nid, DEFAULT_CHAR_TYPE,
-                                    (unsigned char *)value.c_str(), -1, -1,
-                                    0)) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_X509_LIB);
-      return nullptr;
-    }
-  }
-
-  return name;
-}
-
-typedef struct {
-  const char *field_ln;
-  const char *field_sn;
-  const char *short_desc;
-  const char *default_value;
-  int nid;
-} ReqField;
-
-static const char *PromptField(const ReqField &field, char *buffer,
-                               size_t buffer_size) {
-  // Prompt with default value if available
-  if (field.default_value && field.default_value[0]) {
-    fprintf(stdout, "%s [%s]: ", field.short_desc, field.default_value);
-  } else {
-    fprintf(stdout, "%s: ", field.short_desc);
-  }
-  fflush(stdout);
-
-  // Get input with fgets
-  if (fgets(buffer, buffer_size, stdin) == NULL) {
-    fprintf(stderr, "Error reading input\n");
-    return NULL;
-  }
-
-  // Remove newline character and carriage return if present
-  size_t len = OPENSSL_strnlen(buffer, buffer_size);
-  if (len > 0 && buffer[len - 1] == '\n') {
-    buffer[len - 1] = '\0';
-    len--;
-  }
-#if defined(_WIN32)
-  if (len > 0 && buffer[len - 1] == '\r') {
-    buffer[len - 1] = '\0';
-    len--;
-  }
-#endif
-
-  if (strcmp(buffer, ".") == 0) {
-    // Empty entry requested
-    return "";
-  }
-  if (len == 0 && field.default_value) {
-    return field.default_value;
-  }
-  if (len > 0) {
-    // Use provided input
-    return buffer;
-  }
-
-  // Empty input and no default - use empty string
-  return "";
-}
-
-// Default values for subject fields
-const ReqField subject_fields[] = {
-    {"countryName", "C", "Country Name (2 letter code)", "AU", NID_countryName},
-    {"stateOrProvinceName", "ST", "State or Province Name (full name)",
-     "Some-State", NID_stateOrProvinceName},
-    {"localityName", "L", "Locality Name (eg, city)", "", NID_localityName},
-    {"organizationName", "O", "Organization Name (eg, company)",
-     "Internet Widgits Pty Ltd", NID_organizationName},
-    {"organizationalUnitName", "OU", "Organizational Unit Name (eg, section)",
-     "", NID_organizationalUnitName},
-    {"commonName", "CN", "Common Name (e.g. server FQDN or YOUR name)", "",
-     NID_commonName},
-    {"emailAddress", "emailAddress", "Email Address", "",
-     NID_pkcs9_emailAddress}};
-
-// Extra attributes for CSR
-const ReqField extra_attributes[] = {
-    {"challengePassword", "challengePassword", "A challenge password",
-     "A challenge password", NID_pkcs9_challengePassword},
-    {"unstructuredName", "unstructuredName", "An optional company name",
-     "An optional company name", NID_pkcs9_unstructuredName}};
-
 static bssl::UniquePtr<X509_NAME> BuildSubject(
     X509_REQ *req, CONF *req_conf, const std::string &req_section, bool is_csr,
     bool no_prompt, unsigned long chtype = MBSTRING_ASC) {
@@ -354,8 +186,7 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
   char buffer[BUF_SIZE];
   const char *dn_section = NULL;
   if (req_conf) {
-    dn_section =
-        NCONF_get_string(req_conf, req_section.c_str(), DISTINGUISHED_NAME);
+    dn_section = NCONF_get_string(req_conf, req_section.c_str(), REQ_DN_OPT);
   }
 
   // Process each subject field
@@ -397,7 +228,8 @@ static bssl::UniquePtr<X509_NAME> BuildSubject(
 
   const char *attr_section = NULL;
   if (req_conf) {
-    attr_section = NCONF_get_string(req_conf, req_section.c_str(), ATTRIBUTES);
+    attr_section =
+        NCONF_get_string(req_conf, req_section.c_str(), REQ_ATTRIBUTES_OPT);
   }
   // If this is a CSR, handle extra attributes
   if (is_csr) {
@@ -503,29 +335,6 @@ static int AdaptKeyIDExtension(X509 *cert, X509V3_CTX *ext_ctx,
   }
 
   return !add_if_missing || X509_add_ext(cert, new_keyid_ext.get(), -1);
-}
-
-static bool LoadConfig(const std::string &config_path,
-                       bssl::UniquePtr<CONF> &conf) {
-  bssl::UniquePtr<BIO> conf_bio(BIO_new_file(config_path.c_str(), "r"));
-  if (!conf_bio) {
-    fprintf(stderr, "Error: unable to load extension file from '%s'\n",
-            config_path.c_str());
-    return false;
-  }
-
-  conf.reset(NCONF_new(NULL));
-  if (!conf) {
-    fprintf(stderr, "Error: Failed to create extension config\n");
-    return false;
-  }
-
-  if (NCONF_load_bio(conf.get(), conf_bio.get(), NULL) <= 0) {
-    fprintf(stderr, "Error: Failed to load config from BIO\n");
-    return false;
-  }
-
-  return true;
 }
 
 static bool AddCertExtensions(X509 *cert, CONF *req_conf,
@@ -647,6 +456,13 @@ static bool GenerateSerial(X509 *cert) {
     return false;
   }
 
+  /*
+   * Randomly generate a serial number
+   *
+   * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+   * so that the first bit will never be one, so that the DER encoding
+   * rules won't force a leading octet.
+   */
   constexpr int SERIAL_RAND_BITS = 159;
   if (!BN_rand(bn.get(), SERIAL_RAND_BITS, BN_RAND_TOP_ANY,
                BN_RAND_BOTTOM_ANY)) {
@@ -668,35 +484,8 @@ static bool GenerateSerial(X509 *cert) {
   return true;
 }
 
-static bool LoadPrivateKey(const std::string &key_file_path,
-                           bssl::UniquePtr<std::string> &passin,
-                           bssl::UniquePtr<EVP_PKEY> &pkey) {
-  ScopedFILE key_file(fopen(key_file_path.c_str(), "rb"));
-
-  if (!key_file) {
-    fprintf(stderr, "Error: Failed to open %s", key_file_path.c_str());
-    return false;
-  }
-
-  if (!passin->empty() && !pass_util::ExtractPassword(passin)) {
-    fprintf(stderr, "Error: Failed to extract password\n");
-    return false;
-  }
-
-  pkey.reset(PEM_read_PrivateKey(key_file.get(), nullptr, nullptr,
-                                 const_cast<char *>(passin->c_str())));
-
-  if (!pkey) {
-    fprintf(stderr, "Error: Failed to read private key from %s\n",
-            key_file_path.c_str());
-    return false;
-  }
-
-  return true;
-}
-
 static bool WritePrivateKey(std::string &out_path,
-                            bssl::UniquePtr<std::string> &passout,
+                            Password &passout,
                             bssl::UniquePtr<EVP_PKEY> &pkey,
                             const EVP_CIPHER *cipher) {
   bssl::UniquePtr<BIO> out_bio;
@@ -715,15 +504,15 @@ static bool WritePrivateKey(std::string &out_path,
     return false;
   }
 
-  if (!passout->empty() && !pass_util::ExtractPassword(passout)) {
+  if (!passout.empty() && !pass_util::ExtractPassword(passout)) {
     fprintf(stderr, "Error: Failed to extract password\n");
     return false;
   }
 
   if (!PEM_write_bio_PKCS8PrivateKey(
           out_bio.get(), pkey.get(), cipher,
-          passout->empty() ? nullptr : passout->c_str(),
-          passout->empty() ? 0 : passout->length(), nullptr, nullptr)) {
+          passout.empty() ? nullptr : passout.get().c_str(),
+          passout.empty() ? 0 : passout.get().length(), nullptr, nullptr)) {
     fprintf(stderr, "Error: Failed to write private key.\n");
     return false;
   }
@@ -745,8 +534,7 @@ bool reqTool(const args_list_t &args) {
 
   std::string newkey, subj, config_path, key_file_path, keyout, out_path,
       outform, ext_section, digest_name;
-  bssl::UniquePtr<std::string> passin(new std::string()),
-      passout(new std::string());
+  Password passin, passout;
   unsigned int days;
   bool help = false, new_flag = false, x509_flag = false, nodes = false;
 
@@ -759,8 +547,8 @@ bool reqTool(const args_list_t &args) {
   GetString(&subj, "-subj", "", parsed_args);
   GetString(&config_path, "-config", "", parsed_args);
   GetString(&key_file_path, "-key", "", parsed_args);
-  GetString(passin.get(), "-passin", "", parsed_args);
-  GetString(passout.get(), "-passout", "", parsed_args);
+  GetString(&passin.get(), "-passin", "", parsed_args);
+  GetString(&passout.get(), "-passout", "", parsed_args);
   GetString(&keyout, "-keyout", "", parsed_args);
   GetString(&out_path, "-out", "", parsed_args);
   GetString(&outform, "-outform", "PEM", parsed_args);
@@ -810,7 +598,7 @@ bool reqTool(const args_list_t &args) {
   if (ext_section.empty() && req_conf.get()) {
     const char *ext_str =
         NCONF_get_string(req_conf.get(), req_section.c_str(),
-                         x509_flag ? V3_EXTENSIONS : REQ_EXTENSIONS);
+                         x509_flag ? REQ_V3_EXT_OPT : REQ_REQ_EXT_OPT);
     if (ext_str) {
       ext_section = ext_str;
     }
@@ -832,8 +620,8 @@ bool reqTool(const args_list_t &args) {
   const EVP_MD *digest = nullptr;
   if (digest_name.empty()) {
     if (!config_path.empty()) {
-      const char *digest_str =
-          NCONF_get_string(req_conf.get(), req_section.c_str(), DEFAULT_MD);
+      const char *digest_str = NCONF_get_string(
+          req_conf.get(), req_section.c_str(), REQ_DEFAULT_MD_OPT);
       if (digest_str) {
         digest_name = digest_str;
       } else {
@@ -851,8 +639,8 @@ bool reqTool(const args_list_t &args) {
   bool encrypt_key = true;
   const char *encrypt_key_str = NULL;
   if (req_conf.get()) {
-    encrypt_key_str =
-        NCONF_get_string(req_conf.get(), req_section.c_str(), ENCRYPT_KEY);
+    encrypt_key_str = NCONF_get_string(req_conf.get(), req_section.c_str(),
+                                       REQ_ENCRYPT_KEY_OPT);
   }
 
   if (encrypt_key_str != NULL &&
@@ -876,7 +664,8 @@ bool reqTool(const args_list_t &args) {
     long default_keylen = DEFAULT_KEY_LENGTH;
     const char *bits_str = NULL;
     if (req_conf.get()) {
-      bits_str = NCONF_get_string(req_conf.get(), req_section.c_str(), BITS);
+      bits_str =
+          NCONF_get_string(req_conf.get(), req_section.c_str(), REQ_BITS_OPT);
     }
 
     if (bits_str) {
@@ -912,10 +701,10 @@ bool reqTool(const args_list_t &args) {
   // 2. If no -config, output key to privkey.pem (this imitates how OpenSSL
   // would default to the default openssl.conf file, which has default_keyfile
   // set to privkey.pem)
-  if (keyout.empty()) {
+  if (keyout.empty() && key_file_path.empty()) {
     if (req_conf) {
       const char *default_keyfile = NCONF_get_string(
-          req_conf.get(), req_section.c_str(), DEFAULT_KEYFILE);
+          req_conf.get(), req_section.c_str(), REQ_DEFAULT_KEYFILE_OPT);
       keyout = default_keyfile != NULL ? default_keyfile : "";
     } else {
       keyout = "privkey.pem";
@@ -937,7 +726,7 @@ bool reqTool(const args_list_t &args) {
   const char *no_prompt_str = NULL;
   if (req_conf.get()) {
     no_prompt_str =
-        NCONF_get_string(req_conf.get(), req_section.c_str(), PROMPT);
+        NCONF_get_string(req_conf.get(), req_section.c_str(), REQ_PROMPT_OPT);
   }
 
   if (no_prompt_str != NULL && isStringUpperCaseEqual(no_prompt_str, "no")) {

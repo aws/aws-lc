@@ -22,6 +22,7 @@ const line1 = "FIPS integrity test failed."
 // This must match what is in crypto/fipsmodule/fips_shared_support.c
 const line2 = "Expected:   ae2cea2abda6f3ec977f9bf6949afc836827cba0a09f6b6fde52cde2cdff3180"
 const hash_len = 64
+
 func main() {
 	executable := flag.String("in-executable", "", "Path to the executable file")
 	flag.Parse()
@@ -63,7 +64,7 @@ func main() {
 #include <stdint.h>
 const uint8_t BORINGSSL_bcm_text_hash[32] = {
 `, *executable)
-	for i:= 0; i < len(hash); i+=2 {
+	for i := 0; i < len(hash); i += 2 {
 		fmt.Printf("0x%s, ", hash[i:i+2])
 	}
 	fmt.Printf(`

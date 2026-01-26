@@ -96,6 +96,10 @@ OPENSSL_DEPRECATED OPENSSL_EXPORT void BF_cfb64_encrypt(
     const uint8_t *in, uint8_t *out, size_t length, const BF_KEY *schedule,
     uint8_t *ivec, int *num, int encrypt);
 
+OPENSSL_DEPRECATED OPENSSL_EXPORT void BF_ofb64_encrypt(
+    const uint8_t *in, uint8_t *out, size_t length, const BF_KEY *schedule,
+    uint8_t *ivec, int *num);
+
 #ifdef __cplusplus
 }
 #endif

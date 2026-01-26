@@ -52,6 +52,7 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
+  crypto/evp_extra/mldsa_corrupted_key_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
   crypto/evp_extra/evp_tests.txt
   crypto/evp_extra/scrypt_tests.txt
@@ -117,9 +118,6 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
-  crypto/kyber/kat/kyber512r3.txt
-  crypto/kyber/kat/kyber768r3.txt
-  crypto/kyber/kat/kyber1024r3.txt
   crypto/ocsp/test/aws/certs.txt
   crypto/ocsp/test/aws/certs_revoked.txt
   crypto/ocsp/test/aws/certs_unknown.txt
@@ -304,22 +302,25 @@ set(
   third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
   third_party/wycheproof_testvectors/chacha20_poly1305_test.txt
-  third_party/wycheproof_testvectors/dsa_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_256_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/dsa_3072_256_sha256_test.txt
   third_party/wycheproof_testvectors/ecdh_secp224r1_test.txt
   third_party/wycheproof_testvectors/ecdh_secp256r1_test.txt
   third_party/wycheproof_testvectors/ecdh_secp384r1_test.txt
   third_party/wycheproof_testvectors/ecdh_secp521r1_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp224r1_sha224_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp224r1_sha256_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp224r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256r1_sha256_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp384r1_sha384_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp384r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256k1_sha256_test.txt
-  third_party/wycheproof_testvectors/ecdsa_secp256k1_sha512_test.txt
-  third_party/wycheproof_testvectors/eddsa_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp521r1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt
   third_party/wycheproof_testvectors/hkdf_sha1_test.txt
   third_party/wycheproof_testvectors/hkdf_sha256_test.txt
   third_party/wycheproof_testvectors/hkdf_sha384_test.txt
@@ -356,9 +357,9 @@ set(
   third_party/wycheproof_testvectors/rsa_oaep_4096_sha512_mgf1sha1_test.txt
   third_party/wycheproof_testvectors/rsa_oaep_4096_sha512_mgf1sha512_test.txt
   third_party/wycheproof_testvectors/rsa_oaep_misc_test.txt
-  third_party/wycheproof_testvectors/rsa_pkcs1_2048_test.txt
-  third_party/wycheproof_testvectors/rsa_pkcs1_3072_test.txt
-  third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_2048_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_3072_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_4096_test.txt
   third_party/wycheproof_testvectors/rsa_pss_2048_sha1_mgf1_20_test.txt
   third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_0_test.txt
   third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_32_test.txt
@@ -366,17 +367,32 @@ set(
   third_party/wycheproof_testvectors/rsa_pss_4096_sha256_mgf1_32_test.txt
   third_party/wycheproof_testvectors/rsa_pss_4096_sha512_mgf1_32_test.txt
   third_party/wycheproof_testvectors/rsa_pss_misc_test.txt
-  third_party/wycheproof_testvectors/rsa_sig_gen_misc_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_2048_sha224_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_2048_sha256_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_2048_sha384_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_2048_sha512_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_3072_sha256_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_3072_sha384_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_3072_sha512_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_4096_sha384_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_4096_sha512_test.txt
-  third_party/wycheproof_testvectors/rsa_signature_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha224_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_4096_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_4096_sha512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha256_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha384_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha512_test.txt
   third_party/wycheproof_testvectors/x25519_test.txt
   third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_768_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_encaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_semi_expanded_decaps_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_1024_test.txt
 )

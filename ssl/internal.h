@@ -668,7 +668,9 @@ BSSL_NAMESPACE_BEGIN
 // picks the cipher and groups cannot be expressed on the wire. However, for
 // servers, the equal-preference groups allow the client's preferences to be
 // partially respected. (This only has an effect with
-// SSL_OP_CIPHER_SERVER_PREFERENCE).
+// SSL_OP_CIPHER_SERVER_PREFERENCE). Note that the method used to compute the
+// negotiated cipher suite in TLS 1.3 does not use the equal-preference
+// data structure described below.
 //
 // The equal-preference groups are expressed by grouping SSL_CIPHERs together.
 // All elements of a group have the same priority: no ordering is expressed
@@ -1305,8 +1307,7 @@ OPENSSL_EXPORT Span<const HybridGroup> HybridGroups();
 
 // PQGroups returns all supported post-quantum groups. A post-quantum
 // group may be a hybrid group containing at least one PQ
-// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ group
-// (e.g. KYBER768_R3).
+// component or a standalone PQ group.
 Span<const uint16_t> PQGroups();
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
