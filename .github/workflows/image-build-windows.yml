@@ -131,6 +131,7 @@ jobs:
 
   # TODO: For some odd reason instance-size needs to be set here otherwise it won't use the fleet?
   x86_64_push:
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on:
       - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
         image:windows-ec2-2022
