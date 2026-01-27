@@ -1362,12 +1362,6 @@ int boringssl_self_test_sha256(void);
   // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
 int boringssl_self_test_hmac_sha256(void);
 
-#if defined(BORINGSSL_FIPS_COUNTERS)
-void boringssl_fips_inc_counter(enum fips_counter_t counter);
-#else
-OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
-#endif
-
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
   const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
