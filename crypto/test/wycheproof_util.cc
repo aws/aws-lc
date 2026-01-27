@@ -51,8 +51,6 @@ bool WycheproofResult::HasFlag(const std::string &flag) const {
   return std::find(flags.begin(), flags.end(), flag) != flags.end();
 }
 
-<<<<<<< HEAD
-=======
 std::string WycheproofResult::StringifyFlags() {
   std::string flags_str;
   for (size_t i = 0; i < flags.size(); i++) {
@@ -64,7 +62,6 @@ std::string WycheproofResult::StringifyFlags() {
   return flags_str;
 }
 
->>>>>>> main
 bool GetWycheproofResult(FileTest *t, WycheproofResult *out) {
   std::string result;
   if (!t->GetAttribute(&result, "result")) {

@@ -2731,7 +2731,11 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
     std::vector<uint8_t> msg_ctx;
 
     ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
-    ASSERT_TRUE(t->GetInstructionBytes(&sk_pkcs8, "privateKeyPkcs8"));
+    // privateKeyPkcs8 is optional - some test groups only have privateSeed
+    bool has_pkcs8 = t->HasInstruction("privateKeyPkcs8");
+    if (has_pkcs8) {
+      ASSERT_TRUE(t->GetInstructionBytes(&sk_pkcs8, "privateKeyPkcs8"));
+    }
     ASSERT_TRUE(t->GetInstructionBytes(&sk_seed, "privateSeed"));
     ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
@@ -2747,25 +2751,33 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
         EVP_PKEY_pqdsa_new_raw_private_key(GetParam().nid, sk_seed.data(),
                                            sk_seed.size()));
 
-    CBS cbs;
-    CBS_init(&cbs, sk_pkcs8.data(), sk_pkcs8.size());
-    bssl::UniquePtr<EVP_PKEY> sec_pkey_from_der(EVP_parse_private_key(&cbs));
+    bssl::UniquePtr<EVP_PKEY> sec_pkey_from_der;
+    if (has_pkcs8) {
+      CBS cbs;
+      CBS_init(&cbs, sk_pkcs8.data(), sk_pkcs8.size());
+      sec_pkey_from_der.reset(EVP_parse_private_key(&cbs));
+    }
 
     bool expect_invalid_public_key =
         (!result.IsValid() && (result.HasFlag("IncorrectPublicKeyLength") ||
                                result.HasFlag("InvalidPrivateKey")));
     if (expect_invalid_public_key) {
-      EXPECT_FALSE(sec_pkey_from_der.get());
+      if (has_pkcs8) {
+        EXPECT_FALSE(sec_pkey_from_der.get());
+      }
       EXPECT_FALSE(sec_pkey_from_raw.get());
       return;
     }
-    ASSERT_TRUE(sec_pkey_from_der.get());
+    if (has_pkcs8) {
+      ASSERT_TRUE(sec_pkey_from_der.get());
+      ASSERT_TRUE(EVP_PKEY_cmp(sec_pkey_from_der.get(), sec_pkey_from_raw.get()));
+    }
     ASSERT_TRUE(sec_pkey_from_raw.get());
-    ASSERT_TRUE(EVP_PKEY_cmp(sec_pkey_from_der.get(), sec_pkey_from_raw.get()));
 
     std::vector<uint8_t> sig(expected_sig.size());
+    EVP_PKEY *signing_key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
     int sign_result =
-        SignMLDSAWithContext(sec_pkey_from_der.get(), sig, pk, msg, msg_ctx);
+        SignMLDSAWithContext(signing_key, sig, pk, msg, msg_ctx);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {
@@ -2782,7 +2794,10 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
     std::vector<uint8_t> msg_ctx;
 
     // publicKey is optional - it's omitted for some invalid test cases
-    t->GetInstructionBytes(&pk, "publicKey");
+    bool has_pk = t->HasInstruction("publicKey");
+    if (has_pk) {
+      ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
+    }
     ASSERT_TRUE(t->GetInstructionBytes(&sk_expanded, "privateKey"));
     ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
@@ -2799,7 +2814,8 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
                                            sk_expanded.size()));
 
     bool expect_invalid_private_key =
-        (!result.IsValid() && result.HasFlag("IncorrectPrivateKeyLength"));
+        (!result.IsValid() && (result.HasFlag("IncorrectPrivateKeyLength") ||
+                               result.HasFlag("InvalidPrivateKey")));
     if (expect_invalid_private_key) {
       EXPECT_FALSE(sec_pkey_from_expanded.get());
       return;

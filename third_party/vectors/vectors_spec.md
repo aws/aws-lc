@@ -20,6 +20,15 @@ AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha384_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_noseed_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_seed_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_65_verify_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_noseed_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_seed_test.txt`.
+AWS-LC MUST test against `testvectors_v1/mldsa_87_verify_test.txt`.
 AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
 AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
@@ -49,22 +58,4 @@ AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha384_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha512_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_noseed_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_seed_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_65_verify_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_noseed_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_seed_test.txt`.
-
-AWS-LC MUST test against `testvectors_v1/mldsa_87_verify_test.txt`.
 
