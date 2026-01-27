@@ -466,8 +466,8 @@ TEST_F(randTest, Threads) {
 // private and public states produce unique output.
 TEST_F(randTest, MixedUsageMultiThreaded) {
   static const uint8_t kZeros[256] = {0};
-  constexpr size_t kNumThreads = 10;
-  constexpr size_t kIterationsPerThread = 5;
+  static constexpr size_t kNumThreads = 10;
+  static constexpr size_t kIterationsPerThread = 5;
 
   maybeDisableSomeForkUbeDetectMechanisms();
 
