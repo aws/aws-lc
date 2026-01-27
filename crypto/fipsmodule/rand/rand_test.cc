@@ -241,8 +241,8 @@ TEST_F(randTest, UbeDetectionMocked) {
 #endif
 
 // Attempts to verify that |RAND_bytes| (equivalent to |RAND_priv_bytes|) and
-// |RAND_priv_bytes| are independent. That is, calling one API should not affect
-// the other's state counters and outputs should be different.
+// |RAND_public_bytes| are independent. That is, calling one API should not
+// affect the other's state counters and outputs should be different.
 TEST_F(randTest, PublicPrivateStateIsolation) {
   uint8_t private_buf[64];
   uint8_t public_buf[64];
@@ -251,14 +251,14 @@ TEST_F(randTest, PublicPrivateStateIsolation) {
   ASSERT_TRUE(RAND_bytes(private_buf, sizeof(private_buf)));
   ASSERT_TRUE(RAND_public_bytes(public_buf, sizeof(public_buf)));
 
-  // Calling |RAND_bytes| shouldn't affect |RAND_priv_bytes| counters.
+  // Calling |RAND_bytes| shouldn't affect |RAND_public_bytes| counters.
   uint64_t public_reseed_initial = get_public_thread_reseed_calls_since_initialization();
   ASSERT_TRUE(RAND_bytes(private_buf, sizeof(private_buf)));
   ASSERT_TRUE(RAND_bytes(private_buf, sizeof(private_buf)));
   uint64_t public_reseed_after_rand = get_public_thread_reseed_calls_since_initialization();
   EXPECT_EQ(public_reseed_after_rand, public_reseed_initial);
 
-  // Calling |RAND_priv_bytes| shouldn't affect |RAND_bytes| counters.
+  // Calling |RAND_public_bytes| shouldn't affect |RAND_bytes| counters.
   uint64_t private_reseed_before_public = get_private_thread_reseed_calls_since_initialization();
   ASSERT_TRUE(RAND_public_bytes(public_buf, sizeof(public_buf)));
   ASSERT_TRUE(RAND_public_bytes(public_buf, sizeof(public_buf)));
@@ -472,15 +472,15 @@ TEST_F(randTest, MixedUsageMultiThreaded) {
   maybeDisableSomeForkUbeDetectMechanisms();
 
   // Each thread will store its outputs from both APIs
-  // For each thread: kIterationsPerThread outputs from RAND_bytes and
-  // kIterationsPerThread outputs from RAND_public_bytes
+  // For each thread: kIterationsPerThread outputs from |RAND_bytes| and
+  // kIterationsPerThread outputs from |RAND_public_bytes|
   std::vector<std::array<uint8_t, 256>> private_bufs(kNumThreads * kIterationsPerThread);
   std::vector<std::array<uint8_t, 256>> public_bufs(kNumThreads * kIterationsPerThread);
   std::vector<std::thread> threads(kNumThreads);
 
   for (size_t t = 0; t < kNumThreads; t++) {
     threads[t] = std::thread([t, &private_bufs, &public_bufs] {
-      // Each thread alternates between RAND_bytes and RAND_public_bytes
+      // Each thread alternates between |RAND_bytes| and |RAND_public_bytes|
       for (size_t i = 0; i < kIterationsPerThread; i++) {
         size_t idx = t * kIterationsPerThread + i;
         RAND_bytes(private_bufs[idx].data(), private_bufs[idx].size());
