@@ -9,13 +9,15 @@ from aws_cdk import (
     Stack,
     Environment,
 )
+from cdk.aws_lc_devicefarm_ci_stack import DeviceFarmCiProps
 from constructs import Construct
 
 from util.metadata import (
-    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO)
+    ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_NAME)
 from util.iam_policies import (
     device_farm_access_policy_in_json
 )
+
 
 class AwsLcGitHubOidcStack(Stack):
     """Define a stack used to execute AWS-LC self-hosted GitHub Actions Runners."""
@@ -25,6 +27,8 @@ class AwsLcGitHubOidcStack(Stack):
         scope: Construct,
         id: str,
         env: typing.Union[Environment, typing.Dict[str, typing.Any]],
+        *,
+        devicefarm: DeviceFarmCiProps,
         **kwargs
     ) -> None:
         super().__init__(scope, id, env=env, **kwargs)
@@ -36,7 +40,7 @@ class AwsLcGitHubOidcStack(Stack):
                                                      "sts.amazonaws.com"],
                                                  url="https://token.actions.githubusercontent.com")
 
-        oidc_role_name = "AwsLcGitHubActionsOidcRole" 
+        oidc_role_name = "AwsLcGitHubActionsOidcRole"
         # This role should only be granted necessary permissions to assume other roles
         self.minimal_oidc_role = iam.Role(self, id=oidc_role_name, role_name=oidc_role_name,
                                           assumed_by=iam.WebIdentityPrincipal(self.oidc_provider.attr_arn, {
@@ -47,11 +51,15 @@ class AwsLcGitHubOidcStack(Stack):
                                                   # Check the subject claim is from our repository VERY IMPORTANT!
                                                   # See https://docs.github.com/en/actions/reference/security/oidc#example-subject-claims
                                                   "token.actions.githubusercontent.com:sub": "repo:{}/{}:*".format(
-                                                      GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+                                                      GITHUB_REPO_OWNER, (
+                                                          STAGING_GITHUB_REPO_NAME
+                                                          if (env.account == PRE_PROD_ACCOUNT)
+                                                          else GITHUB_REPO_NAME
+                                                      )
                                                   )
                                               },
                                           }))
-        
+
         ecr_repos = [ecr.Repository.from_repository_name(self, x.replace('/', '-'), repository_name=x)
                      for x in ECR_REPOS]
 
@@ -61,7 +69,7 @@ class AwsLcGitHubOidcStack(Stack):
             self.minimal_oidc_role)
 
         self.device_farm_role = create_device_farm_role(
-            self, "AwsLcGitHubActionDeviceFarmRole", env, self.minimal_oidc_role)
+            self, "AwsLcGitHubActionDeviceFarmRole", env, self.minimal_oidc_role, ecr_repos, devicefarm=devicefarm)
         self.device_farm_role.grant_assume_role(self.minimal_oidc_role)
 
         self.docker_image_build_role = create_docker_image_build_role(
@@ -72,7 +80,9 @@ class AwsLcGitHubOidcStack(Stack):
 
 def create_device_farm_role(scope: Construct, id: str,
                             env: typing.Union[Environment, typing.Dict[str, typing.Any]],
-                            principal: iam.IPrincipal) -> iam.Role:
+                            principal: iam.IPrincipal,
+                            repos: typing.List[ecr.IRepository],
+                            devicefarm: DeviceFarmCiProps) -> iam.Role:
     device_farm_policy = iam.PolicyDocument.from_json(
         device_farm_access_policy_in_json(env)
     )
@@ -80,7 +90,71 @@ def create_device_farm_role(scope: Construct, id: str,
     device_farm_role = iam.Role(scope, id, role_name=id,
                                 assumed_by=iam.SessionTagsPrincipal(principal),
                                 inline_policies={
-                                    "device_farm_policy": device_farm_policy,
+                                    "device_farm_policy": iam.PolicyDocument(
+                                        statements=[iam.PolicyStatement(
+                                            effect=iam.Effect.ALLOW,
+                                            actions=[
+                                                "devicefarm:CreateUpload",
+                                                "devicefarm:GetRun",
+                                                "devicefarm:GetUpload",
+                                                "devicefarm:ListDevicePools",
+                                                "devicefarm:ScheduleRun",
+                                                "devicefarm:StopRun"
+                                            ],
+                                            resources=[x for x in itertools.chain([
+                                                devicefarm.project_arn,
+                                                devicefarm.android_pool,
+                                                devicefarm.android_fips_pool,
+                                            ],
+                                                ["arn:aws:devicefarm:{}:{}:{}:*".format(
+                                                    env.region, env.account, x) for x in ['run', 'upload']]
+                                            )],
+                                        ), iam.PolicyStatement(
+                                            effect=iam.Effect.ALLOW,
+                                            actions=[
+                                                "devicefarm:ListProjects"
+                                            ],
+                                            resources=['*']
+                                        )]
+                                    ),
+                                    "metrics_policy": iam.PolicyDocument(
+                                        statements=[
+                                            iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=[
+                                                    "cloudwatch:PutMetricData"
+                                                ],
+                                                resources=["*"],
+                                                conditions={
+                                                    "StringEquals": {
+                                                        "aws:RequestedRegion": [env.region],
+                                                        "cloudwatch:namespace": [AWS_LC_METRIC_NS],
+                                                    }
+                                                }
+                                            ),
+                                        ]
+                                    ),
+                                    "ecr": iam.PolicyDocument(
+                                        statements=[
+                                            iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=[
+                                                    "ecr:GetAuthorizationToken",
+                                                ],
+                                                resources=["*"],
+                                            ),
+                                            iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=[
+                                                    "ecr:BatchGetImage",
+                                                    "ecr:BatchCheckLayerAvailability",
+                                                    "ecr:GetDownloadUrlForLayer",
+                                                ],
+                                                resources=[
+                                                    x.repository_arn for x in repos],
+                                            ),
+                                        ],
+                                    ),
                                 })
 
     return device_farm_role
@@ -93,7 +167,7 @@ def create_docker_image_build_role(scope: Construct, id: str,
 
     pull_through_caches = [ecr.Repository.from_repository_name(
         scope, "quay-io", "quay.io/*")]
-    
+
     staging_repo = ecr.Repository.from_repository_name(
         scope, IMAGE_STAGING_REPO.replace('/', '-'), IMAGE_STAGING_REPO)
 
@@ -203,7 +277,8 @@ def create_standard_github_actions_role(scope: Construct, id: str,
                                         "ecr:BatchCheckLayerAvailability",
                                         "ecr:GetDownloadUrlForLayer",
                                     ],
-                                    resources=[x.repository_arn for x in repos],
+                                    resources=[
+                                        x.repository_arn for x in repos],
                                 ),
                             ],
                         ),
