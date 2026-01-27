@@ -14,9 +14,6 @@ from constructs import Construct
 
 from util.metadata import (
     ECR_REPOS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, AWS_LC_METRIC_NS, IMAGE_STAGING_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_NAME)
-from util.iam_policies import (
-    device_farm_access_policy_in_json
-)
 
 
 class AwsLcGitHubOidcStack(Stack):
@@ -83,9 +80,6 @@ def create_device_farm_role(scope: Construct, id: str,
                             principal: iam.IPrincipal,
                             repos: typing.List[ecr.IRepository],
                             devicefarm: DeviceFarmCiProps) -> iam.Role:
-    device_farm_policy = iam.PolicyDocument.from_json(
-        device_farm_access_policy_in_json(env)
-    )
 
     device_farm_role = iam.Role(scope, id, role_name=id,
                                 assumed_by=iam.SessionTagsPrincipal(principal),
