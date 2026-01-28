@@ -5,7 +5,11 @@ on:
   pull_request_target:
     branches: ["*"]
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_name }}
+  group: >
+    ${{ github.workflow }}-
+    ${{ github.event_name == 'pull_request_target'
+      && format('pr-{0}', github.event.pull_request.number)
+      || format('{0}-{1}', github.ref_type || 'ref', github.ref_name || github.ref) }}
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
