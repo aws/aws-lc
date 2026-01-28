@@ -176,10 +176,8 @@ if(PERL_EXECUTABLE)
   perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
   perlasm(cipher_extra/chacha20_poly1305_armv8.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_armv8.pl)
-  if(NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
-      perlasm(cipher_extra/aesni-sha1-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha1-x86_64.pl)
-      perlasm(cipher_extra/aesni-sha256-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha256-x86_64.pl)
-  endif()
+  perlasm(cipher_extra/aesni-sha1-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha1-x86_64.pl)
+  perlasm(cipher_extra/aesni-sha256-x86_64.${ASM_EXT} cipher_extra/asm/aesni-sha256-x86_64.pl)
   perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
   perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
   perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
@@ -264,34 +262,17 @@ if(ARCH STREQUAL "x86")
 endif()
 
 if(ARCH STREQUAL "x86_64")
-  if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
-    # CryptoAlg-1091:
-    # Stitch code |aesni-sha1/256-x86_64.${ASM_EXT}| are not enabled due
-    # to some build issues and lack of tools to measure the performance gap.
-    # The disable is safer choice because |EVP_aes_128/256_cbc_hmac_sha1/256|
-    # are deprecated.
-    set(
-      CRYPTO_ARCH_SOURCES
+  set(
+    CRYPTO_ARCH_SOURCES
 
-      chacha/chacha-x86_64.${ASM_EXT}
-      cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-      cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-      test/trampoline-x86_64.${ASM_EXT}
-      hrss/asm/poly_rq_mul.S
-    )
-  else()
-    set(
-      CRYPTO_ARCH_SOURCES
-
-      chacha/chacha-x86_64.${ASM_EXT}
-      cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-      cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-      cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
-      cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
-      test/trampoline-x86_64.${ASM_EXT}
-      hrss/asm/poly_rq_mul.S
-    )
-  endif()
+    chacha/chacha-x86_64.${ASM_EXT}
+    cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+    cipher_extra/aesni-sha1-x86_64.${ASM_EXT}
+    cipher_extra/aesni-sha256-x86_64.${ASM_EXT}
+    test/trampoline-x86_64.${ASM_EXT}
+    hrss/asm/poly_rq_mul.S
+  )
 endif()
 
 if(GO_EXECUTABLE)
@@ -443,6 +424,7 @@ add_library(
   hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
+  md4/md4.c
   mem.c
   obj/obj.c
   obj/obj_xref.c

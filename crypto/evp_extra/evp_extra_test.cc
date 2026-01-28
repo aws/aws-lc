@@ -3494,3 +3494,18 @@ TEST(EVPExtraTest, DSATrailingSignatureGarbage) {
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha1(), nullptr, pkey.get()));
   EXPECT_FALSE(EVP_DigestVerify(md_ctx.get(), SIGNATURE, sizeof(SIGNATURE), MESSAGE, sizeof(MESSAGE)));
 }
+
+// Test that setting a key to type none will clear it. Some calling code has
+// unit tests that rely on this, usually as part of a roundabout way to get a
+// key of the "wrong" type to test with. (In reality, |EVP_PKEY_new| will
+// produce the same object.)
+TEST(EVPExtraTest, SetNoneClearsKey) {
+  bssl::UniquePtr<EVP_PKEY> pkey = LoadExampleRSAKey();
+  ASSERT_TRUE(pkey);
+  // EVP_PKEY_NONE is not a known type, so this should fail.
+  EXPECT_FALSE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_NONE));
+  // However, it still resets the key to the initial state.
+  EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_NONE);
+  // Calling operations on the |EVP_PKEY| should cleanly fail.
+  EXPECT_EQ(EVP_PKEY_bits(pkey.get()), 0);
+}

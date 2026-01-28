@@ -14,6 +14,19 @@
 #define O_BINARY 0
 #endif
 
+// Windows compatibility layer
+#ifdef OPENSSL_WINDOWS
+#include <windows.h>
+#include <io.h>
+#define strcasecmp _stricmp
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+#else
+#include <unistd.h>
+#include <limits.h>
+#endif
+
 // Format enum for PEM and DER output/input formats
 enum Format {
   FORMAT_PEM = 1,
@@ -144,6 +157,7 @@ EVP_PKEY *CreateTestKey(int key_bits);
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
+bool caTool(const args_list_t &args);
 bool CRLTool(const args_list_t &args);
 bool asn1parseTool(const args_list_t &args);
 bool dgstTool(const args_list_t &args);

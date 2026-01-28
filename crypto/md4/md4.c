@@ -59,8 +59,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../internal.h"
-#include "../digest/md32_common.h"
+#include "../internal.h"
+#include "../fipsmodule/digest/md32_common.h"
 
 
 uint8_t *MD4(const uint8_t *data, size_t len, uint8_t out[MD4_DIGEST_LENGTH]) {
