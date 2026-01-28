@@ -98,7 +98,12 @@ class AwsLcCiPipeline(Stack):
                 git_configuration=codepipeline.GitConfiguration(
                     source_action=source_action,
                     push_filter=[codepipeline.GitPushFilter(
-                        branches_includes=[GITHUB_SOURCE_VERSION])],
+                        branches_includes=[GITHUB_SOURCE_VERSION],
+                        file_paths_includes=[
+                            'tests/ci/cdk/**',
+                            'tests/ci/setup.py',
+                            'tests/ci/requirements.txt',
+                            'tests/ci/lambda/**'])],
                 ),
             )]
         )
