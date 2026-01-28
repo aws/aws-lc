@@ -32,9 +32,9 @@ information about required dependencies and build options. If you’re intereste
 getting involved [open an issue](https://github.com/aws/aws-lc/issues/new/choose) to discuss your plan.
 [Contributing.md](https://github.com/aws/aws-lc/blob/main/CONTRIBUTING.md) has
 info for how to specifically make the change and get it reviewed by AWS-LC maintainers.
-If you just want to use AWS-LC see our existing documentation in the public header
-files, if you’re moving your application from OpenSSL see
-[Porting_to_AWS-LC.md](https://github.com/aws/aws-lc/blob/main/PORTING_TO_AWSLC.md)
+If you just want to use AWS-LC, see our existing documentation in the public header
+files. If you’re moving your application from OpenSSL, see the
+[porting guide](https://github.com/aws/aws-lc/blob/main/PORTING.md)
 for more information.
 
 ## Why AWS-LC?
