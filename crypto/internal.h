@@ -1389,6 +1389,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   6: sha256_block_data_order_shaext
 //   7: aes_gcm_encrypt_avx512
 //   8: RSAZ_mod_exp_avx512_x2
+//   9: aes_gcm_enc_update_vaes_avx2
 // On AARCH64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
