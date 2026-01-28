@@ -1,0 +1,78 @@
+name: android-omnibus
+on:
+  push:
+    branches: ["*"]
+  pull_request_target:
+    branches: ["*"]
+concurrency:
+  group: >
+    ${{ github.workflow }}-
+    ${{ github.event_name == 'pull_request_target'
+      && format('pr-{0}', github.event.pull_request.number)
+      || format('{0}-{1}', github.ref_type || 'ref', github.ref_name || github.ref) }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  authorization-check:
+    outputs:
+      approval-env: ${{ steps.authz.outputs.approval-env }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/check-authorization
+        id: authz
+
+  device-farm:
+    name: android-${{ matrix.fips && 'fips-' || '' }}${{ matrix.release && 'release' || 'debug' }}-${{ matrix.shared && 'shared' || 'static' }}
+    needs: [authorization-check]
+    environment: ${{ needs.authorization-check.outputs.approval-env }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:medium
+    strategy:
+      matrix:
+        fips: [false, true]
+        release: [false, true]
+        shared: [false, true]
+        exclude:
+          - fips: true
+            release: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.ref || github.ref }}
+      - name: Query Environment
+        id: env
+        run: |
+          echo staging_url=${ECR_STAGING_REPO} >> "$GITHUB_OUTPUT"
+      - name: Retrieve Credentials
+        uses: ./.github/actions/configure-aws-credentials
+        with:
+          roleName: AwsLcGitHubActionDeviceFarmRole
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/android:latest
+          withCredentials: true
+          run: |
+            chmod +x ./tests/ci/android/AWSLCAndroidTestRunner/gradlew
+            cd ./tests/ci
+            python3 -m venv .env && . .env/bin/activate && pip install -r requirements.txt
+            ./kickoff_devicefarm_job.sh \
+            --test-name "AWS-LC Android GitHub Action ${{ github.run_id }}-${{ github.run_attempt }}" \
+            --fips ${{ matrix.fips }} \
+            --release ${{ matrix.release }} \
+            --shared ${{ matrix.shared }} \
+            --action start-job
