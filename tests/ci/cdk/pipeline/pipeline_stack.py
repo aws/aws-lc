@@ -8,20 +8,17 @@ from aws_cdk import (
     pipelines,
     aws_codestarconnections as codestarconnections,
     aws_codepipeline as codepipeline,
+    aws_codepipeline_actions as codepipeline_actions,
     aws_iam as iam,
-    aws_events as events,
-    aws_events_targets as targets,
     aws_codebuild as codebuild,
 )
-from aws_cdk.pipelines import CodeBuildStep, ManualApprovalStep
+from aws_cdk.pipelines import ManualApprovalStep
 from constructs import Construct
 
 from pipeline.ci_stage import CiStage
 from pipeline.ecr_stage import EcrStage
 from pipeline.github_actions_stage import GitHubActionsStage
-from pipeline.linux_docker_image_build_stage import LinuxDockerImageBuildStage
 from pipeline.setup_stage import SetupStage
-from pipeline.windows_docker_image_build_stage import WindowsDockerImageBuildStage
 from util.metadata import *
 
 
@@ -73,11 +70,17 @@ class AwsLcCiPipeline(Stack):
             )
         )
 
-        source = pipelines.CodePipelineSource.connection(
-            f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}",
-            GITHUB_SOURCE_VERSION,
+        source_output = codepipeline.Artifact()
+
+        source_action = codepipeline_actions.CodeStarConnectionsSourceAction(
             connection_arn=gh_connection.attr_connection_arn,
+            owner=GITHUB_REPO_OWNER,
+            repo=GITHUB_REPO_NAME,
+            branch=GITHUB_SOURCE_VERSION,
+            action_name='GitHub_Source',
+            output=source_output,
             code_build_clone_output=True,
+            trigger_on_push=True
         )
 
         # Create a base pipeline to upgrade the default pipeline type
@@ -90,7 +93,17 @@ class AwsLcCiPipeline(Stack):
             cross_account_keys=True,
             enable_key_rotation=True,
             restart_execution_on_update=True,
+            triggers=[codepipeline.TriggerProps(
+                provider_type=codepipeline.ProviderType.CODE_STAR_SOURCE_CONNECTION,
+                git_configuration=codepipeline.GitConfiguration(
+                    source_action=source_action,
+                    push_filter=[codepipeline.GitPushFilter(
+                        branches_includes=[GITHUB_SOURCE_VERSION])],
+                ),
+            )]
         )
+
+        base_pipeline.add_stage(stage_name='Source', actions=[source_action])
 
         # Bucket contains artifacts from old pipeline executions
         # These artifacts are kept for 60 days in case we need to do a rollback
@@ -119,6 +132,9 @@ class AwsLcCiPipeline(Stack):
             cdk_env["DEPLOY_ACCOUNT"] = DEPLOY_ACCOUNT
             cdk_env["DEPLOY_REGION"] = DEPLOY_REGION
 
+        source_file_set = pipelines.CodePipelineFileSet.from_artifact(
+            source_output)
+
         pipeline = pipelines.CodePipeline(
             self,
             "CdkPipeline",
@@ -126,7 +142,7 @@ class AwsLcCiPipeline(Stack):
             # pipeline_name="AwsLcCiPipeline",
             synth=pipelines.ShellStep(
                 "Synth",
-                input=source,
+                input=source_file_set,
                 commands=[
                     'echo "Environment variables:"',
                     "env",
@@ -163,43 +179,31 @@ class AwsLcCiPipeline(Stack):
             self.deploy_to_environment(
                 DeployEnvironmentType.DEV,
                 pipeline=pipeline,
-                source=source,
+                source=source_file_set,
                 cross_account_role=cross_account_role,
             )
         else:
             self.deploy_to_environment(
                 DeployEnvironmentType.PRE_PROD,
                 pipeline=pipeline,
-                source=source,
+                source=source_file_set,
                 cross_account_role=cross_account_role,
             )
 
             self.deploy_to_environment(
                 DeployEnvironmentType.PROD,
                 pipeline=pipeline,
-                source=source,
+                source=source_file_set,
                 cross_account_role=cross_account_role,
             )
 
         pipeline.build_pipeline()
 
-        # Schedule pipeline to run every Tuesday 15:00 UTC or 7:00 PST
-        events.Rule(
-            self,
-            "WeeklyCodePipelineRun",
-            schedule=events.Schedule.cron(
-                minute="0",
-                hour="15",
-                week_day="TUE",
-            ),
-            targets=[targets.CodePipeline(pipeline=base_pipeline)],
-        )
-
     def deploy_to_environment(
         self,
         deploy_environment_type: DeployEnvironmentType,
         pipeline: pipelines.CodePipeline,
-        source: pipelines.CodePipelineSource,
+        source: pipelines.CodePipelineFileSet,
         cross_account_role: iam.Role,
         codebuild_environment_variables: typing.Optional[
             typing.Mapping[str, str]
@@ -218,7 +222,8 @@ class AwsLcCiPipeline(Stack):
                 account=DEPLOY_ACCOUNT, region=DEPLOY_REGION
             )
         else:
-            deploy_environment = Environment(account=PROD_ACCOUNT, region=PROD_REGION)
+            deploy_environment = Environment(
+                account=PROD_ACCOUNT, region=PROD_REGION)
 
         codebuild_environment_variables = (
             codebuild_environment_variables if codebuild_environment_variables else {}
@@ -275,7 +280,7 @@ class AwsLcCiPipeline(Stack):
 
         ci_stage.add_stage_to_pipeline(
             pipeline=pipeline,
-            input=source.primary_output,
+            input=source,
             role=cross_account_role,
             max_retry=MAX_TEST_RETRY,
             env={
