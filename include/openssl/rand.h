@@ -35,6 +35,12 @@ OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 // Consumers should call |RAND_bytes| directly.
 OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 
+// RAND_public_bytes writes |len| bytes of random data to |buf| and returns one.
+// In the event that sufficient random data can not be obtained, |abort| is
+// called. |RAND_public_bytes| and |RAND_bytes| do not use the same state to
+// generate output.
+OPENSSL_EXPORT int RAND_public_bytes(uint8_t *out, size_t out_len);
+
 // RAND_bytes_with_user_prediction_resistance is functionally equivalent to
 // |RAND_bytes| but also provides a way for the caller to inject prediction
 // resistance material using the argument |user_pred_resistance|.
