@@ -7,20 +7,45 @@ import time
 import datetime
 import time
 import json
-from cdk.util.devicefarm_util import AWS_REGION, ANDROID_TEST_NAME, ANDROID_APK, ANDROID_TEST_APK, DEVICEFARM_PROJECT, DEVICEFARM_DEVICE_POOL
+from cdk.util.devicefarm_util import AWS_REGION, ANDROID_TEST_NAME, ANDROID_APK, ANDROID_TEST_APK, DEVICEFARM_PROJECT_NAME, DEVICEFARM_DEVICE_POOL_NAME
 from arnparse import arnparse
 
+
+client = boto3.client('devicefarm', region_name=AWS_REGION)
+
+
+def get_project_arn_by_name(project_name):
+    """Look up a Device Farm project ARN by its name."""
+    paginator = client.get_paginator('list_projects')
+    for page in paginator.paginate():
+        for project in page['projects']:
+            if project['name'] == project_name:
+                return project['arn']
+    raise ValueError(f"Project '{project_name}' not found")
+
+
+def get_device_pool_arn_by_name(project_arn, pool_name):
+    """Look up a device pool ARN by its name within a project."""
+    paginator = client.get_paginator('list_device_pools')
+    for page in paginator.paginate(arn=project_arn):
+        for pool in page['devicePools']:
+            if pool['name'] == pool_name:
+                return pool['arn']
+    raise ValueError(f"Device pool '{pool_name}' not found in project")
+
+
+# Resolve ARNs from names
+project_arn = get_project_arn_by_name(DEVICEFARM_PROJECT_NAME)
+pool_arn = get_device_pool_arn_by_name(project_arn, DEVICEFARM_DEVICE_POOL_NAME)
 
 config = {
     "awsRegion": AWS_REGION,
     "namePrefix": ANDROID_TEST_NAME,
     "appFilePath": ANDROID_APK,
     "testPackage": ANDROID_TEST_APK,
-    "projectArn": DEVICEFARM_PROJECT,
-    "poolArn": DEVICEFARM_DEVICE_POOL,
+    "projectArn": project_arn,
+    "poolArn": pool_arn,
 }
-
-client = boto3.client('devicefarm', region_name=AWS_REGION)
 
 unique = config['namePrefix']
 aws_region = config['awsRegion']

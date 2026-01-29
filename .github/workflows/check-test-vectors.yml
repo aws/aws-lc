@@ -56,6 +56,9 @@ jobs:
             echo "no_issues=true" >> $GITHUB_OUTPUT
             echo "❌ There is no issue"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Create an issue for outdated vectors
         if: steps.check_issues.outputs.no_issues == 'true'

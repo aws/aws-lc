@@ -33,8 +33,11 @@ static const uint64_t kCtrDrbgReseedInterval = 4096;
 #define RAND_NO_USER_PRED_RESISTANCE 0
 #define RAND_USE_USER_PRED_RESISTANCE 1
 
-OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
-OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
+OPENSSL_EXPORT uint64_t get_private_thread_generate_calls_since_seed(void);
+OPENSSL_EXPORT uint64_t get_private_thread_reseed_calls_since_initialization(void);
+
+OPENSSL_EXPORT uint64_t get_public_thread_generate_calls_since_seed(void);
+OPENSSL_EXPORT uint64_t get_public_thread_reseed_calls_since_initialization(void);
 
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
