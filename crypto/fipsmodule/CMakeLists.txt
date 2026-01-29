@@ -551,6 +551,18 @@ elseif(FIPS_SHARED)
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS )
   target_add_awslc_include_paths(TARGET bcm_library SCOPE PRIVATE)
   target_include_directories(bcm_library PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
+
+  # On GCC 14+ the Superword Level Parallelism (SLP) vectorizer causes the
+  # compiler to aggressively store static function pointer addresses in the
+  # .data.rel.ro.local section which is discarded by our linker script and
+  # results in undefined references when linking libcrypto.
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND
+     CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "14" AND
+     CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+     ARCH STREQUAL "x86_64")
+    target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
+  endif()
+
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
