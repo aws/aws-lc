@@ -46,7 +46,7 @@ jobs:
         if: steps.check_vectors.outputs.vectors_outdated == 'true'
         run: |
           previous_issue_number=$(gh issue list \
-            --label "$LABELS" \
+            --label 'vectors' \
             --json number \
             --jq '.[0].number')
           if [[ -n $previous_issue_number ]]; then
