@@ -1,6 +1,6 @@
 @echo on
 set SRC_ROOT=%cd%
-set BUILD_DIR=%SRC_ROOT%\test_build_dir
+set BUILD_DIR=%TEMP%\awslc
 
 @rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
 @rem %2 specifies the architecture option to build against: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
