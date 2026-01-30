@@ -288,6 +288,15 @@ set(
   crypto/x509/test/trailing_data_leaf_subject_alt_name.pem
   crypto/x509/test/trailing_data_leaf_subject_key_identifier.pem
   third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_44_sign_noseed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_44_sign_seed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_44_verify_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_65_sign_noseed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_65_sign_seed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_65_verify_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_sign_noseed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_sign_seed_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_verify_test.txt
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
   third_party/wycheproof_testvectors/aes_ccm_test.txt
   third_party/wycheproof_testvectors/aes_cmac_test.txt
