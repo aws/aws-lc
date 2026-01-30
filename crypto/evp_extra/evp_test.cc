@@ -61,6 +61,7 @@
 #include <string.h>
 
 #include "../fipsmodule/evp/internal.h"
+#include "internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
@@ -1527,4 +1528,14 @@ TEST(EVPTest, PKEY_asn1_find_str) {
   ameth = EVP_PKEY_asn1_find_str(NULL, "Nonsense", 8);
   ASSERT_FALSE(ameth);
   ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+}
+
+TEST(EVPTest, ASN1MethodCheckPemStrLengthInvariant) {
+  for (int i = 0; i < EVP_PKEY_asn1_get_count(); i++) {
+    SCOPED_TRACE(i);
+    const EVP_PKEY_ASN1_METHOD *method = EVP_PKEY_asn1_get0(i);
+    ASSERT_NE(method, nullptr);
+    ASSERT_NE(method->pem_str, nullptr);
+    EXPECT_LE(OPENSSL_strnlen(method->pem_str, strlen(method->pem_str)+1), MAX_PEM_STR_LEN);
+  }
 }

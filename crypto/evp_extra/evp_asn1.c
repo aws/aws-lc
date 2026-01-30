@@ -612,15 +612,14 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **_pe,
   for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
     const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
 
-    const size_t longest_pem_str_len = 10;  // "DILITHIUM3"
-
     const size_t pem_str_len =
-        OPENSSL_strnlen(ameth->pem_str, longest_pem_str_len);
+        OPENSSL_strnlen(ameth->pem_str, MAX_PEM_STR_LEN);
 
     // OPENSSL_strncasecmp(a, b, n) compares up to index n-1
-    const size_t cmp_len =
-        1 + ((name_len < pem_str_len) ? name_len : pem_str_len);
-    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, cmp_len)) {
+    if (name_len != pem_str_len) {
+      continue;
+    }
+    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, name_len)) {
       return ameth;
     }
   }
