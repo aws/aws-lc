@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/dh.h>
+#include <limits.h>
 
 #include <string.h>
 
@@ -417,7 +418,11 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   *out_len = SIZE_MAX;
 
   const size_t digest_len = EVP_MD_size(digest);
-  if (digest_len > max_out_len) {
+  if (digest_len == 0 || digest_len > max_out_len
+#if SIZE_MAX > UINT_MAX
+      || digest_len > UINT_MAX
+#endif
+  ) {
     return 0;
   }
 
@@ -428,7 +433,7 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   int ret = 0;
   const size_t dh_len = DH_size(dh);
   uint8_t *shared_bytes = OPENSSL_malloc(dh_len);
-  unsigned out_len_unsigned;
+  unsigned out_len_unsigned = (unsigned)digest_len;
   if (!shared_bytes ||
       // SP 800-56A is ambiguous about whether the output should be padded prior
       // to revision three. But revision three, section C.1, awkwardly specifies
