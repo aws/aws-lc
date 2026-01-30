@@ -13,6 +13,8 @@
 #define PKCS8_VERSION_TWO 1
 #define ED25519_PUBLIC_KEY_OFFSET 32
 
+#define MAX_PEM_STR_LEN ((size_t)10) // "ED25519ph"
+
 typedef struct {
   uint8_t pub[32];
   uint8_t priv[32];
