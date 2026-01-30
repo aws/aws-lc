@@ -67,6 +67,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/dh.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
@@ -74,6 +75,29 @@
 #include "../fipsmodule/dh/internal.h"
 #include "../test/test_util.h"
 
+
+TEST(DHTest, ComputeKeyHashedRejectsXOF) {
+  bssl::UniquePtr<DH> a(DH_new_by_nid(NID_ffdhe2048));
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<DH> b(DHparams_dup(a.get()));
+  ASSERT_TRUE(b);
+  ASSERT_TRUE(DH_generate_key(a.get()));
+  ASSERT_TRUE(DH_generate_key(b.get()));
+
+  uint8_t out[64];
+  size_t out_len = 0;
+
+  // XOF digests should be rejected.
+  EXPECT_FALSE(DH_compute_key_hashed(a.get(), out, &out_len, sizeof(out),
+                                     DH_get0_pub_key(b.get()), EVP_shake128()));
+  EXPECT_FALSE(DH_compute_key_hashed(a.get(), out, &out_len, sizeof(out),
+                                     DH_get0_pub_key(b.get()), EVP_shake256()));
+
+  // Non-XOF digests should succeed.
+  EXPECT_TRUE(DH_compute_key_hashed(a.get(), out, &out_len, sizeof(out),
+                                    DH_get0_pub_key(b.get()), EVP_sha256()));
+  EXPECT_EQ(out_len, 32u);
+}
 
 TEST(DHTest, Basic) {
   bssl::UniquePtr<DH> a(DH_new());
