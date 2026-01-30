@@ -19,16 +19,16 @@ set -euo pipefail
 # This imports s2n-bignum from https://github.com/awslabs/s2n-bignum
 # and leaves import meta data in META.yml.
 #
-# If you want to import a specific branch/tag or from a specific repository
-# either set GITHUB_TARGET or GITHUB_REPOSITORY as below:
+# If you want to import a specific commit from a specific repository
+# either set COMMIT_HASH or GITHUB_REPOSITORY as below:
 #
 # ```
-# GITHUB_REPOSITORY=<repo owner>/<repo name> GITHUB_TARGET=<branch or tag> ./import.sh
+# GITHUB_REPOSITORY=<repo owner>/<repo name> COMMIT_HASH=<commit hash> ./import.sh
 # ```
 
 GITHUB_SERVER_URL="https://github.com/"
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:=awslabs/s2n-bignum.git}
-GITHUB_TARGET=${GITHUB_TARGET:=main}
+COMMIT_HASH=${COMMIT_HASH:=main}
 
 SRC="s2n-bignum-imported"
 TMP="TEMP_CAN_DELETE"
@@ -48,8 +48,13 @@ fi
 mkdir ${TMP}
 
 echo "Fetching repository ..."
-git clone ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} ${TMP} --branch ${GITHUB_TARGET} --single-branch > /dev/null
-GITHUB_COMMIT=$(cd ${TMP} >/dev/null; git rev-parse HEAD)
+cd ${TMP}
+git init >/dev/null
+git remote add origin $GITHUB_SERVER_URL/$GITHUB_REPOSITORY >/dev/null
+git fetch origin --depth 1 $COMMIT_HASH >/dev/null
+git checkout FETCH_HEAD >/dev/null
+GITHUB_COMMIT=$(git rev-parse FETCH_HEAD)
+cd ..
 
 echo "Cloned s2n-bignum folder"
 ls -la ${TMP}
@@ -97,12 +102,11 @@ cat <<EOF > META.yml
 name: ${SRC}
 source: ${GITHUB_REPOSITORY}
 commit: ${GITHUB_COMMIT}
-target: ${GITHUB_TARGET}
 imported-at: $(env TZ=UTC date "+%Y-%m-%dT%H:%M:%S%z")
 EOF
 
 # Submodule path might be cached.
 echo ""
 echo "Post actions: Run"
-echo "$ git add ${SRC} META.yml ; git commit -m \"Imported s2n-bignum version: ${GITHUB_TARGET}/${GITHUB_COMMIT}\""
+echo "$ git add ${SRC} META.yml ; git commit -m \"Imported s2n-bignum version: ${GITHUB_COMMIT}\""
 echo "to add new source to git tree"
