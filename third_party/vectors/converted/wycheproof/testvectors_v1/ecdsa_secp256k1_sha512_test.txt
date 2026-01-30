@@ -4656,3 +4656,131 @@ result = invalid
 sig = 304602206632473c909425b6fa37095398e2538daab8552440320f9fe190dba8f672796b1f022100a8c3aacce9ffe4bc17c0530738f1386f9d9579f029ff3a7791b16e98422265e3
 flags = InvalidEncoding
 
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 042df384946f82ae13ce253094f4060e495fc97d48e94d2c6c1f0d122e07161b5baa3676be069e5eaf556cf052e6a69e430f4badec8cfba8c277e5697f6906fbf6]
+[publicKey.wx = 2df384946f82ae13ce253094f4060e495fc97d48e94d2c6c1f0d122e07161b5b]
+[publicKey.wy = aa3676be069e5eaf556cf052e6a69e430f4badec8cfba8c277e5697f6906fbf6]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a034200042df384946f82ae13ce253094f4060e495fc97d48e94d2c6c1f0d122e07161b5baa3676be069e5eaf556cf052e6a69e430f4badec8cfba8c277e5697f6906fbf6]
+[sha = SHA-512]
+
+# tcId = 537
+# r = 1, x = 1 is valid
+msg = 68656c6c6f2c20776f726c64
+result = valid
+sig = 3026020101022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ValidSignature
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 0497047b3db38d6866eb16f42e6da13a235353c6b6d55fff54f2f84f84db19830546618f8cf778e11dca09549e397f2f054d4098b28c437e73eb29902f038a3066]
+[publicKey.wx = 97047b3db38d6866eb16f42e6da13a235353c6b6d55fff54f2f84f84db198305]
+[publicKey.wy = 46618f8cf778e11dca09549e397f2f054d4098b28c437e73eb29902f038a3066]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a0342000497047b3db38d6866eb16f42e6da13a235353c6b6d55fff54f2f84f84db19830546618f8cf778e11dca09549e397f2f054d4098b28c437e73eb29902f038a3066]
+[sha = SHA-512]
+
+# tcId = 538
+# r = 2, x = 1 is invalid
+msg = 68656c6c6f2c20776f726c64
+result = invalid
+sig = 3026020102022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ArithmeticError
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 042df384946f82ae13ce253094f4060e495fc97d48e94d2c6c1f0d122e07161b5baa3676be069e5eaf556cf052e6a69e430f4badec8cfba8c277e5697f6906fbf6]
+[publicKey.wx = 2df384946f82ae13ce253094f4060e495fc97d48e94d2c6c1f0d122e07161b5b]
+[publicKey.wy = aa3676be069e5eaf556cf052e6a69e430f4badec8cfba8c277e5697f6906fbf6]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a034200042df384946f82ae13ce253094f4060e495fc97d48e94d2c6c1f0d122e07161b5baa3676be069e5eaf556cf052e6a69e430f4badec8cfba8c277e5697f6906fbf6]
+[sha = SHA-512]
+
+# tcId = 539
+# r = 1 + n, x = 1 is invalid; r was not reduced mod n
+msg = 68656c6c6f2c20776f726c64
+result = invalid
+sig = 3046022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ArithmeticError
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 04bbd24d14fe5a2a324c61c69845a8dea22a61c1a47b1d8a4c017144b8ac507a9941c7e7c3de74a65afa7d2d4d10892f67cf784d406a587e6cb9f95821bbbeeba1]
+[publicKey.wx = bbd24d14fe5a2a324c61c69845a8dea22a61c1a47b1d8a4c017144b8ac507a99]
+[publicKey.wy = 41c7e7c3de74a65afa7d2d4d10892f67cf784d406a587e6cb9f95821bbbeeba1]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a03420004bbd24d14fe5a2a324c61c69845a8dea22a61c1a47b1d8a4c017144b8ac507a9941c7e7c3de74a65afa7d2d4d10892f67cf784d406a587e6cb9f95821bbbeeba1]
+[sha = SHA-512]
+
+# tcId = 540
+# r = n - 3, x = n - 2 is invalid
+msg = 68656c6c6f2c20776f726c64
+result = invalid
+sig = 3046022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ArithmeticError
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 04d7c42bdab5d38d6439fe64459745b4fb172d6e6a0e4618439aeeab489ff6532db3d14b5650b9b1e823d18bfde89b55d07b5cfe166815a3e4da8bb34f405545ae]
+[publicKey.wx = d7c42bdab5d38d6439fe64459745b4fb172d6e6a0e4618439aeeab489ff6532d]
+[publicKey.wy = b3d14b5650b9b1e823d18bfde89b55d07b5cfe166815a3e4da8bb34f405545ae]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a03420004d7c42bdab5d38d6439fe64459745b4fb172d6e6a0e4618439aeeab489ff6532db3d14b5650b9b1e823d18bfde89b55d07b5cfe166815a3e4da8bb34f405545ae]
+[sha = SHA-512]
+
+# tcId = 541
+# r = 2, x = n + 2 is the smallest possible x with a reduction
+msg = 68656c6c6f2c20776f726c64
+result = valid
+sig = 3026020102022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ValidSignature
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 044fe4cc98d665a49cfda32bea8de8bd3e6ad863911cd077c072be2b35b487946a256f9cb614fa9bcb345ae8726a9f618a737d45cce96a766bf0fb610c202d56da]
+[publicKey.wx = 4fe4cc98d665a49cfda32bea8de8bd3e6ad863911cd077c072be2b35b487946a]
+[publicKey.wy = 256f9cb614fa9bcb345ae8726a9f618a737d45cce96a766bf0fb610c202d56da]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a034200044fe4cc98d665a49cfda32bea8de8bd3e6ad863911cd077c072be2b35b487946a256f9cb614fa9bcb345ae8726a9f618a737d45cce96a766bf0fb610c202d56da]
+[sha = SHA-512]
+
+# tcId = 542
+# r = 3, x = n + 2 is invalid
+msg = 68656c6c6f2c20776f726c64
+result = invalid
+sig = 3026020103022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ArithmeticError
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 04f3d010cc99320cbc39bee9101aa7ba7e8edf4e32ea8110e9f2442d6a49aeb78c0ae144cb8146541555043872922dfa14e8ff6b4f9983cdae79b2bce958ef8862]
+[publicKey.wx = f3d010cc99320cbc39bee9101aa7ba7e8edf4e32ea8110e9f2442d6a49aeb78c]
+[publicKey.wy = 0ae144cb8146541555043872922dfa14e8ff6b4f9983cdae79b2bce958ef8862]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a03420004f3d010cc99320cbc39bee9101aa7ba7e8edf4e32ea8110e9f2442d6a49aeb78c0ae144cb8146541555043872922dfa14e8ff6b4f9983cdae79b2bce958ef8862]
+[sha = SHA-512]
+
+# tcId = 543
+# r = p - n + 1, x = 1 is invalid; r is too large to compare r + n with x
+msg = 68656c6c6f2c20776f726c64
+result = invalid
+sig = 30360211014551231950b75fc4402da1722fc9baef022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ArithmeticError
+
+[publicKey.curve = secp256k1]
+[publicKey.keySize = 256]
+[publicKey.type = EcPublicKey]
+[publicKey.uncompressed = 04a6245583e13d23c9cc0089c99e2e202766ea3379645c14762cf029873b099dfc74e9942da9f18327d5b1fbccaa958992d3062ae4602d0ed736aa4b87291ef10d]
+[publicKey.wx = a6245583e13d23c9cc0089c99e2e202766ea3379645c14762cf029873b099dfc]
+[publicKey.wy = 74e9942da9f18327d5b1fbccaa958992d3062ae4602d0ed736aa4b87291ef10d]
+[publicKeyDer = 3056301006072a8648ce3d020106052b8104000a03420004a6245583e13d23c9cc0089c99e2e202766ea3379645c14762cf029873b099dfc74e9942da9f18327d5b1fbccaa958992d3062ae4602d0ed736aa4b87291ef10d]
+[sha = SHA-512]
+
+# tcId = 544
+# r = 2^256 - n + 1, x = 1 is invalid; r + n is too large to compare r + n with x, and overflows 2^256 bits
+msg = 68656c6c6f2c20776f726c64
+result = invalid
+sig = 30360211014551231950b75fc4402da1732fc9bec0022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd036413e
+flags = ArithmeticError
+
