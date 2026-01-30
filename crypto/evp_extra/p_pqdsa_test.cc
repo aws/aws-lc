@@ -2522,6 +2522,17 @@ struct WycheproofMLDSA {
 static constexpr const char kWycheproofMLDSAPath[] =
     "third_party/vectors/converted/wycheproof/testvectors_v1/";
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//= type=test
+//# AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_noseed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_44_sign_seed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_44_verify_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_noseed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_65_sign_seed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_65_verify_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_noseed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_87_sign_seed_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mldsa_87_verify_test.txt`.
 static const struct WycheproofMLDSA kWycheproofMLDSAs[] = {
     {"MLDSA44", NID_MLDSA44, "mldsa_44_verify_test.txt",
      "mldsa_44_sign_seed_test.txt", "mldsa_44_sign_noseed_test.txt"},
