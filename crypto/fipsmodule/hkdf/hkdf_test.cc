@@ -579,3 +579,17 @@ static void RunTest(FileTest *t)
 TEST(HKDFTest, HKDFExpandCAVP) {
   FileTestGTest("crypto/evp_extra/kbkdf_expand_tests.txt", RunTest);
 }
+
+TEST(HKDFTest, EVP_PKEY_HKDF_RejectsXOF) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+
+  // XOF digests should be rejected when setting the digest.
+  EXPECT_FALSE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_shake128()));
+  EXPECT_FALSE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_shake256()));
+
+  // Non-XOF digests should succeed.
+  EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), EVP_sha256()));
+}
