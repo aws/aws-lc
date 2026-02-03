@@ -300,6 +300,9 @@ int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_PQDSA_KEY);
     return 0;
   }
+  if (!pkey->pkey.pqdsa_key || !pkey->pkey.pqdsa_key->pqdsa) {
+    return 0;
+  }
   return pkey->pkey.pqdsa_key->pqdsa->nid;
 }
 
