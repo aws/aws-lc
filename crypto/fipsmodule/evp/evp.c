@@ -72,6 +72,7 @@
 #include "../../pem/internal.h"
 #include "../../console/internal.h"
 #include "../../internal.h"
+#include "../pqdsa/internal.h"
 #include "internal.h"
 
 
@@ -291,6 +292,15 @@ int EVP_PKEY_bits(const EVP_PKEY *pkey) {
 int EVP_PKEY_id(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_RESET;
   return pkey->type;
+}
+
+int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_RESET;
+  if (pkey->type != EVP_PKEY_PQDSA) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_PQDSA_KEY);
+    return 0;
+  }
+  return pkey->pkey.pqdsa_key->pqdsa->nid;
 }
 
 int EVP_MD_get_pkey_type(const EVP_MD *md) {
