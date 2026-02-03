@@ -1,0 +1,85 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+name: Sync from Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:     # Manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    # Only run on the private repository
+    if: github.repository == 'aws/private-aws-lc-staging'
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    strategy:
+      fail-fast: false  # Continue other branches even if one fails
+      matrix:
+        branch:
+          - main
+          - fips-2021-10-20
+          - fips-2021-10-20-1MU
+          - fips-2022-11-02
+          - fips-2024-09-27
+          - fips-2025-09-12
+          - fips-NetOS-2024-06-11
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/aws/aws-lc.git
+
+      - name: Fetch upstream branch
+        run: git fetch upstream ${{ matrix.branch }}
+
+      - name: Checkout or create branch
+        id: checkout
+        run: |
+          if git ls-remote --exit-code origin refs/heads/${{ matrix.branch }} > /dev/null 2>&1; then
+            echo "Branch '${{ matrix.branch }}' exists in origin. Checking out."
+            git checkout ${{ matrix.branch }}
+            echo "branch_created=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Branch '${{ matrix.branch }}' does not exist in origin. Creating from upstream."
+            git checkout -b ${{ matrix.branch }} upstream/${{ matrix.branch }}
+            echo "branch_created=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify fast-forward is possible
+        if: steps.checkout.outputs.branch_created != 'true'
+        run: |
+          if ! git merge-base --is-ancestor HEAD upstream/${{ matrix.branch }}; then
+            echo "::error::Cannot fast-forward '${{ matrix.branch }}'. Local branch has diverged from upstream."
+            echo "Local HEAD: $(git rev-parse HEAD)"
+            echo "Upstream HEAD: $(git rev-parse upstream/${{ matrix.branch }})"
+            exit 1
+          fi
+
+      - name: Fast-forward merge
+        if: steps.checkout.outputs.branch_created != 'true'
+        run: git merge --ff-only upstream/${{ matrix.branch }}
+
+      - name: Verify target repository is not upstream
+        run: |
+          ORIGIN_URL=$(git remote get-url origin)
+          if [[ "$ORIGIN_URL" == *"github.com/aws/aws-lc"* ]] || [[ "$ORIGIN_URL" == *"github.com:aws/aws-lc"* ]]; then
+            if [[ "$ORIGIN_URL" != *"private-aws-lc"* ]]; then
+              echo "::error::SAFETY CHECK FAILED: Origin points to aws/aws-lc. Refusing to push."
+              echo "Origin URL: $ORIGIN_URL"
+              exit 1
+            fi
+          fi
+          echo "Safety check passed. Origin: $ORIGIN_URL"
+
+      - name: Push to origin
+        run: git push origin ${{ matrix.branch }}
