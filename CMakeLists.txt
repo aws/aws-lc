@@ -826,23 +826,18 @@ if(KEEP_ASM_LOCAL_SYMBOLS)
 endif()
 
 if(FIPS)
-
   if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
+  if(NOT BUILD_SHARED_LIBS AND (WIN32 OR APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-
-
-  string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
-  if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
+  if(CMAKE_C_FLAGS MATCHES "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" AND BUILD_SHARED_LIBS)
     message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
-  endif ()
+  endif()
 
-  add_definitions(-DBORINGSSL_FIPS)
   # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
     if(BUILD_SHARED_LIBS)
@@ -851,14 +846,17 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  if(FIPS_SHARED AND ANDROID)
-    # The Android CMake files set -ffunction-sections and -fdata-sections,
-    # which is incompatible with FIPS_SHARED.
-    set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
-  endif()
+
+  add_definitions(-DBORINGSSL_FIPS)
+endif()
+
+# The Android CMake files set -ffunction-sections and -fdata-sections, which
+# is incompatible with FIPS_SHARED.
+if(FIPS_SHARED AND ANDROID)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
 endif()
 
 if(OPENSSL_SMALL)

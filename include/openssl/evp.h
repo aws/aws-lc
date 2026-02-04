@@ -137,6 +137,10 @@ OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 // values.
 OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 
+// EVP_PKEY_pqdsa_get_type returns the |nid| of the configured PQDSA key. |pkey|
+// must not be NULL.
+OPENSSL_EXPORT int EVP_PKEY_pqdsa_get_type(const EVP_PKEY *pkey);
+
 // EVP_MD_get0_name returns the short name of |md|
 OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 
