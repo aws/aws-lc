@@ -230,7 +230,10 @@ jobs:
         run: cmake --build ./build --target run_tests
 
   compiler-tests:
-    name: x86-64 - ${{ matrix.compiler }} - ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }}
+    name: >-
+      x86-64 - ${{ matrix.compiler }} -
+      ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} -
+      ${{ (matrix.shared == 1 && 'shared') || 'static' }}
     needs: [sanity-test-run]
     env:
       GOFLAGS: "-buildvcs=false"
@@ -238,6 +241,7 @@ jobs:
       fail-fast: false
       matrix:
         fips: [0, 1]
+        shared: [0, 1]
         compiler:
           - "gcc9"
           - "gcc10"
@@ -273,8 +277,8 @@ jobs:
         run: |
           echo "CC=gcc" >> $GITHUB_ENV
           echo "CXX=g++" >> $GITHUB_ENV
-      - name: Setup ${{ (matrix.fips == 1 && 'FIPS') || 'non-FIPS' }} Build
-        run: cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}}
+      - name: Setup Build
+        run: cmake -G Ninja -B ./build -DCMAKE_BUILD_TYPE=Release -DFIPS=${{matrix.fips}} -DBUILD_SHARED_LIBS=${{matrix.shared}}
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
