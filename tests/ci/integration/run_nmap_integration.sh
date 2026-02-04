@@ -6,6 +6,12 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Dependencies needed for nmap build
+if [ "$(id -u)" -eq 0 ]; then
+  apt-get update
+  apt-get install -y --no-install-recommends liblinear-dev
+fi
+
 # Set up environment.
 
 # SYS_ROOT
