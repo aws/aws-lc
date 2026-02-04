@@ -1696,6 +1696,7 @@ TEST_P(PQDSAParameterTest, KeyGen) {
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
   ASSERT_TRUE(raw);
+  ASSERT_EQ(EVP_PKEY_pqdsa_get_type(raw), nid);
   bssl::UniquePtr<EVP_PKEY> pkey(raw);
 
   // ---- 2. Test key generation with PKEY as a template ----
