@@ -79,7 +79,7 @@ function(target_add_awslc_include_paths)
 
   add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
-    $<$<BOOL:INCLUDE_PREFIX_HEADERS>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<$<BOOL:${INCLUDE_PREFIX_HEADERS}>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 endfunction()
@@ -344,10 +344,13 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           COMPONENT Development
   )
-elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
-  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
-elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
+elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND NOT GO_EXECUTABLE)
+  # This case is reached when both BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS are set,
+  # but GO_EXECUTABLE is not available (checked after the first if-branch).
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
+  # Only one of BORINGSSL_PREFIX or BORINGSSL_PREFIX_SYMBOLS is set
+  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 else()
   add_custom_target(boringssl_prefix_symbols)
 
@@ -1341,7 +1344,7 @@ if(BUILD_TESTING)
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
-      add_custom_command(
+      add_custom_target(
           run_minimal_tests
           COMMAND crypto/crypto_test
           COMMAND crypto/urandom_test
