@@ -476,6 +476,18 @@ elseif(FIPS_SHARED)
   add_dependencies(bcm_library boringssl_prefix_symbols)
   target_include_directories(bcm_library BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
+  # On GCC 14+ the Superword Level Parallelism (SLP) vectorizer causes the
+  # compiler to aggressively store static function pointer addresses in the
+  # .data.rel.ro.local section which is discarded by our linker script and
+  # results in undefined references when linking libcrypto.
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND
+     CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "14" AND
+     CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+     ARCH STREQUAL "x86_64")
+    target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
+  endif()
+
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
