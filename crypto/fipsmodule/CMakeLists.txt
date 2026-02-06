@@ -644,12 +644,54 @@ elseif(FIPS_SHARED)
       set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
     endif()
 
-    add_custom_command(
-      OUTPUT ${BCM_NAME}
-      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
-      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
+    if(WIN32)
+      # use llvm-lib or lib.exe to combine object files
+      get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+      if(MSVC)
+        set(LIB_TOOL_NAME "lib.exe")
+      else()
+        set(LIB_TOOL_NAME "llvm-lib.exe")
+      endif()
+      find_program(LIB_TOOL "${LIB_TOOL_NAME}" HINTS "${COMPILER_DIR}" REQUIRED)
+
+      if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set(COMPILER_OUTPUT_FLAG -o)
+        set(COMPILER_COMPILE_FLAG -c)
+        set(START_MARKER_DEFINE -DAWSLC_FIPS_SHARED_START)
+        set(END_MARKER_DEFINE -DAWSLC_FIPS_SHARED_END)
+      else()
+        set(COMPILER_OUTPUT_FLAG /Fo:)
+        set(COMPILER_COMPILE_FLAG /c)
+        set(START_MARKER_DEFINE /DAWSLC_FIPS_SHARED_START)
+        set(END_MARKER_DEFINE /DAWSLC_FIPS_SHARED_END)
+      endif()
+
+      # Create start and end marker object files for Windows FIPS builds
+      add_custom_command(
+        OUTPUT fips_windows_start.obj
+        COMMAND ${CMAKE_C_COMPILER} ${COMPILER_COMPILE_FLAG} ${START_MARKER_DEFINE} ${COMPILER_OUTPUT_FLAG}fips_windows_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      )
+      add_custom_command(
+        OUTPUT fips_windows_end.obj
+        COMMAND ${CMAKE_C_COMPILER} ${COMPILER_COMPILE_FLAG} ${END_MARKER_DEFINE} ${COMPILER_OUTPUT_FLAG}fips_windows_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      )
+
+      add_custom_command(
+        OUTPUT ${BCM_NAME}
+        COMMAND ${LIB_TOOL} /nologo fips_windows_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_windows_end.obj /OUT:${BCM_NAME}
+        DEPENDS bcm_library fips_windows_start.obj fips_windows_end.obj
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      )
+    else()
+      add_custom_command(
+        OUTPUT ${BCM_NAME}
+        COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
+        DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      )
+    endif()
   endif()
 
   add_custom_target(bcm_o_target DEPENDS ${BCM_NAME})
