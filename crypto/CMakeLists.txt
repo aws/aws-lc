@@ -608,17 +608,17 @@ function(build_libcrypto)
   if(WIN32)
     target_link_libraries(${arg_NAME} PUBLIC ws2_32)
   endif()
-  if(NOT WIN32 AND NOT ANDROID)
-    target_link_libraries(${arg_NAME} PUBLIC pthread)
-  endif()
 
+  if(AWSLC_LINK_THREADS)
+    target_link_libraries(${arg_NAME} PUBLIC Threads::Threads)
+  endif()
   target_add_awslc_include_paths(TARGET ${arg_NAME} SCOPE PUBLIC)
 
   if(arg_SET_OUTPUT_NAME)
     set_target_properties(${arg_NAME} PROPERTIES OUTPUT_NAME "${CRYPTO_LIB_NAME}")
   endif()
 
-  if(PERFORM_SONAME_BUILD)
+  if(SET_LIB_SONAME)
     set_target_properties(${arg_NAME} PROPERTIES
       VERSION "${SOFTWARE_VERSION}"
       SOVERSION "${ABI_VERSION}")
@@ -695,18 +695,6 @@ if(FIPS_SHARED)
   endif()
 else()
   build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
-endif()
-
-# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
-# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
-#
-# For now we assume embedded OSes do not have threads. Additionally, the Threads
-# package does not work with Android, but Android does not require any extra
-# parameters to link pthreads. Emscripten provides its own pthread implementation
-# via Web Workers and SharedArrayBuffer, configured through compiler flags.
-if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android|Emscripten)$")
-  find_package(Threads REQUIRED)
-  target_link_libraries(crypto PUBLIC Threads::Threads)
 endif()
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
@@ -918,12 +906,19 @@ if(BUILD_TESTING)
 
 endif()
 
-install(TARGETS crypto
-        EXPORT crypto-targets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          NAMELINK_SKIP)
+if(NOT CMAKE_VERSION VERSION_LESS "3.12")
+  install(TARGETS crypto
+          EXPORT crypto-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            NAMELINK_COMPONENT Development)
+else()
+  install(TARGETS crypto
+          EXPORT crypto-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
   install (FILES $<TARGET_FILE_DIR:crypto>/crypto.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -947,13 +942,3 @@ install(EXPORT crypto-targets
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/crypto/cmake/${TARGET_DIR}"
     NAMESPACE AWS::
     COMPONENT Development)
-
-if(PERFORM_SONAME_BUILD)
-install(CODE "
-set(TGT lib${CRYPTO_LIB_NAME}.so.${ABI_VERSION})
-set(LNK \$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libcrypto.so)
-message(STATUS \"Creating symlink: \${LNK} → \${TGT}\")
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink \${TGT} \${LNK})
-"
-  COMPONENT Development)
-endif()
