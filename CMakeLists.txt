@@ -1184,7 +1184,7 @@ endif()
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
-      if(MSVC)
+      if(WIN32)
         set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool.exe)
         set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper.exe)
       else()
@@ -1199,7 +1199,7 @@ if(BUILD_TESTING)
       set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         util/go_fips_tests.txt)
 
-      if(MSVC)
+      if(WIN32)
         # Delocator doesn't support Windows. So, this test would fail.
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
