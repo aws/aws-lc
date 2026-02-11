@@ -13,9 +13,12 @@ permissions:
   contents: read
 
 jobs:
+  # MinGW GCC does not support FIPS because it lacks support for MSVC-specific
+  # pragmas (code_seg, data_seg, etc.) required for FIPS section placement.
   mingw:
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
+    name: mingw
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
@@ -49,31 +52,16 @@ jobs:
         run: cmake --build "path has spaces/build" --target all
       - name: Run tests
         run: cmake --build "path has spaces/build" --target run_tests
-      - name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          source-dir: 'path has spaces/aws-lc'
-          build-dir: 'path has spaces/build-fips'
-          c-compiler: ${{ steps.setup_mingw.outputs.gcc }}
-          cxx-compiler: ${{ steps.setup_mingw.outputs.gxx }}
-          generator: Ninja
-          options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_BUILD_TOOL=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/ninja.exe \
-            CMAKE_FIND_ROOT_PATH=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64 \
-            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-            CMAKE_BUILD_TYPE=Release \
-            FIPS=1 \
-      - name: Build Project FIPS
-        run: cmake --build "path has spaces/build-fips" --target all
-      - name: Run tests FIPS
-        run: cmake --build "path has spaces/build-fips" --target run_tests
   clang:
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fips:
+          - 0
+          - 1
+    name: clang${{ matrix.fips == 1 && ' FIPS' || '' }}
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
@@ -95,26 +83,12 @@ jobs:
             CMAKE_SYSTEM_NAME=Windows \
             CMAKE_SYSTEM_PROCESSOR=x86_64 \
             CMAKE_BUILD_TYPE=Release \
+            BUILD_SHARED_LIBS=${{ matrix.fips }} \
+            FIPS=${{ matrix.fips }} \
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
-      - name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
-          cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
-          build-dir: ./build-fips
-          options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_BUILD_TYPE=Release \
-            FIPS=1 \
-      - name: Build Project FIPS
-        run: cmake --build ./build-fips --target all
-      - name: Run tests FIPS
-        run: cmake --build ./build-fips --target run_tests
   clang-cl-msbuild:
     if: github.repository_owner == 'aws'
     strategy:
@@ -123,12 +97,19 @@ jobs:
         target:
           - x64
           - x64_arm64
+        fips:
+          - 0
+          - 1
+        exclude:
+          - target: x64_arm64
+            fips: 1
     runs-on: windows-latest
+    name: clang-cl-msbuild ${{ matrix.target }}${{ matrix.fips == 1 && ' FIPS' || '' }}
     env:
       CMAKE_GENERATOR: "Visual Studio 17 2022"
       CMAKE_GENERATOR_TOOLSET: "ClangCL,host=x64"
     steps:
-      - if: ${{ matrix.target  == 'x64' }}
+      - if: ${{ matrix.target == 'x64' }}
         name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
@@ -136,13 +117,15 @@ jobs:
       - uses: TheMrMilchmann/setup-msvc-dev@v3
         with:
           arch: ${{ matrix.target }}
-      - if: ${{ matrix.target  == 'x64' }}
+      - if: ${{ matrix.target == 'x64' }}
         name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
           options: |
             CMAKE_BUILD_TYPE=Release \
-      - if: ${{ matrix.target  == 'x64_arm64' }}
+            BUILD_SHARED_LIBS=${{ matrix.fips }} \
+            FIPS=${{ matrix.fips }} \
+      - if: ${{ matrix.target == 'x64_arm64' }}
         name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
@@ -153,23 +136,9 @@ jobs:
             CMAKE_BUILD_TYPE=Release \
       - name: Build Project
         run: cmake --build ./build --target all_tests
-      - if: ${{ matrix.target  == 'x64' }}
+      - if: ${{ matrix.target == 'x64' }}
         name: Run tests
         run: cmake --build ./build --target run_tests
-      - if: ${{ matrix.target  == 'x64' }}
-        name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          build-dir: ./build-fips
-          options: |
-            CMAKE_BUILD_TYPE=Release \
-            FIPS=1 \
-      - if: ${{ matrix.target  == 'x64' }}
-        name: Build Project FIPS
-        run: cmake --build ./build-fips --target all
-      - if: ${{ matrix.target  == 'x64' }}
-        name: Run tests FIPS
-        run: cmake --build ./build-fips --target run_tests
   clang-cl-ninja:
     if: github.repository_owner == 'aws'
     strategy:
@@ -178,9 +147,16 @@ jobs:
         target:
           - x64
           - x64_arm64
+        fips:
+          - 0
+          - 1
+        exclude:
+          - target: x64_arm64
+            fips: 1
     runs-on: windows-latest
+    name: clang-cl-ninja ${{ matrix.target }}${{ matrix.fips == 1 && ' FIPS' || '' }}
     steps:
-      - if: ${{ matrix.target  == 'x64' }}
+      - if: ${{ matrix.target == 'x64' }}
         name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - name: Remove wrong clang-cl.exe
@@ -190,7 +166,7 @@ jobs:
       - uses: TheMrMilchmann/setup-msvc-dev@v3
         with:
           arch: ${{ matrix.target }}
-      - if: ${{ matrix.target  == 'x64' }}
+      - if: ${{ matrix.target == 'x64' }}
         name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
@@ -199,7 +175,9 @@ jobs:
           cxx-compiler: clang-cl
           options: |
             CMAKE_BUILD_TYPE=Release \
-      - if: ${{ matrix.target  == 'x64_arm64' }}
+            BUILD_SHARED_LIBS=${{ matrix.fips }} \
+            FIPS=${{ matrix.fips }} \
+      - if: ${{ matrix.target == 'x64_arm64' }}
         name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
@@ -215,26 +193,9 @@ jobs:
             CMAKE_BUILD_TYPE=Release \
       - name: Build Project
         run: cmake --build ./build --target all
-      - if: ${{ matrix.target  == 'x64' }}
+      - if: ${{ matrix.target == 'x64' }}
         name: Run tests
         run: cmake --build ./build --target run_tests
-      - if: ${{ matrix.target  == 'x64' }}
-        name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          generator: Ninja
-          c-compiler: clang-cl
-          cxx-compiler: clang-cl
-          build-dir: ./build-fips
-          options: |
-            CMAKE_BUILD_TYPE=Release \
-            FIPS=1 \
-      - if: ${{ matrix.target  == 'x64' }}
-        name: Build Project FIPS
-        run: cmake --build ./build-fips --target all
-      - if: ${{ matrix.target  == 'x64' }}
-        name: Run tests FIPS
-        run: cmake --build ./build-fips --target run_tests
   cross-mingw:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-22.04
@@ -262,7 +223,6 @@ jobs:
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
   msys2:
-    name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
     strategy:
@@ -276,6 +236,18 @@ jobs:
           - 'Ninja'
           - 'MinGW Makefiles'
           - 'MSYS Makefiles'
+        fips:
+          - 0
+          - 1
+        exclude:
+          # MinGW GCC (mingw64, ucrt64) does not support FIPS because it lacks
+          # support for MSVC-specific pragmas required for FIPS section placement.
+          # Only clang64 supports FIPS on MSYS2.
+          - sys: mingw64
+            fips: 1
+          - sys: ucrt64
+            fips: 1
+    name: msys2 ${{ matrix.sys }} - ${{ matrix.generator }}${{ matrix.fips == 1 && ' FIPS' || '' }}
     steps:
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
@@ -315,25 +287,12 @@ jobs:
             CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             CMAKE_BUILD_TYPE=Release \
+            BUILD_SHARED_LIBS=${{ matrix.fips }} \
+            FIPS=${{ matrix.fips }} \
+      - if: ${{ matrix.fips == 1 }}
+        name: Build Project
+        shell: 'msys2 {0}'
+        run: cmake --build ./build --target all
       - name: Run tests
         shell: 'msys2 {0}'
         run: cmake --build ./build --target run_tests
-      - name: Setup CMake FIPS
-        uses: threeal/cmake-action@v1.3.0
-        with:
-          build-dir: ./build-fips
-          options: |
-            CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
-            CMAKE_FIND_ROOT_PATH='${{ steps.setup_msys2.outputs.msys2-location }}\${{ matrix.sys }}\' \
-            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-            CMAKE_BUILD_TYPE=Release \
-            FIPS=1 \
-      - name: Build Project FIPS
-        shell: 'msys2 {0}'
-        run: cmake --build ./build-fips --target all
-      - name: Run tests FIPS
-        shell: 'msys2 {0}'
-        run: cmake --build ./build-fips --target run_tests
