@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
 #include <fcntl.h>
 #include <io.h>
 #include <stdio.h>
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
     return 4;
   }
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
   if (_setmode(_fileno(stdin), _O_BINARY) < 0 ||
       _setmode(_fileno(stdout), _O_BINARY) < 0) {
     fprintf(stderr, "Setting binary mode to stdin/stdout failed.\n");

@@ -328,7 +328,7 @@ int tree_jitter_initialize(struct entropy_source_t *entropy_source) {
   return 1;
 }
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
 #pragma section(".CRT$XCU", read)
 static void tree_jitter_free_global_drbg(void);
 static void windows_install_tree_jitter_free_global_drbg(void) {

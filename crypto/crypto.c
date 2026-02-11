@@ -58,7 +58,7 @@ OPENSSL_STATIC_ASSERT(sizeof(ossl_ssize_t) == sizeof(size_t),
 
 #if defined(BORINGSSL_NO_STATIC_INITIALIZER)
 static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
 #pragma section(".CRT$XCU", read)
 static void __cdecl do_library_init(void);
 __declspec(allocate(".CRT$XCU")) void(*library_init_constructor)(void) =
