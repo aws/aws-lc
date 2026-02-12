@@ -203,11 +203,21 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
         if (len < 0) {
           return -1;
         }
+
+        // Ensure addition doesn't overflow and corrupt the signed output length
+        if (len > INT_MAX - outlen) {
+          OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
+          return -1;
+        }
         outlen += len;
       }
     } else {
       int len = do_esc_char(c, flags, quotes, out, is_first, is_last);
       if (len < 0) {
+        return -1;
+      }
+      if (len > INT_MAX - outlen) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
         return -1;
       }
       outlen += len;
