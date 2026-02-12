@@ -54,7 +54,10 @@
 #define OPENSSL_HEADER_BASE_H
 
 
-// This file should be the first included by all BoringSSL headers.
+/**
+ * @file
+ * @brief This file should be the first included by all AWS-LC headers.
+ */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -122,7 +125,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.66.2"
+#define AWSLC_VERSION_NUMBER_STRING "1.67.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -420,6 +423,12 @@ typedef struct evp_aead_st EVP_AEAD;
 typedef struct evp_aead_ctx_st EVP_AEAD_CTX;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
+
+/**
+ * @typedef EVP_ENCODE_CTX
+ * @copydoc evp_encode_ctx_st
+ * @see evp_encode_ctx_st
+ */
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
 typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
 typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;

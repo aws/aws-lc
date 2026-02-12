@@ -279,6 +279,8 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
 // See the implemetation in |rsa.c| for details.
 int is_public_component_of_rsa_key_good(const RSA *key);
 
+OPENSSL_EXPORT const RSASSA_PSS_PARAMS *RSA_get0_ssa_pss_params(const RSA *rsa);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

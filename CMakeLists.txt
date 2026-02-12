@@ -5,7 +5,7 @@ cmake_policy(SET CMP0091 NEW)
 endif()
 
 set(SOFTWARE_NAME "awslc")
-set(SOFTWARE_VERSION "1.66.2")
+set(SOFTWARE_VERSION "1.67.0")
 set(ABI_VERSION 0)
 set(CRYPTO_LIB_NAME "crypto")
 set(SSL_LIB_NAME "ssl")
@@ -79,7 +79,7 @@ function(target_add_awslc_include_paths)
 
   add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
   target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
-    $<$<BOOL:INCLUDE_PREFIX_HEADERS>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<$<BOOL:${INCLUDE_PREFIX_HEADERS}>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
     $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 endfunction()
@@ -344,10 +344,13 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           COMPONENT Development
   )
-elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
-  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
-elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
+elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND NOT GO_EXECUTABLE)
+  # This case is reached when both BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS are set,
+  # but GO_EXECUTABLE is not available (checked after the first if-branch).
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
+  # Only one of BORINGSSL_PREFIX or BORINGSSL_PREFIX_SYMBOLS is set
+  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 else()
   add_custom_target(boringssl_prefix_symbols)
 
@@ -826,23 +829,18 @@ if(KEEP_ASM_LOCAL_SYMBOLS)
 endif()
 
 if(FIPS)
-
   if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
+  if(NOT BUILD_SHARED_LIBS AND (WIN32 OR APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-
-
-  string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
-  if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
+  if(CMAKE_C_FLAGS MATCHES "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" AND BUILD_SHARED_LIBS)
     message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
-  endif ()
+  endif()
 
-  add_definitions(-DBORINGSSL_FIPS)
   # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
     if(BUILD_SHARED_LIBS)
@@ -851,14 +849,17 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  if(FIPS_SHARED AND ANDROID)
-    # The Android CMake files set -ffunction-sections and -fdata-sections,
-    # which is incompatible with FIPS_SHARED.
-    set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
-  endif()
+
+  add_definitions(-DBORINGSSL_FIPS)
+endif()
+
+# The Android CMake files set -ffunction-sections and -fdata-sections, which
+# is incompatible with FIPS_SHARED.
+if(FIPS_SHARED AND ANDROID)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
 endif()
 
 if(OPENSSL_SMALL)
@@ -1183,7 +1184,7 @@ endif()
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
-      if(MSVC)
+      if(WIN32)
         set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool.exe)
         set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper.exe)
       else()
@@ -1198,7 +1199,7 @@ if(BUILD_TESTING)
       set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         util/go_fips_tests.txt)
 
-      if(MSVC)
+      if(WIN32)
         # Delocator doesn't support Windows. So, this test would fail.
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
@@ -1220,9 +1221,9 @@ if(BUILD_TESTING)
       add_custom_target(
         build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool/testmodulewrapper
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
@@ -1343,7 +1344,7 @@ if(BUILD_TESTING)
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
-      add_custom_command(
+      add_custom_target(
           run_minimal_tests
           COMMAND crypto/crypto_test
           COMMAND crypto/urandom_test

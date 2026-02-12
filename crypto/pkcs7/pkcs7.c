@@ -472,7 +472,7 @@ static ASN1_OCTET_STRING *PKCS7_digest_from_attributes(
     return NULL;
   }
   ASN1_TYPE *astype = get_attribute(sk, NID_pkcs9_messageDigest);
-  if (astype == NULL) {
+  if (astype == NULL || astype->type != V_ASN1_OCTET_STRING) {
     return NULL;
   }
   return astype->value.octet_string;
@@ -1251,6 +1251,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       rsk = p7->d.enveloped->recipientinfo;
       enc_alg = p7->d.enveloped->enc_data->algorithm;
       if (enc_alg == NULL || enc_alg->parameter == NULL ||
+          enc_alg->parameter->type != V_ASN1_OCTET_STRING ||
           enc_alg->parameter->value.octet_string == NULL ||
           enc_alg->algorithm == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);

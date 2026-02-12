@@ -29,8 +29,8 @@ import (
 	"strings"
 	"unicode"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	"github.com/aws/aws-lc/util/ar"
+	"github.com/aws/aws-lc/util/fipstools/fipscommon"
 )
 
 // inputFile represents a textual assembly file.
@@ -1480,8 +1480,8 @@ Args:
 		// preceding `RegisterOrConstant` without whitespace
 		// or a comma.
 		case ruleAVX512Token:
-			tail := &args[len(args)-1];
-			*tail += d.contents(fullArg);
+			tail := &args[len(args)-1]
+			*tail += d.contents(fullArg)
 
 		case ruleMemoryRef:
 			symbol, offset, section, didChange, symbolIsLocal, memRef := d.parseMemRef(arg.up)
@@ -1522,7 +1522,7 @@ Args:
 					// Move instruction dereferencing known relro local symbol. Assume
 					// this form:
 					// 	movq .Labc(%rip), %xmm
-					// relroLocalLabelToFuncMap contains the mapping .Labc->foo. 
+					// relroLocalLabelToFuncMap contains the mapping .Labc->foo.
 					// Transform to
 					// 	leaq .Lfoo_local_target(%rip), %reg
 					// 	movq %reg, %xmm
@@ -1545,9 +1545,9 @@ Args:
 					saveRegWrapper, tempReg := saveRegister(d.output, []string{targetReg})
 					wrappers = append(wrappers, saveRegWrapper)
 					wrappers = append(wrappers, func(k func()) {
-											d.output.WriteString(fmt.Sprintf("\tleaq\t%s(%%rip), %s\n", symbol, tempReg))
-											d.output.WriteString(fmt.Sprintf("\tmovq\t%s, %s\n", tempReg, targetReg))
-										})
+						d.output.WriteString(fmt.Sprintf("\tleaq\t%s(%%rip), %s\n", symbol, tempReg))
+						d.output.WriteString(fmt.Sprintf("\tmovq\t%s, %s\n", tempReg, targetReg))
+					})
 					// This will cause the "replacement" string to be set below. But since
 					// we are using wrappers, it's not used.
 					changed = true
@@ -1908,7 +1908,7 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 }
 
 func isNewLine(file string, node *node32) bool {
-	statementName := file[node.begin:node.end];
+	statementName := file[node.begin:node.end]
 	if statementName == "\n" {
 		return true
 	}
@@ -1943,12 +1943,12 @@ func isEndOfRelroSection(file string, lineRootNode *node32) bool {
 			Arg "8"
 	*/
 	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
-			directiveName := file[node.begin:node.end];
-			if directiveName == "align" {
-				return true
-			}
-			return false
-		}, ruleDirective, ruleDirectiveName) {
+		directiveName := file[node.begin:node.end]
+		if directiveName == "align" {
+			return true
+		}
+		return false
+	}, ruleDirective, ruleDirectiveName) {
 		return false
 	}
 
@@ -1958,12 +1958,12 @@ func isEndOfRelroSection(file string, lineRootNode *node32) bool {
 		 LocalSymbol ".LC0"
 	*/
 	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
-			symbolName := file[node.begin:node.end];
-			if strings.HasPrefix(symbolName, ".L")  {
-				return true
-			}
-			return false
-		}, ruleLabel, ruleLocalSymbol) {
+		symbolName := file[node.begin:node.end]
+		if strings.HasPrefix(symbolName, ".L") {
+			return true
+		}
+		return false
+	}, ruleLabel, ruleLocalSymbol) {
 		return false
 	}
 
@@ -1980,12 +1980,12 @@ func isEndOfRelroSection(file string, lineRootNode *node32) bool {
 				 SymbolName "foo_init"
 	*/
 	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
-			directiveName := file[node.begin:node.end];
-			if directiveName == ".quad" {
-				return true
-			}
-			return false
-		}, ruleLabelContainingDirective, ruleLabelContainingDirectiveName) {
+		directiveName := file[node.begin:node.end]
+		if directiveName == ".quad" {
+			return true
+		}
+		return false
+	}, ruleLabelContainingDirective, ruleLabelContainingDirectiveName) {
 		return false
 	}
 
@@ -2010,9 +2010,9 @@ func isProbablyAValidSymbol(symbol string) error {
 	// Usually allows letters, numbers, underscores, and sometimes dots
 	for i, char := range symbol {
 		if !unicode.IsLetter(char) &&
-			 !unicode.IsDigit(char) &&
-			 char != '_' &&
-			 char != '.' {
+			!unicode.IsDigit(char) &&
+			char != '_' &&
+			char != '.' {
 			return fmt.Errorf("invalid character for function symbol %q at position %d: %c", symbol, i, char)
 		}
 	}
@@ -2060,19 +2060,19 @@ func findLocalLabelsForRelro(file string, node *node32, relroLocalLabelToFuncMap
 		// statement node.
 		localSymbolName := ""
 		if matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
-				symbolName := file[node.begin:node.end];
-				if _, exists := relroLocalLabelToFuncMap[symbolName]; exists {
-					panic(fmt.Sprintf("Duplicate symbol found: %q", symbolName))
-				}
+			symbolName := file[node.begin:node.end]
+			if _, exists := relroLocalLabelToFuncMap[symbolName]; exists {
+				panic(fmt.Sprintf("Duplicate symbol found: %q", symbolName))
+			}
 
-				// Sanity check that we have found what we expect to find
-				if !strings.HasPrefix(symbolName, ".L")  {
-					panic(fmt.Sprintf("Symbol name syntax is not what was expected: %q", symbolName))
-				}
+			// Sanity check that we have found what we expect to find
+			if !strings.HasPrefix(symbolName, ".L") {
+				panic(fmt.Sprintf("Symbol name syntax is not what was expected: %q", symbolName))
+			}
 
-				localSymbolName = symbolName
-				return true
-			}, ruleLabel, ruleLocalSymbol) {
+			localSymbolName = symbolName
+			return true
+		}, ruleLabel, ruleLocalSymbol) {
 
 			// Reaching this point, we have found a local symbol. Now we need to
 			// search for the function symbol. First advance to next statement/line.
@@ -2085,14 +2085,14 @@ func findLocalLabelsForRelro(file string, node *node32, relroLocalLabelToFuncMap
 
 			// The function name should be an argument to a directive
 			if !matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
-					functionSymbolName := file[node.begin:node.end]
-					if err := isProbablyAValidSymbol(functionSymbolName); err != nil {
-						panic(err)
-					}
+				functionSymbolName := file[node.begin:node.end]
+				if err := isProbablyAValidSymbol(functionSymbolName); err != nil {
+					panic(err)
+				}
 
-					relroLocalLabelToFuncMap[localSymbolName] = functionSymbolName
-					return true
-				}, ruleLabelContainingDirective, ruleSymbolArgs) {
+				relroLocalLabelToFuncMap[localSymbolName] = functionSymbolName
+				return true
+			}, ruleLabelContainingDirective, ruleSymbolArgs) {
 				return fmt.Errorf("After finding %q under a .data.rel.ro[.local] section, expected to find a function name\n", localSymbolName)
 			}
 
@@ -2123,10 +2123,10 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 	*/
 
 	matchRelRoCb := func(node *node32) bool {
-		sectionType := input.contents[node.begin:node.end];
+		sectionType := input.contents[node.begin:node.end]
 		if strings.HasPrefix(sectionType, ".data.rel.ro") ||
-			 strings.HasPrefix(sectionType, ".ldata.rel.ro") {
-			 return true
+			strings.HasPrefix(sectionType, ".ldata.rel.ro") {
+			return true
 		}
 		return false
 	}
@@ -2149,22 +2149,22 @@ func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[
 		// one of these, check if the alias is one of our mappings. If it is,
 		// map the aliased value to the known function name.
 		if matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
-				directiveName := input.contents[node.begin:node.end];
-				if directiveName == ".set" {
-					return true
-				}
-				return false
-			}, ruleLabelContainingDirective, ruleLabelContainingDirectiveName) {
+			directiveName := input.contents[node.begin:node.end]
+			if directiveName == ".set" {
+				return true
+			}
+			return false
+		}, ruleLabelContainingDirective, ruleLabelContainingDirectiveName) {
 
 			if !matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
-					labelNames := strings.Split(input.contents[node.begin:node.end], ",")
-					if _, exists := relroLocalLabelToFuncMap[labelNames[1]]; !exists {
-						// Doesn't exist, carry on.
-						return true
-					}
-					relroLocalLabelToFuncMap[labelNames[0]] = relroLocalLabelToFuncMap[labelNames[1]]
+				labelNames := strings.Split(input.contents[node.begin:node.end], ",")
+				if _, exists := relroLocalLabelToFuncMap[labelNames[1]]; !exists {
+					// Doesn't exist, carry on.
 					return true
-				}, ruleLabelContainingDirective, ruleSymbolArgs) {
+				}
+				relroLocalLabelToFuncMap[labelNames[0]] = relroLocalLabelToFuncMap[labelNames[1]]
+				return true
+			}, ruleLabelContainingDirective, ruleSymbolArgs) {
 				return errors.New("Parsing error for .set directive")
 			}
 
@@ -2284,19 +2284,19 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	}
 
 	d := &delocation{
-		symbols:             symbols,
-		localEntrySymbols:   localEntrySymbols,
-		processor:           processor,
-		commentIndicator:    commentIndicator,
-		output:              w,
-		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
+		symbols:                  symbols,
+		localEntrySymbols:        localEntrySymbols,
+		processor:                processor,
+		commentIndicator:         commentIndicator,
+		output:                   w,
+		cpuCapUniqueSymbols:      []*cpuCapUniqueSymbol{},
 		relroLocalLabelToFuncMap: relroLocalLabelToFuncMap,
-		redirectors:         make(map[string]string),
-		bssAccessorsNeeded:  make(map[string]string),
-		tocLoaders:          make(map[string]struct{}),
-		gotExternalsNeeded:  make(map[string]struct{}),
-		gotOffsetsNeeded:    make(map[string]struct{}),
-		gotOffOffsetsNeeded: make(map[string]struct{}),
+		redirectors:              make(map[string]string),
+		bssAccessorsNeeded:       make(map[string]string),
+		tocLoaders:               make(map[string]struct{}),
+		gotExternalsNeeded:       make(map[string]struct{}),
+		gotOffsetsNeeded:         make(map[string]struct{}),
+		gotOffOffsetsNeeded:      make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")

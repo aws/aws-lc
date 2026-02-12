@@ -15,11 +15,11 @@ if(ANDROID)
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
   string(FIND ${CMAKE_CXX_FLAGS} "noexecstack" CXX_EXTRA_WA)
   string(FIND ${CMAKE_C_FLAGS} "noexecstack" C_EXTRA_WA)
-  if(NOT ${CXX_EXTRA_WA} EQUAL '-1')
-    string( REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
+  if(NOT CXX_EXTRA_WA EQUAL -1)
+    string(REPLACE "-Wa,--noexecstack" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   endif()
-  if(NOT ${C_EXTRA_WA} EQUAL '-1')
-    string( REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
+  if(NOT C_EXTRA_WA EQUAL -1)
+    string(REPLACE "-Wa,--noexecstack" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   endif()
 endif()
 
@@ -442,7 +442,7 @@ if(FIPS_DELOCATE)
     set(DELOCATE_EXTRA_ARGS "-no-se-debug-directives")
   endif()
 
-  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
+  go_executable(delocate github.com/aws/aws-lc/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
     COMMAND
@@ -491,7 +491,7 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
   go_executable(inject_hash
-                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+                github.com/aws/aws-lc/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
     COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
@@ -551,6 +551,18 @@ elseif(FIPS_SHARED)
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS )
   target_add_awslc_include_paths(TARGET bcm_library SCOPE PRIVATE)
   target_include_directories(bcm_library PRIVATE "${S2N_BIGNUM_INCLUDE_DIR}")
+
+  # On GCC 14+ the Superword Level Parallelism (SLP) vectorizer causes the
+  # compiler to aggressively store static function pointer addresses in the
+  # .data.rel.ro.local section which is discarded by our linker script and
+  # results in undefined references when linking libcrypto.
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND
+     CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "14" AND
+     CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+     ARCH STREQUAL "x86_64")
+    target_compile_options(bcm_library PRIVATE -fno-tree-slp-vectorize)
+  endif()
+
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,

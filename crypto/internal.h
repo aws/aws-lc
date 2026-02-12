@@ -760,6 +760,7 @@ typedef enum {
   AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE,
   OPENSSL_THREAD_LOCAL_TEST,
   OPENSSL_THREAD_LOCAL_PRIVATE_RAND,
+  OPENSSL_THREAD_LOCAL_PUBLIC_RAND,
   OPENSSL_THREAD_LOCAL_UBE,
   NUM_OPENSSL_THREAD_LOCALS,
 } thread_local_data_t;
@@ -1362,12 +1363,6 @@ int boringssl_self_test_sha256(void);
   // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT
 int boringssl_self_test_hmac_sha256(void);
 
-#if defined(BORINGSSL_FIPS_COUNTERS)
-void boringssl_fips_inc_counter(enum fips_counter_t counter);
-#else
-OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
-#endif
-
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
 OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
   const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
@@ -1451,6 +1446,12 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 // otherwise.
 #define GUARD_PTR_ABORT(ptr) __AWS_LC_ENSURE((ptr) != NULL, abort())
 
+#if defined(NDEBUG)
+#define AWSLC_ASSERT(x) (void) (x)
+#else
+#define AWSLC_ASSERT(x) __AWS_LC_ENSURE(x, abort())
+#endif
+
 // Windows doesn't really support weak symbols as of May 2019, and Clang on
 // Windows will emit strong symbols instead. See
 // https://bugs.llvm.org/show_bug.cgi?id=37598
@@ -1460,6 +1461,7 @@ rettype name args __attribute__((weak));
 #else
 #define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
 #endif
+
 
 #if defined(__cplusplus)
 }  // extern C
