@@ -166,6 +166,10 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    return 0;
+  }
 
   // |verify_digest| is a flag we use to indicate that the message to be verified has
   // already been pre-processed and hashed into a message digest.
