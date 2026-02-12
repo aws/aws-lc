@@ -118,7 +118,10 @@ fi
 cp $TMP/mldsa/mldsa_native.h $SRC
 
 # Remove non-NTT/INTT includes from the BCM file (files not imported)
-echo "Remove unused x86_64 includes from BCM file"
+echo "Remove unused native backend includes from BCM file"
+# Remove all aarch64 includes (not imported)
+sed "${SED_I[@]}" '/native\/aarch64/d' $SRC/mldsa_native_bcm.c
+# Remove x86_64 AVX2 C files (not imported)
 sed "${SED_I[@]}" '/poly_caddq_avx2.c/d' $SRC/mldsa_native_bcm.c
 sed "${SED_I[@]}" '/poly_chknorm_avx2.c/d' $SRC/mldsa_native_bcm.c
 sed "${SED_I[@]}" '/poly_decompose_32_avx2.c/d' $SRC/mldsa_native_bcm.c

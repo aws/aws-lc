@@ -70,9 +70,6 @@
 
 #if defined(MLD_CONFIG_USE_NATIVE_BACKEND_ARITH)
 #if defined(MLD_SYS_AARCH64)
-#include "native/aarch64/src/aarch64_zetas.c"
-#include "native/aarch64/src/polyz_unpack_table.c"
-#include "native/aarch64/src/rej_uniform_eta_table.c"
 #endif /* MLD_SYS_AARCH64 */
 #if defined(MLD_SYS_X86_64)
 #include "native/x86_64/src/consts.c"
@@ -463,7 +460,6 @@
 /*
  * Undefine macros from native code (Arith, AArch64)
  */
-/* mldsa/src/native/aarch64/meta.h */
 #undef MLD_ARITH_BACKEND_AARCH64
 #undef MLD_NATIVE_AARCH64_META_H
 #undef MLD_USE_NATIVE_INTT
@@ -483,7 +479,6 @@
 #undef MLD_USE_NATIVE_REJ_UNIFORM
 #undef MLD_USE_NATIVE_REJ_UNIFORM_ETA2
 #undef MLD_USE_NATIVE_REJ_UNIFORM_ETA4
-/* mldsa/src/native/aarch64/src/arith_native_aarch64.h */
 #undef MLD_AARCH64_REJ_UNIFORM_ETA2_BUFLEN
 #undef MLD_AARCH64_REJ_UNIFORM_ETA4_BUFLEN
 #undef MLD_NATIVE_AARCH64_SRC_ARITH_NATIVE_AARCH64_H
