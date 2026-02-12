@@ -123,8 +123,8 @@ __contract__(
  * Returns 0 if norm of all polynomials is strictly smaller than B <=
  * (MLDSA_Q-1)/8 and 0xFFFFFFFF otherwise.
  **************************************************/
-MLD_MUST_CHECK_RETURN_VALUE
 MLD_INTERNAL_API
+MLD_MUST_CHECK_RETURN_VALUE
 uint32_t mld_polyvecl_chknorm(const mld_polyvecl *v, int32_t B)
 __contract__(
   requires(memory_no_alias(v, sizeof(mld_polyvecl)))
@@ -336,8 +336,8 @@ __contract__(
  * Returns 0 if norm of all polynomials are strictly smaller than B <=
  *(MLDSA_Q-1)/8 and 0xFFFFFFFF otherwise.
  **************************************************/
-MLD_MUST_CHECK_RETURN_VALUE
 MLD_INTERNAL_API
+MLD_MUST_CHECK_RETURN_VALUE
 uint32_t mld_polyveck_chknorm(const mld_polyveck *v, int32_t B)
 __contract__(
   requires(memory_no_alias(v, sizeof(mld_polyveck)))
@@ -426,8 +426,8 @@ __contract__(
  *
  * Returns number of 1 bits.
  **************************************************/
-MLD_MUST_CHECK_RETURN_VALUE
 MLD_INTERNAL_API
+MLD_MUST_CHECK_RETURN_VALUE
 unsigned int mld_polyveck_make_hint(mld_polyveck *h, const mld_polyveck *v0,
                                     const mld_polyveck *v1)
 __contract__(
@@ -656,6 +656,7 @@ __contract__(
  * Returns pointer to the row (mld_polyvecl)
  **************************************************/
 MLD_INTERNAL_API
+MLD_MUST_CHECK_RETURN_VALUE
 const mld_polyvecl *mld_polymat_get_row(mld_polymat *mat, unsigned int row);
 
 #define mld_polyvec_matrix_expand MLD_NAMESPACE_KL(polyvec_matrix_expand)

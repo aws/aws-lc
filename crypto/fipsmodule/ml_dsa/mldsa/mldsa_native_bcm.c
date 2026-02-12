@@ -73,22 +73,9 @@
 #include "native/aarch64/src/aarch64_zetas.c"
 #include "native/aarch64/src/polyz_unpack_table.c"
 #include "native/aarch64/src/rej_uniform_eta_table.c"
-#include "native/aarch64/src/rej_uniform_table.c"
 #endif /* MLD_SYS_AARCH64 */
 #if defined(MLD_SYS_X86_64)
 #include "native/x86_64/src/consts.c"
-#include "native/x86_64/src/poly_caddq_avx2.c"
-#include "native/x86_64/src/poly_chknorm_avx2.c"
-#include "native/x86_64/src/poly_decompose_32_avx2.c"
-#include "native/x86_64/src/poly_decompose_88_avx2.c"
-#include "native/x86_64/src/poly_use_hint_32_avx2.c"
-#include "native/x86_64/src/poly_use_hint_88_avx2.c"
-#include "native/x86_64/src/polyz_unpack_17_avx2.c"
-#include "native/x86_64/src/polyz_unpack_19_avx2.c"
-#include "native/x86_64/src/rej_uniform_avx2.c"
-#include "native/x86_64/src/rej_uniform_eta2_avx2.c"
-#include "native/x86_64/src/rej_uniform_eta4_avx2.c"
-#include "native/x86_64/src/rej_uniform_table.c"
 #endif /* MLD_SYS_X86_64 */
 #endif /* MLD_CONFIG_USE_NATIVE_BACKEND_ARITH */
 
@@ -200,6 +187,7 @@
 #undef MLD_ADD_PARAM_SET
 #undef MLD_ALLOC
 #undef MLD_APPLY
+#undef MLD_ASM_FN_SIZE
 #undef MLD_ASM_FN_SYMBOL
 #undef MLD_ASM_NAMESPACE
 #undef MLD_BUILD_INTERNAL
@@ -230,7 +218,7 @@
 #undef MLD_NAMESPACE_KL
 #undef MLD_NAMESPACE_PREFIX
 #undef MLD_NAMESPACE_PREFIX_KL
-#undef MLK_UNION_OR_STRUCT
+#undef MLD_UNION_OR_STRUCT
 #undef mld_memcpy
 #undef mld_memset
 /* mldsa/src/packing.h */
@@ -443,6 +431,7 @@
 #undef MLD_SYS_AARCH64
 #undef MLD_SYS_AARCH64_EB
 #undef MLD_SYS_APPLE
+#undef MLD_SYS_ARMV81M_MVE
 #undef MLD_SYS_BIG_ENDIAN
 #undef MLD_SYS_H
 #undef MLD_SYS_LINUX
@@ -450,6 +439,7 @@
 #undef MLD_SYS_PPC64LE
 #undef MLD_SYS_RISCV32
 #undef MLD_SYS_RISCV64
+#undef MLD_SYS_RISCV64_RVV
 #undef MLD_SYS_WINDOWS
 #undef MLD_SYS_X86_64
 #undef MLD_SYS_X86_64_AVX2

@@ -363,8 +363,8 @@ void mld_polyvecl_pointwise_acc_montgomery(mld_poly *w, const mld_polyvecl *u,
   mld_assert_bound_2d(u->vec, MLDSA_L, MLDSA_N, 0, MLDSA_Q);
   mld_assert_abs_bound_2d(v->vec, MLDSA_L, MLDSA_N, MLD_NTT_BOUND);
   ret = mld_polyvecl_pointwise_acc_montgomery_l4_native(
-      w->coeffs, (const int32_t(*)[MLDSA_N])u->vec,
-      (const int32_t(*)[MLDSA_N])v->vec);
+      w->coeffs, (const int32_t (*)[MLDSA_N])u->vec,
+      (const int32_t (*)[MLDSA_N])v->vec);
   if (ret == MLD_NATIVE_FUNC_SUCCESS)
   {
     mld_assert_abs_bound(w->coeffs, MLDSA_N, MLDSA_Q);
@@ -376,8 +376,8 @@ void mld_polyvecl_pointwise_acc_montgomery(mld_poly *w, const mld_polyvecl *u,
   mld_assert_bound_2d(u->vec, MLDSA_L, MLDSA_N, 0, MLDSA_Q);
   mld_assert_abs_bound_2d(v->vec, MLDSA_L, MLDSA_N, MLD_NTT_BOUND);
   ret = mld_polyvecl_pointwise_acc_montgomery_l5_native(
-      w->coeffs, (const int32_t(*)[MLDSA_N])u->vec,
-      (const int32_t(*)[MLDSA_N])v->vec);
+      w->coeffs, (const int32_t (*)[MLDSA_N])u->vec,
+      (const int32_t (*)[MLDSA_N])v->vec);
   if (ret == MLD_NATIVE_FUNC_SUCCESS)
   {
     mld_assert_abs_bound(w->coeffs, MLDSA_N, MLDSA_Q);
@@ -389,8 +389,8 @@ void mld_polyvecl_pointwise_acc_montgomery(mld_poly *w, const mld_polyvecl *u,
   mld_assert_bound_2d(u->vec, MLDSA_L, MLDSA_N, 0, MLDSA_Q);
   mld_assert_abs_bound_2d(v->vec, MLDSA_L, MLDSA_N, MLD_NTT_BOUND);
   ret = mld_polyvecl_pointwise_acc_montgomery_l7_native(
-      w->coeffs, (const int32_t(*)[MLDSA_N])u->vec,
-      (const int32_t(*)[MLDSA_N])v->vec);
+      w->coeffs, (const int32_t (*)[MLDSA_N])u->vec,
+      (const int32_t (*)[MLDSA_N])v->vec);
   if (ret == MLD_NATIVE_FUNC_SUCCESS)
   {
     mld_assert_abs_bound(w->coeffs, MLDSA_N, MLDSA_Q);

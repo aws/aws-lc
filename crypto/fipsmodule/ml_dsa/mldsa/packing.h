@@ -204,8 +204,8 @@ __contract__(
  *
  * Returns 1 in case of malformed signature; otherwise 0.
  **************************************************/
-MLD_MUST_CHECK_RETURN_VALUE
 MLD_INTERNAL_API
+MLD_MUST_CHECK_RETURN_VALUE
 int mld_unpack_sig(uint8_t c[MLDSA_CTILDEBYTES], mld_polyvecl *z,
                    mld_polyveck *h, const uint8_t sig[MLDSA_CRYPTO_BYTES])
 __contract__(
