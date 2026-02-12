@@ -206,7 +206,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
 
         // Ensure addition doesn't overflow and corrupt the signed output length
         if (len > INT_MAX - outlen) {
-          OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
+          OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
           return -1;
         }
         outlen += len;
@@ -217,7 +217,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
         return -1;
       }
       if (len > INT_MAX - outlen) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
+        OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
         return -1;
       }
       outlen += len;
