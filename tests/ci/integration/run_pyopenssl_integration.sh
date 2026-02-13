@@ -78,6 +78,11 @@ assert b'AWS-LC' in version, f'Expected AWS-LC, got: {version}'
     popd
 }
 
+if [[ "$#" -eq "0" ]]; then
+    echo "No PyOpenSSL branches provided for testing"
+    exit 1
+fi
+
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
@@ -99,10 +104,7 @@ export OPENSSL_DIR="${AWS_LC_INSTALL_FOLDER}"
 
 mkdir -p ${PYOPENSSL_SRC_FOLDER}
 
-# Each subdirectory under PYOPENSSL_PATCH_FOLDER corresponds to a PyOpenSSL
-# branch or tag to test against.
-for branch_dir in ${PYOPENSSL_PATCH_FOLDER}/*/; do
-    branch=$(basename ${branch_dir})
+for branch in "$@"; do
     pyopenssl_clone ${branch}
     pyopenssl_run_tests ${branch}
 done
