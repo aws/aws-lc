@@ -77,6 +77,7 @@ int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
+  OPENSSL_free(key->public_key);
   key->public_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->public_key_len);
   if (key->public_key == NULL) {
     return 0;
