@@ -1,0 +1,373 @@
+diff --git a/src/OpenSSL/SSL.py b/src/OpenSSL/SSL.py
+index 3819b492..f26b250a 100644
+--- a/src/OpenSSL/SSL.py
++++ b/src/OpenSSL/SSL.py
+@@ -64,7 +64,6 @@
+     "OPENSSL_VERSION_NUMBER",
+     "OP_ALL",
+     "OP_CIPHER_SERVER_PREFERENCE",
+-    "OP_COOKIE_EXCHANGE",
+     "OP_DONT_INSERT_EMPTY_FRAGMENTS",
+     "OP_EPHEMERAL_RSA",
+     "OP_MICROSOFT_BIG_SSLV3_BUFFER",
+@@ -221,7 +220,11 @@
+ OP_NO_COMPRESSION: int = _lib.SSL_OP_NO_COMPRESSION
+
+ OP_NO_QUERY_MTU: int = _lib.SSL_OP_NO_QUERY_MTU
+-OP_COOKIE_EXCHANGE: int = _lib.SSL_OP_COOKIE_EXCHANGE
++try:
++    OP_COOKIE_EXCHANGE: int | None = _lib.SSL_OP_COOKIE_EXCHANGE
++    __all__.append("OP_COOKIE_EXCHANGE")
++except AttributeError:
++    OP_COOKIE_EXCHANGE = None
+ OP_NO_TICKET: int = _lib.SSL_OP_NO_TICKET
+
+ try:
+@@ -820,6 +823,11 @@ def explode(*args, **kwargs):  # type: ignore[no-untyped-def]
+     "Getting group name is not supported by the linked OpenSSL version",
+ )
+
++_requires_ssl_cookie = _make_requires(
++    getattr(_lib, "Cryptography_HAS_SSL_COOKIE", 0),
++    "DTLS cookie support is not available",
++)
++
+
+ class Session:
+     """
+@@ -1910,6 +1918,7 @@ def set_ocsp_client_callback(
+         self._set_ocsp_callback(helper, data)
+
+     @_require_not_used
++    @_requires_ssl_cookie
+     def set_cookie_generate_callback(
+         self, callback: _CookieGenerateCallback
+     ) -> None:
+@@ -1920,6 +1929,7 @@ def set_cookie_generate_callback(
+         )
+
+     @_require_not_used
++    @_requires_ssl_cookie
+     def set_cookie_verify_callback(
+         self, callback: _CookieVerifyCallback
+     ) -> None:
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 26711da7..b8a263cb 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -6,6 +6,10 @@
+
+ import pytest
+
++from OpenSSL.SSL import OPENSSL_VERSION, SSLeay_version
++
++is_awslc = b"AWS-LC" in SSLeay_version(OPENSSL_VERSION)
++
+
+ def pytest_report_header(config: pytest.Config) -> str:
+     import cryptography
+diff --git a/tests/test_crypto.py b/tests/test_crypto.py
+index a05640d6..9edbbdc6 100644
+--- a/tests/test_crypto.py
++++ b/tests/test_crypto.py
+@@ -58,6 +58,7 @@
+     load_publickey,
+ )
+
++from . import conftest
+ from .util import (
+     NON_ASCII,
+ )
+@@ -71,7 +72,7 @@ def utcnow() -> datetime:
+     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+-GOOD_CIPHER = "blowfish"
++GOOD_CIPHER = "aes-256-cbc"
+ BAD_CIPHER = "zippers"
+
+ GOOD_DIGEST = "SHA256"
+@@ -1023,8 +1024,22 @@ class TestPKey:
+         [
+             (dsa_private_key_pem, dsa.DSAPrivateKey),
+             (ec_private_key_pem, ec.EllipticCurvePrivateKey),
+-            (ed25519_private_key_pem, ed25519.Ed25519PrivateKey),
+-            (ed448_private_key_pem, ed448.Ed448PrivateKey),
++            pytest.param(
++                ed25519_private_key_pem,
++                ed25519.Ed25519PrivateKey,
++                marks=pytest.mark.skipif(
++                    conftest.is_awslc,
++                    reason="aws-lc doesn't support Ed25519 via PEM",
++                ),
++            ),
++            pytest.param(
++                ed448_private_key_pem,
++                ed448.Ed448PrivateKey,
++                marks=pytest.mark.skipif(
++                    conftest.is_awslc,
++                    reason="aws-lc doesn't support Ed448 via PEM",
++                ),
++            ),
+             (rsa_private_key_pem, rsa.RSAPrivateKey),
+         ],
+     )
+@@ -1077,8 +1092,22 @@ def test_convert_roundtrip_cryptography_private_key(
+         [
+             (dsa_public_key_pem, dsa.DSAPublicKey),
+             (ec_public_key_pem, ec.EllipticCurvePublicKey),
+-            (ed25519_public_key_pem, ed25519.Ed25519PublicKey),
+-            (ed448_public_key_pem, ed448.Ed448PublicKey),
++            pytest.param(
++                ed25519_public_key_pem,
++                ed25519.Ed25519PublicKey,
++                marks=pytest.mark.skipif(
++                    conftest.is_awslc,
++                    reason="aws-lc doesn't support Ed25519 via PEM",
++                ),
++            ),
++            pytest.param(
++                ed448_public_key_pem,
++                ed448.Ed448PublicKey,
++                marks=pytest.mark.skipif(
++                    conftest.is_awslc,
++                    reason="aws-lc doesn't support Ed448 via PEM",
++                ),
++            ),
+             (rsa_public_key_pem, rsa.RSAPublicKey),
+         ],
+     )
+@@ -1822,6 +1851,8 @@ def test_sign(self) -> None:
+         key = PKey()
+         key.generate_key(TYPE_RSA, 2048)
+         cert.set_pubkey(key)
++        cert.gmtime_adj_notBefore(0)
++        cert.gmtime_adj_notAfter(24 * 60 * 60)
+         cert.sign(key, GOOD_DIGEST)
+
+     def test_construction(self) -> None:
+@@ -1890,20 +1921,21 @@ def _setBoundTest(
+         set(certificate, when)
+         assert get(certificate) == when
+
+-        # A plus two hours and thirty minutes offset
+-        when = b"20040203040506+0530"
+-        set(certificate, when)
+-        assert get(certificate) == when
+-
+-        # A minus one hour fifteen minutes offset
+-        when = b"20040203040506-0115"
+-        set(certificate, when)
+-        assert (
+-            get(
+-                certificate,
++        if not conftest.is_awslc:
++            # A plus two hours and thirty minutes offset
++            when = b"20040203040506+0530"
++            set(certificate, when)
++            assert get(certificate) == when
++
++            # A minus one hour fifteen minutes offset
++            when = b"20040203040506-0115"
++            set(certificate, when)
++            assert (
++                get(
++                    certificate,
++                )
++                == when
+             )
+-            == when
+-        )
+
+         # An invalid string results in a ValueError
+         with pytest.raises(ValueError):
+diff --git a/tests/test_ssl.py b/tests/test_ssl.py
+index 0dd25328..b4f2678d 100644
+--- a/tests/test_ssl.py
++++ b/tests/test_ssl.py
+@@ -67,7 +67,6 @@
+ )
+ from OpenSSL.SSL import (
+     DTLS_METHOD,
+-    MODE_RELEASE_BUFFERS,
+     NO_OVERLAPPING_PROTOCOLS,
+     OP_COOKIE_EXCHANGE,
+     OP_NO_COMPRESSION,
+@@ -132,6 +131,7 @@
+     _NoOverlappingProtocols,
+ )
+
++from . import conftest
+ from .test_crypto import (
+     client_cert_pem,
+     client_key_pem,
+@@ -643,6 +643,12 @@ def test_set_cipher_list_no_cipher_match(self, context: Context) -> None:
+                 "",
+                 "no cipher match",
+             ),
++            # aws-lc
++            (
++                "SSL routines",
++                "OPENSSL_internal",
++                "NO_CIPHER_MATCH",
++            ),
+         ]
+
+     def test_load_client_ca(self, context: Context, ca_file: bytes) -> None:
+@@ -700,6 +706,12 @@ def test_set_session_id_fail(self, context: Context) -> None:
+                 "",
+                 "ssl session id context too long",
+             ),
++            # aws-lc
++            (
++                "SSL routines",
++                "OPENSSL_internal",
++                "SSL_SESSION_ID_CONTEXT_TOO_LONG",
++            ),
+         ]
+
+     def test_set_session_id_unicode(self, context: Context) -> None:
+@@ -922,7 +934,8 @@ def test_set_mode(self) -> None:
+         newly set mode.
+         """
+         context = Context(SSLv23_METHOD)
+-        assert MODE_RELEASE_BUFFERS & context.set_mode(MODE_RELEASE_BUFFERS)
++        mode = _lib.SSL_MODE_ENABLE_PARTIAL_WRITE
++        assert mode & context.set_mode(mode)
+
+     def test_set_timeout_wrong_args(self) -> None:
+         """
+@@ -969,7 +982,7 @@ def _write_encrypted_pem(self, passphrase: bytes, tmpfile: bytes) -> bytes:
+         """
+         key = PKey()
+         key.generate_key(TYPE_RSA, 1024)
+-        pem = dump_privatekey(FILETYPE_PEM, key, "blowfish", passphrase)
++        pem = dump_privatekey(FILETYPE_PEM, key, "aes-256-cbc", passphrase)
+         with open(tmpfile, "w") as fObj:
+             fObj.write(pem.decode("ascii"))
+         return tmpfile
+@@ -1163,7 +1176,7 @@ def test_set_proto_version(self) -> None:
+         client_context = Context(TLS_METHOD)
+         client_context.set_max_proto_version(low_version)
+
+-        with pytest.raises(Error, match="unsupported protocol"):
++        with pytest.raises(Error, match=r"(?i)unsupported.protocol"):
+             self._handshake_test(server_context, client_context)
+
+         client_context = Context(TLS_METHOD)
+@@ -1632,7 +1645,9 @@ def test_set_verify_default_callback(self, mode: int) -> None:
+         if mode == SSL.VERIFY_PEER:
+             with pytest.raises(Exception) as exc:
+                 self._handshake_test(serverContext, clientContext)
+-            assert "certificate verify failed" in str(exc.value)
++            assert "certificate verify failed" in str(
++                exc.value
++            ) or "CERTIFICATE_VERIFY_FAILED" in str(exc.value)
+         else:
+             self._handshake_test(serverContext, clientContext)
+
+@@ -1861,9 +1876,27 @@ def test_set_tmp_ecdh(self) -> None:
+             with pytest.deprecated_call():
+                 context.set_tmp_ecdh(curve)
+
++        awslc_unsupported_curves = {
++            "BRAINPOOLP256R1",
++            "BRAINPOOLP384R1",
++            "BRAINPOOLP512R1",
++            "SECP192R1",
++            "SECT163K1",
++            "SECT163R2",
++            "SECT233K1",
++            "SECT233R1",
++            "SECT283K1",
++            "SECT283R1",
++            "SECT409K1",
++            "SECT409R1",
++            "SECT571K1",
++            "SECT571R1",
++        }
+         for name in dir(ec.EllipticCurveOID):
+             if name.startswith("_"):
+                 continue
++            if conftest.is_awslc and name in awslc_unsupported_curves:
++                continue
+             oid = getattr(ec.EllipticCurveOID, name)
+             cryptography_curve = ec.get_curve_for_oid(oid)
+             context.set_tmp_ecdh(cryptography_curve())
+@@ -2699,10 +2732,12 @@ def test_state_string(self) -> None:
+         assert tls_server.get_state_string() in [
+             b"before/accept initialization",
+             b"before SSL initialization",
++            b"TLS server start_accept",
+         ]
+         assert tls_client.get_state_string() in [
+             b"before/connect initialization",
+             b"before SSL initialization",
++            b"TLS client start_connect",
+         ]
+
+     def test_app_data(self) -> None:
+@@ -3179,9 +3214,10 @@ def _perform_moving_buffer_test(
+             return False  # Retry succeeded
+         except SSL.Error as e:
+             reason = get_ssl_error_reason(e)
+-            assert reason == "bad write retry", (
+-                f"Retry failed with unexpected SSL error: {e!r}({reason})."
+-            )
++            assert reason in (
++                "bad write retry",
++                "BAD_WRITE_RETRY",
++            ), f"Retry failed with unexpected SSL error: {e!r}({reason})."
+             return True  # Bad write retry
+
+     def _shutdown_connections(
+@@ -3895,6 +3931,10 @@ def test_total_renegotiations(self) -> None:
+         connection = Connection(Context(SSLv23_METHOD), None)
+         assert connection.total_renegotiations() == 0
+
++    @pytest.mark.skipif(
++        conftest.is_awslc,
++        reason="aws-lc doesn't support renegotiation",
++    )
+     def test_renegotiate(self) -> None:
+         """
+         Go through a complete renegotiation cycle.
+@@ -3988,6 +4028,10 @@ def test_op_no_ticket(self) -> None:
+             "OP_NO_COMPRESSION unavailable - OpenSSL version may be too old"
+         ),
+     )
++    @pytest.mark.skipif(
++        conftest.is_awslc,
++        reason="aws-lc defines OP_NO_COMPRESSION as 0",
++    )
+     def test_op_no_compression(self) -> None:
+         """
+         The value of `OpenSSL.SSL.OP_NO_COMPRESSION` is 0x20000, the
+@@ -5050,9 +5094,17 @@ def pump() -> None:
+         c.set_ciphertext_mtu(500)
+         assert 0 < c.get_cleartext_mtu() < 500
+
++    @pytest.mark.skipif(
++        OP_COOKIE_EXCHANGE is None,
++        reason="DTLS cookie exchange not supported",
++    )
+     def test_it_works_at_all(self) -> None:
+         self._test_handshake_and_data(srtp_profile=None)
+
++    @pytest.mark.skipif(
++        OP_COOKIE_EXCHANGE is None,
++        reason="DTLS cookie exchange not supported",
++    )
+     def test_it_works_with_srtp(self) -> None:
+         self._test_handshake_and_data(srtp_profile=b"SRTP_AES128_CM_SHA1_80")
+
+diff --git a/tests/test_util.py b/tests/test_util.py
+index a4f7a1ec..cf81330f 100644
+--- a/tests/test_util.py
++++ b/tests/test_util.py
+@@ -16,4 +16,4 @@ def test_exception_from_error_queue_nonexistent_reason(self) -> None:
+         lib.ERR_put_error(lib.ERR_LIB_EVP, 0, 1112, b"", 10)
+         with pytest.raises(ValueError) as exc:
+             exception_from_error_queue(ValueError)
+-        assert exc.value.args[0][0][2] == ""
++        assert exc.value.args[0][0][2] in ("", "unknown error")
