@@ -87,6 +87,9 @@ if [[ "$#" -eq "0" ]]; then
     exit 1
 fi
 
+# Python development headers are needed to build cryptography from source.
+apt-get update && apt-get install -y python3-dev
+
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
