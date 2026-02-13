@@ -35,10 +35,19 @@ The `vectors_spec.md` file lists all test vectors using the MUST keyword. Test f
 
 ```cpp
 //= third_party/vectors/vectors_spec.md#wycheproof
-//= type=test
-//# AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
-TEST(AEADTest, WycheproofAESGCM) { ... }
+//# AWS-LC MUST test against `testvectors_v1/mlkem_512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_768_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/mlkem_1024_test.txt`.
+TEST(KEMTest, WycheproofMLKEM) { ... }
 ```
+
+Note: The `type=test` annotation is not needed as it's set as the default in `.duvet/config.toml`.
+
+When citing multiple spec lines in a single duvet comment block, the lines MUST:
+- Appear in the same order as in the spec
+- Be adjacent lines in the spec (no gaps between them)
+
+Non-adjacent or reordered lines will not be recognized by duvet.
 
 The [duvet](https://github.com/awslabs/duvet) tool tracks which test vectors are used and where. It verifies that annotations haven't been removed, but does not verify test coverage. This helps document which vectors we use and maintain traceability.
 
