@@ -741,7 +741,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ccm) {
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_aes_128_ccm;
+  out->nid = NID_aes_192_gcm;
   out->block_size = 1; // stream cipher
   out->key_len = 24;
   out->iv_len = 13;
@@ -757,7 +757,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ccm) {
   memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_aes_128_ccm;
+  out->nid = NID_aes_256_ccm;
   out->block_size = 1; // stream cipher
   out->key_len = 32;
   out->iv_len = 13;
