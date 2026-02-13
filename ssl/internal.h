@@ -3104,6 +3104,16 @@ struct SSL3_STATE {
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
 
+  // peer_ca_names, on the client, contains the list of CAs received in a
+  // CertificateRequest message. This is persisted from |hs->ca_names| before
+  // the handshake object is destroyed, so that |SSL_get_client_CA_list| and
+  // |SSL_get0_server_requested_CAs| can return it after the handshake.
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> peer_ca_names;
+
+  // cached_x509_peer_ca_names contains a cache of parsed versions of the
+  // elements of |peer_ca_names|.
+  STACK_OF(X509_NAME) *cached_x509_peer_ca_names = nullptr;
+
   // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
   // for observing with |SSL_get_peer_tmp_key| and is not serialized as part of
   // the SSL Transfer feature.
