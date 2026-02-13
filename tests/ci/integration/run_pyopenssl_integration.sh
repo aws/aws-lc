@@ -45,20 +45,24 @@ function pyopenssl_run_tests() {
     pushd ${src_dir}
 
     # Create a fresh virtualenv for this branch.
+    python3 -m pip install --upgrade virtualenv
     local venv="${src_dir}/.venv"
-    python3 -m venv ${venv}
+    python3 -m virtualenv ${venv}
     source ${venv}/bin/activate
 
     # Upgrade pip and install build dependencies.
     python -m pip install --upgrade pip setuptools wheel
 
-    # Install the Rust bindgen-cli, needed by cryptography when building
-    # against AWS-LC. cargo should already be available in the CI environment.
+    # Install the Rust and the bindgen-cli, needed by cryptography when building
+    # against AWS-LC.
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
+    . "$HOME/.cargo/env"
     cargo install bindgen-cli
 
-    # Pin cryptography version due to cffi change in v46
-    # https://cryptography.io/en/latest/changelog/#v46-0-0
-    python -m pip install 'cryptography<46'
+    # Build cryptography from source so it links against AWS-LC via OPENSSL_DIR.
+    # Prebuilt wheels bundle their own libcrypto and would ignore OPENSSL_DIR.
+    # Version >= 46 is required for AWS-LC source build support.
+    python -m pip install --no-binary cryptography cryptography
 
     # Install PyOpenSSL from the patched source along with test dependencies.
     python -m pip install -e '.[test]'
