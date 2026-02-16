@@ -1343,12 +1343,8 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
   // |ssl| is a client or server is not known until explicitly configured with
   // |SSL_set_connect_state|. If |do_handshake| is NULL, |ssl| is in an
   // indeterminate mode and |ssl->server| is unset.
-  //
-  // The client-side path only accesses |ssl->s3| and does not need
-  // |ssl->config|, so it is checked before the config guard below. This allows
-  // callers to retrieve peer CA names even after the handshake config has been
-  // shed.
   if (ssl->do_handshake != NULL && !ssl->server) {
+    // |ssl->s3->hs| indicates that a handshake is underway
     if (ssl->s3->hs != NULL) {
       return buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
                                   &ssl->s3->hs->cached_x509_ca_names);
@@ -1365,6 +1361,7 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
     return NULL;
   }
 
+  // Client side only checks |ssl->s3|, but server side requires |ssl->config|
   if (!ssl->config) {
     assert(ssl->config);
     return NULL;
