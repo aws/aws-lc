@@ -2689,8 +2689,8 @@ static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
     if (!EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
       return 0;
     }
-    size_t sig_len = sig.size();
-    if (!EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, msg.data(),
+    size_t digest_sig_len = sig.size();
+    if (!EVP_DigestSign(md_ctx.get(), sig.data(), &digest_sig_len, msg.data(),
                         msg.size())) {
       return 0;
     }
