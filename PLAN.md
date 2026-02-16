@@ -20,25 +20,25 @@ Each category follows the same pattern:
 **Test file:** `crypto/hmac_extra/hmac_test.cc`
 
 ### Vectors to Add
-- [ ] hmac_sha1_test.json
-- [ ] hmac_sha224_test.json
-- [ ] hmac_sha256_test.json
-- [ ] hmac_sha384_test.json
-- [ ] hmac_sha512_test.json
-- [ ] hmac_sha512_224_test.json
-- [ ] hmac_sha512_256_test.json
-- [ ] hmac_sha3_224_test.json
-- [ ] hmac_sha3_256_test.json
-- [ ] hmac_sha3_384_test.json
-- [ ] hmac_sha3_512_test.json
+- [x] hmac_sha1_test.json
+- [x] hmac_sha224_test.json
+- [x] hmac_sha256_test.json
+- [x] hmac_sha384_test.json
+- [x] hmac_sha512_test.json
+- [x] hmac_sha512_224_test.json
+- [x] hmac_sha512_256_test.json
+- [x] hmac_sha3_224_test.json
+- [x] hmac_sha3_256_test.json
+- [x] hmac_sha3_384_test.json
+- [x] hmac_sha3_512_test.json
 
 ### Tasks
-- [ ] Add all vectors via sync.py
-- [ ] Update paths in hmac_test.cc (11 references)
-- [ ] Add duvet annotations to each test
-- [ ] Run duvet report
-- [ ] Run tests locally
-- [ ] **Decision point: Open PR or continue?**
+- [x] Add all vectors via sync.py
+- [x] Update paths in hmac_test.cc (11 references)
+- [x] Add duvet annotations to each test
+- [x] Run duvet report
+- [x] Run tests locally
+- [x] **Decision point: Open PR or continue?**
 
 ---
 
