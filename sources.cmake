@@ -297,11 +297,11 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_sign_noseed_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_sign_seed_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/mldsa_87_verify_test.txt
-  third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
-  third_party/wycheproof_testvectors/aes_ccm_test.txt
-  third_party/wycheproof_testvectors/aes_cmac_test.txt
-  third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
-  third_party/wycheproof_testvectors/chacha20_poly1305_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_cbc_pkcs5_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_ccm_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_cmac_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_gcm_siv_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/chacha20_poly1305_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha224_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha256_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_256_sha256_test.txt
@@ -336,8 +336,8 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/hmac_sha3_256_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/hmac_sha3_384_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/hmac_sha3_512_test.txt
-  third_party/wycheproof_testvectors/kwp_test.txt
-  third_party/wycheproof_testvectors/kw_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_kwp_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/aes_wrap_test.txt
   third_party/wycheproof_testvectors/primality_test.txt
   third_party/wycheproof_testvectors/rsa_oaep_2048_sha1_mgf1sha1_test.txt
   third_party/wycheproof_testvectors/rsa_oaep_2048_sha224_mgf1sha1_test.txt
@@ -385,7 +385,7 @@ set(
   third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha384_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha512_test.txt
   third_party/wycheproof_testvectors/x25519_test.txt
-  third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt
+  third_party/vectors/converted/wycheproof/testvectors_v1/xchacha20_poly1305_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_encaps_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_semi_expanded_decaps_test.txt
   third_party/vectors/converted/wycheproof/testvectors_v1/mlkem_512_test.txt

@@ -792,9 +792,11 @@ static bool ChaCha20Poly1305TagValidate(size_t tag_size) {
   return tag_size <= 16;
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/chacha20_poly1305_test.txt`.
 TEST(CipherTest, WycheproofChaCha20Poly1305) {
   std::string test_vectors =
-          "third_party/wycheproof_testvectors/chacha20_poly1305_test.txt";
+          "third_party/vectors/converted/wycheproof/testvectors_v1/chacha20_poly1305_test.txt";
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     t->IgnoreInstruction("type");
     t->IgnoreInstruction("tagSize");
@@ -834,9 +836,11 @@ static bool AesCcmTagValidate(size_t tag_size) {
   return true;
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/aes_ccm_test.txt`.
 TEST(CipherTest, WycheproofAesCcm) {
   std::string test_vectors =
-          "third_party/wycheproof_testvectors/aes_ccm_test.txt";
+          "third_party/vectors/converted/wycheproof/testvectors_v1/aes_ccm_test.txt";
   FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
     t->IgnoreInstruction("type");
     t->IgnoreInstruction("tagSize");
@@ -876,8 +880,10 @@ TEST(CipherTest, WycheproofAesCcm) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/aes_cbc_pkcs5_test.txt`.
 TEST(CipherTest, WycheproofAESCBC) {
-  FileTestGTest("third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_cbc_pkcs5_test.txt",
                 [](FileTest *t) {
                   t->IgnoreInstruction("type");
                   t->IgnoreInstruction("ivSize");

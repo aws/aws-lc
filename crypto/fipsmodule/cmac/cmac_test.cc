@@ -120,8 +120,10 @@ TEST(CMACTest, RFC4493TestVectors) {
   test("RFC 4493 #4", kKey, sizeof(kKey), kMsg4, sizeof(kMsg4), kOut4);
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/aes_cmac_test.txt`.
 TEST(CMACTest, Wycheproof) {
-  FileTestGTest("third_party/wycheproof_testvectors/aes_cmac_test.txt",
+  FileTestGTest("third_party/vectors/converted/wycheproof/testvectors_v1/aes_cmac_test.txt",
                 [](FileTest *t) {
     std::string key_size, tag_size;
     ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));

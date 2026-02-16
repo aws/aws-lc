@@ -4,7 +4,14 @@
 
 ## wycheproof
 
+AWS-LC MUST test against `testvectors_v1/aes_cbc_pkcs5_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_ccm_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_cmac_test.txt`.
 AWS-LC MUST test against `testvectors_v1/aes_gcm_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_gcm_siv_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_kwp_test.txt`.
+AWS-LC MUST test against `testvectors_v1/aes_wrap_test.txt`.
+AWS-LC MUST test against `testvectors_v1/chacha20_poly1305_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha224_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/dsa_2048_256_sha256_test.txt`.
@@ -73,4 +80,5 @@ AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha512_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha256_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha384_test.txt`.
 AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha512_test.txt`.
+AWS-LC MUST test against `testvectors_v1/xchacha20_poly1305_test.txt`.
 

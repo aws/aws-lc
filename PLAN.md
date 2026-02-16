@@ -69,18 +69,18 @@ Each category follows the same pattern:
 - `crypto/cipher_extra/cipher_test.cc` (ChaCha20 part only)
 
 ### Vectors to Add
-- [ ] chacha20_poly1305_test.json
-- [ ] xchacha20_poly1305_test.json
-- [ ] aes_gcm_siv_test.json
+- [x] chacha20_poly1305_test.json
+- [x] xchacha20_poly1305_test.json
+- [x] aes_gcm_siv_test.json
 
 ### Tasks
-- [ ] Add all vectors via sync.py
-- [ ] Update paths in aead_test.cc (3 references)
-- [ ] Update paths in cipher_test.cc (1 reference for ChaCha20)
-- [ ] Add duvet annotations to each test
-- [ ] Run duvet report
-- [ ] Run tests locally
-- [ ] **Decision point: Open PR or continue?**
+- [x] Add all vectors via sync.py
+- [x] Update paths in aead_test.cc (3 references)
+- [x] Update paths in cipher_test.cc (1 reference for ChaCha20)
+- [x] Add duvet annotations to each test
+- [x] Run duvet report
+- [x] Run tests locally
+- [x] **Decision point: Open PR or continue?**
 
 ---
 
@@ -92,21 +92,21 @@ Each category follows the same pattern:
 - `crypto/fipsmodule/cmac/cmac_test.cc`
 
 ### Vectors to Add
-- [ ] aes_cbc_pkcs5_test.json
-- [ ] aes_ccm_test.json
-- [ ] kw_test.json (key wrap)
-- [ ] kwp_test.json (key wrap with padding)
-- [ ] aes_cmac_test.json
+- [x] aes_cbc_pkcs5_test.json
+- [x] aes_ccm_test.json
+- [x] aes_wrap_test.json (was kw_test.json)
+- [x] aes_kwp_test.json (was kwp_test.json)
+- [x] aes_cmac_test.json
 
 ### Tasks
-- [ ] Add all vectors via sync.py
-- [ ] Update paths in cipher_test.cc (2 references)
-- [ ] Update paths in aes_test.cc (3 references for KW/KWP)
-- [ ] Update paths in cmac_test.cc (1 reference)
-- [ ] Add duvet annotations to each test
-- [ ] Run duvet report
-- [ ] Run tests locally
-- [ ] **Decision point: Open PR or continue?**
+- [x] Add all vectors via sync.py
+- [x] Update paths in cipher_test.cc (2 references)
+- [x] Update paths in aes_test.cc (3 references for KW/KWP)
+- [x] Update paths in cmac_test.cc (1 reference)
+- [x] Add duvet annotations to each test
+- [x] Run duvet report
+- [x] Run tests locally
+- [x] **Decision point: Open PR or continue?**
 
 ---
 
