@@ -48,6 +48,7 @@ function pyopenssl_run_tests() {
     python3 -m pip install --upgrade virtualenv
     local venv="${src_dir}/.venv"
     python3 -m virtualenv ${venv}
+    export PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}"/lib/pkgconfig
     source ${venv}/bin/activate
 
     # Upgrade pip and install build dependencies.
