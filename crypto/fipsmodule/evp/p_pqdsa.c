@@ -167,7 +167,7 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
   if (!key || !key->public_key) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
 
