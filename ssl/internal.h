@@ -3104,14 +3104,10 @@ struct SSL3_STATE {
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
 
-  // peer_ca_names, on the client, contains the list of CAs received in a
-  // CertificateRequest message. This is persisted from |hs->ca_names| before
-  // the handshake object is destroyed, so that |SSL_get_client_CA_list| and
-  // |SSL_get0_server_requested_CAs| can return it after the handshake.
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> peer_ca_names;
-
-  // cached_x509_peer_ca_names contains a cache of parsed versions of the
-  // elements of |peer_ca_names|.
+  // cached_x509_peer_ca_names, on the client, contains the list of CAs
+  // received in a CertificateRequest message, as X509_NAMEs. This is eagerly
+  // populated from |hs->ca_names| before the handshake object is destroyed, so
+  // that |SSL_get_client_CA_list| can return it after the handshake.
   STACK_OF(X509_NAME) *cached_x509_peer_ca_names = nullptr;
 
   // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
@@ -3786,6 +3782,12 @@ void ssl_set_read_error(SSL *ssl);
 void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock);
 
 BSSL_NAMESPACE_END
+
+// ssl_x509_persist_peer_ca_names eagerly converts the peer CA names from
+// |hs->ca_names| to X509_NAMEs and stores them in
+// |ssl->s3->cached_x509_peer_ca_names|, so they remain available via
+// |SSL_get_client_CA_list| after the handshake object is destroyed.
+void ssl_x509_persist_peer_ca_names(SSL *ssl);
 
 
 // Opaque C types.

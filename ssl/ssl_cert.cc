@@ -1158,9 +1158,7 @@ const STACK_OF(CRYPTO_BUFFER) *SSL_get0_server_requested_CAs(const SSL *ssl) {
   if (ssl->s3->hs != NULL) {
     return ssl->s3->hs->ca_names.get();
   }
-  // After the handshake completes, |hs| is destroyed. Fall back to the
-  // persisted peer CA names.
-  return ssl->s3->peer_ca_names.get();
+  return NULL;
 }
 
 static int set_signed_cert_timestamp_list(CERT *cert, const uint8_t *list,

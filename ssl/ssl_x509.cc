@@ -1336,6 +1336,18 @@ static STACK_OF(X509_NAME) *buffer_names_to_x509(
   return *cached;
 }
 
+void ssl_x509_persist_peer_ca_names(SSL *ssl) {
+  if (!ssl->s3->hs || !ssl->s3->hs->ca_names) {
+    return;
+  }
+  // Eagerly populate the X509_NAME cache from the raw CRYPTO_BUFFERs so that
+  // the names survive after |hs| is destroyed.
+  buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
+                       &ssl->s3->hs->cached_x509_ca_names);
+  ssl->s3->cached_x509_peer_ca_names = ssl->s3->hs->cached_x509_ca_names;
+  ssl->s3->hs->cached_x509_ca_names = nullptr;
+}
+
 STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
   check_ssl_x509_method(ssl);
   // For historical reasons, this function is used both to query configuration
@@ -1350,18 +1362,11 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
                                   &ssl->s3->hs->cached_x509_ca_names);
     }
 
-    // After the handshake completes, |hs| is destroyed. Fall back to the
-    // persisted peer CA names.
-    if (ssl->s3->peer_ca_names != NULL) {
-      return buffer_names_to_x509(
-          ssl->s3->peer_ca_names.get(),
-          &ssl->s3->cached_x509_peer_ca_names);
-    }
-
-    return NULL;
+    // After the handshake completes, |hs| is destroyed. Return the cached
+    // X509_NAMEs that were eagerly populated before |hs| was destroyed.
+    return ssl->s3->cached_x509_peer_ca_names;
   }
 
-  // Client side only checks |ssl->s3|, but server side requires |ssl->config|
   if (!ssl->config) {
     assert(ssl->config);
     return NULL;

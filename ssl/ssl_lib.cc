@@ -927,12 +927,12 @@ int SSL_do_handshake(SSL *ssl) {
   // Destroy the handshake object if the handshake has completely finished.
   if (!early_return) {
     // On the client, persist the CA names received in the CertificateRequest
-    // message so that |SSL_get_client_CA_list| and
-    // |SSL_get0_server_requested_CAs| can return them after the handshake.
-    if (!ssl->server && ssl->s3->hs->ca_names) {
-      ssl->s3->peer_ca_names = std::move(ssl->s3->hs->ca_names);
-      ssl->s3->cached_x509_peer_ca_names = ssl->s3->hs->cached_x509_ca_names;
-      ssl->s3->hs->cached_x509_ca_names = nullptr;
+    // message so that |SSL_get_client_CA_list| can return them after the
+    // handshake. This eagerly converts to X509_NAMEs since the raw
+    // CRYPTO_BUFFERs in |hs->ca_names| will be destroyed with |hs|.
+    if (!ssl->server && ssl->s3->hs->ca_names &&
+        ssl->ctx->x509_method == &ssl_crypto_x509_method) {
+      ssl_x509_persist_peer_ca_names(ssl);
     }
     ssl->s3->hs.reset();
     ssl_maybe_shed_handshake_config(ssl);
