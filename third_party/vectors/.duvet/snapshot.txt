@@ -16,6 +16,10 @@ SPECIFICATION: [Test Vector Specification](vectors_spec.md)
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/hkdf_sha1_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/hkdf_sha256_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/hkdf_sha384_test.txt`.
+    TEXT[test]: AWS-LC MUST test against `testvectors_v1/hkdf_sha512_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/hmac_sha1_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/hmac_sha224_test.txt`.
     TEXT[test]: AWS-LC MUST test against `testvectors_v1/hmac_sha256_test.txt`.
@@ -84,6 +88,10 @@ SPECIFICATION: [Test Vector Specification](vectors_spec.md)
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hkdf_sha1_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hkdf_sha256_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hkdf_sha384_test.txt`.
+    TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hkdf_sha512_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hmac_sha1_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hmac_sha224_test.txt`.
     TEXT[!MUST]: AWS-LC MUST test against `testvectors_v1/hmac_sha256_test.txt`.

@@ -47,18 +47,18 @@ Each category follows the same pattern:
 **Test file:** `crypto/fipsmodule/hkdf/hkdf_test.cc`
 
 ### Vectors to Add
-- [ ] hkdf_sha1_test.json
-- [ ] hkdf_sha256_test.json
-- [ ] hkdf_sha384_test.json
-- [ ] hkdf_sha512_test.json
+- [x] hkdf_sha1_test.json
+- [x] hkdf_sha256_test.json
+- [x] hkdf_sha384_test.json
+- [x] hkdf_sha512_test.json
 
 ### Tasks
-- [ ] Add all vectors via sync.py
-- [ ] Update paths in hkdf_test.cc (4 references)
-- [ ] Add duvet annotations to each test
-- [ ] Run duvet report
-- [ ] Run tests locally
-- [ ] **Decision point: Open PR or continue?**
+- [x] Add all vectors via sync.py
+- [x] Update paths in hkdf_test.cc (4 references)
+- [x] Add duvet annotations to each test
+- [x] Run duvet report
+- [x] Run tests locally
+- [x] **Decision point: Open PR or continue?**
 
 ---
 
