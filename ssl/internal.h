@@ -2166,11 +2166,6 @@ struct SSL_HANDSHAKE {
   // CertificateRequest message.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names;
 
-  // cached_x509_ca_names contains a cache of parsed versions of the elements of
-  // |ca_names|. This pointer is left non-owning so only
-  // |ssl_crypto_x509_method| needs to link against crypto/x509.
-  STACK_OF(X509_NAME) *cached_x509_ca_names = nullptr;
-
   // certificate_types, on the client, contains the set of certificate types
   // received in a CertificateRequest message.
   Array<uint8_t> certificate_types;
@@ -2854,7 +2849,8 @@ struct SSL_X509_METHOD {
   bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
                                     uint8_t *out_alert);
 
-  // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
+  // hs_flush_cached_ca_names drops any cached peer CA |X509_NAME|s from
+  // |hs->ssl->s3|. Called when |hs->ca_names| is reparsed.
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
   // ssl_new does any necessary initialisation of |hs|. It returns true on
   // success or false on error.

@@ -161,7 +161,8 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
-  ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
+  // Note: the cached X509_NAME peer CA names live on |ssl->s3| and are
+  // intentionally not flushed here, so they persist after the handshake.
 }
 
 void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {

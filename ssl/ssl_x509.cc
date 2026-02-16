@@ -443,8 +443,9 @@ static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
 }
 
 static void ssl_crypto_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {
-  sk_X509_NAME_pop_free(hs->cached_x509_ca_names, X509_NAME_free);
-  hs->cached_x509_ca_names = nullptr;
+  sk_X509_NAME_pop_free(hs->ssl->s3->cached_x509_peer_ca_names,
+                        X509_NAME_free);
+  hs->ssl->s3->cached_x509_peer_ca_names = nullptr;
 }
 
 static bool ssl_crypto_x509_ssl_new(SSL_HANDSHAKE *hs) {
@@ -1340,12 +1341,10 @@ void ssl_x509_persist_peer_ca_names(SSL *ssl) {
   if (!ssl->s3->hs || !ssl->s3->hs->ca_names) {
     return;
   }
-  // Eagerly populate the X509_NAME cache from the raw CRYPTO_BUFFERs so that
-  // the names survive after |hs| is destroyed.
+  // Eagerly populate the X509_NAME cache on |s3| from the raw CRYPTO_BUFFERs
+  // so that the names survive after |hs| is destroyed.
   buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
-                       &ssl->s3->hs->cached_x509_ca_names);
-  ssl->s3->cached_x509_peer_ca_names = ssl->s3->hs->cached_x509_ca_names;
-  ssl->s3->hs->cached_x509_ca_names = nullptr;
+                       &ssl->s3->cached_x509_peer_ca_names);
 }
 
 STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
@@ -1356,14 +1355,13 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
   // |SSL_set_connect_state|. If |do_handshake| is NULL, |ssl| is in an
   // indeterminate mode and |ssl->server| is unset.
   if (ssl->do_handshake != NULL && !ssl->server) {
-    // |ssl->s3->hs| indicates that a handshake is underway
     if (ssl->s3->hs != NULL) {
-      return buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
-                                  &ssl->s3->hs->cached_x509_ca_names);
+      return buffer_names_to_x509(
+          ssl->s3->hs->ca_names.get(),
+          &ssl->s3->cached_x509_peer_ca_names);
     }
-
-    // After the handshake completes, |hs| is destroyed. Return the cached
-    // X509_NAMEs that were eagerly populated before |hs| was destroyed.
+    // After the handshake completes, |hs| is destroyed. The cached
+    // X509_NAMEs were eagerly populated before |hs| was destroyed.
     return ssl->s3->cached_x509_peer_ca_names;
   }
 
