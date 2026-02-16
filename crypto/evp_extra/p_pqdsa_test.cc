@@ -2646,35 +2646,56 @@ static int VerifyMLDSAWithContext(EVP_PKEY *pkey,
 // context |msg_ctx|. We need this wrapper because |EVP_DigestSign| does not
 // support signing with contexts.
 //
+// If |has_msg| is true, computes mu from |msg| and |msg_ctx|, and verifies it
+// matches |expected_mu| if provided. If |has_msg| is false, uses |expected_mu|
+// directly (for internal signing tests with Sign_internal).
+//
+// Always signs using EVP_PKEY_sign with mu. If |msg_ctx| is empty, also
+// performs standard signing with EVP_DigestSign to verify both paths work.
+//
 // It returns one on success and zero on error.
 static int SignMLDSAWithContext(EVP_PKEY *pkey, std::vector<uint8_t> &sig,
                                 const std::vector<uint8_t> &pk,
                                 const std::vector<uint8_t> &msg,
-                                const std::vector<uint8_t> &msg_ctx) {
-  // If there's a non-empty context string, do ExternalMu signing
-  if (!msg_ctx.empty()) {
-    std::vector<uint8_t> mu;
+                                const std::vector<uint8_t> &msg_ctx,
+                                const std::vector<uint8_t> &expected_mu,
+                                bool has_msg) {
+  std::vector<uint8_t> mu;
+  if (has_msg) {
     if (!ComputeMLDSAExternalMu(pk, msg_ctx, msg, mu)) {
       return 0;
     }
-    bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new(pkey, nullptr));
-    if (!pkey_ctx || !EVP_PKEY_sign_init(pkey_ctx.get())) {
+    if (!expected_mu.empty() && mu != expected_mu) {
       return 0;
     }
-
-    size_t sig_len = sig.size();
-    return EVP_PKEY_sign(pkey_ctx.get(), sig.data(), &sig_len, mu.data(),
-                         mu.size());
+  } else {
+    mu = expected_mu;
   }
 
-  // Otherwise, do standard signing
-  bssl::ScopedEVP_MD_CTX md_ctx;
-  if (!EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
+  bssl::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new(pkey, nullptr));
+  if (!pkey_ctx || !EVP_PKEY_sign_init(pkey_ctx.get())) {
     return 0;
   }
+
   size_t sig_len = sig.size();
-  return EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, msg.data(),
-                        msg.size());
+  if (!EVP_PKEY_sign(pkey_ctx.get(), sig.data(), &sig_len, mu.data(),
+                     mu.size())) {
+    return 0;
+  }
+
+  // If no context, also do standard signing
+  if (msg_ctx.empty()) {
+    bssl::ScopedEVP_MD_CTX md_ctx;
+    if (!EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey)) {
+      return 0;
+    }
+    size_t sig_len = sig.size();
+    if (!EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, msg.data(),
+                        msg.size())) {
+      return 0;
+    }
+  }
+  return 1;
 }
 
 TEST_P(WycheproofMLDSATest, Verify) {
@@ -2739,7 +2760,7 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
   std::string test_path =
       std::string(kWycheproofMLDSAPath) + GetParam().sign_seed_test;
   FileTestGTest(test_path.c_str(), [&](FileTest *t) {
-    std::vector<uint8_t> msg, pk, sk_pkcs8, sk_seed, expected_sig;
+    std::vector<uint8_t> msg, pk, sk_pkcs8, sk_seed, expected_sig, expected_mu;
     std::vector<uint8_t> msg_ctx;
 
     ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
@@ -2749,7 +2770,12 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
       ASSERT_TRUE(t->GetInstructionBytes(&sk_pkcs8, "privateKeyPkcs8"));
     }
     ASSERT_TRUE(t->GetInstructionBytes(&sk_seed, "privateSeed"));
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+
+    // msg is optional for internal signing tests (Sign_internal with mu)
+    bool has_msg = t->HasAttribute("msg");
+    if (has_msg) {
+      ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    }
     ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
 
     WycheproofResult result;
@@ -2757,6 +2783,10 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
 
     if (t->HasAttribute("ctx")) {
       ASSERT_TRUE(t->GetBytes(&msg_ctx, "ctx"));
+    }
+    // mu is an intermediate value in the signing process
+    if (t->HasAttribute("mu")) {
+      ASSERT_TRUE(t->GetBytes(&expected_mu, "mu"));
     }
 
     bssl::UniquePtr<EVP_PKEY> sec_pkey_from_raw(
@@ -2788,8 +2818,8 @@ TEST_P(WycheproofMLDSATest, SignWithSeed) {
 
     std::vector<uint8_t> sig(expected_sig.size());
     EVP_PKEY *signing_key = has_pkcs8 ? sec_pkey_from_der.get() : sec_pkey_from_raw.get();
-    int sign_result =
-        SignMLDSAWithContext(signing_key, sig, pk, msg, msg_ctx);
+    int sign_result = SignMLDSAWithContext(signing_key, sig, pk, msg, msg_ctx,
+                                           expected_mu, has_msg);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {
@@ -2802,7 +2832,7 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
   std::string test_path =
       std::string(kWycheproofMLDSAPath) + GetParam().sign_noseed_test;
   FileTestGTest(test_path.c_str(), [&](FileTest *t) {
-    std::vector<uint8_t> msg, pk, sk_expanded, expected_sig;
+    std::vector<uint8_t> msg, pk, sk_expanded, expected_sig, expected_mu;
     std::vector<uint8_t> msg_ctx;
 
     // publicKey is optional - it's omitted for some invalid test cases
@@ -2811,7 +2841,12 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
       ASSERT_TRUE(t->GetInstructionBytes(&pk, "publicKey"));
     }
     ASSERT_TRUE(t->GetInstructionBytes(&sk_expanded, "privateKey"));
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+
+    // msg is optional for internal signing tests (Sign_internal with mu)
+    bool has_msg = t->HasAttribute("msg");
+    if (has_msg) {
+      ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    }
     ASSERT_TRUE(t->GetBytes(&expected_sig, "sig"));
 
     WycheproofResult result;
@@ -2819,6 +2854,10 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
 
     if (t->HasAttribute("ctx")) {
       ASSERT_TRUE(t->GetBytes(&msg_ctx, "ctx"));
+    }
+    // mu is an intermediate value in the signing process
+    if (t->HasAttribute("mu")) {
+      ASSERT_TRUE(t->GetBytes(&expected_mu, "mu"));
     }
 
     bssl::UniquePtr<EVP_PKEY> sec_pkey_from_expanded(
@@ -2835,8 +2874,9 @@ TEST_P(WycheproofMLDSATest, SignWithoutSeed) {
     ASSERT_TRUE(sec_pkey_from_expanded.get());
 
     std::vector<uint8_t> sig(expected_sig.size());
-    int sign_result = SignMLDSAWithContext(sec_pkey_from_expanded.get(), sig,
-                                           pk, msg, msg_ctx);
+    int sign_result =
+        SignMLDSAWithContext(sec_pkey_from_expanded.get(), sig, pk, msg,
+                             msg_ctx, expected_mu, has_msg);
     if (result.IsValid()) {
       EXPECT_TRUE(sign_result) << "Signing failed for valid test case";
     } else {
