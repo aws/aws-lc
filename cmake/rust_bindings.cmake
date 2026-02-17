@@ -166,6 +166,13 @@ function(generate_rust_bindings)
     "--generate" "functions,types,vars,methods,constructors,destructors"
     "--rust-target" "${RUST_BINDINGS_TARGET_VERSION}"
     "--formatter" "rustfmt"
+    "--raw-line" "#![allow(clippy::all)]"
+    "--raw-line" "#![allow(non_upper_case_globals)]"
+    "--raw-line" "#![allow(non_camel_case_types)]"
+    "--raw-line" "#![allow(non_snake_case)]"
+    "--raw-line" "#![allow(dead_code)]"
+    "--raw-line" "#![allow(improper_ctypes)]"
+    "--raw-line" "#![allow(unpredictable_function_pointer_comparisons)]"
   )
 
   # Add symbol prefix if specified. See module-level comment for why we use

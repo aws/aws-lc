@@ -318,6 +318,7 @@ jobs:
           fi
           echo "Bindings content verification passed"
 
+
       - name: Verify bindings compile
         shell: bash
         run: |
@@ -330,13 +331,12 @@ jobs:
           [lib]
           path = "src/lib.rs"
           EOF
+          # Wrap include!() in a mod block so the #![allow(...)] inner attributes
+          # embedded in the generated file are valid (they need a module boundary).
           cat > "${RUNNER_TEMP}/test-bindings/src/lib.rs" << 'EOF'
-          #![allow(non_upper_case_globals)]
-          #![allow(non_camel_case_types)]
-          #![allow(non_snake_case)]
-          #![allow(dead_code)]
-          #![allow(improper_ctypes)]
-          include!(concat!(env!("BINDINGS_PATH"), "/aws_lc_bindings.rs"));
+          mod bindings {
+              include!(concat!(env!("BINDINGS_PATH"), "/aws_lc_bindings.rs"));
+          }
           EOF
           cd "${RUNNER_TEMP}/test-bindings"
           BINDINGS_PATH="${GITHUB_WORKSPACE}/build/rust" cargo check
