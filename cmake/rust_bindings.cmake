@@ -166,18 +166,7 @@ function(generate_rust_bindings)
     "--generate" "functions,types,vars,methods,constructors,destructors"
     "--rust-target" "${RUST_BINDINGS_TARGET_VERSION}"
     "--formatter" "rustfmt"
-    # Suppress common warnings in generated code. These inner attributes are valid
-    # when the bindings file is used as a module file (mod bindings;), which is the
-    # recommended approach. Consumers using include!() must add their own suppression.
-    "--raw-line" "#![allow(clippy::all)]"
-    "--raw-line" "#![allow(non_upper_case_globals)]"
-    "--raw-line" "#![allow(non_camel_case_types)]"
-    "--raw-line" "#![allow(non_snake_case)]"
-    "--raw-line" "#![allow(dead_code)]"
-    "--raw-line" "#![allow(improper_ctypes)]"
-    "--raw-line" "#![allow(unpredictable_function_pointer_comparisons)]"
   )
-
   # Add symbol prefix if specified. See module-level comment for why we use
   # --prefix-link-name instead of including the prefix symbols header.
   if(ARG_PREFIX AND NOT ARG_PREFIX STREQUAL "")
