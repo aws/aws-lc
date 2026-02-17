@@ -221,3 +221,123 @@ jobs:
           cargo clean
           cargo test -p aws-lc-sys --target x86_64-pc-windows-msvc
           cargo test -p aws-lc-rs --target x86_64-pc-windows-msvc
+
+  # CMake Rust bindings generation tests
+  cmake-rust-bindings:
+    if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: ubuntu-latest
+            name: linux-prefix
+            prefix: AWSLC
+          - os: macos-latest
+            name: macos
+          - os: macos-latest
+            name: macos-prefix
+            prefix: AWSLC
+          - os: windows-latest
+            name: windows
+    runs-on: ${{ matrix.os }}
+    name: cmake-rust-bindings (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: 'rustfmt'
+      - uses: ilammy/setup-nasm@v1
+        if: runner.os == 'Windows'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - name: Install bindgen-cli
+        run: cargo install --force --locked bindgen-cli
+
+      # Prefix builds need a non-prefixed build first to collect symbols
+      - name: Generate prefix symbols file
+        if: matrix.prefix
+        shell: bash
+        run: |
+          cmake -B build-noprefix -DBUILD_TESTING=OFF
+          cmake --build build-noprefix
+          go run ./util/read_symbols.go build-noprefix/crypto/libcrypto.a > symbols.txt
+          go run ./util/read_symbols.go build-noprefix/ssl/libssl.a >> symbols.txt
+          echo "Collected $(wc -l < symbols.txt) symbols"
+
+      - name: Configure with Rust bindings generation
+        shell: bash
+        run: |
+          cmake_args="-DGENERATE_RUST_BINDINGS=ON -DBUILD_TESTING=OFF"
+          if [ -n "${{ matrix.prefix }}" ]; then
+            cmake_args="$cmake_args -DBORINGSSL_PREFIX=${{ matrix.prefix }}"
+            cmake_args="$cmake_args -DBORINGSSL_PREFIX_SYMBOLS=symbols.txt"
+          fi
+          cmake -B build $cmake_args
+
+      - name: Build and generate bindings
+        run: cmake --build build --target rust_bindings --verbose
+
+      - name: Verify bindings file exists
+        shell: bash
+        run: |
+          if [ ! -f build/rust/aws_lc_bindings.rs ]; then
+            echo "ERROR: Rust bindings file was not generated"
+            exit 1
+          fi
+          echo "Generated bindings file size: $(wc -c < build/rust/aws_lc_bindings.rs) bytes"
+          echo "Generated bindings line count: $(wc -l < build/rust/aws_lc_bindings.rs) lines"
+
+      - name: Verify bindings content
+        shell: bash
+        run: |
+          # All variants should generate SSL bindings
+          if ! grep -q "pub fn SSL_new" build/rust/aws_lc_bindings.rs; then
+            echo "ERROR: Expected SSL_new function not found"
+            exit 1
+          fi
+          if [ -n "${{ matrix.prefix }}" ]; then
+            # Prefix builds: link_name attributes should contain the prefix.
+            # The exact format varies by platform (e.g., _PREFIX_ on macOS vs PREFIX_ on Linux).
+            if ! grep -q 'link_name.*${{ matrix.prefix }}_' build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Expected prefixed link_name attributes not found"
+              exit 1
+            fi
+            if ! grep -B1 "pub fn SSL_new" build/rust/aws_lc_bindings.rs | grep -q 'link_name.*${{ matrix.prefix }}_'; then
+              echo "ERROR: SSL_new should have ${{ matrix.prefix }}_ prefixed link_name"
+              exit 1
+            fi
+          else
+            # Non-prefix builds should not have link_name attributes
+            if grep -q '#\[link_name' build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Unexpected link_name attributes found in no-prefix build"
+              exit 1
+            fi
+          fi
+          echo "Bindings content verification passed"
+
+      - name: Verify bindings compile
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/test-bindings/src"
+          cat > "${RUNNER_TEMP}/test-bindings/Cargo.toml" << 'EOF'
+          [package]
+          name = "test-bindings"
+          version = "0.1.0"
+          edition = "2021"
+          [lib]
+          path = "src/lib.rs"
+          EOF
+          cat > "${RUNNER_TEMP}/test-bindings/src/lib.rs" << 'EOF'
+          #![allow(non_upper_case_globals)]
+          #![allow(non_camel_case_types)]
+          #![allow(non_snake_case)]
+          #![allow(dead_code)]
+          #![allow(improper_ctypes)]
+          include!(concat!(env!("BINDINGS_PATH"), "/aws_lc_bindings.rs"));
+          EOF
+          cd "${RUNNER_TEMP}/test-bindings"
+          BINDINGS_PATH="${GITHUB_WORKSPACE}/build/rust" cargo check
+          echo "Bindings compilation check passed"
