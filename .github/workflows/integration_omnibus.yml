@@ -380,6 +380,14 @@ jobs:
             image: ubuntu:22.04
             compiler: gcc-12
             run: ./tests/ci/integration/run_xtrabackup_integration.sh
+
+          # PyOpenSSL Integration Tests
+          - name: pyopenssl
+            arch: x86_64
+            size: medium
+            image: ubuntu:22.04
+            compiler: gcc-12
+            run: ./tests/ci/integration/run_pyopenssl_integration.sh '25.3.0'
     env:
       OPENSSH_BRANCH: ${{ matrix.openssh_branch || '' }}
       ACCP_FIPS: ${{ matrix.accp_fips || '' }}
