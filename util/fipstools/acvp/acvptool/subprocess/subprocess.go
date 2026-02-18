@@ -155,6 +155,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"HMAC-SHA3-512":     &hmacPrimitive{"HMAC-SHA3-512", 64},
 		"ctrDRBG":           &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}},
 		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
+		"KAS-ECC":           &kasEcc{},
 		"KDF":               &kdfPrimitive{},
 		"KDA": &kdaPrimitive{
 			modes: map[string]kdaModePrimitive{

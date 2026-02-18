@@ -1336,6 +1336,31 @@ static bool GetConfig(const Span<const uint8_t> args[],
         ]
       },
       {
+        "algorithm": "KAS-ECC",
+        "revision": "Sp800-56Ar3",
+        "function": ["fullVal"],
+        "iutId": ["initiator", "responder"],
+        "scheme": {
+          "ephemeralUnified": {
+            "kasRole": ["initiator", "responder"],
+            "kdfMethods": {
+              "oneStepKdf": {
+                "auxFunctions": [
+                  {"auxFunctionName": "SHA2-224"},
+                  {"auxFunctionName": "SHA2-256"},
+                  {"auxFunctionName": "SHA2-384"},
+                  {"auxFunctionName": "SHA2-512"}
+                ],
+                "fixedInfoPattern": "algorithmId",
+                "encoding": ["concatenation"]
+              }
+            }
+          }
+        },
+        "domainParameterGenerationMethods": ["P-224", "P-256", "P-384", "P-521"],
+        "l": 2048
+      },
+      {
         "algorithm": "KAS-FFC-SSC",
         "revision": "Sp800-56Ar3",
         "scheme": {
@@ -2869,6 +2894,72 @@ static bool ECDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({BIGNUMBytes(x.get()), BIGNUMBytes(y.get()), output});
 }
 
+template <int Nid, const EVP_MD *(MDFunc)()>
+static bool ECDH_SSKDF(const Span<const uint8_t> args[],
+                       ReplyCallback write_reply) {
+  bssl::UniquePtr<BIGNUM> their_x(BytesToBIGNUM(args[0]));
+  bssl::UniquePtr<BIGNUM> their_y(BytesToBIGNUM(args[1]));
+  const Span<const uint8_t> private_key = args[2];
+  const Span<const uint8_t> info = args[3];
+  const Span<const uint8_t> out_len_bytes = args[4];
+
+  uint32_t out_len;
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  // Step 1: ECDH - compute shared secret Z
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(Nid));
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  const EC_GROUP *group = EC_KEY_get0_group(ec_key.get());
+
+  bssl::UniquePtr<EC_POINT> their_point(EC_POINT_new(group));
+  if (!EC_POINT_set_affine_coordinates_GFp(
+          group, their_point.get(), their_x.get(), their_y.get(), ctx.get())) {
+    LOG_ERROR("Invalid peer point for KAS-ECC.\n");
+    return false;
+  }
+
+  if (!private_key.empty()) {
+    bssl::UniquePtr<BIGNUM> our_k(BytesToBIGNUM(private_key));
+    if (!EC_KEY_set_private_key(ec_key.get(), our_k.get())) {
+      return false;
+    }
+    bssl::UniquePtr<EC_POINT> our_pub(EC_POINT_new(group));
+    if (!EC_POINT_mul(group, our_pub.get(), our_k.get(), nullptr, nullptr,
+                      ctx.get()) ||
+        !EC_KEY_set_public_key(ec_key.get(), our_pub.get())) {
+      return false;
+    }
+  } else if (!EC_KEY_generate_key_fips(ec_key.get())) {
+    return false;
+  }
+
+  std::vector<uint8_t> z(EC_MAX_BYTES + 1);
+  int z_len = ECDH_compute_key(z.data(), z.size(), their_point.get(),
+                               ec_key.get(), nullptr);
+  if (z_len < 0 || static_cast<size_t>(z_len) == z.size()) {
+    return false;
+  }
+  z.resize(z_len);
+
+  // Step 2: One-Step KDF (SSKDF with digest)
+  std::vector<uint8_t> output(out_len);
+  if (!::SSKDF_digest(output.data(), out_len, MDFunc(), z.data(), z.size(),
+                      info.data(), info.size())) {
+    return false;
+  }
+
+  // Return public key and DKM
+  const EC_POINT *pub = EC_KEY_get0_public_key(ec_key.get());
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+  if (!EC_POINT_get_affine_coordinates_GFp(group, pub, x.get(), y.get(),
+                                           ctx.get())) {
+    return false;
+  }
+
+  return write_reply({BIGNUMBytes(x.get()), BIGNUMBytes(y.get()), output});
+}
+
 static bool FFDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   bssl::UniquePtr<BIGNUM> p(BytesToBIGNUM(args[0]));
   bssl::UniquePtr<BIGNUM> q(BytesToBIGNUM(args[1]));
@@ -3647,6 +3738,10 @@ static struct {
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
+    {"KAS-ECC/OneStep/P-224/SHA2-384", 6,
+     ECDH_SSKDF<NID_secp224r1, EVP_sha384>},
+    {"KAS-ECC/OneStep/P-384/SHA2-384", 6,
+     ECDH_SSKDF<NID_secp384r1, EVP_sha384>},
     {"FFDH", 6, FFDH},
     {"PBKDF", 5, PBKDF},
     {"KDA/HKDF/SHA-1", 4, HKDF<EVP_sha1>},
