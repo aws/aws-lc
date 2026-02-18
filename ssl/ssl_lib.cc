@@ -935,6 +935,10 @@ int SSL_do_handshake(SSL *ssl) {
       // Failure is non-fatal: the handshake has already completed, so
       // |SSL_get_client_CA_list| will simply return NULL post-handshake.
       ssl_x509_persist_peer_ca_names(ssl);
+    } else if (!ssl->s3->hs->ca_names) {
+      // No CertificateRequest in this handshake — clear any stale peer
+      // CA names left over from a previous handshake.
+      ssl->ctx->x509_method->hs_flush_cached_ca_names(ssl->s3->hs.get());
     }
     ssl->s3->hs.reset();
     ssl_maybe_shed_handshake_config(ssl);

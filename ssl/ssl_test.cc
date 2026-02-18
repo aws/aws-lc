@@ -1474,6 +1474,23 @@ TEST(SSLTest, PeerCANamesX509DuringAndAfterHandshake) {
     EXPECT_EQ(0,
               X509_NAME_cmp(sk_X509_NAME_value(client_ca_list, 0),
                             ca_name.get()));
+
+    // Now do a second handshake with the same client context but a server
+    // that does NOT request client certificates (no CertificateRequest).
+    // The client should see no peer CA names after this handshake.
+    bssl::UniquePtr<SSL_CTX> server_ctx2(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx2);
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx2.get(), version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx2.get(), version));
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx2.get(), cert.get()));
+    ASSERT_TRUE(
+        SSL_CTX_add1_chain_cert(server_ctx2.get(), intermediate.get()));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx2.get(), key.get()));
+
+    bssl::UniquePtr<SSL> client2, server2;
+    ASSERT_TRUE(ConnectClientAndServer(&client2, &server2, client_ctx.get(),
+                                       server_ctx2.get()));
+    EXPECT_FALSE(SSL_get_client_CA_list(client2.get()));
   }
 }
 
