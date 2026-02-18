@@ -3782,8 +3782,9 @@ BSSL_NAMESPACE_END
 // ssl_x509_persist_peer_ca_names eagerly converts the peer CA names from
 // |hs->ca_names| to X509_NAMEs and stores them in
 // |ssl->s3->cached_x509_peer_ca_names|, so they remain available via
-// |SSL_get_client_CA_list| after the handshake object is destroyed.
-void ssl_x509_persist_peer_ca_names(SSL *ssl);
+// |SSL_get_client_CA_list| after the handshake object is destroyed. It returns
+// true on success and false on allocation failure.
+bool ssl_x509_persist_peer_ca_names(SSL *ssl);
 
 
 // Opaque C types.

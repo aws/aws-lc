@@ -932,6 +932,8 @@ int SSL_do_handshake(SSL *ssl) {
     // CRYPTO_BUFFERs in |hs->ca_names| will be destroyed with |hs|.
     if (!ssl->server && ssl->s3->hs->ca_names &&
         ssl->ctx->x509_method == &ssl_crypto_x509_method) {
+      // Failure is non-fatal: the handshake has already completed, so
+      // |SSL_get_client_CA_list| will simply return NULL post-handshake.
       ssl_x509_persist_peer_ca_names(ssl);
     }
     ssl->s3->hs.reset();

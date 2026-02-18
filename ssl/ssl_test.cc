@@ -1397,8 +1397,8 @@ TEST(SSLTest, ClientCABuffers) {
 }
 
 // Test that |SSL_get_client_CA_list| returns the server's CA list on the
-// client after the handshake completes, using the X509-based API.
-TEST(SSLTest, PeerCANamesX509AfterHandshake) {
+// client both during the cert callback and after the handshake completes.
+TEST(SSLTest, PeerCANamesX509DuringAndAfterHandshake) {
   for (uint16_t version : {TLS1_2_VERSION, TLS1_3_VERSION}) {
     SCOPED_TRACE(version);
 
@@ -1445,11 +1445,26 @@ TEST(SSLTest, PeerCANamesX509AfterHandshake) {
           return ssl_verify_ok;
         });
 
+    // Use a cert callback to verify CA names are available during the
+    // handshake via the X509-based API.
+    bool cert_cb_called = false;
+    SSL_CTX_set_cert_cb(
+        client_ctx.get(),
+        [](SSL *ssl, void *arg) -> int {
+          STACK_OF(X509_NAME) *ca_list = SSL_get_client_CA_list(ssl);
+          EXPECT_TRUE(ca_list);
+          EXPECT_EQ(1u, sk_X509_NAME_num(ca_list));
+          *reinterpret_cast<bool *>(arg) = true;
+          return 1;
+        },
+        &cert_cb_called);
+
     bssl::UniquePtr<SSL> client, server;
     ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                        server_ctx.get()));
+    EXPECT_TRUE(cert_cb_called);
 
-    // After the handshake, verify the client sees the server's CA list.
+    // After the handshake, verify the same CA list is still available.
     // The handshake config has been shed by default, so ssl->config is NULL,
     // but the client-side peer CA names are persisted in ssl->s3.
     STACK_OF(X509_NAME) *client_ca_list =

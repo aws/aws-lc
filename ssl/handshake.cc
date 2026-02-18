@@ -160,10 +160,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
   RAND_bytes(grease_seed, sizeof(grease_seed));
 }
 
-SSL_HANDSHAKE::~SSL_HANDSHAKE() {
-  // Note: the cached X509_NAME peer CA names live on |ssl->s3| and are
-  // intentionally not flushed here, so they persist after the handshake.
-}
+SSL_HANDSHAKE::~SSL_HANDSHAKE() {}
 
 void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
   if (hash_len > SSL_MAX_MD_SIZE) {

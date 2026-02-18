@@ -3282,9 +3282,9 @@ OPENSSL_EXPORT void SSL_CTX_set0_client_CAs(SSL_CTX *ctx,
 // |SSL_CTX_set_client_CA_list|.
 //
 // If configured as a client, it returns the client certificate CA list sent by
-// the server. In this mode, the behavior is undefined except during the
-// callbacks set by |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb| or
-// when the handshake is paused because of them.
+// the server. This may be called during the callbacks set by
+// |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb|, when the handshake
+// is paused because of them, or after the handshake has completed.
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl);
 
 // SSL_get0_server_requested_CAs returns the CAs sent by a server to guide a

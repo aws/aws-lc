@@ -1337,14 +1337,14 @@ static STACK_OF(X509_NAME) *buffer_names_to_x509(
   return *cached;
 }
 
-void ssl_x509_persist_peer_ca_names(SSL *ssl) {
+bool ssl_x509_persist_peer_ca_names(SSL *ssl) {
   if (!ssl->s3->hs || !ssl->s3->hs->ca_names) {
-    return;
+    return true;
   }
   // Eagerly populate the X509_NAME cache on |s3| from the raw CRYPTO_BUFFERs
   // so that the names survive after |hs| is destroyed.
-  buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
-                       &ssl->s3->cached_x509_peer_ca_names);
+  return buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
+                              &ssl->s3->cached_x509_peer_ca_names) != NULL;
 }
 
 STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
