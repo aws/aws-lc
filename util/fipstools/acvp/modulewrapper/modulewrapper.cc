@@ -1484,6 +1484,23 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "internal", 
           "external"
         ]
+      },)"
+      R"({
+        "algorithm": "KTS-IFC",
+        "revision": "Sp800-56Br2",
+        "function": ["keyPairGen", "partialVal"],
+        "iutId": ["initiator", "responder"],
+        "keyGenerationMethods": ["rsakpg1-basic", "rsakpg1-prime-factor", "rsakpg1-crt"],
+        "modulo": [2048, 3072, 4096],
+        "fixedPubExp": "010001",
+        "kasRole": ["initiator", "responder"],
+        "l": 1024,
+        "scheme": "KTS-OAEP-basic",
+        "ktsConfiguration": {
+          "hashAlg": ["SHA-1", "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512"],
+          "associatedDataPattern": "uPartyInfo||vPartyInfo",
+          "encoding": ["concatenation", "none"]
+        }
       }])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
@@ -2779,6 +2796,71 @@ static bool RSASigVer(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(&ok, 1)});
 }
 
+template <const EVP_MD *(MDFunc)(), int Encrypt>
+static bool RSA_OAEP(const Span<const uint8_t> args[],
+                     ReplyCallback write_reply) {
+  const Span<const uint8_t> dkm_len_bytes = args[0];
+  const Span<const uint8_t> input = args[1];
+  const Span<const uint8_t> n_bytes = args[2];
+  const Span<const uint8_t> e_bytes = args[3];
+  const Span<const uint8_t> q_bytes = args[4];
+  const Span<const uint8_t> p_bytes = args[5];
+  const Span<const uint8_t> d_bytes = args[6];
+
+  uint32_t dkm_len = 0;
+  memcpy(&dkm_len, dkm_len_bytes.data(), sizeof(dkm_len));
+
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+
+  bssl::UniquePtr<RSA> key(RSA_new());
+
+  if (Encrypt) {
+    // Generate random keying material and encrypt it
+    if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+        !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+        !RSA_set0_key(key.get(), n, e, nullptr)) {
+      return false;
+    }
+
+    std::vector<uint8_t> dkm(dkm_len);
+    RAND_bytes(dkm.data(), dkm.size());
+
+    std::vector<uint8_t> ct(RSA_size(key.get()));
+    size_t ct_len = 0;
+    if (!RSA_encrypt(key.get(), &ct_len, ct.data(), ct.size(), dkm.data(),
+                     dkm.size(), RSA_PKCS1_OAEP_PADDING)) {
+      return false;
+    }
+    return write_reply({Span<const uint8_t>(ct), Span<const uint8_t>(dkm)});
+  } else {
+    BIGNUM *p = BN_new();
+    BIGNUM *q = BN_new();
+    BIGNUM *d = BN_new();
+
+    if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+        !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+        !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+        !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
+        !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
+        !RSA_set0_key(key.get(), n, e, d) ||
+        !RSA_set0_factors(key.get(), p, q)) {
+      return false;
+    }
+
+    std::vector<uint8_t> dkm(RSA_size(key.get()));
+    size_t dkm_len = 0;
+    if (!RSA_decrypt(key.get(), &dkm_len, dkm.data(), dkm.size(), input.data(),
+                     input.size(), RSA_PKCS1_OAEP_PADDING)) {
+      return false;
+    }
+
+    dkm.resize(dkm_len);
+    return write_reply({Span<const uint8_t>(dkm)});
+  }
+}
+
+
 template <const EVP_MD *(MDFunc)()>
 static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
@@ -3674,6 +3756,8 @@ static struct {
     {"KDA/OneStep/HMAC-SHA2-512", 4, SSKDF_HMAC<EVP_sha512>},
     {"KDA/OneStep/HMAC-SHA2-512/224", 4, SSKDF_HMAC<EVP_sha512_224>},
     {"KDA/OneStep/HMAC-SHA2-512/256", 4, SSKDF_HMAC<EVP_sha512_256>},
+    {"KTS/OAEP/SHA2-256/transport", 7, RSA_OAEP<EVP_sha256, true>},
+    {"KTS/OAEP/SHA-1/receive", 7, RSA_OAEP<EVP_sha1, false>},
     {"SSHKDF/SHA-1/ivCli", 4,
      SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
     {"SSHKDF/SHA2-224/ivCli", 4,
