@@ -233,14 +233,17 @@ jobs:
             name: linux
           - os: ubuntu-latest
             name: linux-prefix
-            prefix: AWSLC
+            prefix: AWSLC_PREFIX
           - os: macos-latest
             name: macos
           - os: macos-latest
             name: macos-prefix
-            prefix: AWSLC
+            prefix: AWSLC_PREFIX
           - os: windows-latest
             name: windows
+          - os: ubuntu-latest
+            name: linux-no-ssl
+            build_libssl: OFF
     runs-on: ${{ matrix.os }}
     name: cmake-rust-bindings (${{ matrix.name }})
     steps:
@@ -273,12 +276,18 @@ jobs:
           cmake_args="-DGENERATE_RUST_BINDINGS=ON -DBUILD_TESTING=OFF"
           if [ -n "${{ matrix.prefix }}" ]; then
             cmake_args="$cmake_args -DBORINGSSL_PREFIX=${{ matrix.prefix }}"
-            cmake_args="$cmake_args -DBORINGSSL_PREFIX_SYMBOLS=symbols.txt"
+            cmake_args="$cmake_args -DBORINGSSL_PREFIX_SYMBOLS=$(pwd)/symbols.txt"
+          fi
+          if [ "${{ matrix.build_libssl }}" = "OFF" ]; then
+            cmake_args="$cmake_args -DBUILD_LIBSSL=OFF"
           fi
           cmake -B build $cmake_args
 
-      - name: Build and generate bindings
-        run: cmake --build build --target rust_bindings --verbose
+      - name: Build libraries
+        run: cmake --build build --config Release
+
+      - name: Generate bindings
+        run: cmake --build build --target rust_bindings --config Release --verbose
 
       - name: Verify bindings file exists
         shell: bash
@@ -293,10 +302,18 @@ jobs:
       - name: Verify bindings content
         shell: bash
         run: |
-          # All variants should generate SSL bindings
-          if ! grep -q "pub fn SSL_new" build/rust/aws_lc_bindings.rs; then
-            echo "ERROR: Expected SSL_new function not found"
-            exit 1
+          # Verify SSL bindings based on BUILD_LIBSSL setting (defaults to ON)
+          if [ "${{ matrix.build_libssl }}" != "OFF" ]; then
+            if ! grep -q "pub fn SSL_new" build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Expected SSL_new function not found"
+              exit 1
+            fi
+          else
+            if grep -q "pub fn SSL_new" build/rust/aws_lc_bindings.rs; then
+              echo "ERROR: Unexpected SSL_new found in BUILD_LIBSSL=OFF build"
+              exit 1
+            fi
+            echo "Confirmed: SSL bindings correctly excluded"
           fi
           if [ -n "${{ matrix.prefix }}" ]; then
             # Prefix builds: link_name attributes should contain the prefix.
@@ -319,7 +336,7 @@ jobs:
           echo "Bindings content verification passed"
 
 
-      - name: Verify bindings compile
+      - name: Verify bindings build and link
         shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/test-bindings/src"
@@ -328,10 +345,37 @@ jobs:
           name = "test-bindings"
           version = "0.1.0"
           edition = "2021"
-          [lib]
-          path = "src/lib.rs"
+
+          [[bin]]
+          name = "test-bindings"
+          path = "src/main.rs"
           EOF
-          cat > "${RUNNER_TEMP}/test-bindings/src/lib.rs" << 'EOF'
+          cat > "${RUNNER_TEMP}/test-bindings/build.rs" << 'EOF'
+          use std::env;
+          fn main() {
+              let build_dir = env::var("CMAKE_BUILD_DIR").expect("CMAKE_BUILD_DIR must be set");
+              // Library search paths for single-config generators (Unix Makefiles, Ninja)
+              println!("cargo:rustc-link-search=native={}/crypto", build_dir);
+              println!("cargo:rustc-link-search=native={}/ssl", build_dir);
+              // Library search paths for multi-config generators (Visual Studio)
+              println!("cargo:rustc-link-search=native={}/crypto/Release", build_dir);
+              println!("cargo:rustc-link-search=native={}/ssl/Release", build_dir);
+              println!("cargo:rustc-link-lib=static=crypto");
+              if env::var("INCLUDE_SSL").unwrap_or_default() == "1" {
+                  println!("cargo:rustc-link-lib=static=ssl");
+              }
+              // Platform-specific system library dependencies required by aws-lc
+              let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
+              let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+              if target_family == "unix" {
+                  println!("cargo:rustc-link-lib=dylib=pthread");
+              }
+              if target_os == "windows" {
+                  println!("cargo:rustc-link-lib=dylib=ws2_32");
+              }
+          }
+          EOF
+          cat > "${RUNNER_TEMP}/test-bindings/src/main.rs" << 'EOF'
           #![allow(clippy::all)]
           #![allow(non_upper_case_globals)]
           #![allow(non_camel_case_types)]
@@ -340,7 +384,18 @@ jobs:
           #![allow(improper_ctypes)]
           #![allow(unpredictable_function_pointer_comparisons)]
           include!(concat!(env!("BINDINGS_PATH"), "/aws_lc_bindings.rs"));
+          fn main() {
+              unsafe { CRYPTO_library_init(); }
+              println!("Bindings link test passed");
+          }
           EOF
           cd "${RUNNER_TEMP}/test-bindings"
-          BINDINGS_PATH="${GITHUB_WORKSPACE}/build/rust" cargo check
-          echo "Bindings compilation check passed"
+          include_ssl="0"
+          if [ "${{ matrix.build_libssl }}" != "OFF" ]; then
+            include_ssl="1"
+          fi
+          export CMAKE_BUILD_DIR="${GITHUB_WORKSPACE}/build"
+          export BINDINGS_PATH="${GITHUB_WORKSPACE}/build/rust"
+          export INCLUDE_SSL="${include_ssl}"
+          cargo run
+          echo "Bindings build, link, and run test passed"
