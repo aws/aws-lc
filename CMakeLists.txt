@@ -4,8 +4,20 @@ if(POLICY CMP0091)
 cmake_policy(SET CMP0091 NEW)
 endif()
 
+set(SOFTWARE_NAME "awslc")
+set(SOFTWARE_VERSION "1.67.0")
+set(ABI_VERSION 0)
+set(CRYPTO_LIB_NAME "crypto")
+set(SSL_LIB_NAME "ssl")
+set(OPENSSL_VERSION_NUMBER "0x1010107f")
+
+# Note this is set to 1.1.1 for compatibility purposes
+# with projects that use the pkg-config information to determine
+# the OpenSSL version.
+set(REPORTED_PKGCONFIG_VERSION "1.1.1")
+
 # Defer enabling C and CXX languages.
-project(AWSLC NONE)
+project(AWSLC VERSION "${SOFTWARE_VERSION}" LANGUAGES NONE)
 
 if(MSVC)
   # On Windows, prefer cl over gcc if both are available. By default most of
@@ -13,43 +25,107 @@ if(MSVC)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
-if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
-  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
-endif()
-
 include(sources.cmake)
 include(TestBigEndian)
+include(CheckCCompilerFlag)
+
+macro(add_flag_if_supported VARIABLE FLAG)
+  # Create a safe, unique variable name to cache the result of the check
+  string(MAKE_C_IDENTIFIER "HAVE_C_FLAG_${FLAG}" _CHECK_VAR_NAME)
+
+  # Keep configure output tidy
+  set(CMAKE_REQUIRED_QUIET ${CMAKE_NOT_VERBOSE})
+
+  # Run the check only once to speed up re-configuration
+  if(NOT DEFINED ${_CHECK_VAR_NAME})
+    check_c_compiler_flag("${FLAG}" ${_CHECK_VAR_NAME})
+  endif()
+
+  # If the check passed, append the flag to the specified variable
+  if(${_CHECK_VAR_NAME})
+    set(${VARIABLE} "${${VARIABLE}} ${FLAG}")
+    message(STATUS "Compiler supports '${FLAG}', adding to ${VARIABLE}")
+  endif()
+endmacro()
 
 if(POLICY CMP0077)
   cmake_policy(SET CMP0077 NEW) #option does nothing when a normal variable of the same name exists.
 endif()
 
+function(target_add_awslc_include_paths)
+  set(options EXCLUDE_PREFIX_HEADERS)
+  set(oneValueArgs TARGET SCOPE)
+  set(multiValueArgs)
+
+  if(CMAKE_VERSION VERSION_LESS "3.7")
+    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  else()
+    cmake_parse_arguments(PARSE_ARGV 0 arg "${options}" "${oneValueArgs}" "${multiValueArgs}")
+  endif()
+
+  if(arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unparsed arguments to target_add_awslc_include_paths: ${arg_UNPARSED_ARGUMENTS}")
+  endif()
+
+  if(arg_KEYWORDS_MISSING_VALUES)
+    message(FATAL_ERROR "Missing value(s) for keyword(s) to target_add_awslc_include_paths: ${arg_KEYWORDS_MISSING_VALUES}")
+  endif()
+
+  if(EXCLUDE_PREFIX_HEADERS)
+    set(INCLUDE_PREFIX_HEADERS 0)
+  else()
+    set(INCLUDE_PREFIX_HEADERS 1)
+  endif()
+
+  add_dependencies(${arg_TARGET} boringssl_prefix_symbols)
+  target_include_directories(${arg_TARGET} BEFORE ${arg_SCOPE}
+    $<$<BOOL:${INCLUDE_PREFIX_HEADERS}>:$<BUILD_INTERFACE:${AWSLC_BINARY_DIR}/symbol_prefix_include>>
+    $<BUILD_INTERFACE:${AWSLC_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+endfunction()
+
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
-option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+# Keeping this flag for now, for compatibility with existing build configs.
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
+option(ENABLE_PRE_SONAME_BUILD "Build AWS-LC without SONAME configuration for shared library builds" ON)
+option(ENABLE_SOURCE_MODIFICATION "Allow the build to update files in the source directory. This is typically done to update versioning." ON)
+option(DISABLE_CPU_JITTER_ENTROPY "Disable usage of CPU Jitter Entropy as an entropy source. This option cannot be used with the FIPS build. With this configuration, randomness generation might not use two independent entropy sources." OFF)
+
 include(cmake/go.cmake)
+
+if(NOT ENABLE_PRE_SONAME_BUILD AND BUILD_SHARED_LIBS AND UNIX AND NOT APPLE)
+  set(PERFORM_SONAME_BUILD 1)
+  set(CRYPTO_LIB_NAME "${CRYPTO_LIB_NAME}-${SOFTWARE_NAME}")
+  set(SSL_LIB_NAME "${SSL_LIB_NAME}-${SOFTWARE_NAME}")
+else()
+  set(PERFORM_SONAME_BUILD 0)
+endif()
+
+message(STATUS "ENABLE_PRE_SONAME_BUILD: ${ENABLE_PRE_SONAME_BUILD}")
+message(STATUS "PERFORM_SONAME_BUILD: ${PERFORM_SONAME_BUILD}")
 
 enable_language(C)
 
-# Configure entropy source in case of FIPS build
-if(FIPS)
-  message(STATUS "FIPS build mode configured")
-
-  if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
-    add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
-    add_subdirectory(third_party/jitterentropy)
-    message(STATUS "FIPS entropy source method configured: CPU Jitter")
-  else()
-    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
-    message(STATUS "FIPS entropy source method configured: Passive")
+if(DISABLE_CPU_JITTER_ENTROPY)
+  if(FIPS)
+    message(FATAL_ERROR "Cannot opt-out of CPU Jitter for the FIPS build")
   endif()
+  add_definitions(-DDISABLE_CPU_JITTER_ENTROPY)
+  message(STATUS "Entropy source configuration: CPU Jitter opt-out")
+  message(STATUS "Entropy source configured: Dynamic (default: Operating system)")
+else()
+  # The validated entropy source will always be configured to be CPU Jitter
+  # Entropy by default; because it's the root of the Tree DRBG.
+  message(STATUS "Entropy source configured: Dynamic (default: CPU Jitter)")
 endif()
+
+
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
@@ -94,6 +170,23 @@ if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
 endif()
 
+if(ENABLE_CLANG_TIDY)
+  find_program(CLANG_TIDY_CMD NAMES clang-tidy)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+
+  if(NOT CLANG_TIDY_CMD)
+    message(WARNING "clang-tidy is not found!")
+    set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
+  else()
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_CMD}")
+    set(CLANG_TIDY_EXTRA_ARGS
+            "-extra-arg=-Wno-unknown-warning-option"
+    )
+    set(CMAKE_C_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+    set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_CMD} "--config-file=${AWSLC_SOURCE_DIR}/.clang-tidy")
+  endif()
+endif()
+
 if (NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 11)
 endif()
@@ -132,11 +225,12 @@ install(DIRECTORY include/openssl
         PATTERN boringssl_prefix_symbols.h EXCLUDE
         PATTERN boringssl_prefix_symbols_asm.h EXCLUDE
         PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
+        PATTERN "*.in" EXCLUDE
 )
 
 if (TEST_SYSGENID_PATH)
-  message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
-  add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
+  message(STATUS "Setting AWSLC_VM_UBE_TESTING=1")
+  add_definitions(-DAWSLC_VM_UBE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
 endif()
@@ -166,14 +260,7 @@ if (NOT PERL_EXECUTABLE)
   message(STATUS "Perl not found. Disabling some code generation and using pre-generated code in generated-src/")
 endif()
 
-if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
-  set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
-endif()
-
-
-if(ENABLE_DILITHIUM)
-  add_definitions(-DENABLE_DILITHIUM)
-endif()
+set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
 
 if(USE_CUSTOM_LIBCXX)
   set(BORINGSSL_ALLOW_CXX_RUNTIME 1)
@@ -257,45 +344,58 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           COMPONENT Development
   )
-elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
-  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
-elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
+elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND NOT GO_EXECUTABLE)
+  # This case is reached when both BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS are set,
+  # but GO_EXECUTABLE is not available (checked after the first if-branch).
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
+  # Only one of BORINGSSL_PREFIX or BORINGSSL_PREFIX_SYMBOLS is set
+  message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 else()
   add_custom_target(boringssl_prefix_symbols)
 
   install(DIRECTORY include/openssl
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           COMPONENT Development
+          FILES_MATCHING
           PATTERN boringssl_prefix_symbols.h
           PATTERN boringssl_prefix_symbols_asm.h
           PATTERN boringssl_prefix_symbols_nasm.inc
   )
 endif()
 
+
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
   set(EMSCRIPTEN 1)
 endif()
 
+# Checks if test file compiles. If so, sets flag_to_set both as a CMake variable
+# and as a preprocessor define. Additional arguments are interpreted as CFLAGS
+# for the attempted compilation.
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
-          RESULT
+          ${flag_to_set} # Use CMake variable of the same name as the C flag to allow later reference
           ${AWSLC_BINARY_DIR}
-          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
-          COMPILE_DEFINITIONS "-Werror"
+          SOURCES "${AWSLC_SOURCE_DIR}/tests/compiler_features_tests/${file_to_test}"
+          COMPILE_DEFINITIONS "-Werror ${ARGN}"
           OUTPUT_VARIABLE ERROR_MESSAGE)
-  if(RESULT)
-    set(COMPILER_CHECK_FLAGS "${COMPILER_CHECK_FLAGS} -D${flag_to_set}")
+  if(${flag_to_set})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D${flag_to_set}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D${flag_to_set}")
     message(STATUS "${file_to_test} probe is positive, enabling ${flag_to_set}")
   else()
     message(STATUS "${file_to_test} probe is negative, NOT enabling ${flag_to_set}:")
     # Some build applications use regexes on build output to highlight build
     # errors. Below, we modify a compiler error message to avoid that a negative
     # probe is considered an error in such build applications.
-    string(REPLACE ": error:"
-      ": compiler_error:" ERROR_MESSAGE_PROCESSED
-      ${ERROR_MESSAGE})
-    message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
+    if(FEATURE_PROBE_VERBOSE)
+      string(REPLACE ": error:"
+        ": compiler_error:" ERROR_MESSAGE_PROCESSED
+        ${ERROR_MESSAGE})
+      message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
+    else()
+      message(STATUS "Use -DFEATURE_PROBE_VERBOSE=ON to view feature probe error output.")
+    endif()
   endif()
 endmacro()
 
@@ -400,6 +500,9 @@ if(GCC OR CLANG)
     else()
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra")
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
+      if(CLANG AND MINGW)
+        set(C_CXX_FLAGS "${C_CXX_FLAGS} -fms-extensions")
+      endif()
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
@@ -408,12 +511,9 @@ if(GCC OR CLANG)
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
-  if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8") OR
-     (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS "13"))
-    # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
-    # Also suppress for all clang versions supporting this warning.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
-  endif()
+  # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
+  # Also suppress for all clang versions supporting this warning.
+  add_flag_if_supported(CMAKE_C_FLAGS "-Wno-cast-function-type")
 
   if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo")
     if (MSVC)
@@ -428,7 +528,7 @@ if(GCC OR CLANG)
     endif()
   endif()
 
-  if(MINGW)
+  if(MINGW AND NOT CLANG)
     # Some MinGW compilers set _WIN32_WINNT to an older version (Windows Server 2003)
     # See: https://learn.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt?view=msvc-170
     # Support Windows 7 and later.
@@ -437,31 +537,24 @@ if(GCC OR CLANG)
 
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
-  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
+  else()
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
     # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
+    add_flag_if_supported(C_CXX_FLAGS "-Wno-free-nonheap-object")
     # GCC (from at least 4.8) does not include -Wmissing-braces in -Wall due to Bug 25137.
     # This warning is turned on everywhere internally however, so we have to define it here
     # to check that our changes don't break the build.
     # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25137
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wmissing-braces")
+    add_flag_if_supported(C_CXX_FLAGS "-Wmissing-braces")
   endif()
 
   # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
   # AppleClang 13.0.0 per the table in
   # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
-  if((CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
-          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "12.0.0")) OR
-  (CMAKE_C_COMPILER_ID STREQUAL "AppleClang" AND
-          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0.0")))
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wstring-concatenation")
-  endif()
+  add_flag_if_supported(C_CXX_FLAGS "-Wstring-concatenation")
 
-  if(CLANG OR NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
-  endif()
+  add_flag_if_supported(C_CXX_FLAGS "-Wimplicit-fallthrough")
 
   if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "5")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wformat-signedness")
@@ -497,14 +590,16 @@ if(GCC OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
 
-  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
-  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
+  check_compiler("linux_random_h.c" HAVE_LINUX_RANDOM_H)
+  if(NOT HAVE_LINUX_RANDOM_H)
+    check_compiler("linux_random_h.c" AWS_LC_URANDOM_NEEDS_U32 "-DDEFINE_U32")
+    if(AWS_LC_URANDOM_NEEDS_U32)
+      add_definitions("-DHAVE_LINUX_RANDOM_H")
+    endif()
   endif()
 
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMPILER_CHECK_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILER_CHECK_FLAGS}")
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
+  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
@@ -524,10 +619,13 @@ elseif(MSVC)
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
+      "C4291" # 'void *operator new(std::size_t,void *) throw()': no matching
+              # operator delete found; memory will not be freed if initialization
+              # throws an exception
+      "C4296" # '>=' : expression is always true
       "C4371" # layout of class may have changed from a previous version of the
               # compiler due to better packing of member '...'
       "C4388" # signed/unsigned mismatch
-      "C4296" # '>=' : expression is always true
       "C4350" # behavior change: 'std::_Wrap_alloc...'
       "C4365" # '=' : conversion from 'size_t' to 'int',
               # signed/unsigned mismatch
@@ -538,6 +636,8 @@ elseif(MSVC)
       "C4514" # 'function': unreferenced inline function has been removed
       "C4548" # expression before comma has no effect; expected expression with
               # side-effect" caused by FD_* macros.
+      "C4571" # Informational: catch(...) semantics changed since Visual C++ 7.1;
+              # structured exceptions (SEH) are no longer caught
       "C4610" # struct 'argument' can never be instantiated - user defined
               # constructor required.
       "C4623" # default constructor was implicitly defined as deleted
@@ -557,6 +657,7 @@ elseif(MSVC)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
       "C5026" # move constructor was implicitly defined as deleted
       "C5027" # move assignment operator was implicitly defined as deleted
+      "C5039" # pointer or reference to potentially throwing function passed to 'extern "C"' function under -EHc
       "C5045" # Compiler will insert Spectre mitigation for memory load if
               # /Qspectre switch specified
       "C4255" # no function prototype given: converting '()' to '(void)'
@@ -582,21 +683,21 @@ elseif(MSVC)
                             ${MSVC_DISABLED_WARNINGS_LIST})
   string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
                             ${MSVC_LEVEL4_WARNINGS_LIST})
-  set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
-  set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+endif()
 
-  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
-  # This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
-  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
-    # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
-    # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
-    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
-    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+# If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
+# This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
+  # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
+  string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
+  string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
 
-    # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
-    set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
-    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
-  endif()
+  # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
+  set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
 endif()
 
 if(WIN32)
@@ -611,11 +712,7 @@ if(WIN32)
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
-if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.9.99") OR
-   CLANG)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
-endif()
+add_flag_if_supported(C_CXX_FLAGS "-Wshadow")
 
 # pthread_rwlock_t on Linux requires a feature flag. We limit this to Linux
 # because, on Apple platforms, it instead disables APIs we use. See compat(5)
@@ -732,25 +829,18 @@ if(KEEP_ASM_LOCAL_SYMBOLS)
 endif()
 
 if(FIPS)
-
   if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
+  if(NOT BUILD_SHARED_LIBS AND (WIN32 OR APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is supported only on Linux")
   endif()
 
-  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
-    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
+  if(CMAKE_C_FLAGS MATCHES "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" AND BUILD_SHARED_LIBS)
+    message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
   endif()
 
-  string(REGEX MATCH "(^| )-DAWSLC_FIPS_FAILURE_CALLBACK($| )" FIPS_CALLBACK_ENABLED "${CMAKE_C_FLAGS}")
-  if(FIPS_CALLBACK_ENABLED AND BUILD_SHARED_LIBS)
-    message(FATAL_ERROR "AWSLC_FIPS_FAILURE_CALLBACK only supported with the static library build of AWS-LC")
-  endif ()
-
-  add_definitions(-DBORINGSSL_FIPS)
   # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
     if(BUILD_SHARED_LIBS)
@@ -759,14 +849,17 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
-  if(FIPS_SHARED AND ANDROID)
-    # The Android CMake files set -ffunction-sections and -fdata-sections,
-    # which is incompatible with FIPS_SHARED.
-    set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
-  endif()
+
+  add_definitions(-DBORINGSSL_FIPS)
+endif()
+
+# The Android CMake files set -ffunction-sections and -fdata-sections, which
+# is incompatible with FIPS_SHARED.
+if(FIPS_SHARED AND ANDROID)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
 endif()
 
 if(OPENSSL_SMALL)
@@ -853,6 +946,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR_LOWER STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
+endif()
+
+if(WIN32 AND FIPS AND (CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR (CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" AND ARCH STREQUAL "aarch64")))
+  message(FATAL_ERROR "Windows Debug and RelWithDebInfo builds are not supported with FIPS, use Release")
 endif()
 
 # If target ARCH is 32-bit x86, ensure SSE2 is enabled since it's used by the optimized assembly.
@@ -1007,6 +1108,8 @@ if(BUILD_TESTING)
   set(INTEGRATION_TEST_EXEC integration_test${TEST_EXECUTABLE_EXT})
   set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test${TEST_EXECUTABLE_EXT})
   set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init${TEST_EXECUTABLE_EXT})
+  set(RANDOM_ISOLATED_EXEC rand_isolated_test${TEST_EXECUTABLE_EXT})
+  set(TREE_DRBG_JITTER_ENTROPY_ISOLATED_EXEC tree_drbg_jitter_entropy_isolated_test${TEST_EXECUTABLE_EXT})
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
 
@@ -1023,6 +1126,11 @@ if(BUILD_TESTING)
       )
     endif()
   endmacro()
+endif()
+
+# By default, include jitter entropy.
+if(NOT DISABLE_CPU_JITTER_ENTROPY)
+  add_subdirectory(third_party/jitterentropy)
 endif()
 
 add_subdirectory(crypto)
@@ -1076,7 +1184,7 @@ endif()
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
-      if(MSVC)
+      if(WIN32)
         set(ACVP_TOOL ${AWSLC_BINARY_DIR}/acvptool.exe)
         set(TEST_WRAPPER ${AWSLC_BINARY_DIR}/testmodulewrapper.exe)
       else()
@@ -1091,7 +1199,7 @@ if(BUILD_TESTING)
       set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         util/go_fips_tests.txt)
 
-      if(MSVC)
+      if(WIN32)
         # Delocator doesn't support Windows. So, this test would fail.
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
@@ -1113,9 +1221,9 @@ if(BUILD_TESTING)
       add_custom_target(
         build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
-                boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
+                github.com/aws/aws-lc/util/fipstools/acvp/acvptool/testmodulewrapper
         WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
@@ -1229,18 +1337,18 @@ if(BUILD_TESTING)
     if(BUILD_LIBSSL)
       add_custom_target(
           run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          COMMAND ssl_test
-          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+          COMMAND crypto/crypto_test
+          COMMAND crypto/urandom_test
+          COMMAND ssl/ssl_test
+          WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
-      add_custom_command(
+      add_custom_target(
           run_minimal_tests
-          COMMAND crypto_test
-          COMMAND urandom_test
-          WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+          COMMAND crypto/crypto_test
+          COMMAND crypto/urandom_test
+          WORKING_DIRECTORY ${AWSLC_BINARY_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )
@@ -1251,24 +1359,6 @@ endif()
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
 endif()
-
-# Parse |OPENSSL_VERSION_NUMBER| in both files and make sure they match.
-# |OPENSSL_VERSION_NUMBER| exists in `opensslv.h` only to support
-# MySQL's CMake build.
-FILE(STRINGS "include/openssl/base.h"
-      BASE_VERSION_NUMBER
-      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
-      )
-FILE(STRINGS "include/openssl/opensslv.h"
-      OPENSSLV_VERSION_NUMBER
-      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
-      )
-if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
-  message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
-endif()
-
-# TODO: Find a way to make this automatically align with OPENSSL_VERSION_NUMBER in base.h.
-set(VERSION 1.1.1)
 
 # AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
 # the downstream integration may build with the system's OpenSSL version instead.
@@ -1285,3 +1375,11 @@ foreach(in_file ${OPENSSL_PKGCONFIGS})
   configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endforeach()
+
+if(ENABLE_SOURCE_MODIFICATION)
+  configure_file(include/openssl/base.h.in ${AWSLC_SOURCE_DIR}/include/openssl/base.h @ONLY)
+  configure_file(include/openssl/opensslv.h.in ${AWSLC_SOURCE_DIR}/include/openssl/opensslv.h @ONLY)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/util/check-linkage.sh.in")
+    configure_file(util/check-linkage.sh.in check-linkage.sh @ONLY)
+  endif()
+endif()

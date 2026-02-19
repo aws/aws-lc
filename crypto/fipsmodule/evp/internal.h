@@ -150,7 +150,7 @@ struct evp_pkey_st {
     DH *dh;
     EC_KEY *ec;
     KEM_KEY *kem_key;
-    PQDSA_KEY * pqdsa_key;
+    PQDSA_KEY *pqdsa_key;
   } pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1

@@ -240,6 +240,38 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <p><span>Returns zero.</span></p>
   </td>
  </tr>
+ <tr>
+  <td rowspan=3>
+    <p><span>Post-handshake authentication</span></p>
+  </td>
+  <td rowspan=3>
+    <p><span>
+<a href="https://github.com/aws/aws-lc/blob/b6063413c8cfa2302f750a8cf90de550a598671d/include/openssl/ssl.h#L5981-L5995">Post-handshake authentication</a>
+</span></p>
+  </td>
+  <td>
+    <p><span>SSL_verify_client_post_handshake</span></p>
+  </td>
+  <td>
+    <p><span>Returns zero.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+    <p><span>SSL_CTX_set_post_handshake_auth</span></p>
+  </td>
+  <td>
+    <p><span>Not implemented.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+    <p><span>SSL_set_post_handshake_auth</span></p>
+  </td>
+  <td>
+    <p><span>Not implemented.</span></p>
+  </td>
+ </tr>
 </table>
 
 ### libssl TLS supported ciphersuites
@@ -295,6 +327,17 @@ TLS 1.3 supported cipher suites between AWS-LC and OpenSSL 1.1.1u:
 libcrypto is the portion of OpenSSL for performing general-purpose cryptography, which can be used without libssl. Commonly used standardized formats such as `X509` and `ASN1` are also implemented in libcrypto. AWS-LC does not have support for every feature in OpenSSL’s libcrypto. Notable absent functionalities include OpenSSL’s [`CONF` modules](https://www.openssl.org/docs/manmaster/man3/CONF_modules_load_file.html). Utility functions surrounding `RAND` are no-ops, consumers should call `RAND_bytes` directly instead. Setting flags to configure `EVP_MD_CTX` and `EVP_CIPHER_CTX` is also not supported.
 
 Older and less common usages of `EVP_PKEY` have been removed. For example, signing and verifying with `EVP_PKEY_DSA`  is not supported. More details on specific features can be found in the corresponding [header documentation](https://github.com/aws/aws-lc/tree/main/include/openssl).
+
+Memory debugging functionality between AWS-LC and OpenSSL 1.1.1u:
+
+|Function |OpenSSL 1.1.1 |AWS-LC |
+|--- |--- |--- |
+|CRYPTO_mem_ctrl() |X | |
+|CRYPTO_mem_leaks() |X | |
+|CRYPTO_mem_leaks_fp() |X | |
+|CRYPTO_mem_leaks_cb() |X | |
+
+Note: AWS-LC defines OPENSSL_NO_CRYPTO_MDEBUG by default.
 
 **When migrating to AWS-LC, it is important to understand the specific libcrypto components your application is reliant on from OpenSSL. For example, there may be underlying differences when consuming** **X509 certificate verification** **from AWS-LC.** <ins>**Migrators to AWS-LC are expected to understand their intended use cases and have tests surrounding functionality they are dependent on.**</ins> AWS-LC provides test coverage for functional and cryptographic correctness, along with compliance with standards like PKCS and X509. Different cryptographic libraries may implement some behavior by convention that is not standardized and thus is not guaranteed to work the same way in AWS-LC. Customers are responsible for writing their own tests to determine whether they are affected by these kinds of differences, and AWS-LC will publish a list of known differences in the future.
 
@@ -838,8 +881,22 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>Returns NULL.</span></p>
   </td>
  </tr>
+<tr>
+ <td>
+  <p><span>Memory Debugging</span></p>
+ </td>
+ <td>
+  <p><span>crypto.h</span></p>
+ </td>
+ <td>
+  <p><span>CRYPTO_mem_ctrl</span></p>
+ </td>
+<td>
+<p><span>Returns 0.</span></p>
+</td>
+</tr>
  <tr>
-  <td rowspan=13>
+  <td rowspan=14>
   <p><span>Miscellaneous</span></p>
   </td>
   <td rowspan=5>
@@ -1020,4 +1077,21 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>Returns zero.</span></p>
   </td>
  </tr>
+<tr>
+<td>
+<p>
+<span>
+        <a href="https://github.com/aws/aws-lc/blob/412be9d1bb4f9d2f962dba1beac41249dbacdb55/include/openssl/x509.h#L5097">
+            x509.h
+        </a>
+    </span>
+</p>
+</td>
+<td>
+  <p><span>X509_TRUST_cleanup</span></p>
+  </td>
+  <td>
+  <p><span>Does nothing.</span></p>
+  </td>
+</tr>
 </table>

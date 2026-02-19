@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - KAFKA_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - KAFKA_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/KAFKA_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/KAFKA_BUILD_ROOT"
 KAFKA_SRC_FOLDER="${SCRATCH_FOLDER}/librdkafka"
 KAFKA_BUILD_PREFIX="${KAFKA_SRC_FOLDER}/build/install"
 KAFKA_TEST_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/librdkafka_patch"
@@ -38,8 +38,7 @@ function kafka_build() {
   make check
 
   local kafka_executable="${KAFKA_BUILD_PREFIX}/lib/librdkafka.so"
-  ldd ${kafka_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${kafka_executable}" crypto || exit 1
 }
 
 function kafka_run_tests() {
@@ -49,8 +48,8 @@ function kafka_run_tests() {
 
   pushd ${KAFKA_SRC_FOLDER}/tests
   python3 -m pip install -U -r requirements.txt
-  python3 -m trivup.clusters.KafkaCluster --version 2.8.0 << EOF
-  TESTS_SKIP=0092,0113 make -j quick
+  python3 -m trivup.clusters.KafkaCluster --version 3.9.0 << EOF
+  make -j quick
   exit
 EOF
 }

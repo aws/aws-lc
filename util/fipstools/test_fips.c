@@ -23,7 +23,6 @@
 #include <openssl/crypto.h>
 #include <openssl/ctrdrbg.h>
 #include <openssl/curve25519.h>
-#include <openssl/des.h>
 #include <openssl/dh.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
@@ -53,32 +52,38 @@ static void hexdump(const void *a, size_t len) {
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
-#if defined(BORINGSSL_FIPS_140_3)
-  const uint32_t module_version = FIPS_version();
-  if (module_version == 0) {
-    printf("No module version set\n");
-    goto err;
-  }
-  printf("Module version: %" PRIu32 "\n", module_version);
-#endif //BORINGSSL_FIPS_140_3
+  static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
+                                      'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
 
-  static const uint8_t kAESKey[16] = "BoringCrypto Key";
-  static const uint8_t kPlaintext[64] =
-      "BoringCryptoModule FIPS KAT Encryption and Decryption Plaintext!";
-  static const DES_cblock kDESKey1 = {"BCMDESK1"};
-  static const DES_cblock kDESKey2 = {"BCMDESK2"};
-  static const DES_cblock kDESKey3 = {"BCMDESK3"};
-  static const DES_cblock kDESIV = {"BCMDESIV"};
+  static const uint8_t kPlaintext[64] = {
+      'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r', 'y', 'p', 't', 'o', 'M',
+      'o', 'd', 'u', 'l', 'e', ' ', 'F', 'I', 'P', 'S', ' ', 'K', 'A',
+      'T', ' ', 'E', 'n', 'c', 'r', 'y', 'p', 't', 'i', 'o', 'n', ' ',
+      'a', 'n', 'd', ' ', 'D', 'e', 'c', 'r', 'y', 'p', 't', 'i', 'o',
+      'n', ' ', 'P', 'l', 'a', 'i', 'n', 't', 'e', 'x', 't', '!'};
+
   static const uint8_t kPlaintextSHA256[32] = {
       0x37, 0xbd, 0x70, 0x53, 0x72, 0xfc, 0xd4, 0x03, 0x79, 0x70, 0xfb,
       0x06, 0x95, 0xb1, 0x2a, 0x82, 0x48, 0xe1, 0x3e, 0xf2, 0x33, 0xfb,
       0xef, 0x29, 0x81, 0x22, 0x45, 0x40, 0x43, 0x70, 0xce, 0x0f};
-  const uint8_t kDRBGEntropy[48] =
-      "DBRG Initial Entropy                            ";
-  const uint8_t kDRBGPersonalization[18] = "BCMPersonalization";
-  const uint8_t kDRBGAD[16] = "BCM DRBG AD     ";
-  const uint8_t kDRBGEntropy2[48] =
-      "DBRG Reseed Entropy                             ";
+  const uint8_t kDRBGEntropy[48] = {
+      'D', 'B', 'R', 'G', ' ', 'I', 'n', 'i', 't', 'i', 'a', 'l',
+      ' ', 'E', 'n', 't', 'r', 'o', 'p', 'y', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+
+  const uint8_t kDRBGPersonalization[18] = {'B', 'C', 'M', 'P', 'e', 'r',
+                                            's', 'o', 'n', 'a', 'l', 'i',
+                                            'z', 'a', 't', 'i', 'o', 'n'};
+
+  const uint8_t kDRBGAD[16] = {'B', 'C', 'M', ' ', 'D', 'R', 'B', 'G',
+                               ' ', 'A', 'D', ' ', ' ', ' ', ' ', ' '};
+
+  const uint8_t kDRBGEntropy2[48] = {
+      'D', 'B', 'R', 'G', ' ', 'R', 'e', 's', 'e', 'e', 'd', ' ',
+      'E', 'n', 't', 'r', 'o', 'p', 'y', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+      ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];
@@ -278,30 +283,6 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
 
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
-
-  DES_key_schedule des1, des2, des3;
-  DES_cblock des_iv;
-  DES_set_key_unchecked(&kDESKey1, &des1);
-  DES_set_key_unchecked(&kDESKey2, &des2);
-  DES_set_key_unchecked(&kDESKey3, &des3);
-
-  /* 3DES Encryption */
-  memcpy(&des_iv, &kDESIV, sizeof(des_iv));
-  printf("About to 3DES-CBC encrypt ");
-  hexdump(kPlaintext, sizeof(kPlaintext));
-  DES_ede3_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext), &des1, &des2,
-                       &des3, &des_iv, DES_ENCRYPT);
-  printf("  got ");
-  hexdump(output, sizeof(kPlaintext));
-
-  /* 3DES Decryption */
-  memcpy(&des_iv, &kDESIV, sizeof(des_iv));
-  printf("About to 3DES-CBC decrypt ");
-  hexdump(kPlaintext, sizeof(kPlaintext));
-  DES_ede3_cbc_encrypt(output, output, sizeof(kPlaintext), &des1,
-                       &des2, &des3, &des_iv, DES_DECRYPT);
-  printf("  got ");
-  hexdump(output, sizeof(kPlaintext));
 
   /* SHA-1 */
   printf("About to SHA-1 hash ");

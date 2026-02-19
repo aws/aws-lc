@@ -6,7 +6,7 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
-MYSQL_VERSION_TAG="mysql-cluster-9.1.0"
+MYSQL_VERSION_TAG="mysql-cluster-9.6.0"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
 BOOST_INSTALL_FOLDER=/home/dependencies/boost
@@ -75,6 +75,7 @@ main.derived_condition_pushdown : Bug#0000 Fails with OpenSSL as well. Not relev
 main.client_ssl_data_print  : Bug#0001 AWS-LC does not support Stateful session resumption (Session Caching).
 main.ssl_cache : Bug#0001 AWS-LC does not support Stateful session resumption (Session Caching).
 main.ssl_cache_tls13 : Bug#0001 AWS-LC does not support Stateful session resumption (Session Caching).
+main.mysql_client_test : Bug#0002 test_wl13075:No TLS 1.3 resumption with AWS-LC SSL_get_session(CryptoAlg-2773)
 "> skiplist
   ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=5 --retry=5 --report-unstable-tests --max-test-fail=30
   popd
@@ -110,7 +111,7 @@ git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} --depth 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls
 
-aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 
 pushd ${MYSQL_SRC_FOLDER}
 
@@ -129,10 +130,10 @@ fi
 
 popd
 
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
-ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" ssl || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" crypto || exit 1

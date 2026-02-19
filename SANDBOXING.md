@@ -105,6 +105,12 @@ additionally requires opening `/dev/urandom`. If this fails, BoringSSL will
 abort the process. BoringSSL retains the resulting file descriptor, even across
 privilege transitions.
 
+The following is a list of system calls that is needed for AWS-LC to operate
+correctly and must be allowed to succeed even in a sandbox.
+* Linux, Android, and unknown: `getrandom` and reading from `/dev/urandom`.
+* MacOS, OpenBSD, FreeBSD: `getentropy`.
+* Windows: `BCryptGenRandom`.
+
 ### Fork protection
 
 On Linux, BoringSSL allocates a page and calls `madvise` with `MADV_WIPEONFORK`
@@ -116,13 +122,16 @@ if they ignore the `MADV_WIPEONFORK` flag. As of writing, QEMU will ignore
 `madvise` calls and report success, so BoringSSL detects this by calling
 `madvise` with -1. Sandboxes must cleanly report an error instead of crashing.
 
+There is a similar system on BSD-based operating systems using
+`MAP_INHERIT_ZERO`.
+
 Once initialized, this mechanism does not require system calls in the steady
 state, though note the configured page will be inherited across privilege
 transitions.
 
-### Snapsafe protection
+### VM UBE protection
 
-Similar considerations to fork protection. The Snapsafe protection
+Similar considerations to fork protection. The VM UBE protection
 implementation maps a page that can trip sandboxes.
 
 ## C and C++ standard library

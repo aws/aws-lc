@@ -31,6 +31,8 @@ DECLARE_ASN1_FUNCTIONS(PKCS7_ENVELOPE)
 DECLARE_ASN1_FUNCTIONS(PKCS7_DIGEST)
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGN_ENVELOPE)
 
+DECLARE_ASN1_ITEM(PKCS7_ATTR_VERIFY)
+
 DEFINE_STACK_OF(PKCS7)
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.1
@@ -104,17 +106,6 @@ int pkcs7_add_signed_data(CBB *out,
                           int (*cert_crl_cb)(CBB *out, const void *arg),
                           int (*signer_infos_cb)(CBB *out, const void *arg),
                           const void *arg);
-
-// BIO_f_md is used internally by the pkcs7 module. It is not recommended
-// for external use. The BIO must be initialized with |BIO_set_md| or
-// |BIO_get_md_ctx| before it can be used.
-OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
-
-// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|
-OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
-
-// BIO_set_md set's |b|'s EVP_MD* to |md|
-OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
 
 // BIO_f_cipher is used internally by the pkcs7 module. It is not recommended
 // for external use.

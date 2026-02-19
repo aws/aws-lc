@@ -61,11 +61,11 @@ static void hexdump(char buf[MAX_HEXDUMP_SIZE], const uint8_t *in, size_t in_len
 
 static int check_test_optional_abort(const void *expected, const void *actual,
                       size_t expected_len, const char *name, const bool call_fips_failure) {
+  char expected_hex[MAX_HEXDUMP_SIZE] = {0};
+  char actual_hex[MAX_HEXDUMP_SIZE] = {0};
+  char error_msg[MAX_ERROR_MSG_SIZE] = {0};
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
     assert(sizeof(name) < MAX_NAME);
-    char expected_hex[MAX_HEXDUMP_SIZE] = {0};
-    char actual_hex[MAX_HEXDUMP_SIZE] = {0};
-    char error_msg[MAX_ERROR_MSG_SIZE] = {0};
     hexdump(expected_hex, expected, expected_len);
     hexdump(actual_hex, actual, expected_len);
 
@@ -437,7 +437,7 @@ err:
 // actually exercised, in FIPS mode. (In non-FIPS mode these tests are only run
 // when requested by |BORINGSSL_self_test|.)
 
-static int boringssl_self_test_rsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_rsa(void) {
   int ret = 0;
   uint8_t output[256];
 
@@ -536,7 +536,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ecc(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ecc(void) {
   int ret = 0;
   EC_KEY *ec_key = NULL;
   EC_POINT *ec_point_in = NULL;
@@ -662,7 +662,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ffdh(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ffdh(void) {
   int ret = 0;
   DH *dh = NULL;
   DH *fb_dh = NULL;
@@ -809,7 +809,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ml_kem(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ml_kem(void) {
   int ret = 0;
 
   static const uint8_t kKeyGenEKSeed[MLKEM512_KEYGEN_SEED_LEN] = {
@@ -887,12 +887,14 @@ static int boringssl_self_test_ml_kem(void) {
       0x38, 0x1c, 0x9b, 0x7f, 0x49, 0x99, 0x1f, 0x19, 0xa4, 0xff, 0x83, 0x69,
       0x63, 0x8d, 0xe3, 0x80, 0xb5, 0xd8, 0x28, 0xb7, 0xb5, 0xfc, 0xfd, 0xd9,
       0x1f, 0xe6, 0x8e, 0xfe, 0x16, 0xd4, 0xcd, 0x9e, 0xed, 0x66, 0xd6, 0x5c,
-      0x1d, 0x2d, 0x8c, 0xaf, 0x5a, 0xf4, 0xa6, 0x92};
+    0x1d, 0x2d, 0x8c, 0xaf, 0x5a, 0xf4, 0xa6, 0x92};
+  size_t public_len = MLKEM512_PUBLIC_KEY_BYTES;
+  size_t secret_len = MLKEM512_SECRET_KEY_BYTES;
   uint8_t keygen_decaps[MLKEM512_SECRET_KEY_BYTES] = {0};
   uint8_t keygen_encaps[MLKEM512_PUBLIC_KEY_BYTES] = {0};
 
   if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, keygen_decaps, kKeyGenEKSeed) ||
+          keygen_encaps, &public_len, keygen_decaps, &secret_len, kKeyGenEKSeed) ||
       !check_test(kKeyGenEK, keygen_encaps, sizeof(keygen_encaps),
               "ML-KEM-keyGen-encaps")) {
     goto err;
@@ -904,6 +906,8 @@ static int boringssl_self_test_ml_kem(void) {
   // dk = (dkPKE‖ek‖H(ek)‖𝑧)
   // where dkPKE is the secret key, ek is the public key, and z is the hash of
   // the public key
+  public_len = MLKEM512_PUBLIC_KEY_BYTES;
+  secret_len = MLKEM512_SECRET_KEY_BYTES;
   static const uint8_t kKeyGenDKSeed[MLKEM512_KEYGEN_SEED_LEN] = {
       0xec, 0xdb, 0x97, 0x62, 0xf4, 0x78, 0xb2, 0xfa, 0x26, 0x3d, 0xf4,
       0x6d, 0xe4, 0x47, 0xf3, 0xd1, 0x52, 0xa1, 0xbc, 0x0e, 0x02, 0xee,
@@ -911,7 +915,7 @@ static int boringssl_self_test_ml_kem(void) {
       0x07, 0x4b, 0xff, 0x80, 0x44, 0x44, 0x5e, 0x11, 0x66, 0x0b, 0x1b,
       0x6b, 0x26, 0xdf, 0x24, 0x2b, 0x8f, 0xc0, 0x2b, 0x9e, 0x8d, 0xf5,
       0x38, 0xdb, 0x17, 0xa6, 0x39, 0xd7, 0xc4, 0x61, 0x32
-};
+  };
   static const uint8_t kKeyGenDK[MLKEM512_SECRET_KEY_BYTES] = {
       0x88, 0xc1, 0x2c, 0xea, 0xa6, 0xcb, 0x91, 0xf5, 0x89, 0xac, 0xb8, 0x6d,
       0x91, 0x3c, 0x7a, 0x60, 0xf7, 0xcd, 0xab, 0xe3, 0xb7, 0xb5, 0x90, 0x09,
@@ -1050,7 +1054,7 @@ static int boringssl_self_test_ml_kem(void) {
       0x11, 0x66, 0x0b, 0x1b, 0x6b, 0x26, 0xdf, 0x24, 0x2b, 0x8f, 0xc0, 0x2b,
       0x9e, 0x8d, 0xf5, 0x38, 0xdb, 0x17, 0xa6, 0x39, 0xd7, 0xc4, 0x61, 0x32};
   if (ml_kem_512_keypair_deterministic_no_self_test(
-          keygen_encaps, keygen_decaps, kKeyGenDKSeed) ||
+          keygen_encaps, &public_len, keygen_decaps, &secret_len, kKeyGenDKSeed) ||
       !check_test(kKeyGenDK, keygen_decaps, sizeof(keygen_decaps),
                   "ML-KEM-keyGen-decaps")) {
     goto err;
@@ -1198,11 +1202,13 @@ static int boringssl_self_test_ml_kem(void) {
       0x82, 0x0b, 0x57, 0xf2, 0xae, 0x05, 0xf9, 0xa4, 0x12, 0xab, 0x55,
       0xba, 0xa4, 0x21, 0xd4, 0xaf, 0x6d, 0xac, 0x62, 0x66, 0x2a};
 
+  size_t ciphertext_len = MLKEM512_CIPHERTEXT_BYTES;
+  size_t shared_secret_len = MLKEM512_SHARED_SECRET_LEN;
   uint8_t ciphertext[MLKEM512_CIPHERTEXT_BYTES] = {0};
   uint8_t shared_secret[MLKEM512_SHARED_SECRET_LEN] = {0};
 
   if (ml_kem_512_encapsulate_deterministic_no_self_test(
-          ciphertext, shared_secret, kEncapEK, kEncapM) ||
+          ciphertext, &ciphertext_len, shared_secret, &shared_secret_len, kEncapEK, kEncapM) ||
       !check_test(kEncapCiphertext, ciphertext, sizeof(kEncapCiphertext),
                   "ML-KEM-encapsulate-ciphertext") ||
       !check_test(kEncapSharedSecret, shared_secret, sizeof(kEncapSharedSecret),
@@ -1210,6 +1216,7 @@ static int boringssl_self_test_ml_kem(void) {
     goto err;
   }
 
+  shared_secret_len = MLKEM512_SHARED_SECRET_LEN;
   static const uint8_t kDecapDK[MLKEM512_SECRET_KEY_BYTES] = {
       0x73, 0x9b, 0x8b, 0x1f, 0x6a, 0x57, 0x66, 0x31, 0x0b, 0x06, 0x19, 0x04,
       0x02, 0x14, 0x38, 0xbb, 0xd6, 0x1a, 0x14, 0xf0, 0x85, 0xfd, 0xe0, 0x29,
@@ -1486,12 +1493,12 @@ static int boringssl_self_test_ml_kem(void) {
       0x15, 0xd4, 0x69, 0x5b, 0xa0, 0x96, 0xce, 0x2b, 0x32, 0xc3, 0x75,
       0x24, 0x4f, 0x79, 0xa5, 0x74, 0xda, 0x06, 0xb4, 0xb1, 0xbd};
 
-  if (ml_kem_512_decapsulate_no_self_test(shared_secret, kDecapCiphertext,
+  if (ml_kem_512_decapsulate_no_self_test(shared_secret, &shared_secret_len, kDecapCiphertext,
                                           kDecapDK) ||
       !check_test(kDecapSharedSecret, shared_secret, sizeof(kDecapSharedSecret),
                   "ML-KEM decapsulate non-rejection") ||
       ml_kem_512_decapsulate_no_self_test(
-          shared_secret, kDecapCiphertextRejection, kDecapDK) ||
+          shared_secret, &shared_secret_len, kDecapCiphertextRejection, kDecapDK) ||
       !check_test(kDecapSharedSecretRejection, shared_secret,
                   sizeof(kDecapSharedSecretRejection),
                   "ML-KEM decapsulate implicit rejection")) {
@@ -1503,18 +1510,18 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ml_dsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_ml_dsa(void) {
   int ret = 0;
 
   // Examples kMLDSAKeyGenSeed, kMLDSAKeyGenPublicKey, kMLDSAKeyGenPrivateKey from
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/prompt.json#L15
-  const uint8_t kMLDSAKeyGenSeed[MLDSA44_KEYGEN_SEED_BYTES] = {
+  static const uint8_t kMLDSAKeyGenSeed[MLDSA44_KEYGEN_SEED_BYTES] = {
     0x4B, 0xE7, 0xA0, 0x1A, 0x99, 0xA5, 0xE5, 0xBC, 0xFE, 0x3C, 0x06,
     0x78, 0x5D, 0x8E, 0x4E, 0xC6, 0x64, 0x08, 0x22, 0x27, 0xD8, 0x67,
     0x04, 0xE9, 0xE4, 0x48, 0x62, 0x62, 0x3A, 0x05, 0xC8, 0xB3
 };
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/expectedResults.json#L13
-  const uint8_t kMLDSAKeyGenPublicKey[MLDSA44_PUBLIC_KEY_BYTES] = {
+  static const uint8_t kMLDSAKeyGenPublicKey[MLDSA44_PUBLIC_KEY_BYTES] = {
     0xad, 0xb0, 0xb3, 0x34, 0x64, 0x81, 0x60, 0x91, 0xf2, 0xa9, 0x59, 0x77,
     0xc6, 0x7f, 0x08, 0x5f, 0xdc, 0x24, 0xb3, 0x78, 0x54, 0xd4, 0xdb, 0x0a,
     0x57, 0x7a, 0xe9, 0x40, 0x1e, 0x40, 0x81, 0x48, 0xd8, 0x91, 0x7d, 0x21,
@@ -1628,7 +1635,7 @@ static int boringssl_self_test_ml_dsa(void) {
   };
 
   // https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/ML-DSA-keyGen-FIPS204/expectedResults.json#L14
-  const uint8_t kMLDSAKeyGenPrivateKey[MLDSA44_PRIVATE_KEY_BYTES] = {
+  static const uint8_t kMLDSAKeyGenPrivateKey[MLDSA44_PRIVATE_KEY_BYTES] = {
     0xad, 0xb0, 0xb3, 0x34, 0x64, 0x81, 0x60, 0x91, 0xf2, 0xa9, 0x59, 0x77,
     0xc6, 0x7f, 0x08, 0x5f, 0xdc, 0x24, 0xb3, 0x78, 0x54, 0xd4, 0xdb, 0x0a,
     0x57, 0x7a, 0xe9, 0x40, 0x1e, 0x40, 0x81, 0x48, 0xcf, 0x19, 0x5e, 0x6d,
@@ -2280,8 +2287,8 @@ static int boringssl_self_test_ml_dsa(void) {
   uint8_t private_key[MLDSA44_PRIVATE_KEY_BYTES] = {0};
 
   if (!ml_dsa_44_keypair_internal_no_self_test(public_key, private_key, kMLDSAKeyGenSeed) ||
-      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA keyGen public") ||
-      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA keyGen private")) {
+      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA-keyGen") ||
+      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA-keyGen")) {
     goto err;
   }
 
@@ -2308,7 +2315,7 @@ static int boringssl_self_test_ml_dsa(void) {
     return ret;
 }
 
-static int boringssl_self_test_eddsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_eddsa(void) {
   int ret = 0;
 
   static const uint8_t kEd25519PrivateKey[ED25519_PRIVATE_KEY_SEED_LEN] = {
@@ -2371,7 +2378,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_hasheddsa(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_hasheddsa(void) {
   int ret = 0;
 
   static const uint8_t kEd25519PrivateKey[ED25519_PRIVATE_KEY_SEED_LEN] = {
@@ -2537,7 +2544,7 @@ void boringssl_ensure_hasheddsa_self_test(void) {
 // These tests are run at process start when in FIPS mode. Note that the SHA256
 // and HMAC-SHA256 tests are also used from bcm.c, so they can't be static.
 
-int boringssl_self_test_sha256(void) {
+OPENSSL_NOINLINE int boringssl_self_test_sha256(void) {
   static const uint8_t kInput[16] = {
       0xff, 0x3b, 0x85, 0x7d, 0xa7, 0x23, 0x6a, 0x2b,
       0xaa, 0x0f, 0x39, 0x6b, 0x51, 0x52, 0x22, 0x17,
@@ -2555,7 +2562,7 @@ int boringssl_self_test_sha256(void) {
                     "SHA-256 KAT");
 }
 
-static int boringssl_self_test_sha512(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_sha512(void) {
   static const uint8_t kInput[16] = {
       0x21, 0x25, 0x12, 0xf8, 0xd2, 0xad, 0x83, 0x22,
       0x78, 0x1c, 0x6c, 0x4d, 0x69, 0xa9, 0xda, 0xa1,
@@ -2576,7 +2583,7 @@ static int boringssl_self_test_sha512(void) {
                     "SHA-512 KAT");
 }
 
-int boringssl_self_test_hmac_sha256(void) {
+OPENSSL_NOINLINE int boringssl_self_test_hmac_sha256(void) {
   static const uint8_t kInput[16] = {
       0xda, 0xd9, 0x12, 0x93, 0xdf, 0xcf, 0x2a, 0x7c,
       0x8e, 0xcd, 0x13, 0xfe, 0x35, 0x3f, 0xa7, 0x5b,
@@ -2596,7 +2603,7 @@ int boringssl_self_test_hmac_sha256(void) {
                     "HMAC-SHA-256 KAT");
 }
 
-static int boringssl_self_test_hkdf_sha256(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_hkdf_sha256(void) {
   static const uint8_t kHKDF_ikm_tc1[] = {
       0x58, 0x3e, 0xa3, 0xcf, 0x8f, 0xcf, 0xc8, 0x08, 0x73, 0xcc, 0x7b, 0x88,
       0x00, 0x9d, 0x4a, 0xed, 0x07, 0xd8, 0xd8, 0x88, 0xae, 0x98, 0x76, 0x8d,
@@ -2625,7 +2632,7 @@ static int boringssl_self_test_hkdf_sha256(void) {
                     "HKDF-SHA-256 KAT");
 }
 
-static int boringssl_self_test_sha3_256(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_sha3_256(void) {
   // From: SHA3_256ShortMsg.txt
   // Len = 128
   // Msg = d83c721ee51b060c5a41438a8221e040
@@ -2647,7 +2654,7 @@ static int boringssl_self_test_sha3_256(void) {
                     "SHA3-256 KAT");
 }
 
-static int boringssl_self_test_fast(void) {
+static OPENSSL_NOINLINE int boringssl_self_test_fast(void) {
   static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
                                       'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
   // Older versions of the gcc release build on ARM will optimize out the

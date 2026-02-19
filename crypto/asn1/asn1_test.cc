@@ -2356,45 +2356,96 @@ TEST(ASN1Test, GetObject) {
 
 }
 
-template <typename T>
-void ExpectNoParse(T *(*d2i)(T **, const uint8_t **, long),
-                   const std::vector<uint8_t> &in) {
-  SCOPED_TRACE(Bytes(in));
-  const uint8_t *ptr = in.data();
-  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
-  EXPECT_FALSE(obj);
-}
-
 // The zero tag, constructed or primitive, is reserved and should rejected by
 // the parser.
 TEST(ASN1Test, ZeroTag) {
-  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
-  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
-  ExpectNoParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x02, 0x00, 0x00});
-  ExpectNoParse(d2i_ASN1_SET_ANY, {0x31, 0x02, 0x00, 0x00});
-  // SEQUENCE {
-  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
-  //   [UNIVERSAL 0 PRIMITIVE] {}
-  // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00});
-  // SEQUENCE {
-  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
-  //   [UNIVERSAL 0 CONSTRUCTED] {}
-  // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00});
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x00}, true);
+  ExpectParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00},
+              false);  // OpenSSL also rejects this.
   // SEQUENCE {
   //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
   //   [UNIVERSAL 0 PRIMITIVE] { "a" }
   // }
-  ExpectNoParse(d2i_X509_ALGOR,
-                {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
-                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61});
+  ExpectParse(d2i_X509_ALGOR,
+              {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+               0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61},
+              true);
+
+
+  // The following test cases are rejected by OpenSSL with their type specific
+  // counterparts. They are parsable with |d2i_ASN1_TYPE| however, and we test
+  // that later.
+  const std::vector<uint8_t> zero_tag_sequence = {0x30, 0x02, 0x00, 0x00};
+  const std::vector<uint8_t> zero_tag_set_any = {0x31, 0x02, 0x00, 0x00};
+  // Taken from OpenSSL's test/asn1_decode_test.c.
+  const std::vector<uint8_t> openssl_t_invalid_zero = {0x31, 0x02, 0x00, 0x00};
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] {}
+  // }
+  const std::vector<uint8_t> universal_0_primitive_empty = {
+      0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+      0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00};
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, zero_tag_sequence, false);
+  ExpectParse(d2i_ASN1_SET_ANY, zero_tag_set_any, false);
+  ExpectParse(d2i_X509_ALGOR, universal_0_primitive_empty, false);
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, openssl_t_invalid_zero, false);
+  // Test that the equivalent test cases are parsable with |ASN1_TYPE| (like
+  // OpenSSL).
+  ExpectParse(d2i_ASN1_TYPE, zero_tag_sequence, true);
+  ExpectParse(d2i_ASN1_TYPE, zero_tag_set_any, true);
+  ExpectParse(d2i_ASN1_TYPE, universal_0_primitive_empty, true);
+  ExpectParse(d2i_ASN1_TYPE, openssl_t_invalid_zero, true);
+
+
+  // TODO: Change expectation of below to true. Below use BER constructed
+  //       strings and will still fail until we revert a70edd4.
+
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 CONSTRUCTED] {}
+  // }
+  ExpectParse(d2i_X509_ALGOR,
+              {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+               0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00},
+              true);
+
+  ExpectParse(d2i_ASN1_TYPE, {0x20, 0x00}, true);
+  ExpectParse(d2i_ASN1_TYPE, {0x20, 0x00}, true);
+}
+
+TEST(ASN1Test, IndefiniteLength) {
+  // Indefinite lengths are more common across container types.
+  ExpectParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x80, 0x02, 0x01, 0x2a, 0x00, 0x00},
+              true);
+  ExpectParse(d2i_ASN1_SET_ANY,
+              {0x31, 0x80, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02, 0x00, 0x00},
+              true);
+
+  // constructed [APPLICATION 31] with an invalid indefinite length ending.
+  ExpectParse(d2i_ASN1_TYPE, {0x7f, 0x1f, 0x80, 0x01, 0x01, 0x02, 0x00}, false);
+  // Nested constructed [APPLICATION 31] within another constructed
+  // [APPLICATION 31] with indefinite lengths.
+  ExpectParse(d2i_ASN1_TYPE,
+              {0x7f, 0x1f, 0x80, 0x7f, 0x1f, 0x80, 0x03, 0x01, 0x02, 0x00, 0x00,
+               0x00, 0x00},
+              true);
+
+  // The ones below use constructed form. This is indicated with (0x20 | 0x??)
+  // in the first byte.
+  ExpectParse(
+      d2i_ASN1_BIT_STRING,
+      {0x23, 0x80, 0x03, 0x02, 0x00, 0xFF, 0x03, 0x02, 0x00, 0xAA, 0x00, 0x00},
+      true);
+  ExpectParse(
+      d2i_ASN1_OCTET_STRING,
+      {0x24, 0x80, 0x04, 0x02, 0x12, 0x34, 0x04, 0x02, 0x56, 0x78, 0x00, 0x00},
+      true);
+  // |ASN1_INTEGER|s only have primitive encoding. They do not have constructed
+  // forms.
+  ExpectParse(d2i_ASN1_INTEGER,
+            {0x22, 0x80, 0x02, 0x01, 0x12, 0x02, 0x01, 0x34, 0x00, 0x00},
+            false);
 }
 
 // Exhaustively test POSIX time conversions for every day across the millenium.
@@ -3171,6 +3222,216 @@ TEST(ASN1Test, EmbedTypes) {
       0x15, 0x5e, 0xe6, 0x1f, 0x32, 0x52, 0x61, 0x5e, 0x75, 0xc9, 0x14};
   TestEmbedType(kTestCert, i2d_X509, EMBED_X509_new, EMBED_X509_free,
                 d2i_EMBED_X509, i2d_EMBED_X509, sk_X509_num, sk_X509_value);
+}
+
+TEST(ASN1Test, A2iASN1Integer) {
+  // Test basic a2i_ASN1_INTEGER functionality - parsing hex strings from BIO
+  const struct {
+    const char *input;
+    std::vector<uint8_t> expected_data;
+    int expected_type;
+  } kBasicTests[] = {
+      // Simple hex values - note: leading "00" is stripped from the first line
+      {"01", {0x01}, V_ASN1_INTEGER},
+      {"FF", {0xff}, V_ASN1_INTEGER},
+      {"AABB", {0xaa, 0xbb}, V_ASN1_INTEGER},
+      {"AABBCC", {0xaa, 0xbb, 0xcc}, V_ASN1_INTEGER},
+      {"0123456789ABCDEF", {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+       V_ASN1_INTEGER},
+      // Leading "00" is stripped; "0000FF" becomes "00FF" = {0x00, 0xff}
+      {"0000FF", {0x00, 0xff}, V_ASN1_INTEGER},
+  };
+
+  for (const auto &t : kBasicTests) {
+    SCOPED_TRACE(t.input);
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.input, strlen(t.input)));
+    ASSERT_TRUE(bio);
+
+    bssl::UniquePtr<ASN1_INTEGER> val(ASN1_INTEGER_new());
+    ASSERT_TRUE(val);
+
+    char buf[256];
+    int ret = a2i_ASN1_INTEGER(bio.get(), val.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, 1);
+    EXPECT_EQ(val->type, t.expected_type);
+    EXPECT_EQ(Bytes(val->data, val->length), Bytes(t.expected_data));
+  }
+
+  // "00" alone results in empty data after stripping leading "00"
+  {
+    const char *input = "00";
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input, strlen(input)));
+    ASSERT_TRUE(bio);
+    bssl::UniquePtr<ASN1_INTEGER> val(ASN1_INTEGER_new());
+    ASSERT_TRUE(val);
+    char buf[256];
+    int ret = a2i_ASN1_INTEGER(bio.get(), val.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, 1);
+    // After stripping "00", we have nothing left, so length is 0
+    EXPECT_EQ(val->length, 0);
+  }
+
+  // Test invalid inputs
+  const char *kInvalidTests[] = {
+      "",      // Empty
+      "A",     // Odd number of hex chars
+      "ABC",   // Odd number of hex chars
+      "GG",    // Invalid hex chars
+  };
+  for (const char *input : kInvalidTests) {
+    SCOPED_TRACE(input);
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input, strlen(input)));
+    ASSERT_TRUE(bio);
+
+    bssl::UniquePtr<ASN1_INTEGER> val(ASN1_INTEGER_new());
+    ASSERT_TRUE(val);
+
+    char buf[256];
+    int ret = a2i_ASN1_INTEGER(bio.get(), val.get(), buf, sizeof(buf));
+    EXPECT_EQ(ret, 0);
+    ERR_clear_error();
+  }
+}
+
+TEST(ASN1Test, A2iASN1IntegerLineContinuation) {
+  // Test line continuation with backslash.
+  // i2a_ASN1_INTEGER outputs "\\\n" every 35 bytes (70 hex chars).
+  // a2i_ASN1_INTEGER should handle this continuation.
+
+  // Simple continuation test: "AABB\\\nCCDD" should parse as 0xAABBCCDD
+  {
+    const char *input = "AABB\\\nCCDD";
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input, strlen(input)));
+    ASSERT_TRUE(bio);
+
+    bssl::UniquePtr<ASN1_INTEGER> val(ASN1_INTEGER_new());
+    ASSERT_TRUE(val);
+
+    char buf[256];
+    int ret = a2i_ASN1_INTEGER(bio.get(), val.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, 1);
+    static const uint8_t kExpected[] = {0xaa, 0xbb, 0xcc, 0xdd};
+    EXPECT_EQ(Bytes(val->data, val->length), Bytes(kExpected));
+  }
+
+  // Test with longer continuation
+  {
+    const char *input = "112233445566\\\n778899AABB";
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input, strlen(input)));
+    ASSERT_TRUE(bio);
+
+    bssl::UniquePtr<ASN1_INTEGER> val(ASN1_INTEGER_new());
+    ASSERT_TRUE(val);
+
+    char buf[256];
+    int ret = a2i_ASN1_INTEGER(bio.get(), val.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, 1);
+    static const uint8_t kExpected[] = {0x11, 0x22, 0x33, 0x44, 0x55,
+                                        0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb};
+    EXPECT_EQ(Bytes(val->data, val->length), Bytes(kExpected));
+  }
+}
+
+TEST(ASN1Test, I2aA2iASN1IntegerRoundTrip) {
+  // Test round-trip: i2a_ASN1_INTEGER -> a2i_ASN1_INTEGER
+  // For values small enough to not trigger line continuation, this should work.
+  //
+  // Note: {0x00} is intentionally excluded because a2i_ASN1_INTEGER strips
+  // leading "00" from the first line, so "00" -> empty data. This is expected
+  // behavior, not a bug.
+  const std::vector<uint8_t> kTestValues[] = {
+      {0x01},
+      {0x7f},
+      {0x80},
+      {0xff},
+      {0x01, 0x00},
+      {0xde, 0xad, 0xbe, 0xef},
+  };
+
+  for (const auto &test_data : kTestValues) {
+    SCOPED_TRACE(Bytes(test_data));
+
+    // Create an ASN1_INTEGER with the test data
+    bssl::UniquePtr<ASN1_INTEGER> orig(ASN1_INTEGER_new());
+    ASSERT_TRUE(orig);
+    ASSERT_TRUE(ASN1_STRING_set(orig.get(), test_data.data(), test_data.size()));
+
+    // Serialize to hex via i2a_ASN1_INTEGER
+    bssl::UniquePtr<BIO> out_bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(out_bio);
+    int written = i2a_ASN1_INTEGER(out_bio.get(), orig.get());
+    ASSERT_GT(written, 0);
+
+    // Get the hex string
+    const uint8_t *hex_data = nullptr;
+    size_t hex_len = 0;
+    ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &hex_data, &hex_len));
+
+    // Parse it back via a2i_ASN1_INTEGER
+    bssl::UniquePtr<BIO> in_bio(
+        BIO_new_mem_buf(hex_data, static_cast<int>(hex_len)));
+    ASSERT_TRUE(in_bio);
+
+    bssl::UniquePtr<ASN1_INTEGER> parsed(ASN1_INTEGER_new());
+    ASSERT_TRUE(parsed);
+
+    char buf[256];
+    int ret = a2i_ASN1_INTEGER(in_bio.get(), parsed.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, 1);
+
+    // The parsed value should match the original
+    EXPECT_EQ(Bytes(orig->data, orig->length),
+              Bytes(parsed->data, parsed->length));
+  }
+}
+
+TEST(ASN1Test, I2aA2iASN1IntegerRoundTripLong) {
+  // Test round-trip with a value long enough to trigger line continuation.
+  // i2a_ASN1_INTEGER adds "\\\n" every 35 bytes.
+  // We need > 35 bytes to trigger continuation.
+
+  // Create a 40-byte value
+  std::vector<uint8_t> long_value(40);
+  for (size_t i = 0; i < long_value.size(); i++) {
+    long_value[i] = static_cast<uint8_t>(i + 1);
+  }
+
+  bssl::UniquePtr<ASN1_INTEGER> orig(ASN1_INTEGER_new());
+  ASSERT_TRUE(orig);
+  ASSERT_TRUE(
+      ASN1_STRING_set(orig.get(), long_value.data(), long_value.size()));
+
+  // Serialize to hex via i2a_ASN1_INTEGER
+  bssl::UniquePtr<BIO> out_bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(out_bio);
+  int written = i2a_ASN1_INTEGER(out_bio.get(), orig.get());
+  ASSERT_GT(written, 0);
+
+  // Get the hex string (should contain "\\\n" continuation)
+  const uint8_t *hex_data = nullptr;
+  size_t hex_len = 0;
+  ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &hex_data, &hex_len));
+
+  // Verify that continuation is present
+  std::string hex_str(reinterpret_cast<const char *>(hex_data), hex_len);
+  EXPECT_NE(hex_str.find("\\\n"), std::string::npos)
+      << "Expected line continuation in output: " << hex_str;
+
+  // Parse it back via a2i_ASN1_INTEGER
+  bssl::UniquePtr<BIO> in_bio(
+      BIO_new_mem_buf(hex_data, static_cast<int>(hex_len)));
+  ASSERT_TRUE(in_bio);
+
+  bssl::UniquePtr<ASN1_INTEGER> parsed(ASN1_INTEGER_new());
+  ASSERT_TRUE(parsed);
+
+  char buf[256];
+  int ret = a2i_ASN1_INTEGER(in_bio.get(), parsed.get(), buf, sizeof(buf));
+  ASSERT_EQ(ret, 1);
+
+  // The parsed value should match the original
+  EXPECT_EQ(Bytes(orig->data, orig->length),
+            Bytes(parsed->data, parsed->length));
 }
 
 #endif  // !WINDOWS || !SHARED_LIBRARY

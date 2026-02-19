@@ -35,6 +35,7 @@ static uint64_t armv8_cpuid_probe(void) {
 
 void OPENSSL_cpuid_setup(void) {
   unsigned long hwcap = getauxval(AT_HWCAP);
+  unsigned long hwcap2 = getauxval(AT_HWCAP2);
 
   // See /usr/include/asm/hwcap.h on an aarch64 installation for the source of
   // these values.
@@ -46,6 +47,8 @@ void OPENSSL_cpuid_setup(void) {
   static const unsigned long kSHA512 = 1 << 21;
   static const unsigned long kSHA3 = 1 << 17;
   static const unsigned long kCPUID = 1 << 11;
+
+  static const unsigned long kRNGhwcap2 = 1 << 16;;
 
   uint64_t OPENSSL_arm_midr = 0;
 
@@ -80,14 +83,19 @@ void OPENSSL_cpuid_setup(void) {
   // is supported. As of Valgrind 3.21 trying to read from that register will
   // cause Valgrind to crash.
   if (hwcap & kCPUID) {
-    // Check if the CPU model is Neoverse V1 or V2,
-    // which has a wide crypto/SIMD pipeline.
     OPENSSL_arm_midr = armv8_cpuid_probe();
+    if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_N1)) {
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
+    }
     if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) {
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_V1;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V1
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
     }
     if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V2)) {
       OPENSSL_armcap_P |= ARMV8_NEOVERSE_V2;
+      // CPU capabilities of N1 are a subset of CPU capabilities of V2
+      OPENSSL_armcap_P |= ARMV8_NEOVERSE_N1;
     }
   }
 
@@ -95,6 +103,10 @@ void OPENSSL_cpuid_setup(void) {
   // Before setting/resetting the DIT flag, check it's available in HWCAP
   if (hwcap & kDIT) {
     OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
+  }
+
+  if (hwcap2 & kRNGhwcap2) {
+    OPENSSL_armcap_P |= ARMV8_RNG;
   }
 
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to

@@ -104,6 +104,16 @@ TEST(ECDHTest, TestVectors) {
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_key(key.get()));
 
+    // Check EVP_PKEY_check and EVP_PKEY_public_check
+    bssl::UniquePtr<EVP_PKEY> ec_pkey(EVP_PKEY_new());
+    ASSERT_TRUE(ec_pkey);
+    ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(ec_pkey.get(), key.get()));
+    bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(
+            EVP_PKEY_CTX_new(ec_pkey.get(), NULL));
+    ASSERT_TRUE(ec_key_ctx);
+    ASSERT_TRUE(EVP_PKEY_check(ec_key_ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_public_check((ec_key_ctx.get())));
+
     std::vector<uint8_t> actual_z;
     // Make |actual_z| larger than expected to ensure |ECDH_compute_key| returns
     // the right amount of data.
@@ -251,7 +261,7 @@ static void RunWycheproofTest(FileTest *t) {
   std::vector<uint8_t> shared;
   ASSERT_TRUE(t->GetBytes(&shared, "shared"));
   // BoringSSL supports compressed coordinates.
-  bool is_valid = result.IsValid({"CompressedPoint"});
+  bool is_valid = result.IsValid({"CompressedPoint", "UnnamedCurve", "UnusedParam"});
 
   // Wycheproof stores the peer key in an SPKI to mimic a Java API mistake.
   // This is non-standard and error-prone.
@@ -259,6 +269,17 @@ static void RunWycheproofTest(FileTest *t) {
   CBS_init(&cbs, peer_spki.data(), peer_spki.size());
   bssl::UniquePtr<EVP_PKEY> peer_evp(EVP_parse_public_key(&cbs));
   if (!peer_evp || CBS_len(&cbs) != 0) {
+    if (!peer_evp && result.raw_result == WycheproofRawResult::kAcceptable &&
+        std::find(result.flags.begin(), result.flags.end(), "UnusedParam") !=
+            result.flags.end()) {
+      // The proof flags are not granular enough, and we do validate some
+      // parameters for unnamed / explicit curves.
+      //
+      // So skip tests where the result was acceptable and UnusedParam was a flag if we rejected the
+      // public key.
+      t->SkipCurrent();
+      return;
+    }
     EXPECT_FALSE(is_valid);
     return;
   }
@@ -266,6 +287,12 @@ static void RunWycheproofTest(FileTest *t) {
   ASSERT_TRUE(peer_ec);
   OPENSSL_BEGIN_ALLOW_DEPRECATED
   ASSERT_EQ(peer_ec, EVP_PKEY_get0(peer_evp.get()));
+  if (std::find(result.flags.begin(), result.flags.end(), "UnnamedCurve") !=
+      result.flags.end()) {
+    ASSERT_EQ(1, EC_KEY_decoded_from_explicit_params(peer_ec));
+  } else {
+    ASSERT_EQ(0, EC_KEY_decoded_from_explicit_params(peer_ec));
+  }
   OPENSSL_END_ALLOW_DEPRECATED
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
   ASSERT_TRUE(key);

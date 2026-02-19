@@ -160,7 +160,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
     // for invalid codepoints. Before doing that, enforce it in the parser,
     // https://crbug.com/boringssl/427, so these error cases are not
     // reachable from parsed objects.
-    uint32_t c;
+    uint32_t c = 0;
     switch (encoding) {
       case MBSTRING_UNIV:
         c = ((uint32_t)*p++) << 24;
@@ -203,11 +203,21 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
         if (len < 0) {
           return -1;
         }
+
+        // Ensure addition doesn't overflow and corrupt the signed output length
+        if (len > INT_MAX - outlen) {
+          OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+          return -1;
+        }
         outlen += len;
       }
     } else {
       int len = do_esc_char(c, flags, quotes, out, is_first, is_last);
       if (len < 0) {
+        return -1;
+      }
+      if (len > INT_MAX - outlen) {
+        OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
         return -1;
       }
       outlen += len;

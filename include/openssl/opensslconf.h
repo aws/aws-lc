@@ -25,7 +25,6 @@ extern "C" {
 
 
 #define OPENSSL_NO_ASYNC
-#define OPENSSL_NO_BF
 #define OPENSSL_NO_BLAKE2
 #define OPENSSL_NO_BUF_FREELISTS
 #define OPENSSL_NO_CAMELLIA
@@ -53,6 +52,10 @@ extern "C" {
 #define OPENSSL_NO_MD2
 #define OPENSSL_NO_MDC2
 #define OPENSSL_NO_OCB
+// OPENSSL_NO_EXTERNAL_PSK_TLS13 indicates lack of support for external
+// PSK authentication in TLS >= 1.3. AWS-LC intentionally omits support
+// for this due to security conerns outlined in RFC 9258.
+#define OPENSSL_NO_EXTERNAL_PSK_TLS13
 #define OPENSSL_NO_RC2
 #define OPENSSL_NO_RC5
 #define OPENSSL_NO_RFC3779
@@ -71,6 +74,7 @@ extern "C" {
 #define OPENSSL_NO_STATIC_ENGINE
 #define OPENSSL_NO_STORE
 #define OPENSSL_NO_TS
+#define OPENSSL_NO_UI_CONSOLE
 #define OPENSSL_NO_WHIRLPOOL
 
 

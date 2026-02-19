@@ -158,6 +158,8 @@ struct pkcs7_st {
     PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
     PKCS7_DIGEST *digest;
     PKCS7_ENCRYPT *encrypted;
+    // Other things provided by the user. Not specified in the RFC.
+    ASN1_TYPE *other;
   } d;
 };
 
@@ -211,7 +213,7 @@ struct pkcs7_signer_info_st {
   X509_ALGOR *digest_enc_alg;
   ASN1_OCTET_STRING *enc_digest;
   STACK_OF(X509_ATTRIBUTE) *unauth_attr;
-  EVP_PKEY *pkey;  // NOTE: |pkey| is not seriliazed.
+  EVP_PKEY *pkey;  // NOTE: |pkey| is not serialized.
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-11.1
@@ -449,9 +451,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
 // written to |out| and 1 is returned. On error or verification failure, 0 is
 // returned.
 //
-// We don't currently support authenticated attributes, so if any of |p7|'s
-// signer infos have authenticated attributes, PKCS7_verify will fail.
-//
 // Flags: If |PKCS7_NOVERIFY| is specified, trust chain validation is skipped.
 // This function also enforces the behavior of OpenSSL's |PKCS7_NO_DUAL_CONTENT|
 // meaning that |indata| may not be specified if |p7|'s signed data is attached.
@@ -500,6 +499,12 @@ PKCS7_get_recipient_info(PKCS7 *p7);
 // and returns that |PCKS7_RECEPIENT_INFO|.
 OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7_RECIP_INFO *PKCS7_add_recipient(
     PKCS7 *p7, X509 *x509);
+
+// PKCS7_get0_signers retrieves the signer's certificates from p7. It does not
+// check their validity or whether any signatures are valid. The caller owns the
+// returned X509 stack and is responsible for freeing it.
+OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(X509) *PKCS7_get0_signers(
+    PKCS7 *p7, STACK_OF(X509) *certs, int flags);
 
 // PKCS7_encrypt encrypts the contents of |in| with |cipher| and adds |certs| as
 // recipient infos and returns an encrypted |PKCS7| or NULL on failed

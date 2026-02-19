@@ -14,7 +14,8 @@
 
 #include <openssl/rand.h>
 
-#include "../fipsmodule/rand/internal.h"
+#include "internal.h"
+#include "../internal.h"
 
 #if defined(OPENSSL_RAND_WINDOWS)
 
@@ -25,18 +26,23 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 
 #include <windows.h>
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
-    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+// ProcessPrng (from `bcryptprimitives.dll`) is only available on Windows 8+.
+#if !defined(__MINGW32__) && defined(_WIN32_WINNT) && _WIN32_WINNT <= _WIN32_WINNT_WIN7
+#define AWSLC_WINDOWS_7_COMPAT
+#endif
+
+#if defined(AWSLC_WINDOWS_7_COMPAT) || \
+    (WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
+    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
 #include <bcrypt.h>
 OPENSSL_MSVC_PRAGMA(comment(lib, "bcrypt.lib"))
-#endif  // WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP
+#endif // AWSLC_WINDOWS_7_COMPAT || (WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP)
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
-    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-
-void CRYPTO_init_sysrand(void) {}
+#if defined(AWSLC_WINDOWS_7_COMPAT) || \
+    (WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && \
+    !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
 
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   while (requested > 0) {
@@ -59,6 +65,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 // See: https://learn.microsoft.com/en-us/windows/win32/seccng/processprng
 typedef BOOL (WINAPI *ProcessPrngFunction)(PBYTE pbData, SIZE_T cbData);
 static ProcessPrngFunction g_processprng_fn = NULL;
+static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
 
 static void init_processprng(void) {
   HMODULE hmod = LoadLibraryW(L"bcryptprimitives");
@@ -71,13 +78,10 @@ static void init_processprng(void) {
   }
 }
 
-void CRYPTO_init_sysrand(void) {
-  static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-  CRYPTO_once(&once, init_processprng);
-}
-
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
-  CRYPTO_init_sysrand();
+
+  CRYPTO_once(&once, init_processprng);
+
   // On non-UWP configurations, use ProcessPrng instead of BCryptGenRandom
   // to avoid accessing resources that may be unavailable inside the
   // Chromium sandbox. See https://crbug.com/74242
@@ -86,10 +90,5 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   }
 }
 
-#endif  // WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP
-
-void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
-  CRYPTO_sysrand(out, requested);
-}
-
+#endif  // AWSLC_WINDOWS_7_COMPAT || (WINAPI_PARTITION_APP && !WINAPI_PARTITION_DESKTOP)
 #endif  // OPENSSL_RAND_WINDOWS

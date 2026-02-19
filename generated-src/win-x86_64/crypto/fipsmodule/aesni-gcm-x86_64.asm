@@ -974,7 +974,7 @@ ALIGN	4
 	DD	$L$SEH_info_aesni_gcm_encrypt_0 wrt ..imagebase
 
 
-section	.xdata rdata align=8
+section	.xdata rdata align=4
 ALIGN	4
 $L$SEH_info_aesni_gcm_decrypt_0:
 	DB	1
@@ -1035,6 +1035,7 @@ $L$SEH_info_aesni_gcm_decrypt_0:
 	DB	$L$SEH_prolog_aesni_gcm_decrypt_2-$L$SEH_begin_aesni_gcm_decrypt_1
 	DB	80
 
+ALIGN	4
 $L$SEH_info_aesni_gcm_encrypt_0:
 	DB	1
 	DB	$L$SEH_prolog_aesni_gcm_encrypt_21-$L$SEH_begin_aesni_gcm_encrypt_1

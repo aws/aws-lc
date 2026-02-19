@@ -8,13 +8,13 @@ source tests/ci/common_posix_setup.sh
 
 # Set up environment.
 # SRC_ROOT(aws-lc)
-#  - SCRATCH_FOLDER
-#    - SOCAT_SRC
-#    - AWS_LC_BUILD_FOLDER
-#    - AWS_LC_INSTALL_FOLDER
+# - SCRATCH_FOLDER
+#   - SOCAT_SRC
+#   - AWS_LC_BUILD_FOLDER
+#   - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER=${SRC_ROOT}/"scratch"
+SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 SOCAT_SRC="${SCRATCH_FOLDER}/socat"
@@ -27,7 +27,8 @@ function build_and_test_socat() {
   # See: t/V1497389456.
   # socat decreased the test wait time to 3 milliseconds, which causes failures when additional warnings/logs are written.
   # Extending the wait time to 50 milliseconds is just right for us.
-  sed -i 's/MILLIs=\$((3/MILLIs=\$((50/' ./test.sh
+  # Use Perl so the command will fail if no replacement performed:
+  perl -pi -e 'BEGIN{$x=0} $x=1 if s/MICROS=\${MILLIs}000/MICROS=50000/; END{exit 1 if !$x}' ./test.sh
   # test 146 OPENSSLLISTENDSA: fails because AWS-LC doesn't support FFDH ciphersuites which are needed for DSA
   # test 216 UDP6MULTICAST_UNIDIR: known flaky test in socat with newer kernels
   # test 309 OPENSSLRENEG1: AWS-LC doesn't support renegotiation by default, it can be enabled by calling SSL_set_renegotiate_mode
@@ -48,7 +49,7 @@ function build_and_test_socat() {
   # test 506 CHDIR_ON_SHELL: GHA does not specify expected shell environment variables
   # test 508 UMASK_ON_SYSTEM: GHA does not specify expected shell environment variables
   # test 528 PROCAN_CTTY: GHA does not support tty
-  ./test.sh -d -v --expect-fail 146,216,309,310,399,467,468,478,492,498,499,500,501,502,503,506,508,528
+  ./test.sh -d --expect-fail 146,216,309,310,399,467,468,478,492,498,499,500,501,502,503,506,508,528
   popd
 }
 
@@ -60,8 +61,8 @@ mkdir -p "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER"
 git clone --depth 1 https://repo.or.cz/socat.git "$SOCAT_SRC"
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_SHARED_LIBS=1 -DBUILD_TESTING=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${AWS_LC_INSTALL_FOLDER}/lib64/:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 build_and_test_socat
 
-ldd "${SOCAT_SRC}/socat" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-ldd "${SOCAT_SRC}/socat" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${SOCAT_SRC}/socat" crypto || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${SOCAT_SRC}/socat" ssl || exit 1

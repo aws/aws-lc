@@ -39,6 +39,7 @@
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
+#include "../third_party/jitterentropy/jitterentropy-library/jitterentropy.h"
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
@@ -88,9 +89,12 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 #endif
 
 #if defined(INTERNAL_TOOL)
-#include "../crypto/fipsmodule/rand/internal.h"
+#include "../crypto/rand_extra/internal.h"
 #endif
 
+#if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
+#include "../crypto/fipsmodule/sha/internal.h"
+#endif
 
 #if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED) && (AWSLC_API_VERSION > 30)
 #include "../crypto/fipsmodule/cpucap/internal.h"
@@ -562,7 +566,9 @@ static bool SpeedEvpGenericChunk(const EVP_CIPHER *cipher, std::string name,
       result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
     }
     result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+    int ciphertext_len = *len_ptr;
     result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    ciphertext_len += *len_ptr;
     if(isAead) {
       result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
     }
@@ -580,16 +586,16 @@ static bool SpeedEvpGenericChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isAead, &result]() -> bool {
+    if (!TimeFunction(&decryptResults, [&ctx, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isAead, &result, &ciphertext_len]() -> bool {
       result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
       if(isAead) {
         result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
       }
-      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len);
+      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, ciphertext_len);
       if (isAead) {
         result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag);
       }
-      result &= EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      result &= EVP_DecryptFinal_ex(ctx.get(), plaintext + *len_ptr, len_ptr);
       return result;
     })) {
       fprintf(stderr, "%s failed.\n", decryptName.c_str());
@@ -783,7 +789,8 @@ static bool SpeedAEADSeal(const EVP_AEAD *aead, const std::string &name,
                           size_t ad_len, const std::string &selected) {
   return SpeedAEAD(aead, name, ad_len, selected, evp_aead_seal);
 }
-#if AWSLC_API_VERSION > 16
+
+#if AWSLC_API_VERSION >= 30
 static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -857,16 +864,12 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
 }
 
 static bool SpeedKEM(std::string selected) {
-  return
-#if AWSLC_API_VERSION >= 30
-         SpeedSingleKEM("ML-KEM-512", NID_MLKEM512, selected) &&
-         SpeedSingleKEM("ML-KEM-768", NID_MLKEM768, selected) &&
-         SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected) &&
-#endif
-         SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
-         SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
-         SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
+  return SpeedSingleKEM("ML-KEM-512", NID_MLKEM512, selected) &&
+          SpeedSingleKEM("ML-KEM-768", NID_MLKEM768, selected) &&
+          SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected);
 }
+
+#endif // AWSLC_API_VERSION >= 30
 
 #if AWSLC_API_VERSION > 31
 
@@ -938,11 +941,9 @@ static bool SpeedDigestSign(const std::string &selected) {
          SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected) &&
          SpeedDigestSignNID("MLDSA87", NID_MLDSA87, selected);
 }
+#endif // AWSLC_API_VERSION > 31
 
-#endif
-
-#endif
-#endif
+#endif // !defined(OPENSSL_BENCHMARK)
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
                           const std::string &selected) {
@@ -1158,6 +1159,78 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 
   return true;
 }
+
+#if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
+static bool SpeedSHAKE256_x4_Chunks(std::string name, size_t len) {
+  size_t input_len = 0, output_len = 0;
+
+  if (name.find("Absorb") != std::string::npos) {
+    input_len = len;
+    output_len = 32;
+  } else {
+    input_len = 32;
+    output_len = len;
+  }
+
+  std::unique_ptr<uint8_t[]> input0(new uint8_t[input_len]);
+  std::unique_ptr<uint8_t[]> input1(new uint8_t[input_len]);
+  std::unique_ptr<uint8_t[]> input2(new uint8_t[input_len]);
+  std::unique_ptr<uint8_t[]> input3(new uint8_t[input_len]);
+
+  BM_memset(input0.get(), 0, input_len);
+  BM_memset(input1.get(), 0, input_len);
+  BM_memset(input2.get(), 0, input_len);
+  BM_memset(input3.get(), 0, input_len);
+
+  std::unique_ptr<uint8_t[]> output0(new uint8_t[output_len]);
+  std::unique_ptr<uint8_t[]> output1(new uint8_t[output_len]);
+  std::unique_ptr<uint8_t[]> output2(new uint8_t[output_len]);
+  std::unique_ptr<uint8_t[]> output3(new uint8_t[output_len]);
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&]() -> bool {
+        return SHAKE256_x4(input0.get(), input1.get(), input2.get(), input3.get(), input_len,
+                          output0.get(), output1.get(), output2.get(), output3.get(), output_len);
+      })) {
+    fprintf(stderr, "SHAKE256_x4 failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, len);
+  return true;
+}
+
+static bool SpeedSHAKE256_x4_Absorb(const std::string &selected) {
+  if (!selected.empty() && selected.find("SHAKE256-x4") == std::string::npos &&
+      selected.find("Absorb") == std::string::npos) {
+    return true;
+  }
+
+  for (size_t input_len : g_chunk_lengths) {
+    if (!SpeedSHAKE256_x4_Chunks("SHAKE256-x4 (Absorb)", input_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool SpeedSHAKE256_x4_Squeeze(const std::string &selected) {
+  if (!selected.empty() && selected.find("SHAKE256-x4") == std::string::npos &&
+      selected.find("Squeeze") == std::string::npos) {
+    return true;
+  }
+
+  for (size_t output_len : g_chunk_lengths) {
+    if (!SpeedSHAKE256_x4_Chunks("SHAKE256-x4 (Squeeze)", output_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+#endif // OPENSSL_IS_AWSLC && (AWSLC_API_VERSION >= 35)
 
 static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
@@ -2425,8 +2498,9 @@ static bool SpeedSelfTest(const std::string &selected) {
   results.Print("self-test");
   return true;
 }
+#endif
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#if AWSLC_API_VERSION >= 34 && !defined(DISABLE_CPU_JITTER_ENTROPY)
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -2462,7 +2536,6 @@ static bool SpeedJitter(std::string selected) {
   }
   return true;
 }
-#endif
 #endif
 
 static bool SpeedDHcheck(size_t prime_bit_length) {
@@ -2875,6 +2948,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedEvpCipherGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
        !SpeedEvpCipherGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_128_cbc(), "EVP-AES-128-CBC", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_192_cbc(), "EVP-AES-192-CBC", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_256_cbc(), "EVP-AES-256-CBC", kTLSADLen, selected) ||
        !SpeedAES256XTS("AES-256-XTS", selected) ||
 #if !defined(OPENSSL_3_0_BENCHMARK)
        // OpenSSL 3.0 deprecated RC4
@@ -2901,6 +2977,10 @@ bool Speed(const std::vector<std::string> &args) {
        // OpenSSL 1.0 and BoringSSL don't support SHAKE
        !SpeedHash(EVP_shake128(), "SHAKE-128", selected) ||
        !SpeedHash(EVP_shake256(), "SHAKE-256", selected) ||
+#if defined(OPENSSL_IS_AWSLC) && (AWSLC_API_VERSION >= 35)
+       !SpeedSHAKE256_x4_Absorb(selected) ||
+       !SpeedSHAKE256_x4_Squeeze(selected) ||
+#endif
 #endif
 #if (!defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 20
        // BoringSSL doesn't support ripemd160
@@ -2914,11 +2994,23 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
        !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
        !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 35
+       !SpeedHmac(EVP_sha3_224(), "HMAC-SHA3-224", selected) ||
+       !SpeedHmac(EVP_sha3_256(), "HMAC-SHA3-256", selected) ||
+       !SpeedHmac(EVP_sha3_384(), "HMAC-SHA3-384", selected) ||
+       !SpeedHmac(EVP_sha3_512(), "HMAC-SHA3-512", selected) ||
+#endif
        !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >=35
+       !SpeedHmacOneShot(EVP_sha3_224(), "HMAC-SHA3-224-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_256(), "HMAC-SHA3-256-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_384(), "HMAC-SHA3-384-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha3_512(), "HMAC-SHA3-512-OneShot", selected) ||
+#endif
 #if !defined(OPENSSL_1_0_BENCHMARK)
        !SpeedCmac(EVP_aes_128_cbc(), "CMAC-AES-128-CBC", selected) ||
        !SpeedCmac(EVP_aes_256_cbc(), "CMAC-AES-256-CBC", selected) ||
@@ -2951,7 +3043,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
        ||
-#if AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION >= 30
        !SpeedKEM(selected) ||
 #endif
 #if AWSLC_API_VERSION > 31
@@ -2983,7 +3075,6 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
 #if defined(INTERNAL_TOOL)
        !SpeedRandom(CRYPTO_sysrand, "CRYPTO_sysrand", selected) ||
-       !SpeedRandom(CRYPTO_sysrand_for_seed, "CRYPTO_sysrand_for_seed", selected) ||
        !SpeedHashToCurve(selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
@@ -3006,11 +3097,11 @@ bool Speed(const std::vector<std::string> &args) {
     if (!SpeedSelfTest(selected)) {
       return false;
     }
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#endif
+#if AWSLC_API_VERSION >= 34 && !defined(DISABLE_CPU_JITTER_ENTROPY)
     if (!SpeedJitter(selected)) {
       return false;
     }
-#endif
 #endif
   }
 

@@ -2599,6 +2599,18 @@ OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
 // a certificate.
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
 
+typedef STACK_OF(X509_CRL) *(*X509_STORE_CTX_lookup_crls_fn)(
+    X509_STORE_CTX *ctx, X509_NAME *nm);
+
+OPENSSL_EXPORT X509_STORE_CTX_lookup_crls_fn
+X509_STORE_get_lookup_crls(X509_STORE *ctx);
+
+OPENSSL_EXPORT void X509_STORE_set_lookup_crls(
+    X509_STORE *ctx, X509_STORE_CTX_lookup_crls_fn lookup_crls);
+
+#define X509_STORE_set_lookup_crls_cb(ctx, func) \
+  X509_STORE_set_lookup_crls((ctx), (func))
+
 // Certificate verification.
 //
 // An |X509_STORE_CTX| object represents a single certificate verification
@@ -2736,6 +2748,8 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
 #define X509_V_ERR_EE_KEY_TOO_SMALL 68
 #define X509_V_ERR_CA_KEY_TOO_SMALL 69
 #define X509_V_ERR_CA_MD_TOO_WEAK 70
+#define X509_V_UNABLE_TO_GET_CERTS_PUBLIC_KEY 71
+#define X509_V_ERR_EC_KEY_EXPLICIT_PARAMS 72
 
 // X509_STORE_CTX_get_error, after |X509_verify_cert| returns, returns
 // |X509_V_OK| if verification succeeded or an |X509_V_ERR_*| describing why
@@ -2784,7 +2798,8 @@ OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get0_untrusted returns the stack of untrusted intermediates
 // used by |ctx| for certificate verification.
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(X509_STORE_CTX *ctx);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(
+    X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_set0_trusted_stack configures |ctx| to trust the certificates
 // in |sk|. |sk| must remain valid for the duration of |ctx|. Calling this
@@ -2903,6 +2918,37 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_purpose(X509_STORE_CTX *ctx, int purpose);
 // difference.
 OPENSSL_EXPORT int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust);
 
+// X509_STORE_CTX_add_custom_crit_oid adds |oid| to the list of "known" critical
+// extension OIDs in |ctx|. Typical OpenSSL/AWS-LC behavior returns an error if
+// there are any unknown critical extensions present within the certificates
+// being validated. This function lets users specify custom OIDs of any critical
+// extensions that are within the certificates being validated, that they wish
+// to allow.
+//
+// To properly consume this feature, the callback mechanism with
+// |X509_STORE_CTX_set_verify_crit_oids| must be set. See its specific
+// documentation for more details.
+OPENSSL_EXPORT int X509_STORE_CTX_add_custom_crit_oid(X509_STORE_CTX *ctx,
+                                                      ASN1_OBJECT *oid);
+
+// X509_STORE_CTX_verify_crit_oids is the callback signature for
+// |X509_STORE_CTX_set_verify_crit_oids|. |ctx| is the context being used,
+// |x509| represents the current certificate being validated, and |oids|
+// is a stack of |ASN1_OBJECT|s representing unknown critical extension
+// OIDs that were found in |x509| and match those previously registered via
+// |X509_STORE_CTX_add_custom_crit_oid|.
+typedef int (*X509_STORE_CTX_verify_crit_oids_cb)(X509_STORE_CTX *ctx,
+                                                  X509 *x509,
+                                                  STACK_OF(ASN1_OBJECT) *oids);
+
+// X509_STORE_CTX_set_verify_crit_oids sets the |verify_crit_oids| callback
+// function for |ctx|. Consumers should be performing additional validation
+// against the custom extension oids after or during the handshake with
+// |X509_STORE_CTX_set_verify_crit_oids|. This callback forces users to validate
+// their custom OIDs when processing unknown custom critical extensions.
+OPENSSL_EXPORT void X509_STORE_CTX_set_verify_crit_oids(
+    X509_STORE_CTX *ctx,
+    X509_STORE_CTX_verify_crit_oids_cb verify_custom_crit_oids);
 
 // Verification parameters
 //
@@ -3079,8 +3125,22 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t name_len);
 
+// X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT enables always checking the subject name
+// for host match even if subject alt names are present.
+#define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0x1
+
 // X509_CHECK_FLAG_NO_WILDCARDS disables wildcard matching for DNS names.
 #define X509_CHECK_FLAG_NO_WILDCARDS 0x2
+
+// X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS constrains host name patterns passed
+// to |X509_check_host| starting with '.' to only match a single label /
+// subdomain.
+//
+// For example, by default the host name '.example.com' would match a
+// certificate DNS name like 'www.example.com' and 'www.foo.example.com'.
+// Setting this flag would result in the same host name only matching
+// 'www.example.com' but not 'www.foo.example.com'.
+#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0x10
 
 // X509_CHECK_FLAG_NEVER_CHECK_SUBJECT disables the subject fallback, normally
 // enabled when subjectAltNames is missing.
@@ -3090,6 +3150,11 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
 // |flags|. |flags| should be a combination of |X509_CHECK_FLAG_*| constants.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                                     unsigned int flags);
+
+// X509_VERIFY_PARAM_get_hostflags returns |param|'s name-checking flags.
+OPENSSL_EXPORT unsigned int X509_VERIFY_PARAM_get_hostflags(
+    const X509_VERIFY_PARAM *param);
+
 
 // X509_VERIFY_PARAM_set1_email configures |param| to check for the email
 // address specified by |email|. It returns one on success and zero on error.
@@ -3247,6 +3312,19 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
 
+// X509_VERIFY_PARAM_enable_ec_key_explicit_params enables X.509 subject public
+// keys to contain elliptic curve keys with explicit parameters. By default
+// AWS-LC rejects validation of certificate chains containing public keys
+// with explicit EC parameters. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int X509_VERIFY_PARAM_enable_ec_key_explicit_params(
+    X509_VERIFY_PARAM *param);
+
+// X509_VERIFY_PARAM_disable_ec_key_explicit_params disables X.509 subject
+// public keys to contain elliptic curve keys with explicit parameters. By
+// default AWS-LC rejects validation of certificate chains containing public
+// keys with explicit EC parameters. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int X509_VERIFY_PARAM_disable_ec_key_explicit_params(
+    X509_VERIFY_PARAM *param);
 
 // Filesystem-based certificate stores.
 //
@@ -4613,6 +4691,7 @@ struct v3_ext_ctx {
 };
 
 #define X509V3_CTX_TEST 0x1
+#define X509V3_CTX_REPLACE 0x2
 
 // X509V3_set_ctx initializes |ctx| with the specified objects. Some string
 // formats will reference fields in these objects. Each object may be NULL to
@@ -4932,6 +5011,9 @@ typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
 
+OPENSSL_EXPORT X509_STORE_CTX_verify_cb
+X509_STORE_get_verify_cb(X509_STORE *ctx);
+
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
 // the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
 //
@@ -4981,11 +5063,13 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
 OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
                                              STACK_OF(X509) *sk);
 
+// X509_STORE_CTX_set0_untrusted is an alias for  |X509_STORE_CTX_set_chain|.
+OPENSSL_EXPORT void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *ctx,
+                                                  STACK_OF(X509) *sk);
+
 // The following flags do nothing. The corresponding non-standard options have
 // been removed.
-#define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0
 #define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
-#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
 
 // X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS does nothing, but is necessary in
 // OpenSSL to enable standard wildcard matching. In AWS-LC, this behavior is
@@ -5003,17 +5087,17 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
 #define NS_OBJSIGN_CA 0x01
 #define NS_ANY_CA (NS_SSL_CA | NS_SMIME_CA | NS_OBJSIGN_CA)
 
-    typedef struct x509_purpose_st {
-        int purpose;
-        int trust;  // Default trust ID
-        int flags;
-        int (*check_purpose)(const struct x509_purpose_st *, const X509 *, int);
-        char *name;
-        char *sname;
-        void *usr_data;
-    } X509_PURPOSE;
+typedef struct x509_purpose_st {
+  int purpose;
+  int trust;  // Default trust ID
+  int flags;
+  int (*check_purpose)(const struct x509_purpose_st *, const X509 *, int);
+  char *name;
+  char *sname;
+  void *usr_data;
+} X509_PURPOSE;
 
-    DEFINE_STACK_OF(X509_PURPOSE)
+DEFINE_STACK_OF(X509_PURPOSE)
 
 // X509_STORE_get0_objects returns a non-owning pointer of |store|'s internal
 // object list. Although this function is not const, callers must not modify
@@ -5073,12 +5157,12 @@ DECLARE_STACK_OF(DIST_POINT)
 // This is used for a table of trust checking functions
 
 struct x509_trust_st {
-int trust;
-int flags;
-int (*check_trust)(const X509_TRUST *, X509 *);
-char *name;
-int arg1;
-void *arg2;
+  int trust;
+  int flags;
+  int (*check_trust)(const X509_TRUST *, X509 *);
+  char *name;
+  int arg1;
+  void *arg2;
 } /* X509_TRUST */;
 
 DEFINE_STACK_OF(X509_TRUST)

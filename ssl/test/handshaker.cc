@@ -27,7 +27,8 @@
 #include "handshake_util.h"
 #include "test_config.h"
 #include "test_state.h"
-#include "../crypto/internal.h"
+#include "../../crypto/internal.h"
+#include "../../crypto/ube/vm_ube_detect.h"
 
 using namespace bssl;
 
@@ -228,7 +229,7 @@ int SignalError() {
 }  // namespace
 
 int main(int argc, char **argv) {
-#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_VM_UBE_TESTING)
   if (1 != HAZMAT_init_sysgenid_file()) {
     abort();
   }

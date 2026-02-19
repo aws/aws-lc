@@ -12,18 +12,18 @@ set -exuo pipefail
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - OPENLDAP_SRC_FOLDER
-#        - main
-#        ...
-#      - OPENLDAP_PATCH_FOLDER
-#        - main
-#        ...
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - OPENLDAP_SRC_FOLDER
+#      - main
+#      ...
+#    - OPENLDAP_PATCH_FOLDER
+#      - main
+#      ...
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/OPENLDAP_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/OPENLDAP_BUILD_ROOT"
 OPENLDAP_SRC_FOLDER="${SCRATCH_FOLDER}/openldap-src"
 OPENLDAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/openldap_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
@@ -32,6 +32,9 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 function openldap_build() {
     local branch=${1}
     pushd ${branch}
+    # The configure script can out of sync. Regenerate it from configure.ac.
+    rm ./configure
+    autoconf
     # Modify CFLAGS and LDFLAGS so compiler and linker can find AWS-LC's artifacts
     export STRICT_C_COMPILER="gcc"
     export CPPFLAGS="-I$AWS_LC_INSTALL_FOLDER/include"
@@ -94,9 +97,6 @@ mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
     -DBUILD_SHARED_LIBS=0
-
-# Some systems install under "lib64" instead of "lib"
-ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
 
 mkdir -p ${OPENLDAP_SRC_FOLDER}
 pushd ${OPENLDAP_SRC_FOLDER}

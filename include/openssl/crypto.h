@@ -121,24 +121,6 @@ OPENSSL_EXPORT int FIPS_mode(void);
 // for AWS-LC. Otherwise, returns 0;
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
-// fips_counter_t denotes specific APIs/algorithms. A counter is maintained for
-// each in FIPS mode so that tests can be written to assert that the expected,
-// FIPS functions are being called by a certain peice of code.
-enum fips_counter_t {
-  fips_counter_evp_aes_128_gcm = 0,
-  fips_counter_evp_aes_256_gcm = 1,
-  fips_counter_evp_aes_128_ctr = 2,
-  fips_counter_evp_aes_256_ctr = 3,
-
-  fips_counter_max = 3
-};
-
-// FIPS_read_counter returns a counter of the number of times the specific
-// function denoted by |counter| has been used. This always returns zero unless
-// BoringSSL was built with BORINGSSL_FIPS_COUNTERS defined.
-OPENSSL_EXPORT size_t FIPS_read_counter(enum fips_counter_t counter);
-
-
 // Deprecated functions.
 
 // OPENSSL_VERSION_TEXT contains a string the identifies the version of
@@ -182,10 +164,16 @@ OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 OPENSSL_EXPORT int OPENSSL_malloc_init(void);
 
 // ENGINE_load_builtin_engines does nothing.
-OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
+OPENSSL_DEPRECATED OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
+
+// ENGINE_register_all_ciphers does nothing.
+OPENSSL_DEPRECATED OPENSSL_EXPORT void ENGINE_register_all_ciphers(void);
+
+// ENGINE_register_all_digests does nothing.
+OPENSSL_DEPRECATED OPENSSL_EXPORT void ENGINE_register_all_digests(void);
 
 // ENGINE_register_all_complete returns one.
-OPENSSL_EXPORT int ENGINE_register_all_complete(void);
+OPENSSL_DEPRECATED OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
@@ -217,23 +205,13 @@ OPENSSL_EXPORT void OPENSSL_cleanup(void);
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
 
-#if defined(BORINGSSL_FIPS_140_3)
+// CRYPTO_mem_ctrl intentionally does nothing and returns 0.
+// AWS-LC defines |OPENSSL_NO_CRYPTO_MDEBUG| by default.
+// These are related to memory debugging functionalities provided by OpenSSL,
+// but are not supported in AWS-LC.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_mem_ctrl(int mode);
 
-// FIPS_module_name returns the name of the FIPS module.
-OPENSSL_EXPORT const char *FIPS_module_name(void);
-
-// FIPS_version returns the version of the FIPS module, or zero if the build
-// isn't exactly at a verified version. The version, expressed in base 10, will
-// be a date in the form yyyymmddXX where XX is often "00", but can be
-// incremented if multiple versions are defined on a single day.
-//
-// (This format exceeds a |uint32_t| in the year 4294.)
-OPENSSL_EXPORT uint32_t FIPS_version(void);
-
-// FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
-// the current BoringSSL and zero otherwise.
-OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
-#endif //BORINGSSL_FIPS_140_3
+#define CRYPTO_MEM_CHECK_ON 0
 
 
 #if defined(__cplusplus)

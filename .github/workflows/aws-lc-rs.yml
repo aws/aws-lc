@@ -9,52 +9,176 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
-  AWS_LC_SYS_CMAKE_BUILDER: 1
-  RUST_NIGHTLY_TOOLCHAIN: nightly
-  RUST_SCRIPT_NIGHTLY_TOOLCHAIN: nightly
+  RUST_BACKTRACE: 1
+permissions:
+  contents: read
+
 jobs:
-  aws-lc-rs-bindgen:
+  # Full bindings pre-generation test on Linux (x86_64-unknown-linux-gnu)
+  aws-lc-rs-linux:
     if: github.repository_owner == 'aws'
-    runs-on: ${{ matrix.os }}
-    name: aws-lc-rs bindgen on ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, macos-14-xlarge, windows-latest ]
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: aws/aws-lc-rs
           path: ./aws-lc-rs
-          submodules: false
+          submodules: 'recursive'
       - name: Remove aws-lc submodule from crate directory
         working-directory: ./aws-lc-rs/aws-lc-sys
         shell: bash
-        run: |
-          rm -rf aws-lc
-      - uses: actions/checkout@v3
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v4
         with:
           path: ./aws-lc-rs/aws-lc-sys/aws-lc
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_SCRIPT_NIGHTLY_TOOLCHAIN }}
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: 'rustfmt'
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.20'
-      - name: Install current Bash on macOS
-        if: runner.os == 'macOS'
-        run: brew install bash coreutils
-      - uses: ilammy/setup-nasm@v1
-        if: runner.os == 'Windows'
-      - name: No-prefix build for ${{ matrix.os }}
+      - name: Install ripgrep
+        run: cargo install --force --locked ripgrep --features pcre2
+      - name: No-prefix build
+        working-directory: ./aws-lc-rs
         env:
           AWS_LC_SYS_NO_PREFIX: "1"
-          # Ensure that we collect symbols unique to C99 builds
           AWS_LC_SYS_C_STD: "99"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Collect symbols
         working-directory: ./aws-lc-rs
         run: |
-          cargo test -p aws-lc-sys --features bindgen
+          rm -rf ./aws-lc-sys/symbols/* ./aws-lc-sys/generated-include/*
+          mkdir -p ./aws-lc-sys/symbols ./aws-lc-sys/generated-include/openssl
+          ./scripts/build/collect_symbols.sh -c aws-lc-sys
+      - name: Generate prefix headers
+        working-directory: ./aws-lc-rs
+        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+      - name: Update sys-crate metadata
+        working-directory: ./aws-lc-rs
+        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Update cc-builder source configuration
+        working-directory: ./aws-lc-rs
+        run: |
+          ./aws-lc-sys/scripts/cc_builder/universal.sh
+          ./aws-lc-sys/scripts/cc_builder/linux_x86_64.sh
+      - name: Clean
+        working-directory: ./aws-lc-rs
+        run: cargo clean
+      - name: Generate bindings
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Test with cc-builder
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_CMAKE_BUILDER: "0"
+        run: |
+          cargo clean
+          cargo test -p aws-lc-sys
+          cargo test -p aws-lc-rs
+
+  # Full bindings pre-generation test on macOS (aarch64-apple-darwin)
+  aws-lc-rs-macos:
+    if: github.repository_owner == 'aws'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: 'rustfmt'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - name: Install Bash and ripgrep
+        run: brew install bash ripgrep
+      - name: No-prefix build
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_NO_PREFIX: "1"
+          AWS_LC_SYS_C_STD: "99"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Collect symbols
+        working-directory: ./aws-lc-rs
+        run: |
+          rm -rf ./aws-lc-sys/symbols/* ./aws-lc-sys/generated-include/*
+          mkdir -p ./aws-lc-sys/symbols ./aws-lc-sys/generated-include/openssl
+          ./scripts/build/collect_symbols.sh -c aws-lc-sys
+      - name: Generate prefix headers
+        working-directory: ./aws-lc-rs
+        shell: /opt/homebrew/bin/bash {0}
+        run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+      - name: Update sys-crate metadata
+        working-directory: ./aws-lc-rs
+        shell: /opt/homebrew/bin/bash {0}
+        run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Update cc-builder source configuration
+        working-directory: ./aws-lc-rs
+        shell: /opt/homebrew/bin/bash {0}
+        run: |
+          ./aws-lc-sys/scripts/cc_builder/universal.sh
+          ./aws-lc-sys/scripts/cc_builder/apple_aarch64.sh
+      - name: Clean
+        working-directory: ./aws-lc-rs
+        run: cargo clean
+      - name: Generate bindings
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
+        run: cargo test -p aws-lc-sys --features bindgen
+      - name: Test with cc-builder
+        working-directory: ./aws-lc-rs
+        env:
+          AWS_LC_SYS_CMAKE_BUILDER: "0"
+        run: |
+          cargo clean
+          cargo test -p aws-lc-sys
+          cargo test -p aws-lc-rs
+
+  # Full bindings pre-generation test on Windows (x86_64-pc-windows-msvc)
+  aws-lc-rs-windows:
+    if: github.repository_owner == 'aws'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: 'recursive'
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        shell: bash
+        run: rm -rf aws-lc
+      - uses: actions/checkout@v4
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          components: 'rustfmt'
+      - uses: ilammy/setup-nasm@v1
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
+      - name: No-prefix build
+        env:
+          AWS_LC_SYS_NO_PREFIX: "1"
+          AWS_LC_SYS_C_STD: "99"
+        working-directory: ./aws-lc-rs
+        run: cargo test -p aws-lc-sys --features bindgen --target x86_64-pc-windows-msvc
       - name: Delete current symbol files and headers
         working-directory: ./aws-lc-rs
         shell: bash
@@ -64,9 +188,8 @@ jobs:
       - name: Collect symbols
         working-directory: ./aws-lc-rs
         shell: bash
-        run: |
-          ./scripts/build/collect_symbols.sh -c aws-lc-sys
-      - name: Generate Prefix Headers
+        run: ./scripts/build/collect_symbols.sh -c aws-lc-sys -t x86_64-pc-windows-msvc
+      - name: Generate prefix headers
         working-directory: ./aws-lc-rs
         shell: bash
         run: ./scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
@@ -74,17 +197,27 @@ jobs:
         working-directory: ./aws-lc-rs
         shell: bash
         run: ./scripts/ci/update_sys_crate_metadata.sh aws-lc-sys
+      - name: Install ripgrep
+        run: cargo install --force --locked ripgrep --features pcre2
+      - name: Update cc-builder source configuration
+        working-directory: ./aws-lc-rs
+        shell: bash
+        run: |
+          ./aws-lc-sys/scripts/cc_builder/universal.sh
+          ./aws-lc-sys/scripts/cc_builder/win_x86_64.sh
       - name: Clean
         working-directory: ./aws-lc-rs
-        run: |
-          cargo clean
-      - name: Generate bindings for ${{ matrix.os }}
+        run: cargo clean
+      - name: Generate bindings
         env:
           AWS_LC_SYS_PREGENERATING_BINDINGS: "1"
         working-directory: ./aws-lc-rs
-        run: |
-          cargo test -p aws-lc-sys --features bindgen
-      - name: Collect source from ${{ matrix.os }}
-        if: runner.os != 'Windows'
+        run: cargo test -p aws-lc-sys --features bindgen --target x86_64-pc-windows-msvc
+      - name: Test with cc-builder
         working-directory: ./aws-lc-rs
-        run: ./scripts/build/collect_build_src.sh
+        env:
+          AWS_LC_SYS_CMAKE_BUILDER: "0"
+        run: |
+          cargo clean
+          cargo test -p aws-lc-sys --target x86_64-pc-windows-msvc
+          cargo test -p aws-lc-rs --target x86_64-pc-windows-msvc

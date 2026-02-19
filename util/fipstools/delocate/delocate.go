@@ -27,9 +27,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
-	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	"github.com/aws/aws-lc/util/ar"
+	"github.com/aws/aws-lc/util/fipstools/fipscommon"
 )
 
 // inputFile represents a textual assembly file.
@@ -97,6 +98,10 @@ type delocation struct {
 	// cpuCapUniqueSymbols represents the set of unique symbols for each
 	// discovered occurrence of OPENSSL_ia32cap_P.
 	cpuCapUniqueSymbols []*cpuCapUniqueSymbol
+	// relroLocalLabelToFuncMap contain mappings between local symbols found in
+	// relro sections and their corresponding function symbol. e.g. ".LC53" ->
+	// "aead_aes_gcm_seal_scatter".
+	relroLocalLabelToFuncMap map[string]string
 	// redirectors maps from out-call symbol name to the name of a
 	// redirector function for that symbol. E.g. “memcpy” ->
 	// “bcm_redirector_memcpy”.
@@ -205,6 +210,41 @@ func (d *delocation) processInput(input inputFile) (err error) {
 	return nil
 }
 
+// skippedLine writes skipped line transform information to the output file.
+func (d *delocation) skippedLine(node *node32) {
+	if isNewLine(d.currentInput.contents, node) {
+		d.output.WriteString(fmt.Sprintf("# SKIPPED newline\n"))
+	} else {
+		d.output.WriteString(fmt.Sprintf("# SKIPPED %s\n", d.currentInput.contents[node.begin:node.end]))
+	}
+}
+
+// maybeSkipRelroStatement determines if a statement under a relro section can
+// be skipped
+func (d *delocation) maybeSkipRelroStatement(node *node32) bool {
+
+	if !isEndOfRelroSection(d.currentInput.contents, node) {
+		d.skippedLine(node)
+		return true
+	}
+
+	return false
+}
+
+// skipRelroSection identifies the relro section and skips all statements under
+// that section. It moves the AST node pointer to the last statement skipped.
+func (d *delocation) skipRelroSection(statement *node32) *node32 {
+	previousStatement := statement
+	for ; statement != nil; statement = statement.next {
+		if !d.maybeSkipRelroStatement(statement) {
+			break
+		}
+		previousStatement = statement
+	}
+
+	return previousStatement
+}
+
 func (d *delocation) processDirective(statement, directive *node32) (*node32, error) {
 	assertNodeType(directive, ruleDirectiveName)
 	directiveName := d.contents(directive)
@@ -244,14 +284,13 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 	case "section":
 		section := args[0]
 
-		if section == ".data.rel.ro" {
-			// In a normal build, this is an indication of a
-			// problem but any references from the module to this
-			// section will result in a relocation and thus will
-			// break the integrity check. ASAN can generate these
-			// sections and so we will likely have to work around
-			// that in the future.
-			return nil, errors.New(".data.rel.ro section found in module")
+		if strings.HasPrefix(section, ".data.rel.ro") {
+			d.skippedLine(statement)
+			statement = d.skipRelroSection(statement.next)
+			if statement != nil {
+				break
+			}
+			return nil, fmt.Errorf("Failed to skip relro section %s", section)
 		}
 
 		sectionType, ok := sectionType(section)
@@ -722,7 +761,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 /* ppc64le
 
 [PABI]: “64-Bit ELF V2 ABI Specification. Power Architecture.” March 21st,
-        2017
+				2017
 
 (Also useful is “Power ISA Version 2.07 B”. Note that version three of that
 document is /not/ good as that's POWER9 specific.)
@@ -735,8 +774,8 @@ the TOC (Table Of Contents). Within the TOC is the contents of .rodata, .data,
 A pointer to the TOC is maintained in r2 and the following pattern is used to
 load the address of an element into a register:
 
-  addis <address register>, 2, foo@toc@ha
-  addi <address register>, <address register>, foo@toc@l
+	addis <address register>, 2, foo@toc@ha
+	addi <address register>, <address register>, foo@toc@l
 
 The “addis” instruction shifts a signed constant left 16 bits and adds the
 result to its second argument, saving the result in the first argument. The
@@ -765,8 +804,8 @@ the global entry will typically use an addis+addi pair to add a known offset to
 r12 and store it in r2. For example:
 
 foo:
-  addis 2, 12, .TOC. - foo@ha
-  addi  2, 2,  .TOC. - foo@l
+	addis 2, 12, .TOC. - foo@ha
+	addi  2, 2,  .TOC. - foo@l
 
 (It's worth noting that the '@' operator binds very loosely, so the 3rd
 arguments parse as (.TOC. - foo)@ha and (.TOC. - foo)@l.)
@@ -779,9 +818,9 @@ the linker fixes stuff up once it knows that a call is going out of module:
 Firstly, calling, say, memcpy (which we assume to be in a different module)
 won't actually jump directly to memcpy, or even a PLT resolution function.
 It'll call a synthesised function that:
-  a) saves r2 in the caller's stack frame
-  b) loads the address of memcpy@PLT into r12
-  c) jumps to r12.
+	a) saves r2 in the caller's stack frame
+	b) loads the address of memcpy@PLT into r12
+	c) jumps to r12.
 
 As this synthesised function loads memcpy@PLT, a call to memcpy from the
 compiled code just references “memcpy” directly, not “memcpy@PLT”.
@@ -1217,7 +1256,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrMove
 		}
 
-	case "cmovneq", "cmoveq":
+	case "cmovneq", "cmoveq", "cmove":
 		if len(args) == 2 {
 			return instrConditionalMove
 		}
@@ -1394,7 +1433,7 @@ func undoConditionalMove(w stringWriter, instr string) wrapperFunc {
 	var invertedCondition string
 
 	switch instr {
-	case "cmoveq":
+	case "cmoveq", "cmove":
 		invertedCondition = "ne"
 	case "cmovneq":
 		invertedCondition = "e"
@@ -1441,8 +1480,8 @@ Args:
 		// preceding `RegisterOrConstant` without whitespace
 		// or a comma.
 		case ruleAVX512Token:
-			tail := &args[len(args)-1];
-			*tail += d.contents(fullArg);
+			tail := &args[len(args)-1]
+			*tail += d.contents(fullArg)
 
 		case ruleMemoryRef:
 			symbol, offset, section, didChange, symbolIsLocal, memRef := d.parseMemRef(arg.up)
@@ -1479,7 +1518,40 @@ Args:
 
 			switch section {
 			case "":
-				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
+				if _, knownSymbol := d.relroLocalLabelToFuncMap[symbol]; knownSymbol {
+					// Move instruction dereferencing known relro local symbol. Assume
+					// this form:
+					// 	movq .Labc(%rip), %xmm
+					// relroLocalLabelToFuncMap contains the mapping .Labc->foo.
+					// Transform to
+					// 	leaq .Lfoo_local_target(%rip), %reg
+					// 	movq %reg, %xmm
+					// This requires picking an un-used register for the register reg,
+					// that doesn't disturb the code-execution. It can't be the target
+					// register, because this can be a vector register that you can't lea
+					// to. Instead pick a suitable register, save on stack, and reload
+					// a posteriori.
+					// First sanity check number of arguments
+					if len(argNodes) != 2 {
+						panic(fmt.Sprintf("Expected only two arguments\n"))
+					}
+
+					// Get the function symbol that is relocated in a relro section
+					symbol = localTargetName(d.relroLocalLabelToFuncMap[symbol])
+
+					// Transform the opcode and arguments
+					instructionName = "leaq" // Unsed atm, since replacement string not used.
+					targetReg := d.contents(argNodes[1])
+					saveRegWrapper, tempReg := saveRegister(d.output, []string{targetReg})
+					wrappers = append(wrappers, saveRegWrapper)
+					wrappers = append(wrappers, func(k func()) {
+						d.output.WriteString(fmt.Sprintf("\tleaq\t%s(%%rip), %s\n", symbol, tempReg))
+						d.output.WriteString(fmt.Sprintf("\tmovq\t%s, %s\n", tempReg, targetReg))
+					})
+					// This will cause the "replacement" string to be set below. But since
+					// we are using wrappers, it's not used.
+					changed = true
+				} else if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
 				}
@@ -1835,6 +1907,274 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 	w.WriteString(".size " + funcName + ", .-" + funcName + "\n")
 }
 
+func isNewLine(file string, node *node32) bool {
+	statementName := file[node.begin:node.end]
+	if statementName == "\n" {
+		return true
+	}
+	return false
+}
+
+// isEndOfRelroSection determines if we have reached the end of a relro section.
+// Returns true if we have, false otherwise.
+func isEndOfRelroSection(file string, lineRootNode *node32) bool {
+
+	// The method used to determine whether we have reached the end of a relro
+	// section is to match on all patterns we know the relro section build from.
+	// If we cannot match such a pattern, or if we meet an unexpected pattern,
+	// we return true.
+
+	/* Relro section pattern
+	Statement "\n"
+	*/
+	if isNewLine(file, lineRootNode) {
+		return false
+	}
+
+	nodeNext := lineRootNode.up
+
+	/* Relro section pattern
+	Statement "\t.align 8\n"
+		WS "\t"
+		Directive ".align 8"
+		 DirectiveName "align"
+		 WS " "
+		 Args "8"
+			Arg "8"
+	*/
+	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
+		directiveName := file[node.begin:node.end]
+		if directiveName == "align" {
+			return true
+		}
+		return false
+	}, ruleDirective, ruleDirectiveName) {
+		return false
+	}
+
+	/* Relro section pattern
+	 Statement ".LC0:"
+		Label ".LC0:"
+		 LocalSymbol ".LC0"
+	*/
+	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
+		symbolName := file[node.begin:node.end]
+		if strings.HasPrefix(symbolName, ".L") {
+			return true
+		}
+		return false
+	}, ruleLabel, ruleLocalSymbol) {
+		return false
+	}
+
+	/* Relro section pattern
+	 Statement "\t.quad\tfoo_init\n"
+		WS "\t"
+		LabelContainingDirective ".quad\tfoo_init"
+		 LabelContainingDirectiveName ".quad"
+		 WS "\t"
+		 SymbolArgs "foo_init"	<-- function symbol
+			SymbolArg "foo_init"
+			 SymbolExpr "foo_init"
+				SymbolAtom "foo_init"
+				 SymbolName "foo_init"
+	*/
+	if matchPatternSearchSubtree(nodeNext, func(node *node32) bool {
+		directiveName := file[node.begin:node.end]
+		if directiveName == ".quad" {
+			return true
+		}
+		return false
+	}, ruleLabelContainingDirective, ruleLabelContainingDirectiveName) {
+		return false
+	}
+
+	return true
+}
+
+// isProbablyAfunctionSymbolx86 sanity checks whether a string represents a
+// valid symbol for either ELF or MachO. Does not work for COFF.
+func isProbablyAValidSymbol(symbol string) error {
+	if len(symbol) == 0 {
+		return fmt.Errorf("function symbol %s cannot be empty", symbol)
+	}
+
+	if len(symbol) > 255 {
+		return fmt.Errorf("function symbol %q too long", symbol)
+	}
+
+	if !unicode.IsLetter(rune(symbol[0])) && symbol[0] != '_' {
+		return fmt.Errorf("function symbol %q must start with letter or underscore", symbol)
+	}
+
+	// Usually allows letters, numbers, underscores, and sometimes dots
+	for i, char := range symbol {
+		if !unicode.IsLetter(char) &&
+			!unicode.IsDigit(char) &&
+			char != '_' &&
+			char != '.' {
+			return fmt.Errorf("invalid character for function symbol %q at position %d: %c", symbol, i, char)
+		}
+	}
+
+	if strings.HasPrefix(symbol, ".") {
+		return fmt.Errorf("function symbol %q cannot start with dot", symbol)
+	}
+
+	if strings.Contains(symbol, "@@") {
+		return fmt.Errorf("invalid function symbol %q format: contains @@", symbol)
+	}
+
+	return nil
+}
+
+func findLocalLabelsForRelro(file string, node *node32, relroLocalLabelToFuncMap map[string]string) error {
+	/* .data.rel.ro[.local] pattern
+	Statement "\t.align 8\n"
+		WS "\t"
+		Directive ".align 8"
+		 DirectiveName "align"
+		 WS " "
+		 Args "8"
+			Arg "8"
+	 Statement ".LC0:"
+		Label ".LC0:"
+		 LocalSymbol ".LC0"	<-- local symbol
+	 Statement "\n"
+	 Statement "\t.quad\tfoo_init\n"
+		WS "\t"
+		LabelContainingDirective ".quad\tfoo_init"
+		 LabelContainingDirectiveName ".quad"
+		 WS "\t"
+		 SymbolArgs "foo_init"	<-- function symbol
+			SymbolArg "foo_init"
+			 SymbolExpr "foo_init"
+				SymbolAtom "foo_init"
+				 SymbolName "foo_init"
+	*/
+
+	currentLineRootNode := node
+	for ; currentLineRootNode != nil; currentLineRootNode = currentLineRootNode.next {
+
+		// First, we search for a local symbol in each subtree, skipping the
+		// statement node.
+		localSymbolName := ""
+		if matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
+			symbolName := file[node.begin:node.end]
+			if _, exists := relroLocalLabelToFuncMap[symbolName]; exists {
+				panic(fmt.Sprintf("Duplicate symbol found: %q", symbolName))
+			}
+
+			// Sanity check that we have found what we expect to find
+			if !strings.HasPrefix(symbolName, ".L") {
+				panic(fmt.Sprintf("Symbol name syntax is not what was expected: %q", symbolName))
+			}
+
+			localSymbolName = symbolName
+			return true
+		}, ruleLabel, ruleLocalSymbol) {
+
+			// Reaching this point, we have found a local symbol. Now we need to
+			// search for the function symbol. First advance to next statement/line.
+			currentLineRootNode = currentLineRootNode.next
+
+			// We might need to skip a newline
+			if isNewLine(file, currentLineRootNode) {
+				currentLineRootNode = currentLineRootNode.next
+			}
+
+			// The function name should be an argument to a directive
+			if !matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
+				functionSymbolName := file[node.begin:node.end]
+				if err := isProbablyAValidSymbol(functionSymbolName); err != nil {
+					panic(err)
+				}
+
+				relroLocalLabelToFuncMap[localSymbolName] = functionSymbolName
+				return true
+			}, ruleLabelContainingDirective, ruleSymbolArgs) {
+				return fmt.Errorf("After finding %q under a .data.rel.ro[.local] section, expected to find a function name\n", localSymbolName)
+			}
+
+			continue
+		}
+
+		// Check if we are at the end of the relro section.
+		if isEndOfRelroSection(file, currentLineRootNode) {
+			break
+		}
+	}
+
+	return nil
+}
+
+// relroLocalLabelToFuncMapping finds relro related sections and maps local
+// labels to function names. Stores the mapping in relroLocalLabelToFuncMap.
+func relroLocalLabelToFuncMapping(input inputFile, relroLocalLabelToFuncMap map[string]string) error {
+
+	/* Assumed pattern
+	Statement "\t.section\t.data.rel.ro.local\n"
+		WS "\t"
+		Directive ".section\t.data.rel.ro.local"
+		 DirectiveName "section"
+		 WS "\t"
+		 Args ".data.rel.ro.local"
+			Arg ".data.rel.ro.local"
+	*/
+
+	matchRelRoCb := func(node *node32) bool {
+		sectionType := input.contents[node.begin:node.end]
+		if strings.HasPrefix(sectionType, ".data.rel.ro") ||
+			strings.HasPrefix(sectionType, ".ldata.rel.ro") {
+			return true
+		}
+		return false
+	}
+
+	// Iterate through input file to locate all relro sections. If we find a relro
+	// section then we extract all local symbol <-> function symbol mappings and
+	// save them in relroLocalLabelToFuncMap.
+	currentLineRootNode := input.ast.up
+	for ; currentLineRootNode != nil; currentLineRootNode = currentLineRootNode.next {
+		if matchPatternOneLine(currentLineRootNode, matchRelRoCb,
+			ruleStatement, ruleDirective, ruleArgs, ruleArg) {
+			if err := findLocalLabelsForRelro(input.contents, currentLineRootNode.next, relroLocalLabelToFuncMap); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		// Sometimes a .set directive is used to alias two local symbol. If we find
+		// one of these, check if the alias is one of our mappings. If it is,
+		// map the aliased value to the known function name.
+		if matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
+			directiveName := input.contents[node.begin:node.end]
+			if directiveName == ".set" {
+				return true
+			}
+			return false
+		}, ruleLabelContainingDirective, ruleLabelContainingDirectiveName) {
+
+			if !matchPatternSearchSubtree(currentLineRootNode.up, func(node *node32) bool {
+				labelNames := strings.Split(input.contents[node.begin:node.end], ",")
+				if _, exists := relroLocalLabelToFuncMap[labelNames[1]]; !exists {
+					// Doesn't exist, carry on.
+					return true
+				}
+				relroLocalLabelToFuncMap[labelNames[0]] = relroLocalLabelToFuncMap[labelNames[1]]
+				return true
+			}, ruleLabelContainingDirective, ruleSymbolArgs) {
+				return errors.New("Parsing error for .set directive")
+			}
+
+			continue
+		}
+	}
+
+	return nil
+}
+
 func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool) error {
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
@@ -1849,6 +2189,8 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	// checksums in .file directives. If it does so, then this script needs
 	// to match that behaviour otherwise warnings result.
 	fileDirectivesContainMD5 := false
+	// See delocation object definition.
+	relroLocalLabelToFuncMap := make(map[string]string)
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
 	symbols["OPENSSL_ia32cap_get"] = struct{}{}
@@ -1859,6 +2201,11 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 			return err
 		}
 		w.WriteString(fmt.Sprintf("#include <%s>\n", relative))
+	}
+
+	processor := x86_64
+	if len(inputs) > 0 {
+		processor = detectProcessor(inputs[0])
 	}
 
 	for _, input := range inputs {
@@ -1923,11 +2270,12 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 				}
 			}
 		}, ruleStatement, ruleLocationDirective)
-	}
 
-	processor := x86_64
-	if len(inputs) > 0 {
-		processor = detectProcessor(inputs[0])
+		if processor == x86_64 {
+			if err := relroLocalLabelToFuncMapping(input, relroLocalLabelToFuncMap); err != nil {
+				return err
+			}
+		}
 	}
 
 	commentIndicator := "#"
@@ -1936,18 +2284,19 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	}
 
 	d := &delocation{
-		symbols:             symbols,
-		localEntrySymbols:   localEntrySymbols,
-		processor:           processor,
-		commentIndicator:    commentIndicator,
-		output:              w,
-		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
-		redirectors:         make(map[string]string),
-		bssAccessorsNeeded:  make(map[string]string),
-		tocLoaders:          make(map[string]struct{}),
-		gotExternalsNeeded:  make(map[string]struct{}),
-		gotOffsetsNeeded:    make(map[string]struct{}),
-		gotOffOffsetsNeeded: make(map[string]struct{}),
+		symbols:                  symbols,
+		localEntrySymbols:        localEntrySymbols,
+		processor:                processor,
+		commentIndicator:         commentIndicator,
+		output:                   w,
+		cpuCapUniqueSymbols:      []*cpuCapUniqueSymbol{},
+		relroLocalLabelToFuncMap: relroLocalLabelToFuncMap,
+		redirectors:              make(map[string]string),
+		bssAccessorsNeeded:       make(map[string]string),
+		tocLoaders:               make(map[string]struct{}),
+		gotExternalsNeeded:       make(map[string]struct{}),
+		gotOffsetsNeeded:         make(map[string]struct{}),
+		gotOffOffsetsNeeded:      make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
@@ -1966,10 +2315,10 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		// to the symbol table.
 		w.WriteString(".global BORINGSSL_bcm_text_hash\n")
 		w.WriteString(".type BORINGSSL_bcm_text_hash, @function\n")
- 	} else {
+	} else {
 		w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
 		w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
- 	}
+	}
 	w.WriteString("BORINGSSL_bcm_text_hash:\n")
 	for _, b := range fipscommon.UninitHashValue {
 		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
@@ -2275,6 +2624,7 @@ func main() {
 	outFile := flag.String("o", "", "Path to output assembly")
 	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
+	s2nBignumInclude := flag.String("s2n-bignum-include", "", "Directory with s2n-bignum header files used by the C compiler when preprocessing")
 	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
 
 	flag.Parse()
@@ -2320,6 +2670,10 @@ func main() {
 		})
 	}
 
+	if len(*s2nBignumInclude) > 0 {
+		includePaths[*s2nBignumInclude] = struct{}{}
+	}
+
 	var cppCommand []string
 	if len(*ccPath) > 0 {
 		cppCommand = append(cppCommand, *ccPath)
@@ -2355,6 +2709,50 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
+}
+
+func matchPatternSearchSubtree(node *node32, matchNode func(*node32) bool, rules ...pegRule) bool {
+	if node == nil {
+		return false
+	}
+
+	rule := rules[0]
+	childRules := rules[1:]
+
+	for ; node != nil; node = node.next {
+		if rule != node.pegRule {
+			continue
+		}
+
+		if len(childRules) == 0 {
+			return matchNode(node)
+		}
+
+		if matchPatternSearchSubtree(node.up, matchNode, childRules...) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func matchPatternOneLine(lineRootNode *node32, matchNode func(*node32) bool, rules ...pegRule) bool {
+	if lineRootNode == nil || len(rules) == 0 {
+		return false
+	}
+
+	rule := rules[0]
+	childRules := rules[1:]
+
+	if rule != lineRootNode.pegRule {
+		return false
+	}
+
+	if len(childRules) == 0 {
+		return matchNode(lineRootNode)
+	}
+
+	return matchPatternSearchSubtree(lineRootNode.up, matchNode, childRules...)
 }
 
 func forEachPath(node *node32, cb func(*node32), rules ...pegRule) {

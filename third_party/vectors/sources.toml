@@ -1,0 +1,4 @@
+[wycheproof]
+git_url = "https://github.com/C2SP/wycheproof.git"
+branch = "main"
+note = "known vulnerabilities in cryptographic implementations"

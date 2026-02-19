@@ -1,0 +1,201 @@
+name: linux-arm-omnibus
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+permissions:
+  contents: read
+
+jobs:
+  graviton2:
+    name: graviton2-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        fleet:linux-graviton2-c6g-2xlarge
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-tests
+            options: --privileged
+            run: ./tests/ci/run_posix_sanitizers.sh
+          - name: fips-tests
+            run: ./tests/ci/run_fips_tests.sh
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: ${{ matrix.options || '' }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT=60m
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ${{ matrix.run }}
+
+  graviton4:
+    name: graviton4-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        fleet:linux-graviton4-r8g-2xlarge
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-tests
+            options: --privileged
+            run: ./tests/ci/run_posix_sanitizers.sh
+          - name: fips-tests
+            run: ./tests/ci/run_fips_tests.sh
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          options: ${{ matrix.options || '' }}
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT=60m
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ${{ matrix.run }}
+
+
+  # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
+  # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331,
+  # https://github.com/google/sanitizers/issues/703, and fixed in https://reviews.llvm.org/D60243 which is pending a review.
+  # To reduce the total time, these tests are broken into 4 distinct parts
+  asan-ssl-part1:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        instance-size:large
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_END_INDEX: 3500
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_END_INDEX
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
+
+  asan-ssl-part2:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        instance-size:large
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_START_INDEX: 3501
+      AWS_LC_SSL_RUNNER_END_INDEX: 5500
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_START_INDEX
+            AWS_LC_SSL_RUNNER_END_INDEX
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
+
+  asan-ssl-part3:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        instance-size:large
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_START_INDEX: 5501
+      AWS_LC_SSL_RUNNER_END_INDEX: 7000
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_START_INDEX
+            AWS_LC_SSL_RUNNER_END_INDEX
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
+
+  asan-ssl-part4:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        instance-size:large
+    env:
+      AWS_LC_GO_TEST_TIMEOUT: 60m
+      AWS_LC_SSL_RUNNER_START_INDEX: 7001
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/amazonlinux:2023
+          env: |
+            AWS_LC_GO_TEST_TIMEOUT
+            AWS_LC_SSL_RUNNER_START_INDEX
+          run: |
+            source /opt/compiler-env/setup-clang-15.sh
+            ./tests/ci/run_ssl_asan_tests.sh
+
+  # Build and test aws-lc without Perl/Go.
+  minimal_tests:
+    name: minimal-ubuntu:22.04-clang-7-aarch64
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:arm-3.0
+        instance-size:large
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/aws-lc/ubuntu:20.04
+          run: |
+            source /opt/compiler-env/setup-clang-7.sh
+            ./tests/ci/run_minimal_tests.sh

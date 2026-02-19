@@ -34,17 +34,29 @@ $code .= <<EOF;
 .globl  md5_block_asm_data_order
 .type   md5_block_asm_data_order,\@function
 md5_block_asm_data_order:
+.cfi_startproc
         // Save all callee-saved registers
         stp     x19,x20,[sp,#-80]!
+.cfi_def_cfa_offset 80
+.cfi_offset x19, -80
+.cfi_offset x20, -72
         stp     x21,x22,[sp,#16]
+.cfi_offset x21, -64
+.cfi_offset x22, -56
         stp     x23,x24,[sp,#32]
+.cfi_offset x23, -48
+.cfi_offset x24, -40
         stp     x25,x26,[sp,#48]
+.cfi_offset x25, -32
+.cfi_offset x26, -24
         stp     x27,x28,[sp,#64]
+.cfi_offset x27, -16
+.cfi_offset x28, -8
 
         ldp w10, w11, [x0, #0]        // Load MD5 state->A and state->B
         ldp w12, w13, [x0, #8]        // Load MD5 state->C and state->D
 .align 5
-md5_blocks_loop:
+.Lmd5_blocks_loop:
         eor x17, x12, x13             // Begin aux function round 1 F(x,y,z)=(((y^z)&x)^z)
         and x16, x17, x11             // Continue aux function round 1 F(x,y,z)=(((y^z)&x)^z)
         ldp x15, x3, [x1]             // Load 4 words of input data0 M[0]/0
@@ -675,14 +687,26 @@ md5_blocks_loop:
         stp w10, w11, [x0]            // Store MD5 states A,B
         add x1, x1, #64               // Increment data pointer
         subs w2, w2, #1               // Decrement block counter
-        b.ne md5_blocks_loop
+        b.ne Lmd5_blocks_loop
 
         ldp     x21,x22,[sp,#16]
+.cfi_restore x21
+.cfi_restore x22
         ldp     x23,x24,[sp,#32]
+.cfi_restore x23
+.cfi_restore x24
         ldp     x25,x26,[sp,#48]
+.cfi_restore x25
+.cfi_restore x26
         ldp     x27,x28,[sp,#64]
+.cfi_restore x27
+.cfi_restore x28
         ldp     x19,x20,[sp],#80
+.cfi_restore x19
+.cfi_restore x20
+.cfi_def_cfa_offset 0
         ret
+.cfi_endproc
 
 EOF
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 SRC_ROOT="$(pwd)"
-if [ -v CODEBUILD_SRC_DIR ]; then
+if [ -n "${CODEBUILD_SRC_DIR:-}" ] && [ -z "${CODEBUILD_WEBHOOK_JOB_ID:-}" ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
 elif [ "$(basename "${SRC_ROOT}")" != 'aws-lc' ]; then
   SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -24,8 +24,17 @@ PLATFORM=$(uname -m)
 NUM_CPU_THREADS=''
 KERNEL_NAME=$(uname -s)
 if [[ "${KERNEL_NAME}" == "Darwin" || "${KERNEL_NAME}" =~ .*BSD ]]; then
-  # On MacOS, /proc/cpuinfo does not exist.
-  NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+  # sysctl is typically in /sbin or /usr/sbin on BSD systems
+  if command -v sysctl &> /dev/null; then
+    NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+  elif [[ -x /sbin/sysctl ]]; then
+    NUM_CPU_THREADS=$(/sbin/sysctl -n hw.ncpu)
+  elif [[ -x /usr/sbin/sysctl ]]; then
+    NUM_CPU_THREADS=$(/usr/sbin/sysctl -n hw.ncpu)
+  else
+    echo "Warning: Could not find sysctl, defaulting to 2 CPU threads"
+    NUM
+  fi
 else
   # Assume KERNEL_NAME is Linux.
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
@@ -74,6 +83,20 @@ function run_cmake_custom_target {
 function build_and_test {
   run_build "$@"
   run_cmake_custom_target 'run_tests'
+}
+
+function test_c_rehash {
+  if [ -f "${BUILD_ROOT}/tool-openssl/c_rehash_test" ]; then
+    "${BUILD_ROOT}/tool-openssl/c_rehash_test"
+    local test_result=$?
+    if [ $test_result -ne 0 ]; then
+        echo "c_rehash test failed with exit code ${test_result}"
+        exit 1
+    fi
+  else
+    echo "c_rehash test script not found in ${BUILD_ROOT}/tool-openssl/"
+    exit 1
+  fi
 }
 
 function generate_symbols_file {
@@ -140,8 +163,6 @@ function build_and_test_valgrind {
 }
 
 function build_and_test_ssl_runner_valgrind {
-  export AWS_LC_GO_TEST_TIMEOUT="60m"
-
   run_build "$@"
   run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }
@@ -163,7 +184,7 @@ function aws_lc_build() {
   INSTALL_FOLDER=${3}
 
   echo "Building AWS-LC to ${BUILD_FOLDER} and installing to ${INSTALL_FOLDER} with CFlags "${@:4}""
-  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "${@:4}"
+  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "-DCMAKE_INSTALL_LIBDIR=lib" "${@:4}"
   ${CMAKE_COMMAND} --build ${BUILD_FOLDER} -- install
   ls -R ${INSTALL_FOLDER}
 }
@@ -202,6 +223,10 @@ function build_openssl {
     ./config --prefix="${install_dir}/openssl-${branch}" --openssldir="${install_dir}/openssl-${branch}" -d
     make "-j${NUM_CPU_THREADS}" > /dev/null
     make install_sw
+
+    # Copy openssl.cnf to openssldir
+    cp "${scratch_folder}/openssl-${branch}/apps/openssl.cnf" "${install_dir}/openssl-${branch}/openssl.cnf"
+
     popd
     rm -rf "${scratch_folder}/openssl-${branch}"
 }

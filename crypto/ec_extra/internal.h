@@ -70,6 +70,15 @@ OPENSSL_EXPORT int ec_hash_to_scalar_p384_xmd_sha512_draft07(
     const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
     const uint8_t *msg, size_t msg_len);
 
+enum ECParametersType {
+  UNKNOWN_EC_PARAMETERS = 0,
+  NAMED_CURVE_EC_PARAMETERS = 1,
+  SPECIFIED_CURVE_EC_PARAMETERS = 2,
+};
+
+// EC_KEY_parse_parameters_and_type parses the elliptic curve key parameters from |cbs| and
+// sets the type of parameters found on |paramType|.
+EC_GROUP *EC_KEY_parse_parameters_and_type(CBS *cbs, enum ECParametersType *paramType);
 
 #if defined(__cplusplus)
 }  // extern C

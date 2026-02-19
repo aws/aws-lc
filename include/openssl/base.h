@@ -54,7 +54,10 @@
 #define OPENSSL_HEADER_BASE_H
 
 
-// This file should be the first included by all BoringSSL headers.
+/**
+ * @file
+ * @brief This file should be the first included by all AWS-LC headers.
+ */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -114,7 +117,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 32
+#define AWSLC_API_VERSION 35
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -122,7 +125,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.48.3"
+#define AWSLC_VERSION_NUMBER_STRING "1.67.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -153,6 +156,22 @@ extern "C" {
 #endif
 
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
+
+#if !defined(OPENSSL_WARN_UNUSED_RESULT)
+// This should only affect internal usage of functions
+#if defined(BORINGSSL_IMPLEMENTATION) || defined(AWS_LC_TEST_ENV)
+#if defined(__GNUC__) || defined(__clang__)
+# define OPENSSL_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
+#elif defined(_MSC_VER)
+# define OPENSSL_WARN_UNUSED_RESULT _Check_return_
+#else
+# define OPENSSL_WARN_UNUSED_RESULT
+#endif
+#else
+// The macro is ignored by consumers
+# define OPENSSL_WARN_UNUSED_RESULT
+#endif
+#endif
 
 #if defined(_MSC_VER)
 
@@ -219,6 +238,63 @@ extern "C" {
 #define OPENSSL_UNUSED
 #endif
 
+// C99-compatible static assertion using bit-field width trick.
+// A negative bit-field width causes a compile-time error.
+//
+// Previously we defined |OPENSSL_STATIC_ASSERT| to use one of two keywords:
+// |Static_assert| or |static_assert|. The latter was used if we were compiling
+// a C++ translation unit or on Windows (excluding when using a Clang compiler).
+// The former was used in other cases. However, these two keywords are not
+// defined before C11. So, we can't rely on these when we want to be C99
+// compliant. If we at some point decide that we want to only be compliant with
+// C11 (and up), we can reintroduce these keywords. Instead, use a method that
+// is guaranteed to be C99 compliant and still give us an equivalent static
+// assert mechanism.
+//
+// The solution below defines a struct type containing a bit field.
+// The name of that type is |static_assertion_msg|. |msg| is a concatenation of
+// a user-chosen error (which should be chosen with respect to actual assertion)
+// and the line the assertion is defined. This should ensure name uniqueness.
+// The width of the bit field is set to 1 or -1, depending on the evaluation of
+// the boolean expression |cond|. If the condition is false, the width requested
+// is -1, which is illegal and would cause the compiler to throw an error.
+//
+// An example of an error thrown during compilation:
+// ```
+// error: negative width in bit-field
+//      'static_assertion_at_line_913_error_is_AEAD_state_is_too_small'
+// ```
+#define AWSLC_CONCAT(left, right) left##right
+#define AWSLC_STATIC_ASSERT_DEFINE(cond, msg) typedef struct { \
+        unsigned int AWSLC_CONCAT(static_assertion_, msg) : (cond) ? 1 : -1; \
+    } AWSLC_CONCAT(static_assertion_, msg) OPENSSL_UNUSED;
+#define AWSLC_STATIC_ASSERT_ADD_LINE0(cond, suffix) AWSLC_STATIC_ASSERT_DEFINE(cond, AWSLC_CONCAT(at_line_, suffix))
+#define AWSLC_STATIC_ASSERT_ADD_LINE1(cond, line, suffix) AWSLC_STATIC_ASSERT_ADD_LINE0(cond, AWSLC_CONCAT(line, suffix))
+#define AWSLC_STATIC_ASSERT_ADD_LINE2(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE1(cond, __LINE__, suffix)
+#define AWSLC_STATIC_ASSERT_ADD_ERROR(cond, suffix) AWSLC_STATIC_ASSERT_ADD_LINE2(cond, AWSLC_CONCAT(_error_is_, suffix))
+#define OPENSSL_STATIC_ASSERT(cond, error) AWSLC_STATIC_ASSERT_ADD_ERROR(cond, error)
+
+// Sanity check of "target.h": OPENSSL_64_BIT/OPENSSL_32_BIT must match actual pointer size
+#if defined(OPENSSL_64_BIT)
+OPENSSL_STATIC_ASSERT(sizeof(void *) == 8, pointer_size_must_be_8_bytes_for_64_bit)
+#elif defined(OPENSSL_32_BIT)
+OPENSSL_STATIC_ASSERT(sizeof(void *) == 4, pointer_size_must_be_4_bytes_for_32_bit)
+#endif
+
+// Sanity checks of "target.h": OPENSSL_BIG_ENDIAN should be consistent with other endianness indicators.
+// If architecture-specific big-endian macros are defined, OPENSSL_BIG_ENDIAN should be too.
+#if (defined(__ARMEB__) || defined(__AARCH64EB__) || defined(__MIPSEB__) || \
+     defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
+     __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)) && !defined(OPENSSL_BIG_ENDIAN)
+#error "Big-endian architecture detected but OPENSSL_BIG_ENDIAN is not defined"
+#endif
+// If architecture-specific little-endian macros are defined, OPENSSL_BIG_ENDIAN should not be.
+#if (defined(__ARMEL__) || defined(__AARCH64EL__) || defined(__MIPSEL__) || \
+     defined(__LITTLE_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
+     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)) && defined(OPENSSL_BIG_ENDIAN)
+#error "Little-endian architecture detected but OPENSSL_BIG_ENDIAN is defined"
+#endif
+
 // C and C++ handle inline functions differently. In C++, an inline function is
 // defined in just the header file, potentially emitted in multiple compilation
 // units (in cases the compiler did not inline), but each copy must be identical
@@ -246,6 +322,12 @@ extern "C" {
 // (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
 // clang's -Wunused-function.
 #define OPENSSL_INLINE static inline OPENSSL_UNUSED
+#endif
+
+#if defined(OPENSSL_WINDOWS)
+#define OPENSSL_NOINLINE __declspec(noinline)
+#else
+#define OPENSSL_NOINLINE __attribute__((noinline))
 #endif
 
 // ossl_ssize_t is a signed type which is large enough to fit the size of any
@@ -341,6 +423,12 @@ typedef struct evp_aead_st EVP_AEAD;
 typedef struct evp_aead_ctx_st EVP_AEAD_CTX;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
+
+/**
+ * @typedef EVP_ENCODE_CTX
+ * @copydoc evp_encode_ctx_st
+ * @see evp_encode_ctx_st
+ */
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
 typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
 typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;

@@ -46,9 +46,9 @@ import (
 	"syscall"
 	"time"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/ssl_transfer"
-	"boringssl.googlesource.com/boringssl/util/testresult"
+	"github.com/aws/aws-lc/ssl/test/runner/hpke"
+	"github.com/aws/aws-lc/ssl/test/runner/ssl_transfer"
+	"github.com/aws/aws-lc/util/testresult"
 	"golang.org/x/crypto/cryptobyte"
 )
 
@@ -1658,7 +1658,7 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		if *mallocTestDebug {
 			env = append(env, "MALLOC_BREAK_ON_FAIL=1")
 		}
-		env = append(env, "_MALLOC_CHECK=1")
+		env = append(env, "MALLOC_CHECK_=1")
 	}
 
 	shim, err := newShimProcess(dispatcher, shimPath, flags, env)
@@ -8697,8 +8697,12 @@ func addExtensionTests() {
 		},
 		// This hostname just needs to be long enough to push the
 		// ClientHello into F5's danger zone between 256 and 511 bytes
-		// long.
-		flags: []string{"-host-name", "01234567890123456789012345678901234567890123456789012345678901234567890123456789.com"},
+		// long. Also override curves to just x25519 to remove any PQ
+		// KeyShares that might push ClientHello above 512 bytes.
+		flags: []string{
+			"-host-name", "01234567890123456789012345678901234567890123456789012345678901234567890123456789.com",
+			"-curves", strconv.Itoa(int(CurveX25519)),
+		},
 	})
 
 	// Test that illegal extensions in TLS 1.3 are rejected by the client if
@@ -10105,8 +10109,8 @@ func addSignatureAlgorithmTests() {
 				shouldFail = true
 			}
 
-			// By default, BoringSSL does not enable ecdsa_sha1, ecdsa_secp521_sha512, and ed25519.
-			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 {
+			// By default, AWS-LC does not enable ecdsa_sha1 and ed25519.
+			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureEd25519 {
 				rejectByDefault = true
 			}
 
@@ -12442,7 +12446,7 @@ func addSessionTicketTests() {
 	testCases = append(testCases, testCase{
 		// In TLS 1.2 and below, empty NewSessionTicket messages
 		// mean the server changed its mind on sending a ticket.
-		name: "SendEmptySessionTicket",
+		name: "SendEmptySessionTicket-TLS12",
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
@@ -12450,6 +12454,21 @@ func addSessionTicketTests() {
 			},
 		},
 		flags: []string{"-expect-no-session"},
+	})
+
+	testCases = append(testCases, testCase{
+		// In TLS 1.3, empty NewSessionTicket messages are not
+		// allowed.
+		name: "SendEmptySessionTicket-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendEmptySessionTicket: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
 	})
 
 	// Test that the server ignores unknown PSK modes.
@@ -19720,13 +19739,13 @@ func addMultipleCertSlotTests() {
 	}
 	multipleCertsFlag := "-multiple-certs-slot"
 	rsaCertSlot := []string{
-		multipleCertsFlag, rsaCertificate.ChainPath  + "," + rsaCertificate.KeyPath,
+		multipleCertsFlag, rsaCertificate.ChainPath + "," + rsaCertificate.KeyPath,
 	}
 	ecdsaCertSlot := []string{
-		multipleCertsFlag, ecdsaP256Certificate.ChainPath  + "," + ecdsaP256Certificate.KeyPath,
+		multipleCertsFlag, ecdsaP256Certificate.ChainPath + "," + ecdsaP256Certificate.KeyPath,
 	}
 	ed25519CertSlot := []string{
-		multipleCertsFlag, ed25519Certificate.ChainPath  + "," + ed25519Certificate.KeyPath,
+		multipleCertsFlag, ed25519Certificate.ChainPath + "," + ed25519Certificate.KeyPath,
 	}
 	certificateSlotFlags := append([]string{}, rsaCertSlot...)
 	certificateSlotFlags = append(certificateSlotFlags, ecdsaCertSlot...)
@@ -19812,7 +19831,7 @@ func addMultipleCertSlotTests() {
 					MaxVersion:                ver.version,
 					VerifySignatureAlgorithms: []signatureAlgorithm{alg.id},
 					ClientAuth:                RequireAnyClientCert,
-					Chains:              []CertificateChain{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
+					Chains:                    []CertificateChain{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
 				},
 				flags: func() []string {
 					flags := append([]string{}, certificateSlotFlags...)

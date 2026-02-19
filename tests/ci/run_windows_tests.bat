@@ -1,6 +1,6 @@
 @echo on
 set SRC_ROOT=%cd%
-set BUILD_DIR=%SRC_ROOT%\test_build_dir
+set BUILD_DIR=%TEMP%\awslc
 
 @rem %1 contains the path to the setup batch file for the version of of visual studio that was passed in from the build spec file.
 @rem %2 specifies the architecture option to build against: https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
@@ -9,6 +9,11 @@ set MSVC_PATH=%1
 set ARCH_OPTION=%2
 if "%~3"=="" ( set RUN_SDE=false ) else ( set RUN_SDE=%3 )
 call %MSVC_PATH% %ARCH_OPTION% || goto error
+
+if /i "%ARCH_OPTION%" == "arm64" (
+  set "CC=clang-cl"
+  set "CXX=clang-cl"
+)
 SET
 
 @echo on
@@ -36,8 +41,10 @@ call :build_and_test Release "-DOPENSSL_NO_ASM=1" || goto error
 set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
-@rem For FIPS on Windows we also have a RelWithDebInfo build to generate debug symbols.
-call :build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+if /i not "%ARCH_OPTION%" == "arm64" (
+    @rem For FIPS on Windows/x86-64 we also have a RelWithDebInfo build to generate debug symbols.
+    call :build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+)
 
 @rem On Windows, CMake defaults to dynamically linking to the Windows C-runtime.
 @rem We test statically linking CRT to our static library.

@@ -183,6 +183,7 @@ static int x509_verify_param_copy(X509_VERIFY_PARAM *dest,
   }
 
   dest->flags |= src->flags;
+  dest->awslc_flags |= src->awslc_flags;
 
   if (should_copy(dest->policies != NULL, src->policies != NULL, prefer_src)) {
     if (!X509_VERIFY_PARAM_set1_policies(dest, src->policies)) {
@@ -403,6 +404,10 @@ void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
   param->hostflags = flags;
 }
 
+unsigned int X509_VERIFY_PARAM_get_hostflags(const X509_VERIFY_PARAM *param) {
+    return param->hostflags;
+}
+
 int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,
                                  size_t emaillen) {
   if (OPENSSL_memchr(email, '\0', emaillen) != NULL ||
@@ -485,3 +490,16 @@ const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
   }
   return NULL;
 }
+
+int X509_VERIFY_PARAM_enable_ec_key_explicit_params(X509_VERIFY_PARAM *param) {
+  GUARD_PTR(param);
+  param->awslc_flags |= AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS;
+  return 1;
+}
+
+int X509_VERIFY_PARAM_disable_ec_key_explicit_params(X509_VERIFY_PARAM *param) {
+  GUARD_PTR(param);
+  param->awslc_flags &= ~AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS;
+  return 1;
+}
+

@@ -179,6 +179,22 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
+#include <atomic>
+
+typedef int SSL_stats_t;
+
+// Using ATOMIC_INT_LOCK_FREE as SSL_stats_t is an int
+#if !defined(OPENSSL_STATS_C11_ATOMIC) && defined(OPENSSL_THREADS) && ATOMIC_INT_LOCK_FREE == 2
+#define OPENSSL_STATS_C11_ATOMIC
+#endif
+
+// Define the actual storage type for statistics counters
+#if defined(OPENSSL_STATS_C11_ATOMIC)
+#define SSL_STATS_COUNTER_TYPE std::atomic<SSL_stats_t>
+#else
+#define SSL_STATS_COUNTER_TYPE SSL_stats_t
+#endif
+
 BSSL_NAMESPACE_BEGIN
 
 struct SSL_CONFIG;
@@ -461,6 +477,8 @@ class GrowableArray {
 // CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
 OPENSSL_EXPORT bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 
+OPENSSL_EXPORT UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509);
+
 // GetAllNames helps to implement |*_get_all_*_names| style functions. It
 // writes at most |max_out| string pointers to |out| and returns the number that
 // it would have liked to have written. The strings written consist of
@@ -650,7 +668,9 @@ BSSL_NAMESPACE_BEGIN
 // picks the cipher and groups cannot be expressed on the wire. However, for
 // servers, the equal-preference groups allow the client's preferences to be
 // partially respected. (This only has an effect with
-// SSL_OP_CIPHER_SERVER_PREFERENCE).
+// SSL_OP_CIPHER_SERVER_PREFERENCE). Note that the method used to compute the
+// negotiated cipher suite in TLS 1.3 does not use the equal-preference
+// data structure described below.
 //
 // The equal-preference groups are expressed by grouping SSL_CIPHERs together.
 // All elements of a group have the same priority: no ordering is expressed
@@ -1287,8 +1307,7 @@ OPENSSL_EXPORT Span<const HybridGroup> HybridGroups();
 
 // PQGroups returns all supported post-quantum groups. A post-quantum
 // group may be a hybrid group containing at least one PQ
-// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ group
-// (e.g. KYBER768_R3).
+// component or a standalone PQ group.
 Span<const uint16_t> PQGroups();
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
@@ -1305,6 +1324,10 @@ bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id);
 // length |len|. On success, it sets |*out_group_id| to the group ID and returns
 // true. Otherwise, it returns false.
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
+
+// ssl_group_id_to_nid returns the NID corresponding to |group_id| or
+// |NID_undef| if unknown.
+int ssl_group_id_to_nid(uint16_t group_id);
 
 
 // Handshake messages.
@@ -1380,9 +1403,16 @@ void ssl_do_msg_callback(const SSL *ssl, int is_write, int content_type,
 
 // Transport buffers.
 
+enum SSL_BUFFER_SERDE_VERSION {
+  SSL_BUFFER_SERDE_VERSION_ONE = 1,
+  SSL_BUFFER_SERDE_VERSION_TWO = 2
+};
+
+const unsigned kSSLBufferMaxSerDeVersion = SSL_BUFFER_SERDE_VERSION_TWO;
+
 #define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
-#define SSLBUFFER_MAX_CAPACITY UINT16_MAX
-class SSLBuffer {
+#define SSLBUFFER_MAX_CAPACITY INT_MAX
+class OPENSSL_EXPORT SSLBuffer {
  public:
   SSLBuffer() {}
   ~SSLBuffer() { Clear(); }
@@ -1426,28 +1456,48 @@ class SSLBuffer {
   void DiscardConsumed();
 
   // DoSerialization writes all fields into |cbb|.
-  bool DoSerialization(CBB *cbb);
+  bool DoSerialization(CBB &cbb);
 
   // DoDeserialization recovers the states encoded via |DoSerialization|.
-  bool DoDeserialization(CBS *in);
+  bool DoDeserialization(CBS &in);
+
+  bool SerializeBufferView(CBB &cbb, Span<uint8_t> &view);
+  bool DeserializeBufferView(CBS &cbb, Span<uint8_t> &view);
 
  private:
   // buf_ is the memory allocated for this buffer.
   uint8_t *buf_ = nullptr;
-  // offset_ is the offset into |buf_| which the buffer contents start at.
-  uint16_t offset_ = 0;
-  // size_ is the size of the buffer contents from |buf_| + |offset_|.
-  uint16_t size_ = 0;
-  // cap_ is how much memory beyond |buf_| + |offset_| is available.
-  uint16_t cap_ = 0;
-  // inline_buf_ is a static buffer for short reads.
-  uint8_t inline_buf_[SSL3_RT_HEADER_LENGTH];
   // buf_allocated_ is true if |buf_| points to allocated data and must be freed
   // or false if it points into |inline_buf_|.
   bool buf_allocated_ = false;
+  // The total capacity requested for this buffer by |EnsureCap|.
+  size_t buf_cap_ = 0;
   // buf_size_ is how much memory allocated for |buf_|. This is needed by
-  // |DoSerialization|.
+  // |DoSerializationV1|. This is the total size of the buffer with the requested capacity + padding.
   size_t buf_size_ = 0;
+  // header length used to calculate initial offset
+  size_t header_len_ = 0;
+  // offset_ is the offset into |buf_| which the buffer contents start at, and is moved as contents are consumed
+  int offset_ = 0;
+  // size_ is the size of the buffer contents from |buf_| + |offset_|.
+  int size_ = 0;
+  // cap_ is how much memory beyond |buf_| + |offset_| is available.
+  int cap_ = 0;
+  // inline_buf_ is a static buffer for short reads.
+  uint8_t inline_buf_[SSL3_RT_HEADER_LENGTH];
+
+  // The V1 version has some intricacies were solved in later serialization versions.
+  // This is mainly to capture if a V1 version was restored and whether it needs to be
+  // re-serialized as that version.
+  uint32_t max_serialization_version_ = SSL_BUFFER_SERDE_VERSION_TWO;
+
+  bool DoSerializationV1(CBB &cbb);
+  bool DoSerializationV2(CBB &cbb);
+
+  bool DoDeserializationV1(CBS &in);
+  bool DoDeserializationV2(CBS &in);
+
+  bool ValidateBuffersState();
 };
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
@@ -3605,6 +3655,9 @@ bool tls1_change_cipher_state(SSL_HANDSHAKE *hs,
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
                                 Span<const uint8_t> premaster);
 
+// tls1_get_default_grouplist returns the default group list
+OPENSSL_EXPORT Span<const uint16_t> tls1_get_default_grouplist(void);
+
 // tls1_get_grouplist returns the locally-configured group preference list.
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *ssl);
 
@@ -3720,7 +3773,7 @@ void ssl_set_read_error(SSL *ssl);
 
 // ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
 // set to false when the mutex in |SSL_CTX| has already been locked.
-void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock);
+void ssl_update_counter(SSL_CTX *ctx, SSL_STATS_COUNTER_TYPE &counter, bool lock);
 
 BSSL_NAMESPACE_END
 
@@ -3837,16 +3890,16 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
                                  int *copy) = nullptr;
 
   struct {
-    int sess_connect = 0;              // SSL new conn - started
-    int sess_connect_renegotiate = 0;  // SSL reneg - requested
-    int sess_connect_good = 0;         // SSL new conne/reneg - finished
-    int sess_accept = 0;               // SSL new accept - started
-    int sess_accept_good = 0;          // SSL accept/reneg - finished
-    int sess_miss = 0;                 // session lookup misses
-    int sess_timeout = 0;              // reuse attempt on timeouted session
-    int sess_cache_full = 0;           // session removed due to full cache
-    int sess_hit = 0;                  // session reuse actually done
-    int sess_cb_hit = 0;               // session-id that was not
+    SSL_STATS_COUNTER_TYPE sess_connect{};              // SSL new conn - started
+    SSL_STATS_COUNTER_TYPE sess_connect_renegotiate{};  // SSL reneg - requested
+    SSL_STATS_COUNTER_TYPE sess_connect_good{};         // SSL new conne/reneg - finished
+    SSL_STATS_COUNTER_TYPE sess_accept{};               // SSL new accept - started
+    SSL_STATS_COUNTER_TYPE sess_accept_good{};          // SSL accept/reneg - finished
+    SSL_STATS_COUNTER_TYPE sess_miss{};                 // session lookup misses
+    SSL_STATS_COUNTER_TYPE sess_timeout{};              // reuse attempt on timeouted session
+    SSL_STATS_COUNTER_TYPE sess_cache_full{};           // session removed due to full cache
+    SSL_STATS_COUNTER_TYPE sess_hit{};                  // session reuse actually done
+    SSL_STATS_COUNTER_TYPE sess_cb_hit{};               // session-id that was not
                                        // in the cache was
                                        // passed back via the callback. This
                                        // indicates that the application is
@@ -3932,6 +3985,10 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // Maximum amount of data to send in one fragment. actual record size can be
   // more than this due to padding and MAC overheads.
   uint16_t max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
+
+  /* ClientHello callback.  Mostly for extensions, but not entirely. */
+  SSL_client_hello_cb_fn client_hello_cb = NULL;
+  void *client_hello_cb_arg = NULL;
 
   // TLS extensions servername callback
   int (*servername_callback)(SSL *, int *, void *) = nullptr;
@@ -4196,6 +4253,10 @@ struct ssl_st {
   // extra application data
   CRYPTO_EX_DATA ex_data;
 
+  // verify_result is the result of certificate verification in the case of
+  // non-fatal certificate errors.
+  long verify_result = X509_V_ERR_INVALID_CALL;
+
   uint32_t options = 0;  // protocol behaviour
   uint32_t mode = 0;     // API behaviour
   uint32_t max_cert_list = 0;
@@ -4223,6 +4284,10 @@ struct ssl_st {
   // as will fit in the SSLBuffer from the BIO, or just enough to read the record
   // header and then the length of the body
   bool enable_read_ahead : 1;
+
+  // is_suspended_state indicates that the |SSL| object has been serialized and
+  // operations should not be performed on the connection.
+  bool is_suspended_state : 1;
 };
 
 struct ssl_session_st : public bssl::RefCounted<ssl_session_st> {

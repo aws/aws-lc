@@ -226,17 +226,21 @@ produces a new target, `run_minimal_tests` in place of `run_tests`.
 
 More information on this can be found in [INCORPORATING.md](/INCORPORATING.md).
 
-# Snapsafe Detection
+# VM UBE Detection
 
-AWS-LC supports Snapsafe-type uniqueness breaking event detection
-on Linux using SysGenID (https://lkml.org/lkml/2021/3/8/677). This mechanism
-is used for security hardening. If a SysGenID interface is not found, then the
-mechanism is ignored.
+A VMM can snapshot, clone, and restore VMs. AWS-LC supports VM UBE-type
+uniqueness breaking event detection on Linux using SysGenID
+(https://lkml.org/lkml/2021/3/8/677). This mechanism is used for security
+hardening. If a SysGenID interface is not found, then the mechanism is ignored.
 
-## Snapsafe Prerequisites
+## VM UBE Prerequisites
 
-Snapshots taken on active hosts can potentially be unsafe to use.
+VM snapshots taken on active hosts can potentially be unsafe to use.
 See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
+
+# FIPS Mode
+
+For more details on building AWS-LC in FIPS mode, see the [crypto/fipsmodule/FIPS.md](crypto/fipsmodule/FIPS.md).
 
 # Data Independent Timing on AArch64
 

@@ -108,10 +108,12 @@ OPENSSL_EXPORT void HMAC_CTX_cleanse(HMAC_CTX *ctx);
 OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);
 
 // HMAC_Init_ex sets up an initialised |HMAC_CTX| to use |md| as the hash
-// function and |key| as the key. For a non-initial call, |md| may be NULL, in
-// which case the previous hash function will be used. If the hash function has
-// not changed and |key| is NULL, |ctx| reuses the previous key. It returns one
-// on success or zero on allocation failure.
+// function and |key| as the key. This function resets |HMAC_CTX| to a
+// fresh state, even if |HMAC_Update| or |HMAC_Final| have been called
+// previously. For a non-initial call, |md| may be NULL, in which case the
+// previous hash function will be used. If the hash function has not changed and
+// |key| is NULL, |ctx| reuses the previous key and resets to a clean state
+// ready for new data. It returns one on success or zero on allocation failure.
 //
 // WARNING: NULL and empty keys are ambiguous on non-initial calls. Passing NULL
 // |key| but repeating the previous |md| reuses the previous key rather than the
@@ -250,12 +252,17 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 // Private functions
 typedef struct hmac_methods_st HmacMethods;
 
-// We use a union to ensure that enough space is allocated and never actually bother with the named members.
+// We use a union to ensure that enough space is allocated and never actually
+// bother with the named members. We do not externalize SHA3 ctx definition,
+// so hard-code ctx size below and use a compile-time assertion where that ctx
+// is defined to ensure it does not exceed size bounded by |md_ctx_union|. This
+// is OK because union members are never referenced, they're only used for sizing.
 union md_ctx_union {
   MD5_CTX md5;
   SHA_CTX sha1;
   SHA256_CTX sha256;
   SHA512_CTX sha512;
+  uint8_t sha3[400];
 };
 
 struct hmac_ctx_st {
@@ -295,5 +302,6 @@ BSSL_NAMESPACE_END
 #define HMAC_R_BUFFER_TOO_SMALL 102
 #define HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED 103
 #define HMAC_R_NOT_CALLED_JUST_AFTER_INIT 104
+#define HMAC_R_PRECOMPUTED_KEY_NOT_SUPPORTED_FOR_DIGEST 105
 
 #endif  // OPENSSL_HEADER_HMAC_H

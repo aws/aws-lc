@@ -1037,7 +1037,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
   uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
   uint16_t min_version;
   const char *l, *buf;
-  int rule;
+
   bool multi, skip_rule, in_group = false, has_group = false;
   size_t j, buf_len;
   uint32_t cipher_id;
@@ -1045,6 +1045,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
 
   l = rule_str;
   for (;;) {
+    int rule = CIPHER_ADD;
     ch = *l;
 
     if (ch == '\0') {
@@ -1062,7 +1063,6 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
       }
 
       if (ch == '|') {
-        rule = CIPHER_ADD;
         l++;
         continue;
       } else if (!OPENSSL_isalnum(ch)) {
@@ -1089,8 +1089,6 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
       has_group = true;
       l++;
       continue;
-    } else {
-      rule = CIPHER_ADD;
     }
 
     // If preference groups are enabled, the only legal operator is +.

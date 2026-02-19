@@ -14,6 +14,14 @@ NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entro
 
 1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
 
+## Platform Limitations
+
+When building AWS-LC in FIPS mode, please be aware of the following platform limitations:
+
+- Static FIPS builds are only supported on Linux platforms
+- Shared library FIPS builds are supported on both Linux and Windows
+- Windows Debug builds are not supported with FIPS
+
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
@@ -21,21 +29,61 @@ The modules below have been tested by an accredited lab and have been submitted 
 * AWS-LC-FIPS v3.0 (static): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-static.pdf)
 * AWS-LC-FIPS v3.0 (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List) - [draft security policy](./policydocs/DRAFT-140-3-AmazonSecurityPolicy-3.0.0-dynamic.pdf)
 
-## RNG design
+## Randomness generation design AWS-LC-FIPS v4.0
 
-FIPS 140-3 requires the use of one of its Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBG with AES-256 exclusively from which `RAND_bytes` produces its output. The DRBG state is kept in a thread-local structure and is seeded using the configured entropy source. The CTR-DRBG is periodically reseeded from the entropy source during calls to `RAND_bytes`. The rest of the library obtains random data from `RAND_bytes`.
+FIPS 140-3 requires the use of Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBGs instantiated with AES-256 exclusively. The public interfaces, declared in `rand.h`, produces its output using a CTR-DRBG. The AWS-LC randomness generation implementation is the same no matter whether you build the FIPS module or not.
 
-The FIPS DRBGs allow “additional input” to be fed into a given call. We use this feature to be as robust as possible against state duplication from process forks and VM copies. A caller may supply bytes that will be XOR'd into the generated “additional input” using  `RAND_bytes_with_additional_data`.
+The AWS-LC randomness generation system is an implementation of a SP800-90C tree-DRBG. The construction is illustrated below. The "front-end" per-thread CTR-DRBGs generates the random bytes output from the public interface functions e.g. `RAND_bytes`. The front-end CTR-DRBGs are seeded from per-thread "tree-DRBG" CTR-DRBGs by calling their "generate" function. The tree-DRBG per-thread CTR-DRBGs are generated for a global tree-DRBG CTR-DRBG which itself is seeded by a SP800-90B validated Jitter Entropy version.
 
-FIPS requires that RNG state be zeroed when the process exits. In order to implement this, all per-thread RNG states are tracked in a linked list and a [destructor function](https://github.com/aws/aws-lc/blob/eb58525ce1704c5183af9aa28f50945c11fe5a0d/crypto/fipsmodule/rand/rand.c#L251) is included which clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the RNG once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
+```
+          entropy_source
+            interface
+                |
+    rand.c      |   tree_drbg_jitter_entropy.c
+                |
+  front-end     |   tree-DRBG
+  per-thread    |   per-thread
+ +-----------+  |  +-----------+
+ | CTR-DRBG  | --> | CTR-DRBG  | -|
+ +-----------+  |  +-----------+   -|
+ +-----------+  |  +-----------+     --|     per-process         per-process
+ | CTR-DRBG  | --> | CTR-DRBG  | ---|   --> +-----------+     +---------------+
+ +-----------+  |  +-----------+     -----> | CTR-DRBG  | --> |Jitter Entropy |
+      ...       |      ...              --> +-----------+     +---------------+
+ +-----------+  |  +-----------+  -----|
+ | CTR-DRBG  | --> | CTR-DRBG  |-|
+ +-----------+  |  +-----------+
+                |
+```
 
-## AWS-LC-FIPS v1.0 Entropy Source
+In addition to being seeded by the tree-DRBGs, the front-end CTR-DRBGs also always use "additional input"/"Personalization String" when being seeded. The entropy is sourced from the operating system which are not FIPS-validated.
 
-The AWS-LC-FIPS v1.0 entropy source is CPU Jitter Entropy ([version 3.1.0](https://github.com/aws/aws-lc/blob/fips-2021-10-20/third_party/jitterentropy/README.md)).  For technical details on how CPU Jitter generates entropy, please refer to the [Jitter RNG homepage](https://www.chronox.de/jent/index.html).   
+Finally, on some platforms, entropy is sourced from the CPU entropy source and added as additional input on each front-end CTR-DRBG generate call. This is sometimes referred to as "Prediction Resistance".
 
-## AWS-LC-FIPS v2.0 Entropy Source
+### Zeroization
 
-The AWS-LC-FIPS v2.0 module uses passive entropy by default and the specific entropy gathering mechanism depends on the operating environment installed on. CPU Jitter Entropy ([version 3.4.0](https://github.com/aws/aws-lc/blob/fips-2022-11-02/third_party/jitterentropy/README.md)) can still be enabled by using the `ENABLE_FIPS_ENTROPY_CPU_JITTER=ON` flag.
+FIPS requires that CTR-DRBG state be zeroed when the process exits. In order to implement this, all front-end per-thread CTR-DRBGs states are tracked in a linked list. On exit, a destructor function clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the CTR-DRBG states once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
+
+CTR-DRBGs in the tree-DRBG are also zeroed. Technically, this is done by overwriting the CTR-DRBG states with random data per ISO/IEC 19790-2012 7.9.7.
+
+### Entropy source configuration
+
+Seed source: Jitter Entropy
+
+Addition input / personalization string source: Operating system configured as follows
+
+| Operating System | Function |
+|-------------------|-----------|
+| Linux (Amazon Linux, Ubuntu, Fedora, CentOS, etc) | getrandom, /dev/urandom |
+| macOS | getentropy |
+| iOS | CCRandomGenerateBytes |
+| Android | getrandom, /dev/urandom |
+| Windows | BCryptGenRandom, ProcessPrng |
+| OpenBSD | getentropy |
+| FreeBSD | getentropy |
+| Generic | /dev/urandom |
+
+Prediction resistance source: `rdrand` (x86_64) and `rndr` (Arm64)
 
 ## Breaking known-answer and continuous tests
 
@@ -44,7 +92,7 @@ Each known-answer test (KAT) uses a unique, random input value. `util/fipstools/
 Some FIPS tests cannot be broken by replacing a known string in the binary. For those, when `BORINGSSL_FIPS_BREAK_TESTS` is defined, the environment variable `BORINGSSL_FIPS_BREAK_TEST` can be set to one of a number of values in order to break the corresponding test:
 
 1. `RSA_PWCT`
-2. `ECDSA_PWCT`
+2. `EC_PWCT`
 3. `EDDSA_PWCT`
 4. `MLKEM_PWCT`
 5. `MLDSA_PWCT`
@@ -52,6 +100,42 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 ## Running ACVP tests
 
 See `util/fipstools/acvp/ACVP.md` for details of how ACVP testing is done.
+
+## Service Indicator
+
+[FIPS 140-3 Implementation Guidance](https://csrc.nist.gov/Projects/cryptographic-module-validation-program/fips-140-3-ig-announcements),
+Sec 2.4.C provides guidance on an Approved Security Service Indicator.
+This indicator is used to inform the operator they are utilizing an approved cryptographic algorithm, security
+function, or process in an approved manner.  In AWS-LC, we implemented a service indicator, that should be
+checked at runtime, to indicate whether an API is used in an approved way with approved parameters.
+This approach allows AWS-LC to offer both approved and non-approved algorithms.
+Other cryptographic libraries may satisfy this requirement by returning an error code
+or generally disabling all non-approved algorithm.
+
+The service indicator is a  per-thread global struct which contains a counter and a lock.
+When an approved service is called in an approved manner with approved parameters, the counter is incremented.
+When the counter should be prevented from changing, the lock is set. In order to determine whether
+a invoked service is approved, the user would retrieve the current value of the counter,
+call an API, then check if the new counter value is not equal to the previous value.
+
+The following code snippet from `service_indicator.h` shows the macro which performs the sequence of calls mentioned above.
+
+```c++
+#define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
+  do {                                                              \
+    (approved) = AWSLC_NOT_APPROVED;                                \
+    int before = FIPS_service_indicator_before_call();              \
+    func;                                                           \
+    int after = FIPS_service_indicator_after_call();                \
+    if (before != after) {                                          \
+        assert(before + 1 == after);                                \
+        (approved) = AWSLC_APPROVED;                                \
+    }                                                               \
+ }                                                                  \
+ while(0)
+```
+Please review the correct [FIPS Security Policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4631.pdf)
+to determine which APIs, algorithms, and parameters are approved.
 
 ## Integrity Test
 
@@ -63,7 +147,7 @@ We describe below how we build C and assembly code in order to produce a binary 
 
 ### Linux Shared build
 
-First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is `[bcm.c](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/bcm.c)`). This, along with some assembly sources, comprise the FIPS module.
+First, all the C source files for the module are compiled as a single unit by compiling a single source file that `#include`s them all (this is [`bcm.c`](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/bcm.c)). This, along with some assembly sources, comprise the FIPS module.
 
 The object files resulting from compiling/assembling those files are linked in partial-linking mode with a [linker script](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/gcc_fips_shared.lds) that causes the linker to insert symbols marking the beginning and end of the text and rodata sections. The linker script also discards other types of data sections to ensure that no unhashed data is used by the module.
 
@@ -144,4 +228,3 @@ Initially the known-good value will be incorrect. Another script (`inject_hash.g
 The utility in `util/fipstools/break-hash.go` can be used to corrupt the FIPS module inside a binary and thus trigger a failure of the integrity test. Note that the binary must not be stripped, otherwise the utility will not be able to find the FIPS module.
 
 ![build process](./intcheck2.png)
-

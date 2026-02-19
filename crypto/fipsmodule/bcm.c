@@ -34,6 +34,7 @@
 #pragma bss_seg(".fipsbs$b")
 #endif
 
+#include <openssl/chacha.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
@@ -77,6 +78,7 @@
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_linux.c"
+#include "cpucap/cpu_aarch64_netbsd.c"
 #include "cpucap/cpu_aarch64_openbsd.c"
 #include "cpucap/cpu_aarch64_win.c"
 #include "cpucap/cpu_arm_freebsd.c"
@@ -126,7 +128,6 @@
 #include "kdf/kbkdf.c"
 #include "kdf/sskdf.c"
 #include "kem/kem.c"
-#include "md4/md4.c"
 #include "md5/md5.c"
 #include "ml_dsa/ml_dsa.c"
 #include "ml_kem/ml_kem.c"
@@ -141,10 +142,9 @@
 #include "pbkdf/pbkdf.c"
 #include "pqdsa/pqdsa.c"
 #include "rand/ctrdrbg.c"
-#include "rand/fork_detect.c"
 #include "rand/rand.c"
-#include "rand/snapsafe_detect.c"
-#include "rand/urandom.c"
+#include "rand/entropy/entropy_sources.c"
+#include "rand/entropy/tree_drbg_jitter_entropy.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
 #include "rsa/rsa.c"
@@ -167,7 +167,7 @@
 
 static const void* function_entry_ptr(const void* func_sym) {
 #if defined(OPENSSL_PPC64BE)
-  // Function pointers on ppc64 point to a function descriptor.
+  // Function pointers on ppc64be point to a function descriptor.
   // https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-ADDRESS
   return (const void*)(((uint64_t *)func_sym)[0]);
 #else
@@ -246,7 +246,7 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
     perror("BoringSSL: mprotect");
   }
 }
-#else
+#elif !defined(OPENSSL_WINDOWS)
 static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #endif  // !ANDROID
 
@@ -270,18 +270,13 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-// TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
-// PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
-// to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
 #if defined(HAS_OPENSSL_CPUID_SETUP) && !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
 #endif
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   if (jent_entropy_init()) {
     AWS_LC_FIPS_failure("CPU Jitter entropy RNG initialization failed");
   }
-#endif
 
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
@@ -416,7 +411,7 @@ void AWS_LC_FIPS_failure(const char* message) {
 }
 #else  // BORINGSSL_FIPS
 void AWS_LC_FIPS_failure(const char* message) {
-  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
   fflush(stderr);
 }
 #endif  // BORINGSSL_FIPS

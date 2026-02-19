@@ -329,6 +329,10 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 // the C type corresponding to an |ASN1_ITEM|.
 typedef struct ASN1_VALUE_st ASN1_VALUE;
 
+// ASN1_parse performs an ASN.1 dump of the contents pointed to by |pp| of length |len|,
+// and writes it to |bp|. Returns 1 on success, or 0 on failure.
+OPENSSL_EXPORT int ASN1_parse(BIO *bp, const unsigned char *pp, long len, int indent);
+
 // ASN1_item_new allocates a new value of the C type corresponding to |it|, or
 // NULL on error. On success, the caller must release the value with
 // |ASN1_item_free|, or the corresponding C type's free function, when done. The
@@ -1810,6 +1814,17 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 // |FILE| rather than a |BIO|.
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
+
+// a2i_ASN1_INTEGER reads a hexadecimal string from |bp| and converts it to an
+// INTEGER, writing the result to |bs|. |buf| is a caller-provided temporary
+// buffer of |size| bytes that the function uses for reading lines from |bp|.
+// It returns one on success and zero on error.
+//
+// The input should consist of hexadecimal digits, optionally with a leading
+// "00" (which is skipped). Lines can be continued with a trailing backslash
+// (\). The hexadecimal string must have an even number of digits.
+OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf,
+                                    int size);
 
 // i2a_ASN1_INTEGER writes a human-readable representation of |a| to |bp|. It
 // returns the number of bytes written on success, or a negative number on

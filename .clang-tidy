@@ -1,0 +1,9 @@
+---
+Checks: '
+  -*,
+  clang-analyzer-*,
+  portability-*,
+  cppcoreguidelines-init-variables, 
+  readability-braces-around-statements,
+  '
+WarningsAsErrors: ''

@@ -18,18 +18,10 @@ if ! docker buildx inspect ${BUILDER_NAME}; then
 fi
 
 ## GCC-4.8
-curl --output-dir "${SCRIPT_DIR}"/4.8 -LO https://go.dev/dl/go1.18.10.linux-amd64.tar.gz
-curl --output-dir "${SCRIPT_DIR}"/4.8 -LO https://github.com/Kitware/CMake/releases/download/v3.6.3/cmake-3.6.3-Linux-x86_64.tar.gz
-docker buildx build -t aws-lc:gcc-4.8 "${SCRIPT_DIR}"/4.8 --load
-rm "${SCRIPT_DIR}"/4.8/go1.18.10.linux-amd64.tar.gz
-rm "${SCRIPT_DIR}"/4.8/cmake-3.6.3-Linux-x86_64.tar.gz
+#docker buildx build --platform linux/amd64 -t aws-lc:gcc-4.8 "${SCRIPT_DIR}"/4.8 --load
 
-## GCC-7.2
-curl --output-dir "${SCRIPT_DIR}"/7.2 -LO https://go.dev/dl/go1.18.10.linux-amd64.tar.gz
-curl --output-dir "${SCRIPT_DIR}"/7.2 -LO https://github.com/Kitware/CMake/releases/download/v3.6.3/cmake-3.6.3-Linux-x86_64.tar.gz
-docker buildx build -t aws-lc:gcc-7.2 "${SCRIPT_DIR}"/7.2 --load
-rm "${SCRIPT_DIR}"/7.2/go1.18.10.linux-amd64.tar.gz
-rm "${SCRIPT_DIR}"/7.2/cmake-3.6.3-Linux-x86_64.tar.gz
+## GCC-15.1.0
+docker buildx build --platform linux/amd64 -t aws-lc:gcc-15.1.0 "${SCRIPT_DIR}"/15.1.0 --load
 
 docker buildx rm ${BUILDER_NAME}
 

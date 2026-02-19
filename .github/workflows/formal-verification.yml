@@ -1,0 +1,100 @@
+name: formal-verification
+on:
+  workflow_call:
+    inputs:
+      concurrency_prefix:
+        default: formal-verification
+        required: false
+        type: string
+      saw_x86:
+        required: false
+        type: string
+      saw_x86_aes_gcm:
+        required: false
+        type: string
+      saw_aarch64:
+        required: false
+        type: string
+      nsym:
+        required: false
+        type: string
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+concurrency:
+  group: ${{ inputs.concurrency_prefix || github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  DOCKER_BUILD_RECORD_UPLOAD: false
+permissions:
+  contents: read
+jobs:
+  define_matrix:
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:small
+    outputs:
+      include: ${{ steps.matrix.outputs.include }}
+    steps:
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Define Matrix
+        id: matrix
+        run: |
+          echo "include<<EOF" >> "$GITHUB_OUTPUT"
+          cat <<EOF >> "$GITHUB_OUTPUT"
+          [
+            {
+              "name": "saw-x86_64",
+              "image": "${{ inputs.saw_x86 || format('{0}/aws-lc/verification:saw_x86', steps.ecr.outputs.registry) }}",
+              "size": "2xlarge",
+              "entry": "SAW/scripts/x86_64/docker_entrypoint.sh"
+            },
+            {
+              "name": "saw-x86_64-aes-gcm",
+              "image": "${{ inputs.saw_x86_aes_gcm || format('{0}/aws-lc/verification:saw_x86_aes_gcm', steps.ecr.outputs.registry) }}",
+              "size": "xlarge",
+              "entry": "SAW/scripts/x86_64/docker_entrypoint_aes_gcm.sh"
+            },
+            {
+              "name": "saw-aarch64",
+              "image": "${{ inputs.saw_aarch64 || format('{0}/aws-lc/verification:saw_aarch64', steps.ecr.outputs.registry) }}",
+              "size": "2xlarge",
+              "entry": "SAW/scripts/aarch64/docker_entrypoint.sh"
+            },
+            {
+              "name": "nsym-aarch64",
+              "image": "${{ inputs.nsym || format('{0}/aws-lc/verification:nsym', steps.ecr.outputs.registry) }}",
+              "size": "2xlarge",
+              "entry": "NSym/scripts/docker_entrypoint.sh"
+            }
+          ]
+          EOF
+          echo EOF >> "$GITHUB_OUTPUT"
+
+  formal_verification:
+    name: fv-${{ matrix.name }}
+    runs-on:
+      - codebuild-aws-lc-ci-github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+        image:linux-5.0
+        instance-size:${{ matrix.size }}
+    needs:
+      - define_matrix 
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.define_matrix.outputs.include) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: ./.github/actions/codebuild-docker-run
+        name: Run Container (${{ matrix.image }})
+        with:
+          image: ${{ matrix.image }}
+          run: ./tests/ci/run_formal_verification.sh ${{ matrix.entry }}
+          options: --privileged

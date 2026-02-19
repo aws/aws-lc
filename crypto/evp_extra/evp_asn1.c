@@ -59,16 +59,19 @@
 #include <string.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
-#include "../fipsmodule/evp/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/dh/internal.h"
+#include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
+#include "../fipsmodule/kem/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The extracted OID will be set on |out_oid| so that it may be used later in
@@ -77,6 +80,7 @@
 // As the |OID| is read from |cbs| the buffer is advanced.
 // For the case of |NID_rsa| the method |rsa_asn1_meth| is returned.
 // For the case of |EVP_PKEY_PQDSA| the method |pqdsa_asn1.meth| is returned.
+// For the case of |EVP_PKEY_KEM| the method |kem_asn1.meth| is returned.
 static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
   CBS oid;
   if (!CBS_get_asn1(cbs, &oid, CBS_ASN1_OBJECT)) {
@@ -104,7 +108,11 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs, CBS *out_oid) {
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-  return PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  const EVP_PKEY_ASN1_METHOD *pqdsa_method = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  if (pqdsa_method != NULL) {
+    return pqdsa_method;
+  }
+  return KEM_find_asn1_by_nid(OBJ_cbs2nid(&oid));
 }
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
@@ -299,6 +307,82 @@ static EVP_PKEY *old_priv_decode(CBS *cbs, int type) {
 err:
   EVP_PKEY_free(ret);
   return NULL;
+}
+
+int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  switch (pkey->type) {
+    case EVP_PKEY_EC: {
+      EC_KEY *ec = pkey->pkey.ec;
+      // For EVP_PKEY_check, ensure the private key exists for EC keys
+      if (EC_KEY_get0_private_key(ec) == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EC_R_MISSING_PRIVATE_KEY);
+        return 0;
+      }
+      return EC_KEY_check_key(ec);
+    }
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+}
+
+int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+  switch (pkey->type) {
+    case EVP_PKEY_EC:
+      return EC_KEY_check_key(pkey->pkey.ec);
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+}
+
+int EVP_PKEY_param_check(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  int err_flags = 0;
+  switch (pkey->type) {
+    case EVP_PKEY_DH:
+      return DH_check(pkey->pkey.dh, &err_flags) && err_flags == 0;
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
 }
 
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
@@ -633,15 +717,14 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **_pe,
   for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
     const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
 
-    const size_t longest_pem_str_len = 10;  // "DILITHIUM3"
-
     const size_t pem_str_len =
-        OPENSSL_strnlen(ameth->pem_str, longest_pem_str_len);
+        OPENSSL_strnlen(ameth->pem_str, MAX_PEM_STR_LEN);
 
     // OPENSSL_strncasecmp(a, b, n) compares up to index n-1
-    const size_t cmp_len =
-        1 + ((name_len < pem_str_len) ? name_len : pem_str_len);
-    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, cmp_len)) {
+    if (name_len != pem_str_len) {
+      continue;
+    }
+    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, name_len)) {
       return ameth;
     }
   }

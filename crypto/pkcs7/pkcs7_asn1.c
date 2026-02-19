@@ -10,7 +10,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.data, ASN1_ANY, 0);
+ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.other, ASN1_ANY, 0);
 
 ASN1_ADB(PKCS7) = {
     ADB_ENTRY(NID_pkcs7_data,
@@ -25,7 +25,7 @@ ASN1_ADB(PKCS7) = {
     ADB_ENTRY(
         NID_pkcs7_encrypted,
         ASN1_EXP_OPT(PKCS7, d.encrypted, PKCS7_ENCRYPT,
-                     0))} ASN1_ADB_END(PKCS7, 0, type, 0, &p7default_tt, NULL);
+                     0))} ASN1_ADB_END(PKCS7, 0, type, 0, &p7default_tt, &p7default_tt);
 
 ASN1_SEQUENCE(PKCS7) = {ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
                         ASN1_ADB_OBJECT(PKCS7)} ASN1_SEQUENCE_END(PKCS7)
@@ -186,6 +186,11 @@ ASN1_SEQUENCE(PKCS7_ENVELOPE) = {
                 PKCS7_ENC_CONTENT)} ASN1_SEQUENCE_END(PKCS7_ENVELOPE)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENVELOPE)
+
+ASN1_ITEM_TEMPLATE(PKCS7_ATTR_VERIFY) = ASN1_EX_TEMPLATE_TYPE(
+    ASN1_TFLG_SEQUENCE_OF | ASN1_TFLG_IMPTAG | ASN1_TFLG_UNIVERSAL, V_ASN1_SET,
+    PKCS7_ATTRIBUTES, X509_ATTRIBUTE)
+ASN1_ITEM_TEMPLATE_END(PKCS7_ATTR_VERIFY)
 
 int PKCS7_print_ctx(BIO *bio, PKCS7 *pkcs7, int indent, const ASN1_PCTX *pctx) {
   GUARD_PTR(bio);

@@ -389,13 +389,13 @@ int pkcs8_pbe_decrypt(uint8_t **out, size_t *out_len, CBS *algorithm,
     goto err;
   }
 
-  buf = OPENSSL_malloc(in_len);
-  if (buf == NULL) {
+  if (in_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
     goto err;
   }
 
-  if (in_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
+  buf = OPENSSL_malloc(in_len);
+  if (buf == NULL) {
     goto err;
   }
 
@@ -456,7 +456,7 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
   // Generate a random salt if necessary.
   if (salt == NULL) {
     if (salt_len == 0) {
-      salt_len = PKCS5_SALT_LEN;
+      salt_len = PKCS12_SALT_LEN;
     }
 
     salt_buf = OPENSSL_malloc(salt_len);

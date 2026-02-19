@@ -10,13 +10,13 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - CYRUS_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - CYRUS_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/CYRUS_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/CYRUS_BUILD_ROOT"
 CYRUS_SRC_FOLDER="${SCRATCH_FOLDER}/cyrus"
 CYRUS_BUILD_PREFIX="${CYRUS_SRC_FOLDER}/build/install"
 CYRUS_BUILD_EPREFIX="${CYRUS_SRC_FOLDER}/build/exec-install"
@@ -43,8 +43,7 @@ function cyrus_build() {
 
   # Assert Cyrus-SASL was built with AWS-LC
   local cyrus_executable="${CYRUS_SRC_FOLDER}/build/exec-install/lib/libsasl2.so"
-  ldd ${cyrus_executable} \
-    | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${cyrus_executable} crypto || exit 1
 }
 
 # TO-DO: Setup Kerberos and DB, then use sample client and server programs to test GSSAPI
@@ -56,7 +55,7 @@ ls
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/":${LD_LIBRARY_PATH:-}
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
 # Build cyrus from source.
 pushd ${CYRUS_SRC_FOLDER}

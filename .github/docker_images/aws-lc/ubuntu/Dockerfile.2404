@@ -1,0 +1,85 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+FROM public.ecr.aws/ubuntu/ubuntu:24.04 AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ENV GOFLAGS=-buildvcs=false
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+
+RUN <<EOF
+set -ex
+apt-get update
+apt-get -y --no-install-recommends upgrade
+apt-get -y --no-install-recommends install \
+    autoconf \
+    binutils-dev \
+    bison \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    git \
+    libffi-dev \
+    libgmp-dev \
+    libssl-dev \
+    libunwind-dev \
+    libyaml-dev \
+    lld \
+    llvm \
+    llvm-dev \
+    ninja-build \
+    perl \
+    pkg-config \
+    software-properties-common \
+    unzip \
+    wget \
+    zlib1g-dev
+apt-get autoremove --purge -y
+apt-get clean
+apt-get autoclean
+rm -rf /var/lib/apt/lists/*
+rm -rf /tmp/*
+EOF
+
+FROM base AS tools
+
+# Create compiler environment setup scripts
+COPY --from=scripts create-compiler-env.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/create-compiler-env.sh"
+${setup_script}
+EOF
+
+# Install AWS CLI
+COPY --from=scripts setup-aws-cli.sh /tmp
+RUN <<EOF
+set -ex
+setup_script="/tmp/setup-aws-cli.sh"
+${setup_script}
+EOF
+
+# Install Go
+ENV GOENV_ROOT="/.goenv"
+ENV PATH="${GOENV_ROOT}/shims:${GOENV_ROOT}/bin:/go/bin:$PATH"
+
+COPY --from=scripts setup-go-compiler.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-go-compiler.sh"
+${setup_script}
+EOF
+
+# Install Ruby
+ENV RBENV_ROOT="/.rbenv"
+ENV PATH="${RBENV_ROOT}/shims:${RBENV_ROOT}/bin:$PATH"
+
+COPY --from=scripts setup-ruby.sh /tmp
+RUN <<EOF
+setup_script="/tmp/setup-ruby.sh"
+${setup_script}
+EOF
+
+RUN rm -rf /tmp/*

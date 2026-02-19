@@ -21,7 +21,6 @@ source tests/ci/common_posix_setup.sh
 #    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER=${SYS_ROOT}/"LIBSSH2_SCRATCH"
 LIBSSH2_SRC_FOLDER="${SCRATCH_FOLDER}/libssh2"
 LIBSSH2_BUILD_FOLDER="${SCRATCH_FOLDER}/libssh2-build"
@@ -35,7 +34,7 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 function libssh2_build() {
   cmake "${LIBSSH2_SRC_FOLDER}" -B "${LIBSSH2_BUILD_FOLDER}" -DCRYPTO_BACKEND=OpenSSL -DBUILD_TESTS=1 -DCMAKE_INSTALL_PREFIX="${LIBSSH2_INSTALL_FOLDER}" -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DENABLE_WERROR=ON -DENABLE_DEBUG_LOGGING=ON
   cmake --build "${LIBSSH2_BUILD_FOLDER}" --target install
-  ldd "${LIBSSH2_INSTALL_FOLDER}/lib/libssh2.so" | grep "${AWS_LC_INSTALL_FOLDER}" | grep "libcrypto.so" || exit 1
+  ${SCRATCH_FOLDER}/check-linkage.sh "${LIBSSH2_INSTALL_FOLDER}/lib/libssh2.so" crypto || exit 1
 }
 
 function libssh2_run_tests() {
@@ -52,8 +51,9 @@ mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${LIBSSH2_BUILD_FO
 ls
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
+cp "${AWS_LC_BUILD_FOLDER}/check-linkage.sh" ${SCRATCH_FOLDER}/
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${AWS_LC_INSTALL_FOLDER}/lib64/:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 libssh2_build
 libssh2_run_tests

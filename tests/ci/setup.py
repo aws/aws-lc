@@ -6,7 +6,7 @@ with open("README.md") as fp:
 
 
 setuptools.setup(
-    name="AWS-LC CI",
+    name="aws-lc-ci",
     version="0.0.1",
 
     description="AWS-LC CI python environment.",
@@ -20,7 +20,7 @@ setuptools.setup(
 
     install_requires=[
         # CDK dependencies.
-        "aws-cdk-lib==2.177.0",
+        "aws-cdk-lib==2.220.0",
         "constructs==10.4.2",
         # PyYAML is a YAML parser and emitter for Python. Used to read build_spec.yaml.
         "pyyaml==6.0.2",
@@ -31,7 +31,7 @@ setuptools.setup(
         # Introduced by Android Device Farm CI.
         "requests",
         "arnparse==0.0.2",
-        "urllib3==2.2.3"
+        "urllib3==2.6.3"
     ],
 
     python_requires=">=3.6",

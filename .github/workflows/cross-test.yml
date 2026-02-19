@@ -1,12 +1,15 @@
 name: Cross Build & Test
 on:
   push:
-    branches: [ '*' ]
+    branches: ["*"]
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
+permissions:
+  contents: read
+
 jobs:
   ppc64-build-test:
     if: github.repository_owner == 'aws'
@@ -62,11 +65,11 @@ jobs:
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: RISC-V 64 Build/Test
-# The flag below is set to avoid the following error with GCC 11.4.0:
-#
-#  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
-#  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
-#      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # The flag below is set to avoid the following error with GCC 11.4.0:
+        #
+        #  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
+        #  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
+        #      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
         env:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh riscv riscv64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
@@ -101,12 +104,46 @@ jobs:
           sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
       - name: s390x Build/Test
-# The flag below is set to avoid the following error with GCC 11.4.0:
-#
-#  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
-#  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
-#      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # The flag below is set to avoid the following error with GCC 11.4.0:
+        #
+        #  /home/runner/work/aws-lc/aws-lc/crypto/pem/pem_lib.c:705:11: error: 'strncmp' of strings of length 1 and 9 and bound of 9 evaluates to nonzero [-Werror=string-compare]
+        #  705 |       if (strncmp(buf, "-----END ", 9) == 0) {
+        #      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
         env:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh s390x s390x-ibm-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
-
+  ios-aarch64:
+    if: github.repository_owner == 'aws'
+    name: iOS aarch64 cross-platform build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.18"
+      - run: |
+          brew install llvm bash
+      - name: Setup Xcode
+        run: |
+          echo "Setting up Xcode environment..."
+          sudo xcodebuild -license accept || echo "License acceptance failed, continuing..."
+          xcodebuild -runFirstLaunch || echo "First launch setup failed, continuing..."
+          echo "Available Xcode versions:"
+          xcodebuild -version
+          echo "Available iOS simulator runtimes:"
+          xcrun simctl list runtimes | grep -i ios || echo "No iOS runtimes found via simctl"
+      - name: iOS Simulator Runner
+        timeout-minutes: 45
+        run: /opt/homebrew/bin/bash tests/ci/run_ios_sim_tests.sh
+  powerpc-old-glibc:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/rust-lang/rust-ci:3afb64da05021f4e35690ff82852d9f0fa0028c30a5676cdb3844a697e863e7c1d3648c4243300ab8578d65d1f7a5bb727da01026e762b7e9ae6733339d8446b
+    env:
+      CC: /x-tools/powerpc-unknown-linux-gnu/bin/powerpc-unknown-linux-gnu-gcc
+      CXX: /x-tools/powerpc-unknown-linux-gnu/bin/powerpc-unknown-linux-gnu-g++
+    steps:
+      - uses: actions/checkout@v4
+      - name: Perform Build
+        run: ./util/build_and_test.sh --build-only -G "Unix Makefiles" -DDISABLE_GO=ON -DDISABLE_PERL=ON -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_FIND_ROOT_PATH=/x-tools/powerpc-unknown-linux-gnu/powerpc-unknown-linux-gnu/

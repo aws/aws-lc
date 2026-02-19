@@ -59,11 +59,25 @@
 // all assembly entry points because it is easier, and allows BoringSSL's ABI
 // tester to call the assembly entry points via an indirect jump.
 #include <cet.h>
-#else
-#define _CET_ENDBR
+#elif !defined(_CET_ENDBR)
+// If cet.h does not exist, manually define _CET_ENDBR to be the ENDBR64
+// instruction, with an explicit byte sequence for compilers/assemblers that
+// don't know about it. Note that it is safe to use ENDBR64 on all platforms,
+// since the encoding is by design interpreted as a NOP on all pre-CET x86_64
+// processors.
+#define _CET_ENDBR .byte 0xf3,0x0f,0x1e,0xfa
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
+#if defined(__aarch64__) && !defined(__ARM_ARCH)
+// Support for GCC v4.8+. GCC 4.8 was the first version to support aarch64
+// but it doesn't define __ARM_ARCH for aarch64 targets.
+#if defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8))
+  #error "GCC 4.8 or later is required for aarch64 support"
+#endif
+  #define __ARM_ARCH 8
+#endif
 
 // We require the ARM assembler provide |__ARM_ARCH| from Arm C Language
 // Extensions (ACLE). This is supported in GCC 4.8+ and Clang 3.2+. MSVC does

@@ -9,13 +9,13 @@ source tests/ci/common_posix_setup.sh
 # Set up environment.
 
 # SRC_ROOT(aws-lc)
-#  - SCRATCH_FOLDER
-#    - HAPROXY_SRC
-#    - AWS_LC_BUILD_FOLDER
-#    - AWS_LC_INSTALL_FOLDER
+# - SCRATCH_FOLDER
+#   - HAPROXY_SRC
+#   - AWS_LC_BUILD_FOLDER
+#   - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER=${SRC_ROOT}/"scratch"
+SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 HAPROXY_SRC="${SCRATCH_FOLDER}/haproxy"
@@ -23,7 +23,7 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
-  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
+  make CC="${CC:-cc}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 USE_QUIC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
       SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 
   set +e
@@ -62,7 +62,6 @@ rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
 
 # Test with shared AWS-LC libraries
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
 build_and_test_haproxy
 
-ldd "${HAPROXY_SRC}/haproxy" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+${AWS_LC_BUILD_FOLDER}/check-linkage.sh "${HAPROXY_SRC}/haproxy" crypto || exit 1

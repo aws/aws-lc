@@ -14,22 +14,31 @@ extern "C" {
 // KEM_METHOD structure and helper functions.
 typedef struct {
   int (*keygen_deterministic)(uint8_t *ctx,
+                              size_t *ctx_len,
                               uint8_t *pkey,
+                              size_t *pkey_len,
                               const uint8_t *seed);
 
   int (*keygen)(uint8_t *public_key,
-                uint8_t *secret_key);
+                size_t *public_key_len,
+                uint8_t *secret_key,
+                size_t *secret_key_len);
 
   int (*encaps_deterministic)(uint8_t *ciphertext,
+                              size_t *ciphertext_len,
                               uint8_t *shared_secret,
+                              size_t *shared_secret_len,
                               const uint8_t *public_key,
                               const uint8_t *seed);
 
   int (*encaps)(uint8_t *ciphertext,
+                size_t *ciphertext_len,
                 uint8_t *shared_secret,
+                size_t *shared_secret_len,
                 const uint8_t *public_key);
 
   int (*decaps)(uint8_t *shared_secret,
+                size_t *shared_secret_len,
                 const uint8_t *ciphertext,
                 const uint8_t *secret_key);
 } KEM_METHOD;
@@ -57,6 +66,8 @@ struct kem_key_st {
 };
 
 const KEM *KEM_find_kem_by_nid(int nid);
+const EVP_PKEY_ASN1_METHOD *KEM_find_asn1_by_nid(int nid);
+int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid);
 
 KEM_KEY *KEM_KEY_new(void);
 int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
@@ -86,6 +97,17 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in);
 //       have the correct size.
 int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
                                       const uint8_t *in_secret);
+
+// KEM_KEY_set_raw_keypair_from_seed function generates a keypair from the
+// given seed using the appropriate key generation function based on the
+// KEM variant, then allocates and sets both public and secret key buffers
+// within the given |key|.
+//
+// NOTE: The seed must be exactly 64 bytes for all ML-KEM variants.
+//       The caller must ensure the seed CBS contains valid data.
+//       |key->kem| must be initialized and |key->public_key| and 
+//       |key->secret_key| must both be NULL.
+int KEM_KEY_set_raw_keypair_from_seed(KEM_KEY *key, const CBS *seed);
 
 #if defined(__cplusplus)
 }  // extern C

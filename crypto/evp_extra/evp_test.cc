@@ -61,6 +61,7 @@
 #include <string.h>
 
 #include "../fipsmodule/evp/internal.h"
+#include "internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
@@ -190,6 +191,17 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
     return false;
   }
   EXPECT_EQ(GetKeyType(t, key_type), EVP_PKEY_id(pkey.get()));
+
+  if (EVP_PKEY_id(pkey.get()) == EVP_PKEY_EC) {
+    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey.get());
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    if (t->HasAttribute("ExpectFromExplicitParams")) {
+      EXPECT_EQ(1, EC_KEY_decoded_from_explicit_params(ec_key));
+    } else {
+      EXPECT_EQ(0, EC_KEY_decoded_from_explicit_params(ec_key));
+    }
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
 
   // The key must re-encode correctly.
   bssl::ScopedCBB cbb;
@@ -693,7 +705,12 @@ static void RunWycheproofVerifyTest(const char *path) {
     t->IgnoreAllUnusedInstructions();
 
     std::vector<uint8_t> der;
-    ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
+    // Try publicKeyDer first (Wycheproof v1), fall back to keyDer (Wycheproof v0)
+    if (t->HasInstruction("publicKeyDer")) {
+      ASSERT_TRUE(t->GetInstructionBytes(&der, "publicKeyDer"));
+    } else {
+      ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
+    }
     CBS cbs;
     CBS_init(&cbs, der.data(), der.size());
     bssl::UniquePtr<EVP_PKEY> key(EVP_parse_public_key(&cbs));
@@ -761,76 +778,130 @@ static void RunWycheproofVerifyTest(const char *path) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/dsa_2048_224_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/dsa_2048_256_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/dsa_3072_256_sha256_test.txt`.
 TEST(EVPTest, WycheproofDSA) {
-  RunWycheproofVerifyTest("third_party/wycheproof_testvectors/dsa_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha224_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_224_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_2048_256_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/dsa_3072_256_sha256_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp224r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP224) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha224_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha224_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp224r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256r1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP256) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp384r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP384) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp384r1_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp384r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp384r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp521r1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAP521) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp521r1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256k1_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/ecdsa_secp256k1_sha512_test.txt`.
 TEST(EVPTest, WycheproofECDSAsecp256k1) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256k1_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/ecdsa_secp256k1_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ecdsa_secp256k1_sha512_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/ed25519_test.txt`.
 TEST(EVPTest, WycheproofEdDSA) {
-  RunWycheproofVerifyTest("third_party/wycheproof_testvectors/eddsa_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/ed25519_test.txt");
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha224_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_2048_sha512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_3072_sha512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_4096_sha512_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha256_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha384_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_signature_8192_sha512_test.txt`.
 TEST(EVPTest, WycheproofRSAPKCS1) {
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha224_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha224_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_2048_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_2048_sha512_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_3072_sha256_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha256_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_3072_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_3072_sha512_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_3072_sha512_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_4096_sha384_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_4096_sha384_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_4096_sha512_test.txt");
-  // TODO(davidben): Is this file redundant with the tests above?
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_4096_sha512_test.txt");
   RunWycheproofVerifyTest(
-      "third_party/wycheproof_testvectors/rsa_signature_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha256_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha384_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_signature_8192_sha512_test.txt");
+  // Note: rsa_signature_test.txt (377 tests) is not available in the new
+  // upstream. The specific test files above provide comprehensive coverage
+  // (2169 tests total across all key sizes and hash functions).
 }
 
-TEST(EVPTest, WycheproofRSAPKCS1Sign) {
-  FileTestGTest(
-      "third_party/wycheproof_testvectors/rsa_sig_gen_misc_test.txt",
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt`.
+static void RunWycheproofRSAPKCS1SignTest(const char *path) {
+  FileTestGTest(path,
       [](FileTest *t) {
         t->IgnoreAllUnusedInstructions();
 
@@ -868,6 +939,22 @@ TEST(EVPTest, WycheproofRSAPKCS1Sign) {
           EXPECT_EQ(Bytes(sig), Bytes(out));
         }
       });
+}
+
+TEST(EVPTest, WycheproofRSAPKCS1Sign) {
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_1024_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_1536_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_2048_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_3072_sig_gen_test.txt");
+  RunWycheproofRSAPKCS1SignTest(
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_4096_sig_gen_test.txt");
+  // Note: rsa_sig_gen_misc_test.txt (158 tests with 1024-4096 bit keys) is
+  // not available in the new upstream. The new test files above provide
+  // equivalent coverage split by key size.
 }
 
 TEST(EVPTest, WycheproofRSAPSS) {
@@ -1022,13 +1109,17 @@ static void RunWycheproofPKCS1DecryptTest(const char *path) {
   });
 }
 
+//= third_party/vectors/vectors_spec.md#wycheproof
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_2048_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_3072_test.txt`.
+//# AWS-LC MUST test against `testvectors_v1/rsa_pkcs1_4096_test.txt`.
 TEST(EVPTest, WycheproofRSAPKCS1Decrypt) {
   RunWycheproofPKCS1DecryptTest(
-      "third_party/wycheproof_testvectors/rsa_pkcs1_2048_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_2048_test.txt");
   RunWycheproofPKCS1DecryptTest(
-      "third_party/wycheproof_testvectors/rsa_pkcs1_3072_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_3072_test.txt");
   RunWycheproofPKCS1DecryptTest(
-      "third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt");
+      "third_party/vectors/converted/wycheproof/testvectors_v1/rsa_pkcs1_4096_test.txt");
 }
 
 struct ectlsencodedpoint_test_data {
@@ -1313,14 +1404,14 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       p224_test_data, p256_test_data, p384_test_data, p521_test_data};
 
     uint8_t *output = nullptr;
-    size_t output_size = 0;
     uint8_t *shared_secret = nullptr;
-    size_t shared_secret_size = 0;
     EVP_PKEY_CTX *pkey_ctx = nullptr;
     EVP_PKEY *pkey_public = nullptr;
     EVP_PKEY *pkey_private = nullptr;
 
     for (ectlsencodedpoint_test_data test_data : test_data_all) {
+      size_t output_size = 0;
+      size_t shared_secret_size = 0;
 
       pkey_private = instantiate_and_set_private_key(test_data.private_key,
         test_data.private_key_size, test_data.key_type, test_data.curve_nid);
@@ -1360,8 +1451,6 @@ TEST(EVPTest, ECTLSEncodedPoint) {
       EVP_PKEY_CTX_free(pkey_ctx);
       EVP_PKEY_free(pkey_public);
       EVP_PKEY_free(pkey_private);
-      output_size = 0;
-      shared_secret_size = 0;
     }
 
     // Above tests explore the happy path. Now test that some invalid
@@ -1468,6 +1557,20 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     EXPECT_EQ(ERR_R_EVP_LIB,
       ERR_GET_REASON(ERR_peek_last_error()));
     ERR_clear_error();
+}
+
+TEST(EVPTest, PKEY_set_type_str) {
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  /* Test case 1: Assign RSA algorithm */
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "RSA", 3));
+  ASSERT_EQ(pkey->type, EVP_PKEY_RSA);
+
+  /* Test case 2: Assign EC algorithm */
+  ASSERT_TRUE(EVP_PKEY_set_type_str(pkey.get(), "EC", 2));
+  ASSERT_EQ(pkey->type, EVP_PKEY_EC);
+
+  /* Test case 3: Assign non-existent algorithm */
+  ASSERT_FALSE(EVP_PKEY_set_type_str(pkey.get(), "Nonsense", 8));
 }
 
 TEST(EVPTest, PKEY_asn1_find) {
@@ -1756,6 +1859,16 @@ TEST(EVPTest, ED25519PH) {
   // pure signature shouldn't match a pre-hash signature w/o context
   ASSERT_NE(Bytes(signature, signature_len),
             Bytes(working_signature, working_signature_len));
+}
+
+TEST(EVPTest, ASN1MethodCheckPemStrLengthInvariant) {
+  for (int i = 0; i < EVP_PKEY_asn1_get_count(); i++) {
+    SCOPED_TRACE(i);
+    const EVP_PKEY_ASN1_METHOD *method = EVP_PKEY_asn1_get0(i);
+    ASSERT_NE(method, nullptr);
+    ASSERT_NE(method->pem_str, nullptr);
+    EXPECT_LE(OPENSSL_strnlen(method->pem_str, strlen(method->pem_str)+1), MAX_PEM_STR_LEN);
+  }
 }
 
 TEST(EVPTest, Ed25519phTestVectors) {

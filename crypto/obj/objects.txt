@@ -135,10 +135,9 @@ secg-ellipticCurve 39		: sect571r1
 
 # PQ Group OIDs from OQS
 # https://github.com/open-quantum-safe/oqs-provider/blob/main/ALGORITHMS.md#oids
-1 3 9999 99 51 : X25519Kyber768Draft00
-1 3 9999 99 52 : SecP256r1Kyber768Draft00
 1 3 9999 99 54 : X25519MLKEM768
 1 3 9999 99 55 : SecP256r1MLKEM768
+1 3 6 1 4 1 42235 6 : SecP384r1MLKEM1024
 
 # WAP/TLS curve OIDs (http://www.wapforum.org/)
 !Alias wap-wsg-idm-ecid wap-wsg 4
@@ -1387,21 +1386,12 @@ nist_sha3hashalgs 12		: SHAKE256		: shake256
 # NIDs for KEM type and specific KEMs (no corresponding OID).
 !Alias nist_kem nistAlgorithms 4
 nist_kem : KEM : kem
- : KYBER512
- : KYBER512_R3
- : KYBER768_R3
- : KYBER1024_R3
  : MLKEM512IPD
  : MLKEM768IPD
  : MLKEM1024IPD
 nist_kem 1 : MLKEM512
 nist_kem 2 : MLKEM768
 nist_kem 3 : MLKEM1024
-
-# OID for DILITHIUM3 SIG Round-3. These are temp values from
-# https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md
-# as we await NIST to release official OIDs.
-1 3 6 1 4 1 2 267 7 6 5 : DILITHIUM3_R3
 
 # OIDs for ML-DSA-44, ML-DSA-65, and ML-DSA-87 according to
 # https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf

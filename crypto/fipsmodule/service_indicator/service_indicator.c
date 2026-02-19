@@ -6,6 +6,7 @@
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 #include "internal.h"
+#include "../pqdsa/internal.h"
 
 const char *awslc_version_string(void) { return AWSLC_VERSION_STRING; }
 
@@ -18,6 +19,14 @@ int is_fips_build(void) {
 }
 
 #if defined(AWSLC_FIPS)
+
+// Trampoline function to avoid ARM64 ADR range issues in large FIPS module.
+// This function is intentionally not inlined to ensure the __FILE__ string
+// literal reference stays close to the call site, avoiding the ±1MB PC-relative
+// addressing limit of the ARM64 ADR instruction.
+static OPENSSL_NOINLINE void put_set_thread_local_error(void) {
+  OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+}
 
 #define STATE_UNLOCKED 0
 #define TLS_MD_EXTENDED_MASTER_SECRET_CONST "extended master secret"
@@ -55,7 +64,7 @@ static struct fips_service_indicator_state *service_indicator_get(void) {
 
     if (!CRYPTO_set_thread_local(
             AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, free)) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
+      put_set_thread_local_error();
       return NULL;
     }
   }
@@ -217,6 +226,29 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
   }
 }
 
+// mldsa_verify_service_indicator checks if the given PQDSA key uses an approved
+// ML-DSA variant and updates the service indicator if so.
+static void mldsa_verify_service_indicator(const EVP_PKEY *pkey) {
+  if (pkey->type != EVP_PKEY_PQDSA) {
+    return;
+  }
+
+  const PQDSA *pqdsa = PQDSA_KEY_get0_dsa(pkey->pkey.pqdsa_key);
+  if (pqdsa == NULL) {
+    return;
+  }
+
+  switch (pqdsa->nid) {
+    case NID_MLDSA44:
+    case NID_MLDSA65:
+    case NID_MLDSA87:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 // custom_meth_invoked checks whether custom crypto was invoked in the |meth|
 // or |eckey_method| fields for a given |RSA| or |EC_KEY| respectively. For
 // |RSA| keys, custom verify and sign functionality is supported. For |EC_KEY|
@@ -265,6 +297,11 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
       //. 7.6 EdDSA Signature Generation
       //  7.7 EdDSA Signature Verification
       FIPS_service_indicator_update_state();
+      return;
+    }
+    if(ctx->pctx->pkey->type == EVP_PKEY_PQDSA) {
+      // FIPS 204: ML-DSA Signature Generation/Verification
+      mldsa_verify_service_indicator(ctx->pctx->pkey);
       return;
     }
     // All other signature schemes without a prehash are currently never FIPS approved.
@@ -373,6 +410,9 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
     }
   } else if (pkey->type == EVP_PKEY_ED25519) {
     FIPS_service_indicator_update_state();
+  } else if (pkey->type == EVP_PKEY_PQDSA) {
+    // FIPS 204: ML-DSA Key Generation
+    mldsa_verify_service_indicator(pkey);
   }
 }
 
@@ -414,6 +454,10 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
     case NID_sha512:
     case NID_sha512_224:
     case NID_sha512_256:
+    case NID_sha3_224:
+    case NID_sha3_256:
+    case NID_sha3_384:
+    case NID_sha3_512:
       FIPS_service_indicator_update_state();
       break;
     default:

@@ -6,17 +6,23 @@ set -exu
 
 source tests/ci/common_posix_setup.sh
 
+# Dependencies needed for nmap build
+if [ "$(id -u)" -eq 0 ]; then
+  apt-get update
+  apt-get install -y --no-install-recommends liblinear-dev
+fi
+
 # Set up environment.
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - OPENVPN_SRC_FOLDER
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - OPENVPN_SRC_FOLDER
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/NMAP_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/NMAP_BUILD_ROOT"
 NMAP_SRC_FOLDER="${SCRATCH_FOLDER}/nmap"
 NMAP_BUILD_PREFIX="${NMAP_SRC_FOLDER}/build/install"
 NMAP_BUILD_EPREFIX="${NMAP_SRC_FOLDER}/build/exec-install"
@@ -39,8 +45,7 @@ function nmap_build() {
   make -j install
 
   local nmap_executable="${NMAP_BUILD_EPREFIX}/bin/nmap"
-    ldd ${nmap_executable} \
-      | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ${AWS_LC_BUILD_FOLDER}/check-linkage.sh ${nmap_executable} crypto || exit 1
 }
 
 # TODO: Remove this when we make an upstream contribution.
@@ -64,7 +69,7 @@ ls
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${AWS_LC_INSTALL_FOLDER}/lib"
 
 # Build nmap from source.
 pushd ${NMAP_SRC_FOLDER}

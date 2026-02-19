@@ -59,7 +59,7 @@ function run_all_break_tests() {
     unset FIPS_CALLBACK_TEST_EXPECTED_FAILURE
   done
 
-  for TEST in RSA_PWCT ECDSA_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
+  for TEST in RSA_PWCT EC_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
       export FIPS_CALLBACK_TEST_EXPECTED_FAILURE="${TEST}"
       export BORINGSSL_FIPS_BREAK_TEST="${TEST}"
       $original_test --gtest_filter=FIPSCallback.PWCT
@@ -70,9 +70,15 @@ function run_all_break_tests() {
 }
 
 echo "Testing AWS-LC static breakable build with custom callback and Jitter enabled"
-build_and_test -DFIPS=1 \
-  -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS -DAWSLC_FIPS_FAILURE_CALLBACK" \
+build_and_test -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DFIPS=1 \
+  -DCMAKE_INSTALL_LIBDIR=lib \
+  -DCMAKE_INSTALL_INCLUDEDIR=include \
+  -DCMAKE_INSTALL_BINDIR=bin \
+  -DCMAKE_C_FLAGS="-ggdb -DBORINGSSL_FIPS_BREAK_TESTS -DAWSLC_FIPS_FAILURE_CALLBACK" \
   -DCMAKE_CXX_FLAGS="-DAWSLC_FIPS_FAILURE_CALLBACK" \
+  -DBUILD_TESTING=ON -DBUILD_LIBSSL=ON \
   -DENABLE_FIPS_ENTROPY_CPU_JITTER=1
 
 maybe_run_fips_tests
@@ -80,9 +86,15 @@ maybe_run_fips_break_tests
 run_all_break_tests
 
 echo "Testing AWS-LC static build with custom callback and Jitter enabled"
-build_and_test -DFIPS=1 \
-  -DCMAKE_C_FLAGS="-DAWSLC_FIPS_FAILURE_CALLBACK" \
+build_and_test -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DFIPS=1 \
+  -DCMAKE_INSTALL_LIBDIR=lib \
+  -DCMAKE_INSTALL_INCLUDEDIR=include \
+  -DCMAKE_INSTALL_BINDIR=bin \
+  -DCMAKE_C_FLAGS="-ggdb -DAWSLC_FIPS_FAILURE_CALLBACK" \
   -DCMAKE_CXX_FLAGS="-DAWSLC_FIPS_FAILURE_CALLBACK" \
+  -DBUILD_TESTING=ON -DBUILD_LIBSSL=ON \
   -DENABLE_FIPS_ENTROPY_CPU_JITTER=1
 
 maybe_run_fips_tests

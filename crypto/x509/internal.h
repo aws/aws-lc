@@ -268,6 +268,7 @@ struct X509_VERIFY_PARAM_st {
   unsigned char *ip;     // If not NULL IP address to match
   size_t iplen;          // Length of IP address
   unsigned char poison;  // Fail all verifications at name checking
+  uint64_t awslc_flags;
 } /* X509_VERIFY_PARAM */;
 
 struct x509_object_st {
@@ -308,6 +309,7 @@ struct x509_store_st {
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
+  X509_STORE_CTX_lookup_crls_fn lookup_crls;
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
@@ -342,8 +344,11 @@ struct x509_store_ctx_st {
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
+  X509_STORE_CTX_lookup_crls_fn lookup_crls;
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
+  X509_STORE_CTX_verify_crit_oids_cb
+      verify_custom_crit_oids;  // Check custom critical oids
 
   // The following is built up
 
@@ -359,8 +364,15 @@ struct x509_store_ctx_st {
 
   int current_crl_score;         // score of current CRL
 
+  // Stack of allowed custom critical extension oids.
+  STACK_OF(ASN1_OBJECT) *custom_crit_oids;
+
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
+
+#define FLAG_BIT(n)  ((uint64_t)1 << (uint64_t)n)
+
+#define AWSLC_V_ENABLE_EC_KEY_EXPLICIT_PARAMS FLAG_BIT(0)
 
 void X509_OBJECT_free_contents(X509_OBJECT *a);
 
@@ -451,11 +463,6 @@ unsigned char *x509v3_hex_to_bytes(const char *str, size_t *len);
 // with |cmp| followed by '.', and zero otherwise.
 int x509v3_conf_name_matches(const char *name, const char *cmp);
 
-// x509v3_looks_like_dns_name returns one if |in| looks like a DNS name and zero
-// otherwise.
-OPENSSL_EXPORT int x509v3_looks_like_dns_name(const unsigned char *in,
-                                              size_t len);
-
 // x509v3_cache_extensions fills in a number of fields relating to X.509
 // extensions in |x|. It returns one on success and zero if some extensions were
 // invalid.
@@ -538,6 +545,8 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
   ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
                      ",value:", (val)->value);
 
+int NAME_CONSTRAINTS_check_CN(X509 *x, NAME_CONSTRAINTS *nc);
+
 // GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
 // value otherwise. Note this function does not provide a comparison suitable
 // for sorting.
@@ -566,6 +575,22 @@ int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
 
 // TODO(https://crbug.com/boringssl/695): Remove this.
 int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
+
+// Exported for testing purposes only. Used for validating that the CIDR mask bytes
+// from a IP Name Constraint is a valid CIDR prefix.
+//
+// It accepts either IPv4 (4 bytes) or IPv6 (16 bytes) masks, returns 0 for any other lengths,
+// and otherwise returns 1 if the provided netmask is a valid CIDR prefix.
+//
+// For example the IPv4 mask `255.255.255.0` would return valid, but `255.0.255.0` would be invalid.
+OPENSSL_EXPORT int validate_cidr_mask(CBS *cidr_mask);
+
+OPENSSL_EXPORT int cn2dnsid(ASN1_STRING *cn, unsigned char **dnsid, size_t *idlen);
+
+// Match reference identifiers starting with "." to any sub-domain.
+// This is a non-public flag, turned on implicitly when the subject
+// reference identity is a DNS name.
+#define _X509_CHECK_FLAG_DOT_SUBDOMAINS 0x8000
 
 #if defined(__cplusplus)
 }  // extern C

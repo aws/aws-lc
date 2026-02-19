@@ -307,10 +307,17 @@ bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
 }
 
 static const uint16_t kDefaultGroups[] = {
+    SSL_GROUP_X25519_MLKEM768,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    SSL_GROUP_SECP384R1_MLKEM1024,
     SSL_GROUP_X25519,
     SSL_GROUP_SECP256R1,
     SSL_GROUP_SECP384R1,
 };
+
+Span<const uint16_t> tls1_get_default_grouplist(void) {
+  return Span<const uint16_t>(kDefaultGroups);
+}
 
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *hs) {
   if (!hs->config->supported_group_list.empty()) {
@@ -392,6 +399,7 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
     SSL_SIGN_RSA_PSS_RSAE_SHA384,
     SSL_SIGN_RSA_PKCS1_SHA384,
 
+    SSL_SIGN_ECDSA_SECP521R1_SHA512,
     SSL_SIGN_RSA_PSS_RSAE_SHA512,
     SSL_SIGN_RSA_PKCS1_SHA512,
 

@@ -83,6 +83,13 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs);
 // |RSA*|.
 bssl::UniquePtr<RSA> RSAFromPEM(const char *pem);
 
+// Helper function that:
+// 1. Creates a BIO
+// 2. Reads the provided |pem_string| into bio
+// 3. Reads the PEM into DER encoding
+// 4. Returns the DER data and length
+bool PEM_to_DER(const char *pem_str, uint8_t **out_der, long *out_der_len);
+
 // kReferenceTime is the reference time used by certs created by |MakeTestCert|.
 // It is the unix timestamp for Sep 27th, 2016.
 static const int64_t kReferenceTime = 1474934400;
@@ -115,6 +122,24 @@ using TempFILE = std::unique_ptr<FILE, TempFileCloser>;
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
+size_t createTempDirPath(char buffer[PATH_MAX]);
+
+// Returns true if operating system is Amazon Linux and false otherwise.
+// Determined at run-time and requires read-permissions to /etc.
+bool osIsAmazonLinux(void);
+
+// Executes |testFunc| simultaneously in |numberThreads| number of threads. If
+// OPENSSL_THREADS is not defined, executes |testFunc| a single time
+// non-concurrently.
+bool threadTest(const size_t numberOfThreads,
+  std::function<void(bool*)> testFunc);
+
+bool forkAndRunTest(std::function<bool()> child_func,
+  std::function<bool()> parent_func);
+
+void maybeDisableSomeForkUbeDetectMechanisms(void);
+bool runtimeEmulationIsIntelSde(void);
+bool addressSanitizerIsEnabled(void);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {
@@ -127,5 +152,22 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
 // |reason|.
 testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
 
+// ExpectParse does a d2i parse using the corresponding template and function
+// pointer.
+template <typename T>
+void ExpectParse(T *(*d2i)(T **, const uint8_t **, long),
+                   const std::vector<uint8_t> &in, bool expected) {
+  SCOPED_TRACE(Bytes(in));
+  const uint8_t *ptr = in.data();
+  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
+  if (expected) {
+    EXPECT_TRUE(obj);
+  } else {
+    EXPECT_FALSE(obj);
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+    ERR_clear_error();
+  }
+}
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H

@@ -2,7 +2,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-set -exuo pipefail
+set -euo pipefail
+
+source pipeline/scripts/util.sh
 
 # -e: Exit on any failure
 # -x: Print the command before running
@@ -14,11 +16,7 @@ function delete_s3_buckets() {
   aws s3api list-buckets --query "Buckets[].Name" | jq '.[]' | while read -r i; do
     bucket_name=$(echo "${i}" | tr -d '"')
     # Delete the bucket if its name uses AWS_LC_S3_BUCKET_PREFIX.
-    if [[ "${bucket_name}" == *"${AWS_LC_S3_BUCKET_PREFIX}"* ]]; then
-      aws s3 rm "s3://${bucket_name}" --recursive
-      aws s3api delete-bucket --bucket "${bucket_name}"
-    # Delete bm-framework buckets if we're not on the team account
-    elif [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
+    if [[ "${bucket_name}" == *"${S3_FOR_WIN_DOCKER_IMG_BUILD}"* ]]; then
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
     fi
@@ -39,7 +37,7 @@ function delete_container_repositories() {
 }
 
 function destroy_ci() {
-  if [[ "${CDK_DEPLOY_ACCOUNT}" == "620771051181" ]]; then
+  if [[ "${DEPLOY_ACCOUNT}" == "620771051181" || "${DEPLOY_ACCOUNT}" == "351119683581" ]]; then
     echo "destroy_ci should not be executed on team account."
     exit 1
   fi
@@ -62,8 +60,6 @@ function destroy_docker_img_build_stack() {
 }
 
 function create_linux_docker_img_build_stack() {
-  # Clean up build stacks if exists.
-  destroy_docker_img_build_stack
   # Deploy aws-lc ci stacks.
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
   #
@@ -74,8 +70,6 @@ function create_linux_docker_img_build_stack() {
 }
 
 function create_win_docker_img_build_stack() {
-  # Clean up build stacks if exists.
-  destroy_docker_img_build_stack
   # Deploy aws-lc ci stacks.
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
   #
@@ -97,8 +91,8 @@ function run_linux_img_build() {
 
 function run_windows_img_build() {
   # EC2 takes several minutes to be ready for running command.
-  echo "Wait 3 min for EC2 ready for SSM command execution."
-  sleep 180
+#  echo "Wait 3 min for EC2 ready for SSM command execution."
+#  sleep 180
 
   # Run commands on windows EC2 instance to build windows docker images.
   for i in {1..60}; do
@@ -116,7 +110,9 @@ function run_windows_img_build() {
         --instance-ids "${instance_id}" \
         --document-name "${WIN_DOCKER_BUILD_SSM_DOCUMENT}" \
         --output-s3-bucket-name "${S3_FOR_WIN_DOCKER_IMG_BUILD}" \
-        --output-s3-key-prefix 'runcommand' | jq -r '.Command.CommandId')
+        --output-s3-key-prefix 'runcommand' \
+        --parameters "TriggerType=[\"manual\"]" | \
+        jq -r '.Command.CommandId')
       # Export for checking command run status.
       export WINDOWS_DOCKER_IMG_BUILD_COMMAND_ID="${command_id}"
       echo "Windows ec2 is executing SSM command."
@@ -177,9 +173,6 @@ function win_docker_img_build_status_check() {
 }
 
 function build_linux_docker_images() {
-  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-  trap destroy_docker_img_build_stack EXIT
-
   # Create/update aws-ecr repo.
   cdk deploy 'aws-lc-ecr-linux-*' --require-approval never
 
@@ -195,14 +188,16 @@ function build_linux_docker_images() {
 }
 
 function build_win_docker_images() {
- # Always destroy docker build stacks (which include EC2 instance) on EXIT.
- trap destroy_docker_img_build_stack EXIT
-
  # Create/update aws-ecr repo.
  cdk deploy 'aws-lc-ecr-windows-*' --require-approval never
 
  # Create aws windows build stack
  create_win_docker_img_build_stack
+
+ S3_FOR_WIN_DOCKER_IMG_BUILD=$(aws cloudformation describe-stack-resources \
+                                        --stack-name aws-lc-docker-image-build-windows  \
+                                        --query "StackResources[?ResourceType=='AWS::S3::Bucket'].PhysicalResourceId" \
+                                        --output text)
 
  echo "Executing AWS SSM commands to build Windows docker images."
  run_windows_img_build
@@ -217,39 +212,33 @@ function setup_ci() {
   build_win_docker_images
 
   create_github_ci_stack
-  create_android_resources
 }
 
-function create_android_resources() {
-  # Use aws cli to create Device Farm project and get project arn to create device pools.
-  # TODO: Move resource creation to aws cdk when cdk has support for device form resource constructs.
-  # Issue: https://github.com/aws/aws-cdk/issues/17893
-  DEVICEFARM_PROJECT=`aws devicefarm create-project --name aws-lc-android-ci | \
-                             python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["project"]["arn"])'`
+function deploy_production_pipeline() {
+  cdk deploy AwsLcCiPipeline --require-approval never
+}
 
-  DEVICEFARM_DEVICE_POOL=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
-    --name "aws-lc-device-pool" \
-    --description "AWS-LC Device Pool" \
-    --rules file://../android/devicepool_rules.json --max-devices 2 | \
-    python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+function deploy_dev_pipeline() {
+  if [[ -z "${DEPLOY_ACCOUNT:+x}" ]]; then
+    echo "The pipeline needs a deployment acount to know where to deploy the CI to."
+    exit 1
+  fi
 
-  DEVICEFARM_DEVICE_POOL_FIPS=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
-    --name "aws-lc-device-pool-fips" \
-    --description "AWS-LC FIPS Device Pool" \
-    --rules file://../android/devicepool_rules_fips.json --max-devices 2 | \
-    python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+  if [[ ${DEPLOY_ACCOUNT} == '620771051181' ]]; then
+    echo "Dev pipeline cannot deploy to production account."
+    exit 1
+  fi
 
-  cat <<EOF
+  if [[ -z "${PIPELINE_ACCOUNT:+x}" ]]; then
+    export PIPELINE_ACCOUNT=${DEPLOY_ACCOUNT}
+  fi
 
-DEVICEFARM_PROJECT arn value: ${DEVICEFARM_PROJECT}
+  if [[ ${PIPELINE_ACCOUNT} == '774305600158' ]]; then
+    echo "Cannot deploy. The production pipeline is hosted with the same name in this pipeline account."
+    exit 1
+  fi
 
-DEVICEFARM_DEVICE_POOL arn value: ${DEVICEFARM_DEVICE_POOL}
-
-DEVICEFARM_DEVICE_POOL_FIPS arn value: ${DEVICEFARM_DEVICE_POOL_FIPS}
-
-Take the corresponding Device Farm arn values and update the arn values at tests/ci/kickoff_devicefarm_job.sh
-
-EOF
+  cdk deploy AwsLcCiPipeline --require-approval never
 }
 
 ###########################
@@ -264,8 +253,8 @@ For aws-lc continuous integration setup, this script uses aws cli to build some 
 
 Options:
     --help                       Displays this help
-    --aws-account                AWS account for CDK deploy/destroy. Default to '620771051181'.
-    --aws-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
+    --deploy-account                AWS account for CDK deploy/destroy. Default to '620771051181'.
+    --deploy-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
     --github-repo-owner          GitHub repository owner. Default to 'aws'.
     --github-source-version      GitHub source version. Default to 'main'.
     --action                     Required. The value can be
@@ -280,38 +269,41 @@ Options:
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
                                    'bootstrap': Bootstraps the CDK stack. This is needed before deployment or updating the CI.
+                                   'invoke': invoke a custom command. Provide the custom command through '--command <YOUR_CUSTOM_COMMAND>'
+    --command                    Custom command to invoke. Required for '--action invoke'.
 EOF
 }
 
 function export_global_variables() {
   # If these variables are not set or empty, defaults are export.
-  if [[ -z "${CDK_DEPLOY_ACCOUNT+x}" || -z "${CDK_DEPLOY_ACCOUNT}" ]]; then
-    export CDK_DEPLOY_ACCOUNT='620771051181'
+  if [[ -z "${DEPLOY_ACCOUNT:+x}" ]]; then
+    export DEPLOY_ACCOUNT='620771051181'
   fi
-  if [[ -z "${CDK_DEPLOY_REGION+x}" || -z "${CDK_DEPLOY_REGION}" ]]; then
-    export CDK_DEPLOY_REGION='us-west-2'
-    export AWS_DEFAULT_REGION="${CDK_DEPLOY_REGION}"
+  if [[ -z "${DEPLOY_REGION:+x}" ]]; then
+    export DEPLOY_REGION='us-west-2'
+    export AWS_DEFAULT_REGION="${DEPLOY_REGION}"
   fi
-  if [[ -z "${GITHUB_REPO_OWNER+x}" || -z "${GITHUB_REPO_OWNER}" ]]; then
+  if [[ -z "${GITHUB_REPO_OWNER:+x}" ]]; then
     export GITHUB_REPO_OWNER='aws'
   fi
-  if [[ -z "${GITHUB_SOURCE_VERSION+x}" || -z "${GITHUB_SOURCE_VERSION}" ]]; then
+  if [[ -z "${GITHUB_SOURCE_VERSION:+x}" ]]; then
     export GITHUB_SOURCE_VERSION='main'
   fi
   # Other variables for managing resources.
-  DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
-  export GITHUB_REPO='aws-lc'
+#  DATE_NOW="$(date +%Y-%m-%d-%H-%M)"
+  export GITHUB_REPO_NAME='aws-lc'
   export ECR_LINUX_AARCH_REPO_NAME='aws-lc-docker-images-linux-aarch'
   export ECR_LINUX_X86_REPO_NAME='aws-lc-docker-images-linux-x86'
   export ECR_WINDOWS_X86_REPO_NAME='aws-lc-docker-images-windows-x86'
   export AWS_LC_S3_BUCKET_PREFIX='aws-lc-windows-docker-image-build-s3'
-  export S3_FOR_WIN_DOCKER_IMG_BUILD="${AWS_LC_S3_BUCKET_PREFIX}-${DATE_NOW}"
   export WIN_EC2_TAG_KEY='aws-lc'
-  export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
-  export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
+  export WIN_EC2_TAG_VALUE='aws-lc-windows-docker-image-build'
+  export WIN_DOCKER_BUILD_SSM_DOCUMENT='AWSLC-BuildWindowsDockerImages'
+  export S3_FOR_WIN_DOCKER_IMG_BUILD='aws-lc-windows-docker-image-build-s3'
+  export MAX_TEST_RETRY=2
   export IMG_BUILD_STATUS='unknown'
-  # 620771051181 is AWS-LC team AWS account.
-  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
+  # 620771051181 and 351119683581 is AWS-LC team AWS account.
+  if [[ "${DEPLOY_ACCOUNT}" != "620771051181" && "${DEPLOY_ACCOUNT}" != '351119683581' ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
     echo "Only team account is allowed to create CI stacks on aws repo."
     exit 1
   fi
@@ -325,13 +317,21 @@ function main() {
       script_helper
       exit 0
       ;;
-    --aws-account)
-      export CDK_DEPLOY_ACCOUNT="${2}"
+    --deploy-account)
+      export DEPLOY_ACCOUNT="${2}"
       shift
       ;;
-    --aws-region)
-      export CDK_DEPLOY_REGION="${2}"
-      export AWS_DEFAULT_REGION="${CDK_DEPLOY_REGION}"
+    --deploy-region)
+      export DEPLOY_REGION="${2}"
+      export AWS_DEFAULT_REGION="${DEPLOY_REGION}"
+      shift
+      ;;
+    --pipeline-account)
+      export PIPELINE_ACCOUNT="${2}"
+      shift
+      ;;
+    --pipeline-region)
+      export PIPELINE_REGION="${2}"
       shift
       ;;
     --github-repo-owner)
@@ -346,6 +346,10 @@ function main() {
       export ACTION="${2}"
       shift
       ;;
+    --command)
+      COMMAND="${2}"
+      shift
+      ;;
     *)
       echo "${1} is not supported."
       exit 1
@@ -356,7 +360,7 @@ function main() {
   done
 
   # Make sure action is set.
-  if [[ -z "${ACTION+x}" || -z "${ACTION}" ]]; then
+  if [[ -z "${ACTION:+x}" ]]; then
     echo "${ACTION} is required input."
     exit 1
   fi
@@ -366,6 +370,14 @@ function main() {
 
   # Execute the action.
   case ${ACTION} in
+  deploy-production-pipeline)
+    export IS_DEV="False"
+    deploy_production_pipeline
+    ;;
+  deploy-dev-pipeline)
+    export IS_DEV="True"
+    deploy_dev_pipeline
+    ;;
   deploy-ci)
     setup_ci
     ;;
@@ -374,9 +386,6 @@ function main() {
     ;;
   destroy-ci)
     destroy_ci
-    ;;
-  update-android-resources)
-    create_android_resources
     ;;
   destroy-img-stack)
     destroy_docker_img_build_stack
@@ -388,13 +397,53 @@ function main() {
     build_win_docker_images
     ;;
   synth)
-    cdk synth 'aws-lc-ci-*'
+    cdk synth '*'
     ;;
   diff)
     cdk diff aws-lc-ci-*
     ;;
   bootstrap)
     cdk bootstrap
+    ;;
+  invoke)
+    if [[ -z "${COMMAND:+x}" ]]; then
+      echo "--action invoke requires a command."
+      exit 1
+    fi
+    ${COMMAND:?}
+    ;;
+  setup-dev-env)
+    cat<<EOF
+export IS_DEV=True
+export DEPLOY_REGION="${DEPLOY_REGION}"
+export DEPLOY_ACCOUNT="${DEPLOY_ACCOUNT}"
+export PIPELINE_REGION="${PIPELINE_REGION:-${DEPLOY_REGION}}"
+export PIPELINE_ACCOUNT="${PIPELINE_ACCOUNT:-${DEPLOY_ACCOUNT}}"
+export GITHUB_REPO_OWNER="${GITHUB_REPO_OWNER}"
+export GITHUB_SOURCE_VERSION="${GITHUB_SOURCE_VERSION}"
+EOF
+    ;;
+setup-prod-env)
+    cat<<EOF
+export IS_DEV=False
+export DEPLOY_REGION="us-west-2"
+export DEPLOY_ACCOUNT="620771051181"
+export PIPELINE_REGION="us-west-2"
+export PIPELINE_ACCOUNT="774305600158"
+export GITHUB_REPO_OWNER="aws"
+export GITHUB_SOURCE_VERSION="main"
+EOF
+    ;;
+clear-env)
+    cat<<EOF
+unset IS_DEV
+unset DEPLOY_REGION
+unset DEPLOY_ACCOUNT
+unset PIPELINE_REGION
+unset PIPELINE_ACCOUNT
+unset GITHUB_REPO_OWNER
+unset GITHUB_SOURCE_VERSION
+EOF
     ;;
   *)
     echo "--action is required. Use '--help' to see allowed actions."

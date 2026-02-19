@@ -54,12 +54,14 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/digest.h>
 
 #include <string.h>
 
+#include <openssl/base.h>
 #include <openssl/blake2.h>
 #include <openssl/bytestring.h>
+#include <openssl/digest.h>
+#include <openssl/md4.h>
 #include <openssl/obj.h>
 #include <openssl/nid.h>
 
@@ -164,6 +166,10 @@ static const EVP_MD *cbs_to_md(const CBS *cbs) {
 }
 
 const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
+  if(obj == NULL) {
+    return NULL;
+  }
+
   // Handle objects with no corresponding OID. Note we don't use |OBJ_obj2nid|
   // here to avoid pulling in the OID table.
   if (obj->nid != NID_undef) {
@@ -251,6 +257,36 @@ const EVP_MD *EVP_get_digestbyname(const char *name) {
 
   return NULL;
 }
+
+static void md4_init(EVP_MD_CTX *ctx) {
+  AWSLC_ASSERT(MD4_Init(ctx->md_data));
+}
+
+static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  // MD4_Update always returns 1. Internally called function
+  // |crypto_md32_update| is void. For test consistency and future
+  // compatibility, the return value is propagated and returned
+  return MD4_Update(ctx->md_data, data, count);
+}
+
+static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
+  AWSLC_ASSERT(MD4_Final(out, ctx->md_data));
+}
+
+static const EVP_MD evp_md_md4 = {
+  NID_md4,
+  MD4_DIGEST_LENGTH,
+  0,
+  md4_init,
+  md4_update,
+  md4_final,
+  64,
+  sizeof(MD4_CTX),
+  NULL, // finalXOF
+  NULL  // squeezeXOF
+};
+
+const EVP_MD *EVP_md4(void) { return &evp_md_md4; }
 
 static void blake2b256_init(EVP_MD_CTX *ctx) { BLAKE2B256_Init(ctx->md_data); }
 

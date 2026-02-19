@@ -1,3 +1,14 @@
+From c27eac2efc587eae07f62136a4a50725d0660240 Mon Sep 17 00:00:00 2001
+From: Justin W Smith <justsmth@amazon.com>
+Date: Fri, 14 Nov 2025 13:48:40 +0000
+Subject: [PATCH] Support AWS-LC
+
+---
+ lib/tpm2_identity_util.c     | 2 +-
+ lib/tpm2_openssl.c           | 4 ++--
+ tools/misc/tpm2_checkquote.c | 4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
 diff --git a/lib/tpm2_identity_util.c b/lib/tpm2_identity_util.c
 index fbf1e938..2c6448d3 100644
 --- a/lib/tpm2_identity_util.c
@@ -12,7 +23,7 @@ index fbf1e938..2c6448d3 100644
          LOG_ERR("Failed EVP_PKEY_CTX_set0_rsa_oaep_label");
          free(newlabel);
 diff --git a/lib/tpm2_openssl.c b/lib/tpm2_openssl.c
-index 516d8b63..48d75c7b 100644
+index d2f07a7c..6b6c16ef 100644
 --- a/lib/tpm2_openssl.c
 +++ b/lib/tpm2_openssl.c
 @@ -36,7 +36,7 @@ int tpm2_openssl_halgid_from_tpmhalg(TPMI_ALG_HASH algorithm) {
@@ -20,7 +31,7 @@ index 516d8b63..48d75c7b 100644
      case TPM2_ALG_SHA512:
          return NID_sha512;
 -#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && HAVE_EVP_SM3
++#if OPENSSL_VERSION_NUMBER >= 0x10101000L  && HAVE_EVP_SM3
  	case TPM2_ALG_SM3_256:
  		return NID_sm3;
  #endif
@@ -29,15 +40,15 @@ index 516d8b63..48d75c7b 100644
      { TPM2_ECC_NIST_P384, NID_secp384r1        },
      { TPM2_ECC_NIST_P521, NID_secp521r1        },
 -#if OPENSSL_VERSION_NUMBER >= 0x10101003L
-+#if OPENSSL_VERSION_NUMBER >= 0x10101003L && HAVE_EVP_SM3
++#if OPENSSL_VERSION_NUMBER >= 0x10101003L  && HAVE_EVP_SM3
      { TPM2_ECC_SM2_P256,  NID_sm2              },
  #endif
      /*
 diff --git a/tools/misc/tpm2_checkquote.c b/tools/misc/tpm2_checkquote.c
-index e5f8ef41..10847523 100644
+index 259d9c62..051dafe7 100644
 --- a/tools/misc/tpm2_checkquote.c
 +++ b/tools/misc/tpm2_checkquote.c
-@@ -80,7 +80,7 @@ static bool verify(void) {
+@@ -115,7 +115,7 @@ static bool verify(void) {
          return false;
      }
  
@@ -46,3 +57,15 @@ index e5f8ef41..10847523 100644
  #if OPENSSL_VERSION_MAJOR < 3
      if (ctx.halg == TPM2_ALG_SM3_256) {
          ret = EVP_PKEY_set_alias_type(pkey, EVP_PKEY_SM2);
+@@ -356,7 +356,7 @@ static bool parse_selection_data_from_file(FILE *pcr_input,
+     for (i = 0; i < pcr_select->count; i++) {
+         pcr_select->pcrSelections[i].hash = le16toh(pcr_select->pcrSelections[i].hash);
+     }
+- 
++
+     // Import PCR digests to pcr outfile
+     if (fread(&pcrs->count, sizeof(UINT32), 1, pcr_input) != 1) {
+         LOG_ERR("Failed to read PCR digests header from file");
+-- 
+2.43.0
+

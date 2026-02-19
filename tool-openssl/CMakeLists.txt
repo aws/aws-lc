@@ -7,17 +7,35 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    txt_db/txt_db.cc
+
+    asn1parse.cc
+    ca.cc
+    ca_req_common.cc
     crl.cc
     dgst.cc
+    dhparam.cc
+    ecparam.cc
+    ec.cc
+    enc.cc
+    genpkey.cc
+    genrsa.cc
+    pass_util.cc
+    pkcs8.cc
+    pkey.cc
+    pkeyutl.cc
+    rehash.cc
+    req.cc
+    ordered_args.cc
     rsa.cc
     s_client.cc
     tool.cc
+    tool_util.cc
     verify.cc
     version.cc
     x509.cc
 )
 
-target_include_directories(openssl PUBLIC ${AWSLC_SOURCE_DIR}/include)
 target_compile_options(openssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)
@@ -38,11 +56,30 @@ else()
     endif()
 endif()
 
-target_include_directories(openssl BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
+target_add_awslc_include_paths(TARGET openssl SCOPE PRIVATE)
 
 install(TARGETS openssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+file(INSTALL
+    ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
+    DESTINATION
+    ${CMAKE_CURRENT_BINARY_DIR}
+    NO_SOURCE_PERMISSIONS
+    FILE_PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE
+    RENAME
+    c_rehash
+)
+
+install(
+    PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash.sh
+    RENAME c_rehash
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
@@ -56,25 +93,75 @@ if(BUILD_TESTING)
         ../tool/args.cc
         ../tool/file.cc
         ../tool/fd.cc
-        ../crypto/test/test_util.cc
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        txt_db/txt_db.cc
+        txt_db/txt_db_test.cc
+
+        asn1parse.cc
+        asn1parse_test.cc
+        ca.cc
+        ca_test.cc
+        ca_req_common.cc
         crl.cc
         crl_test.cc
         dgst.cc
         dgst_test.cc
+        dhparam.cc
+        dhparam_test.cc
+        ec.cc
+        ec_test.cc
+        ecparam.cc
+        ecparam_test.cc
+        enc.cc
+        enc_test.cc
+        genrsa.cc
+        genrsa_test.cc
+        genpkey.cc
+        genpkey_test.cc
+        ordered_args.cc
+        pass_util.cc
+        pass_util_test.cc
+        pkcs8.cc
+        pkcs8_test.cc
+        pkey.cc
+        pkey_test.cc
+        pkeyutl.cc
+        pkeyutl_test.cc
+        rehash.cc
+        rehash_test.cc
+        req.cc
+        req_test.cc
         rsa.cc
         rsa_test.cc
         s_client.cc
+        s_client_test.cc
+        test_util.cc
+        tool_util.cc
         verify.cc
         verify_test.cc
         x509.cc
         x509_test.cc
     )
 
+    target_add_awslc_include_paths(TARGET tool_openssl_test SCOPE PRIVATE)
+
+    file(INSTALL
+            ${CMAKE_CURRENT_SOURCE_DIR}/c_rehash_test.sh
+            DESTINATION
+            ${CMAKE_CURRENT_BINARY_DIR}
+            NO_SOURCE_PERMISSIONS
+            FILE_PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE
+            RENAME
+            c_rehash_test
+    )
+
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
-    target_include_directories(tool_openssl_test BEFORE PRIVATE ${AWSLC_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests tool_openssl_test)
+    add_dependencies(tool_openssl_test openssl)
     set_test_location(tool_openssl_test)
 endif()

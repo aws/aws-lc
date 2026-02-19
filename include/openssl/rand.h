@@ -25,6 +25,8 @@ extern "C" {
 // Random number generation.
 
 
+#define RAND_PRED_RESISTANCE_LEN (32)
+
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one. In the
 // event that sufficient random data can not be obtained, |abort| is called.
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
@@ -33,31 +35,21 @@ OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 // Consumers should call |RAND_bytes| directly.
 OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 
+// RAND_public_bytes writes |len| bytes of random data to |buf| and returns one.
+// In the event that sufficient random data can not be obtained, |abort| is
+// called. |RAND_public_bytes| and |RAND_bytes| do not use the same state to
+// generate output.
+OPENSSL_EXPORT int RAND_public_bytes(uint8_t *out, size_t out_len);
+
+// RAND_bytes_with_user_prediction_resistance is functionally equivalent to
+// |RAND_bytes| but also provides a way for the caller to inject prediction
+// resistance material using the argument |user_pred_resistance|.
+// |user_pred_resistance| must not be NULL and |user_pred_resistance| must be
+// filled with |RAND_PRED_RESISTANCE_LEN| bytes.
+OPENSSL_EXPORT int RAND_bytes_with_user_prediction_resistance(uint8_t *out,
+  size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
 
 // Obscure functions.
-
-#if !defined(OPENSSL_WINDOWS)
-// RAND_enable_fork_unsafe_buffering indicates that clones of the address space,
-// e.g. via |fork|, will never call into BoringSSL. It may be used to disable
-// BoringSSL's more expensive fork-safety measures. However, calling this
-// function and then using BoringSSL across |fork| calls will leak secret keys.
-// |fd| must be -1.
-//
-// WARNING: This function affects BoringSSL for the entire address space. Thus
-// this function should never be called by library code, only by code with
-// global knowledge of the application's use of BoringSSL.
-//
-// Do not use this function unless a performance issue was measured with the
-// default behavior. BoringSSL can efficiently detect forks on most platforms,
-// in which case this function is a no-op and is unnecessary. In particular,
-// Linux kernel versions 4.14 or later provide |MADV_WIPEONFORK|. Future
-// versions of BoringSSL will remove this functionality when older kernels are
-// sufficiently rare.
-//
-// This function has an unusual name because it historically controlled internal
-// buffers, but no longer does.
-OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
-#endif
 
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 // RAND_reset_for_fuzzing resets the fuzzer-only deterministic RNG. This

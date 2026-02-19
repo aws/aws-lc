@@ -13,16 +13,16 @@ FIPS=${FIPS:-"0"}
 
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
-#    - SCRATCH_FOLDER
-#      - RUBY_SRC_FOLDER
-#        - ruby_3_1
-#      - RUBY_PATCH_FOLDER
-#        - ruby_3_1
-#      - AWS_LC_BUILD_FOLDER
-#      - AWS_LC_INSTALL_FOLDER
+#  - SCRATCH_FOLDER
+#    - RUBY_SRC_FOLDER
+#      - ruby_3_1
+#    - RUBY_PATCH_FOLDER
+#      - ruby_3_1
+#    - AWS_LC_BUILD_FOLDER
+#    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER="${SRC_ROOT}/RUBY_BUILD_ROOT"
+SCRATCH_FOLDER="${SYS_ROOT}/RUBY_BUILD_ROOT"
 RUBY_SRC_FOLDER="${SCRATCH_FOLDER}/ruby-src"
 RUBY_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch"
 RUBY_BACKPORT_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch/ruby_release_backport"
@@ -44,14 +44,14 @@ function ruby_build() {
     ./install/bin/ruby -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
     ./miniruby ./tool/runruby.rb -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
 
-    ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
-    ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+    ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "$(find "$PWD/install" -name "openssl.so")" crypto || exit 1
+    ${AWS_LC_BUILD_FOLDER}/check-linkage.sh "$(find "$PWD/install" -name "openssl.so")" ssl || exit 1
 
     make test-all TESTS="test/openssl/*.rb"
     make test-all TESTS="test/rubygems/test*.rb"
 
     # drb was moved from a default gem to a bundled gem in later versions of Ruby.
-    if [[ "${branch}" != "master" ]]; then
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         make test-all TESTS="test/drb/*ssl*.rb"
     fi
 
@@ -70,15 +70,15 @@ function ruby_patch() {
         --depth 1 \
         --branch ${branch}
 
-    # Add directory of backport patches if branch is not master.
-    if [[ "${branch}" != "master" ]]; then
+    # Add directory of backport patches if branch is a version later than Ruby 3.4.
+    if [[ "${branch}" != "master" && "${branch}" != "ruby_3_4" ]]; then
         patch_dirs+=("${RUBY_BACKPORT_FOLDER}")
     fi
 
     for patch_dir in "${patch_dirs[@]}"; do
         for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
           echo "Apply patch ${patchfile}..."
-          cat ${patchfile} | patch -p1 -F 3 --quiet -d ${src_dir}
+          patch --strip 1 -F 3 --quiet -d ${src_dir} --input ${patchfile}
         done
     done
 }
