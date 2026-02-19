@@ -422,6 +422,61 @@ TEST_F(EvpPkeyCtxCtrlStrTest, HMACKey) {
   ASSERT_TRUE(EVP_PKEY_cmp(pkey_hex.get(), pkey_raw.get()));
 }
 
+TEST_F(EvpPkeyCtxCtrlStrTest, HMACKeyCtxDup) {
+  // Test that EVP_PKEY_CTX_dup works correctly with HMAC keys.
+  // This tests the hmac_copy function to ensure it copies the key correctly.
+  // Generate from duplicate FIRST, then from original, to detect if copy
+  // corrupts the source context.
+
+  // Get the expected key bytes
+  std::vector<uint8_t> expected_key;
+  DecodeHex(&expected_key, hmac_hexkey);
+  ASSERT_GT(expected_key.size(), 0u);
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, NULL));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexkey", hmac_hexkey));
+
+  // Duplicate the context
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx_dup(EVP_PKEY_CTX_dup(ctx.get()));
+  ASSERT_TRUE(ctx_dup);
+
+  // Generate from DUPLICATE first - this verifies the key was copied
+  EVP_PKEY* pkey_dup_raw = NULL;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx_dup.get(), &pkey_dup_raw));
+  bssl::UniquePtr<EVP_PKEY> pkey_dup(pkey_dup_raw);
+  ASSERT_TRUE(pkey_dup);
+
+  // Generate from ORIGINAL - verifies copy didn't corrupt source
+  EVP_PKEY* pkey_orig_raw = NULL;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey_orig_raw));
+  bssl::UniquePtr<EVP_PKEY> pkey_orig(pkey_orig_raw);
+  ASSERT_TRUE(pkey_orig);
+
+  // Verify both keys have the correct length and content using raw key access
+  // EVP_PKEY_cmp returns -2 for HMAC (no pub_cmp method), so we must compare
+  // the raw key bytes directly.
+  size_t dup_key_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey_dup.get(), NULL, &dup_key_len));
+  ASSERT_EQ(dup_key_len, expected_key.size());
+
+  size_t orig_key_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey_orig.get(), NULL, &orig_key_len));
+  ASSERT_EQ(orig_key_len, expected_key.size());
+
+  std::vector<uint8_t> dup_key(dup_key_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey_dup.get(), dup_key.data(), &dup_key_len));
+
+  std::vector<uint8_t> orig_key(orig_key_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey_orig.get(), orig_key.data(), &orig_key_len));
+
+  // Both keys should match each other and the expected key
+  ASSERT_EQ(orig_key, expected_key);
+  ASSERT_EQ(dup_key, expected_key);
+}
+
+
 
 
 static void verify_DSA(const DSA* dsa, unsigned psize, unsigned qsize) {
