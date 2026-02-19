@@ -133,6 +133,9 @@ function verify_wasm_artifacts {
     local test_binaries=(
         "crypto/crypto_test.js"
         "crypto/urandom_test.js"
+        "crypto/mem_test.js"
+        "crypto/mem_set_test.js"
+        "crypto/rwlock_static_init.js"
         "ssl/ssl_test.js"
     )
 
@@ -155,6 +158,23 @@ function verify_wasm_artifacts {
     done
 
     echo "WASM build artifacts verified successfully."
+}
+
+# Function to log gtest filter statistics for a test binary.
+# This helps detect if the filter is inadvertently excluding more tests than expected.
+function log_gtest_filter_stats {
+    local test_path=$1
+    local filter=$2
+    local test_name
+    test_name=$(basename "$test_path")
+
+    # Count total tests (lines that start with whitespace are individual test names)
+    local total_tests filtered_tests excluded_tests
+    total_tests=$(node "${test_path}" --gtest_list_tests 2>/dev/null | grep -c '^ ' || true)
+    filtered_tests=$(node "${test_path}" --gtest_list_tests --gtest_filter="${filter}" 2>/dev/null | grep -c '^ ' || true)
+    excluded_tests=$((total_tests - filtered_tests))
+
+    echo "${test_name}: running ${filtered_tests} of ${total_tests} tests (${excluded_tests} excluded by filter)"
 }
 
 # Function to run a single WASM test using Node.js
@@ -192,6 +212,14 @@ function run_wasm_tests {
 
     local failed_tests=()
 
+    # Log filter statistics so CI shows how many tests are excluded
+    echo ""
+    echo "=== GTest filter statistics ==="
+    log_gtest_filter_stats "crypto/crypto_test.js" "${WASM_GTEST_FILTER}"
+    log_gtest_filter_stats "ssl/ssl_test.js" "${WASM_GTEST_FILTER}"
+    echo "==============================="
+    echo ""
+
     # Run crypto_test (excluding fork and socket tests)
     if ! run_single_wasm_test "crypto/crypto_test.js" --gtest_filter="${WASM_GTEST_FILTER}"; then
         failed_tests+=("crypto_test")
@@ -207,6 +235,21 @@ function run_wasm_tests {
         failed_tests+=("ssl_test")
     fi
 
+    # Run mem_test - validates memory override via strong symbols
+    if ! run_single_wasm_test "crypto/mem_test.js"; then
+        failed_tests+=("mem_test")
+    fi
+
+    # Run mem_set_test - validates memory override via CRYPTO_set_mem_functions
+    if ! run_single_wasm_test "crypto/mem_set_test.js"; then
+        failed_tests+=("mem_set_test")
+    fi
+
+    # Run rwlock_static_init - validates RWLock static initialization with pthreads
+    if ! run_single_wasm_test "crypto/rwlock_static_init.js"; then
+        failed_tests+=("rwlock_static_init")
+    fi
+
     cd "$SRC_ROOT"
 
     if [ ${#failed_tests[@]} -ne 0 ]; then
@@ -220,6 +263,13 @@ function run_wasm_tests {
     echo ""
     echo "All WASM tests passed successfully!"
 }
+
+# Run WASM build and tests in Debug mode
+echo "Testing AWS-LC WASM build and tests in Debug mode."
+echo "Threading support: enabled"
+run_wasm_build Debug
+verify_wasm_artifacts
+run_wasm_tests
 
 # Run WASM build and tests in Release mode
 echo "Testing AWS-LC WASM build and tests in Release mode."
