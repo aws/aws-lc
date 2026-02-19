@@ -68,8 +68,8 @@ jobs:
             ./.github/docker_images/scripts/verify-perl-version.sh 5.38
             # Check GCC Default Compilers
             source /opt/compiler-env/setup-gcc.sh
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 14.2
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 14.2
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 13.3
             # Check GCC 9 Compilers
             source /opt/compiler-env/setup-gcc-9.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 9.5
@@ -80,12 +80,12 @@ jobs:
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 10.5
             # Check GCC 11 Compilers
             source /opt/compiler-env/setup-gcc-11.sh
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.4
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
             # Check GCC 12 Compilers
             source /opt/compiler-env/setup-gcc-12.sh
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 12.3
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 12.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 12.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 12.4
             # Check GCC 13 Compilers
             source /opt/compiler-env/setup-gcc-13.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
@@ -192,8 +192,8 @@ jobs:
             ./.github/docker_images/scripts/verify-perl-version.sh 5.38
             # Check GCC Default Compilers
             source /opt/compiler-env/setup-gcc.sh
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 14.2
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 14.2
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 13.3
             # Check GCC 9 Compilers
             source /opt/compiler-env/setup-gcc-9.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 9.5
@@ -204,12 +204,12 @@ jobs:
             ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 10.5
             # Check GCC 11 Compilers
             source /opt/compiler-env/setup-gcc-11.sh
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.4
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 11.5
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 11.5
             # Check GCC 12 Compilers
             source /opt/compiler-env/setup-gcc-12.sh
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 12.3
-            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 12.3
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 12.4
+            ./.github/docker_images/scripts/verify-compiler-version.sh $CXX g++ 12.4
             # Check GCC 13 Compilers
             source /opt/compiler-env/setup-gcc-13.sh
             ./.github/docker_images/scripts/verify-compiler-version.sh $CC gcc 13.3
