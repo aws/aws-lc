@@ -160,8 +160,7 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
       if (mode == EVP_CIPH_CBC_MODE) {
         dat->stream.cbc = aes_hw_cbc_encrypt;
       }
-    } else if (bsaes_capable() && mode == EVP_CIPH_CBC_MODE) {
-      assert(vpaes_capable());
+    } else if (vpaes_capable() && mode == EVP_CIPH_CBC_MODE) {
       ret = vpaes_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
       if (ret == 0) {
         vpaes_decrypt_key_to_bsaes(&dat->ks.ks, &dat->ks.ks);
@@ -206,7 +205,7 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 #endif
     if (mode == EVP_CIPH_CTR_MODE) {
 #if defined(BSAES)
-      assert(bsaes_capable());
+      assert(vpaes_capable());
       dat->stream.ctr = vpaes_ctr32_encrypt_blocks_with_bsaes;
 #elif defined(VPAES_CTR32)
       dat->stream.ctr = vpaes_ctr32_encrypt_blocks;
@@ -288,7 +287,8 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes) {
   // This function assumes the key length was previously validated.
-  assert(key_bytes == 128 / 8 || key_bytes == 192 / 8 || key_bytes == 256 / 8);
+  assert(key_bytes == 16 || key_bytes == 24 || key_bytes == 32);
+
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
@@ -300,6 +300,21 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     return aes_hw_ctr32_encrypt_blocks_wrapper;
   }
 
+
+#if defined(BSAES)
+ if (vpaes_capable()) {
+    vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
+    if (out_block) {
+      *out_block = vpaes_encrypt_wrapper;
+    }
+    if (gcm_key != NULL) {
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt_wrapper, 0);
+    }
+    return vpaes_ctr32_encrypt_blocks_with_bsaes;
+  }
+#endif
+
+#if defined(VPAES_CTR32)
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (out_block) {
@@ -308,15 +323,9 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     if (gcm_key != NULL) {
       CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt_wrapper, 0);
     }
-#if defined(BSAES)
-    assert(bsaes_capable());
-    return vpaes_ctr32_encrypt_blocks_with_bsaes;
-#elif defined(VPAES_CTR32)
     return vpaes_ctr32_encrypt_blocks_wrapper;
-#else
-    return NULL;
-#endif
   }
+#endif
 
   aes_nohw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
   if (gcm_key != NULL) {

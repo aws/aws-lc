@@ -29,7 +29,20 @@ extern "C" {
 
 #if !defined(OPENSSL_NO_ASM)
 
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#define HWAES
+#define HWAES_ECB
+#define VPAES
+#define VPAES_CBC
+OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_AESNI_capable(); }
+OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_SSSE3_capable(); }
+
 #if defined(OPENSSL_X86_64)
+#define VPAES_CTR32
+#define HWAES_XTS
+OPENSSL_INLINE int hwaes_xts_available(void) {
+  return CRYPTO_is_AESNI_capable();
+}
 OPENSSL_INLINE int avx512_xts_available(void) {
   return (CRYPTO_is_VAES_capable() &&
           CRYPTO_is_VBMI2_capable() &&
@@ -38,42 +51,21 @@ OPENSSL_INLINE int avx512_xts_available(void) {
 }
 #endif
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-#define HWAES
-#define HWAES_ECB
-
-OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_AESNI_capable(); }
-
-#define VPAES
-#if defined(OPENSSL_X86_64)
-#define VPAES_CTR32
-#define HWAES_XTS
-OPENSSL_INLINE int hwaes_xts_available(void) {
-  return CRYPTO_is_AESNI_capable();
-}
-#endif
-#define VPAES_CBC
-OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_SSSE3_capable(); }
-
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #define HWAES
+#define VPAES
+#define VPAES_CTR32
 
 OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_ARMv8_AES_capable(); }
+OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 
 #if defined(OPENSSL_ARM)
 #define BSAES
-#define VPAES
-#define VPAES_CTR32
-OPENSSL_INLINE int bsaes_capable(void) { return CRYPTO_is_NEON_capable(); }
-OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #endif
 
 #if defined(OPENSSL_AARCH64)
-#define VPAES
 #define VPAES_CBC
-#define VPAES_CTR32
 #define HWAES_XTS
-OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 OPENSSL_INLINE int hwaes_xts_available(void) {
   // same as hwaes_capable()
   return CRYPTO_is_ARMv8_AES_capable();
@@ -81,6 +73,7 @@ OPENSSL_INLINE int hwaes_xts_available(void) {
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
+
 #define HWAES
 
 OPENSSL_INLINE int hwaes_capable(void) {
