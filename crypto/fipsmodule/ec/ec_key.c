@@ -321,7 +321,7 @@ static int ec_key_gen_pct(const EC_KEY *key) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       return 0;
     }
-  
+
     // Leaking this comparison only leaks whether |key|'s public key was
     // correct.
     //
@@ -339,39 +339,18 @@ static int ec_key_gen_pct(const EC_KEY *key) {
   return 1;
 }
 
-int EC_KEY_check_key(const EC_KEY *eckey) {
-  if (!eckey || !eckey->group || !eckey->pub_key) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  if (EC_POINT_is_at_infinity(eckey->group, eckey->pub_key)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
-    return 0;
-  }
-
-  // Test whether the public key is on the elliptic curve.
-  if (!EC_POINT_is_on_curve(eckey->group, eckey->pub_key, NULL)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
-    return 0;
-  }
-
-  // Many code-paths end up in |EC_KEY_check_key|. For example, ECDH operations.
-  // Technically, the PCT is not needed for ECDH in non-FIPS. However, other
-  // APIs use this function for validations e.g. the EVP private key parsing (to
-  // validate that public key is indeed generate from the private key) and there
-  // is currently no way to distinguish the code-paths at this level. This could
-  // be optimized.
-  if (!ec_key_gen_pct(eckey)) {
-    return 0;
-  }
-
-  return 1;
-}
+int EC_KEY_check_key(const EC_KEY *eckey){ return EC_KEY_check_fips(eckey); }
 
 int EC_KEY_check_fips(const EC_KEY *key) {
 
+  BIGNUM *x = NULL;
+  BIGNUM *y = NULL;
   int ret = 0;
+
+  if (!key || !key->group || !key->pub_key) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
 
   // Nothing obvious will falsely increment the service indicator. But lock to
   // be safe.
@@ -383,11 +362,34 @@ int EC_KEY_check_fips(const EC_KEY *key) {
     goto end;
   }
 
-  if (!EC_KEY_check_key(key)) {
+  // Test SP 800-56A Rev. 3 Section 5.6.2.3.3 (1).
+  if (EC_POINT_is_at_infinity(key->group, key->pub_key)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     goto end;
   }
 
-  // Check that the coordinates are within the range [0,p-1], when the (raw)
+  // Test SP 800-56A Rev. 3 Section 5.6.2.3.3 (3).
+  // Tests whether the public key is on the elliptic curve.
+  // SP 800-56A Rev. 3 Section 5.6.2.3.3 (4) is implicitly satisfied because
+  // we only support FIPS-validated curves with co-factor 1. 
+  if (!EC_POINT_is_on_curve(key->group, key->pub_key, NULL)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+    goto end;
+  }
+
+  // Many code-paths end up in |EC_KEY_check_key|. For example, ECDH operations.
+  // Technically, the PCT is not needed for ECDH in non-FIPS. However, other
+  // APIs use this function for validations e.g. the EVP private key parsing (to
+  // validate that public key is indeed generate from the private key) and there
+  // is currently no way to distinguish the code-paths at this level. This could
+  // be optimized.
+  if (!ec_key_gen_pct(key)) {
+    goto end;
+  }
+
+  // Test SP 800-56A Rev. 3 Section 5.6.2.3.3 (2).
+  // AWS-LC doesn't support binary curves. Not even created as a custom curve.
+  // Tests that the coordinates are within the range [0,p-1], when the (raw)
   // point is affine; i.e. Z=1.
   // This is the case when validating a received public key.
   // Note: The check for x and y being negative seems superfluous since
@@ -395,31 +397,31 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   EC_POINT *pub_key = key->pub_key;
   EC_GROUP *group = key->pub_key->group;
   if(ec_felem_equal(group, ec_felem_one(group), &pub_key->raw.Z)) {
-    BIGNUM *x = BN_new();
-    BIGNUM *y = BN_new();
-    int check_ret = 1;
     if (group->meth->felem_to_bytes == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      check_ret = 0;
-    } else if (!ec_felem_to_bignum(group, x, &pub_key->raw.X) ||
+      goto end;
+    }
+
+    x = BN_new();
+    y = BN_new();
+    if (!x || !y || !ec_felem_to_bignum(group, x, &pub_key->raw.X) ||
                !ec_felem_to_bignum(group, y, &pub_key->raw.Y)) {
       // Error already written to error queue by |bn_wexpand|.
-      check_ret = 0;
+      goto end;
     } else if (BN_is_negative(x) || BN_is_negative(y) ||
                BN_cmp(x, &group->field.N) >= 0 ||
                BN_cmp(y, &group->field.N) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-      check_ret = 0;
-    }
-    BN_free(x);
-    BN_free(y);
-    if (check_ret == 0) {
       goto end;
     }
   }
 
   ret = 1;
+
 end:
+  BN_free(x);
+  BN_free(y);
+
   FIPS_service_indicator_unlock_state();
   if(ret){
     EC_KEY_keygen_verify_service_indicator(key);
