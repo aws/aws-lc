@@ -119,6 +119,15 @@ bool TemporaryFile::Init(bssl::Span<const uint8_t> content) {
     return false;
   }
   path_ = path;
+#elif defined(OPENSSL_WASM_WASI)
+  // WASI doesn't have mkstemp or umask. Use a counter with random suffix.
+  static int temp_file_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  char filename[64];
+  snprintf(filename, sizeof(filename), "bssl_tmp_%d_%08x.tmp",
+           temp_file_counter++, random_val);
+  path_ = temp_dir + filename;
 #else
   std::string path = temp_dir + "bssl_tmp_file.XXXXXX";
   // TODO(davidben): Use |path.data()| when we require C++17.

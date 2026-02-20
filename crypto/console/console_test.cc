@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 #include <signal.h>
 
+#include <openssl/base.h>
+
 #include "internal.h"
 #include "../test/test_util.h"
+
+#if !defined(OPENSSL_NO_TTY)
 
 #if defined(OPENSSL_WINDOWS)
 #include <io.h>
@@ -247,3 +251,5 @@ TEST_F(PemPasswdTest, EchoModes) {
   ASSERT_STREQ(buf_with_echo, "test_password");
 }
 #endif
+
+#endif  // !OPENSSL_NO_TTY
