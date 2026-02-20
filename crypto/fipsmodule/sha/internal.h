@@ -567,11 +567,11 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
  * detailed above each SHAKE128_x4_ function signature, is satisfied.
  */
 
-// SHAKE128_Init_x4 is a batched API that operates on four independent
+// SHAKE_Init_x4 is a batched API that operates on four independent
 // Keccak bitstates. It initialises all four |ctx| fields and returns
 // 1 on success and 0 on failure. When call-discipline is maintained,
 // this function never fails.
-OPENSSL_EXPORT int SHAKE128_Init_x4(KECCAK1600_CTX_x4 *ctx);
+OPENSSL_EXPORT int SHAKE_Init_x4(KECCAK1600_CTX_x4 *ctx);
 
 // SHAKE128_Absorb_once_x4 is a batched API that operates on four independent
 // Keccak bitstates. It absorbs all four inputs |data0|, |data1|, |data2|, |data3|
