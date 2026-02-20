@@ -14,6 +14,14 @@
 
 #include <stdint.h>
 
+// Ensure that no ambient #pragma const_seg is active. BORINGSSL_bcm_text_hash
+// MUST be placed in the default .rdata section, outside the FIPS module rodata
+// boundary (.fipsco). If it were placed inside the FIPS rodata boundary, the
+// integrity check would hash the expected value itself, creating a circular
+// dependency that can never be satisfied.
+#if defined(_MSC_VER)
+#pragma const_seg()
+#endif
 
 #if defined(BORINGSSL_FIPS) && defined(BORINGSSL_SHARED_LIBRARY)
 // BORINGSSL_bcm_text_hash is is default hash value for the FIPS integrity check
