@@ -103,7 +103,7 @@ func (k *kts) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		for _, test := range group.Tests {
 			test := test
 			if group.Role == "initiator" {
-				result, err := m.Transact("KTS/OAEP/"+hashAlg+"/transport", 2, outLenBytes[:], nil, test.ServerN, test.ServerE, nil, nil, nil)
+				result, err := m.Transact("KTS/OAEP/"+hashAlg+"/transport", 2, outLenBytes[:], test.ServerN, test.ServerE)
 				if err != nil {
 					return nil, err
 				}
@@ -113,7 +113,7 @@ func (k *kts) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 					Dkm:  result[1],
 				})
 			} else {
-				result, err := m.Transact("KTS/OAEP/"+hashAlg+"/receive", 1, outLenBytes[:], test.Ct, test.IutN, test.IutE, test.IutQ, test.IutP, test.IutD)
+				result, err := m.Transact("KTS/OAEP/"+hashAlg+"/receive", 1, test.Ct, test.IutN, test.IutE, test.IutQ, test.IutP, test.IutD)
 				if err != nil {
 					return nil, err
 				}
