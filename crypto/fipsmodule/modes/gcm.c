@@ -135,13 +135,41 @@ void gcm_init_ssse3(u128 Htable[16], const uint64_t H[2]) {
 #if defined(HW_GCM) && defined(OPENSSL_X86_64)
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
+                             uint8_t Xi[16], const u128 Htable[16],
+                             ghash_func ghash) {
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  // Check if AVX2 VAES implementation should be used
+  if (ghash == gcm_ghash_vpclmulqdq_avx2) {
+    size_t bulk = len & kSizeTWithoutLower4Bits;
+    if (bulk > 0) {
+      aes_gcm_enc_update_vaes_avx2(in, out, bulk, key, ivec, Htable, Xi);
+      uint32_t ctr = CRYPTO_load_u32_be(ivec + 12);
+      ctr += (uint32_t)(bulk / 16);
+      CRYPTO_store_u32_be(ivec + 12, ctr);
+    }
+    return bulk;
+  }
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
   return aesni_gcm_encrypt(in, out, len, key, ivec, Htable, Xi);
 }
 
 static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
+                             uint8_t Xi[16], const u128 Htable[16],
+                             ghash_func ghash) {
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  // Check if AVX2 VAES implementation should be used
+  if (ghash == gcm_ghash_vpclmulqdq_avx2) {
+    size_t bulk = len & kSizeTWithoutLower4Bits;
+    if (bulk > 0) {
+      aes_gcm_dec_update_vaes_avx2(in, out, bulk, key, ivec, Htable, Xi);
+      uint32_t ctr = CRYPTO_load_u32_be(ivec + 12);
+      ctr += (uint32_t)(bulk / 16);
+      CRYPTO_store_u32_be(ivec + 12, ctr);
+    }
+    return bulk;
+  }
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
   return aesni_gcm_decrypt(in, out, len, key, ivec, Htable, Xi);
 }
 #endif  // HW_GCM && X86_64
@@ -150,7 +178,8 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
+                             uint8_t Xi[16], const u128 Htable[16],
+                             ghash_func ghash) {
   const size_t len_blocks = len & kSizeTWithoutLower4Bits;
   if (!len_blocks) {
     return 0;
@@ -187,7 +216,8 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16],
-                             uint8_t Xi[16], const u128 Htable[16]) {
+                             uint8_t Xi[16], const u128 Htable[16],
+                             ghash_func ghash) {
   const size_t len_blocks = len & kSizeTWithoutLower4Bits;
   if (!len_blocks) {
     return 0;
@@ -262,6 +292,13 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     gcm_init_avx512(out_table, H);
     *out_mult = gcm_gmult_avx512;
     *out_hash = gcm_ghash_avx512;
+    *out_is_avx = 1;
+    return;
+  }
+  if (crypto_gcm_avx2_enabled()) {
+    gcm_init_vpclmulqdq_avx2(out_table, H);
+    *out_mult = gcm_gmult_vpclmulqdq_avx2;
+    *out_hash = gcm_ghash_vpclmulqdq_avx2;
     *out_is_avx = 1;
     return;
   }
@@ -683,7 +720,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     // |hw_gcm_encrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = hw_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi,
-                                 ctx->gcm_key.Htable);
+                                 ctx->gcm_key.Htable, ctx->gcm_key.ghash);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -787,7 +824,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     // |hw_gcm_decrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = hw_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi,
-                                 ctx->gcm_key.Htable);
+                                 ctx->gcm_key.Htable, ctx->gcm_key.ghash);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -888,6 +925,19 @@ int crypto_gcm_avx512_enabled(void) {
   return (CRYPTO_is_VAES_capable() &&
           CRYPTO_is_AVX512_capable() &&
           CRYPTO_is_VPCLMULQDQ_capable());
+#else
+  return 0;
+#endif
+}
+
+int crypto_gcm_avx2_enabled(void) {
+  // AVX2 VAES + VPCLMULQDQ implementation for CPUs like AMD Zen 3 that have
+  // VAES but not AVX512. This should be checked after AVX512 to prefer
+  // AVX512 on CPUs that support both.
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  return (CRYPTO_is_VAES_capable() &&
+          CRYPTO_is_VPCLMULQDQ_capable() &&
+          CRYPTO_is_AVX2_capable());
 #else
   return 0;
 #endif

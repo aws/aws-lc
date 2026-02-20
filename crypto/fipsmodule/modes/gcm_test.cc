@@ -214,6 +214,28 @@ TEST(GCMTest, ABI) {
         }
       }
     }
+    if (crypto_gcm_avx2_enabled()) {
+      AES_KEY aes_key;
+      static const uint8_t kKey[16] = {0};
+      uint8_t iv[16] = {0};
+
+      CHECK_ABI_SEH(gcm_init_vpclmulqdq_avx2, Htable, kH);
+      CHECK_ABI_SEH(gcm_gmult_vpclmulqdq_avx2, X, Htable);
+      for (size_t blocks : kBlockCounts) {
+        CHECK_ABI_SEH(gcm_ghash_vpclmulqdq_avx2, X, Htable, buf, 16 * blocks);
+      }
+
+      aes_hw_set_encrypt_key(kKey, 128, &aes_key);
+      for (size_t blocks : kBlockCounts) {
+        CHECK_ABI_SEH(aes_gcm_enc_update_vaes_avx2, buf, buf, blocks * 16,
+                      &aes_key, iv, Htable, X);
+      }
+      aes_hw_set_decrypt_key(kKey, 128, &aes_key);
+      for (size_t blocks : kBlockCounts) {
+        CHECK_ABI_SEH(aes_gcm_dec_update_vaes_avx2, buf, buf, blocks * 16,
+                      &aes_key, iv, Htable, X);
+      }
+    }
 #endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 #endif  // GHASH_ASM_X86_64
   }
