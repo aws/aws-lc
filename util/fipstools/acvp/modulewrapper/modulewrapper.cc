@@ -1489,17 +1489,20 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "algorithm": "KTS-IFC",
         "revision": "Sp800-56Br2",
         "function": ["keyPairGen", "partialVal"],
-        "iutId": ["initiator", "responder"],
+        "iutId": "123456ABCD",
         "keyGenerationMethods": ["rsakpg1-basic", "rsakpg1-prime-factor", "rsakpg1-crt"],
         "modulo": [2048, 3072, 4096],
         "fixedPubExp": "010001",
-        "kasRole": ["initiator", "responder"],
-        "l": 1024,
-        "scheme": "KTS-OAEP-basic",
-        "ktsConfiguration": {
-          "hashAlg": ["SHA-1", "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512"],
-          "associatedDataPattern": "uPartyInfo||vPartyInfo",
-          "encoding": ["concatenation", "none"]
+        "scheme": {
+          "KTS-OAEP-basic": {
+            "kasRole": ["initiator", "responder"],
+            "ktsMethod": {
+              "hashAlgs": ["SHA-1", "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512"],
+              "associatedDataPattern": "uPartyInfo||vPartyInfo",
+              "encoding": ["concatenation"]
+            },
+            "l": 1024
+          }
         }
       }])";
   return write_reply({Span<const uint8_t>(
