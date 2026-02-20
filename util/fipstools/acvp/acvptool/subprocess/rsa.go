@@ -117,6 +117,36 @@ type rsaSigVerTestResponse struct {
 	Passed bool   `json:"testPassed"`
 }
 
+type rsaSignaturePrimitiveVectorSet struct {
+	Groups []rsaSignaturePrimitiveGroup `json:"testGroups"`
+}
+
+type rsaSignaturePrimitiveGroup struct {
+	ID          uint64                      `json:"tgId"`
+	ModulusBits uint32                      `json:"modulo"`
+	Type        string                      `json:"testType"`
+	Tests       []rsaSignaturePrimitiveTest `json:"tests"`
+}
+
+type rsaSignaturePrimitiveTest struct {
+	ID      uint64               `json:"tcId"`
+	Message hexEncodedByteString `json:"message"`
+	D       hexEncodedByteString `json:"d"`
+	N       hexEncodedByteString `json:"n"`
+	E       hexEncodedByteString `json:"e"`
+}
+
+type rsaSignaturePrimitiveTestGroupResponse struct {
+	ID    uint64                              `json:"tgId"`
+	Tests []rsaSignaturePrimitiveTestResponse `json:"tests"`
+}
+
+type rsaSignaturePrimitiveTestResponse struct {
+	ID     uint64               `json:"tcId"`
+	Passed bool                 `json:"testPassed"`
+	Sig    hexEncodedByteString `json:"signature,omitempty"`
+}
+
 func processKeyGen(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaKeyGenTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
@@ -265,6 +295,50 @@ func processSigVer(vectorSet []byte, m Transactable) (interface{}, error) {
 	return ret, nil
 }
 
+func processSignaturePrimitive(vectorSet []byte, m Transactable) (interface{}, error) {
+	var parsed rsaSignaturePrimitiveVectorSet
+	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
+		return nil, err
+	}
+
+	var ret []rsaSignaturePrimitiveTestGroupResponse
+
+	for _, group := range parsed.Groups {
+		group := group
+
+		if !(group.Type == "AFT") {
+			return nil, fmt.Errorf("RSA Signature Primitive test group has type %q, but only AFT tests are supported", group.Type)
+		}
+
+		response := rsaSignaturePrimitiveTestGroupResponse{
+			ID: group.ID,
+		}
+
+		for _, test := range group.Tests {
+			test := test
+			results, err := m.Transact("RSA/signaturePrimitive", 2, test.D, test.N, test.E, test.Message)
+			if err != nil {
+				return nil, err
+			}
+
+			testResp := rsaSignaturePrimitiveTestResponse{ID: test.ID}
+
+			passed := results[0][0] == 1
+			testResp.Passed = passed
+
+			if passed {
+				testResp.Sig = results[1]
+			}
+
+			response.Tests = append(response.Tests, testResp)
+		}
+
+		ret = append(ret, response)
+	}
+
+	return ret, nil
+}
+
 type rsa struct{}
 
 func (r *rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
@@ -280,6 +354,8 @@ func (r *rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		return processSigGen(vectorSet, m)
 	case "sigVer":
 		return processSigVer(vectorSet, m)
+	case "signaturePrimitive":
+		return processSignaturePrimitive(vectorSet, m)
 	default:
 		return nil, fmt.Errorf("unknown RSA mode %q", parsed.Mode)
 	}

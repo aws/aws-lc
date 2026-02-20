@@ -2779,6 +2779,39 @@ static bool RSASigVer(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(&ok, 1)});
 }
 
+static bool RSASignaturePrimitive(const Span<const uint8_t> args[],
+                                  ReplyCallback write_reply) {
+  const Span<const uint8_t> d_bytes = args[0];
+  const Span<const uint8_t> n_bytes = args[1];
+  const Span<const uint8_t> e_bytes = args[2];
+  const Span<const uint8_t> msg = args[3];
+
+  BIGNUM *d = BN_new();
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> key(RSA_new());
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !RSA_set0_key(key.get(), n, e, d)) {
+    return false;
+  }
+
+  std::vector<uint8_t> sig(RSA_size(key.get()));
+  size_t sig_len;
+  uint8_t success_flag[1] = {0};
+  if (!RSA_sign_raw(key.get(), &sig_len, sig.data(), sig.size(), msg.data(),
+                    msg.size(), RSA_NO_PADDING)) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+  sig.resize(sig_len);
+  success_flag[0] = 1;
+
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(sig)});
+}
+
 template <const EVP_MD *(MDFunc)()>
 static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
@@ -3639,6 +3672,7 @@ static struct {
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
     {"RSA/sigVer/SHAKE-128/pss", 4, RSASigVer<EVP_shake128, true>},
     {"RSA/sigVer/SHAKE-256/pss", 4, RSASigVer<EVP_shake256, true>},
+    {"RSA/signaturePrimitive", 4, RSASignaturePrimitive},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
