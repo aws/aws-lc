@@ -39,6 +39,18 @@ static const uint64_t iotas[] = {
     0x8000000080008008ULL
 };
 
+#if defined(OPENSSL_X86_64)
+static const uint64_t keccak_rho8[4] = {
+    0x0605040302010007ULL, 0x0E0D0C0B0A09080FULL,
+    0x0605040302010007ULL, 0x0E0D0C0B0A09080FULL
+};
+
+static const uint64_t keccak_rho56[4] = {
+    0x0007060504030201ULL, 0x080F0E0D0C0B0A09ULL,
+    0x0007060504030201ULL, 0x080F0E0D0C0B0A09ULL
+};
+#endif
+
 #if !defined(KECCAK1600_ASM)
 
 static const uint8_t rhotates[KECCAK1600_ROWS][KECCAK1600_ROWS] = {
@@ -447,6 +459,13 @@ static void Keccak1600_x4(uint64_t A[4][KECCAK1600_ROWS][KECCAK1600_ROWS]) {
         return;
     }
 #endif
+#endif
+
+#if defined(KECCAK1600_S2N_BIGNUM_ASM) && defined(OPENSSL_X86_64)
+    if (CRYPTO_is_AVX2_capable()) {
+        sha3_keccak4_f1600_alt((uint64_t *)A, iotas, keccak_rho8, keccak_rho56);
+        return;
+    }
 #endif
 
     // Fallback: 4x individual KeccakF1600 calls (each with their own dispatch)
