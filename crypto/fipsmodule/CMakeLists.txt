@@ -391,6 +391,18 @@ if((ARCH STREQUAL "x86_64") AND UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
   set(S2N_BIGNUM_INCLUDE_DIR "${AWSLC_SOURCE_DIR}/third_party/s2n-bignum/s2n-bignum-imported/include")
 
+  # mldsa-native assembly files for x86_64 (NTT/INTT + nttunpack for custom order)
+  set(MLDSA_NATIVE_DIR "${AWSLC_SOURCE_DIR}/crypto/fipsmodule/ml_dsa")
+
+  set(MLDSA_NATIVE_X86_64_ASM_SOURCES
+
+    ${MLDSA_NATIVE_DIR}/mldsa/native/x86_64/src/intt.S
+    ${MLDSA_NATIVE_DIR}/mldsa/native/x86_64/src/ntt.S
+    ${MLDSA_NATIVE_DIR}/mldsa/native/x86_64/src/nttunpack.S
+  )
+
+  list(APPEND BCM_ASM_SOURCES ${MLDSA_NATIVE_X86_64_ASM_SOURCES})
+
 endif()
 
 

@@ -587,7 +587,7 @@ __contract__(
   int ret;
   /* TODO: Remove the following workaround for
    * https://github.com/diffblue/cbmc/issues/8813 */
-  typedef MLK_UNION_OR_STRUCT
+  typedef MLD_UNION_OR_STRUCT
   {
     mld_polyvecl y;
     mld_polyveck h;
@@ -598,7 +598,7 @@ __contract__(
 
   /* TODO: Remove the following workaround for
    * https://github.com/diffblue/cbmc/issues/8813 */
-  typedef MLK_UNION_OR_STRUCT
+  typedef MLD_UNION_OR_STRUCT
   {
     mld_polyveck w1;
     mld_polyvecl tmp;
@@ -984,7 +984,7 @@ int mld_sign_verify_internal(const uint8_t *sig, size_t siglen,
 
   /* TODO: Remove the following workaround for
    * https://github.com/diffblue/cbmc/issues/8813 */
-  typedef MLK_UNION_OR_STRUCT
+  typedef MLD_UNION_OR_STRUCT
   {
     mld_polyveck t1;
     mld_polyveck w1;
