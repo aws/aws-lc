@@ -2812,6 +2812,100 @@ static bool RSASignaturePrimitive(const Span<const uint8_t> args[],
       {Span<const uint8_t>(success_flag), Span<const uint8_t>(sig)});
 }
 
+static bool RSADecryptionPrimitive(const Span<const uint8_t> args[],
+                                   ReplyCallback write_reply) {
+  const Span<const uint8_t> ct = args[0];
+  const Span<const uint8_t> d_bytes = args[1];
+  const Span<const uint8_t> n_bytes = args[2];
+  const Span<const uint8_t> e_bytes = args[3];
+
+  BIGNUM *d = BN_new();
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> key(RSA_new());
+
+  uint8_t success_flag[1] = {0};
+  RSA_set_flags(key.get(), RSA_FLAG_LARGE_PUBLIC_EXPONENT);
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !RSA_set0_key(key.get(), n, e, d) || !RSA_check_key(key.get())) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  std::vector<uint8_t> pt(RSA_size(key.get()));
+  size_t pt_len;
+
+  if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
+                   ct.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  pt.resize(pt_len);
+  success_flag[0] = 1;
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(pt)});
+}
+
+static bool RSADecryptionPrimitiveCRT(const Span<const uint8_t> args[],
+                                      ReplyCallback write_reply) {
+  const Span<const uint8_t> ct = args[0];
+  const Span<const uint8_t> d_bytes = args[1];
+  const Span<const uint8_t> dmp1_bytes = args[2];
+  const Span<const uint8_t> dmq1_bytes = args[3];
+  const Span<const uint8_t> iqmp_bytes = args[4];
+  const Span<const uint8_t> p_bytes = args[5];
+  const Span<const uint8_t> q_bytes = args[6];
+  const Span<const uint8_t> n_bytes = args[7];
+  const Span<const uint8_t> e_bytes = args[8];
+
+  BIGNUM *d = BN_new();
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  BIGNUM *p = BN_new();
+  BIGNUM *q = BN_new();
+  BIGNUM *dmp1 = BN_new();
+  BIGNUM *dmq1 = BN_new();
+  BIGNUM *iqmp = BN_new();
+
+  uint8_t success_flag[1] = {0};
+
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !BN_bin2bn(d_bytes.data(), d_bytes.size(), d) ||
+      !BN_bin2bn(p_bytes.data(), p_bytes.size(), p) ||
+      !BN_bin2bn(q_bytes.data(), q_bytes.size(), q) ||
+      !BN_bin2bn(dmp1_bytes.data(), dmp1_bytes.size(), dmp1) ||
+      !BN_bin2bn(dmq1_bytes.data(), dmq1_bytes.size(), dmq1) ||
+      !BN_bin2bn(iqmp_bytes.data(), iqmp_bytes.size(), iqmp)) {
+    return false;
+  }
+  bssl::UniquePtr<RSA> key(
+      RSA_new_private_key_large_e(n, e, d, p, q, dmp1, dmq1, iqmp));
+
+  if (key == NULL) {
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  std::vector<uint8_t> pt(RSA_size(key.get()));
+  size_t pt_len;
+  if (!RSA_decrypt(key.get(), &pt_len, pt.data(), pt.size(), ct.data(),
+                   ct.size(), RSA_NO_PADDING)) {
+    ERR_clear_error();
+    return write_reply(
+        {Span<const uint8_t>(success_flag), Span<const uint8_t>()});
+  }
+
+  pt.resize(pt_len);
+  success_flag[0] = 1;
+  return write_reply(
+      {Span<const uint8_t>(success_flag), Span<const uint8_t>(pt)});
+}
+
 template <const EVP_MD *(MDFunc)()>
 static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
@@ -3673,6 +3767,8 @@ static struct {
     {"RSA/sigVer/SHAKE-128/pss", 4, RSASigVer<EVP_shake128, true>},
     {"RSA/sigVer/SHAKE-256/pss", 4, RSASigVer<EVP_shake256, true>},
     {"RSA/signaturePrimitive", 4, RSASignaturePrimitive},
+    {"RSA/decryptionPrimitive", 4, RSADecryptionPrimitive},
+    {"RSA/decryptionPrimitive/crt", 9, RSADecryptionPrimitiveCRT},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
