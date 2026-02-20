@@ -1,0 +1,89 @@
+name: Zig compiler
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  zig:
+    if: github.repository_owner == 'aws'
+    runs-on: ${{ matrix.config.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - host: windows-11-arm
+            target_arch: aarch64
+            target_system: Windows
+          - host: ubuntu-24.04-arm
+            target_arch: aarch64
+            target_system: Linux
+          - host: windows-latest
+            target_arch: x86_64
+            target_system: Windows
+          - host: ubuntu-latest
+            target_arch: x86_64
+            target_system: Linux
+          - host: macos-latest
+            target_arch: aarch64
+            target_system: Darwin
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ninja-build tool
+        uses: seanmiddleditch/gha-setup-ninja@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>= 1.18'
+      - name: Install zigcc
+        uses: jiacai2050/my-works@main
+        with:
+          zig-version: 0.15.1
+      - name: Locate zig not on Windows
+        if: matrix.config.target_system != 'Windows'
+        shell: bash
+        run: |
+          echo "CFLAGS=${CFLAGS} -fno-sanitize=all"
+          echo "CXXFLAGS=${CXXFLAGS} -fno-sanitize=all"
+          echo "ZIGCC=${PWD}/util/zig-cc" >> $GITHUB_ENV
+          echo "ZIGCXX=${PWD}/util/zig-c++" >> $GITHUB_ENV
+      - name: Locate zig on Windows
+        if: matrix.config.target_system == 'Windows'
+        shell: bash
+        run: |
+          ZIGCC="python3 $(cygpath -m $(which zigcc))"
+          ZIGCXX="python3 $(cygpath -m $(which zigcxx))"
+          echo "ZIGCC=${ZIGCC}" >> $GITHUB_ENV
+          echo "ZIGCXX=${ZIGCXX}" >> $GITHUB_ENV
+      - name: Create toolchain
+        shell: bash
+        run: |
+          cat <<EOF > ./toolchain.cmake
+          set(CMAKE_C_COMPILER ${ZIGCC})
+          set(CMAKE_SYSTEM_NAME  ${{ matrix.config.target_system }})
+          set(CMAKE_SYSTEM_PROCESSOR  ${{ matrix.config.target_arch }})
+          set(CMAKE_CXX_COMPILER ${ZIGCXX})
+          set(CMAKE_ASM_COMPILER ${ZIGCC})
+          set(CMAKE_VERBOSE_MAKEFILE ON)
+          set(CMAKE_MESSAGE_LOG_LEVEL DEBUG)
+          EOF
+      - name: Setup CMake
+        shell: bash
+        run: |
+          printenv | sort
+          which zigcc
+          which zigcxx
+          cat ./toolchain.cmake
+          cmake '.' -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=./toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        shell: bash
+        run: |
+          cmake --build ./build --target run_tests --verbose
