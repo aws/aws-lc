@@ -2559,6 +2559,28 @@ static bool ECDSASigGen(const Span<const uint8_t> args[],
       {Span<const uint8_t>(r_bytes), Span<const uint8_t>(s_bytes)});
 }
 
+static bool ECDSASigGenComponentTest(const Span<const uint8_t> args[],
+                                     ReplyCallback write_reply) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  bssl::UniquePtr<BIGNUM> d = BytesToBIGNUM(args[1]);
+  auto digest = args[3];
+  if (!key || !EC_KEY_set_private_key(key.get(), d.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<ECDSA_SIG> sig(
+      ECDSA_do_sign(digest.data(), digest.size(), key.get()));
+  if (!sig) {
+    return false;
+  }
+
+  std::vector<uint8_t> r_bytes(BIGNUMBytes(sig->r));
+  std::vector<uint8_t> s_bytes(BIGNUMBytes(sig->s));
+
+  return write_reply(
+      {Span<const uint8_t>(r_bytes), Span<const uint8_t>(s_bytes)});
+}
+
 static bool ECDSASigVer(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
   bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
@@ -2595,6 +2617,41 @@ static bool ECDSASigVer(const Span<const uint8_t> args[],
   uint8_t reply[1];
   if (!EVP_DigestVerifyInit(ctx.get(), &pctx, hash, nullptr, evp_pkey.get()) ||
       !EVP_DigestVerify(ctx.get(), der, der_len, msg.data(), msg.size())) {
+    reply[0] = 0;
+  } else {
+    reply[0] = 1;
+  }
+  ERR_clear_error();
+
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
+static bool ECDSASigVerComponentTest(const Span<const uint8_t> args[],
+                                     ReplyCallback write_reply) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  auto digest = args[2];
+  bssl::UniquePtr<BIGNUM> x(BytesToBIGNUM(args[3]));
+  bssl::UniquePtr<BIGNUM> y(BytesToBIGNUM(args[4]));
+  bssl::UniquePtr<BIGNUM> r(BytesToBIGNUM(args[5]));
+  bssl::UniquePtr<BIGNUM> s(BytesToBIGNUM(args[6]));
+  ECDSA_SIG sig;
+  sig.r = r.get();
+  sig.s = s.get();
+
+  if (!key) {
+    return false;
+  }
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
+  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           point.get(), x.get(), y.get(),
+                                           /*ctx=*/nullptr) ||
+      !EC_KEY_set_public_key(key.get(), point.get()) ||
+      !EC_KEY_check_fips(key.get())) {
+    return false;
+  }
+
+  uint8_t reply[1];
+  if (ECDSA_do_verify(digest.data(), digest.size(), &sig, key.get()) != 1) {
     reply[0] = 0;
   } else {
     reply[0] = 1;
@@ -3714,7 +3771,9 @@ static struct {
     {"ECDSA/keyGen", 1, ECDSAKeyGen},
     {"ECDSA/keyVer", 3, ECDSAKeyVer},
     {"ECDSA/sigGen", 4, ECDSASigGen},
+    {"ECDSA/sigGen/componentTest", 4, ECDSASigGenComponentTest},
     {"ECDSA/sigVer", 7, ECDSASigVer},
+    {"ECDSA/sigVer/componentTest", 7, ECDSASigVerComponentTest},
     {"CMAC-AES", 3, CMAC_AES},
     {"CMAC-AES/verify", 3, CMAC_AESVerify},
     {"RSA/keyGen", 1, RSAKeyGen},

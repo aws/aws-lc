@@ -158,7 +158,11 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				testResp.R = result[0]
 				testResp.S = result[1]
 				// Ask the subprocess to verify the generated signature for this test case.
-				ver_result, ver_err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), test.Msg, response.Qx, response.Qy, testResp.R, testResp.S)
+				op = e.algo+"/"+"sigVer"
+				if group.ComponentTest {
+					op += "/componentTest"
+				}
+				ver_result, ver_err := m.Transact(op, 1, []byte(group.Curve), []byte(group.HashAlgo), test.Msg, response.Qx, response.Qy, testResp.R, testResp.S)
 				if ver_err != nil {
 					return nil, fmt.Errorf("after signature generation, signature verification failed for test case %d/%d: %s", group.ID, test.ID, ver_err)
 				}
