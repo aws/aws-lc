@@ -26,6 +26,7 @@
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-ECC-SSC.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-FFC-SSC.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KDF.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/KTS-IFC.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-GCM-internal-IV.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/kdf-components.bz2", "Out": "expected/kdf-components.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/RSA.bz2", "Out": "expected/RSA.bz2"},
