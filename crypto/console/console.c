@@ -1,6 +1,43 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/base.h>
+
+#include "internal.h"
+#include "../internal.h"
+
+// Some platforms do not support terminal operations (no termios, no /dev/tty).
+// Provide stub implementations that indicate no console is available.
+#if defined(OPENSSL_NO_TTY)
+
+void openssl_console_acquire_mutex(void) {}
+
+void openssl_console_release_mutex(void) {}
+
+int openssl_console_open(void) {
+  // No console available on WASI
+  return 0;
+}
+
+int openssl_console_close(void) {
+  return 1;
+}
+
+int openssl_console_write(const char *str) {
+  (void)str;
+  return 0;
+}
+
+int openssl_console_read(char *buf, int minsize, int maxsize, int echo) {
+  (void)buf;
+  (void)minsize;
+  (void)maxsize;
+  (void)echo;
+  return -1;  // Error: no console available
+}
+
+#else  // !OPENSSL_NO_TTY
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -13,9 +50,6 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
-
-#include "internal.h"
-#include "../internal.h"
 
 
 // We support two types of terminal interface:
@@ -342,3 +376,5 @@ error:
 
     return ok;
 }
+
+#endif  // !OPENSSL_NO_TTY

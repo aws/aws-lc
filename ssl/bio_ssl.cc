@@ -20,10 +20,18 @@
 // implement such checks, making this approach necessary for compatibility.
 //
 // See commit aws-lc@9db959e for more details.
+//
+// On WASI, iovec is defined via basic libc headers (included transitively
+// through standard headers like <stdio.h>), so it's already defined before
+// this file is compiled. Consumer code on WASI will have the same situation,
+// so the protection goal is still achieved - there's no risk of a surprise
+// redefinition conflict.
+#if !defined(OPENSSL_WASM_WASI)
 struct iovec {
   void* iov_base;
   size_t iov_len;
 };
+#endif
 
 static SSL *get_ssl(BIO *bio) {
   return reinterpret_cast<SSL *>(bio->ptr);
@@ -216,6 +224,7 @@ long BIO_get_ssl(BIO *bio, SSL **ssl) {
   return BIO_ctrl(bio, BIO_C_GET_SSL, 0, ssl);
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 BIO *BIO_new_ssl_connect(SSL_CTX *ctx) {
   bssl::UniquePtr<BIO> con(BIO_new(BIO_s_connect()));
   bssl::UniquePtr<BIO> ssl(BIO_new_ssl(ctx, 1));
@@ -231,6 +240,7 @@ BIO *BIO_new_ssl_connect(SSL_CTX *ctx) {
   ssl.release();
   return ret.release();
 }
+#endif  // !OPENSSL_NO_SOCK
 
 BIO *BIO_new_ssl(SSL_CTX *ctx, int client) {
   bssl::UniquePtr<BIO> ret(BIO_new(BIO_f_ssl()));

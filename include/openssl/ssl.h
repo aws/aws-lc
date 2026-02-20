@@ -5254,6 +5254,9 @@ OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
 // not be freed. It returns one on success or something other than one on error.
 OPENSSL_EXPORT long BIO_get_ssl(BIO *bio, SSL **ssl);
 
+// BIO_new_ssl_connect requires socket support for the underlying connect BIO.
+// It is unavailable on platforms that define OPENSSL_NO_SOCK (e.g., WASI).
+#if !defined(OPENSSL_NO_SOCK)
 // BIO_new_ssl_connect uses |ctx| to return a newly allocated BIO chain with
 // |BIO_new_ssl|, followed by a connect BIO.
 //
@@ -5261,6 +5264,7 @@ OPENSSL_EXPORT long BIO_get_ssl(BIO *bio, SSL **ssl);
 // caveats hold true for this function as well. See |BIO_f_ssl| for more
 // details.
 OPENSSL_EXPORT BIO *BIO_new_ssl_connect(SSL_CTX *ctx);
+#endif  // !OPENSSL_NO_SOCK
 
 // BIO_new_ssl returns a newly allocated SSL BIO created with |ctx|. A client
 // SSL is created if |client| is non-zero, and a server is created if otherwise.

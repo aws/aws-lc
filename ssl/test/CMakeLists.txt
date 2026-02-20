@@ -1,22 +1,25 @@
-add_executable(
-  bssl_shim
+# bssl_shim requires socket support (BIO_new_socket, etc.)
+# Skip on Generic systems (e.g., WASI) which don't have BSD sockets
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
+  add_executable(
+    bssl_shim
 
-  async_bio.cc
-  bssl_shim.cc
-  handshake_util.cc
-  mock_quic_transport.cc
-  packeted_bio.cc
-  settings_writer.cc
-  ssl_transfer.cc
-  test_config.cc
-  test_state.cc
-)
+    async_bio.cc
+    bssl_shim.cc
+    handshake_util.cc
+    mock_quic_transport.cc
+    packeted_bio.cc
+    settings_writer.cc
+    ssl_transfer.cc
+    test_config.cc
+    test_state.cc
+  )
 
-target_link_libraries(bssl_shim test_support_lib ssl crypto)
-if(WIN32)
-  target_link_libraries(bssl_shim ws2_32)
-endif()
-target_add_awslc_include_paths(TARGET bssl_shim SCOPE PRIVATE)
+  target_link_libraries(bssl_shim test_support_lib ssl crypto)
+  if(WIN32)
+    target_link_libraries(bssl_shim ws2_32)
+  endif()
+  target_add_awslc_include_paths(TARGET bssl_shim SCOPE PRIVATE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(
@@ -36,5 +39,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_add_awslc_include_paths(TARGET handshaker SCOPE PRIVATE)
 else()
   # Declare a dummy target for run_tests to depend on.
+  add_custom_target(handshaker)
+endif()
+
+else()
+  # Generic systems (e.g., WASI): declare dummy targets for dependencies
+  add_custom_target(bssl_shim)
   add_custom_target(handshaker)
 endif()

@@ -25,7 +25,7 @@
 #include <vector>
 #endif
 
-#if !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_WASM_WASI)
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -308,7 +308,8 @@ TEST_F(randTest, NotObviouslyBroken) {
 }
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
+    !defined(OPENSSL_WASM_WASI)
 static bool ForkAndRand(bssl::Span<uint8_t> out) {
   int pipefds[2];
   if (pipe(pipefds) < 0) {
