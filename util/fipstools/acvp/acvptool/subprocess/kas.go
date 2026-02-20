@@ -107,11 +107,15 @@ func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		}
 
 		var useStaticNamedFields bool
+		var useOnePassNameFields bool
 		switch group.Scheme {
 		case "ephemeralUnified":
 			break
 		case "staticUnified":
 			useStaticNamedFields = true
+			break
+		case "onePassDh":
+			useOnePassNameFields = true
 			break
 		default:
 			return nil, fmt.Errorf("unknown scheme %q", group.Scheme)
@@ -125,6 +129,8 @@ func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			var xHex, yHex, privateKeyHex string
 			if useStaticNamedFields {
 				xHex, yHex, privateKeyHex = test.StaticXHex, test.StaticYHex, test.StaticPrivateKeyHex
+			} else if useOnePassNameFields {
+				xHex, yHex, privateKeyHex = test.EphemeralXHex, test.EphemeralYHex, test.StaticPrivateKeyHex
 			} else {
 				xHex, yHex, privateKeyHex = test.EphemeralXHex, test.EphemeralYHex, test.EphemeralPrivateKeyHex
 			}
@@ -179,7 +185,7 @@ func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 					ResultHex: hex.EncodeToString(result[2]),
 				}
 
-				if useStaticNamedFields {
+				if useStaticNamedFields || useOnePassNameFields {
 					testResponse.StaticXHex = hex.EncodeToString(result[0])
 					testResponse.StaticYHex = hex.EncodeToString(result[1])
 				} else {
