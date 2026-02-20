@@ -26,8 +26,9 @@
 
 // On Windows place the bcm code in a specific section that uses Grouped Sections
 // to control the order. $b section will place bcm in between the start/end markers
-// which are in $a and $z.
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
+// which are in $a and $z. These pragmas are only supported by MSVC and Clang on Windows,
+// not by MinGW GCC.
+#if defined(BORINGSSL_FIPS) && (defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32)))
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsco$b")
@@ -260,7 +261,7 @@ WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
 #endif
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
 #pragma section(".CRT$XCU", read)
 static void BORINGSSL_bcm_power_on_self_test(void);
 __declspec(allocate(".CRT$XCU")) void(*fips_library_init_constructor)(void) =

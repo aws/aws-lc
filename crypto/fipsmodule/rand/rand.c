@@ -47,7 +47,7 @@ OPENSSL_STATIC_ASSERT((sizeof((struct rand_thread_local_state*)0)->generate_call
 DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
 DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || (defined(__clang__) && defined(_WIN32))
 #pragma section(".CRT$XCU", read)
 static void rand_thread_local_state_clear_all(void);
 static void windows_install_rand_thread_local_state_clear_all(void) {
