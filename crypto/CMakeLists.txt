@@ -628,9 +628,34 @@ endfunction()
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
-  if(MSVC)
-    # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
-    # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
+  if(MSVC AND ARCH STREQUAL "aarch64")
+    # On ARM64 Windows, ASLR is mandatory and cannot be disabled. The linker
+    # resolves ADRP immediates differently when building two separate DLLs
+    # (precrypto.dll vs crypto.dll), even when the FIPS module code comes from
+    # the same bcm.lib. This makes the two-DLL capture_hash approach produce a
+    # hash mismatch. Instead we use a single-DLL approach: build crypto.dll
+    # once with a placeholder hash, run fips_empty_main.exe (which triggers the
+    # integrity check, computes the real hash, and prints it), then binary-patch
+    # the placeholder in crypto.dll with the captured hash.
+    build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule> SET_OUTPUT_NAME)
+
+    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
+    target_link_libraries(fips_empty_main PUBLIC crypto)
+    target_add_awslc_include_paths(TARGET fips_empty_main SCOPE PRIVATE)
+
+    add_custom_command(
+      TARGET fips_empty_main POST_BUILD
+      COMMAND ${GO_EXECUTABLE} run
+        ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+        -in-executable $<TARGET_FILE:fips_empty_main>
+        -patch-dll $<TARGET_FILE:crypto>
+      WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
+    )
+  elseif(MSVC)
+    # On x64 Windows we use capture_hash.go to capture the computed integrity
+    # value that the module prints on its first (failing) run, then embed that
+    # value in generated_fips_shared_support.c for the final crypto.dll.
+    # See FIPS.md for a full explanation of the process.
     build_libcrypto(NAME precrypto MODULE_SOURCE $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
@@ -638,8 +663,8 @@ if(FIPS_SHARED)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
-            -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            -in-executable $<TARGET_FILE:fips_empty_main> > ${CMAKE_CURRENT_BINARY_DIR}/generated_fips_shared_support.c
+            WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
             DEPENDS fips_empty_main ${AWSLC_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
     add_library(
@@ -650,6 +675,7 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${AWSLC_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
+    target_compile_definitions(generated_fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION S2N_BN_HIDE_SYMBOLS)
     target_add_awslc_include_paths(TARGET generated_fipsmodule SCOPE PRIVATE)
 
     build_libcrypto(NAME crypto MODULE_SOURCE $<TARGET_OBJECTS:generated_fipsmodule> SET_OUTPUT_NAME)

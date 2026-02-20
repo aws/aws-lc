@@ -32,6 +32,10 @@
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsco$b")
 #pragma bss_seg(".fipsbs$b")
+// Explicitly declare the FIPS rodata section with correct attributes. This
+// ensures the section is known to the compiler/linker even if #pragma const_seg
+// is not fully supported (e.g. clang-cl on ARM64).
+#pragma section(".fipsco$b", read)
 #endif
 
 #include <openssl/chacha.h>
